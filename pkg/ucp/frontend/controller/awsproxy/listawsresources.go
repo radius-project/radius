@@ -122,7 +122,7 @@ func listNative(ctx context.Context, h native.Handler, collectionID resources.ID
 
 	listed, err := h.List(ctx, region)
 	if err != nil {
-		return ucpaws.HandleAWSError(ctx, err)
+		return handleError(ctx, collectionID, err)
 	}
 	items := []any{}
 	for _, resource := range listed {

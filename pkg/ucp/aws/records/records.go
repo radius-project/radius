@@ -27,9 +27,12 @@ import (
 	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 )
 
 // OperationType is the async operation type of AWS resource operations. The frontend queues PUT and DELETE operations
@@ -129,10 +132,16 @@ func (s *Store) Touch(ctx context.Context, id resources.ID) error {
 	return err
 }
 
-// FindByIdentifier returns the resource ID of another alias whose record has the AWS identifier, in the same account,
-// region, and type as id, or "" when there is none. UCP calls it before it takes over a resource, or creates one
-// whose identifier the properties give, so two aliases never manage the same AWS resource.
-func (s *Store) FindByIdentifier(ctx context.Context, id resources.ID, identifier string) (string, error) {
+// FindByIdentifier returns the resource ID of another alias whose record has the AWS identifier, for the same type
+// as id, in the type's identity scope, or "" when there is none. UCP calls it before it takes over a resource, or
+// creates one whose identifier the properties give, so two aliases never manage the same AWS resource.
+//
+// With schemas.IdentityScopeAccount, the search covers every region of id's account, so an alias in another region
+// that sets the same account-wide setting is found. Otherwise it covers id's account and region.
+//
+// The search and the save that follows it are separate steps, so two aliases that take over the same identifier at
+// the same moment can both succeed.
+func (s *Store) FindByIdentifier(ctx context.Context, id resources.ID, identifier string, scope schemas.IdentityScope) (string, error) {
 	if identifier == "" {
 		return "", nil
 	}
@@ -140,6 +149,9 @@ func (s *Store) FindByIdentifier(ctx context.Context, id resources.ID, identifie
 		RootScope:    id.RootScope(),
 		ResourceType: id.Type(),
 		Filters:      []database.QueryFilter{{Field: "properties.awsIdentifier", Value: identifier}},
+	}
+	if scope == schemas.IdentityScopeAccount {
+		query.RootScope, query.ScopeRecursive = accountScope(id), true
 	}
 	token := ""
 	for {
@@ -161,6 +173,18 @@ func (s *Store) FindByIdentifier(ctx context.Context, id resources.ID, identifie
 		}
 		token = result.PaginationToken
 	}
+}
+
+// accountScope returns the account scope of an AWS resource ID, such as /planes/aws/aws/accounts/1234, or its root
+// scope when it has no account.
+func accountScope(id resources.ID) string {
+	scopes := id.ScopeSegments()
+	for i, scope := range scopes {
+		if strings.EqualFold(scope.Type, resources_aws.ScopeAccounts) {
+			return resources.MakeUCPID(scopes[:i+1], nil, nil)
+		}
+	}
+	return id.RootScope()
 }
 
 // NewRecord returns an empty record for the resource id.
@@ -289,14 +313,34 @@ func merge(dst map[string]any, src map[string]any) {
 // marks the first create as finished. The request token moves to LastRequestToken, so a redelivered operation reports
 // success.
 func ApplyPending(rec *datamodel.AWSResource) {
+	applyPendingValues(rec)
+	rec.Properties.ClientToken = ""
+	finish(rec, nil)
+	rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
+}
+
+// applyPendingValues makes the pending last-applied properties and fingerprints the last-applied ones, and drops the
+// pending values.
+func applyPendingValues(rec *datamodel.AWSResource) {
 	if rec.Properties.PendingLastApplied != nil {
 		rec.Properties.LastApplied = rec.Properties.PendingLastApplied
 		rec.Properties.Fingerprints = rec.Properties.PendingFingerprints
 	}
 	ClearPending(rec)
-	rec.Properties.ClientToken = ""
-	finish(rec, nil)
-	rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
+}
+
+// Settle sets the record's values after a failed operation by how much of it AWS applied: OutcomeRejected drops the
+// pending values (ClearPending), OutcomeApplied makes them last-applied, and OutcomePartial and OutcomeUnknown keep
+// them as possibly applied (KeepPending). It leaves the operation's state to the caller.
+func Settle(rec *datamodel.AWSResource, outcome native.Outcome) {
+	switch outcome {
+	case native.OutcomeRejected:
+		ClearPending(rec)
+	case native.OutcomeApplied:
+		applyPendingValues(rec)
+	default:
+		KeepPending(rec)
+	}
 }
 
 // Fail finishes a failed update or delete: the pending values are dropped, so the previous last-applied properties

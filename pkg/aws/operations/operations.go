@@ -123,6 +123,11 @@ type PatchOptions struct {
 	// object and with "/" between segments, like the keys of FlattenProperties. The patch removes them, except
 	// read-only and create-only properties, which AWS cannot clear.
 	Removed []string
+
+	// Equivalent, when set, reports whether AWS's value at path, a key of FlattenProperties, means the same as the
+	// template's, for a value AWS returns in another form that the schema's rules don't cover. Such a value counts as
+	// unchanged.
+	Equivalent func(path string, template any, aws any) bool
 }
 
 // GeneratePatch takes in the current state, desired state and type schema of a resource and returns a JSON patch to update the
@@ -179,7 +184,8 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	// A value AWS reports in a different form, such as reordered subnets or a fuller engine version, is unchanged:
 	// use AWS's value so the patch leaves it alone.
 	for k, v := range flattenedDesiredStateObject {
-		if current, ok := flattenedCurrentStateObject[k]; ok && rules.equivalentAt(k, v, current, desiredStateObject) {
+		current, ok := flattenedCurrentStateObject[k]
+		if ok && (rules.equivalentAt(k, v, current, desiredStateObject) || (opts.Equivalent != nil && opts.Equivalent(k, v, current))) {
 			flattenedDesiredStateObject[k] = current
 		}
 	}

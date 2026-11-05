@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"maps"
 	"net/http"
@@ -31,6 +32,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
@@ -60,10 +62,13 @@ import (
 )
 
 const (
-	owner    = "deploy;/planes/radius/local/resourceGroups/rg;;"
-	scope    = "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/"
-	alias    = "suite-alias"
-	testHost = "localhost:5000"
+	owner       = "deploy;/planes/radius/local/resourceGroups/rg;;"
+	region      = "us-west-2"
+	otherRegion = "us-east-1"
+	scope       = "/planes/aws/aws/accounts/1234567/regions/" + region + "/providers/"
+	alias       = "suite-alias"
+	otherAlias  = "suite-other-alias"
+	testHost    = "localhost:5000"
 )
 
 // Suite describes the type a native handler serves, for Run.
@@ -101,6 +106,29 @@ type Suite struct {
 
 	// CreateOnlyChange is Properties with a create-only property changed, or nil when the type has none.
 	CreateOnlyChange map[string]any
+
+	// Metadata is the type's metadata file, as it is in pkg/aws/schemas, or "" when the type has none.
+	Metadata string
+
+	// ResetTo is what the resource reads as after a delete resets it, for a type whose onDelete is reset, or nil when
+	// it then reads as absent.
+	ResetTo map[string]any
+
+	// OtherForm holds values of Properties as AWS returns them, in another form than the template sets them, such as
+	// EngineVersion 5.0.0 for 5.0, or nil when there are none. They must not count as changes.
+	OtherForm map[string]any
+
+	// OtherProduct puts a resource of another product in store under identifier, replacing any resource there, when
+	// the service API also serves other products, such as Aurora clusters for DocumentDB. It is nil otherwise.
+	OtherProduct func(store *awsfake.CloudControl, identifier string)
+
+	// MultiCall is Properties changed so the handler's update makes Calls AWS calls. FailCall makes the next update
+	// of handler, the handler NewHandler returned, fail with err at its call-th AWS call, counting from 0, after the
+	// calls before it took effect, or after every call when call is Calls. They are unset when every update makes one
+	// call.
+	MultiCall map[string]any
+	Calls     int
+	FailCall  func(handler native.Handler, call int, err error)
 }
 
 // Run runs every case of the suite for s.
@@ -115,6 +143,11 @@ func Run(t *testing.T, s Suite) {
 	t.Run("list", func(t *testing.T) { s.list(t) })
 	t.Run("existing", func(t *testing.T) { s.existing(t) })
 	t.Run("worker restart while waiting", func(t *testing.T) { s.workerRestart(t) })
+	t.Run("delete as the metadata says", func(t *testing.T) { s.deleteByMetadata(t) })
+	t.Run("identifier another alias holds in the identity scope", func(t *testing.T) { s.identifierHeld(t) })
+	t.Run("value AWS returns in another form", func(t *testing.T) { s.otherForm(t) })
+	t.Run("identifier of another product", func(t *testing.T) { s.otherProduct(t) })
+	t.Run("update fails between calls", func(t *testing.T) { s.multiCall(t) })
 	nameProperty := s.NewHandler(awsfake.NewCloudControl()).Options().NameProperty
 	for _, reached := range []bool{true, false} {
 		suffix := map[bool]string{true: "after the create reached AWS", false: "before the create reached AWS"}[reached]
@@ -149,12 +182,13 @@ func (s Suite) createReadUpdateDelete(t *testing.T) {
 	h.deploy(s.Changed)
 	requireSubset(t, s.readable(s.Changed), h.stored())
 
+	before := h.stored()
 	h.remove()
-	require.Nil(t, h.stored())
-	require.Nil(t, h.record())
-	require.Equal(t, http.StatusNotFound, h.get().status)
+	h.requireRemoved(before)
+	if h.record() == nil {
+		require.Equal(t, http.StatusNotFound, h.get().status)
+	}
 	require.Empty(t, h.cc.Calls(), "the native handler serves every call")
-	require.Zero(t, h.cc.Count(s.TypeName))
 }
 
 func (s Suite) redeployNoChange(t *testing.T) {
@@ -266,7 +300,7 @@ func (s Suite) noWriteOnlyInResponses(t *testing.T) {
 	raw, err := json.Marshal(h.record())
 	require.NoError(t, err)
 	responses = append(responses, response{raw: string(raw)})
-	check(h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil))
+	responses = append(responses, h.remove())
 
 	for _, resp := range responses {
 		for _, secret := range secrets {
@@ -332,15 +366,42 @@ func (s Suite) lostCreate(t *testing.T, reached bool) {
 
 // lostCreateDelete loses a create, after it reached AWS or before, and deletes the alias. The delete finds the
 // resource first, and AWS ends with none.
+//
+// For a type whose onDelete is reject, the delete removes only the record when the create never reached AWS, and
+// otherwise gets 400 and keeps the resource and the record.
 func (s Suite) lostCreateDelete(t *testing.T, reached bool) {
 	h := s.newHarness(t)
+	od := h.onDelete()
+	if od == schemas.OnDeleteNothing || od == schemas.OnDeleteLeave {
+		t.Skipf("a delete of the type calls nothing in AWS (onDelete %s), so it never looks for a lost create", od)
+	}
 	h.handler.lose("Create", reached)
 	resp := h.put(s.Properties)
 	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
 
-	h.removeEventually()
-	require.Nil(t, h.record())
-	require.Zero(t, h.cc.Count(s.TypeName))
+	if od != schemas.OnDeleteReject {
+		h.removeEventually()
+		h.requireRemoved(nil)
+		return
+	}
+	for range maxAttempts {
+		resp = h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+		h.finish()
+		if resp.status != http.StatusConflict {
+			break
+		}
+	}
+	if !reached {
+		require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+		require.Nil(t, h.record())
+		return
+	}
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.NotNil(t, h.record())
+	require.Equal(t, 1, h.cc.Count(s.TypeName))
+	called := h.handler.reset()
+	require.NotContains(t, called, "Delete")
+	require.NotContains(t, called, "Reset")
 }
 
 // generatedNameRetry loses a create of a template that leaves out the name, and deploys again. Both attempts send
@@ -415,13 +476,197 @@ func (s Suite) switchHandlers(t *testing.T, nativeFirst bool, nameProperty strin
 	h.deploy(changed)
 	requireSubset(t, s.readable(changed), h.stored())
 
+	before := h.stored()
 	h.remove()
-	require.Nil(t, h.stored())
-	require.Zero(t, h.cc.Count(s.TypeName))
+	h.requireRemoved(before)
 	if nativeFirst {
 		require.Empty(t, h.handler.reset(), "Cloud Control serves every call after the switch")
 	} else {
 		require.Empty(t, h.cc.Calls(), "the native handler serves every call after the switch")
+	}
+}
+
+// deleteByMetadata deletes a deployed resource, and checks that the delete does what the type's onDelete metadata says.
+func (s Suite) deleteByMetadata(t *testing.T) {
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	before, rec := h.stored(), h.record()
+	h.handler.reset()
+
+	resp := h.remove()
+	called := h.handler.reset()
+	h.requireRemoved(before)
+	switch h.onDelete() {
+	case schemas.OnDeleteDelete:
+		require.Contains(t, called, "Delete")
+		require.NotContains(t, called, "Reset")
+	case schemas.OnDeleteReset:
+		require.Contains(t, called, "Reset")
+		require.NotContains(t, called, "Delete")
+	case schemas.OnDeleteNothing:
+		require.Empty(t, called, "the delete calls nothing in AWS")
+	case schemas.OnDeleteLeave:
+		require.Empty(t, called, "the delete calls nothing in AWS")
+		require.Equal(t, rec, h.record(), "the record is kept as it was")
+		resp := h.put(s.Properties)
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"Read"}, h.handler.reset(), "a later deploy finds the resource and changes nothing")
+	case schemas.OnDeleteReject:
+		require.Equal(t, []string{"Read"}, called, "the delete only reads AWS")
+		require.Equal(t, rec, h.record(), "the record is kept as it was")
+		require.Contains(t, resp.raw, "can't delete")
+	}
+}
+
+// identifierHeld deploys the template under another alias: in another region for a type whose identity scope is the
+// account, and in the same region otherwise. The first alias holds the identifier, so the deploy gets 409 naming it,
+// and nothing changes in AWS.
+func (s Suite) identifierHeld(t *testing.T) {
+	if s.Identifier == "" {
+		t.Skip("AWS assigns the identifier, so a template can't name one another alias holds")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	before := h.stored()
+	h.handler.reset()
+
+	otherScope := region
+	if h.types.Lookup(s.TypeName).Metadata.IdentityScope == schemas.IdentityScopeAccount {
+		otherScope = otherRegion
+	}
+	other := strings.Replace(h.path(), "/regions/"+region+"/", "/regions/"+otherScope+"/", 1)
+	other = strings.TrimSuffix(other, alias) + otherAlias
+	resp := h.putAt(other, s.Properties)
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	require.Contains(t, resp.raw, alias)
+	require.Subset(t, []string{"Read"}, h.handler.reset(), "UCP only reads AWS")
+	require.Equal(t, before, h.stored())
+	require.Nil(t, h.recordAt(other))
+}
+
+// otherForm makes AWS return values of the template in another form, and deploys the template again. The values
+// don't count as changes, so UCP only reads AWS.
+func (s Suite) otherForm(t *testing.T) {
+	if s.OtherForm == nil {
+		t.Skip("AWS returns every value in the form the template sets")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	ops := []map[string]any{}
+	for property, value := range s.OtherForm {
+		ops = append(ops, map[string]any{"op": "replace", "path": "/" + property, "value": value})
+	}
+	require.NoError(t, h.cc.Patch(s.TypeName, h.identifier(), ops))
+	h.handler.reset()
+
+	resp := h.put(s.Properties)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, h.handler.reset(), "a value in another form is not a change")
+}
+
+// otherProduct puts a resource of another product under the identifier: first before any deploy, then in place of
+// the deployed resource. Every request that reads or changes it fails with 409 naming the identifier, and nothing
+// changes in AWS or in the record.
+func (s Suite) otherProduct(t *testing.T) {
+	if s.OtherProduct == nil {
+		t.Skip("the service API serves no other product")
+	}
+	if s.Identifier != "" {
+		h := s.newHarness(t)
+		s.OtherProduct(h.cc, s.Identifier)
+		before := h.cc.Resource(s.TypeName, s.Identifier)
+		resp := h.put(s.Properties)
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Contains(t, resp.raw, s.Identifier)
+		require.Nil(t, h.record())
+		require.Equal(t, before, h.cc.Resource(s.TypeName, s.Identifier))
+		require.NotContains(t, h.handler.reset(), "Create")
+	}
+
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	identifier := h.identifier()
+	s.OtherProduct(h.cc, identifier)
+	before, rec := h.cc.Resource(s.TypeName, identifier), h.record()
+	h.handler.reset()
+
+	responses := []response{h.put(s.Properties), h.get(), h.existingResponse()}
+	if od := h.onDelete(); od == schemas.OnDeleteDelete || od == schemas.OnDeleteReset {
+		responses = append(responses, h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil))
+	}
+	for _, resp := range responses {
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Contains(t, resp.raw, identifier)
+	}
+	if h.handler.Options().List == native.ListRegion {
+		resp := h.do(awsproxy.NewListAWSResources, http.MethodGet, h.collection(), "", nil)
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.NotContains(t, resp.raw, identifier, "a list leaves out other products")
+	}
+	require.NotContains(t, h.handler.reset(), "Update")
+	require.Equal(t, before, h.cc.Resource(s.TypeName, identifier), "UCP changed nothing in AWS")
+	after := h.record()
+	require.Equal(t, rec.Properties.AWSIdentifier, after.Properties.AWSIdentifier)
+	require.Equal(t, rec.Properties.LastApplied, after.Properties.LastApplied)
+	require.Equal(t, v1.ProvisioningStateSucceeded, after.ProvisioningState())
+}
+
+// multiCall fails an update that makes several AWS calls before each call and after the last one, with an error
+// AWS returns and with a lost response, and deploys again. The record keeps the pending values as possibly applied,
+// except when AWS rejected the first call, and makes them last-applied when every call took effect. The next deploy
+// ends fully applied.
+func (s Suite) multiCall(t *testing.T) {
+	if s.MultiCall == nil {
+		t.Skip("every update makes one AWS call")
+	}
+	failures := []struct {
+		name string
+		err  error
+	}{
+		{"AWS rejects it", nativefake.ClientError("ValidationException", "the value is invalid")},
+		{"its response is lost", errLost},
+	}
+	for call := 0; call <= s.Calls; call++ {
+		for _, failure := range failures {
+			name := fmt.Sprintf("call %d of %d fails, %s", call+1, s.Calls, failure.name)
+			if call == s.Calls {
+				name = "a call after the last change fails, " + failure.name
+			}
+			t.Run(name, func(t *testing.T) {
+				h := s.newHarness(t)
+				h.deploy(s.Properties)
+				before := h.record().Properties.LastApplied
+				s.FailCall(h.handler.Handler, call, failure.err)
+
+				resp := h.put(s.MultiCall)
+				require.GreaterOrEqual(t, resp.status, http.StatusBadRequest, resp.raw)
+				applied := h.record().Properties.LastApplied
+				switch {
+				case call == 0 && failure.err != errLost:
+					require.Equal(t, before, applied, "AWS rejected the first call, so the pending values are dropped")
+				case call == s.Calls:
+					require.Equal(t, normalize(t, s.readable(s.MultiCall)), normalize(t, applied), "every call took effect, so the pending values are last-applied")
+				default:
+					requireSubset(t, s.readable(s.MultiCall), applied)
+					for property := range before {
+						require.Contains(t, applied, property, "the values of the last deploy stay, and the pending ones are added as possibly applied")
+					}
+				}
+
+				h.deploy(s.MultiCall)
+				requireSubset(t, s.readable(s.MultiCall), h.stored())
+				require.Equal(t, normalize(t, s.readable(s.MultiCall)), normalize(t, h.record().Properties.LastApplied))
+				for property := range s.Properties {
+					if _, ok := s.MultiCall[property]; !ok {
+						require.NotContains(t, h.stored(), property, "the redeploy clears a property the template removed")
+					}
+				}
+				h.handler.reset()
+				resp = h.put(s.MultiCall)
+				require.Equal(t, http.StatusOK, resp.status, resp.raw)
+				require.Equal(t, []string{"Read"}, h.handler.reset(), "the operation is fully applied")
+			})
+		}
 	}
 }
 
@@ -502,13 +747,7 @@ func (s Suite) newHarness(t *testing.T) *harness {
 	cc.WriteOnly[s.TypeName] = s.WriteOnly
 	handler := &recorder{Handler: s.NewHandler(cc)}
 
-	catalog := schemas.Catalog{Native: map[string]string{}, HandWritten: map[string]string{}}
-	if s.HandWritten {
-		catalog.HandWritten[s.TypeName] = s.Schema
-	} else {
-		catalog.Native[s.TypeName] = s.Schema
-	}
-	registry, err := native.NewRegistry(catalog, handler.wrap())
+	registry, err := native.NewRegistry(s.catalog(t), handler.wrap())
 	require.NoError(t, err)
 
 	cf := &awsfake.CloudFormation{Schemas: map[string]string{s.TypeName: s.Schema}, ProvisioningTypes: map[string]cftypes.ProvisioningType{}}
@@ -523,6 +762,55 @@ func (s Suite) newHarness(t *testing.T) *harness {
 	}
 	h.useNative(true)
 	return h
+}
+
+// catalog returns the schema catalog of the type, read as UCP reads pkg/aws/schemas, so the metadata is checked the
+// same way.
+func (s Suite) catalog(t *testing.T) schemas.Catalog {
+	dir, other := schemas.NativeDir, schemas.HandWrittenDir
+	if s.HandWritten {
+		dir, other = other, dir
+	}
+	file := strings.ToLower(strings.ReplaceAll(s.TypeName, "::", "-"))
+	files := fstest.MapFS{
+		dir + "/" + file + ".json": {Data: []byte(s.Schema)},
+		other + "/README.md":       {},
+	}
+	if s.Metadata != "" {
+		files[dir+"/"+file+".metadata.json"] = &fstest.MapFile{Data: []byte(s.Metadata)}
+	}
+	catalog, err := schemas.LoadFS(files)
+	require.NoError(t, err)
+	return catalog
+}
+
+// onDelete returns what a delete of the type does, from its metadata.
+func (h *harness) onDelete() schemas.OnDelete {
+	return h.types.Lookup(h.s.TypeName).Metadata.OnDelete
+}
+
+// requireRemoved requires the result of a delete to be what the type's onDelete metadata says. before is the
+// resource before the delete, or nil when there was none.
+func (h *harness) requireRemoved(before map[string]any) {
+	h.t.Helper()
+	switch h.onDelete() {
+	case schemas.OnDeleteDelete:
+		require.Nil(h.t, h.record())
+		require.Nil(h.t, h.stored())
+		require.Zero(h.t, h.cc.Count(h.s.TypeName))
+	case schemas.OnDeleteReset:
+		require.Nil(h.t, h.record())
+		if stored := h.stored(); stored != nil {
+			require.NotNil(h.t, h.s.ResetTo, "the reset leaves the resource")
+			requireSubset(h.t, h.s.ResetTo, stored)
+		}
+	case schemas.OnDeleteNothing:
+		require.Nil(h.t, h.record())
+		require.Equal(h.t, before, h.stored(), "the delete changes nothing in AWS")
+	default:
+		require.NotNil(h.t, h.record(), "the delete keeps the record")
+		require.Equal(h.t, before, h.stored(), "the delete changes nothing in AWS")
+	}
 }
 
 // useNative makes CloudFormation report the type as one Cloud Control can't create, so the native handler serves it,
@@ -575,7 +863,11 @@ func (h *harness) stored() map[string]any {
 }
 
 func (h *harness) record() *datamodel.AWSResource {
-	id, err := resources.ParseResource(h.path())
+	return h.recordAt(h.path())
+}
+
+func (h *harness) recordAt(path string) *datamodel.AWSResource {
+	id, err := resources.ParseResource(path)
 	require.NoError(h.t, err)
 	rec, _, err := records.NewStore(h.db).Get(h.t.Context(), id)
 	require.NoError(h.t, err)
@@ -628,10 +920,14 @@ func (h *harness) do(factory controllerFactory, method string, path string, owne
 }
 
 func (h *harness) put(properties map[string]any) response {
+	return h.putAt(h.path(), properties)
+}
+
+func (h *harness) putAt(path string, properties map[string]any) response {
 	put := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 		return awsproxy.NewCreateOrUpdateAWSResource(opts, clients, func() (*ucp_aws.FingerprintKey, error) { return h.key, nil })
 	}
-	return h.do(put, http.MethodPut, h.path(), owner, map[string]any{"properties": properties})
+	return h.do(put, http.MethodPut, path, owner, map[string]any{"properties": properties})
 }
 
 func (h *harness) get() response {
@@ -698,12 +994,18 @@ func (h *harness) deployEventually(properties map[string]any) {
 	require.Fail(h.t, "the deploy kept getting 409")
 }
 
-// remove sends a DELETE and finishes the operation it starts.
-func (h *harness) remove() {
+// remove sends a DELETE and finishes the operation it starts. The DELETE gets 400 for a type whose onDelete metadata is
+// reject.
+func (h *harness) remove() response {
 	h.t.Helper()
 	resp := h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
-	require.Contains(h.t, []int{http.StatusAccepted, http.StatusNoContent}, resp.status, resp.raw)
+	if h.onDelete() == schemas.OnDeleteReject {
+		require.Equal(h.t, http.StatusBadRequest, resp.status, resp.raw)
+	} else {
+		require.Contains(h.t, []int{http.StatusAccepted, http.StatusNoContent}, resp.status, resp.raw)
+	}
 	h.finish()
+	return resp
 }
 
 // removeEventually deletes after an interrupted create, as deployEventually deploys.
@@ -884,6 +1186,17 @@ func (r *recorder) Update(ctx context.Context, request native.UpdateRequest) err
 func (r *recorder) Delete(ctx context.Context, region string, identifier string) error {
 	r.note("Delete")
 	return r.Handler.Delete(ctx, region, identifier)
+}
+
+// Reset passes a reset to the handler under test. The recorder always has Reset, so the registry accepts it for a type
+// whose onDelete is reset, and a handler under test without Reset fails here.
+func (r *recorder) Reset(ctx context.Context, region string, identifier string) error {
+	r.note("Reset")
+	resetter, ok := r.Handler.(native.Resetter)
+	if !ok {
+		return fmt.Errorf("the native handler for %s has no Reset method", r.TypeName())
+	}
+	return resetter.Reset(ctx, region, identifier)
 }
 
 func (r *recorder) List(ctx context.Context, region string) ([]native.Resource, error) {

@@ -44,6 +44,10 @@ type Type struct {
 	// WriteOnly are the paths of the schema's write-only properties, relative to the properties object, such as
 	// MasterUserPassword. UCP never stores their values and removes them from every response, with either handler.
 	WriteOnly []string
+
+	// Metadata is the type's per-type metadata from pkg/aws/schemas, with defaults where the type has none. UCP applies
+	// it with either handler.
+	Metadata schemas.Metadata
 }
 
 // Registry holds the types native handlers serve. A nil Registry has none.
@@ -51,9 +55,10 @@ type Registry struct {
 	types map[string]*Type
 }
 
-// NewRegistry returns a Registry of handlers, each with its schema from catalog. A handler with no schema, two
-// handlers for one type, a RecoverBySearch handler that isn't a Finder, and a name property the schema doesn't define
-// as a string, or whose rules no generated name fits, fail.
+// NewRegistry returns a Registry of handlers, each with its schema and metadata from catalog. A handler with no
+// schema, two handlers for one type, a RecoverBySearch handler that isn't a Finder, a type whose onDelete is reset
+// with a handler that isn't a Resetter, and a name property the schema doesn't define as a string, or whose rules no
+// generated name fits, fail.
 func NewRegistry(catalog schemas.Catalog, handlers ...Handler) (*Registry, error) {
 	r := &Registry{types: map[string]*Type{}}
 	for _, h := range handlers {
@@ -75,6 +80,10 @@ func NewRegistry(catalog schemas.Catalog, handlers ...Handler) (*Registry, error
 			return nil, fmt.Errorf("the schema of the AWS type %s can't be read: %w", name, err)
 		}
 		t.WriteOnly = awsoperations.PropertyPaths(parsed.WriteOnlyProperties)
+		t.Metadata = catalog.MetadataOf(name)
+		if _, ok := h.(Resetter); t.Metadata.OnDelete == schemas.OnDeleteReset && !ok {
+			return nil, fmt.Errorf("the AWS type %s resets on delete, but its native handler has no Reset method", name)
+		}
 		opts := h.Options()
 		if _, ok := h.(Finder); opts.Recovery == RecoverBySearch && !ok {
 			return nil, fmt.Errorf("the native handler for the AWS type %s finds a lost create by search, but has no Find method", name)

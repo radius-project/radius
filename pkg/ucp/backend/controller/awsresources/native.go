@@ -65,11 +65,15 @@ func (c *AwaitController) waitNative(ctx context.Context, id resources.ID, ident
 	interval := ucp_aws.MinPollInterval
 	for {
 		progress, err := t.Handler.Progress(ctx, region, identifier, nativeOp)
+		var other *native.OtherProductError
 		if errors.Is(err, native.ErrNotFound) {
 			if nativeOp == native.OperationDelete {
 				return native.Progress{Done: true}, nil
 			}
 			return native.Progress{Done: true, Failure: &native.Failure{Message: fmt.Sprintf("AWS no longer has the AWS resource %q. Deploy again to create it.", id.Name())}}, nil
+		} else if errors.As(err, &other) {
+			// Waiting again would find the same resource, so the operation fails instead of retrying.
+			return native.Progress{Done: true, Failure: &native.Failure{Message: fmt.Sprintf("The AWS identifier %q of the AWS resource %q now belongs to another product (%s), not to the AWS type %s, so UCP stopped waiting for it.", other.Identifier, id.Name(), other.Product, t.Handler.TypeName())}}, nil
 		} else if err != nil {
 			return native.Progress{}, err
 		}
@@ -92,10 +96,13 @@ func (c *AwaitController) waitNative(ctx context.Context, id resources.ID, ident
 // finishNative saves the result of a native operation on the record, as Run does for Cloud Control:
 //
 //   - success: a delete removes the record, and a create or update makes its pending values last-applied.
-//   - failure, or a missing handler: the pending values are dropped. A failed create keeps its client token and
-//     identifier, because the resource may exist in AWS: the next deploy reads it, and a DELETE can remove it.
-//   - timeout: the operation fails, naming the state UCP waited for. An update's pending values may be applied, so
-//     Radius owns them. The next deploy reads the resource and continues.
+//   - failure: the record sets the pending values by how much of the operation AWS applied (native.Outcome, see
+//     records.Settle): dropped when AWS rejected it, kept as possibly applied when it applied part of it or UCP can't
+//     tell, and made last-applied when it applied all of it. A failed create keeps its client token and identifier,
+//     because the resource may exist in AWS: the next deploy reads it, and a DELETE can remove it. A create AWS fully
+//     applied is finished, and a delete AWS fully applied removes the record.
+//   - timeout, or a missing handler: the outcome is unknown. The operation fails, naming the state UCP waited for, and
+//     the next deploy reads the resource and continues.
 //   - polling failed or stopped: the operation stays in progress, and the worker or the next request waits again.
 func finishNative(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, op string, progress native.Progress, err error) (ctrl.Result, error) {
 	var timeout *timedOut
@@ -107,20 +114,16 @@ func finishNative(ctx context.Context, store *records.Store, id resources.ID, re
 			Message: timeoutMessage(id, op, timeout),
 			Target:  request.ResourceID,
 		}
-		return saveNativeFailure(ctx, store, id, request, details, func(rec *datamodel.AWSResource) {
-			if op == records.OperationUpdate {
-				records.KeepPending(rec)
-			}
-		})
+		return saveNativeFailure(ctx, store, id, request, op, details, native.OutcomeUnknown)
 	case errors.As(err, &failure):
-		return saveNativeFailure(ctx, store, id, request, failureOf(failure, request), nil)
+		return saveNativeFailure(ctx, store, id, request, op, failureOf(failure, request), failure.Outcome)
 	case err != nil:
 		if ctx.Err() != nil {
 			return ctrl.Result{}, err
 		}
 		return requeue(ctx, err), nil
 	case progress.Failure != nil:
-		return saveNativeFailure(ctx, store, id, request, failureOf(progress.Failure, request), nil)
+		return saveNativeFailure(ctx, store, id, request, op, failureOf(progress.Failure, request), progress.Failure.Outcome)
 	}
 
 	err = update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
@@ -138,11 +141,15 @@ func finishNative(ctx context.Context, store *records.Store, id resources.ID, re
 	return ctrl.Result{}, nil
 }
 
-// saveNativeFailure finishes the record's operation with failure. before, when set, changes the record first.
-func saveNativeFailure(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, failure v1.ErrorDetails, before func(rec *datamodel.AWSResource)) (ctrl.Result, error) {
+// saveNativeFailure finishes the record's operation op with failure, after setting its values by outcome.
+func saveNativeFailure(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, op string, failure v1.ErrorDetails, outcome native.Outcome) (ctrl.Result, error) {
 	err := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
-		if before != nil {
-			before(rec)
+		if op == records.OperationDelete && outcome == native.OutcomeApplied {
+			return true
+		}
+		records.Settle(rec, outcome)
+		if op == records.OperationCreate && outcome == native.OutcomeApplied {
+			rec.Properties.ClientToken = ""
 		}
 		records.Fail(rec, &failure)
 		return false
