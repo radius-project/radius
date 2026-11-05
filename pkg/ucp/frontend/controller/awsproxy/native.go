@@ -209,8 +209,10 @@ func withGeneratedName(r *request, rec *datamodel.AWSResource, properties map[st
 	if err != nil {
 		return nil, err
 	}
-	out := make(map[string]any, len(properties)+1)
-	maps.Copy(out, properties)
+	out := maps.Clone(properties)
+	if out == nil {
+		out = map[string]any{}
+	}
 	out[rules.Property] = name
 	return out, nil
 }
