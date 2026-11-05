@@ -86,6 +86,19 @@ func (o TestOptions) Clients() awsclient.Clients {
 	return awsclient.Clients{CloudControl: o.AWSCloudControlClient, CloudFormation: o.AWSCloudFormationClient}
 }
 
+// testFingerprintKeyBytes is the fingerprint key the tests use, unless a test replaces it.
+var testFingerprintKeyBytes = []byte("0123456789abcdef0123456789abcdef")
+
+// testFingerprintKey returns the tests' fingerprint key, like aws.Module.FingerprintKey.
+func testFingerprintKey() (*awsclient.FingerprintKey, error) {
+	return awsclient.NewFingerprintKey(testFingerprintKeyBytes)
+}
+
+// newTestPutController creates the PUT controller with the tests' fingerprint key.
+func newTestPutController(opts armrpc_controller.Options, clients awsclient.Clients) (armrpc_controller.Controller, error) {
+	return NewCreateOrUpdateAWSResource(opts, clients, testFingerprintKey)
+}
+
 // withOwner sets the owner header that PUT and DELETE require.
 func withOwner(req *http.Request) *http.Request {
 	req.Header.Set(sdkclients.AWSResourceOwnerHeader, testOwner)

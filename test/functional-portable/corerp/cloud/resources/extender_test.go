@@ -19,6 +19,7 @@ package resource_test
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -108,7 +109,7 @@ func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
 				},
 			},
 			SkipObjectValidation: true,
-			// Verify that the app graph links the log group to the CloudWatch log groups page in the AWS console.
+			// Verify that the app graph links the log group to its own page in the AWS console, using its ARN.
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				client, ok := ct.Options.ManagementClient.(*clients.UCPApplicationsManagementClient)
 				require.True(t, ok, "expected UCPApplicationsManagementClient")
@@ -135,7 +136,7 @@ func Test_Extender_RecipeAWS_LogGroup(t *testing.T) {
 
 				require.True(t, found, "expected the extender in the graph to have the log group output resource %s", logGroupID)
 				require.NotNil(t, portalURL, "expected the log group output resource to carry a portalUrl")
-				expectedPortalURL := fmt.Sprintf("https://%s.console.aws.amazon.com/cloudwatch/home?region=%s#logsV2:log-groups", awsRegion, awsRegion)
+				expectedPortalURL := "https://console.aws.amazon.com/go/view?arn=" + url.QueryEscape(logGroupARN)
 				require.Equal(t, expectedPortalURL, *portalURL)
 			},
 		},

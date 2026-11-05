@@ -191,7 +191,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationPut},
 			ResourceType:  OperationTypeAWSResource,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewCreateOrUpdateAWSResource(opts, awsClients)
+				return awsproxy_ctrl.NewCreateOrUpdateAWSResource(opts, awsClients, m.FingerprintKey)
 			},
 		},
 		{

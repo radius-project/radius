@@ -52,9 +52,10 @@ func Test_CreateReadUpdateDelete(t *testing.T) {
 	var notFound *cctypes.ResourceNotFoundException
 	require.ErrorAs(t, err, &notFound)
 
+	desired := `{"CidrBlock":"10.0.0.0/16","Tags":[{"Key":"a"}],"Nested":{"A":"1"}}`
 	created, err := c.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 		TypeName:     aws.String(vpc),
-		DesiredState: aws.String(`{"CidrBlock":"10.0.0.0/16","Tags":[{"Key":"a"}],"Nested":{"A":"1"}}`),
+		DesiredState: aws.String(desired),
 		ClientToken:  aws.String("token"),
 	})
 	require.NoError(t, err)
@@ -63,10 +64,17 @@ func Test_CreateReadUpdateDelete(t *testing.T) {
 	require.Equal(t, cctypes.OperationCreate, event.Operation)
 	require.Equal(t, "id-1", aws.ToString(event.Identifier))
 
-	// The same client token returns the first request and creates nothing.
-	again, err := c.CreateResource(ctx, &cloudcontrol.CreateResourceInput{TypeName: aws.String(vpc), DesiredState: aws.String(`{}`), ClientToken: aws.String("token")})
+	// The same client token and desired state return the first request and create nothing.
+	again, err := c.CreateResource(ctx, &cloudcontrol.CreateResourceInput{TypeName: aws.String(vpc), DesiredState: aws.String(desired), ClientToken: aws.String("token")})
 	require.NoError(t, err)
 	require.Equal(t, aws.ToString(created.ProgressEvent.RequestToken), aws.ToString(again.ProgressEvent.RequestToken))
+	require.Equal(t, 1, c.Count(vpc))
+
+	// A different desired state gets ClientTokenConflictException naming the first request, like AWS.
+	_, err = c.CreateResource(ctx, &cloudcontrol.CreateResourceInput{TypeName: aws.String(vpc), DesiredState: aws.String(`{}`), ClientToken: aws.String("token")})
+	var conflict *cctypes.ClientTokenConflictException
+	require.ErrorAs(t, err, &conflict)
+	require.Equal(t, "ClientToken token is already associated with an existing operation with RequestToken "+aws.ToString(created.ProgressEvent.RequestToken), aws.ToString(conflict.Message))
 	require.Equal(t, 1, c.Count(vpc))
 
 	patch := `[{"op":"replace","path":"/CidrBlock","value":"10.1.0.0/16"},{"op":"add","path":"/New/Inner","value":"x"},{"op":"remove","path":"/Nested/A"},{"op":"replace","path":"/Tags/0","value":{"Key":"b"}}]`
@@ -77,7 +85,7 @@ func Test_CreateReadUpdateDelete(t *testing.T) {
 	require.Equal(t, map[string]any{"CidrBlock": "10.1.0.0/16", "Tags": []any{map[string]any{"Key": "b"}}, "Nested": map[string]any{}, "New": map[string]any{"Inner": "x"}}, properties(t, got))
 
 	calls := c.Calls()
-	require.Equal(t, []string{"GetResource", "CreateResource", "CreateResource", "UpdateResource", "GetResource"}, func() []string {
+	require.Equal(t, []string{"GetResource", "CreateResource", "CreateResource", "CreateResource", "UpdateResource", "GetResource"}, func() []string {
 		out := []string{}
 		for _, call := range calls {
 			out = append(out, call.Operation)
@@ -220,4 +228,25 @@ func Test_LostResponse(t *testing.T) {
 	// The response is lost once.
 	_, err = cc.UpdateResource(t.Context(), &cloudcontrol.UpdateResourceInput{TypeName: aws.String("AWS::S3::Bucket"), Identifier: aws.String("assets"), PatchDocument: aws.String(`[]`)})
 	require.NoError(t, err)
+}
+
+func Test_AppendArrayItem(t *testing.T) {
+	c := NewCloudControl()
+	c.Put(vpc, "id", map[string]any{"Spec": map[string]any{"List": []any{"a"}}})
+	for _, path := range []string{"/Spec/List/-", "/Spec/List/2"} {
+		_, err := c.UpdateResource(t.Context(), &cloudcontrol.UpdateResourceInput{
+			TypeName: aws.String(vpc), Identifier: aws.String("id"),
+			PatchDocument: aws.String(`[{"op":"add","path":"` + path + `","value":"x"}]`),
+		})
+		require.NoError(t, err, path)
+	}
+	require.Equal(t, map[string]any{"Spec": map[string]any{"List": []any{"a", "x", "x"}}}, c.Resource(vpc, "id"))
+
+	// An array inside another array's item cannot be replaced in its parent.
+	c.Put(vpc, "nested", map[string]any{"Outer": []any{map[string]any{"List": []any{}}}})
+	_, err := c.UpdateResource(t.Context(), &cloudcontrol.UpdateResourceInput{
+		TypeName: aws.String(vpc), Identifier: aws.String("nested"),
+		PatchDocument: aws.String(`[{"op":"add","path":"/Outer/0/List/-","value":"x"}]`),
+	})
+	require.Error(t, err)
 }
