@@ -574,7 +574,10 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	if !replay {
 		rec.Properties.ClientToken = uuid.New().String()
 	}
-	properties = withGeneratedName(r, rec, properties)
+	properties, err := withGeneratedName(r, rec, properties)
+	if err != nil {
+		return badRequest(err.Error()), nil
+	}
 
 	// name takes over a resource that already exists. When AWS has none, create one only if the identifier properties
 	// give that same name; otherwise the template asked for a resource that is not there.
@@ -632,15 +635,24 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 		// resource (see resumeNativeCreate), or sends the create again with it and Cloud Control returns the first
 		// request instead of creating a second resource.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
-			// AWS did nothing with a replay it rejected, so the pending values still describe the create it may have.
-			// After any other error, AWS may have the create from this attempt or an earlier one, and the pending
-			// fingerprints stay unknown.
-			if replay && outcome == native.OutcomeRejected {
-				restorePending(rec, previous)
-			}
 			if created != "" {
 				rec.Properties.AWSIdentifier = created
 			}
+			switch {
+			case outcome == native.OutcomeApplied && rec.Properties.AWSIdentifier != "":
+				// The native handler made every change, and UCP has the identifier, so the create is finished: its
+				// values and fingerprints are last-applied, and the next deploy updates the resource as usual.
+				records.Settle(rec, outcome)
+				rec.Properties.ClientToken = ""
+				rec.SetProvisioningState(v1.ProvisioningStateFailed)
+				return
+			case replay && outcome == native.OutcomeRejected:
+				// AWS did nothing with a replay it rejected, so the pending values still describe the create it may
+				// have.
+				restorePending(rec, previous)
+			}
+			// After any other error, AWS may have the create from this attempt or an earlier one, and the pending
+			// fingerprints stay unknown.
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
 		})
 		return handleError(ctx, r.id, err)
@@ -741,7 +753,7 @@ func (e *engine) track(ctx context.Context, r *request, rec *datamodel.AWSResour
 		return uuid.UUID{}, fmt.Errorf("AWS accepted the request for the alias %q, but UCP failed to save it. Deploy again to continue it: %w", r.id.Name(), err)
 	}
 
-	if err := e.queue(ctx, r.id, method, operationID, operationTimeout(r, op)); err != nil {
+	if err := e.queue(ctx, r, method, operationID, operationTimeout(r, op)); err != nil {
 		// Nothing polls the operation, so it is not in progress: the next request polls the request token right away.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
@@ -753,7 +765,7 @@ func (e *engine) track(ctx context.Context, r *request, rec *datamodel.AWSResour
 
 // queue queues the operation on UCP's async backend, which runs it for at most timeout. The Cloud Control request
 // token, or the ID UCP made for a native operation, is the operation ID.
-func (e *engine) queue(ctx context.Context, id resources.ID, method v1.OperationMethod, operationID uuid.UUID, timeout time.Duration) error {
+func (e *engine) queue(ctx context.Context, r *request, method v1.OperationMethod, operationID uuid.UUID, timeout time.Duration) error {
 	if e.sm == nil {
 		return errors.New("async operations are not available: the status manager is not configured")
 	}
@@ -763,9 +775,9 @@ func (e *engine) queue(ctx context.Context, id resources.ID, method v1.Operation
 		copied := *armCtx
 		sCtx = &copied
 	}
-	sCtx.ResourceID = id
+	sCtx.ResourceID = r.id
 	sCtx.OperationID = operationID
-	sCtx.OperationType = v1.OperationType{Type: records.OperationType, Method: method}
+	sCtx.OperationType = v1.OperationType{Type: operationType(r), Method: method}
 
 	return e.sm.QueueAsyncOperation(ctx, sCtx, statusmanager.QueueOperationOptions{
 		OperationTimeout: timeout,
@@ -819,7 +831,8 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 // The type's onDelete metadata can change that: nothing removes only the record, leave keeps the record and returns
 // 204, and reset has the native handler reset the resource instead of deleting it (see startDeleteCall). Neither
 // nothing nor leave calls AWS. reject returns 400 and changes nothing when AWS has the resource, and removes the record
-// when it doesn't: a record whose create may have reached AWS finds the resource first, as for any delete.
+// when it doesn't: a record whose create may have reached AWS finds the resource first, as for any delete, except that
+// it never sends the create again, so a create only a resend could find removes only the record.
 func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	r.managed = managedValues(rec, nil)
@@ -834,7 +847,9 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	if rec.Properties.AWSIdentifier == "" && !records.IsFirstCreate(rec) {
 		return e.removeRecord(ctx, r, etag)
 	}
-	if onDelete(r) == schemas.OnDeleteReject && !records.IsFirstCreate(rec) {
+	// A native first create is found below, with the steps a PUT takes. Any other record with an identifier is read by it,
+	// including a Cloud Control first create, whose identifier the template gave.
+	if onDelete(r) == schemas.OnDeleteReject && rec.Properties.AWSIdentifier != "" && (r.handler == nil || !records.IsFirstCreate(rec)) {
 		current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)
 		switch {
 		case isGoneForDelete(err), err == nil && current == nil:
@@ -843,6 +858,12 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 			return handleError(ctx, r.id, err)
 		}
 		return rejected(r), nil
+	}
+	if onDelete(r) == schemas.OnDeleteReject && rec.Properties.AWSIdentifier == "" && records.IsFirstCreate(rec) && findsCreateByResend(r) {
+		// The only way to find this create is to send it again, which creates the resource when AWS never had it, and a
+		// DELETE never creates one. Nothing Radius can show it made exists, so only the record is removed.
+		logger.Info("Removing the record of an interrupted create that only a resend could find", "alias", r.id.Name())
+		return e.removeRecord(ctx, r, etag)
 	}
 
 	// A resumed delete finds the record still marked in progress; if AWS rejects the delete, it is released as Failed.
@@ -867,9 +888,10 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		}
 	}
 	if onDelete(r) == schemas.OnDeleteReject {
-		// The create reached AWS, and the record now has its identifier.
+		// The create reached AWS, and the record now has its identifier. The create's values count as possibly applied,
+		// as when a PUT finds it, so a later deploy that leaves one out clears it.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
-			records.ClearPending(rec)
+			records.KeepPending(rec)
 			rec.SetProvisioningState(prior)
 		})
 		return rejected(r), nil
@@ -889,6 +911,14 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	if isGoneForDelete(err) {
 		return e.removeRecord(ctx, r, etag)
 	} else if err != nil {
+		if outcomeOf(err) == native.OutcomeApplied {
+			// The native handler made every change, so the delete or reset is done, as when the worker finds it so.
+			delErr := e.store.DeleteIfUnchanged(ctx, r.id, etag)
+			if delErr == nil {
+				return handleError(ctx, r.id, err)
+			}
+			logger.Error(delErr, "Failed to remove the record after AWS applied a delete", "alias", r.id.Name())
+		}
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			records.ClearPending(rec)
 			rec.SetProvisioningState(prior)

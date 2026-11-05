@@ -147,6 +147,14 @@ func handlerName(r *request) string {
 	return ""
 }
 
+// operationType returns the async operation type UCP queues the operation of r under.
+func operationType(r *request) string {
+	if r.handler != nil {
+		return records.NativeOperationType
+	}
+	return records.OperationType
+}
+
 // operationTimeout returns how long UCP's async operation for op runs.
 func operationTimeout(r *request, op string) time.Duration {
 	if r.handler == nil {
@@ -173,12 +181,27 @@ func isGoneForDelete(err error) bool {
 // and otherwise the primary identifier values joined with "|", as Cloud Control expects. t is nil for a type with no
 // native handler. Every path uses it, so a resource is found by the same identifier whichever handler serves it.
 func identifierFor(t *native.Type, properties map[string]any, schema string) (string, error) {
-	if t != nil {
-		if encoder, ok := t.Handler.(native.IdentifierEncoder); ok {
-			return encoder.Identifier(properties)
-		}
+	if !hasEncoder(t) {
+		return identifierFromProperties(properties, schema)
 	}
-	return identifierFromProperties(properties, schema)
+	identifier, err := t.Handler.(native.IdentifierEncoder).Identifier(properties)
+	if err != nil {
+		return "", err
+	}
+	// The identifier is the last segment of the resource ID a list or `existing` returns, so it must be one segment.
+	if strings.Contains(identifier, "/") || identifier == "." || identifier == ".." {
+		return "", fmt.Errorf("the native handler for %s returned the identifier %q, which is not a single resource ID segment", t.Handler.TypeName(), identifier)
+	}
+	return identifier, nil
+}
+
+// hasEncoder reports whether t's handler declares its own identifier encoding.
+func hasEncoder(t *native.Type) bool {
+	if t == nil {
+		return false
+	}
+	_, ok := t.Handler.(native.IdentifierEncoder)
+	return ok
 }
 
 // withGeneratedName returns properties with a generated name when a native handler serves r, declares a name property
@@ -186,18 +209,22 @@ func identifierFor(t *native.Type, properties map[string]any, schema string) (st
 // identifies the create: every attempt of one create sends the same name. properties is not changed, so the
 // last-applied properties stay the template's, without the name, and a later deploy that still leaves it out doesn't
 // clear it.
-func withGeneratedName(r *request, rec *datamodel.AWSResource, properties map[string]any) map[string]any {
+func withGeneratedName(r *request, rec *datamodel.AWSResource, properties map[string]any) (map[string]any, error) {
 	if r.handler == nil || r.native.NameRules == nil {
-		return properties
+		return properties, nil
 	}
 	rules := r.native.NameRules
 	if value, ok := properties[rules.Property]; ok && value != nil {
-		return properties
+		return properties, nil
+	}
+	name, err := rules.Generate(rec.Properties.ClientToken)
+	if err != nil {
+		return nil, err
 	}
 	out := make(map[string]any, len(properties)+1)
 	maps.Copy(out, properties)
-	out[rules.Property] = rules.Generate(rec.Properties.ClientToken)
-	return out
+	out[rules.Property] = name
+	return out, nil
 }
 
 // identifierRequired returns the 400 for a create whose identifier the template doesn't give, of a type whose native
@@ -351,9 +378,11 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 // up, so UCP finds the resource as the handler declares (native.Recovery):
 //
 //   - The record has the identifier, saved before the create: UCP reads AWS by it.
-//   - RecoverBySearch: the handler's Find looks for the resource. If AWS has none, the create is sent again. If
-//     another alias manages the resource Find returns, the request gets 409.
-//   - RecoverByResend: the create is sent again. The handler makes that return the first resource.
+//   - RecoverBySearch: the handler's Find looks for the resource with the lost create's values, the pending
+//     properties, because the template may have changed since. If AWS has none, the create is sent again with the
+//     template. If another alias manages the resource Find returns, the request gets 409.
+//   - RecoverByResend: the create is sent again with the template. AWS may return the first resource, with the lost
+//     create's values, so UCP treats the result like a found resource rather than a new create.
 //
 // When UCP reads the resource, it continues by what AWS shows:
 //
@@ -370,7 +399,11 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 	identifier := rec.Properties.AWSIdentifier
 	if identifier == "" {
 		var err error
-		identifier, err = e.findCreate(ctx, r, rec, properties)
+		if r.handler.Options().Recovery == native.RecoverByResend {
+			identifier, err = e.resendCreate(ctx, r, rec, properties)
+		} else {
+			identifier, err = e.findCreate(ctx, r, rec, rec.Properties.PendingLastApplied)
+		}
 		if err != nil {
 			return handleError(ctx, r.id, err)
 		}
@@ -426,7 +459,10 @@ func (e *engine) findCreate(ctx context.Context, r *request, rec *datamodel.AWSR
 	if !ok || r.handler.Options().Recovery != native.RecoverBySearch {
 		return "", nil
 	}
-	properties = withGeneratedName(r, rec, properties)
+	properties, err := withGeneratedName(r, rec, properties)
+	if err != nil {
+		return "", err
+	}
 	return finder.Find(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
 }
 
@@ -518,9 +554,13 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 }
 
 // resendCreate sends the record's first create again with its client token, for a handler whose Recovery is
-// RecoverByResend, and returns the identifier of the resource AWS has.
+// RecoverByResend, and returns the identifier of the resource AWS has. That resource may have the values of the first
+// create, not properties, so the caller reads it and reconciles it as a found resource.
 func (e *engine) resendCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, properties map[string]any) (string, error) {
-	properties = withGeneratedName(r, rec, properties)
+	properties, err := withGeneratedName(r, rec, properties)
+	if err != nil {
+		return "", err
+	}
 	identifier, err := r.handler.Create(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
 	if err == nil && identifier == "" {
 		return "", fmt.Errorf("the native handler for %s sent the create of the AWS resource %q again, but returned no identifier", r.typeName, r.id.Name())
@@ -549,6 +589,12 @@ func onDelete(r *request) schemas.OnDelete {
 	return r.native.Metadata.OnDelete
 }
 
+// findsCreateByResend reports whether the handler that serves r finds a lost create, whose identifier AWS assigns, by
+// sending the create again: Cloud Control (see recoverCreate), and a native handler whose Recovery is RecoverByResend.
+func findsCreateByResend(r *request) bool {
+	return r.handler == nil || r.handler.Options().Recovery == native.RecoverByResend
+}
+
 // rejected returns the 400 for a DELETE of a type whose onDelete metadata is reject.
 func rejected(r *request) armrpc_rest.Response {
 	return badRequest(fmt.Sprintf("Radius can't delete the AWS resource %q, because AWS doesn't let it delete a resource of type %s. Nothing was changed.", r.id.Name(), r.typeName))
@@ -564,14 +610,16 @@ func equivalentFor(r *request) func(path string, template any, aws any) bool {
 }
 
 // outcomeOf returns how much of a start call that failed with err AWS applied: the outcome a native handler reports
-// with a *native.Failure, OutcomeRejected for a client fault, such as an invalid property, and OutcomeUnknown
-// otherwise, because a transport or server error does not show that AWS changed nothing.
+// with a *native.Failure, OutcomeRejected for a client fault, such as an invalid property, and for a resource of
+// another product, which the handler refuses before it changes anything, and OutcomeUnknown otherwise, because a
+// transport or server error does not show that AWS changed nothing.
 func outcomeOf(err error) native.Outcome {
 	var failure *native.Failure
 	if errors.As(err, &failure) {
 		return failure.Outcome
 	}
-	if ucp_aws.IsClientFault(err) {
+	var other *native.OtherProductError
+	if errors.As(err, &other) || ucp_aws.IsClientFault(err) {
 		return native.OutcomeRejected
 	}
 	return native.OutcomeUnknown

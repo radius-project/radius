@@ -39,6 +39,11 @@ import (
 // under it, and the backend controller that waits for AWS is registered under it.
 const OperationType = "AWSRESOURCE"
 
+// NativeOperationType is the async operation type of AWS resource operations a native handler serves. The type
+// travels with the queued operation, so a worker that finds the record gone still knows Cloud Control has no request
+// for it.
+const NativeOperationType = "AWSRESOURCENATIVE"
+
 // Operation names, as saved in PendingOperation.
 const (
 	OperationCreate = "CREATE"

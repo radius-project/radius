@@ -182,6 +182,7 @@ func Run(t *testing.T, s Suite) {
 		t.Run("deploy again "+suffix, func(t *testing.T) { s.lostCreate(t, reached) })
 		t.Run("delete "+suffix, func(t *testing.T) { s.lostCreateDelete(t, reached) })
 	}
+	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
 	if nameProperty != "" {
 		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
 	}
@@ -368,7 +369,10 @@ func (s Suite) list(t *testing.T) {
 	switch h.handler.Options().List {
 	case native.ListRegion:
 		require.Equal(t, http.StatusOK, resp.status, resp.raw)
-		require.Contains(t, resp.raw, h.identifier())
+		items, _ := resp.body["value"].([]any)
+		require.Len(t, items, 1)
+		id, _ := items[0].(map[string]any)["id"].(string)
+		require.Equal(t, h.identifier(), requireSegment(t, h.collection(), id))
 	default:
 		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
 	}
@@ -381,6 +385,22 @@ func (s Suite) existing(t *testing.T) {
 	resp := h.existingResponse()
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	requireSubset(t, s.readable(s.Properties), resp.properties())
+
+	// Recipes read an `existing` output resource again by the last segment of its ID, so the ID must give back the
+	// identifier.
+	id, _ := resp.body["id"].(string)
+	require.Equal(t, h.identifier(), requireSegment(t, h.collection(), id))
+	resp = h.getWithPost(map[string]any{"name": h.identifier()})
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+}
+
+// requireSegment requires id to be one resource ID segment under collection, and returns that segment.
+func requireSegment(t *testing.T, collection string, id string) string {
+	t.Helper()
+	parsed, err := resources.ParseResource(id)
+	require.NoError(t, err)
+	require.Equal(t, collection+"/"+parsed.Name(), id, "the identifier is one segment of the resource ID")
+	return parsed.Name()
 }
 
 // lostCreate loses a create, after it reached AWS or before, and deploys again. The next deploy finds the resource
@@ -398,6 +418,27 @@ func (s Suite) lostCreate(t *testing.T, reached bool) {
 	if s.Identifier != "" {
 		require.Equal(t, s.Identifier, h.record().Properties.AWSIdentifier)
 	}
+}
+
+// lostCreateChangedWriteOnly loses a create that reached AWS, and deploys again with a changed write-only value. UCP
+// finds the first resource, which may have the first value, so it sends the new one, and AWS ends with it.
+func (s Suite) lostCreateChangedWriteOnly(t *testing.T) {
+	if s.ChangedWriteOnly == nil {
+		t.Skip("the type has no write-only property")
+	}
+	h := s.newHarness(t)
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+
+	h.deployEventually(s.ChangedWriteOnly)
+	require.Equal(t, 1, h.cc.Count(s.TypeName))
+	resource := h.cc.Resource(s.TypeName, h.identifier())
+	for _, p := range s.WriteOnly {
+		require.EqualValues(t, normalize(t, s.ChangedWriteOnly[p]), normalize(t, resource[p]), "AWS has the changed %s", p)
+	}
+	resp = h.put(s.ChangedWriteOnly)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 }
 
 // lostCreateDelete loses a create, after it reached AWS or before, and deletes the alias. The delete finds the
@@ -1107,10 +1148,15 @@ func (h *harness) existingResponse() response {
 	case h.s.Identifier == "":
 		properties[h.s.IdentifierProperty] = h.identifier()
 	}
-	getWithPost := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+	return h.getWithPost(map[string]any{"properties": properties})
+}
+
+// getWithPost sends POST /:get, as an `existing` block does, with body.
+func (h *harness) getWithPost(body map[string]any) response {
+	factory := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 		return awsproxy.NewGetAWSResourceWithPost(opts, clients, retry.NewNoOpRetryer())
 	}
-	return h.do(getWithPost, http.MethodPost, h.collection()+"/:get", "", map[string]any{"properties": properties})
+	return h.do(factory, http.MethodPost, h.collection()+"/:get", "", body)
 }
 
 // operation reads the status or result of an operation, where kind is operationStatuses or operationResults.

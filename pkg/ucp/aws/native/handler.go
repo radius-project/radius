@@ -100,9 +100,11 @@ type Handler interface {
 
 // IdentifierEncoder is implemented by a handler whose identifier is not its primary identifier values joined with
 // "|", such as a type whose identifier values can contain "|". UCP uses it for create, take-over, `existing`,
-// recovery, and delete, so every path finds the resource by the same identifier.
+// recovery, and delete, with either handler, so every path finds the resource by the same identifier.
 type IdentifierEncoder interface {
-	// Identifier returns the identifier the properties give, or "" when they don't give all of it.
+	// Identifier returns the identifier the properties give, or "" when they don't give all of it. It must be one
+	// resource ID segment: no "/", and not "." or "..". For a type that has a CloudFormation type, it must be the
+	// identifier Cloud Control accepts, because Cloud Control serves the type in some regions.
 	Identifier(properties map[string]any) (string, error)
 }
 
@@ -169,7 +171,8 @@ type CreateRequest struct {
 
 	// ClientToken is a UUID saved on the record before the first create, and the same on every attempt to create
 	// this resource. It identifies the operation: UCP generates names from it, and a handler sends it as the API's
-	// idempotency token or tags the create with it.
+	// idempotency token or tags the create with it. UCP may call Create more than once with the same ClientToken,
+	// including from concurrent requests, and each call must return the same resource without creating a second one.
 	ClientToken string
 }
 
@@ -186,7 +189,8 @@ const (
 
 	// RecoverByResend means sending the create again returns the first resource: AWS assigns the identifier and the
 	// API takes an idempotency token, which the handler sets to CreateRequest.ClientToken, or the call is safe to
-	// repeat, such as adding a user to a group. UCP sends the create again.
+	// repeat, such as adding a user to a group. UCP sends the create again, possibly from two requests at once, before
+	// it reserves the record, so Create with the same ClientToken must return the same resource every time.
 	RecoverByResend
 
 	// RecoverBySearch means AWS assigns the identifier and the API takes no idempotency token. The handler tags the

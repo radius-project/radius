@@ -74,11 +74,11 @@ func nameRules(schema string, property string) (*NameRules, error) {
 		}
 		rules.Pattern = pattern
 	}
-	// Names differ only in their hex characters, so names with every hex character show whether the rules allow them.
+	// Names with every hex character catch rules that allow no generated name when the handler is registered. A
+	// pattern can still reject some names, so Generate checks each one too.
 	for _, sample := range []string{"0123456789ab", "cdef01234567"} {
-		name := rules.fit(sample)
-		if len(name) < len(generatedPrefix)+minHexLength || len(name) < rules.MinLength || (rules.Pattern != nil && !rules.Pattern.MatchString(name)) {
-			return nil, fmt.Errorf("the rules of the name property %s allow no name UCP generates, such as %s", property, name)
+		if _, err := rules.check(rules.fit(sample)); err != nil {
+			return nil, err
 		}
 	}
 	return rules, nil
@@ -86,11 +86,19 @@ func nameRules(schema string, property string) (*NameRules, error) {
 
 // Generate returns the name for the operation seed, the record's client token: "radius-" followed by 12 lowercase
 // hex characters of the SHA-256 hash of seed, such as radius-3f9a1c0b7d2e, cut to MaxLength. The same seed always
-// gives the same name, so every attempt of one create sends the same name. The registry checked that such names fit
-// the rules, with at least 8 hex characters.
-func (r *NameRules) Generate(seed string) string {
+// gives the same name, so every attempt of one create sends the same name. It fails when the name doesn't fit the
+// rules, with at least 8 hex characters.
+func (r *NameRules) Generate(seed string) (string, error) {
 	sum := sha256.Sum256([]byte(seed))
-	return r.fit(hex.EncodeToString(sum[:])[:generatedHexLength])
+	return r.check(r.fit(hex.EncodeToString(sum[:])[:generatedHexLength]))
+}
+
+// check returns name, or an error when it doesn't fit the rules.
+func (r *NameRules) check(name string) (string, error) {
+	if len(name) < len(generatedPrefix)+minHexLength || len(name) < r.MinLength || (r.Pattern != nil && !r.Pattern.MatchString(name)) {
+		return "", fmt.Errorf("UCP generated the name %s, which doesn't fit the rules of %s. Set %s in the template.", name, r.Property, r.Property)
+	}
+	return name, nil
 }
 
 // fit returns the name with the hex characters, cut to MaxLength.
@@ -107,5 +115,6 @@ func (r *NameRules) fit(hexCharacters string) string {
 // resource is some members of a parent (ScopedReader), uses it with the record's client token, so every attempt of
 // one create gets the same identifier.
 func GenerateName(seed string) string {
-	return (&NameRules{}).Generate(seed)
+	sum := sha256.Sum256([]byte(seed))
+	return (&NameRules{}).fit(hex.EncodeToString(sum[:])[:generatedHexLength])
 }
