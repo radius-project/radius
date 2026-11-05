@@ -547,6 +547,12 @@ func onDelete(r *request) schemas.OnDelete {
 	return r.native.Metadata.OnDelete
 }
 
+// findsCreateByResend reports whether the handler that serves r finds a lost create, whose identifier AWS assigns, by
+// sending the create again: Cloud Control (see recoverCreate), and a native handler whose Recovery is RecoverByResend.
+func findsCreateByResend(r *request) bool {
+	return r.handler == nil || r.handler.Options().Recovery == native.RecoverByResend
+}
+
 // rejected returns the 400 for a DELETE of a type whose onDelete metadata is reject.
 func rejected(r *request) armrpc_rest.Response {
 	return badRequest(fmt.Sprintf("Radius can't delete the AWS resource %q, because AWS doesn't let it delete a resource of type %s. Nothing was changed.", r.id.Name(), r.typeName))

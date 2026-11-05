@@ -640,3 +640,49 @@ func countOps(calls []awsfake.Call, ops ...string) int {
 	}
 	return n
 }
+
+// Test_Native_RejectNeverCreates checks that a DELETE of a type whose onDelete is reject never sends a create to find
+// a lost create whose identifier AWS assigns. Nothing Radius can show it made exists, so the record is removed.
+func Test_Native_RejectNeverCreates(t *testing.T) {
+	t.Run("Cloud Control", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.withMetadata(metadata(assignedType, schemas.IdentityScopeRegion, schemas.OnDeleteReject))
+		h.provisioningTypes[assignedType] = cftypes.ProvisioningTypeFullyMutable
+		h.cc.Errors["CreateResource"] = nativefake.ServerError("InternalFailure", "unavailable")
+		require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, map[string]any{"Size": 1}).status)
+		delete(h.cc.Errors, "CreateResource")
+		h.requireCreateKept(assignedPath)
+		require.Empty(t, h.record(assignedPath).Properties.AWSIdentifier)
+		h.cc.Calls()
+
+		resp := h.delete(assignedPath, testOwner)
+		require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+		require.Nil(t, h.record(assignedPath))
+		require.Zero(t, countOps(h.cc.Calls(), "CreateResource", "DeleteResource"), "the delete never creates or deletes in AWS")
+		require.Zero(t, h.cc.Count(assignedType))
+	})
+
+	t.Run("native handler that resends the create", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.withMetadata(metadata(assignedType, schemas.IdentityScopeRegion, schemas.OnDeleteReject))
+		h.failCreate(h.assigned, assignedPath, map[string]any{"Size": 1})
+
+		resp := h.delete(assignedPath, testOwner)
+		require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+		require.Nil(t, h.record(assignedPath))
+		require.Empty(t, h.assigned.Calls(), "the delete never creates in AWS")
+		require.Zero(t, h.cc.Count(assignedType))
+	})
+
+	t.Run("native handler that finds the create by search still rejects", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.withMetadata(metadata(assignedType, schemas.IdentityScopeRegion, schemas.OnDeleteReject))
+		h.assigned.Opts.Recovery = native.RecoverBySearch
+		h.loseCreate(h.assigned, assignedPath, map[string]any{"Size": 1})
+
+		resp := h.delete(assignedPath, testOwner)
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Equal(t, "id-1", h.record(assignedPath).Properties.AWSIdentifier)
+		require.Equal(t, []string{"Find"}, methods(h.assigned.Calls()))
+	})
+}
