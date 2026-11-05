@@ -727,3 +727,53 @@ func Test_Native_NoIdentifierToRecover(t *testing.T) {
 		require.Nil(t, h.record(nativePath))
 	})
 }
+
+// interleavedFind runs another request the first time Find is called, as when two PUTs recover the same lost create
+// at once.
+type interleavedFind struct {
+	*nativefake.Handler
+	during func()
+}
+
+func (f *interleavedFind) Find(ctx context.Context, request native.CreateRequest) (string, error) {
+	if during := f.during; during != nil {
+		f.during = nil
+		during()
+	}
+	return f.Handler.Find(ctx, request)
+}
+
+// Test_Native_ConcurrentSearchRecovery checks that two PUTs that recover the same lost create of a type that finds it
+// by search (native.RecoverBySearch) create one resource: each searches before it reserves the record, and the
+// reservation checks the record's ETag, so the request that reserves second gets 409 before it calls Create.
+func Test_Native_ConcurrentSearchRecovery(t *testing.T) {
+	h := newNativeHarness(t)
+	h.assigned.Opts.Recovery = native.RecoverBySearch
+	handler := &interleavedFind{Handler: h.assigned}
+	catalog := schemas.Catalog{Native: map[string]string{assignedType: nativeSchemas[assignedType]}}
+	registry, err := native.NewRegistry(catalog, handler)
+	require.NoError(t, err)
+	h.native = registry
+	properties := map[string]any{"Size": 1}
+
+	// The first create fails before it reaches AWS, so AWS has nothing and the record keeps its client token.
+	h.assigned.Errors["Create"] = nativefake.ServerError("InternalFailure", "unavailable")
+	require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, properties).status)
+	delete(h.assigned.Errors, "Create")
+	h.assigned.Calls()
+
+	var second response
+	handler.during = func() { second = h.put(assignedPath, properties) }
+	first := h.put(assignedPath, properties)
+
+	require.Equal(t, http.StatusCreated, second.status, second.raw)
+	require.Equal(t, http.StatusConflict, first.status, first.raw)
+	creates := 0
+	for _, call := range h.assigned.Calls() {
+		if call.Method == "Create" {
+			creates++
+		}
+	}
+	require.Equal(t, 1, creates, "only the request that reserved the record called Create")
+	require.Equal(t, 1, h.cc.Count(assignedType))
+}
