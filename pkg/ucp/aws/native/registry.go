@@ -84,11 +84,6 @@ func NewRegistry(catalog schemas.Catalog, handlers ...Handler) (*Registry, error
 		if _, ok := h.(Resetter); t.Metadata.OnDelete == schemas.OnDeleteReset && !ok {
 			return nil, fmt.Errorf("the AWS type %s resets on delete, but its native handler has no Reset method", name)
 		}
-		_, reads := h.(ScopedReader)
-		_, deletes := h.(ScopedDeleter)
-		if reads != deletes {
-			return nil, fmt.Errorf("the native handler for the AWS type %s must have both ReadScoped and DeleteScoped, or neither", name)
-		}
 		opts := h.Options()
 		if _, ok := h.(Finder); opts.Recovery == RecoverBySearch && !ok {
 			return nil, fmt.Errorf("the native handler for the AWS type %s finds a lost create by search, but has no Find method", name)

@@ -1,4 +1,0 @@
-{
-  "typeName": "AWS::LakeFormation::Permissions",
-  "onDelete": "delete"
-}

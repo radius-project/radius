@@ -1,4 +1,0 @@
-{
-  "typeName": "AWS::LakeFormation::Resource",
-  "onDelete": "delete"
-}

@@ -1,4 +1,0 @@
-{
-  "typeName": "AWS::IAM::UserToGroupAddition",
-  "identityScope": "account"
-}
