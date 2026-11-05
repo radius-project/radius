@@ -19,10 +19,14 @@ package handlers
 
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
+	dmssdk "github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
+	daxsdk "github.com/aws/aws-sdk-go-v2/service/dax"
 	docdbsdk "github.com/aws/aws-sdk-go-v2/service/docdb"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dax"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dms"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/docdb"
 )
 
@@ -33,6 +37,8 @@ func All(cfg aws.Config) []native.Handler {
 	return []native.Handler{
 		docdb.NewCluster(docdbAPI),
 		docdb.NewInstance(docdbAPI),
+		dax.NewCluster(daxsdk.NewFromConfig(cfg)),
+		dms.NewReplicationInstance(dmssdk.NewFromConfig(cfg)),
 	}
 }
 

@@ -118,6 +118,10 @@ github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.6 h1:6JDNKnul5AvN6i1xcrr
 github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.6/go.mod h1:OwSbF/eX8Y6ScF85DQNuVAEXqot0PT+J1TxQfD5L55s=
 github.com/aws/aws-sdk-go-v2/service/cloudformation v1.82.2 h1:ktk58Tx/JuhBAKomCk5XqJrdlsm+RZNu6jMK+5MVK3g=
 github.com/aws/aws-sdk-go-v2/service/cloudformation v1.82.2/go.mod h1:kpDVWMC4/qGGopVTdcRWs1U0iICn9iQVpqArDSKTXhg=
+github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.75.6 h1:mhmUufLpdplIoP8vxDxjIzTmFwwXcdJsUg3cQ8DSciE=
+github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.75.6/go.mod h1:1EVH8XxxrAn8Bh2XRYc1UYY3qhnxP82Vqj4dfCOXbN4=
+github.com/aws/aws-sdk-go-v2/service/dax v1.38.12 h1:vQcQjwRrJ387h1A/3YEUyGO7ELyP9BKF61l8EjvxPwk=
+github.com/aws/aws-sdk-go-v2/service/dax v1.38.12/go.mod h1:48hQX4+NFv+XcO8LqBAJy6N45heonv03uYuZrzHJKak=
 github.com/aws/aws-sdk-go-v2/service/docdb v1.58.1 h1:j4j208SgDpBx2JLCsLMiHxweMYS9nsDg3QZ/4nuFce0=
 github.com/aws/aws-sdk-go-v2/service/docdb v1.58.1/go.mod h1:4I/KWODx9nNGadFkJEl7lKjkR1SoiJJh/+GPWNWkUvw=
 github.com/aws/aws-sdk-go-v2/service/ec2 v1.341.0 h1:NvtY2nTE0PZeUeYlR/BB5xedUF3B6nhBJRbEyYhiy60=
