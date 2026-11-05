@@ -31,7 +31,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
@@ -76,7 +75,7 @@ func Test_ListAWSResources(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewListAWSResources(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewListAWSResources(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, firstTestResource.CollectionPath, nil)
@@ -122,7 +121,7 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewListAWSResources(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewListAWSResources(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
@@ -149,7 +148,7 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewListAWSResources(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewListAWSResources(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
@@ -180,7 +179,7 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewListAWSResources(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients)
+	awsController, err := NewListAWSResources(testOptions.ControllerOptions(), awsClients)
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)

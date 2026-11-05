@@ -101,7 +101,8 @@ func makeHyperlink(resource *corerpv20250801.ApplicationGraphOutputResource) str
 
 // MakeResourceHyperlink wraps the given portal URL in a terminal hyperlink escape sequence using
 // resourceName as the link text. It returns an empty string when no portal URL is available (for
-// example, for non-Azure resources or when no Azure credential is registered).
+// example, for Kubernetes resources, AWS resources of a type with no known console page, or Azure
+// resources when no Azure credential is registered).
 func MakeResourceHyperlink(portalURL *string, resourceName string) string {
 	if portalURL == nil || *portalURL == "" {
 		return ""

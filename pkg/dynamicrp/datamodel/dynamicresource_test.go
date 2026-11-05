@@ -21,6 +21,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/portableresources"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
@@ -545,4 +546,22 @@ func Test_DynamicResource_GetSecrets(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func Test_DynamicResource_ApplyDeploymentOutput_ProviderResourceID(t *testing.T) {
+	awsID := "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+	azureID := "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/account"
+	outputResources := []rpv1.OutputResource{
+		{ID: resources.MustParse(awsID), RadiusManaged: new(true), ProviderResourceID: "arn:aws:s3:::my-bucket"},
+		{ID: resources.MustParse(azureID), RadiusManaged: new(true)},
+	}
+
+	resource := &DynamicResource{}
+	err := resource.ApplyDeploymentOutput(rpv1.DeploymentOutput{DeployedOutputResources: outputResources})
+	require.NoError(t, err)
+
+	stored := resource.Status()["outputResources"].([]map[string]any)
+	require.Equal(t, "arn:aws:s3:::my-bucket", stored[0]["providerResourceId"])
+	require.NotContains(t, stored[1], "providerResourceId")
+	require.Equal(t, outputResources, resource.OutputResources())
 }

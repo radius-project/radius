@@ -114,9 +114,9 @@ authz_install_set_values() {
         "global.imageRegistry=${registry}" \
         "global.imageTag=${tag}" \
         "de.image=ghcr.io/radius-project/deployment-engine" \
-        "de.tag=latest" \
+        "de.tag=edge" \
         "dashboard.image=ghcr.io/radius-project/dashboard" \
-        "dashboard.tag=latest"
+        "dashboard.tag=edge"
     authz_mode_helm_values "${mode}"
 }
 

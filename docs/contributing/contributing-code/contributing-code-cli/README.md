@@ -101,6 +101,10 @@ The repo's [.vscode/launch.json](../../../../.vscode/launch.json) defines the **
 
 ### Write code for the CLI
 
+Use the injected `output.Interface` for command output: `WriteFormatted` for result data and `LogInfo`/`BeginStep` for status messages. The root command routes status messages to stderr in JSON mode (including Bicep helper messages and legacy package-level logging), while keeping table-mode output unchanged. Errors go to stderr. Do not write diagnostics directly to stdout.
+
+Commands returning data with `--output json` must emit a single JSON document, including when a list is empty; status-only commands need not invent a JSON result. Honor the requested format instead of hard-coding table output (for example, `rad rollback kubernetes --list-revisions --output json`). Regression tests should parse the complete captured stdout, not just extract its JSON portion, and check errors separately. Do not merge stderr into stdout when piping JSON to another tool.
+
 Classify errors as *expected* or *unexpected*:
 
 - **Expected** — a known state that is not a bug, such as "application not found". Return these as plain user-facing messages using `clierrors.Message` or `clierrors.MessageWithCause`. Write complete sentences ending with a period, for example `"The application could not be found."`.

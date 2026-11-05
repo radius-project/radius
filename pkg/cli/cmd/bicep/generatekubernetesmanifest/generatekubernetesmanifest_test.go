@@ -27,10 +27,12 @@ import (
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/test/radcli"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"go.yaml.in/yaml/v3"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -197,5 +199,45 @@ func Test_Run(t *testing.T) {
 		actual, err := runner.FileSystem.ReadFile(yamlFilePath)
 		require.NoError(t, err)
 		require.Equal(t, string(expected), string(actual))
+	})
+
+	t.Run("Create DeploymentTemplate with an AWS scope sets the AWS owner", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		const awsScope = "/planes/aws/aws/accounts/123456789012/regions/us-west-2"
+
+		bicepMock := bicep.NewMockInterface(ctrl)
+		bicepMock.EXPECT().
+			PrepareTemplate(gomock.Any(), "app.bicep").
+			Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
+			Times(1)
+
+		runner := &Runner{
+			Bicep:           bicepMock,
+			Output:          &output.MockOutput{},
+			FilePath:        "app.bicep",
+			FileSystem:      filesystem.NewMemMapFileSystem(),
+			DestinationFile: "app.yaml",
+			Group:           "default",
+			AWSScope:        awsScope,
+		}
+
+		err := runner.Run(t.Context())
+		require.NoError(t, err)
+
+		actual, err := runner.FileSystem.ReadFile("app.yaml")
+		require.NoError(t, err)
+		var manifest struct {
+			Spec struct {
+				ProviderConfig string `yaml:"providerConfig"`
+			} `yaml:"spec"`
+		}
+		require.NoError(t, yaml.Unmarshal(actual, &manifest))
+
+		var providerConfig sdkclients.ProviderConfig
+		require.NoError(t, json.Unmarshal([]byte(manifest.Spec.ProviderConfig), &providerConfig))
+		require.Equal(t, &sdkclients.AWS{
+			Type:  sdkclients.ProviderTypeAWS,
+			Value: sdkclients.Value{Scope: awsScope, Owner: "deploy;/planes/radius/local/resourceGroups/default;;"},
+		}, providerConfig.AWS)
 	})
 }

@@ -42,7 +42,7 @@ Note that in this call flow, Deployment Engine sends requests to Azure directly 
 * Bicep converts the bicep file into a JSON template
 * CLI sends a PUT deployment request to UCP with the JSON template in the request body. Note that the request uses UCP addressing
 * UCP checks the plane ID in the request and proxies the request to the Deployment Engine
-* Deployment Engine reads the deployment template, orders the resources and orchestrates the deployment. It sends a series of PUT requests to deploy the different resources. In this example, we are deploying an AWS Kinesis Stream resource and it therefore sends a POST request to UCP with the UCP resource ID of the AWS resource in the request. For details on the use of POST v/s PUT, please refer [Extension of ARM-RPC protocol in UCP](aws.md).
+* Deployment Engine reads the deployment template, orders the resources and orchestrates the deployment. It sends a series of PUT requests to deploy the different resources. In this example, we are deploying an AWS Kinesis Stream resource, so it sends a PUT request to UCP with a resource ID that ends in the resource's alias. For details, see [Resource records and alias IDs](aws.md#resource-records-and-alias-ids).
 * Deployment Engine starts monitoring the completion of the PUT operation
 * UCP again checks the plane ID in the incoming request and proxies the request to AWS. Unlike the Azure case, UCP cannot simply proxy the request but needs to perform some translations. For example, UCP needs to determine if the incoming operation is a Create or Update and accordingly translate the incoming request following ARM-RPC protocol to an AWS Cloud control request.
 * AWS deploys the Kinesis stream and sends a success message to UCP

@@ -28,7 +28,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/go-logr/logr"
@@ -295,7 +297,7 @@ func Test_createDeploymentID(t *testing.T) {
 
 func Test_createProviderConfig_defaults(t *testing.T) {
 	expected := clients.NewDefaultProviderConfig("test-rg")
-	actual := newProviderConfig("test-rg", corerp_datamodel.Providers{})
+	actual := newProviderConfig("test-rg", corerp_datamodel.Providers{}, "owner")
 	require.Equal(t, expected, actual)
 }
 
@@ -314,10 +316,64 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 	}
 	expected.AWS = &clients.AWS{
 		Type:  clients.ProviderTypeAWS,
-		Value: clients.Value{Scope: aws},
+		Value: clients.Value{Scope: aws, Owner: "owner"},
 	}
-	actual := newProviderConfig("test-rg", providers)
+	actual := newProviderConfig("test-rg", providers, "owner")
 	require.Equal(t, expected, actual)
+}
+
+const (
+	testAWSOwnerAppID      = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/applications/app"
+	testAWSOwnerEnvID      = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env"
+	testAWSOwnerResourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/extenders/e"
+	testAWSOwner           = "recipe;" + testAWSOwnerAppID + ";" + testAWSOwnerEnvID + ";" + testAWSOwnerResourceID
+)
+
+func testAWSOwnerRecipe() recipes.ResourceMetadata {
+	return recipes.ResourceMetadata{
+		Name:          "test-resource",
+		ApplicationID: testAWSOwnerAppID,
+		EnvironmentID: testAWSOwnerEnvID,
+		ResourceID:    testAWSOwnerResourceID,
+	}
+}
+
+func Test_awsOwner(t *testing.T) {
+	require.Equal(t, testAWSOwner, awsOwner(testAWSOwnerRecipe()))
+}
+
+func Test_Bicep_Execute_SetsAWSOwnerInProviderConfig(t *testing.T) {
+	const awsScope = "/planes/aws/aws/accounts/123456789012/regions/us-west-2"
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	deploymentClient := &deploymentClientSpy{}
+	d := &bicepDriver{DeploymentClient: deploymentClient, RegistryClient: ts.TestServer.Client()}
+
+	_, err := d.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Configuration: recipes.Configuration{
+				Providers: corerp_datamodel.Providers{AWS: corerp_datamodel.ProvidersAWS{Scope: awsScope}},
+			},
+			Recipe: testAWSOwnerRecipe(),
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "aws-recipe",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: ts.TestImageURL,
+			},
+		},
+	})
+
+	// Stop at the deployment boundary and inspect the serialized provider config.
+	require.Error(t, err)
+	require.Equal(t, 1, deploymentClient.createOrUpdateCalls)
+	payload, err := json.Marshal(deploymentClient.deployment.Properties.ProviderConfig)
+	require.NoError(t, err)
+	require.JSONEq(t, fmt.Sprintf(`{
+		"aws": {"type": "AWS", "value": {"scope": %q, "owner": %q}},
+		"radius": {"type": "Radius", "value": {"scope": "/planes/radius/local/resourceGroups/test-rg"}},
+		"deployments": {"type": "Microsoft.Resources", "value": {"scope": "/planes/radius/local/resourceGroups/test-rg"}}
+	}`, awsScope, testAWSOwner), string(payload))
 }
 
 func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
@@ -543,7 +599,7 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	recipeError := recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.RecipeDeletionFailed,
-			Message: fmt.Sprintf("failed to delete resource after 1 attempt(s), last error: could not find API version for type %q, no supported API versions", outputResources[0].GetResourceType().Type),
+			Message: fmt.Sprintf("failed to delete resource %q after 1 attempt(s), last error: could not find API version for type %q, no supported API versions", outputResources[0].ID.String(), outputResources[0].GetResourceType().Type),
 		},
 	}
 	client.EXPECT().
@@ -556,6 +612,231 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
+}
+
+func Test_Bicep_Delete_MultipleOutputResources(t *testing.T) {
+	ids := []string{
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/a",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/b",
+		"/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/c",
+	}
+
+	tests := []struct {
+		name            string
+		deleteErrors    map[string]error
+		expectedMessage string
+	}{
+		{
+			name: "every delete succeeds",
+		},
+		{
+			name:         "one delete fails",
+			deleteErrors: map[string]error{ids[1]: errors.New("b is locked")},
+			expectedMessage: fmt.Sprintf("failed to delete resource %q after 1 attempt(s), last error: b is locked",
+				ids[1]),
+		},
+		{
+			name: "several deletes fail",
+			deleteErrors: map[string]error{
+				ids[2]: errors.New("c is locked"),
+				ids[0]: errors.New("a is locked"),
+			},
+			expectedMessage: fmt.Sprintf("failed to delete resource %q after 1 attempt(s), last error: a is locked\n"+
+				"failed to delete resource %q after 1 attempt(s), last error: c is locked",
+				ids[0], ids[2]),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			driverBicep, client, _, _ := setupDeleteInputs(t)
+			outputResources := []rpv1.OutputResource{}
+			for _, id := range ids {
+				outputResources = append(outputResources, rpv1.OutputResource{ID: resources.MustParse(id), RadiusManaged: new(true)})
+				client.EXPECT().Delete(gomock.Any(), id).Return(tc.deleteErrors[id]).Times(1)
+			}
+
+			err := driverBicep.Delete(t.Context(), driver.DeleteOptions{OutputResources: outputResources})
+			if tc.expectedMessage == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Equal(t, &recipes.RecipeError{
+				ErrorDetails: v1.ErrorDetails{
+					Code:    recipes.RecipeDeletionFailed,
+					Message: tc.expectedMessage,
+				},
+			}, err)
+		})
+	}
+}
+
+// Test_Bicep_Delete_RetriesEachResource checks that each output resource gets its own retries.
+func Test_Bicep_Delete_RetriesEachResource(t *testing.T) {
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	driverBicep.options.DeleteRetryCount = 2
+	driverBicep.options.DeleteRetryDelaySeconds = 0
+
+	alwaysFails := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/always-fails"
+	failsOnce := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/fails-once"
+	succeeds := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/succeeds"
+	outputResources := []rpv1.OutputResource{
+		{ID: resources.MustParse(alwaysFails), RadiusManaged: new(true)},
+		{ID: resources.MustParse(failsOnce), RadiusManaged: new(true)},
+		{ID: resources.MustParse(succeeds), RadiusManaged: new(true)},
+	}
+
+	client.EXPECT().Delete(gomock.Any(), alwaysFails).Return(errors.New("always-fails is locked")).Times(3)
+	gomock.InOrder(
+		client.EXPECT().Delete(gomock.Any(), failsOnce).Return(errors.New("fails-once is busy")),
+		client.EXPECT().Delete(gomock.Any(), failsOnce).Return(nil),
+	)
+	client.EXPECT().Delete(gomock.Any(), succeeds).Return(nil).Times(1)
+
+	err := driverBicep.Delete(t.Context(), driver.DeleteOptions{OutputResources: outputResources})
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: fmt.Sprintf("failed to delete resource %q after 3 attempt(s), last error: always-fails is locked", alwaysFails),
+		},
+	}, err)
+}
+
+// Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource checks that when a redeploy drops output resources,
+// one failed delete does not stop the other stale resources from being deleted.
+func Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	driverBicep.DeploymentClient = &deploymentClientSpy{
+		response: &clients.ClientCreateOrUpdateResponse{
+			Properties: &armdeployments.DeploymentPropertiesExtended{},
+		},
+	}
+	driverBicep.RegistryClient = ts.TestServer.Client()
+
+	failing := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/failing"
+	stale := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/stale"
+	client.EXPECT().Delete(gomock.Any(), failing).Return(errors.New("failing is locked")).Times(1)
+	client.EXPECT().Delete(gomock.Any(), stale).Return(nil).Times(1)
+
+	_, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Recipe: recipes.ResourceMetadata{
+				Name:          "test-resource",
+				ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+			},
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "direct-module",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: ts.TestImageURL,
+			},
+		},
+		PrevState: []string{failing, stale},
+	})
+	recipeErr := &recipes.RecipeError{}
+	require.ErrorAs(t, err, &recipeErr)
+	require.Equal(t, recipes.RecipeGarbageCollectionFailed, recipeErr.ErrorDetails.Code)
+	require.Equal(t, fmt.Sprintf("code RecipeDeletionFailed: err failed to delete resource %q after 1 attempt(s), last error: failing is locked", failing), recipeErr.ErrorDetails.Message)
+}
+
+// Test_Bicep_Delete_SendsAWSOwner checks that the recipe's owner reaches the resource client, which sends it to UCP
+// on each AWS DELETE.
+func Test_Bicep_Delete_SendsAWSOwner(t *testing.T) {
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	id := "/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/b"
+	client.EXPECT().Delete(gomock.Any(), id).DoAndReturn(func(ctx context.Context, _ string) error {
+		require.Equal(t, testAWSOwner, processors.AWSOwnerFromContext(ctx))
+		return nil
+	})
+
+	err := driverBicep.Delete(t.Context(), driver.DeleteOptions{
+		BaseOptions:     driver.BaseOptions{Recipe: testAWSOwnerRecipe()},
+		OutputResources: []rpv1.OutputResource{{ID: resources.MustParse(id), RadiusManaged: new(true)}},
+	})
+	require.NoError(t, err)
+}
+
+// Test_Bicep_Execute_GarbageCollectionSendsAWSOwner checks that deleting stale output resources after a deploy sends
+// the same owner the deploy used.
+func Test_Bicep_Execute_GarbageCollectionSendsAWSOwner(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	driverBicep.DeploymentClient = &deploymentClientSpy{
+		response: &clients.ClientCreateOrUpdateResponse{
+			Properties: &armdeployments.DeploymentPropertiesExtended{},
+		},
+	}
+	driverBicep.RegistryClient = ts.TestServer.Client()
+
+	stale := "/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/stale"
+	client.EXPECT().Delete(gomock.Any(), stale).DoAndReturn(func(ctx context.Context, _ string) error {
+		require.Equal(t, testAWSOwner, processors.AWSOwnerFromContext(ctx))
+		return nil
+	})
+
+	_, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Recipe: testAWSOwnerRecipe(),
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "aws-recipe",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: ts.TestImageURL,
+			},
+		},
+		PrevState: []string{stale},
+	})
+	require.NoError(t, err)
+}
+
+// Test_Bicep_Delete_FailureDoesNotCancelOtherDeletes checks that a delete still running when another delete runs out
+// of retries keeps a live context and finishes.
+func Test_Bicep_Delete_FailureDoesNotCancelOtherDeletes(t *testing.T) {
+	driverBicep, client, _, _ := setupDeleteInputs(t)
+	driverBicep.options.DeleteRetryCount = 1
+	driverBicep.options.DeleteRetryDelaySeconds = 0
+
+	failing := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/failing"
+	slow := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/slow"
+	outputResources := []rpv1.OutputResource{
+		{ID: resources.MustParse(failing), RadiusManaged: new(true)},
+		{ID: resources.MustParse(slow), RadiusManaged: new(true)},
+	}
+
+	failingAttempts := atomic.Int32{}
+	failingDone := make(chan struct{})
+	client.EXPECT().Delete(gomock.Any(), failing).Times(2).DoAndReturn(func(context.Context, string) error {
+		if failingAttempts.Add(1) == 2 {
+			close(failingDone)
+		}
+		return errors.New("failing is locked")
+	})
+
+	slowDeleted := atomic.Bool{}
+	client.EXPECT().Delete(gomock.Any(), slow).Times(1).DoAndReturn(func(ctx context.Context, _ string) error {
+		<-failingDone
+		// Give a canceled context time to show up before finishing the delete.
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(200 * time.Millisecond):
+		}
+		slowDeleted.Store(true)
+		return nil
+	})
+
+	err := driverBicep.Delete(t.Context(), driver.DeleteOptions{OutputResources: outputResources})
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeletionFailed,
+			Message: fmt.Sprintf("failed to delete resource %q after 2 attempt(s), last error: failing is locked", failing),
+		},
+	}, err)
+	require.True(t, slowDeleted.Load())
 }
 
 func Test_Bicep_Delete_TargetClusterResolutionError(t *testing.T) {
@@ -971,6 +1252,52 @@ func Test_GetGCOutputResources(t *testing.T) {
 	require.Equal(t, exp, res)
 }
 
+func Test_GetGCOutputResources_AWSReadOnly(t *testing.T) {
+	d := &bicepDriver{}
+	image := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.EC2/Image/ami-0123456789abcdef0"
+	bucket := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.S3/Bucket/my-bucket"
+	exp := []rpv1.OutputResource{
+		{ID: resources.MustParse(image), RadiusManaged: new(false)},
+		{ID: resources.MustParse(bucket), RadiusManaged: new(true)},
+	}
+	res, err := d.getGCOutputResources(nil, []string{image, bucket})
+	require.NoError(t, err)
+	require.Equal(t, exp, res)
+}
+
+func Test_Bicep_Execute_GarbageCollectionSkipsAWSReadOnly(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	image := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.EC2/Image/ami-0123456789abcdef0"
+	bucket := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.S3/Bucket/my-bucket"
+	d, client, _, _ := setupDeleteInputs(t)
+	d.DeploymentClient = &deploymentClientSpy{
+		response: &clients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{}},
+	}
+	d.RegistryClient = ts.TestServer.Client()
+	// Only the bucket is deleted. The mock fails the test on a Delete call for the image.
+	client.EXPECT().Delete(gomock.Any(), bucket).Times(1).Return(nil)
+
+	result, err := d.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Recipe: recipes.ResourceMetadata{
+				Name:          "test-resource",
+				ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+			},
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "aws-recipe",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: ts.TestImageURL,
+			},
+		},
+		PrevState: []string{image, bucket},
+	})
+	require.NoError(t, err)
+	require.Empty(t, result.Resources)
+}
+
 func Test_GetGCOutputResources_NoDiff(t *testing.T) {
 	d := &bicepDriver{}
 	before := []string{
@@ -1254,6 +1581,173 @@ func Test_WrapARMParameters(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func Test_Bicep_Execute_AddsAWSProviderResourceIDs(t *testing.T) {
+	const bucketID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/my-bucket"
+	const queueID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SQS/Queue/my-queue"
+
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+	deploymentClient := &deploymentClientSpy{
+		response: &clients.ClientCreateOrUpdateResponse{
+			Properties: &armdeployments.DeploymentPropertiesExtended{
+				// The recipe deploys the bucket and returns an existing queue in result.resources.
+				OutputResources: []*armdeployments.ResourceReference{{ID: new(bucketID)}},
+				Outputs: map[string]any{
+					recipes.ResultPropertyName: map[string]any{
+						"type":  "object",
+						"value": map[string]any{"resources": []any{queueID}},
+					},
+				},
+			},
+		},
+	}
+
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	client.EXPECT().GetProperties(gomock.Any(), bucketID).Return(map[string]any{"Arn": "arn:aws:s3:::my-bucket", "BucketName": "my-bucket"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), queueID).Return(map[string]any{"Arn": "arn:aws:sqs:us-west-2:123456789012:my-queue"}, nil)
+
+	d := &bicepDriver{
+		DeploymentClient:      deploymentClient,
+		RegistryClient:        ts.TestServer.Client(),
+		resourceClientFactory: func(*rest.Config) processors.ResourceClient { return client },
+	}
+
+	result, err := d.Execute(t.Context(), driver.ExecuteOptions{
+		Recipe: recipes.ResourceMetadata{
+			Name:          "test-resource",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+		},
+		Definition: recipes.EnvironmentDefinition{
+			Name:         "aws-recipe",
+			Driver:       recipes.TemplateKindBicep,
+			TemplatePath: ts.TestImageURL,
+		},
+	})
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{bucketID, queueID}, result.Resources)
+	require.Equal(t, "arn:aws:s3:::my-bucket", result.ProviderResourceID(bucketID))
+	require.Equal(t, "arn:aws:sqs:us-west-2:123456789012:my-queue", result.ProviderResourceID(queueID))
+}
+
+func Test_Bicep_AddAWSProviderResourceIDs(t *testing.T) {
+	const (
+		prefix = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/"
+		// AWS::S3::Bucket keeps its ARN in Arn.
+		bucketID = prefix + "AWS.S3/Bucket/my-bucket"
+		// AWS::SNS::Topic keeps its ARN in TopicArn, a <ResourceName>Arn property.
+		topicID = prefix + "AWS.SNS/Topic/arn:aws:sns:us-west-2:123456789012:my-topic"
+		// AWS::IAM::ManagedPolicy keeps its ARN in PolicyArn, its read-only primary identifier.
+		policyID = prefix + "AWS.IAM/ManagedPolicy/my-policy"
+		// AWS::GameLift::ContainerFleet keeps its ARN in FleetArn, a hand-reviewed decision. Its other *Arn
+		// properties are container group definitions.
+		fleetID = prefix + "AWS.GameLift/ContainerFleet/fleet-1"
+		// AWS::EC2::VPC has no ARN property, so it isn't read.
+		vpcID = prefix + "AWS.EC2/VPC/vpc-0123456789abcdef0"
+		// AWS::Redshift::Cluster only has unrelated *Arn properties, so it isn't read.
+		clusterID = prefix + "AWS.Redshift/Cluster/my-cluster"
+		// AWS::SNS::TopicInlinePolicy is identified by its topic's ARN, which isn't its own ARN.
+		topicPolicyID = prefix + "AWS.SNS/TopicInlinePolicy/arn:aws:sns:us-west-2:123456789012:my-topic"
+		// AWS::Example::Thing isn't in the catalog, so the Arn, ARN, or arn property is used.
+		unknownID = prefix + "AWS.Example/Thing/thing-1"
+		// The mapped property isn't an ARN.
+		invalidID = prefix + "AWS.S3/Bucket/invalid"
+		// The read fails.
+		failedID = prefix + "AWS.S3/Bucket/failed"
+		azureID  = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/account"
+		k8sID    = "/planes/kubernetes/local/namespaces/default/providers/core/Secret/my-secret"
+	)
+
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	client.EXPECT().GetProperties(gomock.Any(), bucketID).Return(map[string]any{"Arn": "arn:aws:s3:::my-bucket"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), topicID).Return(map[string]any{"TopicArn": "arn:aws:sns:us-west-2:123456789012:my-topic"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), policyID).Return(map[string]any{"PolicyArn": "arn:aws:iam::123456789012:policy/my-policy"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), fleetID).Return(map[string]any{
+		"GameServerContainerGroupDefinitionArn": "arn:aws:gamelift:us-west-2:123456789012:containergroupdefinition/game:1",
+		"FleetArn":                              "arn:aws:gamelift:us-west-2:123456789012:containerfleet/fleet-1",
+		"Arn":                                   "arn:aws:gamelift:us-west-2:123456789012:not-the-mapped-property",
+	}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), unknownID).Return(map[string]any{"ARN": "arn:aws:example:us-west-2:123456789012:thing/thing-1"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), invalidID).Return(map[string]any{"Arn": "not-an-arn"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), failedID).Return(nil, errors.New("access denied"))
+
+	factoryCalls := 0
+	d := &bicepDriver{resourceClientFactory: func(config *rest.Config) processors.ResourceClient {
+		require.Nil(t, config)
+		factoryCalls++
+		return client
+	}}
+
+	output := &recipes.RecipeOutput{Resources: []string{
+		bucketID, topicID, policyID, fleetID, vpcID, clusterID, topicPolicyID, unknownID, invalidID, failedID, azureID, k8sID, "not-a-resource-id",
+	}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Equal(t, 1, factoryCalls)
+	require.Equal(t, map[string]string{
+		bucketID:  "arn:aws:s3:::my-bucket",
+		topicID:   "arn:aws:sns:us-west-2:123456789012:my-topic",
+		policyID:  "arn:aws:iam::123456789012:policy/my-policy",
+		fleetID:   "arn:aws:gamelift:us-west-2:123456789012:containerfleet/fleet-1",
+		unknownID: "arn:aws:example:us-west-2:123456789012:thing/thing-1",
+	}, output.ProviderResourceIDs)
+}
+
+func Test_Bicep_AddAWSProviderResourceIDs_NoResourceClient(t *testing.T) {
+	const bucketID = "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+
+	d := &bicepDriver{}
+	output := &recipes.RecipeOutput{Resources: []string{bucketID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Empty(t, output.ProviderResourceIDs)
+}
+
+func Test_Bicep_AddAWSProviderResourceIDs_FactoryReturnsNil(t *testing.T) {
+	const bucketID = "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+
+	d := &bicepDriver{resourceClientFactory: func(*rest.Config) processors.ResourceClient { return nil }}
+	output := &recipes.RecipeOutput{Resources: []string{bucketID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Empty(t, output.ProviderResourceIDs)
+}
+
+// Cloud Control returns a log group ARN with a trailing ":*". The driver stores it without the suffix, the same value
+// the Terraform driver stores for the same log group.
+func Test_Bicep_AddAWSProviderResourceIDs_LogGroup(t *testing.T) {
+	const logGroupID = "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.Logs/LogGroup/orders"
+
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	client.EXPECT().GetProperties(gomock.Any(), logGroupID).Return(map[string]any{"Arn": "arn:aws:logs:us-east-2:179022619019:log-group:orders:*"}, nil)
+
+	d := &bicepDriver{resourceClientFactory: func(*rest.Config) processors.ResourceClient { return client }}
+	output := &recipes.RecipeOutput{Resources: []string{logGroupID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Equal(t, "arn:aws:logs:us-east-2:179022619019:log-group:orders", output.ProviderResourceID(logGroupID))
+}
+
+func Test_Bicep_AddAWSProviderResourceIDs_IDsDifferingByCase(t *testing.T) {
+	const lowerID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/arn:aws:sns:us-west-2:123456789012:orders"
+	const upperID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/arn:aws:sns:us-west-2:123456789012:Orders"
+
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	client.EXPECT().GetProperties(gomock.Any(), lowerID).Return(map[string]any{"TopicArn": "arn:aws:sns:us-west-2:123456789012:orders"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), upperID).Return(map[string]any{"TopicArn": "arn:aws:sns:us-west-2:123456789012:Orders"}, nil)
+
+	d := &bicepDriver{resourceClientFactory: func(*rest.Config) processors.ResourceClient { return client }}
+	output := &recipes.RecipeOutput{Resources: []string{lowerID, upperID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Equal(t, "arn:aws:sns:us-west-2:123456789012:orders", output.ProviderResourceID(lowerID))
+	require.Equal(t, "arn:aws:sns:us-west-2:123456789012:Orders", output.ProviderResourceID(upperID))
 }
 
 const (

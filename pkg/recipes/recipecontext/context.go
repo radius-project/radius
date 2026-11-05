@@ -130,6 +130,16 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 			Region:  p.FindScope(resources_aws.ScopeRegions),
 			Account: p.FindScope(resources_aws.ScopeAccounts),
 		}
+
+		if recipeContext.AWS.Account != "" && recipeContext.Resource.ID != "" {
+			// Same seed shape as the Azure hash: the scope, then the owner of the resource.
+			seed := strings.ToLower(recipeContext.AWS.Account) + "\x00" +
+				strings.ToLower(recipeContext.AWS.Region) + "\x00" +
+				strings.ToLower(recipeContext.Application.ID) + "\x00" +
+				strings.ToLower(recipeContext.Environment.ID) + "\x00" +
+				strings.ToLower(recipeContext.Resource.ID)
+			recipeContext.AWS.ResourceNameHash = hashutil.Hex([]byte(seed))[:resourceNameHashLength]
+		}
 	}
 
 	return &recipeContext, nil

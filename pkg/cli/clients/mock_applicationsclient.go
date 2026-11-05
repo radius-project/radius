@@ -1444,6 +1444,45 @@ func (c *MockApplicationsManagementClientListResourcesInEnvironmentOrApplication
 	return c
 }
 
+// ListResourcesInPlane mocks base method.
+func (m *MockApplicationsManagementClient) ListResourcesInPlane(ctx context.Context) ([]generated.GenericResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListResourcesInPlane", ctx)
+	ret0, _ := ret[0].([]generated.GenericResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListResourcesInPlane indicates an expected call of ListResourcesInPlane.
+func (mr *MockApplicationsManagementClientMockRecorder) ListResourcesInPlane(ctx any) *MockApplicationsManagementClientListResourcesInPlaneCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResourcesInPlane", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListResourcesInPlane), ctx)
+	return &MockApplicationsManagementClientListResourcesInPlaneCall{Call: call}
+}
+
+// MockApplicationsManagementClientListResourcesInPlaneCall wrap *gomock.Call
+type MockApplicationsManagementClientListResourcesInPlaneCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockApplicationsManagementClientListResourcesInPlaneCall) Return(arg0 []generated.GenericResource, arg1 error) *MockApplicationsManagementClientListResourcesInPlaneCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockApplicationsManagementClientListResourcesInPlaneCall) Do(f func(context.Context) ([]generated.GenericResource, error)) *MockApplicationsManagementClientListResourcesInPlaneCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockApplicationsManagementClientListResourcesInPlaneCall) DoAndReturn(f func(context.Context) ([]generated.GenericResource, error)) *MockApplicationsManagementClientListResourcesInPlaneCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // ListResourcesInResourceGroup mocks base method.
 func (m *MockApplicationsManagementClient) ListResourcesInResourceGroup(ctx context.Context, planeName, resourceGroupName string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()

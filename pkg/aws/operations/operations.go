@@ -19,6 +19,7 @@ package operations
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 
@@ -53,7 +54,7 @@ func FlattenProperties(state map[string]any) map[string]any {
 
 	for k, v := range state {
 		// If the value is a map, flatten it
-		if reflect.TypeOf(v).Kind() == reflect.Map {
+		if v != nil && reflect.TypeOf(v).Kind() == reflect.Map {
 			flattenedSubState := FlattenProperties(v.(map[string]any))
 
 			for subK, subV := range flattenedSubState {
@@ -116,9 +117,31 @@ func UnflattenProperties(state map[string]any) map[string]any {
 	return unflattenedState
 }
 
+// PatchOptions carries what UCP knows from its record of the last successful deploy of a resource.
+type PatchOptions struct {
+	// Removed are the property paths the last deploy set that the template no longer sets, relative to the properties
+	// object and with "/" between segments, like the keys of FlattenProperties. The patch removes them, except
+	// read-only and create-only properties, which AWS cannot clear.
+	Removed []string
+}
+
 // GeneratePatch takes in the current state, desired state and type schema of a resource and returns a JSON patch to update the
 // current state to the desired state, taking into account read-only, create-only and conditional-create-only properties.
+// It is GeneratePatchWithOptions without a record of the last deploy, so it never removes a property.
 func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jsondiff.Patch, error) {
+	return GeneratePatchWithOptions(currentState, desiredState, schema, PatchOptions{})
+}
+
+// GeneratePatchWithOptions returns a JSON patch that updates the current state to the desired state.
+//
+// A value AWS reports in a different form than the template set it counts as unchanged, using the schema's rules: an
+// array the schema marks "insertionOrder": false is compared ignoring order, and a property with a supported
+// "propertyTransform" is compared through it. An empty object AWS reports is kept unless the template sets values
+// inside it.
+//
+// A property in the current state that the desired state does not set is kept, because AWS or someone else may have
+// set it, unless it is in opts.Removed: Radius set it in the last deploy, so the patch clears it.
+func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema []byte, opts PatchOptions) (jsondiff.Patch, error) {
 	// See: https://github.com/radius-project/radius/blob/main/docs/adr/ucp/001-aws-resource-updating.md
 
 	// Get the resource type schema - this will tell us the properties of the
@@ -136,6 +159,12 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 		return nil, err
 	}
 	flattenedCurrentStateObject := FlattenProperties(currentStateObject)
+	// FlattenProperties drops an empty object, so a property AWS reports as {}, such as DataProtectionPolicy on a log
+	// group, would look removed and every redeploy would send a remove. Keep it as AWS reports it.
+	emptyObjectPaths := emptyObjects(currentStateObject, "")
+	for path := range emptyObjectPaths {
+		flattenedCurrentStateObject[path] = map[string]any{}
+	}
 
 	// Get the desired state of the resource
 	var desiredStateObject map[string]any
@@ -145,12 +174,34 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 	}
 	flattenedDesiredStateObject := FlattenProperties(desiredStateObject)
 
+	rules := parseSchemaRules(schema)
+
+	// A value AWS reports in a different form, such as reordered subnets or a fuller engine version, is unchanged:
+	// use AWS's value so the patch leaves it alone.
+	for k, v := range flattenedDesiredStateObject {
+		if current, ok := flattenedCurrentStateObject[k]; ok && rules.equivalentAt(k, v, current, desiredStateObject) {
+			flattenedDesiredStateObject[k] = current
+		}
+	}
+
 	// Add read-only and create-only properties from current state to the desired state
 	for k, v := range flattenedCurrentStateObject {
+		if emptyObjectPaths[k] && hasPathUnder(flattenedDesiredStateObject, k) {
+			// The template sets values inside an object AWS reports as empty; copying {} would overwrite them.
+			continue
+		}
+
 		property := fmt.Sprintf("/properties/%s", k)
 
 		isCreateOnlyProperty := slices.Contains(resourceTypeSchema.CreateOnlyProperties, property)
 		isWriteOnlyProperty := slices.Contains(resourceTypeSchema.WriteOnlyProperties, property)
+
+		if _, exists := flattenedDesiredStateObject[k]; !exists && underAny(k, opts.Removed) &&
+			!overlapsAny(k, PropertyPaths(resourceTypeSchema.ReadOnlyProperties)) && !overlapsAny(k, PropertyPaths(resourceTypeSchema.CreateOnlyProperties)) {
+			// Radius set this property in the last deploy and the template no longer sets it: leave it out, so the
+			// patch clears it.
+			continue
+		}
 
 		// If the property is create-only and write-only, then upsert it to the desired state.
 		// this will cause a no-op in the patch since it will exactly match the current state
@@ -179,6 +230,117 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 
 	// Calculate the patch based on the current state and the updated desired state
 	return jsondiff.CompareJSON(currentState, updatedDesiredState)
+}
+
+// emptyObjects returns the flattened paths of the empty objects in state, which FlattenProperties leaves out.
+func emptyObjects(state map[string]any, prefix string) map[string]bool {
+	out := map[string]bool{}
+	for k, v := range state {
+		m, ok := v.(map[string]any)
+		if !ok {
+			continue
+		}
+		if len(m) == 0 {
+			out[prefix+k] = true
+			continue
+		}
+		maps.Copy(out, emptyObjects(m, prefix+k+"/"))
+	}
+	return out
+}
+
+// hasPathUnder reports whether flattened has a key inside the object at path.
+func hasPathUnder(flattened map[string]any, path string) bool {
+	for k := range flattened {
+		if strings.HasPrefix(k, path+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// RemovedPaths returns the paths of lastApplied, the properties of the last deploy, that desired no longer sets. Paths
+// are relative to the properties object, like the keys of FlattenProperties, and the result is sorted. Arrays are one
+// value, so a removed array item is not a removed path: the array itself changed.
+func RemovedPaths(lastApplied map[string]any, desired map[string]any) []string {
+	flatDesired := FlattenProperties(desired)
+	out := []string{}
+	for path := range FlattenProperties(lastApplied) {
+		if _, ok := flatDesired[path]; !ok {
+			out = append(out, path)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// RemovedCreateOnly returns the create-only properties among removed that the current state still has. AWS cannot
+// clear them, so the template has to keep setting them. Removed paths are relative to the properties object, like the
+// keys of FlattenProperties, and the result is sorted.
+func RemovedCreateOnly(currentState map[string]any, schema []byte, removed []string) ([]string, error) {
+	var resourceTypeSchema ResourceTypeSchema
+	if err := json.Unmarshal(schema, &resourceTypeSchema); err != nil {
+		return nil, err
+	}
+	createOnly := PropertyPaths(resourceTypeSchema.CreateOnlyProperties)
+	readOnly := PropertyPaths(resourceTypeSchema.ReadOnlyProperties)
+
+	current := FlattenProperties(currentState)
+	out := []string{}
+	for _, r := range removed {
+		if !overlapsAny(r, createOnly) || underAny(r, readOnly) || slices.Contains(out, r) {
+			continue
+		}
+		if _, ok := current[r]; ok || hasPathUnder(current, r) {
+			out = append(out, r)
+		}
+	}
+	slices.Sort(out)
+	return out, nil
+}
+
+// PropertyPaths returns the paths of a schema property list, such as createOnlyProperties, relative to the properties
+// object: "/properties/A/B" becomes "A/B".
+func PropertyPaths(schemaPaths []string) []string {
+	out := []string{}
+	for _, p := range schemaPaths {
+		if name, ok := strings.CutPrefix(p, "/properties/"); ok {
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
+// overlapsAny reports whether removing the flattened path k removes one of paths or a value inside one: k is one of
+// paths, inside one, or holds one. Arrays are one value, so removing an array such as "Members" also removes a
+// property inside its items, such as "Members/*/Name". A "*" segment matches any segment.
+func overlapsAny(k string, paths []string) bool {
+	segments := strings.Split(k, "/")
+	for _, p := range paths {
+		pattern := strings.Split(p, "/")
+		n := min(len(segments), len(pattern))
+		match := true
+		for i := range n {
+			if pattern[i] != "*" && pattern[i] != segments[i] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
+// underAny reports whether the flattened path k is one of paths or inside one of them.
+func underAny(k string, paths []string) bool {
+	for _, p := range paths {
+		if k == p || strings.HasPrefix(k, p+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // ParsePropertyName transforms a propertyIdentifer of the form /properties/<propertyName> to <propertyName>.

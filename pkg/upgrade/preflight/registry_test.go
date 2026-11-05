@@ -19,8 +19,10 @@ package preflight
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -211,6 +213,62 @@ func TestRegistry_RunChecks_CheckReturnsError(t *testing.T) {
 	assert.EqualError(t, results[0].Error, "internal error")
 }
 
+func TestRegistry_RunChecks_FriendlyError(t *testing.T) {
+	t.Parallel()
+
+	friendly := clierrors.Message("Radius stopped before changing the cluster because of a long explanation.")
+	tests := []struct {
+		name     string
+		severity CheckSeverity
+		// wantErr is true when RunChecks returns the friendly error unchanged.
+		wantErr bool
+		wantLog string
+	}{
+		{
+			// The CLI shows the returned error as is, so the log does not repeat it.
+			name:     "error severity",
+			severity: SeverityError,
+			wantErr:  true,
+			wantLog:  "    ✗ [ERROR] Check failed",
+		},
+		{
+			name:     "warning severity",
+			severity: SeverityWarning,
+			wantLog:  "    ✗ [WARNING] Check failed (Radius stopped before changing the cluster because of a long explanation.)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockOutput := &output.MockOutput{}
+			registry := NewRegistry(mockOutput)
+			registry.AddCheck(&MockPreflightCheck{
+				name:     "Friendly Check",
+				severity: tt.severity,
+				message:  "Check failed",
+				err:      friendly,
+			})
+
+			_, err := registry.RunChecks(t.Context())
+			if tt.wantErr {
+				require.Same(t, friendly, err)
+				require.True(t, clierrors.IsFriendlyError(err))
+			} else {
+				require.NoError(t, err)
+			}
+
+			var logs []string
+			for _, write := range mockOutput.Writes {
+				log, ok := write.(output.LogOutput)
+				require.True(t, ok)
+				logs = append(logs, fmt.Sprintf(log.Format, log.Params...))
+			}
+			require.Contains(t, logs, tt.wantLog)
+		})
+	}
+}
 func TestRegistry_GetFailureReason(t *testing.T) {
 	mockOutput := &output.MockOutput{}
 	registry := NewRegistry(mockOutput)

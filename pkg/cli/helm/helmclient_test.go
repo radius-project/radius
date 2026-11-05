@@ -18,8 +18,14 @@ package helm
 
 import (
 	"bytes"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -30,6 +36,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/cli"
 	"helm.sh/helm/v4/pkg/kube"
 	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
@@ -531,6 +538,90 @@ func Test_usesServerSideApply(t *testing.T) {
 				}))
 			}
 			require.Equal(t, tt.expected, usesServerSideApply(configuration, "radius"))
+		})
+	}
+}
+
+func TestHelmClientImpl_RunHelmPull_RepoURL(t *testing.T) {
+	chartBytes := chartArchive(t, "contour")
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if user, password, ok := r.BasicAuth(); !ok || user != "user" || password != "password" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+		switch r.URL.Path {
+		case "/index.yaml":
+			_, _ = fmt.Fprint(w, contourIndexYAML)
+		case "/contour-0.1.0.tgz":
+			_, _ = w.Write(chartBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	caFile := filepath.Join(t.TempDir(), "ca.crt")
+	require.NoError(t, os.WriteFile(caFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}), 0o600))
+
+	tests := []struct {
+		name    string
+		version string
+		tls     helm.PullOpt
+		wantErr string
+	}{
+		{"CA file", "0.1.0", func(p *helm.Pull) { p.CaFile = caFile }, ""},
+		{"TLS verification skipped", "0.1.0", func(p *helm.Pull) { p.InsecureSkipTLSVerify = true }, ""},
+		{"chart version not found", "0.2.0", func(p *helm.Pull) { p.CaFile = caFile }, fmt.Sprintf(`chart "contour" version "0.2.0" not found in %s repository`, server.URL)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// A pull that downloads the repository index to the user's Helm cache fails.
+			env := setUserHelmEnv(t, unwritableUserCache)
+			stateDir := t.TempDir()
+			settings := cli.New()
+			settings.RepositoryConfig = filepath.Join(stateDir, "repositories.yaml")
+			settings.RepositoryCache = filepath.Join(stateDir, "repository")
+			settings.ContentCache = filepath.Join(stateDir, "content")
+			dest := t.TempDir()
+
+			_, err := NewHelmClient().RunHelmPull([]helm.PullOpt{
+				helm.WithConfig(&helm.Configuration{}),
+				func(p *helm.Pull) {
+					p.Settings = settings
+					p.DestDir = dest
+					p.RepoURL = server.URL
+					p.Version = tt.version
+					p.Username = "user"
+					p.Password = "password"
+				},
+				tt.tls,
+			}, "contour")
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+				require.FileExists(t, filepath.Join(dest, "contour-0.1.0.tgz"))
+			}
+			cached, err := os.ReadDir(settings.RepositoryCache)
+			require.NoError(t, err, "the repository index must be downloaded to the pull's repository cache")
+			require.Empty(t, cached, "the repository index must be removed after the pull")
+			env.assertUnchanged(t)
+		})
+	}
+}
+
+func TestHelmClientImpl_RunHelmPull_RepoURLUnsupportedOptions(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]helm.PullOpt{
+		"verify":       func(p *helm.Pull) { p.Verify = true },
+		"verify later": func(p *helm.Pull) { p.VerifyLater = true },
+		"untar":        func(p *helm.Pull) { p.Untar = true },
+	}
+	for name, option := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := NewHelmClient().RunHelmPull([]helm.PullOpt{func(p *helm.Pull) { p.RepoURL = "https://example.com" }, option}, "contour")
+			require.EqualError(t, err, "verifying or unpacking a chart from a repository URL is not supported")
 		})
 	}
 }

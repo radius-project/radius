@@ -302,7 +302,7 @@ func Test_deploymentEngineImages(t *testing.T) {
 	t.Parallel()
 
 	const candidate = "candidate.example:5001/custom-de:candidate-13081"
-	const chartDefault = "ghcr.io/radius-project/deployment-engine:latest"
+	const chartDefault = "ghcr.io/radius-project/deployment-engine:edge"
 	const imageID = "containerd://sha256:resolved-candidate"
 	for _, tt := range []struct {
 		name      string

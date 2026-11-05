@@ -43,6 +43,17 @@ KUBEBUILDER_ASSETS="$(go tool setup-envtest use -p path '1.30.*')" \
 
 The test starts its own API server and etcd, uses a temporary kubeconfig, and installs the shipping encryption Secret template without control-plane workloads. It installs through the Radius Helm client, which always applies as the `rad` field manager, then upgrades with either the standalone Helm binary or an ordinary `rad` upgrade. Fresh, previously rotated, and legacy Secrets must keep their UID, key-data SHA-256 digest, and rotation annotation presence/value. `TestEncryptionSecretUpgradeRotationRace` rotates a key after the template reads the Secret and before Helm applies it, for both server-side and client-side apply releases. The upgrade must fail and keep the rotated key, even though Radius upgrades force conflicts; a rollback in the same race must fail the same way. `TestEncryptionSecretRollback` rolls back to a revision whose upgrade wrote the Secret, with and without a key rotation after that revision. The rollback must succeed and keep the live key store. The tests never log key data or use an existing cluster. `make test` also runs these regressions; direct `go test` skips them when `KUBEBUILDER_ASSETS` is unset. This focused regression does not replace full installation or previous-supported-release upgrade verification.
 
+### AWS fingerprint key
+
+`aws_fingerprint_key_test.yaml` covers the `radius-aws-fingerprint-key` Secret: a new install generates a 32-byte key, an upgrade keeps the existing key, an existing Secret with a missing or empty key fails rendering instead of being replaced, the `resourceVersion` precondition is rendered only for an existing Secret, the Secret is immutable, and UCP mounts the Secret read-only. The mount uses mode `0444` because UCP runs as a non-root user and Secret files are owned by root, and it is optional so UCP still starts when the Secret is missing.
+
+`TestAWSFingerprintKeySecretUpgrade` in `pkg/cli/helm` installs the shipping template on its own API server, then upgrades and rolls back with standalone Helm and with `rad`. Every step must keep the Secret's UID and key. `TestAWSFingerprintKeySecretRollbackAfterReplace` replaces the key by deleting the Secret and upgrading, then rolls back to the install revision with standalone Helm and with `rad`, for server-side and client-side apply. Standalone Helm replays the stored manifest, so it must fail; `rad` renders against the live Secret, so it succeeds. Both must keep the replaced key. `TestAWSFingerprintKeySecretReplaceRace` replaces the key after the template reads the Secret and before Helm applies it, for server-side and client-side apply. The upgrade and rollback must fail and keep the replaced key. Run them the same way as the encryption Secret regression:
+
+```bash
+KUBEBUILDER_ASSETS="$(go tool setup-envtest use -p path '1.30.*')" \
+  go test ./pkg/cli/helm -run '^TestAWSFingerprintKey' -count=1
+```
+
 ## Test Structure
 
 The tests validate:

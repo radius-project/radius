@@ -81,6 +81,8 @@ func testContext() *recipecontext.Context {
 		AWS: &recipecontext.ProviderAWS{
 			Region:  "us-east-1",
 			Account: "123456789",
+			// An arbitrary fixture value, like the Azure hash above.
+			ResourceNameHash: "4c1e0f2a9b7d3e56",
 		},
 	}
 }
@@ -374,6 +376,32 @@ func Test_ResolveParameterExpressions_GeneratedAzureResourceNameHash(t *testing.
 	require.Equal(t, map[string]any{"name": "redis-" + ctx.Azure.ResourceNameHash}, result)
 }
 
+func Test_ResolveParameterExpressions_GeneratedAWSResourceNameHash(t *testing.T) {
+	ctx, err := recipecontext.New(
+		&recipes.ResourceMetadata{
+			ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		},
+		&recipes.Configuration{
+			Providers: coredm.Providers{
+				AWS: coredm.ProvidersAWS{
+					Scope: "/planes/aws/aws/accounts/123456789012/regions/us-west-2",
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+	require.NotEmpty(t, ctx.AWS.ResourceNameHash)
+
+	result, err := ResolveParameterExpressions(
+		map[string]any{"alias": "vpc-{{context.aws.resourceNameHash}}"},
+		ctx,
+	)
+	require.NoError(t, err)
+
+	require.Equal(t, map[string]any{"alias": "vpc-" + ctx.AWS.ResourceNameHash}, result)
+}
+
 func Test_TernaryExpressions(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -558,6 +586,7 @@ func Test_contextResolver(t *testing.T) {
 			"context.azure.subscription.subscriptionId":                   "sub-id",
 			"context.aws.region":                                          "us-east-1",
 			"context.aws.account":                                         "123456789",
+			"context.aws.resourceNameHash":                                "4c1e0f2a9b7d3e56",
 			"context.resource.properties.host":                            "myhost.example.com",
 			"context.resource.properties.port":                            5432,
 			"context.resource.properties.enabled":                         true,
@@ -607,6 +636,14 @@ func Test_contextResolver(t *testing.T) {
 		ctx := testContext()
 		ctx.Azure.ResourceNameHash = ""
 		_, err := newContextResolver(ctx).resolve("context.azure.resourceNameHash")
+		require.ErrorContains(t, err, "unknown context path")
+	})
+
+	t.Run("omits AWS resource name hash when not set", func(t *testing.T) {
+		t.Parallel()
+		ctx := testContext()
+		ctx.AWS.ResourceNameHash = ""
+		_, err := newContextResolver(ctx).resolve("context.aws.resourceNameHash")
 		require.ErrorContains(t, err, "unknown context path")
 	})
 

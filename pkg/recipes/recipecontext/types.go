@@ -111,4 +111,10 @@ type ProviderAWS struct {
 	Region string `json:"region"`
 	// Account represents the account id of the AWS account.
 	Account string `json:"account"`
+	// ResourceNameHash is a short, stable hash for building unique AWS aliases and names. It is derived from the
+	// lowercased AWS account and region, application ID, environment ID, and resource ID, like the Azure hash.
+	// Without it, two applications that reuse a resource name in one account and region would build the same alias
+	// and point at the same AWS resource. A resource deployed without an application contributes an empty
+	// application segment. It is empty when the AWS scope has no account.
+	ResourceNameHash string `json:"resourceNameHash,omitempty"`
 }

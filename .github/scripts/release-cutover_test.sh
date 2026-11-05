@@ -60,6 +60,7 @@ test_release_job_graph() {
     actual_jobs="$(yq -o=json '.jobs | keys | sort' "${RELEASE_WORKFLOW}")"
     expected_jobs='[
         "approve-publication",
+        "attest-release",
         "build-and-push-bicep-types",
         "build-and-push-helm-chart",
         "build-and-push-remaining-images",
@@ -79,6 +80,7 @@ test_release_job_graph() {
     ' "${RELEASE_WORKFLOW}")"
     expected_needs='[
         "approve-publication",
+        "attest-release",
         "build-and-push-bicep-types",
         "build-and-push-helm-chart",
         "build-and-push-remaining-images",
@@ -158,6 +160,7 @@ test_privileged_jobs_require_preflight() {
         build-and-push-remaining-images \
         build-and-push-helm-chart \
         build-and-push-bicep-types \
+        attest-release \
         finalize-release; do
         needs="$(JOB="${job}" yq -o=json '
             .jobs[strenv(JOB)].needs
@@ -447,7 +450,7 @@ test_release_resume_contract() {
     published_guards="$(grep -Fc \
         "needs.release-preflight.outputs.release-state != 'published'" \
         "${RELEASE_WORKFLOW}")"
-    if [[ "${published_guards}" != "6" ]]; then
+    if [[ "${published_guards}" != "7" ]]; then
         fail_test "published releases can re-enter mutating jobs"
         return
     fi

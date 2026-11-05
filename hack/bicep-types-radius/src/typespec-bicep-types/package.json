@@ -27,7 +27,7 @@
     "compile-projects": "node dist/src/cmd/compile-projects.js",
     "rebuild-index": "node dist/src/cmd/rebuild-index.js",
     "generate-contrib-docs": "node dist/src/cmd/generate-contrib-docs.js",
-    "clean": "rimraf dist"
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
   },
   "author": "The Radius Authors",
   "license": "Apache-2.0",
@@ -48,7 +48,6 @@
     "@typespec/http": "^1.17.0",
     "@typespec/openapi": "^1.17.0",
     "@typespec/versioning": "^0.87.0",
-    "rimraf": "^6.1.3",
     "typescript": "^7.0.2",
     "vitest": "^5.0.4"
   }
