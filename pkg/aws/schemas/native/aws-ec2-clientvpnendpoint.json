@@ -387,7 +387,10 @@
       ]
     },
     "list": {
-      "permissions": ["ec2:DescribeClientVpnEndpoints"]
+      "permissions": [
+        "ec2:DescribeClientVpnEndpoints",
+        "ec2:GetClientVpnEndpointAuthorizationPolicy"
+      ]
     }
   },
   "required": [

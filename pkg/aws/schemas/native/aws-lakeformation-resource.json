@@ -62,6 +62,7 @@
     "update": {
       "permissions": [
         "lakeformation:UpdateResource",
+        "lakeformation:DescribeResource",
         "lakeformation:DeregisterResource",
         "lakeformation:RegisterResource",
         "iam:PassRole",

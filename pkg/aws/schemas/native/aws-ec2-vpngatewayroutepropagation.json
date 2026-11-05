@@ -42,6 +42,7 @@
     "update": {
       "permissions": [
         "ec2:EnableVgwRoutePropagation",
+        "ec2:DisableVgwRoutePropagation",
         "ec2:DescribeRouteTables"
       ]
     },

@@ -644,7 +644,7 @@
       ]
     },
     "list": {
-      "permissions": ["codebuild:ListProjects"]
+      "permissions": ["codebuild:ListProjects", "codebuild:BatchGetProjects"]
     }
   },
   "propertyTransform": {
