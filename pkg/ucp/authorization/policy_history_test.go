@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -221,6 +222,82 @@ func TestPolicyStoreMaximumHistorySnapshots(t *testing.T) {
 	require.Equal(t, event, actual, "reassembly returns the public AccessChange unchanged")
 	event.Properties.PolicyChange.Before.RoleAssignment.Description = to.Ptr(*event.Properties.PolicyChange.Before.RoleAssignment.Description + "x")
 	require.ErrorContains(t, store.prepareHistory(t.Context(), policyObjectID+uuid.NewString()+"-event", *event), "snapshot exceeds byte bound")
+}
+
+func TestPolicyStoreBootstrapHistoryCapacity(t *testing.T) {
+	if testing.Short() {
+		t.Skip("full-size compound bootstrap history; omit -short to run")
+	}
+	db := inmemory.NewClient()
+	store := newTestPolicyStore(t, db, false)
+	policy := initialPolicy()
+	policy.Assignments = nil
+	initializer, err := NewPolicyInitializer(store, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
+	require.NoError(t, err)
+	require.NoError(t, initializer.Initialize(t.Context(), policy))
+	actor := policyActor()
+	actor.RequestID = strings.Repeat("r", maxHistoryMetadataBytes-1024)
+	principal := testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-a", "bootstrap-group-000")
+	principal.DisplayName = to.Ptr("")
+	require.NoError(t, addBootstrapAdministrators(&policy, []api.Principal{principal}, actor))
+	assignment := policy.Assignments[0]
+	encoded, err := json.Marshal(assignment)
+	require.NoError(t, err)
+	payload, err := json.Marshal(policyPayload{Entries: map[string]json.RawMessage{*assignment.ID: encoded}})
+	require.NoError(t, err)
+	label := strings.Repeat("x", maxPolicyBytes-len(payload))
+	guard := &bootstrapSettingsGuard{}
+	for i := 0; i < manifestFanout-1; i++ {
+		group := testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-a", fmt.Sprintf("bootstrap-group-%03d", i))
+		group.DisplayName = &label
+		guard.principals = append(guard.principals, group)
+	}
+	store.settings = guard
+	crash := errors.New("stop large compound publication")
+	store.db = &policyHookClient{Client: db, before: func(_ context.Context, object *database.Object) error {
+		raw, err := json.Marshal(object.Data)
+		require.NoError(t, err)
+		require.LessOrEqual(t, len(raw), maxPolicyBytes)
+		if saveStage(object) == "finalize" {
+			return crash
+		}
+		return nil
+	}}
+	mutation := PolicyMutation{Target: settingsID, Settings: &api.AuthorizationSettingsProperties{Mode: to.Ptr(api.UserAuthorizationModeDryRun)}}
+	_, err = store.Mutate(t.Context(), actor, mutation)
+	require.ErrorIs(t, err, crash)
+	store = newTestPolicyStore(t, db, false)
+	store.settings = guard
+	snapshot, err := store.LoadPolicy(t.Context(), -1)
+	require.NoError(t, err)
+	actual, err := snapshot.Policy()
+	require.NoError(t, err)
+	require.Equal(t, int64(1), actual.Generation)
+	require.Len(t, actual.Assignments, manifestFanout-1)
+	var version accessVersion
+	_, err = store.read(t.Context(), accessVersionID, &version)
+	require.NoError(t, err)
+	var root manifestRoot
+	_, err = store.read(t.Context(), version.Root, &root)
+	require.NoError(t, err)
+	require.Len(t, root.Pages, manifestFanout, "each maximum-sized assignment plus settings consumes one payload")
+	event, err := store.AccessChange(t.Context(), 1)
+	require.NoError(t, err)
+	require.Equal(t, actor.RequestID, *event.Properties.RequestID)
+	require.Empty(t, event.Properties.PolicyChange.Before.RoleAssignments)
+	require.Len(t, event.Properties.PolicyChange.After.RoleAssignments, manifestFanout-1)
+	for _, added := range event.Properties.PolicyChange.After.RoleAssignments {
+		require.Contains(t, actual.Assignments, *added)
+	}
+	// One more full-size grant exceeds policy capacity, not the audit budget.
+	principal.Subject = to.Ptr("bootstrap-group-127")
+	principal.DisplayName = &label
+	guard.principals = append(guard.principals, principal)
+	_, err = store.Mutate(t.Context(), actor, mutation)
+	require.ErrorContains(t, err, "PolicyCapacityExceeded")
+	snapshot, err = store.LoadPolicy(t.Context(), -1)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), snapshot.Generation())
 }
 
 func TestPolicyStoreLargeAssignmentHistory(t *testing.T) {

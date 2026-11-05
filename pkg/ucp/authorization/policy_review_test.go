@@ -6,6 +6,7 @@ package authorization
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -234,4 +235,71 @@ func TestPolicyBootstrapSettingsRecovery(t *testing.T) {
 	require.Equal(t, api.UserAuthorizationModeDryRun, *got.Settings.Properties.Mode)
 	require.Len(t, got.Assignments, 1, "recovery publishes settings and bootstrap administrator together")
 	require.NoError(t, recovered.allows(policyActor().Identity, "Radius.Core/authorizationSettings/write", settingsID))
+}
+
+func TestPolicyBootstrapAssignmentAuditDeltas(t *testing.T) {
+	for _, interrupted := range []bool{false, true} {
+		t.Run(fmt.Sprint("interrupted=", interrupted), func(t *testing.T) {
+			db := inmemory.NewClient()
+			store := newTestPolicyStore(t, db, false)
+			policy := initialPolicy()
+			policy.Assignments = nil
+			initializer, err := NewPolicyInitializer(store, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
+			require.NoError(t, err)
+			require.NoError(t, initializer.Initialize(t.Context(), policy))
+			first := testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-a", "bootstrap-first")
+			second := testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-a", "bootstrap-second")
+			guard := &bootstrapSettingsGuard{principals: []api.Principal{first}}
+			store.settings = guard
+			mutation := PolicyMutation{Target: settingsID, Settings: &api.AuthorizationSettingsProperties{Mode: to.Ptr(api.UserAuthorizationModeDryRun)}}
+			_, err = store.Mutate(t.Context(), policyActor(), mutation)
+			require.NoError(t, err)
+			guard.principals = []api.Principal{first, second, second}
+			crash := errors.New("stop compound audit publication")
+			if interrupted {
+				store.db = &policyHookClient{Client: db, before: func(_ context.Context, object *database.Object) error {
+					if saveStage(object) == "finalize" {
+						return crash
+					}
+					return nil
+				}}
+			}
+			_, err = store.Mutate(t.Context(), policyActor(), mutation)
+			if interrupted {
+				require.ErrorIs(t, err, crash)
+			} else {
+				require.NoError(t, err)
+			}
+			store = newTestPolicyStore(t, db, false)
+			store.settings = guard
+			snapshot, err := store.LoadPolicy(t.Context(), -1)
+			require.NoError(t, err)
+			actual, err := snapshot.Policy()
+			require.NoError(t, err)
+			require.Equal(t, int64(2), actual.Generation)
+			require.Len(t, actual.Assignments, 2)
+			for generation, principal := range []api.Principal{first, second} {
+				event, err := store.AccessChange(t.Context(), int64(generation+1))
+				require.NoError(t, err)
+				require.Equal(t, policyActor().Identity.Principal, *event.Properties.Principal)
+				require.True(t, *event.Properties.HighImpact)
+				change := event.Properties.PolicyChange
+				require.NotNil(t, change.Before.AuthorizationSettings)
+				require.NotNil(t, change.After.AuthorizationSettings)
+				require.Empty(t, change.Before.RoleAssignments)
+				require.Nil(t, change.Before.RoleAssignment)
+				require.Nil(t, change.After.RoleAssignment)
+				require.Len(t, change.After.RoleAssignments, 1, "audit contains actual additions, not the entire policy or duplicate guard identities")
+				added := change.After.RoleAssignments[0]
+				require.Equal(t, principal, *added.Properties.Principal)
+				require.Equal(t, api.AssignmentManagementKindBootstrap, *added.Properties.ManagedBy.Kind)
+				require.Equal(t, principalDisplay(policyActor().Identity.Principal), *added.Properties.CreatedBy)
+				require.Equal(t, "/", *added.Properties.Scope)
+				require.Contains(t, actual.Assignments, *added, "audit includes full persisted assignment ID and provenance")
+			}
+			snapshot, err = store.Mutate(t.Context(), policyActor(), mutation)
+			require.NoError(t, err)
+			require.Equal(t, int64(2), snapshot.Generation(), "unchanged guard grants remain a no-op")
+		})
+	}
 }
