@@ -19,6 +19,7 @@ package schemas
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"testing/fstest"
 
@@ -282,7 +283,7 @@ func Test_checkHandWritten(t *testing.T) {
 	}{
 		{name: "valid", schema: objectSchema},
 		{name: "valid with every handler", schema: with("handlers", handlers("create", "read", "update", "delete", "list"))},
-		{name: "a nested path", schema: with("writeOnlyProperties", []string{"/properties/Body/Data"})},
+		{name: "a path under a string", schema: with("writeOnlyProperties", []string{"/properties/Body/Data"}), wantErr: `has "/properties/Body/Data" in writeOnlyProperties, which names no property in the schema`},
 		{
 			name:     "no delete handler when a delete calls nothing in AWS",
 			schema:   with("handlers", handlers("create", "read")),
@@ -294,6 +295,7 @@ func Test_checkHandWritten(t *testing.T) {
 			metadata: Metadata{TypeName: "AWS::S3::Object", OnDelete: OnDeleteReset},
 			wantErr:  "has no delete handler. List the AWS permissions it needs under handlers",
 		},
+		{name: "not an object", schema: `["AWS::S3::Object"]`, wantErr: "is not a valid schema"},
 		{name: "not a schema", schema: with("properties", []string{"Bucket"}), wantErr: "is not a valid schema"},
 		{name: "a typeName with no service", schema: with("typeName", "AWS::Object"), wantErr: `has typeName "AWS::Object". Use CloudFormation's naming, such as AWS::S3::Object`},
 		{name: "a typeName in Bicep form", schema: with("typeName", "AWS.S3/Object"), wantErr: `has typeName "AWS.S3/Object"`},
@@ -303,7 +305,7 @@ func Test_checkHandWritten(t *testing.T) {
 		{name: "a camelCase property", schema: with("properties", map[string]any{"Bucket": map[string]any{}, "Key": map[string]any{}, "Body": map[string]any{}, "VersionId": map[string]any{}, "contentType": map[string]any{}}), wantErr: `has the property "contentType". Use the AWS API's parameter name in PascalCase`},
 		{name: "a property with a separator", schema: with("properties", map[string]any{"Bucket": map[string]any{}, "Key": map[string]any{}, "Body": map[string]any{}, "VersionId": map[string]any{}, "Content_Type": map[string]any{}}), wantErr: `has the property "Content_Type"`},
 		{name: "no primaryIdentifier", schema: with("primaryIdentifier", nil), wantErr: "has no primaryIdentifier"},
-		{name: "a primaryIdentifier that names no property", schema: with("primaryIdentifier", []string{"/properties/Name"}), wantErr: `has "/properties/Name" in primaryIdentifier, which names no property in properties`},
+		{name: "a primaryIdentifier that names no property", schema: with("primaryIdentifier", []string{"/properties/Name"}), wantErr: `has "/properties/Name" in primaryIdentifier, which names no property in the schema`},
 		{name: "a create-only path outside properties", schema: with("createOnlyProperties", []string{"/definitions/Bucket"}), wantErr: `has "/definitions/Bucket" in createOnlyProperties`},
 		{name: "a read-only path that names no property", schema: with("readOnlyProperties", []string{"/properties/Arn"}), wantErr: `has "/properties/Arn" in readOnlyProperties`},
 		{name: "a write-only path that names no property", schema: with("writeOnlyProperties", []string{"/properties/Password"}), wantErr: `has "/properties/Password" in writeOnlyProperties`},
@@ -333,6 +335,81 @@ func Test_checkHandWritten(t *testing.T) {
 				return
 			}
 			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
+// nestedSchema has nested properties: an inline object, an object and array items defined with $ref, and a $ref loop.
+const nestedSchema = `{
+	"typeName": "AWS::S3::Object",
+	"definitions": {
+		"Settings": {"type": "object", "properties": {"Password": {"type": "string"}, "Nested": {"$ref": "#/definitions/Inner"}}},
+		"Inner": {"type": "object", "properties": {"Key": {"type": "string"}}},
+		"Grant": {"type": "object", "properties": {"Secret": {"type": "string"}}},
+		"Loop": {"$ref": "#/definitions/Loop"}
+	},
+	"properties": {
+		"Bucket": {"type": "string"},
+		"Key": {"type": "string"},
+		"Inline": {"type": "object", "properties": {"Token": {"type": "string"}}},
+		"Settings": {"$ref": "#/definitions/Settings"},
+		"Grants": {"type": "array", "items": {"$ref": "#/definitions/Grant"}},
+		"Tags": {"type": "array", "items": {"type": "string"}},
+		"Missing": {"$ref": "#/definitions/Absent"},
+		"External": {"$ref": "other.json#/definitions/Settings"},
+		"Looped": {"$ref": "#/definitions/Loop"}
+	},
+	"primaryIdentifier": ["/properties/Bucket", "/properties/Key"],
+	"handlers": {
+		"create": {"permissions": ["s3:PutObject"]},
+		"read": {"permissions": ["s3:GetObject"]},
+		"delete": {"permissions": ["s3:DeleteObject"]}
+	}
+}`
+
+// Test_checkHandWritten_NestedPaths checks that a nested path resolves as UCP walks it to remove write-only values:
+// through object properties, "*" for array items, and $ref into definitions.
+func Test_checkHandWritten_NestedPaths(t *testing.T) {
+	metadata := Metadata{TypeName: "AWS::S3::Object", OnDelete: OnDeleteDelete}
+	writeOnly := func(pointer string) string {
+		schema := map[string]any{}
+		require.NoError(t, json.Unmarshal([]byte(nestedSchema), &schema))
+		schema["writeOnlyProperties"] = []string{pointer}
+		data, err := json.Marshal(schema)
+		require.NoError(t, err)
+		return string(data)
+	}
+	for _, pointer := range []string{
+		"/properties/Inline/Token",
+		"/properties/Settings/Password",
+		"/properties/Settings/Nested/Key",
+		"/properties/Grants/*/Secret",
+		"/properties/Grants/*",
+		"/properties/Tags/*",
+	} {
+		t.Run("resolves "+pointer, func(t *testing.T) {
+			require.NoError(t, checkHandWritten("aws-s3-object.json", writeOnly(pointer), metadata))
+		})
+	}
+	for _, pointer := range []string{
+		"/properties/",
+		"/properties/Inline/Missing",
+		"/properties/Settings/Missing",
+		"/properties/Settings/Password/Value",
+		"/properties/Grants/Secret",
+		"/properties/Grants/*/Missing",
+		"/properties/Tags/*/Key",
+		"/properties/Inline/*",
+		"/properties/Bucket/*",
+		"/properties/Missing",
+		"/properties/Missing/Key",
+		"/properties/External/Password",
+		"/properties/Looped",
+		"/properties/Looped/Key",
+	} {
+		t.Run("rejects "+pointer, func(t *testing.T) {
+			err := checkHandWritten("aws-s3-object.json", writeOnly(pointer), metadata)
+			require.ErrorContains(t, err, fmt.Sprintf("has %q in writeOnlyProperties, which names no property in the schema", pointer))
 		})
 	}
 }

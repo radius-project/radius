@@ -261,7 +261,8 @@ var (
 //
 //   - the typeName follows CloudFormation's naming, such as AWS::S3::Object, and the file is named after it
 //   - the top-level properties are in PascalCase, as the AWS API's parameter names are
-//   - the primaryIdentifier is set, and it and every create-only, read-only, and write-only path name a property
+//   - the primaryIdentifier is set, and it and every create-only, read-only, and write-only path name a property.
+//     A path that names nothing would make UCP skip it, such as a write-only value it never removes from responses
 //   - handlers lists the AWS permissions of create, read, and delete, when a delete calls AWS, and of any other
 //     operation it lists
 func checkHandWritten(name string, data string, metadata Metadata) error {
@@ -275,6 +276,10 @@ func checkHandWritten(name string, data string, metadata Metadata) error {
 		Handlers             map[string]struct {
 			Permissions []string `json:"permissions"`
 		} `json:"handlers"`
+	}
+	var document map[string]any
+	if err := json.Unmarshal([]byte(data), &document); err != nil {
+		return fmt.Errorf("is not a valid schema: %w", err)
 	}
 	if err := json.Unmarshal([]byte(data), &schema); err != nil {
 		return fmt.Errorf("is not a valid schema: %w", err)
@@ -307,10 +312,8 @@ func checkHandWritten(name string, data string, metadata Metadata) error {
 		{"writeOnlyProperties", schema.WriteOnlyProperties},
 	} {
 		for _, pointer := range list.pointers {
-			property, ok := strings.CutPrefix(pointer, "/properties/")
-			property, _, _ = strings.Cut(property, "/")
-			if _, defined := schema.Properties[property]; !ok || !defined {
-				return fmt.Errorf("has %q in %s, which names no property in properties", pointer, list.field)
+			if !resolves(document, pointer) {
+				return fmt.Errorf("has %q in %s, which names no property in the schema", pointer, list.field)
 			}
 		}
 	}
@@ -330,6 +333,55 @@ func checkHandWritten(name string, data string, metadata Metadata) error {
 		}
 		if len(schema.Handlers[handler].Permissions) == 0 {
 			return fmt.Errorf("lists no permissions for its %s handler", handler)
+		}
+	}
+	return nil
+}
+
+// maxRefs is how many $ref hops resolves follows for one value, so a $ref loop fails instead of running forever.
+const maxRefs = 32
+
+// resolves reports whether pointer, such as /properties/Settings/Password or /properties/Grants/*/Secret, names a
+// property in the schema document. It walks the path the way UCP removes write-only values: each segment is a property
+// of an object, and "*" is the items of an array. It follows $ref into definitions.
+func resolves(document map[string]any, pointer string) bool {
+	path, ok := strings.CutPrefix(pointer, "/properties/")
+	if !ok || path == "" {
+		return false
+	}
+	node := document
+	for _, segment := range strings.Split(path, "/") {
+		if node = deref(document, node); node == nil {
+			return false
+		}
+		if segment == "*" {
+			node, ok = node["items"].(map[string]any)
+		} else {
+			properties, _ := node["properties"].(map[string]any)
+			node, ok = properties[segment].(map[string]any)
+		}
+		if !ok {
+			return false
+		}
+	}
+	return deref(document, node) != nil
+}
+
+// deref returns node, or the definition its $ref names, following $ref up to maxRefs times. It returns nil for a $ref
+// that names no definition, or a loop.
+func deref(document map[string]any, node map[string]any) map[string]any {
+	for range maxRefs {
+		ref, ok := node["$ref"].(string)
+		if !ok {
+			return node
+		}
+		name, ok := strings.CutPrefix(ref, "#/definitions/")
+		if !ok {
+			return nil
+		}
+		definitions, _ := document["definitions"].(map[string]any)
+		if node, ok = definitions[name].(map[string]any); !ok {
+			return nil
 		}
 	}
 	return nil
