@@ -37,6 +37,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.63.7
 	github.com/aws/aws-sdk-go-v2/service/emr v1.71.0
 	github.com/aws/aws-sdk-go-v2/service/fsx v1.74.9
+	github.com/aws/aws-sdk-go-v2/service/lakeformation v1.57.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.5
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.5
 	github.com/aws/smithy-go v1.28.8
