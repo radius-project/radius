@@ -76,7 +76,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -128,7 +128,7 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -167,7 +167,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -213,7 +213,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 		CloudControl:   testOptions.AWSCloudControlClient,
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -289,7 +289,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 		CloudFormation: testOptions.AWSCloudFormationClient,
 	}
 
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retry.NewNoOpRetryer())
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retry.NewNoOpRetryer())
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -363,7 +363,7 @@ func Test_GetAWSResourceWithPost_RetryableError(t *testing.T) {
 	}
 
 	retryer := retry.NewDefaultRetryer()
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retryer)
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retryer)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -415,7 +415,7 @@ func Test_GetAWSResourceWithPost_NonRetryableError(t *testing.T) {
 	}
 
 	retryer := retry.NewDefaultRetryer()
-	awsController, err := NewGetAWSResourceWithPost(armrpc_controller.Options{DatabaseClient: testOptions.DatabaseClient}, awsClients, retryer)
+	awsController, err := NewGetAWSResourceWithPost(testOptions.ControllerOptions(), awsClients, retryer)
 	require.NoError(t, err)
 
 	requestBody := map[string]any{
@@ -435,4 +435,72 @@ func Test_GetAWSResourceWithPost_NonRetryableError(t *testing.T) {
 
 	require.Nil(t, actualResponse)
 	require.Equal(t, "something bad happened", err.Error())
+}
+
+// Test_GetAWSResourceWithPost_Name checks how POST /:get finds the AWS identifier for an `existing` block: by the
+// top-level name when it is set, and otherwise by the identifier in the properties.
+func Test_GetAWSResourceWithPost_Name(t *testing.T) {
+	collection := providers + "AWS.EC2/VPC"
+	tests := []struct {
+		name       string
+		body       map[string]any
+		identifier string
+		wantStatus int
+		wantError  string
+	}{
+		{
+			name:       "name only",
+			body:       map[string]any{"alias": "shared-vpc", "name": "vpc-0shared"},
+			identifier: "vpc-0shared",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "properties only",
+			body:       map[string]any{"properties": map[string]any{"VpcId": "vpc-0props"}},
+			identifier: "vpc-0props",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "name and properties: name wins",
+			body:       map[string]any{"name": "vpc-0shared", "properties": map[string]any{"VpcId": "vpc-0props"}},
+			identifier: "vpc-0shared",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "neither",
+			body:       map[string]any{"alias": "shared-vpc"},
+			wantStatus: http.StatusBadRequest,
+			wantError:  "mandatory property VpcId is missing",
+		},
+		{
+			name:       "name that is not a string",
+			body:       map[string]any{"name": 1},
+			wantStatus: http.StatusBadRequest,
+			wantError:  "name must be a string",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t)
+			h.cc.Put(vpcType, "vpc-0shared", map[string]any{"VpcId": "vpc-0shared", "CidrBlock": "10.0.0.0/16"})
+			h.cc.Put(vpcType, "vpc-0props", map[string]any{"VpcId": "vpc-0props", "CidrBlock": "10.1.0.0/16"})
+
+			resp := h.do(func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
+				return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
+			}, http.MethodPost, collection+"/:get", "", tt.body)
+			require.Equal(t, tt.wantStatus, resp.status, resp.raw)
+			calls := h.cc.Calls()
+			if tt.wantError != "" {
+				require.Equal(t, tt.wantError, resp.message())
+				require.Empty(t, calls)
+				return
+			}
+			require.Equal(t, []string{"GetResource"}, operations(calls))
+			require.Equal(t, tt.identifier, calls[0].Identifier)
+			require.Equal(t, collection+"/"+tt.identifier, resp.body["id"])
+			require.Equal(t, tt.identifier, resp.body["properties"].(map[string]any)["VpcId"])
+			// Reading never saves a record.
+			require.Nil(t, h.record(collection+"/shared-vpc"))
+		})
+	}
 }

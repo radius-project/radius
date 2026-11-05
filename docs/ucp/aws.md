@@ -24,54 +24,51 @@ AWS often reports a value in a different form than the template set it. `Generat
 
 <br/><br/>
 
-### Extension of ARM-RPC protocol in UCP
+### Resource records and alias IDs
 
-All Azure resources have a name where the name is used in the resource ID
-/subscriptions/…/providers/Microsoft.KeyVault/vaults/{name}. However, AWS resources don’t have a consistent name property but use PrimaryIdentifier(s) for resource name. More than one primary identifier may exist, which would be separated by ‘|’. For example, if the RestApiId = ‘my-id’ and StageName is ‘my-stage’, the name of the resource would be ‘my-id|my-stage’.
+UCP keeps a record of each AWS resource it deploys, so redeploying a template updates the same resource. Every AWS resource in Bicep has an `alias`, and the Deployment Engine addresses the resource by it:
 
-<br/><br/>
-
-Fundamentally, as part of the ARM API contract, name is required for GET, PUT, etc. operations. For example,
-```
-GET /subscriptions/…/providers/Microsoft.KeyVault/vaults/{name}
-````
-
-If we don’t have a name, either we need to calculate with additional information in the Deployment Engine, or we need to calculate it in the UCP-AWS provider and determine what it means for the API contract to not know the name prior to these calls.
-
-<br/><br/>
-
-To address this issue, we have extended the ARM-RPC protocol to add POST APIs to the UCP contract with a get/put/delete action and a request body.
-```
-POST http://127.0.0.1:8001/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/841861948707/regions/us-east-2/providers/AWS.ApiGateway/Stage/:get
-
-With Request Body:
-{
-  "properties": {
-    "RestApiId": "lfx3ec07zf",
-    "StageName": "canary"
-  }
-}
+```text
+/planes/aws/aws/accounts/{account}/regions/{region}/providers/AWS.EC2/VPC/app-vpc
 ```
 
-The pros and cons of this design are:-
+The record (`datamodel.AWSResource`, read and written by `pkg/ucp/aws/records`) is stored in UCP's data store under that ID. It holds the AWS identifier, the owner, the properties of the last successful deploy without write-only values, fingerprints of the write-only values, and the state of the operation in progress. The design is in [radius-project/radius#13462](https://github.com/radius-project/radius/pull/13462).
 
-Pros:-
-* Requires only UCP to have knowledge of AWS resources and primary identifiers
-* Same number of network calls as normal Azure resource deployment, no extra hop to calculate resource ID.
+- **PUT** reads the record. With no AWS identifier yet, UCP takes over a resource AWS already has, found by the top-level `name` or by the identifier in the properties, or creates one. Before it creates anything, UCP saves the record with a client token, and sends that token with every attempt to create the resource, so a retry never creates a second one. Cloud Control returns the first request only when the body matches it exactly. When a retry's template differs, for example in a write-only value, Cloud Control returns `ClientTokenConflictException` naming the first request, and UCP reads that request's status: when it succeeded, the PUT continues as an update with the template, comparing its write-only values with the fingerprints of the earlier attempt (when an earlier retry's outcome is unknown, UCP cannot tell which values AWS has, so they have no usable fingerprint); when it failed, the record becomes a tombstone and the PUT returns the failure; while it runs, the PUT gets `409`. With a record, UCP compares the template with AWS and with the last-applied properties: a property the last deploy set and the template no longer sets is cleared, and a removed create-only property fails with `400`.
+- **GET** reads the record, then AWS by the identifier in the record. With no record, UCP reads AWS by the URL's last segment, and returns `404` when AWS does not have it (transitional, see below).
+- **DELETE** reads the record and deletes the resource by its identifier. With no record, UCP deletes the resource in AWS by the URL's last segment, and returns `204` when AWS does not have it (transitional, see below).
 
-Cons:-
-* Requires extending the ARM protocol
-* Full resource ID is not known prior to first resource operation
+  A record with a client token but no identifier has a create that may have reached AWS, so DELETE first sends the create again with the same token to find the resource. Cloud Control returns the original request only when the body matches it exactly. The resend has no write-only values, so for a type with write-only properties it gets `ClientTokenConflictException`, and UCP reads the status of the request it names to find the resource. When the message of `ClientTokenConflictException` has no request token UCP can read, the PUT or DELETE fails with `400` and keeps the record.
+- **POST `/:get`** reads a resource Radius may not have created, for an `existing` block that sets `name` or `properties`. It reads AWS by the top-level `name` in the body when it is set, and otherwise by the primary or additional identifiers in the properties. It never saves a record.
 
-<br/><br/>
+PUT, and a DELETE that finds a record, require the `X-Radius-Resource-Owner` header, and fail with `400` without it. A PUT or DELETE from a different owner than the record's fails with `409`, and so does a PUT that would manage an AWS resource another alias's record already has. Owners are compared ignoring case.
 
-### Handling non-idempotent AWS resources
+UCP owns every create, update, and delete. It saves the new last-applied properties and fingerprints on the record as pending values before it calls AWS, saves the Cloud Control request token, and queues an operation. The backend controller in `pkg/ucp/backend/controller/awsresources` polls Cloud Control, then moves the pending values to last-applied on success, or drops them on failure so the previous ones stay. A failed create, and a finished delete, leave a tombstone in place of the record (transitional, see below). The operation status and result routes read UCP's data store, and fall back to Cloud Control for an operation UCP does not have (transitional, see below). A second PUT or DELETE while an operation is running gets `409`. One that finds an operation nothing has polled for 10 minutes, or one AWS accepted but UCP never queued, resumes it.
 
-Many AWS resources have a generated name and the resource schema does not necessarily have any field which could uniquely identify the resource. As a result, every time the same template is deployed, it could result in creation of a new resource with a new generated name.
+Write-only values are never stored: not in the last-applied or pending properties, and not in operations.
 
-To address this issue, we will introduce state storage in UCP. The user will specify a friendly name for the resource in the bicep file that is unique in the deployment scope (which will be the Radius resource group). UCP will create a mapping between the friendly name and the actual AWS resource deployed. After this point, UCP will use this mapping to determine if the resource with the particular friendly name is being created or updated.
+Until the Deployment Engine deploys AWS resources by alias, UCP keeps four transitional behaviors from before records, for Deployment Engine releases that still deploy with POST `/:put` and `/:delete`. They are removed once the Deployment Engine deploys by alias:
 
-The details of this design can be found at: https://github.com/radius-project/design-notes/pull/21
+- POST `/:put` and `/:delete` work as before: no owner header and no record, so no fingerprints. A write-only value on an existing create-and-delete-only resource fails with `400`, because UCP cannot confirm it is unchanged.
+- The operation status and result routes ask Cloud Control by request token when UCP has no operation with that ID.
+- A DELETE of a URL with no record deletes the resource in AWS by the URL's last segment, with or without the owner header. A header that is sent must not be blank. Recipe deletes rely on this, because the IDs of resources created with POST `/:put` end in the AWS identifier.
+- A GET of a URL with no record reads the resource from AWS by the URL's last segment. The Bicep recipe driver relies on this to read the ARN of each AWS output resource.
+
+POST `/:put`, POST `/:delete`, and a DELETE with no record return `409` for a resource an alias's record manages, so they never skip that record's owner check. Resources with no record behave as before records.
+
+Because a URL with no record falls back to its last segment, UCP never removes a record while these fallbacks exist. A finished delete, or a create that failed, leaves a tombstone instead. A DELETE of a tombstone returns `204` and a GET returns `404`, both without calling AWS, so repeating a DELETE that succeeded never deletes an unrelated resource whose AWS identifier matches the alias. A PUT starts the alias over in the same record.
+
+### Write-only values
+
+AWS never returns write-only values, such as passwords, so UCP cannot compare them with AWS. Instead, the record keeps an HMAC-SHA-256 fingerprint of each write-only value of the last successful deploy (`pkg/ucp/frontend/controller/awsproxy/fingerprints.go`). The key is in the `radius-aws-fingerprint-key` Kubernetes Secret, never in the data store, as described in [credentials](../architecture/credentials.md). The record stores the key ID once, apart from the digests. Each fingerprint is bound to the resource ID and the property path, and the value is encoded as JSON, so key order and number forms do not matter. A write-only property inside array items, such as `Users/*/Password`, is covered by a fingerprint of the whole array. A value in an array item AWS does not have, such as one deleted outside Radius, is always sent with the item.
+
+| Write-only value in the template                                                                                 | What UCP does                                                                                                                                                          |
+|------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Matches its fingerprint                                                                                          | Leaves it out of the update. A create-and-delete-only type succeeds without an update                                                                                  |
+| Differs from its fingerprint, or the last deploy did not set it                                                  | Sends it. A create-and-delete-only type fails with `400` naming the property                                                                                           |
+| No usable fingerprint: a different key made it, or UCP took the resource over and the last deploy did not set it | Sends a value that can be updated once. Does not send a value that cannot change after create, and does not fail. Either way, saves a fingerprint with the current key |
+
+If the key is missing, unreadable, or invalid, a PUT whose template sets a write-only value fails with `500` naming the Secret, before UCP saves anything or calls Cloud Control. Other PUTs, reads, and deletes still work.
 
 <br/><br/>
 
@@ -79,13 +76,13 @@ The details of this design can be found at: https://github.com/radius-project/de
 
 UCP returns a `400` for these AWS types instead of the error Cloud Control returns. Error messages name the type and properties, never property values.
 
-| Type                                                                                      | How UCP knows                                                                                       | What UCP returns                                                                                                                                                                                                            |
-|-------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Legacy type with a supported replacement, for example `AWS::IAM::Policy`                  | List in `pkg/aws/awstypes`                                                                          | `400` naming the replacement, on every operation. Nothing is called in AWS                                                                                                                                                  |
-| Deprecated service or CloudFormation template feature, for example `AWS::OpsWorks::Stack` | List in `pkg/aws/awstypes`                                                                          | `400` saying Radius does not support the type, on every operation. Nothing is called in AWS                                                                                                                                 |
-| Read-only type created by AWS, for example `AWS::EC2::Image`                              | `DescribeType` reports `NON_PROVISIONABLE`, and the schema has a read handler but no create handler | `400` on a PUT, before UCP reads the resource, saying the type can only be used with `existing`                                                                                                                             |
-| Other type Cloud Control cannot create                                                    | `DescribeType` reports `NON_PROVISIONABLE`                                                          | `400` on a PUT, before UCP reads the resource                                                                                                                                                                               |
-| Create-and-delete-only type                                                               | `DescribeType` reports `IMMUTABLE`                                                                  | Create works. A change to an existing resource fails with `400` naming the changed properties. AWS never returns write-only properties, so a request that sets only write-only properties also fails with `400` naming them |
+| Type                                                                                      | How UCP knows                                                                                       | What UCP returns                                                                                                                                                                                                                       |
+|-------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Legacy type with a supported replacement, for example `AWS::IAM::Policy`                  | List in `pkg/aws/awstypes`                                                                          | `400` naming the replacement, on every operation. Nothing is called in AWS                                                                                                                                                             |
+| Deprecated service or CloudFormation template feature, for example `AWS::OpsWorks::Stack` | List in `pkg/aws/awstypes`                                                                          | `400` saying Radius does not support the type, on every operation. Nothing is called in AWS                                                                                                                                            |
+| Read-only type created by AWS, for example `AWS::EC2::Image`                              | `DescribeType` reports `NON_PROVISIONABLE`, and the schema has a read handler but no create handler | `400` on a PUT, before UCP reads the resource, saying the type can only be used with `existing`                                                                                                                                        |
+| Other type Cloud Control cannot create                                                    | `DescribeType` reports `NON_PROVISIONABLE`                                                          | `400` on a PUT, before UCP reads the resource                                                                                                                                                                                          |
+| Create-and-delete-only type                                                               | `DescribeType` reports `IMMUTABLE`                                                                  | Create works. A change to an existing resource fails with `400` naming the changed properties. A write-only value counts as changed only when it differs from its fingerprint, as described in [Write-only values](#write-only-values) |
 
 UCP reads the provisioning type from CloudFormation at run time, so a type starts working without a Radius release when AWS adds Cloud Control support for it.
 

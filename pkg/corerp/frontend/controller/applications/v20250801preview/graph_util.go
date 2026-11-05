@@ -566,19 +566,21 @@ func getResourceTypeSpecificProperties(resourceType string, properties map[strin
 	return sanitization.OmitContainerEnvironment(resourceType, propertyBag)
 }
 
-// outputResourceEntryFromID creates a outputResourceEntry from a resource ID. When tenantID
+// outputResourceEntryFromID creates a outputResourceEntry from an output resource. When tenantID
 // is non-empty and the ID is an Azure ARM resource, the entry is decorated with a portal URL.
-// An AWS resource of a known type is decorated with a link to the AWS console.
-func outputResourceEntryFromID(id resources.ID, tenantID string) corerpv20250801preview.ApplicationGraphOutputResource {
+// An AWS resource is decorated with a link to the AWS console: the resource's own page when it
+// has an ARN in a partition with a known console, otherwise its service's list page when the type
+// is known.
+func outputResourceEntryFromID(or outputResourceRef, tenantID string) corerpv20250801preview.ApplicationGraphOutputResource {
 	entry := corerpv20250801preview.ApplicationGraphOutputResource{
-		ID:   new(id.String()),
-		Name: new(id.Name()),
-		Type: new(id.Type()),
+		ID:   new(or.ID.String()),
+		Name: new(or.ID.Name()),
+		Type: new(or.ID.Type()),
 	}
 
-	if url := azurePortalURL(id, tenantID); url != "" {
+	if url := azurePortalURL(or.ID, tenantID); url != "" {
 		entry.PortalURL = new(url)
-	} else if url := resources_aws.ConsoleURL(id); url != "" {
+	} else if url := resources_aws.ConsoleURL(or.ID, or.ProviderResourceID); url != "" {
 		entry.PortalURL = new(url)
 	}
 
@@ -614,22 +616,31 @@ func azurePortalURL(id resources.ID, tenantID string) string {
 // output resource with an Azure ARM ID. Callers use this to decide whether the extra UCP
 // credential lookup for the Azure tenant is worthwhile.
 func containsAzureOutputResource(list []generated.GenericResource) bool {
+	isAzure := func(or outputResourceRef) bool { return resources_azure.IsAzureResource(or.ID) }
 	for _, resource := range list {
-		if slices.ContainsFunc(outputResourceIDs(resource), resources_azure.IsAzureResource) {
+		if slices.ContainsFunc(outputResourceRefs(resource), isAzure) {
 			return true
 		}
 	}
 	return false
 }
 
-// outputResourceIDs extracts the parsed IDs of the resource's output resources from the API
-// property bag. Entries that cannot be parsed or have empty IDs are skipped.
+// outputResourceRef is the part of an output resource that the application graph reads.
+type outputResourceRef struct {
+	ID resources.ID `json:"id"`
+
+	// ProviderResourceID is the provider-native ID of the resource, such as its ARN, or "" when it is not known.
+	ProviderResourceID string `json:"providerResourceId"`
+}
+
+// outputResourceRefs extracts the resource's output resources from the API property bag.
+// Entries that cannot be parsed or have empty IDs are skipped.
 //
 // The implementation reads directly from the weakly-typed property bag rather than using
 // jsonpointer on the struct. jsonpointer at /properties/status/outputResources fails to locate
 // the lowercase JSON key when applied to the struct value, so it silently returns an empty list.
 // Direct map access avoids that footgun.
-func outputResourceIDs(resource generated.GenericResource) []resources.ID {
+func outputResourceRefs(resource generated.GenericResource) []outputResourceRef {
 	statusRaw, ok := resource.Properties["status"]
 	if !ok || statusRaw == nil {
 		return nil
@@ -646,18 +657,15 @@ func outputResourceIDs(resource generated.GenericResource) []resources.ID {
 	if !ok || len(ors) == 0 {
 		return nil
 	}
-	type outputResourceWireFormat struct {
-		ID resources.ID `json:"id"`
-	}
-	ids := make([]resources.ID, 0, len(ors))
+	refs := make([]outputResourceRef, 0, len(ors))
 	for _, or := range ors {
-		data := outputResourceWireFormat{}
+		data := outputResourceRef{}
 		if err := toStronglyTypedData(or, &data); err != nil || data.ID.String() == "" {
 			continue
 		}
-		ids = append(ids, data.ID)
+		refs = append(refs, data)
 	}
-	return ids
+	return refs
 }
 
 // azureTenantID returns the tenant ID of the registered Azure credential (service principal or
@@ -693,10 +701,10 @@ func azureTenantID(ctx context.Context, clientOptions *policy.ClientOptions) str
 // outputResourcesFromAPIData processes the generic resource representation returned by the Radius API
 // and produces a list of output resources.
 func outputResourcesFromAPIData(resource generated.GenericResource, tenantID string) []*corerpv20250801preview.ApplicationGraphOutputResource {
-	ids := outputResourceIDs(resource)
-	entries := make([]*corerpv20250801preview.ApplicationGraphOutputResource, 0, len(ids))
-	for _, id := range ids {
-		entry := outputResourceEntryFromID(id, tenantID)
+	refs := outputResourceRefs(resource)
+	entries := make([]*corerpv20250801preview.ApplicationGraphOutputResource, 0, len(refs))
+	for _, or := range refs {
+		entry := outputResourceEntryFromID(or, tenantID)
 		entries = append(entries, &entry)
 	}
 

@@ -17,7 +17,6 @@ limitations under the License.
 package ucp
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -57,11 +56,7 @@ func Test_AWS_RedeployReorderedTags(t *testing.T) {
 				},
 			})
 			require.NoError(t, err)
-			request, err := http.NewRequest(http.MethodPut, putURL, bytes.NewBuffer(body))
-			require.NoError(t, err)
-			response, err := roundTripper.RoundTrip(request)
-			require.NoError(t, err)
-			return response
+			return sendAWSRequest(t, roundTripper, http.MethodPut, putURL, body)
 		}
 
 		// The first deploy adds the tags and retention, so UCP updates the log group.

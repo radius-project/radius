@@ -26,6 +26,7 @@ import (
 	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/components/database"
 
@@ -68,6 +69,10 @@ type Options struct {
 
 	// StatusManager is the async operation status manager.
 	StatusManager sm.StatusManager
+
+	// Authorization is the internal component authorization configuration. Controllers that create
+	// environment or application namespaces use it to apply Pod Security labels.
+	Authorization authz.Options
 }
 
 func (o Options) Validate() error {

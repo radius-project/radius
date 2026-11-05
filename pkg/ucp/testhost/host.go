@@ -207,7 +207,7 @@ func StartWithOptions(t *testing.T, options *ucp.Options) *TestHost {
 	options.UCP, err = sdk.NewDirectConnection(baseURL)
 	require.NoError(t, err)
 
-	host, err := server.NewServer(options)
+	host, err := server.NewServer(t.Context(), options)
 	require.NoError(t, err, "failed to create server")
 
 	return &TestHost{

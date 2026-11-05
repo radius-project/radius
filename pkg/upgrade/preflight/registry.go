@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/output"
 )
 
@@ -71,6 +72,10 @@ func (r *Registry) RunChecks(ctx context.Context) ([]CheckResult, error) {
 
 		// If this is an error severity check and it failed, stop immediately
 		if result.Severity == SeverityError && (!success || err != nil) {
+			// The CLI shows a friendly error as is, so return it unchanged.
+			if returnsFriendlyError(result) {
+				return results, err
+			}
 			return results, fmt.Errorf("pre-flight check '%s' failed: %s", check.Name(), r.getFailureReason(result))
 		}
 	}
@@ -88,9 +93,12 @@ func (r *Registry) logCheckResult(result CheckResult) {
 
 	message := result.Message
 	if result.Error != nil {
-		if message == "" {
+		switch {
+		case message == "":
 			message = result.Error.Error()
-		} else {
+		case returnsFriendlyError(result):
+			// RunChecks returns the error, and the CLI shows it, so it is not repeated here.
+		default:
 			message = fmt.Sprintf("%s (%s)", message, result.Error.Error())
 		}
 	}
@@ -112,6 +120,12 @@ func (r *Registry) logCheckResult(result CheckResult) {
 	case SeverityInfo:
 		r.output.LogInfo("    %s %s", status, message)
 	}
+}
+
+// returnsFriendlyError reports whether RunChecks returns the error of the result unchanged: the check has error
+// severity and failed with a friendly error.
+func returnsFriendlyError(result CheckResult) bool {
+	return result.Severity == SeverityError && clierrors.IsFriendlyError(result.Error)
 }
 
 // getFailureReason returns a descriptive reason for why a check failed.
