@@ -1,4 +1,8 @@
 {{- $appversion := include "radius.versiontag" . }}
+{{- $authzConfig := include "radius.authz.mode" . }}
+{{- if ne $authzConfig "off" }}
+{{- $authzConfig = printf "%s:%s" $authzConfig (include "radius.authz.podSecurityLevel" .) }}
+{{- end }}
 {{- if ne .Values.rp.terraform.path "/terraform" }}
 {{- fail "rp.terraform.path must be \"/terraform\" -- the runtime configmap (deploy/Chart/templates/rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching." }}
 {{- end }}
@@ -26,7 +30,7 @@ spec:
         azure.workload.identity/use: "true"
         {{- end }}
       annotations:
-        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        checksum/authz-config: {{ $authzConfig | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
