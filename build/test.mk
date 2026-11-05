@@ -61,16 +61,6 @@ test: test-get-envtools test-helm test-azure-oidc-login test-cloud-test-helpers 
 test-azure-oidc-login: ## Tests cloud CI token request retries and Azure login
 	@node --test ./.github/scripts/azure-oidc-login_test.mjs
 
-.PHONY: test-cloud-test-helpers
-test-cloud-test-helpers: install-yq ## Tests cloud helpers and prepared-base dependencies without credentials (requires Node.js; installs pinned yq)
-	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
-		node --test .github/scripts/cloud-test-helpers.test.mjs .github/scripts/cloud-test-bootstrap.test.mjs
-
-.PHONY: test-cloud-test-helpers-native
-test-cloud-test-helpers-native: install-yq install-oras ## Tests TLS capture (requires Node.js, Docker, free localhost port 5000, OpenSSL and curl; installs pinned yq and ORAS)
-	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$(or $(ORAS_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
-		node --test .github/scripts/cloud-test-artifacts.integration.test.mjs
-
 .PHONY: test-authorization-contracts
 test-authorization-contracts: ## Checks generated RBAC contracts, examples, and Applications RP separation.
 	@node --test typespec/Radius.Core/authorization/contracts.test.mjs
@@ -80,6 +70,16 @@ test: test-authorization-contracts
 .PHONY: test-authorization-bicep
 test-authorization-bicep: ## Packages RBAC types and compiles a resource-group Bicep assignment (requires bicep).
 	@node --test typespec/Radius.Core/authorization/bicep.test.mjs
+
+.PHONY: test-cloud-test-helpers
+test-cloud-test-helpers: install-yq ## Tests cloud helpers and prepared-base dependencies without credentials (requires Node.js; installs pinned yq)
+	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
+		node --test .github/scripts/cloud-test-helpers.test.mjs .github/scripts/cloud-test-bootstrap.test.mjs
+
+.PHONY: test-cloud-test-helpers-native
+test-cloud-test-helpers-native: install-yq install-oras ## Tests TLS capture (requires Node.js, Docker, free localhost port 5000, OpenSSL and curl; installs pinned yq and ORAS)
+	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$(or $(ORAS_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
+		node --test .github/scripts/cloud-test-artifacts.integration.test.mjs
 
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation

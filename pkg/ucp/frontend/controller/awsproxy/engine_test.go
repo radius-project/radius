@@ -378,7 +378,7 @@ func Test_Put_MetricFilterByAlias_UsesCompositeIdentifier(t *testing.T) {
 			reqBody, err := json.Marshal(map[string]any{"properties": properties})
 			require.NoError(t, err)
 			req := withOwner(httptest.NewRequest(http.MethodPut, path, bytes.NewReader(reqBody)))
-			controller, err := NewCreateOrUpdateAWSResource(opts.ControllerOptions(), opts.Clients())
+			controller, err := newTestPutController(opts.ControllerOptions(), opts.Clients())
 			require.NoError(t, err)
 			ctx := rpctest.NewARMRequestContext(req)
 			resp, err := controller.Run(ctx, nil, req)
