@@ -720,6 +720,7 @@ jobs:
           SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
       - name: Verify authorization is off by default
+        # Authorization will default to on once all authorization changes land; retain explicit off-mode coverage then.
         # Every default-mode leg installs the same chart defaults, so one leg proves they still select authz mode=off.
         if: matrix.name == 'corerp-noncloud' && !matrix.authzDryRun
         env:
