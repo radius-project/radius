@@ -174,6 +174,116 @@ func TestConnectionSources(t *testing.T) {
 	}
 }
 
+func TestContainerNestedReferences(t *testing.T) {
+	catalog, err := NewCatalog(nil)
+	require.NoError(t, err)
+	target := teamA + "/providers/Applications.Core/containers/frontend"
+	store := func(scope string) string { return scope + "/providers/Applications.Core/secretStores/creds" }
+	volume := func(scope string) string { return scope + "/providers/Applications.Core/volumes/data" }
+	container := func(env, volumes map[string]any) map[string]any {
+		inner := map[string]any{"image": "nginx"}
+		if env != nil {
+			inner["env"] = env
+		}
+		if volumes != nil {
+			inner["volumes"] = volumes
+		}
+		return map[string]any{"properties": map[string]any{
+			"container": inner,
+			"connections": map[string]any{
+				"db": map[string]any{"source": teamB + "/providers/Applications.Datastores/mongoDatabases/shared"},
+			},
+		}}
+	}
+	secretEnv := func(source any) map[string]any {
+		return map[string]any{"valueFrom": map[string]any{"secretRef": map[string]any{"source": source, "key": "k"}}}
+	}
+	body := container(map[string]any{
+		"PLAIN":      map[string]any{"value": "x"},
+		"K8S":        secretEnv("my-secret"),
+		"K8S_NS":     secretEnv("default/my-secret"),
+		"STORE":      secretEnv(store(teamB)),
+		"STORE_SAME": secretEnv(store(teamB)),
+	}, map[string]any{
+		"scratch": map[string]any{"kind": "ephemeral", "managedStore": "memory", "mountPath": "/tmp"},
+		"data":    map[string]any{"kind": "persistent", "source": volume(teamB), "mountPath": "/data"},
+	})
+	for _, method := range []string{"PUT", "PATCH"} {
+		checks, err := catalog.ReferenceChecks(method, target, body, ReferenceOptions{})
+		require.NoError(t, err, method)
+		require.ElementsMatch(t, []Check{
+			{"Applications.Core/secretStores/connect/action", lowerTarget(store(teamB))},
+			{"Applications.Core/volumes/connect/action", lowerTarget(volume(teamB))},
+			{"Applications.Datastores/mongoDatabases/connect/action", lowerTarget(teamB + "/providers/Applications.Datastores/mongoDatabases/shared")},
+		}, checks, method)
+	}
+
+	t.Run("Kubernetes secret names are not references", func(t *testing.T) {
+		checks, err := catalog.ReferenceChecks("PUT", target, map[string]any{"properties": map[string]any{
+			"container": map[string]any{"env": map[string]any{"K": secretEnv("my-secret")}},
+		}}, ReferenceOptions{})
+		require.NoError(t, err)
+		require.Empty(t, checks)
+	})
+
+	t.Run("other types ignore container fields", func(t *testing.T) {
+		checks, err := catalog.ReferenceChecks("PUT", teamA+"/providers/Applications.Core/gateways/gw",
+			container(map[string]any{"S": secretEnv(store(teamB))}, nil), ReferenceOptions{})
+		require.NoError(t, err)
+		require.NotContains(t, checks, Check{"Applications.Core/secretStores/connect/action", lowerTarget(store(teamB))})
+	})
+
+	for name, properties := range map[string]map[string]any{
+		"env secret wrong type":   container(map[string]any{"S": secretEnv(teamB + "/providers/Applications.Dapr/secretStores/s")}, nil),
+		"env secret scope not ID": container(map[string]any{"S": secretEnv(teamB)}, nil),
+		"env secret malformed ID": container(map[string]any{"S": secretEnv("/not/a/resource")}, nil),
+		"env secret empty":        container(map[string]any{"S": secretEnv("")}, nil),
+		"env secret not a string": container(map[string]any{"S": secretEnv(42)}, nil),
+		"env not an object":       container(map[string]any{"S": "x"}, nil),
+		"secretRef not an object": container(map[string]any{"S": map[string]any{"valueFrom": map[string]any{"secretRef": "x"}}}, nil),
+		"volume wrong type":       container(nil, map[string]any{"v": map[string]any{"kind": "persistent", "source": store(teamB)}}),
+		"volume source missing":   container(nil, map[string]any{"v": map[string]any{"kind": "persistent"}}),
+		"volume source malformed": container(nil, map[string]any{"v": map[string]any{"kind": "persistent", "source": "data"}}),
+		"volume unknown kind":     container(nil, map[string]any{"v": map[string]any{"kind": "other", "source": volume(teamB)}}),
+		"volume kind missing":     container(nil, map[string]any{"v": map[string]any{"source": volume(teamB)}}),
+		"volume not an object":    container(nil, map[string]any{"v": "x"}),
+		"volumes not a map":       {"properties": map[string]any{"container": map[string]any{"volumes": []any{}}}},
+		"container not an object": {"properties": map[string]any{"container": "x"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := catalog.ReferenceChecks("PUT", target, properties, ReferenceOptions{})
+			require.Error(t, err)
+		})
+	}
+
+	t.Run("team boundary", func(t *testing.T) {
+		identity := testIdentity()
+		evaluator, err := NewEvaluator(catalog, nil, []api.RoleAssignmentResource{
+			testAssignment("grant", builtInID("application-developer"), teamA, identity.Principal),
+		})
+		require.NoError(t, err)
+		for scope, allowed := range map[string]bool{teamA: true, teamB: false} {
+			checks, err := catalog.ReferenceChecks("PUT", target, container(
+				map[string]any{"S": secretEnv(store(scope))},
+				map[string]any{"v": map[string]any{"kind": "persistent", "source": volume(scope)}},
+			), ReferenceOptions{})
+			require.NoError(t, err)
+			var nested []Check
+			for _, check := range checks {
+				if !strings.Contains(check.Permission, "mongoDatabases") {
+					nested = append(nested, check)
+				}
+			}
+			require.Len(t, nested, 2)
+			results, err := evaluator.Evaluate(identity, nested)
+			require.NoError(t, err)
+			for _, result := range results {
+				require.Equal(t, allowed, result.Allowed, "%s on %s", result.Permission, scope)
+			}
+		}
+	})
+}
+
 func TestEnvironmentReferences(t *testing.T) {
 	catalog, err := NewCatalog(nil)
 	require.NoError(t, err)
