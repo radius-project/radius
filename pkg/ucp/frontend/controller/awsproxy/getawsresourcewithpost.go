@@ -158,8 +158,11 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 			return nil, err
 		}
 	}
+	if resp, err := addExtraProperties(ctx, p.awsClients.Kafka, serviceCtx.ResourceTypeInAWSFormat(), region, *describeTypeOutput.Schema, resourceProperties); resp != nil || err != nil {
+		return resp, err
+	}
 	// AWS may return write-only values: a native schema can mark more properties write-only than CloudFormation's, and
-	// some service APIs return secrets.
+	// some service APIs return secrets. Remove them last, so they are also removed from any extra property.
 	writeOnly, err := writeOnlyPaths(*describeTypeOutput.Schema)
 	if err != nil {
 		return nil, err

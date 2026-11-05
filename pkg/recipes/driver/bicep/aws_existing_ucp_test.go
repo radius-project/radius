@@ -81,3 +81,48 @@ func Test_Bicep_AddAWSProviderResourceIDs_ThroughUCP(t *testing.T) {
 		existingID: "arn:aws:s3:::existing-bucket",
 	}, output.ProviderResourceIDs)
 }
+
+// Test_Bicep_AddAWSProviderResourceIDs_ThroughUCP_ResourceGone checks that the driver never reads an unrelated resource
+// by the alias. The alias app-bucket manages the bucket assets, which was deleted outside Radius, and an unrelated bucket
+// is named app-bucket. GET returns 404 because AWS no longer has assets, not because UCP has no record, so the driver
+// does not fall back to POST /:get, and the output resource gets no ARN.
+func Test_Bicep_AddAWSProviderResourceIDs_ThroughUCP_ResourceGone(t *testing.T) {
+	const (
+		bucketType = "AWS::S3::Bucket"
+		aliasID    = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/app-bucket"
+	)
+
+	cc := awsfake.NewCloudControl()
+	host := testhost.Start(t, testhost.TestHostOptionFunc(func(options *ucp.Options) {
+		options.AWSClients.CloudControl = cc
+		options.AWSClients.CloudFormation = &awsfake.CloudFormation{Schemas: map[string]string{
+			bucketType: `{"primaryIdentifier": ["/properties/BucketName"], "readOnlyProperties": ["/properties/Arn"], "createOnlyProperties": ["/properties/BucketName"]}`,
+		}}
+		options.Modules = []modules.Initializer{ucp_aws_frontend.NewModule(options)}
+	}))
+
+	cc.Put(bucketType, "assets", map[string]any{"BucketName": "assets", "Arn": "arn:aws:s3:::assets"})
+	cc.Put(bucketType, "app-bucket", map[string]any{"BucketName": "app-bucket", "Arn": "arn:aws:s3:::app-bucket"})
+
+	body, err := json.Marshal(map[string]any{"properties": map[string]any{"BucketName": "assets"}})
+	require.NoError(t, err)
+	request, err := http.NewRequestWithContext(t.Context(), http.MethodPut, host.BaseURL()+aliasID+"?api-version=2023-10-01-preview", bytes.NewReader(body))
+	require.NoError(t, err)
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set(sdkclients.AWSResourceOwnerHeader, "deploy;/planes/radius/local/resourceGroups/test;;")
+	response, err := host.Client().Do(request)
+	require.NoError(t, err)
+	require.NoError(t, response.Body.Close())
+	require.Equal(t, http.StatusOK, response.StatusCode)
+
+	// assets is deleted outside Radius.
+	cc.Remove(bucketType, "assets")
+
+	d := &bicepDriver{resourceClientFactory: func(*rest.Config) processors.ResourceClient {
+		return processors.NewResourceClient(nil, host.Options().UCP, nil)
+	}}
+	output := &recipes.RecipeOutput{Resources: []string{aliasID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Empty(t, output.ProviderResourceIDs, "the unrelated bucket named like the alias must not be read")
+}
