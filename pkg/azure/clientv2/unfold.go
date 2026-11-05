@@ -176,7 +176,7 @@ func TryUnfoldResponseError(err error) *v1.ErrorDetails {
 }
 
 func unfoldResponseError(in *azcore.ResponseError) *v1.ErrorDetails {
-	if in == nil {
+	if in == nil || in.RawResponse == nil {
 		return nil
 	}
 
@@ -191,6 +191,9 @@ func unfoldResponseError(in *azcore.ResponseError) *v1.ErrorDetails {
 
 	err = json.Unmarshal(body, &raw)
 	if err != nil {
+		return nil
+	}
+	if raw.Error.Code == "" && raw.Error.Message == "" {
 		return nil
 	}
 

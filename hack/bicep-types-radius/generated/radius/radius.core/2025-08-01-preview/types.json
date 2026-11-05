@@ -100,8 +100,6 @@
   },
   {
     "$type": "DiscriminatedObjectType",
-    "name": "EnvironmentCompute",
-    "discriminator": "kind",
     "baseProperties": {
       "resourceId": {
         "type": {
@@ -118,11 +116,13 @@
         "description": "Configuration for supported external identity providers"
       }
     },
+    "discriminator": "kind",
     "elements": {
       "kubernetes": {
         "$ref": "#/23"
       }
-    }
+    },
+    "name": "EnvironmentCompute"
   },
   {
     "$type": "ObjectType",
@@ -388,11 +388,11 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
@@ -796,11 +796,11 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/63"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ArrayType",
@@ -810,11 +810,11 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ArrayType",
@@ -824,14 +824,17 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/67"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "FunctionType",
+    "output": {
+      "$ref": "#/51"
+    },
     "parameters": [
       {
         "name": "includeIcons",
@@ -845,21 +848,15 @@
         "type": {
           "$ref": "#/68"
         },
-        "description": "Optional caller-supplied dependency edges, grouped by source resource ID. Each entry maps a source Radius resource ID to the list of outbound Kind: Dependency edges leaving that source. Every entry MUST have direction: Outbound and kind: Dependency; entries that don't are ignored. The server merges these onto the connection-only graph it computes from stored resources: excluded types are dropped, unknown endpoints are dropped, and any pair already present as Kind: Connection wins over the caller-supplied Dependency. Typically populated by `rad app graph -a <name> <app.bicep>` after compiling the Bicep template locally."
+        "description": "Optional caller-supplied dependency edges, grouped by source resource ID. Each entry maps a source Radius resource ID to the list of outbound Kind: Dependency edges leaving that source. Every entry MUST have direction: Outbound and kind: Dependency; entries that don't are ignored. The server merges these onto the connection-only graph it computes from stored resources: excluded types are dropped, unknown endpoints are dropped, and any pair already present as Kind: Connection wins over the caller-supplied Dependency. Typically populated by `rad app graph -a \u003cname\u003e \u003capp.bicep\u003e` after compiling the Bicep template locally."
       }
-    ],
-    "output": {
-      "$ref": "#/51"
-    }
+    ]
   },
   {
     "$type": "ResourceType",
-    "name": "Radius.Core/applications@2025-08-01-preview",
     "body": {
       "$ref": "#/50"
     },
-    "readableScopes": 0,
-    "writableScopes": 0,
     "functions": {
       "getGraph": {
         "type": {
@@ -867,7 +864,10 @@
         },
         "description": "getGraph"
       }
-    }
+    },
+    "name": "Radius.Core/applications@2025-08-01-preview",
+    "readableScopes": 0,
+    "writableScopes": 0
   },
   {
     "$type": "StringLiteralType",
@@ -1013,11 +1013,11 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/83"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
@@ -1115,19 +1115,19 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/83"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
@@ -1214,13 +1214,13 @@
   },
   {
     "$type": "ResourceType",
-    "name": "Radius.Core/bicepSettings@2025-08-01-preview",
     "body": {
       "$ref": "#/102"
     },
+    "functions": {},
+    "name": "Radius.Core/bicepSettings@2025-08-01-preview",
     "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {}
+    "writableScopes": 0
   },
   {
     "$type": "StringLiteralType",
@@ -1299,19 +1299,19 @@
   },
   {
     "$type": "ObjectType",
-    "name": "RecipeParameterValue",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/63"
-    }
+    },
+    "name": "RecipeParameterValue",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/116"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
@@ -1524,27 +1524,27 @@
   },
   {
     "$type": "ObjectType",
-    "name": "RecipeParameterValue",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/63"
-    }
+    },
+    "name": "RecipeParameterValue",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/133"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
@@ -1659,13 +1659,13 @@
   },
   {
     "$type": "ResourceType",
-    "name": "Radius.Core/environments@2025-08-01-preview",
     "body": {
       "$ref": "#/136"
     },
+    "functions": {},
+    "name": "Radius.Core/environments@2025-08-01-preview",
     "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {}
+    "writableScopes": 0
   },
   {
     "$type": "StringLiteralType",
@@ -1804,27 +1804,27 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/63"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/63"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/150"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
@@ -1922,19 +1922,19 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/150"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
@@ -2021,13 +2021,13 @@
   },
   {
     "$type": "ResourceType",
-    "name": "Radius.Core/recipePacks@2025-08-01-preview",
     "body": {
       "$ref": "#/170"
     },
+    "functions": {},
+    "name": "Radius.Core/recipePacks@2025-08-01-preview",
     "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {}
+    "writableScopes": 0
   },
   {
     "$type": "StringLiteralType",
@@ -2039,8 +2039,6 @@
   },
   {
     "$type": "DiscriminatedObjectType",
-    "name": "TerraformBackend",
-    "discriminator": "type",
     "baseProperties": {
       "keyPrefix": {
         "type": {
@@ -2050,6 +2048,7 @@
         "description": "State key prefix, required. State keys are derived only from environment, application and resource names, so installations that share storage must use distinct prefixes to avoid writing the same key. Both clouds allow at most 968 ASCII characters, reserving space for the state key and S3 .tflock suffix within 1024 bytes."
       }
     },
+    "discriminator": "type",
     "elements": {
       "azurerm": {
         "$ref": "#/178"
@@ -2057,7 +2056,8 @@
       "s3": {
         "$ref": "#/176"
       }
-    }
+    },
+    "name": "TerraformBackend"
   },
   {
     "$type": "StringLiteralType",
@@ -2312,19 +2312,19 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/197"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
@@ -2436,19 +2436,19 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
-    "name": "Record",
-    "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
-    }
+    },
+    "name": "Record",
+    "properties": {}
   },
   {
     "$type": "ObjectType",
@@ -2549,13 +2549,13 @@
   },
   {
     "$type": "ResourceType",
-    "name": "Radius.Core/terraformSettings@2025-08-01-preview",
     "body": {
       "$ref": "#/213"
     },
+    "functions": {},
+    "name": "Radius.Core/terraformSettings@2025-08-01-preview",
     "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {}
+    "writableScopes": 0
   },
   {
     "$type": "StringLiteralType",
@@ -2641,59 +2641,66 @@
     "$type": "ObjectType",
     "name": "Radius.Core/roleDefinitions",
     "properties": {
-      "id": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 10,
-        "description": "The resource id"
-      },
-      "name": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 25,
-        "description": "The resource name"
-      },
-      "type": {
-        "type": {
-          "$ref": "#/215"
-        },
-        "flags": 10,
-        "description": "The resource type"
-      },
       "apiVersion": {
+        "description": "The resource api version",
+        "flags": 10,
         "type": {
           "$ref": "#/216"
-        },
+        }
+      },
+      "id": {
+        "description": "The resource id",
         "flags": 10,
-        "description": "The resource api version"
+        "type": {
+          "$ref": "#/0"
+        }
+      },
+      "name": {
+        "description": "The resource name",
+        "flags": 25,
+        "type": {
+          "$ref": "#/0"
+        }
       },
       "properties": {
+        "description": "The resource-specific properties for this resource.",
+        "flags": 1,
         "type": {
           "$ref": "#/217"
-        },
-        "flags": 1,
-        "description": "The resource-specific properties for this resource."
+        }
+      },
+      "scope": {
+        "description": "Assignment target resource or ID; existing roles may select an ancestor scope. Omit for the deployment resource group.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/243"
+        }
       },
       "systemData": {
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+        "flags": 2,
         "type": {
           "$ref": "#/39"
-        },
-        "flags": 2,
-        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
+        }
+      },
+      "type": {
+        "description": "The resource type",
+        "flags": 10,
+        "type": {
+          "$ref": "#/215"
+        }
       }
     }
   },
   {
     "$type": "ResourceType",
-    "name": "Radius.Core/roleDefinitions@2025-08-01-preview",
     "body": {
       "$ref": "#/223"
     },
+    "functions": {},
+    "name": "Radius.Core/roleDefinitions@2025-08-01-preview",
     "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {}
+    "writableScopes": 0
   },
   {
     "$type": "StringLiteralType",
@@ -2767,14 +2774,14 @@
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller."
+        "description": "The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:\u003ccluster-id\u003e; controller namespace principals use radius-controller."
       },
       "subject": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>."
+        "description": "The identity within the issuer. Kubernetes service accounts use system:serviceaccount:\u003cnamespace\u003e:\u003cname\u003e."
       },
       "displayName": {
         "type": {
@@ -2889,58 +2896,91 @@
     "$type": "ObjectType",
     "name": "Radius.Core/roleAssignments",
     "properties": {
-      "id": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 10,
-        "description": "The resource id"
-      },
-      "name": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 25,
-        "description": "The resource name"
-      },
-      "type": {
-        "type": {
-          "$ref": "#/225"
-        },
-        "flags": 10,
-        "description": "The resource type"
-      },
       "apiVersion": {
+        "description": "The resource api version",
+        "flags": 10,
         "type": {
           "$ref": "#/226"
-        },
+        }
+      },
+      "id": {
+        "description": "The resource id",
         "flags": 10,
-        "description": "The resource api version"
+        "type": {
+          "$ref": "#/0"
+        }
+      },
+      "name": {
+        "description": "The resource name",
+        "flags": 17,
+        "type": {
+          "$ref": "#/0"
+        }
       },
       "properties": {
+        "description": "The resource-specific properties for this resource.",
+        "flags": 1,
         "type": {
           "$ref": "#/227"
-        },
-        "flags": 1,
-        "description": "The resource-specific properties for this resource."
+        }
+      },
+      "scope": {
+        "description": "Assignment target resource or ID; existing roles may select an ancestor scope. Omit for the deployment resource group.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/243"
+        }
       },
       "systemData": {
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information.",
+        "flags": 2,
         "type": {
           "$ref": "#/39"
-        },
-        "flags": 2,
-        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
+        }
+      },
+      "type": {
+        "description": "The resource type",
+        "flags": 10,
+        "type": {
+          "$ref": "#/225"
+        }
       }
     }
   },
   {
     "$type": "ResourceType",
-    "name": "Radius.Core/roleAssignments@2025-08-01-preview",
     "body": {
       "$ref": "#/239"
     },
+    "functions": {},
+    "name": "Radius.Core/roleAssignments@2025-08-01-preview",
     "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {}
+    "writableScopes": 0
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RadiusAuthorizationResourceScope",
+    "properties": {
+      "id": {
+        "flags": 1,
+        "type": {
+          "$ref": "#/241"
+        }
+      }
+    }
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/241"
+      },
+      {
+        "$ref": "#/242"
+      }
+    ]
   }
 ]

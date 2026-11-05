@@ -19,6 +19,7 @@ package environments
 import (
 	"context"
 	"fmt"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	"net/http"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -110,6 +111,9 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 			return nil, fmt.Errorf("failed to create namespace for the environment: %w", err)
 		} else {
 			logger.Info("Created the namespace", "namespace", namespace)
+		}
+		if err := kubeutil.ApplyPodSecurityLabels(ctx, e.Options().KubeClient, namespace); err != nil {
+			return nil, err
 		}
 	}
 

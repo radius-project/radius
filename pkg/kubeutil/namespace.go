@@ -50,5 +50,5 @@ func PatchNamespace(ctx context.Context, client runtime_client.Client, namespace
 		return fmt.Errorf("error applying namespace: %w", err)
 	}
 
-	return nil
+	return ApplyPodSecurityLabels(ctx, client, namespace)
 }

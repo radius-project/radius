@@ -221,6 +221,7 @@ spec:
           readOnly: true
         {{- end }}
         {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
+        {{- with include "radius.authz.mtls.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.rp.resources }}
         resources:{{ toYaml .Values.rp.resources | nindent 10 }}
         {{- end }}
@@ -228,6 +229,7 @@ spec:
         - name: config-volume
           configMap:
             name: applications-rp-config
+        {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "applications-rp") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
           projected:

@@ -131,6 +131,30 @@ func (p *DatabaseProvider) initialize(ctx context.Context) result {
 		return p.result
 	}
 
+	if wrap := processWrapper(); wrap != nil {
+		client = wrap(client)
+	}
+
 	p.result = result{client, nil}
 	return p.result
+}
+
+var (
+	wrapperMu sync.RWMutex
+	wrapper   func(database.Client) database.Client
+)
+
+// SetProcessWrapper sets a function that wraps every database client this process
+// creates from options afterwards. Resource providers use it to send writes through
+// UCP's data-access endpoint when internal authorization is on.
+func SetProcessWrapper(fn func(database.Client) database.Client) {
+	wrapperMu.Lock()
+	defer wrapperMu.Unlock()
+	wrapper = fn
+}
+
+func processWrapper() func(database.Client) database.Client {
+	wrapperMu.RLock()
+	defer wrapperMu.RUnlock()
+	return wrapper
 }

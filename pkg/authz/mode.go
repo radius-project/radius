@@ -69,6 +69,41 @@ func (m *Mode) UnmarshalYAML(value *yaml.Node) error {
 type Options struct {
 	// Mode is the authorization mode. Defaults to ModeOff when unset.
 	Mode Mode `yaml:"mode,omitempty"`
+
+	// CertificateDirectory is the directory that holds the component's mTLS certificate
+	// (tls.crt, tls.key, and ca.crt). It is required when the mode is not off.
+	CertificateDirectory string `yaml:"certificateDirectory,omitempty"`
+
+	// Namespace is the Radius namespace used to check peer certificate identities.
+	// It is required when the mode is not off.
+	Namespace string `yaml:"namespace,omitempty"`
+
+	// NamespaceMappings maps Kubernetes namespaces to the Radius resource group and
+	// environment the controller may act in for that namespace (C1).
+	NamespaceMappings []NamespaceMapping `yaml:"namespaceMappings,omitempty"`
+}
+
+// NamespaceMapping maps one Kubernetes namespace to a Radius resource group and environment.
+type NamespaceMapping struct {
+	// Namespace is the Kubernetes namespace.
+	Namespace string `yaml:"namespace"`
+
+	// ResourceGroup is the Radius resource group scope, such as
+	// "/planes/radius/local/resourceGroups/default".
+	ResourceGroup string `yaml:"resourceGroup"`
+
+	// Environment is the optional Radius environment resource ID.
+	Environment string `yaml:"environment,omitempty"`
+}
+
+// MappingFor returns the mapping for a Kubernetes namespace.
+func (o Options) MappingFor(namespace string) (NamespaceMapping, bool) {
+	for _, m := range o.NamespaceMappings {
+		if m.Namespace == namespace {
+			return m, true
+		}
+	}
+	return NamespaceMapping{}, false
 }
 
 // EffectiveMode returns the configured mode, or ModeOff when it is unset.

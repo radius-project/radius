@@ -59,7 +59,7 @@ spec:
       containers:
         - name: radius-api-readiness
           image: "{{ include "radius.image" (dict "image" $readinessImage "tag" $readinessTag "global" .Values.global) }}"
-          imagePullPolicy: Always
+          imagePullPolicy: {{ get $readiness "imagePullPolicy" | default "Always" }}
           args:
             - wait-for-control-plane
             - "--timeout={{ $timeoutSeconds }}s"

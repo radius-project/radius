@@ -39,6 +39,7 @@ Path-scoped coding conventions live in [.github/instructions/](/.github/instruct
 Agents running in Copilot agent surfaces (VS Code, Cloud Agent, CLI) have additional convenience wrappers over the same knowledge in the docs above:
 
 - **Skills** in [.github/skills/](/.github/skills/) wrap multi-step Radius workflows such as building the CLI, building and pushing images, installing from custom images, code review, and documenting architecture.
+- **User RBAC POC**: [.github/skills/user-rbac-poc/](/.github/skills/user-rbac-poc/) wraps the opt-in dedicated kind workflow.
 - **Custom agents** in [.github/agents/](/.github/agents/) provide specialized modes such as issue investigation.
 
 VS Code users additionally have slash-command **prompts** in [.github/prompts/](/.github/prompts/).

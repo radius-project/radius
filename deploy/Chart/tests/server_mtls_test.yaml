@@ -1,0 +1,181 @@
+suite: test server mTLS mounts and ports
+templates:
+  - ucp/deployment.yaml
+  - ucp/service.yaml
+  - ucp/configmaps.yaml
+  - rp/deployment.yaml
+  - rp/configmaps.yaml
+  - dynamic-rp/deployment.yaml
+  - dynamic-rp/configmaps.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: does not mount mTLS certificates or open the UCP internal port by default
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+          any: true
+        template: ucp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+          any: true
+        template: rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+          any: true
+        template: dynamic-rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: internal
+          any: true
+        template: ucp/deployment.yaml
+      - lengthEqual:
+          path: spec.ports
+          count: 1
+        template: ucp/service.yaml
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: internalPort
+        template: ucp/configmaps.yaml
+
+  - it: mounts each server's mTLS Secret and configures it in dryRun mode
+    set:
+      global.rbac.dryRun: true
+    asserts: &mounted
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+            secret:
+              secretName: ucp-mtls
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mtls
+            mountPath: /var/run/radius/mtls
+            readOnly: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+            secret:
+              secretName: applications-rp-mtls
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mtls
+            mountPath: /var/run/radius/mtls
+            readOnly: true
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+            secret:
+              secretName: dynamic-rp-mtls
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: mtls
+            mountPath: /var/run/radius/mtls
+            readOnly: true
+        template: dynamic-rp/deployment.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/mtls"\n  namespace: "radius-system"$'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/mtls"\n  namespace: "radius-system"$'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/mtls"\n  namespace: "radius-system"$'
+        template: dynamic-rp/configmaps.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^  port: 9443\n(.*\n)*  internalPort: 9444$'
+        template: ucp/configmaps.yaml
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 9444
+            name: internal
+            protocol: TCP
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.ports
+          content:
+            port: 9444
+            name: internal
+            protocol: TCP
+            targetPort: 9444
+        template: ucp/service.yaml
+      # The Kubernetes API aggregation port is unchanged.
+      - contains:
+          path: spec.ports
+          content:
+            port: 443
+            name: https
+            protocol: TCP
+            targetPort: 9443
+        template: ucp/service.yaml
+
+  - it: mounts each server's mTLS Secret and configures it in enforce mode
+    set:
+      global.rbac.enabled: true
+    asserts: *mounted
+
+  # Kubelet and Prometheus cannot present client certificates, so probes and metrics
+  # must not use the ports that require mTLS in enforce mode.
+  - it: keeps probes and metrics off the mTLS ports in enforce mode
+    set:
+      global.rbac.enabled: true
+      global.prometheus.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: ucp
+        template: ucp/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+        template: ucp/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].readinessProbe
+        template: rp/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+        template: rp/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].readinessProbe
+        template: dynamic-rp/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+        template: dynamic-rp/deployment.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^metricsProvider:\n(.*\n)*    port: 9090\n(.*\n)*server:\n  host: "0.0.0.0"\n  port: 5443$'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^metricsProvider:\n(.*\n)*    port: 9092\n(.*\n)*server:\n  host: "0.0.0.0"\n  port: 8082$'
+        template: dynamic-rp/configmaps.yaml
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 9090
+            name: metrics
+            protocol: TCP
+        template: ucp/deployment.yaml
