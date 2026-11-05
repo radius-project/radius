@@ -34,6 +34,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/docdb v1.58.1
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.341.0
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.66.6
+	github.com/aws/aws-sdk-go-v2/service/emr v1.71.0
+	github.com/aws/aws-sdk-go-v2/service/fsx v1.74.9
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.5
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.5
 	github.com/aws/smithy-go v1.28.8

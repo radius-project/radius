@@ -22,12 +22,16 @@ import (
 	dmssdk "github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
 	daxsdk "github.com/aws/aws-sdk-go-v2/service/dax"
 	docdbsdk "github.com/aws/aws-sdk-go-v2/service/docdb"
+	emrsdk "github.com/aws/aws-sdk-go-v2/service/emr"
+	fsxsdk "github.com/aws/aws-sdk-go-v2/service/fsx"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dax"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dms"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/docdb"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/emr"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/fsx"
 )
 
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
@@ -39,6 +43,8 @@ func All(cfg aws.Config) []native.Handler {
 		docdb.NewInstance(docdbAPI),
 		dax.NewCluster(daxsdk.NewFromConfig(cfg)),
 		dms.NewReplicationInstance(dmssdk.NewFromConfig(cfg)),
+		emr.NewCluster(emrsdk.NewFromConfig(cfg)),
+		fsx.NewFileSystem(fsxsdk.NewFromConfig(cfg)),
 	}
 }
 
