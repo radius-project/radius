@@ -249,7 +249,7 @@ func newTracked(store *awsfake.CloudControl) *tracked {
 }
 
 func (t *tracked) Create(ctx context.Context, request native.CreateRequest) (string, error) {
-	t.api.use(identifierOf(awsapi.String(request.Properties, "ListenerArn"), request.ClientToken))
+	t.api.use(awsapi.String(request.Properties, "ListenerArn") + "|" + native.GenerateName(request.ClientToken))
 	return t.ListenerCertificate.Create(ctx, request)
 }
 

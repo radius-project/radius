@@ -65,8 +65,7 @@ func (h *Permissions) Options() native.Options {
 	return native.Options{List: native.ListNone, Recovery: native.RecoverByIdentifier}
 }
 
-// Identifier returns the JSON of DataLakePrincipal and Resource, with object keys sorted and escaped with
-// awsapi.Segment, because role ARNs hold "/", or "" when either is missing.
+// Identifier returns the JSON of DataLakePrincipal and Resource, with object keys sorted, or "" when either is missing.
 func (h *Permissions) Identifier(properties map[string]any) (string, error) {
 	principal, _ := properties["DataLakePrincipal"].(map[string]any)
 	resource, _ := properties["Resource"].(map[string]any)
@@ -77,7 +76,7 @@ func (h *Permissions) Identifier(properties map[string]any) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return awsapi.Segment(string(b)), nil
+	return string(b), nil
 }
 
 // target is the principal and resource whose permissions the resource is: Principal and Resource in the template's
@@ -94,7 +93,7 @@ type target struct {
 // every property set of the resource names the same ones.
 func targetOf(identifier string, properties ...map[string]any) (target, error) {
 	var t target
-	if err := json.Unmarshal([]byte(awsapi.Unsegment(identifier)), &t); err != nil || len(t.Principal) == 0 || len(t.Resource) == 0 {
+	if err := json.Unmarshal([]byte(identifier), &t); err != nil || len(t.Principal) == 0 || len(t.Resource) == 0 {
 		t = target{}
 		for _, m := range properties {
 			principal, _ := m["DataLakePrincipal"].(map[string]any)

@@ -67,14 +67,9 @@ func (h *Resource) Options() native.Options {
 	return native.Options{List: native.ListRegion, Recovery: native.RecoverByIdentifier}
 }
 
-// Identifier returns ResourceArn, or "" when it holds "/", such as an S3 location with a path. Cloud Control serves
-// the type in some regions with the raw ResourceArn as its identifier, so it can't be escaped to one resource ID segment.
+// Identifier returns ResourceArn.
 func (h *Resource) Identifier(properties map[string]any) (string, error) {
-	arn := awsapi.String(properties, "ResourceArn")
-	if strings.Contains(arn, "/") {
-		return "", nil
-	}
-	return arn, nil
+	return awsapi.String(properties, "ResourceArn"), nil
 }
 
 func (h *Resource) describe(ctx context.Context, region string, identifier string) (*types.ResourceInfo, error) {
@@ -123,7 +118,7 @@ func (h *Resource) Create(ctx context.Context, request native.CreateRequest) (st
 	if err := h.register(ctx, request.Region, request.Properties); err != nil {
 		return "", err
 	}
-	return awsapi.String(request.Properties, "ResourceArn"), nil
+	return h.Identifier(request.Properties)
 }
 
 func (h *Resource) register(ctx context.Context, region string, properties map[string]any) error {

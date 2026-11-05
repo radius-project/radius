@@ -29,7 +29,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
-	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
@@ -107,11 +106,10 @@ func Test_Identifier(t *testing.T) {
 	legacy := map[string]any{"Namespace": "AWS/EC2", "MetricName": "CPUUtilization", "Stat": "Average", "Dimensions": dims("b", "2", "a", "1")}
 	modern := map[string]any{"SingleMetricAnomalyDetector": single("Average", dims("a", "1", "b", "2"))}
 	require.Equal(t, identifierOf(t, legacy), identifierOf(t, modern), "both forms and any dimension order give one identifier")
-	require.NotContains(t, identifierOf(t, legacy), "/", "an identifier is one resource ID segment")
-	require.JSONEq(t, `{"Namespace":"AWS/EC2","MetricName":"CPUUtilization","Dimensions":[{"Name":"a","Value":"1"},{"Name":"b","Value":"2"}],"Stat":"Average"}`, awsapi.Unsegment(identifierOf(t, legacy)))
+	require.JSONEq(t, `{"Namespace":"AWS/EC2","MetricName":"CPUUtilization","Dimensions":[{"Name":"a","Value":"1"},{"Name":"b","Value":"2"}],"Stat":"Average"}`, identifierOf(t, legacy))
 
 	math := map[string]any{"MetricMathAnomalyDetector": mathDetector("m1")}
-	require.JSONEq(t, `{"MetricDataQueries":[{"Id":"m1","MetricStat":{"Metric":{"Namespace":"AWS/EC2","MetricName":"CPUUtilization","Dimensions":[{"Name":"a","Value":"1"},{"Name":"b","Value":"2"}]},"Period":300,"Stat":"Average"},"ReturnData":true}]}`, awsapi.Unsegment(identifierOf(t, math)))
+	require.JSONEq(t, `{"MetricDataQueries":[{"Id":"m1","MetricStat":{"Metric":{"Namespace":"AWS/EC2","MetricName":"CPUUtilization","Dimensions":[{"Name":"a","Value":"1"},{"Name":"b","Value":"2"}]},"Period":300,"Stat":"Average"},"ReturnData":true}]}`, identifierOf(t, math))
 
 	require.Empty(t, identifierOf(t, map[string]any{"Configuration": config("UTC")}), "no metric, no identifier")
 

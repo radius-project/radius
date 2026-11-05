@@ -131,20 +131,3 @@ func Test_Resource_Errors(t *testing.T) {
 	_, err = h.Read(ctx, region, dataArn)
 	require.ErrorIs(t, err, native.ErrNotFound)
 }
-
-// Test_Resource_Identifier checks that a ResourceArn with a path gives no identifier, so UCP asks for one where the
-// handler serves the type, and that Create still returns the ARN AWS knows the resource by.
-func Test_Resource_Identifier(t *testing.T) {
-	h, _ := newResource(nil)
-	id, err := h.Identifier(map[string]any{"ResourceArn": dataArn})
-	require.NoError(t, err)
-	require.Equal(t, dataArn, id)
-
-	withPath := dataArn + "/data"
-	id, err = h.Identifier(map[string]any{"ResourceArn": withPath})
-	require.NoError(t, err)
-	require.Empty(t, id)
-	id, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"ResourceArn": withPath, "UseServiceLinkedRole": true}})
-	require.NoError(t, err)
-	require.Equal(t, withPath, id)
-}

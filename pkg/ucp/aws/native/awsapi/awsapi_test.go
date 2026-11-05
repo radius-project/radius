@@ -189,12 +189,3 @@ func Test_FieldNames(t *testing.T) {
 	require.Equal(t, []string{"Mode"}, FieldNames(&sdkSettings{}))
 	require.Equal(t, []string{"Key", "Value"}, FieldNames(sdkTag{}))
 }
-
-func Test_Segment(t *testing.T) {
-	for _, s := range []string{"", "plain", "arn:aws:iam::123456789012:role/a/b", "100%", "%2F/%25"} {
-		escaped := Segment(s)
-		require.NotContains(t, escaped, "/")
-		require.Equal(t, s, Unsegment(escaped))
-	}
-	require.Equal(t, "role%2Fa", Segment("role/a"))
-}

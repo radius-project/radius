@@ -26,7 +26,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
-	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
 )
 
@@ -326,8 +325,7 @@ func Test_Permissions_Identifier(t *testing.T) {
 		"Permissions":       list("SELECT"),
 	})
 	require.NoError(t, err)
-	require.Equal(t, awsapi.Segment(`{"DataLakePrincipal":{"DataLakePrincipalIdentifier":"`+analyst+`"},"Resource":{"TableResource":{"DatabaseName":"d","Name":"t"}}}`), id)
-	require.NotContains(t, id, "/", "the identifier is one resource ID segment")
+	require.Equal(t, `{"DataLakePrincipal":{"DataLakePrincipalIdentifier":"`+analyst+`"},"Resource":{"TableResource":{"DatabaseName":"d","Name":"t"}}}`, id)
 
 	id, err = h.Identifier(map[string]any{"Resource": salesDatabase})
 	require.NoError(t, err)
