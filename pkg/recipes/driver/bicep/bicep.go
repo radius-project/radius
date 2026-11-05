@@ -36,6 +36,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/radius-project/radius/pkg/aws/arnproperties"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
@@ -717,6 +718,11 @@ func (d *bicepDriver) addAWSProviderResourceIDs(ctx context.Context, output *rec
 		}
 
 		properties, err := resourceClient.GetProperties(ctx, resource)
+		if clientv2.Is404Error(err) {
+			// UCP has no record of a resource the recipe references with existing, so GET returns 404. Its ID ends in
+			// the AWS identifier, so read it from AWS by that.
+			properties, err = resourceClient.GetAWSPropertiesByIdentifier(ctx, resource)
+		}
 		if err != nil {
 			logger.Info("Could not read the AWS output resource to find its ARN", "resourceID", resource, "error", err.Error())
 			continue

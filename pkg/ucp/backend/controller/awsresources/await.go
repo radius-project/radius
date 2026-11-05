@@ -99,7 +99,7 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		return requeue(ctx, err), nil
 	}
 	if rec == nil {
-		return c.noRecord(id, request), nil
+		return c.noRecord(ctx, id, request)
 	}
 
 	// The operation ID is the Cloud Control request token. A redelivered operation that already finished reports the
@@ -107,9 +107,6 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	// or finish that one.
 	if sameRequest(rec.Properties.LastRequestToken, request.OperationID) {
 		return finishedResult(rec), nil
-	}
-	if records.IsDeleted(rec) {
-		return c.noRecord(id, request), nil
 	}
 	if !sameRequest(rec.Properties.RequestToken, request.OperationID) {
 		return superseded(id), nil
@@ -139,8 +136,9 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 			Message: fmt.Sprintf("AWS Cloud Control no longer has the request for the AWS resource %q. Deploy again.", id.Name()),
 			Target:  request.ResourceID,
 		}
-		if saveErr := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) {
+		if saveErr := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
 			records.Fail(rec, &failure)
+			return false
 		}); errors.Is(saveErr, errSuperseded) {
 			return superseded(id), nil
 		} else if saveErr != nil {
@@ -160,18 +158,14 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	}
 
 	if failed != nil {
-		code := v1.CodeInternal
-		if failed.IsClientError() {
-			code = v1.CodeInvalid
-		}
-		failure := v1.ErrorDetails{Code: code, Message: failed.Error(), Target: request.ResourceID}
-		if saveErr := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) {
-			// A failed create leaves a tombstone, so the next deploy starts over.
+		failure := failureOf(failed, request)
+		if saveErr := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
+			// A failed create removes the record, so the next deploy starts over.
 			if op == records.OperationCreate {
-				records.Tombstone(rec, &failure)
-				return
+				return true
 			}
 			records.Fail(rec, &failure)
+			return false
 		}); errors.Is(saveErr, errSuperseded) {
 			return superseded(id), nil
 		} else if saveErr != nil {
@@ -180,15 +174,15 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		return ctrl.NewFailedResult(failure), nil
 	}
 
-	err = update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) {
+	err = update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
 		if op == records.OperationDelete {
-			records.Tombstone(rec, nil)
-			return
+			return true
 		}
 		if status.Identifier != "" {
 			rec.Properties.AWSIdentifier = status.Identifier
 		}
 		records.ApplyPending(rec)
+		return false
 	})
 	if errors.Is(err, errSuperseded) {
 		return superseded(id), nil
@@ -196,6 +190,48 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		return requeue(ctx, fmt.Errorf("AWS finished the %s of %q, but UCP failed to save the result: %w", strings.ToLower(op), id.Name(), err)), nil
 	}
 	return ctrl.Result{}, nil
+}
+
+// noRecord finishes an operation whose record is gone. A finished delete and a failed create remove the record, so
+// UCP stopped, or failed to save the operation's result, after it removed the record. The operation ID is the Cloud
+// Control request token, so the result is read from Cloud Control again.
+func (c *AwaitController) noRecord(ctx context.Context, id resources.ID, request *ctrl.Request) (ctrl.Result, error) {
+	ucplog.FromContextOrDiscard(ctx).Info("Reading the result of an AWS operation whose record is gone", "alias", id.Name(), "requestToken", request.OperationID.String())
+	_, err := ucp_aws.WaitForRequest(ctx, c.clients.CloudControl, id.FindScope(resources_aws.ScopeRegions), request.OperationID.String())
+
+	var notFound *cctypes.RequestTokenNotFoundException
+	if errors.As(err, &notFound) {
+		// Cloud Control no longer knows the request. With no record, a delete is done, and a create or update has
+		// nothing to finish.
+		if c.method == v1.OperationDelete {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.NewFailedResult(v1.ErrorDetails{
+			Code:    v1.CodeInternal,
+			Message: fmt.Sprintf("UCP has no record of the AWS resource %q, and AWS Cloud Control no longer has the request. Deploy again.", id.Name()),
+			Target:  request.ResourceID,
+		}), nil
+	}
+
+	var failed *ucp_aws.RequestStatus
+	if errors.As(err, &failed) {
+		return ctrl.NewFailedResult(failureOf(failed, request)), nil
+	} else if err != nil {
+		if ctx.Err() != nil {
+			return ctrl.Result{}, err
+		}
+		return requeue(ctx, err), nil
+	}
+	return ctrl.Result{}, nil
+}
+
+// failureOf returns the error details of a Cloud Control request that failed.
+func failureOf(failed *ucp_aws.RequestStatus, request *ctrl.Request) v1.ErrorDetails {
+	code := v1.CodeInternal
+	if failed.IsClientError() {
+		code = v1.CodeInvalid
+	}
+	return v1.ErrorDetails{Code: code, Message: failed.Error(), Target: request.ResourceID}
 }
 
 // errSuperseded means the record shows a different operation than the one being finished.
@@ -221,10 +257,10 @@ func superseded(id resources.ID) ctrl.Result {
 	return ctrl.NewCanceledResult(fmt.Sprintf("A newer operation on the AWS resource %q replaced this one.", id.Name()))
 }
 
-// update reads the record, applies change, and saves it. It returns errSuperseded, and changes nothing, when the record
-// no longer shows the operation operationID. A save that loses a race with another write, such as the heartbeat, is
-// tried again.
-func update(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, change func(rec *datamodel.AWSResource)) error {
+// update reads the record, applies change, and saves it. When change returns true, it removes the record instead. It
+// returns errSuperseded, and changes nothing, when the record no longer shows the operation operationID. A save or
+// delete that loses a race with another write, such as the heartbeat, is tried again.
+func update(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, change func(rec *datamodel.AWSResource) bool) error {
 	for range maxSaveAttempts {
 		rec, etag, err := store.Get(ctx, id)
 		if err != nil {
@@ -235,8 +271,11 @@ func update(ctx context.Context, store *records.Store, id resources.ID, operatio
 		if !sameRequest(rec.Properties.RequestToken, operationID) {
 			return errSuperseded
 		}
-		change(rec)
-		_, err = store.Save(ctx, rec, etag)
+		if change(rec) {
+			err = store.DeleteIfUnchanged(ctx, id, etag)
+		} else {
+			_, err = store.Save(ctx, rec, etag)
+		}
 		if errors.Is(err, &database.ErrConcurrency{}) {
 			continue
 		}
@@ -268,19 +307,6 @@ func heartbeat(ctx context.Context, store *records.Store, id resources.ID, inter
 		cancel()
 		<-done
 	}
-}
-
-// noRecord returns the result of an operation on an alias with no record, or a tombstone: a delete is done, and a
-// create or update has nothing to finish.
-func (c *AwaitController) noRecord(id resources.ID, request *ctrl.Request) ctrl.Result {
-	if c.method == v1.OperationDelete {
-		return ctrl.Result{}
-	}
-	return ctrl.NewFailedResult(v1.ErrorDetails{
-		Code:    v1.CodeInternal,
-		Message: fmt.Sprintf("UCP has no record of the AWS resource %q.", id.Name()),
-		Target:  request.ResourceID,
-	})
 }
 
 // requeue returns a result that keeps the operation in progress and has the worker run it again later.
