@@ -167,6 +167,29 @@ tests:
           path: spec.secretName
           pattern: '-mtls$'
 
+  - it: gives the engine its own identity in the release namespace
+    release:
+      namespace: radius-test
+    set:
+      global.rbac.enabled: true
+      de.ucpMTLS.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: bicep-de-cert
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: radius-test
+      - equal:
+          path: spec.secretName
+          value: bicep-de-mtls
+      - equal:
+          path: spec.dnsNames
+          value: [bicep-de.radius-test.svc]
+      - equal:
+          path: spec.issuerRef.name
+          value: radius-ca-issuer
+
   - it: fails for caSecret mode
     set:
       global.rbac.enabled: true

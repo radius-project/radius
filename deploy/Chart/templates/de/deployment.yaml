@@ -1,5 +1,16 @@
 {{- $appversion := include "radius.versiontag" . }}
 {{- $image := include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
+{{- $settings := .Values.de.ucpMTLS | default dict }}
+{{- $mtls := false }}
+{{- if hasKey $settings "enabled" }}
+{{- $mtls = $settings.enabled }}
+{{- end }}
+{{- if not (kindIs "bool" $mtls) }}
+{{- fail "de.ucpMTLS.enabled must be a boolean" }}
+{{- end }}
+{{- if and $mtls (eq (include "radius.authz.mode" .) "off") }}
+{{- fail "de.ucpMTLS.enabled requires global.rbac.dryRun=true or global.rbac.enabled=true" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -56,6 +67,9 @@ spec:
         - name: appsettings-vol
           configMap:
             name: bicep-de-config
+        {{- if $mtls }}
+        {{- include "radius.authz.mtls.volume" (dict "root" . "component" "bicep-de") | nindent 8 }}
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:
@@ -78,6 +92,9 @@ spec:
         - name: appsettings-vol
           mountPath: /app/appsettings.Production.json
           subPath: appsettings.Production.json
+        {{- if $mtls }}
+        {{- include "radius.authz.mtls.volumeMount" . | nindent 8 }}
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -101,7 +118,17 @@ spec:
         - name: kubernetes
           value: "true"
         - name: RADIUSBACKENDURL
+        {{- if $mtls }}
+          value: https://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3
+        - name: UCP_MTLS_ENABLED
+          value: "true"
+        - name: UCP_MTLS_CERTIFICATE_DIRECTORY
+          value: {{ include "radius.authz.mtls.mountPath" . | quote }}
+        - name: UCP_MTLS_NAMESPACE
+          value: {{ .Release.Namespace | quote }}
+        {{- else }}
           value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}

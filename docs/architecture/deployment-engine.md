@@ -96,6 +96,8 @@ debug) or `http://host.k3d.internal:9000/apis/api.ucp.dev/v1alpha3`
 Debug manifests may also include provider toggles such as `AZURE_ENABLED`,
 `AWS_ENABLED`, and `KUBERNETES_ENABLED`.
 
+The Helm chart also has preparatory opt-in mTLS wiring for engine callbacks: `de.ucpMTLS.enabled=true` with a non-off global authorization mode mounts `bicep-de-mtls` at `/var/run/radius/mtls`, sets `UCP_MTLS_ENABLED`, `UCP_MTLS_CERTIFICATE_DIRECTORY` and `UCP_MTLS_NAMESPACE`, and selects `https://ucp.<namespace>.svc:9444/apis/api.ucp.dev/v1alpha3`. It requires a paired engine transport implementation and a compatible image; neither chart rendering nor UCP routing tests prove the external engine uses the transport. The default image and legacy callback endpoint remain unchanged, and the certificate-less aggregation compatibility path is not removed. See the [chart integration prerequisite](../../deploy/Chart/README.md#deployment-engine-mtls-integration-prerequisite) for the contract and pending publication and end-to-end checks.
+
 ## How Deployments Work
 
 There are three main entry points that trigger deployments through the
