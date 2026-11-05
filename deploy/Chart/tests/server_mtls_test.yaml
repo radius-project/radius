@@ -98,7 +98,7 @@ tests:
         template: ucp/configmaps.yaml
       - matchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/mtls"\n  namespace: "radius-system"$'
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  podSecurityLevel: "baseline"\n  controlPlaneNamespace: "radius-system"\n  certificateDirectory: "/var/run/radius/mtls"\n  namespace: "radius-system"$'
         template: rp/configmaps.yaml
       - matchRegex:
           path: data["radius-self-host.yaml"]
