@@ -69,10 +69,11 @@ export function selectNonCloudTests({
   }
 
   const includeAuthzModes = profile === "full" || authzChanged !== false;
+  // Authorization changes also need the legacy paths exercised with authorization off.
   const selected = suites.filter(
     (name) =>
-      (profile === "full" || !legacySuites.has(name)) &&
-      (includeAuthzModes || !authzModeSuites.has(name))
+      includeAuthzModes ||
+      (!legacySuites.has(name) && !authzModeSuites.has(name))
   );
   const include = [
     ...selected.map((name) => ({

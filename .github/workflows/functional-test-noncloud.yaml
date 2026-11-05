@@ -27,7 +27,7 @@ on:
         required: true
         default: main
       test-profile:
-        description: Full coverage or the reduced PR matrix
+        description: Full coverage or path-gated PR selection (manual runs retain full coverage)
         type: choice
         options: [full, pr]
         default: full
