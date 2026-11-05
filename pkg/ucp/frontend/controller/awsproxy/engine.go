@@ -697,7 +697,7 @@ func (e *engine) track(ctx context.Context, r *request, rec *datamodel.AWSResour
 		return uuid.UUID{}, fmt.Errorf("AWS accepted the request for the alias %q, but UCP failed to save it. Deploy again to continue it: %w", r.id.Name(), err)
 	}
 
-	if err := e.queue(ctx, r.id, method, operationID, operationTimeout(r, op)); err != nil {
+	if err := e.queue(ctx, r, method, operationID, operationTimeout(r, op)); err != nil {
 		// Nothing polls the operation, so it is not in progress: the next request polls the request token right away.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
@@ -709,7 +709,7 @@ func (e *engine) track(ctx context.Context, r *request, rec *datamodel.AWSResour
 
 // queue queues the operation on UCP's async backend, which runs it for at most timeout. The Cloud Control request
 // token, or the ID UCP made for a native operation, is the operation ID.
-func (e *engine) queue(ctx context.Context, id resources.ID, method v1.OperationMethod, operationID uuid.UUID, timeout time.Duration) error {
+func (e *engine) queue(ctx context.Context, r *request, method v1.OperationMethod, operationID uuid.UUID, timeout time.Duration) error {
 	if e.sm == nil {
 		return errors.New("async operations are not available: the status manager is not configured")
 	}
@@ -719,9 +719,9 @@ func (e *engine) queue(ctx context.Context, id resources.ID, method v1.Operation
 		copied := *armCtx
 		sCtx = &copied
 	}
-	sCtx.ResourceID = id
+	sCtx.ResourceID = r.id
 	sCtx.OperationID = operationID
-	sCtx.OperationType = v1.OperationType{Type: records.OperationType, Method: method}
+	sCtx.OperationType = v1.OperationType{Type: operationType(r), Method: method}
 
 	return e.sm.QueueAsyncOperation(ctx, sCtx, statusmanager.QueueOperationOptions{
 		OperationTimeout: timeout,

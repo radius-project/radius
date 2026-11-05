@@ -78,9 +78,11 @@ type Handler interface {
 
 // IdentifierEncoder is implemented by a handler whose identifier is not its primary identifier values joined with
 // "|", such as a type whose identifier values can contain "|". UCP uses it for create, take-over, `existing`,
-// recovery, and delete, so every path finds the resource by the same identifier.
+// recovery, and delete, with either handler, so every path finds the resource by the same identifier.
 type IdentifierEncoder interface {
-	// Identifier returns the identifier the properties give, or "" when they don't give all of it.
+	// Identifier returns the identifier the properties give, or "" when they don't give all of it. It must be one
+	// resource ID segment: no "/", and not "." or "..". For a type that has a CloudFormation type, it must be the
+	// identifier Cloud Control accepts, because Cloud Control serves the type in some regions.
 	Identifier(properties map[string]any) (string, error)
 }
 

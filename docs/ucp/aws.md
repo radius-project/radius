@@ -93,7 +93,9 @@ UCP picks the handler for each request:
 
 Both handlers use the same record. The native schema replaces CloudFormation's with either handler, so both store the same AWS identifier, use the same property names, and treat the same properties as write-only. The record saves which handler started an operation (`handler`), and that handler finishes it, even if the region has since switched.
 
-A native operation follows the same steps as a Cloud Control one: owner check, compare, save pending values, start call, operation status. The handler's start call returns at once, UCP makes its own operation ID, and the worker calls the handler's `Progress` until the operation finishes or the handler's timeout passes. `Progress` only reads AWS, so a restarted worker waits again safely.
+A native operation follows the same steps as a Cloud Control one: owner check, compare, save pending values, start call, operation status. The handler's start call returns at once, UCP makes its own operation ID, and the worker calls the handler's `Progress` until the operation finishes or the handler's timeout passes. `Progress` only reads AWS, so a restarted worker waits again safely. UCP queues native operations under their own operation type, `AWSRESOURCENATIVE`, so a worker that finds the record already removed never asks Cloud Control about them.
+
+A handler whose identifier isn't its primary identifier values joined with `|` declares its own encoding. UCP uses it for create, take-over, `existing`, recovery, and delete, with either handler. The encoded identifier must be one resource ID segment, because it is the last segment of the ID a list or `existing` returns.
 
 | Scenario                                                    | What UCP does                                                                                                                                                    |
 |-------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|

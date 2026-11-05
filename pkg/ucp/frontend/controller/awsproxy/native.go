@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"uuid"
@@ -136,6 +137,14 @@ func handlerName(r *request) string {
 	return ""
 }
 
+// operationType returns the async operation type UCP queues the operation of r under.
+func operationType(r *request) string {
+	if r.handler != nil {
+		return records.NativeOperationType
+	}
+	return records.OperationType
+}
+
 // operationTimeout returns how long UCP's async operation for op runs.
 func operationTimeout(r *request, op string) time.Duration {
 	if r.handler == nil {
@@ -153,12 +162,27 @@ func isNotFound(err error) bool {
 // and otherwise the primary identifier values joined with "|", as Cloud Control expects. t is nil for a type with no
 // native handler. Every path uses it, so a resource is found by the same identifier whichever handler serves it.
 func identifierFor(t *native.Type, properties map[string]any, schema string) (string, error) {
-	if t != nil {
-		if encoder, ok := t.Handler.(native.IdentifierEncoder); ok {
-			return encoder.Identifier(properties)
-		}
+	if !hasEncoder(t) {
+		return identifierFromProperties(properties, schema)
 	}
-	return identifierFromProperties(properties, schema)
+	identifier, err := t.Handler.(native.IdentifierEncoder).Identifier(properties)
+	if err != nil {
+		return "", err
+	}
+	// The identifier is the last segment of the resource ID a list or `existing` returns, so it must be one segment.
+	if strings.Contains(identifier, "/") || identifier == "." || identifier == ".." {
+		return "", fmt.Errorf("the native handler for %s returned the identifier %q, which is not a single resource ID segment", t.Handler.TypeName(), identifier)
+	}
+	return identifier, nil
+}
+
+// hasEncoder reports whether t's handler declares its own identifier encoding.
+func hasEncoder(t *native.Type) bool {
+	if t == nil {
+		return false
+	}
+	_, ok := t.Handler.(native.IdentifierEncoder)
+	return ok
 }
 
 // readNative reads a resource through the native handler. It returns the result in Cloud Control's shape, so the

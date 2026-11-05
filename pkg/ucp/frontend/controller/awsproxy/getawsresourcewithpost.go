@@ -95,19 +95,21 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return nil, fmt.Errorf("CloudFormation DescribeType returned no schema for %s", serviceCtx.ResourceTypeInAWSFormat())
 	}
 	// A top-level name is the AWS primary identifier of the resource. Otherwise the identifier comes from the
-	// properties: the primary identifier, or an additional identifier that AWS resolves to the primary one. A native
-	// handler reads only by its identifier.
+	// properties: as a native handler declares it, with either handler, so `existing` finds the resource by the same
+	// identifier as create and take-over. Without one, Cloud Control uses the primary identifier, or an additional
+	// identifier that AWS resolves to the primary one. A native handler reads only by its identifier.
 	awsResourceIdentifier := name
 	var response *cloudcontrol.GetResourceOutput
-	if awsResourceIdentifier == "" && rt.handler != nil {
+	if awsResourceIdentifier == "" && (rt.handler != nil || hasEncoder(rt.native)) {
 		awsResourceIdentifier, err = identifierFor(rt.native, body.Properties, *describeTypeOutput.Schema)
 		if err != nil {
 			return badRequest(err.Error()), nil
 		}
-		if awsResourceIdentifier == "" {
+		if awsResourceIdentifier == "" && rt.handler != nil {
 			return badRequest(fmt.Sprintf("Set the primary identifier properties of the AWS resource type %s to reference it with existing.", serviceCtx.ResourceTypeInAWSFormat())), nil
 		}
-	} else if awsResourceIdentifier == "" {
+	}
+	if awsResourceIdentifier == "" {
 		awsResourceIdentifier, response, errResponse, err = p.resolveReadIdentifier(ctx, body.Properties, *describeTypeOutput.Schema, serviceCtx.ResourceTypeInAWSFormat(), region)
 		if err != nil || errResponse != nil {
 			return errResponse, err

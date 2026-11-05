@@ -129,7 +129,7 @@ func listNative(ctx context.Context, h native.Handler, collectionID resources.ID
 			properties = map[string]any{}
 		}
 		items = append(items, map[string]any{
-			"id":         path.Join(collectionID.String(), resource.Identifier),
+			"id":         collectionID.String() + resources.SegmentSeparator + resource.Identifier,
 			"name":       resource.Identifier,
 			"type":       collectionID.Type(),
 			"properties": properties,

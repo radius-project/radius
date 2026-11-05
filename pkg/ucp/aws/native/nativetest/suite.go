@@ -191,7 +191,10 @@ func (s Suite) list(t *testing.T) {
 	switch h.handler.Options().List {
 	case native.ListRegion:
 		require.Equal(t, http.StatusOK, resp.status, resp.raw)
-		require.Contains(t, resp.raw, s.Identifier)
+		items, _ := resp.body["value"].([]any)
+		require.Len(t, items, 1)
+		id, _ := items[0].(map[string]any)["id"].(string)
+		require.Equal(t, s.Identifier, requireSegment(t, h.collection(), id))
 	default:
 		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
 	}
@@ -207,6 +210,22 @@ func (s Suite) existing(t *testing.T) {
 	resp := h.do(getWithPost, http.MethodPost, h.collection()+"/:get", "", map[string]any{"properties": s.Properties})
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	requireSubset(t, s.readable(s.Properties), resp.properties())
+
+	// Recipes read an `existing` output resource again by the last segment of its ID, so the ID must give back the
+	// identifier.
+	id, _ := resp.body["id"].(string)
+	require.Equal(t, s.Identifier, requireSegment(t, h.collection(), id))
+	resp = h.do(getWithPost, http.MethodPost, h.collection()+"/:get", "", map[string]any{"name": s.Identifier})
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+}
+
+// requireSegment requires id to be one resource ID segment under collection, and returns that segment.
+func requireSegment(t *testing.T, collection string, id string) string {
+	t.Helper()
+	parsed, err := resources.ParseResource(id)
+	require.NoError(t, err)
+	require.Equal(t, collection+"/"+parsed.Name(), id, "the identifier is one segment of the resource ID")
+	return parsed.Name()
 }
 
 // workerRestart stops the worker while it waits for a create, and runs it again. Waiting only reads AWS, so the
