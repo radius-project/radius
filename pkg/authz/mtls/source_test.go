@@ -282,8 +282,8 @@ func TestSource_ReloadDuringUpdate(t *testing.T) {
 	src, err := NewSource(dir.root)
 	require.NoError(t, err)
 
-	// Swap the Secret after the first read of the key, so that read sees the old
-	// certificate and key with the new CA bundle.
+	// Swap the Secret after reading the key. The attempt must stay bound to the
+	// old target, detect the swap and retry the complete new generation.
 	rotatedCA := newCA(t)
 	second := rotatedCA.issue(t, certOptions{uris: spiffeURIs("ucp")})
 	swapped := false

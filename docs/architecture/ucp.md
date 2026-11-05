@@ -97,6 +97,8 @@ ServiceAccount token with audience `ucp`, accepts any Radius component identity,
 and reloads certificates without a restart. See
 [Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization).
 
+The aggregation server also uses a polling TLS Source for its mounted `ucp-cert` certificate, key and CA bundle. New handshakes capture one coherent serving certificate without replacing the aggregation endpoint's separate client-authentication policy. Invalid updates retain the previous material only while its full verified chain remains valid. This enables serving-certificate renewal; it does not migrate the legacy CA, update APIService trust, acknowledge aggregator adoption or complete coordinated CA rotation. The old backend must remain available until separately observed aggregation trust can verify the new serving identity.
+
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.

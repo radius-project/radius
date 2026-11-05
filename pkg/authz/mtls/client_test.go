@@ -679,7 +679,11 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 						require.NoError(t, err)
 						require.False(t, reused, "renewal must replace the expired peer connection")
 					} else {
-						require.ErrorContains(t, err, "certificate has expired")
+						if kind == "root" {
+							requireCode(t, err, authz.CodeCertificateExpired)
+						} else {
+							require.ErrorContains(t, err, "certificate has expired")
+						}
 					}
 					if http2 {
 						_, err := io.Copy(io.Discard, stream.Body)

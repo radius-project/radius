@@ -19,6 +19,7 @@ package mtls
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -138,6 +139,8 @@ type clientTransport struct {
 type connectionValidity struct {
 	notBefore time.Time
 	notAfter  time.Time
+	trust     [sha256.Size]byte
+	epoch     uint64
 }
 
 // trackedConn is a connection that clientTransport stops tracking when it is closed.
@@ -257,12 +260,13 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.Transport.RoundTrip(req)
 }
 
-func (t *clientTransport) closeExpired() {
+func (t *clientTransport) closeInvalid(current *material) {
 	var expired []*trackedConn
 	t.mu.Lock()
 	now := t.source.now()
 	for conn, validity := range t.conns {
-		if now.Before(validity.notBefore) || now.After(validity.notAfter) {
+		if current == nil || validity.trust != current.trust || validity.epoch != current.epoch ||
+			now.Before(validity.notBefore) || now.After(validity.notAfter) {
 			expired = append(expired, conn)
 		}
 	}
