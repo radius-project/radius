@@ -55,7 +55,8 @@ subjects:
     name: ucp
     namespace: {{ .Release.Namespace }}
 ---
-# UCP records the status of the automatic SHA-256 migration in one ConfigMap in its own namespace.
+# UCP records the status of the automatic SHA-256 migration in one ConfigMap in its own namespace, and holds one Lease
+# so that one UCP replica migrates at a time.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -82,6 +83,23 @@ rules:
     verbs:
       - get
       - patch
+
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    resourceNames:
+      - radius-sha256-migration-ucp
+    verbs:
+      - get
+      - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

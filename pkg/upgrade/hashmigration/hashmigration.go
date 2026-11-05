@@ -113,7 +113,8 @@ func (r *Result) Add(other Result) {
 }
 
 // Step migrates one kind of value. Run must be idempotent and safe to run concurrently with the component's normal
-// operations and with other replicas running the same step.
+// operations and with other replicas running the same step. IsExclusive reports whether the service runs the step on
+// one replica at a time.
 type Step interface {
 	// Name returns the stable name used in the status ConfigMap key.
 	Name() string
@@ -188,6 +189,10 @@ type Options struct {
 
 	// MaxRetryInterval caps the retry delay. Zero means DefaultMaxRetryInterval.
 	MaxRetryInterval time.Duration
+
+	// Exclusion, if set, runs each pass on one replica of the component at a time and marks the context of its steps
+	// with WithExclusive.
+	Exclusion Exclusion
 }
 
 // Service runs migration passes until every step is done. It implements hosting.Service and returns nil once the
@@ -198,6 +203,12 @@ type Service struct {
 
 	// totals accumulates the results of each step across passes.
 	totals map[string]Result
+
+	// finished holds the final status of each step that needs no further passes. Such a step is not run again.
+	finished map[string]Status
+
+	// recorded records that the final status of a step was recorded by the Reporter.
+	recorded map[string]bool
 }
 
 var _ hosting.Service = (*Service)(nil)
@@ -214,7 +225,7 @@ func NewService(options Options) *Service {
 		options.MaxRetryInterval = options.RetryInterval
 	}
 
-	return &Service{options: options, now: time.Now, totals: map[string]Result{}}
+	return &Service{options: options, now: time.Now, totals: map[string]Result{}, finished: map[string]Status{}, recorded: map[string]bool{}}
 }
 
 // Name implements hosting.Service.
@@ -231,7 +242,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	interval := s.options.RetryInterval
 	for pass := 1; ; pass++ {
-		if s.RunPass(ctx) {
+		if s.runExclusivePass(ctx) {
 			logger.Info("SHA-256 migration is complete", "component", s.options.Component, "passes", pass)
 			return nil
 		}
@@ -245,30 +256,67 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 }
 
-// RunPass runs every step once, records the status of each, and reports whether all steps are done.
+// runExclusivePass runs a pass, while the replica holds the exclusion of the component if one is configured.
+func (s *Service) runExclusivePass(ctx context.Context) bool {
+	if s.options.Exclusion == nil {
+		return s.RunPass(ctx)
+	}
+
+	done := false
+	err := s.options.Exclusion.Run(ctx, func(ctx context.Context) {
+		done = s.RunPass(WithExclusive(ctx))
+	})
+	if err != nil {
+		ucplog.FromContextOrDiscard(ctx).Info("Unable to run the SHA-256 migration exclusively", "component", s.options.Component, "error", err.Error())
+	}
+
+	return done
+}
+
+// RunPass runs every step that is not done, records the status of each, and reports whether all steps are done and
+// their final status is recorded. A step that is done is not run again. If its final status could not be recorded, a
+// later pass records it, because operators and the release that removes the SHA-1 fallback rely on the status.
 func (s *Service) RunPass(ctx context.Context) bool {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	done := true
 	for _, step := range s.options.Steps {
-		status := s.runStep(ctx, step)
-		done = done && status.Done()
+		name := step.Name()
+		status, finished := s.finished[name]
+		if finished && s.recorded[name] {
+			continue
+		}
 
-		values := []any{"component", s.options.Component, "step", step.Name(), "state", status.State,
-			"migrated", status.Migrated, "deduplicated", status.Deduplicated, "remaining", status.Remaining,
-			"conflicts", status.Conflicts, "skipped", status.Skipped}
-		if status.Error != "" {
-			logger.Info("SHA-256 migration step failed", append(values, "error", status.Error)...)
-		} else {
-			logger.Info("SHA-256 migration step finished", values...)
+		if !finished {
+			status = s.runStep(ctx, step)
+			values := []any{"component", s.options.Component, "step", name, "state", status.State,
+				"migrated", status.Migrated, "deduplicated", status.Deduplicated, "remaining", status.Remaining,
+				"conflicts", status.Conflicts, "skipped", status.Skipped}
+			if status.Error != "" {
+				logger.Info("SHA-256 migration step failed", append(values, "error", status.Error)...)
+			} else {
+				logger.Info("SHA-256 migration step finished", values...)
+			}
+
+			if status.Done() {
+				s.finished[name] = status
+			} else {
+				done = false
+			}
 		}
 
 		if s.options.Reporter == nil {
 			continue
 		}
 
-		if err := s.options.Reporter.Report(ctx, StatusKey(s.options.Component, step.Name()), status); err != nil {
-			// Reporting is best-effort; the migration itself is still recorded in the logs.
-			logger.Info("Unable to record SHA-256 migration status", "component", s.options.Component, "step", step.Name(), "error", err.Error())
+		if err := s.options.Reporter.Report(ctx, StatusKey(s.options.Component, name), status); err != nil {
+			// The migration is not complete until its status is recorded, so a later pass records it.
+			logger.Info("Unable to record SHA-256 migration status; a later pass records it", "component", s.options.Component, "step", name, "error", err.Error())
+			done = false
+			continue
+		}
+
+		if status.Done() {
+			s.recorded[name] = true
 		}
 	}
 

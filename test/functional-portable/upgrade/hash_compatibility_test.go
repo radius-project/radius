@@ -679,7 +679,7 @@ func requireHashSecretHashes(t *testing.T, ctx context.Context, kube kubernetes.
 		secret, err := kube.CoreV1().Secrets(deployment.Namespace).Get(ctx, deployment.Name, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.Equal(t, radiuskubernetes.LegacyHashSecretData(secret.Data), hash, "the Pod template must keep the hash of its unchanged secret")
-		require.Equal(t, radiuskubernetes.HashSecretData(secret.Data), deployment.Annotations[radiuskubernetes.AnnotationSecretHashSHA256])
+		require.Equal(t, radiuskubernetes.RecordSecretHash(hash, radiuskubernetes.HashSecretData(secret.Data)), deployment.Annotations[radiuskubernetes.AnnotationSecretHashSHA256])
 	}
 	require.Positive(t, checked, "the fixture must exercise the secret-hash pod annotation")
 }

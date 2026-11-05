@@ -40,7 +40,8 @@ const (
 	SecretHashMigrationStepName = "containerSecretHash"
 
 	// secretHashFieldManager owns the recorded secret hash. Radius applies containers with another field manager
-	// that never sets the annotation, so applying a container never conflicts with it.
+	// that never sets the annotation, so applying a container never conflicts with it. Only the migration writes the
+	// annotation, so it takes ownership of the annotation if another writer set it.
 	secretHashFieldManager = "radius-sha256-migration"
 )
 
@@ -92,8 +93,10 @@ func NewSecretHashTransformer(reader client.Reader) func(context.Context, *handl
 // legacySecretHashMatches reports whether the legacy hash in the live Pod template was computed from the same
 // secret data as the desired hash.
 func legacySecretHashMatches(ctx context.Context, reader client.Reader, options *handlers.PutOptions, deployment *appsv1.Deployment, live *appsv1.Deployment, legacy string, desired string) (bool, error) {
-	// The SHA-256 migration records the current hash of the data the legacy hash was computed from.
-	if recorded, ok := live.Annotations[kubernetes.AnnotationSecretHashSHA256]; ok {
+	// The SHA-256 migration records the current hash of the data the legacy hash was computed from. A record of
+	// another legacy hash describes other data, for example after a rollback deployed a different secret, so it is
+	// ignored and the secret is checked instead.
+	if recordedLegacy, recorded, ok := kubernetes.ParseRecordedSecretHash(live.Annotations[kubernetes.AnnotationSecretHashSHA256]); ok && recordedLegacy == legacy {
 		return recorded == desired, nil
 	}
 
@@ -132,10 +135,11 @@ func NewSecretHashMigrationStep(client func(context.Context) (k8s.Interface, err
 }
 
 // RecordSecretHashes records the current secret hash on every Deployment of a container whose Pod template still
-// carries the legacy secret hash of its unchanged secret. The hash is recorded in the AnnotationSecretHashSHA256
-// annotation of the Deployment, outside the Pod template, so recording it does not roll out the workload: Kubernetes
-// advances the Deployment's generation for the annotation, but keeps its ReplicaSet and pods. With it,
-// NewSecretHashTransformer keeps the legacy hash without computing SHA-1.
+// carries the legacy secret hash of its unchanged secret. The hash is recorded with the legacy hash in the
+// AnnotationSecretHashSHA256 annotation of the Deployment, outside the Pod template, so recording it does not roll out
+// the workload: Kubernetes advances the Deployment's generation for the annotation, but keeps its ReplicaSet and pods.
+// With it, NewSecretHashTransformer keeps the legacy hash without computing SHA-1. A record of another legacy hash,
+// left when a rollback deployed different secret data, is replaced.
 func RecordSecretHashes(ctx context.Context, client k8s.Interface) (hashmigration.Result, error) {
 	result := hashmigration.Result{}
 	options := metav1.ListOptions{LabelSelector: kubernetes.LabelRadiusResource, Limit: 250}
@@ -167,7 +171,7 @@ func recordSecretHash(ctx context.Context, client k8s.Interface, deployment *app
 		return hashmigration.Result{}
 	}
 
-	if _, ok := deployment.Annotations[kubernetes.AnnotationSecretHashSHA256]; ok {
+	if recordedLegacy, _, ok := kubernetes.ParseRecordedSecretHash(deployment.Annotations[kubernetes.AnnotationSecretHashSHA256]); ok && recordedLegacy == legacy {
 		return hashmigration.Result{}
 	}
 
@@ -190,8 +194,8 @@ func recordSecretHash(ctx context.Context, client k8s.Interface, deployment *app
 
 	apply := appsv1ac.Deployment(deployment.Name, deployment.Namespace).
 		WithResourceVersion(deployment.ResourceVersion).
-		WithAnnotations(map[string]string{kubernetes.AnnotationSecretHashSHA256: kubernetes.HashSecretData(secret.Data)})
-	_, err = client.AppsV1().Deployments(deployment.Namespace).Apply(ctx, apply, metav1.ApplyOptions{FieldManager: secretHashFieldManager})
+		WithAnnotations(map[string]string{kubernetes.AnnotationSecretHashSHA256: kubernetes.RecordSecretHash(legacy, kubernetes.HashSecretData(secret.Data))})
+	_, err = client.AppsV1().Deployments(deployment.Namespace).Apply(ctx, apply, metav1.ApplyOptions{FieldManager: secretHashFieldManager, Force: true})
 	if err != nil {
 		// A conflict means the Deployment changed since it was listed. Either way, the next pass looks again.
 		logger.Info("Unable to record the secret hash of the Deployment; it will be retried", "reason", err.Error())

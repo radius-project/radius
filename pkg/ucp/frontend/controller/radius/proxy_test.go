@@ -245,13 +245,17 @@ func Test_Run(t *testing.T) {
 			Get(gomock.Any(), locationResource.ID).
 			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		// Tracking entry created. A new resource is resolved by reading the current and legacy IDs.
+		// Tracking entry created. A new resource is resolved by reading the current ID, the legacy ID, and the current ID
+		// again, and its entry is created only if no other writer created it since.
 		databaseClient.EXPECT().
 			Get(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil, &database.ErrNotFound{}).Times(2)
+			Return(nil, &database.ErrNotFound{}).Times(3)
 		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil).Times(1)
+			DoAndReturn(func(_ context.Context, _ *database.Object, options ...database.SaveOptions) error {
+				require.True(t, database.NewSaveConfig(options...).CreateOnly)
+				return nil
+			}).Times(1)
 
 		downstreamResponse := httptest.NewRecorder()
 		downstreamResponse.WriteHeader(http.StatusOK)
@@ -450,6 +454,42 @@ func Test_EnqueueTrackedResourceUpdate_FollowsMigratedEntry(t *testing.T) {
 			require.Equal(t, currentID, queued.ResourceID)
 			return nil
 		}).After(saved)
+
+	require.NoError(t, p.EnqueueTrackedResourceUpdate(ctx, id, apiVersion))
+}
+
+func Test_EnqueueTrackedResourceUpdate_CreatedConcurrently(t *testing.T) {
+	t.Parallel()
+	p, client, _, _, _ := createController(t)
+	id := resources.MustParse("/planes/test/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource")
+	currentID, legacyID := trackedresource.IDFor(id), trackedresource.LegacyIDFor(id)
+	ctx := v1.WithARMRequestContext(t.Context(), &v1.ARMRequestContext{ResourceID: id, OperationID: uuid.New()})
+	queued := datamodel.GenericResourceFromID(id, currentID)
+	queued.AsyncProvisioningState = v1.ProvisioningStateAccepted
+
+	// No entry exists, so the first attempt creates one. Another request creates it first and queues an operation, so
+	// the create fails instead of overwriting that entry.
+	first := client.EXPECT().Get(gomock.Any(), currentID.String()).Return(nil, &database.ErrNotFound{})
+	legacyRead := client.EXPECT().Get(gomock.Any(), legacyID.String()).Return(nil, &database.ErrNotFound{}).After(first.Call)
+	recheck := client.EXPECT().Get(gomock.Any(), currentID.String()).Return(nil, &database.ErrNotFound{}).After(legacyRead)
+	created := client.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *database.Object, options ...database.SaveOptions) error {
+			require.Equal(t, currentID.String(), obj.ID)
+			require.True(t, database.NewSaveConfig(options...).CreateOnly)
+			return &database.ErrConcurrency{}
+		}).After(recheck)
+
+	// The retry updates the entry the other request created. Its operation is already queued, so none is queued again.
+	second := client.EXPECT().Get(gomock.Any(), currentID.String()).
+		Return(&database.Object{ID: currentID.String(), ETag: "queued-etag", Data: queued}, nil).After(created)
+	client.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *database.Object, options ...database.SaveOptions) error {
+			config := database.NewSaveConfig(options...)
+			require.False(t, config.CreateOnly)
+			require.Equal(t, "queued-etag", config.ETag)
+			require.Equal(t, v1.ProvisioningStateAccepted, obj.Data.(*datamodel.GenericResource).AsyncProvisioningState)
+			return nil
+		}).After(second)
 
 	require.NoError(t, p.EnqueueTrackedResourceUpdate(ctx, id, apiVersion))
 }

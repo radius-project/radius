@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/components/database"
@@ -139,9 +141,16 @@ func Test_APIServerClient_HashFallback(t *testing.T) {
 					} else {
 						require.NoError(t, err)
 					}
+					// A delete reads both objects to remove every copy of the entry. A lookup that finds the entry in
+					// neither object reads the current object again, in case the migration moved the entry between the
+					// two reads.
+					deleting := strings.Contains(operation, "delete")
 					expectedReads := []string{resourceName(id)}
-					if tt.stored != "current" {
+					if tt.stored != "current" || deleting {
 						expectedReads = append(expectedReads, legacyResourceName(id))
+					}
+					if tt.stored == "" {
+						expectedReads = append(expectedReads, resourceName(id))
 					}
 					require.Equal(t, expectedReads, reads)
 
@@ -156,23 +165,28 @@ func Test_APIServerClient_HashFallback(t *testing.T) {
 						return
 					}
 
-					for name, bucket := range before {
-						if name != selected {
-							require.Equal(t, bucket, after[name], "the unselected bucket must not change")
-						}
-					}
 					wantCount := len(before)
 					previous := before[selected]
-					if operation == "delete" || operation == "conditional delete" {
-						if len(previous.Entries) == 1 {
-							require.NotContains(t, after, selected)
-							wantCount--
-						} else {
-							require.Nil(t, findIndex(after[selected], id))
-							require.Equal(t, previous.Entries[1:], after[selected].Entries)
-							require.Equal(t, map[string]string(assignLabels(after[selected])), after[selected].Labels)
+					if deleting {
+						// A delete removes every copy of the entry, so no read can fall back to a copy it left behind.
+						for name, bucket := range before {
+							if findIndex(bucket, id) == nil {
+								require.Equal(t, bucket, after[name], "a bucket without the entry must not change")
+							} else if len(bucket.Entries) == 1 {
+								require.NotContains(t, after, name)
+								wantCount--
+							} else {
+								require.Nil(t, findIndex(after[name], id))
+								require.Equal(t, slices.DeleteFunc(slices.Clone(bucket.Entries), func(entry ucpv1alpha1.ResourceEntry) bool { return entry.ID == id.String() }), after[name].Entries)
+								require.Equal(t, map[string]string(assignLabels(after[name])), after[name].Labels)
+							}
 						}
 					} else {
+						for name, bucket := range before {
+							if name != selected {
+								require.Equal(t, bucket, after[name], "the unselected bucket must not change")
+							}
+						}
 						bucket := after[selected]
 						require.NotNil(t, bucket)
 						index := findIndex(bucket, id)

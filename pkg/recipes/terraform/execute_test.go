@@ -431,6 +431,80 @@ func TestKubernetesBackendStateIdentity(t *testing.T) {
 	}
 }
 
+// TestDeleteUsesMovedState covers a delete that resolves the legacy state name just before the SHA-256 migration moves
+// the state to its current name. The delete must destroy the resources recorded in the moved state rather than treat
+// the state as missing and orphan them.
+func TestDeleteUsesMovedState(t *testing.T) {
+	const currentSuffix = "09ed17eb3264f9613cc5cdee1a9c01e3765da963"
+	const legacySuffix = "3e4dc89bbe6e3ad3b17e413b3f776184a6d3c75f"
+	currentName, legacyName := backends.KubernetesBackendNamePrefix+currentSuffix, backends.KubernetesBackendNamePrefix+legacySuffix
+	secrets := corev1.SchemeGroupVersion.WithResource("secrets")
+
+	snapshotsPath := installBackendTestTerraform(t)
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "")
+	options := Options{
+		RootDir:   t.TempDir(),
+		EnvConfig: &recipes.Configuration{},
+		EnvRecipe: &recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: "test/module/source"},
+		ResourceRecipe: &recipes.ResourceMetadata{
+			Name:          "widget",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/extenders/widget",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+		},
+	}
+
+	kube := fake.NewClientset()
+	_, err := kube.CoreV1().Secrets(backends.RadiusNamespace).Create(t.Context(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: legacyName, Namespace: backends.RadiusNamespace},
+		Data:       map[string][]byte{"tfstate": []byte("existing-state")},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// The first lookup of the legacy name resolves the backend. The migration moves the state before the second one,
+	// the check that the state exists before it is destroyed.
+	legacyLookups := 0
+	kube.PrependReactor("get", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		if action.(k8stesting.GetAction).GetName() != legacyName {
+			return false, nil, nil
+		}
+		legacyLookups++
+		if legacyLookups == 2 {
+			stored, err := kube.Tracker().Get(secrets, backends.RadiusNamespace, legacyName)
+			require.NoError(t, err)
+			moved := stored.(*corev1.Secret).DeepCopy()
+			moved.Name = currentName
+			require.NoError(t, kube.Tracker().Create(secrets, moved, backends.RadiusNamespace))
+			require.NoError(t, kube.Tracker().Delete(secrets, backends.RadiusNamespace, legacyName))
+		}
+		return false, nil, nil
+	})
+	provider := kubernetesclientprovider.KubernetesClientProvider{}
+	provider.SetClientGoClient(kube)
+	e := executor{kubernetesClients: provider}
+
+	require.NoError(t, e.Delete(t.Context(), options))
+	require.Equal(t, 2, legacyLookups)
+
+	destroyed := false
+	for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+		if snapshot.Command != "destroy" {
+			continue
+		}
+		var cfg config.TerraformConfig
+		require.NoError(t, json.Unmarshal(snapshot.Config, &cfg))
+		backend, ok := cfg.Terraform.Backend[backends.BackendKubernetes].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, currentSuffix, backend["secret_suffix"], "the destroy must use the moved state")
+		destroyed = true
+	}
+	require.True(t, destroyed, "the resources recorded in the moved state must be destroyed")
+
+	remaining, err := kube.CoreV1().Secrets(backends.RadiusNamespace).List(t.Context(), metav1.ListOptions{})
+	require.NoError(t, err)
+	require.Empty(t, remaining.Items, "the moved state is deleted after the destroy")
+}
+
 func TestGenerateConfigRejectsInvalidOutputMappingBeforeProviderSetup(t *testing.T) {
 	workingDir := t.TempDir()
 	tf, err := tfexec.NewTerraform(workingDir, os.Args[0])

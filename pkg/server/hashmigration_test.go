@@ -86,7 +86,7 @@ func Test_HashMigrationService(t *testing.T) {
 	require.NoError(t, err)
 	deployment, err := client.AppsV1().Deployments("app").Get(ctx, "frontend", metav1.GetOptions{})
 	require.NoError(t, err)
-	require.Equal(t, k8slabels.HashSecretData(secretData), deployment.Annotations[k8slabels.AnnotationSecretHashSHA256])
+	require.Equal(t, k8slabels.RecordSecretHash(k8slabels.LegacyHashSecretData(secretData), k8slabels.HashSecretData(secretData)), deployment.Annotations[k8slabels.AnnotationSecretHashSHA256])
 }
 
 func Test_NewHashMigrationService_WithoutKubernetes(t *testing.T) {

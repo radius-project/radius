@@ -43,8 +43,9 @@ const (
 	RadiusDevPrefix      = "radapp.io/"
 
 	// AnnotationSecretHashSHA256 is set on a Deployment whose Pod template still carries a secret hash that an older
-	// version of Radius computed with SHA-1. It holds the current secret hash of the same secret data, so Radius can tell
-	// that the secret is unchanged and keep the Pod template, and its pods, as they are.
+	// version of Radius computed with SHA-1. It records that legacy hash with the current secret hash of the same secret
+	// data (see RecordSecretHash), so Radius can tell that the secret is unchanged and keep the Pod template, and its
+	// pods, as they are. A record of another legacy hash, as after a rollback deployed different secret data, is ignored.
 	AnnotationSecretHashSHA256 = "radapp.io/secret-hash-sha256"
 
 	// AnnotationIdentityType is the annotation for supported identity.

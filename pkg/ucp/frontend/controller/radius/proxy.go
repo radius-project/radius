@@ -292,23 +292,24 @@ retry:
 		entry.Properties.APIVersion = apiVersion
 		entry.Properties.OperationID = serviceCtx.OperationID.String()
 
-		etag := ""
 		if obj != nil {
-			etag = obj.ETag
 			err = obj.As(&entry)
 			if err != nil {
 				return err
 			}
 		}
 
-		// Keep the existing provisioningState if possible.
-		if entry.InternalMetadata.AsyncProvisioningState == "" || entry.InternalMetadata.AsyncProvisioningState.IsTerminal() {
-			queueOperation = true
+		// Keep the existing provisioningState if possible. An attempt that lost a race decides again, so an operation is
+		// not queued twice when the concurrent writer already queued one.
+		queueOperation = entry.InternalMetadata.AsyncProvisioningState == "" || entry.InternalMetadata.AsyncProvisioningState.IsTerminal()
+		if queueOperation {
 			entry.InternalMetadata.AsyncProvisioningState = v1.ProvisioningStateAccepted
 		}
 
 		logger.V(ucplog.LevelDebug).Info("enqueuing tracked resource update")
-		err = p.DatabaseClient().Save(ctx, &database.Object{ID: trackingID.String(), Data: entry}, database.WithETag(etag))
+		// A new entry is created only if no other writer created it since it was read, for example the migration moving
+		// it to its current tracking ID.
+		err = p.DatabaseClient().Save(ctx, &database.Object{ID: trackingID.String(), Data: entry}, trackedresource.SaveCondition(obj))
 		if errors.Is(err, &database.ErrConcurrency{}) {
 			// This means we hit a concurrency error saving the tracked resource entry. This means that the resource
 			// was updated in the background. We should retry.

@@ -34,6 +34,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -78,17 +79,27 @@ const (
 	// copied from.
 	AnnotationStateMigratedFromVersion = "radapp.io/sha256-migrated-from-version"
 
+	// AnnotationStateMigratedParts records the UID and resource version of every legacy Secret a move copied, in part
+	// order. The first Secret of a copy carries it from the moment the copy is published, and the tombstone lock
+	// carries it once the move is committed.
+	AnnotationStateMigratedParts = "radapp.io/sha256-migrated-parts"
+
 	// LabelStateMigration marks the lock that the migration keeps on the legacy name of a moved state.
 	LabelStateMigration = "radapp.io/sha256-migration"
 
 	// stateMigrationLeaseDuration is how long another migration runner waits before taking over the lock of a runner
 	// that stopped while moving a state. Terraform ignores the duration.
 	stateMigrationLeaseDuration = 5 * time.Minute
+
+	// stateMigrationCallTimeout bounds every Kubernetes call of a move. A move renews its lock before each write, so a
+	// stalled call ends long before the lock can expire and be taken over.
+	stateMigrationCallTimeout = 30 * time.Second
 )
 
 var (
 	errStateLocked     = errors.New("the Terraform state is locked")
 	errUnexpectedState = errors.New("unexpected Terraform state Secrets")
+	errLockLost        = errors.New("another migrator took over the Terraform state lock")
 )
 
 // StateMigrationStepName is the name of the migration step that moves Terraform states.
@@ -128,9 +139,12 @@ func NewStateMigrationStep(client func() (kubernetes.Interface, error), db func(
 // StateMigrator moves Terraform states that the Kubernetes backend stores under legacy (SHA-1) secret suffixes to
 // their current (SHA-256) suffixes.
 //
-// A move holds the Terraform lock of the legacy state, copies the state Secrets to their current names, deletes the
-// legacy Secrets, and keeps the legacy lock as a tombstone. It is idempotent, resumes an interrupted move, and is safe
-// to run concurrently with deployments and with other migrators. See https://github.com/radius-project/radius/issues/8084.
+// A move holds the Terraform lock of the legacy state and renews it before every write. It copies the state Secrets to
+// their current names, creating the first Secret last so that a deployment only ever finds a complete copy, records
+// the commit of the move on the lock, deletes the legacy Secrets, and keeps the lock as a tombstone. A move is
+// idempotent: a later pass finishes or removes an interrupted copy, and a copy whose creation had an uncertain outcome
+// keeps the legacy state locked until a later pass resolves it. It is safe to run concurrently with deployments and
+// with other migrators. See https://github.com/radius-project/radius/issues/8084.
 type StateMigrator struct {
 	client    kubernetes.Interface
 	namespace string
@@ -218,7 +232,9 @@ func (m *StateMigrator) MigrateLegacyStates(ctx context.Context, db database.Cli
 			continue
 		}
 
-		moved := m.MoveState(ctx, legacy, move.current)
+		moved := m.moveState(ctx, legacy, move.current, func(ctx context.Context) (bool, error) {
+			return m.ownerBusy(ctx, db, move.owner)
+		})
 		result.Add(moved)
 		if moved.Message != "" {
 			result.Message = moved.Message
@@ -253,6 +269,13 @@ type stateMove struct {
 // MoveState moves the state stored under legacySuffix to currentSuffix. A state that cannot be moved now, for example
 // because a deployment holds its lock, is counted as remaining and moved on a later pass.
 func (m *StateMigrator) MoveState(ctx context.Context, legacySuffix string, currentSuffix string) hashmigration.Result {
+	return m.moveState(ctx, legacySuffix, currentSuffix, nil)
+}
+
+// moveState moves a state. ownerBusy, if set, reports whether an operation started on the resource that owns the
+// state. It is checked again right before the copy is published, because an operation that already resolved the
+// legacy name would otherwise wait for the tombstone and fail.
+func (m *StateMigrator) moveState(ctx context.Context, legacySuffix string, currentSuffix string, ownerBusy func(context.Context) (bool, error)) hashmigration.Result {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("legacySecret", stateSecretName(legacySuffix, 0), "currentSecret", stateSecretName(currentSuffix, 0))
 
 	lock, err := m.lock(ctx, legacySuffix, currentSuffix)
@@ -261,20 +284,33 @@ func (m *StateMigrator) MoveState(ctx context.Context, legacySuffix string, curr
 		return hashmigration.Result{Remaining: 1, Message: err.Error()}
 	}
 
-	result, moved, err := m.moveLocked(ctx, legacySuffix, currentSuffix)
-	if errors.Is(err, errUnexpectedState) {
+	result, outcome, err := m.moveLocked(ctx, lock, legacySuffix, currentSuffix, ownerBusy)
+	switch {
+	case errors.Is(err, errLockLost):
+		// The migrator that took over the lock finishes the move, so this one must not write again.
+		logger.Info("Another migrator took over the Terraform state lock; the move continues there", "reason", err.Error())
+		return hashmigration.Result{Remaining: 1, Message: err.Error()}
+	case errors.Is(err, errUnexpectedState):
 		logger.Info("The Terraform state cannot be moved automatically", "reason", err.Error())
 		result = hashmigration.Result{Skipped: 1, Message: err.Error()}
-	} else if err != nil {
+	case err != nil:
 		logger.Error(err, "Unable to move the Terraform state; the move will be retried")
 		result = hashmigration.Result{Remaining: 1, Message: err.Error()}
-	} else if result.Conflicts > 0 {
+	case result.Conflicts > 0:
 		logger.Info("The Terraform state is stored under both names with different content; Radius uses the current name and leaves the legacy state in place")
-	} else if result.Migrated > 0 || result.Deduplicated > 0 {
+	case result.Migrated > 0 || result.Deduplicated > 0:
 		logger.Info("Moved the Terraform state")
+	case result.Remaining > 0:
+		logger.Info("The Terraform state move was abandoned; it will be retried", "reason", result.Message)
 	}
 
-	if err := m.unlock(ctx, lock, legacySuffix, currentSuffix, moved); err != nil {
+	if outcome == lockHold {
+		// The copy may be published. The lock stays held, so the legacy state cannot change, until a later pass of this
+		// migrator, or of one that takes over the expired lock, commits or removes the copy.
+		return result
+	}
+
+	if err := m.unlock(ctx, lock, legacySuffix, currentSuffix, outcome == lockTombstone); err != nil {
 		// The lock stays held by this migrator. Terraform cannot acquire it, and another migrator takes it over once
 		// it expires, so the state remains protected.
 		logger.Error(err, "Unable to release the Terraform state lock")
@@ -283,119 +319,309 @@ func (m *StateMigrator) MoveState(ctx context.Context, legacySuffix string, curr
 	return result
 }
 
-// moveLocked moves the state while the migrator holds the lock of the legacy state. It reports whether the state is
-// stored under its current name afterwards, in which case the legacy lock becomes a tombstone.
-func (m *StateMigrator) moveLocked(ctx context.Context, legacySuffix string, currentSuffix string) (hashmigration.Result, bool, error) {
+// lockOutcome is what a move leaves the lock of the legacy state as.
+type lockOutcome int
+
+const (
+	// lockRelease releases the lock the way Terraform does.
+	lockRelease lockOutcome = iota
+
+	// lockTombstone keeps the lock as a tombstone because the state is stored under its current name.
+	lockTombstone
+
+	// lockHold keeps the lock held by the migrator because a copy may be published but its move is not committed.
+	lockHold
+)
+
+// moveLocked moves the state while the migrator holds the lock of the legacy state.
+func (m *StateMigrator) moveLocked(ctx context.Context, lock *stateLock, legacySuffix string, currentSuffix string, ownerBusy func(context.Context) (bool, error)) (hashmigration.Result, lockOutcome, error) {
+	resting := lock.restingOutcome()
 	legacy, err := m.listChunks(ctx, legacySuffix)
 	if err != nil {
-		return hashmigration.Result{}, false, err
+		return hashmigration.Result{}, resting, err
 	}
 
 	current, err := m.listChunks(ctx, currentSuffix)
 	if err != nil {
-		return hashmigration.Result{}, false, err
+		return hashmigration.Result{}, resting, err
 	}
 
+	first, published := current[0]
 	if len(legacy) == 0 {
 		// Moved or deleted since the Secrets were listed.
-		_, hasCurrent := current[0]
-		return hashmigration.Result{}, hasCurrent, nil
+		if published {
+			return hashmigration.Result{}, lockTombstone, nil
+		}
+		return hashmigration.Result{}, resting, nil
 	}
 
 	legacyChunks, ok := orderedChunks(legacy)
 	if !ok {
-		return hashmigration.Result{}, false, fmt.Errorf("%w: the state stored under %s has missing parts", errUnexpectedState, stateSecretName(legacySuffix, 0))
+		return hashmigration.Result{}, resting, fmt.Errorf("%w: the state stored under %s has missing parts", errUnexpectedState, stateSecretName(legacySuffix, 0))
 	}
 
-	if first, hasCurrent := current[0]; hasCurrent {
+	if copied := lock.copiedParts(); len(copied) >= len(legacyChunks) && slices.Equal(stateParts(legacyChunks), copied[:len(legacyChunks)]) {
+		// A move was committed and stopped before it deleted all of the legacy state. Terraform cannot write the legacy
+		// state after the commit, so the Secrets that remain are copied versions and only need to be deleted.
+		if err := m.deleteChunks(ctx, legacyChunks); err != nil {
+			return hashmigration.Result{}, lockTombstone, err
+		}
+		return hashmigration.Result{Migrated: 1}, lockTombstone, nil
+	}
+
+	if published {
 		result := hashmigration.Result{}
-		currentChunks, ok := orderedChunks(current)
+		currentChunks, complete := orderedChunks(current)
 		switch {
-		case copiedFrom(first, legacyChunks[0]):
-			// An earlier move copied this legacy state and stopped before deleting all of it. The migration's lock has
-			// protected the legacy state since, while deployments may have changed the copy, so only the legacy state is
-			// left to delete.
+		case first.Annotations[AnnotationStateMigratedParts] == encodeStateParts(stateParts(legacyChunks)):
+			// An earlier pass published this copy of the legacy state and stopped before it committed the move.
+			// Deployments have used the copy since it was published, so only the legacy state is left to delete.
 			result.Migrated = 1
-		case ok && sameState(currentChunks, legacyChunks):
+		case complete && sameState(currentChunks, legacyChunks):
 			// The same state is stored under both names.
 			result.Deduplicated = 1
 		default:
-			return hashmigration.Result{Conflicts: 1}, false, nil
+			return hashmigration.Result{Conflicts: 1}, resting, nil
 		}
 
-		if err := m.deleteChunks(ctx, legacyChunks); err != nil {
-			return hashmigration.Result{}, true, err
-		}
-
-		return result, true, nil
+		return m.commit(ctx, lock, legacyChunks, result)
 	}
 
-	if err := m.copyChunks(ctx, legacyChunks, current, currentSuffix); err != nil {
-		return hashmigration.Result{}, false, err
-	}
-
-	if err := m.deleteChunks(ctx, legacyChunks); err != nil {
-		// The copy is complete and Radius uses it. The next pass deletes the legacy state.
-		return hashmigration.Result{}, true, err
-	}
-
-	return hashmigration.Result{Migrated: 1}, true, nil
+	return m.copyAndCommit(ctx, lock, legacyChunks, current, currentSuffix, ownerBusy)
 }
 
-// copyChunks copies the legacy state to the current name. partial holds copies left by an interrupted move.
-func (m *StateMigrator) copyChunks(ctx context.Context, legacy []corev1.Secret, partial map[int]corev1.Secret, currentSuffix string) error {
-	secrets := m.client.CoreV1().Secrets(m.namespace)
+// copyAndCommit copies the legacy state to its current name, publishes the copy, and commits the move. Deployments use
+// the current name as soon as its first Secret exists, so that Secret is created last, once every other part is in
+// place. It records the versions of the legacy Secrets the copy was made from. partial holds the Secrets of an
+// unpublished copy that an interrupted move left.
+func (m *StateMigrator) copyAndCommit(ctx context.Context, lock *stateLock, legacy []corev1.Secret, partial map[int]corev1.Secret, currentSuffix string, ownerBusy func(context.Context) (bool, error)) (hashmigration.Result, lockOutcome, error) {
 	for index, existing := range partial {
 		if index >= len(legacy) || existing.Annotations[AnnotationStateMigratedFromUID] != string(legacy[index].UID) {
-			return fmt.Errorf("%w: %s exists but was not copied from %s", errUnexpectedState, existing.Name, legacy[min(index, len(legacy)-1)].Name)
+			return hashmigration.Result{}, lock.restingOutcome(), fmt.Errorf("%w: %s exists but was not copied from %s", errUnexpectedState, existing.Name, legacy[min(index, len(legacy)-1)].Name)
 		}
 	}
 
-	written := []string{}
-	rollback := func() {
-		for _, name := range written {
-			_ = secrets.Delete(ctx, name, metav1.DeleteOptions{})
+	for index := len(legacy) - 1; index > 0; index-- {
+		if err := m.renew(ctx, lock); err != nil {
+			return hashmigration.Result{}, lockHold, err
 		}
-	}
 
-	// Radius uses the current name as soon as its first Secret exists, so that Secret is created last, once every other
-	// part of the state is in place.
-	for index := len(legacy) - 1; index >= 0; index-- {
 		copied := stateCopy(legacy[index], currentSuffix, index)
 		var err error
 		if existing, ok := partial[index]; ok {
 			copied.ResourceVersion = existing.ResourceVersion
-			_, err = secrets.Update(ctx, copied, metav1.UpdateOptions{})
+			_, err = m.updateSecret(ctx, copied)
 		} else {
-			_, err = secrets.Create(ctx, copied, metav1.CreateOptions{})
+			_, err = m.createSecret(ctx, copied)
 		}
 
 		if err != nil {
-			rollback()
-			return fmt.Errorf("failed to copy %s to %s: %w", legacy[index].Name, copied.Name, err)
+			return m.abandonCopy(ctx, lock, legacy, currentSuffix, fmt.Errorf("failed to copy %s to %s: %w", legacy[index].Name, copied.Name, err))
 		}
-
-		written = append(written, copied.Name)
 	}
 
+	if ownerBusy != nil {
+		busy, err := ownerBusy(ctx)
+		if errors.Is(err, &database.ErrNotFound{}) {
+			// The resource was deleted. Its deletion uses the legacy state, so the copy must not be published.
+			busy, err = true, nil
+		}
+
+		if err != nil {
+			return m.abandonCopy(ctx, lock, legacy, currentSuffix, err)
+		} else if busy {
+			_, outcome, err := m.abandonCopy(ctx, lock, legacy, currentSuffix, nil)
+			message := fmt.Sprintf("an operation started on the resource that owns the Terraform state in %s", legacy[0].Name)
+			return hashmigration.Result{Remaining: 1, Message: message}, outcome, err
+		}
+	}
+
+	if err := m.renew(ctx, lock); err != nil {
+		return hashmigration.Result{}, lockHold, err
+	}
+
+	parts := encodeStateParts(stateParts(legacy))
+	first := stateCopy(legacy[0], currentSuffix, 0)
+	first.Annotations[AnnotationStateMigratedParts] = parts
+	if _, err := m.createSecret(ctx, first); err != nil {
+		createErr := fmt.Errorf("failed to copy %s to %s: %w", legacy[0].Name, first.Name, err)
+		published, checkErr := m.publishedCopy(ctx, first.Name, parts)
+		switch {
+		case published:
+			// The create succeeded although its response was lost.
+		case checkErr == nil && rejected(err):
+			return m.abandonCopy(ctx, lock, legacy, currentSuffix, createErr)
+		case errors.Is(checkErr, errUnexpectedState):
+			return hashmigration.Result{}, lockHold, checkErr
+		default:
+			// The create may still be applied, so the copy must not be removed while it can become published.
+			return hashmigration.Result{}, lockHold, createErr
+		}
+	}
+
+	return m.commit(ctx, lock, legacy, hashmigration.Result{Migrated: 1})
+}
+
+// abandonCopy deletes the Secrets of an unpublished copy and returns the lock to its resting state, joining cause with
+// any error. The first Secret of the copy does not exist when it is called, so no deployment uses the copy. If the
+// copy cannot be deleted, the lock stays held so the legacy state cannot change under the remaining Secrets.
+func (m *StateMigrator) abandonCopy(ctx context.Context, lock *stateLock, legacy []corev1.Secret, currentSuffix string, cause error) (hashmigration.Result, lockOutcome, error) {
+	for index := len(legacy) - 1; index > 0; index-- {
+		if err := m.renew(ctx, lock); err != nil {
+			return hashmigration.Result{}, lockHold, errors.Join(cause, err)
+		}
+
+		err := m.deleteSecret(ctx, stateSecretName(currentSuffix, index), nil)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return hashmigration.Result{}, lockHold, errors.Join(cause, fmt.Errorf("failed to delete the unpublished copy %s: %w", stateSecretName(currentSuffix, index), err))
+		}
+	}
+
+	return hashmigration.Result{}, lock.restingOutcome(), cause
+}
+
+// commit records on the lock that the state is stored under its current name, then deletes the legacy state. The
+// record lets a later pass finish an interrupted delete, because Terraform cannot write the legacy state after the
+// commit and the Secrets that remain are known to be copied.
+func (m *StateMigrator) commit(ctx context.Context, lock *stateLock, legacy []corev1.Secret, result hashmigration.Result) (hashmigration.Result, lockOutcome, error) {
+	lease := lock.lease.DeepCopy()
+	now := metav1.NewMicroTime(m.now())
+	lease.Spec.RenewTime = &now
+	if lease.Labels == nil {
+		lease.Labels = map[string]string{}
+	}
+	lease.Labels[LabelStateMigration] = "tombstone"
+	if lease.Annotations == nil {
+		lease.Annotations = map[string]string{}
+	}
+	lease.Annotations[AnnotationStateMigratedParts] = encodeStateParts(stateParts(legacy))
+
+	updated, err := m.updateLease(ctx, lease)
+	if err != nil {
+		// Deployments use the published copy. The legacy state stays locked until a later pass commits the move.
+		return hashmigration.Result{}, lockHold, lockError(err)
+	}
+	lock.lease = updated
+
+	if err := m.deleteChunks(ctx, legacy); err != nil {
+		return hashmigration.Result{}, lockTombstone, err
+	}
+
+	return result, lockTombstone, nil
+}
+
+// publishedCopy reports whether the first Secret of a copy exists and records exactly the legacy versions in parts, as
+// it does after a create whose response was lost.
+func (m *StateMigrator) publishedCopy(ctx context.Context, name string, parts string) (bool, error) {
+	secret, err := m.getSecret(ctx, name)
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	if secret.Annotations[AnnotationStateMigratedParts] != parts {
+		return false, fmt.Errorf("%w: %s was created by another writer during the move", errUnexpectedState, name)
+	}
+
+	return true, nil
+}
+
+// rejected reports whether the API server certainly did not apply a write that failed with err. Other failures, such
+// as timeouts and lost connections, can be reported for writes that were applied.
+func rejected(err error) bool {
+	return apierrors.IsAlreadyExists(err) || apierrors.IsConflict(err) || apierrors.IsInvalid(err) ||
+		apierrors.IsBadRequest(err) || apierrors.IsForbidden(err) || apierrors.IsUnauthorized(err) ||
+		apierrors.IsNotFound(err) || apierrors.IsMethodNotSupported(err) || apierrors.IsRequestEntityTooLargeError(err) ||
+		apierrors.IsTooManyRequests(err) || apierrors.IsNotAcceptable(err) || apierrors.IsUnsupportedMediaType(err)
+}
+
+// renew extends the lock before the migrator writes. Every write of a move follows a renewal, so a migrator that takes
+// over an expired lock never writes concurrently with the migrator it replaced, and a migrator that lost the lock stops.
+func (m *StateMigrator) renew(ctx context.Context, lock *stateLock) error {
+	lease := lock.lease.DeepCopy()
+	now := metav1.NewMicroTime(m.now())
+	lease.Spec.RenewTime = &now
+	updated, err := m.updateLease(ctx, lease)
+	if err != nil {
+		return lockError(err)
+	}
+
+	lock.lease = updated
 	return nil
+}
+
+// lockError marks a lock update that failed because another writer changed or removed the lock.
+func lockError(err error) error {
+	if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
+		return fmt.Errorf("%w: %w", errLockLost, err)
+	}
+
+	return err
 }
 
 // deleteChunks deletes a legacy state. The first Secret is deleted last, so an interrupted delete leaves a state that
 // a later pass recognizes and finishes deleting.
 func (m *StateMigrator) deleteChunks(ctx context.Context, chunks []corev1.Secret) error {
-	secrets := m.client.CoreV1().Secrets(m.namespace)
 	for index := len(chunks) - 1; index >= 0; index-- {
 		chunk := chunks[index]
-		err := secrets.Delete(ctx, chunk.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{UID: &chunk.UID, ResourceVersion: &chunk.ResourceVersion},
-		})
+		err := m.deleteSecret(ctx, chunk.Name, &metav1.Preconditions{UID: &chunk.UID, ResourceVersion: &chunk.ResourceVersion})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete %s: %w", chunk.Name, err)
 		}
 	}
 
 	return nil
+}
+
+// The following calls bound each Kubernetes request with stateMigrationCallTimeout.
+
+func (m *StateMigrator) getSecret(ctx context.Context, name string) (*corev1.Secret, error) {
+	ctx, cancel := context.WithTimeout(ctx, stateMigrationCallTimeout)
+	defer cancel()
+	return m.client.CoreV1().Secrets(m.namespace).Get(ctx, name, metav1.GetOptions{})
+}
+
+func (m *StateMigrator) createSecret(ctx context.Context, secret *corev1.Secret) (*corev1.Secret, error) {
+	ctx, cancel := context.WithTimeout(ctx, stateMigrationCallTimeout)
+	defer cancel()
+	return m.client.CoreV1().Secrets(m.namespace).Create(ctx, secret, metav1.CreateOptions{})
+}
+
+func (m *StateMigrator) updateSecret(ctx context.Context, secret *corev1.Secret) (*corev1.Secret, error) {
+	ctx, cancel := context.WithTimeout(ctx, stateMigrationCallTimeout)
+	defer cancel()
+	return m.client.CoreV1().Secrets(m.namespace).Update(ctx, secret, metav1.UpdateOptions{})
+}
+
+func (m *StateMigrator) deleteSecret(ctx context.Context, name string, preconditions *metav1.Preconditions) error {
+	ctx, cancel := context.WithTimeout(ctx, stateMigrationCallTimeout)
+	defer cancel()
+	return m.client.CoreV1().Secrets(m.namespace).Delete(ctx, name, metav1.DeleteOptions{Preconditions: preconditions})
+}
+
+func (m *StateMigrator) getLease(ctx context.Context, name string) (*coordinationv1.Lease, error) {
+	ctx, cancel := context.WithTimeout(ctx, stateMigrationCallTimeout)
+	defer cancel()
+	return m.client.CoordinationV1().Leases(m.namespace).Get(ctx, name, metav1.GetOptions{})
+}
+
+func (m *StateMigrator) createLease(ctx context.Context, lease *coordinationv1.Lease) (*coordinationv1.Lease, error) {
+	ctx, cancel := context.WithTimeout(ctx, stateMigrationCallTimeout)
+	defer cancel()
+	return m.client.CoordinationV1().Leases(m.namespace).Create(ctx, lease, metav1.CreateOptions{})
+}
+
+func (m *StateMigrator) updateLease(ctx context.Context, lease *coordinationv1.Lease) (*coordinationv1.Lease, error) {
+	ctx, cancel := context.WithTimeout(ctx, stateMigrationCallTimeout)
+	defer cancel()
+	return m.client.CoordinationV1().Leases(m.namespace).Update(ctx, lease, metav1.UpdateOptions{})
+}
+
+func (m *StateMigrator) listSecrets(ctx context.Context, options metav1.ListOptions) (*corev1.SecretList, error) {
+	ctx, cancel := context.WithTimeout(ctx, stateMigrationCallTimeout)
+	defer cancel()
+	return m.client.CoreV1().Secrets(m.namespace).List(ctx, options)
 }
 
 // stateLock is a Terraform state lock held by the migrator.
@@ -406,21 +632,44 @@ type stateLock struct {
 	wasTombstone bool
 }
 
+// restingOutcome is what the lock returns to when a pass leaves the legacy state in place.
+func (l *stateLock) restingOutcome() lockOutcome {
+	if l.wasTombstone {
+		return lockTombstone
+	}
+
+	return lockRelease
+}
+
+// copiedParts returns the versions of the legacy Secrets that a committed move copied, or nil if no move was committed.
+func (l *stateLock) copiedParts() []statePart {
+	value := l.lease.Annotations[AnnotationStateMigratedParts]
+	if value == "" {
+		return nil
+	}
+
+	parts := []statePart{}
+	if err := json.Unmarshal([]byte(value), &parts); err != nil {
+		return nil
+	}
+
+	return parts
+}
+
 // lock acquires the Terraform lock of the legacy state the way Terraform does, so deployments and the migrator
 // exclude each other.
 func (m *StateMigrator) lock(ctx context.Context, legacySuffix string, currentSuffix string) (*stateLock, error) {
-	leases := m.client.CoordinationV1().Leases(m.namespace)
 	name := stateLockName(legacySuffix)
 	info := fmt.Sprintf("Radius is moving this Terraform state to Kubernetes Secret %s to migrate state names from SHA-1 to SHA-256.", stateSecretName(currentSuffix, 0))
 
-	lease, err := leases.Get(ctx, name, metav1.GetOptions{})
+	lease, err := m.getLease(ctx, name)
 	if apierrors.IsNotFound(err) {
 		lease = &coordinationv1.Lease{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: m.namespace, Labels: stateLabels(legacySuffix)}}
 		if err := m.hold(lease, m.holder, info); err != nil {
 			return nil, err
 		}
 
-		created, err := leases.Create(ctx, lease, metav1.CreateOptions{})
+		created, err := m.createLease(ctx, lease)
 		if apierrors.IsAlreadyExists(err) {
 			return nil, errStateLocked
 		} else if err != nil {
@@ -437,9 +686,10 @@ func (m *StateMigrator) lock(ctx context.Context, legacySuffix string, currentSu
 		holder = *lease.Spec.HolderIdentity
 	}
 
-	wasTombstone := holder == StateMigrationTombstone
+	// The label outlives a migrator holding the tombstone, for example to finish deleting a moved state.
+	wasTombstone := holder == StateMigrationTombstone || lease.Labels[LabelStateMigration] == "tombstone"
 	switch {
-	case holder == "", wasTombstone, holder == m.holder:
+	case holder == "", holder == StateMigrationTombstone, holder == m.holder:
 	case strings.HasPrefix(holder, StateMigrationHolderPrefix) && m.expired(lease):
 		// A migrator stopped while moving the state. moveLocked finishes or restarts its move.
 	default:
@@ -450,7 +700,7 @@ func (m *StateMigrator) lock(ctx context.Context, legacySuffix string, currentSu
 		return nil, err
 	}
 
-	updated, err := leases.Update(ctx, lease, metav1.UpdateOptions{})
+	updated, err := m.updateLease(ctx, lease)
 	if apierrors.IsConflict(err) {
 		return nil, errStateLocked
 	} else if err != nil {
@@ -460,11 +710,11 @@ func (m *StateMigrator) lock(ctx context.Context, legacySuffix string, currentSu
 	return &stateLock{lease: updated, wasTombstone: wasTombstone}, nil
 }
 
-// unlock releases the lock. When the state is stored under its current name, or the lock was a tombstone, the lock
-// becomes a tombstone. Otherwise it is released the way Terraform releases it.
-func (m *StateMigrator) unlock(ctx context.Context, lock *stateLock, legacySuffix string, currentSuffix string, moved bool) error {
+// unlock releases the lock. When tombstone is set, the lock becomes a tombstone that Terraform cannot acquire.
+// Otherwise it is released the way Terraform releases it.
+func (m *StateMigrator) unlock(ctx context.Context, lock *stateLock, legacySuffix string, currentSuffix string, tombstone bool) error {
 	lease := lock.lease.DeepCopy()
-	if moved || lock.wasTombstone {
+	if tombstone {
 		info := fmt.Sprintf("Radius moved this Terraform state to Kubernetes Secret %s when it migrated state names from SHA-1 to SHA-256. Retry the operation to use the moved state.", stateSecretName(currentSuffix, 0))
 		if err := m.hold(lease, StateMigrationTombstone, info); err != nil {
 			return err
@@ -482,7 +732,7 @@ func (m *StateMigrator) unlock(ctx context.Context, lock *stateLock, legacySuffi
 		delete(lease.Annotations, tfstateLockInfoAnnotation)
 	}
 
-	_, err := m.client.CoordinationV1().Leases(m.namespace).Update(ctx, lease, metav1.UpdateOptions{})
+	_, err := m.updateLease(ctx, lease)
 	return err
 }
 
@@ -544,7 +794,7 @@ func (m *StateMigrator) storedSuffixes(ctx context.Context) (map[string]bool, er
 	suffixes := map[string]bool{}
 	options := metav1.ListOptions{LabelSelector: selector, Limit: 250}
 	for {
-		list, err := m.client.CoreV1().Secrets(m.namespace).List(ctx, options)
+		list, err := m.listSecrets(ctx, options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list Terraform state Secrets: %w", err)
 		}
@@ -565,7 +815,7 @@ func (m *StateMigrator) storedSuffixes(ctx context.Context) (map[string]bool, er
 
 // listChunks returns the Secrets that hold the state stored under suffix, by part index.
 func (m *StateMigrator) listChunks(ctx context.Context, suffix string) (map[int]corev1.Secret, error) {
-	list, err := m.client.CoreV1().Secrets(m.namespace).List(ctx, metav1.ListOptions{LabelSelector: stateSelector(suffix)})
+	list, err := m.listSecrets(ctx, metav1.ListOptions{LabelSelector: stateSelector(suffix)})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list the Secrets of Terraform state %s: %w", stateSecretName(suffix, 0), err)
 	}
@@ -603,10 +853,27 @@ func sameState(a []corev1.Secret, b []corev1.Secret) bool {
 	})
 }
 
-// copiedFrom reports whether the migration made copy from exactly this version of source.
-func copiedFrom(copy corev1.Secret, source corev1.Secret) bool {
-	return copy.Annotations[AnnotationStateMigratedFromUID] == string(source.UID) &&
-		copy.Annotations[AnnotationStateMigratedFromVersion] == source.ResourceVersion
+// statePart identifies one version of a Secret that holds part of a state.
+type statePart struct {
+	UID             types.UID `json:"uid"`
+	ResourceVersion string    `json:"resourceVersion"`
+}
+
+// stateParts returns the versions of the Secrets of a state, in part order.
+func stateParts(chunks []corev1.Secret) []statePart {
+	parts := make([]statePart, 0, len(chunks))
+	for _, chunk := range chunks {
+		parts = append(parts, statePart{UID: chunk.UID, ResourceVersion: chunk.ResourceVersion})
+	}
+
+	return parts
+}
+
+// encodeStateParts returns the AnnotationStateMigratedParts value that records parts.
+func encodeStateParts(parts []statePart) string {
+	// Encoding a slice of string fields cannot fail.
+	b, _ := json.Marshal(parts)
+	return string(b)
 }
 
 // stateCopy returns a copy of a part of a state, named and labeled for currentSuffix.
@@ -633,6 +900,9 @@ func stateCopy(source corev1.Secret, currentSuffix string, index int) *corev1.Se
 	copied.Annotations[AnnotationStateMigratedFrom] = source.Name
 	copied.Annotations[AnnotationStateMigratedFromUID] = string(source.UID)
 	copied.Annotations[AnnotationStateMigratedFromVersion] = source.ResourceVersion
+
+	// Only the first Secret of a copy records the parts it was copied from, and only once the copy is published.
+	delete(copied.Annotations, AnnotationStateMigratedParts)
 
 	return copied
 }

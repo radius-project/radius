@@ -19,6 +19,7 @@ package kubernetes
 import (
 	"encoding/binary"
 	"slices"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/hashutil"
 )
@@ -81,6 +82,23 @@ func IsLegacySecretHash(value string) bool {
 	}
 
 	return true
+}
+
+// RecordSecretHash returns the AnnotationSecretHashSHA256 value that records current as the secret hash of the secret
+// data that the legacy secret hash legacy was computed from.
+func RecordSecretHash(legacy string, current string) string {
+	return legacy + "=" + current
+}
+
+// ParseRecordedSecretHash returns the legacy secret hash and the current secret hash of the same secret data that an
+// AnnotationSecretHashSHA256 value records.
+func ParseRecordedSecretHash(value string) (legacy string, current string, ok bool) {
+	legacy, current, ok = strings.Cut(value, "=")
+	if !ok || !IsLegacySecretHash(legacy) || !strings.HasPrefix(current, SecretHashPrefix) {
+		return "", "", false
+	}
+
+	return legacy, current, true
 }
 
 // appendSecretHashField appends value to encoded, preceded by its length, so that no two different

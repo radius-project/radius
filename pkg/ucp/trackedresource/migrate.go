@@ -38,7 +38,9 @@ const radiusPlanePrefix = "/planes/radius/"
 // Only idle entries are moved: an entry with an operation in flight is retried on a later pass. The move saves the
 // current entry before deleting the legacy entry with its ETag, so a concurrent update makes the delete fail rather
 // than lose the update. Every reader resolves the current ID first, so a legacy entry left behind by such a race is
-// redundant and is removed on a later pass once it is idle. See https://github.com/radius-project/radius/issues/8084.
+// redundant and is removed on a later pass once it is idle. When the migration is exclusive, a move whose legacy entry
+// was deleted after it was read also deletes the current entry it saved, so the move does not bring back the entry of a
+// resource that no longer exists. See https://github.com/radius-project/radius/issues/8084.
 func MigrateLegacyEntries(ctx context.Context, client database.Client) (hashmigration.Result, error) {
 	result := hashmigration.Result{}
 	groups, err := client.Query(ctx, database.Query{RootScope: "/planes", ScopeRecursive: true, IsScopeQuery: true, ResourceType: "resourcegroups"})
@@ -103,21 +105,27 @@ func migrateLegacyEntry(ctx context.Context, client database.Client, obj databas
 		return failed(logger, err)
 	}
 
+	// saved is the ETag of the current entry this pass saved, if it saved one.
+	saved := ""
 	if !currentExists {
 		moved := entry
 		moved.ID = currentID.String()
 		moved.Name = currentID.Name()
-		err := client.Save(ctx, &database.Object{ID: currentID.String(), Data: &moved}, database.WithCreateOnly())
+		copied := &database.Object{ID: currentID.String(), Data: &moved}
+		err := client.Save(ctx, copied, database.WithCreateOnly())
 		if errors.Is(err, &database.ErrConcurrency{}) {
 			// Another writer created the current entry after it was read. Keep it; the next pass removes the legacy entry.
 			return hashmigration.Result{Remaining: 1}
 		} else if err != nil {
 			return failed(logger, err)
 		}
+		saved = copied.ETag
 	}
 
 	err = client.Delete(ctx, obj.ID, database.WithETag(obj.ETag))
 	switch {
+	case (errors.Is(err, &database.ErrConcurrency{}) || errors.Is(err, &database.ErrNotFound{})) && saved != "" && hashmigration.IsExclusive(ctx):
+		return removeCopyOfDeletedEntry(ctx, client, logger, obj.ID, currentID.String(), saved)
 	case errors.Is(err, &database.ErrConcurrency{}), errors.Is(err, &database.ErrNotFound{}):
 		// The legacy entry changed or disappeared after it was read. The next pass re-evaluates it.
 		return hashmigration.Result{Remaining: 1}
@@ -128,6 +136,28 @@ func migrateLegacyEntry(ctx context.Context, client database.Client, obj databas
 	default:
 		return hashmigration.Result{Migrated: 1}
 	}
+}
+
+// removeCopyOfDeletedEntry handles a legacy entry that changed or was deleted after the pass saved its current entry
+// with ETag etag. Only the updater deletes a tracking entry, when it finds the resource gone, and no other migration
+// runs while the migration is exclusive. A deleted legacy entry therefore means the resource was gone before the current
+// entry was saved, so the current entry is deleted unless an update since shows that the resource exists again.
+func removeCopyOfDeletedEntry(ctx context.Context, client database.Client, logger logr.Logger, legacyID string, currentID string, etag string) hashmigration.Result {
+	_, err := client.Get(ctx, legacyID)
+	if err == nil {
+		// The legacy entry changed. The next pass re-evaluates it.
+		return hashmigration.Result{Remaining: 1}
+	} else if !errors.Is(err, &database.ErrNotFound{}) {
+		return failed(logger, err)
+	}
+
+	err = client.Delete(ctx, currentID, database.WithETag(etag))
+	if err != nil && !errors.Is(err, &database.ErrNotFound{}) && !errors.Is(err, &database.ErrConcurrency{}) {
+		return failed(logger, err)
+	}
+
+	logger.Info("A tracked resource entry was deleted while it was moved; removed the entry the move saved under the SHA-256 tracking ID")
+	return hashmigration.Result{}
 }
 
 func failed(logger logr.Logger, err error) hashmigration.Result {
