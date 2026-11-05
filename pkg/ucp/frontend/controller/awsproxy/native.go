@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"maps"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -426,7 +427,7 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 		var err error
 		if r.handler.Options().Recovery == native.RecoverByResend {
 			var resp armrpc_rest.Response
-			etag, resp, err = e.saveResendMembers(ctx, r, rec, etag, deploy)
+			etag, resp, err = e.saveResendMembers(ctx, r, rec, etag, deploy, parsed)
 			if resp != nil || err != nil {
 				return resp, err
 			}
@@ -591,15 +592,31 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 // some members of a parent (native.ScopedReader). The create sent again may add the template's members and then fail,
 // so the pending values become the template's, with the members of the lost create added, and a DELETE removes the
 // members of both. Which attempt's write-only values AWS has is unknown, so the record keeps no fingerprints for them.
-func (e *engine) saveResendMembers(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, deploy applied) (string, armrpc_rest.Response, error) {
+//
+// A template that changes a create-only property of the lost create, such as the parent, gets 400 and nothing is
+// saved or sent: sending the create again would add members to another parent, and the record would lose the lost
+// create's members.
+func (e *engine) saveResendMembers(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, deploy applied, parsed *typeSchema) (string, armrpc_rest.Response, error) {
 	if _, scoped := r.handler.(native.ScopedReader); !scoped {
 		return etag, nil, nil
+	}
+	patch, err := jsondiff.Compare(rec.Properties.PendingLastApplied, deploy.properties)
+	if err != nil {
+		return "", nil, err
+	}
+	// The pending values have no write-only values, so the template's aren't changes.
+	patch = slices.DeleteFunc(patch, func(op jsondiff.Operation) bool {
+		_, ok := parsed.writeOnlyPattern(op.Path)
+		return ok
+	})
+	if resp := createOnlyChanged(r, parsed, patch); resp != nil {
+		return "", resp, nil
 	}
 	pending := maps.Clone(deploy.properties)
 	addMembers(pending, rec.Properties.PendingLastApplied)
 	rec.Properties.PendingLastApplied = pending
 	rec.Properties.PendingFingerprints = nil
-	etag, err := e.store.Save(ctx, rec, etag)
+	etag, err = e.store.Save(ctx, rec, etag)
 	if err != nil {
 		resp, err := saveError(r.id, err)
 		return "", resp, err

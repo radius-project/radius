@@ -193,6 +193,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
 	t.Run("delete fails after it finds a lost create", func(t *testing.T) { s.lostCreateFailedDelete(t) })
 	t.Run("delete after the create sent again is lost", func(t *testing.T) { s.lostResend(t) })
+	t.Run("create-only change after a lost create", func(t *testing.T) { s.lostResendCreateOnly(t) })
 	t.Run("lost create that matches more than one resource", func(t *testing.T) { s.lostCreateDuplicates(t) })
 	if nameProperty != "" {
 		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
@@ -591,6 +592,40 @@ func (s Suite) lostResend(t *testing.T) {
 	if s.Outside == nil {
 		t.Skip("the resource is not some members of a parent")
 	}
+	h := s.resendHarness(t)
+	h.handler.lose("Create", true)
+	resp := h.put(s.Changed)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+
+	h.removeEventually()
+	h.requireRemoved(nil)
+}
+
+// lostResendCreateOnly loses a create that reached AWS, and deploys a template that changes a create-only property, for
+// a handler whose resource is some members of a parent and that finds a lost create by sending it again. Sending the
+// create again would add members to another parent, so the deploy gets 400 and changes nothing, and the delete removes
+// the lost create's members.
+func (s Suite) lostResendCreateOnly(t *testing.T) {
+	if s.Outside == nil || s.CreateOnlyChange == nil {
+		t.Skip("the resource is not some members of a parent, or the type has no create-only property")
+	}
+	h := s.resendHarness(t)
+	before := h.record().Properties.PendingLastApplied
+	h.handler.reset()
+
+	resp := h.put(s.CreateOnlyChange)
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.NotContains(t, h.handler.reset(), "Create", "the create is not sent again")
+	require.Equal(t, before, h.record().Properties.PendingLastApplied)
+
+	h.removeEventually()
+	h.requireRemoved(nil)
+}
+
+// resendHarness returns a harness whose first create reached AWS and was lost, for a handler that finds a lost create
+// by sending it again and deletes it in AWS. It skips a handler that saves the identifier before the create, which UCP
+// reads AWS by instead.
+func (s Suite) resendHarness(t *testing.T) *harness {
 	h := s.newHarness(t)
 	if h.handler.Options().Recovery != native.RecoverByResend {
 		t.Skip("the handler finds a lost create by search")
@@ -604,13 +639,7 @@ func (s Suite) lostResend(t *testing.T) {
 	if h.record().Properties.AWSIdentifier != "" {
 		t.Skip("UCP saves the identifier before the create, so it reads AWS by it instead of sending the create again")
 	}
-
-	h.handler.lose("Create", true)
-	resp = h.put(s.Changed)
-	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
-
-	h.removeEventually()
-	h.requireRemoved(nil)
+	return h
 }
 
 // generatedNameRetry loses a create of a template that leaves out the name, and deploys again. Both attempts send
