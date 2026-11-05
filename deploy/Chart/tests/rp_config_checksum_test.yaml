@@ -1,0 +1,87 @@
+suite: test applications RP authorization config checksum
+templates:
+  - rp/deployment.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: preserves the off checksum by default
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
+
+  - it: preserves the off checksum when global.rbac is missing
+    set:
+      global.rbac: null
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
+
+  - it: ignores pod security level changes when authorization is off
+    set:
+      global.rbac.podSecurityLevel: restricted
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
+
+  - it: hashes dryRun with the default baseline level
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 86d32c0e6ec2eb26313aa8b15a2ddac94ffe2f998b4f88676fa8261d5303ba6e
+
+  - it: changes the dryRun checksum for a level-only upgrade to restricted
+    set:
+      global.rbac.dryRun: true
+      global.rbac.podSecurityLevel: restricted
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: a491b66d5f88ef4d7a6478cae48203abb404bf641e29ec12b0daa1f80cb7a30c
+
+  - it: hashes enforce with the default baseline level
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 02bd2443288b8a73dcbf482f013000d9f90e5862c560c4f69fdb0fef40f20a37
+
+  - it: changes the enforce checksum for a level-only upgrade to restricted
+    set:
+      global.rbac.enabled: true
+      global.rbac.podSecurityLevel: restricted
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 7a4de98a79960451d668b0fbb69b4a35a2f25fe37e4534584768b3937ad3fc2b
+
+  - it: hashes an empty level as baseline
+    set:
+      global.rbac.enabled: true
+      global.rbac.podSecurityLevel: ""
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 02bd2443288b8a73dcbf482f013000d9f90e5862c560c4f69fdb0fef40f20a37
+
+  - it: keeps the checksum when prometheus is disabled
+    set:
+      global.prometheus.enabled: false
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
+      - notExists:
+          path: spec.template.metadata.annotations["prometheus.io/scrape"]
+
+  - it: keeps the prometheus annotations alongside the checksum
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["prometheus.io/scrape"]
+          value: "true"

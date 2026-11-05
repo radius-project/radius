@@ -33,8 +33,6 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 const (
@@ -150,13 +148,16 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		return nil, err
 	}
 
-	err = namespaceClient.Create(ctx, &corev1.Namespace{Name: kubeNamespace})
-	if apierrors.IsAlreadyExists(err) {
-		logger.Info("Using existing namespace", "namespace", kubeNamespace)
-	} else if err != nil {
+	created, added, err := kubeutil.CreateNamespace(ctx, namespaceClient, kubeNamespace, opt.Authorization)
+	if err != nil {
 		return nil, err
-	} else {
+	} else if created {
 		logger.Info("Created the namespace", "namespace", kubeNamespace)
+	} else {
+		logger.Info("Using existing namespace", "namespace", kubeNamespace)
+	}
+	if len(added) > 0 {
+		logger.Info("Added Pod Security labels to the namespace", "namespace", kubeNamespace, "labels", added)
 	}
 
 	return nil, nil
