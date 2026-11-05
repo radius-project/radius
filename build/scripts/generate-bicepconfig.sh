@@ -4,12 +4,16 @@
 # pointing the Radius and AWS Bicep extensions at the registry tag for the given
 # release channel. The Bicep CLI binary itself is installed separately by
 # build/scripts/install-bicep.sh, the single source of truth for that.
+# Tagged image builds supply the approved plan as the optional third argument.
 #
-# Usage: ./gen-bicepconfig.sh <release-channel> <output-dir>
+# Usage: ./generate-bicepconfig.sh <release-channel> <output-dir> [release-plan]
 # Example: ./gen-bicepconfig.sh edge ./output
 
-REL_CHANNEL=$1
-OUTPUT_DIR=$2
+set -euo pipefail
+
+REL_CHANNEL=${1:-}
+OUTPUT_DIR=${2:-}
+RELEASE_PLAN=${3:-}
 
 if [ -z "$REL_CHANNEL" ]; then
   echo "Release channel is required. Please provide it as the first argument."
@@ -19,6 +23,23 @@ fi
 if [ -z "$OUTPUT_DIR" ]; then
   echo "Output directory is required. Please provide it as the second argument."
   exit 1
+fi
+
+if [[ -n "${RELEASE_PLAN}" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PLAN_JSON="$(mktemp)"
+    trap 'rm -f "${PLAN_JSON}"' EXIT
+    yq -o=json '.' "${RELEASE_PLAN}" >"${PLAN_JSON}"
+    source_sha="$(git -C "${SCRIPT_DIR}" rev-parse HEAD)"
+    if [[ -n "${GITHUB_SHA:-}" && "${source_sha}" != "${GITHUB_SHA}" ]]; then
+        echo "Bicep image checkout differs from the release source." >&2
+        exit 1
+    fi
+    config="$(node "${SCRIPT_DIR}/../../.github/scripts/release-bicep-extensions.mjs" \
+        config "${PLAN_JSON}" "${source_sha}" "${REL_CHANNEL}")"
+    mkdir -p "${OUTPUT_DIR}"
+    printf '%s\n' "${config}" >"${OUTPUT_DIR}/bicepconfig.json"
+    exit 0
 fi
 
 # Radius Bicep types uses latest tag
