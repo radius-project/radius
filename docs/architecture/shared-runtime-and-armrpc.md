@@ -133,11 +133,7 @@ from `global.rbac.enabled` and `global.rbac.dryRun`):
   in the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
   and `dynamic-rp` allow only the `ucp` identity.
 
-The certificate, key, and CA bundle are read from the mounted `<component>-mtls`
-Secret and reloaded by polling the files (every 10 seconds) without a restart.
-New handshakes use the new material, and each request's client certificate is
-checked against the current CA bundle. Probes and metrics stay on their plain
-ports.
+The certificate, key, and CA bundle are read from `/var/run/radius/mtls` and reloaded by polling the files (every 10 seconds) without a restart. In the default `selfSigned` mode all three files come from the component's `<component>-mtls` Secret. In `caSecret` mode a projected volume takes only the leaf certificate and key from that Secret and `ca.crt` from the chart's public `radius-mtls-ca` ConfigMap, so the receiver trusts the configured dedicated signing CA rather than the organization's root from a leaf's returned chain. The operator-owned signing Secret is referenced only by the namespaced issuer, not mounted into services. See the [certificate-mode contract](../../deploy/Chart/README.md#internal-service-certificate-modes) for validation prerequisites and the currently blocked `issuerRef` mode. New handshakes use the new material, and each request's client certificate is checked against the current CA bundle. Probes and metrics stay on their plain ports.
 
 Every request also checks the current server certificate's validity. Cached peer verification lasts only until the earliest expiry in the verified chains or a material reload, whichever comes first. On an open connection, expired certificates or removed trust cause `enforce` to return `401 InvalidAuthenticationInfo` and close the connection; `dryRun` logs the failure and continues serving. Renewing the server certificate does not invalidate an otherwise trusted peer on an existing connection.
 

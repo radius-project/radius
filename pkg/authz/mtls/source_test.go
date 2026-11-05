@@ -18,9 +18,14 @@ package mtls
 
 import (
 	"context"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"testing"
@@ -109,6 +114,97 @@ func TestNewSource_Errors(t *testing.T) {
 		writeFiles(t, dir, newCA(t).issue(t, certOptions{dnsNames: componentSANs("ucp")}), ca.pem)
 		_, err := NewSource(dir)
 		require.ErrorContains(t, err, "not issued by the CA bundle")
+	})
+}
+
+func TestSource_DedicatedIntermediateCA(t *testing.T) {
+	t.Parallel()
+	root := newCA(t)
+	newIntermediate := func(t *testing.T, parent testCA, name string) testCA {
+		t.Helper()
+		key := ecKey(t, elliptic.P256())
+		template := &x509.Certificate{
+			SerialNumber:                big.NewInt(2),
+			Subject:                     pkix.Name{CommonName: name},
+			NotBefore:                   parent.cert.NotBefore,
+			NotAfter:                    parent.cert.NotAfter,
+			IsCA:                        true,
+			BasicConstraintsValid:       true,
+			MaxPathLenZero:              true,
+			KeyUsage:                    x509.KeyUsageCertSign,
+			PermittedDNSDomainsCritical: true,
+			PermittedDNSDomains:         []string{testNamespace + ".svc"},
+		}
+		der, err := x509.CreateCertificate(rand.Reader, template, parent.cert, key.Public(), parent.key)
+		require.NoError(t, err)
+		cert, err := x509.ParseCertificate(der)
+		require.NoError(t, err)
+		return testCA{cert: cert, key: key, pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
+	}
+	dedicated := newIntermediate(t, root, "radius-dedicated-ca")
+	sibling := newIntermediate(t, root, "other-team-ca")
+
+	newSource := func(t *testing.T, ca testCA, component string, trust []byte) *Source {
+		t.Helper()
+		cert := ca.issue(t, certOptions{dnsNames: componentSANs(component)})
+		// cert-manager may return the organization chain in tls.crt. Only the
+		// separately projected dedicated CA is a trust anchor, not that chain.
+		cert.certPEM = append(cert.certPEM, ca.pem...)
+		cert.certPEM = append(cert.certPEM, root.pem...)
+		dir := t.TempDir()
+		writeFiles(t, dir, cert, trust)
+		src, err := NewSource(dir)
+		require.NoError(t, err)
+		return src
+	}
+	server := newSource(t, dedicated, "ucp", dedicated.pem)
+	client := newSource(t, dedicated, "controller", dedicated.pem)
+	result := handshake(t, server.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
+	require.NoError(t, result.serverErr)
+	require.NoError(t, result.clientErr)
+	require.Len(t, result.clientState.VerifiedChains, 1)
+	require.Equal(t, dedicated.cert.Raw, result.clientState.VerifiedChains[0][1].Raw)
+	require.Len(t, result.clientState.VerifiedChains[0], 2)
+
+	for _, tt := range []struct {
+		name string
+		ca   testCA
+	}{
+		{name: "organization root", ca: root},
+		{name: "sibling intermediate", ca: sibling},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			// Even a canonical Radius SAN is insufficient under another CA
+			// from the same organization.
+			otherClient := newSource(t, tt.ca, "controller", root.pem)
+			result := handshake(t, server.ServerConfig(testNamespace), clientConfig(t, otherClient, ucpServerName))
+			require.ErrorContains(t, result.serverErr, "unknown authority")
+
+			otherServer := newSource(t, tt.ca, "ucp", root.pem)
+			result = handshake(t, otherServer.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
+			require.ErrorContains(t, result.clientErr, "unknown authority")
+		})
+	}
+
+	t.Run("name constraint rejects another namespace", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		cert := dedicated.issue(t, certOptions{dnsNames: []string{"ucp.other-system.svc"}})
+		writeFiles(t, dir, cert, dedicated.pem)
+		_, err := NewSource(dir)
+		require.ErrorContains(t, err, "not issued by the CA bundle")
+	})
+
+	t.Run("path length zero rejects a subordinate CA", func(t *testing.T) {
+		t.Parallel()
+		subordinate := newIntermediate(t, dedicated, "subordinate-ca")
+		cert := subordinate.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+		cert.certPEM = append(cert.certPEM, subordinate.pem...)
+		dir := t.TempDir()
+		writeFiles(t, dir, cert, dedicated.pem)
+		_, err := NewSource(dir)
+		require.ErrorContains(t, err, "too many intermediates")
 	})
 }
 

@@ -34,13 +34,37 @@ With an explicitly selected compatible engine image (`de.image` and `de.tag`), e
 | `UCP_MTLS_NAMESPACE`             | The Helm release namespace                                   |
 | `RADIUSBACKENDURL`               | `https://ucp.<namespace>.svc:9444/apis/api.ucp.dev/v1alpha3` |
 
-Only the engine's own `bicep-de-mtls` Secret is mounted, read-only at `/var/run/radius/mtls`. It supplies `tls.crt`, `tls.key` and `ca.crt`; the mount has no `subPath`, so cert-manager updates can propagate. Its certificate names `bicep-de.<namespace>.svc`. The paired engine must use a coherent certificate/key/CA snapshot for every handshake, verify the canonical UCP hostname and dedicated CA, and fail closed on invalid or missing material even in DryRun. All outbound UCP SDK callbacks, nested deployment requests and operation polling must use that transport without an unauthenticated fallback. `ARM_AUTH_METHOD=UCPCredential` is unchanged; the engine's existing Kubernetes Secret access for Azure credentials is separate from this UCP transport.
+Only the engine's own `bicep-de-mtls` Secret supplies its leaf certificate and key, read-only at `/var/run/radius/mtls`. In `selfSigned` mode it also supplies `ca.crt`; in `caSecret` mode a projected volume supplies `ca.crt` from the public `radius-mtls-ca` ConfigMap instead. The mount has no `subPath`, so updates can propagate. Its certificate names `bicep-de.<namespace>.svc`. The paired engine must use a coherent certificate/key/CA snapshot for every handshake, verify the canonical UCP hostname and dedicated CA, and fail closed on invalid or missing material even in DryRun. All outbound UCP SDK callbacks, nested deployment requests and operation polling must use that transport without an unauthenticated fallback. `ARM_AUTH_METHOD=UCPCredential` is unchanged; the engine's existing Kubernetes Secret access for Azure credentials is separate from this UCP transport.
 
 The scoped mount does not establish Kubernetes Secret isolation: the engine ServiceAccount retains its existing `cluster-admin` binding for resource provisioning and can therefore read other component Secrets through the Kubernetes API. Restricting that provisioning authority is separate from this transport wiring.
 
 Without the opt-in, the engine mounts no component credentials and keeps the published image's existing `https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3` endpoint, even in DryRun or Enforce. UCP verifies aggregation-proxy credentials before trusting forwarded user headers, while its headerless, certificate-less engine compatibility path remains open pending the verified engine migration. A component certificate is not an aggregation-proxy credential. These settings alone do not complete internal authentication or execution authorization.
 
 ## Configuration Options
+
+### Internal service certificate modes
+
+With component authorization off, certificate settings have no effect. In DryRun or Enforce, `global.rbac.certificates.mode=selfSigned` remains the default. It creates the Radius CA, the namespaced `radius-ca-issuer`, and five service Certificates. Service certificates have one canonical DNS SAN, `<component>.<release-namespace>.svc`, an ECDSA P-256 key, client/server usages, a requested 24-hour lifetime and renewal 8 hours before expiry.
+
+For `caSecret`, prepare an operator-owned `kubernetes.io/tls` Secret in the release namespace. Its `tls.crt` must start with the dedicated signing CA certificate, optionally followed by its parent chain; `tls.key` must match that first certificate. The chart neither renders nor adopts that Secret, and does not mount the signing key into any component. The existing namespaced `radius-ca-issuer` references it; no bootstrap issuer or CA Certificate is created.
+
+Set `global.rbac.certificates.caSecret` to that Secret's name and `global.rbac.certificates.caBundle` to **only the public dedicated signing CA certificate**. For a fresh installation, preview the resources without contacting a cluster:
+
+```console
+helm template radius deploy/Chart -n radius-system \
+  --set global.rbac.dryRun=true \
+  --set global.rbac.certificates.mode=caSecret \
+  --set global.rbac.certificates.caSecret=operator-signing-ca \
+  --set-file global.rbac.certificates.caBundle=/path/to/dedicated-ca.pem
+```
+
+`caBundle` accepts exactly one PEM `CERTIFICATE` block, with surrounding whitespace trimmed. Do not supply a private key, the parent chain, or the organization root. The chart checks the PEM shape only: it does not parse X.509, inspect the existing Secret, or verify a matching CA/key. Before installation, verify that the public certificate's DER equals the first certificate in the Secret's `tls.crt`, that it is a currently valid CA with a matching allowed key, and that it is dedicated to Radius. Use a path length constraint of zero and a permitted DNS subtree of `<release-namespace>.svc` where possible. CLI flags and cryptographic install/upgrade validation are pending A9; do not interpret a successful render as that validation.
+
+The public certificate is stored in the chart-owned `radius-mtls-ca` ConfigMap. Each component's projected volume combines only `tls.crt` and `tls.key` from its own leaf Secret with `ca.crt` from this ConfigMap. The leaf Secret's `ca.crt` is deliberately excluded: it may contain a broader organization chain. Receivers therefore trust the configured dedicated CA, not every CA in the leaf's chain. This is separate from `global.rootCA`, which configures outbound system trust.
+
+`issuerRef` remains **disabled**. Rendering fails with an explicit prerequisite error, including if a value asserts that approver-policy is installed. A9 must establish that an approver-policy controller is running, cert-manager's default auto-approval is disabled, and an effective policy restricts the selected issuer and Radius identities to authorized certificate requests. A CRD, policy object, or caller-supplied boolean alone does not establish that protection. Direct Helm installs must also remain fail closed until the paired chart/preflight enforcement can provide equivalent protection.
+
+This layer does not implement mode switching, CA replacement, expiry alerts, or coordinated rotation. Do not change the mode or replace a CA on an existing installation using these values alone: A10 must publish old/new trust, wait for consumers, reissue certificates, and explicitly retire old trust. UCP's aggregated API certificate and APIService `caBundle` on port 9443 remain separately managed and unchanged. Local chart and cryptographic tests do not establish cert-manager issuance or intermediate-CA installation on a live cluster.
 
 ### In-Cluster Container Image Builds
 

@@ -4,12 +4,34 @@
 {{- if hasKey $certificates "mode" }}
 {{- $mode = toString $certificates.mode }}
 {{- end }}
-{{- if has $mode (list "caSecret" "issuerRef") }}
-{{- fail (printf "global.rbac.certificates.mode=%s is not supported yet. Use selfSigned." $mode) }}
-{{- else if ne $mode "selfSigned" }}
-{{- fail (printf "global.rbac.certificates.mode=%q is not valid. Use selfSigned." $mode) }}
+{{- if eq $mode "issuerRef" }}
+{{- fail "global.rbac.certificates.mode=issuerRef requires verified certificate request policy protection: a running approver-policy controller, disabled default auto-approval, and an effective identity- and issuer-scoped policy. Install/upgrade preflight enforcement is not available yet; issuerRef remains disabled. Use selfSigned or caSecret." }}
+{{- else if not (has $mode (list "selfSigned" "caSecret")) }}
+{{- fail (printf "global.rbac.certificates.mode=%q is not valid. Use selfSigned or caSecret." $mode) }}
 {{- end }}
 {{- $ns := .Release.Namespace }}
+{{- $caSecret := "radius-ca" }}
+{{- if eq $mode "caSecret" }}
+{{- if not (kindIs "string" $certificates.caSecret) }}
+{{- fail "global.rbac.certificates.caSecret must be the name of an existing operator-owned TLS Secret in the release namespace." }}
+{{- end }}
+{{- $caSecret = $certificates.caSecret }}
+{{- if or (gt (len $caSecret) 253) (not (regexMatch `^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$` $caSecret)) }}
+{{- fail "global.rbac.certificates.caSecret must be the name of an existing operator-owned TLS Secret in the release namespace." }}
+{{- end }}
+{{- if has $caSecret (list "radius-ca" "ucp-cert" "ucp-mtls" "applications-rp-mtls" "dynamic-rp-mtls" "controller-mtls" "bicep-de-mtls") }}
+{{- fail "global.rbac.certificates.caSecret must not name a Radius-managed certificate Secret. Use a separate operator-owned signing Secret." }}
+{{- end }}
+{{- if not (kindIs "string" $certificates.caBundle) }}
+{{- fail "global.rbac.certificates.caBundle must contain exactly one public dedicated CA certificate in PEM format, not a private key or organization chain." }}
+{{- end }}
+{{- if not (regexMatch `^-----BEGIN CERTIFICATE-----\r?\n[A-Za-z0-9+/=\r\n]+-----END CERTIFICATE-----\s*$` (trim $certificates.caBundle)) }}
+{{- fail "global.rbac.certificates.caBundle must contain exactly one public dedicated CA certificate in PEM format, not a private key or organization chain." }}
+{{- end }}
+{{- else if or $certificates.caSecret $certificates.caBundle }}
+{{- fail "global.rbac.certificates.caSecret and caBundle require mode=caSecret." }}
+{{- end }}
+{{- if eq $mode "selfSigned" }}
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -44,6 +66,19 @@ spec:
     kind: Issuer
     name: radius-selfsigned-bootstrap
 ---
+{{- else }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: radius-mtls-ca
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: radius
+data:
+  ca.crt: |
+{{ trim $certificates.caBundle | indent 4 }}
+---
+{{- end }}
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -53,7 +88,7 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   ca:
-    secretName: radius-ca
+    secretName: {{ $caSecret | quote }}
 {{- range $component := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" }}
 ---
 apiVersion: cert-manager.io/v1

@@ -257,21 +257,207 @@ tests:
           path: spec.issuerRef.name
           value: radius-ca-issuer
 
-  - it: fails for caSecret mode
-    set:
+  - it: uses an operator CA without creating or owning its Secret or a bootstrap CA
+    set: &caSecretValues
       global.rbac.enabled: true
       global.rbac.certificates.mode: caSecret
+      global.rbac.certificates.caSecret: operator-signing-ca
+      # Synthetic PEM body: rendering validates shape, not X.509 or signing-key matches.
+      global.rbac.certificates.caBundle: |
+        -----BEGIN CERTIFICATE-----
+        dGVzdA==
+        -----END CERTIFICATE-----
+    asserts:
+      - hasDocuments:
+          count: 7
+      - isKind:
+          of: ConfigMap
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: radius-mtls-ca
+        documentIndex: 0
+      - equal:
+          path: metadata.namespace
+          value: radius-system
+        documentIndex: 0
+      - equal:
+          path: data["ca.crt"]
+          value: |
+            -----BEGIN CERTIFICATE-----
+            dGVzdA==
+            -----END CERTIFICATE-----
+        documentIndex: 0
+      - isKind:
+          of: Issuer
+        documentIndex: 1
+      - equal:
+          path: spec.ca.secretName
+          value: operator-signing-ca
+        documentIndex: 1
+      - isKind:
+          of: Certificate
+        documentIndex: 2
+      - isKind:
+          of: Certificate
+        documentIndex: 3
+      - isKind:
+          of: Certificate
+        documentIndex: 4
+      - isKind:
+          of: Certificate
+        documentIndex: 5
+      - isKind:
+          of: Certificate
+        documentIndex: 6
+      - notExists:
+          path: metadata.ownerReferences
+
+  - it: preserves the leaf certificate contract with an operator CA
+    set: *caSecretValues
+    documentSelector:
+      path: metadata.name
+      value: ucp-cert
+    asserts: *serviceCert
+
+  - it: uses an operator CA in dryRun and a custom namespace
+    release:
+      namespace: custom-ns
+    set:
+      <<: *caSecretValues
+      global.rbac.enabled: false
+      global.rbac.dryRun: true
+    documentSelector:
+      path: metadata.name
+      value: bicep-de-cert
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: custom-ns
+      - equal:
+          path: spec.dnsNames
+          value: [bicep-de.custom-ns.svc]
+
+  - it: fails when the signing Secret name is absent
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.caSecret: ""
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=caSecret is not supported yet. Use selfSigned."
+          errorMessage: "global.rbac.certificates.caSecret must be the name of an existing operator-owned TLS Secret in the release namespace."
 
-  - it: fails for issuerRef mode
+  - it: fails when the signing Secret name is not a string
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.caSecret: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.caSecret must be the name of an existing operator-owned TLS Secret in the release namespace."
+
+  - it: fails when the signing Secret name is invalid
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.caSecret: other/namespace
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.caSecret must be the name of an existing operator-owned TLS Secret in the release namespace."
+
+  - it: rejects the chart-managed CA Secret
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.caSecret: radius-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.caSecret must not name a Radius-managed certificate Secret. Use a separate operator-owned signing Secret."
+
+  - it: rejects a component private-key Secret as the signing Secret
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.caSecret: ucp-mtls
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.caSecret must not name a Radius-managed certificate Secret. Use a separate operator-owned signing Secret."
+
+  - it: requires explicit dedicated CA trust rather than using a leaf's organization chain
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.caBundle: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.caBundle must contain exactly one public dedicated CA certificate in PEM format, not a private key or organization chain."
+
+  - it: rejects a non-string trust bundle
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.caBundle: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.caBundle must contain exactly one public dedicated CA certificate in PEM format, not a private key or organization chain."
+
+  - it: rejects an organization chain in the trust bundle
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.caBundle: |
+        -----BEGIN CERTIFICATE-----
+        dGVzdA==
+        -----END CERTIFICATE-----
+        -----BEGIN CERTIFICATE-----
+        cm9vdA==
+        -----END CERTIFICATE-----
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.caBundle must contain exactly one public dedicated CA certificate in PEM format, not a private key or organization chain."
+
+  - it: rejects private keys in the public trust value
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.caBundle: |
+        -----BEGIN PRIVATE KEY-----
+        dGVzdA==
+        -----END PRIVATE KEY-----
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.caBundle must contain exactly one public dedicated CA certificate in PEM format, not a private key or organization chain."
+
+  - it: rejects a certificate followed by a private key
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.caBundle: |
+        -----BEGIN CERTIFICATE-----
+        dGVzdA==
+        -----END CERTIFICATE-----
+        -----BEGIN PRIVATE KEY-----
+        dGVzdA==
+        -----END PRIVATE KEY-----
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.caBundle must contain exactly one public dedicated CA certificate in PEM format, not a private key or organization chain."
+
+  - it: rejects caSecret settings in selfSigned mode
+    set:
+      <<: *caSecretValues
+      global.rbac.certificates.mode: selfSigned
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.caSecret and caBundle require mode=caSecret."
+
+  - it: fails closed for issuerRef until policy preflight is implemented
     set:
       global.rbac.enabled: true
       global.rbac.certificates.mode: issuerRef
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=issuerRef is not supported yet. Use selfSigned."
+          errorMessage: "global.rbac.certificates.mode=issuerRef requires verified certificate request policy protection: a running approver-policy controller, disabled default auto-approval, and an effective identity- and issuer-scoped policy. Install/upgrade preflight enforcement is not available yet; issuerRef remains disabled. Use selfSigned or caSecret."
+
+  - it: does not accept a boolean assertion of issuer policy protection
+    set:
+      global.rbac.dryRun: true
+      global.rbac.certificates.mode: issuerRef
+      global.rbac.certificates.approverPolicyInstalled: true
+      global.rbac.certificates.issuerRef.name: external-ca
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.certificates.mode=issuerRef requires verified certificate request policy protection: a running approver-policy controller, disabled default auto-approval, and an effective identity- and issuer-scoped policy. Install/upgrade preflight enforcement is not available yet; issuerRef remains disabled. Use selfSigned or caSecret."
 
   - it: fails for an unknown mode
     set:
@@ -279,7 +465,7 @@ tests:
       global.rbac.certificates.mode: bogus
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"bogus\" is not valid. Use selfSigned."
+          errorMessage: "global.rbac.certificates.mode=\"bogus\" is not valid. Use selfSigned or caSecret."
 
   - it: fails for a false mode instead of defaulting
     set:
@@ -287,7 +473,7 @@ tests:
       global.rbac.certificates.mode: false
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"false\" is not valid. Use selfSigned."
+          errorMessage: "global.rbac.certificates.mode=\"false\" is not valid. Use selfSigned or caSecret."
 
   - it: fails for a zero mode instead of defaulting
     set:
@@ -295,7 +481,7 @@ tests:
       global.rbac.certificates.mode: 0
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"0\" is not valid. Use selfSigned."
+          errorMessage: "global.rbac.certificates.mode=\"0\" is not valid. Use selfSigned or caSecret."
 
   - it: fails for an empty mode instead of defaulting
     set:
@@ -303,11 +489,18 @@ tests:
       global.rbac.certificates.mode: ""
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"\" is not valid. Use selfSigned."
+          errorMessage: "global.rbac.certificates.mode=\"\" is not valid. Use selfSigned or caSecret."
 
   - it: ignores the certificate mode when authorization is off
     set:
       global.rbac.certificates.mode: caSecret
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: ignores issuer policy prerequisites when authorization is off
+    set:
+      global.rbac.certificates.mode: issuerRef
     asserts:
       - hasDocuments:
           count: 0
