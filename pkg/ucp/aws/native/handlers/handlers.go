@@ -19,6 +19,7 @@ package handlers
 
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
+	codebuildsdk "github.com/aws/aws-sdk-go-v2/service/codebuild"
 	dmssdk "github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
 	daxsdk "github.com/aws/aws-sdk-go-v2/service/dax"
 	docdbsdk "github.com/aws/aws-sdk-go-v2/service/docdb"
@@ -30,6 +31,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dax"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dms"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/docdb"
@@ -62,6 +64,7 @@ func All(cfg aws.Config) []native.Handler {
 		lakeformation.NewDataLakeSettings(lakeformationAPI),
 		lakeformation.NewPermissions(lakeformationAPI),
 		lakeformation.NewResource(lakeformationAPI),
+		codebuild.NewProject(codebuildsdk.NewFromConfig(cfg)),
 	}
 }
 
