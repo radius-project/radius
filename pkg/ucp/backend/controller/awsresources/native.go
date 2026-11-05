@@ -72,7 +72,11 @@ func (c *AwaitController) waitNative(ctx context.Context, id resources.ID, ident
 			}
 			return native.Progress{Done: true, Failure: &native.Failure{Message: fmt.Sprintf("AWS no longer has the AWS resource %q. Deploy again to create it.", id.Name())}}, nil
 		} else if errors.As(err, &other) {
-			// Waiting again would find the same resource, so the operation fails instead of retrying.
+			// The resource the alias managed is gone, and UCP never touches the other product's resource. A delete is
+			// done. Otherwise waiting again would find the same resource, so the operation fails instead of retrying.
+			if nativeOp == native.OperationDelete {
+				return native.Progress{Done: true}, nil
+			}
 			return native.Progress{Done: true, Failure: &native.Failure{Message: fmt.Sprintf("The AWS identifier %q of the AWS resource %q now belongs to another product (%s), not to the AWS type %s, so UCP stopped waiting for it.", other.Identifier, id.Name(), other.Product, t.Handler.TypeName())}}, nil
 		} else if err != nil {
 			return native.Progress{}, err

@@ -160,6 +160,15 @@ func isNotFound(err error) bool {
 	return ucp_aws.IsAWSResourceNotFoundError(err) || errors.Is(err, native.ErrNotFound)
 }
 
+// isGoneForDelete reports whether err means a DELETE has nothing of its type to delete: AWS has no such resource, or
+// the identifier now names a resource of another product (native.OtherProductError), so the resource the alias
+// managed is gone. The DELETE removes only the record and never touches the other product's resource. A PUT or GET
+// still fails with 409 for another product.
+func isGoneForDelete(err error) bool {
+	var other *native.OtherProductError
+	return isNotFound(err) || errors.As(err, &other)
+}
+
 // identifierFor returns the identifier the properties give for a type: the native handler's encoding when t has one,
 // and otherwise the primary identifier values joined with "|", as Cloud Control expects. t is nil for a type with no
 // native handler. Every path uses it, so a resource is found by the same identifier whichever handler serves it.
@@ -390,7 +399,7 @@ func (e *engine) findCreate(ctx context.Context, r *request, rec *datamodel.AWSR
 //
 // Then, by what AWS shows:
 //
-//   - no such resource: nothing exists, so only the record is removed.
+//   - no such resource, or a resource of another product: nothing of the type exists, so only the record is removed.
 //   - still creating: UCP waits for it, as for any create, and returns 409. The caller deletes again when it finishes.
 //   - created, or failed with a resource left: the record gets the identifier, and the delete continues.
 //   - another alias manages the resource found: the record is kept, and the DELETE gets 409.
@@ -421,7 +430,10 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 		} else {
 			identifier, err = e.findCreate(ctx, r, rec, pending)
 		}
-		if err != nil {
+		var other *native.OtherProductError
+		if errors.As(err, &other) {
+			return removed()
+		} else if err != nil {
 			return keep(err)
 		}
 		if identifier == "" {
@@ -438,7 +450,7 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 
 	progress, err := r.handler.Progress(ctx, r.region, identifier, native.OperationCreate)
 	switch {
-	case errors.Is(err, native.ErrNotFound):
+	case isGoneForDelete(err):
 		return removed()
 	case err != nil:
 		return keep(err)

@@ -565,8 +565,9 @@ func (s Suite) otherForm(t *testing.T) {
 }
 
 // otherProduct puts a resource of another product under the identifier: first before any deploy, then in place of
-// the deployed resource. Every request that reads or changes it fails with 409 naming the identifier, and nothing
-// changes in AWS or in the record.
+// the deployed resource. A PUT, GET, or `existing` fails with 409 naming the identifier, and nothing changes in AWS or
+// in the record. A DELETE treats the identifier as not found: it removes only the record and leaves the other
+// product's resource as it is.
 func (s Suite) otherProduct(t *testing.T) {
 	if s.OtherProduct == nil {
 		t.Skip("the service API serves no other product")
@@ -591,9 +592,6 @@ func (s Suite) otherProduct(t *testing.T) {
 	h.handler.reset()
 
 	responses := []response{h.put(s.Properties), h.get(), h.existingResponse()}
-	if od := h.onDelete(); od == schemas.OnDeleteDelete || od == schemas.OnDeleteReset {
-		responses = append(responses, h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil))
-	}
 	for _, resp := range responses {
 		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
 		require.Contains(t, resp.raw, identifier)
@@ -609,6 +607,16 @@ func (s Suite) otherProduct(t *testing.T) {
 	require.Equal(t, rec.Properties.AWSIdentifier, after.Properties.AWSIdentifier)
 	require.Equal(t, rec.Properties.LastApplied, after.Properties.LastApplied)
 	require.Equal(t, v1.ProvisioningStateSucceeded, after.ProvisioningState())
+
+	resp := h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+	h.finish()
+	require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+	if h.onDelete() == schemas.OnDeleteLeave {
+		require.NotNil(t, h.record())
+	} else {
+		require.Nil(t, h.record(), "the resource the alias managed is gone, so the record is removed")
+	}
+	require.Equal(t, before, h.cc.Resource(s.TypeName, identifier), "UCP never touches the other product's resource")
 }
 
 // multiCall fails an update that makes several AWS calls before each call and after the last one, with an error

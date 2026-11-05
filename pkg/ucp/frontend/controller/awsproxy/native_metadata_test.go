@@ -214,6 +214,95 @@ func Test_Native_WorkerOutcomes(t *testing.T) {
 	})
 }
 
+// Test_Native_DeleteOtherProduct checks that a DELETE whose identifier now names a resource of another product treats
+// it as not found on every path: it removes only the record and never touches the other product's resource.
+func Test_Native_DeleteOtherProduct(t *testing.T) {
+	neptune := map[string]any{"Name": "app-native", "Engine": "neptune"}
+	docdb := func() map[string]any {
+		properties := nativeProperties(1)
+		properties["Engine"] = "docdb"
+		return properties
+	}
+	newHarness := func(t *testing.T) *nativeHarness {
+		h := newNativeHarness(t)
+		h.fake.ProductProperty, h.fake.Product = "Engine", "docdb"
+		h.assigned.ProductProperty, h.assigned.Product = "Engine", "docdb"
+		h.handWritten.ProductProperty, h.handWritten.Product = "Engine", "docdb"
+		return h
+	}
+
+	t.Run("the delete call", func(t *testing.T) {
+		h := newHarness(t)
+		h.deploy(nativePath, docdb())
+		h.cc.Put(nativeType, "app-native", neptune)
+
+		resp := h.delete(nativePath, testOwner)
+		require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+		require.Nil(t, h.record(nativePath))
+		require.Equal(t, neptune, h.cc.Resource(nativeType, "app-native"))
+	})
+
+	t.Run("while UCP waits for the delete", func(t *testing.T) {
+		h := newHarness(t)
+		h.deploy(nativePath, docdb())
+		h.fake.Waits = 1
+		require.Equal(t, http.StatusAccepted, h.delete(nativePath, testOwner).status)
+		h.cc.Put(nativeType, "app-native", neptune)
+
+		results := h.finish()
+		require.Nil(t, results[0].Error)
+		require.Nil(t, h.record(nativePath))
+		require.Equal(t, neptune, h.cc.Resource(nativeType, "app-native"))
+	})
+
+	t.Run("a lost create found by its identifier", func(t *testing.T) {
+		h := newHarness(t)
+		h.loseCreate(h.fake, nativePath, docdb())
+		h.cc.Put(nativeType, "app-native", neptune)
+
+		resp := h.delete(nativePath, testOwner)
+		require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+		require.Nil(t, h.record(nativePath))
+		require.Equal(t, neptune, h.cc.Resource(nativeType, "app-native"))
+	})
+
+	t.Run("a lost create found by search", func(t *testing.T) {
+		h := newHarness(t)
+		h.assigned.Opts.Recovery = native.RecoverBySearch
+		h.loseCreate(h.assigned, assignedPath, map[string]any{"Size": 1, "Engine": "docdb"})
+		other := map[string]any{"Id": "id-1", "Engine": "neptune"}
+		h.cc.Put(assignedType, "id-1", other)
+
+		resp := h.delete(assignedPath, testOwner)
+		require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+		require.Nil(t, h.record(assignedPath))
+		require.Equal(t, other, h.cc.Resource(assignedType, "id-1"))
+	})
+
+	t.Run("a type whose onDelete is reject", func(t *testing.T) {
+		h := newHarness(t)
+		h.withMetadata(metadata(handWrittenType, schemas.IdentityScopeRegion, schemas.OnDeleteReject))
+		h.deploy(handWrittenPath, map[string]any{"Name": "app-handwritten", "Engine": "docdb"})
+		other := map[string]any{"Name": "app-handwritten", "Engine": "neptune"}
+		h.cc.Put(handWrittenType, "app-handwritten", other)
+
+		resp := h.delete(handWrittenPath, testOwner)
+		require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+		require.Nil(t, h.record(handWrittenPath))
+		require.Equal(t, other, h.cc.Resource(handWrittenType, "app-handwritten"))
+	})
+
+	t.Run("a PUT still gets 409", func(t *testing.T) {
+		h := newHarness(t)
+		h.deploy(nativePath, docdb())
+		h.cc.Put(nativeType, "app-native", neptune)
+
+		resp := h.put(nativePath, docdb())
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.NotNil(t, h.record(nativePath))
+	})
+}
+
 func Test_Native_IdentityScope(t *testing.T) {
 	otherRegion := strings.Replace(handWrittenPath, "/regions/us-west-2/", "/regions/us-east-1/", 1)
 	otherRegion = strings.TrimSuffix(otherRegion, "app-handwritten") + "app-other"

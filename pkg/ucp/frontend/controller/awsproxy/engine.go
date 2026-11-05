@@ -789,7 +789,8 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 // startDelete reserves the record and deletes its AWS resource, and the worker removes the record when AWS finishes.
 // A record with no identifier and no client token has nothing in AWS, so only the record is removed. One with a client
 // token has a create that may have reached AWS, which recoverCreate, or recoverNativeCreate for a native handler, finds
-// first.
+// first. When AWS has no resource, or the identifier now names a resource of another product, only the record is
+// removed (see isGoneForDelete).
 //
 // The type's onDelete metadata can change that: nothing removes only the record, leave keeps the record and returns
 // 204, and reset has the native handler reset the resource instead of deleting it (see startDeleteCall). Neither
@@ -811,10 +812,10 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	if onDelete(r) == schemas.OnDeleteReject && !records.IsFirstCreate(rec) {
 		current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)
 		switch {
+		case isGoneForDelete(err), err == nil && current == nil:
+			return e.removeRecord(ctx, r, etag)
 		case err != nil:
 			return handleError(ctx, r.id, err)
-		case current == nil:
-			return e.removeRecord(ctx, r, etag)
 		}
 		return rejected(r), nil
 	}
@@ -852,7 +853,7 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	identifier := rec.Properties.AWSIdentifier
 	logger.Info("Deleting AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier, "handler", handlerName(r))
 	requestToken, err := e.startDeleteCall(ctx, r, identifier)
-	if isNotFound(err) {
+	if isGoneForDelete(err) {
 		return e.removeRecord(ctx, r, etag)
 	} else if err != nil {
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {

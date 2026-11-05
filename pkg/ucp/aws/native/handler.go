@@ -49,7 +49,9 @@ var ErrNotFound = errors.New("the AWS resource does not exist")
 // OtherProductError is returned, or wrapped, by a handler whose service API also serves other products, when the
 // identifier names a resource of another product, such as an Aurora cluster for a DocumentDB handler. The handler
 // checks the product before every Read, Update, Delete, Reset, Progress, and Find, and leaves other products out of
-// List. UCP fails the request with 409, naming the identifier, and changes nothing.
+// List. UCP fails a PUT, GET, or `existing` with 409, naming the identifier, and changes nothing. A DELETE treats it as
+// ErrNotFound: the resource the alias managed is gone, so UCP removes only the record and never touches the other
+// product's resource.
 type OtherProductError struct {
 	// Identifier is the identifier the request used, and Product is the product AWS reports for it, such as
 	// aurora-postgresql.
