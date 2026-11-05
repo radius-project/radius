@@ -50,7 +50,7 @@
       "timeoutInMinutes": 125
     },
     "delete": {
-      "permissions": []
+      "permissions": ["appsync:GetSchemaCreationStatus"]
     }
   },
   "writeOnlyProperties": [

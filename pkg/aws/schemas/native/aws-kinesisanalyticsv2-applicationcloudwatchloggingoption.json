@@ -29,5 +29,34 @@
   "required": ["CloudWatchLoggingOption", "ApplicationName"],
   "createOnlyProperties": ["/properties/ApplicationName"],
   "primaryIdentifier": ["/properties/Id"],
-  "readOnlyProperties": ["/properties/Id"]
+  "readOnlyProperties": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "kinesisanalytics:AddApplicationCloudWatchLoggingOption",
+        "kinesisanalytics:DescribeApplication"
+      ]
+    },
+    "read": {
+      "permissions": ["kinesisanalytics:DescribeApplication"]
+    },
+    "update": {
+      "permissions": [
+        "kinesisanalytics:DescribeApplication",
+        "kinesisanalytics:UpdateApplication"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "kinesisanalytics:DeleteApplicationCloudWatchLoggingOption",
+        "kinesisanalytics:DescribeApplication"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "kinesisanalytics:DescribeApplication",
+        "kinesisanalytics:ListApplications"
+      ]
+    }
+  }
 }

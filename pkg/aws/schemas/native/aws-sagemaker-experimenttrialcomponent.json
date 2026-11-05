@@ -103,5 +103,38 @@
     "/properties/Id",
     "/properties/LastModifiedTime",
     "/properties/Arn"
-  ]
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "sagemaker:AddTags",
+        "sagemaker:CreateTrialComponent",
+        "sagemaker:DescribeTrialComponent"
+      ]
+    },
+    "read": {
+      "permissions": ["sagemaker:DescribeTrialComponent", "sagemaker:ListTags"]
+    },
+    "update": {
+      "permissions": [
+        "sagemaker:AddTags",
+        "sagemaker:DeleteTags",
+        "sagemaker:DescribeTrialComponent",
+        "sagemaker:UpdateTrialComponent"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "sagemaker:DeleteTrialComponent",
+        "sagemaker:DescribeTrialComponent"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "sagemaker:DescribeTrialComponent",
+        "sagemaker:ListTags",
+        "sagemaker:ListTrialComponents"
+      ]
+    }
+  }
 }

@@ -383,7 +383,8 @@
     "delete": {
       "permissions": [
         "ec2:DeleteClientVpnEndpoint",
-        "ec2:DescribeClientVpnEndpoints"
+        "ec2:DescribeClientVpnEndpoints",
+        "ec2:GetClientVpnEndpointAuthorizationPolicy"
       ]
     },
     "list": {

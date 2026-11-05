@@ -108,5 +108,22 @@
   },
   "primaryIdentifier": ["/properties/Id"],
   "readOnlyProperties": ["/properties/Id"],
-  "writeOnlyProperties": ["/properties/MutationType"]
+  "writeOnlyProperties": ["/properties/MutationType"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "lakeformation:GetDataLakeSettings",
+        "lakeformation:PutDataLakeSettings"
+      ]
+    },
+    "read": {
+      "permissions": ["lakeformation:GetDataLakeSettings"]
+    },
+    "update": {
+      "permissions": [
+        "lakeformation:GetDataLakeSettings",
+        "lakeformation:PutDataLakeSettings"
+      ]
+    }
+  }
 }

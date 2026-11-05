@@ -39,6 +39,9 @@
         "ec2:DescribeRouteTables"
       ]
     },
+    "read": {
+      "permissions": ["ec2:DescribeRouteTables"]
+    },
     "update": {
       "permissions": [
         "ec2:EnableVgwRoutePropagation",

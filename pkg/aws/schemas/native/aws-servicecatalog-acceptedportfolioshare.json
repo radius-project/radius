@@ -43,6 +43,9 @@
         "servicecatalog:RejectPortfolioShare",
         "servicecatalog:ListAcceptedPortfolioShares"
       ]
+    },
+    "update": {
+      "permissions": ["servicecatalog:ListAcceptedPortfolioShares"]
     }
   }
 }

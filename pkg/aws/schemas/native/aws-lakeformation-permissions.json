@@ -149,5 +149,25 @@
     "/properties/Resource"
   ],
   "primaryIdentifier": ["/properties/Id"],
-  "readOnlyProperties": ["/properties/Id"]
+  "readOnlyProperties": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": ["lakeformation:GrantPermissions"]
+    },
+    "read": {
+      "permissions": ["lakeformation:ListPermissions"]
+    },
+    "update": {
+      "permissions": [
+        "lakeformation:GrantPermissions",
+        "lakeformation:RevokePermissions"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "lakeformation:ListPermissions",
+        "lakeformation:RevokePermissions"
+      ]
+    }
+  }
 }

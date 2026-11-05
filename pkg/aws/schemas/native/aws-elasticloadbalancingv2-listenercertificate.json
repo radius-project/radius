@@ -33,5 +33,25 @@
   "required": ["ListenerArn", "Certificates"],
   "createOnlyProperties": ["/properties/ListenerArn"],
   "primaryIdentifier": ["/properties/Id"],
-  "readOnlyProperties": ["/properties/Id"]
+  "readOnlyProperties": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": ["elasticloadbalancing:AddListenerCertificates"]
+    },
+    "read": {
+      "permissions": ["elasticloadbalancing:DescribeListenerCertificates"]
+    },
+    "update": {
+      "permissions": [
+        "elasticloadbalancing:AddListenerCertificates",
+        "elasticloadbalancing:RemoveListenerCertificates"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "elasticloadbalancing:DescribeListenerCertificates",
+        "elasticloadbalancing:RemoveListenerCertificates"
+      ]
+    }
+  }
 }

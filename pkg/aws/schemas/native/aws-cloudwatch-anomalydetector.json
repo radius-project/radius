@@ -207,5 +207,31 @@
     "/properties/Stat"
   ],
   "primaryIdentifier": ["/properties/Id"],
-  "readOnlyProperties": ["/properties/Id"]
+  "readOnlyProperties": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "cloudwatch:DescribeAnomalyDetectors",
+        "cloudwatch:PutAnomalyDetector"
+      ]
+    },
+    "read": {
+      "permissions": ["cloudwatch:DescribeAnomalyDetectors"]
+    },
+    "update": {
+      "permissions": [
+        "cloudwatch:DescribeAnomalyDetectors",
+        "cloudwatch:PutAnomalyDetector"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "cloudwatch:DeleteAnomalyDetector",
+        "cloudwatch:DescribeAnomalyDetectors"
+      ]
+    },
+    "list": {
+      "permissions": ["cloudwatch:DescribeAnomalyDetectors"]
+    }
+  }
 }

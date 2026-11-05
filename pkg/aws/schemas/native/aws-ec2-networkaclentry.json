@@ -10,11 +10,17 @@
     "create": {
       "permissions": ["ec2:CreateNetworkAclEntry", "ec2:DescribeNetworkAcls"]
     },
+    "read": {
+      "permissions": ["ec2:DescribeNetworkAcls"]
+    },
     "update": {
       "permissions": ["ec2:ReplaceNetworkAclEntry", "ec2:DescribeNetworkAcls"]
     },
     "delete": {
       "permissions": ["ec2:DeleteNetworkAclEntry", "ec2:DescribeNetworkAcls"]
+    },
+    "list": {
+      "permissions": ["ec2:DescribeNetworkAcls"]
     }
   },
   "typeName": "AWS::EC2::NetworkAclEntry",

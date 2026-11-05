@@ -54,6 +54,9 @@
     "read": {
       "permissions": ["ec2:DescribeClientVpnTargetNetworks"]
     },
+    "update": {
+      "permissions": ["ec2:DescribeClientVpnTargetNetworks"]
+    },
     "delete": {
       "permissions": [
         "ec2:DisassociateClientVpnTargetNetwork",

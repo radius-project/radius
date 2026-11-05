@@ -22,5 +22,19 @@
   "required": ["GroupName", "Users"],
   "createOnlyProperties": ["/properties/GroupName"],
   "primaryIdentifier": ["/properties/Id"],
-  "readOnlyProperties": ["/properties/Id"]
+  "readOnlyProperties": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": ["iam:AddUserToGroup"]
+    },
+    "read": {
+      "permissions": ["iam:GetGroup"]
+    },
+    "update": {
+      "permissions": ["iam:AddUserToGroup", "iam:RemoveUserFromGroup"]
+    },
+    "delete": {
+      "permissions": ["iam:GetGroup", "iam:RemoveUserFromGroup"]
+    }
+  }
 }

@@ -3946,5 +3946,34 @@
     "/properties/EncoderSettings/OutputGroups/*/OutputGroupSettings/HlsGroupSettings/HlsCdnSettings/HlsAkamaiSettings/Salt",
     "/properties/DryRun",
     "/properties/Vpc/PublicAddressAllocationIds"
-  ]
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "iam:PassRole",
+        "medialive:CreateChannel",
+        "medialive:CreateTags",
+        "medialive:DescribeChannel"
+      ]
+    },
+    "read": {
+      "permissions": ["medialive:DescribeChannel"]
+    },
+    "update": {
+      "permissions": [
+        "iam:PassRole",
+        "medialive:CreateTags",
+        "medialive:DeleteTags",
+        "medialive:DescribeChannel",
+        "medialive:UpdateChannel",
+        "medialive:UpdateChannelClass"
+      ]
+    },
+    "delete": {
+      "permissions": ["medialive:DeleteChannel", "medialive:DescribeChannel"]
+    },
+    "list": {
+      "permissions": ["medialive:DescribeChannel", "medialive:ListChannels"]
+    }
+  }
 }

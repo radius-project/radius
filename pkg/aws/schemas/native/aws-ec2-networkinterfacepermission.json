@@ -24,5 +24,28 @@
     "/properties/NetworkInterfaceId"
   ],
   "readOnlyProperties": ["/properties/Id"],
-  "primaryIdentifier": ["/properties/Id"]
+  "primaryIdentifier": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "ec2:CreateNetworkInterfacePermission",
+        "ec2:DescribeNetworkInterfacePermissions"
+      ]
+    },
+    "read": {
+      "permissions": ["ec2:DescribeNetworkInterfacePermissions"]
+    },
+    "update": {
+      "permissions": ["ec2:DescribeNetworkInterfacePermissions"]
+    },
+    "delete": {
+      "permissions": [
+        "ec2:DeleteNetworkInterfacePermission",
+        "ec2:DescribeNetworkInterfacePermissions"
+      ]
+    },
+    "list": {
+      "permissions": ["ec2:DescribeNetworkInterfacePermissions"]
+    }
+  }
 }
