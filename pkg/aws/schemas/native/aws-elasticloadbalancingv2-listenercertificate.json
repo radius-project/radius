@@ -1,0 +1,37 @@
+{
+  "typeName": "AWS::ElasticLoadBalancingV2::ListenerCertificate",
+  "description": "Resource Type definition for AWS::ElasticLoadBalancingV2::ListenerCertificate",
+  "additionalProperties": false,
+  "properties": {
+    "ListenerArn": {
+      "type": "string"
+    },
+    "Certificates": {
+      "type": "array",
+      "uniqueItems": true,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/Certificate"
+      }
+    },
+    "Id": {
+      "type": "string",
+      "description": "ListenerArn and a name Radius generates, joined with \"|\". The resource is the certificates in Certificates, so other certificates on the listener stay as they are."
+    }
+  },
+  "definitions": {
+    "Certificate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "CertificateArn": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": ["ListenerArn", "Certificates"],
+  "createOnlyProperties": ["/properties/ListenerArn"],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id"]
+}

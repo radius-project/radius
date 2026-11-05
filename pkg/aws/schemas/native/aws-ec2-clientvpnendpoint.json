@@ -1,0 +1,410 @@
+{
+  "typeName": "AWS::EC2::ClientVpnEndpoint",
+  "description": "Resource Type definition for AWS::EC2::ClientVpnEndpoint",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-resource-providers-ec2/tree/master/aws-ec2-clientvpnendpoint.git",
+  "additionalProperties": false,
+  "properties": {
+    "ClientCidrBlock": {
+      "type": "string",
+      "description": "The IPv4 address range, in CIDR notation, from which to assign client IP addresses. The address range cannot overlap with the local CIDR of the VPC in which the associated subnet is located, or the routes that you add manually. The address range cannot be changed after the Client VPN endpoint has been created. Client CIDR range must have a size of at least /22 and must not be greater than /12."
+    },
+    "ClientConnectOptions": {
+      "$ref": "#/definitions/ClientConnectOptions",
+      "description": "The options for managing connection authorization for new client connections."
+    },
+    "Description": {
+      "type": "string",
+      "description": "A brief description of the Client VPN endpoint."
+    },
+    "ClientRouteEnforcementOptions": {
+      "$ref": "#/definitions/ClientRouteEnforcementOptions",
+      "description": "Client route enforcement is a feature of the Client VPN service that helps enforce administrator defined routes on devices connected through the VPN. This feature helps improve your security posture by ensuring that network traffic originating from a connected client is not inadvertently sent outside the VPN tunnel.\nClient route enforcement works by monitoring the route table of a connected device for routing policy changes to the VPN connection. If the feature detects any VPN routing policy modifications, it will automatically force an update to the route table, reverting it back to the expected route configurations."
+    },
+    "TagSpecifications": {
+      "type": "array",
+      "uniqueItems": false,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/TagSpecification"
+      },
+      "description": "The tags to apply to the Client VPN endpoint during creation."
+    },
+    "AuthenticationOptions": {
+      "type": "array",
+      "uniqueItems": false,
+      "insertionOrder": false,
+      "items": {
+        "$ref": "#/definitions/ClientAuthenticationRequest"
+      },
+      "description": "Information about the authentication method to be used to authenticate clients."
+    },
+    "ServerCertificateArn": {
+      "type": "string",
+      "description": "The ARN of the server certificate. For more information, see the AWS Certificate Manager User Guide."
+    },
+    "SessionTimeoutHours": {
+      "type": "integer",
+      "description": "The maximum VPN session duration time in hours."
+    },
+    "DnsServers": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      },
+      "description": "Information about the DNS servers to be used for DNS resolution. A Client VPN endpoint can have up to two DNS servers. If no DNS server is specified, the DNS address configured on the device is used for the DNS server."
+    },
+    "SecurityGroupIds": {
+      "type": "array",
+      "uniqueItems": false,
+      "insertionOrder": false,
+      "items": {
+        "type": "string"
+      },
+      "description": "The IDs of one or more security groups to apply to the target network. You must also specify the ID of the VPC that contains the security groups."
+    },
+    "DisconnectOnSessionTimeout": {
+      "type": "boolean",
+      "description": "Indicates whether the client VPN session is disconnected after the maximum sessionTimeoutHours is reached. If true, users are prompted to reconnect client VPN. If false, client VPN attempts to reconnect automatically."
+    },
+    "ConnectionLogOptions": {
+      "$ref": "#/definitions/ConnectionLogOptions",
+      "description": "Information about the client connection logging options. If you enable client connection logging, data about client connections is sent to a Cloudwatch Logs log stream. The following information is logged: client connection requests, client connection results (successful and unsuccessful), reasons for unsuccessful client connection requests, client connection termination time."
+    },
+    "SplitTunnel": {
+      "type": "boolean",
+      "description": "Indicates whether split-tunnel is enabled on the AWS Client VPN endpoint."
+    },
+    "TrafficIpAddressType": {
+      "type": "string",
+      "description": "The IP address type of the Client VPN endpoint."
+    },
+    "ClientLoginBannerOptions": {
+      "$ref": "#/definitions/ClientLoginBannerOptions",
+      "description": "Options for enabling a customizable text banner that will be displayed on AWS provided clients when a VPN session is established."
+    },
+    "VpcId": {
+      "type": "string",
+      "description": "The ID of the VPC to associate with the Client VPN endpoint. If no security group IDs are specified in the request, the default security group for the VPC is applied."
+    },
+    "SelfServicePortal": {
+      "type": "string",
+      "description": "Specify whether to enable the self-service portal for the Client VPN endpoint"
+    },
+    "TransitGatewayConfiguration": {
+      "$ref": "#/definitions/TransitGatewayConfiguration"
+    },
+    "TransportProtocol": {
+      "type": "string",
+      "description": "The transport protocol to be used by the VPN session."
+    },
+    "Id": {
+      "type": "string",
+      "description": "The Client VPN endpoint ID, such as cvpn-endpoint-0123456789abcdef0, which AWS assigns."
+    },
+    "EndpointIpAddressType": {
+      "type": "string",
+      "description": "The IP address type of the Client VPN endpoint."
+    },
+    "VpnPort": {
+      "type": "integer",
+      "description": "The port number to assign to the Client VPN endpoint for TCP and UDP traffic."
+    },
+    "DevicePostureOptions": {
+      "$ref": "#/definitions/DevicePostureOptions",
+      "description": "The device-posture trust providers to associate with the Client VPN endpoint."
+    },
+    "AuthorizationPolicy": {
+      "$ref": "#/definitions/AuthorizationPolicy",
+      "description": "The Cedar authorization policy to associate with the Client VPN endpoint."
+    }
+  },
+  "definitions": {
+    "ConnectionLogOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Enabled": {
+          "type": "boolean"
+        },
+        "CloudwatchLogGroup": {
+          "type": "string"
+        },
+        "CloudwatchLogStream": {
+          "type": "string"
+        },
+        "IncludeAuthorizationPolicyContext": {
+          "type": "boolean",
+          "description": "Indicates whether authorization-policy evaluation context is included in the connection logs."
+        }
+      },
+      "required": ["Enabled"]
+    },
+    "DevicePostureTrustProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "TrustProviderType": {
+          "type": "string",
+          "pattern": "^(crowdstrike|jamf|jumpcloud)$",
+          "description": "The device-posture trust provider type."
+        },
+        "TenantId": {
+          "type": "string",
+          "description": "The tenant identifier registered with the trust provider."
+        },
+        "PublicSigningKeyUrl": {
+          "type": "string",
+          "description": "The URL of the public signing key. Conditionally required by the provider type and enforced server-side (crowdstrike/jumpcloud require it, jamf rejects it)."
+        }
+      },
+      "required": ["TrustProviderType", "TenantId"]
+    },
+    "DevicePostureOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Enabled": {
+          "type": "boolean",
+          "description": "Whether device posture is enabled for the Client VPN endpoint."
+        },
+        "TrustProviders": {
+          "type": "array",
+          "uniqueItems": false,
+          "insertionOrder": false,
+          "items": {
+            "$ref": "#/definitions/DevicePostureTrustProvider"
+          },
+          "description": "The device-posture trust providers."
+        }
+      },
+      "required": ["Enabled", "TrustProviders"]
+    },
+    "AuthorizationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "PolicyDocument": {
+          "type": "string",
+          "description": "The Cedar policy document."
+        },
+        "ShadowMode": {
+          "type": "string",
+          "pattern": "^(enabled|disabled)$",
+          "description": "Whether the authorization policy runs in shadow (observe-only) mode."
+        },
+        "Description": {
+          "type": "string",
+          "description": "A brief description of the authorization policy."
+        }
+      },
+      "required": ["PolicyDocument"]
+    },
+    "ClientConnectOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Enabled": {
+          "type": "boolean"
+        },
+        "LambdaFunctionArn": {
+          "type": "string"
+        }
+      },
+      "required": ["Enabled"]
+    },
+    "FederatedAuthenticationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SAMLProviderArn": {
+          "type": "string"
+        },
+        "SelfServiceSAMLProviderArn": {
+          "type": "string"
+        }
+      },
+      "required": ["SAMLProviderArn"]
+    },
+    "ClientRouteEnforcementOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Enforced": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ClientLoginBannerOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Enabled": {
+          "type": "boolean"
+        },
+        "BannerText": {
+          "type": "string"
+        }
+      },
+      "required": ["Enabled"]
+    },
+    "DirectoryServiceAuthenticationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "DirectoryId": {
+          "type": "string"
+        }
+      },
+      "required": ["DirectoryId"]
+    },
+    "TransitGatewayConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "TransitGatewayId": {
+          "type": "string"
+        },
+        "AvailabilityZoneIds": {
+          "type": "array",
+          "uniqueItems": false,
+          "insertionOrder": false,
+          "items": {
+            "type": "string"
+          }
+        },
+        "AvailabilityZones": {
+          "type": "array",
+          "uniqueItems": false,
+          "insertionOrder": false,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["TransitGatewayId"]
+    },
+    "CertificateAuthenticationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ClientRootCertificateChainArn": {
+          "type": "string"
+        }
+      },
+      "required": ["ClientRootCertificateChainArn"]
+    },
+    "ClientAuthenticationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "MutualAuthentication": {
+          "$ref": "#/definitions/CertificateAuthenticationRequest"
+        },
+        "Type": {
+          "type": "string"
+        },
+        "ActiveDirectory": {
+          "$ref": "#/definitions/DirectoryServiceAuthenticationRequest"
+        },
+        "FederatedAuthentication": {
+          "$ref": "#/definitions/FederatedAuthenticationRequest"
+        }
+      },
+      "required": ["Type"]
+    },
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "type": "string"
+        },
+        "Key": {
+          "type": "string"
+        }
+      },
+      "required": ["Value", "Key"]
+    },
+    "TagSpecification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ResourceType": {
+          "type": "string"
+        },
+        "Tags": {
+          "type": "array",
+          "uniqueItems": false,
+          "insertionOrder": false,
+          "items": {
+            "$ref": "#/definitions/Tag"
+          }
+        }
+      },
+      "required": ["ResourceType", "Tags"]
+    }
+  },
+  "tagging": {
+    "taggable": true,
+    "tagOnCreate": true,
+    "tagUpdatable": false,
+    "cloudFormationSystemTags": true,
+    "tagProperty": "/properties/TagSpecifications/0/Tags",
+    "permissions": ["ec2:CreateTags"]
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "ec2:CreateClientVpnEndpoint",
+        "ec2:DescribeClientVpnEndpoints",
+        "ec2:GetClientVpnEndpointAuthorizationPolicy",
+        "ec2:ModifyClientVpnEndpointAuthorizationPolicy",
+        "ec2:CreateTags",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "ec2:DescribeClientVpnEndpoints",
+        "ec2:GetClientVpnEndpointAuthorizationPolicy"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "ec2:ModifyClientVpnEndpoint",
+        "ec2:ModifyClientVpnEndpointAuthorizationPolicy",
+        "ec2:DeleteClientVpnEndpointAuthorizationPolicy",
+        "ec2:GetClientVpnEndpointAuthorizationPolicy",
+        "ec2:DescribeClientVpnEndpoints",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "ec2:DeleteClientVpnEndpoint",
+        "ec2:DescribeClientVpnEndpoints"
+      ]
+    },
+    "list": {
+      "permissions": ["ec2:DescribeClientVpnEndpoints"]
+    }
+  },
+  "required": [
+    "ConnectionLogOptions",
+    "AuthenticationOptions",
+    "ServerCertificateArn"
+  ],
+  "createOnlyProperties": [
+    "/properties/TransportProtocol",
+    "/properties/ClientCidrBlock",
+    "/properties/TagSpecifications",
+    "/properties/AuthenticationOptions",
+    "/properties/TransitGatewayConfiguration",
+    "/properties/EndpointIpAddressType",
+    "/properties/TrafficIpAddressType"
+  ],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id"],
+  "writeOnlyProperties": ["/properties/DevicePostureOptions/Enabled"]
+}

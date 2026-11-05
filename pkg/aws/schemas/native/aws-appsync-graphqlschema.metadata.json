@@ -1,0 +1,4 @@
+{
+  "typeName": "AWS::AppSync::GraphQLSchema",
+  "onDelete": "nothing"
+}
