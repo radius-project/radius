@@ -18,9 +18,12 @@ package create
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -190,7 +193,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 		_, err := client.GetResourceGroup(cmd.Context(), "local", group)
 		if err != nil {
-			return clierrors.Message("The resource group %q does not exist. Run `rad env create` try again.", r.Workspace.Scope)
+			var responseError *azcore.ResponseError
+			if errors.As(err, &responseError) && responseError.StatusCode == http.StatusNotFound {
+				return clierrors.Message("The resource group %q does not exist. Run `rad group create` and try again.", r.Workspace.Scope)
+			}
+			return clierrors.MessageWithCause(err, "Failed to get resource group %q.", r.Workspace.Scope)
 		}
 
 		//we want to make sure we dont have a workspace which has environment in a different scope from workspace's scope
