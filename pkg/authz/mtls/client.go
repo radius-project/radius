@@ -18,6 +18,7 @@ package mtls
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -83,6 +84,8 @@ type clientTransport struct {
 type connectionValidity struct {
 	notBefore time.Time
 	notAfter  time.Time
+	trust     [sha256.Size]byte
+	epoch     uint64
 }
 
 // trackedConn is a connection that clientTransport stops tracking when it is closed.
@@ -128,7 +131,7 @@ func newClientTransport(options authz.Options, serverName string) (*clientTransp
 			name = hostname(addr)
 		}
 
-		config, leaf, err := source.clientConfig(options.Namespace)
+		config, material, err := source.clientConfig(options.Namespace)
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +152,7 @@ func newClientTransport(options authz.Options, serverName string) (*clientTransp
 			return nil, err
 		}
 
-		validity := connectionValidity{notBefore: leaf.NotBefore, notAfter: leaf.NotAfter}
+		validity := connectionValidity{notBefore: material.notBefore, notAfter: material.notAfter, trust: material.trust, epoch: material.epoch}
 		for _, chain := range conn.ConnectionState().VerifiedChains {
 			for _, cert := range chain {
 				if cert.NotBefore.After(validity.notBefore) {
@@ -171,16 +174,21 @@ func newClientTransport(options authz.Options, serverName string) (*clientTransp
 // RoundTrip closes connections whose client certificate or verified server chain is no
 // longer valid, forcing a fresh handshake with current material.
 func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	t.closeExpired()
+	current, err := t.source.load()
+	t.closeInvalid(current)
+	if err != nil {
+		return nil, err
+	}
 	return t.Transport.RoundTrip(req)
 }
 
-func (t *clientTransport) closeExpired() {
+func (t *clientTransport) closeInvalid(current *material) {
 	var expired []*trackedConn
 	t.mu.Lock()
 	now := t.source.now()
 	for conn, validity := range t.conns {
-		if now.Before(validity.notBefore) || now.After(validity.notAfter) {
+		if current == nil || validity.trust != current.trust || validity.epoch != current.epoch ||
+			now.Before(validity.notBefore) || now.After(validity.notAfter) {
 			expired = append(expired, conn)
 		}
 	}

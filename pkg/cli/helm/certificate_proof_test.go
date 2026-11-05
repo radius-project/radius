@@ -1,0 +1,146 @@
+/*
+Copyright 2026 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package helm
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/radius-project/radius/pkg/authz/mtls"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
+)
+
+func TestObserveTLSStartupProof(t *testing.T) {
+	t.Parallel()
+	const podUID = "220d6840-2ccf-4121-bdc6-a1f686d2f635"
+	const digest = "6134ae3055977f0d025f1c2ada38ebdcad54514560ee2819b32a4a33e03f3a9f"
+	now := time.Now().UTC()
+	target := TLSProofTarget{Namespace: "radius-system", PodName: "bicep-de-test", PodUID: podUID,
+		ContainerName: "de", Port: 6443, TrustBundleSHA256: digest, LeafSHA256: strings.Repeat("2", 64)}
+	evidence := mtls.StartupEvidence{SchemaVersion: 1, Ready: true, ProofKind: "startup-tls-initialized",
+		PodUID: podUID, BootID: "ac1a87e6-d265-4da5-8e22-56591b425ca0", InitializedAt: now.Add(-time.Minute),
+		TrustBundleSHA256: digest, CASHA256: []string{strings.Repeat("0", 64), strings.Repeat("0", 63) + "1"},
+		LeafSHA256: target.LeafSHA256, NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour)}
+	body, err := json.Marshal(evidence)
+	require.NoError(t, err)
+	for _, scenario := range []string{"success", "replaced before", "replaced after", "restarted", "terminating",
+		"not running", "missing started time", "proof predates container", "proxy forbidden", "unready", "redirect", "oversize", "duplicate", "missing", "unknown", "null", "trailing", "wrong trust", "wrong leaf"} {
+		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
+			var gets atomic.Int32
+			var redirected atomic.Bool
+			redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				redirected.Store(true)
+				w.Write(body)
+			}))
+			defer redirect.Close()
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Authorization") != "Bearer proof-observer" {
+					http.Error(w, "authentication required", http.StatusUnauthorized)
+					return
+				}
+				if strings.Contains(r.URL.Path, "/proxy") {
+					if r.URL.Path != "/api/v1/namespaces/radius-system/pods/http:bicep-de-test:6443/proxy/healthz/ucp-mtls" {
+						http.Error(w, "wrong target", http.StatusBadRequest)
+						return
+					}
+					switch scenario {
+					case "proxy forbidden":
+						http.Error(w, "denied", http.StatusForbidden)
+					case "unready":
+						http.Error(w, `{"schemaVersion":1,"ready":false}`, http.StatusServiceUnavailable)
+					case "redirect":
+						http.Redirect(w, r, redirect.URL, http.StatusFound)
+					case "oversize":
+						w.Write([]byte(strings.Repeat(" ", 8193)))
+					case "duplicate":
+						w.Write([]byte(strings.Replace(string(body), `"ready":true`, `"ready":false,"ready":true`, 1)))
+					case "missing":
+						w.Write([]byte(strings.Replace(string(body), `,"peerHandshakeVerified":false`, "", 1)))
+					case "unknown":
+						w.Write([]byte(strings.Replace(string(body), `"ready":true`, `"ready":true,"privateKey":"sentinel"`, 1)))
+					case "null":
+						w.Write([]byte(strings.Replace(string(body), `"peerHandshakeVerified":false`, `"peerHandshakeVerified":null`, 1)))
+					case "trailing":
+						w.Write(append(body, []byte("{}")...))
+					default:
+						w.Write(body)
+					}
+					return
+				}
+				count := gets.Add(1)
+				pod := corev1.Pod{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
+					ObjectMeta: metav1.ObjectMeta{Name: target.PodName, Namespace: target.Namespace, UID: types.UID(podUID)},
+					Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{
+						{Name: "de", ContainerID: "containerd://one", State: corev1.ContainerState{
+							Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(now.Add(-time.Minute))}}},
+					}}}
+				if scenario == "replaced before" || (scenario == "replaced after" && count > 1) {
+					pod.UID = "different-pod"
+				}
+				if scenario == "restarted" && count > 1 {
+					pod.Status.ContainerStatuses[0].ContainerID = "containerd://two"
+					pod.Status.ContainerStatuses[0].RestartCount = 1
+				}
+				if scenario == "terminating" {
+					at := metav1.NewTime(now)
+					pod.DeletionTimestamp = &at
+				}
+				if scenario == "not running" {
+					pod.Status.ContainerStatuses[0].State.Running = nil
+				}
+				if scenario == "missing started time" {
+					pod.Status.ContainerStatuses[0].State.Running.StartedAt = metav1.Time{}
+				}
+				if scenario == "proof predates container" {
+					pod.Status.ContainerStatuses[0].State.Running.StartedAt = metav1.NewTime(now)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(pod)
+			}))
+			defer server.Close()
+			expected := target
+			if scenario == "wrong trust" {
+				expected.TrustBundleSHA256 = strings.Repeat("3", 64)
+			}
+			if scenario == "wrong leaf" {
+				expected.LeafSHA256 = strings.Repeat("3", 64)
+			}
+			proof, err := ObserveTLSStartupProof(t.Context(), &rest.Config{Host: server.URL, BearerToken: "proof-observer"}, expected)
+			if scenario == "success" {
+				require.NoError(t, err)
+				require.Equal(t, "containerd://one", proof.ContainerID)
+				require.Equal(t, evidence.BootID, proof.Evidence.BootID)
+				require.False(t, proof.Evidence.PeerHandshakeVerified)
+				require.EqualValues(t, 2, gets.Load())
+			} else {
+				require.Error(t, err)
+				require.Zero(t, proof)
+			}
+			require.False(t, redirected.Load(), "never follow pod proxy redirects")
+		})
+	}
+}

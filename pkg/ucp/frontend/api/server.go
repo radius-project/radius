@@ -254,6 +254,16 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if directory := s.options.Config.Server.TLSCertificateDirectory; directory != "" {
+		source, err := mtls.NewSource(directory)
+		if err != nil {
+			return fmt.Errorf("failed to initialize aggregation serving certificate: %w", err)
+		}
+		service.TLSConfig = source.ServingConfig(service.TLSConfig)
+		sourceCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		go source.Start(sourceCtx, mtls.DefaultPollInterval)
+	}
 
 	// Handle shutdown based on the context
 	go func() {
@@ -286,7 +296,7 @@ func (s *Service) Run(ctx context.Context) error {
 	if s.options.Config.Server.TLSCertificateDirectory == "" {
 		err = service.ListenAndServe()
 	} else {
-		err = service.ListenAndServeTLS(s.options.Config.Server.TLSCertificateDirectory+"/tls.crt", s.options.Config.Server.TLSCertificateDirectory+"/tls.key")
+		err = service.ListenAndServeTLS("", "")
 	}
 
 	select {

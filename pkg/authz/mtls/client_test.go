@@ -462,7 +462,11 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 						require.NoError(t, err)
 						require.False(t, reused, "renewal must replace the expired peer connection")
 					} else {
-						require.ErrorContains(t, err, "certificate has expired")
+						if kind == "root" {
+							requireCode(t, err, authz.CodeCertificateExpired)
+						} else {
+							require.ErrorContains(t, err, "certificate has expired")
+						}
 					}
 					if http2 {
 						_, err := io.Copy(io.Discard, stream.Body)
@@ -484,4 +488,50 @@ func (t *clientTransport) openConns() int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return len(t.conns)
+}
+
+func TestClientTransport_RemovedCAOnOpenConnection(t *testing.T) {
+	for _, http2 := range []bool{false, true} {
+		t.Run(fmt.Sprintf("http2=%t", http2), func(t *testing.T) {
+			own, peer := newCA(t), newCA(t)
+			bundle := append(append([]byte{}, own.pem...), peer.pem...)
+			srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			srv.EnableHTTP2 = http2
+			srv.TLS = &tls.Config{MinVersion: tls.VersionTLS12, Certificates: []tls.Certificate{
+				peer.issue(t, certOptions{dnsNames: componentSANs("applications-rp")}).tlsCertificate(t),
+			}}
+			srv.StartTLS()
+			defer srv.Close()
+			dir := t.TempDir()
+			leaf := own.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+			writeFiles(t, dir, leaf, bundle)
+			transport, err := newClientTransport(authz.Options{Mode: authz.ModeEnforce,
+				CertificateDirectory: dir, Namespace: testNamespace}, appsRPServerName)
+			require.NoError(t, err)
+			defer transport.CloseIdleConnections()
+			client := &http.Client{Transport: transport}
+			for i := range 2 {
+				var reused bool
+				trace := &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused }}
+				request, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), trace), http.MethodGet, srv.URL, nil)
+				require.NoError(t, err)
+				response, err := client.Do(request)
+				require.NoError(t, err)
+				_, err = io.Copy(io.Discard, response.Body)
+				response.Body.Close()
+				require.NoError(t, err)
+				require.Equal(t, i > 0, reused)
+				if http2 {
+					require.Equal(t, 2, response.ProtoMajor)
+				}
+			}
+			writeFiles(t, dir, leaf, own.pem)
+			changed, err := transport.source.Reload()
+			require.NoError(t, err)
+			require.True(t, changed)
+			_, err = client.Get(srv.URL)
+			require.ErrorContains(t, err, "unknown authority")
+			require.Zero(t, transport.openConns())
+		})
+	}
 }

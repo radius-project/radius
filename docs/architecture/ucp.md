@@ -71,13 +71,15 @@ GET `.../<alias>` reads UCP's record of the alias, then reads AWS by the identif
 ### Internal mTLS endpoint
 
 The Kubernetes APIService endpoint (Service port 443 to container port 9443,
-using the `ucp-cert` certificate) is unchanged by internal authorization. When
+using the `ucp-cert` certificate) remains separate from internal authorization. When
 the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
 on a separate internal port, 9444 (Service port name `internal`, config
 `server.internalPort`), for traffic from other Radius components. That endpoint
 uses `mtls.ListenAndServe` with the mounted `ucp-mtls` certificate, accepts any
 Radius component identity, and reloads certificates without a restart. See
 [Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization-mtls).
+
+The aggregation server also uses a polling TLS Source for its mounted `ucp-cert` certificate, key and CA bundle. New handshakes capture one coherent serving certificate without replacing the aggregation endpoint's separate client-authentication policy. Invalid updates retain the previous material only while its full verified chain remains valid. This enables serving-certificate renewal; it does not migrate the legacy CA, update APIService trust, acknowledge aggregator adoption or complete coordinated CA rotation. The old backend must remain available until separately observed aggregation trust can verify the new serving identity.
 
 ## Invariants And Constraints
 

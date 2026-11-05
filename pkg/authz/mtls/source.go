@@ -49,8 +49,13 @@ const (
 
 // material is one consistent set of certificate, key, and CA bundle.
 type material struct {
-	cert *tls.Certificate
-	pool *x509.CertPool
+	cert      *tls.Certificate
+	pool      *x509.CertPool
+	trust     [sha256.Size]byte
+	notBefore time.Time
+	notAfter  time.Time
+	caPEM     []byte
+	epoch     uint64
 }
 
 // Source holds a component's certificate, key, and CA bundle loaded from a directory,
@@ -62,9 +67,12 @@ type Source struct {
 	now      func() time.Time
 	readFile func(string) ([]byte, error)
 
-	mu      sync.Mutex
-	digest  [sha256.Size]byte
-	current atomic.Pointer[material]
+	mu            sync.Mutex
+	digest        [sha256.Size]byte
+	current       atomic.Pointer[material]
+	expectedTrust string
+	proofMode     atomic.Bool
+	invalidations uint64
 }
 
 // NewSource loads the certificate, key, and CA bundle from dir. It returns an error if
@@ -79,16 +87,25 @@ func NewSource(dir string) (*Source, error) {
 
 // Reload reads the files and, if they changed and are valid, replaces the current
 // material. It reports whether the material changed. On error the previous material
-// stays in use.
-func (s *Source) Reload() (bool, error) {
+// stays in use outside pinned proof mode; proof mode invalidates failed material.
+func (s *Source) Reload() (changed bool, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer func() {
+		if err != nil && s.expectedTrust != "" {
+			s.invalidations++
+			s.current.Store(nil)
+		}
+	}()
 
 	raw, digest, err := s.readStable()
 	if err != nil {
 		return false, err
 	}
 	if s.current.Load() != nil && digest == s.digest {
+		if s.expectedTrust != "" {
+			return false, s.checkMaterial(s.current.Load())
+		}
 		return false, nil
 	}
 
@@ -96,27 +113,53 @@ func (s *Source) Reload() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	m.epoch = s.invalidations
+	if s.expectedTrust != "" {
+		trust, err := parsePublicTrust(raw[2], s.now())
+		if err != nil || trust.digest != s.expectedTrust {
+			return false, errors.New("CA bundle differs from pinned startup trust")
+		}
+		boundPublicTrust(m, trust)
+	}
 
 	s.digest = digest
 	s.current.Store(m)
 	return true, nil
 }
 
-// readStable reads the files until two consecutive reads match, so a Secret update
-// between individual file reads cannot mix files from two versions.
+// readStable binds projected files to one ..data target and confirms it did not move.
+// Plain directories instead require two consecutive matching reads.
 func (s *Source) readStable() ([3][]byte, [sha256.Size]byte, error) {
 	var prev [sha256.Size]byte
 	for attempt := range maxReadAttempts {
+		directory := s.dir
+		projection := filepath.Join(s.dir, "..data")
+		target, err := os.Readlink(projection)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return [3][]byte{}, prev, errors.New("cannot resolve projected certificate generation")
+		}
+		projected := err == nil
+		if projected {
+			if !filepath.IsLocal(target) {
+				return [3][]byte{}, prev, errors.New("invalid projected certificate generation")
+			}
+			directory = filepath.Join(s.dir, target)
+		}
 		var raw [3][]byte
 		for i, name := range []string{CertFile, KeyFile, CAFile} {
-			data, err := s.readFile(filepath.Join(s.dir, name))
+			data, err := s.readFile(filepath.Join(directory, name))
 			if err != nil {
 				return raw, prev, fmt.Errorf("failed to read %s: %w", name, err)
 			}
 			raw[i] = data
 		}
-
 		digest := sha256.Sum256(bytes.Join(raw[:], []byte{0}))
+		if projected {
+			current, err := os.Readlink(projection)
+			if err != nil || current != target {
+				continue
+			}
+		}
 		if attempt > 0 && digest == prev {
 			return raw, digest, nil
 		}
@@ -149,16 +192,27 @@ func (s *Source) parse(certPEM, keyPEM, caPEM []byte) (*material, error) {
 		}
 		intermediates.AddCert(c)
 	}
-	if _, err := cert.Leaf.Verify(x509.VerifyOptions{
+	chains, err := cert.Leaf.Verify(x509.VerifyOptions{
 		Roots:         pool,
 		Intermediates: intermediates,
 		CurrentTime:   s.now(),
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, fmt.Errorf("certificate is not issued by the CA bundle: %w", err)
 	}
 
-	return &material{cert: &cert, pool: pool}, nil
+	m := &material{cert: &cert, pool: pool, trust: sha256.Sum256(caPEM), caPEM: bytes.Clone(caPEM),
+		notBefore: cert.Leaf.NotBefore, notAfter: cert.Leaf.NotAfter}
+	for _, c := range chains[0] {
+		if c.NotBefore.After(m.notBefore) {
+			m.notBefore = c.NotBefore
+		}
+		if c.NotAfter.Before(m.notAfter) {
+			m.notAfter = c.NotAfter
+		}
+	}
+	return m, nil
 }
 
 func (s *Source) checkExpiry(cert *tls.Certificate) error {
@@ -175,7 +229,8 @@ func (s *Source) isValid(leaf *x509.Certificate) bool {
 }
 
 // Start polls the files every interval until ctx is done, reloading them when they
-// change. Errors are logged and the previous material stays in use.
+// change. Errors are logged. Pinned proof mode invalidates failed material; otherwise
+// the previous valid material stays in use.
 func (s *Source) Start(ctx context.Context, interval time.Duration) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	ticker := time.NewTicker(interval)
@@ -200,9 +255,32 @@ func (s *Source) Start(ctx context.Context, interval time.Duration) {
 // the same version. It fails closed if the certificate has expired, for example after
 // a failed rotation.
 func (s *Source) load() (*material, error) {
+	if s.proofMode.Load() {
+		if _, err := s.Reload(); err != nil {
+			return nil, errors.New("pinned TLS material is unavailable")
+		}
+	}
+	return s.loadCurrent()
+}
+
+func (s *Source) loadCurrent() (*material, error) {
 	m := s.current.Load()
-	if err := s.checkExpiry(m.cert); err != nil {
+	if err := s.checkMaterial(m); err != nil {
 		return nil, err
 	}
 	return m, nil
+}
+
+func (s *Source) checkMaterial(m *material) error {
+	if m == nil {
+		return errors.New("mTLS material is not initialized")
+	}
+	if err := s.checkExpiry(m.cert); err != nil {
+		return err
+	}
+	now := s.now()
+	if now.Before(m.notBefore) || now.After(m.notAfter) {
+		return &Error{Code: authz.CodeCertificateExpired, Reason: "own certificate chain has expired or is not yet valid"}
+	}
+	return nil
 }
