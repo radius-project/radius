@@ -416,8 +416,8 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //     deploy sends them.
 //   - created: the create is finished, and the request continues as an update with the template, which sends every
 //     write-only value, because the record has no fingerprints for them.
-//   - failed, and AWS changed nothing (native.OutcomeRejected), such as a value AWS rejected only once it started the
-//     create: the create is sent again with this deploy's template.
+//   - failed, and AWS changed nothing (native.OutcomeRejected), such as a GraphQL schema AppSync couldn't create: the
+//     create is sent again with this deploy's template.
 //   - failed otherwise: the request returns the failure, and the record stays, so a DELETE can remove the resource.
 func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, properties map[string]any, deploy applied, typeInfo *cloudformation.DescribeTypeOutput, parsed *typeSchema, secrets []string) (armrpc_rest.Response, error) {
 	identifier := rec.Properties.AWSIdentifier
