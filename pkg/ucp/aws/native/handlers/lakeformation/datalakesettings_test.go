@@ -18,6 +18,7 @@ package lakeformation
 
 import (
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -128,6 +129,46 @@ func Test_DataLakeSettings_Append(t *testing.T) {
 	require.Equal(t, admins(outside), current["Admins"])
 	require.NoError(t, update(t, h, current, replace))
 	require.Equal(t, []string{adminB}, sdkPrincipalIDs(awsSettings(t, api).DataLakeAdmins))
+}
+
+// Test_DataLakeSettings_AppendRemovalFails fails an APPEND update that removes a managed admin. The failure is
+// rejected, so the record keeps the admin and the next deploy removes it. Other failed updates keep their error.
+func Test_DataLakeSettings_AppendRemovalFails(t *testing.T) {
+	appendAdmins := func(ids ...string) map[string]any {
+		return map[string]any{"MutationType": "APPEND", "Admins": admins(ids...)}
+	}
+	for _, tt := range []struct {
+		name     string
+		call     string
+		err      error
+		current  map[string]any
+		desired  map[string]any
+		rejected bool
+		client   bool
+	}{
+		{"read fails", "GetDataLakeSettings", nativefake.ServerError("InternalServiceException", "failed"), appendAdmins(adminA, adminB), appendAdmins(adminA), true, false},
+		{"put fails", "PutDataLakeSettings", nativefake.ServerError("InternalServiceException", "failed"), appendAdmins(adminA, adminB), appendAdmins(adminA), true, false},
+		{"put is denied", "PutDataLakeSettings", nativefake.ClientError("AccessDeniedException", "denied"), appendAdmins(adminA, adminB), appendAdmins(adminA), true, true},
+		{"an update that only adds admins fails", "PutDataLakeSettings", nativefake.ServerError("InternalServiceException", "failed"), appendAdmins(adminA), appendAdmins(adminA, adminB), false, false},
+		{"an update without APPEND fails", "PutDataLakeSettings", nativefake.ServerError("InternalServiceException", "failed"), map[string]any{"Admins": admins(adminA, adminB)}, map[string]any{"Admins": admins(adminA)}, false, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			h, api := newSettings(t, map[string]any{"Admins": admins(outside, adminA, adminB)})
+			api.errs[tt.call] = tt.err
+			err := update(t, h, tt.current, tt.desired)
+			var failure *native.Failure
+			if !tt.rejected {
+				require.ErrorIs(t, err, tt.err)
+				require.False(t, errors.As(err, &failure))
+				return
+			}
+			require.ErrorAs(t, err, &failure)
+			require.Equal(t, native.OutcomeRejected, failure.Outcome)
+			require.Equal(t, tt.client, failure.ClientError)
+			delete(api.errs, tt.call)
+			require.Equal(t, []string{outside, adminA, adminB}, sdkPrincipalIDs(awsSettings(t, api).DataLakeAdmins))
+		})
+	}
 }
 
 // Test_DataLakeSettings_Removed removes every setting from the template. Each goes back to AWS's default, except

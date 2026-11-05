@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation/types"
 	"github.com/wI2L/jsondiff"
 
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -277,11 +278,13 @@ func applyParameters(settings *types.DataLakeSettings, patch jsondiff.Patch, des
 }
 
 // Update reads the settings and changes only the ones the patch changes. A setting the template removed goes back to
-// AWS's default, except Parameters, which keeps AWS's value.
+// AWS's default, except Parameters, which keeps AWS's value. With APPEND, a failure in an update that removes managed
+// admins is rejected, even when the response is lost, so the record keeps every admin it may still have to remove.
 func (h *DataLakeSettings) Update(ctx context.Context, request native.UpdateRequest) error {
+	removes := appends(request.Desired) && len(minus(principalIDs(request.Current, "Admins"), principalIDs(request.Desired, "Admins"))) > 0
 	settings, err := h.get(ctx, request.Region)
 	if err != nil {
-		return err
+		return removing(removes, err)
 	}
 	desired, err := decodeSettings(request.Desired)
 	if err != nil {
@@ -306,7 +309,16 @@ func (h *DataLakeSettings) Update(ctx context.Context, request native.UpdateRequ
 	if admins {
 		settings.DataLakeAdmins = mergeAdmins(appends(request.Desired), sdkPrincipalIDs(settings.DataLakeAdmins), principalIDs(request.Current, "Admins"), sdkPrincipalIDs(desired.DataLakeAdmins))
 	}
-	return h.put(ctx, request.Region, settings)
+	return removing(removes, h.put(ctx, request.Region, settings))
+}
+
+// removing returns err as a failure AWS applied none of when removes is true. Settings AWS doesn't have stay
+// ErrNotFound.
+func removing(removes bool, err error) error {
+	if err == nil || !removes || errors.Is(err, native.ErrNotFound) {
+		return err
+	}
+	return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
 }
 
 // Delete changes nothing. The type's metadata makes a delete leave the settings as they are, so UCP never calls it.
