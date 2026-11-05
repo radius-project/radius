@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -90,6 +92,29 @@ func managedValues(rec *datamodel.AWSResource, desired map[string]any) []map[str
 		}
 	}
 	return out
+}
+
+// keepPending treats the values of an interrupted operation as applied, as records.KeepPending does. For a native
+// handler whose resource is some members of a parent (native.ScopedReader), a member list keeps the members of both
+// the last deploy and the interrupted one: the operation may have stopped before it removed the old members, so Radius
+// still owns them until a later deploy removes them.
+func keepPending(r *request, rec *datamodel.AWSResource) {
+	if _, scoped := r.handler.(native.ScopedReader); scoped {
+		for name, value := range rec.Properties.PendingLastApplied {
+			pending, ok := value.([]any)
+			previous, wasList := rec.Properties.LastApplied[name].([]any)
+			if !ok || !wasList {
+				continue
+			}
+			for _, member := range previous {
+				if !slices.ContainsFunc(pending, func(v any) bool { return reflect.DeepEqual(v, member) }) {
+					pending = append(pending, member)
+				}
+			}
+			rec.Properties.PendingLastApplied[name] = pending
+		}
+	}
+	records.KeepPending(rec)
 }
 
 // begin reads the region and rejects legacy and deprecated types. A non-nil response ends the request.
@@ -189,7 +214,7 @@ func (e *engine) resume(ctx context.Context, r *request, rec *datamodel.AWSResou
 		case records.OperationCreate:
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
 		default:
-			records.KeepPending(rec)
+			keepPending(r, rec)
 			rec.SetProvisioningState(v1.ProvisioningStateFailed)
 		}
 		etag, err := e.store.Save(ctx, rec, etag)

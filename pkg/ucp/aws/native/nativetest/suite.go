@@ -182,6 +182,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("identifier of another product", func(t *testing.T) { s.otherProduct(t) })
 	t.Run("update fails between calls", func(t *testing.T) { s.multiCall(t) })
 	t.Run("member added outside Radius", func(t *testing.T) { s.outsideMember(t) })
+	t.Run("update interrupted before its first call", func(t *testing.T) { s.interruptedScopedUpdate(t) })
 	t.Run("delete again after the response is lost", func(t *testing.T) { s.deleteTokenRetry(t) })
 	nameProperty := s.NewHandler(awsfake.NewCloudControl()).Options().NameProperty
 	for _, reached := range []bool{true, false} {
@@ -767,6 +768,33 @@ func (s Suite) otherProduct(t *testing.T) {
 		require.Nil(t, h.record(), "the resource the alias managed is gone, so the record is removed")
 	}
 	require.Equal(t, before, h.cc.Resource(s.TypeName, identifier), "UCP never touches the other product's resource")
+}
+
+// interruptedScopedUpdate stops UCP after it reserves the update to MultiCall and before the first call, for a
+// handler whose resource is some members of a parent (native.ScopedReader), and deploys MultiCall again. The record
+// still owns the members only the last deploy had, so the redeploy removes them.
+func (s Suite) interruptedScopedUpdate(t *testing.T) {
+	if s.RejectedCalls == 0 {
+		t.Skip("the handler's resource is not some members of a parent, or its update removes none")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	id, err := resources.ParseResource(h.path())
+	require.NoError(t, err)
+	store := records.NewStore(h.db)
+	rec, etag, err := store.Get(t.Context(), id)
+	require.NoError(t, err)
+	rec.Properties.PendingOperation = records.OperationUpdate
+	rec.Properties.PendingLastApplied = s.readable(s.MultiCall)
+	rec.SetProvisioningState(records.StateOf(records.OperationUpdate))
+	_, err = store.Save(t.Context(), rec, etag)
+	require.NoError(t, err)
+
+	defer func() { records.Now = time.Now }()
+	records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+	h.deploy(s.MultiCall)
+	records.Now = time.Now
+	requireSubset(t, s.readable(s.MultiCall), h.stored())
 }
 
 // multiCall fails an update that makes several AWS calls before each call and after the last one, with an error
