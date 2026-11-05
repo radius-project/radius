@@ -136,7 +136,8 @@ type CreateRequest struct {
 
 	// ClientToken is a UUID saved on the record before the first create, and the same on every attempt to create
 	// this resource. It identifies the operation: UCP generates names from it, and a handler sends it as the API's
-	// idempotency token or tags the create with it.
+	// idempotency token or tags the create with it. UCP may call Create more than once with the same ClientToken,
+	// including from concurrent requests, and each call must return the same resource without creating a second one.
 	ClientToken string
 }
 
@@ -153,7 +154,8 @@ const (
 
 	// RecoverByResend means sending the create again returns the first resource: AWS assigns the identifier and the
 	// API takes an idempotency token, which the handler sets to CreateRequest.ClientToken, or the call is safe to
-	// repeat, such as adding a user to a group. UCP sends the create again.
+	// repeat, such as adding a user to a group. UCP sends the create again, possibly from two requests at once, before
+	// it reserves the record, so Create with the same ClientToken must return the same resource every time.
 	RecoverByResend
 
 	// RecoverBySearch means AWS assigns the identifier and the API takes no idempotency token. The handler tags the
