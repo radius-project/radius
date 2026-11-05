@@ -300,7 +300,7 @@ func Test_Find(t *testing.T) {
 	_, err = h.Create(t.Context(), request)
 	require.NoError(t, err)
 	_, err = h.Find(t.Context(), request)
-	require.ErrorContains(t, err, "found 2 EMR clusters")
+	require.ErrorContains(t, err, "2 EMR clusters that match")
 
 	api.errs["DescribeCluster"] = fault("ThrottlingException", "slow down")
 	_, err = h.Find(t.Context(), request)

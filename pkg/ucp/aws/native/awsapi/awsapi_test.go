@@ -29,6 +29,16 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 )
 
+func Test_Ambiguous(t *testing.T) {
+	err := Ambiguous("network interface permissions", []string{"eni-perm-1", "eni-perm-2"})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "UCP doesn't know which one its create made")
+	require.False(t, failure.ClientError)
+	require.Contains(t, failure.Message, "2 network interface permissions")
+	require.Contains(t, failure.Message, "(eni-perm-1, eni-perm-2)")
+}
+
 func Test_NotFound(t *testing.T) {
 	missing := &smithy.GenericAPIError{Code: "DBClusterNotFoundFault", Message: "no such cluster"}
 	require.True(t, HasCode(missing, "DBClusterNotFoundFault"))

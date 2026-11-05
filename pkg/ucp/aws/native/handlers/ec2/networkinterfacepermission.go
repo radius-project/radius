@@ -147,13 +147,13 @@ func (h *NetworkInterfacePermission) Find(ctx context.Context, request native.Cr
 			}
 		}
 	}
-	if len(found) > 1 {
-		return "", fmt.Errorf("found %d permissions of the AWS type %s for the same NetworkInterfaceId, AwsAccountId, and Permission, so UCP can't tell which one it created", len(found), networkInterfacePermissionType)
-	}
-	if len(found) == 0 {
+	switch len(found) {
+	case 0:
 		return "", nil
+	case 1:
+		return found[0], nil
 	}
-	return found[0], nil
+	return "", awsapi.Ambiguous("network interface permissions", found)
 }
 
 // Update does nothing: every property of a network interface permission is create-only.

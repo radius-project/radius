@@ -213,6 +213,7 @@ func Test_Suite_NetworkInterfacePermission(t *testing.T) {
 		Properties:         permission,
 		Changed:            permission,
 		CreateOnlyChange:   with(permission, map[string]any{"Permission": "EIP-ASSOCIATE"}),
+		Duplicates:         true,
 	})
 }
 

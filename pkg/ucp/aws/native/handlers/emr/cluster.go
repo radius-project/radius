@@ -598,7 +598,7 @@ func (h *Cluster) Find(ctx context.Context, request native.CreateRequest) (strin
 	case 1:
 		return found[0], nil
 	}
-	return "", fmt.Errorf("found %d EMR clusters tagged with the same operation ID: %s", len(found), strings.Join(found, ", "))
+	return "", awsapi.Ambiguous("EMR clusters", found)
 }
 
 // unchangeable is the failure of an update that changes properties EMR can't change on a running cluster.

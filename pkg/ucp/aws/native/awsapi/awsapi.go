@@ -32,6 +32,14 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 )
 
+// Ambiguous is the error of a Find that matched more than one resource, which ids are, so UCP can't tell which one
+// its lost create made. UCP then changes nothing: it keeps the record, and deletes and adopts none of them.
+func Ambiguous(what string, ids []string) error {
+	return &native.Failure{
+		Message: fmt.Sprintf("AWS has %d %s that match the interrupted create (%s), so UCP can't tell which one it made and changed nothing. Remove the extra ones in AWS, then retry.", len(ids), what, strings.Join(ids, ", ")),
+	}
+}
+
 // HasCode reports whether err is an AWS API error with one of codes, such as DBClusterNotFoundFault.
 func HasCode(err error, codes ...string) bool {
 	var apiErr smithy.APIError

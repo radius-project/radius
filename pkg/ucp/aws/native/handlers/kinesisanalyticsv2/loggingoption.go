@@ -218,7 +218,7 @@ func (h *LoggingOption) Find(ctx context.Context, request native.CreateRequest) 
 	case 1:
 		return name + "|" + ids[0], nil
 	}
-	return "", fmt.Errorf("the application has %d CloudWatch logging options with the template's LogStreamARN, so UCP can't tell which one it added", len(ids))
+	return "", awsapi.Ambiguous("CloudWatch logging options", ids)
 }
 
 // Update sends the template's log stream with UpdateApplication.

@@ -38,6 +38,7 @@ import (
 	"time"
 
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -157,6 +158,10 @@ type Suite struct {
 	// whose resource is some members of a parent (native.ScopedReader). It returns whether the member is still there.
 	// It is nil for other handlers.
 	Outside func(store *awsfake.CloudControl, properties map[string]any) func() bool
+
+	// Duplicates is true when AWS lets more than one resource have the values the handler's Find searches by, for a
+	// handler whose Recovery is native.RecoverBySearch.
+	Duplicates bool
 }
 
 // Run runs every case of the suite for s.
@@ -185,6 +190,7 @@ func Run(t *testing.T, s Suite) {
 		t.Run("delete "+suffix, func(t *testing.T) { s.lostCreateDelete(t, reached) })
 	}
 	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
+	t.Run("lost create that matches more than one resource", func(t *testing.T) { s.lostCreateDuplicates(t) })
 	if nameProperty != "" {
 		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
 	}
@@ -512,6 +518,40 @@ func (s Suite) lostCreateDelete(t *testing.T, reached bool) {
 	called := h.handler.reset()
 	require.NotContains(t, called, "Delete")
 	require.NotContains(t, called, "Reset")
+}
+
+// lostCreateDuplicates loses a create that reached AWS, and adds a second resource with the same values. Find then
+// matches both, so UCP can't tell which one it made: a deploy and a delete fail, naming both, and keep the record,
+// and AWS keeps both resources.
+func (s Suite) lostCreateDuplicates(t *testing.T) {
+	if !s.Duplicates {
+		t.Skip("AWS allows one resource with the values Find searches by")
+	}
+	h := s.newHarness(t)
+	require.Equal(t, native.RecoverBySearch, h.handler.Options().Recovery, "Duplicates is for a handler that recovers by search")
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	first := h.cc.List(s.TypeName)
+	require.Len(t, first, 1)
+	second, err := h.handler.Handler.Create(t.Context(), native.CreateRequest{Region: region, Properties: s.Properties, ClientToken: uuid.NewString()})
+	require.NoError(t, err)
+
+	requireAmbiguous := func(resp response) {
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		require.Contains(t, resp.raw, first[0])
+		require.Contains(t, resp.raw, second)
+		require.True(t, records.IsFirstCreate(h.record()), "the record keeps the create")
+		require.Equal(t, 2, h.cc.Count(s.TypeName), "AWS keeps both")
+		called := h.handler.reset()
+		require.NotContains(t, called, "Delete")
+		require.NotContains(t, called, "Create")
+	}
+	h.handler.reset()
+	requireAmbiguous(h.put(s.Properties))
+	resp = h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+	h.finish()
+	requireAmbiguous(resp)
 }
 
 // generatedNameRetry loses a create of a template that leaves out the name, and deploys again. Both attempts send
