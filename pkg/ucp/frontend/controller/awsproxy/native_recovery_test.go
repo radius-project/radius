@@ -777,3 +777,32 @@ func Test_Native_ConcurrentSearchRecovery(t *testing.T) {
 	require.Equal(t, 1, creates, "only the request that reserved the record called Create")
 	require.Equal(t, 1, h.cc.Count(assignedType))
 }
+
+func Test_withGeneratedName(t *testing.T) {
+	h := nativefake.New(nativeType, nil)
+	r := &request{route: route{handler: h, native: &native.Type{Handler: h, NameRules: &native.NameRules{Property: "Name"}}}}
+	rec := &datamodel.AWSResource{Properties: datamodel.AWSResourceProperties{ClientToken: "2f1c6a9e-5b7d-4c3e-9a8f-0d1e2f3a4b5c"}}
+	name, err := r.native.NameRules.Generate(rec.Properties.ClientToken)
+	require.NoError(t, err)
+
+	t.Run("nil properties", func(t *testing.T) {
+		got, err := withGeneratedName(r, rec, nil)
+		require.NoError(t, err)
+		require.Equal(t, map[string]any{"Name": name}, got)
+	})
+
+	t.Run("the template's properties are not changed", func(t *testing.T) {
+		properties := map[string]any{"Size": 1}
+		got, err := withGeneratedName(r, rec, properties)
+		require.NoError(t, err)
+		require.Equal(t, map[string]any{"Size": 1, "Name": name}, got)
+		require.Equal(t, map[string]any{"Size": 1}, properties)
+	})
+
+	t.Run("the template's name is kept", func(t *testing.T) {
+		properties := map[string]any{"Name": "app"}
+		got, err := withGeneratedName(r, rec, properties)
+		require.NoError(t, err)
+		require.Equal(t, properties, got)
+	})
+}
