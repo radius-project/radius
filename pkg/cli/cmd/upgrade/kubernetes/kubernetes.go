@@ -217,6 +217,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		ResetValues: r.ResetValues,
 	}
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
+	clusterOptions.RadiusReleaseValues = state.RadiusValues
 
 	// Run preflight checks unless skipped
 	if !r.SkipPreflight {
