@@ -39,7 +39,7 @@ var arnPropertiesByLowerType = sync.OnceValue(func() map[string]string {
 // byLowerType returns generated, keyed by the lowercase type, with the arnProperty of each type in metadata that
 // declares one. Hand-written types aren't in the generated catalog, and metadata overrides it for the others.
 func byLowerType(generated map[string]string, metadata map[string]schemas.Metadata) map[string]string {
-	result := make(map[string]string, len(generated)+len(metadata))
+	result := map[string]string{}
 	for resourceType, property := range generated {
 		result[strings.ToLower(resourceType)] = property
 	}
