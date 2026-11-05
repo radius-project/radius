@@ -38,6 +38,7 @@ func execute(t *testing.T, handler http.HandlerFunc, args ...string) (string, st
 	})
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
+	cmd.InitDefaultHelpFlag()
 	cmd.SilenceUsage, cmd.SilenceErrors = true, true
 	cmd.SetArgs(args)
 	err := cmd.ExecuteContext(t.Context())
@@ -48,6 +49,25 @@ func respond(t *testing.T, w http.ResponseWriter, value any) {
 	t.Helper()
 	w.Header().Set("Content-Type", "application/json")
 	require.NoError(t, json.NewEncoder(w).Encode(value))
+}
+
+func TestCommandGroupHelpWithWorkspace(t *testing.T) {
+	t.Parallel()
+	for _, group := range []string{"", "permission", "role", "assignment", "access", "enforcement", "history"} {
+		t.Run(group, func(t *testing.T) {
+			t.Parallel()
+			args := []string{"--help", "--workspace", radcli.TestWorkspaceName}
+			if group != "" {
+				args = append([]string{group}, args...)
+			}
+			out, _, err := execute(t, func(http.ResponseWriter, *http.Request) {
+				t.Error("help must not connect to the control plane")
+			}, args...)
+			require.NoError(t, err)
+			require.Contains(t, out, "Usage:")
+			require.Contains(t, out, "--workspace")
+		})
+	}
 }
 
 func TestReadCommands(t *testing.T) {
@@ -81,7 +101,7 @@ func TestReadCommands(t *testing.T) {
 						w.Header().Set("Content-Type", "application/json")
 						_, err := w.Write([]byte(spec.body))
 						require.NoError(t, err)
-					}, append(spec.args, "-o", format)...)
+					}, append(spec.args, "-o", format, "--workspace", radcli.TestWorkspaceName)...)
 					require.NoError(t, err)
 					require.Contains(t, out, spec.want)
 					if format == "json" {

@@ -103,6 +103,8 @@ The wrapper supplies the test configuration, workspace, and `HOME` for you. For 
 bash hack/user-rbac/poc.sh rad poc-developer deploy "$POC_STATE/cli/application.bicep"
 ```
 
+The wrapper also supports `rad poc-admin auth --help` and help for each authorization command group; `--workspace` is inherited throughout the `auth` command tree.
+
 ### 3. Read and list applications
 
 ```sh

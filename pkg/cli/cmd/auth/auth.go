@@ -38,11 +38,11 @@ func NewCommand(factory framework.Factory) *cobra.Command {
 
 func newCommand(factory framework.Factory, connect connector) *cobra.Command {
 	root := &cobra.Command{Use: "auth", Short: "Inspect identity, access, roles, assignments, and user authorization enforcement"}
+	root.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
 	add := func(parent *cobra.Command, kind, verb, use, short string, mutate bool) *cobra.Command {
 		runner := &runner{factory: factory, connect: connect, kind: kind, verb: verb, mutate: mutate}
 		cmd := &cobra.Command{Use: use, Short: short, Args: cobra.NoArgs, RunE: framework.RunCommand(runner)}
 		runner.cmd = cmd
-		commonflags.AddWorkspaceFlag(cmd)
 		commonflags.AddOutputFlag(cmd)
 		if mutate {
 			cmd.Flags().BoolVarP(&runner.yes, "yes", "y", false, "Confirm the policy change without prompting (does not bypass authorization)")
