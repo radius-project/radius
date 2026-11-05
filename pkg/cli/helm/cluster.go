@@ -28,6 +28,7 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -35,8 +36,9 @@ import (
 )
 
 type CLIClusterOptions struct {
-	Radius  ChartOptions
-	Contour ChartOptions
+	Radius       ChartOptions
+	Contour      ChartOptions
+	Certificates CertificateOptions
 
 	// ResetValues, when true, instructs `UpgradeRadius` to discard the user-supplied
 	// values stored on the previous Helm release and use only the current invocation's
@@ -47,9 +49,10 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
-	Radius      RadiusChartOptions
-	Contour     ContourChartOptions
-	CertManager CertManagerChartOptions
+	Radius       RadiusChartOptions
+	Contour      ContourChartOptions
+	CertManager  CertManagerChartOptions
+	Certificates CertificateOptions
 
 	// ResetValues mirrors CLIClusterOptions.ResetValues. See its documentation.
 	ResetValues bool
@@ -58,6 +61,9 @@ type ClusterOptions struct {
 	// Install (with Reinstall) and upgrade (without ResetValues) reuse them, so they count toward the
 	// authorization mode that decides whether cert-manager is required.
 	RadiusReleaseValues map[string]any
+
+	// RadiusInstalled distinguishes a reinstall from --reinstall on a fresh cluster.
+	RadiusInstalled bool
 }
 
 // NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
@@ -175,6 +181,7 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	}
 
 	options.ResetValues = cliOptions.ResetValues
+	options.Certificates = cliOptions.Certificates
 
 	return options
 }
@@ -231,6 +238,8 @@ type RevisionInfo struct {
 
 // Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {
+	// CheckRadiusCertificates validates certificate settings without mutating cluster resources.
+	CheckRadiusCertificates(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 	// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
 	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
@@ -290,6 +299,7 @@ type Impl struct {
 	contourCharts               map[contourChartSource]*chart.Chart
 	newCertManagerClients       certManagerClientsFunc
 	newCertManagerDynamicClient func(kubeContext string) (dynamic.Interface, error)
+	newCertificateClient        func(kubeContext string) (kubernetes.Interface, error)
 }
 
 var _ Interface = &Impl{}
@@ -345,6 +355,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
+	certificates, err := i.prepareCertificates(ctx, clusterOptions, radiusHelmChart.Values, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil)
+	if err != nil {
+		return err
+	}
+
 	// Check Contour before installing anything, so that a Contour problem leaves the cluster unchanged.
 	var contour *contourPlan
 	if !clusterOptions.Contour.Disabled {
@@ -380,6 +395,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	// Install Radius
+	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
+		return err
+	}
 	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
@@ -522,6 +540,11 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
+	certificates, err := i.prepareCertificates(ctx, clusterOptions, radiusHelmChart.Values, radiusValues, kubeContext, true)
+	if err != nil {
+		return err
+	}
+
 	// Check the Contour upgrade before upgrading anything, so that a Contour problem leaves the cluster unchanged.
 	var contour *contourPlan
 	if !clusterOptions.Contour.Disabled {
@@ -535,6 +558,9 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 
+	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
+		return err
+	}
 	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
