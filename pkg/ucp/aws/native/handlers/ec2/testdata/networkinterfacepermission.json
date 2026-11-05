@@ -1,0 +1,99 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_NETWORK_INTERFACE": "eni-0123456789abcdef0",
+    "RADIUS_REC_OTHER_ACCOUNT": "111122223333"
+  },
+  "interactions": [
+    {
+      "service": "EC2",
+      "operation": "CreateNetworkInterfacePermission",
+      "request": "Action=CreateNetworkInterfacePermission&AwsAccountId=111122223333&NetworkInterfaceId=eni-0123456789abcdef0&Permission=INSTANCE-ATTACH&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<CreateNetworkInterfacePermissionResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>1b2c3d4e-0001-4a5b-8c9d-0123456789ab</requestId><interfacePermission><networkInterfacePermissionId>eni-perm-0123456789abcdef0</networkInterfacePermissionId><networkInterfaceId>eni-0123456789abcdef0</networkInterfaceId><awsAccountId>111122223333</awsAccountId><permission>INSTANCE-ATTACH</permission><permissionState><state>pending</state></permissionState></interfacePermission></CreateNetworkInterfacePermissionResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkInterfacePermissions",
+      "request": "Action=DescribeNetworkInterfacePermissions&NetworkInterfacePermissionId.1=eni-perm-0123456789abcdef0&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeNetworkInterfacePermissionsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>1b2c3d4e-0002-4a5b-8c9d-0123456789ab</requestId><networkInterfacePermissions><item><networkInterfacePermissionId>eni-perm-0123456789abcdef0</networkInterfacePermissionId><networkInterfaceId>eni-0123456789abcdef0</networkInterfaceId><awsAccountId>111122223333</awsAccountId><permission>INSTANCE-ATTACH</permission><permissionState><state>pending</state></permissionState></item></networkInterfacePermissions></DescribeNetworkInterfacePermissionsResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkInterfacePermissions",
+      "request": "Action=DescribeNetworkInterfacePermissions&NetworkInterfacePermissionId.1=eni-perm-0123456789abcdef0&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeNetworkInterfacePermissionsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>1b2c3d4e-0003-4a5b-8c9d-0123456789ab</requestId><networkInterfacePermissions><item><networkInterfacePermissionId>eni-perm-0123456789abcdef0</networkInterfacePermissionId><networkInterfaceId>eni-0123456789abcdef0</networkInterfaceId><awsAccountId>111122223333</awsAccountId><permission>INSTANCE-ATTACH</permission><permissionState><state>granted</state></permissionState></item></networkInterfacePermissions></DescribeNetworkInterfacePermissionsResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkInterfacePermissions",
+      "request": "Action=DescribeNetworkInterfacePermissions&NetworkInterfacePermissionId.1=eni-perm-0123456789abcdef0&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeNetworkInterfacePermissionsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>1b2c3d4e-0004-4a5b-8c9d-0123456789ab</requestId><networkInterfacePermissions><item><networkInterfacePermissionId>eni-perm-0123456789abcdef0</networkInterfacePermissionId><networkInterfaceId>eni-0123456789abcdef0</networkInterfaceId><awsAccountId>111122223333</awsAccountId><permission>INSTANCE-ATTACH</permission><permissionState><state>granted</state></permissionState></item></networkInterfacePermissions></DescribeNetworkInterfacePermissionsResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkInterfacePermissions",
+      "request": "Action=DescribeNetworkInterfacePermissions&Filter.1.Name=network-interface-permission.network-interface-id&Filter.1.Value.1=eni-0123456789abcdef0&Filter.2.Name=network-interface-permission.aws-account-id&Filter.2.Value.1=111122223333&Filter.3.Name=network-interface-permission.permission&Filter.3.Value.1=INSTANCE-ATTACH&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeNetworkInterfacePermissionsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>1b2c3d4e-0005-4a5b-8c9d-0123456789ab</requestId><networkInterfacePermissions><item><networkInterfacePermissionId>eni-perm-0123456789abcdef0</networkInterfacePermissionId><networkInterfaceId>eni-0123456789abcdef0</networkInterfaceId><awsAccountId>111122223333</awsAccountId><permission>INSTANCE-ATTACH</permission><permissionState><state>granted</state></permissionState></item></networkInterfacePermissions></DescribeNetworkInterfacePermissionsResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkInterfacePermissions",
+      "request": "Action=DescribeNetworkInterfacePermissions&NetworkInterfacePermissionId.1=eni-perm-0123456789abcdef0&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeNetworkInterfacePermissionsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>1b2c3d4e-0006-4a5b-8c9d-0123456789ab</requestId><networkInterfacePermissions><item><networkInterfacePermissionId>eni-perm-0123456789abcdef0</networkInterfacePermissionId><networkInterfaceId>eni-0123456789abcdef0</networkInterfaceId><awsAccountId>111122223333</awsAccountId><permission>INSTANCE-ATTACH</permission><permissionState><state>granted</state></permissionState></item></networkInterfacePermissions></DescribeNetworkInterfacePermissionsResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DeleteNetworkInterfacePermission",
+      "request": "Action=DeleteNetworkInterfacePermission&NetworkInterfacePermissionId=eni-perm-0123456789abcdef0&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DeleteNetworkInterfacePermissionResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>1b2c3d4e-0007-4a5b-8c9d-0123456789ab</requestId><return>true</return></DeleteNetworkInterfacePermissionResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkInterfacePermissions",
+      "request": "Action=DescribeNetworkInterfacePermissions&NetworkInterfacePermissionId.1=eni-perm-0123456789abcdef0&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeNetworkInterfacePermissionsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>1b2c3d4e-0008-4a5b-8c9d-0123456789ab</requestId><networkInterfacePermissions><item><networkInterfacePermissionId>eni-perm-0123456789abcdef0</networkInterfacePermissionId><networkInterfaceId>eni-0123456789abcdef0</networkInterfaceId><awsAccountId>111122223333</awsAccountId><permission>INSTANCE-ATTACH</permission><permissionState><state>revoking</state></permissionState></item></networkInterfacePermissions></DescribeNetworkInterfacePermissionsResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkInterfacePermissions",
+      "request": "Action=DescribeNetworkInterfacePermissions&NetworkInterfacePermissionId.1=eni-perm-0123456789abcdef0&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeNetworkInterfacePermissionsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>1b2c3d4e-0009-4a5b-8c9d-0123456789ab</requestId><networkInterfacePermissions><item><networkInterfacePermissionId>eni-perm-0123456789abcdef0</networkInterfacePermissionId><networkInterfaceId>eni-0123456789abcdef0</networkInterfaceId><awsAccountId>111122223333</awsAccountId><permission>INSTANCE-ATTACH</permission><permissionState><state>revoked</state></permissionState></item></networkInterfacePermissions></DescribeNetworkInterfacePermissionsResponse>"
+    }
+  ]
+}
