@@ -503,7 +503,8 @@ func (e *engine) findCreate(ctx context.Context, r *request, rec *datamodel.AWSR
 //
 //   - no such resource, or a resource of another product: nothing of the type exists, so only the record is removed.
 //   - still creating: UCP waits for it, as for any create, and returns 409. The caller deletes again when it finishes.
-//   - created, or failed with a resource left: the record gets the identifier, and the delete continues.
+//   - created, or failed with a resource left: the record gets the identifier, the pending values count as applied,
+//     as for an interrupted update, and the delete continues.
 //   - another alias manages the resource found: the record is kept, and the DELETE gets 409.
 //   - a call fails: the record is kept, and the DELETE returns the error.
 func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (string, armrpc_rest.Response, error) {
@@ -568,6 +569,9 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 	}
 
 	ucplog.FromContextOrDiscard(ctx).Info("Found the AWS resource of an interrupted create", "alias", r.id.Name(), "awsIdentifier", identifier)
+	// The create may have applied some or all of its values, so Radius owns them. If the delete then fails, a later
+	// deploy clears one the template no longer sets.
+	records.KeepPending(rec)
 	rec.Properties.ClientToken = ""
 	etag, err = e.store.Save(ctx, rec, etag)
 	if err != nil {

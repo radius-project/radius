@@ -806,3 +806,53 @@ func Test_withGeneratedName(t *testing.T) {
 		require.Equal(t, properties, got)
 	})
 }
+
+// Test_Native_FindLostCreate_DeleteFails finds a lost create on DELETE, and then AWS rejects the delete. Radius still
+// owns the values the lost create set, so a later PUT that leaves one out clears it.
+func Test_Native_FindLostCreate_DeleteFails(t *testing.T) {
+	h := newNativeHarness(t)
+	withTier := map[string]any{"Name": "app-native", "Size": 1, "Tier": "standard", "Password": password}
+	h.loseCreate(h.fake, nativePath, withTier)
+	h.fake.Errors["Delete"] = nativefake.ClientError("InvalidState", "the resource can't be deleted now")
+
+	resp := h.delete(nativePath, testOwner)
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	rec := h.record(nativePath)
+	require.Empty(t, rec.Properties.ClientToken)
+	require.Equal(t, "standard", rec.Properties.LastApplied["Tier"], "the lost create's values count as applied")
+	delete(h.fake.Errors, "Delete")
+
+	h.deploy(nativePath, nativeProperties(1))
+	require.NotContains(t, h.cc.Resource(nativeType, "app-native"), "Tier")
+}
+
+// Test_Native_FindLostCreate_PutOwnsLostValues loses a create that set Tier, and recovers it with a PUT whose template
+// leaves Tier out. Radius owns the values the lost create set, so Tier is cleared in AWS, even when AWS rejects the
+// update that recovers the create.
+func Test_Native_FindLostCreate_PutOwnsLostValues(t *testing.T) {
+	withTier := map[string]any{"Name": "app-native", "Size": 1, "Tier": "standard", "Password": password}
+
+	t.Run("the recovering PUT clears it", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.loseCreate(h.fake, nativePath, withTier)
+
+		h.deploy(nativePath, nativeProperties(1))
+		require.NotContains(t, h.cc.Resource(nativeType, "app-native"), "Tier")
+	})
+
+	t.Run("AWS rejects the recovering update", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.loseCreate(h.fake, nativePath, withTier)
+		h.fake.Errors["Update"] = nativefake.ClientError("InvalidState", "the resource can't be changed now")
+
+		resp := h.put(nativePath, nativeProperties(1))
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		rec := h.record(nativePath)
+		require.Empty(t, rec.Properties.ClientToken)
+		require.Equal(t, "standard", rec.Properties.LastApplied["Tier"], "the lost create's values count as applied")
+		delete(h.fake.Errors, "Update")
+
+		h.deploy(nativePath, nativeProperties(1))
+		require.NotContains(t, h.cc.Resource(nativeType, "app-native"), "Tier")
+	})
+}
