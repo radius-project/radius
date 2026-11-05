@@ -21,6 +21,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/require"
+
+	"github.com/radius-project/radius/pkg/aws/schemas"
 )
 
 // Test_NewRegistry checks that every registered handler has a schema built into Radius.
@@ -29,5 +31,18 @@ func Test_NewRegistry(t *testing.T) {
 	require.NoError(t, err)
 	for _, h := range All(aws.Config{}) {
 		require.NotNil(t, registry.Lookup(h.TypeName()), h.TypeName())
+	}
+}
+
+// Test_EveryNativeSchemaHasAHandler checks that every type with a native schema has a handler, so no schema is left
+// without one.
+func Test_EveryNativeSchemaHasAHandler(t *testing.T) {
+	registry, err := NewRegistry(aws.Config{})
+	require.NoError(t, err)
+	catalog, err := schemas.Load()
+	require.NoError(t, err)
+	require.NotEmpty(t, catalog.Native)
+	for typeName := range catalog.Native {
+		require.NotNil(t, registry.Lookup(typeName), typeName)
 	}
 }
