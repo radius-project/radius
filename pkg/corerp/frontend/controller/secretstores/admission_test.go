@@ -119,6 +119,12 @@ func requireAdmission(t *testing.T, err error, logs *observer.ObservedLogs, mode
 	}
 
 	require.NoError(t, err)
+	if mode == "" || mode == authz.ModeOff {
+		for _, entry := range logs.All() {
+			require.NotContains(t, entry.ContextMap(), authz.LogFieldMode)
+		}
+	}
+	require.Zero(t, logs.FilterField(zap.Bool(authz.LogFieldDenied, true)).Len())
 	wouldDeny := logs.FilterField(zap.Bool(authz.LogFieldWouldDeny, true))
 	if wantRule != "" && mode == authz.ModeDryRun {
 		require.Equal(t, 1, wouldDeny.FilterField(zap.String(authz.LogFieldRule, wantRule)).Len())
@@ -135,7 +141,11 @@ func TestUpsertSecret_ControlPlaneSecretReference(t *testing.T) {
 		cpNS     string
 		wantRule string
 	}{
+		{name: "unset mode protected secret", ref: "radius-system/" + testControlPlaneSecret},
 		{name: "off protected secret", mode: authz.ModeOff, ref: "radius-system/" + testControlPlaneSecret},
+		{name: "unset mode application secret", ref: "default/app-secret"},
+		{name: "off application secret", mode: authz.ModeOff, ref: "default/app-secret"},
+		{name: "dryRun application secret", mode: authz.ModeDryRun, ref: "default/app-secret"},
 		{name: "dryRun protected secret", mode: authz.ModeDryRun, ref: "radius-system/" + testControlPlaneSecret, wantRule: authz.RuleControlPlaneSecret},
 		{name: "enforce protected secret", mode: authz.ModeEnforce, ref: "radius-system/" + testControlPlaneSecret, wantRule: authz.RuleControlPlaneSecret},
 		{name: "dryRun other secret in control-plane namespace", mode: authz.ModeDryRun, ref: "radius-system/app-secret", wantRule: authz.RuleControlPlaneNamespace},
@@ -177,9 +187,9 @@ func TestUpsertSecret_ControlPlaneSecretReference(t *testing.T) {
 
 // TestUpsertSecret_ControlPlaneNamespaceFromScope covers a secret store without
 // $.properties.resource whose application resolves to the control-plane namespace. The
-// Namespace and Secret must not be created.
+// Namespace and Secret must not be created in enforce mode.
 func TestUpsertSecret_ControlPlaneNamespaceFromScope(t *testing.T) {
-	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
+	for _, mode := range []authz.Mode{"", authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
 		t.Run(string(mode), func(t *testing.T) {
 			t.Setenv(kubeutil.TargetKubeconfigEnvVar, "")
 			sc := database.NewMockClient(gomock.NewController(t))
@@ -254,7 +264,7 @@ func TestUpsertSecret_ControlPlaneReferenceIgnoresTarget(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		for _, mode := range []authz.Mode{"", authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
 			t.Run(tt.name+" "+string(mode), func(t *testing.T) {
 				path := ""
 				if tt.kubeconfig != nil {
@@ -274,6 +284,55 @@ func TestUpsertSecret_ControlPlaneReferenceIgnoresTarget(t *testing.T) {
 				ctx, logs := admissionContext(t)
 				_, err := UpsertSecret(ctx, newResource, nil, opt)
 				requireAdmission(t, err, logs, mode, authz.RuleControlPlaneSecret)
+			})
+		}
+	}
+}
+
+func TestUpsertSecret_BackwardCompatibleUpdate(t *testing.T) {
+	for _, mode := range []authz.Mode{"", authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
+		for _, ns := range []string{"default", "radius-system"} {
+			t.Run(string(mode)+"/"+ns, func(t *testing.T) {
+				t.Setenv(kubeutil.TargetKubeconfigEnvVar, filepath.Join(t.TempDir(), "missing.kubeconfig"))
+				kubeClient := k8sutil.NewFakeKubeClient(nil, existingSecret(ns, testControlPlaneSecret,
+					map[string]string{kubernetes.LabelRadiusResourceType: "applications.core-secretstores"}))
+				oldResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
+				oldResource.Properties.Resource = ns + "/" + testControlPlaneSecret
+				ctx, _ := admissionContext(t)
+				resp, err := UpsertSecret(ctx, oldResource, nil, &controller.Options{KubeClient: kubeClient})
+				require.NoError(t, err)
+				require.Nil(t, resp)
+
+				newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValue)
+				newResource.Properties.Resource = ""
+				newResource.Properties.Status.OutputResources = nil
+				opts := &controller.Options{KubeClient: kubeClient, Authorization: authzOptions(mode)}
+				ctx, logs := admissionContext(t)
+				resp, err = UpsertSecret(ctx, newResource, oldResource, opts)
+				wantRule := ""
+				if ns == "radius-system" {
+					wantRule = authz.RuleControlPlaneSecret
+				}
+				requireAdmission(t, err, logs, mode, wantRule)
+				require.Nil(t, resp)
+				stored := &corev1.Secret{}
+				require.NoError(t, kubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: testControlPlaneSecret}, stored))
+				if mode == authz.ModeEnforce && wantRule != "" {
+					require.Equal(t, []byte(sentinelSecretValue), stored.Data["tls.crt"])
+				} else {
+					expected := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValue)
+					for key, value := range expected.Properties.Data {
+						require.Equal(t, []byte(*value.Value), stored.Data[key])
+					}
+					require.Equal(t, oldResource.Properties.Resource, newResource.Properties.Resource)
+					require.Equal(t, oldResource.Properties.Status.OutputResources, newResource.Properties.Status.OutputResources)
+				}
+
+				resp, err = DeleteRadiusSecret(ctx, oldResource, opts)
+				require.NoError(t, err)
+				require.Nil(t, resp)
+				require.True(t, apierrors.IsNotFound(kubeClient.Get(ctx,
+					runtimeclient.ObjectKey{Namespace: ns, Name: testControlPlaneSecret}, &corev1.Secret{})))
 			})
 		}
 	}
@@ -325,7 +384,11 @@ func TestListSecrets_ControlPlaneSecretReference(t *testing.T) {
 		secret   string
 		wantRule string
 	}{
+		{name: "unset mode protected secret", ns: "radius-system", secret: testControlPlaneSecret},
 		{name: "off protected secret", mode: authz.ModeOff, ns: "radius-system", secret: testControlPlaneSecret},
+		{name: "unset mode application secret", ns: "default", secret: "app-secret"},
+		{name: "off application secret", mode: authz.ModeOff, ns: "default", secret: "app-secret"},
+		{name: "dryRun application secret", mode: authz.ModeDryRun, ns: "default", secret: "app-secret"},
 		{name: "dryRun protected secret", mode: authz.ModeDryRun, ns: "radius-system", secret: testControlPlaneSecret, wantRule: authz.RuleControlPlaneSecret},
 		{name: "enforce protected secret", mode: authz.ModeEnforce, ns: "radius-system", secret: testControlPlaneSecret, wantRule: authz.RuleControlPlaneSecret},
 		{name: "enforce other secret in control-plane namespace", mode: authz.ModeEnforce, ns: "radius-system", secret: "app-secret", wantRule: authz.RuleControlPlaneNamespace},
