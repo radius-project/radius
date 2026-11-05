@@ -76,5 +76,31 @@
     "/properties/Id",
     "/properties/Endpoint"
   ],
-  "writeOnlyProperties": ["/properties/CertificateRotationRestart"]
+  "writeOnlyProperties": ["/properties/CertificateRotationRestart"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "rds:AddTagsToResource",
+        "rds:CreateDBInstance",
+        "rds:DescribeDBInstances"
+      ]
+    },
+    "read": {
+      "permissions": ["rds:DescribeDBInstances", "rds:ListTagsForResource"]
+    },
+    "update": {
+      "permissions": [
+        "rds:AddTagsToResource",
+        "rds:DescribeDBInstances",
+        "rds:ModifyDBInstance",
+        "rds:RemoveTagsFromResource"
+      ]
+    },
+    "delete": {
+      "permissions": ["rds:DeleteDBInstance", "rds:DescribeDBInstances"]
+    },
+    "list": {
+      "permissions": ["rds:DescribeDBInstances", "rds:ListTagsForResource"]
+    }
+  }
 }

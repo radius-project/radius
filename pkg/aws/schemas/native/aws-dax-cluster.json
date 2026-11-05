@@ -160,7 +160,7 @@
       "permissions": ["dax:DeleteCluster", "dax:DescribeClusters"]
     },
     "list": {
-      "permissions": ["dax:DescribeClusters"]
+      "permissions": ["dax:DescribeClusters", "dax:ListTags"]
     }
   }
 }

@@ -1108,28 +1108,40 @@
   "handlers": {
     "create": {
       "permissions": [
-        "elasticmapreduce:RunJobFlow",
-        "elasticmapreduce:ListInstanceFleets",
-        "elasticmapreduce:DescribeCluster",
-        "elasticmapreduce:ListInstanceGroups",
         "elasticmapreduce:AddTags",
-        "iam:PassRole",
+        "elasticmapreduce:DescribeCluster",
+        "elasticmapreduce:ListClusters",
+        "elasticmapreduce:ListInstanceFleets",
+        "elasticmapreduce:ListInstanceGroups",
+        "elasticmapreduce:RunJobFlow",
         "iam:CreateServiceLinkedRole",
-        "kms:GenerateDataKey",
-        "kms:Decrypt"
+        "iam:PassRole",
+        "kms:Decrypt",
+        "kms:GenerateDataKey"
       ],
       "timeoutInMinutes": 1570
     },
     "delete": {
       "permissions": [
         "elasticmapreduce:DescribeCluster",
+        "elasticmapreduce:ListClusters",
+        "elasticmapreduce:ListInstanceFleets",
+        "elasticmapreduce:ListInstanceGroups",
         "elasticmapreduce:TerminateJobFlows",
         "iam:PassRole"
       ],
       "timeoutInMinutes": 70
     },
     "list": {
-      "permissions": ["elasticmapreduce:ListClusters", "iam:PassRole"]
+      "permissions": [
+        "elasticmapreduce:DescribeCluster",
+        "elasticmapreduce:GetAutoTerminationPolicy",
+        "elasticmapreduce:GetManagedScalingPolicy",
+        "elasticmapreduce:ListClusters",
+        "elasticmapreduce:ListInstanceFleets",
+        "elasticmapreduce:ListInstanceGroups",
+        "iam:PassRole"
+      ]
     },
     "read": {
       "permissions": [

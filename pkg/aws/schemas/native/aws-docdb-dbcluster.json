@@ -192,5 +192,37 @@
     "/properties/AvailabilityZones",
     "/properties/KmsKeyId",
     "/properties/MasterUserSecretKmsKeyId"
-  ]
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "rds:AddTagsToResource",
+        "rds:CreateDBCluster",
+        "rds:DescribeDBClusters",
+        "rds:RestoreDBClusterFromSnapshot",
+        "rds:RestoreDBClusterToPointInTime"
+      ]
+    },
+    "read": {
+      "permissions": ["rds:DescribeDBClusters", "rds:ListTagsForResource"]
+    },
+    "update": {
+      "permissions": [
+        "rds:AddTagsToResource",
+        "rds:DescribeDBClusters",
+        "rds:ModifyDBCluster",
+        "rds:RemoveTagsFromResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "rds:CreateDBClusterSnapshot",
+        "rds:DeleteDBCluster",
+        "rds:DescribeDBClusters"
+      ]
+    },
+    "list": {
+      "permissions": ["rds:DescribeDBClusters", "rds:ListTagsForResource"]
+    }
+  }
 }
