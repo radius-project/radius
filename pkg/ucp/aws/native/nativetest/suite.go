@@ -160,7 +160,7 @@ func Run(t *testing.T, s Suite) {
 		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
 	}
 	if s.HandWritten {
-		t.Run("never asks CloudFormation", func(t *testing.T) { s.neverAsksCloudFormation(t) })
+		t.Run("AWS publishes a type with the same name", func(t *testing.T) { s.sameNameFromAWS(t) })
 	} else {
 		t.Run("create natively, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, "") })
 		t.Run("create with Cloud Control, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, "") })
@@ -738,13 +738,30 @@ func (s Suite) describeTypeFails(t *testing.T) {
 	require.Nil(t, h.record())
 }
 
-func (s Suite) neverAsksCloudFormation(t *testing.T) {
+// sameNameFromAWS checks that nothing changes when AWS publishes a CloudFormation type with the hand-written type's
+// name, with another identifier and fully managed by Cloud Control: UCP never asks CloudFormation or Cloud Control
+// about it, and serves every request with the native handler and the Radius schema.
+func (s Suite) sameNameFromAWS(t *testing.T) {
 	h := s.newHarness(t)
-	h.cf.Schemas = map[string]string{}
+	h.cf.Schemas[s.TypeName] = `{"typeName": "` + s.TypeName + `", "properties": {"Arn": {"type": "string"}}, "primaryIdentifier": ["/properties/Arn"], "readOnlyProperties": ["/properties/Arn"]}`
+	h.useNative(false)
+
 	h.deploy(s.Properties)
-	require.Equal(t, http.StatusOK, h.get().status)
+	h.deploy(s.Changed)
+	resp := h.get()
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	requireSubset(t, s.readable(s.Changed), resp.properties())
+	resp = h.existingResponse()
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	resp = h.do(awsproxy.NewListAWSResources, http.MethodGet, h.collection(), "", nil)
+	wantList := map[bool]int{true: http.StatusOK, false: http.StatusBadRequest}[h.handler.Options().List == native.ListRegion]
+	require.Equal(t, wantList, resp.status, resp.raw)
+	before := h.stored()
 	h.remove()
-	require.Empty(t, h.cc.Calls())
+	h.requireRemoved(before)
+
+	require.Zero(t, h.cf.DescribeTypeCalls(), "UCP never asks CloudFormation about a hand-written type")
+	require.Empty(t, h.cc.Calls(), "UCP never asks Cloud Control about a hand-written type")
 }
 
 // readable returns properties without the write-only ones, which UCP never returns.

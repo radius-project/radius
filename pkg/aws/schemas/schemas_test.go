@@ -17,6 +17,7 @@ limitations under the License.
 package schemas
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 	"testing/fstest"
@@ -39,8 +40,35 @@ func Test_MetadataOf(t *testing.T) {
 	require.Equal(t, Metadata{TypeName: "AWS::S3::Object", IdentityScope: IdentityScopeRegion, OnDelete: OnDeleteDelete}, catalog.MetadataOf("AWS::S3::Object"))
 }
 
+// objectSchema is a hand-written schema that follows every rule.
+const objectSchema = `{
+	"typeName": "AWS::S3::Object",
+	"properties": {"Bucket": {"type": "string"}, "Key": {"type": "string"}, "Body": {"type": "string"}, "VersionId": {"type": "string"}},
+	"primaryIdentifier": ["/properties/Bucket", "/properties/Key"],
+	"createOnlyProperties": ["/properties/Bucket", "/properties/Key"],
+	"readOnlyProperties": ["/properties/VersionId"],
+	"writeOnlyProperties": ["/properties/Body"],
+	"handlers": {
+		"create": {"permissions": ["s3:PutObject"]},
+		"read": {"permissions": ["s3:GetObject"]},
+		"delete": {"permissions": ["s3:DeleteObject"]}
+	}
+}`
+
+// policySchema is a hand-written schema of a setting whose delete calls nothing in AWS, so it needs no delete handler.
+const policySchema = `{
+	"typeName": "AWS::IAM::AccountPasswordPolicy",
+	"properties": {"MinimumPasswordLength": {"type": "integer"}, "Id": {"type": "string"}},
+	"primaryIdentifier": ["/properties/Id"],
+	"handlers": {
+		"create": {"permissions": ["iam:UpdateAccountPasswordPolicy"]},
+		"read": {"permissions": ["iam:GetAccountPasswordPolicy"]}
+	}
+}`
+
+func file(data string) *fstest.MapFile { return &fstest.MapFile{Data: []byte(data)} }
+
 func Test_LoadFS(t *testing.T) {
-	file := func(data string) *fstest.MapFile { return &fstest.MapFile{Data: []byte(data)} }
 	tests := []struct {
 		name    string
 		files   fstest.MapFS
@@ -50,15 +78,14 @@ func Test_LoadFS(t *testing.T) {
 		{
 			name: "both directories",
 			files: fstest.MapFS{
-				"native/aws-docdb-dbcluster.json":               file(`{"typeName": "AWS::DocDB::DBCluster"}`),
-				"native/README.md":                              file("not a schema"),
-				"handwritten/aws-s3-object.json":                file(`{"typeName": "AWS::S3::Object"}`),
-				"handwritten/aws-s3-object.metadata.json":       file(`{"typeName": "AWS::S3::Object", "onDelete": "delete"}`),
-				"handwritten/nested/aws-ignored-directory.json": file(`{"typeName": "AWS::Ignored::Directory"}`),
+				"native/aws-docdb-dbcluster.json":         file(`{"typeName": "AWS::DocDB::DBCluster"}`),
+				"native/README.md":                        file("not a schema"),
+				"handwritten/aws-s3-object.json":          file(objectSchema),
+				"handwritten/aws-s3-object.metadata.json": file(`{"typeName": "AWS::S3::Object", "onDelete": "delete"}`),
 			},
 			want: Catalog{
 				Native:      map[string]string{"AWS::DocDB::DBCluster": `{"typeName": "AWS::DocDB::DBCluster"}`},
-				HandWritten: map[string]string{"AWS::S3::Object": `{"typeName": "AWS::S3::Object"}`},
+				HandWritten: map[string]string{"AWS::S3::Object": objectSchema},
 				Metadata: map[string]Metadata{
 					"AWS::S3::Object": {TypeName: "AWS::S3::Object", IdentityScope: IdentityScopeRegion, OnDelete: OnDeleteDelete},
 				},
@@ -68,12 +95,12 @@ func Test_LoadFS(t *testing.T) {
 			name: "metadata with every field",
 			files: fstest.MapFS{
 				"native/README.md": file(""),
-				"handwritten/aws-iam-accountpasswordpolicy.json":          file(`{"typeName": "AWS::IAM::AccountPasswordPolicy"}`),
+				"handwritten/aws-iam-accountpasswordpolicy.json":          file(policySchema),
 				"handwritten/aws-iam-accountpasswordpolicy.metadata.json": file(`{"typeName": "aws::iam::accountpasswordpolicy", "identityScope": "account", "onDelete": "nothing", "arnProperty": ""}`),
 			},
 			want: Catalog{
 				Native:      map[string]string{},
-				HandWritten: map[string]string{"AWS::IAM::AccountPasswordPolicy": `{"typeName": "AWS::IAM::AccountPasswordPolicy"}`},
+				HandWritten: map[string]string{"AWS::IAM::AccountPasswordPolicy": policySchema},
 				Metadata: map[string]Metadata{
 					"AWS::IAM::AccountPasswordPolicy": {TypeName: "AWS::IAM::AccountPasswordPolicy", IdentityScope: IdentityScopeAccount, OnDelete: OnDeleteNothing, ARNProperty: new("")},
 				},
@@ -159,6 +186,34 @@ func Test_LoadFS(t *testing.T) {
 			},
 			wantErr: "the AWS type aws::s3::object has two schemas: native/a.json and handwritten/b.json",
 		},
+		{
+			name: "a subdirectory",
+			files: fstest.MapFS{
+				"native/README.md":                      file(""),
+				"handwritten/nested/aws-s3-object.json": file(objectSchema),
+			},
+			wantErr: "the AWS schema directory handwritten has a subdirectory nested. Put each schema directly in handwritten",
+		},
+		{
+			name: "a hand-written schema that breaks a rule",
+			files: fstest.MapFS{
+				"native/README.md":        file(""),
+				"handwritten/object.json": file(objectSchema),
+			},
+			wantErr: "the hand-written AWS schema handwritten/object.json is for AWS::S3::Object, so name the file aws-s3-object.json",
+		},
+		{
+			name: "a native schema need not follow the hand-written rules",
+			files: fstest.MapFS{
+				"native/a.json":         file(`{"typeName": "AWS::A::B", "properties": {"lowerCase": {}}}`),
+				"handwritten/README.md": file(""),
+			},
+			want: Catalog{
+				Native:      map[string]string{"AWS::A::B": `{"typeName": "AWS::A::B", "properties": {"lowerCase": {}}}`},
+				HandWritten: map[string]string{},
+				Metadata:    map[string]Metadata{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -194,4 +249,90 @@ func Test_LoadFS_UnreadableMetadata(t *testing.T) {
 	}
 	_, err := LoadFS(unreadable{MapFS: files, name: "native/a.metadata.json"})
 	require.ErrorContains(t, err, "failed to read the AWS type metadata native/a.metadata.json: permission denied")
+}
+
+func Test_checkHandWritten(t *testing.T) {
+	// with returns objectSchema with field set to value, or removed when value is nil.
+	with := func(field string, value any) string {
+		schema := map[string]any{}
+		require.NoError(t, json.Unmarshal([]byte(objectSchema), &schema))
+		if value == nil {
+			delete(schema, field)
+		} else {
+			schema[field] = value
+		}
+		data, err := json.Marshal(schema)
+		require.NoError(t, err)
+		return string(data)
+	}
+	handlers := func(names ...string) map[string]any {
+		out := map[string]any{}
+		for _, name := range names {
+			out[name] = map[string]any{"permissions": []string{"s3:Any"}}
+		}
+		return out
+	}
+	deleteMetadata := Metadata{TypeName: "AWS::S3::Object", OnDelete: OnDeleteDelete}
+	tests := []struct {
+		name     string
+		file     string
+		schema   string
+		metadata Metadata
+		wantErr  string
+	}{
+		{name: "valid", schema: objectSchema},
+		{name: "valid with every handler", schema: with("handlers", handlers("create", "read", "update", "delete", "list"))},
+		{name: "a nested path", schema: with("writeOnlyProperties", []string{"/properties/Body/Data"})},
+		{
+			name:     "no delete handler when a delete calls nothing in AWS",
+			schema:   with("handlers", handlers("create", "read")),
+			metadata: Metadata{TypeName: "AWS::S3::Object", OnDelete: OnDeleteNothing},
+		},
+		{
+			name:     "no delete handler when a delete resets",
+			schema:   with("handlers", handlers("create", "read")),
+			metadata: Metadata{TypeName: "AWS::S3::Object", OnDelete: OnDeleteReset},
+			wantErr:  "has no delete handler. List the AWS permissions it needs under handlers",
+		},
+		{name: "not a schema", schema: with("properties", []string{"Bucket"}), wantErr: "is not a valid schema"},
+		{name: "a typeName with no service", schema: with("typeName", "AWS::Object"), wantErr: `has typeName "AWS::Object". Use CloudFormation's naming, such as AWS::S3::Object`},
+		{name: "a typeName in Bicep form", schema: with("typeName", "AWS.S3/Object"), wantErr: `has typeName "AWS.S3/Object"`},
+		{name: "a file named after another type", file: "aws-s3-objects.json", schema: objectSchema, wantErr: "is for AWS::S3::Object, so name the file aws-s3-object.json"},
+		{name: "a file name in another case", file: "AWS-S3-Object.json", schema: objectSchema, wantErr: "so name the file aws-s3-object.json"},
+		{name: "no properties", schema: with("properties", nil), wantErr: "has no properties"},
+		{name: "a camelCase property", schema: with("properties", map[string]any{"Bucket": map[string]any{}, "Key": map[string]any{}, "Body": map[string]any{}, "VersionId": map[string]any{}, "contentType": map[string]any{}}), wantErr: `has the property "contentType". Use the AWS API's parameter name in PascalCase`},
+		{name: "a property with a separator", schema: with("properties", map[string]any{"Bucket": map[string]any{}, "Key": map[string]any{}, "Body": map[string]any{}, "VersionId": map[string]any{}, "Content_Type": map[string]any{}}), wantErr: `has the property "Content_Type"`},
+		{name: "no primaryIdentifier", schema: with("primaryIdentifier", nil), wantErr: "has no primaryIdentifier"},
+		{name: "a primaryIdentifier that names no property", schema: with("primaryIdentifier", []string{"/properties/Name"}), wantErr: `has "/properties/Name" in primaryIdentifier, which names no property in properties`},
+		{name: "a create-only path outside properties", schema: with("createOnlyProperties", []string{"/definitions/Bucket"}), wantErr: `has "/definitions/Bucket" in createOnlyProperties`},
+		{name: "a read-only path that names no property", schema: with("readOnlyProperties", []string{"/properties/Arn"}), wantErr: `has "/properties/Arn" in readOnlyProperties`},
+		{name: "a write-only path that names no property", schema: with("writeOnlyProperties", []string{"/properties/Password"}), wantErr: `has "/properties/Password" in writeOnlyProperties`},
+		{name: "no handlers", schema: with("handlers", nil), wantErr: "has no create handler"},
+		{name: "no read handler", schema: with("handlers", handlers("create", "delete")), wantErr: "has no read handler"},
+		{name: "no delete handler", schema: with("handlers", handlers("create", "read")), wantErr: "has no delete handler"},
+		{name: "an unknown handler", schema: with("handlers", handlers("create", "read", "delete", "upsert")), wantErr: `has the handler "upsert". Use create, read, update, delete, or list`},
+		{
+			name:    "a handler with no permissions",
+			schema:  with("handlers", map[string]any{"create": map[string]any{"permissions": []string{"s3:PutObject"}}, "read": map[string]any{"permissions": []string{}}, "delete": map[string]any{"permissions": []string{"s3:DeleteObject"}}}),
+			wantErr: "lists no permissions for its read handler",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			name := tt.file
+			if name == "" {
+				name = "aws-s3-object.json"
+			}
+			metadata := tt.metadata
+			if metadata.TypeName == "" {
+				metadata = deleteMetadata
+			}
+			err := checkHandWritten(name, tt.schema, metadata)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
 }

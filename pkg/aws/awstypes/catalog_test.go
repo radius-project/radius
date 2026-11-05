@@ -169,3 +169,12 @@ func Test_IsReadOnly(t *testing.T) {
 
 	require.Equal(t, "The AWS resource type AWS::EC2::Image is created by AWS, so Radius cannot create or change it. Reference an existing resource with the Bicep `existing` keyword instead.", ReadOnlyMessage("AWS::EC2::Image"))
 }
+
+func Test_isReadOnly(t *testing.T) {
+	readOnly := []string{"AWS::EC2::Image", "AWS::Test::Object"}
+	handWritten := map[string]string{"aws::test::object": `{}`}
+	require.True(t, isReadOnly("aws::ec2::image", readOnly, handWritten))
+	require.False(t, isReadOnly("AWS::Test::Object", readOnly, handWritten), "a hand-written type is never read-only")
+	require.True(t, isReadOnly("AWS::Test::Object", readOnly, nil))
+	require.False(t, isReadOnly("AWS::S3::Bucket", readOnly, handWritten))
+}
