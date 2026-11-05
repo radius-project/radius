@@ -17,7 +17,7 @@ tests:
     asserts:
       - matchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^  controlPlaneSecrets: \["database-secret","radius-encryption-key","ucp-cert","root-ca-cert","target-kubeconfig"\]$'
+          pattern: '(?m)^  controlPlaneSecrets: \["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","root-ca-cert","target-kubeconfig"\]$'
 
   - it: renders configured Secret names in enforce
     set:
@@ -27,4 +27,4 @@ tests:
     asserts:
       - matchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^  controlPlaneSecrets: \["database-secret","radius-encryption-key","ucp-cert","custom-ca","custom-kubeconfig"\]$'
+          pattern: '(?m)^  controlPlaneSecrets: \["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","custom-ca","custom-kubeconfig"\]$'
