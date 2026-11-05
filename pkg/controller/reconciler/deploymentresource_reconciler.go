@@ -340,23 +340,34 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 }
 
 func (r *DeploymentResourceReconciler) deleteKubernetesResource(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource, id resources.ID) (ctrl.Result, error) {
+	done, err := r.deleteKubernetesOutput(ctx, deploymentResource.Namespace, id)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if done {
+		return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+	}
+	return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+}
+
+func (r *DeploymentResourceReconciler) deleteKubernetesOutput(ctx context.Context, trackerNamespace string, id resources.ID) (bool, error) {
 	group, kind, namespace, name := resources_kubernetes.ToParts(id)
 	mapping, err := r.Client.RESTMapper().RESTMapping(schema.GroupKind{Group: group, Kind: kind})
 	refreshed := false
 	if err != nil {
 		if !meta.IsNoMatchError(err) || r.Discovery == nil {
-			return ctrl.Result{}, fmt.Errorf("failed to resolve Kubernetes output resource %q: %w", id.String(), err)
+			return false, fmt.Errorf("failed to resolve Kubernetes output resource %q: %w", id.String(), err)
 		}
 		mapping, err = r.freshKubernetesMapping(group, kind)
 		if err != nil {
-			return ctrl.Result{}, err
+			return false, err
 		}
 		refreshed = true
 	}
 
 	for {
 		if mapping == nil {
-			return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+			return true, nil
 		}
 		resource := &unstructured.Unstructured{}
 		resource.SetGroupVersionKind(mapping.GroupVersionKind)
@@ -369,29 +380,29 @@ func (r *DeploymentResourceReconciler) deleteKubernetesResource(ctx context.Cont
 			if !refreshed && r.Discovery != nil {
 				mapping, err = r.freshKubernetesMapping(group, kind)
 				if err != nil {
-					return ctrl.Result{}, err
+					return false, err
 				}
 				refreshed = true
 				continue
 			}
-			return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+			return true, nil
 		}
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to delete Kubernetes output resource %q: %w", id.String(), err)
+			return false, fmt.Errorf("failed to delete Kubernetes output resource %q: %w", id.String(), err)
 		}
 		// Waiting for our own namespace would deadlock its content deletion against this finalizer.
-		if group == "" && kind == "Namespace" && name == deploymentResource.Namespace {
+		if group == "" && kind == "Namespace" && name == trackerNamespace {
 			if err := r.Client.Get(ctx, client.ObjectKeyFromObject(resource), resource); err != nil {
 				if apierrors.IsNotFound(err) {
-					return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+					return true, nil
 				}
-				return ctrl.Result{}, fmt.Errorf("failed to check output namespace %q: %w", name, err)
+				return false, fmt.Errorf("failed to check output namespace %q: %w", name, err)
 			}
 			if resource.GetDeletionTimestamp() != nil {
-				return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+				return true, nil
 			}
 		}
-		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+		return false, nil
 	}
 }
 
