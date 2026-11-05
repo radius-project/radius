@@ -124,6 +124,18 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is an invalid namespace name: %s. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.", kubeNamespace, msg)), nil
 	}
 
+	namespaceClient, err := kubeutil.DeploymentTargetRuntimeClient(opt.KubeClient)
+	if err != nil {
+		return nil, err
+	}
+	authorization, err := kubeutil.DeploymentTargetAuthorization(ctx, opt.Authorization, opt.KubeClient, namespaceClient, kubeNamespace)
+	if err != nil {
+		return nil, err
+	}
+	if err := authorization.AdmitNamespace(ctx, serviceCtx.ResourceID.Type()+"/write", serviceCtx.ResourceID.String(), kubeNamespace); err != nil {
+		return nil, err
+	}
+
 	if oldResource != nil {
 		c := oldResource.Properties.Status.Compute
 		if c != nil && c.Kind == rpv1.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
@@ -143,12 +155,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 	// target cluster — so the namespace exists where recipe/output resources land,
 	// and the control-plane cluster is not populated with per-application namespaces.
 	// TODO: Move it to backend controller - https://github.com/radius-project/radius/issues/4742
-	namespaceClient, err := kubeutil.DeploymentTargetRuntimeClient(opt.KubeClient)
-	if err != nil {
-		return nil, err
-	}
-
-	created, added, err := kubeutil.CreateNamespace(ctx, namespaceClient, kubeNamespace, opt.Authorization)
+	created, added, err := kubeutil.CreateNamespace(ctx, namespaceClient, kubeNamespace, authorization)
 	if err != nil {
 		return nil, err
 	} else if created {

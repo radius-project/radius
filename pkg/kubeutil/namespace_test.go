@@ -27,14 +27,91 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/util/retry"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
+
+func Test_DeploymentTargetAuthorization(t *testing.T) {
+	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
+		for _, tt := range []struct {
+			name         string
+			targetUID    types.UID
+			missingCP    bool
+			missing      bool
+			wantError    string
+			wantDistinct bool
+		}{
+			{name: "different cluster same namespace name", targetUID: "external", wantDistinct: true},
+			{name: "same cluster through another client", targetUID: "control-plane"},
+			{name: "empty UID", wantError: "UID is empty"},
+			{name: "target identity read fails", missing: true, wantError: "failed to identify deployment-target cluster"},
+			{name: "control-plane identity read fails", missingCP: true, targetUID: "external", wantError: "failed to identify control-plane cluster"},
+		} {
+			t.Run(string(mode)+"/"+tt.name, func(t *testing.T) {
+				t.Setenv(TargetKubeconfigEnvVar, "configured-target")
+				controlPlane := k8sutil.NewFakeKubeClient(nil)
+				if !tt.missingCP {
+					require.NoError(t, controlPlane.Create(t.Context(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", UID: "control-plane"}}))
+				}
+				target := k8sutil.NewFakeKubeClient(nil)
+				if !tt.missing {
+					require.NoError(t, target.Create(t.Context(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", UID: tt.targetUID}}))
+				}
+				opts := authz.Options{Mode: mode}
+				got, err := DeploymentTargetAuthorization(t.Context(), opts, controlPlane, target, "radius-system")
+				if mode != authz.ModeOff && tt.wantError != "" {
+					require.ErrorContains(t, err, tt.wantError)
+					require.False(t, got.TargetClusterIsDistinct)
+					if tt.missing || tt.missingCP {
+						require.True(t, apierrors.IsNotFound(err))
+					}
+					return
+				}
+				require.NoError(t, err)
+				require.Equal(t, mode != authz.ModeOff && tt.wantDistinct, got.TargetClusterIsDistinct)
+				require.False(t, opts.TargetClusterIsDistinct, "request-scoped resolution must not alter shared configuration")
+
+				labels := got.PodSecurityLabels("radius-system")
+				if mode != authz.ModeOff && tt.wantDistinct {
+					require.Equal(t, "baseline", labels[authz.PodSecurityLabelWarn])
+					require.Equal(t, "baseline", labels[authz.PodSecurityLabelAudit])
+					require.Equal(t, mode == authz.ModeEnforce, labels[authz.PodSecurityLabelEnforce] == "baseline")
+					require.Nil(t, got.PodSecurityLabels("kube-system"))
+				} else {
+					require.Nil(t, labels)
+				}
+			})
+		}
+	}
+
+	t.Run("ordinary namespace needs no identity read", func(t *testing.T) {
+		t.Setenv(TargetKubeconfigEnvVar, "configured-target")
+		opts := authz.Options{Mode: authz.ModeEnforce}
+		got, err := DeploymentTargetAuthorization(t.Context(), opts, nil, nil, "application")
+		require.NoError(t, err)
+		require.Equal(t, opts, got)
+	})
+	t.Run("single-cluster needs no identity read", func(t *testing.T) {
+		t.Setenv(TargetKubeconfigEnvVar, "")
+		opts := authz.Options{Mode: authz.ModeEnforce}
+		got, err := DeploymentTargetAuthorization(t.Context(), opts, nil, nil, "radius-system")
+		require.NoError(t, err)
+		require.Equal(t, opts, got)
+	})
+	t.Run("missing clients cannot establish separation", func(t *testing.T) {
+		t.Setenv(TargetKubeconfigEnvVar, "configured-target")
+		got, err := DeploymentTargetAuthorization(t.Context(), authz.Options{Mode: authz.ModeEnforce}, nil, nil, "radius-system")
+		require.ErrorContains(t, err, "without both Kubernetes clients")
+		require.False(t, got.TargetClusterIsDistinct)
+	})
+}
 
 func Test_PatchNamespace(t *testing.T) {
 	client := k8sutil.NewFakeKubeClient(scheme.Scheme)

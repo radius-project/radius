@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"os"
 
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/kubernetes"
@@ -117,4 +118,32 @@ func AddMissingNamespaceLabels(ctx context.Context, client runtime_client.Client
 	}
 
 	return added, nil
+}
+
+// DeploymentTargetAuthorization scopes namespace admission and Pod Security labels to the
+// deployment target. A kubeconfig can point back at the control-plane cluster through a
+// different address, so only different live kube-system namespace UIDs establish separation.
+// Identity is needed only for a namespace that would otherwise be protected.
+func DeploymentTargetAuthorization(ctx context.Context, opts authz.Options, controlPlane, target runtime_client.Client, namespace string) (authz.Options, error) {
+	if opts.EffectiveMode() == authz.ModeOff || !opts.IsControlPlaneNamespace(namespace) || os.Getenv(TargetKubeconfigEnvVar) == "" {
+		return opts, nil
+	}
+	if controlPlane == nil || target == nil {
+		return opts, fmt.Errorf("cannot identify deployment target without both Kubernetes clients")
+	}
+
+	controlPlaneSystem := &corev1.Namespace{}
+	if err := controlPlane.Get(ctx, runtime_client.ObjectKey{Name: "kube-system"}, controlPlaneSystem); err != nil {
+		return opts, fmt.Errorf("failed to identify control-plane cluster: %w", err)
+	}
+	targetSystem := &corev1.Namespace{}
+	if err := target.Get(ctx, runtime_client.ObjectKey{Name: "kube-system"}, targetSystem); err != nil {
+		return opts, fmt.Errorf("failed to identify deployment-target cluster: %w", err)
+	}
+	if controlPlaneSystem.UID == "" || targetSystem.UID == "" {
+		return opts, fmt.Errorf("cannot identify deployment target: kube-system namespace UID is empty")
+	}
+
+	opts.TargetClusterIsDistinct = controlPlaneSystem.UID != targetSystem.UID
+	return opts, nil
 }

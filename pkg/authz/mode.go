@@ -77,6 +77,15 @@ type Options struct {
 	// ControlPlaneNamespace is the namespace Radius is installed in. Radius never applies Pod Security
 	// labels to it. Defaults to "radius-system" when unset.
 	ControlPlaneNamespace string `yaml:"controlPlaneNamespace,omitempty"`
+
+	// ControlPlaneSecrets are the names of the Radius control-plane Secrets in ControlPlaneNamespace.
+	// Workloads Radius renders must not reference them.
+	ControlPlaneSecrets []string `yaml:"controlPlaneSecrets,omitempty"`
+
+	// TargetClusterIsDistinct is set only after comparing live cluster identities. It scopes
+	// namespace protections and Pod Security labels to a verified deployment target, not a
+	// configured kubeconfig or API-server address. It cannot be set through configuration.
+	TargetClusterIsDistinct bool `yaml:"-" json:"-"`
 }
 
 // EffectiveMode returns the configured mode, or ModeOff when it is unset.
