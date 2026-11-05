@@ -299,7 +299,10 @@ func (s Suite) list(t *testing.T) {
 	switch h.handler.Options().List {
 	case native.ListRegion:
 		require.Equal(t, http.StatusOK, resp.status, resp.raw)
-		require.Contains(t, resp.raw, h.identifier())
+		items, _ := resp.body["value"].([]any)
+		require.Len(t, items, 1)
+		id, _ := items[0].(map[string]any)["id"].(string)
+		require.Equal(t, h.identifier(), requireSegment(t, h.collection(), id))
 	default:
 		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
 	}
@@ -312,6 +315,22 @@ func (s Suite) existing(t *testing.T) {
 	resp := h.existingResponse()
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	requireSubset(t, s.readable(s.Properties), resp.properties())
+
+	// Recipes read an `existing` output resource again by the last segment of its ID, so the ID must give back the
+	// identifier.
+	id, _ := resp.body["id"].(string)
+	require.Equal(t, h.identifier(), requireSegment(t, h.collection(), id))
+	resp = h.getWithPost(map[string]any{"name": h.identifier()})
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+}
+
+// requireSegment requires id to be one resource ID segment under collection, and returns that segment.
+func requireSegment(t *testing.T, collection string, id string) string {
+	t.Helper()
+	parsed, err := resources.ParseResource(id)
+	require.NoError(t, err)
+	require.Equal(t, collection+"/"+parsed.Name(), id, "the identifier is one segment of the resource ID")
+	return parsed.Name()
 }
 
 // lostCreate loses a create, after it reached AWS or before, and deploys again. The next deploy finds the resource
@@ -666,10 +685,15 @@ func (h *harness) existingResponse() response {
 	if h.s.Identifier == "" {
 		properties[h.s.IdentifierProperty] = h.identifier()
 	}
-	getWithPost := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+	return h.getWithPost(map[string]any{"properties": properties})
+}
+
+// getWithPost sends POST /:get, as an `existing` block does, with body.
+func (h *harness) getWithPost(body map[string]any) response {
+	factory := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 		return awsproxy.NewGetAWSResourceWithPost(opts, clients, retry.NewNoOpRetryer())
 	}
-	return h.do(getWithPost, http.MethodPost, h.collection()+"/:get", "", map[string]any{"properties": properties})
+	return h.do(factory, http.MethodPost, h.collection()+"/:get", "", body)
 }
 
 // operation reads the status or result of an operation, where kind is operationStatuses or operationResults.

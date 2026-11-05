@@ -105,7 +105,9 @@ Each handler declares how UCP finds a create it lost after AWS accepted it (`Rec
 
 Once UCP has the identifier, it reads AWS: if AWS has no resource, a PUT creates it and a DELETE removes only the record; if AWS is still creating it, UCP waits for it and returns `409`; otherwise the PUT continues as an update and the DELETE deletes it.
 
-A native operation follows the same steps as a Cloud Control one: owner check, compare, save pending values, start call, operation status. The handler's start call returns at once, UCP makes its own operation ID, and the worker calls the handler's `Progress` until the operation finishes or the handler's timeout passes. `Progress` only reads AWS, so a restarted worker waits again safely.
+A native operation follows the same steps as a Cloud Control one: owner check, compare, save pending values, start call, operation status. The handler's start call returns at once, UCP makes its own operation ID, and the worker calls the handler's `Progress` until the operation finishes or the handler's timeout passes. `Progress` only reads AWS, so a restarted worker waits again safely. UCP queues native operations under their own operation type, `AWSRESOURCENATIVE`, so a worker that finds the record already removed never asks Cloud Control about them.
+
+A handler whose identifier isn't its primary identifier values joined with `|` declares its own encoding. UCP uses it for create, take-over, `existing`, recovery, and delete, with either handler. The encoded identifier must be one resource ID segment, because it is the last segment of the ID a list or `existing` returns.
 
 | Scenario                                                                  | What UCP does                                                                                                     |
 |---------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
