@@ -863,10 +863,10 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		}
 	}
 	if onDelete(r) == schemas.OnDeleteReject {
-		// The create reached AWS, and the record now has its identifier. The create's values count as possibly applied,
-		// as when a PUT finds it, so a later deploy that leaves one out clears it.
+		// The create reached AWS, and the record now has its identifier. recoverNativeCreate already kept the create's
+		// values as possibly applied, so a later deploy that leaves one out clears it.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
-			records.KeepPending(rec)
+			records.ClearPending(rec)
 			rec.SetProvisioningState(prior)
 		})
 		return rejected(r), nil
