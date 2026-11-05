@@ -152,3 +152,40 @@ enforce
 off
 {{- end -}}
 {{- end -}}
+
+{{/*
+Returns the Pod Security Admission level (baseline or restricted) from global.rbac.podSecurityLevel.
+An empty value defaults to baseline. Fails rendering for any other value.
+*/}}
+{{- define "radius.authz.podSecurityLevel" -}}
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- $level := $rbac.podSecurityLevel | default "baseline" -}}
+{{- if not (has $level (list "baseline" "restricted")) -}}
+{{- fail (printf "global.rbac.podSecurityLevel must be \"baseline\" or \"restricted\", got %q" $level) -}}
+{{- end -}}
+{{- $level -}}
+{{- end -}}
+
+{{/*
+Control-plane service accounts and Secrets in the release namespace, as JSON lists that are
+also valid CEL list literals. Used by the admission policy and, for the Secrets, the
+applications-rp configuration (authorization.controlPlaneSecrets); keep in sync with the
+serviceaccount.yaml templates and the Secrets the chart creates.
+*/}}
+{{- define "radius.authz.controlPlaneServiceAccounts" -}}
+{{- list "ucp" "applications-rp" "dynamic-rp" "bicep-de" "controller" "dashboard" "database" "radius-api-readiness" "pre-upgrade" | toJson -}}
+{{- end -}}
+
+{{- define "radius.authz.controlPlaneSecrets" -}}
+{{- list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName | uniq | toJson -}}
+{{- end -}}
+
+{{/*
+Usernames whose requests the admission policy validates, as a JSON list.
+TODO(D7): default to the application-template identity once the broker issues it.
+*/}}
+{{- define "radius.authz.applicationIdentities" -}}
+{{- $admission := (.Values.global.rbac | default dict).admission | default dict -}}
+{{- $identities := $admission.applicationIdentities | default (list (printf "system:serviceaccount:%s:applications-rp" .Release.Namespace)) -}}
+{{- $identities | toJson -}}
+{{- end -}}

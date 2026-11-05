@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/kafka"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
@@ -63,7 +64,7 @@ const (
 // InitializeClients creates the AWS clients in options that are not set yet. The server calls it before the frontend
 // and backend start, so both use the same clients. Tests set the clients first to use mocks.
 func InitializeClients(ctx context.Context, options *ucp.Options) error {
-	if options.AWSClients.CloudControl != nil && options.AWSClients.CloudFormation != nil {
+	if options.AWSClients.CloudControl != nil && options.AWSClients.CloudFormation != nil && options.AWSClients.Kafka != nil {
 		return nil
 	}
 
@@ -76,6 +77,9 @@ func InitializeClients(ctx context.Context, options *ucp.Options) error {
 	}
 	if options.AWSClients.CloudFormation == nil {
 		options.AWSClients.CloudFormation = ucp_aws.NewDescribeTypeCache(cloudformation.NewFromConfig(awsConfig), ucp_aws.DefaultDescribeTypeCacheTTL)
+	}
+	if options.AWSClients.Kafka == nil {
+		options.AWSClients.Kafka = kafka.NewFromConfig(awsConfig)
 	}
 	if options.AWSClients.Native == nil {
 		options.AWSClients.Native, err = nativehandlers.NewRegistry(awsConfig)

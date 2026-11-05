@@ -35,6 +35,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/aws/extraproperties"
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/components/database"
@@ -349,6 +350,12 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		}
 	}
 	schema := aws.ToString(typeInfo.Schema)
+	// UCP adds extra properties only to its read responses, so they are never sent to AWS or stored.
+	extras, err := extraPropertyNames(r.typeName, schema)
+	if err != nil {
+		return nil, err
+	}
+	body.Properties = extraproperties.Without(extras, body.Properties)
 	secrets, err := secretProperties(r.typeName, schema)
 	if err != nil {
 		return nil, err
@@ -675,7 +682,7 @@ func restorePending(rec *datamodel.AWSResource, p applied) {
 //   - succeeded: the pending values and fingerprints become last-applied, as when the worker finishes a create, the
 //     record gets the identifier, and the request continues as an update with the template. The update compares the
 //     template's write-only values with those fingerprints, as for any other update.
-//   - failed: nothing exists, so UCP removes the record, as when the worker finds a create failed, and the request
+//   - failed: nothing exists, so the record is removed, as when the worker finds a create failed, and the request
 //     returns the failure. The next deploy starts over.
 //   - still running: UCP tracks the create and returns 409, and the caller deploys again when it finishes.
 //   - reading the status fails: the record is kept, and the request returns the error.
@@ -1020,7 +1027,10 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err != nil {
 		return nil, err
 	}
-	if rec == nil || rec.Properties.AWSIdentifier == "" {
+	if rec == nil {
+		return noRecordResponse(r.id), nil
+	}
+	if rec.Properties.AWSIdentifier == "" {
 		return armrpc_rest.NewNotFoundResponse(r.id), nil
 	}
 	if err := e.route(ctx, r); err != nil {
@@ -1041,12 +1051,37 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 			return nil, err
 		}
 	}
+	if extraproperties.Names(r.typeName) != nil {
+		// Only types with extra properties need the schema here. DescribeType answers are cached, and a type with a
+		// native handler already has its schema from routing.
+		typeInfo := r.typeInfo
+		if typeInfo == nil {
+			typeInfo, err = describeType(ctx, e.clients, r.typeName, r.region)
+			if err != nil {
+				return ucp_aws.HandleAWSError(ctx, err)
+			}
+		}
+		if resp, err := addExtraProperties(ctx, e.clients.Kafka, r.typeName, r.region, aws.ToString(typeInfo.Schema), properties); resp != nil || err != nil {
+			return resp, err
+		}
+	}
 	return armrpc_rest.NewOKResponse(map[string]any{
 		"id":         r.id.String(),
 		"name":       r.id.Name(),
 		"type":       r.id.Type(),
 		"properties": properties,
 	}), nil
+}
+
+// noRecordResponse returns the 404 for an AWS resource ID that has no record. Its code tells it apart from a record
+// whose AWS resource is gone, so a caller can read a resource Radius did not deploy with POST /:get instead, and never
+// does so for an alias, which could read an unrelated resource whose AWS identifier matches the alias.
+func noRecordResponse(id resources.ID) armrpc_rest.Response {
+	return &armrpc_rest.NotFoundResponse{Body: v1.ErrorResponse{Error: &v1.ErrorDetails{
+		Code:    sdkclients.AWSResourceNoRecordCode,
+		Message: fmt.Sprintf("UCP has no record of the AWS resource %q. Deploy it by alias, or reference it with existing and name or properties.", id.String()),
+		Target:  id.String(),
+	}}}
 }
 
 // identifierFromProperties returns the AWS identifier the properties give, or "" when they do not set every primary

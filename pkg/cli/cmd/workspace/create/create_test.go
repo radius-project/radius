@@ -18,14 +18,19 @@ package create
 
 import (
 	"errors"
+	"fmt"
+	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"k8s.io/client-go/tools/clientcmd/api"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
@@ -121,6 +126,92 @@ func Test_Validate(t *testing.T) {
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
+func Test_Validate_ResourceGroup(t *testing.T) {
+	testcases := []struct {
+		name        string
+		lookupError error
+		notFound    bool
+	}{
+		{
+			name: "resource group exists",
+		},
+		{
+			name:        "resource group not found",
+			lookupError: radcli.Create404Error(),
+			notFound:    true,
+		},
+		{
+			name:        "wrapped not found",
+			lookupError: fmt.Errorf("lookup failed: %w", radcli.Create404Error()),
+			notFound:    true,
+		},
+		{
+			name: "forbidden preserves authorization details",
+			lookupError: fmt.Errorf("user workspace-error-reader cannot get resource planes/local: %w",
+				&azcore.ResponseError{StatusCode: http.StatusForbidden, ErrorCode: "Forbidden"}),
+		},
+		{
+			name:        "server error",
+			lookupError: &azcore.ResponseError{StatusCode: http.StatusInternalServerError, ErrorCode: "InternalServerError"},
+		},
+		{
+			name:        "transport error",
+			lookupError: errors.New("connection reset by peer"),
+		},
+		{
+			name:        "not found code without HTTP 404",
+			lookupError: &azcore.ResponseError{StatusCode: http.StatusServiceUnavailable, ErrorCode: "NotFound"},
+		},
+	}
+
+	for _, testcase := range testcases {
+		t.Run(testcase.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			kubeMock := kubernetes.NewMockInterface(ctrl)
+			kubeMock.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil)
+			helmMock := helm.NewMockInterface(ctrl)
+			helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(helm.InstallState{RadiusInstalled: true}, nil)
+			mgmtMock := clients.NewMockApplicationsManagementClient(ctrl)
+			mgmtMock.EXPECT().GetResourceGroup(gomock.Any(), "local", "rg1").
+				Return(ucp.ResourceGroupResource{}, testcase.lookupError)
+
+			fw := &framework.Impl{
+				ConfigHolder:        &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)},
+				Output:              &output.MockOutput{},
+				KubernetesInterface: kubeMock,
+				HelmInterface:       helmMock,
+				ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: mgmtMock},
+			}
+			cmd, runner := NewCommand(fw)
+			cmd.SetContext(t.Context())
+			require.NoError(t, cmd.ParseFlags([]string{"-g", "rg1"}))
+
+			err := runner.Validate(cmd, []string{"kubernetes", "ws"})
+			if testcase.lookupError == nil {
+				require.NoError(t, err)
+				require.Equal(t, "/planes/radius/local/resourceGroups/rg1", runner.(*Runner).Workspace.Scope)
+				return
+			}
+
+			require.Error(t, err)
+			require.True(t, clierrors.IsFriendlyError(err))
+			if testcase.notFound {
+				require.EqualError(t, err, "The resource group \"/planes/radius/local/resourceGroups/rg1\" does not exist. Run `rad group create` and try again.")
+				return
+			}
+
+			require.ErrorContains(t, err, "Failed to get resource group \"/planes/radius/local/resourceGroups/rg1\".")
+			require.ErrorContains(t, err, strings.TrimSpace(testcase.lookupError.Error()))
+			require.ErrorIs(t, err, testcase.lookupError)
+			require.NotContains(t, err.Error(), "does not exist")
+			require.NotContains(t, err.Error(), "rad group create")
+			require.NotContains(t, err.Error(), "rad env create")
+		})
+	}
 }
 
 func Test_Validate_Environment(t *testing.T) {

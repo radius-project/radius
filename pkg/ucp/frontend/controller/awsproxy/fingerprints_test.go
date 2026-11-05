@@ -967,10 +967,10 @@ func Test_WriteOnly_UpdateOutcomeUnknown(t *testing.T) {
 	}
 }
 
-// Test_WriteOnly_RemovedRecordHasNoFingerprints checks that no fingerprints stay after a finished delete and after a
-// failed create, and that deploying the alias again starts over: the write-only values are sent with the create and
+// Test_WriteOnly_RemovedRecordStartsOver checks that a finished delete and a failed create remove the record, with its
+// fingerprints, and that deploying the alias again starts over: the write-only values are sent with the create and
 // fingerprinted again.
-func Test_WriteOnly_RemovedRecordHasNoFingerprints(t *testing.T) {
+func Test_WriteOnly_RemovedRecordStartsOver(t *testing.T) {
 	requireRemoved := func(t *testing.T, h *harness) {
 		t.Helper()
 		require.Nil(t, h.record(dbPath))
