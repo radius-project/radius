@@ -202,8 +202,8 @@ const immutableSchema = `{
 }`
 
 // Test_Update_ImmutableType updates an existing resource of a create-and-delete-only type. A changed readable property
-// fails. PUT by alias takes the resource over, so it has no fingerprints yet: a write-only value is not sent and does
-// not fail. Test_WriteOnly_ImmutableType covers write-only values with fingerprints.
+// fails. PUT takes the resource over, so it has no fingerprints yet: a write-only value is not sent and does not fail.
+// Test_WriteOnly_ImmutableType covers write-only values with fingerprints.
 func Test_Update_ImmutableType(t *testing.T) {
 	current := `{"Name": "name", "Arn": "arn:aws:x:us-west-2:1:y/name", "Size": 1, "Settings": {"Mode": "a"}, "Users": [{"Name": "u"}]}`
 	tests := []struct {
@@ -297,13 +297,9 @@ func Test_Create_ImmutableType(t *testing.T) {
 	require.Equal(t, http.StatusCreated, status, raw)
 }
 
-func Test_CheckPatch_FullyMutable(t *testing.T) {
+func Test_CheckRecordPatch_FullyMutable(t *testing.T) {
 	patch := jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}}
 	for _, provisioningType := range []cftypes.ProvisioningType{cftypes.ProvisioningTypeFullyMutable, ""} {
-		got, errResponse, err := checkPatch("AWS::Test::Mutable", &cloudformation.DescribeTypeOutput{ProvisioningType: provisioningType}, patch)
-		require.NoError(t, err)
-		require.Nil(t, errResponse)
-		require.Equal(t, patch, got)
 		require.Nil(t, checkRecordPatch("AWS::Test::Mutable", &cloudformation.DescribeTypeOutput{ProvisioningType: provisioningType}, patch))
 	}
 }
@@ -339,29 +335,6 @@ func Test_WriteOnlyPattern(t *testing.T) {
 	}
 }
 
-func Test_OnlyWriteOnly(t *testing.T) {
-	schema := &typeSchema{WriteOnlyProperties: []string{"/properties/Auth/Token", "/properties/Users/*/Secret"}}
-	tests := []struct {
-		name string
-		op   jsondiff.Operation
-		want bool
-	}{
-		{"write-only path", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Auth/Token", Value: "x"}, true},
-		{"object of write-only properties", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{"Token": "x"}}, true},
-		{"object with a readable property", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{"Token": "x", "Type": "y"}}, false},
-		{"empty object", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{}}, false},
-		{"array item of write-only properties", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Users/0", Value: map[string]any{"Secret": "x"}}, true},
-		{"array item with a readable property", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Users/0", Value: map[string]any{"Secret": "x", "Name": "y"}}, false},
-		{"readable scalar", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}, false},
-		{"remove of a parent", jsondiff.Operation{Type: jsondiff.OperationRemove, Path: "/Auth"}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, schema.onlyWriteOnly(tt.op))
-		})
-	}
-}
-
 func Test_LeafPaths(t *testing.T) {
 	got := leafPaths("/Auth", map[string]any{
 		"Token":   "x",
@@ -375,8 +348,8 @@ func Test_LeafPaths(t *testing.T) {
 }
 
 // Test_InvalidSchema checks that a schema UCP cannot read fails the request instead of letting it through. "handlers"
-// that is not an object passes the secrets check but not the type check. PUT by alias runs the type check for every
-// type before it reads the resource.
+// that is not an object passes the secrets check but not the type check. PUT runs the type check for every type before
+// it reads the resource.
 func Test_InvalidSchema(t *testing.T) {
 	tests := []struct {
 		name             string

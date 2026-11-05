@@ -23,6 +23,11 @@ import "strings"
 // account and region cannot change each other's resources.
 const AWSResourceOwnerHeader = "X-Radius-Resource-Owner"
 
+// AWSResourceNoRecordCode is the error code of the 404 UCP returns for a GET of an AWS resource ID that has no record,
+// such as a resource Radius did not deploy. A 404 for a record whose AWS resource no longer exists has the code
+// NotFound instead.
+const AWSResourceNoRecordCode = "AWSResourceNoRecord"
+
 // AWSRecipeOwner returns the owner of the AWS resources a recipe deploys:
 // "recipe;<application ID>;<environment ID>;<Radius resource ID>". UCP compares owners ignoring case, because Radius
 // IDs are not case-sensitive.

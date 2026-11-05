@@ -110,11 +110,11 @@ func Test_Helm_InstallRadius_ContourValues(t *testing.T) {
 			expectChartPull(t, client, options.Contour.ReleaseName, contourChart)
 			client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(2)
 			client.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
-			client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+			client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
 				Return(&releasev1.Release{}, nil).Times(1)
 			var contourValues map[string]any
-			client.EXPECT().RunHelmInstall(gomock.Any(), contourChart, gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ time.Duration) (*releasev1.Release, error) {
+			client.EXPECT().RunHelmInstall(gomock.Any(), contourChart, gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
+				DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ time.Duration, _ map[string]string) (*releasev1.Release, error) {
 					contourValues = vals
 					return &releasev1.Release{}, nil
 				}).Times(1)
@@ -455,7 +455,7 @@ func Test_Helm_InstallRadius_ReinstallContourUsesUpgradeBaseline(t *testing.T) {
 	client.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return([]*releasev1.Release{deployed, failed}, nil).Times(1)
 	expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
 	client.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
-	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
 		Return(&releasev1.Release{}, nil).Times(1)
 	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, false, true, gomock.Any()).
 		Return(&releasev1.Release{}, nil).Times(1)
@@ -579,10 +579,10 @@ func Test_Helm_InstallRadius_InstallsContourBeforeRadius(t *testing.T) {
 	client.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
 	gatewayCalls := &defaultContourGatewayCalls{}
 	gomock.InOrder(
-		client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, false, gomock.Any()).
+		client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, false, gomock.Any(), gomock.Nil()).
 			Return(&releasev1.Release{}, nil).Times(1),
-		client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, gomock.Any()).
-			DoAndReturn(func(*helm.Configuration, *chart.Chart, map[string]any, string, string, bool, time.Duration) (*releasev1.Release, error) {
+		client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, gomock.Any(), gomock.Nil()).
+			DoAndReturn(func(*helm.Configuration, *chart.Chart, map[string]any, string, string, bool, time.Duration, map[string]string) (*releasev1.Release, error) {
 				require.Zero(t, gatewayCalls.configureCalls, "the Gateway is configured after Radius is installed")
 				return &releasev1.Release{}, nil
 			}).Times(1),
@@ -607,7 +607,7 @@ func Test_Helm_InstallRadius_ContourInstallFailureInstallsNoRadius(t *testing.T)
 	expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
 	expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
 	client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(2)
-	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
 		Return(nil, errors.New(`CustomResourceDefinition "gateways.gateway.networking.k8s.io" exists and cannot be imported into the current release: invalid ownership metadata`)).
 		Times(1)
 	// Radius is neither queried nor installed.
@@ -635,11 +635,11 @@ func Test_Helm_InstallRadius_ContourInstallUsesClusterConfiguration(t *testing.T
 	expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
 	expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
 	client.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).Return(nil, driver.ErrReleaseNotFound).Times(3)
-	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
 		Return(&releasev1.Release{}, nil).Times(1)
 	var contourConfiguration *helm.Configuration
-	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(helmConf *helm.Configuration, _ *chart.Chart, _ map[string]any, _ string, _ string, _ bool, _ time.Duration) (*releasev1.Release, error) {
+	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
+		DoAndReturn(func(helmConf *helm.Configuration, _ *chart.Chart, _ map[string]any, _ string, _ string, _ bool, _ time.Duration, _ map[string]string) (*releasev1.Release, error) {
 			contourConfiguration = helmConf
 			return &releasev1.Release{}, nil
 		}).Times(1)
@@ -801,12 +801,12 @@ func Test_Helm_InstallRadius_WaitsForK3sTraefikCRDs(t *testing.T) {
 				if tt.withFlag {
 					client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(2)
 					client.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
-					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
-						DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ time.Duration) (*releasev1.Release, error) {
+					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
+						DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ time.Duration, _ map[string]string) (*releasev1.Release, error) {
 							contourValues = vals
 							return &releasev1.Release{}, nil
 						}).Times(1)
-					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
 						Return(&releasev1.Release{}, nil).Times(1)
 				} else {
 					client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
@@ -919,13 +919,13 @@ func Test_Helm_InstallRadius_ExistingContourRelease(t *testing.T) {
 							contourValues = vals
 							return &releasev1.Release{}, nil
 						}).Times(1),
-					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
 						Return(&releasev1.Release{}, nil).Times(1),
 				)
 			default:
 				client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(latest, nil).Times(1)
 				client.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
-				client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any()).
+				client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
 					Return(&releasev1.Release{}, nil).Times(1)
 				// The Contour release is neither read nor changed.
 			}
@@ -1046,8 +1046,8 @@ func recordHelmCalls(t *testing.T, options ClusterOptions, upgrade bool) []strin
 			return nil, driver.ErrReleaseNotFound
 		}).AnyTimes()
 	client.EXPECT().RunHelmHistory(gomock.Any(), contourReleaseName).Return([]*releasev1.Release{contourRelease}, nil).AnyTimes()
-	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, releaseName string, namespace string, wait bool, timeout time.Duration) (*releasev1.Release, error) {
+	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Nil()).
+		DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, releaseName string, namespace string, wait bool, timeout time.Duration, _ map[string]string) (*releasev1.Release, error) {
 			calls = append(calls, fmt.Sprintf("install %s namespace=%s wait=%t timeout=%s values=%v", releaseName, namespace, wait, timeout, vals))
 			return &releasev1.Release{}, nil
 		}).AnyTimes()
