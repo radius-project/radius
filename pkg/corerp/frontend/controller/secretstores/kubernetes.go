@@ -23,8 +23,10 @@ import (
 	"fmt"
 	"strings"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
@@ -223,16 +225,18 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		}
 	}
 
-	// TODO(stack-e follow-up): apply control-plane-secret to Applications.Core/secretStores referencing control-plane Secrets.
+	if name == "" {
+		name = newResource.Name
+	}
+
+	if err := admitSecretReference(ctx, options.Authorization, ResourceTypeName+"/write", ns, name); err != nil {
+		return nil, err
+	}
 
 	// Create namespace if not exists.
 	err = kubeutil.PatchNamespace(ctx, options.KubeClient, ns)
 	if err != nil {
 		return nil, err
-	}
-
-	if name == "" {
-		name = newResource.Name
 	}
 
 	newResource.Properties.Resource = toResourceID(ns, name)
@@ -334,14 +338,35 @@ func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore,
 	return nil, nil
 }
 
-func getSecretFromOutputResources(resources []rpv1.OutputResource, options *controller.Options) (*corev1.Secret, error) {
-	name, ns := "", ""
+// admitSecretReference applies the control-plane admission rules to the Kubernetes Secret ns/name
+// that a secret store reads or writes. Secret store controllers use the control-plane Kubernetes
+// client even when RADIUS_TARGET_KUBECONFIG names a separate deployment target, so the Secret is
+// always on the control-plane cluster: no target-cluster identity is consulted and a distinct
+// target never exempts the reference. The request's resource ID is read only when the reference
+// is in the control-plane namespace, the only case that can be denied.
+func admitSecretReference(ctx context.Context, opts authz.Options, action, ns, name string) error {
+	opts.TargetClusterIsDistinct = false
+	target := ""
+	if opts.EffectiveMode() != authz.ModeOff && opts.IsControlPlaneNamespace(ns) {
+		target = v1.ARMRequestContextFromContext(ctx).ResourceID.String()
+	}
+
+	return opts.AdmitSecretReference(ctx, action, target, ns, name)
+}
+
+func secretRefFromOutputResources(resources []rpv1.OutputResource) (ns string, name string) {
 	for _, resource := range resources {
 		if strings.EqualFold(resource.ID.Type(), "core/Secret") {
 			_, _, ns, name = resources_kubernetes.ToParts(resource.ID)
 			break
 		}
 	}
+
+	return ns, name
+}
+
+func getSecretFromOutputResources(resources []rpv1.OutputResource, options *controller.Options) (*corev1.Secret, error) {
+	ns, name := secretRefFromOutputResources(resources)
 
 	ksecret := &corev1.Secret{}
 	err := options.KubeClient.Get(context.Background(), runtimeclient.ObjectKey{Namespace: ns, Name: name}, ksecret)
