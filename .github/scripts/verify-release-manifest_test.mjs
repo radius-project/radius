@@ -78,9 +78,10 @@ test("tagged Bicep image config follows the approved full-version contract", asy
   assert.deepEqual(
     JSON.parse(await readFile(path.join(edge, "bicepconfig.json"))),
     {
+      experimentalFeaturesEnabled: { ociEnabled: true },
       extensions: {
-        radius: "br:biceptypes.azurecr.io/radius:latest",
-        aws: "br:biceptypes.azurecr.io/aws:latest"
+        radius: "br:ghcr.io/radius-project/bicep-types-radius:edge",
+        aws: "br:ghcr.io/radius-project/bicep-types-aws:edge"
       }
     }
   );
