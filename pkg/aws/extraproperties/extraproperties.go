@@ -18,6 +18,9 @@ limitations under the License.
 // reads a resource, beyond what Cloud Control returns. UCP reads each value from another AWS call, such as MSK's
 // GetBootstrapBrokers, and adds it only to its response: it never sends one to AWS or stores one in a record.
 //
+// If AWS adds a property with the same name to the type's schema, AWS's property wins: UCP neither adds nor strips
+// that name, and treats it as any other property of the type.
+//
 // The list is in extra_properties.json, in CloudFormation schema form, so the Bicep type generator in
 // radius-project/bicep-types-aws can read the same file and add these properties to each type.
 package extraproperties
@@ -64,10 +67,9 @@ func Names(typeName string) []string {
 	return slices.Sorted(maps.Keys(properties))
 }
 
-// Without returns properties without the extra properties of typeName. It returns properties itself when there is
-// nothing to remove, and otherwise a copy, so the caller's map never changes.
-func Without(typeName string, properties map[string]any) map[string]any {
-	names := Names(typeName)
+// Without returns properties without names. It returns properties itself when there is nothing to remove, and
+// otherwise a copy, so the caller's map never changes.
+func Without(names []string, properties map[string]any) map[string]any {
 	if !slices.ContainsFunc(names, func(name string) bool { _, ok := properties[name]; return ok }) {
 		return properties
 	}

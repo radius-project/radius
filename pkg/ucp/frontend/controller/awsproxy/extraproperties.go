@@ -18,8 +18,10 @@ package awsproxy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
+	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kafka"
@@ -29,16 +31,37 @@ import (
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 )
 
-// addExtraProperties adds the extra read-only properties of typeName to properties, which Cloud Control returned for
-// the resource. Only the MSK cluster types have them today: the broker addresses from kafka:GetBootstrapBrokers, each
-// named after AWS's field. An address AWS leaves empty is left out.
-//
-// A read whose extra call fails returns that failure, so UCP never leaves the values out silently. Only reads of one
-// resource call it, never a list, and the values are never sent to AWS or stored (see extraproperties.Without).
-func addExtraProperties(ctx context.Context, client ucp_aws.AWSKafkaClient, typeName string, region string, properties map[string]any) (armrpc_rest.Response, error) {
+// extraPropertyNames returns the extra properties of typeName that its CloudFormation schema does not declare. When
+// AWS adds a property with the same name as an extra property, AWS's property wins: UCP neither adds the extra value
+// on a read nor drops the property from a PUT.
+func extraPropertyNames(typeName string, schema string) ([]string, error) {
 	names := extraproperties.Names(typeName)
 	if len(names) == 0 {
 		return nil, nil
+	}
+	declared := struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+	}{}
+	if err := json.Unmarshal([]byte(schema), &declared); err != nil {
+		return nil, fmt.Errorf("failed to read the CloudFormation schema of %s: %w", typeName, err)
+	}
+	return slices.DeleteFunc(names, func(name string) bool {
+		_, ok := declared.Properties[name]
+		return ok
+	}), nil
+}
+
+// addExtraProperties adds the extra read-only properties of typeName to properties, which Cloud Control returned for
+// the resource. Only the MSK cluster types have them today: the broker addresses from kafka:GetBootstrapBrokers, each
+// named after AWS's field. An address AWS leaves empty is left out, and so is a name the type's schema declares (see
+// extraPropertyNames).
+//
+// A read whose extra call fails returns that failure, so UCP never leaves the values out silently. Only reads of one
+// resource call it, never a list, and the values are never sent to AWS or stored (see extraproperties.Without).
+func addExtraProperties(ctx context.Context, client ucp_aws.AWSKafkaClient, typeName string, region string, schema string, properties map[string]any) (armrpc_rest.Response, error) {
+	names, err := extraPropertyNames(typeName, schema)
+	if err != nil || len(names) == 0 {
+		return nil, err
 	}
 
 	arn, _ := properties["Arn"].(string)

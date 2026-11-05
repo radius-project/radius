@@ -79,11 +79,27 @@ func (f *fakeKafka) GetBootstrapBrokers(ctx context.Context, params *kafka.GetBo
 	return f.out, f.err
 }
 
+// clashSchemas give AWS::MSK::Cluster a property named BootstrapBrokerStringTls, as if AWS added one with the same
+// name as an extra property.
+var clashSchemas = map[string]string{
+	mskType: `{
+		"primaryIdentifier": ["/properties/Arn"],
+		"properties": {"Arn": {"type": "string"}, "ClusterName": {"type": "string"}, "BootstrapBrokerStringTls": {"type": "string"}},
+		"readOnlyProperties": ["/properties/Arn"],
+		"createOnlyProperties": ["/properties/ClusterName"]
+	}`,
+}
+
 // withMSK runs factory with client as the Kafka client and with the MSK schemas.
 func withMSK(client ucp_aws.AWSKafkaClient, factory controllerFactory) controllerFactory {
+	return withSchemas(mskSchemas, client, factory)
+}
+
+// withSchemas runs factory with client as the Kafka client and with schemas.
+func withSchemas(schemas map[string]string, client ucp_aws.AWSKafkaClient, factory controllerFactory) controllerFactory {
 	return func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 		clients.Kafka = client
-		clients.CloudFormation = &awsfake.CloudFormation{Schemas: mskSchemas}
+		clients.CloudFormation = &awsfake.CloudFormation{Schemas: schemas}
 		return factory(opts, clients)
 	}
 }
@@ -344,4 +360,94 @@ func Test_StringField(t *testing.T) {
 	for _, name := range []string{"NoSuchField", "ResultMetadata", "noSmithyDocumentSerde"} {
 		require.Nil(t, stringField(out, name), name)
 	}
+}
+
+func Test_ExtraProperties_NameClash(t *testing.T) {
+	ccProperties := map[string]any{"Arn": mskARN, "ClusterName": "orders", "BootstrapBrokerStringTls": "from-cloud-control"}
+
+	for _, read := range []struct {
+		name    string
+		factory controllerFactory
+		method  string
+		path    string
+		body    any
+	}{
+		{name: "GET", factory: NewGetAWSResource, method: http.MethodGet, path: mskPath},
+		{name: "POST /:get", factory: newGetWithPost, method: http.MethodPost, path: providers + "AWS.MSK/Cluster/:get", body: map[string]any{"name": mskARN}},
+	} {
+		t.Run(read.name+" keeps the value Cloud Control returns for a name the schema declares", func(t *testing.T) {
+			h := newHarness(t)
+			h.saveRecord(mskPath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = mskARN })
+			h.cc.Put(mskType, mskARN, ccProperties)
+			k := &fakeKafka{out: brokers()}
+
+			resp := h.do(withSchemas(clashSchemas, k, read.factory), read.method, read.path, "", read.body)
+			require.Equal(t, http.StatusOK, resp.status, resp.raw)
+			properties := resp.body["properties"].(map[string]any)
+			require.Equal(t, "from-cloud-control", properties["BootstrapBrokerStringTls"])
+			require.Equal(t, "b-1.orders.kafka.us-west-2.amazonaws.com:9098", properties["BootstrapBrokerStringSaslIam"])
+		})
+	}
+
+	t.Run("a read makes no extra call when the schema declares every name", func(t *testing.T) {
+		h := newHarness(t)
+		seedCluster(h, serverlessType, serverlessPath)
+		schemas := map[string]string{serverlessType: `{
+			"primaryIdentifier": ["/properties/Arn"],
+			"properties": {"BootstrapBrokerStringSaslIam": {"type": "string"}, "BootstrapBrokerStringSaslIamIpv6": {"type": "string"}}
+		}`}
+		k := &fakeKafka{err: errors.New("must not be called")}
+
+		resp := h.do(withSchemas(schemas, k, NewGetAWSResource), http.MethodGet, serverlessPath, "", nil)
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Empty(t, k.arns)
+	})
+
+	t.Run("PUT sends a declared name to AWS and still drops the others", func(t *testing.T) {
+		h := newHarness(t)
+		k := &fakeKafka{}
+
+		resp := h.do(withSchemas(clashSchemas, k, h.putController), http.MethodPut, mskPath, testOwner, map[string]any{"properties": map[string]any{
+			"ClusterName":                  "orders",
+			"BootstrapBrokerStringTls":     "set-by-template",
+			"BootstrapBrokerStringSaslIam": "stale",
+		}})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.cc.Calls()
+		require.Equal(t, []string{"CreateResource"}, operations(calls))
+		require.Contains(t, calls[0].Document, `"BootstrapBrokerStringTls":"set-by-template"`)
+		require.NotContains(t, calls[0].Document, "BootstrapBrokerStringSaslIam")
+		require.Equal(t, map[string]any{"ClusterName": "orders", "BootstrapBrokerStringTls": "set-by-template"}, h.record(mskPath).Properties.PendingLastApplied)
+	})
+}
+
+func Test_ExtraProperties_SchemaFailures(t *testing.T) {
+	t.Run("GET fails when DescribeType fails", func(t *testing.T) {
+		h := newHarness(t)
+		seedCluster(h, mskType, mskPath)
+		k := &fakeKafka{out: brokers()}
+
+		// The fake has no schema for the type, so DescribeType fails.
+		resp := h.do(withSchemas(map[string]string{}, k, NewGetAWSResource), http.MethodGet, mskPath, "", nil)
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		require.Empty(t, k.arns)
+	})
+
+	t.Run("PUT fails, before calling AWS, when the schema is not JSON", func(t *testing.T) {
+		h := newHarness(t)
+		resp := h.do(withSchemas(map[string]string{mskType: "not json"}, &fakeKafka{}, h.putController), http.MethodPut, mskPath, testOwner, map[string]any{"properties": map[string]any{"ClusterName": "orders"}})
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		require.Contains(t, resp.message(), mskType)
+		require.Empty(t, h.cc.Calls())
+		require.Nil(t, h.record(mskPath))
+	})
+
+	t.Run("a schema that is not JSON", func(t *testing.T) {
+		_, err := extraPropertyNames(mskType, "not json")
+		require.ErrorContains(t, err, mskType)
+
+		names, err := extraPropertyNames(bucketType, "not json")
+		require.NoError(t, err)
+		require.Nil(t, names)
+	})
 }

@@ -70,25 +70,27 @@ func Test_MustParse(t *testing.T) {
 }
 
 func Test_Without(t *testing.T) {
-	t.Run("removes the extra properties and leaves the input unchanged", func(t *testing.T) {
+	names := Names("AWS::MSK::Cluster")
+
+	t.Run("removes the names and leaves the input unchanged", func(t *testing.T) {
 		in := map[string]any{"ClusterName": "orders", "BootstrapBrokerStringTls": "b-1:9094", "BootstrapBrokerString": "b-1:9092"}
-		out := Without("AWS::MSK::Cluster", in)
+		out := Without(names, in)
 		require.Equal(t, map[string]any{"ClusterName": "orders"}, out)
 		require.Len(t, in, 3)
 	})
 
-	t.Run("removes only the type's own list", func(t *testing.T) {
+	t.Run("removes only the names given", func(t *testing.T) {
 		in := map[string]any{"ClusterName": "orders", "BootstrapBrokerStringSaslIam": "b-1:9098", "BootstrapBrokerStringTls": "b-1:9094"}
-		require.Equal(t, map[string]any{"ClusterName": "orders", "BootstrapBrokerStringTls": "b-1:9094"}, Without("AWS::MSK::ServerlessCluster", in))
+		require.Equal(t, map[string]any{"ClusterName": "orders", "BootstrapBrokerStringTls": "b-1:9094"}, Without(Names("AWS::MSK::ServerlessCluster"), in))
 	})
 
 	t.Run("returns the input when there is nothing to remove", func(t *testing.T) {
 		in := map[string]any{"ClusterName": "orders"}
-		require.Equal(t, reflect.ValueOf(in).Pointer(), reflect.ValueOf(Without("AWS::MSK::Cluster", in)).Pointer())
+		require.Equal(t, reflect.ValueOf(in).Pointer(), reflect.ValueOf(Without(names, in)).Pointer())
 
-		other := map[string]any{"BootstrapBrokerString": "kept for a type with no list"}
-		require.Equal(t, reflect.ValueOf(other).Pointer(), reflect.ValueOf(Without("AWS::S3::Bucket", other)).Pointer())
+		other := map[string]any{"BootstrapBrokerString": "kept when no names are given"}
+		require.Equal(t, reflect.ValueOf(other).Pointer(), reflect.ValueOf(Without(nil, other)).Pointer())
 
-		require.Nil(t, Without("AWS::MSK::Cluster", nil))
+		require.Nil(t, Without(names, nil))
 	})
 }

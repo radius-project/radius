@@ -322,8 +322,6 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if resp != nil {
 		return resp, nil
 	}
-	// UCP adds extra properties only to its read responses, so they are never sent to AWS or stored.
-	body.Properties = extraproperties.Without(r.typeName, body.Properties)
 
 	typeInfo, err := e.describeType(ctx, r)
 	if err != nil {
@@ -335,6 +333,12 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		return errResponse, nil
 	}
 	schema := aws.ToString(typeInfo.Schema)
+	// UCP adds extra properties only to its read responses, so they are never sent to AWS or stored.
+	extras, err := extraPropertyNames(r.typeName, schema)
+	if err != nil {
+		return nil, err
+	}
+	body.Properties = extraproperties.Without(extras, body.Properties)
 	secrets, err := secretProperties(r.typeName, schema)
 	if err != nil {
 		return nil, err
@@ -1014,8 +1018,15 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 			return nil, err
 		}
 	}
-	if resp, err := addExtraProperties(ctx, e.clients.Kafka, r.typeName, r.region, properties); resp != nil || err != nil {
-		return resp, err
+	if extraproperties.Names(r.typeName) != nil {
+		// Only types with extra properties need the schema here. DescribeType answers are cached.
+		typeInfo, err := e.describeType(ctx, r)
+		if err != nil {
+			return ucp_aws.HandleAWSError(ctx, err)
+		}
+		if resp, err := addExtraProperties(ctx, e.clients.Kafka, r.typeName, r.region, aws.ToString(typeInfo.Schema), properties); resp != nil || err != nil {
+			return resp, err
+		}
 	}
 	return armrpc_rest.NewOKResponse(map[string]any{
 		"id":         r.id.String(),
