@@ -157,8 +157,10 @@ func Run(t *testing.T, s Suite) {
 	}
 	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
 	if s.NewHandler(awsfake.NewCloudControl()).Options().Recovery == native.RecoverByResend {
-		t.Run("deploy after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodPut) })
-		t.Run("delete after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodDelete) })
+		t.Run("deploy after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodPut, errPartway) })
+		t.Run("delete after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodDelete, errPartway) })
+		t.Run("deploy after the create sent again is partly applied", func(t *testing.T) { s.resendFailsPartway(t, http.MethodPut, failurePartway) })
+		t.Run("delete after the create sent again is partly applied", func(t *testing.T) { s.resendFailsPartway(t, http.MethodDelete, failurePartway) })
 	}
 	if nameProperty != "" {
 		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
@@ -420,14 +422,14 @@ func (s Suite) lostCreateChangedWriteOnly(t *testing.T) {
 // identifier with an error, as when a later call of a multi-call create fails, such as setting an endpoint's policy.
 // A PUT or a DELETE sends the create again and fails. UCP keeps the identifier, so a following DELETE deletes the
 // resource instead of sending the failing create again.
-func (s Suite) resendFailsPartway(t *testing.T, method string) {
+func (s Suite) resendFailsPartway(t *testing.T, method string, failure error) {
 	h := s.newHarness(t)
 	h.handler.lose("Create", true)
 	resp := h.put(s.Properties)
 	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
 	require.Equal(t, 1, h.cc.Count(s.TypeName))
 
-	h.handler.failCreatesPartway()
+	h.handler.failCreatesPartway(failure)
 	if method == http.MethodPut {
 		resp = h.put(s.Properties)
 	} else {
@@ -1162,8 +1164,8 @@ type recorder struct {
 	// lost maps a method to whether its next call reaches AWS before its response is lost.
 	lost map[string]bool
 
-	// partway makes every Create call the handler and then return its identifier with a client error.
-	partway bool
+	// partway, when set, makes every Create call the handler and then return its identifier with this error.
+	partway error
 
 	// onProgress, when set, runs on each Progress call.
 	onProgress func()
@@ -1260,23 +1262,28 @@ func (r *recorder) Read(ctx context.Context, region string, identifier string) (
 	return r.Handler.Read(ctx, region, identifier)
 }
 
-// failCreatesPartway makes every later Create return the resource's identifier with a client error.
-func (r *recorder) failCreatesPartway() {
+// failCreatesPartway makes every later Create return the resource's identifier with err.
+func (r *recorder) failCreatesPartway(err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.partway = true
+	r.partway = err
 }
 
-var errPartway = nativefake.ClientError("InvalidParameterValue", "the create made the resource, but a later call failed")
+// errPartway is the plain AWS client error a create that failed partway returns, and failurePartway is the same
+// failure as a handler reports it, as partly applied.
+var (
+	errPartway     = nativefake.ClientError("InvalidParameterValue", "the create made the resource, but a later call failed")
+	failurePartway = &native.Failure{Message: "the create made the resource, but a later call failed", ClientError: true, Outcome: native.OutcomePartial}
+)
 
 func (r *recorder) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	r.note("Create")
 	r.mu.Lock()
 	partway := r.partway
 	r.mu.Unlock()
-	if partway {
+	if partway != nil {
 		identifier, err := r.Handler.Create(ctx, request)
-		return identifier, errors.Join(errPartway, err)
+		return identifier, errors.Join(partway, err)
 	}
 	reached, lost := r.takeLoss("Create")
 	switch {
