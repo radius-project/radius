@@ -242,3 +242,46 @@ func Test_Suite_DeleteToken(t *testing.T) {
 		require.Equal(t, 1, handler.Copies())
 	})
 }
+
+// Test_SchemaTypes checks the schema type check on each kind of definition it follows.
+func Test_SchemaTypes(t *testing.T) {
+	schema := map[string]any{
+		"definitions": map[string]any{
+			"Endpoint": map[string]any{"type": "object", "properties": map[string]any{"Port": map[string]any{"type": "string"}}},
+		},
+	}
+	def := map[string]any{"type": "object", "properties": map[string]any{
+		"Endpoint": map[string]any{"$ref": "#/definitions/Endpoint"},
+		"Missing":  map[string]any{"$ref": "#/definitions/Missing"},
+		"Ratio":    map[string]any{"type": "number"},
+		"Size":     map[string]any{"type": "integer"},
+		"Either":   map[string]any{"type": []any{"object", "string"}},
+		"Enabled":  map[string]any{"type": "boolean"},
+		"Names":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		"Labels":   map[string]any{"type": "object", "patternProperties": map[string]any{"^[a-z]+$": map[string]any{"type": "string"}}},
+		"Untyped":  map[string]any{},
+	}}
+	value := map[string]any{
+		"Endpoint": map[string]any{"Port": 27017.0},
+		"Missing":  "x",
+		"Ratio":    2.0,
+		"Size":     1.5,
+		"Either":   "text",
+		"Enabled":  nil,
+		"Names":    []any{"a", true},
+		"Labels":   map[string]any{"team": 1.0, "Other": 1.0},
+		"Untyped":  []any{},
+		"Unknown":  "x",
+	}
+	mismatches := []string{}
+	schemaTypes(schema, def, "", value, &mismatches)
+	require.ElementsMatch(t, []string{
+		"/Endpoint/Port: integer, but the schema says string",
+		"/Missing: unknown $ref #/definitions/Missing",
+		"/Size: number, but the schema says integer",
+		"/Enabled: null, but the schema says boolean",
+		"/Names/1: boolean, but the schema says string",
+		"/Labels/team: integer, but the schema says string",
+	}, mismatches)
+	require.Equal(t, "func()", jsonType(func() {}))
+}

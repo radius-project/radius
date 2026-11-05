@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
+	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 )
@@ -123,6 +124,11 @@ func (l Lifecycle) read(t *testing.T, ctx context.Context, identifier string) ma
 	t.Helper()
 	properties, err := l.Handler.Read(ctx, awsreplay.Region, identifier)
 	require.NoError(t, err)
+	catalog, err := schemas.Load()
+	require.NoError(t, err)
+	if schema, ok := catalog.Native[l.Handler.TypeName()]; ok {
+		requireSchemaTypes(t, schema, properties, "Read")
+	}
 	return properties
 }
 

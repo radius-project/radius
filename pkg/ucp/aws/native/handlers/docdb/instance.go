@@ -19,6 +19,7 @@ package docdb
 import (
 	"context"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -118,7 +119,10 @@ func (h *Instance) properties(ctx context.Context, region string, i *types.DBIns
 	}
 	if i.Endpoint != nil {
 		p["Endpoint"] = i.Endpoint.Address
-		p["Port"] = i.Endpoint.Port
+		if i.Endpoint.Port != nil {
+			// The schema declares Port a string, as CloudFormation returns it.
+			p["Port"] = strconv.Itoa(int(*i.Endpoint.Port))
+		}
 	}
 	return awsapi.EncodeObject(p)
 }

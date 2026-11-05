@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -164,6 +165,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("unchanged and changed write-only values", func(t *testing.T) { s.writeOnlyValues(t) })
 	t.Run("no write-only value in any response", func(t *testing.T) { s.noWriteOnlyInResponses(t) })
 	t.Run("list", func(t *testing.T) { s.list(t) })
+	t.Run("read values have the schema's types", func(t *testing.T) { s.readTypes(t) })
 	t.Run("existing", func(t *testing.T) { s.existing(t) })
 	t.Run("worker restart while waiting", func(t *testing.T) { s.workerRestart(t) })
 	t.Run("delete as the metadata says", func(t *testing.T) { s.deleteByMetadata(t) })
@@ -399,6 +401,115 @@ func (s Suite) list(t *testing.T) {
 	default:
 		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
 	}
+}
+
+// readTypes deploys Properties and reads the resource through the handler, and through List when the type can be
+// listed. Every value must have the JSON type the schema gives its property, such as a string for a port the schema
+// declares as a string, so a read matches what Cloud Control returns for the type.
+func (s Suite) readTypes(t *testing.T) {
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+
+	reads := map[string]map[string]any{}
+	read, err := h.handler.Handler.Read(t.Context(), region, h.identifier())
+	require.NoError(t, err)
+	reads["Read"] = read
+	if h.handler.Options().List == native.ListRegion {
+		listed, err := h.handler.Handler.List(t.Context(), region)
+		require.NoError(t, err)
+		for _, r := range listed {
+			reads["List "+r.Identifier] = r.Properties
+		}
+	}
+	for source, properties := range reads {
+		requireSchemaTypes(t, s.Schema, properties, source)
+	}
+}
+
+// requireSchemaTypes requires every value of properties, which source returned, to have the JSON type the schema
+// gives its property.
+func requireSchemaTypes(t *testing.T, schemaJSON string, properties map[string]any, source string) {
+	t.Helper()
+	var schema map[string]any
+	require.NoError(t, json.Unmarshal([]byte(schemaJSON), &schema))
+	var value any
+	b, err := json.Marshal(properties)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(b, &value))
+	mismatches := []string{}
+	schemaTypes(schema, map[string]any{"type": "object", "properties": schema["properties"]}, "", value, &mismatches)
+	require.Empty(t, mismatches, "%s returns values whose JSON type doesn't match the schema", source)
+}
+
+// schemaTypes adds to mismatches each value under path whose JSON type isn't one the schema definition def allows. It
+// follows $ref, properties, patternProperties, and items, and checks nothing a definition doesn't type.
+func schemaTypes(schema map[string]any, def map[string]any, path string, value any, mismatches *[]string) {
+	if ref, ok := def["$ref"].(string); ok {
+		resolved, _ := schema["definitions"].(map[string]any)[strings.TrimPrefix(ref, "#/definitions/")].(map[string]any)
+		if resolved == nil {
+			*mismatches = append(*mismatches, path+": unknown $ref "+ref)
+			return
+		}
+		def = resolved
+	}
+	var allowed []string
+	switch typ := def["type"].(type) {
+	case string:
+		allowed = []string{typ}
+	case []any:
+		for _, v := range typ {
+			allowed = append(allowed, fmt.Sprint(v))
+		}
+	}
+	if len(allowed) > 0 && !slices.Contains(allowed, jsonType(value)) && !(jsonType(value) == "integer" && slices.Contains(allowed, "number")) {
+		*mismatches = append(*mismatches, fmt.Sprintf("%s: %s, but the schema says %s", path, jsonType(value), strings.Join(allowed, " or ")))
+		return
+	}
+	switch v := value.(type) {
+	case map[string]any:
+		properties, _ := def["properties"].(map[string]any)
+		patterns, _ := def["patternProperties"].(map[string]any)
+		for key, item := range v {
+			if child, ok := properties[key].(map[string]any); ok {
+				schemaTypes(schema, child, path+"/"+key, item, mismatches)
+				continue
+			}
+			for pattern, child := range patterns {
+				if childDef, ok := child.(map[string]any); ok && regexp.MustCompile(pattern).MatchString(key) {
+					schemaTypes(schema, childDef, path+"/"+key, item, mismatches)
+					break
+				}
+			}
+		}
+	case []any:
+		if items, ok := def["items"].(map[string]any); ok {
+			for i, item := range v {
+				schemaTypes(schema, items, fmt.Sprintf("%s/%d", path, i), item, mismatches)
+			}
+		}
+	}
+}
+
+// jsonType returns the JSON schema type of a value read as JSON.
+func jsonType(v any) string {
+	switch t := v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "boolean"
+	case string:
+		return "string"
+	case float64:
+		if t == float64(int64(t)) {
+			return "integer"
+		}
+		return "number"
+	case []any:
+		return "array"
+	case map[string]any:
+		return "object"
+	}
+	return fmt.Sprintf("%T", v)
 }
 
 func (s Suite) existing(t *testing.T) {
