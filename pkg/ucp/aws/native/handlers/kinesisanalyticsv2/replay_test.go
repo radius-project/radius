@@ -18,11 +18,13 @@ package kinesisanalyticsv2
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
+	"github.com/aws/smithy-go"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -52,7 +54,8 @@ func Test_Replay_LoggingOption(t *testing.T) {
 }
 
 // requireDuplicateRejected adds a second logging option with the log stream of properties, which the application
-// already has. Find relies on AWS rejecting it, or keeping one option for the log stream. When AWS adds a second
+// already has. Find relies on AWS rejecting it with its limit of one logging option, or keeping one option for the log
+// stream. Any other error fails the test. When AWS adds a second
 // option, the type can't be served, and the test removes the extra options and fails.
 func requireDuplicateRejected(t *testing.T, s *awsreplay.Session, h *LoggingOption, api *kinesisanalyticsv2.Client, properties map[string]any) {
 	ctx := t.Context()
@@ -65,6 +68,10 @@ func requireDuplicateRejected(t *testing.T, s *awsreplay.Session, h *LoggingOpti
 		h.waitReady(t, s, awsapi.String(properties, "ApplicationName"))
 		return
 	case !errors.As(err, &failure):
+		var apiErr smithy.APIError
+		if !errors.As(err, &apiErr) || apiErr.ErrorCode() != "InvalidArgumentException" || !strings.Contains(apiErr.ErrorMessage(), "supports only 1 logging option") {
+			t.Fatalf("the second CloudWatch logging option failed with an error other than AWS's limit of one: %v", err)
+		}
 		return
 	}
 	t.Errorf("AWS accepted a second CloudWatch logging option with the same log stream, so UCP can't find a lost create")
