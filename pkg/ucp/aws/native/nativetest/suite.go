@@ -428,7 +428,7 @@ func (s Suite) readTypes(t *testing.T) {
 
 // requireSchemaTypes requires every value of properties, which source returned, to have the JSON type the schema
 // gives its property.
-func requireSchemaTypes(t *testing.T, schemaJSON string, properties map[string]any, source string) {
+func requireSchemaTypes(t testing.TB, schemaJSON string, properties map[string]any, source string) {
 	t.Helper()
 	var schema map[string]any
 	require.NoError(t, json.Unmarshal([]byte(schemaJSON), &schema))
@@ -1076,7 +1076,7 @@ func without(properties map[string]any, property string) map[string]any {
 	return out
 }
 
-func requireSubset(t *testing.T, want map[string]any, got map[string]any) {
+func requireSubset(t testing.TB, want map[string]any, got map[string]any) {
 	t.Helper()
 	for k, v := range want {
 		require.Contains(t, got, k)
@@ -1084,7 +1084,7 @@ func requireSubset(t *testing.T, want map[string]any, got map[string]any) {
 	}
 }
 
-func normalize(t *testing.T, v any) any {
+func normalize(t testing.TB, v any) any {
 	b, err := json.Marshal(v)
 	require.NoError(t, err)
 	var out any
