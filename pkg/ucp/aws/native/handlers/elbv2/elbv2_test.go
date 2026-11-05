@@ -27,6 +27,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
@@ -100,7 +101,8 @@ func Test_ListenerCertificate_CreateAndRead(t *testing.T) {
 
 	identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: properties(listener, certA, certB), ClientToken: token})
 	require.NoError(t, err)
-	require.Equal(t, listener+"|"+native.GenerateName(token), identifier)
+	require.Equal(t, awsapi.Segment(listener)+"|"+native.GenerateName(token), identifier)
+	require.NotContains(t, identifier, "/", "the identifier is one resource ID segment")
 	require.Equal(t, []string{"AddListenerCertificates", "AddListenerCertificates"}, h.api.calls, "one certificate per call")
 	for _, r := range h.api.regions {
 		require.Equal(t, region, r)
@@ -182,7 +184,7 @@ func Test_ListenerCertificate_ReadScoped(t *testing.T) {
 
 func Test_ListenerCertificate_DefaultCertificateOnly(t *testing.T) {
 	h := newTracked(awsfake.NewCloudControl())
-	_, err := h.Read(t.Context(), region, listener+"|radius-0123456789ab")
+	_, err := h.Read(t.Context(), region, identifierOf(listener, token))
 	require.ErrorIs(t, err, native.ErrNotFound, "a listener with only its default certificate has none to return")
 }
 
@@ -214,7 +216,7 @@ func Test_ListenerCertificate_CreateFails(t *testing.T) {
 		var failure *native.Failure
 		require.ErrorAs(t, err, &failure)
 		require.Equal(t, native.OutcomePartial, failure.Outcome)
-		require.Equal(t, listener+"|"+native.GenerateName(token), identifier, "the identifier is saved for the certificate already added")
+		require.Equal(t, identifierOf(listener, token), identifier, "the identifier is saved for the certificate already added")
 	})
 }
 

@@ -56,8 +56,8 @@ var (
 // ListenerCertificate serves AWS::ElasticLoadBalancingV2::ListenerCertificate: certificates a template adds to the
 // certificate list of an HTTPS or TLS listener. Others can add certificates to the same listener, and every such
 // listener has a default certificate, so the handler reads, changes, and deletes only the certificates the alias
-// manages, and never the default one. Its identifier, Id, is ListenerArn and a name made from the record's client
-// token, joined with "|".
+// manages, and never the default one. Its identifier, Id, is ListenerArn with "/" escaped, because an identifier is one
+// resource ID segment, and a name made from the record's client token, joined with "|".
 type ListenerCertificate struct {
 	api API
 }
@@ -81,11 +81,16 @@ func (h *ListenerCertificate) Options() native.Options {
 	}
 }
 
+// identifierOf returns the identifier of the certificates a create with clientToken adds to the listener.
+func identifierOf(listener string, clientToken string) string {
+	return awsapi.Segment(listener) + "|" + native.GenerateName(clientToken)
+}
+
 // listenerOf returns the listener ARN in identifier. An identifier without one, such as one another handler
 // assigned, takes ListenerArn from the first of properties that sets it.
 func listenerOf(identifier string, properties ...map[string]any) (string, error) {
 	if listener, _, ok := strings.Cut(identifier, "|"); ok && listener != "" {
-		return listener, nil
+		return awsapi.Unsegment(listener), nil
 	}
 	for _, p := range properties {
 		if listener := awsapi.String(p, "ListenerArn"); listener != "" {
@@ -198,7 +203,7 @@ func (h *ListenerCertificate) Create(ctx context.Context, request native.CreateR
 	if listener == "" || len(arns) == 0 {
 		return "", &native.Failure{Message: "set ListenerArn and at least one certificate in Certificates", ClientError: true, Outcome: native.OutcomeRejected}
 	}
-	identifier := listener + "|" + native.GenerateName(request.ClientToken)
+	identifier := identifierOf(listener, request.ClientToken)
 	calls := []func() error{}
 	for _, arn := range arns {
 		calls = append(calls, h.add(ctx, request.Region, listener, arn))

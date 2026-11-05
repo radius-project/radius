@@ -176,6 +176,8 @@ Each service has a package in `pkg/ucp/aws/native/handlers`, which `handlers.All
 | Lake Formation | `DataLakeSettings` (delete does nothing in AWS), `Permissions` (members of a parent), `Resource`                                                                                                                                                                                                                                                                                                   |
 | One type each  | AppSync `GraphQLSchema`, CloudWatch `AnomalyDetector`, CodeBuild `Project`, DAX `Cluster`, DMS `ReplicationInstance`, EMR `Cluster`, ELB v2 `ListenerCertificate` (members of a parent), FSx `FileSystem` (final backup on delete), Kinesis Analytics v2 `ApplicationCloudWatchLoggingOption`, MediaLive `Channel`, SageMaker `ExperimentTrialComponent`, Service Catalog `AcceptedPortfolioShare` |
 
+An identifier a handler builds from values that can hold `/`, such as an ARN, escapes `/` as `%2F` (`awsapi.Segment`), so it stays one resource ID segment. Lake Formation `Resource` can't, because Cloud Control uses the raw ARN as its identifier where it serves the type, so the native handler can't serve an S3 location with a path yet, and UCP returns `400` for one.
+
 The final snapshot or backup needs the permission to take it, such as `rds:CreateDBClusterSnapshot` or `fsx:CreateBackup`. Radius never deletes it.
 
 #### Testing native handlers

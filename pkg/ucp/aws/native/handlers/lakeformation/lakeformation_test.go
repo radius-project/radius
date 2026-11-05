@@ -207,7 +207,7 @@ func Test_Suite_Permissions_Table(t *testing.T) {
 }
 
 const (
-	dataArn   = "arn:aws:s3:::radius-lake/data"
+	dataArn   = "arn:aws:s3:::radius-lake"
 	roleArn   = "arn:aws:iam::123456789012:role/lake-access"
 	otherRole = "arn:aws:iam::123456789012:role/lake-access-2"
 )
@@ -230,7 +230,7 @@ func Test_Suite_Resource(t *testing.T) {
 		Properties:         resource,
 		Identifier:         dataArn,
 		Changed:            with(resource, map[string]any{"RoleArn": otherRole}),
-		CreateOnlyChange:   with(resource, map[string]any{"ResourceArn": "arn:aws:s3:::radius-lake/other"}),
+		CreateOnlyChange:   with(resource, map[string]any{"ResourceArn": "arn:aws:s3:::radius-lake-other"}),
 		MultiCall:          with(resource, map[string]any{"UseServiceLinkedRole": true}),
 		Calls:              2,
 		FailCall: nativetest.FailCall(2, func(h native.Handler) *nativetest.Failer {

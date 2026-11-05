@@ -302,3 +302,19 @@ func FieldNames(v any) []string {
 	}
 	return out
 }
+
+var (
+	segmentEscaper   = strings.NewReplacer("%", "%25", "/", "%2F")
+	segmentUnescaper = strings.NewReplacer("%2F", "/", "%25", "%")
+)
+
+// Segment returns s with "%" and "/" escaped, for an identifier a handler makes from values that can hold "/", such as
+// an ARN. An identifier is the last segment of the resource ID a list or `existing` returns, so it can't hold "/".
+func Segment(s string) string {
+	return segmentEscaper.Replace(s)
+}
+
+// Unsegment returns the value Segment escaped.
+func Unsegment(s string) string {
+	return segmentUnescaper.Replace(s)
+}

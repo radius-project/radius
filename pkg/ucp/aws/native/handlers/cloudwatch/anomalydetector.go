@@ -56,8 +56,9 @@ var (
 var notFoundCodes = []string{"ResourceNotFoundException", "ResourceNotFound"}
 
 // AnomalyDetector serves AWS::CloudWatch::AnomalyDetector. A detector has no name: the metric and statistic it
-// watches, or its metric math queries, identify it. Its identifier, Id, is that identity as JSON, the same for the
-// SingleMetricAnomalyDetector form and the older top-level Namespace, MetricName, Dimensions, and Stat form.
+// watches, or its metric math queries, identify it. Its identifier, Id, is that identity as JSON, escaped with
+// awsapi.Segment so it has no "/", the same for the SingleMetricAnomalyDetector form and the older top-level
+// Namespace, MetricName, Dimensions, and Stat form.
 // PutAnomalyDetector creates or updates a detector, and takes effect at once.
 type AnomalyDetector struct {
 	api API
@@ -73,11 +74,10 @@ func (h *AnomalyDetector) TypeName() string {
 	return anomalyDetectorType
 }
 
-// Options returns how UCP uses the handler. List works, but UCP's list puts the identifier in each resource ID, and a
-// namespace such as AWS/EC2 puts a "/" in it, so the type can't be listed through UCP yet.
+// Options returns how UCP uses the handler.
 func (h *AnomalyDetector) Options() native.Options {
 	return native.Options{
-		List:       native.ListNone,
+		List:       native.ListRegion,
 		Recovery:   native.RecoverByIdentifier,
 		Equivalent: equivalent,
 	}
@@ -102,10 +102,11 @@ func (id identity) isMath() bool {
 	return len(id.MetricDataQueries) > 0
 }
 
-// encode returns the identity as JSON, the identifier.
+// encode returns the identifier: the identity as JSON, escaped with awsapi.Segment, because an identifier is one
+// segment of a resource ID and a namespace such as AWS/EC2 holds a "/".
 func (id identity) encode() (string, error) {
 	b, err := json.Marshal(id)
-	return string(b), err
+	return awsapi.Segment(string(b)), err
 }
 
 // same reports whether id and other identify the same detector. AWS may return the account ID of a detector the
@@ -225,7 +226,7 @@ func detectorIdentity(d *types.AnomalyDetector) (identity, error) {
 // parseIdentifier returns the identity of an identifier.
 func parseIdentifier(identifier string) (identity, error) {
 	id := identity{}
-	if err := json.Unmarshal([]byte(identifier), &id); err != nil || (id.Namespace == "" && !id.isMath()) {
+	if err := json.Unmarshal([]byte(awsapi.Unsegment(identifier)), &id); err != nil || (id.Namespace == "" && !id.isMath()) {
 		return id, &native.Failure{
 			Message:     fmt.Sprintf("%q is not the identifier of a CloudWatch anomaly detector: it must be the JSON object the Id property returns", identifier),
 			ClientError: true,
@@ -235,7 +236,7 @@ func parseIdentifier(identifier string) (identity, error) {
 	return id, nil
 }
 
-// Identifier returns the detector's identity as JSON, or "" when the properties don't name a metric or metric math
+// Identifier returns the detector's identity as JSON, escaped with awsapi.Segment, or "" when the properties don't name a metric or metric math
 // queries.
 func (h *AnomalyDetector) Identifier(properties map[string]any) (string, error) {
 	id, err := identityOf(properties)
