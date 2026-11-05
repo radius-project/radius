@@ -17,7 +17,6 @@ limitations under the License.
 package nativetest
 
 import (
-	"net/url"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -61,11 +60,10 @@ func Test_Suite_HandWrittenType(t *testing.T) {
 		if bucket == "" || key == "" {
 			return "", nil
 		}
-		// Escaping each value keeps "/" and "|" out of the identifier, so it is one resource ID segment that splits
-		// back into the values.
-		return url.PathEscape(bucket) + "|" + url.PathEscape(key), nil
+		// Like an S3 ARN, the identifier keeps "/" and "..", which UCP escapes only in resource IDs.
+		return bucket + "/" + key, nil
 	}
-	properties := map[string]any{"Bucket": "app-assets", "Key": "config/a|b.json", "ContentType": "application/json", "Body": "e30="}
+	properties := map[string]any{"Bucket": "app-assets", "Key": "config/../a|b.json", "ContentType": "application/json", "Body": "e30="}
 	identifier, err := identifierOf(properties)
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +86,7 @@ func Test_Suite_HandWrittenType(t *testing.T) {
 		WriteOnly:        []string{"Body"},
 		Properties:       properties,
 		Identifier:       identifier,
-		Changed:          map[string]any{"Bucket": "app-assets", "Key": "config/a|b.json", "ContentType": "text/plain", "Body": "e30="},
+		Changed:          map[string]any{"Bucket": "app-assets", "Key": "config/../a|b.json", "ContentType": "text/plain", "Body": "e30="},
 		Removable:        "ContentType",
 		CreateOnlyChange: nil,
 	})

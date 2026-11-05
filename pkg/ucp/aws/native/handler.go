@@ -80,9 +80,10 @@ type Handler interface {
 // "|", such as a type whose identifier values can contain "|". UCP uses it for create, take-over, `existing`,
 // recovery, and delete, with either handler, so every path finds the resource by the same identifier.
 type IdentifierEncoder interface {
-	// Identifier returns the identifier the properties give, or "" when they don't give all of it. It must be one
-	// resource ID segment: no "/", and not "." or "..". For a type that has a CloudFormation type, it must be the
-	// identifier Cloud Control accepts, because Cloud Control serves the type in some regions.
+	// Identifier returns the identifier the properties give, or "" when they don't give all of it. It is the AWS
+	// identifier itself and may contain any character, such as the "/" of an S3 ARN; UCP escapes it only where it is
+	// the last segment of a resource ID. For a type that has a CloudFormation type, it must be the identifier Cloud
+	// Control accepts, because Cloud Control serves the type in some regions.
 	Identifier(properties map[string]any) (string, error)
 }
 

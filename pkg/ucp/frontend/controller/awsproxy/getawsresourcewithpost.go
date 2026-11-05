@@ -83,6 +83,8 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	if err != nil {
 		return ucpaws.HandleAWSError(ctx, err)
 	}
+	// Recipes read an output resource again by the last segment of the ID this returned.
+	name = identifierOfSegment(rt.native, name)
 	describeTypeOutput := rt.typeInfo
 	if describeTypeOutput == nil {
 		describeTypeOutput, err = describeType(ctx, p.awsClients, serviceCtx.ResourceTypeInAWSFormat(), region)
@@ -157,7 +159,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		}
 	}
 
-	computedResourceID := computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
+	computedResourceID := computeResourceID(serviceCtx.ResourceID, addressSegment(rt.native, awsResourceIdentifier))
 	responseBody := map[string]any{
 		"id":         computedResourceID,
 		"name":       response.ResourceDescription.Identifier,
