@@ -236,12 +236,41 @@ func properties(fs *types.FileSystem) (map[string]any, error) {
 	return awsapi.EncodeObject(p)
 }
 
+// deleteOptionsTag is the tag key the handler puts on an OpenZFS file system whose template sets
+// OpenZFSConfiguration Options, with the options joined by spaces. Options are write-only, so UCP keeps no copy, and a
+// delete reads them from this tag. Read leaves the tag out, so it never counts as a change.
+const deleteOptionsTag = "radius-delete-options"
+
 func tagList(tags []types.Tag) []any {
 	m := map[string]string{}
 	for _, t := range tags {
 		m[aws.ToString(t.Key)] = aws.ToString(t.Value)
 	}
+	delete(m, deleteOptionsTag)
 	return awsapi.TagList(m)
+}
+
+// createTags returns the tags a create sends: the template's tags, the operation tag with token, and the delete
+// options tag when the template sets OpenZFSConfiguration Options.
+func createTags(properties map[string]any, token *string) []types.Tag {
+	tags := append(sdkTags(awsapi.Tags(properties)), types.Tag{Key: aws.String(awsapi.OperationTag), Value: token})
+	if options := awsapi.Strings(asMap(properties["OpenZFSConfiguration"]), "Options"); len(options) > 0 {
+		tags = append(tags, types.Tag{Key: aws.String(deleteOptionsTag), Value: aws.String(strings.Join(options, " "))})
+	}
+	return tags
+}
+
+// deleteOptions returns the OpenZFS delete options the file system's tags hold, or nil when there are none.
+func deleteOptions(tags []types.Tag) []types.DeleteFileSystemOpenZFSOption {
+	var out []types.DeleteFileSystemOpenZFSOption
+	for _, t := range tags {
+		if aws.ToString(t.Key) == deleteOptionsTag {
+			for _, option := range strings.Fields(aws.ToString(t.Value)) {
+				out = append(out, types.DeleteFileSystemOpenZFSOption(option))
+			}
+		}
+	}
+	return out
 }
 
 func sdkTags(tags []awsapi.Tag) []types.Tag {
@@ -259,7 +288,7 @@ func sdkTags(tags []awsapi.Tag) []types.Tag {
 func (h *FileSystem) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	p := request.Properties
 	token := aws.String(request.ClientToken)
-	tags := append(sdkTags(awsapi.Tags(p)), types.Tag{Key: aws.String(awsapi.OperationTag), Value: token})
+	tags := createTags(p, token)
 	opt := inRegion(request.Region)
 	var fs *types.FileSystem
 	var err error
@@ -552,7 +581,9 @@ func (h *FileSystem) DeleteToken(ctx context.Context, region string, identifier 
 // DeleteWithToken deletes the file system, sending token as the idempotency token, so a retried delete is the same
 // delete and takes no second final backup. It takes a final backup, tagged with the file system's tags, for Windows
 // and OpenZFS file systems, and for persistent Lustre file systems not linked to S3. FSx supports none for scratch or
-// S3-linked Lustre file systems, or for ONTAP file systems, which FSx backs up by volume.
+// S3-linked Lustre file systems, or for ONTAP file systems, which FSx backs up by volume. An OpenZFS file system's
+// delete also sends the template's OpenZFSConfiguration Options, such as DELETE_CHILD_VOLUMES_AND_SNAPSHOTS, from the
+// tag the create put on it (see deleteOptionsTag).
 func (h *FileSystem) DeleteWithToken(ctx context.Context, region string, identifier string, token string) error {
 	fs, err := h.describe(ctx, region, identifier)
 	if err != nil {
@@ -564,7 +595,7 @@ func (h *FileSystem) DeleteWithToken(ctx context.Context, region string, identif
 	case types.FileSystemTypeWindows:
 		input.WindowsConfiguration = &types.DeleteFileSystemWindowsConfiguration{SkipFinalBackup: aws.Bool(false), FinalBackupTags: tags}
 	case types.FileSystemTypeOpenzfs:
-		input.OpenZFSConfiguration = &types.DeleteFileSystemOpenZFSConfiguration{SkipFinalBackup: aws.Bool(false), FinalBackupTags: tags}
+		input.OpenZFSConfiguration = &types.DeleteFileSystemOpenZFSConfiguration{SkipFinalBackup: aws.Bool(false), FinalBackupTags: tags, Options: deleteOptions(fs.Tags)}
 	case types.FileSystemTypeLustre:
 		backup, err := h.lustreBackup(ctx, region, fs)
 		if err != nil {
@@ -585,7 +616,7 @@ func backupTags(tags []types.Tag) []types.Tag {
 	var out []types.Tag
 	for _, t := range tags {
 		key := aws.ToString(t.Key)
-		if !strings.HasPrefix(key, "aws:") && key != awsapi.OperationTag {
+		if !strings.HasPrefix(key, "aws:") && key != awsapi.OperationTag && key != deleteOptionsTag {
 			out = append(out, t)
 		}
 	}

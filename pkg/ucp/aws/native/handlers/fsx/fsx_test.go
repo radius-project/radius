@@ -372,6 +372,28 @@ func Test_FinalBackupByType(t *testing.T) {
 		})
 	}
 
+	t.Run("OpenZFS options the template set", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewFileSystem(api)
+		zfs := map[string]any{"DeploymentType": "SINGLE_AZ_1", "Options": []any{"DELETE_CHILD_VOLUMES_AND_SNAPSHOTS"}}
+		withOptions := create(t, h, with(base, map[string]any{"FileSystemType": "OPENZFS", "OpenZFSConfiguration": zfs, "Tags": tags("team", "a")}))
+		without := create(t, h, with(base, map[string]any{"FileSystemType": "OPENZFS", "OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1"}}))
+
+		read, err := h.Read(t.Context(), testRegion, withOptions)
+		require.NoError(t, err)
+		require.Equal(t, tags("team", "a"), read["Tags"], "Read leaves the delete options tag out")
+
+		require.NoError(t, h.Delete(t.Context(), testRegion, withOptions))
+		require.NoError(t, h.Delete(t.Context(), testRegion, without))
+		require.Equal(t, []types.DeleteFileSystemOpenZFSOption{types.DeleteFileSystemOpenZFSOptionDeleteChildVolumesAndSnapshots}, api.deleteOptions[withOptions])
+		require.Nil(t, api.deleteOptions[without], "a template without Options sends none")
+		for _, b := range api.backups {
+			for _, tag := range b.tags {
+				require.NotEqual(t, deleteOptionsTag, aws.ToString(tag.Key), "the final backup doesn't get the tag")
+			}
+		}
+	})
+
 	t.Run("associations can't be read", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)

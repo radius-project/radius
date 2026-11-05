@@ -71,6 +71,11 @@ type fakeAPI struct {
 	// tokens maps a file system to the value of its operation tag, which the store leaves out, as Read does.
 	tokens map[string]string
 
+	// options maps a file system to the value of its delete options tag, which the store leaves out, as Read does.
+	// deleteOptions maps a file system to the OpenZFS options its delete sent.
+	options       map[string]string
+	deleteOptions map[string][]types.DeleteFileSystemOpenZFSOption
+
 	// associations maps a file system to how many data repository associations link it to S3.
 	associations map[string]int
 
@@ -94,16 +99,18 @@ var _ API = (*fakeAPI)(nil)
 
 func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
 	return &fakeAPI{
-		store:        store,
-		lifecycle:    map[string]types.FileSystemLifecycle{},
-		actions:      map[string][]types.AdministrativeAction{},
-		creates:      map[string]request{},
-		deletes:      map[string]request{},
-		tokens:       map[string]string{},
-		associations: map[string]int{},
-		failures:     map[string]string{},
-		deleting:     map[string]int{},
-		errs:         map[string]error{},
+		store:         store,
+		lifecycle:     map[string]types.FileSystemLifecycle{},
+		actions:       map[string][]types.AdministrativeAction{},
+		creates:       map[string]request{},
+		deletes:       map[string]request{},
+		tokens:        map[string]string{},
+		options:       map[string]string{},
+		deleteOptions: map[string][]types.DeleteFileSystemOpenZFSOption{},
+		associations:  map[string]int{},
+		failures:      map[string]string{},
+		deleting:      map[string]int{},
+		errs:          map[string]error{},
 	}
 }
 
@@ -153,8 +160,12 @@ func (f *fakeAPI) create(token string, input any, tags []types.Tag) (*types.File
 	id := fmt.Sprintf("fs-%017d", f.next)
 	m := map[string]string{}
 	for _, t := range tags {
-		if aws.ToString(t.Key) == awsapi.OperationTag {
+		switch aws.ToString(t.Key) {
+		case awsapi.OperationTag:
 			f.tokens[id] = aws.ToString(t.Value)
+		case deleteOptionsTag:
+			f.options[id] = aws.ToString(t.Value)
+			continue
 		}
 		m[aws.ToString(t.Key)] = aws.ToString(t.Value)
 	}
@@ -229,6 +240,9 @@ func (f *fakeAPI) fileSystem(id string) (*types.FileSystem, bool) {
 	}
 	if token, ok := f.tokens[id]; ok {
 		fs.Tags = append(fs.Tags, types.Tag{Key: aws.String(awsapi.OperationTag), Value: aws.String(token)})
+	}
+	if options, ok := f.options[id]; ok {
+		fs.Tags = append(fs.Tags, types.Tag{Key: aws.String(deleteOptionsTag), Value: aws.String(options)})
 	}
 	fs.FileSystemId = aws.String(id)
 	fs.ResourceARN = aws.String(arnPrefix + id)
@@ -432,6 +446,7 @@ func (f *fakeAPI) DeleteFileSystem(ctx context.Context, in *fsx.DeleteFileSystem
 	}
 	if c := in.OpenZFSConfiguration; c != nil {
 		skip, tags, typed = aws.ToBool(c.SkipFinalBackup), c.FinalBackupTags, typed+1
+		f.deleteOptions[id] = c.Options
 	}
 	if c := in.LustreConfiguration; c != nil {
 		skip, tags, typed = aws.ToBool(c.SkipFinalBackup), c.FinalBackupTags, typed+1
