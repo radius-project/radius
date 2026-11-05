@@ -128,8 +128,17 @@ func (h *GraphQLSchema) start(ctx context.Context, region string, apiID string, 
 }
 
 // definition returns Definition, or reads the object DefinitionS3Location names, such as s3://bucket/schema.graphql.
+// The two are alternatives, so a template that sets both is rejected.
 func (h *GraphQLSchema) definition(ctx context.Context, region string, properties map[string]any) ([]byte, error) {
-	if definition := awsapi.String(properties, "Definition"); definition != "" {
+	definition := awsapi.String(properties, "Definition")
+	if definition != "" && awsapi.String(properties, "DefinitionS3Location") != "" {
+		return nil, &native.Failure{
+			Message:     "An AppSync GraphQL schema takes Definition or DefinitionS3Location, not both. Remove one of them.",
+			ClientError: true,
+			Outcome:     native.OutcomeRejected,
+		}
+	}
+	if definition != "" {
 		return []byte(definition), nil
 	}
 	location := awsapi.String(properties, "DefinitionS3Location")
