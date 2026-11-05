@@ -1940,7 +1940,8 @@ func Test_Put_UncertainCreateWithWriteOnly(t *testing.T) {
 
 			// The next deploy finds the failed request's reservation stale.
 			h.db = inner
-			records.Now = func() time.Time { return time.Now().Add(2*records.StaleAfter + time.Minute) }
+			now := records.LastModified(h.record(credentialPath)).Add(records.StaleAfter + time.Minute)
+			records.Now = func() time.Time { return now }
 			require.Equal(t, http.StatusCreated, h.put(credentialPath, template).status)
 			records.Now = time.Now
 			h.finish()
