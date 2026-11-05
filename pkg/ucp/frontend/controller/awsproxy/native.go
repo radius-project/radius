@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/url"
 	"strings"
 	"time"
 
@@ -184,15 +185,36 @@ func identifierFor(t *native.Type, properties map[string]any, schema string) (st
 	if !hasEncoder(t) {
 		return identifierFromProperties(properties, schema)
 	}
-	identifier, err := t.Handler.(native.IdentifierEncoder).Identifier(properties)
-	if err != nil {
-		return "", err
+	return t.Handler.(native.IdentifierEncoder).Identifier(properties)
+}
+
+// addressSegment returns the last segment of the resource ID UCP returns for the AWS identifier of a type t serves,
+// in a list or `existing`. An AWS identifier can contain "/", such as an S3 ARN, or be "..", so for a type with a
+// native handler, with either handler, the identifier is escaped into one segment and identifierOfSegment reverses it.
+// Other types keep the raw identifier, as before native handlers.
+func addressSegment(t *native.Type, identifier string) string {
+	if t == nil {
+		return identifier
 	}
-	// The identifier is the last segment of the resource ID a list or `existing` returns, so it must be one segment.
-	if strings.Contains(identifier, "/") || identifier == "." || identifier == ".." {
-		return "", fmt.Errorf("the native handler for %s returned the identifier %q, which is not a single resource ID segment", t.Handler.TypeName(), identifier)
+	switch identifier {
+	case ".":
+		return "%2E"
+	case "..":
+		return "%2E%2E"
 	}
-	return identifier, nil
+	return url.PathEscape(identifier)
+}
+
+// identifierOfSegment returns the AWS identifier in a resource ID segment addressSegment made. A segment that isn't
+// valid escaping is returned unchanged.
+func identifierOfSegment(t *native.Type, segment string) string {
+	if t == nil {
+		return segment
+	}
+	if identifier, err := url.PathUnescape(segment); err == nil {
+		return identifier
+	}
+	return segment
 }
 
 // hasEncoder reports whether t's handler declares its own identifier encoding.
@@ -221,8 +243,10 @@ func withGeneratedName(r *request, rec *datamodel.AWSResource, properties map[st
 	if err != nil {
 		return nil, err
 	}
-	out := make(map[string]any, len(properties)+1)
-	maps.Copy(out, properties)
+	out := maps.Clone(properties)
+	if out == nil {
+		out = map[string]any{}
+	}
 	out[rules.Property] = name
 	return out, nil
 }

@@ -29,6 +29,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -354,17 +355,23 @@ func (s Suite) existing(t *testing.T) {
 	// identifier.
 	id, _ := resp.body["id"].(string)
 	require.Equal(t, h.identifier(), requireSegment(t, h.collection(), id))
-	resp = h.getWithPost(map[string]any{"name": h.identifier()})
+	parsed, err := resources.ParseResource(id)
+	require.NoError(t, err)
+	resp = h.getWithPost(map[string]any{"name": parsed.Name()})
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	requireSubset(t, s.readable(s.Properties), resp.properties())
 }
 
-// requireSegment requires id to be one resource ID segment under collection, and returns that segment.
+// requireSegment requires id to be one resource ID segment under collection, and returns the AWS identifier that
+// segment holds.
 func requireSegment(t *testing.T, collection string, id string) string {
 	t.Helper()
 	parsed, err := resources.ParseResource(id)
 	require.NoError(t, err)
 	require.Equal(t, collection+"/"+parsed.Name(), id, "the identifier is one segment of the resource ID")
-	return parsed.Name()
+	identifier, err := url.PathUnescape(parsed.Name())
+	require.NoError(t, err)
+	return identifier
 }
 
 // lostCreate loses a create, after it reached AWS or before, and deploys again. The next deploy finds the resource
