@@ -19,7 +19,10 @@ package nativetest
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -219,5 +222,77 @@ func Test_Suite_HandWrittenType(t *testing.T) {
 		ChangedWriteOnly: map[string]any{"Bucket": "app-assets", "Key": "config/a|b.json", "ContentType": "application/json", "Body": "eyJhIjoxfQ=="},
 		Removable:        "ContentType",
 		CreateOnlyChange: nil,
+	})
+}
+
+// Test_Suite_DeleteToken runs the suite for a type whose delete takes a copy, like a final snapshot, named by a delete
+// token UCP saves on the record before the first delete call. A retried delete sends the same token and takes no
+// second copy.
+func Test_Suite_DeleteToken(t *testing.T) {
+	var handler *nativefake.Handler
+	suite := assignedSuite("AWS::Test::Snapshotted", native.RecoverByResend)
+	suite.NewHandler = func(store *awsfake.CloudControl) native.Handler {
+		handler = nativefake.New("AWS::Test::Snapshotted", store)
+		handler.Opts.Recovery = native.RecoverByResend
+		handler.Waits = 1
+		return handler.DeleteTokens()
+	}
+	Run(t, suite)
+
+	t.Run("one copy for a retried delete", func(t *testing.T) {
+		suite.deleteTokenRetry(t)
+		require.Equal(t, 1, handler.Copies())
+	})
+}
+
+// Test_Suite_Scoped runs the suite for a type whose resource is some members of a parent, like users a template adds
+// to an IAM group. Members added outside Radius stay through a take-over, an update, and a delete, and an update that
+// fails while it removes members keeps every member it may still have to remove.
+func Test_Suite_Scoped(t *testing.T) {
+	const typeName = "AWS::Test::Membership"
+	group := func(users ...string) map[string]any {
+		list := []any{}
+		for _, u := range users {
+			list = append(list, u)
+		}
+		return map[string]any{"Group": "admins", "Users": list}
+	}
+	Run(t, Suite{
+		TypeName: typeName,
+		Schema: `{
+			"typeName": "AWS::Test::Membership",
+			"primaryIdentifier": ["/properties/Group"],
+			"createOnlyProperties": ["/properties/Group"]
+		}`,
+		NewHandler: func(store *awsfake.CloudControl) native.Handler {
+			h := nativefake.New(typeName, store)
+			h.Opts.Recovery = native.RecoverByResend
+			h.CreateOnly = []string{"Group"}
+			return h.Scoped("Users")
+		},
+		IdentifierProperty: "Group",
+		Properties:         group("ana", "bo"),
+		Identifier:         "admins",
+		Changed:            group("bo", "cy"),
+		CreateOnlyChange:   map[string]any{"Group": "readers", "Users": []any{"ana", "bo"}},
+		MultiCall:          group("bo", "cy", "di"),
+		Calls:              3,
+		RejectedCalls:      1,
+		FailCall: func(handler native.Handler, call int, err error) {
+			handler.(interface{ FailOn(int, error) }).FailOn(call, err)
+		},
+		Outside: func(store *awsfake.CloudControl, properties map[string]any) func() bool {
+			id := fmt.Sprint(properties["Group"])
+			current := store.Resource(typeName, id)
+			if current == nil {
+				current = map[string]any{"Group": id, "Users": []any{}}
+			}
+			current["Users"] = append(current["Users"].([]any), "outsider")
+			store.Put(typeName, id, current)
+			return func() bool {
+				props := store.Resource(typeName, id)
+				return props != nil && slices.Contains(props["Users"].([]any), any("outsider"))
+			}
+		},
 	})
 }

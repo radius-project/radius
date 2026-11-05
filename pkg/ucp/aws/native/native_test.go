@@ -17,6 +17,7 @@ limitations under the License.
 package native_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -175,4 +176,32 @@ func Test_Failure(t *testing.T) {
 func Test_OtherProductError(t *testing.T) {
 	err := &native.OtherProductError{Identifier: "app-docdb", Product: "aurora-postgresql"}
 	require.Equal(t, `the AWS identifier "app-docdb" belongs to another product (aurora-postgresql)`, err.Error())
+}
+
+// readsOnlyScoped has ReadScoped but no DeleteScoped.
+type readsOnlyScoped struct {
+	native.Handler
+}
+
+func (readsOnlyScoped) ReadScoped(ctx context.Context, region string, identifier string, managed []map[string]any) (map[string]any, error) {
+	return nil, nil
+}
+
+func Test_NewRegistry_Scoped(t *testing.T) {
+	store := awsfake.NewCloudControl()
+	catalog := schemas.Catalog{Native: map[string]string{"AWS::IAM::UserToGroupAddition": `{}`}}
+	h := nativefake.New("AWS::IAM::UserToGroupAddition", store)
+
+	_, err := native.NewRegistry(catalog, h.Scoped("Users"))
+	require.NoError(t, err)
+
+	_, err = native.NewRegistry(catalog, readsOnlyScoped{h})
+	require.EqualError(t, err, "the native handler for the AWS type AWS::IAM::UserToGroupAddition must have both ReadScoped and DeleteScoped, or neither")
+}
+
+func Test_GenerateName(t *testing.T) {
+	name := native.GenerateName("token")
+	require.Regexp(t, `^radius-[0-9a-f]{12}$`, name)
+	require.Equal(t, name, native.GenerateName("token"))
+	require.NotEqual(t, name, native.GenerateName("other"))
 }

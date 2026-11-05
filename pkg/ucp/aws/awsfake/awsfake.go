@@ -81,6 +81,11 @@ type CloudControl struct {
 	// its value; otherwise the fake assigns an identifier, like AWS does for a VPC.
 	Identifiers map[string]string
 
+	// Assign maps a type to how the fake names a new resource of it, for a type whose identifier isn't one property,
+	// such as one that joins several properties or includes a value AWS assigns. It returns the identifier and the
+	// properties to store, or "" to fall back to Identifiers.
+	Assign map[string]func(properties map[string]any) (string, map[string]any)
+
 	// WriteOnly maps a type to the paths of its write-only properties, which GetResource never returns, like AWS. "*"
 	// matches every array item.
 	WriteOnly map[string][]string
@@ -112,6 +117,7 @@ func NewCloudControl() *CloudControl {
 		tokens:      map[string]clientRequest{},
 		Identifiers: map[string]string{},
 		WriteOnly:   map[string][]string{},
+		Assign:      map[string]func(map[string]any) (string, map[string]any){},
 		Errors:      map[string]error{},
 		Before:      map[string]func(){},
 	}
@@ -156,13 +162,25 @@ func (c *CloudControl) Read(typeName string, identifier string) (map[string]any,
 func (c *CloudControl) Create(typeName string, properties map[string]any) string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	identifier, properties := c.name(typeName, properties)
+	c.resources[key(typeName, identifier)] = clone(properties)
+	return identifier
+}
+
+// name returns the identifier of a new resource with properties, and the properties to store: as Assign says for the
+// type, or the value of its identifier property, or one the fake assigns.
+func (c *CloudControl) name(typeName string, properties map[string]any) (string, map[string]any) {
+	if assign := c.Assign[typeName]; assign != nil {
+		if identifier, assigned := assign(properties); identifier != "" {
+			return identifier, assigned
+		}
+	}
 	identifier, _ := properties[c.Identifiers[typeName]].(string)
 	if identifier == "" {
 		c.next++
 		identifier = "id-" + strconv.Itoa(c.next)
 	}
-	c.resources[key(typeName, identifier)] = clone(properties)
-	return identifier
+	return identifier, properties
 }
 
 // Patch applies JSON patch operations to a resource, as UpdateResource does. It is not recorded as a call.
@@ -313,11 +331,7 @@ func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.
 	if err := json.Unmarshal([]byte(aws.ToString(params.DesiredState)), &props); err != nil {
 		return nil, err
 	}
-	identifier, _ := props[c.Identifiers[typeName]].(string)
-	if identifier == "" {
-		c.next++
-		identifier = "id-" + strconv.Itoa(c.next)
-	}
+	identifier, props := c.name(typeName, props)
 	token := c.accept(cctypes.OperationCreate, typeName, identifier)
 	if c.requests[token].failure == nil {
 		c.resources[key(typeName, identifier)] = props

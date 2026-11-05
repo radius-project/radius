@@ -77,6 +77,11 @@ type AWSResourceProperties struct {
 	// gained or lost Cloud Control support for the type.
 	Handler string `json:"handler,omitempty"`
 
+	// DeleteToken is the value a native handler sends with every attempt to delete the resource, such as the name of a
+	// final snapshot (see native.DeletePreparer). UCP saves it before the first delete call, so a retried delete never
+	// takes a second copy. It is cleared when a create or update starts, and when AWS reports the delete failed.
+	DeleteToken string `json:"deleteToken,omitempty"`
+
 	// LastRequestToken is the request token of the last operation that finished, and LastRequestError is its error,
 	// or nil when it succeeded. A redelivered operation that already finished reports this result instead of polling
 	// AWS again.

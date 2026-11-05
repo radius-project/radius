@@ -85,9 +85,10 @@ type Suite struct {
 	// Control also uses, so the suite can serve the type with either handler.
 	NewHandler func(store *awsfake.CloudControl) native.Handler
 
-	// IdentifierProperty is the property whose value is the resource's identifier, and WriteOnly lists the top-level
-	// write-only properties. The suite's Cloud Control uses them like AWS does: it assigns an identifier when
-	// IdentifierProperty isn't set, and never returns write-only values.
+	// IdentifierProperty is the property whose value is the resource's identifier, and WriteOnly lists the paths of the
+	// write-only properties, relative to the properties object with "/" between segments and "*" for every array item,
+	// such as MasterUserPassword or Config/*/Password. The suite's Cloud Control uses them like AWS does: it assigns an
+	// identifier when IdentifierProperty isn't set, and never returns write-only values.
 	IdentifierProperty string
 	WriteOnly          []string
 
@@ -129,6 +130,31 @@ type Suite struct {
 	MultiCall map[string]any
 	Calls     int
 	FailCall  func(handler native.Handler, call int, err error)
+
+	// RejectedCalls is how many of the first calls of MultiCall only remove members, for a handler whose resource is
+	// some members of a parent (native.ScopedReader). Such a handler reports a failure in them as rejected, even when
+	// the response is lost, so the record keeps every member it may still have to remove.
+	RejectedCalls int
+
+	// CloudControlCreate, when set, returns the identifier and properties the suite's Cloud Control gives a new
+	// resource, for a type whose identifier includes a value AWS assigns, such as a Client VPN association's
+	// AssociationId. When it is nil, the suite's Cloud Control names a resource with the handler's identifier
+	// encoding (native.IdentifierEncoder) when it has one, and with IdentifierProperty otherwise.
+	CloudControlCreate func(properties map[string]any) (string, map[string]any)
+
+	// IdentifierProperties, when set, returns the properties that give identifier, for `existing` of a type whose
+	// identifier joins several properties. When it is nil, `existing` sets IdentifierProperty to the identifier.
+	IdentifierProperties func(identifier string) map[string]any
+
+	// NoCloudControl is true when the type's CloudFormation schema has no handlers in any region, so Cloud Control
+	// can't create it anywhere, and the cases that switch between handlers don't apply. A handler whose identifier
+	// UCP can't rebuild from what Cloud Control returns sets it.
+	NoCloudControl bool
+
+	// Outside adds a member to the parent that properties name, as if someone added it outside Radius, for a handler
+	// whose resource is some members of a parent (native.ScopedReader). It returns whether the member is still there.
+	// It is nil for other handlers.
+	Outside func(store *awsfake.CloudControl, properties map[string]any) func() bool
 }
 
 // Run runs every case of the suite for s.
@@ -148,6 +174,8 @@ func Run(t *testing.T, s Suite) {
 	t.Run("value AWS returns in another form", func(t *testing.T) { s.otherForm(t) })
 	t.Run("identifier of another product", func(t *testing.T) { s.otherProduct(t) })
 	t.Run("update fails between calls", func(t *testing.T) { s.multiCall(t) })
+	t.Run("member added outside Radius", func(t *testing.T) { s.outsideMember(t) })
+	t.Run("delete again after the response is lost", func(t *testing.T) { s.deleteTokenRetry(t) })
 	nameProperty := s.NewHandler(awsfake.NewCloudControl()).Options().NameProperty
 	for _, reached := range []bool{true, false} {
 		suffix := map[bool]string{true: "after the create reached AWS", false: "before the create reached AWS"}[reached]
@@ -160,13 +188,20 @@ func Run(t *testing.T, s Suite) {
 	if s.HandWritten {
 		t.Run("never asks CloudFormation", func(t *testing.T) { s.neverAsksCloudFormation(t) })
 	} else {
-		t.Run("create natively, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, "") })
-		t.Run("create with Cloud Control, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, "") })
-		if nameProperty != "" {
-			t.Run("create natively without the name, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, nameProperty) })
-			t.Run("create with Cloud Control without the name, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, nameProperty) })
+		if !s.NoCloudControl {
+			s.runSwitchCases(t, nameProperty)
 		}
 		t.Run("DescribeType fails", func(t *testing.T) { s.describeTypeFails(t) })
+	}
+}
+
+// runSwitchCases runs the cases that create a resource with one handler, then use the other.
+func (s Suite) runSwitchCases(t *testing.T, nameProperty string) {
+	t.Run("create natively, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, "") })
+	t.Run("create with Cloud Control, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, "") })
+	if nameProperty != "" {
+		t.Run("create natively without the name, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, nameProperty) })
+		t.Run("create with Cloud Control without the name, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, nameProperty) })
 	}
 }
 
@@ -255,7 +290,8 @@ func (s Suite) writeOnlyValues(t *testing.T) {
 	require.Contains(t, h.handler.reset(), "Update")
 	resource := h.cc.Resource(s.TypeName, h.identifier())
 	for _, p := range s.WriteOnly {
-		require.EqualValues(t, normalize(t, s.ChangedWriteOnly[p]), normalize(t, resource[p]), "AWS has the changed %s", p)
+		segments := strings.Split(p, "/")
+		require.EqualValues(t, valuesAt(normalizeValue(s.ChangedWriteOnly), segments), valuesAt(normalizeValue(resource), segments), "AWS has the changed %s", p)
 	}
 
 	resp = h.put(s.ChangedWriteOnly)
@@ -314,7 +350,7 @@ func (s Suite) writeOnlyStrings(t *testing.T) []string {
 	out := []string{}
 	for _, properties := range []map[string]any{s.Properties, s.Changed, s.ChangedWriteOnly} {
 		for _, p := range s.WriteOnly {
-			if v, ok := properties[p]; ok {
+			for _, v := range valuesAt(normalizeValue(properties), strings.Split(p, "/")) {
 				b, err := json.Marshal(v)
 				require.NoError(t, err)
 				out = append(out, strings.Trim(string(b), `"`))
@@ -650,6 +686,8 @@ func (s Suite) multiCall(t *testing.T) {
 				require.GreaterOrEqual(t, resp.status, http.StatusBadRequest, resp.raw)
 				applied := h.record().Properties.LastApplied
 				switch {
+				case call < s.RejectedCalls:
+					require.Equal(t, before, applied, "the call only removed members, so the record keeps every member it may still have to remove")
 				case call == 0 && failure.err != errLost:
 					require.Equal(t, before, applied, "AWS rejected the first call, so the pending values are dropped")
 				case call == s.Calls:
@@ -678,6 +716,59 @@ func (s Suite) multiCall(t *testing.T) {
 	}
 }
 
+// outsideMember adds a member to the parent outside Radius, before the first deploy, and checks that a take-over, an
+// update, and a delete all leave it in place.
+func (s Suite) outsideMember(t *testing.T) {
+	if s.Outside == nil {
+		t.Skip("the resource is not some members of a parent")
+	}
+	h := s.newHarness(t)
+	there := s.Outside(h.cc, s.Properties)
+	h.deploy(s.Properties)
+	require.True(t, there(), "a take-over keeps a member added outside Radius")
+
+	h.deploy(s.Changed)
+	require.True(t, there(), "an update keeps a member added outside Radius")
+
+	resp := h.get()
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	requireSubset(t, s.readable(s.Changed), resp.properties())
+
+	h.remove()
+	require.Nil(t, h.record())
+	require.True(t, there(), "a delete keeps a member added outside Radius")
+}
+
+// deleteTokenRetry loses the response of a delete that reached AWS, and deletes again. UCP saved the delete token on
+// the record before the first call, and the retry sends the same token, so AWS takes no second copy.
+func (s Suite) deleteTokenRetry(t *testing.T) {
+	if _, ok := s.NewHandler(awsfake.NewCloudControl()).(native.DeletePreparer); !ok {
+		t.Skip("the handler sends no delete token")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	saved := []string{}
+	h.handler.onDelete = func(token string) {
+		saved = append(saved, h.record().Properties.DeleteToken)
+	}
+	h.handler.lose("Delete", true)
+	resp := h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	require.NotNil(t, h.record())
+	first := h.record().Properties.DeleteToken
+	require.NotEmpty(t, first, "the delete token is saved before the first delete call")
+
+	h.removeEventually()
+	h.requireRemoved(nil)
+	require.NotEmpty(t, h.handler.tokens)
+	for _, token := range h.handler.tokens {
+		require.Equal(t, first, token, "every attempt sends the same delete token")
+	}
+	for _, token := range saved {
+		require.Equal(t, first, token, "the record has the token when the delete call is made")
+	}
+}
+
 func (s Suite) describeTypeFails(t *testing.T) {
 	h := s.newHarness(t)
 	h.cf.Schemas = map[string]string{}
@@ -699,13 +790,68 @@ func (s Suite) neverAsksCloudFormation(t *testing.T) {
 	require.Empty(t, h.cc.Calls())
 }
 
-// readable returns properties without the write-only ones, which UCP never returns.
+// readable returns properties without the write-only values, which UCP never returns.
 func (s Suite) readable(properties map[string]any) map[string]any {
-	out := maps.Clone(properties)
+	out, _ := normalizeValue(properties).(map[string]any)
 	for _, p := range s.WriteOnly {
-		delete(out, p)
+		removeAt(out, strings.Split(p, "/"))
 	}
 	return out
+}
+
+// normalizeValue returns a deep copy of v as JSON reads it.
+func normalizeValue(v any) any {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	var out any
+	if err := json.Unmarshal(b, &out); err != nil {
+		panic(err)
+	}
+	return out
+}
+
+// valuesAt returns the values at the path segments of v, where "*" matches every array item.
+func valuesAt(v any, segments []string) []any {
+	if len(segments) == 0 {
+		return []any{v}
+	}
+	switch t := v.(type) {
+	case map[string]any:
+		if child, ok := t[segments[0]]; ok {
+			return valuesAt(child, segments[1:])
+		}
+	case []any:
+		if segments[0] == "*" {
+			out := []any{}
+			for _, item := range t {
+				out = append(out, valuesAt(item, segments[1:])...)
+			}
+			return out
+		}
+	}
+	return nil
+}
+
+// removeAt removes the value at the path segments of obj, where "*" matches every array item.
+func removeAt(obj map[string]any, segments []string) {
+	if len(segments) == 1 {
+		delete(obj, segments[0])
+		return
+	}
+	switch child := obj[segments[0]].(type) {
+	case map[string]any:
+		removeAt(child, segments[1:])
+	case []any:
+		if segments[1] == "*" && len(segments) > 2 {
+			for _, item := range child {
+				if m, ok := item.(map[string]any); ok {
+					removeAt(m, segments[2:])
+				}
+			}
+		}
+	}
 }
 
 func without(properties map[string]any, property string) map[string]any {
@@ -754,6 +900,16 @@ func (s Suite) newHarness(t *testing.T) *harness {
 	cc.Identifiers[s.TypeName] = s.IdentifierProperty
 	cc.WriteOnly[s.TypeName] = s.WriteOnly
 	handler := &recorder{Handler: s.NewHandler(cc)}
+	switch encoder, ok := handler.Handler.(native.IdentifierEncoder); {
+	case s.CloudControlCreate != nil:
+		cc.Assign[s.TypeName] = s.CloudControlCreate
+	case ok:
+		cc.Assign[s.TypeName] = func(properties map[string]any) (string, map[string]any) {
+			identifier, err := encoder.Identifier(properties)
+			require.NoError(t, err)
+			return identifier, properties
+		}
+	}
 
 	registry, err := native.NewRegistry(s.catalog(t), handler.wrap())
 	require.NoError(t, err)
@@ -945,7 +1101,10 @@ func (h *harness) get() response {
 // existingResponse reads the resource as an `existing` block does, by the template's properties and the identifier.
 func (h *harness) existingResponse() response {
 	properties := maps.Clone(h.s.Properties)
-	if h.s.Identifier == "" {
+	switch {
+	case h.s.IdentifierProperties != nil:
+		maps.Copy(properties, h.s.IdentifierProperties(h.identifier()))
+	case h.s.Identifier == "":
 		properties[h.s.IdentifierProperty] = h.identifier()
 	}
 	getWithPost := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
@@ -1080,6 +1239,11 @@ type recorder struct {
 
 	// onProgress, when set, runs on each Progress call.
 	onProgress func()
+
+	// onDelete, when set, runs on each delete call that sends a delete token, before the handler gets it. tokens are
+	// the delete tokens the handler got.
+	onDelete func(token string)
+	tokens   []string
 }
 
 func (r *recorder) note(method string) {
@@ -1193,7 +1357,63 @@ func (r *recorder) Update(ctx context.Context, request native.UpdateRequest) err
 
 func (r *recorder) Delete(ctx context.Context, region string, identifier string) error {
 	r.note("Delete")
-	return r.Handler.Delete(ctx, region, identifier)
+	return r.lostDelete(func() error { return r.Handler.Delete(ctx, region, identifier) })
+}
+
+// lostDelete makes a delete call, losing its response as lose set.
+func (r *recorder) lostDelete(call func() error) error {
+	reached, lost := r.takeLoss("Delete")
+	switch {
+	case lost && !reached:
+		return errLost
+	case lost:
+		return errors.Join(errLost, call())
+	}
+	return call()
+}
+
+// The recorder always has the methods of native.ScopedReader, native.ScopedDeleter, and native.DeletePreparer, so the
+// registry and UCP see them whatever the handler under test has. A handler without them gets the call UCP would have
+// made instead: Read for ReadScoped and Delete for DeleteScoped. DeleteToken returns "" for such a handler, so UCP
+// never calls DeleteWithToken.
+
+func (r *recorder) ReadScoped(ctx context.Context, region string, identifier string, managed []map[string]any) (map[string]any, error) {
+	r.note("Read")
+	if scoped, ok := r.Handler.(native.ScopedReader); ok {
+		return scoped.ReadScoped(ctx, region, identifier, managed)
+	}
+	return r.Handler.Read(ctx, region, identifier)
+}
+
+func (r *recorder) DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error {
+	r.note("Delete")
+	return r.lostDelete(func() error {
+		if scoped, ok := r.Handler.(native.ScopedDeleter); ok {
+			return scoped.DeleteScoped(ctx, region, identifier, managed)
+		}
+		return r.Handler.Delete(ctx, region, identifier)
+	})
+}
+
+func (r *recorder) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
+	if preparer, ok := r.Handler.(native.DeletePreparer); ok {
+		return preparer.DeleteToken(ctx, region, identifier)
+	}
+	return "", nil
+}
+
+func (r *recorder) DeleteWithToken(ctx context.Context, region string, identifier string, token string) error {
+	r.note("Delete")
+	r.mu.Lock()
+	r.tokens = append(r.tokens, token)
+	onDelete := r.onDelete
+	r.mu.Unlock()
+	if onDelete != nil {
+		onDelete(token)
+	}
+	return r.lostDelete(func() error {
+		return r.Handler.(native.DeletePreparer).DeleteWithToken(ctx, region, identifier, token)
+	})
 }
 
 // Reset passes a reset to the handler under test. The recorder always has Reset, so the registry accepts it for a type

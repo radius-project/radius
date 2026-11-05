@@ -73,6 +73,23 @@ type request struct {
 
 	// route is the handler that serves the request. put, get, and delete set it.
 	route
+
+	// managed are the property sets the alias may have applied, which a native handler that reads only the members it
+	// manages gets (native.ScopedReader). put, get, and startDelete set them from the record. They are nil when UCP
+	// has no record.
+	managed []map[string]any
+}
+
+// managedValues returns the property sets the alias may have applied: the record's last-applied and possibly applied
+// properties, and desired when it isn't nil.
+func managedValues(rec *datamodel.AWSResource, desired map[string]any) []map[string]any {
+	out := []map[string]any{}
+	for _, properties := range []map[string]any{rec.Properties.LastApplied, rec.Properties.PendingLastApplied, desired} {
+		if properties != nil {
+			out = append(out, properties)
+		}
+	}
+	return out
 }
 
 // begin reads the region and rejects legacy and deprecated types. A non-nil response ends the request.
@@ -221,6 +238,9 @@ func (e *engine) reserve(ctx context.Context, r *request, rec *datamodel.AWSReso
 	rec.Properties.PendingOperation = op
 	rec.Properties.RequestToken = ""
 	rec.Properties.Handler = handlerName(r)
+	if op != records.OperationDelete {
+		rec.Properties.DeleteToken = ""
+	}
 	rec.SetProvisioningState(records.StateOf(op))
 	etag, err := e.store.Save(ctx, rec, etag)
 	if err != nil {
@@ -272,7 +292,7 @@ func (e *engine) readResource(ctx context.Context, r *request, identifier string
 	var out *cloudcontrol.GetResourceOutput
 	var err error
 	if r.handler != nil {
-		out, err = readNative(ctx, r.handler, r.region, identifier)
+		out, err = readNative(ctx, r.handler, r.region, identifier, r.managed)
 	} else {
 		out, err = e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			TypeName:   aws.String(r.typeName),
@@ -380,6 +400,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	}
 
 	properties := body.Properties
+	r.managed = managedValues(rec, properties)
 	identifier := rec.Properties.AWSIdentifier
 	var current *cloudcontrol.GetResourceOutput
 	applied := applied{properties: withoutSecrets(properties, secrets), fingerprints: fingerprints}
@@ -484,6 +505,9 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	patch = withoutUnsentWriteOnly(patch, parsed, immutable, compareFingerprints(rec.Properties.Fingerprints, applied.fingerprints))
 	if len(patch) > 0 {
 		if errResponse := checkRecordPatch(r.typeName, typeInfo, patch); errResponse != nil {
+			return errResponse, nil
+		}
+		if errResponse := createOnlyChanged(r, parsed, patch); errResponse != nil {
 			return errResponse, nil
 		}
 	}
@@ -798,6 +822,7 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 // when it doesn't: a record whose create may have reached AWS finds the resource first, as for any delete.
 func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	r.managed = managedValues(rec, nil)
 	switch onDelete(r) {
 	case schemas.OnDeleteNothing:
 		logger.Info("Removing the record of an AWS resource without changing it in AWS", "alias", r.id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier)
@@ -851,8 +876,16 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	}
 
 	identifier := rec.Properties.AWSIdentifier
+	etag, err = e.prepareDelete(ctx, r, rec, etag, identifier)
+	if err != nil {
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			records.ClearPending(rec)
+			rec.SetProvisioningState(prior)
+		})
+		return handleError(ctx, r.id, err)
+	}
 	logger.Info("Deleting AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier, "handler", handlerName(r))
-	requestToken, err := e.startDeleteCall(ctx, r, identifier)
+	requestToken, err := e.startDeleteCall(ctx, r, identifier, rec.Properties.DeleteToken)
 	if isGoneForDelete(err) {
 		return e.removeRecord(ctx, r, etag)
 	} else if err != nil {
@@ -982,6 +1015,7 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err := e.route(ctx, r); err != nil {
 		return handleError(ctx, r.id, err)
 	}
+	r.managed = managedValues(rec, nil)
 
 	current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)
 	if err != nil {

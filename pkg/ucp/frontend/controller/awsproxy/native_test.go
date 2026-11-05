@@ -241,6 +241,18 @@ func Test_Native_ResumeCreate(t *testing.T) {
 		require.NotEmpty(t, h.record(nativePath).Properties.ClientToken, "the record stays, so a DELETE can remove the resource")
 	})
 
+	t.Run("the create failed, and AWS changed nothing", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.fake.LostResponses["Create"] = nativefake.ServerError("InternalFailure", "the response was lost")
+		h.fake.Failures[native.OperationCreate] = &native.Failure{Message: "the schema is invalid", ClientError: true, Outcome: native.OutcomeRejected}
+		require.Equal(t, http.StatusInternalServerError, h.put(nativePath, nativeProperties(1)).status)
+		h.fake.Calls()
+
+		resp := h.put(nativePath, nativeProperties(2))
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		require.Equal(t, []string{"Create"}, methods(h.fake.Calls()), "the create is sent again with the new template")
+	})
+
 	t.Run("the created resource was deleted outside Radius", func(t *testing.T) {
 		h := newNativeHarness(t)
 		h.fake.LostResponses["Create"] = nativefake.ServerError("InternalFailure", "the response was lost")
@@ -620,4 +632,99 @@ func Test_Native_ListWithoutProperties(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	items := resp.body["value"].([]any)
 	require.Equal(t, map[string]any{}, items[0].(map[string]any)["properties"])
+}
+
+// failingToken is a handler whose delete token can't be made.
+type failingToken struct {
+	*nativefake.Handler
+}
+
+func (failingToken) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
+	return "", nativefake.ServerError("InternalFailure", "the clock is unavailable")
+}
+
+func (f failingToken) DeleteWithToken(ctx context.Context, region string, identifier string, token string) error {
+	return f.Delete(ctx, region, identifier)
+}
+
+// Test_Native_DeleteToken checks that a delete whose token can't be made fails before it calls AWS, and keeps the
+// record as it was, so the next delete tries again.
+func Test_Native_DeleteToken(t *testing.T) {
+	h := newNativeHarness(t)
+	h.deploy(nativePath, nativeProperties(1))
+	catalog := schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}
+	registry, err := native.NewRegistry(catalog, failingToken{h.fake})
+	require.NoError(t, err)
+	h.native = registry
+	h.fake.Calls()
+
+	resp := h.delete(nativePath, testOwner)
+	require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+	require.Empty(t, methods(h.fake.Calls()), "UCP calls nothing in AWS without the token")
+	rec := h.record(nativePath)
+	require.NotNil(t, rec)
+	require.Empty(t, rec.Properties.DeleteToken)
+	require.Equal(t, v1.ProvisioningStateSucceeded, rec.ProvisioningState())
+}
+
+// Test_Native_CreateOnlyChange checks that UCP rejects a change to a create-only property of a native type before it
+// calls the handler, because a service API may ignore the change instead of rejecting it.
+func Test_Native_CreateOnlyChange(t *testing.T) {
+	h := newNativeHarness(t)
+	h.deploy(nativePath, nativeProperties(1))
+	h.fake.Calls()
+
+	changed := nativeProperties(1)
+	changed["Name"] = "app-renamed"
+	resp := h.put(nativePath, changed)
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.Contains(t, resp.message(), "can't change after it is created: Name")
+	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()))
+}
+
+// Test_Native_DeleteTokenClearedByUpdate checks that the delete token of a failed delete is kept for the next delete,
+// and cleared when an update starts, so a later delete makes a new one.
+func Test_Native_DeleteTokenClearedByUpdate(t *testing.T) {
+	h := newNativeHarness(t)
+	catalog := schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}
+	registry, err := native.NewRegistry(catalog, h.fake.DeleteTokens())
+	require.NoError(t, err)
+	h.native = registry
+	h.deploy(nativePath, nativeProperties(1))
+
+	h.fake.Errors["Delete"] = nativefake.ClientError("InvalidDBClusterStateFault", "deletion protection is on")
+	resp := h.delete(nativePath, testOwner)
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.Equal(t, "app-native-final-1", h.record(nativePath).Properties.DeleteToken, "a failed delete keeps its token for the next one")
+
+	delete(h.fake.Errors, "Delete")
+	h.deploy(nativePath, nativeProperties(2))
+	require.Empty(t, h.record(nativePath).Properties.DeleteToken, "an update clears the token")
+}
+
+// Test_Native_DeleteTokenClearedByFailedDelete checks that a delete AWS reports as failed, such as a final snapshot
+// that failed, clears the delete token, so the next delete is a new request with a new token.
+func Test_Native_DeleteTokenClearedByFailedDelete(t *testing.T) {
+	h := newNativeHarness(t)
+	catalog := schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}
+	registry, err := native.NewRegistry(catalog, h.fake.DeleteTokens())
+	require.NoError(t, err)
+	h.native = registry
+	h.deploy(nativePath, nativeProperties(1))
+
+	h.fake.Failures[native.OperationDelete] = &native.Failure{Message: "the final snapshot failed", ClientError: true}
+	resp := h.delete(nativePath, testOwner)
+	require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+	require.Equal(t, "app-native-final-1", h.record(nativePath).Properties.DeleteToken)
+	for _, result := range h.finish() {
+		require.NotNil(t, result.Error)
+	}
+	rec := h.record(nativePath)
+	require.NotNil(t, rec, "the resource stays")
+	require.Empty(t, rec.Properties.DeleteToken)
+
+	delete(h.fake.Failures, native.OperationDelete)
+	resp = h.delete(nativePath, testOwner)
+	require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
+	require.Equal(t, "app-native-final-2", h.record(nativePath).Properties.DeleteToken, "the next delete has a new token")
 }
