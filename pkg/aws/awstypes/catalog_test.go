@@ -79,13 +79,31 @@ func readSnapshot(t *testing.T) map[string][]string {
 // Test_EveryNonProvisionableTypeIsClassified checks that each type Cloud Control cannot create is exactly one of
 // read-only, legacy, deprecated, or a native gap.
 func Test_EveryNonProvisionableTypeIsClassified(t *testing.T) {
+	requireClassified(t)
+}
+
+// Test_EveryNonProvisionableTypeIsClassified_HandWrittenName checks that the classification still holds after a
+// refresh adds a read-only AWS type with a hand-written type's name, which IsReadOnly then reports as not read-only.
+func Test_EveryNonProvisionableTypeIsClassified_HandWrittenName(t *testing.T) {
+	clash := ReadOnlyTypes()[0]
+	original := handWrittenTypes
+	handWrittenTypes = func() map[string]string { return map[string]string{clash: `{}`} }
+	t.Cleanup(func() { handWrittenTypes = original })
+
+	require.False(t, IsReadOnly(clash))
+	requireClassified(t)
+}
+
+// requireClassified checks the classification against the generated read-only list, not IsReadOnly, because IsReadOnly
+// leaves out hand-written types, and the snapshot classifies AWS's types.
+func requireClassified(t *testing.T) {
 	counts := map[string]int{}
 	for typeName := range readSnapshot(t) {
 		_, legacy := Replacement(typeName)
 		_, deprecated := DeprecatedReason(typeName)
 		classes := []string{}
 		for class, ok := range map[string]bool{
-			"read-only":  IsReadOnly(typeName),
+			"read-only":  slices.Contains(readOnlyTypes, typeName),
 			"legacy":     legacy,
 			"deprecated": deprecated,
 			"native gap": slices.Contains(nativeGapTypes, typeName),
