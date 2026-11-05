@@ -40,7 +40,7 @@ See the [observability documentation](https://docs.radapp.io/guides/operations/c
 
 ## A chart download fails
 
-`rad install kubernetes` and `rad upgrade kubernetes` download the Radius chart from `oci://ghcr.io/radius-project/helm-chart` and the Contour chart from `https://projectcontour.github.io/helm-charts`, unless you install from local charts. These downloads don't use the Helm repositories you added with `helm repo add` or their cached indexes, so you don't need to run `helm repo update` first, and a missing or broken repository in your Helm configuration doesn't affect them. The Radius chart download still uses your registry credentials from `helm registry login` or `docker login`.
+`rad install kubernetes` and `rad upgrade kubernetes` download the Radius chart from `oci://ghcr.io/radius-project/helm-chart` and the Contour chart from `https://projectcontour.github.io/helm-charts`, unless you install from local charts. When authorization requires installing or upgrading cert-manager, they also download its chart from `https://charts.jetstack.io`. These downloads don't use the Helm repositories you added with `helm repo add` or their cached indexes, so you don't need to run `helm repo update` first, and a missing or broken repository in your Helm configuration doesn't affect them. The Radius chart download still uses your registry credentials from `helm registry login` or `docker login`.
 
 Each request times out after 30 seconds. A download that fails with a temporary error, such as a timeout, a dropped connection, or an HTTP 408, 429, 500, 502, 503, or 504 response, is retried for up to 3 minutes, so it gives up within about 4 minutes. Each retry prints the error that caused it:
 
@@ -77,6 +77,8 @@ rad install kubernetes --timeout 30m
 ```
 
 `--timeout` accepts any Go duration (`30m`, `1h`). Negative values are rejected, and `0` means "use the default".
+
+cert-manager has a separate, fixed 10-minute Helm timeout; `--timeout` does not extend it.
 
 A timed-out install leaves a failed Helm release behind, and `rad install kubernetes` skips a cluster that already has a release. Retrying therefore needs `--reinstall`, otherwise the command reports `Found existing Radius installation` and exits without reapplying the chart:
 
@@ -122,3 +124,69 @@ k3s installs the Traefik CRDs in the background after the cluster starts. When `
 If an earlier attempt failed while Helm installed Contour, the `contour` release in `radius-system` has a failed revision. Run `rad install kubernetes` again: after the same checks, Radius upgrades the failed release before it installs Radius. When Radius is already installed, the command prints the `rad install kubernetes --reinstall` command that repairs Contour. If the message instead says that the Gateway API CRDs have more than one owner, run the `kubectl annotate` command that it shows, and then run `rad install kubernetes` again.
 
 When you pass `--kubecontext`, the `kubectl` and `helm` commands in these messages name that context, so they act on the cluster that Radius checked even when the current context of your kubeconfig selects another one. Without `--kubecontext`, Radius and the commands both use the current context of your kubeconfig.
+
+## cert-manager
+
+Radius authorization depends on [cert-manager](https://cert-manager.io/). `rad install kubernetes` and `rad upgrade kubernetes` only manage cert-manager when authorization is enabled, by passing exactly one of `--set global.rbac.dryRun=true` or `--set global.rbac.enabled=true`, or by reusing those values stored on the Radius release during upgrade or `--reinstall`. Current flags override stored values; `rad upgrade kubernetes --reset-values` discards stored values. With authorization off (the default), install and upgrade do not look for, install, or change cert-manager.
+
+### Supported versions
+
+`rad` installs a pinned cert-manager chart (`CertManagerChartDefaultVersion` in `pkg/cli/helm/cert_manager.go`, currently `v1.21.2`) from `https://charts.jetstack.io` as the Helm release `cert-manager` in the `cert-manager` namespace, with CRDs enabled. An existing cert-manager must be at least `CertManagerMinimumVersion` (currently `v1.20.0`). Both constants track the [cert-manager supported releases](https://cert-manager.io/docs/releases/).
+
+### Existing cert-manager installations
+
+`rad` detects cert-manager by the `certificates.cert-manager.io` CRD and a controller Deployment in any namespace labeled `app.kubernetes.io/name=cert-manager,app.kubernetes.io/component=controller`. It reads the version from the controller's `app.kubernetes.io/version` label, or from its image tag.
+
+Before reusing an installation, `rad` checks that the controller and webhook Deployments have observed their current generation and have the desired updated and available replicas. If either is missing, scaled to zero, or not ready, repair cert-manager or wait for its rollout before retrying Radius.
+
+| What `rad` finds                               | What `rad` does                                                            |
+|------------------------------------------------|----------------------------------------------------------------------------|
+| No CRD and no controller                       | Installs the pinned version and marks the release as owned by `rad`        |
+| A supported version that `rad` did not install | Reuses it; never upgrades, modifies, or removes it                         |
+| A version older than the minimum               | Stops before installing Radius and names the minimum version to upgrade to |
+| The CRD without a controller (or the reverse)  | Fails; repair or remove the broken installation, then retry                |
+
+### Ownership
+
+`rad` marks a release it installed with the Helm release label `app.kubernetes.io/managed-by=rad`. Helm 4 (used by Radius) shows release labels in `helm get metadata cert-manager -n cert-manager`; Helm 3 does not. You can also inspect the Helm release Secrets:
+
+```bash
+kubectl get secret -n cert-manager -l owner=helm,name=cert-manager --show-labels
+```
+
+`rad` only upgrades a release it owns, and repairs an owned release that is not `deployed` or whose controller is missing. It never downgrades a release whose chart version is newer than its target pin: a healthy newer installation is reused, and an unhealthy newer installation must be repaired at its current version. Kubernetes API errors are reported rather than silently triggering a repair.
+
+### Uninstall
+
+`rad uninstall kubernetes` removes an owned cert-manager release. The chart is installed with `crds.keep=false`, so this also deletes the cert-manager CRDs and every Certificate, CertificateRequest, Issuer, ClusterIssuer, ACME Order, and ACME Challenge in the cluster. To protect other workloads, `rad` first lists those resources and keeps cert-manager if any exist outside the Radius namespace (ClusterIssuers always count) or if ownership or resource checks fail. Missing resource types count as empty lists so an interrupted uninstall can be retried:
+
+```text
+Keeping cert-manager: other workloads use it (2 resources, e.g. my-app/Certificate/my-cert)
+```
+
+A cert-manager that `rad` did not install is never removed.
+
+### Recovering from a partial install or uninstall
+
+- **cert-manager installed, Radius install failed:** fix the cause and rerun the same `rad install kubernetes` command (add `--reinstall` if a Radius release was left behind). `rad` reuses or repairs the cert-manager it owns. To back out instead, run `rad uninstall kubernetes`.
+- **Uninstall interrupted or cert-manager left behind:** rerun `rad uninstall kubernetes`. If that is not possible, check for other workloads **before** removing the release manually:
+
+  ```bash
+  kubectl get certificates,certificaterequests,issuers,orders.acme.cert-manager.io,challenges.acme.cert-manager.io -A
+  kubectl get clusterissuers
+  ```
+
+  **Warning:** because `rad` installed the chart with `crds.keep=false`, `helm uninstall` itself deletes all six CRDs and their resources cluster-wide. Do not run it while other workloads use cert-manager; keep the installation instead. Only after confirming that no other workload depends on these resources, remove the release:
+
+  ```bash
+  helm uninstall cert-manager -n cert-manager
+  ```
+
+  If an interrupted uninstall left CRDs behind, delete only these six cert-manager CRDs, after the same dependency check:
+
+  ```bash
+  kubectl delete crd --ignore-not-found \
+    certificates.cert-manager.io certificaterequests.cert-manager.io \
+    issuers.cert-manager.io clusterissuers.cert-manager.io \
+    orders.acme.cert-manager.io challenges.acme.cert-manager.io
+  ```

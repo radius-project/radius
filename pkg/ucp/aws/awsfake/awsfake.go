@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,6 +35,8 @@ import (
 	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 )
 
@@ -51,6 +54,12 @@ type Call struct {
 	ClientToken string
 }
 
+// clientRequest is the create a client token was first sent with.
+type clientRequest struct {
+	requestToken string
+	desiredState string
+}
+
 type request struct {
 	operation  cctypes.Operation
 	typeName   string
@@ -63,7 +72,7 @@ type CloudControl struct {
 	mu        sync.Mutex
 	resources map[string]map[string]any
 	requests  map[string]*request
-	tokens    map[string]string
+	tokens    map[string]clientRequest
 	calls     []Call
 	next      int
 
@@ -99,7 +108,7 @@ func NewCloudControl() *CloudControl {
 	return &CloudControl{
 		resources:   map[string]map[string]any{},
 		requests:    map[string]*request{},
-		tokens:      map[string]string{},
+		tokens:      map[string]clientRequest{},
 		Identifiers: map[string]string{},
 		WriteOnly:   map[string][]string{},
 		Errors:      map[string]error{},
@@ -216,7 +225,8 @@ func (c *CloudControl) GetResource(ctx context.Context, params *cloudcontrol.Get
 	}, nil
 }
 
-// CreateResource accepts a create. A client token it has seen returns the first request instead of creating again.
+// CreateResource accepts a create. A client token it has seen returns the first request instead of creating again
+// when the desired state is the same, and ClientTokenConflictException naming the first request otherwise, like AWS.
 // The resource exists when the request's status is read and it succeeds.
 func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.CreateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
 	c.before("CreateResource")
@@ -227,8 +237,12 @@ func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.
 	if err := c.record(Call{Operation: "CreateResource", TypeName: typeName, Document: aws.ToString(params.DesiredState), ClientToken: clientToken}); err != nil {
 		return nil, err
 	}
-	if token, ok := c.tokens[clientToken]; ok && clientToken != "" {
-		return &cloudcontrol.CreateResourceOutput{ProgressEvent: &cctypes.ProgressEvent{RequestToken: aws.String(token), OperationStatus: cctypes.OperationStatusInProgress}}, nil
+	if first, ok := c.tokens[clientToken]; ok && clientToken != "" {
+		if first.desiredState != aws.ToString(params.DesiredState) {
+			message := fmt.Sprintf("ClientToken %s is already associated with an existing operation with RequestToken %s", clientToken, first.requestToken)
+			return nil, &smithy.OperationError{ServiceID: "CloudControl", OperationName: "CreateResource", Err: &smithyhttp.ResponseError{Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusBadRequest}}, Err: &cctypes.ClientTokenConflictException{Message: aws.String(message)}}}
+		}
+		return &cloudcontrol.CreateResourceOutput{ProgressEvent: &cctypes.ProgressEvent{RequestToken: aws.String(first.requestToken), OperationStatus: cctypes.OperationStatusInProgress}}, nil
 	}
 
 	props := map[string]any{}
@@ -245,7 +259,7 @@ func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.
 		c.resources[key(typeName, identifier)] = props
 	}
 	if clientToken != "" {
-		c.tokens[clientToken] = token
+		c.tokens[clientToken] = clientRequest{requestToken: token, desiredState: aws.ToString(params.DesiredState)}
 	}
 	return &cloudcontrol.CreateResourceOutput{ProgressEvent: &cctypes.ProgressEvent{RequestToken: aws.String(token), OperationStatus: cctypes.OperationStatusInProgress}}, nil
 }
@@ -356,15 +370,22 @@ func (c *CloudControl) ListResourceRequests(ctx context.Context, params *cloudco
 type CloudFormation struct {
 	// Schemas maps a type to its schema.
 	Schemas map[string]string
+
+	// ProvisioningTypes maps a type to its provisioning type. A type that is not in it is FULLY_MUTABLE.
+	ProvisioningTypes map[string]cftypes.ProvisioningType
 }
 
-// DescribeType returns the schema of a type as FULLY_MUTABLE.
+// DescribeType returns the schema and provisioning type of a type.
 func (c *CloudFormation) DescribeType(ctx context.Context, params *cloudformation.DescribeTypeInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error) {
 	schema, ok := c.Schemas[aws.ToString(params.TypeName)]
 	if !ok {
 		return nil, fmt.Errorf("no schema for %s", aws.ToString(params.TypeName))
 	}
-	return &cloudformation.DescribeTypeOutput{TypeName: params.TypeName, Schema: aws.String(schema), ProvisioningType: cftypes.ProvisioningTypeFullyMutable}, nil
+	provisioningType, ok := c.ProvisioningTypes[aws.ToString(params.TypeName)]
+	if !ok {
+		provisioningType = cftypes.ProvisioningTypeFullyMutable
+	}
+	return &cloudformation.DescribeTypeOutput{TypeName: params.TypeName, Schema: aws.String(schema), ProvisioningType: provisioningType}, nil
 }
 
 func clone(m map[string]any) map[string]any {
@@ -409,6 +430,10 @@ func applyOperation(obj map[string]any, op map[string]any) error {
 			p[last] = op["value"]
 		}
 	case []any:
+		if op["op"] == "add" && (last == "-" || last == strconv.Itoa(len(p))) {
+			// Adding at the end of an array appends an item. The array is replaced in its parent.
+			return setAt(obj, segments[:len(segments)-1], append(p, op["value"]))
+		}
 		i, err := strconv.Atoi(last)
 		if err != nil || i >= len(p) {
 			return fmt.Errorf("unsupported patch path %q", path)
@@ -418,6 +443,19 @@ func applyOperation(obj map[string]any, op map[string]any) error {
 		}
 		p[i] = op["value"]
 	}
+	return nil
+}
+
+// setAt sets the value at the object path segments of obj.
+func setAt(obj map[string]any, segments []string, value any) error {
+	for _, s := range segments[:len(segments)-1] {
+		next, ok := obj[s].(map[string]any)
+		if !ok {
+			return fmt.Errorf("unsupported patch path into %q", s)
+		}
+		obj = next
+	}
+	obj[segments[len(segments)-1]] = value
 	return nil
 }
 

@@ -223,6 +223,8 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		}
 	}
 
+	// TODO(stack-e follow-up): apply control-plane-secret to Applications.Core/secretStores referencing control-plane Secrets.
+
 	// Create namespace if not exists.
 	err = kubeutil.PatchNamespace(ctx, options.KubeClient, ns)
 	if err != nil {

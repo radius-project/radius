@@ -74,6 +74,7 @@ func (s *APIService) Run(ctx context.Context) error {
 					Arm:            s.Options.Arm, // This is a temporary fix to avoid ARM initialization in the test environment.
 					KubeClient:     s.KubeClient,
 					StatusManager:  s.OperationStatusManager,
+					Authorization:  s.Options.Config.Authorization,
 				}
 
 				validator, err := builder.NewOpenAPIValidator(ctx, opts.PathBase, b.Namespace())

@@ -19,6 +19,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
@@ -100,6 +102,26 @@ func IsClientFault(err error) bool {
 func IsAWSResourceNotFoundError(err error) bool {
 	target := &types.ResourceNotFoundException{}
 	return errors.As(err, &target)
+}
+
+var conflictingRequestToken = regexp.MustCompile(`RequestToken ([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\b`)
+
+// ConflictingRequestToken returns the request token of the original request when err is the
+// ClientTokenConflictException Cloud Control returns for a create resent with clientToken and a different body.
+// The SDK error has no field for it, so it is read from the message, which reads "ClientToken <client token> is
+// already associated with an existing operation with RequestToken <request token>". The format is not documented,
+// so it returns false unless the message names clientToken and exactly one request token.
+func ConflictingRequestToken(err error, clientToken string) (string, bool) {
+	var conflict *types.ClientTokenConflictException
+	if clientToken == "" || !errors.As(err, &conflict) {
+		return "", false
+	}
+	message := conflict.ErrorMessage()
+	matches := conflictingRequestToken.FindAllStringSubmatch(message, -1)
+	if !strings.Contains(message, clientToken) || len(matches) != 1 {
+		return "", false
+	}
+	return matches[0][1], true
 }
 
 // AWSMissingPropertyError is an error type to be returned when the call to UCP CreateWithPost

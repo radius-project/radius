@@ -72,12 +72,6 @@ func Test_Boundary_TemplateClusterRoleDenied(t *testing.T) {
 	t.Skip("enabled by D7")
 }
 
-// Expected: an application workload that references a control-plane Secret is rejected
-// by admission with AdmissionPolicyDenied (403).
-func Test_Boundary_ControlPlaneSecretReferenceDenied(t *testing.T) {
-	t.Skip("enabled by E2")
-}
-
 // Expected: with --mtls-provider external, a ServiceAccount token issued for one receiver
 // and replayed to another component is rejected with InvalidAuthenticationInfo (401)
 // because the audience does not match.
