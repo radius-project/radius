@@ -208,9 +208,17 @@ for (const [files, expected] of [
   [["test/functional-portable/authz/noncloud/mode_test.go"], true],
   [[".github/scripts/functional-test-matrix.mjs"], true],
   [[".github/workflows/functional-test-noncloud.yaml"], true],
-  [["pkg/corerp/frontend/controller/environments/createorupdateenvironment.go"], false],
+  [
+    [
+      "pkg/corerp/frontend/controller/environments/createorupdateenvironment.go"
+    ],
+    false
+  ],
   [["pkg/cli/cmd/env/create/create.go"], false],
-  [["test/functional-portable/corerp/noncloud/resources/application_test.go"], false],
+  [
+    ["test/functional-portable/corerp/noncloud/resources/application_test.go"],
+    false
+  ],
   [["docs/contributing/README.md"], false]
 ]) {
   test(`authorization paths: ${files.join(", ")} -> ${expected}`, () => {
