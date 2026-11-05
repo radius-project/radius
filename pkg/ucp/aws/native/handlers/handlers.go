@@ -26,6 +26,7 @@ import (
 	elbv2sdk "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	emrsdk "github.com/aws/aws-sdk-go-v2/service/emr"
 	fsxsdk "github.com/aws/aws-sdk-go-v2/service/fsx"
+	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -36,6 +37,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/elbv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/emr"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/fsx"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 )
 
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
@@ -43,6 +45,7 @@ import (
 func All(cfg aws.Config) []native.Handler {
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
+	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
 	return []native.Handler{
 		docdb.NewCluster(docdbAPI),
 		docdb.NewInstance(docdbAPI),
@@ -56,6 +59,9 @@ func All(cfg aws.Config) []native.Handler {
 		ec2.NewNetworkInterfacePermission(ec2API),
 		ec2.NewVPNGatewayRoutePropagation(ec2API),
 		elbv2.NewListenerCertificate(elbv2sdk.NewFromConfig(cfg)),
+		lakeformation.NewDataLakeSettings(lakeformationAPI),
+		lakeformation.NewPermissions(lakeformationAPI),
+		lakeformation.NewResource(lakeformationAPI),
 	}
 }
 
