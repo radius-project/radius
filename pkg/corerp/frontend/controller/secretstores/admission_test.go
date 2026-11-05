@@ -34,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
@@ -327,20 +328,14 @@ func TestUpsertSecret_BackwardCompatibleUpdate(t *testing.T) {
 					require.Equal(t, oldResource.Properties.Resource, newResource.Properties.Resource)
 					require.Equal(t, oldResource.Properties.Status.OutputResources, newResource.Properties.Status.OutputResources)
 				}
-
-				resp, err = DeleteRadiusSecret(ctx, oldResource, opts)
-				require.NoError(t, err)
-				require.Nil(t, resp)
-				require.True(t, apierrors.IsNotFound(kubeClient.Get(ctx,
-					runtimeclient.ObjectKey{Namespace: ns, Name: testControlPlaneSecret}, &corev1.Secret{})))
 			})
 		}
 	}
 }
 
 // TestUpsertSecret_LegacyControlPlaneReferenceLifecycle covers a secret store that referenced a
-// control-plane Secret before enforcement: updates are denied, and delete still cleans up only the
-// Radius-managed Secret.
+// control-plane Secret before enforcement: updates and deletion are denied, while ordinary
+// labeled Secrets can still be cleaned up.
 func TestUpsertSecret_LegacyControlPlaneReferenceLifecycle(t *testing.T) {
 	t.Setenv(kubeutil.TargetKubeconfigEnvVar, "")
 	ref := "radius-system/" + testControlPlaneSecret
@@ -359,10 +354,11 @@ func TestUpsertSecret_LegacyControlPlaneReferenceLifecycle(t *testing.T) {
 	_, err = UpsertSecret(ctx, newResource, oldResource, opt)
 	requireAdmission(t, err, logs, authz.ModeEnforce, authz.RuleControlPlaneSecret)
 
+	ctx, logs = admissionContext(t)
 	_, err = DeleteRadiusSecret(ctx, oldResource, opt)
-	require.NoError(t, err)
+	requireAdmission(t, err, logs, authz.ModeEnforce, authz.RuleControlPlaneSecret)
 	require.NoError(t, kubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: "radius-system", Name: testControlPlaneSecret}, &corev1.Secret{}),
-		"delete must not remove a Secret that Radius does not manage")
+		"delete must not remove a control-plane Secret")
 
 	managed := existingSecret("default", "secret0", map[string]string{kubernetes.LabelRadiusResourceType: "applications.core-secretstores"})
 	require.NoError(t, kubeClient.Create(ctx, managed))
@@ -413,9 +409,18 @@ func TestListSecrets_ControlPlaneSecretReference(t *testing.T) {
 			core, logs := observer.New(zap.DebugLevel)
 			ctx := logr.NewContext(rpctest.NewARMRequestContext(req), zapr.NewLogger(zap.New(core)))
 
+			secretReads := 0
+			kubeClient := interceptor.NewClient(k8sutil.NewFakeKubeClient(nil, existingSecret(tt.ns, tt.secret, nil)), interceptor.Funcs{
+				Get: func(ctx context.Context, client runtimeclient.WithWatch, key runtimeclient.ObjectKey, obj runtimeclient.Object, opts ...runtimeclient.GetOption) error {
+					if _, ok := obj.(*corev1.Secret); ok {
+						secretReads++
+					}
+					return client.Get(ctx, key, obj, opts...)
+				},
+			})
 			ctl, err := NewListSecrets(controller.Options{
 				DatabaseClient: databaseClient,
-				KubeClient:     k8sutil.NewFakeKubeClient(nil, existingSecret(tt.ns, tt.secret, nil)),
+				KubeClient:     kubeClient,
 				Authorization:  authzOptions(tt.mode),
 			})
 			require.NoError(t, err)
@@ -425,11 +430,96 @@ func TestListSecrets_ControlPlaneSecretReference(t *testing.T) {
 			requireAdmission(t, err, logs, tt.mode, tt.wantRule)
 			if err != nil {
 				require.Nil(t, resp)
+				require.Zero(t, secretReads, "admission must deny before reading Secret data")
 				return
 			}
+			require.Equal(t, 1, secretReads)
 			require.NoError(t, resp.Apply(ctx, w, req))
 			require.Equal(t, 200, w.Code)
 			require.True(t, strings.Contains(w.Body.String(), sentinelSecretValue), "an allowed request returns the Secret values")
 		})
+	}
+}
+
+func TestDeleteRadiusSecret_ControlPlaneSecretReference(t *testing.T) {
+	references := []struct {
+		name     string
+		ns       string
+		secret   string
+		cpNS     string
+		wantRule string
+	}{
+		{name: "protected secret", ns: "radius-system", secret: testControlPlaneSecret, wantRule: authz.RuleControlPlaneSecret},
+		{name: "other control-plane secret", ns: "radius-system", secret: "other", wantRule: authz.RuleControlPlaneNamespace},
+		{name: "application secret", ns: "default", secret: testControlPlaneSecret},
+		{name: "custom control-plane namespace", ns: "custom-radius", cpNS: "custom-radius", secret: testControlPlaneSecret, wantRule: authz.RuleControlPlaneSecret},
+	}
+	labels := []struct {
+		name   string
+		values map[string]string
+	}{
+		{name: "unlabeled"},
+		{name: "secretstore label", values: map[string]string{kubernetes.LabelRadiusResourceType: "applications.core-secretstores"}},
+		{name: "unrelated resource label", values: map[string]string{kubernetes.LabelRadiusResourceType: "unrelated"}},
+	}
+	for _, mode := range []authz.Mode{"", authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
+		for _, ref := range references {
+			for _, label := range labels {
+				t.Run(string(mode)+"/"+ref.name+"/"+label.name, func(t *testing.T) {
+					t.Setenv(kubeutil.TargetKubeconfigEnvVar, filepath.Join(t.TempDir(), "missing.kubeconfig"))
+					store := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
+					// Deletion must check the output reference it actually uses, not properties.resource.
+					store.Properties.Resource = "default/unused"
+					store.Properties.Status.OutputResources = []rpv1.OutputResource{{
+						LocalID: rpv1.LocalIDSecret,
+						ID:      resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, "", resources_kubernetes.KindSecret, ref.ns, ref.secret),
+					}}
+					backingClient := k8sutil.NewFakeKubeClient(nil, existingSecret(ref.ns, ref.secret, label.values))
+					secretReads, secretDeletes := 0, 0
+					client := interceptor.NewClient(backingClient, interceptor.Funcs{
+						Get: func(ctx context.Context, client runtimeclient.WithWatch, key runtimeclient.ObjectKey, obj runtimeclient.Object, opts ...runtimeclient.GetOption) error {
+							if _, ok := obj.(*corev1.Secret); ok {
+								secretReads++
+							}
+							return client.Get(ctx, key, obj, opts...)
+						},
+						Delete: func(ctx context.Context, client runtimeclient.WithWatch, obj runtimeclient.Object, opts ...runtimeclient.DeleteOption) error {
+							if _, ok := obj.(*corev1.Secret); ok {
+								secretDeletes++
+							}
+							return client.Delete(ctx, obj, opts...)
+						},
+					})
+					opts := authzOptions(mode)
+					opts.ControlPlaneNamespace = ref.cpNS
+					opts.TargetClusterIsDistinct = true
+					ctx, logs := admissionContext(t)
+					resp, err := DeleteRadiusSecret(ctx, store, &controller.Options{KubeClient: client, Authorization: opts})
+					require.Nil(t, resp)
+					requireAdmission(t, err, logs, mode, ref.wantRule)
+
+					denied := mode == authz.ModeEnforce && ref.wantRule != ""
+					if denied {
+						require.Zero(t, secretReads, "denial must precede reading Secret data")
+						require.Zero(t, secretDeletes)
+						denial, ok := errors.AsType[*authz.DeniedError](err)
+						require.True(t, ok)
+						require.Equal(t, ResourceTypeName+"/delete", denial.Action)
+					} else {
+						require.Equal(t, 1, secretReads)
+					}
+					stored := &corev1.Secret{}
+					getErr := backingClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ref.ns, Name: ref.secret}, stored)
+					if !denied && label.values != nil {
+						require.Equal(t, 1, secretDeletes)
+						require.True(t, apierrors.IsNotFound(getErr))
+					} else {
+						require.Zero(t, secretDeletes)
+						require.NoError(t, getErr)
+						require.Equal(t, []byte(sentinelSecretValue), stored.Data["tls.crt"])
+					}
+				})
+			}
+		}
 	}
 }

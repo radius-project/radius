@@ -94,11 +94,12 @@ Before it applies the output resources of a deployment, Applications RP checks a
 
 Applications RP also checks the Kubernetes Secret used by a legacy `Applications.Core/secretStores` resource:
 
-- **Checked operations:** PUT and PATCH, before the namespace or Secret is written, and `listSecrets`, before Secret data is read.
+- **Checked operations:** PUT and PATCH before namespace or Secret writes; `listSecrets` and DELETE before Secret reads or deletion.
 - **Rules:** in `controlPlaneNamespace`, one of `controlPlaneSecrets` violates `control-plane-secret`; any other Secret violates `control-plane-namespace`. Other namespaces are allowed.
 - **Modes:** unset or `off` (the default) skips the check. `dryRun` logs a would-deny. `enforce` returns HTTP 403 `AdmissionPolicyDenied`, including for existing stores.
 - **Secret values:** they never appear in admission errors, logs, or denials. Allowed `listSecrets` responses still return them.
-- **Delete and targets:** delete is not checked, so existing stores can be removed. `RADIUS_TARGET_KUBECONFIG` never exempts secret stores because they use the control-plane cluster.
+- **Delete:** `enforce` blocks deletion of existing stores referencing control-plane Secrets. For allowed requests, cleanup still uses the `radapp.io/resource-type` label; it does not verify ownership by that store.
+- **Targets:** `RADIUS_TARGET_KUBECONFIG` never exempts secret stores because they use the control-plane cluster.
 
 These protections apply to the cluster hosting the control plane, not an unrelated same-named namespace on a deployment target. With `RADIUS_TARGET_KUBECONFIG` configured, Radius compares the live `kube-system` namespace UIDs before exempting a protected-name target namespace. Different kubeconfig files or API-server addresses alone do not establish separation. The control-plane and target credentials must allow reading that namespace for these protected-name checks; a failed identity read fails the request explicitly in `dryRun` and `enforce`. Ordinary application namespaces and `off` mode need no identity lookup. A verified distinct target receives normal Pod Security labels even when its namespace has the control-plane namespace's name. Legacy `Applications.Core` environment namespace creation still uses the control-plane cluster and remains protected, regardless of target configuration.
 

@@ -318,16 +318,21 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 	return nil, nil
 }
 
-// DeleteRadiusSecret deletes the Kubernetes secret associated with the given secret store if it is a
-// Radius managed resource.
+// DeleteRadiusSecret applies admission before deleting a referenced Secret bearing the Radius
+// resource-type label. The label alone does not establish ownership by this secret store.
 func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
+	ns, name := secretRefFromOutputResources(oldResource.Properties.Status.OutputResources)
+	if err := admitSecretReference(ctx, options.Authorization, ResourceTypeName+"/delete", ns, name); err != nil {
+		return nil, err
+	}
+
 	ksecret, err := getSecretFromOutputResources(oldResource.Properties.Status.OutputResources, options)
 	if err != nil {
 		return nil, err
 	}
 
 	if ksecret != nil {
-		// Delete only Radius managed resource.
+		// Preserve the legacy label-based cleanup behavior for admitted references.
 		if _, ok := ksecret.Labels[kubernetes.LabelRadiusResourceType]; ok {
 			if err := options.KubeClient.Delete(ctx, ksecret); err != nil {
 				return nil, err
@@ -339,7 +344,7 @@ func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore,
 }
 
 // admitSecretReference applies the control-plane admission rules to the Kubernetes Secret ns/name
-// that a secret store reads or writes. Secret store controllers use the control-plane Kubernetes
+// that a secret store reads, writes, or deletes. Secret store controllers use the control-plane Kubernetes
 // client even when RADIUS_TARGET_KUBECONFIG names a separate deployment target, so the Secret is
 // always on the control-plane cluster: no target-cluster identity is consulted and a distinct
 // target never exempts the reference. The request's resource ID is read only when the reference
