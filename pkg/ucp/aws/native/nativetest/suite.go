@@ -51,6 +51,7 @@ import (
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/awsresources"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -79,17 +80,21 @@ type Suite struct {
 	// Control also uses, so the suite can serve the type with either handler.
 	NewHandler func(store *awsfake.CloudControl) native.Handler
 
-	// IdentifierProperty is the property whose value is the resource's identifier, and WriteOnly lists the write-only
-	// properties. The suite's Cloud Control uses them like AWS does.
+	// IdentifierProperty is the property whose value is the resource's identifier, and WriteOnly lists the top-level
+	// write-only properties. The suite's Cloud Control uses them like AWS does: it assigns an identifier when
+	// IdentifierProperty isn't set, and never returns write-only values.
 	IdentifierProperty string
 	WriteOnly          []string
 
-	// Properties are a template that creates a resource whose identifier is Identifier.
+	// Properties are a template that creates a resource whose identifier is Identifier, or "" when AWS assigns it.
 	Properties map[string]any
 	Identifier string
 
 	// Changed is Properties with a property the handler can update changed.
 	Changed map[string]any
+
+	// ChangedWriteOnly is Properties with a write-only value changed, or nil when the type has none.
+	ChangedWriteOnly map[string]any
 
 	// Removable is a top-level property of Properties that can be removed after create, or "" when there is none.
 	Removable string
@@ -105,14 +110,29 @@ func Run(t *testing.T, s Suite) {
 	t.Run("deleted outside Radius", func(t *testing.T) { s.deletedOutsideRadius(t) })
 	t.Run("removed property", func(t *testing.T) { s.removedProperty(t) })
 	t.Run("create-only change", func(t *testing.T) { s.createOnlyChange(t) })
+	t.Run("unchanged and changed write-only values", func(t *testing.T) { s.writeOnlyValues(t) })
+	t.Run("no write-only value in any response", func(t *testing.T) { s.noWriteOnlyInResponses(t) })
 	t.Run("list", func(t *testing.T) { s.list(t) })
 	t.Run("existing", func(t *testing.T) { s.existing(t) })
 	t.Run("worker restart while waiting", func(t *testing.T) { s.workerRestart(t) })
+	nameProperty := s.NewHandler(awsfake.NewCloudControl()).Options().NameProperty
+	for _, reached := range []bool{true, false} {
+		suffix := map[bool]string{true: "after the create reached AWS", false: "before the create reached AWS"}[reached]
+		t.Run("deploy again "+suffix, func(t *testing.T) { s.lostCreate(t, reached) })
+		t.Run("delete "+suffix, func(t *testing.T) { s.lostCreateDelete(t, reached) })
+	}
+	if nameProperty != "" {
+		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
+	}
 	if s.HandWritten {
 		t.Run("never asks CloudFormation", func(t *testing.T) { s.neverAsksCloudFormation(t) })
 	} else {
-		t.Run("create natively, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true) })
-		t.Run("create with Cloud Control, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false) })
+		t.Run("create natively, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, "") })
+		t.Run("create with Cloud Control, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, "") })
+		if nameProperty != "" {
+			t.Run("create natively without the name, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, nameProperty) })
+			t.Run("create with Cloud Control without the name, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, nameProperty) })
+		}
 		t.Run("DescribeType fails", func(t *testing.T) { s.describeTypeFails(t) })
 	}
 }
@@ -134,6 +154,7 @@ func (s Suite) createReadUpdateDelete(t *testing.T) {
 	require.Nil(t, h.record())
 	require.Equal(t, http.StatusNotFound, h.get().status)
 	require.Empty(t, h.cc.Calls(), "the native handler serves every call")
+	require.Zero(t, h.cc.Count(s.TypeName))
 }
 
 func (s Suite) redeployNoChange(t *testing.T) {
@@ -149,11 +170,11 @@ func (s Suite) redeployNoChange(t *testing.T) {
 func (s Suite) deletedOutsideRadius(t *testing.T) {
 	h := s.newHarness(t)
 	h.deploy(s.Properties)
-	h.cc.Remove(s.TypeName, s.Identifier)
+	h.cc.Remove(s.TypeName, h.identifier())
 
 	h.deploy(s.Properties)
 	requireSubset(t, s.readable(s.Properties), h.stored())
-	require.Equal(t, s.Identifier, h.record().Properties.AWSIdentifier)
+	require.Equal(t, 1, h.cc.Count(s.TypeName))
 }
 
 func (s Suite) removedProperty(t *testing.T) {
@@ -183,6 +204,92 @@ func (s Suite) createOnlyChange(t *testing.T) {
 	require.Equal(t, v1.ProvisioningStateSucceeded, h.record().ProvisioningState())
 }
 
+// writeOnlyValues redeploys an unchanged write-only value, which UCP doesn't send, and a changed one, which it does.
+func (s Suite) writeOnlyValues(t *testing.T) {
+	if s.ChangedWriteOnly == nil {
+		t.Skip("the type has no write-only property")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	h.handler.reset()
+
+	resp := h.put(s.Properties)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, h.handler.reset(), "an unchanged write-only value isn't sent")
+
+	h.deploy(s.ChangedWriteOnly)
+	require.Contains(t, h.handler.reset(), "Update")
+	resource := h.cc.Resource(s.TypeName, h.identifier())
+	for _, p := range s.WriteOnly {
+		require.EqualValues(t, normalize(t, s.ChangedWriteOnly[p]), normalize(t, resource[p]), "AWS has the changed %s", p)
+	}
+
+	resp = h.put(s.ChangedWriteOnly)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, h.handler.reset())
+}
+
+// noWriteOnlyInResponses checks every response for the type, and the record, for the write-only values the templates
+// set, including any the handler's read returns.
+func (s Suite) noWriteOnlyInResponses(t *testing.T) {
+	h := s.newHarness(t)
+	secrets := s.writeOnlyStrings(t)
+	if len(secrets) == 0 {
+		t.Skip("the templates set no write-only value")
+	}
+	responses := []response{}
+	check := func(resp response) {
+		t.Helper()
+		require.Less(t, resp.status, http.StatusBadRequest, resp.raw)
+		responses = append(responses, resp)
+	}
+
+	check(h.put(s.Properties))
+	operationID := h.record().Properties.RequestToken
+	check(h.operation("operationStatuses", operationID))
+	check(h.operation("operationResults", operationID))
+	h.finish()
+	h.requireDeployed()
+	check(h.operation("operationStatuses", operationID))
+	check(h.get())
+	check(h.existingResponse())
+	if h.handler.Options().List == native.ListRegion {
+		check(h.do(awsproxy.NewListAWSResources, http.MethodGet, h.collection(), "", nil))
+	}
+	check(h.put(s.Properties))
+	for _, changed := range []map[string]any{s.Changed, s.ChangedWriteOnly} {
+		if changed != nil {
+			check(h.put(changed))
+			h.finish()
+		}
+	}
+	raw, err := json.Marshal(h.record())
+	require.NoError(t, err)
+	responses = append(responses, response{raw: string(raw)})
+	check(h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil))
+
+	for _, resp := range responses {
+		for _, secret := range secrets {
+			require.NotContains(t, resp.raw, secret)
+		}
+	}
+}
+
+// writeOnlyStrings returns the write-only values the suite's templates set, as they appear in JSON.
+func (s Suite) writeOnlyStrings(t *testing.T) []string {
+	out := []string{}
+	for _, properties := range []map[string]any{s.Properties, s.Changed, s.ChangedWriteOnly} {
+		for _, p := range s.WriteOnly {
+			if v, ok := properties[p]; ok {
+				b, err := json.Marshal(v)
+				require.NoError(t, err)
+				out = append(out, strings.Trim(string(b), `"`))
+			}
+		}
+	}
+	return out
+}
+
 func (s Suite) list(t *testing.T) {
 	h := s.newHarness(t)
 	h.deploy(s.Properties)
@@ -191,7 +298,7 @@ func (s Suite) list(t *testing.T) {
 	switch h.handler.Options().List {
 	case native.ListRegion:
 		require.Equal(t, http.StatusOK, resp.status, resp.raw)
-		require.Contains(t, resp.raw, s.Identifier)
+		require.Contains(t, resp.raw, h.identifier())
 	default:
 		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
 	}
@@ -201,12 +308,56 @@ func (s Suite) existing(t *testing.T) {
 	h := s.newHarness(t)
 	h.deploy(s.Properties)
 
-	getWithPost := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
-		return awsproxy.NewGetAWSResourceWithPost(opts, clients, retry.NewNoOpRetryer())
-	}
-	resp := h.do(getWithPost, http.MethodPost, h.collection()+"/:get", "", map[string]any{"properties": s.Properties})
+	resp := h.existingResponse()
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	requireSubset(t, s.readable(s.Properties), resp.properties())
+}
+
+// lostCreate loses a create, after it reached AWS or before, and deploys again. The next deploy finds the resource
+// as the handler declares (native.Options.Recovery), and AWS ends with exactly one.
+func (s Suite) lostCreate(t *testing.T, reached bool) {
+	h := s.newHarness(t)
+	h.handler.lose("Create", reached)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	require.True(t, records.IsFirstCreate(h.record()))
+
+	h.deployEventually(s.Properties)
+	require.Equal(t, 1, h.cc.Count(s.TypeName))
+	requireSubset(t, s.readable(s.Properties), h.stored())
+	if s.Identifier != "" {
+		require.Equal(t, s.Identifier, h.record().Properties.AWSIdentifier)
+	}
+}
+
+// lostCreateDelete loses a create, after it reached AWS or before, and deletes the alias. The delete finds the
+// resource first, and AWS ends with none.
+func (s Suite) lostCreateDelete(t *testing.T, reached bool) {
+	h := s.newHarness(t)
+	h.handler.lose("Create", reached)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+
+	h.removeEventually()
+	require.Nil(t, h.record())
+	require.Zero(t, h.cc.Count(s.TypeName))
+}
+
+// generatedNameRetry loses a create of a template that leaves out the name, and deploys again. Both attempts send
+// the same generated name, which fits the type's name rules, and AWS ends with one resource.
+func (s Suite) generatedNameRetry(t *testing.T, nameProperty string) {
+	h := s.newHarness(t)
+	unnamed := without(s.Properties, nameProperty)
+	h.handler.lose("Create", true)
+	resp := h.put(unnamed)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	first := h.record().Properties.AWSIdentifier
+	h.requireGeneratedName(first)
+
+	h.deployEventually(unnamed)
+	require.Equal(t, first, h.record().Properties.AWSIdentifier)
+	require.Equal(t, 1, h.cc.Count(s.TypeName))
+	require.Equal(t, first, h.cc.Resource(s.TypeName, first)[nameProperty])
 }
 
 // workerRestart stops the worker while it waits for a create, and runs it again. Waiting only reads AWS, so the
@@ -236,12 +387,22 @@ func (s Suite) workerRestart(t *testing.T) {
 }
 
 // switchHandlers creates a resource with one handler, and then reads, updates, and deletes it with the other, as when
-// a region gains or loses Cloud Control support for the type.
-func (s Suite) switchHandlers(t *testing.T, nativeFirst bool) {
+// a region gains or loses Cloud Control support for the type. When nameProperty is set, the templates leave it out:
+// the native handler generates a name that fits the type's rules, and Cloud Control names the resource itself.
+func (s Suite) switchHandlers(t *testing.T, nativeFirst bool, nameProperty string) {
 	h := s.newHarness(t)
+	properties, changed := s.Properties, s.Changed
+	if nameProperty != "" {
+		properties, changed = without(properties, nameProperty), without(changed, nameProperty)
+	}
 	h.useNative(nativeFirst)
-	h.deploy(s.Properties)
-	require.Equal(t, s.Identifier, h.record().Properties.AWSIdentifier)
+	h.deploy(properties)
+	switch {
+	case nameProperty != "" && nativeFirst:
+		h.requireGeneratedName(h.identifier())
+	case nameProperty == "" && s.Identifier != "":
+		require.Equal(t, s.Identifier, h.record().Properties.AWSIdentifier)
+	}
 
 	h.useNative(!nativeFirst)
 	h.handler.reset()
@@ -249,13 +410,14 @@ func (s Suite) switchHandlers(t *testing.T, nativeFirst bool) {
 
 	resp := h.get()
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
-	requireSubset(t, s.readable(s.Properties), resp.properties())
+	requireSubset(t, s.readable(properties), resp.properties())
 
-	h.deploy(s.Changed)
-	requireSubset(t, s.readable(s.Changed), h.stored())
+	h.deploy(changed)
+	requireSubset(t, s.readable(changed), h.stored())
 
 	h.remove()
 	require.Nil(t, h.stored())
+	require.Zero(t, h.cc.Count(s.TypeName))
 	if nativeFirst {
 		require.Empty(t, h.handler.reset(), "Cloud Control serves every call after the switch")
 	} else {
@@ -284,12 +446,18 @@ func (s Suite) neverAsksCloudFormation(t *testing.T) {
 	require.Empty(t, h.cc.Calls())
 }
 
-// readable returns properties without the write-only ones, which AWS never returns.
+// readable returns properties without the write-only ones, which UCP never returns.
 func (s Suite) readable(properties map[string]any) map[string]any {
 	out := maps.Clone(properties)
 	for _, p := range s.WriteOnly {
 		delete(out, p)
 	}
+	return out
+}
+
+func without(properties map[string]any, property string) map[string]any {
+	out := maps.Clone(properties)
+	delete(out, property)
 	return out
 }
 
@@ -316,11 +484,15 @@ type harness struct {
 	cc      *awsfake.CloudControl
 	cf      *awsfake.CloudFormation
 	handler *recorder
+	types   *native.Registry
 	clients ucp_aws.Clients
 	db      database.Client
 	queue   *queueinmemory.Client
 	sm      statusmanager.StatusManager
 	key     *ucp_aws.FingerprintKey
+
+	// lastID is the AWS identifier the last deploy saved, which AWS or UCP may have chosen.
+	lastID string
 }
 
 func (s Suite) newHarness(t *testing.T) *harness {
@@ -345,7 +517,7 @@ func (s Suite) newHarness(t *testing.T) *harness {
 	key, err := ucp_aws.NewFingerprintKey(bytes.Repeat([]byte{7}, ucp_aws.MinFingerprintKeyLength))
 	require.NoError(t, err)
 	h := &harness{
-		t: t, s: s, cc: cc, cf: cf, handler: handler,
+		t: t, s: s, cc: cc, cf: cf, handler: handler, types: registry,
 		clients: ucp_aws.Clients{CloudControl: cc, CloudFormation: cf, Native: registry},
 		db:      db, queue: q, sm: statusmanager.New(db, q, "global"), key: key,
 	}
@@ -372,8 +544,30 @@ func (h *harness) path() string {
 	return h.collection() + "/" + alias
 }
 
+// identifier returns the resource's AWS identifier: the one the last deploy saved, or Identifier before any deploy.
+func (h *harness) identifier() string {
+	if h.lastID != "" {
+		return h.lastID
+	}
+	return h.s.Identifier
+}
+
+// requireGeneratedName requires name to be a name UCP generated that fits the type's name rules.
+func (h *harness) requireGeneratedName(name string) {
+	h.t.Helper()
+	rules := h.types.Lookup(h.s.TypeName).NameRules
+	require.Regexp(h.t, "^radius-[0-9a-f]{8,12}$", name)
+	if rules.MaxLength > 0 {
+		require.LessOrEqual(h.t, len(name), rules.MaxLength)
+	}
+	require.GreaterOrEqual(h.t, len(name), rules.MinLength)
+	if rules.Pattern != nil {
+		require.Regexp(h.t, rules.Pattern, name)
+	}
+}
+
 func (h *harness) stored() map[string]any {
-	props, ok := h.cc.Read(h.s.TypeName, h.s.Identifier)
+	props, ok := h.cc.Read(h.s.TypeName, h.identifier())
 	if !ok {
 		return nil
 	}
@@ -444,13 +638,64 @@ func (h *harness) get() response {
 	return h.do(awsproxy.NewGetAWSResource, http.MethodGet, h.path(), "", nil)
 }
 
+// existingResponse reads the resource as an `existing` block does, by the template's properties and the identifier.
+func (h *harness) existingResponse() response {
+	properties := maps.Clone(h.s.Properties)
+	if h.s.Identifier == "" {
+		properties[h.s.IdentifierProperty] = h.identifier()
+	}
+	getWithPost := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+		return awsproxy.NewGetAWSResourceWithPost(opts, clients, retry.NewNoOpRetryer())
+	}
+	return h.do(getWithPost, http.MethodPost, h.collection()+"/:get", "", map[string]any{"properties": properties})
+}
+
+// operation reads the status or result of an operation, where kind is operationStatuses or operationResults.
+func (h *harness) operation(kind string, operationID string) response {
+	namespace, _, _ := strings.Cut(strings.TrimPrefix(h.s.TypeName, "AWS::"), "::")
+	factory := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+		if kind == "operationResults" {
+			return awsproxy.NewGetAWSOperationResults(opts)
+		}
+		return awsproxy.NewGetAWSOperationStatuses(opts)
+	}
+	return h.do(factory, http.MethodGet, scope+"AWS."+namespace+"/locations/global/"+kind+"/"+operationID, "", nil)
+}
+
 // deploy sends a PUT and finishes the operation it starts.
 func (h *harness) deploy(properties map[string]any) {
 	h.t.Helper()
 	resp := h.put(properties)
 	require.Contains(h.t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
 	h.finish()
-	require.Equal(h.t, v1.ProvisioningStateSucceeded, h.record().ProvisioningState())
+	h.requireDeployed()
+}
+
+func (h *harness) requireDeployed() {
+	h.t.Helper()
+	rec := h.record()
+	require.Equal(h.t, v1.ProvisioningStateSucceeded, rec.ProvisioningState())
+	h.lastID = rec.Properties.AWSIdentifier
+}
+
+// maxAttempts is how many times deployEventually and removeEventually send a request that gets 409 because a create
+// is still running in AWS.
+const maxAttempts = 5
+
+// deployEventually deploys after an interrupted create. While AWS still runs the create, a PUT gets 409, so it
+// finishes the operation UCP waits for and deploys again.
+func (h *harness) deployEventually(properties map[string]any) {
+	h.t.Helper()
+	for range maxAttempts {
+		resp := h.put(properties)
+		h.finish()
+		if resp.status != http.StatusConflict {
+			require.Contains(h.t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
+			h.requireDeployed()
+			return
+		}
+	}
+	require.Fail(h.t, "the deploy kept getting 409")
 }
 
 // remove sends a DELETE and finishes the operation it starts.
@@ -459,6 +704,20 @@ func (h *harness) remove() {
 	resp := h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
 	require.Contains(h.t, []int{http.StatusAccepted, http.StatusNoContent}, resp.status, resp.raw)
 	h.finish()
+}
+
+// removeEventually deletes after an interrupted create, as deployEventually deploys.
+func (h *harness) removeEventually() {
+	h.t.Helper()
+	for range maxAttempts {
+		resp := h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+		h.finish()
+		if resp.status != http.StatusConflict {
+			require.Contains(h.t, []int{http.StatusAccepted, http.StatusNoContent}, resp.status, resp.raw)
+			return
+		}
+	}
+	require.Fail(h.t, "the delete kept getting 409")
 }
 
 func (h *harness) dequeue() (*queue.Message, *ctrl.Request) {
@@ -497,13 +756,17 @@ func (h *harness) finish() {
 	}
 }
 
-// recorder wraps the handler under test. It records the methods called, and can hold Progress at "still running".
+// recorder wraps the handler under test. It records the methods called, can hold Progress at "still running", and
+// can lose the response of a call.
 type recorder struct {
 	native.Handler
 
 	mu      sync.Mutex
 	methods []string
 	hold    bool
+
+	// lost maps a method to whether its next call reaches AWS before its response is lost.
+	lost map[string]bool
 
 	// onProgress, when set, runs on each Progress call.
 	onProgress func()
@@ -530,20 +793,67 @@ func (r *recorder) holdProgress(on bool) {
 	r.hold = on
 }
 
-// encodingRecorder is a recorder for a handler with its own identifier encoding.
-type encodingRecorder struct {
-	*recorder
+// lose makes the next call to method fail with a server error, as when UCP stops or the response is lost. When
+// reached is true, the call reaches the handler first.
+func (r *recorder) lose(method string, reached bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.lost == nil {
+		r.lost = map[string]bool{}
+	}
+	r.lost[method] = reached
 }
 
-func (r encodingRecorder) Identifier(properties map[string]any) (string, error) {
-	return r.Handler.(native.IdentifierEncoder).Identifier(properties)
+// takeLoss returns, and forgets, the loss set for method.
+func (r *recorder) takeLoss(method string) (reached bool, ok bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	reached, ok = r.lost[method]
+	delete(r.lost, method)
+	return reached, ok
 }
 
-// wrap returns the handler the registry gets for r: r itself, or an encodingRecorder when the handler under test has
-// its own identifier encoding.
+var errLost = nativefake.ServerError("InternalFailure", "the response was lost")
+
+// encoder and finder pass the optional methods of the handler under test through a recorder.
+type encoder struct {
+	r *recorder
+}
+
+func (e encoder) Identifier(properties map[string]any) (string, error) {
+	return e.r.Handler.(native.IdentifierEncoder).Identifier(properties)
+}
+
+type finder struct {
+	r *recorder
+}
+
+func (f finder) Find(ctx context.Context, request native.CreateRequest) (string, error) {
+	f.r.note("Find")
+	return f.r.Handler.(native.Finder).Find(ctx, request)
+}
+
+// wrap returns the handler the registry gets for r: r, with the optional methods the handler under test has.
 func (r *recorder) wrap() native.Handler {
-	if _, ok := r.Handler.(native.IdentifierEncoder); ok {
-		return encodingRecorder{r}
+	_, encodes := r.Handler.(native.IdentifierEncoder)
+	_, finds := r.Handler.(native.Finder)
+	switch {
+	case encodes && finds:
+		return struct {
+			*recorder
+			encoder
+			finder
+		}{r, encoder{r}, finder{r}}
+	case encodes:
+		return struct {
+			*recorder
+			encoder
+		}{r, encoder{r}}
+	case finds:
+		return struct {
+			*recorder
+			finder
+		}{r, finder{r}}
 	}
 	return r
 }
@@ -555,6 +865,14 @@ func (r *recorder) Read(ctx context.Context, region string, identifier string) (
 
 func (r *recorder) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	r.note("Create")
+	reached, lost := r.takeLoss("Create")
+	switch {
+	case lost && !reached:
+		return "", errLost
+	case lost:
+		_, err := r.Handler.Create(ctx, request)
+		return "", errors.Join(errLost, err)
+	}
 	return r.Handler.Create(ctx, request)
 }
 

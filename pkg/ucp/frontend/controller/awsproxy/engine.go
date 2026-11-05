@@ -39,6 +39,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/database"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -259,20 +260,26 @@ func (e *engine) checkIdentifier(ctx context.Context, id resources.ID, identifie
 	return nil, nil
 }
 
-// readResource reads a resource from AWS by its identifier, through the handler that serves r. It returns nil when
-// AWS has no such resource.
+// readResource reads a resource from AWS by its identifier, through the handler that serves r, without its write-only
+// values. It returns nil when AWS has no such resource.
 func (e *engine) readResource(ctx context.Context, r *request, identifier string) (*cloudcontrol.GetResourceOutput, error) {
+	var out *cloudcontrol.GetResourceOutput
+	var err error
 	if r.handler != nil {
-		return readNative(ctx, r.handler, r.region, identifier)
+		out, err = readNative(ctx, r.handler, r.region, identifier)
+	} else {
+		out, err = e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
+			TypeName:   aws.String(r.typeName),
+			Identifier: aws.String(identifier),
+		}, CloudControlRegionOption(r.region))
+		if ucp_aws.IsAWSResourceNotFoundError(err) {
+			return nil, nil
+		}
 	}
-	out, err := e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   aws.String(r.typeName),
-		Identifier: aws.String(identifier),
-	}, CloudControlRegionOption(r.region))
-	if ucp_aws.IsAWSResourceNotFoundError(err) {
-		return nil, nil
+	if err != nil {
+		return nil, err
 	}
-	return out, err
+	return out, removeWriteOnly(out, r.writeOnly)
 }
 
 // put creates or updates the AWS resource under the alias in the URL.
@@ -341,6 +348,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err != nil {
 		return nil, err
 	}
+	r.writeOnly = awsoperations.PropertyPaths(parsed.WriteOnlyProperties)
 	fingerprints, resp, err := e.fingerprints(r, parsed, body.Properties)
 	if resp != nil || err != nil {
 		return resp, err
@@ -370,7 +378,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	var current *cloudcontrol.GetResourceOutput
 	applied := applied{properties: withoutSecrets(properties, secrets), fingerprints: fingerprints}
 	switch {
-	case records.IsFirstCreate(rec) && r.handler != nil && identifier != "":
+	case records.IsFirstCreate(rec) && r.handler != nil:
 		return e.resumeNativeCreate(ctx, r, rec, etag, properties, applied, typeInfo, parsed, secrets)
 	case records.IsFirstCreate(rec):
 		// The first create has not finished and nothing is polling it: send it again with the same client token, so
@@ -535,6 +543,14 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	logger := ucplog.FromContextOrDiscard(ctx)
 	schema := aws.ToString(typeInfo.Schema)
 
+	// A record that already has a client token resumes a create that AWS may have accepted, so this request is a replay.
+	// Otherwise this is a new create, with a new client token, which also seeds a generated name.
+	replay := records.IsFirstCreate(rec)
+	if !replay {
+		rec.Properties.ClientToken = uuid.New().String()
+	}
+	properties = withGeneratedName(r, rec, properties)
+
 	// name takes over a resource that already exists. When AWS has none, create one only if the identifier properties
 	// give that same name; otherwise the template asked for a resource that is not there.
 	known, err := identifierFor(r.native, properties, schema)
@@ -544,15 +560,13 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	if name != "" && known != name {
 		return badRequest(fmt.Sprintf("name %q does not match an AWS resource of type %s. Set name only to take over an existing resource, or remove it and set the identifier properties to create one.", name, r.typeName)), nil
 	}
+	if known == "" && r.handler != nil && r.handler.Options().Recovery == native.RecoverByIdentifier {
+		return identifierRequired(r, schema)
+	}
 	if resp, err := e.checkIdentifier(ctx, r.id, known); resp != nil || err != nil {
 		return resp, err
 	}
 
-	// A record that already has a client token resumes a create that AWS may have accepted, so this request is a replay.
-	replay := records.IsFirstCreate(rec)
-	if !replay {
-		rec.Properties.ClientToken = uuid.New().String()
-	}
 	// Save the identifier the properties give before the create, so the identifier check also finds a create that is
 	// still running. AWS assigns the others, and the worker saves them when the create finishes.
 	rec.Properties.AWSIdentifier = known
@@ -768,7 +782,8 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 
 // startDelete reserves the record and deletes its AWS resource, and the worker removes the record when AWS finishes.
 // A record with no identifier and no client token has nothing in AWS, so only the record is removed. One with a client
-// token has a create that may have reached AWS, which recoverCreate finds first.
+// token has a create that may have reached AWS, which recoverCreate, or recoverNativeCreate for a native handler, finds
+// first.
 func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if rec.Properties.AWSIdentifier == "" && !records.IsFirstCreate(rec) {
@@ -784,15 +799,13 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	if resp != nil || err != nil {
 		return resp, err
 	}
-	if rec.Properties.AWSIdentifier == "" && r.handler != nil {
-		// A native create whose identifier AWS assigns can't be found yet, so the record stays as it was.
-		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
-			rec.Properties.PendingOperation = records.OperationCreate
-			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
-		})
-		return conflict("UCP can't tell whether the interrupted create of the AWS resource %q reached AWS. Deploy again to finish it, then delete.", r.id.Name()), nil
-	}
-	if rec.Properties.AWSIdentifier == "" {
+	switch {
+	case records.IsFirstCreate(rec) && r.handler != nil:
+		etag, resp, err = e.recoverNativeCreate(ctx, r, rec, etag)
+		if resp != nil || err != nil {
+			return resp, err
+		}
+	case rec.Properties.AWSIdentifier == "":
 		etag, resp, err = e.recoverCreate(ctx, r, rec, etag)
 		if resp != nil || err != nil {
 			return resp, err

@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"strings"
 	"time"
 
 	"uuid"
@@ -34,6 +36,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
@@ -56,6 +59,11 @@ type route struct {
 	// typeInfo is the type's information, with the native schema in place of CloudFormation's. It is nil when no
 	// native handler serves the type, because then routing reads nothing from AWS.
 	typeInfo *cloudformation.DescribeTypeOutput
+
+	// writeOnly are the paths of the type's write-only properties, which UCP removes from every resource AWS returns.
+	// routeType sets them from the native schema, and put from the schema it uses. They are nil for a Cloud Control
+	// type otherwise, because Cloud Control never returns write-only values.
+	writeOnly []string
 }
 
 // routeType picks the handler for typeName in region:
@@ -73,7 +81,7 @@ func routeType(ctx context.Context, clients ucp_aws.Clients, typeName string, re
 		return route{}, nil
 	}
 	if t.HandWritten {
-		return route{native: t, handler: t.Handler, typeInfo: &cloudformation.DescribeTypeOutput{
+		return route{native: t, handler: t.Handler, writeOnly: t.WriteOnly, typeInfo: &cloudformation.DescribeTypeOutput{
 			TypeName:         aws.String(typeName),
 			Schema:           aws.String(t.Schema),
 			ProvisioningType: cftypes.ProvisioningTypeFullyMutable,
@@ -87,7 +95,7 @@ func routeType(ctx context.Context, clients ucp_aws.Clients, typeName string, re
 	// The cache shares its output, so change a copy.
 	withSchema := *info
 	withSchema.Schema = aws.String(t.Schema)
-	rt := route{native: t, typeInfo: &withSchema}
+	rt := route{native: t, typeInfo: &withSchema, writeOnly: t.WriteOnly}
 	if info.ProvisioningType == cftypes.ProvisioningTypeNonProvisionable {
 		rt.handler = t.Handler
 	}
@@ -159,6 +167,35 @@ func identifierFor(t *native.Type, properties map[string]any, schema string) (st
 		}
 	}
 	return identifierFromProperties(properties, schema)
+}
+
+// withGeneratedName returns properties with a generated name when a native handler serves r, declares a name property
+// (native.Options.NameProperty), and the template leaves it out. The name comes from the record's client token, which
+// identifies the create: every attempt of one create sends the same name. properties is not changed, so the
+// last-applied properties stay the template's, without the name, and a later deploy that still leaves it out doesn't
+// clear it.
+func withGeneratedName(r *request, rec *datamodel.AWSResource, properties map[string]any) map[string]any {
+	if r.handler == nil || r.native.NameRules == nil {
+		return properties
+	}
+	rules := r.native.NameRules
+	if value, ok := properties[rules.Property]; ok && value != nil {
+		return properties
+	}
+	out := make(map[string]any, len(properties)+1)
+	maps.Copy(out, properties)
+	out[rules.Property] = rules.Generate(rec.Properties.ClientToken)
+	return out
+}
+
+// identifierRequired returns the 400 for a create whose identifier the template doesn't give, of a type whose native
+// handler finds a lost create by its identifier.
+func identifierRequired(r *request, schema string) (armrpc_rest.Response, error) {
+	paths, err := getPrimaryIdentifiersFromSchema(schema)
+	if err != nil {
+		return nil, err
+	}
+	return badRequest(fmt.Sprintf("Set %s of the AWS resource %q. UCP needs the identifier of an AWS resource of type %s before it creates one, so it can find the resource if the create is interrupted.", strings.Join(awsoperations.PropertyPaths(paths), ", "), r.id.Name(), r.typeName)), nil
 }
 
 // readNative reads a resource through the native handler. It returns the result in Cloud Control's shape, so the
@@ -251,8 +288,15 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 	return aws.ToString(response.ProgressEvent.RequestToken), nil
 }
 
-// resumeNativeCreate resumes a native first create whose identifier the record saved before the create: AWS has the
-// resource only if the create reached it. A native handler has no request to look up, so UCP reads the resource:
+// resumeNativeCreate resumes a native first create that may have reached AWS. A native handler has no request to look
+// up, so UCP finds the resource as the handler declares (native.Recovery):
+//
+//   - The record has the identifier, saved before the create: UCP reads AWS by it.
+//   - RecoverBySearch: the handler's Find looks for the resource. If AWS has none, the create is sent again. If
+//     another alias manages the resource Find returns, the request gets 409.
+//   - RecoverByResend: the create is sent again. The handler makes that return the first resource.
+//
+// When UCP reads the resource, it continues by what AWS shows:
 //
 //   - not found: the create never reached AWS, so it is sent again.
 //   - still creating: UCP waits for it, as for any create, and returns 409. The caller deploys again when it finishes.
@@ -263,6 +307,21 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //   - failed: the request returns the failure, and the record stays, so a DELETE can remove the resource.
 func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, properties map[string]any, deploy applied, typeInfo *cloudformation.DescribeTypeOutput, parsed *typeSchema, secrets []string) (armrpc_rest.Response, error) {
 	identifier := rec.Properties.AWSIdentifier
+	if identifier == "" {
+		var err error
+		identifier, err = e.findCreate(ctx, r, rec, properties)
+		if err != nil {
+			return ucp_aws.HandleAWSError(ctx, err)
+		}
+		if identifier == "" {
+			return e.create(ctx, r, rec, etag, "", properties, deploy, typeInfo, parsed, secrets)
+		}
+		// A search by values AWS keeps unique can find a resource another alias manages.
+		if resp, err := e.checkIdentifier(ctx, r.id, identifier); resp != nil || err != nil {
+			return resp, err
+		}
+		rec.Properties.AWSIdentifier = identifier
+	}
 	progress, err := r.handler.Progress(ctx, r.region, identifier, native.OperationCreate)
 	switch {
 	case errors.Is(err, native.ErrNotFound):
@@ -291,6 +350,113 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 		return e.create(ctx, r, rec, etag, "", properties, deploy, typeInfo, parsed, secrets)
 	}
 	return e.update(ctx, r, rec, etag, current, identifier, properties, deploy, typeInfo, parsed, secrets)
+}
+
+// findCreate finds the resource of the record's first create with the handler's Find, for a handler whose Recovery is
+// RecoverBySearch. It returns "" when AWS has no such resource, and for a handler that finds a lost create another
+// way.
+func (e *engine) findCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, properties map[string]any) (string, error) {
+	finder, ok := r.handler.(native.Finder)
+	if !ok || r.handler.Options().Recovery != native.RecoverBySearch {
+		return "", nil
+	}
+	properties = withGeneratedName(r, rec, properties)
+	return finder.Find(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
+}
+
+// recoverNativeCreate finds the AWS resource of a native first create that may have reached AWS, before a DELETE,
+// with the steps a PUT takes (see resumeNativeCreate). The template is not available, so a search or a create sent
+// again uses the pending properties, which have no write-only values:
+//
+//   - The record has the identifier: UCP reads AWS by it.
+//   - RecoverBySearch: the handler's Find looks for the resource.
+//   - RecoverByResend: the create is sent again with the record's client token, which returns the first resource.
+//     When AWS never had the create, this creates the resource, and the delete then removes it.
+//
+// Then, by what AWS shows:
+//
+//   - no such resource: nothing exists, so only the record is removed.
+//   - still creating: UCP waits for it, as for any create, and returns 409. The caller deletes again when it finishes.
+//   - created, or failed with a resource left: the record gets the identifier, and the delete continues.
+//   - another alias manages the resource found: the record is kept, and the DELETE gets 409.
+//   - a call fails: the record is kept, and the DELETE returns the error.
+func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (string, armrpc_rest.Response, error) {
+	keepCreate := func() {
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			rec.Properties.PendingOperation = records.OperationCreate
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
+	}
+	keep := func(err error) (string, armrpc_rest.Response, error) {
+		keepCreate()
+		resp, err := ucp_aws.HandleAWSError(ctx, err)
+		return "", resp, err
+	}
+	removed := func() (string, armrpc_rest.Response, error) {
+		resp, err := e.removeRecord(ctx, r, etag)
+		return "", resp, err
+	}
+
+	identifier := rec.Properties.AWSIdentifier
+	if identifier == "" {
+		var err error
+		pending := rec.Properties.PendingLastApplied
+		if r.handler.Options().Recovery == native.RecoverByResend {
+			identifier, err = e.resendCreate(ctx, r, rec, pending)
+		} else {
+			identifier, err = e.findCreate(ctx, r, rec, pending)
+		}
+		if err != nil {
+			return keep(err)
+		}
+		if identifier == "" {
+			return removed()
+		}
+		// A search by values AWS keeps unique can find a resource another alias manages, which this DELETE must not
+		// delete.
+		held, err := e.checkIdentifier(ctx, r.id, identifier)
+		if held != nil || err != nil {
+			keepCreate()
+			return "", held, err
+		}
+	}
+
+	progress, err := r.handler.Progress(ctx, r.region, identifier, native.OperationCreate)
+	switch {
+	case errors.Is(err, native.ErrNotFound):
+		return removed()
+	case err != nil:
+		return keep(err)
+	}
+	rec.Properties.AWSIdentifier = identifier
+	if !progress.Done {
+		// Which write-only values AWS has is unknown, so the record keeps no fingerprints for them.
+		rec.Properties.PendingFingerprints = nil
+		if _, err := e.track(ctx, r, rec, etag, v1.OperationPut, records.OperationCreate, uuid.New().String()); err != nil {
+			return "", nil, err
+		}
+		return "", conflict("A create of the AWS resource %q is still running in AWS. Delete again when it finishes.", r.id.Name()), nil
+	}
+
+	ucplog.FromContextOrDiscard(ctx).Info("Found the AWS resource of an interrupted create", "alias", r.id.Name(), "awsIdentifier", identifier)
+	rec.Properties.ClientToken = ""
+	etag, err = e.store.Save(ctx, rec, etag)
+	if err != nil {
+		resp, err := saveError(r.id, err)
+		return "", resp, err
+	}
+	return etag, nil, nil
+}
+
+// resendCreate sends the record's first create again with its client token, for a handler whose Recovery is
+// RecoverByResend, and returns the identifier of the resource AWS has.
+func (e *engine) resendCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, properties map[string]any) (string, error) {
+	properties = withGeneratedName(r, rec, properties)
+	identifier, err := r.handler.Create(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
+	if err == nil && identifier == "" {
+		return "", fmt.Errorf("the native handler for %s sent the create of the AWS resource %q again, but returned no identifier", r.typeName, r.id.Name())
+	}
+	return identifier, err
 }
 
 // failureResponse returns the response for an operation AWS finished with failure.

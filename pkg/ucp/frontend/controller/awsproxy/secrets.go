@@ -20,6 +20,9 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 )
 
@@ -35,6 +38,23 @@ var unmarkedSecrets = map[string][]string{
 // secretProperties returns the paths of the properties whose request values must never be echoed in a response: the
 // write-only properties of the type schema, plus the secrets the schema does not mark write-only.
 func secretProperties(typeName string, schema string) ([]string, error) {
+	paths, err := writeOnlyPaths(schema)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range unmarkedSecrets {
+		if strings.EqualFold(k, typeName) {
+			paths = append(paths, v...)
+		}
+	}
+	return paths, nil
+}
+
+// writeOnlyPaths returns the paths of the write-only properties of a type schema, relative to the properties object.
+// UCP removes the values at these paths from every response, including values AWS returns. A secret the schema doesn't
+// mark write-only is only kept out of the request echo (see secretProperties), because some are values AWS generates
+// that callers read, such as a Cognito user pool client's ClientSecret.
+func writeOnlyPaths(schema string) ([]string, error) {
 	var parsed awsoperations.ResourceTypeSchema
 	if err := json.Unmarshal([]byte(schema), &parsed); err != nil {
 		return nil, err
@@ -46,18 +66,33 @@ func secretProperties(typeName string, schema string) ([]string, error) {
 			paths = append(paths, name)
 		}
 	}
-
-	for k, v := range unmarkedSecrets {
-		if strings.EqualFold(k, typeName) {
-			paths = append(paths, v...)
-		}
-	}
 	return paths, nil
+}
+
+// removeWriteOnly removes the values at the write-only paths from a resource AWS returned. Cloud Control never returns
+// write-only values, but a native schema can mark more properties write-only than CloudFormation's, and some service
+// APIs return secrets, such as MediaLive's DescribeChannel.
+func removeWriteOnly(out *cloudcontrol.GetResourceOutput, paths []string) error {
+	if out == nil || len(paths) == 0 || out.ResourceDescription == nil || out.ResourceDescription.Properties == nil {
+		return nil
+	}
+	properties := map[string]any{}
+	if err := json.Unmarshal([]byte(*out.ResourceDescription.Properties), &properties); err != nil {
+		return err
+	}
+	removePaths(properties, paths)
+	state, err := json.Marshal(properties)
+	if err != nil {
+		return err
+	}
+	out.ResourceDescription.Properties = aws.String(string(state))
+	return nil
 }
 
 // buildResponseProperties returns the properties of a create or update response: the current properties AWS returned,
 // overlaid with the request properties. Request values at the secret paths are left out, so a response never echoes a
-// secret the caller sent. Values AWS returned are passed through unchanged, including inside objects.
+// secret the caller sent. current comes from readResource, which already removed write-only values, so the other
+// values AWS returned are passed through unchanged, including inside objects.
 func buildResponseProperties(current map[string]any, request map[string]any, secrets []string) map[string]any {
 	out, _ := deepCopy(current).(map[string]any)
 	if out == nil {

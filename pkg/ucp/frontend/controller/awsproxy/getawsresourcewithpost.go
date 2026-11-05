@@ -154,6 +154,13 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 			return nil, err
 		}
 	}
+	// AWS may return write-only values: a native schema can mark more properties write-only than CloudFormation's, and
+	// some service APIs return secrets.
+	writeOnly, err := writeOnlyPaths(*describeTypeOutput.Schema)
+	if err != nil {
+		return nil, err
+	}
+	removePaths(resourceProperties, writeOnly)
 
 	computedResourceID := computeResourceID(serviceCtx.ResourceID, awsResourceIdentifier)
 	responseBody := map[string]any{
