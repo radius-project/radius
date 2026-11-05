@@ -56,7 +56,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util/etag"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
@@ -123,14 +122,20 @@ func (c *APIServerClient) Query(ctx context.Context, query database.Query, optio
 		return nil, err
 	}
 
-	results := database.ObjectQueryResult{}
-
-	// A resource can be stored under both its current (SHA-256) object name and its legacy (SHA-1) object name when an
-	// older writer created a second copy. Reads prefer the current copy, so queries return only that copy.
-	seen := map[string]int{}
-	seenObject := map[string]string{}
-	for _, resource := range rs.Items {
-		for _, entry := range resource.Entries {
+	// A resource can be stored under both its current (SHA-256) object name and its legacy (SHA-1) object name, for
+	// example while it is being moved or after an older writer created a second copy. Reads return the current copy,
+	// so a query selects that copy first and then applies filters: a stale legacy copy must not match a filter that
+	// the copy reads return does not match.
+	type selection struct {
+		entry   *ucpv1alpha1.ResourceEntry
+		current bool
+	}
+	order := []string{}
+	selected := map[string]selection{}
+	for i := range rs.Items {
+		resource := &rs.Items[i]
+		for j := range resource.Entries {
+			entry := &resource.Entries[j]
 			id, err := resources.Parse(entry.ID)
 			if err != nil {
 				// Ignore invalid IDs when querying, we don't want a single piece of bad data to
@@ -140,33 +145,39 @@ func (c *APIServerClient) Query(ctx context.Context, query database.Query, optio
 				continue
 			}
 
-			if databaseutil.IDMatchesQuery(id, query) {
-				converted, err := readEntry(&entry)
-				if err != nil {
-					return nil, err
-				}
-
-				match, err := converted.MatchesFilters(query.Filters)
-				if err != nil {
-					return nil, err
-				} else if !match {
-					continue
-				}
-
-				key := strings.ToLower(entry.ID)
-				if index, ok := seen[key]; ok {
-					if resource.Name == resourceName(id) && seenObject[key] != resource.Name {
-						results.Items[index] = *converted
-						seenObject[key] = resource.Name
-					}
-					continue
-				}
-
-				seen[key] = len(results.Items)
-				seenObject[key] = resource.Name
-				results.Items = append(results.Items, *converted)
+			if !databaseutil.IDMatchesQuery(id, query) {
+				continue
 			}
+
+			key := strings.ToLower(entry.ID)
+			current := resource.Name == resourceName(id)
+			if existing, ok := selected[key]; ok {
+				if current && !existing.current {
+					selected[key] = selection{entry: entry, current: true}
+				}
+				continue
+			}
+
+			order = append(order, key)
+			selected[key] = selection{entry: entry, current: current}
 		}
+	}
+
+	results := database.ObjectQueryResult{}
+	for _, key := range order {
+		converted, err := readEntry(selected[key].entry)
+		if err != nil {
+			return nil, err
+		}
+
+		match, err := converted.MatchesFilters(query.Filters)
+		if err != nil {
+			return nil, err
+		} else if !match {
+			continue
+		}
+
+		results.Items = append(results.Items, *converted)
 	}
 
 	return &results, nil
@@ -224,64 +235,92 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...data
 
 	config := database.NewDeleteConfig(options...)
 
+	// removed records that an attempt removed a copy of the entry, so a later attempt that finds no copy succeeds.
+	removed := false
 	err = c.doWithRetry(func() (bool, error) {
-		resource := ucpv1alpha1.Resource{}
-		err := c.getResourceWithFallback(ctx, parsed, &resource)
-		if err != nil && apierrors.IsNotFound(err) && config.ETag != "" {
-			return false, &database.ErrConcurrency{}
-		} else if err != nil && apierrors.IsNotFound(err) {
-			return false, &database.ErrNotFound{ID: id}
-		} else if err != nil {
+		copies, exists, err := c.storedCopies(ctx, parsed)
+		if err != nil {
 			return false, err
 		}
 
-		index := findIndex(&resource, parsed)
-		if index == nil {
-			return false, &database.ErrNotFound{ID: id}
+		if len(copies) == 0 {
+			switch {
+			case removed:
+				// The remaining copy was removed concurrently.
+				return false, nil
+			case !exists && config.ETag != "":
+				return false, &database.ErrConcurrency{}
+			default:
+				return false, &database.ErrNotFound{ID: id}
+			}
 		}
 
-		if config.ETag != "" && config.ETag != resource.Entries[*index].ETag {
+		// Reads return the first copy, so it decides whether the ETag matches.
+		if config.ETag != "" && config.ETag != copies[0].Entries[*findIndex(&copies[0], parsed)].ETag {
 			return false, &database.ErrConcurrency{}
 		}
 
 		c.synchronize()
 
-		if len(resource.Entries) == 1 {
-			// If this is the last resource we can delete (common case)
-			options := runtimeclient.DeleteOptions{
-				Preconditions: &v1.Preconditions{
-					UID:             &resource.UID,
-					ResourceVersion: &resource.ResourceVersion,
-				},
-			}
-			err := c.client.Delete(ctx, &resource, &options)
-			if err != nil && apierrors.IsNotFound(err) {
-				return false, &database.ErrNotFound{ID: id}
-			} else if apierrors.IsConflict(err) {
+		// Every copy is removed, so a read cannot fall back to a copy the delete left behind. The copy reads return is
+		// removed last, so a concurrent read finds the resource until the delete completes.
+		for i := len(copies) - 1; i >= 0; i-- {
+			err := c.removeEntry(ctx, &copies[i], *findIndex(&copies[i], parsed))
+			if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 				return true, err // RETRY this!
 			} else if err != nil {
 				return false, err
 			}
-		} else {
-			// If there was more than one resource we need to update. There's no need to explicitly
-			// pass the options here as OCC is implicit.
-			resource.Entries = append(resource.Entries[:*index], resource.Entries[*index+1:]...)
-			resource.Labels = assignLabels(&resource)
 
-			err := c.client.Update(ctx, &resource)
-			if err != nil && apierrors.IsNotFound(err) {
-				return false, &database.ErrNotFound{ID: id}
-			} else if apierrors.IsConflict(err) {
-				return true, err // RETRY this!
-			} else if err != nil {
-				return false, err
-			}
+			removed = true
 		}
 
 		return false, nil
 	})
 
 	return err
+}
+
+// storedCopies returns the Kubernetes objects that store an entry for id, the current (SHA-256) object first. An entry
+// has two copies while it is moved to its current object name, after an interrupted move, or when an older writer
+// created a second copy. exists reports whether either object exists.
+func (c *APIServerClient) storedCopies(ctx context.Context, id resources.ID) ([]ucpv1alpha1.Resource, bool, error) {
+	copies := []ucpv1alpha1.Resource{}
+	exists := false
+	for _, name := range []string{resourceName(id), legacyResourceName(id)} {
+		resource := ucpv1alpha1.Resource{}
+		err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: name}, &resource)
+		if apierrors.IsNotFound(err) {
+			continue
+		} else if err != nil {
+			return nil, false, err
+		}
+
+		exists = true
+		if findIndex(&resource, id) != nil {
+			copies = append(copies, resource)
+		}
+	}
+
+	if len(copies) > 0 {
+		return copies, exists, nil
+	}
+
+	// The migration may have moved the entry from the legacy object to the current object between the two reads. It
+	// writes the current copy before it removes the legacy copy, so one more read of the current object finds it.
+	current := ucpv1alpha1.Resource{}
+	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, &current)
+	if apierrors.IsNotFound(err) {
+		return copies, exists, nil
+	} else if err != nil {
+		return nil, false, err
+	}
+
+	if findIndex(&current, id) != nil {
+		copies = append(copies, current)
+	}
+
+	return copies, true, nil
 }
 
 // Save saves an object to the store, or updates an existing object if it already exists, and returns an error if the operation fails.
@@ -504,7 +543,8 @@ func makeResourceName(id resources.ID, hash string) string {
 // entry can share its collision bucket. The returned error is NotFound only if neither object exists. See
 // https://github.com/radius-project/radius/issues/8084.
 func (c *APIServerClient) getResourceWithFallback(ctx context.Context, id resources.ID, resource *ucpv1alpha1.Resource) error {
-	currentErr := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, resource)
+	currentKey := runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}
+	currentErr := c.get(ctx, currentKey, resource)
 	if currentErr != nil && !apierrors.IsNotFound(currentErr) {
 		return currentErr
 	}
@@ -521,7 +561,16 @@ func (c *APIServerClient) getResourceWithFallback(ctx context.Context, id resour
 		*resource = legacy
 		return nil
 	}
-	if currentErr == nil {
+
+	// The migration may have moved the entry from the legacy object to the current object between the two reads. It
+	// writes the current copy before it removes the legacy copy, so one more read of the current object finds it.
+	recheck := ucpv1alpha1.Resource{}
+	recheckErr := c.get(ctx, currentKey, &recheck)
+	if recheckErr != nil && !apierrors.IsNotFound(recheckErr) {
+		return recheckErr
+	}
+	if recheckErr == nil {
+		*resource = recheck
 		return nil
 	}
 	if legacyErr == nil {

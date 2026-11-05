@@ -4,7 +4,7 @@ templates:
 release:
   namespace: radius-system
 tests:
-  - it: should limit UCP to the migration status ConfigMap in its namespace
+  - it: should limit UCP to the migration status ConfigMap and Lease in its namespace
     documentSelector:
       path: kind
       value: Role
@@ -33,6 +33,21 @@ tests:
               verbs:
                 - get
                 - patch
+            - apiGroups:
+                - coordination.k8s.io
+              resources:
+                - leases
+              verbs:
+                - create
+            - apiGroups:
+                - coordination.k8s.io
+              resources:
+                - leases
+              resourceNames:
+                - radius-sha256-migration-ucp
+              verbs:
+                - get
+                - update
 
   - it: should bind the Role to the UCP service account
     documentSelector:

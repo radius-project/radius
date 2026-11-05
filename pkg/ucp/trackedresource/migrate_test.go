@@ -282,6 +282,87 @@ func Test_MigrateLegacyEntries_CurrentCreatedConcurrently(t *testing.T) {
 	}
 }
 
+// deletingClient deletes the legacy entry right after the migration saves the current entry, as the updater does when
+// it resolved the legacy entry before the move and then found the resource gone.
+type deletingClient struct {
+	database.Client
+	currentID string
+	legacyID  string
+
+	// recreate saves the current entry again after the delete, as when the resource is created again.
+	recreate bool
+	done     bool
+}
+
+func (c *deletingClient) Save(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
+	if err := c.Client.Save(ctx, obj, options...); err != nil {
+		return err
+	}
+	if c.done || obj.ID != c.currentID {
+		return nil
+	}
+
+	c.done = true
+	if err := c.Client.Delete(ctx, c.legacyID); err != nil {
+		return err
+	}
+	if !c.recreate {
+		return nil
+	}
+
+	entry := datamodel.GenericResource{}
+	if err := obj.As(&entry); err != nil {
+		return err
+	}
+	entry.AsyncProvisioningState = v1.ProvisioningStateAccepted
+	return c.Client.Save(ctx, &database.Object{ID: c.currentID, Data: entry})
+}
+
+func Test_MigrateLegacyEntries_DeletedDuringMove(t *testing.T) {
+	t.Parallel()
+	original := resources.MustParse(migrateGroup + "/providers/Applications.Test/testResources/my-resource")
+	for storeName, newStore := range newStores(t) {
+		for _, tt := range []struct {
+			name      string
+			exclusive bool
+			recreate  bool
+			expected  hashmigration.Result
+
+			// currentRemains records that the entry under the current tracking ID must remain.
+			currentRemains bool
+		}{
+			{name: "exclusive", exclusive: true},
+			{name: "exclusive and created again", exclusive: true, recreate: true, currentRemains: true},
+			// Without exclusion, the delete cannot be told apart from another replica moving the entry.
+			{name: "not exclusive", expected: hashmigration.Result{Remaining: 1}, currentRemains: true},
+		} {
+			t.Run(storeName+"/"+tt.name, func(t *testing.T) {
+				t.Parallel()
+				store := newStore()
+				require.NoError(t, store.Save(t.Context(), &database.Object{ID: migrateGroup, Data: map[string]any{"name": "test-group"}}))
+				saveTracked(t, store, original, LegacyIDFor(original), v1.ProvisioningStateSucceeded)
+				client := &deletingClient{Client: store, currentID: IDFor(original).String(), legacyID: LegacyIDFor(original).String(), recreate: tt.recreate}
+				ctx := t.Context()
+				if tt.exclusive {
+					ctx = hashmigration.WithExclusive(ctx)
+				}
+
+				result, err := MigrateLegacyEntries(ctx, client)
+				require.NoError(t, err)
+				result.Message = ""
+				require.Equal(t, tt.expected, result)
+				require.True(t, client.done)
+				require.Nil(t, readTracked(t, store, LegacyIDFor(original)))
+				if tt.currentRemains {
+					require.NotNil(t, readTracked(t, store, IDFor(original)))
+				} else {
+					require.Nil(t, readTracked(t, store, IDFor(original)), "the move must not bring back the entry of a deleted resource")
+				}
+			})
+		}
+	}
+}
+
 type failingQueryClient struct {
 	database.Client
 	err error

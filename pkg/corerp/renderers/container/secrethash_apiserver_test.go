@@ -90,7 +90,7 @@ func Test_RecordSecretHashes_APIServer(t *testing.T) {
 
 	recorded, err := client.AppsV1().Deployments(secretHashTestNamespace).Get(ctx, secretHashTestName, metav1.GetOptions{})
 	require.NoError(t, err)
-	require.Equal(t, current, recorded.Annotations[kubernetes.AnnotationSecretHashSHA256])
+	require.Equal(t, kubernetes.RecordSecretHash(legacy, current), recorded.Annotations[kubernetes.AnnotationSecretHashSHA256])
 
 	// Kubernetes advances the generation of a Deployment for annotation changes too, because the Deployment
 	// controller copies them to the ReplicaSet. The pod template, and so the ReplicaSet and its pods, must not change.
@@ -105,7 +105,7 @@ func Test_RecordSecretHashes_APIServer(t *testing.T) {
 	apply(legacy)
 	reapplied, err := client.AppsV1().Deployments(secretHashTestNamespace).Get(ctx, secretHashTestName, metav1.GetOptions{})
 	require.NoError(t, err)
-	require.Equal(t, current, reapplied.Annotations[kubernetes.AnnotationSecretHashSHA256])
+	require.Equal(t, kubernetes.RecordSecretHash(legacy, current), reapplied.Annotations[kubernetes.AnnotationSecretHashSHA256])
 	require.Equal(t, recorded.Generation, reapplied.Generation, "reapplying an unchanged Deployment must not change it")
 	require.Equal(t, before.Spec, reapplied.Spec)
 

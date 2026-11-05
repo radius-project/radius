@@ -90,3 +90,28 @@ func Test_IsLegacySecretHash(t *testing.T) {
 		require.Equal(t, expected, IsLegacySecretHash(value), value)
 	}
 }
+
+func Test_RecordedSecretHash(t *testing.T) {
+	t.Parallel()
+
+	data := map[string][]byte{"KEY": []byte("value")}
+	legacy, current := LegacyHashSecretData(data), HashSecretData(data)
+
+	recordedLegacy, recorded, ok := ParseRecordedSecretHash(RecordSecretHash(legacy, current))
+	require.True(t, ok)
+	require.Equal(t, legacy, recordedLegacy)
+	require.Equal(t, current, recorded)
+
+	for _, value := range []string{
+		"",
+		current,
+		legacy,
+		legacy + "=",
+		"=" + current,
+		legacy + "=" + legacy,
+		strings.ToUpper(legacy) + "=" + current,
+	} {
+		_, _, ok := ParseRecordedSecretHash(value)
+		require.False(t, ok, value)
+	}
+}

@@ -33,6 +33,9 @@ type recordingReporter struct {
 	mu       sync.Mutex
 	statuses map[string][]Status
 	err      error
+
+	// failures is the number of reports that fail before reports succeed.
+	failures int
 }
 
 func (r *recordingReporter) Report(_ context.Context, key string, status Status) error {
@@ -42,6 +45,10 @@ func (r *recordingReporter) Report(_ context.Context, key string, status Status)
 		r.statuses = map[string][]Status{}
 	}
 	r.statuses[key] = append(r.statuses[key], status)
+	if r.failures > 0 {
+		r.failures--
+		return errors.New("the ConfigMap is unavailable")
+	}
 	return r.err
 }
 
@@ -140,6 +147,97 @@ func Test_Service_RunPass_AccumulatesMigratedValues(t *testing.T) {
 	status := reporter.last("c.s")
 	require.Equal(t, StateComplete, status.State)
 	require.Equal(t, Result{Migrated: 5, Deduplicated: 1, Skipped: 1}, status.Result)
+}
+
+func Test_Service_RunPass_RecordsFinalStatus(t *testing.T) {
+	t.Parallel()
+	runs := map[string]int{}
+	reporter := &recordingReporter{failures: 1}
+	service := NewService(Options{Component: "c", Reporter: reporter, Steps: []Step{
+		StepFunc{StepName: "done", Fn: func(context.Context) (Result, error) { runs["done"]++; return Result{Migrated: 1}, nil }},
+		StepFunc{StepName: "other", Fn: func(context.Context) (Result, error) { runs["other"]++; return Result{}, nil }},
+	}})
+
+	// The final status of the first step is not recorded, so the migration is not complete yet.
+	require.False(t, service.RunPass(t.Context()))
+	require.Equal(t, map[string]int{"done": 1, "other": 1}, runs)
+
+	// The next pass records the status without running the steps again.
+	require.True(t, service.RunPass(t.Context()))
+	require.Equal(t, map[string]int{"done": 1, "other": 1}, runs, "a step that is done must not run again")
+	require.Len(t, reporter.statuses["c.done"], 2)
+	require.Len(t, reporter.statuses["c.other"], 1)
+	status := reporter.last("c.done")
+	require.Equal(t, StateComplete, status.State)
+	require.Equal(t, 1, status.Migrated)
+
+	require.True(t, service.RunPass(t.Context()))
+	require.Len(t, reporter.statuses["c.done"], 2, "a recorded final status is not recorded again")
+}
+
+func Test_Service_Run_RetriesUntilStatusIsRecorded(t *testing.T) {
+	t.Parallel()
+	reporter := &recordingReporter{failures: 2}
+	service := NewService(Options{Component: "c", Reporter: reporter, RetryInterval: time.Millisecond, MaxRetryInterval: 2 * time.Millisecond,
+		Steps: []Step{StepFunc{StepName: "s", Fn: func(context.Context) (Result, error) { return Result{Migrated: 1}, nil }}}})
+
+	require.NoError(t, service.Run(t.Context()))
+	require.Len(t, reporter.statuses["c.s"], 3)
+	require.Equal(t, StateComplete, reporter.last("c.s").State)
+}
+
+// funcExclusion is an Exclusion that runs fn with the context it is given, or fails.
+type funcExclusion struct {
+	err  error
+	runs int
+}
+
+func (e *funcExclusion) Run(ctx context.Context, fn func(context.Context)) error {
+	e.runs++
+	if e.err != nil {
+		return e.err
+	}
+	fn(ctx)
+	return nil
+}
+
+func Test_Service_Exclusion(t *testing.T) {
+	t.Parallel()
+
+	newService := func(exclusion Exclusion, observed *[]bool) *Service {
+		return NewService(Options{Component: "c", Exclusion: exclusion, RetryInterval: time.Millisecond, MaxRetryInterval: time.Millisecond,
+			Steps: []Step{StepFunc{StepName: "s", Fn: func(ctx context.Context) (Result, error) {
+				*observed = append(*observed, IsExclusive(ctx))
+				return Result{}, nil
+			}}}})
+	}
+
+	t.Run("steps run exclusively", func(t *testing.T) {
+		t.Parallel()
+		observed := []bool{}
+		exclusion := &funcExclusion{}
+		require.NoError(t, newService(exclusion, &observed).Run(t.Context()))
+		require.Equal(t, []bool{true}, observed)
+		require.Equal(t, 1, exclusion.runs)
+	})
+
+	t.Run("without exclusion", func(t *testing.T) {
+		t.Parallel()
+		observed := []bool{}
+		require.NoError(t, newService(nil, &observed).Run(t.Context()))
+		require.Equal(t, []bool{false}, observed)
+	})
+
+	t.Run("exclusion fails", func(t *testing.T) {
+		t.Parallel()
+		observed := []bool{}
+		exclusion := &funcExclusion{err: errors.New("invalid configuration")}
+		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+		defer cancel()
+		require.ErrorIs(t, newService(exclusion, &observed).Run(ctx), context.DeadlineExceeded)
+		require.Empty(t, observed, "steps must not run without the exclusion")
+		require.Greater(t, exclusion.runs, 1, "the exclusion is retried")
+	})
 }
 
 func Test_Service_Run_StopsOnCancellation(t *testing.T) {

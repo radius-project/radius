@@ -105,7 +105,10 @@ type Client interface {
 | `Delete` | Removes a single resource by ID. Supports OCC via an optional ETag. |
 | `Save` | Creates or updates a resource (logical PUT). Computes and sets the ETag on the object after writing. Supports OCC via an optional ETag. |
 
-E
+Every provider also implements the optional `database.Enumerator` interface,
+whose `Enumerate` method visits every stored object regardless of scope or
+type. Background maintenance, such as the SHA-256 migration of Terraform state
+names, uses it instead of a `Query`, which requires a resource type.
 
 #### Key Types
 
@@ -226,8 +229,15 @@ Radius runs on Kubernetes.
 
 **How it works:**
 
--
--
+- Each UCP resource is stored as an entry inside a Kubernetes `Resource` object.
+  The Kubernetes object name is derived from `<resource-name>.<hash-of-id>`,
+  where the hash is a truncated SHA-256 hash of the resource ID. Older versions
+  of Radius used a SHA-1 hash.
+- Lookups prefer the entry under its current (SHA-256) object name and fall back
+  to the legacy (SHA-1) object name. UCP moves legacy entries to their current
+  object names in the background (`MigrateLegacyNames` in `migrate.go`). An
+  entry being moved can have a copy under each name: reads and queries return
+  the current copy, and a delete removes both.
 - Labels on the Kubernetes object encode the root scope segments and resource
   type, enabling efficient list queries via label selectors.
 - Hash collisions are handled by storing multiple entries in a single Kubernetes

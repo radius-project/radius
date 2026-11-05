@@ -74,23 +74,35 @@ func Test_ResolveTrackingEntry(t *testing.T) {
 		currentErr error
 		legacy     *database.Object
 		legacyErr  error
-		wantID     resources.ID
-		want       *database.Object
-		wantErr    error
+
+		// recheck and recheckErr are returned when the current ID is read again after both reads found nothing.
+		recheck    *database.Object
+		recheckErr error
+
+		wantID  resources.ID
+		want    *database.Object
+		wantErr error
 	}{
 		{name: "current only", current: current, wantID: currentID, want: current},
 		{name: "both present prefer current", current: current, legacy: legacy, wantID: currentID, want: current},
 		{name: "legacy only", currentErr: notFound, legacy: legacy, wantID: legacyID, want: legacy},
-		{name: "neither present", currentErr: notFound, legacyErr: notFound, wantID: currentID},
+		{name: "neither present", currentErr: notFound, legacyErr: notFound, recheckErr: notFound, wantID: currentID},
+		{name: "moved between the reads", currentErr: notFound, legacyErr: notFound, recheck: current, wantID: currentID, want: current},
 		{name: "current read error", currentErr: failure, wantID: currentID, wantErr: failure},
 		{name: "legacy read error", currentErr: notFound, legacyErr: failure, wantID: currentID, wantErr: failure},
+		{name: "recheck error", currentErr: notFound, legacyErr: notFound, recheckErr: failure, wantID: currentID, wantErr: failure},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			client := database.NewMockClient(gomock.NewController(t))
 			first := client.EXPECT().Get(gomock.Any(), currentID.String()).Return(tt.current, tt.currentErr)
 			if errors.Is(tt.currentErr, notFound) {
-				client.EXPECT().Get(gomock.Any(), legacyID.String()).Return(tt.legacy, tt.legacyErr).After(first.Call)
+				second := client.EXPECT().Get(gomock.Any(), legacyID.String()).Return(tt.legacy, tt.legacyErr).After(first.Call)
+				if errors.Is(tt.legacyErr, notFound) {
+					// The migration saves the current entry before it deletes the legacy entry, so a move between the
+					// two reads is found by reading the current ID again.
+					client.EXPECT().Get(gomock.Any(), currentID.String()).Return(tt.recheck, tt.recheckErr).After(second)
+				}
 			}
 			id, obj, err := ResolveTrackingEntry(t.Context(), client, testID)
 			require.ErrorIs(t, err, tt.wantErr)
@@ -103,6 +115,7 @@ func Test_ResolveTrackingEntry(t *testing.T) {
 func Test_Update(t *testing.T) {
 	t.Run("successful update", func(t *testing.T) {
 		updater, databaseClient, roundTripper := setupUpdater(t)
+		newEntry := true
 
 		apiVersion := "1234"
 		resource := map[string]any{
@@ -115,7 +128,7 @@ func Test_Update(t *testing.T) {
 		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
-			Times(1)
+			Times(2)
 		databaseClient.EXPECT().
 			Get(gomock.Any(), LegacyIDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
@@ -128,6 +141,7 @@ func Test_Update(t *testing.T) {
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 				require.Equal(t, IDFor(testID).String(), obj.ID)
+				require.Equal(t, newEntry, database.NewSaveConfig(options...).CreateOnly, "a new entry must not overwrite one created concurrently")
 
 				dm := obj.Data.(*datamodel.GenericResource)
 				require.Equal(t, IDFor(testID).String(), dm.ID)
@@ -143,6 +157,7 @@ func Test_Update(t *testing.T) {
 
 	t.Run("retry then success", func(t *testing.T) {
 		updater, databaseClient, roundTripper := setupUpdater(t)
+		newEntry := true
 		updater.AttemptCount = 2
 
 		apiVersion := "1234"
@@ -161,7 +176,7 @@ func Test_Update(t *testing.T) {
 		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
-			Times(1)
+			Times(2)
 		databaseClient.EXPECT().
 			Get(gomock.Any(), LegacyIDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
@@ -174,6 +189,7 @@ func Test_Update(t *testing.T) {
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 				require.Equal(t, IDFor(testID).String(), obj.ID)
+				require.Equal(t, newEntry, database.NewSaveConfig(options...).CreateOnly, "a new entry must not overwrite one created concurrently")
 
 				dm := obj.Data.(*datamodel.GenericResource)
 				require.Equal(t, IDFor(testID).String(), dm.ID)
@@ -203,7 +219,7 @@ func Test_Update(t *testing.T) {
 		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
-			Times(1)
+			Times(2)
 		databaseClient.EXPECT().
 			Get(gomock.Any(), LegacyIDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
@@ -230,7 +246,7 @@ func Test_Update(t *testing.T) {
 		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
-			Times(1)
+			Times(2)
 		databaseClient.EXPECT().
 			Get(gomock.Any(), LegacyIDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
@@ -273,6 +289,7 @@ func Test_run(t *testing.T) {
 
 	t.Run("successful update (new resource)", func(t *testing.T) {
 		updater, databaseClient, roundTripper := setupUpdater(t)
+		newEntry := true
 
 		resource := map[string]any{
 			"id":         testID.String(),
@@ -284,7 +301,7 @@ func Test_run(t *testing.T) {
 		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
-			Times(1)
+			Times(2)
 		databaseClient.EXPECT().
 			Get(gomock.Any(), LegacyIDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
@@ -297,6 +314,7 @@ func Test_run(t *testing.T) {
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 				require.Equal(t, IDFor(testID).String(), obj.ID)
+				require.Equal(t, newEntry, database.NewSaveConfig(options...).CreateOnly, "a new entry must not overwrite one created concurrently")
 
 				dm := obj.Data.(*datamodel.GenericResource)
 				require.Equal(t, IDFor(testID).String(), dm.ID)
@@ -359,6 +377,7 @@ func Test_run(t *testing.T) {
 
 	t.Run("successful update (existing resource)", func(t *testing.T) {
 		updater, databaseClient, roundTripper := setupUpdater(t)
+		newEntry := false
 
 		resource := map[string]any{
 			"id":         testID.String(),
@@ -383,6 +402,7 @@ func Test_run(t *testing.T) {
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 				require.Equal(t, IDFor(testID).String(), obj.ID)
+				require.Equal(t, newEntry, database.NewSaveConfig(options...).CreateOnly, "a new entry must not overwrite one created concurrently")
 
 				dm := obj.Data.(*datamodel.GenericResource)
 				require.Equal(t, IDFor(testID).String(), dm.ID)
@@ -400,24 +420,56 @@ func Test_run(t *testing.T) {
 		for _, tt := range []struct {
 			name string
 			id   resources.ID
-		}{{"current", IDFor(testID)}, {"legacy", LegacyIDFor(testID)}} {
+
+			// stale records that an interrupted migration left an entry under the other tracking ID.
+			stale bool
+
+			// staleErr is returned when the entry under the other tracking ID is deleted.
+			staleErr error
+		}{
+			{name: "current", id: IDFor(testID)},
+			{name: "legacy", id: LegacyIDFor(testID)},
+			{name: "both tracking IDs", id: IDFor(testID), stale: true},
+			{name: "other entry updated concurrently", id: IDFor(testID), stale: true, staleErr: &database.ErrConcurrency{}},
+		} {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 				updater, databaseClient, roundTripper := setupUpdater(t)
 				etag := "some-etag"
 				dm := datamodel.GenericResourceFromID(testID, tt.id)
 				dm.Properties.APIVersion = apiVersion
-				if tt.name == "legacy" {
+				other := LegacyIDFor(testID)
+				if tt.id.String() == other.String() {
+					other = IDFor(testID)
 					databaseClient.EXPECT().Get(gomock.Any(), IDFor(testID).String()).Return(nil, &database.ErrNotFound{})
 				}
 				databaseClient.EXPECT().Get(gomock.Any(), tt.id.String()).Return(&database.Object{ETag: etag, Data: dm}, nil)
 				roundTripper.RespondWithJSON(t, http.StatusNotFound, &v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeNotFound}})
-				databaseClient.EXPECT().Delete(gomock.Any(), tt.id.String(), gomock.Any()).
+				deleted := databaseClient.EXPECT().Delete(gomock.Any(), tt.id.String(), gomock.Any()).
 					DoAndReturn(func(_ context.Context, _ string, options ...database.DeleteOptions) error {
 						require.Equal(t, etag, database.NewDeleteConfig(options...).ETag)
 						return nil
 					})
-				require.NoError(t, updater.run(t.Context(), testID, testURL, apiVersion))
+
+				// The entry is deleted under the other tracking ID too, so it does not keep listing the deleted resource.
+				if !tt.stale {
+					databaseClient.EXPECT().Get(gomock.Any(), other.String()).Return(nil, &database.ErrNotFound{}).After(deleted.Call)
+					require.NoError(t, updater.run(t.Context(), testID, testURL, apiVersion))
+					return
+				}
+
+				read := databaseClient.EXPECT().Get(gomock.Any(), other.String()).Return(&database.Object{ID: other.String(), ETag: "stale-etag"}, nil).After(deleted.Call)
+				databaseClient.EXPECT().Delete(gomock.Any(), other.String(), gomock.Any()).
+					DoAndReturn(func(_ context.Context, _ string, options ...database.DeleteOptions) error {
+						require.Equal(t, "stale-etag", database.NewDeleteConfig(options...).ETag)
+						return tt.staleErr
+					}).After(read)
+				err := updater.run(t.Context(), testID, testURL, apiVersion)
+				if tt.staleErr != nil {
+					require.ErrorIs(t, err, tt.staleErr, "a concurrent update of the other entry is retried")
+				} else {
+					require.NoError(t, err)
+				}
 			})
 		}
 	})
@@ -437,7 +489,7 @@ func Test_run(t *testing.T) {
 		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
-			Times(1)
+			Times(2)
 		databaseClient.EXPECT().
 			Get(gomock.Any(), LegacyIDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).

@@ -112,14 +112,31 @@ func Test_SecretHashTransformer(t *testing.T) {
 		},
 		{
 			name:     "legacy hash with recorded current hash",
-			live:     []client.Object{secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, map[string]string{kubernetes.AnnotationSecretHashSHA256: current})},
+			live:     []client.Object{secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, map[string]string{kubernetes.AnnotationSecretHashSHA256: kubernetes.RecordSecretHash(legacy, current)})},
 			expected: legacy,
 		},
 		{
 			// The recorded hash is authoritative, so a later release can drop the legacy hash function.
 			name:     "legacy hash with recorded hash of other data",
-			live:     []client.Object{secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, map[string]string{kubernetes.AnnotationSecretHashSHA256: kubernetes.HashSecretData(changed)}), secretHashTestSecret(secretHashTestName, data)},
+			live:     []client.Object{secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, map[string]string{kubernetes.AnnotationSecretHashSHA256: kubernetes.RecordSecretHash(legacy, kubernetes.HashSecretData(changed))}), secretHashTestSecret(secretHashTestName, data)},
 			expected: current,
+		},
+		{
+			// A rollback deployed the changed data under its legacy hash and kept the record of the original data. When
+			// the original data is deployed again, the pods must restart to use it.
+			name:     "record of another legacy hash after a rollback",
+			live:     []client.Object{secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: staleLegacy}, map[string]string{kubernetes.AnnotationSecretHashSHA256: kubernetes.RecordSecretHash(legacy, current)}), secretHashTestSecret(secretHashTestName, data)},
+			expected: current,
+		},
+		{
+			name:     "record of another legacy hash of unchanged data",
+			live:     []client.Object{secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, map[string]string{kubernetes.AnnotationSecretHashSHA256: kubernetes.RecordSecretHash(staleLegacy, kubernetes.HashSecretData(changed))}), secretHashTestSecret(secretHashTestName, data)},
+			expected: legacy,
+		},
+		{
+			name:     "record without its legacy hash",
+			live:     []client.Object{secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, map[string]string{kubernetes.AnnotationSecretHashSHA256: kubernetes.HashSecretData(changed)}), secretHashTestSecret(secretHashTestName, data)},
+			expected: legacy,
 		},
 		{
 			name:         "secret named by its output resource",
@@ -233,6 +250,8 @@ func Test_RecordSecretHashes(t *testing.T) {
 	data := map[string][]byte{"CONNECTION_REDIS_PASSWORD": []byte("password")}
 	changed := map[string][]byte{"CONNECTION_REDIS_PASSWORD": []byte("rotated")}
 	current, legacy := kubernetes.HashSecretData(data), kubernetes.LegacyHashSecretData(data)
+	record := kubernetes.RecordSecretHash(legacy, current)
+	staleRecord := kubernetes.RecordSecretHash(kubernetes.LegacyHashSecretData(changed), kubernetes.HashSecretData(changed))
 
 	for _, tt := range []struct {
 		name     string
@@ -244,7 +263,14 @@ func Test_RecordSecretHashes(t *testing.T) {
 			name:     "legacy hash of unchanged secret",
 			objects:  []runtime.Object{secretHashTestLabeled(secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, nil)), secretHashTestSecret(secretHashTestName, data)},
 			expected: hashmigration.Result{Migrated: 1},
-			recorded: current,
+			recorded: record,
+		},
+		{
+			// A rollback deployed other data and kept the record of the data deployed before it.
+			name:     "record of another legacy hash",
+			objects:  []runtime.Object{secretHashTestLabeled(secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, map[string]string{kubernetes.AnnotationSecretHashSHA256: staleRecord})), secretHashTestSecret(secretHashTestName, data)},
+			expected: hashmigration.Result{Migrated: 1},
+			recorded: record,
 		},
 		{
 			name:     "legacy hash of changed secret",
@@ -262,8 +288,8 @@ func Test_RecordSecretHashes(t *testing.T) {
 		},
 		{
 			name:     "already recorded",
-			objects:  []runtime.Object{secretHashTestLabeled(secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, map[string]string{kubernetes.AnnotationSecretHashSHA256: current}))},
-			recorded: current,
+			objects:  []runtime.Object{secretHashTestLabeled(secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, map[string]string{kubernetes.AnnotationSecretHashSHA256: record}))},
+			recorded: record,
 		},
 		{
 			name:    "deployment Radius does not manage",
