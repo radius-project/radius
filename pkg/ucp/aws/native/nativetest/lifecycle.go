@@ -106,7 +106,13 @@ func (l Lifecycle) Run(t *testing.T) string {
 	if l.SkipDelete {
 		return identifier
 	}
+	managed := []map[string]any{l.Properties}
+	if l.Update != nil {
+		managed = append(managed, l.Update)
+	}
 	switch handler := h.(type) {
+	case native.ScopedDeleter:
+		err = handler.DeleteScoped(ctx, region, identifier, managed)
 	case native.DeletePreparer:
 		token, tokenErr := handler.DeleteToken(ctx, region, identifier)
 		require.NoError(t, tokenErr)
@@ -121,7 +127,17 @@ func (l Lifecycle) Run(t *testing.T) string {
 
 func (l Lifecycle) read(t *testing.T, ctx context.Context, identifier string) map[string]any {
 	t.Helper()
-	properties, err := l.Handler.Read(ctx, awsreplay.Region, identifier)
+	var properties map[string]any
+	var err error
+	if scoped, ok := l.Handler.(native.ScopedReader); ok {
+		managed := []map[string]any{l.Properties}
+		if l.Update != nil {
+			managed = append(managed, l.Update)
+		}
+		properties, err = scoped.ReadScoped(ctx, awsreplay.Region, identifier, managed)
+	} else {
+		properties, err = l.Handler.Read(ctx, awsreplay.Region, identifier)
+	}
 	require.NoError(t, err)
 	return properties
 }

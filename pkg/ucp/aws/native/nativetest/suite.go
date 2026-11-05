@@ -134,10 +134,15 @@ type Suite struct {
 	Calls     int
 	FailCall  func(handler native.Handler, call int, err error)
 
+	// RejectedCalls is how many of the first calls of MultiCall only remove members, for a handler whose resource is
+	// some members of a parent (native.ScopedReader). Such a handler reports a failure in them as rejected, even when
+	// the response is lost, so the record keeps every member it may still have to remove.
+	RejectedCalls int
+
 	// CloudControlCreate, when set, returns the identifier and properties the suite's Cloud Control gives a new
-	// resource, for a type whose identifier includes a value AWS assigns, such as an association ID. When it is nil,
-	// the suite's Cloud Control names a resource with the handler's identifier encoding (native.IdentifierEncoder) when
-	// it has one, and with IdentifierProperty otherwise.
+	// resource, for a type whose identifier includes a value AWS assigns, such as a Client VPN association's
+	// AssociationId. When it is nil, the suite's Cloud Control names a resource with the handler's identifier
+	// encoding (native.IdentifierEncoder) when it has one, and with IdentifierProperty otherwise.
 	CloudControlCreate func(properties map[string]any) (string, map[string]any)
 
 	// IdentifierProperties, when set, returns the properties that give identifier, for `existing` of a type whose
@@ -148,6 +153,11 @@ type Suite struct {
 	// can't create it anywhere, and the cases that switch between handlers don't apply. A handler whose identifier
 	// UCP can't rebuild from what Cloud Control returns sets it.
 	NoCloudControl bool
+
+	// Outside adds a member to the parent that properties name, as if someone added it outside Radius, for a handler
+	// whose resource is some members of a parent (native.ScopedReader). It returns whether the member is still there.
+	// It is nil for other handlers.
+	Outside func(store *awsfake.CloudControl, properties map[string]any) func() bool
 
 	// Duplicates is true when AWS lets more than one resource have the values the handler's Find searches by, for a
 	// handler whose Recovery is native.RecoverBySearch.
@@ -171,6 +181,8 @@ func Run(t *testing.T, s Suite) {
 	t.Run("value AWS returns in another form", func(t *testing.T) { s.otherForm(t) })
 	t.Run("identifier of another product", func(t *testing.T) { s.otherProduct(t) })
 	t.Run("update fails between calls", func(t *testing.T) { s.multiCall(t) })
+	t.Run("member added outside Radius", func(t *testing.T) { s.outsideMember(t) })
+	t.Run("update interrupted before its first call", func(t *testing.T) { s.interruptedScopedUpdate(t) })
 	t.Run("delete again after the response is lost", func(t *testing.T) { s.deleteTokenRetry(t) })
 	nameProperty := s.NewHandler(awsfake.NewCloudControl()).Options().NameProperty
 	for _, reached := range []bool{true, false} {
@@ -545,7 +557,8 @@ func (s Suite) lostCreateDuplicates(t *testing.T) {
 }
 
 // lostCreateFailedDelete loses a create that reached AWS, and deletes the alias. The delete finds the resource, and
-// its call to AWS fails, so the record keeps what the create may have applied. The next delete removes it all.
+// its call to AWS fails, so the record keeps what the create may have applied. The next delete removes it all, including
+// the members of a handler whose resource is some members of a parent (native.ScopedDeleter).
 func (s Suite) lostCreateFailedDelete(t *testing.T) {
 	h := s.newHarness(t)
 	if od := h.onDelete(); od != schemas.OnDeleteDelete {
@@ -785,6 +798,33 @@ func (s Suite) otherProduct(t *testing.T) {
 	require.Equal(t, before, h.cc.Resource(s.TypeName, identifier), "UCP never touches the other product's resource")
 }
 
+// interruptedScopedUpdate stops UCP after it reserves the update to MultiCall and before the first call, for a
+// handler whose resource is some members of a parent (native.ScopedReader), and deploys MultiCall again. The record
+// still owns the members only the last deploy had, so the redeploy removes them.
+func (s Suite) interruptedScopedUpdate(t *testing.T) {
+	if s.RejectedCalls == 0 {
+		t.Skip("the handler's resource is not some members of a parent, or its update removes none")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	id, err := resources.ParseResource(h.path())
+	require.NoError(t, err)
+	store := records.NewStore(h.db)
+	rec, etag, err := store.Get(t.Context(), id)
+	require.NoError(t, err)
+	rec.Properties.PendingOperation = records.OperationUpdate
+	rec.Properties.PendingLastApplied = s.readable(s.MultiCall)
+	rec.SetProvisioningState(records.StateOf(records.OperationUpdate))
+	_, err = store.Save(t.Context(), rec, etag)
+	require.NoError(t, err)
+
+	defer func() { records.Now = time.Now }()
+	records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+	h.deploy(s.MultiCall)
+	records.Now = time.Now
+	requireSubset(t, s.readable(s.MultiCall), h.stored())
+}
+
 // multiCall fails an update that makes several AWS calls before each call and after the last one, with an error
 // AWS returns and with a lost response, and deploys again. The record keeps the pending values as possibly applied,
 // except when AWS rejected the first call, and makes them last-applied when every call took effect. The next deploy
@@ -816,6 +856,8 @@ func (s Suite) multiCall(t *testing.T) {
 				require.GreaterOrEqual(t, resp.status, http.StatusBadRequest, resp.raw)
 				applied := h.record().Properties.LastApplied
 				switch {
+				case call < s.RejectedCalls:
+					require.Equal(t, before, applied, "the call only removed members, so the record keeps every member it may still have to remove")
 				case call == 0 && failure.err != errLost:
 					require.Equal(t, before, applied, "AWS rejected the first call, so the pending values are dropped")
 				case call == s.Calls:
@@ -842,6 +884,29 @@ func (s Suite) multiCall(t *testing.T) {
 			})
 		}
 	}
+}
+
+// outsideMember adds a member to the parent outside Radius, before the first deploy, and checks that a take-over, an
+// update, and a delete all leave it in place.
+func (s Suite) outsideMember(t *testing.T) {
+	if s.Outside == nil {
+		t.Skip("the resource is not some members of a parent")
+	}
+	h := s.newHarness(t)
+	there := s.Outside(h.cc, s.Properties)
+	h.deploy(s.Properties)
+	require.True(t, there(), "a take-over keeps a member added outside Radius")
+
+	h.deploy(s.Changed)
+	require.True(t, there(), "an update keeps a member added outside Radius")
+
+	resp := h.get()
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	requireSubset(t, s.readable(s.Changed), resp.properties())
+
+	h.remove()
+	require.Nil(t, h.record())
+	require.True(t, there(), "a delete keeps a member added outside Radius")
 }
 
 // deleteTokenRetry loses the response of a delete that reached AWS, and deletes again. UCP saved the delete token on
@@ -1482,8 +1547,28 @@ func (r *recorder) lostDelete(call func() error) error {
 	return call()
 }
 
-// The recorder always has the methods of native.DeletePreparer, so the registry and UCP see them whatever the handler
-// under test has. DeleteToken returns "" for a handler without them, so UCP never calls DeleteWithToken.
+// The recorder always has the methods of native.ScopedReader, native.ScopedDeleter, and native.DeletePreparer, so the
+// registry and UCP see them whatever the handler under test has. A handler without them gets the call UCP would have
+// made instead: Read for ReadScoped and Delete for DeleteScoped. DeleteToken returns "" for such a handler, so UCP
+// never calls DeleteWithToken.
+
+func (r *recorder) ReadScoped(ctx context.Context, region string, identifier string, managed []map[string]any) (map[string]any, error) {
+	r.note("Read")
+	if scoped, ok := r.Handler.(native.ScopedReader); ok {
+		return scoped.ReadScoped(ctx, region, identifier, managed)
+	}
+	return r.Handler.Read(ctx, region, identifier)
+}
+
+func (r *recorder) DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error {
+	r.note("Delete")
+	return r.lostDelete(func() error {
+		if scoped, ok := r.Handler.(native.ScopedDeleter); ok {
+			return scoped.DeleteScoped(ctx, region, identifier, managed)
+		}
+		return r.Handler.Delete(ctx, region, identifier)
+	})
+}
 
 func (r *recorder) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
 	if preparer, ok := r.Handler.(native.DeletePreparer); ok {
