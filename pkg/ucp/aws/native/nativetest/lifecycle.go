@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
+	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 )
@@ -62,9 +63,13 @@ type Lifecycle struct {
 	SkipDelete bool
 }
 
+// cleanupTimeout bounds the delete a failed recording makes in cleanup, including the wait for AWS to finish it.
+const cleanupTimeout = 10 * time.Minute
+
 // Run creates the resource, waits for it, and checks Read; updates it when Update is set; then deletes it and waits
-// until AWS no longer has it. It returns the resource's identifier.
-func (l Lifecycle) Run(t *testing.T) string {
+// until AWS no longer has it. It returns the resource's identifier. When recording, a run that fails after the create
+// still deletes the resource in cleanup, so a failed recording leaves nothing running in AWS.
+func (l Lifecycle) Run(t testing.TB) string {
 	t.Helper()
 	ctx := t.Context()
 	region := awsreplay.Region
@@ -83,6 +88,21 @@ func (l Lifecycle) Run(t *testing.T) string {
 		require.True(t, ok, "Create returned no identifier, and the handler has no identifier encoding")
 		identifier, err = encoder.Identifier(l.Properties)
 		require.NoError(t, err)
+	}
+	deleted := false
+	if l.Session.Recording() && !l.SkipDelete {
+		t.Cleanup(func() {
+			if deleted {
+				return
+			}
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
+			defer cancel()
+			if err := l.deleteAndWait(cleanupCtx, identifier); err != nil {
+				t.Errorf("failed to delete %s after the recording failed, so delete it in AWS: %v", identifier, err)
+				return
+			}
+			t.Logf("deleted %s after the recording failed", identifier)
+		})
 	}
 	l.wait(t, ctx, identifier, native.OperationCreate)
 	current := l.read(t, ctx, identifier)
@@ -106,49 +126,90 @@ func (l Lifecycle) Run(t *testing.T) string {
 	if l.SkipDelete {
 		return identifier
 	}
-	managed := []map[string]any{l.Properties}
-	if l.Update != nil {
-		managed = append(managed, l.Update)
-	}
-	switch handler := h.(type) {
-	case native.ScopedDeleter:
-		err = handler.DeleteScoped(ctx, region, identifier, managed)
-	case native.DeletePreparer:
-		token, tokenErr := handler.DeleteToken(ctx, region, identifier)
-		require.NoError(t, tokenErr)
-		err = handler.DeleteWithToken(ctx, region, identifier, token)
-	default:
-		err = h.Delete(ctx, region, identifier)
-	}
-	require.NoError(t, err)
+	require.NoError(t, l.delete(ctx, identifier))
+	deleted = true
 	l.wait(t, ctx, identifier, native.OperationDelete)
 	return identifier
 }
 
-func (l Lifecycle) read(t *testing.T, ctx context.Context, identifier string) map[string]any {
+// deleteAndWait deletes the resource and waits until AWS no longer has it, or ctx ends.
+func (l Lifecycle) deleteAndWait(ctx context.Context, identifier string) error {
+	if err := l.delete(ctx, identifier); err != nil {
+		if errors.Is(err, native.ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+	for ctx.Err() == nil {
+		progress, err := l.Handler.Progress(ctx, awsreplay.Region, identifier, native.OperationDelete)
+		switch {
+		case errors.Is(err, native.ErrNotFound):
+			return nil
+		case err != nil:
+			return err
+		case progress.Failure != nil:
+			return progress.Failure
+		case progress.Done:
+			return nil
+		}
+		l.Session.Wait(l.poll())
+	}
+	return ctx.Err()
+}
+
+// poll returns how long to wait between reads of an operation's progress.
+func (l Lifecycle) poll() time.Duration {
+	if l.Poll == 0 {
+		return 15 * time.Second
+	}
+	return l.Poll
+}
+
+// delete starts deleting the resource, with a delete token for a handler that sends one.
+func (l Lifecycle) delete(ctx context.Context, identifier string) error {
+	if scoped, ok := l.Handler.(native.ScopedDeleter); ok {
+		return scoped.DeleteScoped(ctx, awsreplay.Region, identifier, l.managed())
+	}
+	if preparer, ok := l.Handler.(native.DeletePreparer); ok {
+		token, err := preparer.DeleteToken(ctx, awsreplay.Region, identifier)
+		if err != nil {
+			return err
+		}
+		return preparer.DeleteWithToken(ctx, awsreplay.Region, identifier, token)
+	}
+	return l.Handler.Delete(ctx, awsreplay.Region, identifier)
+}
+
+// managed returns the property sets the lifecycle applies, for a handler whose resource is some members of a parent.
+func (l Lifecycle) managed() []map[string]any {
+	managed := []map[string]any{l.Properties}
+	if l.Update != nil {
+		managed = append(managed, l.Update)
+	}
+	return managed
+}
+
+func (l Lifecycle) read(t testing.TB, ctx context.Context, identifier string) map[string]any {
 	t.Helper()
 	var properties map[string]any
 	var err error
 	if scoped, ok := l.Handler.(native.ScopedReader); ok {
-		managed := []map[string]any{l.Properties}
-		if l.Update != nil {
-			managed = append(managed, l.Update)
-		}
-		properties, err = scoped.ReadScoped(ctx, awsreplay.Region, identifier, managed)
+		properties, err = scoped.ReadScoped(ctx, awsreplay.Region, identifier, l.managed())
 	} else {
 		properties, err = l.Handler.Read(ctx, awsreplay.Region, identifier)
 	}
 	require.NoError(t, err)
+	catalog, err := schemas.Load()
+	require.NoError(t, err)
+	if schema, ok := catalog.Native[l.Handler.TypeName()]; ok {
+		requireSchemaTypes(t, schema, properties, "Read")
+	}
 	return properties
 }
 
 // wait reads the operation's progress until it finishes, or for a delete, until AWS no longer has the resource.
-func (l Lifecycle) wait(t *testing.T, ctx context.Context, identifier string, op native.Operation) {
+func (l Lifecycle) wait(t testing.TB, ctx context.Context, identifier string, op native.Operation) {
 	t.Helper()
-	poll := l.Poll
-	if poll == 0 {
-		poll = 15 * time.Second
-	}
 	for range maxPolls {
 		progress, err := l.Handler.Progress(ctx, awsreplay.Region, identifier, op)
 		if op == native.OperationDelete && errors.Is(err, native.ErrNotFound) {
@@ -159,7 +220,7 @@ func (l Lifecycle) wait(t *testing.T, ctx context.Context, identifier string, op
 			require.Nil(t, progress.Failure, "the %s failed", op)
 			return
 		}
-		l.Session.Wait(poll)
+		l.Session.Wait(l.poll())
 	}
 	t.Fatalf("the %s of %s did not finish", op, identifier)
 }
@@ -184,7 +245,7 @@ func patchOf(current map[string]any, desired map[string]any) (jsondiff.Patch, er
 }
 
 // RequireSubset requires got to have every property of want, with the same value once both are read as JSON.
-func RequireSubset(t *testing.T, want map[string]any, got map[string]any) {
+func RequireSubset(t testing.TB, want map[string]any, got map[string]any) {
 	t.Helper()
 	requireSubset(t, want, got)
 }

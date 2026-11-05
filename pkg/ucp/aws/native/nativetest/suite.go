@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -174,6 +175,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("unchanged and changed write-only values", func(t *testing.T) { s.writeOnlyValues(t) })
 	t.Run("no write-only value in any response", func(t *testing.T) { s.noWriteOnlyInResponses(t) })
 	t.Run("list", func(t *testing.T) { s.list(t) })
+	t.Run("read values have the schema's types", func(t *testing.T) { s.readTypes(t) })
 	t.Run("existing", func(t *testing.T) { s.existing(t) })
 	t.Run("worker restart while waiting", func(t *testing.T) { s.workerRestart(t) })
 	t.Run("delete as the metadata says", func(t *testing.T) { s.deleteByMetadata(t) })
@@ -195,6 +197,12 @@ func Run(t *testing.T, s Suite) {
 	t.Run("delete after the create sent again is lost", func(t *testing.T) { s.lostResend(t) })
 	t.Run("create-only change after a lost create", func(t *testing.T) { s.lostResendCreateOnly(t) })
 	t.Run("lost create that matches more than one resource", func(t *testing.T) { s.lostCreateDuplicates(t) })
+	if s.NewHandler(awsfake.NewCloudControl()).Options().Recovery == native.RecoverByResend {
+		t.Run("deploy after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodPut, errPartway) })
+		t.Run("delete after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodDelete, errPartway) })
+		t.Run("deploy after the create sent again is partly applied", func(t *testing.T) { s.resendFailsPartway(t, http.MethodPut, failurePartway) })
+		t.Run("delete after the create sent again is partly applied", func(t *testing.T) { s.resendFailsPartway(t, http.MethodDelete, failurePartway) })
+	}
 	if nameProperty != "" {
 		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
 	}
@@ -415,6 +423,115 @@ func (s Suite) list(t *testing.T) {
 	}
 }
 
+// readTypes deploys Properties and reads the resource through the handler, and through List when the type can be
+// listed. Every value must have the JSON type the schema gives its property, such as a string for a port the schema
+// declares as a string, so a read matches what Cloud Control returns for the type.
+func (s Suite) readTypes(t *testing.T) {
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+
+	reads := map[string]map[string]any{}
+	read, err := h.handler.Handler.Read(t.Context(), region, h.identifier())
+	require.NoError(t, err)
+	reads["Read"] = read
+	if h.handler.Options().List == native.ListRegion {
+		listed, err := h.handler.Handler.List(t.Context(), region)
+		require.NoError(t, err)
+		for _, r := range listed {
+			reads["List "+r.Identifier] = r.Properties
+		}
+	}
+	for source, properties := range reads {
+		requireSchemaTypes(t, s.Schema, properties, source)
+	}
+}
+
+// requireSchemaTypes requires every value of properties, which source returned, to have the JSON type the schema
+// gives its property.
+func requireSchemaTypes(t testing.TB, schemaJSON string, properties map[string]any, source string) {
+	t.Helper()
+	var schema map[string]any
+	require.NoError(t, json.Unmarshal([]byte(schemaJSON), &schema))
+	var value any
+	b, err := json.Marshal(properties)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(b, &value))
+	mismatches := []string{}
+	schemaTypes(schema, map[string]any{"type": "object", "properties": schema["properties"]}, "", value, &mismatches)
+	require.Empty(t, mismatches, "%s returns values whose JSON type doesn't match the schema", source)
+}
+
+// schemaTypes adds to mismatches each value under path whose JSON type isn't one the schema definition def allows. It
+// follows $ref, properties, patternProperties, and items, and checks nothing a definition doesn't type.
+func schemaTypes(schema map[string]any, def map[string]any, path string, value any, mismatches *[]string) {
+	if ref, ok := def["$ref"].(string); ok {
+		resolved, _ := schema["definitions"].(map[string]any)[strings.TrimPrefix(ref, "#/definitions/")].(map[string]any)
+		if resolved == nil {
+			*mismatches = append(*mismatches, path+": unknown $ref "+ref)
+			return
+		}
+		def = resolved
+	}
+	var allowed []string
+	switch typ := def["type"].(type) {
+	case string:
+		allowed = []string{typ}
+	case []any:
+		for _, v := range typ {
+			allowed = append(allowed, fmt.Sprint(v))
+		}
+	}
+	if len(allowed) > 0 && !slices.Contains(allowed, jsonType(value)) && !(jsonType(value) == "integer" && slices.Contains(allowed, "number")) {
+		*mismatches = append(*mismatches, fmt.Sprintf("%s: %s, but the schema says %s", path, jsonType(value), strings.Join(allowed, " or ")))
+		return
+	}
+	switch v := value.(type) {
+	case map[string]any:
+		properties, _ := def["properties"].(map[string]any)
+		patterns, _ := def["patternProperties"].(map[string]any)
+		for key, item := range v {
+			if child, ok := properties[key].(map[string]any); ok {
+				schemaTypes(schema, child, path+"/"+key, item, mismatches)
+				continue
+			}
+			for pattern, child := range patterns {
+				if childDef, ok := child.(map[string]any); ok && regexp.MustCompile(pattern).MatchString(key) {
+					schemaTypes(schema, childDef, path+"/"+key, item, mismatches)
+					break
+				}
+			}
+		}
+	case []any:
+		if items, ok := def["items"].(map[string]any); ok {
+			for i, item := range v {
+				schemaTypes(schema, items, fmt.Sprintf("%s/%d", path, i), item, mismatches)
+			}
+		}
+	}
+}
+
+// jsonType returns the JSON schema type of a value read as JSON.
+func jsonType(v any) string {
+	switch t := v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "boolean"
+	case string:
+		return "string"
+	case float64:
+		if t == float64(int64(t)) {
+			return "integer"
+		}
+		return "number"
+	case []any:
+		return "array"
+	case map[string]any:
+		return "object"
+	}
+	return fmt.Sprintf("%T", v)
+}
+
 func (s Suite) existing(t *testing.T) {
 	h := s.newHarness(t)
 	h.deploy(s.Properties)
@@ -482,6 +599,36 @@ func (s Suite) lostCreateChangedWriteOnly(t *testing.T) {
 	}
 	resp = h.put(s.ChangedWriteOnly)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+}
+
+// resendFailsPartway loses a create that reached AWS, and then every create sent again returns the resource's
+// identifier with an error, as when a later call of a multi-call create fails, such as setting an endpoint's policy.
+// A PUT or a DELETE sends the create again and fails. UCP keeps the identifier, so a following DELETE deletes the
+// resource instead of sending the failing create again.
+func (s Suite) resendFailsPartway(t *testing.T, method string, failure error) {
+	h := s.newHarness(t)
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	require.Equal(t, 1, h.cc.Count(s.TypeName))
+	if h.record().Properties.AWSIdentifier != "" {
+		t.Skip("UCP saves the identifier before the create, so it reads AWS by it instead of sending the create again")
+	}
+
+	h.handler.failCreatesPartway(failure)
+	if method == http.MethodPut {
+		resp = h.put(s.Properties)
+	} else {
+		resp = h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+	}
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.NotEmpty(t, h.record().Properties.AWSIdentifier, "UCP keeps the identifier the failed create returned")
+
+	h.handler.reset()
+	h.removeEventually()
+	require.NotContains(t, h.handler.reset(), "Create", "the delete reads AWS by the identifier instead of creating again")
+	require.Nil(t, h.record())
+	require.Zero(t, h.cc.Count(s.TypeName))
 }
 
 // lostCreateDelete loses a create, after it reached AWS or before, and deletes the alias. The delete finds the
@@ -1089,7 +1236,7 @@ func without(properties map[string]any, property string) map[string]any {
 	return out
 }
 
-func requireSubset(t *testing.T, want map[string]any, got map[string]any) {
+func requireSubset(t testing.TB, want map[string]any, got map[string]any) {
 	t.Helper()
 	for k, v := range want {
 		require.Contains(t, got, k)
@@ -1097,7 +1244,7 @@ func requireSubset(t *testing.T, want map[string]any, got map[string]any) {
 	}
 }
 
-func normalize(t *testing.T, v any) any {
+func normalize(t testing.TB, v any) any {
 	b, err := json.Marshal(v)
 	require.NoError(t, err)
 	var out any
@@ -1471,6 +1618,9 @@ type recorder struct {
 	// lost maps a method to whether its next call reaches AWS before its response is lost.
 	lost map[string]bool
 
+	// partway, when set, makes every Create call the handler and then return its identifier with this error.
+	partway error
+
 	// onProgress, when set, runs on each Progress call.
 	onProgress func()
 
@@ -1571,8 +1721,29 @@ func (r *recorder) Read(ctx context.Context, region string, identifier string) (
 	return r.Handler.Read(ctx, region, identifier)
 }
 
+// failCreatesPartway makes every later Create return the resource's identifier with err.
+func (r *recorder) failCreatesPartway(err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.partway = err
+}
+
+// errPartway is the plain AWS client error a create that failed partway returns, and failurePartway is the same
+// failure as a handler reports it, as partly applied.
+var (
+	errPartway     = nativefake.ClientError("InvalidParameterValue", "the create made the resource, but a later call failed")
+	failurePartway = &native.Failure{Message: "the create made the resource, but a later call failed", ClientError: true, Outcome: native.OutcomePartial}
+)
+
 func (r *recorder) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	r.note("Create")
+	r.mu.Lock()
+	partway := r.partway
+	r.mu.Unlock()
+	if partway != nil {
+		identifier, err := r.Handler.Create(ctx, request)
+		return identifier, errors.Join(partway, err)
+	}
 	reached, lost := r.takeLoss("Create")
 	switch {
 	case lost && !reached:

@@ -856,3 +856,52 @@ func Test_Native_FindLostCreate_PutOwnsLostValues(t *testing.T) {
 		require.NotContains(t, h.cc.Resource(nativeType, "app-native"), "Tier")
 	})
 }
+
+// failsWithOther is a handler whose Create returns the identifier id-1 with an error.
+type failsWithOther struct {
+	*nativefake.Handler
+}
+
+func (h failsWithOther) Create(ctx context.Context, request native.CreateRequest) (string, error) {
+	return "id-1", nativefake.ClientError("InvalidParameterValue", "a later call failed")
+}
+
+// Test_Native_ResendFailsWithHeldIdentifier sends a lost create again, and the create fails but returns an identifier
+// another alias manages. The record doesn't keep it, so this alias never deletes the other alias's resource.
+func Test_Native_ResendFailsWithHeldIdentifier(t *testing.T) {
+	const otherPath = providers + "AWS.Test/Assigned/app-other"
+	for _, method := range []string{http.MethodPut, http.MethodDelete} {
+		h := newNativeHarness(t)
+		h.deploy(otherPath, map[string]any{"Size": 1})
+		require.Equal(t, "id-1", h.record(otherPath).Properties.AWSIdentifier)
+		h.failCreate(h.assigned, assignedPath, map[string]any{"Size": 2})
+		registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{assignedType: nativeSchemas[assignedType]}}, failsWithOther{h.assigned})
+		require.NoError(t, err)
+		h.native = registry
+
+		var resp response
+		if method == http.MethodPut {
+			resp = h.put(assignedPath, map[string]any{"Size": 2})
+		} else {
+			resp = h.delete(assignedPath, testOwner)
+		}
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Empty(t, h.record(assignedPath).Properties.AWSIdentifier, method)
+		require.Equal(t, 1, h.cc.Count(assignedType))
+	}
+
+	t.Run("checking the identifier fails", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.failCreate(h.assigned, assignedPath, map[string]any{"Size": 2})
+		registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{assignedType: nativeSchemas[assignedType]}}, failsWithOther{h.assigned})
+		require.NoError(t, err)
+		h.native = registry
+		db := h.db
+		h.db = brokenDB{Client: db, query: true}
+
+		resp := h.put(assignedPath, map[string]any{"Size": 2})
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		h.db = db
+		require.Empty(t, h.record(assignedPath).Properties.AWSIdentifier, "UCP can't tell whether another alias manages it")
+	})
+}

@@ -116,6 +116,22 @@ func Test_DecodeEncode(t *testing.T) {
 	require.Empty(t, notObject)
 }
 
+// Test_EncodeKeepsEmptyTagValues checks that a tag with an empty value stays, in the map form and the list form, while
+// an empty Tags property is still left out.
+func Test_EncodeKeepsEmptyTagValues(t *testing.T) {
+	encoded, err := EncodeObject(map[string]any{
+		"Tags":   map[string]any{"owner": "", "team": "a"},
+		"Nested": map[string]any{"Tags": []any{map[string]any{"Key": "owner", "Value": "", "ResourceArn": nil}}},
+		"Empty":  map[string]any{"Tags": []any{}},
+		"Name":   "",
+	})
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{
+		"Tags":   map[string]any{"owner": "", "team": "a"},
+		"Nested": map[string]any{"Tags": []any{map[string]any{"Key": "owner", "Value": ""}}},
+	}, encoded)
+}
+
 func Test_PropertyHelpers(t *testing.T) {
 	properties := map[string]any{"Name": "app", "Ids": []any{"a", 1, "b"}, "Size": 2}
 	require.Equal(t, "app", String(properties, "Name"))

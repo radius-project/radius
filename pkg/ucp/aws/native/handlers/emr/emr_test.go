@@ -126,7 +126,7 @@ func clusterProperties() map[string]any {
 			"Name": "setup", "ActionOnFailure": "CONTINUE",
 			"HadoopJarStep": map[string]any{"Jar": "command-runner.jar", "Args": []any{"echo", "step-secret-arg"}},
 		}},
-		"Tags": tags("team", "a"),
+		"Tags": tags("owner", "", "team", "a"),
 	}
 }
 

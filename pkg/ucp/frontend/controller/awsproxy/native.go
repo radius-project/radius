@@ -408,7 +408,8 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //     template. If another alias manages the resource Find returns, the request gets 409.
 //   - RecoverByResend: the create is sent again with the template. AWS may return the first resource, with the lost
 //     create's values, so UCP treats the result like a found resource rather than a new create. For a handler whose
-//     resource is some members of a parent, UCP first saves the members of both (see saveResendMembers).
+//     resource is some members of a parent, UCP first saves the members of both (see saveResendMembers). When the
+//     create fails but returns an identifier, the record keeps it (see identifierToKeep), and the request fails.
 //
 // When UCP reads the resource, it continues by what AWS shows:
 //
@@ -436,6 +437,11 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 			identifier, err = e.findCreate(ctx, r, rec, rec.Properties.PendingLastApplied)
 		}
 		if err != nil {
+			if found := e.identifierToKeep(ctx, r, identifier); found != "" {
+				e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+					rec.Properties.AWSIdentifier = found
+				})
+			}
 			return handleError(ctx, r.id, err)
 		}
 		if identifier == "" {
@@ -513,6 +519,8 @@ func (e *engine) findCreate(ctx context.Context, r *request, rec *datamodel.AWSR
 //   - created, or failed with a resource left: the record gets the identifier, the pending values count as applied,
 //     as for an interrupted update, and the delete continues.
 //   - another alias manages the resource found: the record is kept, and the DELETE gets 409.
+//   - the resent create fails but returns an identifier: the record keeps it (see identifierToKeep), and the DELETE
+//     returns the error. The next DELETE reads AWS by the identifier and deletes the resource.
 //   - a call fails: the record is kept, and the DELETE returns the error.
 func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (string, armrpc_rest.Response, error) {
 	keepCreate := func() {
@@ -544,6 +552,7 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 		if errors.As(err, &other) {
 			return removed()
 		} else if err != nil {
+			rec.Properties.AWSIdentifier = e.identifierToKeep(ctx, r, identifier)
 			return keep(err)
 		}
 		if identifier == "" {
@@ -622,6 +631,24 @@ func (e *engine) saveResendMembers(ctx context.Context, r *request, rec *datamod
 		return "", resp, err
 	}
 	return etag, nil, nil
+}
+
+// identifierToKeep returns the identifier a resent create returned along with an error, so the record can keep it:
+// AWS may have made the resource before the error, such as when a later call of a create that takes more than one
+// call failed. The next request then reads AWS by the identifier instead of sending the failing create again. It
+// returns "" when there is no identifier, or when another alias manages it.
+func (e *engine) identifierToKeep(ctx context.Context, r *request, identifier string) string {
+	if identifier == "" {
+		return ""
+	}
+	held, err := e.checkIdentifier(ctx, r, identifier)
+	if err != nil {
+		ucplog.FromContextOrDiscard(ctx).Error(err, "Failed to check the identifier a failed create returned", "alias", r.id.Name(), "awsIdentifier", identifier)
+	}
+	if held != nil || err != nil {
+		return ""
+	}
+	return identifier
 }
 
 // resendCreate sends the record's first create again with its client token, for a handler whose Recovery is
