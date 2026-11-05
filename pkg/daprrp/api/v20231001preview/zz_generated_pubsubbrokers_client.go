@@ -60,7 +60,7 @@ func (client *PubSubBrokersClient) BeginCreateOrUpdate(ctx context.Context, root
 	}
 }
 
-// CreateOrUpdate - Create a DaprPubSubBrokerResource
+// createOrUpdate - Create a DaprPubSubBrokerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *PubSubBrokersClient) createOrUpdate(ctx context.Context, rootScope string, pubSubBrokerName string, resource DaprPubSubBrokerResource, options *PubSubBrokersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -78,7 +78,7 @@ func (client *PubSubBrokersClient) createOrUpdate(ctx context.Context, rootScope
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *PubSubBrokersClient) createOrUpdateCreateRequest(ctx context.Context, rootScope string, pubSubBrokerName string, resource DaprPubSubBrokerResource, _ *PubSubBrokersClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Dapr/pubSubBrokers/{pubSubBrokerName}"
 	if rootScope == "" {
@@ -126,7 +126,7 @@ func (client *PubSubBrokersClient) BeginDelete(ctx context.Context, rootScope st
 	}
 }
 
-// Delete - Delete a DaprPubSubBrokerResource
+// deleteOperation - Delete a DaprPubSubBrokerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *PubSubBrokersClient) deleteOperation(ctx context.Context, rootScope string, pubSubBrokerName string, options *PubSubBrokersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
@@ -144,7 +144,7 @@ func (client *PubSubBrokersClient) deleteOperation(ctx context.Context, rootScop
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *PubSubBrokersClient) deleteCreateRequest(ctx context.Context, rootScope string, pubSubBrokerName string, _ *PubSubBrokersClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Dapr/pubSubBrokers/{pubSubBrokerName}"
 	if rootScope == "" {
@@ -162,6 +162,73 @@ func (client *PubSubBrokersClient) deleteCreateRequest(ctx context.Context, root
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	return req, nil
+}
+
+// BeginUpdate - Update a DaprPubSubBrokerResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - pubSubBrokerName - PubSubBroker name
+//   - properties - The resource properties to be updated.
+//   - options - PubSubBrokersClientBeginUpdateOptions contains the optional parameters for the PubSubBrokersClient.BeginUpdate
+//     method.
+func (client *PubSubBrokersClient) BeginUpdate(ctx context.Context, rootScope string, pubSubBrokerName string, properties DaprPubSubBrokerResource, options *PubSubBrokersClientBeginUpdateOptions) (*runtime.Poller[PubSubBrokersClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, rootScope, pubSubBrokerName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PubSubBrokersClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[PubSubBrokersClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// update - Update a DaprPubSubBrokerResource
+// If the operation fails it returns an *azcore.ResponseError type.
+func (client *PubSubBrokersClient) update(ctx context.Context, rootScope string, pubSubBrokerName string, properties DaprPubSubBrokerResource, options *PubSubBrokersClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, rootScope, pubSubBrokerName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(httpResp)
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the update request.
+func (client *PubSubBrokersClient) updateCreateRequest(ctx context.Context, rootScope string, pubSubBrokerName string, properties DaprPubSubBrokerResource, _ *PubSubBrokersClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Dapr/pubSubBrokers/{pubSubBrokerName}"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if pubSubBrokerName == "" {
+		return nil, errors.New("parameter pubSubBrokerName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{pubSubBrokerName}", url.PathEscape(pubSubBrokerName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 
@@ -283,71 +350,4 @@ func (client *PubSubBrokersClient) listByScopeHandleResponse(resp *http.Response
 		return PubSubBrokersClientListByScopeResponse{}, err
 	}
 	return result, nil
-}
-
-// BeginUpdate - Update a DaprPubSubBrokerResource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - pubSubBrokerName - PubSubBroker name
-//   - properties - The resource properties to be updated.
-//   - options - PubSubBrokersClientBeginUpdateOptions contains the optional parameters for the PubSubBrokersClient.BeginUpdate
-//     method.
-func (client *PubSubBrokersClient) BeginUpdate(ctx context.Context, rootScope string, pubSubBrokerName string, properties DaprPubSubBrokerResource, options *PubSubBrokersClientBeginUpdateOptions) (*runtime.Poller[PubSubBrokersClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, pubSubBrokerName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[PubSubBrokersClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[PubSubBrokersClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a DaprPubSubBrokerResource
-// If the operation fails it returns an *azcore.ResponseError type.
-func (client *PubSubBrokersClient) update(ctx context.Context, rootScope string, pubSubBrokerName string, properties DaprPubSubBrokerResource, options *PubSubBrokersClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, pubSubBrokerName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		return nil, runtime.NewResponseError(httpResp)
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *PubSubBrokersClient) updateCreateRequest(ctx context.Context, rootScope string, pubSubBrokerName string, properties DaprPubSubBrokerResource, _ *PubSubBrokersClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Dapr/pubSubBrokers/{pubSubBrokerName}"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if pubSubBrokerName == "" {
-		return nil, errors.New("parameter pubSubBrokerName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{pubSubBrokerName}", url.PathEscape(pubSubBrokerName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
-	return req, nil
 }

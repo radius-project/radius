@@ -205,6 +205,17 @@ test_help_short_flag() {
     assert_contains "${LAST_OUTPUT}" "Usage"
 }
 
+test_streamed_help() {
+    echo "  CMD: bash -s -- --help < ${INSTALLER}"
+    LAST_OUTPUT="$(bash -s -- --help < "${INSTALLER}" 2>&1)"
+    echo "${LAST_OUTPUT}"
+    assert_contains "${LAST_OUTPUT}" "Usage"
+    if [[ "${LAST_OUTPUT}" == *"unbound variable"* ]]; then
+        echo "  ASSERT FAILED: streamed installer reported an unbound variable"
+        return 1
+    fi
+}
+
 test_default_install() {
     local dir
     dir=$(make_test_dir "default")
@@ -535,6 +546,7 @@ setup
 
 run_test "help (--help)" test_help_long_flag
 run_test "help (-h)" test_help_short_flag
+run_test "help from streamed installer" test_streamed_help
 run_test "default install (latest stable)" test_default_install
 run_test "specific version (--version)" test_specific_version_long_flag
 run_test "short flags (-v, -d)" test_specific_version_short_flags

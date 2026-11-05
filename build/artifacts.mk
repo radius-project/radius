@@ -48,6 +48,15 @@ release-parity-manifest: ## Capture observable outputs for RELEASE_PARITY_VERSIO
 		--output "$(RELEASE_PARITY_OUTPUT)"
 
 .PHONY: goreleaser-check
+.PHONY: verify-release-publication recheck-release-publication
+verify-release-publication: ## Verify staged release outputs and installation before publication
+	@REL_VERSION="$(REL_VERSION)" TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		bash ./.github/scripts/verify-release-publication.sh verify
+
+recheck-release-publication: ## Recheck verified release outputs after publication approval
+	@REL_VERSION="$(REL_VERSION)" TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		bash ./.github/scripts/verify-release-publication.sh recheck
+
 goreleaser-check: ## Validate the GoReleaser configuration
 	@REL_CHANNEL="$(REL_CHANNEL)" \
 		REL_VERSION="$(REL_VERSION)" \
@@ -70,6 +79,15 @@ goreleaser-snapshot: ## Build and verify a GoReleaser snapshot
 		$(GORELEASER) release --snapshot --clean $(GORELEASER_ARGS)
 	@bash ./.github/scripts/normalize-release-checksums.sh
 	@bash ./.github/scripts/verify-goreleaser-snapshot.sh $(GORELEASER_VERIFY_ARGS)
+
+.PHONY: goreleaser-save-images goreleaser-push-edge
+goreleaser-save-images: ## Save native snapshot images for downstream CI jobs
+	@DOCKER_REGISTRY="$(DOCKER_REGISTRY)" DOCKER_TAG_VERSION="$(DOCKER_TAG_VERSION)" \
+		bash ./.github/scripts/goreleaser-snapshot-artifacts.sh save
+
+goreleaser-push-edge: ## Publish native snapshot images as multi-platform edge manifests
+	@DOCKER_REGISTRY="$(DOCKER_REGISTRY)" DOCKER_TAG_VERSION=edge \
+		bash ./.github/scripts/goreleaser-snapshot-artifacts.sh push-edge
 
 .PHONY: goreleaser-release
 goreleaser-release: ## Stage immutable release artifacts and a draft GitHub Release

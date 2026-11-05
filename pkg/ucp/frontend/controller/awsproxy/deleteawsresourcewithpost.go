@@ -37,6 +37,11 @@ import (
 
 var _ armrpc_controller.Controller = (*DeleteAWSResourceWithPost)(nil)
 
+// DeleteAWSResourceWithPost is transitional: it keeps POST /:delete working as it did before resource records, for the Deployment Engine
+// releases that do not deploy AWS resources by alias yet. It needs no owner header and saves no record. It returns 409
+// for a resource an alias's record manages (see checkUnmanaged). It is removed once the Deployment Engine deploys by
+// alias.
+//
 // DeleteAWSResourceWithPost is the controller implementation to delete an AWS resource.
 type DeleteAWSResourceWithPost struct {
 	armrpc_controller.Operation[*datamodel.AWSResource, datamodel.AWSResource]
@@ -65,6 +70,9 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	if errResponse := unsupportedTypeResponse(serviceCtx.ResourceTypeInAWSFormat()); errResponse != nil {
+		return errResponse, nil
+	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	properties, err := readPropertiesFromBody(req)
@@ -84,7 +92,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
 	}, cloudFormationOpts...)
 	if err != nil {
-		return ucpaws.HandleAWSError(err)
+		return ucpaws.HandleAWSError(ctx, err)
 	}
 
 	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(properties, *describeTypeOutput.Schema)
@@ -98,6 +106,10 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
+	if errResponse, err := checkUnmanaged(ctx, *p.Options(), serviceCtx.ResourceID, awsResourceIdentifier); errResponse != nil || err != nil {
+		return errResponse, err
+	}
+
 	logger.Info("Deleting resource", "resourceType", serviceCtx.ResourceTypeInAWSFormat(), "resourceID", awsResourceIdentifier)
 	response, err := p.awsClients.CloudControl.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   new(serviceCtx.ResourceTypeInAWSFormat()),
@@ -107,7 +119,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		if ucpaws.IsAWSResourceNotFoundError(err) {
 			return armrpc_rest.NewNoContentResponse(), nil
 		}
-		return ucpaws.HandleAWSError(err)
+		return ucpaws.HandleAWSError(ctx, err)
 	}
 
 	operation, err := uuid.Parse(*response.ProgressEvent.RequestToken)

@@ -16,9 +16,16 @@ limitations under the License.
 package validation
 
 import (
+	"context"
+	"errors"
+	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_ResourcesInDeletionOrder(t *testing.T) {
@@ -142,4 +149,126 @@ func Test_ResourcesInDeletionOrder_DoesNotMutateInput(t *testing.T) {
 
 	require.Equal(t, "pack", set.Resources[0].Name)
 	require.Equal(t, "app", set.Resources[1].Name)
+}
+
+// Test_DeleteRPResource_Applications covers the Applications.Core/applications teardown branch,
+// which calls the management client directly rather than shelling out to `rad app delete`.
+func Test_DeleteRPResource_Applications(t *testing.T) {
+	t.Parallel()
+
+	resource := RPResource{Name: "test-app", Type: ApplicationsResource}
+
+	// Both teardown variants share the same branch, so run every case against both. A nil CLI
+	// is passed deliberately: this branch must not depend on the legacy CLI command.
+	variants := map[string]func(t *testing.T, ctx context.Context, client clients.ApplicationsManagementClient) error{
+		"DeleteRPResource": func(t *testing.T, ctx context.Context, client clients.ApplicationsManagementClient) error {
+			return DeleteRPResource(ctx, t, nil, client, resource)
+		},
+		"DeleteRPResourceSilent": func(_ *testing.T, ctx context.Context, client clients.ApplicationsManagementClient) error {
+			return DeleteRPResourceSilent(ctx, nil, client, resource)
+		},
+	}
+
+	// Errors are built per subtest rather than shared: azcore.ResponseError.Error() memoizes
+	// its message, so sharing one instance across parallel subtests is a data race.
+	cases := []struct {
+		name      string
+		newErr    func() error
+		expectErr string
+	}{
+		{name: "deletes the application", newErr: func() error { return nil }},
+		{
+			name:   "tolerates 404 so teardown stays idempotent",
+			newErr: func() error { return &azcore.ResponseError{StatusCode: http.StatusNotFound} },
+		},
+		{
+			name:      "propagates other errors",
+			newErr:    func() error { return errors.New("internal server error") },
+			expectErr: "internal server error",
+		},
+	}
+
+	for variantName, deleteFn := range variants {
+		for _, tc := range cases {
+			t.Run(variantName+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				ctrl := gomock.NewController(t)
+				client := clients.NewMockApplicationsManagementClient(ctrl)
+				returnErr := tc.newErr()
+
+				// force must stay false: the CLI path this replaced passed no --force.
+				client.EXPECT().
+					DeleteApplication(gomock.Any(), resource.Name, false).
+					Return(returnErr == nil, returnErr).
+					Times(1)
+
+				err := deleteFn(t, t.Context(), client)
+
+				if tc.expectErr == "" {
+					require.NoError(t, err)
+				} else {
+					require.ErrorContains(t, err, tc.expectErr)
+				}
+			})
+		}
+	}
+}
+
+func Test_MatchOutputResources(t *testing.T) {
+	t.Parallel()
+
+	const bucketID = "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
+	const queueID = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SQS/Queue/my-queue"
+	actual := []OutputResourceResponse{
+		{ID: bucketID, ProviderResourceID: "arn:aws:s3:::my-bucket"},
+		{ID: queueID},
+	}
+
+	tests := []struct {
+		name     string
+		expected []OutputResourceResponse
+		err      string
+	}{
+		{
+			name:     "IDs match case-insensitively",
+			expected: []OutputResourceResponse{{ID: strings.ToUpper(queueID)}, {ID: bucketID}},
+		},
+		{
+			name:     "provider resource ID matches",
+			expected: []OutputResourceResponse{{ID: bucketID, ProviderResourceID: "arn:aws:s3:::my-bucket"}, {ID: queueID}},
+		},
+		{
+			name:     "provider resource ID differs",
+			expected: []OutputResourceResponse{{ID: bucketID, ProviderResourceID: "arn:aws:s3:::other-bucket"}, {ID: queueID}},
+			err:      `providerResourceId of output resource ` + bucketID + `: expected "arn:aws:s3:::other-bucket", actual "arn:aws:s3:::my-bucket"`,
+		},
+		{
+			name:     "provider resource ID missing",
+			expected: []OutputResourceResponse{{ID: bucketID}, {ID: queueID, ProviderResourceID: "arn:aws:sqs:us-west-2:123456789012:my-queue"}},
+			err:      `expected "arn:aws:sqs:us-west-2:123456789012:my-queue", actual ""`,
+		},
+		{
+			name:     "output resource not found",
+			expected: []OutputResourceResponse{{ID: bucketID}, {ID: bucketID + "-other"}},
+			err:      "wasn't found",
+		},
+		{
+			name:     "different number of output resources",
+			expected: []OutputResourceResponse{{ID: bucketID}},
+			err:      "expected output resources",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := matchOutputResources(tt.expected, actual)
+			if tt.err == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.err)
+			}
+		})
+	}
 }

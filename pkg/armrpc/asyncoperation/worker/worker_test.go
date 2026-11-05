@@ -40,6 +40,13 @@ func TestDefaultOptions(t *testing.T) {
 	require.Equal(t, defaultMessageExtendMargin, worker.options.MessageExtendMargin)
 	require.Equal(t, defaultMinMessageLockDuration, worker.options.MinMessageLockDuration)
 	require.Equal(t, defaultMaxOperationConcurrency, worker.options.MaxOperationConcurrency)
+	require.Equal(t, defaultDequeueInterval, worker.options.DequeueIntervalDuration)
+}
+
+func TestDequeueInterval(t *testing.T) {
+	require.Equal(t, 2*time.Second, New(Options{DequeueIntervalDuration: 2 * time.Second}, nil, nil, nil).options.DequeueIntervalDuration)
+	// A negative interval would poll the queue without pause.
+	require.Equal(t, defaultDequeueInterval, New(Options{DequeueIntervalDuration: -time.Second}, nil, nil, nil).options.DequeueIntervalDuration)
 }
 
 func TestUpdateResourceState(t *testing.T) {

@@ -12,6 +12,9 @@ param version string
 @description('Specifies the port the container listens on.')
 param port int = 8080
 
+@description('Source of the Test.Resources/userTypeAlpha recipe.')
+param userTypeAlphaRecipeSource string = '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
+
 resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   name: 'test-recipe-pack'
   location: 'global'
@@ -19,7 +22,7 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
     recipes: {
       'Test.Resources/userTypeAlpha': {
         kind: 'bicep'
-        source: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
+        source: userTypeAlphaRecipeSource
         parameters: {
           port: port
         }

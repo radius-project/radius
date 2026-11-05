@@ -17,6 +17,21 @@ param namespace string
 @description('The container port to expose.')
 param containerPort int = 6379
 
+@description('Optional lock configuration, matching the object enum used by direct AVM modules.')
+param lock {
+  kind: 'None' | 'CanNotDelete'
+}?
+
+// Use a ConfigMap to exercise the AVM lock condition without requiring Azure permissions.
+resource lockMarker 'core/ConfigMap@v1' = if (!empty(lock) && lock.?kind != 'None') {
+  metadata: {
+    name: '${name}-lock'
+  }
+  data: {
+    kind: lock!.kind
+  }
+}
+
 resource redis 'apps/Deployment@v1' = {
   metadata: {
     name: name

@@ -17,8 +17,10 @@ limitations under the License.
 package terraform
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -33,6 +35,7 @@ import (
 	gomock "go.uber.org/mock/gomock"
 
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/stretchr/testify/require"
@@ -231,6 +234,36 @@ func Test_Terraform_Execute_InvalidOutputMapping(t *testing.T) {
 	}
 }
 
+func Test_Terraform_Execute_UnresolvedParameterExpression(t *testing.T) {
+	ctx := t.Context()
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, tfDriver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+
+	resolutionErr := &paramresolver.ResolutionError{Errors: []error{errors.New(`parameter "name": unresolved expression {{context.resource.unknown}}: unknown context path "context.resource.unknown"`)}}
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, fmt.Errorf("wrapped: %w", resolutionErr))
+
+	output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.RecipeDeploymentFailed,
+			Message: "wrapped: " + resolutionErr.Error(),
+		},
+		DeploymentStatus: recipes_util.ExecutionError,
+	}, err)
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
+}
+
 func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
@@ -369,18 +402,26 @@ func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
 	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
 	tfExecutor, tfDriver := setup(t)
-	_, _, envRecipe := buildTestInputs()
+	envConfig, _, envRecipe := buildTestInputs()
 
 	expectedOutput := map[string]any{
 		"parameters": map[string]any{
 			"redis_cache_name": "redis-test",
 		},
 	}
-	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).Return(expectedOutput, nil)
+	tfExecutor.EXPECT().GetRecipeMetadata(ctx, gomock.Any()).Times(1).DoAndReturn(
+		func(_ context.Context, options terraform.Options) (map[string]any, error) {
+			// The environment configuration is required to add provider alias placeholders before the module download.
+			require.NotNil(t, options.EnvConfig)
+			require.Equal(t, envConfig, *options.EnvConfig)
+			require.Equal(t, envRecipe, *options.EnvRecipe)
+			return expectedOutput, nil
+		})
 
 	recipeData, err := tfDriver.GetRecipeMetadata(ctx, driver.BaseOptions{
-		Recipe:     recipes.ResourceMetadata{},
-		Definition: envRecipe,
+		Recipe:        recipes.ResourceMetadata{},
+		Definition:    envRecipe,
+		Configuration: envConfig,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeData)
@@ -443,13 +484,32 @@ func Test_Terraform_Delete_Success(t *testing.T) {
 
 	tfExecutor, tfDriver := setup(t)
 	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	envConfig.RecipeConfig.Terraform.Providers = map[string][]datamodel.ProviderConfigProperties{
+		"azurerm": {{
+			AdditionalProperties: map[string]any{"alias": "custom"},
+			Secrets:              map[string]datamodel.SecretReference{"tenant_id": {Source: "settings", Key: "tenant"}},
+		}},
+	}
+	envConfig.RecipeConfig.EnvSecrets = map[string]datamodel.SecretReference{
+		"ARM_CLIENT_ID": {Source: "settings", Key: "client"},
+	}
+	secrets := map[string]recipes.SecretData{
+		"settings": {Data: map[string]string{"tenant": "test-tenant", "client": "test-client"}},
+	}
 
-	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).Times(1).Return(nil)
+	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, opts terraform.Options) error {
+		require.Equal(t, &envConfig, opts.EnvConfig)
+		require.Equal(t, secrets, opts.Secrets, "destroy needs provider and environment secrets")
+		require.Equal(t, &recipeMetadata, opts.ResourceRecipe)
+		require.Equal(t, &envRecipe, opts.EnvRecipe)
+		return nil
+	})
 
 	err := tfDriver.Delete(ctx, driver.DeleteOptions{
 		Configuration:   envConfig,
 		Recipe:          recipeMetadata,
 		Definition:      envRecipe,
+		Secrets:         secrets,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.NoError(t, err)
@@ -665,6 +725,10 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 					"/planes/kubernetes/local/namespaces/default/providers/core/ServiceAccount/test-service-account",
 					"/planes/kubernetes/local/namespaces/test-namespace/providers/dapr.io/Component/test-dapr",
 				},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_subnet/subnet-0ddfaa93733f98002": "arn:aws:ec2:us-east-2:179022619019:subnet/subnet-0ddfaa93733f98002",
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_subnet/Subnet-0ddfaa93733f98002": "arn:aws:ec2:us-east-2:179022619019:Subnet/Subnet-0ddfaa93733f98002",
+				},
 				Status: &rpv1.RecipeStatus{
 					TemplateKind:    recipes.TemplateKindTerraform,
 					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
@@ -703,6 +767,142 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			expectedErr:      errors.New("\"arn:aws:ec2:us-east-2:179022619019\" is not a valid ARN"),
 		},
 		{
+			desc: "AWS ARN is not moved to a result resource whose name differs by case",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_sns_topic/Orders"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_sns_topic",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"arn": "arn:aws:sns:us-east-2:179022619019:orders",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_sns_topic/Orders"},
+				// The deployed "orders" topic is a different topic, so its ARN is not stored for "Orders".
+				ProviderResourceIDs: map[string]string{},
+				Secrets:             map[string]any{},
+				Values:              map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS log group ARN is stored without a trailing wildcard",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_cloudwatch_log_group",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "orders",
+									"arn": "arn:aws:logs:us-east-2:179022619019:log-group:orders:*",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_cloudwatch_log_group/orders"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_cloudwatch_log_group/orders": "arn:aws:logs:us-east-2:179022619019:log-group:orders",
+				},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS log group ARN from the Terraform AWS provider is stored unchanged",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_cloudwatch_log_group",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "orders",
+									"arn": "arn:aws:logs:us-east-2:179022619019:log-group:orders",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_cloudwatch_log_group/orders"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_cloudwatch_log_group/orders": "arn:aws:logs:us-east-2:179022619019:log-group:orders",
+				},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS ARN is kept under the result resource ID when it differs only by case",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"resources": []any{"/planes/aws/aws/accounts/179022619019/regions/global/providers/terraform.aws/aws_s3_bucket/my-bucket"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_s3_bucket",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "my-bucket",
+									"arn": "arn:aws:s3:::my-bucket",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/global/providers/terraform.aws/aws_s3_bucket/my-bucket"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/global/providers/terraform.aws/aws_s3_bucket/my-bucket": "arn:aws:s3:::my-bucket",
+				},
+				Secrets: map[string]any{},
+				Values:  map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
 			desc: "AWS S3 bucket ARN uses Terraform AWS output resource identity",
 			state: &tfjson.State{
 				Values: &tfjson.StateValues{
@@ -722,6 +922,9 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 			expectedResponse: &recipes.RecipeOutput{
 				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket": "arn:aws:s3:::my-bucket",
+				},
 				Status: &rpv1.RecipeStatus{
 					TemplateKind:    recipes.TemplateKindTerraform,
 					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
@@ -749,6 +952,9 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 			expectedResponse: &recipes.RecipeOutput{
 				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42": "arn:aws:ecs:us-east-2:179022619019:task-definition/orders:42",
+				},
 				Status: &rpv1.RecipeStatus{
 					TemplateKind:    recipes.TemplateKindTerraform,
 					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
@@ -775,6 +981,9 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 			expectedResponse: &recipes.RecipeOutput{
 				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42"},
+				ProviderResourceIDs: map[string]string{
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42": "arn:aws:ecs:us-east-2:179022619019:task-definition/orders:42",
+				},
 				Status: &rpv1.RecipeStatus{
 					TemplateKind:    recipes.TemplateKindTerraform,
 					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
@@ -1413,5 +1622,26 @@ func createTerraformConfigWithEnvSecrets() recipes.Configuration {
 				},
 			},
 		},
+	}
+}
+
+func Test_SameResourceName(t *testing.T) {
+	const prefix = "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/"
+	tests := []struct {
+		name string
+		x, y string
+		want bool
+	}{
+		{name: "namespace case differs", x: prefix + "Terraform.AWS/aws_sns_topic/orders", y: "/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/terraform.aws/aws_sns_topic/orders", want: true},
+		{name: "name case differs", x: prefix + "Terraform.AWS/aws_sns_topic/Orders", y: prefix + "Terraform.AWS/aws_sns_topic/orders", want: false},
+		{name: "nested name case differs", x: prefix + "AWS.Example/Parent/p/Child/Orders", y: prefix + "AWS.Example/Parent/p/Child/orders", want: false},
+		{name: "different nesting", x: prefix + "AWS.Example/Parent/p/Child/c", y: prefix + "AWS.Example/Parent/p", want: false},
+		{name: "invalid first ID", x: "not-an-id", y: prefix + "Terraform.AWS/aws_sns_topic/orders", want: false},
+		{name: "invalid second ID", x: prefix + "Terraform.AWS/aws_sns_topic/orders", y: "not-an-id", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, sameResourceName(tt.x, tt.y))
+		})
 	}
 }

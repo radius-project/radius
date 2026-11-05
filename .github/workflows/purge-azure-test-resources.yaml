@@ -99,8 +99,8 @@ jobs:
           # and leaves an empty-looking group behind whose only resource is the nGroups.
           # Delete the Container Instances resources first (nGroups before profiles) so
           # the resource group delete can then succeed.
-          # Radius creates the ACI nGroups/containerGroupProfiles with this API version
-          # (pkg/sdk/v20241101preview). A plain delete lets ARM pick the provider's
+          # Existing ACI deployments and recipe-created resources use this API version.
+          # A plain delete lets ARM pick the provider's
           # latest advertised version (e.g. 2026-06-01-preview), which the RP rejects
           # ("api-version not supported"), leaving the nGroups - and therefore the
           # whole resource group - undeletable. Delete them with the explicit version.

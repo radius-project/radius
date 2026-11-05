@@ -67,7 +67,7 @@ func (client *GenericResourcesClient) BeginCreateOrUpdate(ctx context.Context, r
 	}
 }
 
-// CreateOrUpdate - Creates or updates a Generic resource
+// createOrUpdate - Creates or updates a Generic resource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *GenericResourcesClient) createOrUpdate(ctx context.Context, resourceName string, genericResourceParameters GenericResource, options *GenericResourcesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -86,7 +86,7 @@ func (client *GenericResourcesClient) createOrUpdate(ctx context.Context, resour
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *GenericResourcesClient) createOrUpdateCreateRequest(ctx context.Context, resourceName string, genericResourceParameters GenericResource, _ *GenericResourcesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}"
 	if client.resourceType == "" {
@@ -134,7 +134,7 @@ func (client *GenericResourcesClient) BeginDelete(ctx context.Context, resourceN
 	}
 }
 
-// Delete - Deletes an existing Generic resource
+// deleteOperation - Deletes an existing Generic resource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *GenericResourcesClient) deleteOperation(ctx context.Context, resourceName string, options *GenericResourcesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
@@ -153,7 +153,7 @@ func (client *GenericResourcesClient) deleteOperation(ctx context.Context, resou
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *GenericResourcesClient) deleteCreateRequest(ctx context.Context, resourceName string, _ *GenericResourcesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}"
 	if client.resourceType == "" {
@@ -234,6 +234,63 @@ func (client *GenericResourcesClient) getHandleResponse(resp *http.Response, suc
 	return result, nil
 }
 
+// ListSecrets - Lists secrets for a resource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - resourceName - The name of the generic resource
+//   - options - GenericResourcesClientListSecretsOptions contains the optional parameters for the GenericResourcesClient.ListSecrets
+//     method.
+func (client *GenericResourcesClient) ListSecrets(ctx context.Context, resourceName string, options *GenericResourcesClientListSecretsOptions) (GenericResourcesClientListSecretsResponse, error) {
+	var err error
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "GenericResourcesClient.ListSecrets")
+	req, err := client.listSecretsCreateRequest(ctx, resourceName, options)
+	if err != nil {
+		return GenericResourcesClientListSecretsResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return GenericResourcesClientListSecretsResponse{}, err
+	}
+	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *GenericResourcesClient) listSecretsCreateRequest(ctx context.Context, resourceName string, _ *GenericResourcesClientListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}/listSecrets"
+	if client.resourceType == "" {
+		return nil, errors.New("parameter resourceType cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
+	if client.rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+	if resourceName == "" {
+		return nil, errors.New("parameter resourceName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceName}", url.PathEscape(resourceName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *GenericResourcesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (GenericResourcesClientListSecretsResponse, error) {
+	result := GenericResourcesClientListSecretsResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
+	if err := runtime.UnmarshalAsJSON(resp, &result.Value); err != nil {
+		return GenericResourcesClientListSecretsResponse{}, err
+	}
+	return result, nil
+}
+
 // NewListByRootScopePager - Lists information about all resources of the given resource type in the given root scope
 //   - options - GenericResourcesClientListByRootScopeOptions contains the optional parameters for the GenericResourcesClient.NewListByRootScopePager
 //     method.
@@ -300,63 +357,6 @@ func (client *GenericResourcesClient) listByRootScopeHandleResponse(resp *http.R
 	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.GenericResourcesList); err != nil {
 		return GenericResourcesClientListByRootScopeResponse{}, err
-	}
-	return result, nil
-}
-
-// ListSecrets - Lists secrets for a resource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - resourceName - The name of the generic resource
-//   - options - GenericResourcesClientListSecretsOptions contains the optional parameters for the GenericResourcesClient.ListSecrets
-//     method.
-func (client *GenericResourcesClient) ListSecrets(ctx context.Context, resourceName string, options *GenericResourcesClientListSecretsOptions) (GenericResourcesClientListSecretsResponse, error) {
-	var err error
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "GenericResourcesClient.ListSecrets")
-	req, err := client.listSecretsCreateRequest(ctx, resourceName, options)
-	if err != nil {
-		return GenericResourcesClientListSecretsResponse{}, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return GenericResourcesClientListSecretsResponse{}, err
-	}
-	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
-}
-
-// listSecretsCreateRequest creates the ListSecrets request.
-func (client *GenericResourcesClient) listSecretsCreateRequest(ctx context.Context, resourceName string, _ *GenericResourcesClientListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}/listSecrets"
-	if client.resourceType == "" {
-		return nil, errors.New("parameter resourceType cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
-	if client.rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if resourceName == "" {
-		return nil, errors.New("parameter resourceName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceName}", url.PathEscape(resourceName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	return req, nil
-}
-
-// listSecretsHandleResponse handles the ListSecrets response.
-func (client *GenericResourcesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (GenericResourcesClientListSecretsResponse, error) {
-	result := GenericResourcesClientListSecretsResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
-	if err := runtime.UnmarshalAsJSON(resp, &result.Value); err != nil {
-		return GenericResourcesClientListSecretsResponse{}, err
 	}
 	return result, nil
 }

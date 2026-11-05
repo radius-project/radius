@@ -166,11 +166,12 @@ func requireDatabaseInstalled(ctx context.Context, t *testing.T, k8s kubernetes.
 //
 // The check is not vacuous. By the time any test in this package runs, the CI workflow has already
 // waited for UCP to log "Successfully registered manifests" and then run `rad group create` and
-// `rad env create` (see .github/workflows/functional-test-noncloud.yaml). Those are real writes
-// through UCP and applications-rp, so an apiserver-backed control plane is guaranteed to have rows
-// here and an empty list is a genuine signal. Deployment availability is deliberately not relied on
-// for this: the UCP Deployment has no readiness probe and serves traffic while initialization is
-// still in flight, so "Available" would prove nothing about whether the bootstrap writes landed.
+// deployed the environment template (see .github/workflows/functional-test-noncloud.yaml). Those are
+// real writes through UCP and applications-rp, so an apiserver-backed control plane is guaranteed to
+// have rows here and an empty list is a genuine signal. Deployment availability is deliberately not
+// relied on for this: the UCP Deployment has no readiness probe and serves traffic while
+// initialization is still in flight, so "Available" would prove nothing about whether the bootstrap
+// writes landed.
 //
 // The list must succeed. A missing CRD or an unresolvable kind is a failure, not a pass: the CRD
 // ships unconditionally in deploy/Chart/crds/ucpd/, so its absence means a broken install or a

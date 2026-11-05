@@ -28,7 +28,7 @@ Radius also includes built-in Kubernetes rendering for Contour `HTTPProxy` resou
 
 This change keeps default Contour installation in place, but replaces the default application routing implementation with Gateway API recipes. When users opt out with `rad install kubernetes --skip-contour-install`, Radius skips both Contour installation and the managed Contour Gateway API setup. Removing Contour from the default install remains a separate design review decision.
 
-Radius already has a default recipe pack experience for development scenarios. `rad init --preview` creates a default recipe pack named `default` in `/planes/radius/local/resourceGroups/default` and links it to the created environment. `rad deploy` also creates or fetches that default recipe pack and injects it into environment resources that do not specify recipe packs.
+Radius already has a default recipe pack experience for development scenarios. `rad init` creates a default recipe pack named `default` in `/planes/radius/local/resourceGroups/default` and links it to the created environment. `rad deploy` also creates or fetches that default recipe pack and injects it into environment resources that do not specify recipe packs.
 
 ## Objectives
 

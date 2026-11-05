@@ -40,11 +40,9 @@ jobs:
     timeout-minutes: 15
     env:
       GOPRIVATE: github.com/radius-project
-      # Gate the docs-publishing steps (App token, bot identity and the docs PR
-      # sync) to push events (main/release lines) and manual runs that opt in via
-      # open_pull_request. This is always false for pull_request events, so PRs
-      # still generate and upload the docs as artifacts without touching the docs repo.
-      PUBLISH_DOCS: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true') }}
+      # Only main may synchronize edge docs; release branches and PRs retain
+      # their generated previews without writing to the docs repository.
+      PUBLISH_DOCS: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.open_pull_request == 'true')) }}
     permissions:
       contents: read
     steps:
@@ -55,13 +53,9 @@ jobs:
           path: radius
           persist-credentials: false
 
-      - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version-file: radius/.python-version
-
       - name: Parse release version and set environment variables
-        run: python radius/.github/scripts/get_release_version.py
+        working-directory: radius
+        run: bash ./.github/scripts/release-version.sh >>"${GITHUB_ENV}"
 
       - name: Generate docs release branch name
         run: |
@@ -93,7 +87,7 @@ jobs:
           working-directory: radius
 
       - name: Setup NodeJS
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: radius/.node-version
           # This workflow publishes generated docs, so never restore a cache that a
@@ -115,7 +109,7 @@ jobs:
         run: python docs/.github/scripts/generate_resource_references.py ./radius/hack/bicep-types-radius/generated/ ./docs/docs/content/reference/resources
 
       - name: Upload resource reference docs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: resource-docs
           path: docs/docs/content/reference/resources
@@ -128,7 +122,7 @@ jobs:
           go run cmd/docgen/main.go ../docs/docs/content/reference/cli
 
       - name: Upload CLI docs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cli-docs
           path: docs/docs/content/reference/cli
@@ -150,7 +144,7 @@ jobs:
       - name: Generate GitHub App token
         id: app-token
         if: env.PUBLISH_DOCS == 'true'
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.RADIUS_DOCS_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_DOCS_BOT_PRIVATE_KEY }}
@@ -177,9 +171,8 @@ jobs:
       # it force-updates that branch and keeps exactly one open PR per docs branch,
       # amending it in place on subsequent runs.
       #
-      # The step is gated to the same triggers that previously opened a PR (push and
-      # workflow_dispatch with open_pull_request=true); on pull_request the docs are
-      # still generated and uploaded as artifacts above for inspection.
+      # Only main pushes and opted-in main manual runs open a PR. Other refs
+      # still generate and upload the docs as artifacts above for inspection.
       - name: Sync reference docs to docs repository
         if: env.PUBLISH_DOCS == 'true'
         uses: raven-actions/repo-files-sync@511c602835ac7dd8529673f91afe348db8d08185 # v0.1.0-rc.18

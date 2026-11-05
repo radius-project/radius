@@ -18,6 +18,7 @@ package radinit
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/radius-project/radius/pkg/cli"
 	cli_aws "github.com/radius-project/radius/pkg/cli/aws"
@@ -31,9 +32,11 @@ type initOptions struct {
 	Environment    environmentOptions
 	CloudProviders cloudProviderOptions
 	Recipes        recipePackOptions
-	Application    applicationOptions
 	// SetValues is a list of values that will be passed to Helm when installing the application.
 	SetValues []string
+	// BicepConfigDirectory is the directory where bicepconfig.json will be written. It is resolved once
+	// so that the summary and the write use the same location. Empty if it could not be resolved.
+	BicepConfigDirectory string
 }
 
 // clusterOptions holds all of the options that will be used to initialize the Kubernetes cluster.
@@ -45,12 +48,14 @@ type clusterOptions struct {
 }
 
 // environmentOptions holds all of the options that will be used to initialize the environment.
-//
-// NOTE: cloud provider scope information is not included here, it is part of the cloud provider options.
 type environmentOptions struct {
 	Create    bool
 	Name      string
 	Namespace string
+	// ResourceGroup is the name of the resource group that contains (or will contain) the environment.
+	// For an existing environment this is parsed from the environment's resource ID. For a new
+	// environment this defaults to the environment name.
+	ResourceGroup string
 }
 
 // cloudProviderOptions holds all of the options that will be used to initialize cloud providers.
@@ -61,13 +66,7 @@ type cloudProviderOptions struct {
 
 // recipePackOptions holds all of the options that will be used to initialize recipe packs as part of the environment.
 type recipePackOptions struct {
-	DevRecipes bool
-}
-
-// applicationOptions holds all of the options that will be used to initialize an application in the current directory.
-type applicationOptions struct {
-	Scaffold bool
-	Name     string
+	DefaultRecipePack bool
 }
 
 func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspaces.Workspace, error) {
@@ -106,12 +105,13 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		return nil, nil, err
 	}
 
-	err = r.enterApplicationOptions(&options)
-	if err != nil {
-		return nil, nil, err
-	}
+	options.Recipes.DefaultRecipePack = !r.Full
 
-	options.Recipes.DevRecipes = !r.Full
+	// Resolve the bicepconfig.json location for display. If this fails, Run resolves it again and
+	// reports the error there.
+	if wd, err := os.Getwd(); err == nil {
+		options.BicepConfigDirectory = wd
+	}
 
 	// If the user has a current workspace we should overwrite it.
 	// If the user does not have a current workspace we should create a new one called default and set it as current
@@ -122,59 +122,20 @@ func (r *Runner) enterInitOptions(ctx context.Context) (*initOptions, *workspace
 		workspace.Name = ws.Name
 	}
 
-	workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", options.Environment.Name, options.Environment.Name)
-	workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.Name)
+	workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Radius.Core/environments/%s", options.Environment.ResourceGroup, options.Environment.Name)
+	workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", options.Environment.ResourceGroup)
 	return &options, workspace, nil
 }
 
-// UpdateClusterOptions updates the cluster options with the provided values.
-func (r *Runner) UpdateClusterOptions(install bool, ns, ctx, version string) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.Cluster.Install = install
-	r.Options.Cluster.Namespace = ns
-	r.Options.Cluster.Context = ctx
-	r.Options.Cluster.Version = version
-}
-
-// UpdateEnvironmentOptions updates the environment options with the provided values.
-func (r *Runner) UpdateEnvironmentOptions(create bool, name, ns string) {
+// UpdateEnvironmentOptions sets the environment options used by CreateEnvironment. The environment
+// is created in a resource group named after the environment.
+func (r *Runner) UpdateEnvironmentOptions(create bool, name, namespace string) {
 	if r.Options == nil {
 		r.Options = &initOptions{}
 	}
 
 	r.Options.Environment.Create = create
 	r.Options.Environment.Name = name
-	r.Options.Environment.Namespace = ns
-}
-
-// UpdateCloudProviderOptions updates the cloud provider options with the provided values.
-func (r *Runner) UpdateCloudProviderOptions(azure *azure.Provider, aws *cli_aws.Provider) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.CloudProviders.Azure = azure
-	r.Options.CloudProviders.AWS = aws
-}
-
-// UpdateRecipePackOptions updates the recipe pack options with the provided values.
-func (r *Runner) UpdateRecipePackOptions(devRecipes bool) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.Recipes.DevRecipes = devRecipes
-}
-
-// UpdateApplicationOptions updates the application options with the provided values.
-func (r *Runner) UpdateApplicationOptions(scaffold bool, name string) {
-	if r.Options == nil {
-		r.Options = &initOptions{}
-	}
-
-	r.Options.Application.Scaffold = scaffold
-	r.Options.Application.Name = name
+	r.Options.Environment.Namespace = namespace
+	r.Options.Environment.ResourceGroup = name
 }

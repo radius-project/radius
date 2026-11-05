@@ -24,7 +24,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly REPO_ROOT
 readonly WORKFLOWS_DIR="${REPO_ROOT}/.github/workflows"
 readonly RELEASE_WORKFLOW="${WORKFLOWS_DIR}/build-release.yaml"
-readonly SNAPSHOT_WORKFLOW="${WORKFLOWS_DIR}/goreleaser-snapshot.yaml"
+readonly SNAPSHOT_WORKFLOW="${WORKFLOWS_DIR}/__build-snapshot.yaml"
 readonly TOOLS_MANIFEST="${REPO_ROOT}/build/tools.yaml"
 readonly TOOLS_MAKEFILE="${REPO_ROOT}/build/tools.generated.mk"
 readonly RELEASE_DOCS_DIR="${REPO_ROOT}/docs/contributing"
@@ -58,6 +58,64 @@ verify_tool_pin() {
     fi
 }
 
+verify_sbom_command() (
+    local workdir
+    local distribution
+    local wrapper
+    local mode
+    local actual
+    local status=0
+    local arguments=("rad with spaces" --output "spdx-json=rad sbom.json")
+    local expected
+
+    workdir="$(mktemp -d)"
+    trap 'rm -rf "${workdir}"' EXIT
+    distribution="$(yq -r '.dist' "${REPO_ROOT}/.goreleaser.yaml")"
+    wrapper="$(yq -r '.sboms[0].args[0]' "${REPO_ROOT}/.goreleaser.yaml")"
+    mkdir -p "${workdir}/bin" "${workdir}/${distribution}" \
+        "${workdir}/build/scripts"
+    cp "${REPO_ROOT}/build/scripts/goreleaser-sbom.sh" \
+        "${workdir}/build/scripts/"
+    cat > "${workdir}/bin/syft" << 'EOF'
+#!/bin/bash
+set -euo pipefail
+if [[ "${GORELEASER_SNAPSHOT:-false}" == "true" ]]; then
+    [[ "${SYFT_CHECK_FOR_APP_UPDATE}" == "false" ]]
+    [[ "${SYFT_GOLANG_SEARCH_REMOTE_LICENSES}" == "false" ]]
+fi
+printf '%s\n' "$@"
+exit "${SBOM_EXIT_CODE:-0}"
+EOF
+    chmod +x "${workdir}/bin/syft"
+    export PATH="${workdir}/bin:${PATH}"
+    export SYFT_CHECK_FOR_APP_UPDATE=true
+    export SYFT_GOLANG_SEARCH_REMOTE_LICENSES=true
+    cd "${workdir}/${distribution}"
+
+    for mode in true false unset; do
+        unset GORELEASER_SNAPSHOT
+        if [[ "${mode}" != "unset" ]]; then
+            export GORELEASER_SNAPSHOT="${mode}"
+        fi
+        expected=("${arguments[@]}")
+        if [[ "${mode}" != "true" ]]; then
+            expected+=(--enrich golang)
+        fi
+        if ! actual="$(bash "${wrapper}" "${arguments[@]}")"; then
+            fail "SBOM command failed with snapshot=${mode}"
+        fi
+        if [[ "${actual}" != "$(printf '%s\n' "${expected[@]}")" ]]; then
+            fail "unexpected Syft arguments with snapshot=${mode}: ${actual}"
+        fi
+    done
+
+    GORELEASER_SNAPSHOT=true SBOM_EXIT_CODE=42 \
+        bash "${wrapper}" "${arguments[@]}" > /dev/null || status=$?
+    if [[ "${status}" != "42" ]]; then
+        fail "SBOM command did not preserve the scanner exit status"
+    fi
+)
+
 verify_workflow_wiring() {
     local asset_verifiers
     local image_verifiers
@@ -76,7 +134,8 @@ verify_workflow_wiring() {
     if [[ "${asset_verifiers}" != "2" ]]; then
         fail "draft and published CLI SBOM verification is incomplete"
     fi
-    image_verifiers="$(grep -Fc -- '--sboms' "${RELEASE_WORKFLOW}")"
+    image_verifiers="$(awk '/--sboms/ { count++ } END { print count + 0 }' \
+        "${RELEASE_WORKFLOW}" "${SCRIPT_DIR}/verify-release-publication.sh")"
     if [[ "${image_verifiers}" != "3" ]]; then
         fail "image SBOM verification is missing from a release path"
     fi
@@ -116,6 +175,7 @@ main() {
         fail "SBOMs can leak into the binary checksum pipeline"
     }
     verify_tool_pin
+    verify_sbom_command
     verify_workflow_wiring
     verify_documentation
     echo "release SBOM contract tests passed"

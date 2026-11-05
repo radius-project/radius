@@ -283,26 +283,6 @@ func (amc *UCPApplicationsManagementClient) GetApplication(ctx context.Context, 
 	return response.ApplicationResource, nil
 }
 
-// GetApplicationGraph retrieves the application graph of an application by its name (or id).
-func (amc *UCPApplicationsManagementClient) GetApplicationGraph(ctx context.Context, applicationNameOrID string) (corerpv20231001.ApplicationGraphResponse, error) {
-	scope, name, err := amc.extractScopeAndName(applicationNameOrID)
-	if err != nil {
-		return corerpv20231001.ApplicationGraphResponse{}, err
-	}
-
-	client, err := amc.createApplicationClient(scope)
-	if err != nil {
-		return corerpv20231001.ApplicationGraphResponse{}, err
-	}
-
-	getResponse, err := client.GetGraph(ctx, name, corerpv20231001.GetGraphRequest{}, &corerpv20231001.ApplicationsClientGetGraphOptions{})
-	if err != nil {
-		return corerpv20231001.ApplicationGraphResponse{}, err
-	}
-
-	return getResponse.ApplicationGraphResponse, nil
-}
-
 // CreateOrUpdateApplication creates or updates an application by its name (or id).
 func (amc *UCPApplicationsManagementClient) CreateOrUpdateApplication(ctx context.Context, applicationNameOrID string, resource *corerpv20231001.ApplicationResource) error {
 	scope, name, err := amc.extractScopeAndName(applicationNameOrID)
@@ -1203,6 +1183,53 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironmentOrApplicat
 		for _, resource := range resources {
 			if isResourceInEnvironmentOrApplications(resource, environmentID, applicationIDs) {
 				results = append(results, resource)
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// ListResourcesInPlane lists the resources in every resource group of the plane that contains the
+// configured scope. It skips the same types as ListAllResourceTypesNames and makes one list call
+// per resource type.
+func (amc *UCPApplicationsManagementClient) ListResourcesInPlane(ctx context.Context) ([]generated.GenericResource, error) {
+	scope, err := resources.ParseScope(amc.RootScope)
+	if err != nil {
+		return nil, err
+	}
+
+	// The configured scope is usually a resource group, but may already be a plane.
+	if scope.FindScope(resources_radius.ScopeResourceGroups) != "" {
+		scope = scope.Truncate()
+	}
+
+	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
+	if err != nil {
+		return nil, err
+	}
+
+	results := []generated.GenericResource{}
+	for _, resourceType := range resourceTypesList {
+		apiVersion, err := amc.getAPIVersionForResourceType(ctx, resourceType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get API versions for resource type %q: %w", resourceType, err)
+		}
+
+		client, err := amc.getGenericClient(scope.String(), resourceType, apiVersion, false)
+		if err != nil {
+			return nil, err
+		}
+
+		pager := client.NewListByRootScopePager(&generated.GenericResourcesClientListByRootScopeOptions{})
+		for pager.More() {
+			page, err := pager.NextPage(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to list resources of type %q: %w", resourceType, err)
+			}
+
+			for _, resource := range page.Value {
+				results = append(results, *resource)
 			}
 		}
 	}

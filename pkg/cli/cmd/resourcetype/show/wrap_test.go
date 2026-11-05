@@ -180,7 +180,7 @@ func Test_wrapText_WideCharacters(t *testing.T) {
 				t.Parallel()
 
 				wrapped := wrapText(text, width)
-				for _, line := range strings.Split(wrapped, "\n") {
+				for line := range strings.SplitSeq(wrapped, "\n") {
 					require.True(t, utf8.ValidString(line), "line contains a split rune: %q", line)
 					require.LessOrEqual(t, displayWidth(line), width, "line exceeds width: %q", line)
 				}
@@ -288,7 +288,7 @@ func Test_wrapDescriptions(t *testing.T) {
 			{Name: "数据库", Type: "string", Description: longSizeDescription},
 		}
 		const width = 80
-		for _, line := range strings.Split(strings.TrimSuffix(renderTable(t, wrapDescriptions(list, width)), "\n"), "\n") {
+		for line := range strings.SplitSeq(strings.TrimSuffix(renderTable(t, wrapDescriptions(list, width)), "\n"), "\n") {
 			require.LessOrEqual(t, displayWidth(line), width, "line exceeds terminal width: %q", line)
 		}
 	})

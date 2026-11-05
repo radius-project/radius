@@ -101,7 +101,7 @@ func retry(filepath string, attempt, retryAttempts int) (bool, error) {
 		if attempt == retryAttempts {
 			return false, fmt.Errorf("failed to download bicep: %v", err)
 		}
-		fmt.Printf("Attempt %d failed to download bicep: %v\nRetrying...", attempt, err)
+		fmt.Fprintf(os.Stderr, "Attempt %d failed to download bicep: %v\nRetrying...", attempt, err)
 		time.Sleep(retryDelaySecs * time.Second)
 		return false, nil
 	}

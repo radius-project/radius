@@ -49,6 +49,7 @@ const (
 // removes the recipe pack before the containers that need it to tear themselves down, which leaves
 // the containers in a failed state and the group undeleted.
 func Test_GroupDelete_RecipeResources(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), groupDeleteTimeout)
 	t.Cleanup(cancel)
 

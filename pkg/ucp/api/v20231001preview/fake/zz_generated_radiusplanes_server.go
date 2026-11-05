@@ -28,6 +28,10 @@ type RadiusPlanesServer struct {
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusAccepted, http.StatusNoContent
 	BeginDelete func(ctx context.Context, planeName string, options *v20231001preview.RadiusPlanesClientBeginDeleteOptions) (resp azfake.PollerResponder[v20231001preview.RadiusPlanesClientDeleteResponse], errResp azfake.ErrorResponder)
 
+	// BeginUpdate is the fake for method RadiusPlanesClient.BeginUpdate
+	// HTTP status codes to indicate success: http.StatusOK, http.StatusAccepted, http.StatusNoContent
+	BeginUpdate func(ctx context.Context, planeName string, properties v20231001preview.RadiusPlaneResourceTagsUpdate, options *v20231001preview.RadiusPlanesClientBeginUpdateOptions) (resp azfake.PollerResponder[v20231001preview.RadiusPlanesClientUpdateResponse], errResp azfake.ErrorResponder)
+
 	// Get is the fake for method RadiusPlanesClient.Get
 	// HTTP status codes to indicate success: http.StatusOK
 	Get func(ctx context.Context, planeName string, options *v20231001preview.RadiusPlanesClientGetOptions) (resp azfake.Responder[v20231001preview.RadiusPlanesClientGetResponse], errResp azfake.ErrorResponder)
@@ -35,10 +39,6 @@ type RadiusPlanesServer struct {
 	// NewListPager is the fake for method RadiusPlanesClient.NewListPager
 	// HTTP status codes to indicate success: http.StatusOK
 	NewListPager func(options *v20231001preview.RadiusPlanesClientListOptions) (resp azfake.PagerResponder[v20231001preview.RadiusPlanesClientListResponse])
-
-	// BeginUpdate is the fake for method RadiusPlanesClient.BeginUpdate
-	// HTTP status codes to indicate success: http.StatusOK, http.StatusAccepted, http.StatusNoContent
-	BeginUpdate func(ctx context.Context, planeName string, properties v20231001preview.RadiusPlaneResourceTagsUpdate, options *v20231001preview.RadiusPlanesClientBeginUpdateOptions) (resp azfake.PollerResponder[v20231001preview.RadiusPlanesClientUpdateResponse], errResp azfake.ErrorResponder)
 }
 
 // NewRadiusPlanesServerTransport creates a new instance of RadiusPlanesServerTransport with the provided implementation.
@@ -49,8 +49,8 @@ func NewRadiusPlanesServerTransport(srv *RadiusPlanesServer) *RadiusPlanesServer
 		srv:                 srv,
 		beginCreateOrUpdate: newTracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientCreateOrUpdateResponse]](),
 		beginDelete:         newTracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientDeleteResponse]](),
-		newListPager:        newTracker[azfake.PagerResponder[v20231001preview.RadiusPlanesClientListResponse]](),
 		beginUpdate:         newTracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientUpdateResponse]](),
+		newListPager:        newTracker[azfake.PagerResponder[v20231001preview.RadiusPlanesClientListResponse]](),
 	}
 }
 
@@ -60,8 +60,8 @@ type RadiusPlanesServerTransport struct {
 	srv                 *RadiusPlanesServer
 	beginCreateOrUpdate *tracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientCreateOrUpdateResponse]]
 	beginDelete         *tracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientDeleteResponse]]
-	newListPager        *tracker[azfake.PagerResponder[v20231001preview.RadiusPlanesClientListResponse]]
 	beginUpdate         *tracker[azfake.PollerResponder[v20231001preview.RadiusPlanesClientUpdateResponse]]
+	newListPager        *tracker[azfake.PagerResponder[v20231001preview.RadiusPlanesClientListResponse]]
 }
 
 // Do implements the policy.Transporter interface for RadiusPlanesServerTransport.
@@ -89,12 +89,12 @@ func (r *RadiusPlanesServerTransport) dispatchToMethodFake(req *http.Request, me
 				res.resp, res.err = r.dispatchBeginCreateOrUpdate(req)
 			case "RadiusPlanesClient.BeginDelete":
 				res.resp, res.err = r.dispatchBeginDelete(req)
+			case "RadiusPlanesClient.BeginUpdate":
+				res.resp, res.err = r.dispatchBeginUpdate(req)
 			case "RadiusPlanesClient.Get":
 				res.resp, res.err = r.dispatchGet(req)
 			case "RadiusPlanesClient.NewListPager":
 				res.resp, res.err = r.dispatchNewListPager(req)
-			case "RadiusPlanesClient.BeginUpdate":
-				res.resp, res.err = r.dispatchBeginUpdate(req)
 			default:
 				res.err = fmt.Errorf("unhandled API %s", method)
 			}
@@ -195,6 +195,50 @@ func (r *RadiusPlanesServerTransport) dispatchBeginDelete(req *http.Request) (*h
 	return resp, nil
 }
 
+func (r *RadiusPlanesServerTransport) dispatchBeginUpdate(req *http.Request) (*http.Response, error) {
+	if r.srv.BeginUpdate == nil {
+		return nil, &nonRetriableError{errors.New("fake for method BeginUpdate not implemented")}
+	}
+	beginUpdate := r.beginUpdate.get(req)
+	if beginUpdate == nil {
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
+		regex := regexp.MustCompile(regexStr)
+		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+		if len(matches) < 2 {
+			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+		}
+		body, err := server.UnmarshalRequestAsJSON[v20231001preview.RadiusPlaneResourceTagsUpdate](req)
+		if err != nil {
+			return nil, err
+		}
+		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+		if err != nil {
+			return nil, err
+		}
+		respr, errRespr := r.srv.BeginUpdate(req.Context(), planeNameParam, body, nil)
+		if respErr := server.GetError(errRespr, req); respErr != nil {
+			return nil, respErr
+		}
+		beginUpdate = &respr
+		r.beginUpdate.add(req, beginUpdate)
+	}
+
+	resp, err := server.PollerResponderNext(beginUpdate, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if !slices.Contains([]int{http.StatusOK, http.StatusAccepted, http.StatusNoContent}, resp.StatusCode) {
+		r.beginUpdate.remove(req)
+		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK, http.StatusAccepted, http.StatusNoContent", resp.StatusCode)}
+	}
+	if !server.PollerResponderMore(beginUpdate) {
+		r.beginUpdate.remove(req)
+	}
+
+	return resp, nil
+}
+
 func (r *RadiusPlanesServerTransport) dispatchGet(req *http.Request) (*http.Response, error) {
 	if r.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
@@ -248,50 +292,6 @@ func (r *RadiusPlanesServerTransport) dispatchNewListPager(req *http.Request) (*
 	if !server.PagerResponderMore(newListPager) {
 		r.newListPager.remove(req)
 	}
-	return resp, nil
-}
-
-func (r *RadiusPlanesServerTransport) dispatchBeginUpdate(req *http.Request) (*http.Response, error) {
-	if r.srv.BeginUpdate == nil {
-		return nil, &nonRetriableError{errors.New("fake for method BeginUpdate not implemented")}
-	}
-	beginUpdate := r.beginUpdate.get(req)
-	if beginUpdate == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
-		regex := regexp.MustCompile(regexStr)
-		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
-		if len(matches) < 2 {
-			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
-		}
-		body, err := server.UnmarshalRequestAsJSON[v20231001preview.RadiusPlaneResourceTagsUpdate](req)
-		if err != nil {
-			return nil, err
-		}
-		planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
-		if err != nil {
-			return nil, err
-		}
-		respr, errRespr := r.srv.BeginUpdate(req.Context(), planeNameParam, body, nil)
-		if respErr := server.GetError(errRespr, req); respErr != nil {
-			return nil, respErr
-		}
-		beginUpdate = &respr
-		r.beginUpdate.add(req, beginUpdate)
-	}
-
-	resp, err := server.PollerResponderNext(beginUpdate, req)
-	if err != nil {
-		return nil, err
-	}
-
-	if !slices.Contains([]int{http.StatusOK, http.StatusAccepted, http.StatusNoContent}, resp.StatusCode) {
-		r.beginUpdate.remove(req)
-		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK, http.StatusAccepted, http.StatusNoContent", resp.StatusCode)}
-	}
-	if !server.PollerResponderMore(beginUpdate) {
-		r.beginUpdate.remove(req)
-	}
-
 	return resp, nil
 }
 

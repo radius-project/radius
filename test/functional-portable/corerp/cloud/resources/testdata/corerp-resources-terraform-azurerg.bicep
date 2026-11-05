@@ -11,13 +11,22 @@ param appName string
 @description('Per-run seed used to ensure the Azure resource group name does not collide across concurrent CI runs that share a test subscription.')
 param uniqueSeed string = ''
 
+@description('Name of the Radius Environment.')
+param envName string = 'corerp-resources-terraform-azrg-env'
+
+@description('Name of the Radius Extender.')
+param resourceName string = 'corerp-resources-terraform-azrg'
+
+@description('Name of the Azure resource group created by the recipe.')
+param azureResourceGroupName string = 'tfrg${uniqueString(resourceGroup().id, uniqueSeed)}'
+
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'corerp-resources-terraform-azrg-env'
+  name: envName
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-terraform-azrg-env'
+      namespace: envName
     }
     providers: {
       azure: {
@@ -30,7 +39,7 @@ resource env 'Applications.Core/environments@2023-10-01-preview' = {
           templateKind: 'terraform'
           templatePath: '${moduleServer}/azure-rg.zip'
           parameters: {
-            name: 'tfrg${uniqueString(resourceGroup().id, uniqueSeed)}'
+            name: azureResourceGroupName
             location: location
           }
         }
@@ -53,7 +62,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource webapp 'Applications.Core/extenders@2023-10-01-preview' = {
-  name: 'corerp-resources-terraform-azrg'
+  name: resourceName
   properties: {
     application: app.id
     environment: env.id

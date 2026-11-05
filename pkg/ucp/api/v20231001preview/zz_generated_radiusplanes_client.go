@@ -58,7 +58,7 @@ func (client *RadiusPlanesClient) BeginCreateOrUpdate(ctx context.Context, plane
 	}
 }
 
-// CreateOrUpdate - Create or update a plane
+// createOrUpdate - Create or update a plane
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *RadiusPlanesClient) createOrUpdate(ctx context.Context, planeName string, resource RadiusPlaneResource, options *RadiusPlanesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -77,7 +77,7 @@ func (client *RadiusPlanesClient) createOrUpdate(ctx context.Context, planeName 
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *RadiusPlanesClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, resource RadiusPlaneResource, _ *RadiusPlanesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}"
 	if planeName == "" {
@@ -119,7 +119,7 @@ func (client *RadiusPlanesClient) BeginDelete(ctx context.Context, planeName str
 	}
 }
 
-// Delete - Delete a plane
+// deleteOperation - Delete a plane
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *RadiusPlanesClient) deleteOperation(ctx context.Context, planeName string, options *RadiusPlanesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
@@ -138,7 +138,7 @@ func (client *RadiusPlanesClient) deleteOperation(ctx context.Context, planeName
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *RadiusPlanesClient) deleteCreateRequest(ctx context.Context, planeName string, _ *RadiusPlanesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}"
 	if planeName == "" {
@@ -152,6 +152,68 @@ func (client *RadiusPlanesClient) deleteCreateRequest(ctx context.Context, plane
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	return req, nil
+}
+
+// BeginUpdate - Update a plane
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - planeName - The plane name.
+//   - properties - The resource properties to be updated.
+//   - options - RadiusPlanesClientBeginUpdateOptions contains the optional parameters for the RadiusPlanesClient.BeginUpdate
+//     method.
+func (client *RadiusPlanesClient) BeginUpdate(ctx context.Context, planeName string, properties RadiusPlaneResourceTagsUpdate, options *RadiusPlanesClientBeginUpdateOptions) (*runtime.Poller[RadiusPlanesClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, planeName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RadiusPlanesClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[RadiusPlanesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// update - Update a plane
+// If the operation fails it returns an *azcore.ResponseError type.
+func (client *RadiusPlanesClient) update(ctx context.Context, planeName string, properties RadiusPlaneResourceTagsUpdate, options *RadiusPlanesClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "RadiusPlanesClient.BeginUpdate")
+	req, err := client.updateCreateRequest(ctx, planeName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(httpResp)
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the update request.
+func (client *RadiusPlanesClient) updateCreateRequest(ctx context.Context, planeName string, properties RadiusPlaneResourceTagsUpdate, _ *RadiusPlanesClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/radius/{planeName}"
+	if planeName == "" {
+		return nil, errors.New("parameter planeName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 
@@ -262,66 +324,4 @@ func (client *RadiusPlanesClient) listHandleResponse(resp *http.Response, succes
 		return RadiusPlanesClientListResponse{}, err
 	}
 	return result, nil
-}
-
-// BeginUpdate - Update a plane
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - planeName - The plane name.
-//   - properties - The resource properties to be updated.
-//   - options - RadiusPlanesClientBeginUpdateOptions contains the optional parameters for the RadiusPlanesClient.BeginUpdate
-//     method.
-func (client *RadiusPlanesClient) BeginUpdate(ctx context.Context, planeName string, properties RadiusPlaneResourceTagsUpdate, options *RadiusPlanesClientBeginUpdateOptions) (*runtime.Poller[RadiusPlanesClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, planeName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[RadiusPlanesClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[RadiusPlanesClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a plane
-// If the operation fails it returns an *azcore.ResponseError type.
-func (client *RadiusPlanesClient) update(ctx context.Context, planeName string, properties RadiusPlaneResourceTagsUpdate, options *RadiusPlanesClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "RadiusPlanesClient.BeginUpdate")
-	req, err := client.updateCreateRequest(ctx, planeName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		return nil, runtime.NewResponseError(httpResp)
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *RadiusPlanesClient) updateCreateRequest(ctx context.Context, planeName string, properties RadiusPlaneResourceTagsUpdate, _ *RadiusPlanesClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/planes/radius/{planeName}"
-	if planeName == "" {
-		return nil, errors.New("parameter planeName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
-	return req, nil
 }

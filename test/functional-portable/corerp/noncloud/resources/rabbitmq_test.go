@@ -101,7 +101,7 @@ func Test_RabbitMQ(t *testing.T) {
 				require.Equal(t, int32(5672), deployment.Spec.Template.Spec.Containers[0].Ports[0].ContainerPort)
 
 				cli := radcli.NewCLI(t, test.Options.ConfigFilePath)
-				_, err := cli.ApplicationDeletePreview(ctx, name, "")
+				_, err := cli.ApplicationDelete(ctx, name, "")
 				require.NoError(t, err, "failed to delete preview application")
 				requireManagedSecretDeleted(t, ctx, test, appNamespace, managedSecretName)
 				scope := test.Options.Workspace.Scope

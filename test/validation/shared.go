@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -84,6 +85,10 @@ type RPResource struct {
 type OutputResourceResponse struct {
 	// ID is the resource ID of the output resource.
 	ID string
+
+	// ProviderResourceID is the provider-native ID of the output resource, such as an AWS ARN. When set on an
+	// expected output resource, the actual output resource must have the same value.
+	ProviderResourceID string `json:"providerResourceId,omitempty"`
 }
 
 type RPResourceSet struct {
@@ -173,12 +178,20 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 		// return cli.EnvDelete(ctx, resource.Name)
 	} else if resource.Type == ApplicationsResource {
 		t.Logf("deleting application: %s", resource.Name)
-		return cli.ApplicationDelete(ctx, resource.Name)
+
+		// Tolerate 404 to keep teardown idempotent: the CLI path this replaced
+		// reported success when the application was already gone.
+		_, err := client.DeleteApplication(ctx, resource.Name, false)
+		if err != nil && !clients.Is404Error(err) {
+			return err
+		}
+
+		return nil
 	} else if resource.Type == CoreApplicationsResource {
-		// Radius.Core applications require cascade delete via the CLI --preview flag,
-		// which deletes owned resources before deleting the application itself.
+		// Radius.Core applications require cascade delete via the CLI, which
+		// deletes owned resources before deleting the application itself.
 		t.Logf("deleting Radius.Core application: %s", resource.Name)
-		_, err := cli.ApplicationDeletePreview(ctx, resource.Name, "")
+		_, err := cli.ApplicationDelete(ctx, resource.Name, "")
 		return err
 	} else if resource.Type == CoreEnvironmentsResource {
 		t.Logf("deleting Radius.Core environment: %s", resource.Name)
@@ -197,7 +210,12 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 
 // DeleteRPResourceSilent deletes an environment or application resource without logging to the test.
 // This is useful for background cleanup operations to avoid "Log in goroutine after test has completed" panics.
+//
+// The Radius.Core branches still shell out to the CLI for cascade delete, so they run it via
+// CLI.Silent to keep that contract.
 func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource RPResource) error {
+	silentCLI := cli.Silent()
+
 	if resource.Type == EnvironmentsResource {
 		var respFromCtx *http.Response
 		ctxWithResp := policy.WithCaptureResponse(ctx, &respFromCtx)
@@ -209,13 +227,19 @@ func DeleteRPResourceSilent(ctx context.Context, cli *radcli.CLI, client clients
 
 		return nil
 	} else if resource.Type == ApplicationsResource {
-		return cli.ApplicationDelete(ctx, resource.Name)
+		// Tolerate 404 for the same reason as DeleteRPResource.
+		_, err := client.DeleteApplication(ctx, resource.Name, false)
+		if err != nil && !clients.Is404Error(err) {
+			return err
+		}
+
+		return nil
 	} else if resource.Type == CoreApplicationsResource {
-		// Radius.Core applications require cascade delete via the CLI --preview flag.
-		_, err := cli.ApplicationDeletePreview(ctx, resource.Name, "")
+		// Radius.Core applications require cascade delete via the CLI.
+		_, err := silentCLI.ApplicationDelete(ctx, resource.Name, "")
 		return err
 	} else if resource.Type == CoreEnvironmentsResource {
-		_, err := cli.EnvironmentDeletePreview(ctx, resource.Name, "")
+		_, err := silentCLI.EnvironmentDeletePreview(ctx, resource.Name, "")
 		return err
 	} else {
 		// Handle other resource types (like ExtendersResource, ContainersResource, etc.)
@@ -287,21 +311,31 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 				for _, outputResource := range outputResources {
 					t.Logf("Found output resource: %+v", outputResource)
 				}
-				require.Equalf(t, len(expectedResource.OutputResources), len(outputResources), "expected output resources: %v, actual: %v", expectedResource.OutputResources, outputResources)
-				for _, expectedOutputResource := range expectedResource.OutputResources {
-					found := false
-					for _, actualOutputResource := range outputResources {
-						if strings.EqualFold(expectedOutputResource.ID, actualOutputResource.ID) {
-							found = true
-							break
-						}
-					}
-
-					require.Truef(t, found, "expected output resource %v wasn't found", expectedOutputResource)
-				}
+				require.NoError(t, matchOutputResources(expectedResource.OutputResources, outputResources))
 			}
 		}
 	}
+}
+
+// matchOutputResources returns an error unless actual has the same number of output resources as expected and each
+// expected output resource is in actual. IDs are compared case-insensitively. When an expected output resource sets
+// ProviderResourceID, the actual output resource must have the same value.
+func matchOutputResources(expected []OutputResourceResponse, actual []OutputResourceResponse) error {
+	if len(expected) != len(actual) {
+		return fmt.Errorf("expected output resources: %v, actual: %v", expected, actual)
+	}
+
+	for _, expectedOutputResource := range expected {
+		index := slices.IndexFunc(actual, func(a OutputResourceResponse) bool { return strings.EqualFold(expectedOutputResource.ID, a.ID) })
+		if index < 0 {
+			return fmt.Errorf("expected output resource %v wasn't found in %v", expectedOutputResource, actual)
+		}
+		if expectedOutputResource.ProviderResourceID != "" && expectedOutputResource.ProviderResourceID != actual[index].ProviderResourceID {
+			return fmt.Errorf("providerResourceId of output resource %s: expected %q, actual %q", actual[index].ID, expectedOutputResource.ProviderResourceID, actual[index].ProviderResourceID)
+		}
+	}
+
+	return nil
 }
 
 // AssertCredentialExists checks if the credential is registered in the workspace and returns a boolean value.

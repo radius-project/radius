@@ -26,7 +26,7 @@ import (
 
 	"uuid"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
@@ -150,10 +150,16 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs(options clients.Deploymen
 	}
 
 	if options.Providers.AWS != nil && options.Providers.AWS.Scope != "" {
+		applicationID, environmentID := "", ""
+		if options.Providers.Radius != nil {
+			applicationID = options.Providers.Radius.ApplicationID
+			environmentID = options.Providers.Radius.EnvironmentID
+		}
 		providerConfig.AWS = &sdkclients.AWS{
 			Type: sdkclients.ProviderTypeAWS,
 			Value: sdkclients.Value{
 				Scope: options.Providers.AWS.Scope,
+				Owner: sdkclients.AWSDeploymentOwner(dc.RadiusResourceGroup, applicationID, environmentID),
 			},
 		}
 	}
@@ -225,7 +231,11 @@ func (dc *ResourceDeploymentClient) monitorProgress(ctx context.Context, name st
 
 	// Now loop forever for updates. We're relying on cancellation of the context to terminate.
 	for ctx.Err() == nil {
-		time.Sleep(OperationPollInterval)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(OperationPollInterval):
+		}
 
 		operations, err := dc.listOperations(ctx, name)
 		if err != nil && err == ctx.Err() {

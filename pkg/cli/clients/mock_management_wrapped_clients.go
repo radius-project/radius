@@ -341,45 +341,6 @@ func (c *MockapplicationResourceClientGetCall) DoAndReturn(f func(context.Contex
 	return c
 }
 
-// GetGraph mocks base method.
-func (m *MockapplicationResourceClient) GetGraph(ctx context.Context, applicationName string, body v20231001preview.GetGraphRequest, options *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetGraph", ctx, applicationName, body, options)
-	ret0, _ := ret[0].(v20231001preview.ApplicationsClientGetGraphResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetGraph indicates an expected call of GetGraph.
-func (mr *MockapplicationResourceClientMockRecorder) GetGraph(ctx, applicationName, body, options any) *MockapplicationResourceClientGetGraphCall {
-	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGraph", reflect.TypeOf((*MockapplicationResourceClient)(nil).GetGraph), ctx, applicationName, body, options)
-	return &MockapplicationResourceClientGetGraphCall{Call: call}
-}
-
-// MockapplicationResourceClientGetGraphCall wrap *gomock.Call
-type MockapplicationResourceClientGetGraphCall struct {
-	*gomock.Call
-}
-
-// Return rewrite *gomock.Call.Return
-func (c *MockapplicationResourceClientGetGraphCall) Return(arg0 v20231001preview.ApplicationsClientGetGraphResponse, arg1 error) *MockapplicationResourceClientGetGraphCall {
-	c.Call = c.Call.Return(arg0, arg1)
-	return c
-}
-
-// Do rewrite *gomock.Call.Do
-func (c *MockapplicationResourceClientGetGraphCall) Do(f func(context.Context, string, v20231001preview.GetGraphRequest, *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error)) *MockapplicationResourceClientGetGraphCall {
-	c.Call = c.Call.Do(f)
-	return c
-}
-
-// DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockapplicationResourceClientGetGraphCall) DoAndReturn(f func(context.Context, string, v20231001preview.GetGraphRequest, *v20231001preview.ApplicationsClientGetGraphOptions) (v20231001preview.ApplicationsClientGetGraphResponse, error)) *MockapplicationResourceClientGetGraphCall {
-	c.Call = c.Call.DoAndReturn(f)
-	return c
-}
-
 // NewListByScopePager mocks base method.
 func (m *MockapplicationResourceClient) NewListByScopePager(options *v20231001preview.ApplicationsClientListByScopeOptions) *runtime.Pager[v20231001preview.ApplicationsClientListByScopeResponse] {
 	m.ctrl.T.Helper()

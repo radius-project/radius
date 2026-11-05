@@ -26,6 +26,7 @@ import (
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/server"
@@ -60,15 +61,17 @@ var rootCmd = &cobra.Command{
 		}
 		defer flush()
 
+		authz.LogMode(logger, options.Config.Authorization)
+
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
 
-		host, err := server.NewServer(options)
+		ctx := logr.NewContext(cmd.Context(), logger)
+		host, err := server.NewServer(ctx, options)
 		if err != nil {
 			return err
 		}
 
-		ctx := logr.NewContext(cmd.Context(), logger)
 		return hosting.RunWithInterrupts(ctx, host)
 	},
 }

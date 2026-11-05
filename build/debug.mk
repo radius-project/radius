@@ -56,7 +56,7 @@ debug-help: ## Show debug automation help
 	@echo ""
 	@echo ""
 	@echo "Deployment Engine Commands:"
-	@echo "  debug-deployment-engine-pull   - Pull latest deployment engine image from ghcr.io"
+	@echo "  debug-deployment-engine-pull   - Pull the edge deployment engine image from ghcr.io"
 	@echo "  debug-deployment-engine-start  - Start deployment engine in k3d cluster"
 	@echo "  debug-deployment-engine-stop   - Stop deployment engine"
 	@echo "  debug-deployment-engine-status - Check deployment engine status"
@@ -272,11 +272,11 @@ debug-logs: ## Tail all component logs
 	fi
 
 # Deployment Engine Management
-debug-deployment-engine-pull: ## Pull latest deployment engine image from ghcr.io
+debug-deployment-engine-pull: ## Pull the edge deployment engine image from ghcr.io
 	@echo "Pulling Deployment Engine image from ghcr.io..."
 	@command -v docker >/dev/null 2>&1 || { echo "❌ Docker not found. Please install Docker to use Deployment Engine"; exit 1; }
 	@docker info >/dev/null 2>&1 || { echo "❌ Docker daemon not running. Please start Docker"; exit 1; }
-	@docker pull ghcr.io/radius-project/deployment-engine:latest \
+	@docker pull ghcr.io/radius-project/deployment-engine:edge \
 		&& echo "✅ Deployment Engine image pulled successfully" \
 		|| echo "❌ Failed to pull Deployment Engine image"
 
@@ -342,7 +342,7 @@ debug-env-init: ## Create default resource group and environment with the defaul
 	@echo "Creating resource group 'default'..."
 	@build/scripts/rad-wrapper group create default || echo "Resource group may already exist"
 	@echo "Creating environment 'default' with Kubernetes compute configuration and the default recipe pack..."
-	@build/scripts/rad-wrapper env create default --kubernetes-namespace default --preview || echo "Environment may already exist"
+	@build/scripts/rad-wrapper env create default --kubernetes-namespace default || echo "Environment may already exist"
 	@echo "Starting deployment engine in k3d cluster..."
 	@$(MAKE) debug-deployment-engine-start
 	@echo "✅ Debug environment ready for application deployment!"

@@ -17,15 +17,19 @@ limitations under the License.
 package envswitch
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/cli/clients"
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/test_client_factory"
+	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/test/radcli"
-	"go.uber.org/mock/gomock"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -33,55 +37,115 @@ func Test_CommandValidation(t *testing.T) {
 }
 
 func Test_Validate(t *testing.T) {
-	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+	type envServerFactory func() corerpfake.EnvironmentsServer
 
-	testcases := []radcli.ValidateInput{
+	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+	emptyConfig := radcli.LoadEmptyConfig(t)
+
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	validEnvServer := func() corerpfake.EnvironmentsServer {
+		return corerpfake.EnvironmentsServer{
+			Get: test_client_factory.WithEnvironmentServerNoError().Get,
+		}
+	}
+
+	nonExistentEnvServer := func() corerpfake.EnvironmentsServer {
+		return corerpfake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				_ string,
+				_ string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				errResp.SetError(fmt.Errorf("Environment not found"))
+				errResp.SetResponseError(404, "Not Found")
+				return
+			},
+		}
+	}
+
+	tests := []struct {
+		name        string
+		args        []string
+		config      framework.ConfigHolder
+		workspace   *workspaces.Workspace
+		envFactory  envServerFactory
+		expectError bool
+	}{
 		{
-			Name:          "Switch Command with valid arguments",
-			Input:         []string{"validEnvToSwitchTo"},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
+			name: "Switch Command with valid arguments",
+			args: []string{"validEnvToSwitchTo"},
+			config: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				createGetEnvironmentSuccess(mocks.ApplicationManagementClient)
-			},
+			workspace:   workspace,
+			envFactory:  validEnvServer,
+			expectError: false,
 		},
 		{
-			Name:          "Switch Command with non-existent env",
-			Input:         []string{"nonExistentEnv"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
+			name: "Switch Command with non-existent env",
+			args: []string{"nonexistent-env"},
+			config: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				createGetEnvironmentError(mocks.ApplicationManagementClient)
-			},
+			workspace:   workspace,
+			envFactory:  nonExistentEnvServer,
+			expectError: true,
 		},
 		{
-			Name:          "Switch Command with non-editable workspace invalid",
-			Input:         []string{},
-			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
+			name: "Switch Command with non-editable workspace invalid",
+			args: []string{},
+			config: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         emptyConfig,
+			},
+			workspace:   nil, // will be derived from config; no editable workspace
+			envFactory:  nil, // not needed; Validate should fail before calling Radius.Core
+			expectError: true,
 		},
 	}
-	radcli.SharedValidateValidation(t, NewCommand, testcases)
-}
 
-func createGetEnvironmentSuccess(appManagementClient *clients.MockApplicationsManagementClient) {
-	appManagementClient.EXPECT().
-		GetEnvironment(gomock.Any(), "validEnvToSwitchTo").
-		Return(corerp.EnvironmentResource{}, nil).Times(1)
-}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &framework.Impl{
+				ConfigHolder: &tc.config,
+				Output:       &output.MockOutput{},
+			}
 
-func createGetEnvironmentError(appManagementClient *clients.MockApplicationsManagementClient) {
-	responseError := &azcore.ResponseError{}
-	responseError.ErrorCode = v1.CodeNotFound
-	err := error(responseError)
+			cmd, runner := NewCommand(f)
+			r := runner.(*Runner)
 
-	appManagementClient.EXPECT().
-		GetEnvironment(gomock.Any(), "nonExistentEnv").
-		Return(corerp.EnvironmentResource{}, err).Times(1)
+			// Inject workspace if provided.
+			if tc.workspace != nil {
+				r.Workspace = tc.workspace
+			}
+
+			// Inject Radius.Core client factory when we have an env server.
+			if tc.envFactory != nil && tc.workspace != nil {
+				factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+					tc.workspace.Scope,
+					tc.envFactory,
+					nil,
+				)
+				require.NoError(t, err)
+				r.RadiusCoreClientFactory = factory
+			}
+
+			cmd.SetArgs(tc.args)
+			cmd.SetContext(t.Context())
+
+			err := r.Validate(cmd, tc.args)
+			if tc.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

@@ -461,14 +461,12 @@ and flow through the system as follows:
 
 1. **User configures an environment** — When a user runs `rad init`, interactive
    prompts collect Azure credentials (subscription ID, resource group) and/or
-   AWS credentials (account ID, region). These are converted into scope strings
-   by `CreateEnvProviders()` in
-   [pkg/cli/cmd/utils.go](../../pkg/cli/cmd/utils.go):
+   AWS credentials (account ID, region). `CreateEnvironment()` in
+   [pkg/cli/cmd/radinit/environment.go](../../pkg/cli/cmd/radinit/environment.go)
+   stores these values in the `Providers` field of the `Radius.Core`
+   **Environment** resource. They map to the following scope strings:
    - Azure: `/subscriptions/{sub-id}/resourceGroups/{rg}`
    - AWS: `/planes/aws/aws/accounts/{account-id}/regions/{region}`
-
-   The scopes are stored as part of the `Providers` field on the Radius
-  **Environment** resource.
 
 2. **CLI reads providers from the environment** — At deploy time, the `rad
    deploy` runner fetches the environment resource and extracts the provider
@@ -505,18 +503,25 @@ There are three places where a `ProviderConfig` is constructed:
    [pkg/cli/deployment/deploy.go](../../pkg/cli/deployment/deploy.go) calls
    `NewDefaultProviderConfig()` to set the Radius and deployments scopes, then
    optionally adds Azure and AWS scopes based on the user's workspace
-   configuration.
+   configuration. The AWS provider also gets an `owner`
+   (`deploy;<resource group ID>;<application ID>;<environment ID>`), which UCP
+   uses to check that only the owner of an AWS alias changes it.
 
 2. **Bicep recipe driver** — `newProviderConfig()` in
    [pkg/recipes/driver/bicep/bicep.go](../../pkg/recipes/driver/bicep/bicep.go)
    builds a config using the recipe's environment provider settings (Azure
-   subscription/resource group, AWS account/region).
+   subscription/resource group, AWS account/region). The AWS provider also
+   gets an `owner` (`recipe;<application ID>;<environment ID>;<resource ID>`).
+   The driver sends the same owner in the `X-Radius-Resource-Owner` header when
+   it deletes the recipe's AWS output resources.
 
 3. **DeploymentTemplate reconciler** —
    [pkg/controller/reconciler/deploymenttemplate_reconciler.go](../../pkg/controller/reconciler/deploymenttemplate_reconciler.go)
    reads the provider config from the `DeploymentTemplate` CRD's
    `spec.providerConfig` field, which is populated by whoever creates the
-   Kubernetes custom resource.
+   Kubernetes custom resource. `rad bicep generate-kubernetes-manifest
+   --aws-scope` builds it with `GenerateProviderConfig()`, which gives the AWS
+   provider the owner `deploy;<resource group ID>;;`.
 
 In all cases the `ProviderConfig` travels as part of the PUT request body to
 the deployment engine, which reads it to determine the scope prefix for each

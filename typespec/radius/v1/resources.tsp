@@ -131,15 +131,6 @@ model KubernetesCompute extends EnvironmentCompute {
   `namespace`: string;
 }
 
-@doc("The Azure container instance compute configuration")
-model AzureContainerInstanceCompute extends EnvironmentCompute {
-  @doc("The Azure container instance compute kind")
-  kind: "aci";
-
-  @doc("The resource group to use for the environment.")
-  resourceGroup?: string;
-}
-
 @doc("Recipe status at deployment time for a resource.")
 model RecipeStatus {
   @doc("TemplateKind is the kind of the recipe template used by the portable resource upon deployment.")
@@ -176,6 +167,9 @@ model OutputResource {
 
   @doc("Determines whether Radius manages the lifecycle of the underlying resource.")
   radiusManaged?: boolean;
+
+  @doc("The provider-native ID of the underlying resource, such as the ARN of an AWS resource. Set only when Radius can determine it. Output resources with different UCP resource IDs can refer to the same provider resource.")
+  providerResourceId?: string;
 }
 
 @doc("Describes a reference to an existing resource")

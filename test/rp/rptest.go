@@ -244,7 +244,7 @@ func NewRPTest(t *testing.T, name string, steps []TestStep, initialResources ...
 // and configures its Kubernetes namespace for recipe-driven resource deployment.
 // It returns the PreSetup function and the environment resource ID.
 //
-// The preview environment is created via `rad env create <name> --preview --kubernetes-namespace <ns>`,
+// The preview environment is created via `rad env create <name> --kubernetes-namespace <ns>`,
 // which automatically registers a default recipe pack (including container recipes) and sets the
 // Kubernetes namespace where recipes will deploy resources.
 //
@@ -271,8 +271,8 @@ func NewPreviewEnvPreSetup(testName string, workspaceScope string, kubernetesNam
 		// Create the preview environment with the test-specific Kubernetes namespace so recipes
 		// know where to deploy resources. Passing the namespace at create time (rather than via a
 		// later update) avoids colliding on the default namespace, which the RP rejects when two
-		// environments in the same scope share a namespace. The --preview flag also creates a
-		// default recipe pack with container and other resource recipes registered.
+		// environments in the same scope share a namespace. Env create also registers the default
+		// recipe pack.
 		_, err = cli.EnvironmentCreatePreview(ctx, envName, "", kubernetesNamespace)
 		require.NoError(t, err, "failed to create preview environment")
 

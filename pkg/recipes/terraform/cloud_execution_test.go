@@ -40,11 +40,17 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	"github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 )
 
 const terraformBackendSnapshots = "RADIUS_TERRAFORM_BACKEND_SNAPSHOTS"
@@ -198,6 +204,124 @@ func noStateCleanup(_ context.Context, _ *datamodel.TerraformBackend, _ backends
 
 func backendSessionName(stateKey string) string {
 	return "radius-tf-backend-" + strings.TrimSuffix(path.Base(stateKey), ".tfstate")
+}
+
+func TestCustomProviderDeployUpdateDelete(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		failDestroy  bool
+		missingState bool
+		cleanupError bool
+	}{
+		{name: "success"},
+		{name: "destroy failure", failDestroy: true},
+		{name: "missing state", missingState: true},
+		{name: "state cleanup failure", cleanupError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			snapshotsPath := installBackendTestTerraform(t)
+			t.Setenv("RADIUS_TERRAFORM_REQUIRED_PROVIDER", "azurerm")
+			t.Setenv("RADIUS_TERRAFORM_PROVIDER_ALIAS", "custom")
+			t.Setenv("ARM_CLIENT_ID", "host-client")
+			fields := map[string]any{
+				"alias": "custom", "features": map[string]any{}, "use_cli": false,
+				"subscription_id": "test-sub", "tenant_id": "invalid-tenant",
+			}
+			options := Options{
+				RootDir: t.TempDir(),
+				EnvConfig: &recipes.Configuration{RecipeConfig: datamodel.RecipeConfigProperties{
+					Terraform: datamodel.TerraformConfigProperties{Providers: map[string][]datamodel.ProviderConfigProperties{
+						"azurerm": {{AdditionalProperties: fields, Secrets: map[string]datamodel.SecretReference{
+							"tenant_id": {Source: "settings", Key: "tenant"},
+						}}},
+					}},
+					Env: datamodel.EnvironmentVariables{AdditionalProperties: map[string]string{
+						"ARM_USE_OIDC": "true", "ARM_CLIENT_ID": "invalid-client", "TEST_USER_ENV": "plain-value",
+					}},
+					EnvSecrets: map[string]datamodel.SecretReference{"ARM_CLIENT_ID": {Source: "settings", Key: "client"}},
+				}},
+				Secrets:   map[string]recipes.SecretData{"settings": {Data: map[string]string{"tenant": "first-tenant", "client": "first-client"}}},
+				EnvRecipe: &recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: "test/module/source"},
+				ResourceRecipe: &recipes.ResourceMetadata{
+					Name: "widget", ResourceID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/extenders/widget",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+				},
+			}
+			stateMissing := false
+			kube := fake.NewSimpleClientset()
+			kube.PrependReactor("get", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+				if stateMissing {
+					return true, nil, apierrors.NewNotFound(schema.GroupResource{Resource: "secrets"}, action.(k8stesting.GetAction).GetName())
+				}
+				secret := &corev1.Secret{}
+				secret.Name = action.(k8stesting.GetAction).GetName()
+				return true, secret, nil
+			})
+			kube.PrependReactor("delete", "secrets", func(k8stesting.Action) (bool, runtime.Object, error) {
+				if tc.cleanupError {
+					return true, nil, errors.New("simulated state cleanup failure")
+				}
+				return true, nil, nil
+			})
+			kubeProvider := kubernetesclientprovider.KubernetesClientProvider{}
+			kubeProvider.SetClientGoClient(kube)
+			e := executor{kubernetesClients: kubeProvider}
+
+			_, err := e.Deploy(t.Context(), options)
+			require.NoError(t, err)
+			options.Secrets["settings"] = recipes.SecretData{Data: map[string]string{"tenant": "rotated-tenant", "client": "rotated-client"}}
+			_, err = e.Deploy(t.Context(), options)
+			require.NoError(t, err)
+			stateMissing = tc.missingState
+			if tc.failDestroy {
+				t.Setenv("RADIUS_TERRAFORM_FAIL_COMMAND", "destroy")
+				require.ErrorContains(t, e.Delete(t.Context(), options), "terraform destroy failure")
+			} else if tc.cleanupError {
+				require.ErrorContains(t, e.Delete(t.Context(), options), "error deleting kubernetes secret for terraform state: simulated state cleanup failure")
+			} else {
+				require.NoError(t, e.Delete(t.Context(), options))
+			}
+			require.Equal(t, "invalid-tenant", fields["tenant_id"], "deploy and destroy must preserve the source configuration")
+
+			var commands []string
+			for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+				if snapshot.Command != "apply" && snapshot.Command != "destroy" {
+					continue
+				}
+				tenant, client := "rotated-tenant", "rotated-client"
+				if len(commands) == 0 {
+					tenant, client = "first-tenant", "first-client"
+				}
+				commands = append(commands, snapshot.Command)
+				require.Equal(t, "true", snapshot.Environment["ARM_USE_OIDC"])
+				require.Equal(t, client, snapshot.Environment["ARM_CLIENT_ID"], "secret environment settings override recipe and host values")
+				require.Equal(t, "plain-value", snapshot.Environment["TEST_USER_ENV"])
+				var cfg config.TerraformConfig
+				require.NoError(t, json.Unmarshal(snapshot.Config, &cfg))
+				require.Equal(t, map[string][]map[string]any{"azurerm": {{
+					"alias": "custom", "features": map[string]any{}, "use_cli": false,
+					"subscription_id": "test-sub", "tenant_id": tenant,
+				}}}, cfg.Provider)
+				require.Equal(t, map[string]any{"azurerm.custom": "azurerm.custom"}, cfg.Module["test-recipe"]["providers"])
+			}
+			expectedCommands := []string{"apply", "apply", "destroy"}
+			if tc.missingState {
+				expectedCommands = []string{"apply", "apply"}
+			}
+			require.Equal(t, expectedCommands, commands)
+			var deletes int
+			for _, action := range kube.Actions() {
+				if action.Matches("delete", "secrets") {
+					deletes++
+				}
+			}
+			if tc.failDestroy || tc.missingState {
+				require.Zero(t, deletes, "failed or skipped destroy must not remove the state secret")
+			} else {
+				require.Equal(t, 1, deletes, "only successful destroy attempts state cleanup")
+			}
+		})
+	}
 }
 
 func TestCloudDeployUpdateDeleteProcessEnvironment(t *testing.T) {

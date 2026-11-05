@@ -24,7 +24,7 @@ import (
 	"uuid"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 )
 
 // This file contains mocks for the ResourceDeploymentsClient interface.

@@ -63,15 +63,21 @@ type moduleInspectResult struct {
 	// Any other module information required in the future can be added here.
 }
 
-// downloadAndInspect handles downloading the TF module and retrieving the necessary information
-func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Options) (*moduleInspectResult, error) {
+// downloadAndInspect handles downloading the TF module and retrieving the necessary information.
+// tfConfig is the configuration that is saved in the working directory. It can be updated and saved again
+// to retry the download.
+func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, tfConfig *config.TerraformConfig, options Options) (*moduleInspectResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Run Terraform Get command to download the module from the source specified in the config.
 	// The downloaded module is stored in the working directory.
 	logger.Info(fmt.Sprintf("Downloading Terraform module: %s", options.EnvRecipe.TemplatePath))
 	downloadStartTime := time.Now()
-	if err := tf.Get(ctx); err != nil {
+	err := tf.Get(ctx)
+	if err != nil {
+		err = retryGetWithProviderAliases(ctx, tf, tfConfig, options, err)
+	}
+	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, options.EnvRecipe.Name,
 				options.EnvRecipe, recipes.RecipeDownloadFailed))
@@ -93,6 +99,37 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 	}
 
 	return loadedModule, nil
+}
+
+// retryGetWithProviderAliases runs terraform get again after it adds placeholders for the aliased providers that
+// the module declares in configuration_aliases. It returns getErr if a retry cannot fix the failure.
+//
+// Terraform validates the configuration_aliases of a module when it downloads the module, so the first
+// terraform get fails for a module that declares configuration_aliases. Terraform downloads the module
+// before it validates the configuration, so Radius can inspect the downloaded module to get the declared
+// aliases and the provider sources. Modules that do not need the aliases are downloaded on the first try
+// with no change to the configuration.
+func retryGetWithProviderAliases(ctx context.Context, tf *tfexec.Terraform, tfConfig *config.TerraformConfig, options Options, getErr error) error {
+	if tfConfig == nil || options.EnvConfig == nil {
+		return getErr
+	}
+
+	module, err := inspectModule(tf.WorkingDir(), options.EnvRecipe)
+	if err != nil {
+		return getErr
+	}
+
+	if !tfConfig.AddProviderAliasPlaceholders(options.EnvConfig, module.RequiredProviders) {
+		return getErr
+	}
+
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info(fmt.Sprintf("Retrying download of Terraform module %s with the provider aliases that the module declares. First error: %s", options.EnvRecipe.TemplatePath, getErr.Error()))
+	if err := tfConfig.Save(ctx, tf.WorkingDir()); err != nil {
+		return err
+	}
+
+	return tf.Get(ctx)
 }
 
 // inspectModule inspects the module present at workingDir/.terraform/modules/<localModuleName> directory

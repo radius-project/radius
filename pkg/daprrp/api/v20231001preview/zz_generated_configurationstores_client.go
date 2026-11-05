@@ -60,7 +60,7 @@ func (client *ConfigurationStoresClient) BeginCreateOrUpdate(ctx context.Context
 	}
 }
 
-// CreateOrUpdate - Create a DaprConfigurationStoreResource
+// createOrUpdate - Create a DaprConfigurationStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *ConfigurationStoresClient) createOrUpdate(ctx context.Context, rootScope string, configurationStoreName string, resource DaprConfigurationStoreResource, options *ConfigurationStoresClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -78,7 +78,7 @@ func (client *ConfigurationStoresClient) createOrUpdate(ctx context.Context, roo
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *ConfigurationStoresClient) createOrUpdateCreateRequest(ctx context.Context, rootScope string, configurationStoreName string, resource DaprConfigurationStoreResource, _ *ConfigurationStoresClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Dapr/configurationStores/{configurationStoreName}"
 	if rootScope == "" {
@@ -126,7 +126,7 @@ func (client *ConfigurationStoresClient) BeginDelete(ctx context.Context, rootSc
 	}
 }
 
-// Delete - Delete a DaprConfigurationStoreResource
+// deleteOperation - Delete a DaprConfigurationStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *ConfigurationStoresClient) deleteOperation(ctx context.Context, rootScope string, configurationStoreName string, options *ConfigurationStoresClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
@@ -144,7 +144,7 @@ func (client *ConfigurationStoresClient) deleteOperation(ctx context.Context, ro
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *ConfigurationStoresClient) deleteCreateRequest(ctx context.Context, rootScope string, configurationStoreName string, _ *ConfigurationStoresClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Dapr/configurationStores/{configurationStoreName}"
 	if rootScope == "" {
@@ -162,6 +162,73 @@ func (client *ConfigurationStoresClient) deleteCreateRequest(ctx context.Context
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	return req, nil
+}
+
+// BeginUpdate - Update a DaprConfigurationStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - configurationStoreName - Configuration Store name
+//   - properties - The resource properties to be updated.
+//   - options - ConfigurationStoresClientBeginUpdateOptions contains the optional parameters for the ConfigurationStoresClient.BeginUpdate
+//     method.
+func (client *ConfigurationStoresClient) BeginUpdate(ctx context.Context, rootScope string, configurationStoreName string, properties DaprConfigurationStoreResource, options *ConfigurationStoresClientBeginUpdateOptions) (*runtime.Poller[ConfigurationStoresClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, rootScope, configurationStoreName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ConfigurationStoresClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[ConfigurationStoresClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// update - Update a DaprConfigurationStoreResource
+// If the operation fails it returns an *azcore.ResponseError type.
+func (client *ConfigurationStoresClient) update(ctx context.Context, rootScope string, configurationStoreName string, properties DaprConfigurationStoreResource, options *ConfigurationStoresClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, rootScope, configurationStoreName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(httpResp)
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the update request.
+func (client *ConfigurationStoresClient) updateCreateRequest(ctx context.Context, rootScope string, configurationStoreName string, properties DaprConfigurationStoreResource, _ *ConfigurationStoresClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Dapr/configurationStores/{configurationStoreName}"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if configurationStoreName == "" {
+		return nil, errors.New("parameter configurationStoreName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{configurationStoreName}", url.PathEscape(configurationStoreName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 
@@ -283,71 +350,4 @@ func (client *ConfigurationStoresClient) listByScopeHandleResponse(resp *http.Re
 		return ConfigurationStoresClientListByScopeResponse{}, err
 	}
 	return result, nil
-}
-
-// BeginUpdate - Update a DaprConfigurationStoreResource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - configurationStoreName - Configuration Store name
-//   - properties - The resource properties to be updated.
-//   - options - ConfigurationStoresClientBeginUpdateOptions contains the optional parameters for the ConfigurationStoresClient.BeginUpdate
-//     method.
-func (client *ConfigurationStoresClient) BeginUpdate(ctx context.Context, rootScope string, configurationStoreName string, properties DaprConfigurationStoreResource, options *ConfigurationStoresClientBeginUpdateOptions) (*runtime.Poller[ConfigurationStoresClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, configurationStoreName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ConfigurationStoresClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[ConfigurationStoresClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a DaprConfigurationStoreResource
-// If the operation fails it returns an *azcore.ResponseError type.
-func (client *ConfigurationStoresClient) update(ctx context.Context, rootScope string, configurationStoreName string, properties DaprConfigurationStoreResource, options *ConfigurationStoresClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, configurationStoreName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		return nil, runtime.NewResponseError(httpResp)
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *ConfigurationStoresClient) updateCreateRequest(ctx context.Context, rootScope string, configurationStoreName string, properties DaprConfigurationStoreResource, _ *ConfigurationStoresClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Dapr/configurationStores/{configurationStoreName}"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if configurationStoreName == "" {
-		return nil, errors.New("parameter configurationStoreName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{configurationStoreName}", url.PathEscape(configurationStoreName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
-	return req, nil
 }

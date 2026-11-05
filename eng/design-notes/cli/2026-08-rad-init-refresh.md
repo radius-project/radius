@@ -14,6 +14,8 @@ This document enumerates the specific problems (most backed by a filed issue), t
 
 **Scope:** This proposal applies only to the preview (`Radius.*`) init path, invoked today with `rad init --preview` (as shown in the command samples below); for brevity the prose refers to it simply as `rad init`. The stable `rad init` (`Applications.*`) path is out of scope and remains unchanged.
 
+> **Update:** [#11803](https://github.com/radius-project/radius/issues/11803) later removed the stable `Applications.*` path and the `--preview` flag. The `Radius.*` implementation now lives in [`pkg/cli/cmd/radinit/`](../../../pkg/cli/cmd/radinit/), and the shared scaffolding code described below as kept for the stable path has been deleted. Run the `rad init --preview` commands in this document as `rad init`.
+
 ## Objectives
 
 **Issue References:**
@@ -210,7 +212,7 @@ The selection drives two steps:
 
 ### High Level Design
 
-`rad init` today runs a two-phase flow. `Validate()` gathers options interactively via [`enterInitOptions()`](../../../pkg/cli/cmd/radinit/preview/options.go); `Run()` then executes install → create environment → scaffold application → update config. The four gather steps run in this order: cluster (kube context) → environment (name, namespace) → cloud providers → application (the "Setup application in the current directory?" prompt). See [`preview/options.go`](../../../pkg/cli/cmd/radinit/preview/options.go) and [`preview/init.go`](../../../pkg/cli/cmd/radinit/preview/init.go).
+`rad init` today runs a two-phase flow. `Validate()` gathers options interactively via [`enterInitOptions()`](../../../pkg/cli/cmd/radinit/options.go); `Run()` then executes install → create environment → scaffold application → update config. The four gather steps run in this order: cluster (kube context) → environment (name, namespace) → cloud providers → application (the "Setup application in the current directory?" prompt). See [`preview/options.go`](../../../pkg/cli/cmd/radinit/options.go) and [`preview/init.go`](../../../pkg/cli/cmd/radinit/init.go).
 
 The refreshed design makes six changes: decouple `bicepconfig.json` from scaffolding, register only the `radius` Bicep extension, delete the application-scaffold concept, reorder the `--full` flow, add a recipe-pack selection step, and render initialization errors readably. Each is specified under Detailed Design below, which states the issues it resolves.
 
@@ -227,7 +229,7 @@ The refreshed design makes six changes: decouple `bicepconfig.json` from scaffol
 | Recipe pack (`--full`)        | not selectable                                | selectable from `defaults.yaml`     |
 | Init error rendering          | raw JSON, breaks terminal                     | concise, terminal-safe              |
 
-Because there are two parallel implementations (stable `Applications.*` and preview `Radius.*`), all changes in this design are made in the preview implementation under [`pkg/cli/cmd/radinit/preview/`](../../../pkg/cli/cmd/radinit/preview/), and shared code in [`pkg/cli/cmd/radinit/common/`](../../../pkg/cli/cmd/radinit/common/) and [`pkg/cli/setup/`](../../../pkg/cli/setup/) is changed only additively.
+Because there are two parallel implementations (stable `Applications.*` and preview `Radius.*`), all changes in this design are made in the preview implementation under [`pkg/cli/cmd/radinit/preview/`](../../../pkg/cli/cmd/radinit/), and shared code in [`pkg/cli/cmd/radinit/common/`](../../../pkg/cli/cmd/radinit/common/) and [`pkg/cli/setup/`](../../../pkg/cli/setup/) is changed only additively.
 
 ### Detailed Design
 
@@ -235,9 +237,9 @@ Because there are two parallel implementations (stable `Applications.*` and prev
 
 Resolves #12588, #12649, and #12418.
 
-Today `bicepconfig.json` is written only inside [`ScaffoldApplication`](../../../pkg/cli/setup/application.go), gated on the scaffold answer, so answering "No" leaves a non-working Bicep setup (#12588); the preview [`Run()`](../../../pkg/cli/cmd/radinit/preview/init.go) also creates a useless `Radius.Core/applications` stub named after the directory (#12649); and the scaffolded `app.bicep` declares an `application` parameter rather than an `applications` resource, so `rad deploy app.bicep` fails after `.rad/rad.yaml` was removed in [#11766](https://github.com/radius-project/radius/pull/11766) (#12418). This design removes `app.bicep` entirely, superseding the template fix proposed in #12418, which is safe because [#12676](https://github.com/radius-project/radius/pull/12676) lets `rad deploy` accept a remote sample URL.
+Today `bicepconfig.json` is written only inside [`ScaffoldApplication`](../../../pkg/cli/setup/bicepconfig.go), gated on the scaffold answer, so answering "No" leaves a non-working Bicep setup (#12588); the preview [`Run()`](../../../pkg/cli/cmd/radinit/init.go) also creates a useless `Radius.Core/applications` stub named after the directory (#12649); and the scaffolded `app.bicep` declares an `application` parameter rather than an `applications` resource, so `rad deploy app.bicep` fails after `.rad/rad.yaml` was removed in [#11766](https://github.com/radius-project/radius/pull/11766) (#12418). This design removes `app.bicep` entirely, superseding the template fix proposed in #12418, which is safe because [#12676](https://github.com/radius-project/radius/pull/12676) lets `rad deploy` accept a remote sample URL.
 
-Add a new, narrow helper alongside the existing `ScaffoldApplication` in the shared [`pkg/cli/setup/application.go`](../../../pkg/cli/setup/application.go). `ScaffoldApplication` and the stable `AppBicepTemplate` are left untouched so the stable path is unaffected:
+Add a new, narrow helper alongside the existing `ScaffoldApplication` in the shared [`pkg/cli/setup/application.go`](../../../pkg/cli/setup/bicepconfig.go). `ScaffoldApplication` and the stable `AppBicepTemplate` are left untouched so the stable path is unaffected:
 
 ```go
 // pkg/cli/setup/application.go (proposed, additive)
@@ -256,7 +258,7 @@ func WriteBicepConfig(directory string) error {
 ```
 
 - Delete the preview-only `PreviewAppBicepTemplate` constant. The stable `AppBicepTemplate` remains.
-- In the preview [`Run()`](../../../pkg/cli/cmd/radinit/preview/init.go), replace the scaffold block (the `if r.Options.Application.Scaffold { ... }` section that creates the `Radius.Core/applications` stub and calls `ScaffoldApplication`) with an unconditional `WriteBicepConfig(wd)` in the configuration step. This removes the stub-application creation.
+- In the preview [`Run()`](../../../pkg/cli/cmd/radinit/init.go), replace the scaffold block (the `if r.Options.Application.Scaffold { ... }` section that creates the `Radius.Core/applications` stub and calls `ScaffoldApplication`) with an unconditional `WriteBicepConfig(wd)` in the configuration step. This removes the stub-application creation.
 
 #### Change 2: Register only the `radius` Bicep extension
 
@@ -274,18 +276,18 @@ const radiusOnlyBicepConfigTemplate = `{
 
 #### Change 3: Remove the application-scaffold prompt and options
 
-Resolves #12587: the "Setup application in the current directory?" prompt is ambiguous and does not say a file will be written, because [`common.EnterApplicationOptions`](../../../pkg/cli/cmd/radinit/common/application.go) presents an abstract "setup" question rather than naming the artifact. With `bicepconfig.json` now written unconditionally (Change 1), the prompt and its options serve no purpose and are removed from preview.
+Resolves #12587: the "Setup application in the current directory?" prompt is ambiguous and does not say a file will be written, because `common.EnterApplicationOptions` (`pkg/cli/cmd/radinit/common/application.go`) presents an abstract "setup" question rather than naming the artifact. With `bicepconfig.json` now written unconditionally (Change 1), the prompt and its options serve no purpose and are removed from preview.
 
-- Delete `enterApplicationOptions` from [`pkg/cli/cmd/radinit/preview/application.go`](../../../pkg/cli/cmd/radinit/preview/application.go) and stop calling it from [`preview/options.go`](../../../pkg/cli/cmd/radinit/preview/options.go). The shared `EnterApplicationOptions` in [`common/application.go`](../../../pkg/cli/cmd/radinit/common/application.go) is **kept** because the stable path still uses it.
-- Remove `applicationOptions` and the `Application` field from the preview `initOptions` in [`preview/options.go`](../../../pkg/cli/cmd/radinit/preview/options.go), and remove the preview `UpdateApplicationOptions`.
-- In [`preview/display.go`](../../../pkg/cli/cmd/radinit/preview/display.go), stop populating `ScaffoldFiles` / `Application.Scaffold` in `toDisplayOptions`. The shared scaffold rendering in [`common/display.go`](../../../pkg/cli/cmd/radinit/common/display.go) stays in place (still used by the stable path) but is simply never triggered from preview.
-- Delete the preview `application_test.go` and update [`preview/init_test.go`](../../../pkg/cli/cmd/radinit/preview/init_test.go) to assert that `app.bicep` is **not** written and that `bicepconfig.json` **is** written in every case, inverting the current `os.Stat(... "app.bicep")` assertions.
+- Delete `enterApplicationOptions` from `pkg/cli/cmd/radinit/preview/application.go` and stop calling it from [`preview/options.go`](../../../pkg/cli/cmd/radinit/options.go). The shared `EnterApplicationOptions` in `common/application.go` is **kept** because the stable path still uses it.
+- Remove `applicationOptions` and the `Application` field from the preview `initOptions` in [`preview/options.go`](../../../pkg/cli/cmd/radinit/options.go), and remove the preview `UpdateApplicationOptions`.
+- In [`preview/display.go`](../../../pkg/cli/cmd/radinit/display.go), stop populating `ScaffoldFiles` / `Application.Scaffold` in `toDisplayOptions`. The shared scaffold rendering in [`common/display.go`](../../../pkg/cli/cmd/radinit/common/display.go) stays in place (still used by the stable path) but is simply never triggered from preview.
+- Delete the preview `application_test.go` and update [`preview/init_test.go`](../../../pkg/cli/cmd/radinit/init_test.go) to assert that `app.bicep` is **not** written and that `bicepconfig.json` **is** written in every case, inverting the current `os.Stat(... "app.bicep")` assertions.
 
 #### Change 4: Reorder `--full`
 
 This change closes a usability gap in `--full`: cloud-provider setup currently comes after the environment prompts, so credentials are entered after the environment they apply to.
 
-Reorder the gather sequence in the preview `enterInitOptions` ([`preview/options.go`](../../../pkg/cli/cmd/radinit/preview/options.go)) so cloud-provider configuration precedes the environment prompts:
+Reorder the gather sequence in the preview `enterInitOptions` ([`preview/options.go`](../../../pkg/cli/cmd/radinit/options.go)) so cloud-provider configuration precedes the environment prompts:
 
 ```text
 cluster (kube context)
@@ -301,7 +303,7 @@ This change closes a usability gap in `--full`: there is no way to choose a reci
 
 In default mode the environment is created with the `kubernetes` pack (unchanged behavior); it is the default pack, and its `recipePacks` resource is named `default` in the contrib file (hence the `Recipe pack: default` line in the output). In `--full` mode, present a list built from the `recipePacks` entries in [`defaults.yaml`](../../../deploy/manifest/defaults.yaml) (today: `azure`, `kubernetes`, after [PR #12662](https://github.com/radius-project/radius/pull/12662): `azure-aci`, `azure-aks`, `kubernetes`).
 
-The selected pack drives environment creation in [`preview/environment.go`](../../../pkg/cli/cmd/radinit/preview/environment.go) (`CreateEnvironment`). Today that function always links the default pack:
+The selected pack drives environment creation in [`preview/environment.go`](../../../pkg/cli/cmd/radinit/environment.go) (`CreateEnvironment`). Today that function always links the default pack:
 
 ```go
 // today: always the hardcoded default pack
@@ -312,7 +314,7 @@ envProperties.RecipePacks = []*string{to.Ptr(recipepack.DefaultRecipePackID())}
 
 The proposed flow resolves the chosen pack name to a `resource-types-contrib` source via the `defaults.yaml` pin (`repo` + `ref`/`tag`), downloads/creates the corresponding `Radius.Core/recipePacks` resource, and links it to the environment.
 
-> **Dependency:** This flow assumes a recipe-pack source defines **only** a `Radius.Core/recipePacks` resource. Today the `resource-types-contrib` packs (for example `recipe-packs/azure/aks-recipepack.bicep`) also declare a `Radius.Core/environments` resource, so deploying a pack provisions an environment as a side effect and would collide with the environment the preview [`Run()`](../../../pkg/cli/cmd/radinit/preview/init.go) creates in `CreateEnvironment`. This change therefore depends on [resource-types-contrib#296](https://github.com/radius-project/resource-types-contrib/issues/296), which separates recipe-pack definitions from environment provisioning.
+> **Dependency:** This flow assumes a recipe-pack source defines **only** a `Radius.Core/recipePacks` resource. Today the `resource-types-contrib` packs (for example `recipe-packs/azure/aks-recipepack.bicep`) also declare a `Radius.Core/environments` resource, so deploying a pack provisions an environment as a side effect and would collide with the environment the preview [`Run()`](../../../pkg/cli/cmd/radinit/init.go) creates in `CreateEnvironment`. This change therefore depends on [resource-types-contrib#296](https://github.com/radius-project/resource-types-contrib/issues/296), which separates recipe-pack definitions from environment provisioning.
 
 #### Change 6: Human-readable initialization errors (fix #12568)
 
@@ -325,7 +327,7 @@ When an init step fails, tear down the bubbletea progress UI **before** printing
   cluster. Create it (kubectl create namespace test) and re-run rad init.
 ```
 
-This requires the error path in the preview [`Run()`](../../../pkg/cli/cmd/radinit/preview/init.go) to (a) signal the progress goroutine to stop and restore stdout via the existing `restoreStdout` deferral before writing, and (b) extract `error.message` from the `clierrors` response instead of echoing the indented JSON body. Any change to the shared progress display in `common/` must be additive so stable behavior is preserved.
+This requires the error path in the preview [`Run()`](../../../pkg/cli/cmd/radinit/init.go) to (a) signal the progress goroutine to stop and restore stdout via the existing `restoreStdout` deferral before writing, and (b) extract `error.message` from the `clierrors` response instead of echoing the indented JSON body. Any change to the shared progress display in `common/` must be additive so stable behavior is preserved.
 
 ### Implementation Details
 

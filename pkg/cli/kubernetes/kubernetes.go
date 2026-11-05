@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/radius-project/radius/pkg/cli/helm"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
@@ -53,6 +52,8 @@ import (
 var (
 	Scheme = k8s_runtime.NewScheme()
 )
+
+const radiusSystemNamespace = "radius-system"
 
 func init() {
 	// Adds all types to the client.Client scheme
@@ -156,26 +157,20 @@ func deleteNamespace(ctx context.Context, client k8s.Interface, namespace string
 	return nil
 }
 
-// NewCLIClientConfig creates new Kubernetes client config loading from local home directory with CLI options.
-//
-
-// NewCLIClientConfig creates a new Kubernetes client config from the local configuration file using the given context
-// name, with a default QPS and Burst. It returns a rest.Config and an error if one occurs.
-func NewCLIClientConfig(context string) (*rest.Config, error) {
-	return kubeutil.NewClientConfigFromLocal(&kubeutil.ConfigOptions{
-		ContextName: context,
-		QPS:         kubeutil.DefaultCLIQPS,
-		Burst:       kubeutil.DefaultCLIBurst,
-	})
-}
-
 // GetContextFromConfigFileIfExists gets context name and its context from config if context exists.
 //
 
 // GetContextFromConfigFileIfExists attempts to load a Kubernetes context from a config file, and returns an error if the
-// context is not found.
+// context is not found. If configFilePath is empty, it loads the kubeconfig files listed in KUBECONFIG, or
+// ~/.kube/config when KUBECONFIG is not set.
 func GetContextFromConfigFileIfExists(configFilePath, context string) (string, error) {
-	cfg, err := kubeutil.LoadConfigFile(configFilePath)
+	var cfg *api.Config
+	var err error
+	if configFilePath == "" {
+		cfg, err = loadCLIConfig()
+	} else {
+		cfg, err = kubeutil.LoadConfigFile(configFilePath)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -218,13 +213,14 @@ type Impl struct {
 // Fetches the kubecontext from the system
 //
 
-// GetKubeContext loads the kube configuration file and returns a Config object and an error if the file cannot be loaded.
+// GetKubeContext loads the kubeconfig files listed in KUBECONFIG, or ~/.kube/config when KUBECONFIG is not set, and
+// returns the merged Config object. It returns an error if no usable kubeconfig can be loaded.
 func (i *Impl) GetKubeContext() (*api.Config, error) {
-	return kubeutil.LoadConfigFile("")
+	return loadCLIConfig()
 }
 
 func (i *Impl) DeleteNamespace(kubeContext string) error {
-	return i.DeleteNamespaceWithName(kubeContext, helm.RadiusSystemNamespace)
+	return i.DeleteNamespaceWithName(kubeContext, radiusSystemNamespace)
 }
 
 func (i *Impl) DeleteNamespaceWithName(kubeContext, namespace string) error {

@@ -213,3 +213,165 @@ func Test_computeGraph_OmitsContainerEnvironment(t *testing.T) {
 		})
 	}
 }
+
+func Test_computeGraph_OutputResourcePortalURLs(t *testing.T) {
+	t.Parallel()
+
+	const (
+		tenantID       = "11111111-1111-1111-1111-111111111111"
+		appID          = "/planes/radius/local/resourceGroups/default/providers/Radius.Core/applications/myapp"
+		databaseID     = "/planes/radius/local/resourceGroups/default/providers/Radius.Data/mySqlDatabases/db"
+		azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
+		awsDatabaseID  = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.RDS/DBInstance/mydb"
+		awsGovQueueID  = "/planes/aws/aws-us-gov/accounts/123456789012/regions/us-gov-west-1/providers/AWS.SQS/Queue/myqueue"
+		awsUnknownID   = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.Unknown/Thing/mything"
+		tfBucketID     = "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_s3_bucket/mybucket"
+		awsChinaRDSID  = "/planes/aws/aws-cn/accounts/123456789012/regions/cn-north-1/providers/AWS.RDS/DBInstance/mychinadb"
+		tfIAMRoleID    = "/planes/aws/aws/accounts/123456789012/regions/global/providers/Terraform.AWS/aws_iam_role/myrole"
+		tfSubnetID     = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_subnet/mysubnet"
+		tfFunctionID   = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/Terraform.AWS/aws_lambda_function/myfunction"
+		kubernetesID   = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/mydeployment"
+	)
+
+	// The ARNs that recipe drivers store as each output resource's providerResourceId.
+	arns := map[string]string{
+		tfFunctionID:  "arn:aws:lambda:us-west-2:123456789012:function:myfunction",
+		awsGovQueueID: "arn:aws-us-gov:sqs:us-gov-west-1:123456789012:myqueue",
+		awsChinaRDSID: "arn:aws-cn:rds:cn-north-1:123456789012:db:mychinadb",
+	}
+	const (
+		functionURL = "https://console.aws.amazon.com/go/view?arn=arn%3Aaws%3Alambda%3Aus-west-2%3A123456789012%3Afunction%3Amyfunction"
+		govQueueURL = "https://console.amazonaws-us-gov.com/go/view?arn=arn%3Aaws-us-gov%3Asqs%3Aus-gov-west-1%3A123456789012%3Amyqueue"
+		chinaRDSURL = "https://console.amazonaws.cn/go/view?arn=arn%3Aaws-cn%3Ards%3Acn-north-1%3A123456789012%3Adb%3Amychinadb"
+	)
+
+	tests := []struct {
+		name     string
+		tenantID string
+		want     map[string]string
+	}{
+		{
+			name:     "with an Azure tenant",
+			tenantID: tenantID,
+			want: map[string]string{
+				azureStorageID: "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
+				awsDatabaseID:  "https://us-west-2.console.aws.amazon.com/rds/home?region=us-west-2#databases:",
+				awsGovQueueID:  govQueueURL,
+				awsUnknownID:   "",
+				tfBucketID:     "https://console.aws.amazon.com/s3/buckets",
+				awsChinaRDSID:  chinaRDSURL,
+				tfIAMRoleID:    "https://console.aws.amazon.com/iam/home#/roles",
+				tfSubnetID:     "",
+				tfFunctionID:   functionURL,
+				kubernetesID:   "",
+			},
+		},
+		{
+			name: "without an Azure tenant",
+			want: map[string]string{
+				azureStorageID: "",
+				awsDatabaseID:  "https://us-west-2.console.aws.amazon.com/rds/home?region=us-west-2#databases:",
+				awsGovQueueID:  govQueueURL,
+				awsUnknownID:   "",
+				tfBucketID:     "https://console.aws.amazon.com/s3/buckets",
+				awsChinaRDSID:  chinaRDSURL,
+				tfIAMRoleID:    "https://console.aws.amazon.com/iam/home#/roles",
+				tfSubnetID:     "",
+				tfFunctionID:   functionURL,
+				kubernetesID:   "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			outputResources := []any{}
+			for id := range tt.want {
+				or := map[string]any{"id": id}
+				if arn, ok := arns[id]; ok {
+					or["providerResourceId"] = arn
+				}
+				outputResources = append(outputResources, or)
+			}
+			graph := computeGraph([]generated.GenericResource{{
+				ID:   to.Ptr(databaseID),
+				Name: to.Ptr("db"),
+				Type: to.Ptr("Radius.Data/mySqlDatabases"),
+				Properties: map[string]any{
+					"application": appID,
+					"status":      map[string]any{"outputResources": outputResources},
+				},
+			}}, nil, tt.tenantID, nil)
+
+			require.Len(t, graph.Resources, 1)
+
+			// Check the wire format that HTTP clients see, not just the Go struct.
+			raw, err := json.Marshal(graph)
+			require.NoError(t, err)
+			var decoded struct {
+				Resources []struct {
+					OutputResources []struct {
+						ID        string `json:"id"`
+						PortalURL string `json:"portalUrl"`
+					} `json:"outputResources"`
+				} `json:"resources"`
+			}
+			require.NoError(t, json.Unmarshal(raw, &decoded))
+			require.Len(t, decoded.Resources, 1)
+
+			got := map[string]string{}
+			for _, outputResource := range decoded.Resources[0].OutputResources {
+				got[outputResource.ID] = outputResource.PortalURL
+			}
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_containsAzureOutputResource(t *testing.T) {
+	t.Parallel()
+
+	const (
+		azureID      = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
+		awsID        = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/mybucket"
+		kubernetesID = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/foo"
+	)
+
+	withOutputResources := func(ids ...string) generated.GenericResource {
+		items := make([]any, 0, len(ids))
+		for _, id := range ids {
+			items = append(items, map[string]any{"id": id})
+		}
+		return generated.GenericResource{
+			Properties: map[string]any{"status": map[string]any{"outputResources": items}},
+		}
+	}
+
+	tests := []struct {
+		name string
+		list []generated.GenericResource
+		want bool
+	}{
+		{
+			name: "no resources",
+		},
+		{
+			name: "only non-Azure output resources",
+			list: []generated.GenericResource{withOutputResources(kubernetesID, awsID)},
+		},
+		{
+			name: "Azure output resource on a later resource",
+			list: []generated.GenericResource{withOutputResources(kubernetesID), withOutputResources(awsID, azureID)},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, containsAzureOutputResource(tt.list))
+		})
+	}
+}

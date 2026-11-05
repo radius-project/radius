@@ -75,12 +75,6 @@
       "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
     },
     {
-      "category": "test",
-      "name": "magpiego",
-      "radiusBuild": true,
-      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
-    },
-    {
       "category": "production",
       "name": "pre-upgrade",
       "radiusBuild": true,
@@ -89,12 +83,6 @@
     {
       "category": "production",
       "name": "terraform-init",
-      "radiusBuild": true,
-      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
-    },
-    {
-      "category": "test",
-      "name": "testrp",
       "radiusBuild": true,
       "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
     },

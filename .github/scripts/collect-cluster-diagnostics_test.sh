@@ -138,6 +138,7 @@ new_case() {
     unset MOCK_FAILURE MOCK_LARGE DIAGNOSTICS_LOG_NAMESPACES
     unset DIAGNOSTICS_SINCE_TIME DIAGNOSTICS_COLLECTION_SECONDS
     unset DIAGNOSTICS_SAMPLE_INTERVAL KIND_CLUSTER_NAME
+    unset DIAGNOSTICS_TERRAFORM
     mkdir -p "${RADIUS_CONTAINER_LOG_PATH}"
     : >"${MOCK_CALLS}"
 }
@@ -152,6 +153,39 @@ collect
 [[ "$(wc -l <"${MOCK_CALLS}")" -eq 5 ]] || fail "legacy capture changed"
 [[ ! -d "${RADIUS_CONTAINER_LOG_PATH}/all-diagnostics" ]] \
     || fail "legacy callers unexpectedly collect container logs"
+assert_contains "${RADIUS_CONTAINER_LOG_PATH}/all-tests-pod-states.log" \
+    "kubectl get events -A"
+
+new_case terraform
+export DIAGNOSTICS_TERRAFORM=true
+collect
+assert_contains "${RADIUS_CONTAINER_LOG_PATH}/collector-output.log" \
+    "Terraform diagnostics at"
+assert_contains "${RADIUS_CONTAINER_LOG_PATH}/all-terraform-diagnostics.log" \
+    "Terraform diagnostics at"
+assert_contains "${RADIUS_CONTAINER_LOG_PATH}/all-tests-pod-states.log" \
+    "kubectl get events -A"
+
+new_case terraform-timeout
+export DIAGNOSTICS_TERRAFORM=true
+REAL_TIMEOUT="$(command -v timeout)"
+export REAL_TIMEOUT
+cat >"${WORK_DIR}/bin/timeout" <<'MOCK'
+#!/bin/bash
+set -euo pipefail
+if [[ "$*" == "--kill-after=2s 120s bash "* ]]; then
+    echo "mock Terraform diagnostics time limit" >&2
+    exit 124
+fi
+exec "${REAL_TIMEOUT}" "$@"
+MOCK
+chmod +x "${WORK_DIR}/bin/timeout"
+collect
+rm "${WORK_DIR}/bin/timeout"
+assert_contains "${RADIUS_CONTAINER_LOG_PATH}/collector-output.log" \
+    "FAILED: Terraform diagnostics (exit 124)"
+assert_contains "${RADIUS_CONTAINER_LOG_PATH}/all-terraform-diagnostics.log" \
+    "mock Terraform diagnostics time limit"
 assert_contains "${RADIUS_CONTAINER_LOG_PATH}/all-tests-pod-states.log" \
     "kubectl get events -A"
 
@@ -361,8 +395,10 @@ assert_contains "${diag}/sampler.log" "Sampler stopped:"
 workflow="${SCRIPT_DIR}/../workflows/long-running-azure.yaml"
 assert_contains "${workflow}" \
     "bash \"\$GITHUB_WORKSPACE/.github/scripts/run-with-cluster-diagnostics.sh\""
-assert_contains "${workflow}" \
-    "bash -e -c 'make test-functional-all-cloud; make test-functional-all-noncloud'"
+# long-running-azure_test.sh executes the wrapped script and checks its order.
+assert_contains "${workflow}" "bash -e -o pipefail -c '"
+assert_contains "${workflow}" 'make test-functional-all-cloud'
+assert_contains "${workflow}" 'make test-functional-all-noncloud'
 assert_contains "${workflow}" 'DIAGNOSTICS_LOG_NAMESPACES: radius-system'
 
 assert_contains "${SCRIPT_DIR}/../workflows/unit-tests.yaml" \

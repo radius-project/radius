@@ -60,7 +60,7 @@ func (client *ResourceTypesClient) BeginCreateOrUpdate(ctx context.Context, plan
 	}
 }
 
-// CreateOrUpdate - Create or update a resource type
+// createOrUpdate - Create or update a resource type
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *ResourceTypesClient) createOrUpdate(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource ResourceTypeResource, options *ResourceTypesClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -79,7 +79,7 @@ func (client *ResourceTypesClient) createOrUpdate(ctx context.Context, planeName
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *ResourceTypesClient) createOrUpdateCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource ResourceTypeResource, _ *ResourceTypesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}"
 	if planeName == "" {
@@ -131,7 +131,7 @@ func (client *ResourceTypesClient) BeginDelete(ctx context.Context, planeName st
 	}
 }
 
-// Delete - Delete a resource type
+// deleteOperation - Delete a resource type
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *ResourceTypesClient) deleteOperation(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *ResourceTypesClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
@@ -150,7 +150,7 @@ func (client *ResourceTypesClient) deleteOperation(ctx context.Context, planeNam
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *ResourceTypesClient) deleteCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, _ *ResourceTypesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}"
 	if planeName == "" {

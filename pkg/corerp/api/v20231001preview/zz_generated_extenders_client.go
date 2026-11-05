@@ -60,7 +60,7 @@ func (client *ExtendersClient) BeginCreateOrUpdate(ctx context.Context, rootScop
 	}
 }
 
-// CreateOrUpdate - Create a ExtenderResource
+// createOrUpdate - Create a ExtenderResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *ExtendersClient) createOrUpdate(ctx context.Context, rootScope string, extenderName string, resource ExtenderResource, options *ExtendersClientBeginCreateOrUpdateOptions) (*http.Response, error) {
 	var err error
@@ -78,7 +78,7 @@ func (client *ExtendersClient) createOrUpdate(ctx context.Context, rootScope str
 	return httpResp, nil
 }
 
-// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+// createOrUpdateCreateRequest creates the createOrUpdate request.
 func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, rootScope string, extenderName string, resource ExtenderResource, _ *ExtendersClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/extenders/{extenderName}"
 	if rootScope == "" {
@@ -125,7 +125,7 @@ func (client *ExtendersClient) BeginDelete(ctx context.Context, rootScope string
 	}
 }
 
-// Delete - Delete a ExtenderResource
+// deleteOperation - Delete a ExtenderResource
 // If the operation fails it returns an *azcore.ResponseError type.
 func (client *ExtendersClient) deleteOperation(ctx context.Context, rootScope string, extenderName string, options *ExtendersClientBeginDeleteOptions) (*http.Response, error) {
 	var err error
@@ -143,7 +143,7 @@ func (client *ExtendersClient) deleteOperation(ctx context.Context, rootScope st
 	return httpResp, nil
 }
 
-// deleteCreateRequest creates the Delete request.
+// deleteCreateRequest creates the delete request.
 func (client *ExtendersClient) deleteCreateRequest(ctx context.Context, rootScope string, extenderName string, _ *ExtendersClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Core/extenders/{extenderName}"
 	if rootScope == "" {
@@ -161,6 +161,72 @@ func (client *ExtendersClient) deleteCreateRequest(ctx context.Context, rootScop
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	return req, nil
+}
+
+// BeginUpdate - Update a ExtenderResource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - extenderName - The name of the ExtenderResource portable resource
+//   - properties - The resource properties to be updated.
+//   - options - ExtendersClientBeginUpdateOptions contains the optional parameters for the ExtendersClient.BeginUpdate method.
+func (client *ExtendersClient) BeginUpdate(ctx context.Context, rootScope string, extenderName string, properties ExtenderResource, options *ExtendersClientBeginUpdateOptions) (*runtime.Poller[ExtendersClientUpdateResponse], error) {
+	if options == nil || options.ResumeToken == "" {
+		resp, err := client.update(ctx, rootScope, extenderName, properties, options)
+		if err != nil {
+			return nil, err
+		}
+		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ExtendersClientUpdateResponse]{
+			FinalStateVia: runtime.FinalStateViaLocation,
+		})
+		return poller, err
+	} else {
+		return runtime.NewPollerFromResumeToken[ExtendersClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
+	}
+}
+
+// update - Update a ExtenderResource
+// If the operation fails it returns an *azcore.ResponseError type.
+func (client *ExtendersClient) update(ctx context.Context, rootScope string, extenderName string, properties ExtenderResource, options *ExtendersClientBeginUpdateOptions) (*http.Response, error) {
+	var err error
+	req, err := client.updateCreateRequest(ctx, rootScope, extenderName, properties, options)
+	if err != nil {
+		return nil, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
+		return nil, runtime.NewResponseError(httpResp)
+	}
+	return httpResp, nil
+}
+
+// updateCreateRequest creates the update request.
+func (client *ExtendersClient) updateCreateRequest(ctx context.Context, rootScope string, extenderName string, properties ExtenderResource, _ *ExtendersClientBeginUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/extenders/{extenderName}"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if extenderName == "" {
+		return nil, errors.New("parameter extenderName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{extenderName}", url.PathEscape(extenderName))
+	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, properties); err != nil {
+		return nil, err
+	}
 	return req, nil
 }
 
@@ -213,6 +279,64 @@ func (client *ExtendersClient) getHandleResponse(resp *http.Response, successCod
 	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResource); err != nil {
 		return ExtendersClientGetResponse{}, err
+	}
+	return result, nil
+}
+
+// ListSecrets - Lists secrets values for the specified Extender resource
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - extenderName - The name of the ExtenderResource portable resource
+//   - body - The content of the action request
+//   - options - ExtendersClientListSecretsOptions contains the optional parameters for the ExtendersClient.ListSecrets method.
+func (client *ExtendersClient) ListSecrets(ctx context.Context, rootScope string, extenderName string, body ListSecretsRequest1, options *ExtendersClientListSecretsOptions) (ExtendersClientListSecretsResponse, error) {
+	var err error
+	req, err := client.listSecretsCreateRequest(ctx, rootScope, extenderName, body, options)
+	if err != nil {
+		return ExtendersClientListSecretsResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return ExtendersClientListSecretsResponse{}, err
+	}
+	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
+}
+
+// listSecretsCreateRequest creates the ListSecrets request.
+func (client *ExtendersClient) listSecretsCreateRequest(ctx context.Context, rootScope string, extenderName string, body ListSecretsRequest1, _ *ExtendersClientListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Core/extenders/{extenderName}/listSecrets"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if extenderName == "" {
+		return nil, errors.New("parameter extenderName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{extenderName}", url.PathEscape(extenderName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, body); err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+// listSecretsHandleResponse handles the ListSecrets response.
+func (client *ExtendersClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (ExtendersClientListSecretsResponse, error) {
+	result := ExtendersClientListSecretsResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderListSecretResponse); err != nil {
+		return ExtendersClientListSecretsResponse{}, err
 	}
 	return result, nil
 }
@@ -282,128 +406,4 @@ func (client *ExtendersClient) listByScopeHandleResponse(resp *http.Response, su
 		return ExtendersClientListByScopeResponse{}, err
 	}
 	return result, nil
-}
-
-// ListSecrets - Lists secrets values for the specified Extender resource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - extenderName - The name of the ExtenderResource portable resource
-//   - body - The content of the action request
-//   - options - ExtendersClientListSecretsOptions contains the optional parameters for the ExtendersClient.ListSecrets method.
-func (client *ExtendersClient) ListSecrets(ctx context.Context, rootScope string, extenderName string, body ListSecretsRequest1, options *ExtendersClientListSecretsOptions) (ExtendersClientListSecretsResponse, error) {
-	var err error
-	req, err := client.listSecretsCreateRequest(ctx, rootScope, extenderName, body, options)
-	if err != nil {
-		return ExtendersClientListSecretsResponse{}, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return ExtendersClientListSecretsResponse{}, err
-	}
-	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
-}
-
-// listSecretsCreateRequest creates the ListSecrets request.
-func (client *ExtendersClient) listSecretsCreateRequest(ctx context.Context, rootScope string, extenderName string, body ListSecretsRequest1, _ *ExtendersClientListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Core/extenders/{extenderName}/listSecrets"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if extenderName == "" {
-		return nil, errors.New("parameter extenderName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{extenderName}", url.PathEscape(extenderName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, body); err != nil {
-		return nil, err
-	}
-	return req, nil
-}
-
-// listSecretsHandleResponse handles the ListSecrets response.
-func (client *ExtendersClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (ExtendersClientListSecretsResponse, error) {
-	result := ExtendersClientListSecretsResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderListSecretResponse); err != nil {
-		return ExtendersClientListSecretsResponse{}, err
-	}
-	return result, nil
-}
-
-// BeginUpdate - Update a ExtenderResource
-// If the operation fails it returns an *azcore.ResponseError type.
-//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
-//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - extenderName - The name of the ExtenderResource portable resource
-//   - properties - The resource properties to be updated.
-//   - options - ExtendersClientBeginUpdateOptions contains the optional parameters for the ExtendersClient.BeginUpdate method.
-func (client *ExtendersClient) BeginUpdate(ctx context.Context, rootScope string, extenderName string, properties ExtenderResource, options *ExtendersClientBeginUpdateOptions) (*runtime.Poller[ExtendersClientUpdateResponse], error) {
-	if options == nil || options.ResumeToken == "" {
-		resp, err := client.update(ctx, rootScope, extenderName, properties, options)
-		if err != nil {
-			return nil, err
-		}
-		poller, err := runtime.NewPoller(resp, client.internal.Pipeline(), &runtime.NewPollerOptions[ExtendersClientUpdateResponse]{
-			FinalStateVia: runtime.FinalStateViaLocation,
-		})
-		return poller, err
-	} else {
-		return runtime.NewPollerFromResumeToken[ExtendersClientUpdateResponse](options.ResumeToken, client.internal.Pipeline(), nil)
-	}
-}
-
-// Update - Update a ExtenderResource
-// If the operation fails it returns an *azcore.ResponseError type.
-func (client *ExtendersClient) update(ctx context.Context, rootScope string, extenderName string, properties ExtenderResource, options *ExtendersClientBeginUpdateOptions) (*http.Response, error) {
-	var err error
-	req, err := client.updateCreateRequest(ctx, rootScope, extenderName, properties, options)
-	if err != nil {
-		return nil, err
-	}
-	httpResp, err := client.internal.Pipeline().Do(req)
-	if err != nil {
-		return nil, err
-	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		return nil, runtime.NewResponseError(httpResp)
-	}
-	return httpResp, nil
-}
-
-// updateCreateRequest creates the Update request.
-func (client *ExtendersClient) updateCreateRequest(ctx context.Context, rootScope string, extenderName string, properties ExtenderResource, _ *ExtendersClientBeginUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Core/extenders/{extenderName}"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	if extenderName == "" {
-		return nil, errors.New("parameter extenderName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{extenderName}", url.PathEscape(extenderName))
-	req, err := runtime.NewRequest(ctx, http.MethodPatch, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	if err != nil {
-		return nil, err
-	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
-	req.Raw().Header["Content-Type"] = []string{"application/json"}
-	if err := runtime.MarshalAsJSON(req, properties); err != nil {
-		return nil, err
-	}
-	return req, nil
 }

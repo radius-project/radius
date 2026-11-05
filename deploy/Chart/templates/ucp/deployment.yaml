@@ -22,12 +22,13 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if eq .Values.global.prometheus.enabled true }}
       annotations:
+        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
-      {{- end }}
+        {{- end }}
     spec:
       serviceAccountName: ucp
       {{- if .Values.global.appendRootCA.cert }}
@@ -133,6 +134,9 @@ spec:
         - name: encryption-secret
           mountPath: /var/secrets/encryption
           readOnly: true
+        - name: aws-fingerprint-key
+          mountPath: /var/secrets/aws-fingerprint
+          readOnly: true
       volumes:
         - name: config-volume
           configMap:
@@ -164,3 +168,10 @@ spec:
           secret:
             secretName: radius-encryption-key
             defaultMode: 0400
+        # UCP runs as a non-root user, and Secret files are owned by root, so the key must be readable by others.
+        # The Secret is optional so UCP still starts without it; only AWS operations that need the key fail.
+        - name: aws-fingerprint-key
+          secret:
+            secretName: radius-aws-fingerprint-key
+            defaultMode: 0444
+            optional: true

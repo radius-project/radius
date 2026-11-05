@@ -71,7 +71,7 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
    make generate-bicep-types
    ```
 
-   This writes the type files under `hack/bicep-types-radius/generated/` and rebuilds the unified index at `hack/bicep-types-radius/generated/index.json`. It also writes one reference doc per resource type to `<namespace>/<apiVersion>/docs/`, for both the TypeSpec-generated and the manifest-generated (contrib) namespaces. Those docs are build artifacts, not checked in, and are published to the docs repo by the `publish-docs` workflow.
+   This writes the type files under `hack/bicep-types-radius/generated/` and rebuilds the unified index at `hack/bicep-types-radius/generated/index.json`. It also writes one reference doc per resource type to `<namespace>/<apiVersion>/docs/`, for both the TypeSpec-generated and the manifest-generated (contrib) namespaces. Those docs are build artifacts, not checked in. The `publish-docs` workflow synchronizes an edge docs PR only from `main`; release branches and pull requests retain generated previews without writing to the docs repository.
 3. Publish the unified `radius` extension to a target of your choice (a local file path or an OCI registry):
 
    ```bash

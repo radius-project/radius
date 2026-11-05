@@ -70,6 +70,9 @@ type ResourceClient interface {
 	//
 	// If the API version is omitted, then an attempt will be made to look up the API version.
 	Delete(ctx context.Context, id string) error
+
+	// GetProperties returns the properties of a UCP resource, such as an AWS resource, by id.
+	GetProperties(ctx context.Context, id string) (map[string]any, error)
 }
 
 // ResourceError represents an error that occurred while processing a resource.

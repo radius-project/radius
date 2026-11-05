@@ -17,28 +17,46 @@ limitations under the License.
 package update
 
 import (
-	"errors"
-	"fmt"
+	"context"
+	"net/http"
+	"strings"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/cli/clients"
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
-	"github.com/radius-project/radius/pkg/cli/connections"
+	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
+	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
+}
+
+// Test_NamespaceFlagsMutuallyExclusive verifies that the deprecated --namespace alias cannot be
+// combined with --kubernetes-namespace or --clear-kubernetes. Cobra enforces flag groups only
+// during Execute, so this is checked directly rather than through radcli.SharedValidateValidation.
+func Test_NamespaceFlagsMutuallyExclusive(t *testing.T) {
+	testcases := [][]string{
+		{"default", "--namespace", "a", "--kubernetes-namespace", "b"},
+		{"default", "--namespace", "a", "--clear-kubernetes"},
+	}
+	for _, args := range testcases {
+		t.Run(strings.Join(args[1:], " "), func(t *testing.T) {
+			cmd, _ := NewCommand(&framework.Impl{})
+			require.NoError(t, cmd.ParseFlags(args))
+			require.ErrorContains(t, cmd.ValidateFlagGroups(), "were all set")
+		})
+	}
 }
 
 func Test_Validate(t *testing.T) {
@@ -82,9 +100,9 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name: "Update Env Command with both providers set",
+			Name: "Update Env Command with all providers set",
 			Input: []string{"default", "--azure-subscription-id", "00000000-0000-0000-0000-000000000000", "--azure-resource-group", "testResourceGroup",
-				"--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount",
+				"--aws-region", "us-west-2", "--aws-account-id", "testAWSAccount", "--kubernetes-namespace", "testNamespace",
 			},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -93,21 +111,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Update Env Command with namespace flag",
-			Input:         []string{"default", "--namespace", "mynamespace"},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-			ValidateCallback: func(t *testing.T, runner framework.Runner) {
-				r := runner.(*Runner)
-				require.Equal(t, "mynamespace", r.Namespace)
-			},
-		},
-		{
-			Name:          "Update Env Command with --kubernetes-namespace flag",
-			Input:         []string{"default", "--kubernetes-namespace", "mynamespace"},
+			Name:          "Update Env Command with deprecated --namespace alias",
+			Input:         []string{"default", "-n", "testNamespace"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -115,12 +120,43 @@ func Test_Validate(t *testing.T) {
 			},
 			ValidateCallback: func(t *testing.T, runner framework.Runner) {
 				r := runner.(*Runner)
-				require.Equal(t, "mynamespace", r.Namespace)
+				require.Equal(t, "testNamespace", *r.providers.Kubernetes.Namespace)
 			},
 		},
 		{
-			Name:          "Update Env Command with invalid Kubernetes namespace",
-			Input:         []string{"default", "--kubernetes-namespace", "BadNamespace"},
+			Name:          "Update Env Command with --recipe-pack-group and --recipe-packs",
+			Input:         []string{"default", "--recipe-packs", "pack1", "--recipe-pack-group", "other-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.Equal(t, "other-group", r.recipePackGroup)
+			},
+		},
+		{
+			Name:          "Update Env Command with --recipe-pack-group but no --recipe-packs",
+			Input:         []string{"default", "--recipe-pack-group", "other-group"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Update Env Command with empty --recipe-packs value",
+			Input:         []string{"default", "--recipe-packs", " , "},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Update Env Command with invalid --recipe-pack-group value",
+			Input:         []string{"default", "--recipe-packs", "pack1", "--recipe-pack-group", "invalid group name!"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -128,597 +164,930 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 	}
+
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_Update(t *testing.T) {
-	t.Run("Failure: No Flags Set", func(t *testing.T) {
-		runner := &Runner{
-			noFlagsSet: true,
-		}
+func Test_ValidateRecipePackParsing(t *testing.T) {
+	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
 
-		err := runner.Run(t.Context())
+	testcases := []struct {
+		name          string
+		input         []string
+		expectedPacks []string
+	}{
+		{
+			name:          "single recipe pack",
+			input:         []string{"test-env", "--recipe-packs", "pack1"},
+			expectedPacks: []string{"pack1"},
+		},
+		{
+			name:          "comma-separated recipe packs",
+			input:         []string{"test-env", "--recipe-packs", "pack1,pack2"},
+			expectedPacks: []string{"pack1", "pack2"},
+		},
+		{
+			name:          "comma-separated with spaces",
+			input:         []string{"test-env", "--recipe-packs", "pack1, pack2 , pack3"},
+			expectedPacks: []string{"pack1", "pack2", "pack3"},
+		},
+		{
+			name:          "mixed simple names and full resource IDs",
+			input:         []string{"test-env", "--recipe-packs", "demorecipepack,/planes/radius/local/resourcegroups/kind-radius/providers/Radius.Core/recipePacks/kuberecipepack2"},
+			expectedPacks: []string{"demorecipepack", "/planes/radius/local/resourcegroups/kind-radius/providers/Radius.Core/recipePacks/kuberecipepack2"},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create command
+			cmd := &cobra.Command{}
+			// Validate uses cli.RequireWorkspace / RequireScope,
+			// which expect these flags to be defined on the command.
+			commonflags.AddWorkspaceFlag(cmd)
+			commonflags.AddResourceGroupFlag(cmd)
+			commonflags.AddEnvironmentNameFlag(cmd)
+			cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "")
+			cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "")
+			cmd.Flags().Bool(commonflags.ClearEnvKubernetesFlag, false, "")
+			cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to be added to the environment")
+			cmd.Flags().StringP("recipe-pack-group", "", "", "Specify the resource group containing the recipe packs")
+
+			// Parse flags
+			err := cmd.Flags().Parse(tc.input)
+			require.NoError(t, err)
+
+			// Create and validate runner
+			runner := &Runner{
+				ConfigHolder: &framework.ConfigHolder{
+					ConfigFilePath: "",
+					Config:         configWithWorkspace,
+				},
+				Output:    &output.MockOutput{},
+				Workspace: workspace,
+			}
+
+			err = runner.Validate(cmd, []string{"test-env"})
+			require.NoError(t, err)
+
+			require.Equal(t, tc.expectedPacks, runner.recipePacks, "recipe packs mismatch for test: %s", tc.name)
+		})
+	}
+}
+
+func Test_Run(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	// envServerWithID returns an environment that includes the full resource ID,
+	// which is required for the referencedBy sync in env update.
+	envServerWithID := func() corerpfake.EnvironmentsServer {
+		return corerpfake.EnvironmentsServer{
+			CreateOrUpdate: test_client_factory.WithEnvironmentServerNoError().CreateOrUpdate,
+			Get: func(
+				ctx context.Context,
+				rootScope string,
+				environmentName string,
+				options *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				result := v20250801preview.EnvironmentsClientGetResponse{
+					ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+					Name: to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{
+						Providers: &v20250801preview.Providers{
+							Azure: &v20250801preview.ProvidersAzure{
+								SubscriptionID:    to.Ptr("test-subscription-id"),
+								ResourceGroupName: to.Ptr("test-resource-group"),
+							},
+							Aws: &v20250801preview.ProvidersAws{
+								AccountID: to.Ptr("test-account-id"),
+								Region:    to.Ptr("test-region"),
+							},
+							Kubernetes: &v20250801preview.ProvidersKubernetes{
+								Namespace: to.Ptr("test-namespace"),
+							},
+						},
+						RecipePacks: []*string{
+							to.Ptr(workspace.Scope + "/providers/Radius.Core/recipePacks/old-pack"),
+						},
+					},
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+		}
+	}
+
+	// recipePackServerWithCreateOrUpdate handles both Get (validation) and
+	// CreateOrUpdate (referencedBy sync) calls made during env update.
+	recipePackServerWithCreateOrUpdate := func() corerpfake.RecipePacksServer {
+		return corerpfake.RecipePacksServer{
+			Get:            test_client_factory.WithRecipePackServerNoError().Get,
+			CreateOrUpdate: recipePackCreateOrUpdateNoError(),
+		}
+	}
+
+	testcases := []struct {
+		name           string
+		envName        string
+		expectedOutput []any
+	}{
+		{
+			name:    "update environment with azure provider and recipe packs",
+			envName: "test-env",
+			expectedOutput: []any{
+				output.LogOutput{
+					Format: "WARNING: The existing recipe pack list will be replaced with the specified packs.",
+				},
+				output.LogOutput{
+					Format: "Radius.Core/environments/%s updated",
+					Params: []any{"test-env"},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+				workspace.Scope,
+				envServerWithID,
+				recipePackServerWithCreateOrUpdate,
+			)
+			require.NoError(t, err)
+
+			outputSink := &output.MockOutput{}
+			runner := &Runner{
+				ConfigHolder:            &framework.ConfigHolder{},
+				Output:                  outputSink,
+				Workspace:               workspace,
+				EnvironmentName:         tc.envName,
+				RadiusCoreClientFactory: factory,
+				recipePacks:             []string{"rp1", "rp2"},
+				providers: &v20250801preview.Providers{
+					Azure: &v20250801preview.ProvidersAzure{
+						SubscriptionID:    to.Ptr("00000000-0000-0000-0000-000000000000"),
+						ResourceGroupName: to.Ptr("testResourceGroup"),
+					},
+					Aws: &v20250801preview.ProvidersAws{
+						Region:    to.Ptr("us-west-2"),
+						AccountID: to.Ptr("testAWSAccount"),
+					},
+					Kubernetes: &v20250801preview.ProvidersKubernetes{
+						Namespace: to.Ptr("test-namespace"),
+					},
+				},
+			}
+
+			err = runner.Run(t.Context())
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedOutput, outputSink.Writes)
+		})
+	}
+}
+
+func Test_Run_RecipePacksReplaced(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	// Track the resource sent to CreateOrUpdate so we can assert on its recipe packs.
+	var capturedEnv v20250801preview.EnvironmentResource
+
+	existingPackID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/old-pack"
+
+	envServer := func() fake.EnvironmentsServer {
+		return fake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				_ string,
+				environmentName string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				result := v20250801preview.EnvironmentsClientGetResponse{
+					ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+					Name: to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{
+						RecipePacks: []*string{to.Ptr(existingPackID)},
+					},
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+			CreateOrUpdate: func(
+				_ context.Context,
+				_ string,
+				_ string,
+				resource v20250801preview.EnvironmentResource,
+				_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+				capturedEnv = resource
+				result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{
+					EnvironmentResource: resource,
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+		}
+	}
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+		workspace.Scope,
+		envServer,
+		nil, // uses default RecipePacksServer (accepts any name)
+	)
+	require.NoError(t, err)
+
+	outputSink := &output.MockOutput{}
+	runner := &Runner{
+		ConfigHolder:            &framework.ConfigHolder{},
+		Output:                  outputSink,
+		Workspace:               workspace,
+		EnvironmentName:         "test-env",
+		RadiusCoreClientFactory: factory,
+		recipePacks:             []string{"new-pack-a", "new-pack-b"},
+		providers:               &v20250801preview.Providers{},
+	}
+
+	err = runner.Run(t.Context())
+	require.NoError(t, err)
+
+	// The old pack should be gone — only the two new packs should remain.
+	require.Len(t, capturedEnv.Properties.RecipePacks, 2, "recipe packs list should be replaced, not appended")
+	packIDs := []string{*capturedEnv.Properties.RecipePacks[0], *capturedEnv.Properties.RecipePacks[1]}
+	require.NotContains(t, packIDs, existingPackID, "old pack should not be in the updated list")
+
+	// Verify the replacement warning was emitted.
+	foundWarning := false
+	for _, w := range outputSink.Writes {
+		if logOut, ok := w.(output.LogOutput); ok && logOut.Format == "WARNING: The existing recipe pack list will be replaced with the specified packs." {
+			foundWarning = true
+			break
+		}
+	}
+	require.True(t, foundWarning, "expected replacement warning in output")
+}
+
+// Test_Run_RecipePackNotFound verifies that a missing recipe pack fails the update
+// before the replacement warning is printed, and that the error names the resource
+// group that was searched along with the full resource ID form.
+func Test_Run_RecipePackNotFound(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	existingPackID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/old-pack"
+
+	envServer := func() fake.EnvironmentsServer {
+		return fake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				_ string,
+				environmentName string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				result := v20250801preview.EnvironmentsClientGetResponse{
+					ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+					Name: to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{
+						RecipePacks: []*string{to.Ptr(existingPackID)},
+					},
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+			CreateOrUpdate: func(
+				_ context.Context,
+				_ string,
+				_ string,
+				_ v20250801preview.EnvironmentResource,
+				_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+				require.Fail(t, "environment should not be updated when a recipe pack does not exist")
+				return
+			},
+		}
+	}
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+		workspace.Scope,
+		envServer,
+		func() corerpfake.RecipePacksServer { return test_client_factory.WithRecipePackServer404OnGet() },
+	)
+	require.NoError(t, err)
+
+	outputSink := &output.MockOutput{}
+	runner := &Runner{
+		ConfigHolder:            &framework.ConfigHolder{},
+		Output:                  outputSink,
+		Workspace:               workspace,
+		EnvironmentName:         "test-env",
+		RadiusCoreClientFactory: factory,
+		recipePacks:             []string{"missing-pack"},
+		providers:               &v20250801preview.Providers{},
+	}
+
+	err = runner.Run(t.Context())
+	require.Error(t, err)
+	require.True(t, clierrors.IsFriendlyError(err))
+	require.Equal(t,
+		`Recipe pack "missing-pack" does not exist in resource group "test-group". To reference a recipe pack in another resource group, pass its full resource ID, for example: /planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/missing-pack`,
+		err.Error())
+
+	for _, w := range outputSink.Writes {
+		if logOut, ok := w.(output.LogOutput); ok {
+			require.NotEqual(t, "WARNING: The existing recipe pack list will be replaced with the specified packs.", logOut.Format,
+				"replacement warning should not be printed when validation fails")
+		}
+	}
+}
+
+// Test_Run_RecipePacksWithGroup verifies that a bare recipe pack name is
+// resolved against recipePackGroup, not the environment's own resource group,
+// when --recipe-pack-group is specified.
+//
+// The environment is seeded with the exact recipe pack ID that "mypack" combined
+// with recipePackGroup "other-group" should resolve to, so the resolved list is
+// unchanged and referencedBy sync (which requires a live connection for a pack
+// outside the workspace's own scope) is a no-op. This isolates the scope
+// resolution behavior under test from that unrelated, pre-existing code path.
+func Test_Run_RecipePacksWithGroup(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	expectedPackID := "/planes/radius/local/resourceGroups/other-group/providers/Radius.Core/recipePacks/mypack"
+
+	var capturedEnv v20250801preview.EnvironmentResource
+
+	envServer := func() fake.EnvironmentsServer {
+		return fake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				_ string,
+				environmentName string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				result := v20250801preview.EnvironmentsClientGetResponse{
+					ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+					Name: to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{
+						RecipePacks: []*string{to.Ptr(expectedPackID)},
+					},
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+			CreateOrUpdate: func(
+				_ context.Context,
+				_ string,
+				_ string,
+				resource v20250801preview.EnvironmentResource,
+				_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+				capturedEnv = resource
+				result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{
+					EnvironmentResource: resource,
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+		}
+	}
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+		workspace.Scope,
+		envServer,
+		nil, // uses default RecipePacksServer (accepts any name)
+	)
+	require.NoError(t, err)
+
+	runner := &Runner{
+		ConfigHolder:            &framework.ConfigHolder{},
+		Output:                  &output.MockOutput{},
+		Workspace:               workspace,
+		EnvironmentName:         "test-env",
+		RadiusCoreClientFactory: factory,
+		recipePacks:             []string{"mypack"},
+		recipePackGroup:         "other-group",
+		providers:               &v20250801preview.Providers{},
+	}
+
+	err = runner.Run(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, capturedEnv.Properties.RecipePacks, 1)
+	require.Equal(t, expectedPackID, *capturedEnv.Properties.RecipePacks[0])
+}
+
+// Test_Run_RecipePackFullResourceID verifies that a recipe pack referenced by full
+// resource ID is validated and stored as-is rather than being re-scoped.
+func Test_Run_RecipePackFullResourceID(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	var capturedEnv v20250801preview.EnvironmentResource
+
+	packID := workspace.Scope + "/providers/Radius.Core/recipePacks/shared-pack"
+
+	envServer := func() fake.EnvironmentsServer {
+		return fake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				_ string,
+				environmentName string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				result := v20250801preview.EnvironmentsClientGetResponse{
+					ID:         to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+					Name:       to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{},
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+			CreateOrUpdate: func(
+				_ context.Context,
+				_ string,
+				_ string,
+				resource v20250801preview.EnvironmentResource,
+				_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+				capturedEnv = resource
+				result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{EnvironmentResource: resource}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+		}
+	}
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+		workspace.Scope,
+		envServer,
+		func() corerpfake.RecipePacksServer {
+			return corerpfake.RecipePacksServer{
+				Get:            test_client_factory.WithRecipePackServerNoError().Get,
+				CreateOrUpdate: recipePackCreateOrUpdateNoError(),
+			}
+		},
+	)
+	require.NoError(t, err)
+
+	runner := &Runner{
+		ConfigHolder:            &framework.ConfigHolder{},
+		Output:                  &output.MockOutput{},
+		Workspace:               workspace,
+		EnvironmentName:         "test-env",
+		RadiusCoreClientFactory: factory,
+		recipePacks:             []string{packID},
+		providers:               &v20250801preview.Providers{},
+	}
+
+	err = runner.Run(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, capturedEnv.Properties.RecipePacks, 1)
+	require.Equal(t, packID, *capturedEnv.Properties.RecipePacks[0])
+}
+
+// Test_Run_DefaultsKubernetesNamespace verifies the namespace defaulting that
+// happens at the end of Run() when the user did not pass --kubernetes-namespace
+// or --clear-kubernetes.
+func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	// existingPackID is returned by the fake Get so the update path isn't gated on recipe packs.
+	existingPackID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/old-pack"
+
+	// makeServer returns a fake server that returns existingProviders on Get
+	// and captures the CreateOrUpdate resource into captured.
+	makeServer := func(existingProviders *v20250801preview.Providers, captured *v20250801preview.EnvironmentResource) func() fake.EnvironmentsServer {
+		return func() fake.EnvironmentsServer {
+			return fake.EnvironmentsServer{
+				Get: func(
+					_ context.Context,
+					_ string,
+					environmentName string,
+					_ *v20250801preview.EnvironmentsClientGetOptions,
+				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+					props := &v20250801preview.EnvironmentProperties{
+						RecipePacks: []*string{to.Ptr(existingPackID)},
+					}
+					if existingProviders != nil {
+						props.Providers = existingProviders
+					}
+					result := v20250801preview.EnvironmentsClientGetResponse{
+						ID:         to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+						Name:       to.Ptr(environmentName),
+						Properties: props,
+					}
+					resp.SetResponse(http.StatusOK, result, nil)
+					return
+				},
+				CreateOrUpdate: func(
+					_ context.Context,
+					_ string,
+					_ string,
+					resource v20250801preview.EnvironmentResource,
+					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					*captured = resource
+					result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{
+						EnvironmentResource: resource,
+					}
+					resp.SetResponse(http.StatusOK, result, nil)
+					return
+				},
+			}
+		}
+	}
+
+	// kubernetesOnly is a small constructor for an existing-providers value with
+	// only the Kubernetes namespace populated.
+	kubernetesOnly := func(ns string) *v20250801preview.Providers {
+		return &v20250801preview.Providers{
+			Kubernetes: &v20250801preview.ProvidersKubernetes{Namespace: to.Ptr(ns)},
+		}
+	}
+
+	t.Run("env without namespace gets default when user does not provide one", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(nil, &captured),
+			nil,
+		)
 		require.NoError(t, err)
-		require.Equal(t, nil, err)
-	})
-
-	t.Run("Failure: Get Environment Details Error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		environment := corerp.EnvironmentResource{
-			Name:       new("test-env"),
-			Properties: &corerp.EnvironmentProperties{},
-		}
-
-		expectedError := errors.New("failed to update the environment")
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetEnvironment(gomock.Any(), "test-env").
-			Return(environment, expectedError).
-			Times(1)
-
-		testProviders := &corerp.Providers{
-			Azure: &corerp.ProvidersAzure{
-				Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
-			},
-			Aws: &corerp.ProvidersAws{
-				Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-			},
-		}
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
-		}
-
-		outputSink := &output.MockOutput{}
 
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			EnvName:           "test-env",
-			providers:         testProviders,
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers:               &v20250801preview.Providers{},
 		}
 
-		err := runner.Run(t.Context())
-		require.Error(t, expectedError)
-		require.Equal(t, expectedError.Error(), err.Error())
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+
+		require.NotNil(t, captured.Properties)
+		require.NotNil(t, captured.Properties.Providers)
+		require.NotNil(t, captured.Properties.Providers.Kubernetes)
+		require.NotNil(t, captured.Properties.Providers.Kubernetes.Namespace)
+		require.Equal(t, "default", *captured.Properties.Providers.Kubernetes.Namespace)
 	})
 
-	t.Run("Failure: Environment Doesn't Exist", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		environment := corerp.EnvironmentResource{
-			Name:       new("test-env"),
-			Properties: &corerp.EnvironmentProperties{},
-		}
-
-		expectedError := &azcore.ResponseError{
-			ErrorCode: v1.CodeNotFound,
-		}
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetEnvironment(gomock.Any(), "test-env").
-			Return(environment, expectedError).
-			Times(1)
-
-		testProviders := &corerp.Providers{
-			Azure: &corerp.ProvidersAzure{
-				Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
-			},
-			Aws: &corerp.ProvidersAws{
-				Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-			},
-		}
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
-		}
-
-		outputSink := &output.MockOutput{}
+	t.Run("env with existing namespace is preserved when user does not provide one", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(kubernetesOnly("existing-ns"), &captured),
+			nil,
+		)
+		require.NoError(t, err)
 
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			EnvName:           "test-env",
-			providers:         testProviders,
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers:               &v20250801preview.Providers{},
 		}
 
-		err := runner.Run(t.Context())
-		require.Error(t, expectedError)
-		require.Equal(t, clierrors.Message(envNotFoundErrMessageFmt, "test-env"), err)
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+
+		require.NotNil(t, captured.Properties.Providers.Kubernetes)
+		require.Equal(t, "existing-ns", *captured.Properties.Providers.Kubernetes.Namespace)
 	})
 
-	t.Run("Failure: Update Environment Error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		environment := corerp.EnvironmentResource{
-			Name:       new("test-env"),
-			Properties: &corerp.EnvironmentProperties{},
-		}
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetEnvironment(gomock.Any(), "test-env").
-			Return(environment, nil).
-			Times(1)
-
-		testProviders := &corerp.Providers{
-			Azure: &corerp.ProvidersAzure{
-				Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
-			},
-			Aws: &corerp.ProvidersAws{
-				Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-			},
-		}
-
-		expectedResource := &corerp.EnvironmentResource{
-			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &corerp.EnvironmentProperties{
-				Providers: testProviders,
-			},
-		}
-
-		expectedError := errors.New("failed to update the environment")
-		expectedErrorMessage := fmt.Sprintf("Failed to apply cloud provider scope to the environment %q. Cause: %s.", "test-env", expectedError.Error())
-
-		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(gomock.Any(), "test-env", expectedResource).
-			Return(expectedError).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
-		}
-
-		outputSink := &output.MockOutput{}
+	t.Run("user-provided namespace overrides default", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(nil, &captured),
+			nil,
+		)
+		require.NoError(t, err)
 
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			EnvName:           "test-env",
-			providers:         testProviders,
-		}
-
-		err := runner.Run(t.Context())
-		require.Error(t, expectedError)
-		require.Equal(t, expectedErrorMessage, err.Error())
-	})
-
-	t.Run("Success: Update Environment With Providers", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		environment := corerp.EnvironmentResource{
-			Name: new("test-env"),
-			Properties: &corerp.EnvironmentProperties{
-				Recipes: map[string]map[string]corerp.RecipePropertiesClassification{},
-				Compute: &corerp.KubernetesCompute{
-					Namespace:  new("default"),
-					Kind:       new("kubernetes"),
-					ResourceID: new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers: &v20250801preview.Providers{
+				Kubernetes: &v20250801preview.ProvidersKubernetes{
+					Namespace: to.Ptr("user-ns"),
 				},
 			},
 		}
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetEnvironment(gomock.Any(), "test-env").
-			Return(environment, nil).
-			Times(1)
-
-		testProviders := &corerp.Providers{
-			Azure: &corerp.ProvidersAzure{
-				Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
-			},
-			Aws: &corerp.ProvidersAws{
-				Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-			},
-		}
-
-		testEnvProperties := &corerp.EnvironmentProperties{
-			Providers: testProviders,
-			Recipes:   map[string]map[string]corerp.RecipePropertiesClassification{},
-			Compute: &corerp.KubernetesCompute{
-				Namespace:  new("default"),
-				Kind:       new("kubernetes"),
-				ResourceID: new("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind/compute/kubernetes"),
-			},
-		}
-		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(gomock.Any(), "test-env", &corerp.EnvironmentResource{
-				Location:   to.Ptr(v1.LocationGlobal),
-				Properties: testEnvProperties,
-			}).
-			Return(nil).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
-		}
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			EnvName:           "test-env",
-			providers:         testProviders,
-		}
-
-		err := runner.Run(t.Context())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
-		environment.Properties.Providers = testProviders
-		_ = environment
-
-		expected := []any{
-			output.LogOutput{
-				Format: "Applications.Core/environments/%s updated",
-				Params: []any{"test-env"},
-			},
-		}
-
-		require.Equal(t, expected, outputSink.Writes)
+		require.NotNil(t, captured.Properties.Providers.Kubernetes)
+		require.Equal(t, "user-ns", *captured.Properties.Providers.Kubernetes.Namespace)
 	})
 
-	t.Run("Success: Update Environment With Namespace", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		environment := corerp.EnvironmentResource{
-			Name: new("test-env"),
-			Properties: &corerp.EnvironmentProperties{
-				Compute: &corerp.KubernetesCompute{
-					Namespace: new("old-namespace"),
-					Kind:      new("kubernetes"),
-				},
-			},
-		}
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetEnvironment(gomock.Any(), "test-env").
-			Return(environment, nil).
-			Times(1)
-
-		testProviders := &corerp.Providers{
-			Azure: &corerp.ProvidersAzure{},
-			Aws:   &corerp.ProvidersAws{},
-		}
-
-		expectedEnvProperties := &corerp.EnvironmentProperties{
-			Compute: &corerp.KubernetesCompute{
-				Namespace: new("new-namespace"),
-				Kind:      new("kubernetes"),
-			},
-		}
-		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(gomock.Any(), "test-env", &corerp.EnvironmentResource{
-				Location:   to.Ptr(v1.LocationGlobal),
-				Properties: expectedEnvProperties,
-			}).
-			Return(nil).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
-			Name:  "kind-kind",
-			Scope: "/planes/radius/local/resourceGroups/test-group",
-		}
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			EnvName:           "test-env",
-			Namespace:         "new-namespace",
-			providers:         testProviders,
-		}
-
-		err := runner.Run(t.Context())
+	t.Run("--clear-kubernetes is rejected once a namespace is established", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(kubernetesOnly("existing-ns"), &captured),
+			nil,
+		)
 		require.NoError(t, err)
 
-		expected := []any{
-			output.LogOutput{
-				Format: "Applications.Core/environments/%s updated",
-				Params: []any{"test-env"},
-			},
-		}
-
-		require.Equal(t, expected, outputSink.Writes)
-	})
-
-	t.Run("Success: Update Environment With Namespace When Compute Is Nil", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		environment := corerp.EnvironmentResource{
-			Name:       new("test-env"),
-			Properties: &corerp.EnvironmentProperties{
-				// Compute is nil — exercises the nil-branch which must set Kind.
-			},
-		}
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetEnvironment(gomock.Any(), "test-env").
-			Return(environment, nil).
-			Times(1)
-
-		expectedEnvProperties := &corerp.EnvironmentProperties{
-			Compute: &corerp.KubernetesCompute{
-				Kind:      to.Ptr(string(rpv1.KubernetesComputeKind)),
-				Namespace: new("new-namespace"),
-			},
-		}
-		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(gomock.Any(), "test-env", &corerp.EnvironmentResource{
-				Location:   to.Ptr(v1.LocationGlobal),
-				Properties: expectedEnvProperties,
-			}).
-			Return(nil).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{"kind": "kubernetes", "context": "kind-kind"},
-			Name:       "kind-kind",
-			Scope:      "/planes/radius/local/resourceGroups/test-group",
-		}
-		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			EnvName:           "test-env",
-			Namespace:         "new-namespace",
-			providers:         &corerp.Providers{},
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			clearEnvKubernetes:      true,
+			providers:               &v20250801preview.Providers{},
 		}
 
-		err := runner.Run(t.Context())
-		require.NoError(t, err)
-	})
+		err = runner.Run(t.Context())
 
-	t.Run("Failure: Update Environment With Namespace When Compute Is Non-Kubernetes", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		// Use a non-Kubernetes concrete compute type to exercise the default branch.
-		environment := corerp.EnvironmentResource{
-			Name: new("test-env"),
-			Properties: &corerp.EnvironmentProperties{
-				Compute: &corerp.AzureContainerInstanceCompute{},
-			},
-		}
-
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			GetEnvironment(gomock.Any(), "test-env").
-			Return(environment, nil).
-			Times(1)
-
-		workspace := &workspaces.Workspace{
-			Connection: map[string]any{"kind": "kubernetes", "context": "kind-kind"},
-			Name:       "kind-kind",
-			Scope:      "/planes/radius/local/resourceGroups/test-group",
-		}
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:         workspace,
-			Output:            outputSink,
-			EnvName:           "test-env",
-			Namespace:         "new-namespace",
-			providers:         &corerp.Providers{},
-		}
-
-		err := runner.Run(t.Context())
+		// Clearing the provider would release a namespace claim that other environments were
+		// validated against, and orphan anything already deployed into it.
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "existing compute kind is not Kubernetes")
+		require.Contains(t, err.Error(), "existing-ns")
+		require.Nil(t, captured.Properties, "the environment must not be updated")
 	})
 
-	t.Run("Update Environment With Existing Providers", func(t *testing.T) {
-		testCases := []struct {
-			name              string
-			existingProviders *corerp.Providers
-			expectedProviders *corerp.Providers
-			clearEnvAzure     bool // only applies to Azure
-			clearEnvAws       bool // only applies to AWS
-			expectedError     error
-		}{
-			{
-				name: "Update Environment With Existing Azure Provider",
-				existingProviders: &corerp.Providers{
-					Azure: &corerp.ProvidersAzure{
-						Scope: new("/subscriptions/testSubId-1/resourceGroups/test-group-1"),
-					},
-					Aws: &corerp.ProvidersAws{
-						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-					},
+	t.Run("changing an established namespace is rejected", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(kubernetesOnly("existing-ns"), &captured),
+			nil,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers: &v20250801preview.Providers{
+				Kubernetes: &v20250801preview.ProvidersKubernetes{
+					Namespace: to.Ptr("new-ns"),
 				},
-				expectedProviders: &corerp.Providers{
-					Azure: &corerp.ProvidersAzure{
-						Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
-					},
-					Aws: &corerp.ProvidersAws{
-						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-					},
-				},
-				clearEnvAzure: false,
-				clearEnvAws:   false,
-				expectedError: nil,
-			},
-			{
-				name: "Update Environment With Existing Azure Provider and Clear Azure Provider",
-				existingProviders: &corerp.Providers{
-					Azure: &corerp.ProvidersAzure{
-						Scope: new("/subscriptions/testSubId-1/resourceGroups/test-group-1"),
-					},
-					Aws: &corerp.ProvidersAws{
-						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-					},
-				},
-				expectedProviders: &corerp.Providers{
-					Aws: &corerp.ProvidersAws{
-						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-					},
-				},
-				clearEnvAzure: true,
-				clearEnvAws:   false,
-				expectedError: nil,
-			},
-			{
-				name: "Update Environment With Existing AWS Provider",
-				existingProviders: &corerp.Providers{
-					Azure: &corerp.ProvidersAzure{
-						Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
-					},
-					Aws: &corerp.ProvidersAws{
-						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-					},
-				},
-				expectedProviders: &corerp.Providers{
-					Azure: &corerp.ProvidersAzure{
-						Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
-					},
-					Aws: &corerp.ProvidersAws{
-						Scope: new("/planes/aws/aws/accounts/testAwsAccount-1/regions/us-west-2"),
-					},
-				},
-				clearEnvAzure: false,
-				clearEnvAws:   false,
-				expectedError: nil,
-			},
-			{
-				name: "Update Environment With Existing AWS Provider and Clear AWS Provider",
-				existingProviders: &corerp.Providers{
-					Azure: &corerp.ProvidersAzure{
-						Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
-					},
-					Aws: &corerp.ProvidersAws{
-						Scope: new("/planes/aws/aws/accounts/testAwsAccount/regions/us-west-2"),
-					},
-				},
-				expectedProviders: &corerp.Providers{
-					Azure: &corerp.ProvidersAzure{
-						Scope: new("/subscriptions/testSubId/resourceGroups/test-group"),
-					},
-				},
-				clearEnvAzure: false,
-				clearEnvAws:   true,
-				expectedError: nil,
 			},
 		}
 
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				ctrl := gomock.NewController(t)
-				defer ctrl.Finish()
+		err = runner.Run(t.Context())
 
-				existingEnvironment := corerp.EnvironmentResource{
-					Name: new("test-env"),
-					Properties: &corerp.EnvironmentProperties{
-						Providers: tc.existingProviders,
-					},
-				}
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "existing-ns")
+		require.Contains(t, err.Error(), "new-ns")
+		require.Nil(t, captured.Properties, "the environment must not be updated")
+	})
 
-				appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-				appManagementClient.EXPECT().
-					GetEnvironment(gomock.Any(), "test-env").
-					Return(existingEnvironment, nil).
-					Times(1)
+	t.Run("re-specifying the same namespace is allowed", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(kubernetesOnly("existing-ns"), &captured),
+			nil,
+		)
+		require.NoError(t, err)
 
-				existingEnvironment.Properties.Providers = tc.expectedProviders
-
-				appManagementClient.EXPECT().
-					CreateOrUpdateEnvironment(gomock.Any(), "test-env", &corerp.EnvironmentResource{
-						Location:   to.Ptr(v1.LocationGlobal),
-						Properties: existingEnvironment.Properties,
-					}).
-					Return(nil).
-					Times(1)
-
-				workspace := &workspaces.Workspace{
-					Connection: map[string]any{
-						"kind":    "kubernetes",
-						"context": "kind-kind",
-					},
-					Name:  "kind-kind",
-					Scope: "/planes/radius/local/resourceGroups/test-group",
-				}
-
-				outputSink := &output.MockOutput{}
-
-				runner := &Runner{
-					ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-					Workspace:         workspace,
-					Output:            outputSink,
-					EnvName:           "test-env",
-					providers:         tc.expectedProviders,
-					clearEnvAzure:     tc.clearEnvAzure,
-				}
-
-				err := runner.Run(t.Context())
-				require.NoError(t, err)
-
-				expected := []any{
-					output.LogOutput{
-						Format: "Applications.Core/environments/%s updated",
-						Params: []any{"test-env"},
-					},
-				}
-
-				require.Equal(t, expected, outputSink.Writes)
-			})
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers: &v20250801preview.Providers{
+				Kubernetes: &v20250801preview.ProvidersKubernetes{
+					Namespace: to.Ptr("existing-ns"),
+				},
+			},
 		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, "existing-ns", *captured.Properties.Providers.Kubernetes.Namespace)
+	})
+
+	t.Run("env with Azure provider does not get default namespace", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		azureOnly := &v20250801preview.Providers{
+			Azure: &v20250801preview.ProvidersAzure{
+				SubscriptionID:    to.Ptr("test-sub-id"),
+				ResourceGroupName: to.Ptr("test-rg"),
+			},
+		}
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(azureOnly, &captured),
+			nil,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers:               &v20250801preview.Providers{},
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+
+		require.NotNil(t, captured.Properties.Providers)
+		require.NotNil(t, captured.Properties.Providers.Azure, "Azure provider must be preserved")
+		require.Equal(t, "test-sub-id", *captured.Properties.Providers.Azure.SubscriptionID)
+		require.Nil(t, captured.Properties.Providers.Kubernetes, "Kubernetes namespace must not be defaulted when Azure is configured")
 	})
 }
 
-func Test_FlagGroups(t *testing.T) {
-	t.Run("--namespace and --kubernetes-namespace are mutually exclusive", func(t *testing.T) {
-		cmd, _ := NewCommand(&framework.Impl{})
-		require.NoError(t, cmd.ParseFlags([]string{"--namespace", "ns1", "--kubernetes-namespace", "ns2"}))
-		require.Error(t, cmd.ValidateFlagGroups())
+func Test_syncRecipePackReferences(t *testing.T) {
+	scope := "/planes/radius/local/resourceGroups/test-group"
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: scope,
+	}
+	envID := scope + "/providers/Radius.Core/environments/test-env"
+
+	pack1FullID := scope + "/providers/Radius.Core/recipePacks/pack1"
+	pack2FullID := scope + "/providers/Radius.Core/recipePacks/pack2"
+	pack3FullID := scope + "/providers/Radius.Core/recipePacks/pack3"
+
+	t.Run("newly added packs get env added to referencedBy", func(t *testing.T) {
+		var capturedReferencedBy []*string
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, nil, func() corerpfake.RecipePacksServer {
+			return corerpfake.RecipePacksServer{
+				Get: test_client_factory.WithRecipePackServerNoError().Get,
+				CreateOrUpdate: func(
+					ctx context.Context, rootScope string, name string,
+					resource v20250801preview.RecipePackResource,
+					_ *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					capturedReferencedBy = resource.Properties.ReferencedBy
+					resp.SetResponse(http.StatusOK, v20250801preview.RecipePacksClientCreateOrUpdateResponse{RecipePackResource: resource}, nil)
+					return
+				},
+			}
+		})
+		require.NoError(t, err)
+
+		newPackIDs := []*string{to.Ptr(pack1FullID)}
+
+		err = syncRecipePackReferences(t.Context(), envID, nil, newPackIDs, workspace, factory)
+		require.NoError(t, err)
+		require.Len(t, capturedReferencedBy, 1)
+		require.Equal(t, envID, *capturedReferencedBy[0])
 	})
 
-	t.Run("--azure-subscription-id requires --azure-resource-group", func(t *testing.T) {
-		cmd, _ := NewCommand(&framework.Impl{})
-		require.NoError(t, cmd.ParseFlags([]string{"--azure-subscription-id", "00000000-0000-0000-0000-000000000000"}))
-		require.Error(t, cmd.ValidateFlagGroups())
+	t.Run("dropped packs get env removed from referencedBy", func(t *testing.T) {
+		var capturedReferencedBy []*string
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, nil, func() corerpfake.RecipePacksServer {
+			return corerpfake.RecipePacksServer{
+				Get: func(
+					ctx context.Context, rootScope string, name string,
+					_ *v20250801preview.RecipePacksClientGetOptions,
+				) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+					// Pack has both this env and another env in referencedBy.
+					result := v20250801preview.RecipePacksClientGetResponse{
+						Name: to.Ptr(name),
+						Properties: &v20250801preview.RecipePackProperties{
+							Recipes:      map[string]*v20250801preview.RecipeDefinition{},
+							ReferencedBy: []*string{to.Ptr("some-other-env"), to.Ptr(envID)},
+						},
+					}
+					resp.SetResponse(http.StatusOK, result, nil)
+					return
+				},
+				CreateOrUpdate: func(
+					ctx context.Context, rootScope string, name string,
+					resource v20250801preview.RecipePackResource,
+					_ *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					capturedReferencedBy = resource.Properties.ReferencedBy
+					resp.SetResponse(http.StatusOK, v20250801preview.RecipePacksClientCreateOrUpdateResponse{RecipePackResource: resource}, nil)
+					return
+				},
+			}
+		})
+		require.NoError(t, err)
+
+		oldPackIDs := []*string{to.Ptr(pack1FullID)}
+
+		err = syncRecipePackReferences(t.Context(), envID, oldPackIDs, nil, workspace, factory)
+		require.NoError(t, err)
+		// This env is removed; the other env remains.
+		require.Len(t, capturedReferencedBy, 1)
+		require.Equal(t, "some-other-env", *capturedReferencedBy[0])
 	})
 
-	t.Run("--aws-region requires --aws-account-id", func(t *testing.T) {
-		cmd, _ := NewCommand(&framework.Impl{})
-		require.NoError(t, cmd.ParseFlags([]string{"--aws-region", "us-west-2"}))
-		require.Error(t, cmd.ValidateFlagGroups())
+	t.Run("unchanged packs are not updated", func(t *testing.T) {
+		createOrUpdateCalled := map[string]bool{}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, nil, func() corerpfake.RecipePacksServer {
+			return corerpfake.RecipePacksServer{
+				Get: func(
+					ctx context.Context, rootScope string, name string,
+					_ *v20250801preview.RecipePacksClientGetOptions,
+				) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+					result := v20250801preview.RecipePacksClientGetResponse{
+						Name: to.Ptr(name),
+						Properties: &v20250801preview.RecipePackProperties{
+							Recipes:      map[string]*v20250801preview.RecipeDefinition{},
+							ReferencedBy: []*string{to.Ptr(envID)},
+						},
+					}
+					resp.SetResponse(http.StatusOK, result, nil)
+					return
+				},
+				CreateOrUpdate: func(
+					ctx context.Context, rootScope string, name string,
+					resource v20250801preview.RecipePackResource,
+					_ *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					createOrUpdateCalled[name] = true
+					resp.SetResponse(http.StatusOK, v20250801preview.RecipePacksClientCreateOrUpdateResponse{RecipePackResource: resource}, nil)
+					return
+				},
+			}
+		})
+		require.NoError(t, err)
+
+		// old: [pack1, pack2], new: [pack1, pack3]
+		// pack1 unchanged — no update; pack2 dropped — updated; pack3 added — updated.
+		oldPackIDs := []*string{to.Ptr(pack1FullID), to.Ptr(pack2FullID)}
+		newPackIDs := []*string{to.Ptr(pack1FullID), to.Ptr(pack3FullID)}
+
+		err = syncRecipePackReferences(t.Context(), envID, oldPackIDs, newPackIDs, workspace, factory)
+		require.NoError(t, err)
+
+		require.False(t, createOrUpdateCalled["pack1"], "unchanged pack should not be updated")
+		require.True(t, createOrUpdateCalled["pack2"], "dropped pack should be updated")
+		require.True(t, createOrUpdateCalled["pack3"], "newly added pack should be updated")
 	})
+
+	t.Run("dropped pack already deleted is skipped without error", func(t *testing.T) {
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, nil, func() corerpfake.RecipePacksServer {
+			return corerpfake.RecipePacksServer{
+				Get: func(
+					ctx context.Context, rootScope string, name string,
+					_ *v20250801preview.RecipePacksClientGetOptions,
+				) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+					errResp.SetResponseError(404, "Not Found")
+					return
+				},
+			}
+		})
+		require.NoError(t, err)
+
+		oldPackIDs := []*string{to.Ptr(pack1FullID)}
+
+		err = syncRecipePackReferences(t.Context(), envID, oldPackIDs, nil, workspace, factory)
+		require.NoError(t, err)
+	})
+}
+
+// recipePackCreateOrUpdateNoError returns a CreateOrUpdate handler that echoes the resource back.
+func recipePackCreateOrUpdateNoError() func(
+	ctx context.Context,
+	rootScope string,
+	recipePackName string,
+	resource v20250801preview.RecipePackResource,
+	options *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
+) (azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], azfake.ErrorResponder) {
+	return func(
+		ctx context.Context,
+		rootScope string,
+		recipePackName string,
+		resource v20250801preview.RecipePackResource,
+		options *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
+	) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+		resp.SetResponse(http.StatusOK, v20250801preview.RecipePacksClientCreateOrUpdateResponse{RecipePackResource: resource}, nil)
+		return
+	}
 }
