@@ -18,8 +18,11 @@ package aws
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
+
+	awsarn "github.com/aws/aws-sdk-go-v2/aws/arn"
 
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
@@ -31,12 +34,16 @@ const (
 	chinaConsoleHost             = "console.amazonaws.cn"
 	europeanSovereignConsoleHost = "console.amazonaws-eusc.eu"
 
+	// resourcePageURLFormat is the console redirect, on the console host of the ARN's partition, that opens the page
+	// of the resource an ARN names.
+	resourcePageURLFormat = "https://%s/go/view?arn=%s"
+
 	// globalRegion is the region Radius uses for AWS resources whose ARN has no region, such as S3 buckets.
 	globalRegion = "global"
 )
 
-// globalConsoleHosts maps an AWS partition, which is the name of the AWS plane, to its console host for services that
-// are global in the console.
+// globalConsoleHosts maps an AWS partition, which is the name of the AWS plane and the partition of an ARN, to its
+// console host. It is used for services that are global in the console, and for links to a resource's own page.
 var globalConsoleHosts = map[string]string{
 	"aws":        commercialGlobalConsoleHost,
 	"aws-us-gov": govCloudConsoleHost,
@@ -113,8 +120,8 @@ var (
 )
 
 // consolePages maps each known AWS resource type, keyed by its lower-cased UCP type, to the console list page of its
-// service. A list page is used because AWS has no documented link format to a single resource that works for every
-// type. The region is a query parameter, so the hash, when present, follows it.
+// service. A list page is the fallback for resources without a resource page link, such as resources with no ARN,
+// because AWS has no documented link format to a single resource that works for every type. The region is a query parameter, so the hash, when present, follows it.
 //
 // AWS.* types are deployed through UCP. Terraform.AWS/* types are discovered from Terraform recipe state, which records
 // only resources with an arn attribute, so Terraform types without one are not listed.
@@ -212,17 +219,35 @@ var consolePages = map[string]consolePage{
 	"terraform.aws/aws_sqs_queue":                     sqsQueues,
 }
 
-// ConsoleURL returns a link to the AWS console list page of the service that owns the resource id, in the region the
-// ID names. GovCloud, China, and European Sovereign Cloud regions use the console of their partition. A resource in the
-// global region links only when its console page is global, such as S3 buckets, using the console of the partition
-// the AWS plane names. It returns "" when id is not an AWS resource, its type has no known page, or its region is
-// missing or not a valid region name, so a caller never shows a made-up link.
-func ConsoleURL(id resources.ID) string {
+// resourcePageDenyList holds AWS resource types, keyed by their lower-cased UCP type, whose resource page link is
+// known not to work. They fall back to their service's list page, as resources with no ARN do. AWS does not document
+// the console's go/view redirect, so a type that turns out to be broken is added here.
+//
+// The redirect was checked by signing in to the commercial console for 13 types. For GovCloud, China, and European
+// Sovereign Cloud it was only checked without signing in: go/view redirects to the right resource page, but whether
+// that page renders after sign-in was not checked.
+var resourcePageDenyList = map[string]struct{}{}
+
+// ConsoleURL returns a link to the AWS console for the resource id, or "" when there is none, so a caller never shows
+// a made-up link. arn is the resource's ARN, or "" when it is not known.
+//
+// When arn is an ARN in a partition with a known console and the type is not in resourcePageDenyList, the link opens
+// the resource's own page on the console of the ARN's partition. Otherwise the link opens the list page of the service that owns the
+// resource, in the region the ID names. GovCloud, China, and European Sovereign Cloud regions use the console of their
+// partition. A resource in the global region gets a list page link only when that page is global, such as S3 buckets,
+// using the console of the partition the AWS plane names. There is no list page link when the type has no known page,
+// or the region is missing or not a valid region name.
+func ConsoleURL(id resources.ID, arn string) string {
 	if !IsAWSResource(id) {
 		return ""
 	}
 
-	page, ok := consolePages[strings.ToLower(id.Type())]
+	resourceType := strings.ToLower(id.Type())
+	if link := resourcePageURL(resourceType, arn); link != "" {
+		return link
+	}
+
+	page, ok := consolePages[resourceType]
 	if !ok {
 		return ""
 	}
@@ -248,4 +273,24 @@ func ConsoleURL(id resources.ID) string {
 	}
 
 	return ""
+}
+
+// resourcePageURL returns a link to the console page of the resource arn names, or "" when arn is not an ARN in a
+// partition with a known console, or resourceType is in resourcePageDenyList.
+func resourcePageURL(resourceType string, arn string) string {
+	if _, denied := resourcePageDenyList[resourceType]; denied {
+		return ""
+	}
+
+	parsed, err := awsarn.Parse(arn)
+	if err != nil {
+		return ""
+	}
+
+	host, ok := globalConsoleHosts[parsed.Partition]
+	if !ok {
+		return ""
+	}
+
+	return fmt.Sprintf(resourcePageURLFormat, host, url.QueryEscape(arn))
 }
