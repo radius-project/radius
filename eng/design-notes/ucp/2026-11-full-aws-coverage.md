@@ -108,7 +108,7 @@ Only the server and the bucket work today. The template fails to build, because 
 - A user can deploy any AWS resource AWS lets customers create, from Bicep, in every region, except the non-goals.
 - A user can reference read-only types, such as an AMI, with `existing`.
 - Redeploying behaves the same whichever handler serves the type: it updates the same resource, clears removed properties, and never sends an unchanged password or returns one the user sent.
-- Deleting a database or file system keeps a final snapshot or backup by default.
+- Deleting a database or file system keeps a final snapshot or backup by default, where AWS supports one.
 - A recipe can output connection values AWS returns only through a separate call, such as MSK broker addresses.
 
 ### Non-goals
@@ -217,11 +217,22 @@ A type is on this list when Cloud Control can't create it in at least one region
 | DAX `Cluster`             | 10 regions                      | 3 regions. 4 regions don't offer DAX                                |
 | EMR `Cluster`             | us-west-2 and eu-central-1 only | Every other region                                                  |
 
+Some types behave differently from what their CloudFormation schema suggests:
+
+| Type                      | Behavior                                                                                                                                                                                                                                      |
+|---------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| AppSync `GraphQLSchema`   | AppSync has no call to delete a schema, so its metadata sets `onDelete: nothing`. A failed schema creation is a rejected outcome, so the next deploy sends the create again                                                                   |
+| DAX `Cluster`             | `Tags` is an object in the schema, not a list                                                                                                                                                                                                 |
+| DocumentDB `DBCluster`    | A restore, from a snapshot or another cluster, takes fewer properties than a create. A template that restores and also sets one the restore can't take, such as `MasterUserPassword`, gets 400 naming the properties to set in a later deploy |
+| DocumentDB `DBInstance`   | `AutoMinorVersionUpgrade` is now a cluster setting. `ModifyDBInstance` rejects it, and the user gets AWS's 400                                                                                                                                |
+| Lake Formation `Resource` | `DescribeResource` doesn't return `ResourceArn`, so the handler takes it from the identifier                                                                                                                                                  |
+| MediaLive `Channel`       | A `ChannelClass` change needs `UpdateChannelClass`, which can't carry other changes, so a template that changes the class and other settings is rejected before any call                                                                      |
+
 ### One record, either handler
 
 A region can switch a type to Cloud Control later, so a record must work with either handler:
 
-- **Both store the same AWS identifier**: the type's CloudFormation primary identifier, such as `DBClusterIdentifier`, computed as the handler declares, even when the service API finds the resource by another value.
+- **Both store the same AWS identifier**: the native schema's primary identifier, computed as the handler declares, even when the service API finds the resource by another value. A type's CloudFormation schema can differ by region. Where Cloud Control serves it, the schema has handlers and its own primary identifier, such as CodeBuild `Name`, Client VPN association `ClientVpnEndpointId|AssociationId`, Service Catalog share `PortfolioId`, and DAX `ClusterName`. Elsewhere the schema has no handlers and a read-only `Id`, which then has no defined value. The native schema copies the version with handlers. For the 13 types with no handlers in any region, the handler defines `Id`, such as `DBClusterIdentifier` for a DocumentDB cluster or `NetworkAclId|RuleNumber|Egress` for a network ACL entry. 19 of the 23 native schemas use `Id`.
 - **Both use the same property names**, because each native schema is in CloudFormation format, so the last-applied properties mean the same to both.
 - **Both apply the native schema's write-only marks**, so a password the CloudFormation schema doesn't mark is never stored, even when Cloud Control serves the request.
 - **An operation in progress finishes with the handler that started it.** The record saves which one, so a resumed create finds the resource the way it was sent.
@@ -232,7 +243,7 @@ Each handler is hand-written Go, one file per type, built on shared code for ret
 
 1. UCP asks CloudFormation for the provisioning type of `AWS::DocDB::DBCluster` in the request's region. It is `NON_PROVISIONABLE`, so UCP uses the native handler for the rest of the request.
 2. UCP reads the record for `app-docdb` and checks the owner. With no record, it takes over a cluster AWS already has, found by `DBClusterIdentifier`, or creates one.
-3. With a record, UCP reads the cluster through the handler and compares it with the template and the last-applied properties. If nothing changed, it returns 200 without calling AWS.
+3. With a record, UCP reads the cluster through the handler and compares it with the template and the last-applied properties. If nothing changed, it returns 200 without calling AWS. A change to a create-only property gets 400 from the native schema before the handler is called, because a service API may ignore a change Cloud Control would reject.
 4. UCP saves the record as in progress, with the new last-applied properties and fingerprints as pending values, and which handler serves the operation.
 5. The handler makes the service's start call, such as `CreateDBCluster` or `ModifyDBCluster`. If AWS rejects it, the user gets 400 with AWS's message, and UCP drops the pending values.
 6. UCP saves the operation and returns the same response a Cloud Control type returns.
@@ -240,7 +251,7 @@ Each handler is hand-written Go, one file per type, built on shared code for ret
 
 Only steps 5 and 7 differ from Cloud Control, which returns a request token for the worker to poll. A service API returns none, so UCP makes its own operation ID, and the worker reads the resource itself. Waiting only reads AWS, so a restarted worker can safely run it again. Reads, including `existing`, also go through the handler where it serves the type.
 
-An operation that takes more than one AWS call, such as `UserToGroupAddition` adding users one at a time, can fail partway, so UCP sorts each failed operation into one of four outcomes:
+Many native operations take more than one AWS call: an update followed by tag calls (DocumentDB, DAX, EMR, FSx, MediaLive), CodeBuild's visibility and webhook calls, a Client VPN endpoint with its authorization policy, members applied one per call (IAM user-to-group, ELB v2 listener certificates, VPN gateway route propagation), and Lake Formation permissions (revoke, then grant) and resources (deregister, then register to switch to the service-linked role). Any of them can fail partway, so UCP sorts each failed operation into one of four outcomes:
 
 | Outcome                                               | What UCP does                                                                                                                                 |
 |-------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
@@ -251,18 +262,22 @@ An operation that takes more than one AWS call, such as `UserToGroupAddition` ad
 
 UCP reconciles from what AWS shows instead of saving progress for each call, because a normal update already reads AWS and makes only the changes still needed.
 
+Four types add members to a parent: IAM `UserToGroupAddition`, ELB v2 `ListenerCertificate`, `VPNGatewayRoutePropagation`, and Lake Formation `Permissions`. Each manages only the members its template lists, so members added outside Radius stay through take-over, update, and delete. For the first three, the identifier is the parent plus a name from the operation ID. An update removes members first, and a failure while removing counts as rejected, so the record keeps every member it may still have to remove. Lake Formation `DataLakeSettings` with `MutationType: APPEND` works the same way for data lake admins.
+
 Each handler also declares:
 
 - **Its schema**, in CloudFormation format, which UCP uses instead of the schema CloudFormation returns, with either handler, so validation, comparison, and Bicep types work as for other types.
-- **How to compute and encode its identifier.** Today UCP joins top-level strings with `|`, but a DynamoDB item's key sits inside `Item`, typed by the table's key schema, and an S3 key can contain any character, including `|` and `/`. Create, `existing`, recovery, and delete all use the same identifier.
+- **How to compute and encode its identifier.** Today UCP joins top-level strings with `|`, but a DynamoDB item's key sits inside `Item`, typed by the table's key schema, and an S3 key can contain any character, including `|` and `/`. The AWS identifier stays as AWS gives it, such as a Lake Formation resource ARN with an S3 path. Only the resource address escapes it into one segment. Create, `existing`, recovery, and delete all use the same identifier.
 - **Which operations it supports**, because some types can't list, and some list only under a parent, such as a bucket for S3 objects or a key for KMS grants.
 - **Every secret as write-only**, including ones the CloudFormation schema doesn't mark.
-- **Values AWS returns in another form**, such as engine version `5.0` that comes back as `5.0.0`, so they don't count as changes. Where it can, it uses the schema's `propertyTransform`, as UCP already does for Cloud Control types.
+- **Input-only properties as write-only**, ones a call takes but AWS never returns, so UCP compares them by fingerprint instead of seeing a change on every deploy. Examples are DocumentDB's restore inputs, such as `SnapshotIdentifier` and `RestoreToTime`, AppSync `Definition`, DMS `AllowMajorVersionUpgrade`, FSx `BackupId`, and MediaLive `DryRun`. Arrays AWS returns in its own order get `insertionOrder: false`.
+- **Create-only marks AWS's schema leaves out**, such as DMS `ReplicationInstanceIdentifier` and `AvailabilityZone`, IAM `GroupName`, and FSx fields `UpdateFileSystem` can't change.
+- **Values AWS returns in another form**, such as engine version `5.0` that comes back as `5.0.0`, or a DAX cluster name AWS stores in lowercase, so they don't count as changes. Where it can, it uses the schema's `propertyTransform`, as UCP already does for Cloud Control types.
 - **A filter when the API also returns other products.** The DocumentDB API also returns RDS and Neptune clusters, so the handler checks `Engine=docdb` before every read and delete, and never changes or deletes an Aurora cluster. A delete that finds the identifier now names another product treats it as not found: the managed resource is gone and the identifier was reused, so UCP removes the record and the delete succeeds.
 - **Create, update, and delete timeouts**, such as how long a DocumentDB cluster may take to become `available`.
 - **The property that holds the resource's ARN**, so recipes save it on their output resources.
 
-Write-only values are fingerprinted, never stored, and removed from every response: create, read, `existing`, list, and operation results. Today UCP removes only secrets copied from the request, but some APIs return secrets too, such as MediaLive's `DescribeChannel`. Four of the 23 types take secrets, and AWS's schema already marks EMR's, so 3 types need a fix in their native schema:
+Write-only values are fingerprinted, never stored, and removed from every response: create, read, `existing`, list, and operation results. Today UCP removes only secrets copied from the request, but some APIs return secrets too, such as MediaLive's `CreateChannel`, `UpdateChannel`, `DeleteChannel`, and `DescribeChannel`. Four of the 23 types take secrets, and AWS's schema already marks EMR's, so 3 types need a fix in their native schema:
 
 | Type                   | Secret property                                                                                   | AWS marks it write-only |
 |------------------------|---------------------------------------------------------------------------------------------------|-------------------------|
@@ -288,21 +303,21 @@ If UCP stops after AWS accepted a create but before it saved the result, the nex
 
 When AWS lets the caller choose the identifier but the template leaves it out, as the Cloud Control type allows for CodeBuild `Project.Name`, the handler generates `radius-` followed by 12 lowercase hex characters from a hash of the operation ID, such as `radius-3f9a1c0b7d2e`, cut and lowercased to fit the type's name rules from its schema, and saves it on the record before calling AWS. It never makes the property required, because the same template must also work through Cloud Control in another region.
 
-So every in-scope type has an idempotency token, a tag marker, or a name saved before the call. For the EC2 network interface permission, the Kinesis Analytics logging option, the OpenSearch outbound connection, and the Outposts capacity task, implementation checks that AWS rejects duplicates, and any that it doesn't joins the types Radius can't serve.
+So every in-scope type has an idempotency token, a tag marker, or a name saved before the call. For the OpenSearch outbound connection and the Outposts capacity task, implementation checks that AWS rejects duplicates, and any that it doesn't joins the types Radius can't serve. AWS allows one Kinesis Analytics logging option per application, so a duplicate is always rejected. For the EC2 network interface permission the check is still open: AWS refuses `CreateNetworkInterfacePermission` unless AWS authorized the receiving account, so a duplicate couldn't be tried.
 
-A DELETE of a record whose create may have reached AWS uses the same steps to find the resource first.
+A DELETE of a record whose create may have reached AWS uses the same steps to find the resource first. That resend has no write-only values, and FSx rejects the reused token with `IncompatibleParameterError`, so the FSx handler also tags the create with the operation ID and finds the resource by that tag.
 
 ### Deleting a resource
 
 A DELETE goes through the record and the owner check as for any AWS type. By default, two native types keep a copy of their data, as Cloud Control does for RDS, because deleting it without one can't be undone:
 
 - **DocumentDB cluster**: takes a final snapshot named `<identifier>-final-<UTC time>`.
-- **FSx file system**: takes a final backup where FSx supports one. FSx for NetApp ONTAP does not.
+- **FSx file system**: takes a final backup where FSx supports one. FSx takes none for NetApp ONTAP, Lustre scratch file systems, or Lustre linked to S3, including PERSISTENT_2 with data repository associations.
 
-Before the delete call, UCP saves on the record what makes a retry safe, so a retried delete never takes a second copy:
+Before the delete call, UCP saves a delete token on the record, so a retried delete never takes a second copy. A create or update clears it:
 
-- **DocumentDB cluster**: the final snapshot name, which `DeleteDBCluster` takes as `FinalDBSnapshotIdentifier`. A retry reuses it.
-- **FSx file system**: a delete token, because `DeleteFileSystem` takes no name for the final backup, and FSx names it. UCP sends the token as `ClientRequestToken` on every attempt, so a retry is the same delete.
+- **DocumentDB cluster**: the token is the final snapshot name, which `DeleteDBCluster` takes as `FinalDBSnapshotIdentifier`.
+- **FSx file system**: `DeleteFileSystem` takes no name for the final backup, so UCP sends the token as `ClientRequestToken` on every attempt, and a retry is the same delete.
 
 Radius never deletes these snapshots or backups. Letting a user skip the final snapshot is tracked separately; Cloud Control types like RDS have the same behavior today.
 
@@ -498,6 +513,7 @@ Every failure the [idempotent AWS deployments design](2026-10-idempotent-aws-dep
 | Scenario                                                                                                                                                  | What the user sees                                                                                                                                                                                                                                             |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | AWS rejects the start call                                                                                                                                | 400 with AWS's message. Pending values are dropped, so the previous last-applied properties stay                                                                                                                                                               |
+| A template changes a create-only property of a native type                                                                                                | 400 naming the property. Nothing is sent to AWS                                                                                                                                                                                                                |
 | Reading the resource fails for any reason except "not found"                                                                                              | The deploy fails. Nothing is created or changed                                                                                                                                                                                                                |
 | The identifier now names another product, such as an Aurora cluster                                                                                       | A deploy or read fails, naming the identifier. A delete treats it as not found: UCP removes the record and the delete succeeds, so deleting the app isn't blocked. UCP never changes or deletes the other product's resource                                   |
 | Waiting passes the type's timeout, including a long-running create such as model fine-tuning                                                              | The operation fails, naming the state UCP waited for. The next deploy reads the resource and continues                                                                                                                                                         |
@@ -535,10 +551,11 @@ Unit tests cover every rule and table row in [Detailed design](#detailed-design)
   - create with one handler, then read, update, and delete with the other, in both orders, including a template that leaves out an optional identifier, where the generated name is the same on a retry of one operation and fits the type's name rules
   - the identifier round-trips through create, `existing`, recovery, and delete, including an S3 key with `|` and `/` and a typed DynamoDB key
   - for a multi-call operation, a failure between every two calls, then a redeploy that ends fully applied
+  - for a member type, a member added outside Radius stays through take-over, update, and delete
   - an identifier that now names another product: a delete removes the record, succeeds, and makes no change or delete call in AWS, while a PUT and a GET fail naming the identifier
 
-  Recorded AWS responses run in CI, and a nightly run uses real AWS. Live tests for purchases and other types that can't be undone are opt-in, with a budget.
-- **Secrets**: no secret appears on any response path, including the DocumentDB password and MediaLive's `StaticKeyValue` and `Salt` from `DescribeChannel`, and the record holds no `Body`, item, CloudFront value, run input, plain checksum, or plain ETag.
+  Recorded AWS responses run in CI, and a nightly run uses real AWS. Live tests for purchases and other types that can't be undone are opt-in, with a budget. Live tests use sizes every test region offers, such as `dms.t3.small`, because us-west-2 doesn't offer `dms.t3.micro`.
+- **Secrets**: no secret appears on any response path, including the DocumentDB password and MediaLive's `StaticKeyValue` and `Salt` from every channel call, and the record holds no `Body`, item, CloudFront value, run input, plain checksum, or plain ETag.
 - **Redeploys send nothing unchanged**: the MSK broker addresses, an S3 object with the same content (while a changed `ContentType` alone is sent), a copy from a source uploaded in parts, and a run with the same inputs.
 - **Multipart copy**: a source overwritten between two part copies, and while the copy is stopped, both restart the copy and never complete a mixed object.
 - **Functional tests through the Deployment Engine**: deploy the example template, then delete it and check the config file is gone; deploy the placement group and change it; reference the AMI with `existing`, and check that declaring it without `existing` fails the deploy with UCP's 400; deploy a recipe with an MSK serverless cluster that outputs `BootstrapBrokerStringSaslIam`, then redeploy and check nothing is sent to AWS.
