@@ -54,6 +54,7 @@ func initializeAWSTest(t *testing.T) (*testhost.TestHost, *ucp_aws.MockAWSCloudC
 	ucp := testhost.Start(t, testhost.TestHostOptionFunc(func(options *ucp.Options) {
 		options.AWSClients.CloudControl = cloudControlClient
 		options.AWSClients.CloudFormation = cloudFormationClient
+		options.AWSClients.Kafka = ucp_aws.NewMockAWSKafkaClient(ctrl)
 		options.Config.AWS.FingerprintKeyFile = writeFingerprintKey(t)
 		options.Modules = []modules.Initializer{ucp_aws_frontend.NewModule(options)}
 	}))
@@ -73,6 +74,7 @@ func initializeFakeAWSTestWithKey(t *testing.T, schemas map[string]string, keyFi
 	ucp := testhost.Start(t, testhost.TestHostOptionFunc(func(options *ucp.Options) {
 		options.AWSClients.CloudControl = cc
 		options.AWSClients.CloudFormation = &awsfake.CloudFormation{Schemas: schemas}
+		options.AWSClients.Kafka = ucp_aws.NewMockAWSKafkaClient(gomock.NewController(t))
 		options.Config.AWS.FingerprintKeyFile = keyFile
 		options.Modules = []modules.Initializer{ucp_aws_frontend.NewModule(options)}
 	}))

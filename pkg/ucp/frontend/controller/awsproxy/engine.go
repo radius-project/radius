@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/aws/extraproperties"
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/components/database"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
@@ -332,6 +333,12 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		return errResponse, nil
 	}
 	schema := aws.ToString(typeInfo.Schema)
+	// UCP adds extra properties only to its read responses, so they are never sent to AWS or stored.
+	extras, err := extraPropertyNames(r.typeName, schema)
+	if err != nil {
+		return nil, err
+	}
+	body.Properties = extraproperties.Without(extras, body.Properties)
 	secrets, err := secretProperties(r.typeName, schema)
 	if err != nil {
 		return nil, err
@@ -1009,6 +1016,16 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if current.ResourceDescription.Properties != nil {
 		if err := json.Unmarshal([]byte(*current.ResourceDescription.Properties), &properties); err != nil {
 			return nil, err
+		}
+	}
+	if extraproperties.Names(r.typeName) != nil {
+		// Only types with extra properties need the schema here. DescribeType answers are cached.
+		typeInfo, err := e.describeType(ctx, r)
+		if err != nil {
+			return ucp_aws.HandleAWSError(ctx, err)
+		}
+		if resp, err := addExtraProperties(ctx, e.clients.Kafka, r.typeName, r.region, aws.ToString(typeInfo.Schema), properties); resp != nil || err != nil {
+			return resp, err
 		}
 	}
 	return armrpc_rest.NewOKResponse(map[string]any{

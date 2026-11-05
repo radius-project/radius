@@ -23,4 +23,7 @@ type Clients struct {
 
 	// CloudFormation is the AWS Cloud Formation client.
 	CloudFormation AWSCloudFormationClient
+
+	// Kafka is the Amazon MSK client, which reads the broker addresses of an MSK cluster.
+	Kafka AWSKafkaClient
 }

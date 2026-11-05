@@ -141,9 +141,11 @@ func Test_InitializeClients(t *testing.T) {
 		require.NoError(t, InitializeClients(t.Context(), options))
 		require.NotNil(t, options.AWSClients.CloudControl)
 		require.NotNil(t, options.AWSClients.CloudFormation)
+		require.NotNil(t, options.AWSClients.Kafka)
 	})
 
-	t.Run("keeps clients that are set", func(t *testing.T) {
+	t.Run("creates only the clients that are not set", func(t *testing.T) {
+		t.Setenv("AWS_REGION", "us-west-2")
 		ctrl := gomock.NewController(t)
 		cc := ucp_aws.NewMockAWSCloudControlClient(ctrl)
 		cf := ucp_aws.NewMockAWSCloudFormationClient(ctrl)
@@ -151,6 +153,19 @@ func Test_InitializeClients(t *testing.T) {
 		require.NoError(t, InitializeClients(t.Context(), options))
 		require.Same(t, cc, options.AWSClients.CloudControl)
 		require.Same(t, cf, options.AWSClients.CloudFormation)
+		require.NotNil(t, options.AWSClients.Kafka)
+	})
+
+	t.Run("keeps clients that are set", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		cc := ucp_aws.NewMockAWSCloudControlClient(ctrl)
+		cf := ucp_aws.NewMockAWSCloudFormationClient(ctrl)
+		kafka := ucp_aws.NewMockAWSKafkaClient(ctrl)
+		options := &ucp.Options{Config: &ucp.Config{}, AWSClients: ucp_aws.Clients{CloudControl: cc, CloudFormation: cf, Kafka: kafka}}
+		require.NoError(t, InitializeClients(t.Context(), options))
+		require.Same(t, cc, options.AWSClients.CloudControl)
+		require.Same(t, cf, options.AWSClients.CloudFormation)
+		require.Same(t, kafka, options.AWSClients.Kafka)
 	})
 	t.Run("fails when the AWS configuration cannot be loaded", func(t *testing.T) {
 		t.Setenv("AWS_PROFILE", "radius-test-profile-that-does-not-exist")
