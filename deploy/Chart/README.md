@@ -21,6 +21,25 @@ The v0.62.0 chart described `global.rbac.enabled` and `global.rbac.dryRun` as re
 
 `rad install kubernetes` and `rad upgrade kubernetes` manage this prerequisite when a non-off mode is selected, including when upgrade reuses saved values. A plain `helm install` or `helm upgrade` does not install cert-manager: install a supported cert-manager, including its CRDs, and wait for its controller and webhook to be ready before applying the Radius chart with either setting enabled. Otherwise the upgrade fails because the cert-manager resource types are missing. See [cert-manager installation troubleshooting](../../docs/contributing/contributing-code/contributing-code-control-plane/troubleshooting-installation.md#cert-manager) for supported versions and ownership rules.
 
+### Deployment Engine mTLS integration prerequisite
+
+`de.ucpMTLS.enabled` defaults to `false` independently of the global authorization mode. This is preparatory wiring for the paired [azure-octo/deployment-engine](https://github.com/azure-octo/deployment-engine) transport change, not a declaration that the default engine image supports mTLS. The engine transport implementation, a published compatible image, a paired Radius image reference and end-to-end deployment verification are still pending. Do not enable this setting with an image that ignores the new environment variables: rendering the chart cannot verify an image's behavior.
+
+With an explicitly selected compatible engine image (`de.image` and `de.tag`), enabling `de.ucpMTLS.enabled` requires `global.rbac.dryRun=true` or `global.rbac.enabled=true`. Both modes render the same engine transport contract:
+
+| Environment variable             | Rendered value                                               |
+|----------------------------------|--------------------------------------------------------------|
+| `UCP_MTLS_ENABLED`               | `true`                                                       |
+| `UCP_MTLS_CERTIFICATE_DIRECTORY` | `/var/run/radius/mtls`                                       |
+| `UCP_MTLS_NAMESPACE`             | The Helm release namespace                                   |
+| `RADIUSBACKENDURL`               | `https://ucp.<namespace>.svc:9444/apis/api.ucp.dev/v1alpha3` |
+
+Only the engine's own `bicep-de-mtls` Secret is mounted, read-only at `/var/run/radius/mtls`. It supplies `tls.crt`, `tls.key` and `ca.crt`; the mount has no `subPath`, so cert-manager updates can propagate. Its certificate names `bicep-de.<namespace>.svc`. The paired engine must use a coherent certificate/key/CA snapshot for every handshake, verify the canonical UCP hostname and dedicated CA, and fail closed on invalid or missing material even in DryRun. All outbound UCP SDK callbacks, nested deployment requests and operation polling must use that transport without an unauthenticated fallback. `ARM_AUTH_METHOD=UCPCredential` is unchanged; the engine's existing Kubernetes Secret access for Azure credentials is separate from this UCP transport.
+
+The scoped mount does not establish Kubernetes Secret isolation: the engine ServiceAccount retains its existing `cluster-admin` binding for resource provisioning and can therefore read other component Secrets through the Kubernetes API. Restricting that provisioning authority is separate from this transport wiring.
+
+Without the opt-in, the engine mounts no component credentials and keeps the published image's existing `https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3` endpoint, even in DryRun or Enforce. UCP's certificate-less aggregation compatibility path remains open pending the verified engine migration and the separate aggregation-proxy authentication dependencies. A component certificate is not an aggregation-proxy credential. These settings alone do not complete internal authentication or execution authorization.
+
 ## Configuration Options
 
 ### In-Cluster Container Image Builds
