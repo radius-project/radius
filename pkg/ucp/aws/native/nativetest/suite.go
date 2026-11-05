@@ -123,6 +123,10 @@ func Run(t *testing.T, s Suite) {
 		t.Run("delete "+suffix, func(t *testing.T) { s.lostCreateDelete(t, reached) })
 	}
 	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
+	if s.NewHandler(awsfake.NewCloudControl()).Options().Recovery == native.RecoverByResend {
+		t.Run("deploy after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodPut) })
+		t.Run("delete after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodDelete) })
+	}
 	if nameProperty != "" {
 		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
 	}
@@ -376,6 +380,33 @@ func (s Suite) lostCreateChangedWriteOnly(t *testing.T) {
 	}
 	resp = h.put(s.ChangedWriteOnly)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+}
+
+// resendFailsPartway loses a create that reached AWS, and then every create sent again returns the resource's
+// identifier with an error, as when a later call of a multi-call create fails, such as setting an endpoint's policy.
+// A PUT or a DELETE sends the create again and fails. UCP keeps the identifier, so a following DELETE deletes the
+// resource instead of sending the failing create again.
+func (s Suite) resendFailsPartway(t *testing.T, method string) {
+	h := s.newHarness(t)
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	require.Equal(t, 1, h.cc.Count(s.TypeName))
+
+	h.handler.failCreatesPartway()
+	if method == http.MethodPut {
+		resp = h.put(s.Properties)
+	} else {
+		resp = h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+	}
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.NotEmpty(t, h.record().Properties.AWSIdentifier, "UCP keeps the identifier the failed create returned")
+
+	h.handler.reset()
+	h.removeEventually()
+	require.NotContains(t, h.handler.reset(), "Create", "the delete reads AWS by the identifier instead of creating again")
+	require.Nil(t, h.record())
+	require.Zero(t, h.cc.Count(s.TypeName))
 }
 
 // lostCreateDelete loses a create, after it reached AWS or before, and deletes the alias. The delete finds the
@@ -821,6 +852,9 @@ type recorder struct {
 	// lost maps a method to whether its next call reaches AWS before its response is lost.
 	lost map[string]bool
 
+	// partway makes every Create call the handler and then return its identifier with a client error.
+	partway bool
+
 	// onProgress, when set, runs on each Progress call.
 	onProgress func()
 }
@@ -916,8 +950,24 @@ func (r *recorder) Read(ctx context.Context, region string, identifier string) (
 	return r.Handler.Read(ctx, region, identifier)
 }
 
+// failCreatesPartway makes every later Create return the resource's identifier with a client error.
+func (r *recorder) failCreatesPartway() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.partway = true
+}
+
+var errPartway = nativefake.ClientError("InvalidParameterValue", "the create made the resource, but a later call failed")
+
 func (r *recorder) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	r.note("Create")
+	r.mu.Lock()
+	partway := r.partway
+	r.mu.Unlock()
+	if partway {
+		identifier, err := r.Handler.Create(ctx, request)
+		return identifier, errors.Join(errPartway, err)
+	}
 	reached, lost := r.takeLoss("Create")
 	switch {
 	case lost && !reached:
