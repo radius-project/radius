@@ -25,7 +25,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -298,14 +297,6 @@ func (h *harness) record(path string) *datamodel.AWSResource {
 	return rec
 }
 
-// requireTombstone checks that the alias's record is a tombstone, which a DELETE or GET never falls back from.
-func (h *harness) requireTombstone(path string, msgAndArgs ...any) {
-	h.t.Helper()
-	rec := h.record(path)
-	require.NotNil(h.t, rec, msgAndArgs...)
-	require.True(h.t, records.IsDeleted(rec), msgAndArgs...)
-}
-
 func (h *harness) saveRecord(path string, change func(rec *datamodel.AWSResource)) {
 	h.t.Helper()
 	id, err := resources.ParseResource(path)
@@ -532,16 +523,13 @@ func Test_Owner(t *testing.T) {
 	resp := h.putBody(vpcPath, "", map[string]any{"properties": map[string]any{}})
 	require.Equal(t, http.StatusBadRequest, resp.status)
 	require.Contains(t, resp.message(), sdkclients.AWSResourceOwnerHeader)
+	resp = h.delete(vpcPath, "")
+	require.Equal(t, http.StatusBadRequest, resp.status)
+	require.Empty(t, h.cc.Calls())
 
 	require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
 	h.finish()
 	h.cc.Calls()
-
-	// A DELETE of a record requires the owner.
-	resp = h.delete(vpcPath, "")
-	require.Equal(t, http.StatusBadRequest, resp.status)
-	require.Contains(t, resp.message(), sdkclients.AWSResourceOwnerHeader)
-	require.Empty(t, h.cc.Calls())
 
 	// Another owner, such as the same app deployed to another environment, cannot change or delete it.
 	resp = h.putBody(vpcPath, otherOwner, map[string]any{"properties": map[string]any{"CidrBlock": "10.0.0.0/16"}})
@@ -760,7 +748,7 @@ func Test_Create_FailurePaths(t *testing.T) {
 			h.cc.Errors["CreateResource"] = rejection
 			resp := h.put(vpcPath, map[string]any{"CidrBlock": "bad"})
 			require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
-			h.requireTombstone(vpcPath)
+			require.Nil(t, h.record(vpcPath))
 		})
 	}
 
@@ -800,7 +788,7 @@ func Test_Create_FailurePaths(t *testing.T) {
 		require.Equal(t, http.StatusCreated, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
 		results := h.finish()
 		require.Equal(t, v1.CodeInternal, results[0].Error.Code)
-		h.requireTombstone(vpcPath)
+		require.Nil(t, h.record(vpcPath))
 	})
 
 	t.Run("the create call fails in a way AWS may have accepted it", func(t *testing.T) {
@@ -879,40 +867,10 @@ func Test_Create_FailurePaths(t *testing.T) {
 }
 
 func Test_Delete(t *testing.T) {
-	// TRANSITIONAL: a URL with no record is deleted in AWS by its last segment, with or without the owner header.
-	for _, owner := range []string{testOwner, ""} {
-		t.Run("no record deletes by the URL, owner "+strconv.Quote(owner), func(t *testing.T) {
-			h := newHarness(t)
-			h.cc.Put(vpcType, "app-vpc", map[string]any{"CidrBlock": "10.0.0.0/16"})
-			resp := h.delete(vpcPath, owner)
-			require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
-			calls := h.cc.Calls()
-			require.Equal(t, []string{"DeleteResource"}, operations(calls))
-			require.Equal(t, "app-vpc", calls[0].Identifier)
-			require.Zero(t, h.cc.Count(vpcType))
-			require.Nil(t, h.record(vpcPath))
-			require.Empty(t, h.finish(), "UCP tracks no operation for a delete with no record")
-		})
-
-		t.Run("no record and nothing in AWS, owner "+strconv.Quote(owner), func(t *testing.T) {
-			h := newHarness(t)
-			require.Equal(t, http.StatusNoContent, h.delete(vpcPath, owner).status)
-			require.Equal(t, []string{"DeleteResource"}, operations(h.cc.Calls()))
-		})
-	}
-
-	t.Run("no record and a blank owner header", func(t *testing.T) {
+	t.Run("no record", func(t *testing.T) {
 		h := newHarness(t)
-		resp := h.delete(vpcPath, " ")
-		require.Equal(t, http.StatusBadRequest, resp.status)
-		require.Contains(t, resp.message(), sdkclients.AWSResourceOwnerHeader)
+		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
 		require.Empty(t, h.cc.Calls())
-	})
-
-	t.Run("no record and an AWS error", func(t *testing.T) {
-		h := newHarness(t)
-		h.cc.Errors["DeleteResource"] = awsError(&smithy.GenericAPIError{Code: "AccessDenied", Message: "no", Fault: smithy.FaultClient})
-		require.Equal(t, http.StatusBadRequest, h.delete(vpcPath, testOwner).status)
 	})
 
 	t.Run("record without an identifier", func(t *testing.T) {
@@ -920,14 +878,14 @@ func Test_Delete(t *testing.T) {
 		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
 		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
 		require.Empty(t, h.cc.Calls())
-		h.requireTombstone(vpcPath)
+		require.Nil(t, h.record(vpcPath))
 	})
 
 	t.Run("resource AWS no longer has", func(t *testing.T) {
 		h := newHarness(t)
 		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "vpc-gone" })
 		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
-		h.requireTombstone(vpcPath)
+		require.Nil(t, h.record(vpcPath))
 	})
 
 	t.Run("deletes by the record's identifier", func(t *testing.T) {
@@ -944,8 +902,50 @@ func Test_Delete(t *testing.T) {
 		require.Equal(t, v1.ProvisioningStateDeleting, h.record(vpcPath).ProvisioningState())
 
 		h.finish()
-		h.requireTombstone(vpcPath)
+		require.Nil(t, h.record(vpcPath))
 		require.Zero(t, h.cc.Count(vpcType))
+	})
+
+	// The alias app-bucket manages the bucket assets, and an unrelated bucket is named app-bucket. Once the alias is
+	// deleted, it has no record: a repeated DELETE returns 204 and a GET 404, and neither reads or deletes app-bucket.
+	t.Run("after the alias is deleted", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Put(bucketType, "app-bucket", map[string]any{"BucketName": "app-bucket"})
+		require.Equal(t, http.StatusCreated, h.put(bktPath, map[string]any{"BucketName": "assets"}).status)
+		h.finish()
+		require.Equal(t, http.StatusAccepted, h.delete(bktPath, testOwner).status)
+		h.finish()
+		require.Nil(t, h.record(bktPath))
+		require.Nil(t, h.cc.Resource(bucketType, "assets"))
+		h.cc.Calls()
+
+		for _, owner := range []string{testOwner, otherOwner} {
+			resp := h.delete(bktPath, owner)
+			require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
+		}
+		require.Equal(t, http.StatusNotFound, h.get(bktPath).status)
+		require.Empty(t, h.cc.Calls())
+		require.NotNil(t, h.cc.Resource(bucketType, "app-bucket"), "the unrelated bucket is left alone")
+
+		// Another owner can deploy the alias again.
+		resp := h.putBody(bktPath, otherOwner, map[string]any{"properties": map[string]any{"BucketName": "assets"}})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		h.finish()
+		rec := h.record(bktPath)
+		require.Equal(t, otherOwner, rec.Properties.Owner)
+		require.Equal(t, "assets", rec.Properties.AWSIdentifier)
+	})
+
+	// Removing the record uses the ETag the DELETE read it with, so it never removes a record another request saved
+	// meanwhile.
+	t.Run("removing the record loses a race", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
+		h.failSavesAfter(0, &database.ErrConcurrency{})
+		resp := h.delete(vpcPath, testOwner)
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "at the same time")
+		require.NotNil(t, h.record(vpcPath))
 	})
 
 	t.Run("AWS reports the delete failed", func(t *testing.T) {
@@ -970,27 +970,31 @@ func Test_Delete(t *testing.T) {
 	})
 }
 
+func (r response) code() string {
+	e, _ := r.body["error"].(map[string]any)
+	c, _ := e["code"].(string)
+	return c
+}
+
+// Test_Get checks that a GET with no record returns 404 with the no-record code, and a GET of a record whose AWS
+// resource is not there returns 404 with NotFound, so a caller can tell them apart.
 func Test_Get(t *testing.T) {
 	h := newHarness(t)
-	// TRANSITIONAL: a URL with no record is read from AWS by its last segment.
-	require.Equal(t, http.StatusNotFound, h.get(vpcPath).status)
-	calls := h.cc.Calls()
-	require.Equal(t, []string{"GetResource"}, operations(calls))
-	require.Equal(t, "app-vpc", calls[0].Identifier)
-	h.cc.Put(vpcType, "app-vpc", map[string]any{"CidrBlock": "10.0.0.0/16"})
 	resp := h.get(vpcPath)
-	require.Equal(t, http.StatusOK, resp.status, resp.raw)
-	require.Equal(t, "10.0.0.0/16", resp.body["properties"].(map[string]any)["CidrBlock"])
-	require.Nil(t, h.record(vpcPath), "a GET never saves a record")
-
-	// A record with no identifier yet has a create that has not finished, so AWS is not read.
-	h.cc.Calls()
-	h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
-	require.Equal(t, http.StatusNotFound, h.get(vpcPath).status)
+	require.Equal(t, http.StatusNotFound, resp.status)
+	require.Equal(t, sdkclients.AWSResourceNoRecordCode, resp.code())
+	require.Contains(t, resp.message(), "UCP has no record of the AWS resource")
 	require.Empty(t, h.cc.Calls())
 
+	h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) {})
+	resp = h.get(vpcPath)
+	require.Equal(t, http.StatusNotFound, resp.status)
+	require.Equal(t, v1.CodeNotFound, resp.code())
+
 	h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "vpc-1" })
-	require.Equal(t, http.StatusNotFound, h.get(vpcPath).status)
+	resp = h.get(vpcPath)
+	require.Equal(t, http.StatusNotFound, resp.status)
+	require.Equal(t, v1.CodeNotFound, resp.code())
 
 	h.cc.Errors["GetResource"] = awsError(&smithy.GenericAPIError{Code: "Throttling", Message: "slow", Fault: smithy.FaultServer})
 	require.Equal(t, http.StatusInternalServerError, h.get(vpcPath).status)
@@ -1207,7 +1211,7 @@ func Test_ResumeDelete(t *testing.T) {
 	require.Empty(t, h.cc.Calls(), "the delete AWS accepted is polled, not sent again")
 	records.Now = time.Now
 	h.finish()
-	h.requireTombstone(vpcPath)
+	require.Nil(t, h.record(vpcPath))
 }
 
 func Test_Put_NoStatusManager(t *testing.T) {
@@ -1298,7 +1302,7 @@ func Test_Reservation_RejectsCompetingRequests(t *testing.T) {
 		require.Equal(t, http.StatusConflict, competing.status, competing.raw)
 
 		h.finish()
-		h.requireTombstone(vpcPath)
+		require.Nil(t, h.record(vpcPath))
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 
@@ -1361,7 +1365,7 @@ func Test_Reservation_Recovery(t *testing.T) {
 		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
 		records.Now = time.Now
 		h.finish()
-		h.requireTombstone(vpcPath)
+		require.Nil(t, h.record(vpcPath))
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 
@@ -1376,7 +1380,7 @@ func Test_Reservation_Recovery(t *testing.T) {
 		resp := h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"})
 		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
 		require.Contains(t, resp.message(), "interrupted delete")
-		h.requireTombstone(vpcPath, "AWS no longer had it, so the record is a tombstone")
+		require.Nil(t, h.record(vpcPath), "AWS no longer had it, so the record is removed")
 	})
 
 	t.Run("delete: AWS fails, then the error is returned", func(t *testing.T) {
@@ -1441,7 +1445,7 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		require.Equal(t, "id-1", calls[1].Identifier)
 		records.Now = time.Now
 		h.finish()
-		h.requireTombstone(vpcPath)
+		require.Nil(t, h.record(vpcPath))
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 
@@ -1460,7 +1464,7 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		resp := h.delete(vpcPath, testOwner)
 		require.Equal(t, http.StatusAccepted, resp.status, resp.raw)
 		h.finish()
-		h.requireTombstone(vpcPath)
+		require.Nil(t, h.record(vpcPath))
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 
@@ -1484,7 +1488,7 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		h := uncertain(t)
 		h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest
 		require.Equal(t, http.StatusNoContent, h.delete(vpcPath, testOwner).status)
-		h.requireTombstone(vpcPath)
+		require.Nil(t, h.record(vpcPath))
 	})
 
 	// A rejected replay does not show that the original create failed, so the record is kept and the error returned,
@@ -1506,7 +1510,7 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		delete(h.cc.Errors, "CreateResource")
 		require.Equal(t, http.StatusAccepted, h.delete(vpcPath, testOwner).status)
 		h.finish()
-		h.requireTombstone(vpcPath)
+		require.Nil(t, h.record(vpcPath))
 		require.Zero(t, h.cc.Count(vpcType))
 	})
 
@@ -1587,7 +1591,7 @@ func Test_Delete_UncertainCreateWithWriteOnly(t *testing.T) {
 		require.Equal(t, "id-1", calls[1].Identifier)
 		records.Now = time.Now
 		h.finish()
-		h.requireTombstone(credentialPath)
+		require.Nil(t, h.record(credentialPath))
 		require.Zero(t, h.cc.Count(credentialType))
 	})
 
@@ -1615,7 +1619,7 @@ func Test_Delete_UncertainCreateWithWriteOnly(t *testing.T) {
 
 		require.Equal(t, http.StatusNoContent, h.delete(credentialPath, testOwner).status)
 		require.Equal(t, []string{"CreateResource"}, operations(h.cc.Calls()))
-		h.requireTombstone(credentialPath)
+		require.Nil(t, h.record(credentialPath))
 	})
 
 	// Polling the request the conflict names fails, so UCP does not know the create's outcome and keeps the record.
@@ -1635,7 +1639,7 @@ func Test_Delete_UncertainCreateWithWriteOnly(t *testing.T) {
 		require.Equal(t, http.StatusAccepted, h.delete(credentialPath, testOwner).status)
 		records.Now = time.Now
 		h.finish()
-		h.requireTombstone(credentialPath)
+		require.Nil(t, h.record(credentialPath))
 		require.Zero(t, h.cc.Count(credentialType))
 	})
 
@@ -1825,7 +1829,7 @@ func Test_Put_UncertainCreateWithWriteOnly(t *testing.T) {
 		"a client error": {code: cctypes.HandlerErrorCodeInvalidRequest, status: http.StatusBadRequest},
 		"a server error": {code: cctypes.HandlerErrorCodeServiceInternalError, status: http.StatusInternalServerError},
 	} {
-		t.Run("the create failed with "+name+": the failure and a tombstone", func(t *testing.T) {
+		t.Run("the create failed with "+name+": the failure, and the record is removed", func(t *testing.T) {
 			h := newHarness(t)
 			h.cc.FailNext = tt.code
 			acceptCreate(t, h, original)
@@ -1835,7 +1839,7 @@ func Test_Put_UncertainCreateWithWriteOnly(t *testing.T) {
 			require.Equal(t, tt.status, resp.status, resp.raw)
 			require.Contains(t, resp.message(), "the request failed")
 			require.Equal(t, []string{"CreateResource"}, operations(h.cc.Calls()))
-			h.requireTombstone(credentialPath)
+			require.Nil(t, h.record(credentialPath))
 
 			// The next deploy starts over with a new client token.
 			require.Equal(t, http.StatusCreated, h.put(credentialPath, map[string]any{"Size": "large", "Password": password}).status)
@@ -1921,7 +1925,7 @@ func Test_Put_UncertainCreateWithWriteOnly(t *testing.T) {
 	}{
 		"saving the identifier":     {setup: func(h *harness) {}, recovers: true},
 		"saving the running create": {setup: func(h *harness) { h.cc.PendingReads = 1 }, recovers: true},
-		"saving the tombstone":      {setup: func(h *harness) { h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest }},
+		"removing the record":       {setup: func(h *harness) { h.cc.FailNext = cctypes.HandlerErrorCodeInvalidRequest }},
 	} {
 		t.Run(name+" fails: 500", func(t *testing.T) {
 			h := newHarness(t)
