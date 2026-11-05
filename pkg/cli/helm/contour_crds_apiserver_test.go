@@ -88,7 +88,7 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		loaded, err := loader.Load(contourChart)
 		require.NoError(t, err)
 		_, err = NewHelmClient().RunHelmInstall(contourConfiguration, loaded, map[string]any{"gatewayAPI": map[string]any{"manageCRDs": true}},
-			contourReleaseName, RadiusSystemNamespace, false, time.Minute)
+			contourReleaseName, RadiusSystemNamespace, false, time.Minute, nil)
 		require.ErrorContains(t, err, "invalid ownership metadata")
 		require.ErrorContains(t, err, `key "meta.helm.sh/release-name" must equal "contour": current value is "traefik-crd"`)
 		requireNoRelease(t, kubeconfig, contourReleaseName)
@@ -153,12 +153,12 @@ func TestInstallContourWithExistingGatewayAPICRDs(t *testing.T) {
 		loadedRadius, err := loader.Load(radiusChart)
 		require.NoError(t, err)
 		_, err = NewHelmClient().RunHelmInstall(newTestHelmConfiguration(t, kubeconfig, RadiusSystemNamespace), loadedRadius, nil,
-			radiusReleaseName, RadiusSystemNamespace, false, time.Minute)
+			radiusReleaseName, RadiusSystemNamespace, false, time.Minute, nil)
 		require.NoError(t, err)
 		loadedContour, err := loader.Load(contourChart)
 		require.NoError(t, err)
 		_, err = NewHelmClient().RunHelmInstall(newTestHelmConfiguration(t, kubeconfig, RadiusSystemNamespace), loadedContour,
-			map[string]any{"gatewayAPI": map[string]any{"manageCRDs": true}}, contourReleaseName, RadiusSystemNamespace, false, time.Minute)
+			map[string]any{"gatewayAPI": map[string]any{"manageCRDs": true}}, contourReleaseName, RadiusSystemNamespace, false, time.Minute, nil)
 		require.ErrorContains(t, err, "invalid ownership metadata")
 		require.ErrorContains(t, err, `label validation error: key "app.kubernetes.io/managed-by" must equal "Helm": current value is "radius-repo"`)
 		requireNoRelease(t, kubeconfig, contourReleaseName)
@@ -808,11 +808,11 @@ func (c *hookedHelmClient) RunHelmGet(helmConf *helm.Configuration, releaseName 
 	return release, err
 }
 
-func (c *hookedHelmClient) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, timeout time.Duration) (*releasev1.Release, error) {
+func (c *hookedHelmClient) RunHelmInstall(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, timeout time.Duration, labels map[string]string) (*releasev1.Release, error) {
 	if c.beforeInstall != nil {
 		c.beforeInstall(releaseName)
 	}
-	release, err := c.HelmClient.RunHelmInstall(helmConf, helmChart, vals, releaseName, namespace, wait, timeout)
+	release, err := c.HelmClient.RunHelmInstall(helmConf, helmChart, vals, releaseName, namespace, wait, timeout, labels)
 	if c.afterInstall != nil {
 		c.afterInstall(releaseName)
 	}
@@ -919,7 +919,7 @@ func newK3sTraefikCRDInstall(t *testing.T, kubeconfig string, crdClient apiexten
 
 		loaded, err := loader.Load(traefikChart)
 		if err == nil {
-			_, err = NewHelmClient().RunHelmInstall(configuration, loaded, map[string]any{}, "traefik-crd", "kube-system", false, time.Minute)
+			_, err = NewHelmClient().RunHelmInstall(configuration, loaded, map[string]any{}, "traefik-crd", "kube-system", false, time.Minute, nil)
 		}
 		k3s.err = err
 	}()
