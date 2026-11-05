@@ -396,6 +396,9 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 	}
 
 	ucplog.FromContextOrDiscard(ctx).Info("Found the AWS resource of an interrupted create", "alias", r.id.Name(), "awsIdentifier", identifier)
+	// The create may have applied some or all of its values, so Radius owns them, and the update below clears one the
+	// template no longer sets.
+	records.KeepPending(rec)
 	rec.Properties.ClientToken = ""
 	current, err := e.readResource(ctx, r, identifier)
 	if err != nil {
