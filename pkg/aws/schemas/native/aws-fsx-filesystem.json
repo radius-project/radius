@@ -554,5 +554,38 @@
     "/properties/SecurityGroupIds",
     "/properties/OpenZFSConfiguration/Options",
     "/properties/OpenZFSConfiguration/RootVolumeConfiguration"
-  ]
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "fsx:CreateFileSystem",
+        "fsx:CreateFileSystemFromBackup",
+        "fsx:DescribeFileSystems",
+        "fsx:TagResource"
+      ]
+    },
+    "read": {
+      "permissions": ["fsx:DescribeFileSystems"]
+    },
+    "update": {
+      "permissions": [
+        "fsx:DescribeFileSystems",
+        "fsx:TagResource",
+        "fsx:UntagResource",
+        "fsx:UpdateFileSystem"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "fsx:CreateBackup",
+        "fsx:DeleteFileSystem",
+        "fsx:DescribeDataRepositoryAssociations",
+        "fsx:DescribeFileSystems",
+        "fsx:TagResource"
+      ]
+    },
+    "list": {
+      "permissions": ["fsx:DescribeFileSystems"]
+    }
+  }
 }

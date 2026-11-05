@@ -176,7 +176,7 @@ The final snapshot or backup needs the permission to take it, such as `rds:Creat
 
 #### Testing native handlers
 
-Every native handler runs the shared suite in `pkg/ucp/aws/native/nativetest`, which deploys through UCP's controllers and worker with an in-memory AWS. A handler's tests give it a fake of the service's API backed by the same in-memory store. `pkg/ucp/aws/native/nativefake` has a fake handler for testing the framework.
+Every native handler runs the shared suite in `pkg/ucp/aws/native/nativetest`, which deploys through UCP's controllers and worker with an in-memory AWS. A handler's tests give it a fake of the service's API backed by the same in-memory store. `pkg/ucp/aws/native/nativefake` has a fake handler for testing the framework. `Test_SchemaPermissionsCoverAWSCalls` in `pkg/ucp/aws/native/handlers` reads each handler's source and fails when a handler makes an AWS call that its schema's handler permissions don't list for the operation that makes it.
 
 Each handler also has a `Test_Replay_*` test that runs a create, read, update, and delete through the real AWS SDK against AWS's recorded responses (`pkg/ucp/aws/native/awsreplay`), in `testdata/` next to the handler. A cassette's `source` says whether AWS's responses were recorded or written by hand from the AWS API reference, for a type the recording account can't create. To record one:
 

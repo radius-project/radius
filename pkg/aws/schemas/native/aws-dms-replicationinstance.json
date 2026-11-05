@@ -109,5 +109,40 @@
   "writeOnlyProperties": [
     "/properties/AllowMajorVersionUpgrade",
     "/properties/KmsKeyId"
-  ]
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "dms:AddTagsToResource",
+        "dms:CreateReplicationInstance",
+        "dms:DescribeReplicationInstances"
+      ]
+    },
+    "read": {
+      "permissions": [
+        "dms:DescribeReplicationInstances",
+        "dms:ListTagsForResource"
+      ]
+    },
+    "update": {
+      "permissions": [
+        "dms:AddTagsToResource",
+        "dms:DescribeReplicationInstances",
+        "dms:ModifyReplicationInstance",
+        "dms:RemoveTagsFromResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "dms:DeleteReplicationInstance",
+        "dms:DescribeReplicationInstances"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "dms:DescribeReplicationInstances",
+        "dms:ListTagsForResource"
+      ]
+    }
+  }
 }
