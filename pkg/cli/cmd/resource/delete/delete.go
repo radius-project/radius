@@ -22,6 +22,8 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	generated "github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -152,7 +154,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	environmentID, applicationID, err := r.extractEnvironmentAndApplicationIDs(ctx, client)
+	resource, err := client.GetResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName)
 	if clients.Is404Error(err) {
 		r.Output.LogInfo("%s/%s not found", r.FullyQualifiedResourceTypeName, r.ResourceName)
 		return nil
@@ -160,9 +162,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	environmentID, applicationID, err := r.extractEnvironmentAndApplicationIDs(ctx, client, resource)
+	if err != nil {
+		return err
+	}
+
 	if r.Force {
 		r.Output.LogInfo("WARNING: Force deleting a resource in a non-terminal state may leave orphaned external resources that require manual cleanup.")
 	}
+
+	cmd.WarnSharedOutputResources(ctx, client, r.Output, r.FullyQualifiedResourceTypeName+"/"+r.ResourceName, []generated.GenericResource{resource})
 
 	// Prompt user to confirm deletion
 	if !r.Confirm {
@@ -198,12 +207,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *Runner) extractEnvironmentAndApplicationIDs(ctx context.Context, client clients.ApplicationsManagementClient) (environmentID resources.ID, applicationID resources.ID, err error) {
-	resource, err := client.GetResource(ctx, r.FullyQualifiedResourceTypeName, r.ResourceName)
-	if err != nil {
-		return resources.ID{}, resources.ID{}, err
-	}
-
+func (r *Runner) extractEnvironmentAndApplicationIDs(ctx context.Context, client clients.ApplicationsManagementClient, resource generated.GenericResource) (environmentID resources.ID, applicationID resources.ID, err error) {
 	// Note: The following cases are all possible:
 	//
 	// 1. The resource has an environment and an application. (common case for a standard resource)

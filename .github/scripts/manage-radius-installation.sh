@@ -31,12 +31,14 @@ set -euo pipefail
 SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_NAME
 
+readonly REQUIRED_DYNAMIC_RP_MEMORY_LIMIT=1Gi
 readonly REQUIRED_CHART_VALUES=(
     --set global.azureWorkloadIdentity.enabled=true
     --set global.aws.irsa.enabled=true
     --set database.enabled=false
     --set de.resources.requests.memory=256Mi
     --set de.resources.limits.memory=512Mi
+    --set "dynamicrp.resources.limits.memory=${REQUIRED_DYNAMIC_RP_MEMORY_LIMIT}"
 )
 
 usage() {
@@ -191,20 +193,34 @@ upgrade_radius() {
     rad upgrade kubernetes "${REQUIRED_CHART_VALUES[@]}" "$@"
 }
 
-reconcile_required_chart_values() {
-    local irsa_status=0
-    aws_irsa_token_volumes_enabled || irsa_status=$?
+dynamic_rp_memory_limit_configured() {
+    local memory_limit
+    if ! memory_limit=$(
+        kubectl get deployment dynamic-rp -n radius-system \
+            -o jsonpath='{.spec.template.spec.containers[?(@.name=="dynamic-rp")].resources.limits.memory}'
+    ); then
+        echo "Error: Failed to inspect dynamic-rp memory limit." >&2
+        return 2
+    fi
 
-    if [[ ${irsa_status} -eq 0 ]]; then
+    [[ "${memory_limit}" == "${REQUIRED_DYNAMIC_RP_MEMORY_LIMIT}" ]]
+}
+
+reconcile_required_chart_values() {
+    local irsa_status=0 memory_status=0
+    aws_irsa_token_volumes_enabled || irsa_status=$?
+    dynamic_rp_memory_limit_configured || memory_status=$?
+
+    if [[ ${irsa_status} -gt 1 || ${memory_status} -gt 1 ]]; then
+        return 1
+    fi
+
+    if [[ ${irsa_status} -eq 0 && ${memory_status} -eq 0 ]]; then
         echo "Required Radius chart values are already configured."
         return 0
     fi
 
-    if [[ ${irsa_status} -ne 1 ]]; then
-        return 1
-    fi
-
-    echo "AWS IRSA is not enabled on the current Radius installation. Reconciling chart values..."
+    echo "Required Radius chart values are missing or outdated. Reconciling chart values..."
     # The upgrade preflight rejects a same-version target. We already established
     # that this is an installed, matching-version control plane, so skip preflight
     # for this one-time Helm value reconciliation.
@@ -215,6 +231,11 @@ reconcile_required_chart_values() {
 
     if ! aws_irsa_token_volumes_enabled; then
         echo "Error: AWS IRSA token volumes are still missing after reconciliation." >&2
+        return 1
+    fi
+
+    if ! dynamic_rp_memory_limit_configured; then
+        echo "Error: dynamic-rp memory limit is still not ${REQUIRED_DYNAMIC_RP_MEMORY_LIMIT} after reconciliation." >&2
         return 1
     fi
 

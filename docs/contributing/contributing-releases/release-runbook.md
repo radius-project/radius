@@ -10,6 +10,7 @@ Use this checklist to run a Radius RC, final, or patch release. The [full releas
 - Complete the [one-time setup](./README.md#prerequisites), including App permissions, package access, environment protection, branch rules, and the current release pipeline on the target branch. Follow the [first-production readiness checks](./README.md#confirm-readiness-before-the-first-production-cycle); green CI alone is not that evidence.
 - If resource types or recipe packs changed, [release them and merge the generated Radius update](./README.md#release-resource-type-namespaces-and-recipe-packs) first. Unchanged, already-pinned releases need no action.
 - For an existing channel, select only PRs merged into `main`, label them `backport release/X.Y`, and **rebase-merge** their generated backports before preparation. Automation processes one PR at a time in main's merge order, regardless of input order. Keep each source marker and cherry-pick trailer; require `Validate release branch commits` in the branch rules. Every `supported` version in [`versions.yaml`](../../../versions.yaml) must already have its Radius tag; finish any pending release first.
+- Use the same label and shared backport workflow in `bicep-types-aws`, `dashboard`, and `recipes` after their [caller and credential rollout](https://github.com/radius-project/.github/blob/main/eng/SYNC.md#release-backports). Merge those backports before preparation freezes sibling commits; a change only on a sibling's `main` does not enter an existing release channel.
 
 ## Steps
 
@@ -59,7 +60,7 @@ Automation creates the Deployment Engine tag when missing, waits up to 15 minute
 
 ### 4. Check the build and approve stable publication
 
-Open the [release build workflow](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) and select the run for the approved version. Confirm its source commit matches the controller summary. Wait for **Verify release manifest and staged installation** to succeed and inspect its `release-manifest.json` evidence.
+Open the [release build workflow](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) and select the run for the approved version. Confirm its source commit matches the controller summary. Wait for **Verify release manifest and staged installation** to succeed and inspect its `release-manifest.json` evidence. It also requires the build provenance that **Attest release provenance** signs for the CLI assets, Radius-built images, and Helm chart.
 
 - **RC:** publication continues automatically after verification.
 - **Final or patch:** approve **Approve final or patch publication** in the `release` environment only for the verified version/source pair.
@@ -112,6 +113,10 @@ For a frozen first RC, use the resolved release commit from the summary. Before 
 **Sibling GitHub Release publication failed:** resume the same version/source. Matching entries and their generated notes are reused, even when Radius is already public. Investigate source/classification conflicts rather than deleting releases or moving tags.
 
 **Dispatch outcome unknown:** inspect the correlated publisher run and destination artifacts before resuming, including after cancellation. Do not blindly redispatch; see [lost dispatch recovery](./README.md#lost-dispatch-response).
+
+**Provenance attestation or verification failed:** for a transient GitHub or Sigstore error, resume the same release; signing the same staged digests again is safe. A missing or mismatched attestation means the artifact did not come from this tag build. Investigate it instead of bypassing verification.
+
+**Upmerge PR closed without merging:** with the updated coordinator, resume the same release to rerun the bound downstream workflow and create a replacement PR. Merged upmerges are reused. Clean merges create ready PRs; real content conflicts stop for resolution rather than creating draft snapshots. An older tagged coordinator does not gain this behavior by rerunning: follow [closed or conflicting upmerge recovery](./README.md#closed-or-conflicting-upmerge-pull-requests).
 
 **Controller never started after merge:** follow [manual-start recovery](./README.md#controller-never-started-after-merge) to get the version and source commit from the merged release PR or metadata backport, then run [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) from `main`. This starts reconciliation; it does not bypass environment approval.
 

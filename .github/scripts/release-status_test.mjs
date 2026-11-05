@@ -62,3 +62,26 @@ test("summaries remain actionable when verification failed before producing a ma
   assert.match(report.markdown, /No complete manifest/);
   assert.match(report.markdown, /Resume the same run/);
 });
+
+test("sample-test summaries distinguish the tested commit from the Radius source", () => {
+  const sourceSha = "a".repeat(40);
+  const samplesCommit = "b".repeat(40);
+  const url = "https://github.com/radius-project/samples/actions/runs/78";
+  const report = releaseStatus({
+    version: "v0.61.0-rc.1",
+    sourceSha,
+    stage: "coordination",
+    state: "success",
+    releaseState: "published",
+    runUrl: "https://github.com/radius-project/radius/actions/runs/12",
+    downstream: [{ name: "sample-tests", state: "success", url, samplesCommit }]
+  });
+  assert.ok(report.markdown.includes(`Source: ${sourceSha}`));
+  assert.ok(
+    report.markdown.includes(
+      `sample-tests: success ${url} (samples commit ${samplesCommit})`
+    )
+  );
+  assert.ok(JSON.stringify(report.payload).includes(samplesCommit));
+  assert.ok(report.markdown.includes(`-f source-commit=${sourceSha}`));
+});

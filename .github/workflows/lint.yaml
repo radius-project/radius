@@ -91,12 +91,6 @@ jobs:
         # Required by make generate to parse defaults.yaml.
         run: make install-yq
 
-      - name: Setup Python
-        if: needs.changes.outputs.only_changed == 'true'
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version-file: .python-version
-
       - name: Install release metadata tools
         if: needs.changes.outputs.only_changed == 'true'
         run: make install-jq install-git-cliff

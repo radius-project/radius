@@ -43,6 +43,7 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                           mockHelmClient,
 		configureDefaultContourGateway: gatewayCalls.configure,
+		contourCluster:                 staticCRDs(),
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -77,21 +78,29 @@ func Test_Helm_InstallRadius(t *testing.T) {
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
 	}
 
-	// Mock Helm Get
+	// Mock Helm Get. Contour is checked before Radius is installed, and again when it is installed.
 	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return(nil, driver.ErrReleaseNotFound).Times(1)
-	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour").Return(nil, driver.ErrReleaseNotFound).Times(1)
+	mockHelmClient.EXPECT().RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "contour").Return(nil, driver.ErrReleaseNotFound).Times(2)
 
 	// Mock Helm Install
 	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, gomock.Any()).Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "contour", "radius-system", false, gomock.Any()).Return(contourRelease, nil).Times(1)
+	var contourValues map[string]any
+	mockHelmClient.EXPECT().RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "contour", "radius-system", false, gomock.Any()).
+		DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ time.Duration) (*releasev1.Release, error) {
+			contourValues = vals
+			return contourRelease, nil
+		}).Times(1)
 
 	// Mock Helm Chart Load
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(2)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(newTestContourChart(), nil).Times(2)
 
 	err := impl.InstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
 	require.Equal(t, 1, gatewayCalls.configureCalls)
 	require.Equal(t, kubeContext, gatewayCalls.kubeContext)
+
+	// A cluster without Gateway API CRDs gets the CRDs from the Contour chart.
+	require.Equal(t, true, nestedValue(contourValues, "gatewayAPI", "manageCRDs"))
 }
 
 func Test_Helm_UninstallRadius(t *testing.T) {
@@ -207,6 +216,136 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	require.Equal(t, "", state.ContourVersion)
 }
 
+// Test_Helm_CheckRadiusInstall_ContourStatus verifies that CheckRadiusInstall reports the status of the Contour release,
+// so that rad install kubernetes can tell the user how to repair a release that is not deployed.
+func Test_Helm_CheckRadiusInstall_ContourStatus(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		status          releasecommon.Status
+		chart           *chart.Chart
+		wantNeedsRepair bool
+		wantErr         string
+	}{
+		{name: "deployed", status: releasecommon.StatusDeployed},
+		{name: "failed", status: releasecommon.StatusFailed, wantNeedsRepair: true},
+		{name: "pending install", status: releasecommon.StatusPendingInstall, wantNeedsRepair: true},
+		{name: "pending upgrade", status: releasecommon.StatusPendingUpgrade, wantNeedsRepair: true},
+		{name: "superseded", status: releasecommon.StatusSuperseded},
+		{name: "release without chart metadata", status: releasecommon.StatusDeployed, chart: &chart.Chart{}, wantErr: "failed to get chart version for release: contour (chart or metadata is nil)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockHelmClient := NewMockHelmClient(gomock.NewController(t))
+			options := NewDefaultClusterOptions()
+			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(1)
+			contourChart := tt.chart
+			if contourChart == nil {
+				contourChart = &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0", AppVersion: "1.32.0"}}
+			}
+			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).
+				Return(&releasev1.Release{Name: options.Contour.ReleaseName, Version: 1, Chart: contourChart, Info: &releasev1.Info{Status: tt.status}}, nil).
+				Times(1)
+
+			state, err := (&Impl{Helm: mockHelmClient}).CheckRadiusInstall("test-context")
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, "failed to check Contour installation (release: contour, namespace: radius-system, context: test-context)")
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.True(t, state.ContourInstalled)
+			require.Equal(t, "1.32.0", state.ContourVersion)
+			require.Equal(t, string(tt.status), state.ContourStatus)
+			require.Equal(t, tt.wantNeedsRepair, state.ContourNeedsRepair())
+		})
+	}
+}
+
+func Test_InstallState_ContourNeedsRepair(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, InstallState{}.ContourNeedsRepair(), "Contour is not installed")
+	require.False(t, InstallState{ContourInstalled: true}.ContourNeedsRepair(), "the status is unknown")
+	require.True(t, InstallState{ContourInstalled: true, ContourStatus: "failed"}.ContourNeedsRepair())
+	require.True(t, InstallState{ContourInstalled: true, ContourStatus: "pending-rollback"}.ContourNeedsRepair())
+}
+
+func Test_Helm_HistoryConsumers_RevisionOrder(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		latestStatus     releasecommon.Status
+		latestAppVersion string
+		expectedVersion  string
+		expectedRollback int
+	}{
+		{"deployed", releasecommon.StatusDeployed, "0.62.0-rc.2", "0.62.0-rc.2", 10},
+		{"pending upgrade", releasecommon.StatusPendingUpgrade, "0.62.0-rc.2", "0.61.1", 9},
+		{"failed upgrade", releasecommon.StatusFailed, "0.62.0-rc.2", "0.61.1", 9},
+		{"rollback with newer revision", releasecommon.StatusDeployed, "0.60.3", "0.60.3", 9},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			newRelease := func(revision int, appVersion string, status releasecommon.Status) *releasev1.Release {
+				return &releasev1.Release{
+					Name:    "radius",
+					Version: revision,
+					Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: appVersion, AppVersion: appVersion}},
+					Info:    &releasev1.Info{Status: status},
+				}
+			}
+			previous := newRelease(9, "0.60.2", releasecommon.StatusSuperseded)
+			current := newRelease(10, "0.61.1", releasecommon.StatusDeployed)
+			latest := newRelease(11, tt.latestAppVersion, tt.latestStatus)
+			failed := newRelease(12, "0.62.0", releasecommon.StatusFailed)
+			if tt.latestStatus == releasecommon.StatusDeployed {
+				current.Info.Status = releasecommon.StatusSuperseded
+			}
+			configuration := newHistoryTestConfiguration([]release.Releaser{current, latest, failed, previous}, nil)
+
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().
+				RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
+				DoAndReturn(func(_ *helm.Configuration, name string) ([]*releasev1.Release, error) {
+					return NewHelmClient().RunHelmHistory(configuration, name)
+				}).Times(3)
+			client.EXPECT().
+				RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
+				Return(failed, nil)
+			client.EXPECT().
+				RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), contourReleaseName).
+				Return(nil, driver.ErrReleaseNotFound)
+			client.EXPECT().
+				RunHelmRollback(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", tt.expectedRollback, true).
+				Return(nil)
+			impl := &Impl{Helm: client}
+
+			state, err := impl.CheckRadiusInstall("test-context")
+			require.NoError(t, err)
+			require.True(t, state.RadiusInstalled)
+			require.Equal(t, tt.expectedVersion, state.RadiusVersion)
+
+			revisions, err := impl.GetRadiusRevisions(t.Context(), "test-context")
+			require.NoError(t, err)
+			require.Len(t, revisions, 4)
+			require.Equal(t, []int{12, 11, 10, 9}, []int{
+				revisions[0].Revision, revisions[1].Revision, revisions[2].Revision, revisions[3].Revision,
+			})
+
+			require.NoError(t, impl.RollbackRadius(t.Context(), "test-context"))
+		})
+	}
+}
+
 type defaultContourGatewayCalls struct {
 	configureCalls int
 	removeCalls    int
@@ -257,6 +396,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                           mockHelmClient,
 		configureDefaultContourGateway: gatewayCalls.configure,
+		contourCluster:                 staticCRDs(contourBundleCRDs()...),
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -294,18 +434,15 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	// Mock Helm Upgrade for Radius
 	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, true, options.Radius.Timeout).Return(radiusRelease, nil).Times(1)
 
-	// Mock CheckRadiusInstall - both Radius and Contour are installed
-	mockHelmClient.EXPECT().
-		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().
-		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*releasev1.Release{radiusRelease}, nil).Times(1)
-
+	// Contour is installed, and its release installed the Gateway API CRDs.
 	contourRelease := newRel(options.Contour.ReleaseName, "0.1.0")
+	contourRelease.Manifest = crdManifest(contourBundleCRDs()...)
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(contourRelease, nil).Times(1)
+	mockHelmClient.EXPECT().
+		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
+		Return([]*releasev1.Release{contourRelease}, nil).Times(1)
 
 	// Mock Helm Pull for Contour
 	mockHelmClient.EXPECT().
@@ -319,15 +456,23 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 		}).Times(1)
 
 	// Mock Helm Chart Load for Contour
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(newTestContourChart(), nil).Times(1)
 
 	// Mock Helm Upgrade for Contour
-	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "contour", "radius-system", false, true, options.Contour.Timeout).Return(contourRelease, nil).Times(1)
+	var contourValues map[string]any
+	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "contour", "radius-system", false, true, options.Contour.Timeout).
+		DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, vals map[string]any, _ string, _ string, _ bool, _ bool, _ time.Duration) (*releasev1.Release, error) {
+			contourValues = vals
+			return contourRelease, nil
+		}).Times(1)
 
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
 	require.Equal(t, 1, gatewayCalls.configureCalls)
 	require.Equal(t, kubeContext, gatewayCalls.kubeContext)
+
+	// Contour keeps managing the CRDs that it installed. Switching to false would make Helm delete them.
+	require.Equal(t, true, nestedValue(contourValues, "gatewayAPI", "manageCRDs"))
 }
 
 func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
@@ -370,13 +515,7 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 	// Mock Helm Upgrade for Radius
 	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, true, gomock.Any()).Return(radiusRelease, nil).Times(1)
 
-	// Mock CheckRadiusInstall - Radius is installed but Contour is NOT installed
-	mockHelmClient.EXPECT().
-		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().
-		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*releasev1.Release{radiusRelease}, nil).Times(1)
+	// Contour is NOT installed
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(nil, driver.ErrReleaseNotFound).Times(1)
@@ -515,6 +654,11 @@ func Test_Helm_UpgradeRadius_RadiusUpgradeError(t *testing.T) {
 	// Mock Helm Chart Load for Radius
 	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
 
+	// Contour is not installed, so it is not checked or upgraded.
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
+		Return(nil, driver.ErrReleaseNotFound).Times(1)
+
 	// Mock Helm Upgrade for Radius - return error
 	mockHelmClient.EXPECT().
 		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, true, gomock.Any()).
@@ -533,7 +677,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient}
+	impl := &Impl{Helm: mockHelmClient, contourCluster: staticCRDs()}
 	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -566,18 +710,14 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, true, gomock.Any()).
 		Return(radiusRelease, nil).Times(1)
 
-	// Mock CheckRadiusInstall - both Radius and Contour are installed
-	mockHelmClient.EXPECT().
-		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().
-		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*releasev1.Release{radiusRelease}, nil).Times(1)
-
+	// Contour is installed
 	contourRelease := newRel(options.Contour.ReleaseName, "0.1.0")
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(contourRelease, nil).Times(1)
+	mockHelmClient.EXPECT().
+		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
+		Return([]*releasev1.Release{contourRelease}, nil).Times(1)
 
 	// Mock Helm Pull for Contour
 	mockHelmClient.EXPECT().
@@ -590,7 +730,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 		}).Times(1)
 
 	// Mock Helm Chart Load for Contour
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(newTestContourChart(), nil).Times(1)
 
 	// Mock Helm Upgrade for Contour - return error
 	mockHelmClient.EXPECT().
@@ -615,14 +755,6 @@ func Test_Helm_UpgradeRadius_CheckInstallError(t *testing.T) {
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
-	newRel := func(name, ver string) *releasev1.Release {
-		return &releasev1.Release{
-			Name:  name,
-			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: ver, AppVersion: ver}},
-			Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
-		}
-	}
-
 	// Mock Helm Pull for Radius
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
@@ -636,16 +768,9 @@ func Test_Helm_UpgradeRadius_CheckInstallError(t *testing.T) {
 	// Mock Helm Chart Load for Radius
 	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
 
-	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
-
-	// Mock Helm Upgrade for Radius - succeeds
+	// Checking the Contour release fails, so nothing is upgraded.
 	mockHelmClient.EXPECT().
-		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, true, gomock.Any()).
-		Return(radiusRelease, nil).Times(1)
-
-	// Mock CheckRadiusInstall - return error from RunHelmGet
-	mockHelmClient.EXPECT().
-		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(nil, fmt.Errorf("connection error")).Times(1)
 
 	err := impl.UpgradeRadius(ctx, options, kubeContext)
@@ -695,14 +820,7 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 		Return(radiusRelease, nil).
 		Times(1)
 
-	// CheckRadiusInstall is invoked after the Radius upgrade. Return Radius installed but Contour absent
-	// so we don't have to set up Contour mocks.
-	mockHelmClient.EXPECT().
-		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return(radiusRelease, nil).Times(1)
-	mockHelmClient.EXPECT().
-		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*releasev1.Release{radiusRelease}, nil).Times(1)
+	// Contour is absent, so we don't have to set up Contour mocks.
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(nil, driver.ErrReleaseNotFound).Times(1)

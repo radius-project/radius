@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
+	"github.com/radius-project/radius/pkg/cli/output"
 	k8slabels "github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -71,7 +72,7 @@ func debugLogs(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Capturing logs from the Radius workspace \"%s\"\n", w.Name)
+	output.LogInfo("Capturing logs from the Radius workspace \"%s\"", w.Name)
 
 	pods, err := k8sClient.CoreV1().Pods("radius-system").List(cmd.Context(), v1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s=%s", k8slabels.LabelPartOf, k8slabels.ControlPlanePartOfLabelValue),
@@ -82,11 +83,11 @@ func debugLogs(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(pods.Items) == 0 {
-		fmt.Println("Warning: No pods found. Please check that the Radius control plane is running.")
-		fmt.Println()
-		fmt.Println("Run `helm ls -A` to check if Radius is installed.")
-		fmt.Println("Run `kubectl get pods -A` to check if Radius is running.")
-		fmt.Println()
+		output.LogInfo("Warning: No pods found. Please check that the Radius control plane is running.")
+		output.LogInfo("")
+		output.LogInfo("Run `helm ls -A` to check if Radius is installed.")
+		output.LogInfo("Run `kubectl get pods -A` to check if Radius is running.")
+		output.LogInfo("")
 		return nil
 	}
 
@@ -157,7 +158,7 @@ func debugLogs(cmd *cobra.Command, args []string) error {
 
 	err = filepath.Walk(tmpdir, walker)
 
-	fmt.Printf("Wrote zip file %s. Please inspect each log file and remove any private information before sharing feedback.\n", debugLogsFile)
+	output.LogInfo("Wrote zip file %s. Please inspect each log file and remove any private information before sharing feedback.", debugLogsFile)
 
 	return err
 }
@@ -167,7 +168,7 @@ func captureIndividualLogs(ctx context.Context, request *rest.Request, cmd *cobr
 	if err != nil && err == ctx.Err() {
 		return
 	} else if err != nil {
-		fmt.Printf("Error reading log stream for %s. Error was %+v", filename, err)
+		fmt.Fprintf(cmd.ErrOrStderr(), "Error reading log stream for %s. Error was %+v", filename, err)
 		return
 	}
 	defer stream.Close()
@@ -190,7 +191,7 @@ func captureIndividualLogs(ctx context.Context, request *rest.Request, cmd *cobr
 		if err != nil && err == ctx.Err() {
 			return
 		} else if err != nil {
-			fmt.Printf("Error reading log stream for %s. Error was %+v", filename, err)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Error reading log stream for %s. Error was %+v", filename, err)
 			return
 		}
 
@@ -200,7 +201,7 @@ func captureIndividualLogs(ctx context.Context, request *rest.Request, cmd *cobr
 
 		_, err = fh.Write(buf[:numBytes])
 		if err != nil {
-			fmt.Printf("Error writing to %s. Error was %s", filename, err)
+			fmt.Fprintf(cmd.ErrOrStderr(), "Error writing to %s. Error was %s", filename, err)
 			return
 		}
 	}

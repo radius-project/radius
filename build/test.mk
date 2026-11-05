@@ -54,12 +54,22 @@ GOTESTSUM_JSONFILE_DIR ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) $(if $(GOTESTSUM_JSONFILE_DIR),--jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check test-authz-kit ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-azure-oidc-login test-cloud-test-helpers test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check test-authz-kit ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... ./test/rogue/... $(GOTEST_OPTS)
 
 .PHONY: test-azure-oidc-login
 test-azure-oidc-login: ## Tests cloud CI token request retries and Azure login
 	@node --test ./.github/scripts/azure-oidc-login_test.mjs
+
+.PHONY: test-cloud-test-helpers
+test-cloud-test-helpers: install-yq ## Tests cloud helpers and prepared-base dependencies without credentials (requires Node.js; installs pinned yq)
+	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
+		node --test .github/scripts/cloud-test-helpers.test.mjs .github/scripts/cloud-test-bootstrap.test.mjs
+
+.PHONY: test-cloud-test-helpers-native
+test-cloud-test-helpers-native: install-yq install-oras ## Tests TLS capture (requires Node.js, Docker, free localhost port 5000, OpenSSL and curl; installs pinned yq and ORAS)
+	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$(or $(ORAS_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
+		node --test .github/scripts/cloud-test-artifacts.integration.test.mjs
 
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
@@ -72,8 +82,9 @@ test-local-functional-runner: ## Tests local functional runner safety without in
 test: test-local-functional-runner
 
 .PHONY: test-publish-recipes
-test-publish-recipes: ## Tests bounded recipe publishing without a registry
+test-publish-recipes: ## Tests recipe publishing without a registry or cluster
 	@bash ./.github/scripts/publish-recipes_test.sh
+	@bash ./.github/scripts/publish-test-terraform-recipes_test.sh
 
 test: test-publish-recipes
 
@@ -157,12 +168,6 @@ test-release-controller: ## Tests release controller input binding and stage ord
 	@bash ./.github/scripts/verify-deployment-engine-image_test.sh
 	@bash ./.github/scripts/verify-release-build-contract_test.sh
 
-.PHONY: test-release-backport
-test-release-backport: ## Tests release backport selection and branch construction
-	@bash ./.github/scripts/collect-release-backports_test.sh
-	@bash ./.github/scripts/create-release-backport_test.sh
-	@node --test ./.github/scripts/select-release-backports_test.mjs
-
 .PHONY: test-release-branch-commits
 test-release-branch-commits: ## Tests backport provenance and commit validation for release branches
 	@node --test ./.github/scripts/validate-conventional-commits_test.mjs
@@ -188,9 +193,10 @@ test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 
 .PHONY: test-release-oci-artifacts
 .PHONY: test-release-publication
-test-release-publication: ## Tests mandatory publication gates, staged installation, coordination, and reporting
+test-release-publication: ## Tests mandatory publication gates, staged installation, provenance, coordination, and reporting
 	@node --test ./.github/scripts/verify-release-manifest_test.mjs ./.github/scripts/coordinate-release_test.mjs ./.github/scripts/release-status_test.mjs ./.github/scripts/promote-bicep-types_test.mjs ./.github/scripts/publish-sibling-releases_test.mjs
 	@bash ./.github/scripts/release-verification_test.sh
+	@bash ./.github/scripts/release-attestations_test.sh
 
 test-release-oci-artifacts: install-oras ## Tests immutable OCI staging and alias promotion
 	@bash ./.github/scripts/release-oci-artifacts_test.sh
@@ -216,6 +222,22 @@ test-workflow-changes: ## Tests reusable workflow change detection
 	@node --test ./.github/scripts/changes_test.mjs
 
 test: test-workflow-changes
+
+.PHONY: test-workflow-functional-matrix
+test-workflow-functional-matrix: ## Tests functional test selection without infrastructure
+	@node --test ./.github/scripts/functional-test-matrix_test.mjs
+
+test: test-workflow-functional-matrix
+
+.PHONY: test-long-running-azure
+test-long-running-azure: ## Tests persistent-cluster readiness and functional test selection without a cluster
+	@bash ./.github/scripts/long-running-azure_test.sh
+
+test: test-long-running-azure
+
+.PHONY: test-dapr-helpers
+test-dapr-helpers: ## Runs Dapr test helper unit tests without a cluster
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/daprrp/noncloud/resources -run '^TestWaitForRedis' -timeout ${TEST_TIMEOUT} $(GOTEST_OPTS)
 
 .PHONY: test-docker-push
 test-docker-push: ## Tests image push recovery without Docker or a registry

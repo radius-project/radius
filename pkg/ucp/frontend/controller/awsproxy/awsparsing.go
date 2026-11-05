@@ -87,6 +87,10 @@ func getPrimaryIdentifierFromMultiIdentifiers(properties map[string]any, schema 
 	return resourceID, nil
 }
 
+// readPropertiesFromBody reads the properties object from the body of a POST /:put or /:delete request.
+//
+// Transitional: POST /:put and /:delete stay until the Deployment Engine deploys AWS resources by alias, and are then
+// removed together with this function.
 func readPropertiesFromBody(req *http.Request) (map[string]any, error) {
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()

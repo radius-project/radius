@@ -81,7 +81,8 @@ func Release() string {
 	return release
 }
 
-// Version returns the 'git describe' output of the build.
+// Version returns the release tag of a release build, such as v0.62.0, or the release
+// name and commit of any other build, such as edge-ef7aab1.
 //
 // This should only be used for informational purposes.
 func Version() string {

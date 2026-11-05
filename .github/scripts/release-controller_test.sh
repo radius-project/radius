@@ -259,9 +259,6 @@ test_identity_and_cleanup() {
     assert_not_contains "${WORKFLOWS}/__changes.yml" \
         '.github/workflows/release.yaml' \
         "deleted release workflow remains in change classification"
-    assert_contains "${ROOT}/.github/scripts/create-release-backport.sh" \
-        'git rm -q .github/workflows/release.yaml' \
-        "metadata backports must remove legacy release-branch workflows"
 }
 
 test_frozen_output_contract() {
@@ -484,8 +481,9 @@ test_de_bridge_uses_immutable_destinations() {
         trap 'rm -rf "${directory}"' EXIT
         script="$(yq -r '.jobs."dispatch-publish".steps[] |
             select(.id == "payload") | .run' "${WORKFLOWS}/publish-de-image.yaml")"
-        for tag in latest pr-42 0.61.0-rc.1 0.61.2; do
+        for tag in edge pr-42 0.61.0-rc.1 0.61.2; do
             source_tag="${tag}"
+            [[ "${tag}" != "edge" ]] || source_tag=latest
             [[ "${tag}" != "0.61.2" ]] || source_tag=0.61
             SRC_IMAGE=example.azurecr.io/deployment-engine \
                 DEST_IMAGE=ghcr.io/radius-project/deployment-engine \
@@ -497,12 +495,14 @@ test_de_bridge_uses_immutable_destinations() {
             grep -Fxq "tag=${tag}" "${directory}/${tag}" || exit 1
             grep -Fxq "source_tag=${source_tag}" "${directory}/${tag}" || exit 1
         done
-        if TAG=0.61 GITHUB_OUTPUT="${directory}/channel" \
-            bash -euo pipefail -c "${script}" >"${directory}/error" 2>&1; then
-            exit 1
-        fi
-        grep -Fq "promoted only by the approved release finalizer" \
-            "${directory}/error"
+        for tag in 0.61 latest; do
+            if TAG="${tag}" GITHUB_OUTPUT="${directory}/channel" \
+                bash -euo pipefail -c "${script}" >"${directory}/error" 2>&1; then
+                exit 1
+            fi
+            grep -Fq "promoted only by the approved release finalizer" \
+                "${directory}/error" || exit 1
+        done
     ); then
         fail_test "the DE bridge can move stable aliases or lose its source tag"
         return

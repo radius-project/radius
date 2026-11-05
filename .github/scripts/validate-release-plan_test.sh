@@ -236,7 +236,8 @@ run_validator() {
     run_with_fixture bash "${SCRIPT}" \
         --body-file body.md --files-file files.json \
         --base-sha "${BASE_SHA}" --head-dir "${HEAD_DIR}" \
-        --repository radius-project/radius
+        --repository radius-project/radius \
+        --backports-file "${EXPECTED_BACKPORTS}"
 }
 
 run_snapshot_tests() {
@@ -473,6 +474,25 @@ EOF
     ((++PASS))
 }
 
+test_requires_fresh_backport_input() {
+    local output status data
+
+    for data in missing invalid object; do
+        case "${data}" in
+            missing) rm "${EXPECTED_BACKPORTS}" ;;
+            invalid) printf 'not JSON\n' > "${EXPECTED_BACKPORTS}" ;;
+            object) printf '{}\n' > "${EXPECTED_BACKPORTS}" ;;
+        esac
+        status=0
+        output="$(run_validator 2>&1)" || status=$?
+        if [[ "${status}" == 0 || "${output}" != *"backports file"* ]]; then
+            fail_test "${data} backport input must fail explicitly: ${output}"
+            return
+        fi
+    done
+    ((++PASS))
+}
+
 test_accepts_sibling_branch_advance() {
     advance_sibling_main recipes
     if ! run_validator > /dev/null; then
@@ -533,6 +553,8 @@ main() {
     test_rejects_tampered_backports
     setup_repo
     test_rejects_live_backport_state_drift
+    setup_repo
+    test_requires_fresh_backport_input
     setup_repo
     test_accepts_sibling_branch_advance
     setup_repo

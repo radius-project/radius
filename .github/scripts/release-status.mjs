@@ -29,7 +29,8 @@ export function releaseStatus({
     ),
     ...downstream.map(
       (entry) =>
-        `${entry.name}: ${entry.state} ${entry.url ?? entry.recovery ?? ""}`
+        `${entry.name}: ${entry.state} ${entry.url ?? entry.recovery ?? ""}` +
+        (entry.samplesCommit ? ` (samples commit ${entry.samplesCommit})` : "")
     )
   ];
   const markdown = [

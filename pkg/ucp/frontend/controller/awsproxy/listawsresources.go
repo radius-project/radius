@@ -54,6 +54,9 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 	if errResponse != nil {
 		return errResponse, nil
 	}
+	if errResponse := unsupportedTypeResponse(serviceCtx.ResourceTypeInAWSFormat()); errResponse != nil {
+		return errResponse, nil
+	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
 	// TODO pagination

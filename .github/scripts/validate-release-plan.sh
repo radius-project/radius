@@ -26,15 +26,12 @@ FILES_FILE=""
 BASE_SHA=""
 HEAD_DIR=""
 REPOSITORY=""
+BACKPORTS_FILE=""
 TEMP_DIR=""
 GENERATED_WORKTREE=""
 PREPARE_RELEASE_SCRIPT="${PREPARE_RELEASE_SCRIPT:-}"
-COLLECT_BACKPORTS_SCRIPT="${COLLECT_BACKPORTS_SCRIPT:-}"
 if [[ -z "${PREPARE_RELEASE_SCRIPT}" ]]; then
     PREPARE_RELEASE_SCRIPT="${SCRIPT_DIR}/prepare-release.sh"
-fi
-if [[ -z "${COLLECT_BACKPORTS_SCRIPT}" ]]; then
-    COLLECT_BACKPORTS_SCRIPT="${SCRIPT_DIR}/collect-release-backports.sh"
 fi
 
 cleanup() {
@@ -56,7 +53,8 @@ fail() {
 usage() {
     cat << 'EOF'
 Usage: validate-release-plan.sh --body-file <path> --files-file <path> \
-    --base-sha <commit> --head-dir <path> --repository <owner/repo>
+    --base-sha <commit> --head-dir <path> --repository <owner/repo> \
+    --backports-file <fresh shared-action collection>
 EOF
 }
 
@@ -139,19 +137,6 @@ normalize_release_notes() {
     ' > "${output}"
 }
 
-collect_expected_backports() {
-    local channel="$1"
-    local output="${TEMP_DIR}/expected-backports.json"
-
-    if [[ -n "${EXPECTED_BACKPORTS_FILE:-}" ]]; then
-        cp "${EXPECTED_BACKPORTS_FILE}" "${output}"
-    else
-        bash "${COLLECT_BACKPORTS_SCRIPT}" --repository "${REPOSITORY}" \
-            --channel "${channel}" --output "${output}"
-    fi
-    printf '%s\n' "${output}"
-}
-
 sibling_repository_url() {
     local name="$1"
 
@@ -223,7 +208,7 @@ validate_generated_contents() {
     local plan_path="$5"
     local expected_backports planned_siblings expected_notes actual_notes
 
-    expected_backports="$(collect_expected_backports "${channel}")"
+    expected_backports="${BACKPORTS_FILE}"
     canonical_json "${TEMP_DIR}/release-plan.yaml" '.includedBackports' \
         "${TEMP_DIR}/planned-backports.json"
     jq -S -c . "${expected_backports}" > "${TEMP_DIR}/live-backports.json"
@@ -367,6 +352,10 @@ main() {
                 REPOSITORY="${2:-}"
                 shift 2
                 ;;
+            --backports-file)
+                BACKPORTS_FILE="${2:-}"
+                shift 2
+                ;;
             -h | --help)
                 usage
                 exit 0
@@ -387,6 +376,10 @@ main() {
     fi
     command -v jq > /dev/null || fail "required command not found: jq"
     command -v yq > /dev/null || fail "required command not found: yq"
+    [[ -f "${BACKPORTS_FILE}" ]] \
+        || fail "fresh backports file from the shared action is required"
+    jq -e 'type == "array"' "${BACKPORTS_FILE}" > /dev/null \
+        || fail "backports file must contain a JSON array"
 
     TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/release-plan-test-XXXXXX")"
     extract_plan
