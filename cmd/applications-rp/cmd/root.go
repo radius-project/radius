@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/builder"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
@@ -66,9 +67,16 @@ var rootCmd = &cobra.Command{
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
 
+		metrics := options.Config.MetricsProvider
+		proof, err := mtls.ProcessStartupProof(options.Config.Authorization,
+			metrics.Enabled && metrics.Prometheus != nil && metrics.Prometheus.Port > 0 &&
+				metrics.Prometheus.Port <= 65535 && metrics.Prometheus.Path != mtls.StartupProofPath)
+		if err != nil {
+			return err
+		}
 		services := []hosting.Service{}
 		if options.Config.MetricsProvider.Enabled {
-			services = append(services, &metricsservice.Service{Options: &options.Config.MetricsProvider})
+			services = append(services, &metricsservice.Service{Options: &options.Config.MetricsProvider, StartupProof: proof})
 		}
 
 		if options.Config.ProfilerProvider.Enabled {

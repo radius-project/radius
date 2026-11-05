@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
@@ -31,7 +32,8 @@ import (
 
 // Service implements the metrics service.
 type Service struct {
-	Options *Options
+	Options      *Options
+	StartupProof *mtls.StartupProof
 }
 
 // Name returns the name of the metrics service.
@@ -60,8 +62,10 @@ func (s *Service) Run(ctx context.Context) error {
 		logger.Error(err, "failed to initialize metrics")
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc(s.Options.Prometheus.Path, pme.Handler.ServeHTTP)
+	mux, err := s.handler(pme.Handler)
+	if err != nil {
+		return err
+	}
 	metricsPort := strconv.Itoa(s.Options.Prometheus.Port)
 	server := &http.Server{
 		Addr:    ":" + metricsPort,
@@ -90,4 +94,16 @@ func (s *Service) Run(ctx context.Context) error {
 
 	logger.Info("Server stopped...")
 	return nil
+}
+
+func (s *Service) handler(metrics http.Handler) (http.Handler, error) {
+	if s.StartupProof != nil && s.Options.Prometheus.Path == mtls.StartupProofPath {
+		return nil, fmt.Errorf("metrics path conflicts with the TLS startup proof endpoint")
+	}
+	mux := http.NewServeMux()
+	mux.Handle(s.Options.Prometheus.Path, metrics)
+	if s.StartupProof != nil {
+		mux.Handle(mtls.StartupProofPath, s.StartupProof)
+	}
+	return mux, nil
 }

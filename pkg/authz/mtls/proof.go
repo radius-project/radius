@@ -173,8 +173,8 @@ func (e StartupEvidence) Validate(podUID, trustDigest, leafDigest string, now ti
 	return nil
 }
 
-// StartupProof pins trust on an actual TLS Source. It must not be used as evidence for
-// another listener or transport, or registered until all required process roles are initialized.
+// StartupProof pins trust on an actual TLS Source. Every listener or transport covered
+// by its evidence must use that Source. It does not report hosted-service health.
 type StartupProof struct {
 	source        *Source
 	podUID        string
@@ -205,12 +205,19 @@ func NewStartupProof(source *Source, podUID, expectedTrust string) (*StartupProo
 		(source.expectedTrust != "" && source.expectedTrust != expectedTrust) {
 		return nil, errors.New("TLS startup proof trust does not match")
 	}
+	if source.startupProof != nil {
+		if source.startupProof.podUID != podUID {
+			return nil, errors.New("TLS startup proof pod identity cannot change within a process")
+		}
+		return source.startupProof, nil
+	}
 	source.expectedTrust = expectedTrust
 	pinned := *m
 	boundPublicTrust(&pinned, trust)
 	source.current.Store(&pinned)
 	source.proofMode.Store(true)
-	return &StartupProof{source: source, podUID: podUID, bootID: processBootID, initializedAt: source.now().UTC()}, nil
+	source.startupProof = &StartupProof{source: source, podUID: podUID, bootID: processBootID, initializedAt: source.now().UTC()}
+	return source.startupProof, nil
 }
 
 // Snapshot refreshes the same source used by TLS before reporting its current material.

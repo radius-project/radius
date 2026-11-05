@@ -19,6 +19,7 @@ package server
 import (
 	"context"
 
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
@@ -33,6 +34,13 @@ import (
 // NewServer initializes a host for UCP based on the provided options. It creates the AWS clients first, so the
 // frontend and the backend share them.
 func NewServer(ctx context.Context, options *ucp.Options) (*hosting.Host, error) {
+	metrics := options.Config.Metrics
+	proof, err := mtls.ProcessStartupProof(options.Config.Authorization,
+		metrics.Enabled && metrics.Prometheus != nil && metrics.Prometheus.Port > 0 &&
+			metrics.Prometheus.Port <= 65535 && metrics.Prometheus.Path != mtls.StartupProofPath)
+	if err != nil {
+		return nil, err
+	}
 	if err := ucp_aws_frontend.InitializeClients(ctx, options); err != nil {
 		return nil, err
 	}
@@ -43,7 +51,7 @@ func NewServer(ctx context.Context, options *ucp.Options) (*hosting.Host, error)
 	}
 
 	if options.Config.Metrics.Enabled {
-		services = append(services, &metricsservice.Service{Options: &options.Config.Metrics})
+		services = append(services, &metricsservice.Service{Options: &options.Config.Metrics, StartupProof: proof})
 	}
 
 	if options.Config.Profiler.Enabled {

@@ -65,6 +65,7 @@ spec:
         - '--config-file'
         - '/etc/config/controller-config.yaml'
         env:
+        {{- with include "radius.authz.startupProofEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         - name: BICEP
           value: '/usr/local/bin/bicep'
         {{- if .Values.global.rootCA.cert }}
