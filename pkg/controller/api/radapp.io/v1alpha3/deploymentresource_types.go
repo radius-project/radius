@@ -50,6 +50,9 @@ const (
 	// DeploymentResourcePhraseReady indicates that the Deployment Resource is ready.
 	DeploymentResourcePhraseReady DeploymentResourcePhrase = "Ready"
 
+	// DeploymentResourcePhraseHeld indicates that the owning source cannot currently drive effects.
+	DeploymentResourcePhraseHeld DeploymentResourcePhrase = "Held"
+
 	// DeploymentResourcePhraseFailed indicates that the Deployment Resource has failed.
 	DeploymentResourcePhraseFailed DeploymentResourcePhrase = "Failed"
 

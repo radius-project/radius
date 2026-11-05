@@ -18,6 +18,7 @@ package reconciler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -62,6 +63,9 @@ type DeploymentResourceReconciler struct {
 	// DeleteRetryInterval overrides DeleteRetryDelay for delete-path error
 	// requeues. If zero, DeleteRetryDelay is used.
 	DeleteRetryInterval time.Duration
+
+	// SourcePolicy selects the sources that may drive generated resources.
+	SourcePolicy *FluxSourcePolicy
 }
 
 // Reconcile is the main reconciliation loop for the DeploymentResource resource.
@@ -81,6 +85,27 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	result, err := r.reconcileResource(ctx, &deploymentResource)
+	var hold *sourceHold
+	if errors.As(err, &hold) {
+		if deploymentResource.Status.Phrase != radappiov1alpha3.DeploymentResourcePhraseHeld {
+			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseHeld
+			if err := r.Client.Status().Update(ctx, &deploymentResource); err != nil {
+				return ctrl.Result{}, err
+			}
+			return reportSourceHold(ctx, &deploymentResource, r.EventRecorder, hold), nil
+		}
+		return ctrl.Result{RequeueAfter: r.deleteRetryDelay()}, nil
+	}
+	return result, err
+}
+
+func (r *DeploymentResourceReconciler) reconcileResource(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (ctrl.Result, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	if deploymentResource.DeletionTimestamp != nil && !controllerutil.ContainsFinalizer(deploymentResource, DeploymentResourceFinalizer) {
+		logger.Info("DeploymentResource cleanup is no longer owned by this controller.")
+		return ctrl.Result{}, nil
+	}
 	// Our algorithm is as follows:
 	//
 	// 1. Check if there is an in-progress deletion. If so, check its status:
@@ -97,7 +122,7 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 	// We do it this way because it guarantees that we only have one operation going at a time.
 
 	if deploymentResource.Status.Operation != nil {
-		result, err := r.reconcileOperation(ctx, &deploymentResource)
+		result, err := r.reconcileOperation(ctx, deploymentResource)
 		if err != nil {
 			logger.Error(err, "Unable to reconcile in-progress operation.")
 			return ctrl.Result{}, err
@@ -105,6 +130,9 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 			// NOTE: if reconcileOperation completes successfully, then it will return a "zero" result,
 			// this means the operation has completed and we should continue processing.
 			logger.Info("Operation completed successfully.")
+			if !controllerutil.ContainsFinalizer(deploymentResource, DeploymentResourceFinalizer) {
+				return ctrl.Result{}, nil
+			}
 		} else {
 			logger.Info("Requeueing to continue operation.")
 			return result, nil
@@ -112,19 +140,22 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 	}
 
 	if deploymentResource.DeletionTimestamp != nil {
-		return r.reconcileDelete(ctx, &deploymentResource)
+		return r.reconcileDelete(ctx, deploymentResource)
 	}
 
+	if err := r.checkResourceSource(ctx, deploymentResource); err != nil {
+		return ctrl.Result{}, err
+	}
 	logger.Info("Resource is in desired state.")
 
 	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseReady
 	deploymentResource.Status.Id = deploymentResource.Spec.Id
-	err = r.Client.Status().Update(ctx, &deploymentResource)
+	err := r.Client.Status().Update(ctx, deploymentResource)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	r.EventRecorder.Event(&deploymentResource, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
+	r.EventRecorder.Event(deploymentResource, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
 	return ctrl.Result{}, nil
 }
 
@@ -229,10 +260,27 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 
 	// Check if the resource is being used by another resource. ownerRef is guaranteed non-nil
 	// here because the eligibility check above succeeded.
-	deploymentResourceList, err := listResourcesWithSameOwner(ctx, r.Client, deploymentResource.Namespace, *ownerRef)
+	reader := client.Reader(r.Client)
+	if r.SourcePolicy != nil && r.SourcePolicy.reader != nil {
+		reader = r.SourcePolicy.reader
+	}
+	deploymentResourceList, err := listResourcesWithSameOwner(ctx, reader, deploymentResource.Namespace, *ownerRef)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	var owner radappiov1alpha3.DeploymentTemplate
+	if err := reader.Get(ctx, client.ObjectKey{Namespace: deploymentResource.Namespace, Name: ownerRef.Name}, &owner); err != nil {
+		return ctrl.Result{}, err
+	}
+	if owner.UID != ownerRef.UID {
+		return ctrl.Result{}, &sourceHold{"ResourceOwnerChanged", "Resource owner changed before dependency checks"}
+	}
+	if owner.DeletionTimestamp != nil && owner.Status.Operation != nil {
+		// Namespace garbage collection can reach trackers before their owner.
+		// Wait until completion has persisted all outputs, including missing children.
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+	}
+	deploymentResourceList = appendPendingCleanup(deploymentResourceList, owner.Status.PendingCleanup)
 
 	// Check if the resource is being used by another resource
 	dependentResource, err := checkForDeploymentResourceDependencies(deploymentResource, deploymentResourceList)
@@ -259,6 +307,10 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 
 	deletePoller, err := r.startDeleteOperation(ctx, deploymentResource)
 	if err != nil {
+		var hold *sourceHold
+		if errors.As(err, &hold) {
+			return ctrl.Result{}, err
+		}
 		logger.Error(err, "Unable to delete resource.")
 		r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
 		if statusErr := r.updateFailedStatus(ctx, deploymentResource); statusErr != nil {
@@ -315,6 +367,13 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 
 func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (sdkclients.Poller[sdkclients.ClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	eligible, err := r.deleteIsEligible(ctx, deploymentResource, metav1.GetControllerOf(deploymentResource))
+	if err != nil {
+		return nil, err
+	}
+	if !eligible {
+		return nil, &sourceHold{"ResourceOwnerChanged", "Resource owner or scope changed before deletion; waiting for reconciliation"}
+	}
 
 	resourceId := deploymentResource.Spec.Id
 	radiusAPIVersion := "2023-10-01-preview"
@@ -348,7 +407,11 @@ func (r *DeploymentResourceReconciler) deleteIsEligible(ctx context.Context, dep
 	}
 
 	owner := &radappiov1alpha3.DeploymentTemplate{}
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: deploymentResource.Namespace, Name: ownerRef.Name}, owner)
+	reader := client.Reader(r.Client)
+	if r.SourcePolicy != nil && r.SourcePolicy.reader != nil {
+		reader = r.SourcePolicy.reader
+	}
+	err := reader.Get(ctx, client.ObjectKey{Namespace: deploymentResource.Namespace, Name: ownerRef.Name}, owner)
 	if apierrors.IsNotFound(err) {
 		logger.Info("Owning DeploymentTemplate was not found.", "owner", ownerRef.Name)
 		return false, nil
@@ -384,7 +447,31 @@ func (r *DeploymentResourceReconciler) deleteIsEligible(ctx context.Context, dep
 		return false, nil
 	}
 
+	if err := r.SourcePolicy.checkTemplate(ctx, owner); err != nil {
+		return false, err
+	}
 	return true, nil
+}
+
+func (r *DeploymentResourceReconciler) checkResourceSource(ctx context.Context, resource *radappiov1alpha3.DeploymentResource) error {
+	ref := metav1.GetControllerOf(resource)
+	if ref == nil || ref.Kind != deploymentTemplateKind {
+		return nil
+	}
+	reader := client.Reader(r.Client)
+	if r.SourcePolicy != nil && r.SourcePolicy.reader != nil {
+		reader = r.SourcePolicy.reader
+	}
+	var owner radappiov1alpha3.DeploymentTemplate
+	if err := reader.Get(ctx, client.ObjectKey{Namespace: resource.Namespace, Name: ref.Name}, &owner); apierrors.IsNotFound(err) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if owner.UID != ref.UID {
+		return nil
+	}
+	return r.SourcePolicy.checkTemplate(ctx, &owner)
 }
 
 // resourceWithinScope reports whether resourceID belongs to the given deployment scope (the root
@@ -418,6 +505,9 @@ func (r *DeploymentResourceReconciler) deleteRetryDelay() time.Duration {
 // completeDeleteOperation removes the finalizer and updates the resource status to mark it as deleted.
 // This helper reduces duplication across the reconciler.
 func (r *DeploymentResourceReconciler) completeDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) error {
+	if err := r.checkResourceSource(ctx, deploymentResource); err != nil {
+		return err
+	}
 	if controllerutil.RemoveFinalizer(deploymentResource, DeploymentResourceFinalizer) {
 		deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
 		deploymentResource.Status.Operation = nil
@@ -442,7 +532,7 @@ func (r *DeploymentResourceReconciler) SetupWithManager(mgr ctrl.Manager) error 
 		Complete(r)
 }
 
-func listResourcesWithSameOwner(ctx context.Context, c client.Client, namespace string, ownerRef metav1.OwnerReference) ([]radappiov1alpha3.DeploymentResource, error) {
+func listResourcesWithSameOwner(ctx context.Context, c client.Reader, namespace string, ownerRef metav1.OwnerReference) ([]radappiov1alpha3.DeploymentResource, error) {
 	// List all DeploymentResource objects in the same namespace
 	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
 	err := c.List(ctx, deploymentResourceList, client.InNamespace(namespace))
@@ -462,6 +552,23 @@ func listResourcesWithSameOwner(ctx context.Context, c client.Client, namespace 
 	}
 
 	return filteredResources, nil
+}
+
+func deletionWaitingForLiveDependency(resource *radappiov1alpha3.DeploymentResource, owned []radappiov1alpha3.DeploymentResource) (bool, error) {
+	if resource.DeletionTimestamp == nil || resource.Status.Operation != nil ||
+		resource.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseDeleting ||
+		resource.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseFailed ||
+		resource.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseDeleted {
+		return false, nil
+	}
+	live := make([]radappiov1alpha3.DeploymentResource, 0, len(owned))
+	for _, candidate := range owned {
+		if !deploymentResourceDeletionPending(&candidate) && candidate.Status.Phrase != radappiov1alpha3.DeploymentResourcePhraseDeleted {
+			live = append(live, candidate)
+		}
+	}
+	dependency, err := checkForDeploymentResourceDependencies(resource, live)
+	return dependency != "", err
 }
 
 // checkForDeploymentResourceDependencies checks if the deploymentResource is an application or environment.

@@ -58,9 +58,53 @@ spec:
                 description: ProviderConfig specifies the scopes for resources.
                 type: string
               repository:
-                description: Repository is the git repository that the Bicep manifests
-                  are stored in.
+                description: |-
+                  Repository is the name of the Flux GitRepository that produced this template.
+                  It is retained for compatibility and must match SourceRef.Name. A template with
+                  Repository but no SourceRef is held until it is associated with a selected source.
                 type: string
+              sourceRef:
+                description: SourceRef identifies the Flux source and artifact used
+                  to produce this template.
+                properties:
+                  digest:
+                    description: Digest is the accepted artifact's content digest.
+                    type: string
+                  generation:
+                    description: Generation is the source specification generation
+                      accepted for this template.
+                    format: int64
+                    minimum: 1
+                    type: integer
+                  kind:
+                    default: GitRepository
+                    description: Kind is the Flux source kind. Only GitRepository
+                      is supported.
+                    enum:
+                    - GitRepository
+                    type: string
+                  name:
+                    description: Name is the GitRepository name.
+                    minLength: 1
+                    type: string
+                  namespace:
+                    description: Namespace is the GitRepository namespace.
+                    minLength: 1
+                    type: string
+                  revision:
+                    description: Revision is the accepted artifact's revision.
+                    type: string
+                  uid:
+                    description: UID distinguishes a source from a replacement with
+                      the same name.
+                    minLength: 1
+                    type: string
+                required:
+                - generation
+                - name
+                - namespace
+                - uid
+                type: object
               template:
                 description: Template is the ARM JSON manifest that defines the resources
                   to deploy.
@@ -87,11 +131,43 @@ spec:
                       an in-progress provisioning operation.
                     type: string
                 type: object
+              operationSpecHash:
+                description: OperationSpecHash identifies the desired spec submitted
+                  by the in-progress operation.
+                type: string
               outputResources:
                 description: OutputResources is a list of the resourceIDs that were
                   created by the template on the last deployment.
                 items:
                   type: string
+                type: array
+              pendingCleanup:
+                description: PendingCleanup retains outputs that cannot have trackers
+                  in a terminating namespace.
+                items:
+                  description: OutputResourceCleanup persists deletion progress for
+                    an output without a tracker.
+                  properties:
+                    id:
+                      description: ID is the output resource ID returned by a completed
+                        deployment.
+                      type: string
+                    operation:
+                      description: Operation is the accepted DELETE operation, if
+                        any.
+                      properties:
+                        operationKind:
+                          description: OperationKind describes the type of operation
+                            being performed.
+                          type: string
+                        resumeToken:
+                          description: ResumeToken is a token that can be used to
+                            resume an in-progress provisioning operation.
+                          type: string
+                      type: object
+                  required:
+                  - id
+                  type: object
                 type: array
               phrase:
                 description: Phrase indicates the current status of the Deployment

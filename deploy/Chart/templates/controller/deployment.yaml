@@ -10,6 +10,8 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: controller
@@ -21,6 +23,7 @@ spec:
         app.kubernetes.io/part-of: radius
       annotations:
         checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        checksum/flux-config: {{ include "radius.controller.flux" . | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"

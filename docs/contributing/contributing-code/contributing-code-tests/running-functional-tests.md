@@ -109,6 +109,12 @@ Each setup refreshes the retained samples checkout from its `edge` branch and ar
 
 Do not start another local functional test run at the same time. Fixture publication and test execution each hold the shared Bicep fixture lock and temporarily configure Bicep to use the extensions published from your checkout. Both phases drain their workers before restoring the original files and releasing the lock, including on failure or interruption.
 
+Flux tests explicitly select their API-assigned GitRepository UID after creating the source. These tests run serially because their fixture updates `controller-config` and triggers a non-overlapping controller rollout; a ConfigMap update alone does not reload startup settings. The fixture restores the previous configuration and pod annotation during cleanup. Keep controller-dependent tests out of that restart window and do not run competing test-runner invocations.
+
+The separate upgrade suite includes `Test_Flux_SourceMigration`. It installs the published Radius 0.62.0 chart and images, lets that controller create a source-managed template from a real Flux artifact, then stops the old controller, replaces its rollout strategy in place, and applies the current CRDs and candidate chart. It follows the documented source-association procedure and checks that template and output-tracker UIDs, ownership, and finalizers survive, including a source recreation. Finally, pruning the artifact must remove the template, trackers, and backend environment. This test needs access to the published chart and images as well as the candidate registry; it does not simulate the old controller with candidate binaries or manually seeded records.
+
+Source-selection cases belong to the Kubernetes group. Legacy association/schema-upgrade cases belong to the separately isolated upgrade group, not the shared standard cluster. A successful command with no matching tests or skipped envtest setup is not evidence for these cases; check the executed test names and results.
+
 ### 3. Clean up
 
 After reviewing the results, remove the clusters, registry, trusted certificate, and `/etc/hosts` entry:

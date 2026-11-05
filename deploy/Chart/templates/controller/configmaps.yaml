@@ -8,6 +8,10 @@ metadata:
     app.kubernetes.io/part-of: radius
 data:
   controller-config.yaml: |-
+    controller:
+      flux:
+        {{- include "radius.controller.flux" . | nindent 8 }}
+
     databaseProvider:
       provider: "apiserver"
       apiserver:
