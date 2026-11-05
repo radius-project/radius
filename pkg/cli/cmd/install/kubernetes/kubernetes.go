@@ -59,6 +59,13 @@ instead of letting Contour take them over. Before it installs anything, Radius c
 and that installing Contour neither takes over nor deletes CRDs. On a k3s or RKE2 cluster that is still installing the Traefik CRDs,
 Radius first waits for them. Radius then installs Contour, followed by the Radius control plane.
 When Radius is installed but Contour is not, or the latest Contour release revision failed or did not finish, rerun the command with '--reinstall' to install or repair Contour.
+
+For authorization-enabled installations, use '--ca-secret' for an existing dedicated signing CA
+or '--ca-cert' with '--ca-key' to import one. The key is stored only in a create-only Kubernetes
+Secret outside Helm ownership, retained on failure and uninstall. Without these flags the chart
+uses its self-signed CA. Reinstall preserves stored certificate settings; switching modes or
+replacing trust requires coordinated CA migration. External '--cert-issuer' is disabled until
+effective certificate request policy protection can be verified.
 `,
 		Example: `# Install Radius with default settings in current Kubernetes context
 rad install kubernetes
@@ -75,6 +82,12 @@ rad install kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsro
 
 # Install Radius with overrides in the current Kubernetes context
 rad install kubernetes --set key=value
+
+# Install with authorization dry run and an existing operator-owned dedicated signing CA
+rad install kubernetes --set global.rbac.dryRun=true --ca-secret my-radius-ca
+
+# Import a dedicated signing CA without passing its key through Helm values
+rad install kubernetes --set global.rbac.dryRun=true --ca-cert /path/to/ca.crt --ca-key /path/to/ca.key
 
 # Install Radius with a custom container registry
 # Images will be pulled as: myregistry.azurecr.io/controller, myregistry.azurecr.io/ucpd, etc.
@@ -121,6 +134,7 @@ rad install kubernetes --timeout 15m
 	}
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
+	runner.Certificates.AddFlags(cmd.Flags())
 	cmd.Flags().BoolVar(&runner.Reinstall, "reinstall", false, "Specify to force reinstallation of Radius")
 	cmd.Flags().StringVar(&runner.Chart, "chart", "", "Specify a file path to a helm chart to install Radius from")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -144,9 +158,10 @@ type Runner struct {
 	KubeContext string
 
 	// Radius
-	Chart   string
-	Set     []string
-	SetFile []string
+	Chart        string
+	Set          []string
+	SetFile      []string
+	Certificates helm.CertificateOptions
 
 	// Contour
 	ContourDisabled bool
@@ -178,7 +193,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return clierrors.Message("--timeout must not be negative, got %q.", r.Timeout)
 	}
 
-	return nil
+	if cmd != nil {
+		return r.Certificates.ValidateFlags(cmd.Flags())
+	}
+	return r.Certificates.Validate()
 }
 
 // Run runs the `rad install kubernetes` command.
@@ -189,6 +207,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // to the cli version. It then returns any errors that occur during the installation.
 func (r *Runner) Run(ctx context.Context) error {
 	cliOptions := helm.CLIClusterOptions{
+		Certificates: r.Certificates,
 		Radius: helm.ChartOptions{
 			Reinstall:   r.Reinstall,
 			ChartPath:   r.Chart,
@@ -210,6 +229,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if state.RadiusInstalled && !r.Reinstall {
+		if r.Certificates.Specified() {
+			return fmt.Errorf("Radius is already installed; use --reinstall to validate unchanged certificate settings. Certificate mode or CA changes require coordinated migration")
+		}
 		r.Output.LogInfo("Found existing Radius installation. Use '--reinstall' to force reinstallation.")
 		// An earlier install can stop after Radius and before Contour, or leave a Contour release that is not deployed.
 		if !r.ContourDisabled && (!state.ContourInstalled || state.ContourNeedsRepair()) {
@@ -233,6 +255,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 	clusterOptions.RadiusReleaseValues = state.RadiusValues
+	clusterOptions.RadiusInstalled = state.RadiusInstalled
 
 	err = r.Helm.InstallRadius(ctx, clusterOptions, r.KubeContext)
 	if err != nil {

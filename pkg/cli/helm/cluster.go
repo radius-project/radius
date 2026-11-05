@@ -38,8 +38,9 @@ import (
 )
 
 type CLIClusterOptions struct {
-	Radius  ChartOptions
-	Contour ChartOptions
+	Radius       ChartOptions
+	Contour      ChartOptions
+	Certificates CertificateOptions
 
 	// ResetValues, when true, instructs `UpgradeRadius` to discard the user-supplied
 	// values stored on the previous Helm release and use only the current invocation's
@@ -53,6 +54,7 @@ type ClusterOptions struct {
 	Radius      RadiusChartOptions
 	Contour     ContourChartOptions
 	CertManager CertManagerChartOptions
+	Certificates CertificateOptions
 	// CSIDriverSPIFFE is Radius's csi-driver-spiffe, which issues server certificates when authorization is enabled.
 	CSIDriverSPIFFE CSIDriverSPIFFEChartOptions
 
@@ -63,6 +65,9 @@ type ClusterOptions struct {
 	// Install (with Reinstall) and upgrade (without ResetValues) reuse them, so they count toward the
 	// authorization mode that decides whether cert-manager is required.
 	RadiusReleaseValues map[string]any
+
+	// RadiusInstalled distinguishes a reinstall from --reinstall on a fresh cluster.
+	RadiusInstalled bool
 }
 
 // NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
@@ -190,6 +195,7 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	}
 
 	options.ResetValues = cliOptions.ResetValues
+	options.Certificates = cliOptions.Certificates
 
 	return options
 }
@@ -246,6 +252,8 @@ type RevisionInfo struct {
 
 // Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {
+	// CheckRadiusCertificates validates certificate settings without mutating cluster resources.
+	CheckRadiusCertificates(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 	// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
 	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
@@ -320,6 +328,7 @@ type Impl struct {
 	// use csi-driver-spiffe. Zero uses the defaults.
 	csiDriverSPIFFEPodWaitTimeout  time.Duration
 	csiDriverSPIFFEPodPollInterval time.Duration
+	newCertificateClient        func(kubeContext string) (kubernetes.Interface, error)
 }
 
 var _ Interface = &Impl{}
@@ -374,6 +383,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
+	certificates, err := i.prepareCertificates(ctx, clusterOptions, radiusHelmChart.Values, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil)
+	if err != nil {
+		return err
+	}
+
 	// Check Contour and csi-driver-spiffe before installing anything, so that a problem leaves the cluster unchanged.
 	var contour *contourPlan
 	if !clusterOptions.Contour.Disabled {
@@ -418,6 +432,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	// Install Radius
+	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
+		return err
+	}
 	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
 	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
 		return err
@@ -590,6 +607,11 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
+	certificates, err := i.prepareCertificates(ctx, clusterOptions, radiusHelmChart.Values, radiusValues, kubeContext, true)
+	if err != nil {
+		return err
+	}
+
 	// Check the Contour and csi-driver-spiffe upgrades before upgrading anything, so that a problem leaves the
 	// cluster unchanged.
 	var contour *contourPlan
@@ -613,6 +635,9 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 	setCertManagerRequesters(radiusValues, certManagerRequesters)
 
+	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
+		return err
+	}
 	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
 	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, storedValues, render); err != nil {
 		return err

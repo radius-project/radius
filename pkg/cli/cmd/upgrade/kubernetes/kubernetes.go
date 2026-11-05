@@ -50,6 +50,13 @@ stored user-supplied values, and then overlays any --set / --set-file values pro
 current invocation. Pass --reset-values to opt out and use only the current --set flags plus
 the new chart's defaults (this mirrors 'helm upgrade --reset-values').
 
+Omitted certificate flags preserve the installed signing CA and trust. '--reset-values' cannot
+discard stored certificate settings. '--ca-secret' or '--ca-cert' with '--ca-key' can confirm the
+same dedicated CA, but mode, signing Secret and trust changes require coordinated CA migration.
+External '--cert-issuer' is disabled until effective certificate request policy protection can be
+verified. Certificate validation cannot be bypassed with '--skip-preflight'; '--preflight-only'
+validates certificate settings without creating Secrets.
+
 When Contour is installed, the upgrade also upgrades it. Contour chart values can be set with
 '--contour-set' and '--contour-set-file'. They take precedence over the values stored on the Contour
 release and over the values that Radius sets, and --reset-values discards the stored Contour values too.
@@ -130,6 +137,7 @@ rad upgrade kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsro
 	}
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
+	runner.Certificates.AddFlags(cmd.Flags())
 	cmd.Flags().StringVar(&runner.Chart, "chart", "", "Specify a file path to a helm chart to upgrade Radius from")
 	cmd.Flags().StringVar(&runner.Version, "version", "", "Specify the version to upgrade to (default: CLI version, use 'latest' for latest available)")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -158,6 +166,7 @@ type Runner struct {
 	ResetValues    bool
 	ContourSet     []string
 	ContourSetFile []string
+	Certificates   helm.CertificateOptions
 
 	// runChecks runs the preflight checks. Tests replace it so that the checks that need a cluster do not run.
 	runChecks func(ctx context.Context, checks []preflight.PreflightCheck) error
@@ -176,7 +185,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if r.SkipPreflight && r.PreflightOnly {
 		return fmt.Errorf("cannot specify both --skip-preflight and --preflight-only")
 	}
-	return nil
+	if cmd != nil {
+		return r.Certificates.ValidateFlags(cmd.Flags())
+	}
+	return r.Certificates.Validate()
 }
 
 // Run runs the `rad upgrade kubernetes` command.
@@ -204,6 +216,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// The preflight checks and the upgrade use the same options, so that they agree.
 	cliOptions := helm.CLIClusterOptions{
+		Certificates: r.Certificates,
 		Radius: helm.ChartOptions{
 			ChartPath:    r.Chart,
 			ChartVersion: targetVersion,
@@ -218,6 +231,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 	clusterOptions.RadiusReleaseValues = state.RadiusValues
+	if r.PreflightOnly {
+		if err := r.Helm.CheckRadiusCertificates(ctx, clusterOptions, r.KubeContext); err != nil {
+			return err
+		}
+	}
 
 	// Run preflight checks unless skipped
 	if !r.SkipPreflight {
