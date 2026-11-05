@@ -87,7 +87,7 @@ var cluster = map[string]any{
 	"PreferredMaintenanceWindow": "sun:05:00-sun:06:00",
 	"SecurityGroupIds":           []any{"sg-1", "sg-2"},
 	"SSESpecification":           map[string]any{"SSEEnabled": true},
-	"Tags":                       map[string]any{"team": "a"},
+	"Tags":                       map[string]any{"team": "a", "owner": ""},
 }
 
 func Test_Suite_Cluster(t *testing.T) {
@@ -112,7 +112,7 @@ func Test_Suite_Cluster(t *testing.T) {
 			"Description":       "changed",
 			"ReplicationFactor": 3,
 			"AvailabilityZones": []any{"us-west-2a", "us-west-2b", "us-west-2c"},
-			"Tags":              map[string]any{"env": "dev", "team": "b"},
+			"Tags":              map[string]any{"env": "dev", "owner": "", "team": "b"},
 		}),
 		Calls: 3,
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
@@ -179,7 +179,7 @@ func Test_Read(t *testing.T) {
 		"SSESpecification":            map[string]any{"SSEEnabled": true},
 		"ClusterDiscoveryEndpoint":    "app-dax.abc123.dax-clusters.us-west-2.amazonaws.com:8111",
 		"ClusterDiscoveryEndpointURL": "dax://app-dax.abc123.dax-clusters.us-west-2.amazonaws.com",
-		"Tags":                        map[string]any{"team": "a"},
+		"Tags":                        map[string]any{"owner": "", "team": "a"},
 	}, got, "AWS's tags and the write-only AvailabilityZones are left out")
 
 	_, err = h.Read(t.Context(), region, "missing")

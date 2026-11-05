@@ -118,7 +118,7 @@ func lustre(weeklyMaintenance string) map[string]any {
 			"PerUnitStorageThroughput":   125,
 			"WeeklyMaintenanceStartTime": weeklyMaintenance,
 		},
-		"Tags": tags("team", "a"),
+		"Tags": tags("owner", "", "team", "a"),
 	}
 }
 

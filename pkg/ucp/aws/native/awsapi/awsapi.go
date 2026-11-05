@@ -70,7 +70,8 @@ func Decode(properties map[string]any, out any) error {
 }
 
 // Encode returns the properties of v, an AWS SDK struct or a slice of them, by field name. Unset fields are left out,
-// and so are empty strings, lists, and objects, because AWS returns them for values the template never set.
+// and so are empty strings, lists, and objects, because AWS returns them for values the template never set. An empty
+// tag value is kept, because a tag's value can be empty.
 func Encode(v any) (any, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -95,14 +96,20 @@ func EncodeObject(v any) (map[string]any, error) {
 	return map[string]any{}, nil
 }
 
-// prune removes nil values, empty strings, and empty lists and objects, and the SDK's ResultMetadata.
+// prune removes nil values, empty strings, and empty lists and objects, and the SDK's ResultMetadata. Inside a Tags
+// property it keeps empty strings, because a tag's value can be empty, and removes the property only when it is
+// empty.
 func prune(v any) any {
+	return pruneValue(v, false)
+}
+
+func pruneValue(v any, inTags bool) any {
 	switch t := v.(type) {
 	case map[string]any:
 		delete(t, "ResultMetadata")
 		for k, value := range t {
-			pruned := prune(value)
-			if isEmpty(pruned) {
+			pruned := pruneValue(value, inTags || k == "Tags")
+			if isEmpty(pruned, inTags) {
 				delete(t, k)
 			} else {
 				t[k] = pruned
@@ -112,7 +119,7 @@ func prune(v any) any {
 	case []any:
 		out := make([]any, 0, len(t))
 		for _, value := range t {
-			if pruned := prune(value); !isEmpty(pruned) {
+			if pruned := pruneValue(value, inTags); !isEmpty(pruned, inTags) {
 				out = append(out, pruned)
 			}
 		}
@@ -121,12 +128,13 @@ func prune(v any) any {
 	return v
 }
 
-func isEmpty(v any) bool {
+// isEmpty reports whether v is nil, or an empty list or object, or an empty string outside a Tags property.
+func isEmpty(v any, inTags bool) bool {
 	switch t := v.(type) {
 	case nil:
 		return true
 	case string:
-		return t == ""
+		return t == "" && !inTags
 	case []any:
 		return len(t) == 0
 	case map[string]any:

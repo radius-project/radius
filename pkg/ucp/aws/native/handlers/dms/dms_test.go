@@ -98,7 +98,7 @@ var instance = map[string]any{
 	"PreferredMaintenanceWindow":       "sun:06:00-sun:06:30",
 	"ReplicationSubnetGroupIdentifier": "app-subnets",
 	"VpcSecurityGroupIds":              []any{"sg-1"},
-	"Tags":                             tags("team", "a"),
+	"Tags":                             tags("owner", "", "team", "a"),
 }
 
 func Test_Suite_ReplicationInstance(t *testing.T) {
@@ -188,7 +188,7 @@ func Test_Read(t *testing.T) {
 		"ReplicationSubnetGroupIdentifier":      "app-subnets",
 		"VpcSecurityGroupIds":                   []any{"sg-1"},
 		"ReplicationInstancePrivateIpAddresses": "10.0.0.1",
-		"Tags":                                  tags("team", "a"),
+		"Tags":                                  tags("owner", "", "team", "a"),
 	}, got, "the write-only KmsKeyId is left out")
 
 	_, err = h.Read(t.Context(), region, "missing")

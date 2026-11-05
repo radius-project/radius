@@ -87,7 +87,7 @@ func Test_Suite_Cluster(t *testing.T) {
 		"EngineVersion":         "5.0",
 		"BackupRetentionPeriod": 1,
 		"DeletionProtection":    false,
-		"Tags":                  tags("team", "a"),
+		"Tags":                  tags("owner", "", "team", "a"),
 	}
 	nativetest.Run(t, nativetest.Suite{
 		TypeName: clusterType,
@@ -123,7 +123,7 @@ func Test_Suite_Instance(t *testing.T) {
 		"DBClusterIdentifier":     "app-docdb",
 		"DBInstanceClass":         "db.t3.medium",
 		"AutoMinorVersionUpgrade": true,
-		"Tags":                    tags("team", "a"),
+		"Tags":                    tags("owner", "", "team", "a"),
 	}
 	nativetest.Run(t, nativetest.Suite{
 		TypeName: instanceType,
