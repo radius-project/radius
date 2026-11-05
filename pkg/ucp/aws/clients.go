@@ -16,6 +16,8 @@ limitations under the License.
 
 package aws
 
+import "github.com/radius-project/radius/pkg/ucp/aws/native"
+
 // Clients contains the AWS clients.
 type Clients struct {
 	// CloudControl is the AWS Cloud Control client.
@@ -23,4 +25,7 @@ type Clients struct {
 
 	// CloudFormation is the AWS Cloud Formation client.
 	CloudFormation AWSCloudFormationClient
+
+	// Native holds the native handlers, for types UCP serves without Cloud Control. Nil means none.
+	Native *native.Registry
 }

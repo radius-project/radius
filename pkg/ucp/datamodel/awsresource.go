@@ -33,8 +33,9 @@ type AWSResource struct {
 
 // AWSResourceProperties are the properties of an AWS resource record.
 type AWSResourceProperties struct {
-	// AWSIdentifier is what Cloud Control finds the resource by, such as vpc-0a1b2c3d. It is saved before the create
-	// when the properties give it, such as BucketName, and when the create finishes otherwise.
+	// AWSIdentifier is what Cloud Control finds the resource by, such as vpc-0a1b2c3d. A native handler stores the
+	// same value, so a record works with either handler. It is saved before the create when the properties give it,
+	// such as BucketName, and when the create finishes otherwise.
 	AWSIdentifier string `json:"awsIdentifier,omitempty"`
 
 	// Owner is who deploys this alias. A PUT or DELETE from a different owner fails.
@@ -67,8 +68,14 @@ type AWSResourceProperties struct {
 	ClientToken string `json:"clientToken,omitempty"`
 
 	// RequestToken is the token Cloud Control returns when it accepts a create, update, or delete. UCP polls the
-	// request with it, and uses it as the operation ID.
+	// request with it, and uses it as the operation ID. For an operation a native handler serves, it is the operation
+	// ID UCP makes, and the worker polls the handler instead.
 	RequestToken string `json:"requestToken,omitempty"`
+
+	// Handler is what serves the operation in progress, or served the last one: "native" for a native handler, and
+	// empty for Cloud Control. An operation finishes with the handler that started it, even when the region has since
+	// gained or lost Cloud Control support for the type.
+	Handler string `json:"handler,omitempty"`
 
 	// LastRequestToken is the request token of the last operation that finished, and LastRequestError is its error,
 	// or nil when it succeeded. A redelivered operation that already finished reports this result instead of polling

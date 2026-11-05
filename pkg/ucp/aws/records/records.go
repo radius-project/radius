@@ -43,6 +43,10 @@ const (
 	OperationDelete = "DELETE"
 )
 
+// HandlerNative is the record's Handler when a native handler serves its operation. An empty Handler means Cloud
+// Control.
+const HandlerNative = "native"
+
 // StaleAfter is how long an operation in progress can go without a poll before UCP treats it as stale. The worker
 // saves the record at least every PollInterval while it polls AWS, so an operation a worker is polling never looks
 // stale, however long AWS takes.

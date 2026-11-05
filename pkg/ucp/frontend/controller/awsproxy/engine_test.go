@@ -52,6 +52,7 @@ import (
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/awsresources"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -151,6 +152,10 @@ type harness struct {
 
 	// key returns the fingerprint key, like aws.Module.FingerprintKey. Tests replace it to change or remove the key.
 	key FingerprintKeyFunc
+
+	// native holds the native handlers, and provisioningTypes, when set, replaces harnessProvisioningTypes.
+	native            *native.Registry
+	provisioningTypes map[string]cftypes.ProvisioningType
 }
 
 func newHarness(t *testing.T) *harness {
@@ -175,7 +180,11 @@ func newHarness(t *testing.T) *harness {
 }
 
 func (h *harness) clients() ucp_aws.Clients {
-	return ucp_aws.Clients{CloudControl: h.cc, CloudFormation: &awsfake.CloudFormation{Schemas: harnessSchemas, ProvisioningTypes: harnessProvisioningTypes}}
+	provisioningTypes := harnessProvisioningTypes
+	if h.provisioningTypes != nil {
+		provisioningTypes = h.provisioningTypes
+	}
+	return ucp_aws.Clients{CloudControl: h.cc, CloudFormation: &awsfake.CloudFormation{Schemas: harnessSchemas, ProvisioningTypes: provisioningTypes}, Native: h.native}
 }
 
 // putController creates the PUT controller with the harness's fingerprint key.

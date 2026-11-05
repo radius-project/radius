@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"uuid"
 
@@ -67,6 +68,9 @@ type request struct {
 	id       resources.ID
 	typeName string
 	region   string
+
+	// route is the handler that serves the request. put, get, and delete set it.
+	route
 }
 
 // begin reads the region and rejects legacy and deprecated types. A non-nil response ends the request.
@@ -214,6 +218,7 @@ func deleteStarted(resp armrpc_rest.Response) bool {
 func (e *engine) reserve(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, op string) (string, armrpc_rest.Response, error) {
 	rec.Properties.PendingOperation = op
 	rec.Properties.RequestToken = ""
+	rec.Properties.Handler = handlerName(r)
 	rec.SetProvisioningState(records.StateOf(op))
 	etag, err := e.store.Save(ctx, rec, etag)
 	if err != nil {
@@ -254,8 +259,12 @@ func (e *engine) checkIdentifier(ctx context.Context, id resources.ID, identifie
 	return nil, nil
 }
 
-// readResource reads a resource from AWS by its identifier. It returns nil when AWS has no such resource.
+// readResource reads a resource from AWS by its identifier, through the handler that serves r. It returns nil when
+// AWS has no such resource.
 func (e *engine) readResource(ctx context.Context, r *request, identifier string) (*cloudcontrol.GetResourceOutput, error) {
+	if r.handler != nil {
+		return readNative(ctx, r.handler, r.region, identifier)
+	}
 	out, err := e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   aws.String(r.typeName),
 		Identifier: aws.String(identifier),
@@ -264,13 +273,6 @@ func (e *engine) readResource(ctx context.Context, r *request, identifier string
 		return nil, nil
 	}
 	return out, err
-}
-
-func (e *engine) describeType(ctx context.Context, r *request) (*cloudformation.DescribeTypeOutput, error) {
-	return e.clients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
-		Type:     cftypes.RegistryTypeResource,
-		TypeName: aws.String(r.typeName),
-	}, CloudFormationRegionOption(r.region))
 }
 
 // put creates or updates the AWS resource under the alias in the URL.
@@ -287,6 +289,9 @@ func (e *engine) describeType(ctx context.Context, r *request) (*cloudformation.
 //     AWS.
 //  4. Save the new last-applied properties and fingerprints as pending values before calling AWS. Then save the
 //     operation on the record, queue it, and return 201. The worker waits for AWS and updates the record.
+//
+// Each AWS call goes to the handler routeType picks: Cloud Control, or a native handler. An operation that has not
+// finished continues with the handler that started it (see continueWith).
 //
 // The fingerprints of write-only values are made before step 1, so a request that needs the fingerprint key fails
 // without it before UCP saves anything or calls Cloud Control.
@@ -312,14 +317,20 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		return resp, nil
 	}
 
-	typeInfo, err := e.describeType(ctx, r)
-	if err != nil {
+	if err := e.route(ctx, r); err != nil {
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
-	if errResponse, err := putErrorResponse(r.typeName, typeInfo); err != nil {
-		return nil, err
-	} else if errResponse != nil {
-		return errResponse, nil
+	typeInfo := r.typeInfo
+	if typeInfo == nil {
+		typeInfo, err = describeType(ctx, e.clients, r.typeName, r.region)
+		if err != nil {
+			return ucp_aws.HandleAWSError(ctx, err)
+		}
+		if errResponse, err := putErrorResponse(r.typeName, typeInfo); err != nil {
+			return nil, err
+		} else if errResponse != nil {
+			return errResponse, nil
+		}
 	}
 	schema := aws.ToString(typeInfo.Schema)
 	secrets, err := secretProperties(r.typeName, schema)
@@ -340,6 +351,9 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		return nil, err
 	}
 	if rec != nil {
+		if err := continueWith(r, rec); err != nil {
+			return nil, err
+		}
 		rec, etag, resp, err = e.checkRecord(ctx, r, rec, etag, owner, v1.OperationPut)
 		if resp != nil || err != nil {
 			return resp, err
@@ -354,7 +368,10 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	properties := body.Properties
 	identifier := rec.Properties.AWSIdentifier
 	var current *cloudcontrol.GetResourceOutput
+	applied := applied{properties: withoutSecrets(properties, secrets), fingerprints: fingerprints}
 	switch {
+	case records.IsFirstCreate(rec) && r.handler != nil && identifier != "":
+		return e.resumeNativeCreate(ctx, r, rec, etag, properties, applied, typeInfo, parsed, secrets)
 	case records.IsFirstCreate(rec):
 		// The first create has not finished and nothing is polling it: send it again with the same client token, so
 		// Cloud Control returns the first request if it reached AWS.
@@ -373,7 +390,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		// identifier in the properties.
 		lookup := name
 		if lookup == "" {
-			lookup, err = identifierFromProperties(properties, schema)
+			lookup, err = identifierFor(r.native, properties, schema)
 			if err != nil {
 				return nil, err
 			}
@@ -387,7 +404,6 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		}
 	}
 
-	applied := applied{properties: withoutSecrets(properties, secrets), fingerprints: fingerprints}
 	if current != nil {
 		return e.update(ctx, r, rec, etag, current, identifier, properties, applied, typeInfo, parsed, secrets)
 	}
@@ -486,16 +502,8 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 		return resp, err
 	}
 
-	marshaled, err := json.Marshal(&patch)
-	if err != nil {
-		return nil, err
-	}
-	logger.Info("Updating AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier)
-	response, err := e.clients.CloudControl.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
-		TypeName:      aws.String(r.typeName),
-		Identifier:    aws.String(identifier),
-		PatchDocument: aws.String(string(marshaled)),
-	}, CloudControlRegionOption(r.region))
+	logger.Info("Updating AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier, "handler", handlerName(r))
+	requestToken, err := e.startUpdate(ctx, r, identifier, currentProperties, properties, patch)
 	if err != nil {
 		rejected := ucp_aws.IsClientFault(err)
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
@@ -513,7 +521,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
-	operationID, err := e.track(ctx, r, rec, etag, v1.OperationPut, records.OperationUpdate, aws.ToString(response.ProgressEvent.RequestToken))
+	operationID, err := e.track(ctx, r, rec, etag, v1.OperationPut, records.OperationUpdate, requestToken)
 	if err != nil {
 		return nil, err
 	}
@@ -529,7 +537,7 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 
 	// name takes over a resource that already exists. When AWS has none, create one only if the identifier properties
 	// give that same name; otherwise the template asked for a resource that is not there.
-	known, err := identifierFromProperties(properties, schema)
+	known, err := identifierFor(r.native, properties, schema)
 	if err != nil {
 		return nil, err
 	}
@@ -562,16 +570,8 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 		return resp, err
 	}
 
-	desiredState, err := json.Marshal(properties)
-	if err != nil {
-		return nil, err
-	}
-	logger.Info("Creating AWS resource", "alias", r.id.Name())
-	response, err := e.clients.CloudControl.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
-		TypeName:     aws.String(r.typeName),
-		DesiredState: aws.String(string(desiredState)),
-		ClientToken:  aws.String(rec.Properties.ClientToken),
-	}, CloudControlRegionOption(r.region))
+	logger.Info("Creating AWS resource", "alias", r.id.Name(), "handler", handlerName(r))
+	created, requestToken, err := e.startCreate(ctx, r, rec, properties)
 	if err != nil {
 		if !replay && ucp_aws.IsClientFault(err) {
 			// AWS rejected the first attempt, so nothing exists: remove the record, so the next deploy starts over.
@@ -603,11 +603,11 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}
 	// AWS returned the request for this body, so its fingerprints describe the create AWS has.
 	rec.Properties.PendingFingerprints = applied.fingerprints
-	if id := aws.ToString(response.ProgressEvent.Identifier); id != "" {
-		rec.Properties.AWSIdentifier = id
+	if created != "" {
+		rec.Properties.AWSIdentifier = created
 	}
 
-	operationID, err := e.track(ctx, r, rec, etag, v1.OperationPut, records.OperationCreate, aws.ToString(response.ProgressEvent.RequestToken))
+	operationID, err := e.track(ctx, r, rec, etag, v1.OperationPut, records.OperationCreate, requestToken)
 	if err != nil {
 		return nil, err
 	}
@@ -660,12 +660,7 @@ func (e *engine) recoverReplay(ctx context.Context, r *request, rec *datamodel.A
 		if err := e.store.DeleteIfUnchanged(ctx, r.id, etag); err != nil {
 			return saveError(r.id, err)
 		}
-		failure := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInternal, Message: status.Error(), Target: r.id.String()}}
-		if status.IsClientError() {
-			failure.Error.Code = v1.CodeInvalid
-			return armrpc_rest.NewBadRequestARMResponse(failure), nil
-		}
-		return armrpc_rest.NewInternalServerErrorARMResponse(failure), nil
+		return failureResponse(r, status), nil
 	}
 
 	rec.Properties.AWSIdentifier = status.Identifier
@@ -702,7 +697,7 @@ func (e *engine) track(ctx context.Context, r *request, rec *datamodel.AWSResour
 		return uuid.UUID{}, fmt.Errorf("AWS accepted the request for the alias %q, but UCP failed to save it. Deploy again to continue it: %w", r.id.Name(), err)
 	}
 
-	if err := e.queue(ctx, r.id, method, operationID); err != nil {
+	if err := e.queue(ctx, r.id, method, operationID, operationTimeout(r, op)); err != nil {
 		// Nothing polls the operation, so it is not in progress: the next request polls the request token right away.
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
@@ -712,8 +707,9 @@ func (e *engine) track(ctx context.Context, r *request, rec *datamodel.AWSResour
 	return operationID, nil
 }
 
-// queue queues the operation on UCP's async backend. The Cloud Control request token is the operation ID.
-func (e *engine) queue(ctx context.Context, id resources.ID, method v1.OperationMethod, operationID uuid.UUID) error {
+// queue queues the operation on UCP's async backend, which runs it for at most timeout. The Cloud Control request
+// token, or the ID UCP made for a native operation, is the operation ID.
+func (e *engine) queue(ctx context.Context, id resources.ID, method v1.OperationMethod, operationID uuid.UUID, timeout time.Duration) error {
 	if e.sm == nil {
 		return errors.New("async operations are not available: the status manager is not configured")
 	}
@@ -728,7 +724,7 @@ func (e *engine) queue(ctx context.Context, id resources.ID, method v1.Operation
 	sCtx.OperationType = v1.OperationType{Type: records.OperationType, Method: method}
 
 	return e.sm.QueueAsyncOperation(ctx, sCtx, statusmanager.QueueOperationOptions{
-		OperationTimeout: ucp_aws.OperationTimeout,
+		OperationTimeout: timeout,
 		RetryAfter:       v1.DefaultRetryAfterDuration,
 	})
 }
@@ -757,6 +753,12 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 	if rec == nil {
 		return armrpc_rest.NewNoContentResponse(), nil
 	}
+	if err := e.route(ctx, r); err != nil {
+		return ucp_aws.HandleAWSError(ctx, err)
+	}
+	if err := continueWith(r, rec); err != nil {
+		return nil, err
+	}
 	rec, etag, resp, err = e.checkRecord(ctx, r, rec, etag, owner, v1.OperationDelete)
 	if resp != nil || err != nil {
 		return resp, err
@@ -782,6 +784,14 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	if resp != nil || err != nil {
 		return resp, err
 	}
+	if rec.Properties.AWSIdentifier == "" && r.handler != nil {
+		// A native create whose identifier AWS assigns can't be found yet, so the record stays as it was.
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			rec.Properties.PendingOperation = records.OperationCreate
+			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
+		})
+		return conflict("UCP can't tell whether the interrupted create of the AWS resource %q reached AWS. Deploy again to finish it, then delete.", r.id.Name()), nil
+	}
 	if rec.Properties.AWSIdentifier == "" {
 		etag, resp, err = e.recoverCreate(ctx, r, rec, etag)
 		if resp != nil || err != nil {
@@ -790,12 +800,9 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	}
 
 	identifier := rec.Properties.AWSIdentifier
-	logger.Info("Deleting AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier)
-	response, err := e.clients.CloudControl.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-		TypeName:   aws.String(r.typeName),
-		Identifier: aws.String(identifier),
-	}, CloudControlRegionOption(r.region))
-	if ucp_aws.IsAWSResourceNotFoundError(err) {
+	logger.Info("Deleting AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier, "handler", handlerName(r))
+	requestToken, err := e.startDeleteCall(ctx, r, identifier)
+	if isNotFound(err) {
 		return e.removeRecord(ctx, r, etag)
 	} else if err != nil {
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
@@ -805,7 +812,7 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
-	operationID, err := e.track(ctx, r, rec, etag, v1.OperationDelete, records.OperationDelete, aws.ToString(response.ProgressEvent.RequestToken))
+	operationID, err := e.track(ctx, r, rec, etag, v1.OperationDelete, records.OperationDelete, requestToken)
 	if err != nil {
 		return nil, err
 	}
@@ -920,6 +927,9 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	}
 	if rec == nil || rec.Properties.AWSIdentifier == "" {
 		return armrpc_rest.NewNotFoundResponse(r.id), nil
+	}
+	if err := e.route(ctx, r); err != nil {
+		return ucp_aws.HandleAWSError(ctx, err)
 	}
 
 	current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)

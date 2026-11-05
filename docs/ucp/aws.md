@@ -72,9 +72,36 @@ UCP returns a `400` for these AWS types instead of the error Cloud Control retur
 | Legacy type with a supported replacement, for example `AWS::IAM::Policy`                  | List in `pkg/aws/awstypes`                                                                          | `400` naming the replacement, on every operation. Nothing is called in AWS                                                                                                                                                             |
 | Deprecated service or CloudFormation template feature, for example `AWS::OpsWorks::Stack` | List in `pkg/aws/awstypes`                                                                          | `400` saying Radius does not support the type, on every operation. Nothing is called in AWS                                                                                                                                            |
 | Read-only type created by AWS, for example `AWS::EC2::Image`                              | `DescribeType` reports `NON_PROVISIONABLE`, and the schema has a read handler but no create handler | `400` on a PUT, before UCP reads the resource, saying the type can only be used with `existing`                                                                                                                                        |
-| Other type Cloud Control cannot create                                                    | `DescribeType` reports `NON_PROVISIONABLE`                                                          | `400` on a PUT, before UCP reads the resource                                                                                                                                                                                          |
+| Other type Cloud Control cannot create, with no native handler                            | `DescribeType` reports `NON_PROVISIONABLE`                                                          | `400` on a PUT, before UCP reads the resource. A type with a native handler is served by it instead, as described in [Native handlers](#native-handlers)                                                                               |
 | Create-and-delete-only type                                                               | `DescribeType` reports `IMMUTABLE`                                                                  | Create works. A change to an existing resource fails with `400` naming the changed properties. A write-only value counts as changed only when it differs from its fingerprint, as described in [Write-only values](#write-only-values) |
 
 UCP reads the provisioning type from CloudFormation at run time, so a type starts working without a Radius release when AWS adds Cloud Control support for it.
 
 The read-only list in `pkg/aws/awstypes` is for callers that have no AWS access, such as the recipe engine. It is generated from a snapshot of the CloudFormation registry. To refresh it with AWS credentials, run `go run ./gen -refresh` from `pkg/aws/awstypes`.
+
+<br/><br/>
+
+### Native handlers
+
+A native handler serves an AWS type by calling the service's own API through the AWS SDK, for types Cloud Control can't create in a region and types with no CloudFormation type. The interface and registry are in `pkg/ucp/aws/native`, and `pkg/ucp/aws/native/handlers` lists the handlers UCP registers. Each handler's schema, in CloudFormation format, is in `pkg/aws/schemas`: `native/` for types that have a CloudFormation type, and `handwritten/` for types that don't.
+
+UCP picks the handler for each request:
+
+1. A hand-written type always uses its native handler. UCP never asks CloudFormation about it.
+2. A type in `native/` uses its native handler only when `DescribeType` reports it `NON_PROVISIONABLE` in the request's region. Otherwise Cloud Control serves it. `DescribeType` results are cached for 15 minutes, so a region that gains Cloud Control support switches without a release. If `DescribeType` fails, the request fails with that error.
+3. Every other type uses Cloud Control.
+
+Both handlers use the same record. The native schema replaces CloudFormation's with either handler, so both store the same AWS identifier, use the same property names, and treat the same properties as write-only. The record saves which handler started an operation (`handler`), and that handler finishes it, even if the region has since switched.
+
+A native operation follows the same steps as a Cloud Control one: owner check, compare, save pending values, start call, operation status. The handler's start call returns at once, UCP makes its own operation ID, and the worker calls the handler's `Progress` until the operation finishes or the handler's timeout passes. `Progress` only reads AWS, so a restarted worker waits again safely.
+
+| Scenario                                                    | What UCP does                                                                                                                                                    |
+|-------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| AWS rejects the start call                                  | `400` with AWS's message. Pending values are dropped. A rejected first create removes the record                                                                 |
+| The start call fails with a server or transport error       | An update's pending values count as applied, as for Cloud Control. A create keeps its client token and identifier                                                |
+| A first create was interrupted, and its identifier is known | The next PUT reads AWS by the identifier: it creates again if AWS has nothing, waits and returns `409` while the create runs, and otherwise updates the resource |
+| The operation fails in AWS                                  | The operation fails with the handler's message. A failed create keeps the record, because the resource may exist                                                 |
+| Waiting passes the handler's timeout                        | The operation fails, naming the state UCP waited for. The next deploy reads the resource and continues                                                           |
+| The type can't be listed, or only under a parent            | `400` on a list                                                                                                                                                  |
+
+Every native handler runs the shared suite in `pkg/ucp/aws/native/nativetest`, which deploys through UCP's controllers and worker with an in-memory AWS. `pkg/ucp/aws/native/nativefake` has a fake handler for tests.

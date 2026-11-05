@@ -26,14 +26,13 @@ import (
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/middleware"
 	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 
 	"github.com/radius-project/radius/pkg/retry"
 )
@@ -80,23 +79,35 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return errResponse, nil
 	}
 
-	cloudFormationOpts := []func(*cloudformation.Options){CloudFormationRegionOption(region)}
-	describeTypeOutput, err := p.awsClients.CloudFormation.DescribeType(ctx, &cloudformation.DescribeTypeInput{
-		Type:     types.RegistryTypeResource,
-		TypeName: new(serviceCtx.ResourceTypeInAWSFormat()),
-	}, cloudFormationOpts...)
+	rt, err := routeType(ctx, p.awsClients, serviceCtx.ResourceTypeInAWSFormat(), region)
 	if err != nil {
 		return ucpaws.HandleAWSError(ctx, err)
+	}
+	describeTypeOutput := rt.typeInfo
+	if describeTypeOutput == nil {
+		describeTypeOutput, err = describeType(ctx, p.awsClients, serviceCtx.ResourceTypeInAWSFormat(), region)
+		if err != nil {
+			return ucpaws.HandleAWSError(ctx, err)
+		}
 	}
 
 	if describeTypeOutput == nil || describeTypeOutput.Schema == nil {
 		return nil, fmt.Errorf("CloudFormation DescribeType returned no schema for %s", serviceCtx.ResourceTypeInAWSFormat())
 	}
 	// A top-level name is the AWS primary identifier of the resource. Otherwise the identifier comes from the
-	// properties: the primary identifier, or an additional identifier that AWS resolves to the primary one.
+	// properties: the primary identifier, or an additional identifier that AWS resolves to the primary one. A native
+	// handler reads only by its identifier.
 	awsResourceIdentifier := name
 	var response *cloudcontrol.GetResourceOutput
-	if awsResourceIdentifier == "" {
+	if awsResourceIdentifier == "" && rt.handler != nil {
+		awsResourceIdentifier, err = identifierFor(rt.native, body.Properties, *describeTypeOutput.Schema)
+		if err != nil {
+			return badRequest(err.Error()), nil
+		}
+		if awsResourceIdentifier == "" {
+			return badRequest(fmt.Sprintf("Set the primary identifier properties of the AWS resource type %s to reference it with existing.", serviceCtx.ResourceTypeInAWSFormat())), nil
+		}
+	} else if awsResourceIdentifier == "" {
 		awsResourceIdentifier, response, errResponse, err = p.resolveReadIdentifier(ctx, body.Properties, *describeTypeOutput.Schema, serviceCtx.ResourceTypeInAWSFormat(), region)
 		if err != nil || errResponse != nil {
 			return errResponse, err
@@ -108,20 +119,27 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 
 	if response == nil {
 		if err := p.retryer.RetryFunc(ctx, func(ctx context.Context) error {
-			response, err = p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
-				TypeName:   new(serviceCtx.ResourceTypeInAWSFormat()),
-				Identifier: aws.String(awsResourceIdentifier),
-			}, cloudcontrolOpts...)
+			if rt.handler != nil {
+				response, err = readNative(ctx, rt.handler, region, awsResourceIdentifier)
+				if err == nil && response == nil {
+					err = native.ErrNotFound
+				}
+			} else {
+				response, err = p.awsClients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
+					TypeName:   new(serviceCtx.ResourceTypeInAWSFormat()),
+					Identifier: aws.String(awsResourceIdentifier),
+				}, cloudcontrolOpts...)
+			}
 
 			// If the resource is not found, retry.
-			if ucpaws.IsAWSResourceNotFoundError(err) {
+			if isNotFound(err) {
 				return retry.RetryableError(err)
 			}
 
 			// If any other error occurs, return the error.
 			return err
 		}); err != nil {
-			if ucpaws.IsAWSResourceNotFoundError(err) {
+			if isNotFound(err) {
 				return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.Options().PathBase, req.URL.Path), awsResourceIdentifier)), nil
 			} else {
 				return ucpaws.HandleAWSError(ctx, err)

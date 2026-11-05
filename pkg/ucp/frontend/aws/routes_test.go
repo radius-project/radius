@@ -133,6 +133,7 @@ func Test_InitializeClients(t *testing.T) {
 		require.NoError(t, InitializeClients(t.Context(), options))
 		require.NotNil(t, options.AWSClients.CloudControl)
 		require.NotNil(t, options.AWSClients.CloudFormation)
+		require.NotNil(t, options.AWSClients.Native)
 	})
 
 	t.Run("keeps clients that are set", func(t *testing.T) {
