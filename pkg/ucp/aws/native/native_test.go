@@ -17,6 +17,7 @@ limitations under the License.
 package native_test
 
 import (
+	"regexp"
 	"testing"
 	"time"
 
@@ -109,12 +110,13 @@ func Test_NewRegistry_NameRules(t *testing.T) {
 		err    string
 	}{
 		{name: "invalid schema", schema: "not json", err: "the schema of the AWS type AWS::CodeBuild::Project can't be read"},
+		{name: "rule of the wrong type", schema: `{"properties": {"Name": {"type": "string", "maxLength": "64"}}}`, err: "failed to read the schema"},
 		{name: "not in the schema", schema: `{"properties": {}}`, err: "the name property Name is not a string property in the schema"},
 		{name: "not a string", schema: `{"properties": {"Name": {"type": "integer"}}}`, err: "the name property Name is not a string property in the schema"},
 		{name: "pattern Go can't read", schema: `{"properties": {"Name": {"type": "string", "pattern": "^(?!aws)"}}}`, err: "the pattern of the name property Name can't be read"},
-		{name: "pattern no name fits", schema: `{"properties": {"Name": {"type": "string", "pattern": "^[A-Z]+$"}}}`, err: "the rules of the name property Name allow no name UCP generates"},
-		{name: "too short to stay unique", schema: `{"properties": {"Name": {"type": "string", "maxLength": 14}}}`, err: "the rules of the name property Name allow no name UCP generates"},
-		{name: "longer than a generated name", schema: `{"properties": {"Name": {"type": "string", "minLength": 20}}}`, err: "the rules of the name property Name allow no name UCP generates"},
+		{name: "pattern no name fits", schema: `{"properties": {"Name": {"type": "string", "pattern": "^[A-Z]+$"}}}`, err: "which doesn't fit the rules of Name"},
+		{name: "too short to stay unique", schema: `{"properties": {"Name": {"type": "string", "maxLength": 14}}}`, err: "which doesn't fit the rules of Name"},
+		{name: "longer than a generated name", schema: `{"properties": {"Name": {"type": "string", "minLength": 20}}}`, err: "which doesn't fit the rules of Name"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -125,14 +127,26 @@ func Test_NewRegistry_NameRules(t *testing.T) {
 }
 
 func Test_NameRules_Generate(t *testing.T) {
+	generate := func(rules *native.NameRules, seed string) string {
+		name, err := rules.Generate(seed)
+		require.NoError(t, err)
+		return name
+	}
 	rules := &native.NameRules{Property: "Name"}
-	name := rules.Generate("2f1c6a9e-5b7d-4c3e-9a8f-0d1e2f3a4b5c")
+	name := generate(rules, "2f1c6a9e-5b7d-4c3e-9a8f-0d1e2f3a4b5c")
 	require.Regexp(t, "^radius-[0-9a-f]{12}$", name)
-	require.Equal(t, name, rules.Generate("2f1c6a9e-5b7d-4c3e-9a8f-0d1e2f3a4b5c"), "the same operation always gets the same name")
-	require.NotEqual(t, name, rules.Generate("7b0e3d1a-8c2f-4e6d-b5a4-3c2d1e0f9a8b"))
+	require.Equal(t, name, generate(rules, "2f1c6a9e-5b7d-4c3e-9a8f-0d1e2f3a4b5c"), "the same operation always gets the same name")
+	require.NotEqual(t, name, generate(rules, "7b0e3d1a-8c2f-4e6d-b5a4-3c2d1e0f9a8b"))
 
 	rules.MaxLength = 16
-	require.Equal(t, name[:16], rules.Generate("2f1c6a9e-5b7d-4c3e-9a8f-0d1e2f3a4b5c"), "a name is cut to the maximum length")
+	require.Equal(t, name[:16], generate(rules, "2f1c6a9e-5b7d-4c3e-9a8f-0d1e2f3a4b5c"), "a name is cut to the maximum length")
+
+	t.Run("a name the pattern rejects", func(t *testing.T) {
+		// The registry's sample names end in b and 7, so this pattern passes registration.
+		rules := &native.NameRules{Property: "Name", Pattern: regexp.MustCompile("^radius-[0-9a-f]{11}[b7]$")}
+		_, err := rules.Generate("2f1c6a9e-5b7d-4c3e-9a8f-0d1e2f3a4b5c")
+		require.EqualError(t, err, "UCP generated the name "+name+", which doesn't fit the rules of Name. Set Name in the template.")
+	})
 }
 
 func Test_Options_Timeout(t *testing.T) {

@@ -174,18 +174,22 @@ func identifierFor(t *native.Type, properties map[string]any, schema string) (st
 // identifies the create: every attempt of one create sends the same name. properties is not changed, so the
 // last-applied properties stay the template's, without the name, and a later deploy that still leaves it out doesn't
 // clear it.
-func withGeneratedName(r *request, rec *datamodel.AWSResource, properties map[string]any) map[string]any {
+func withGeneratedName(r *request, rec *datamodel.AWSResource, properties map[string]any) (map[string]any, error) {
 	if r.handler == nil || r.native.NameRules == nil {
-		return properties
+		return properties, nil
 	}
 	rules := r.native.NameRules
 	if value, ok := properties[rules.Property]; ok && value != nil {
-		return properties
+		return properties, nil
+	}
+	name, err := rules.Generate(rec.Properties.ClientToken)
+	if err != nil {
+		return nil, err
 	}
 	out := make(map[string]any, len(properties)+1)
 	maps.Copy(out, properties)
-	out[rules.Property] = rules.Generate(rec.Properties.ClientToken)
-	return out
+	out[rules.Property] = name
+	return out, nil
 }
 
 // identifierRequired returns the 400 for a create whose identifier the template doesn't give, of a type whose native
@@ -292,9 +296,11 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 // up, so UCP finds the resource as the handler declares (native.Recovery):
 //
 //   - The record has the identifier, saved before the create: UCP reads AWS by it.
-//   - RecoverBySearch: the handler's Find looks for the resource. If AWS has none, the create is sent again. If
-//     another alias manages the resource Find returns, the request gets 409.
-//   - RecoverByResend: the create is sent again. The handler makes that return the first resource.
+//   - RecoverBySearch: the handler's Find looks for the resource with the lost create's values, the pending
+//     properties, because the template may have changed since. If AWS has none, the create is sent again with the
+//     template. If another alias manages the resource Find returns, the request gets 409.
+//   - RecoverByResend: the create is sent again with the template. AWS may return the first resource, with the lost
+//     create's values, so UCP treats the result like a found resource rather than a new create.
 //
 // When UCP reads the resource, it continues by what AWS shows:
 //
@@ -309,7 +315,11 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 	identifier := rec.Properties.AWSIdentifier
 	if identifier == "" {
 		var err error
-		identifier, err = e.findCreate(ctx, r, rec, properties)
+		if r.handler.Options().Recovery == native.RecoverByResend {
+			identifier, err = e.resendCreate(ctx, r, rec, properties)
+		} else {
+			identifier, err = e.findCreate(ctx, r, rec, rec.Properties.PendingLastApplied)
+		}
 		if err != nil {
 			return ucp_aws.HandleAWSError(ctx, err)
 		}
@@ -360,7 +370,10 @@ func (e *engine) findCreate(ctx context.Context, r *request, rec *datamodel.AWSR
 	if !ok || r.handler.Options().Recovery != native.RecoverBySearch {
 		return "", nil
 	}
-	properties = withGeneratedName(r, rec, properties)
+	properties, err := withGeneratedName(r, rec, properties)
+	if err != nil {
+		return "", err
+	}
 	return finder.Find(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
 }
 
@@ -449,9 +462,13 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 }
 
 // resendCreate sends the record's first create again with its client token, for a handler whose Recovery is
-// RecoverByResend, and returns the identifier of the resource AWS has.
+// RecoverByResend, and returns the identifier of the resource AWS has. That resource may have the values of the first
+// create, not properties, so the caller reads it and reconciles it as a found resource.
 func (e *engine) resendCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, properties map[string]any) (string, error) {
-	properties = withGeneratedName(r, rec, properties)
+	properties, err := withGeneratedName(r, rec, properties)
+	if err != nil {
+		return "", err
+	}
 	identifier, err := r.handler.Create(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
 	if err == nil && identifier == "" {
 		return "", fmt.Errorf("the native handler for %s sent the create of the AWS resource %q again, but returned no identifier", r.typeName, r.id.Name())

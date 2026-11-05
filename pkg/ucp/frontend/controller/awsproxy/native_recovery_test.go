@@ -37,6 +37,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 // loseCreate sends a PUT whose create reaches AWS but whose response is lost, as when UCP stops after AWS accepted
@@ -83,7 +84,9 @@ func Test_Native_GeneratedName(t *testing.T) {
 
 		rec := h.record(nativePath)
 		require.Equal(t, name, rec.Properties.AWSIdentifier, "the name is saved before UCP calls AWS")
-		require.Equal(t, h.native.Lookup(nativeType).NameRules.Generate(rec.Properties.ClientToken), name)
+		want, err := h.native.Lookup(nativeType).NameRules.Generate(rec.Properties.ClientToken)
+		require.NoError(t, err)
+		require.Equal(t, want, name)
 		require.NotContains(t, rec.Properties.PendingLastApplied, "Name", "the name isn't part of the template")
 
 		for _, result := range h.finish() {
@@ -153,7 +156,7 @@ func Test_Native_FindLostCreate_Put(t *testing.T) {
 
 		h.deploy(assignedPath, assigned)
 		calls := h.assigned.Calls()
-		require.Equal(t, []string{"Create"}, methods(calls))
+		require.Equal(t, []string{"Create", "Read"}, methods(calls), "UCP reads the resource the resend returns and finds nothing to change")
 		require.Equal(t, token, calls[0].ClientToken)
 		require.Equal(t, 1, h.cc.Count(assignedType))
 		rec := h.record(assignedPath)
@@ -539,4 +542,188 @@ func Test_removeWriteOnly(t *testing.T) {
 
 	out.ResourceDescription.Properties = aws.String("not json")
 	require.Error(t, removeWriteOnly(out, []string{"Password"}))
+}
+
+// typedHandler returns nested values in typed Go maps and slices, as a handler that builds properties from an SDK
+// struct can, rather than map[string]any and []any.
+type typedHandler struct {
+	*nativefake.Handler
+}
+
+func typedProperties() map[string]any {
+	return map[string]any{
+		"Name":  "app-native",
+		"Auth":  map[string]string{"User": "admin", "Password": password},
+		"Users": []map[string]any{{"Name": "a", "Password": password}},
+	}
+}
+
+func (h typedHandler) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
+	return typedProperties(), nil
+}
+
+func (h typedHandler) List(ctx context.Context, region string) ([]native.Resource, error) {
+	return []native.Resource{{Identifier: "app-native", Properties: typedProperties()}}, nil
+}
+
+// Test_Native_WriteOnlyInTypedValues checks that a nested write-only value in a typed Go map or slice is in no
+// response.
+func Test_Native_WriteOnlyInTypedValues(t *testing.T) {
+	h := newNativeHarness(t)
+	h.fake.Opts.List = native.ListRegion
+	h.fake.Opts.NameProperty = ""
+	schema := `{"typeName": "AWS::Test::Native", "primaryIdentifier": ["/properties/Name"], "writeOnlyProperties": ["/properties/Auth/Password", "/properties/Users/*/Password"]}`
+	registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{nativeType: schema}}, typedHandler{h.fake})
+	require.NoError(t, err)
+	h.native = registry
+	h.saveRecord(nativePath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "app-native" })
+
+	responses := map[string]response{
+		"list": h.do(NewListAWSResources, http.MethodGet, providers+"AWS.Test/Native", "", nil),
+		"read": h.get(nativePath),
+		"existing": h.do(func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
+			return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
+		}, http.MethodPost, providers+"AWS.Test/Native/:get", "", map[string]any{"name": "app-native"}),
+	}
+	for path, resp := range responses {
+		require.Equal(t, http.StatusOK, resp.status, path+": "+resp.raw)
+		require.NotContains(t, resp.raw, password, path)
+		require.Contains(t, resp.raw, "admin", path)
+	}
+}
+
+// findsByValue is a handler that finds a lost create by Description, a value AWS keeps unique, rather than by a tag.
+type findsByValue struct {
+	*nativefake.Handler
+}
+
+func (h findsByValue) Find(ctx context.Context, request native.CreateRequest) (string, error) {
+	for _, identifier := range h.Store.List(h.Name) {
+		if props, _ := h.Store.Read(h.Name, identifier); props["Description"] == request.Properties["Description"] {
+			return identifier, nil
+		}
+	}
+	return "", nil
+}
+
+// Test_Native_FindLostCreate_ChangedTemplate retries a lost create with a different template. UCP finds the resource
+// the lost create made, and then applies the new template to it.
+func Test_Native_FindLostCreate_ChangedTemplate(t *testing.T) {
+	t.Run("search uses the lost create's values", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.assigned.Opts.Recovery = native.RecoverBySearch
+		registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{assignedType: nativeSchemas[assignedType]}}, findsByValue{h.assigned})
+		require.NoError(t, err)
+		h.native = registry
+		h.loseCreate(h.assigned, assignedPath, map[string]any{"Description": "old", "Size": 1})
+
+		h.deploy(assignedPath, map[string]any{"Description": "new", "Size": 1})
+		require.Equal(t, 1, h.cc.Count(assignedType), "UCP found the first resource instead of creating a second one")
+		require.Equal(t, "new", h.cc.Resource(assignedType, "id-1")["Description"])
+	})
+
+	t.Run("resend reconciles a changed write-only value", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.cc.WriteOnly[assignedType] = []string{"SharedKey"}
+		schema := `{"typeName": "AWS::Test::Assigned", "primaryIdentifier": ["/properties/Id"], "readOnlyProperties": ["/properties/Id"], "writeOnlyProperties": ["/properties/SharedKey"]}`
+		registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{assignedType: schema}}, h.assigned)
+		require.NoError(t, err)
+		h.native = registry
+		h.loseCreate(h.assigned, assignedPath, map[string]any{"Size": 1, "SharedKey": "one"})
+
+		h.deploy(assignedPath, map[string]any{"Size": 1, "SharedKey": "two"})
+		require.Equal(t, 1, h.cc.Count(assignedType))
+		require.Equal(t, "two", h.cc.Resource(assignedType, "id-1")["SharedKey"], "the resend returned the first resource, so UCP updates it")
+
+		resp := h.put(assignedPath, map[string]any{"Size": 1, "SharedKey": "two"})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	})
+}
+
+// Test_Native_GeneratedNameFitsEveryRule checks that a generated name the schema's pattern rejects is never sent, even
+// when the registry's sample names fit the pattern.
+func Test_Native_GeneratedNameFitsEveryRule(t *testing.T) {
+	h := newNativeHarness(t)
+	schema := `{"typeName": "AWS::Test::Native", "properties": {"Name": {"type": "string", "pattern": "^radius-(0123456789ab|cdef01234567)$"}}, "primaryIdentifier": ["/properties/Name"], "writeOnlyProperties": ["/properties/Password"]}`
+	registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{nativeType: schema}}, h.fake)
+	require.NoError(t, err)
+	h.native = registry
+
+	resp := h.put(nativePath, map[string]any{"Size": 1})
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.Contains(t, resp.message(), "Set Name in the template")
+	require.Empty(t, h.fake.Calls())
+	require.Nil(t, h.record(nativePath))
+}
+
+// unencodable is a handler whose List returns a value JSON can't encode.
+type unencodable struct {
+	*nativefake.Handler
+}
+
+func (h unencodable) List(ctx context.Context, region string) ([]native.Resource, error) {
+	return []native.Resource{{Identifier: "app-native", Properties: map[string]any{"Callback": func() {}}}}, nil
+}
+
+func Test_Native_ListUnencodable(t *testing.T) {
+	h := newNativeHarness(t)
+	h.fake.Opts.List = native.ListRegion
+	registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}, unencodable{h.fake})
+	require.NoError(t, err)
+	h.native = registry
+	resp := h.do(NewListAWSResources, http.MethodGet, providers+"AWS.Test/Native", "", nil)
+	require.Equal(t, http.StatusInternalServerError, resp.status)
+}
+
+// Test_Native_GeneratedNameRecoveryFails loses a create, and then the type's name rules change so the name the create
+// sent no longer fits, as after an upgrade. Finding the lost create fails, and the record is kept.
+func Test_Native_GeneratedNameRecoveryFails(t *testing.T) {
+	strict := `{"typeName": "AWS::Test::Native", "properties": {"Name": {"type": "string", "pattern": "^radius-(0123456789ab|cdef01234567)$"}}, "primaryIdentifier": ["/properties/Name"], "writeOnlyProperties": ["/properties/Password"]}`
+	for _, recovery := range []native.Recovery{native.RecoverBySearch, native.RecoverByResend} {
+		for _, method := range []string{http.MethodPut, http.MethodDelete} {
+			h := newNativeHarness(t)
+			h.fake.Opts.Recovery = recovery
+			h.loseCreate(h.fake, nativePath, map[string]any{"Size": 1})
+			// A type whose identifier AWS assigns, rather than its name.
+			h.saveRecord(nativePath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "" })
+			registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{nativeType: strict}}, h.fake)
+			require.NoError(t, err)
+			h.native = registry
+
+			var resp response
+			if method == http.MethodPut {
+				resp = h.put(nativePath, map[string]any{"Size": 1})
+			} else {
+				resp = h.delete(nativePath, testOwner)
+			}
+			require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+			require.Contains(t, resp.raw, "Set Name in the template")
+			require.Empty(t, h.fake.Calls())
+			require.NotEmpty(t, h.record(nativePath).Properties.ClientToken)
+		}
+	}
+}
+
+// Test_Native_NoIdentifierToRecover checks a first create of a type that finds a lost create by its identifier, whose
+// record has no identifier, as a record saved before the create reached AWS. UCP has nothing to find in AWS.
+func Test_Native_NoIdentifierToRecover(t *testing.T) {
+	setup := func(t *testing.T) *nativeHarness {
+		h := newNativeHarness(t)
+		h.failCreate(h.fake, nativePath, nativeProperties(1))
+		h.saveRecord(nativePath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "" })
+		return h
+	}
+
+	t.Run("PUT creates", func(t *testing.T) {
+		h := setup(t)
+		h.deploy(nativePath, nativeProperties(1))
+		require.Equal(t, []string{"Create"}, methods(h.fake.Calls()))
+	})
+
+	t.Run("DELETE removes the record", func(t *testing.T) {
+		h := setup(t)
+		require.Equal(t, http.StatusNoContent, h.delete(nativePath, testOwner).status)
+		require.Empty(t, h.fake.Calls())
+		require.Nil(t, h.record(nativePath))
+	})
 }

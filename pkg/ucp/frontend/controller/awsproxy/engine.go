@@ -549,7 +549,10 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	if !replay {
 		rec.Properties.ClientToken = uuid.New().String()
 	}
-	properties = withGeneratedName(r, rec, properties)
+	properties, err := withGeneratedName(r, rec, properties)
+	if err != nil {
+		return badRequest(err.Error()), nil
+	}
 
 	// name takes over a resource that already exists. When AWS has none, create one only if the identifier properties
 	// give that same name; otherwise the template asked for a resource that is not there.

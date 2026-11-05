@@ -121,6 +121,7 @@ func Run(t *testing.T, s Suite) {
 		t.Run("deploy again "+suffix, func(t *testing.T) { s.lostCreate(t, reached) })
 		t.Run("delete "+suffix, func(t *testing.T) { s.lostCreateDelete(t, reached) })
 	}
+	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
 	if nameProperty != "" {
 		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
 	}
@@ -328,6 +329,27 @@ func (s Suite) lostCreate(t *testing.T, reached bool) {
 	if s.Identifier != "" {
 		require.Equal(t, s.Identifier, h.record().Properties.AWSIdentifier)
 	}
+}
+
+// lostCreateChangedWriteOnly loses a create that reached AWS, and deploys again with a changed write-only value. UCP
+// finds the first resource, which may have the first value, so it sends the new one, and AWS ends with it.
+func (s Suite) lostCreateChangedWriteOnly(t *testing.T) {
+	if s.ChangedWriteOnly == nil {
+		t.Skip("the type has no write-only property")
+	}
+	h := s.newHarness(t)
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+
+	h.deployEventually(s.ChangedWriteOnly)
+	require.Equal(t, 1, h.cc.Count(s.TypeName))
+	resource := h.cc.Resource(s.TypeName, h.identifier())
+	for _, p := range s.WriteOnly {
+		require.EqualValues(t, normalize(t, s.ChangedWriteOnly[p]), normalize(t, resource[p]), "AWS has the changed %s", p)
+	}
+	resp = h.put(s.ChangedWriteOnly)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 }
 
 // lostCreateDelete loses a create, after it reached AWS or before, and deletes the alias. The delete finds the
