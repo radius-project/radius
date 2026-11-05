@@ -279,13 +279,16 @@ model PolicyChange {
   managedBy: AssignmentManagement;
 }
 
-@doc("An access configuration snapshot. Exactly the property matching the target resource type is present.")
+@doc("An access configuration snapshot. The property matching the target resource type is present. Settings changes may also include compound assignment deltas in roleAssignments.")
 model PolicySnapshot {
   @doc("A role definition snapshot.")
   roleDefinition?: RoleDefinitionProperties;
 
   @doc("An assignment snapshot.")
   roleAssignment?: RoleAssignmentProperties;
+
+  @doc("Assignment deltas accompanying a compound settings change in the same policy generation. Before and after snapshots contain the corresponding full assignment resources, including IDs, principals, and provenance; this is not the complete assignment inventory. Standalone assignment changes retain the singular roleAssignment field.")
+  roleAssignments?: RoleAssignmentResource[];
 
   @doc("A settings snapshot.")
   authorizationSettings?: AuthorizationSettingsProperties;

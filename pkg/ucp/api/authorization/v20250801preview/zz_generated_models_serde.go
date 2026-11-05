@@ -765,6 +765,7 @@ func (p PolicySnapshot) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "authorizationSettings", p.AuthorizationSettings)
 	populate(objectMap, "roleAssignment", p.RoleAssignment)
+	populate(objectMap, "roleAssignments", p.RoleAssignments)
 	populate(objectMap, "roleDefinition", p.RoleDefinition)
 	return json.Marshal(objectMap)
 }
@@ -783,6 +784,9 @@ func (p *PolicySnapshot) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "roleAssignment":
 			err = unpopulate(val, "RoleAssignment", &p.RoleAssignment)
+			delete(rawMsg, key)
+		case "roleAssignments":
+			err = unpopulate(val, "RoleAssignments", &p.RoleAssignments)
 			delete(rawMsg, key)
 		case "roleDefinition":
 			err = unpopulate(val, "RoleDefinition", &p.RoleDefinition)

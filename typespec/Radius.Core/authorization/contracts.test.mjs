@@ -268,6 +268,24 @@ test("generated Swagger preserves scope routes, read-only fields, and operation 
   );
 
   const definitions = Object.values(spec.definitions);
+  const snapshot = definitions.find(
+    (definition) =>
+      definition.properties?.roleAssignment &&
+      definition.properties?.authorizationSettings
+  );
+  assert.ok(snapshot, "missing policy snapshot");
+  assert.equal(snapshot.properties.roleAssignments.type, "array");
+  assert.equal(snapshot.required?.includes("roleAssignments") ?? false, false);
+  const assignmentResource =
+    spec.definitions[
+      snapshot.properties.roleAssignments.items.$ref.split("/").at(-1)
+    ];
+  assert.ok(assignmentResource.properties.properties);
+  assert.ok(assignmentResource.properties.id || assignmentResource.allOf);
+  assert.match(
+    snapshot.properties.roleAssignments.description,
+    /not the complete assignment inventory/
+  );
   const properties = (required) => {
     const model = definitions.find((definition) =>
       required.every((key) => Object.hasOwn(definition.properties ?? {}, key))

@@ -294,13 +294,19 @@ type PolicyChange struct {
 	Before *PolicySnapshot
 }
 
-// PolicySnapshot - An access configuration snapshot. Exactly the property matching the target resource type is present.
+// PolicySnapshot - An access configuration snapshot. The property matching the target resource type is present. Settings
+// changes may also include compound assignment deltas in roleAssignments.
 type PolicySnapshot struct {
 	// A settings snapshot.
 	AuthorizationSettings *AuthorizationSettingsProperties
 
 	// An assignment snapshot.
 	RoleAssignment *RoleAssignmentProperties
+
+	// Assignment deltas accompanying a compound settings change in the same policy generation. Before and after snapshots contain
+	// the corresponding full assignment resources, including IDs, principals, and provenance; this is not the complete assignment
+	// inventory. Standalone assignment changes retain the singular roleAssignment field.
+	RoleAssignments []*RoleAssignmentResource
 
 	// A role definition snapshot.
 	RoleDefinition *RoleDefinitionProperties
