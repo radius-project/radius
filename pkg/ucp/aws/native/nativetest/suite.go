@@ -1264,8 +1264,12 @@ func (s Suite) outsideMember(t *testing.T) {
 // deleteTokenRetry loses the response of a delete that reached AWS, and deletes again. UCP saved the delete token on
 // the record before the first call, and the retry sends the same token, so AWS takes no second copy.
 func (s Suite) deleteTokenRetry(t *testing.T) {
-	if _, ok := s.NewHandler(awsfake.NewCloudControl()).(native.DeletePreparer); !ok {
+	handler := s.NewHandler(awsfake.NewCloudControl())
+	if _, ok := handler.(native.DeletePreparer); !ok {
 		t.Skip("the handler sends no delete token")
+	}
+	if _, ok := handler.(native.ScopedDeleter); ok {
+		t.Skip("the handler removes only the members it manages, which takes no delete token")
 	}
 	h := s.newHarness(t)
 	h.deploy(s.Properties)
@@ -1890,27 +1894,54 @@ func (f finder) Find(ctx context.Context, request native.CreateRequest) (string,
 	return f.r.Handler.(native.Finder).Find(ctx, request)
 }
 
-// wrap returns the handler the registry gets for r: r, with the optional methods the handler under test has.
+// wrap returns the handler the registry gets for r: r, with the optional methods the handler under test has, so UCP
+// sees the same interfaces as for the handler itself.
 func (r *recorder) wrap() native.Handler {
 	_, encodes := r.Handler.(native.IdentifierEncoder)
 	_, finds := r.Handler.(native.Finder)
+	_, scopes := r.Handler.(native.ScopedReader)
+	e, f, sc := encoder{r}, finder{r}, scoped{r}
 	switch {
+	case encodes && finds && scopes:
+		return struct {
+			*recorder
+			encoder
+			finder
+			scoped
+		}{r, e, f, sc}
 	case encodes && finds:
 		return struct {
 			*recorder
 			encoder
 			finder
-		}{r, encoder{r}, finder{r}}
+		}{r, e, f}
+	case encodes && scopes:
+		return struct {
+			*recorder
+			encoder
+			scoped
+		}{r, e, sc}
+	case finds && scopes:
+		return struct {
+			*recorder
+			finder
+			scoped
+		}{r, f, sc}
 	case encodes:
 		return struct {
 			*recorder
 			encoder
-		}{r, encoder{r}}
+		}{r, e}
 	case finds:
 		return struct {
 			*recorder
 			finder
-		}{r, finder{r}}
+		}{r, f}
+	case scopes:
+		return struct {
+			*recorder
+			scoped
+		}{r, sc}
 	}
 	return r
 }
@@ -1984,28 +2015,26 @@ func (r *recorder) lostDelete(call func() error) error {
 	return call()
 }
 
-// The recorder always has the methods of native.ScopedReader, native.ScopedDeleter, and native.DeletePreparer, so the
-// registry and UCP see them whatever the handler under test has. A handler without them gets the call UCP would have
-// made instead: Read for ReadScoped and Delete for DeleteScoped. DeleteToken returns "" for such a handler, so UCP
-// never calls DeleteWithToken.
-
-func (r *recorder) ReadScoped(ctx context.Context, region string, identifier string, managed []map[string]any) (map[string]any, error) {
-	r.note("Read")
-	if scoped, ok := r.Handler.(native.ScopedReader); ok {
-		return scoped.ReadScoped(ctx, region, identifier, managed)
-	}
-	return r.Handler.Read(ctx, region, identifier)
+// scoped passes the methods of a handler under test whose resource is some members of a parent (native.ScopedReader
+// and native.ScopedDeleter) through a recorder.
+type scoped struct {
+	r *recorder
 }
 
-func (r *recorder) DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error {
-	r.note("Delete")
-	return r.lostDelete(func() error {
-		if scoped, ok := r.Handler.(native.ScopedDeleter); ok {
-			return scoped.DeleteScoped(ctx, region, identifier, managed)
-		}
-		return r.Handler.Delete(ctx, region, identifier)
+func (s scoped) ReadScoped(ctx context.Context, region string, identifier string, managed []map[string]any) (map[string]any, error) {
+	s.r.note("Read")
+	return s.r.Handler.(native.ScopedReader).ReadScoped(ctx, region, identifier, managed)
+}
+
+func (s scoped) DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error {
+	s.r.note("Delete")
+	return s.r.lostDelete(func() error {
+		return s.r.Handler.(native.ScopedDeleter).DeleteScoped(ctx, region, identifier, managed)
 	})
 }
+
+// The recorder always has the methods of native.DeletePreparer, so the registry and UCP see them whatever the
+// handler under test has. DeleteToken returns "" for a handler without them, so UCP never calls DeleteWithToken.
 
 // ResolveIdentifier passes the identifier to the handler under test when it resolves identifiers
 // (native.IdentifierResolver), and otherwise returns it as UCP uses it for a handler that doesn't.

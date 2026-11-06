@@ -369,7 +369,8 @@ func (e *engine) startCreate(ctx context.Context, r *request, rec *datamodel.AWS
 // ETag, or etag when there is nothing to save.
 func (e *engine) prepareDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, identifier string) (string, error) {
 	preparer, ok := r.handler.(native.DeletePreparer)
-	if !ok || rec.Properties.DeleteToken != "" || onDelete(r) == schemas.OnDeleteReset {
+	_, scoped := r.handler.(native.ScopedDeleter)
+	if !ok || scoped || rec.Properties.DeleteToken != "" || onDelete(r) == schemas.OnDeleteReset {
 		return etag, nil
 	}
 	token, err := preparer.DeleteToken(ctx, r.region, identifier)
@@ -387,8 +388,8 @@ func (e *engine) prepareDelete(ctx context.Context, r *request, rec *datamodel.A
 
 // startDeleteCall starts a delete and returns the token the worker polls. For a type whose onDelete metadata is reset,
 // the native handler resets the resource instead (native.Resetter). A native handler that removes only the members it
-// manages (native.ScopedDeleter) gets the record's managed values, and one that sends the same value on every attempt
-// (native.DeletePreparer) gets deleteToken. Where Cloud Control serves the type, Cloud Control deletes it as
+// manages (native.ScopedDeleter) gets the record's managed values, even when it also sends a delete token, and one
+// that sends the same value on every attempt (native.DeletePreparer) gets deleteToken. Where Cloud Control serves the type, Cloud Control deletes it as
 // CloudFormation defines.
 func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier string, deleteToken string) (string, error) {
 	if r.handler != nil {
@@ -399,10 +400,12 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 		switch {
 		case resets && onDelete(r) == schemas.OnDeleteReset:
 			err = resetter.Reset(ctx, r.region, identifier)
+		case isScoped:
+			// DeleteScoped removes only the members the alias manages, so it comes before a delete token, which
+			// deletes the whole resource.
+			err = scoped.DeleteScoped(ctx, r.region, identifier, r.managed)
 		case prepares && deleteToken != "":
 			err = preparer.DeleteWithToken(ctx, r.region, identifier, deleteToken)
-		case isScoped:
-			err = scoped.DeleteScoped(ctx, r.region, identifier, r.managed)
 		default:
 			err = r.handler.Delete(ctx, r.region, identifier)
 		}
