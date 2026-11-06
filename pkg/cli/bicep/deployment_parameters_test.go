@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_Parameters_Invalid(t *testing.T) {
@@ -117,4 +118,65 @@ func Test_ParseParameters_File(t *testing.T) {
 	}
 
 	require.Equal(t, expected, parameters)
+}
+
+func Test_ParseParameters_BicepParam(t *testing.T) {
+	t.Run("bicepparam with build-params stdout envelope", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		bicepMock := NewMockInterface(ctrl)
+		bicepMock.EXPECT().
+			Call("build-params", "--stdout", "app.bicepparam").
+			Return([]byte(`{"parametersJson":"{\"parameters\":{\"env\":{\"value\":\"prod\"},\"tag\":{\"value\":\"v1\"}}}","templateJson":null}`), nil).
+			Times(1)
+
+		parser := ParameterParser{
+			FileSystem: filesystem.NewMemMapFileSystem(),
+			Bicep:      bicepMock,
+		}
+
+		parameters, err := parser.Parse("@app.bicepparam", "tag=v2")
+		require.NoError(t, err)
+		require.Equal(t, clients.DeploymentParameters{
+			"env": {"value": "prod"},
+			"tag": {"value": "v2"},
+		}, parameters)
+	})
+
+	t.Run("bicepparam with direct ARM parameters JSON", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		bicepMock := NewMockInterface(ctrl)
+		bicepMock.EXPECT().
+			Call("build-params", "--stdout", "app.bicepparam").
+			Return([]byte(`{"parameters":{"foo":{"value":"bar"}}}`), nil).
+			Times(1)
+
+		parser := ParameterParser{
+			FileSystem: filesystem.NewMemMapFileSystem(),
+			Bicep:      bicepMock,
+		}
+
+		parameters, err := parser.Parse("@app.bicepparam")
+		require.NoError(t, err)
+		require.Equal(t, clients.DeploymentParameters{
+			"foo": {"value": "bar"},
+		}, parameters)
+	})
+
+	t.Run("bicepparam build-params error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		bicepMock := NewMockInterface(ctrl)
+		bicepMock.EXPECT().
+			Call("build-params", "--stdout", "bad.bicepparam").
+			Return(nil, os.ErrNotExist).
+			Times(1)
+
+		parser := ParameterParser{
+			FileSystem: filesystem.NewMemMapFileSystem(),
+			Bicep:      bicepMock,
+		}
+
+		parameters, err := parser.Parse("@bad.bicepparam")
+		require.Error(t, err)
+		require.Nil(t, parameters)
+	})
 }

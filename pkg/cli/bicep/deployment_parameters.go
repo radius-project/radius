@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -30,10 +31,12 @@ import (
 // of what we need to support here.
 type ParameterParser struct {
 	FileSystem filesystem.FileSystem
+	Bicep      Interface
 }
 
 type ParameterFile struct {
-	Parameters clients.DeploymentParameters `json:"parameters"`
+	Parameters     clients.DeploymentParameters `json:"parameters"`
+	ParametersJSON string                       `json:"parametersJson"`
 }
 
 // ParseFileContents takes in a map of strings and any type and returns a DeploymentParameters object and
@@ -81,6 +84,15 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 	if after, ok := strings.CutPrefix(input, "@"); ok {
 		// input is a file that declares multiple parameters
 		filePath := after
+		if strings.EqualFold(filepath.Ext(filePath), ".bicepparam") {
+			b, err := pp.buildBicepParams(filePath)
+			if err != nil {
+				return err
+			}
+
+			return pp.unmarshalParameters(b, output)
+		}
+
 		b, err := pp.FileSystem.ReadFile(filePath)
 		if err != nil {
 			return err
@@ -122,12 +134,28 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 	return nil
 }
 
-func (pp ParameterParser) unmarshalParameters(b []byte, output clients.DeploymentParameters) error {
+func (pp ParameterParser) buildBicepParams(filePath string) ([]byte, error) {
+	if pp.Bicep != nil {
+		return pp.Bicep.Call("build-params", "--stdout", filePath)
+	}
 
+	return runBicepRaw("build-params", "--stdout", filePath)
+}
+
+func (pp ParameterParser) unmarshalParameters(b []byte, output clients.DeploymentParameters) error {
 	data := ParameterFile{}
 	err := json.Unmarshal(b, &data)
 	if err != nil {
 		return err
+	}
+
+	if data.Parameters == nil && data.ParametersJSON != "" {
+		inner := ParameterFile{}
+		err = json.Unmarshal([]byte(data.ParametersJSON), &inner)
+		if err != nil {
+			return err
+		}
+		data.Parameters = inner.Parameters
 	}
 
 	pp.mergeParameters(output, data.Parameters)
