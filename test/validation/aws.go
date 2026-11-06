@@ -38,6 +38,7 @@ const (
 	AWSRDSDBInstanceResourceType    = "AWS.RDS/DBInstance"
 	AWSLogsMetricFilterResourceType = "AWS.Logs/MetricFilter"
 	AWSLogsLogGroupResourceType     = "AWS.Logs/LogGroup"
+	AWSEC2KeyPairResourceType       = "AWS.EC2/KeyPair"
 )
 
 type AWSResource struct {
