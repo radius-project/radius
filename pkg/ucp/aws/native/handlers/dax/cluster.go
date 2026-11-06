@@ -242,9 +242,10 @@ func (h *Cluster) Create(ctx context.Context, request native.CreateRequest) (str
 // modifiable are the properties UpdateCluster changes.
 var modifiable = []string{"Description", "NotificationTopicARN", "ParameterGroupName", "PreferredMaintenanceWindow", "SecurityGroupIds"}
 
-// Update adds and removes tags, makes the patch's changes with UpdateCluster, then changes the number of nodes. Tags
-// go first, because DAX takes the other calls only while the cluster is available, and UpdateCluster and a change of
-// the number of nodes can make it modifying.
+// Update adds and removes tags, then makes the patch's changes with UpdateCluster, or changes the number of nodes.
+// Tags go first, because DAX takes the other calls only while the cluster is available, and UpdateCluster and a
+// change of the number of nodes can make it modifying. For the same reason, a deploy that changes both UpdateCluster's
+// settings and the number of nodes is rejected before any call: UCP can't wait for the cluster between them.
 func (h *Cluster) Update(ctx context.Context, request native.UpdateRequest) error {
 	cluster, err := h.describe(ctx, request.Region, request.Identifier)
 	if err != nil {
@@ -259,6 +260,15 @@ func (h *Cluster) Update(ctx context.Context, request native.UpdateRequest) erro
 	replication, err := h.replicationCall(ctx, cluster, request, changed, opt)
 	if err != nil {
 		return err
+	}
+	if update != nil && replication != nil {
+		settings := slices.DeleteFunc(slices.Clone(changed), func(name string) bool { return !slices.Contains(modifiable, name) })
+		slices.Sort(settings)
+		return &native.Failure{
+			Message:     "DAX can't change the number of nodes while UpdateCluster changes " + strings.Join(settings, ", ") + ", because both need the cluster available. Change ReplicationFactor in one deploy, and the other properties in the next.",
+			ClientError: true,
+			Outcome:     native.OutcomeRejected,
+		}
 	}
 	calls := []func() error{}
 	if slices.Contains(changed, "Tags") {

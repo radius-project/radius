@@ -103,19 +103,18 @@ func Test_Suite_Cluster(t *testing.T) {
 		WriteOnly:          []string{"AvailabilityZones"},
 		Properties:         cluster,
 		Identifier:         "app-dax",
-		Changed:            with(cluster, map[string]any{"Description": "changed"}),
+		Changed:            with(cluster, map[string]any{"Tags": map[string]any{"owner": "", "team": "b"}}),
 		ChangedWriteOnly:   with(cluster, map[string]any{"ReplicationFactor": 3, "AvailabilityZones": []any{"us-west-2a", "us-west-2b", "us-west-2c"}}),
 		Removable:          "Tags",
 		CreateOnlyChange:   with(cluster, map[string]any{"NodeType": "dax.r5.large"}),
 		OtherForm:          map[string]any{"ClusterName": "APP-DAX", "PreferredMaintenanceWindow": "SUN:05:00-SUN:06:00"},
 		MultiCall: with(cluster, map[string]any{
-			"Description":       "changed",
 			"ReplicationFactor": 3,
 			"AvailabilityZones": []any{"us-west-2a", "us-west-2b", "us-west-2c"},
 			"Tags":              map[string]any{"env": "dev", "owner": "", "team": "b"},
 		}),
-		Calls: 3,
-		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
+		Calls: 2,
+		FailCall: nativetest.FailCall(2, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
 	})
@@ -305,9 +304,9 @@ func Test_Update_Errors(t *testing.T) {
 	require.ErrorIs(t, err, native.ErrNotFound)
 
 	api.errs["IncreaseReplicationFactor"] = fault("InvalidClusterStateFault")
-	err = update(t, h, identifier, with(cluster, map[string]any{"Description": "changed", "ReplicationFactor": 3, "AvailabilityZones": nil}))
+	err = update(t, h, identifier, with(cluster, map[string]any{"Tags": map[string]any{"team": "b"}, "ReplicationFactor": 3, "AvailabilityZones": nil}))
 	var failure *native.Failure
-	require.ErrorAs(t, err, &failure, "a failure after UpdateCluster is partly applied")
+	require.ErrorAs(t, err, &failure, "a failure after the tags changed is partly applied")
 	require.Equal(t, native.OutcomePartial, failure.Outcome)
 }
 
@@ -439,4 +438,36 @@ func Test_InRegion(t *testing.T) {
 	o := &dax.Options{}
 	inRegion("eu-west-2")(o)
 	require.Equal(t, "eu-west-2", o.Region)
+}
+
+// Test_Update_SettingsAndNodes checks that a deploy that changes UpdateCluster's settings and the number of nodes is
+// rejected before any call, because DAX takes a node change only while the cluster is available, and UpdateCluster can
+// leave it modifying. Either change alone is made.
+func Test_Update_SettingsAndNodes(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewCluster(api)
+	identifier := deploy(t, h, cluster)
+	api.calls = nil
+
+	both := with(cluster, map[string]any{"SecurityGroupIds": []any{"sg-3"}, "ReplicationFactor": 3, "AvailabilityZones": nil})
+	err := update(t, h, identifier, both)
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, "ReplicationFactor")
+	require.Contains(t, failure.Message, "SecurityGroupIds")
+	for _, call := range []string{"UpdateCluster", "IncreaseReplicationFactor", "TagResource"} {
+		require.NotContains(t, api.calls, call, "nothing is changed")
+	}
+
+	settings := with(cluster, map[string]any{"SecurityGroupIds": []any{"sg-3"}, "AvailabilityZones": nil})
+	require.NoError(t, update(t, h, identifier, settings))
+	wait(t, h, identifier, native.OperationUpdate)
+	require.NoError(t, update(t, h, identifier, with(settings, map[string]any{"ReplicationFactor": 3})))
+	wait(t, h, identifier, native.OperationUpdate)
+	got, err := h.Read(t.Context(), region, identifier)
+	require.NoError(t, err)
+	require.EqualValues(t, 3, got["ReplicationFactor"])
+	require.Equal(t, []any{"sg-3"}, got["SecurityGroupIds"])
 }
