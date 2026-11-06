@@ -156,6 +156,9 @@ type harness struct {
 	// native holds the native handlers, and provisioningTypes, when set, replaces harnessProvisioningTypes.
 	native            *native.Registry
 	provisioningTypes map[string]cftypes.ProvisioningType
+
+	// headers are added to every request.
+	headers map[string]string
 }
 
 func newHarness(t *testing.T) *harness {
@@ -221,6 +224,9 @@ func (h *harness) do(factory controllerFactory, method string, path string, owne
 	req.Host, req.URL.Host, req.URL.Scheme = testHost, testHost, testScheme
 	if owner != "" {
 		req.Header.Set(sdkclients.AWSResourceOwnerHeader, owner)
+	}
+	for k, v := range h.headers {
+		req.Header.Set(k, v)
 	}
 	controller, err := factory(h.options(), h.clients())
 	require.NoError(h.t, err)
