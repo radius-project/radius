@@ -93,7 +93,7 @@ func (h *NetworkAclEntry) Identifier(properties map[string]any) (string, error) 
 	if acl == "" || !ok {
 		return "", nil
 	}
-	if !validRule(rule) {
+	if rule < 1 || rule > maxRuleNumber {
 		return "", &native.Failure{
 			Message:     fmt.Sprintf("RuleNumber %v of the network ACL entry is not one of 1 to %d. AWS keeps the rule numbers above %d for the network ACL's own rules.", properties["RuleNumber"], maxRuleNumber, maxRuleNumber),
 			ClientError: true,
@@ -104,17 +104,12 @@ func (h *NetworkAclEntry) Identifier(properties map[string]any) (string, error) 
 	return entryKey{acl: acl, rule: int32(rule), egress: egress}.String(), nil
 }
 
-// validRule reports whether rule is a rule number a template can use.
-func validRule(rule int64) bool {
-	return rule >= 1 && rule <= maxRuleNumber
-}
-
 func parseEntryKey(identifier string) (entryKey, error) {
 	parts := strings.Split(identifier, "|")
 	if len(parts) == 3 && parts[0] != "" {
-		rule, ruleErr := strconv.ParseInt(parts[1], 10, 64)
+		rule, ruleErr := strconv.ParseInt(parts[1], 10, 32)
 		egress, egressErr := strconv.ParseBool(parts[2])
-		if ruleErr == nil && egressErr == nil && validRule(rule) {
+		if ruleErr == nil && egressErr == nil && rule >= 1 && rule <= maxRuleNumber {
 			return entryKey{acl: parts[0], rule: int32(rule), egress: egress}, nil
 		}
 	}
