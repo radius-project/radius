@@ -1061,7 +1061,7 @@ func (s Suite) deleteTokenRetry(t *testing.T) {
 
 	h.removeEventually()
 	h.requireRemoved(nil)
-	require.NotEmpty(t, h.handler.tokens)
+	require.GreaterOrEqual(t, len(h.handler.tokens), 2, "the lost delete and its retry both send a token")
 	for _, token := range h.handler.tokens {
 		require.Equal(t, first, token, "every attempt sends the same delete token")
 	}
