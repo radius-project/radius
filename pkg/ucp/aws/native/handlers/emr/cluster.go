@@ -462,6 +462,9 @@ func intValue(v any) (int32, bool) {
 
 // Create starts the cluster with RunJobFlow, tagged with the operation ID so Find can find it.
 func (h *Cluster) Create(ctx context.Context, request native.CreateRequest) (string, error) {
+	if err := awsapi.ReservedTags(request.Properties, awsapi.OperationTag); err != nil {
+		return "", err
+	}
 	p := request.Properties
 	input := &emr.RunJobFlowInput{}
 	if err := decode(awsapi.Without(p, "Instances", "Tags", "AdditionalInfo"), input); err != nil {
@@ -616,6 +619,9 @@ func unchangeable(names []string) error {
 // node replacement, step concurrency, visibility, the managed scaling and auto-termination policies, and tags. It
 // rejects any other change before it calls AWS.
 func (h *Cluster) Update(ctx context.Context, request native.UpdateRequest) error {
+	if err := awsapi.ReservedTags(request.Desired, awsapi.OperationTag); err != nil {
+		return err
+	}
 	if _, err := h.active(ctx, request.Region, request.Identifier); err != nil {
 		return err
 	}

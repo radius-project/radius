@@ -975,3 +975,23 @@ func Test_RemovedAutoScalingPolicy(t *testing.T) {
 	require.NoError(t, update(t, h, id, removed))
 	require.Empty(t, changes(api), "the removal is fully applied")
 }
+
+// Test_ReservedTags checks that a template can't set the operation tag the handler finds a lost create by: a create
+// or an update with it is rejected before any change.
+func Test_ReservedTags(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewCluster(api)
+	reserved := with(clusterProperties(), map[string]any{"Tags": tags(awsapi.OperationTag, "token-1")})
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, reserved), ClientToken: "token-1"})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Contains(t, failure.Message, awsapi.OperationTag)
+	require.Empty(t, api.calls, "nothing reached AWS")
+
+	id := create(t, h, clusterProperties())
+	api.calls = nil
+	require.ErrorAs(t, update(t, h, id, reserved), &failure)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Empty(t, changes(api), "nothing changed in AWS")
+}

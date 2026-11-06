@@ -187,6 +187,27 @@ func Changed(request native.UpdateRequest) []string {
 // resource, with the record's client token as the value. Read leaves it out, so it never counts as a change.
 const OperationTag = "radius-operation-id"
 
+// ReservedTags returns a rejected failure when the template's Tags set a key the handler keeps its own state in, such
+// as OperationTag, and nil otherwise. A handler calls it before any AWS call of a create or an update, so a template
+// can't change that state.
+func ReservedTags(properties map[string]any, keys ...string) error {
+	reserved := []string{}
+	for _, tag := range Tags(properties) {
+		if slices.Contains(keys, tag.Key) && !slices.Contains(reserved, tag.Key) {
+			reserved = append(reserved, tag.Key)
+		}
+	}
+	if len(reserved) == 0 {
+		return nil
+	}
+	slices.Sort(reserved)
+	return &native.Failure{
+		Message:     fmt.Sprintf("Radius keeps its own state in these tags, so a template can't set them: %s. Remove them from Tags.", strings.Join(reserved, ", ")),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
+}
+
 // Tag is a tag in CloudFormation's format.
 type Tag struct {
 	Key   string `json:"Key"`

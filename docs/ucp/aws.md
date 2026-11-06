@@ -191,6 +191,8 @@ Each service has a package in `pkg/ucp/aws/native/handlers`, which `handlers.All
 
 The final snapshot or backup needs the permission to take it, such as `rds:CreateDBClusterSnapshot` or `fsx:CreateBackup`. Radius never deletes it.
 
+EMR and FSx keep their own state in tags: `radius-operation-id` on both, and `radius-delete-options` and `radius-update-baseline` on FSx. A template that sets one of these tags gets `400` before any change.
+
 #### Testing native handlers
 
 Every native handler runs the shared suite in `pkg/ucp/aws/native/nativetest`, which deploys through UCP's controllers and worker with an in-memory AWS. A handler's tests give it a fake of the service's API backed by the same in-memory store. `pkg/ucp/aws/native/nativefake` has a fake handler for testing the framework. `Test_SchemaPermissionsCoverAWSCalls` in `pkg/ucp/aws/native/handlers` reads each handler's source and fails when a handler makes an AWS call that its schema's handler permissions don't list for the operation that makes it.

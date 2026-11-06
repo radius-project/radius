@@ -860,3 +860,54 @@ func Test_UpdatesEveryUpdatableProperty(t *testing.T) {
 		require.ElementsMatch(t, want, updatable[config], config)
 	}
 }
+
+// Test_ReservedTags checks that a template can't set a tag the handler keeps its own state in: a create or an update
+// with one is rejected before any change, so a template can't hide a failed update or choose how a delete removes
+// child volumes.
+func Test_ReservedTags(t *testing.T) {
+	base := map[string]any{"FileSystemType": "OPENZFS", "StorageCapacity": 64, "SubnetIds": []any{"subnet-0a1"}, "OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64}}
+	requireRejected := func(t *testing.T, err error, key string) {
+		t.Helper()
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure)
+		require.True(t, failure.ClientError)
+		require.Equal(t, native.OutcomeRejected, failure.Outcome)
+		require.Contains(t, failure.Message, key)
+	}
+
+	for _, key := range []string{updateBaselineTag, deleteOptionsTag, awsapi.OperationTag} {
+		t.Run("create with "+key, func(t *testing.T) {
+			api := newFakeAPI(awsfake.NewCloudControl())
+			h := NewFileSystem(api)
+			_, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, with(base, map[string]any{"Tags": tags(key, "x")})), ClientToken: uuid.New().String()})
+			requireRejected(t, err, key)
+			require.Empty(t, api.calls, "nothing reached AWS")
+		})
+	}
+
+	t.Run("an update can't hide its failure", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewFileSystem(api)
+		id := create(t, h, base)
+		api.failUpdate = "The throughput capacity is not supported."
+		api.calls = nil
+		hidden := with(base, map[string]any{
+			"Tags":                 tags(updateBaselineTag, "2099-01-01T00:00:00Z"),
+			"OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 4096},
+		})
+		requireRejected(t, update(t, h, id, base, hidden), updateBaselineTag)
+		require.NotContains(t, api.calls, "UpdateFileSystem")
+		require.NotContains(t, api.calls, "TagResource")
+	})
+
+	t.Run("an update can't choose the delete's options", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewFileSystem(api)
+		id := create(t, h, base)
+		api.calls = nil
+		requireRejected(t, update(t, h, id, base, with(base, map[string]any{"Tags": tags(deleteOptionsTag, "DELETE_CHILD_VOLUMES_AND_SNAPSHOTS")})), deleteOptionsTag)
+		require.NotContains(t, api.calls, "TagResource")
+		require.NoError(t, h.Delete(t.Context(), testRegion, id))
+		require.Nil(t, api.deleteOptions[id], "the delete sends no options the template didn't set as Options")
+	})
+}
