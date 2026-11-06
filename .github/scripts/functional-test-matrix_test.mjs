@@ -22,16 +22,15 @@ const legacyNames = [
   "datastoresrp-noncloud",
   "msgrp-noncloud"
 ];
-const pr = full.filter(({ name }) => !legacyNames.includes(name));
 
-for (const { name, context, expected } of [
+for (const { name, context, profile } of [
   {
     name: "main PR",
     context: {
       eventName: "pull_request",
       payload: { pull_request: { base: { ref: "main" } } }
     },
-    expected: pr
+    profile: "pr"
   },
   {
     name: "feature PR",
@@ -39,7 +38,7 @@ for (const { name, context, expected } of [
       eventName: "pull_request",
       payload: { pull_request: { base: { ref: "features/example" } } }
     },
-    expected: pr
+    profile: "pr"
   },
   {
     name: "fork PR",
@@ -52,7 +51,7 @@ for (const { name, context, expected } of [
         }
       }
     },
-    expected: pr
+    profile: "pr"
   },
   {
     name: "release PR uses the base, not the head branch",
@@ -62,7 +61,7 @@ for (const { name, context, expected } of [
         pull_request: { base: { ref: "release/0.60" }, head: { ref: "main" } }
       }
     },
-    expected: full
+    profile: "full"
   },
   {
     name: "main merge queue",
@@ -70,7 +69,7 @@ for (const { name, context, expected } of [
       eventName: "merge_group",
       payload: { merge_group: { base_ref: "refs/heads/main" } }
     },
-    expected: pr
+    profile: "pr"
   },
   {
     name: "unknown PR base retains full coverage",
@@ -78,7 +77,7 @@ for (const { name, context, expected } of [
       eventName: "pull_request",
       payload: { pull_request: { base: { ref: "other" } } }
     },
-    expected: full
+    profile: "full"
   },
   {
     name: "other merge queue",
@@ -86,12 +85,12 @@ for (const { name, context, expected } of [
       eventName: "merge_group",
       payload: { merge_group: { base_ref: "refs/heads/release/0.60" } }
     },
-    expected: full
+    profile: "full"
   },
   {
     name: "manual defaults to full",
     context: { eventName: "workflow_dispatch", payload: { inputs: {} } },
-    expected: full
+    profile: "full"
   },
   {
     name: "manual PR profile",
@@ -99,7 +98,7 @@ for (const { name, context, expected } of [
       eventName: "workflow_dispatch",
       payload: { inputs: { "test-profile": "pr" } }
     },
-    expected: pr
+    profile: "pr"
   },
   {
     name: "manual full profile",
@@ -107,7 +106,7 @@ for (const { name, context, expected } of [
       eventName: "workflow_dispatch",
       payload: { inputs: { "test-profile": "full" } }
     },
-    expected: full
+    profile: "full"
   },
   ...["schedule", "repository_dispatch", "push", "other"].map((eventName) => ({
     name: eventName,
@@ -115,13 +114,21 @@ for (const { name, context, expected } of [
       eventName,
       payload: { inputs: { "test-profile": "pr" } }
     },
-    expected: full
+    profile: "full"
   }))
 ]) {
-  test(`${name} selects the intended jobs and authorization variants`, () => {
-    const result = selectNonCloudTests(context);
-    assert.deepEqual(result.matrix.include, expected);
-    assert.equal(result.profile, expected === pr ? "pr" : "full");
+  test(`${name} retains all suites for authorization changes or missing detection`, () => {
+    for (const authzChanged of [true, undefined]) {
+      const result = selectNonCloudTests({ ...context, authzChanged });
+      assert.deepEqual(result.matrix.include, full);
+      assert.equal(result.profile, profile);
+      for (const name of legacyNames) {
+        assert.deepEqual(
+          result.matrix.include.filter((leg) => leg.name === name),
+          [{ os: "ubuntu-24.04", name, authzDryRun: false }]
+        );
+      }
+    }
   });
 }
 
@@ -156,6 +163,97 @@ test("full runs preserve all base suites and authorization dry runs", () => {
   );
 });
 
+const prBaseOnly = full.filter(
+  ({ name, authzDryRun }) =>
+    !legacyNames.includes(name) && !authzDryRun && name !== "authz-noncloud"
+);
+
+for (const { name, context, expected } of [
+  {
+    name: "main PR",
+    context: {
+      eventName: "pull_request",
+      payload: { pull_request: { base: { ref: "main" } } }
+    },
+    expected: prBaseOnly
+  },
+  {
+    name: "feature PR",
+    context: {
+      eventName: "pull_request",
+      payload: { pull_request: { base: { ref: "features/example" } } }
+    },
+    expected: prBaseOnly
+  },
+  {
+    name: "main merge queue",
+    context: {
+      eventName: "merge_group",
+      payload: { merge_group: { base_ref: "refs/heads/main" } }
+    },
+    expected: prBaseOnly
+  },
+  {
+    name: "manual PR profile",
+    context: {
+      eventName: "workflow_dispatch",
+      payload: { inputs: { "test-profile": "pr" } }
+    },
+    expected: prBaseOnly
+  },
+  {
+    name: "release PR keeps every authorization mode",
+    context: {
+      eventName: "pull_request",
+      payload: { pull_request: { base: { ref: "release/0.60" } } }
+    },
+    expected: full
+  },
+  ...["schedule", "repository_dispatch", "workflow_dispatch"].map(
+    (eventName) => ({
+      name: `${eventName} keeps every authorization mode`,
+      context: { eventName },
+      expected: full
+    })
+  )
+]) {
+  test(`${name} without authorization changes selects the intended jobs`, () => {
+    const result = selectNonCloudTests({ ...context, authzChanged: false });
+    assert.deepEqual(result.matrix.include, expected);
+    assert.equal(result.authzModes, expected === full);
+  });
+}
+
+test("PR profile without authorization changes keeps default-mode suites", () => {
+  assert.deepEqual(
+    prBaseOnly.map(({ name }) => name),
+    [
+      "cli-noncloud",
+      "corerp-noncloud",
+      "database-noncloud",
+      "kubernetes-noncloud",
+      "multicluster-noncloud",
+      "statestore-noncloud",
+      "samples-noncloud",
+      "ucp-noncloud",
+      "dynamicrp-noncloud",
+      "upgrade-noncloud"
+    ]
+  );
+});
+
+test("missing authorization change result keeps legacy suites and every authorization mode", () => {
+  const context = {
+    eventName: "pull_request",
+    payload: { pull_request: { base: { ref: "main" } } }
+  };
+  assert.deepEqual(selectNonCloudTests(context).matrix.include, full);
+  assert.deepEqual(
+    selectNonCloudTests({ ...context, authzChanged: true }).matrix.include,
+    full
+  );
+});
+
 for (const { context, error } of [
   { context: {}, error: /event name is required/ },
   {
@@ -179,8 +277,32 @@ for (const { context, error } of [
   });
 }
 
-for (const profile of [undefined, "pr"]) {
-  test(`manual ${profile ?? "default"} profile works when the source checkout lacks the selector`, async (t) => {
+for (const { name, context, authzChanged, expected } of [
+  ...[undefined, "pr"].map((profile) => ({
+    name: `manual ${profile ?? "default"} profile`,
+    context: {
+      eventName: "workflow_dispatch",
+      payload: { inputs: { branch: "release/old", "test-profile": profile } }
+    },
+    authzChanged: "true",
+    expected: full
+  })),
+  ...["pull_request", "merge_group"].flatMap((eventName) =>
+    ["true", "false", undefined].map((authzChanged) => ({
+      name: `${eventName} with AUTHZ_CHANGED=${authzChanged}`,
+      context: {
+        eventName,
+        payload: {
+          pull_request: { base: { ref: "main" } },
+          merge_group: { base_ref: "refs/heads/main" }
+        }
+      },
+      authzChanged,
+      expected: authzChanged === "false" ? prBaseOnly : full
+    }))
+  )
+]) {
+  test(`${name} works when the source checkout lacks the selector`, async (t) => {
     const workflow = readFileSync(
       new URL("../workflows/functional-test-noncloud.yaml", import.meta.url),
       "utf8"
@@ -217,6 +339,12 @@ for (const profile of [undefined, "pr"]) {
       /      - name: Select functional test matrix\n[\s\S]*?(?=\n      - )/
     )?.[0];
     assert.ok(selection, "matrix selection step must exist");
+    assert.ok(
+      selection.includes(
+        "AUTHZ_CHANGED: ${{ needs.changes.outputs.authz_changed }}"
+      ),
+      "matrix selection must receive the authorization change result"
+    );
     assert.ok(build.indexOf(checkout) > build.indexOf(sourceCheckout));
     assert.ok(build.indexOf(selection) > build.indexOf(checkout));
 
@@ -249,19 +377,14 @@ for (const profile of [undefined, "pr"]) {
       async write() {}
     };
     await runSelector(
-      {
-        eventName: "workflow_dispatch",
-        payload: { inputs: { branch: "release/old", "test-profile": profile } }
-      },
+      context,
       {
         setOutput: (name, value) => outputs.push([name, value]),
         info() {},
         summary
       },
-      { env: { GITHUB_WORKSPACE: root } }
+      { env: { GITHUB_WORKSPACE: root, AUTHZ_CHANGED: authzChanged } }
     );
-    assert.deepEqual(outputs, [
-      ["matrix", { include: profile === "pr" ? pr : full }]
-    ]);
+    assert.deepEqual(outputs, [["matrix", { include: expected }]]);
   });
 }

@@ -70,6 +70,17 @@ GET `.../<alias>` reads UCP's record of the alias, then reads AWS by the identif
 
 UCP calls AWS through Cloud Control, except for types a native handler in `pkg/ucp/aws/native` serves: types with no CloudFormation type, and types Cloud Control can't create in the request's region. Both use the same record and worker. See [Native handlers](../ucp/aws.md#native-handlers).
 
+### Internal mTLS endpoint
+
+The Kubernetes APIService endpoint (Service port 443 to container port 9443,
+using the `ucp-cert` certificate) is unchanged by internal authorization. When
+the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
+on a separate internal port, 9444 (Service port name `internal`, config
+`server.internalPort`), for traffic from other Radius components. That endpoint
+uses `mtls.ListenAndServe` with the mounted `ucp-mtls` certificate, accepts any
+Radius component identity, and reloads certificates without a restart. See
+[Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization-mtls).
+
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.
