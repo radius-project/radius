@@ -558,7 +558,7 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}
 	properties, err := withGeneratedName(r, rec, properties)
 	if err != nil {
-		return badRequest(err.Error()), nil
+		return identifierError(ctx, r, err)
 	}
 
 	// name takes over a resource that already exists. When AWS has none, create one only if the identifier properties

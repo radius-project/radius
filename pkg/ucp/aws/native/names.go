@@ -93,10 +93,10 @@ func (r *NameRules) Generate(seed string) (string, error) {
 	return r.check(r.fit(hex.EncodeToString(sum[:])[:generatedHexLength]))
 }
 
-// check returns name, or an error when it doesn't fit the rules.
+// check returns name, or a client Failure when it doesn't fit the rules: the template can set the name instead.
 func (r *NameRules) check(name string) (string, error) {
 	if len(name) < len(generatedPrefix)+minHexLength || len(name) < r.MinLength || (r.Pattern != nil && !r.Pattern.MatchString(name)) {
-		return "", fmt.Errorf("UCP generated the name %s, which doesn't fit the rules of %s. Set %s in the template.", name, r.Property, r.Property)
+		return "", &Failure{Message: fmt.Sprintf("UCP generated the name %s, which doesn't fit the rules of %s. Set %s in the template.", name, r.Property, r.Property), ClientError: true}
 	}
 	return name, nil
 }

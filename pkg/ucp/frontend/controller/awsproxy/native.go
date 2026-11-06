@@ -384,7 +384,7 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 					rec.Properties.AWSIdentifier = found
 				})
 			}
-			return ucp_aws.HandleAWSError(ctx, err)
+			return identifierError(ctx, r, err)
 		}
 		if identifier == "" {
 			return e.create(ctx, r, rec, etag, "", properties, deploy, typeInfo, parsed, secrets)
@@ -471,7 +471,7 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 	}
 	keep := func(err error) (string, armrpc_rest.Response, error) {
 		keepCreate()
-		resp, err := ucp_aws.HandleAWSError(ctx, err)
+		resp, err := identifierError(ctx, r, err)
 		return "", resp, err
 	}
 	removed := func() (string, armrpc_rest.Response, error) {
@@ -567,9 +567,9 @@ func (e *engine) resendCreate(ctx context.Context, r *request, rec *datamodel.AW
 	return identifier, err
 }
 
-// identifierError returns the response for an error computing the identifier from a template's properties. A
-// handler reports a property value it can't use as a client native.Failure, which gets 400 with its message, as AWS's
-// own rejection would.
+// identifierError returns the response for an error computing the identifier from a template's properties, including
+// a generated name, or finding a lost create. A handler reports a property value it can't use as a client
+// native.Failure, which gets 400 with its message, as AWS's own rejection would.
 func identifierError(ctx context.Context, r *request, err error) (armrpc_rest.Response, error) {
 	var failure *native.Failure
 	if errors.As(err, &failure) {
