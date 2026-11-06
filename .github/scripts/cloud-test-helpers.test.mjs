@@ -28,9 +28,9 @@ const env = {
   CHECKOUT_REF: "b".repeat(40),
   UNIQUE_ID: "func0123456789",
   REL_VERSION: "test-func0123456789-101-1",
-  CONTAINER_REGISTRY: bundle.registries.images,
-  BICEP_RECIPE_REGISTRY: bundle.registries.recipes,
-  TEST_BICEP_TYPES_REGISTRY: bundle.registries.types
+  CONTAINER_REGISTRY: "ghcr.io/radius-project/dev",
+  BICEP_RECIPE_REGISTRY: "ghcr.io/radius-project/dev",
+  TEST_BICEP_TYPES_REGISTRY: "crradfunctestl83v.azurecr.io"
 };
 const source = bundle.sourceIdentity(context, env, 1);
 const hash = (data) =>
@@ -565,6 +565,109 @@ test("preparation rejects mismatched sources before writes and publication recor
     /digest changed/
   );
 });
+
+for (const [destination, paths] of [
+  [
+    "ghcr",
+    [
+      "ghcr.io/radius-project/dev/ucpd",
+      "ghcr.io/radius-project/dev/applications-rp",
+      "ghcr.io/radius-project/dev/dynamic-rp",
+      "ghcr.io/radius-project/dev/controller",
+      "ghcr.io/radius-project/dev/testrp",
+      "ghcr.io/radius-project/dev/magpiego",
+      "ghcr.io/radius-project/dev/bicep",
+      "ghcr.io/radius-project/dev/pre-upgrade",
+      "ghcr.io/radius-project/dev/test/testrecipes/test-bicep-recipes/dynamicrp_recipe"
+    ]
+  ],
+  ["acr", ["crradfunctestl83v.azurecr.io/test/radius"]]
+]) {
+  test(`${destination} publication uses configured fixed targets and verifies readback`, async (t) => {
+    const directory = await temporary(t);
+    const { roots, manifests } = payload();
+    const receiptPath = join(directory, "receipt.json");
+    const receipt = {
+      source,
+      artifact: { id: artifact.id, digest: artifact.digest },
+      tag: env.REL_VERSION,
+      roots,
+      published: []
+    };
+    await save(receiptPath, receipt);
+    const targets = paths.map((path) => `${path}:test-func0123456789-101-1`);
+    const selected = roots.filter(
+      (root) =>
+        root.annotations["org.opencontainers.image.ref.name"].startsWith(
+          "types-"
+        ) ===
+        (destination === "acr")
+    );
+    const calls = [];
+    const args = { context, core: core({ directory, destination }) };
+    await bundle.publish(args, env, async (command) => {
+      calls.push(command);
+      if (command[1] === "cp") return "";
+      const index = targets.indexOf(command.at(-1));
+      assert.notEqual(index, -1, "Readback must use an expected fixed target");
+      return manifests.get(selected[index].digest);
+    });
+    assert.deepEqual(
+      calls,
+      targets.flatMap((reference, index) => [
+        [
+          "oras",
+          "cp",
+          "--from-oci-layout",
+          `${join(directory, "layout")}@${selected[index].digest}`,
+          reference
+        ],
+        ["oras", "manifest", "fetch", reference]
+      ])
+    );
+    assert.deepEqual(JSON.parse(await readFile(receiptPath)), {
+      ...receipt,
+      published: targets
+    });
+    await save(receiptPath, receipt);
+    await assert.rejects(
+      bundle.publish(args, env, async () => "{}"),
+      /Published digest changed/
+    );
+    assert.deepEqual(JSON.parse(await readFile(receiptPath)), receipt);
+  });
+
+  for (const [setting, registry] of [
+    ["TEST_BICEP_TYPES_REGISTRY", "crradfunctest1b2s.azurecr.io"],
+    ["TEST_BICEP_TYPES_REGISTRY", "unknown.azurecr.io"],
+    ["CONTAINER_REGISTRY", "ghcr.io/unknown/dev"],
+    ["BICEP_RECIPE_REGISTRY", "ghcr.io/unknown/dev"]
+  ]) {
+    test(`${destination} rejects ${setting}=${registry} before any copy`, async (t) => {
+      const directory = await temporary(t);
+      await save(join(directory, "receipt.json"), {
+        source,
+        artifact: { id: artifact.id, digest: artifact.digest },
+        tag: env.REL_VERSION,
+        roots: payload().roots,
+        published: []
+      });
+      const calls = [];
+      await assert.rejects(
+        bundle.publish(
+          { context, core: core({ directory, destination }) },
+          { ...env, [setting]: registry },
+          async (command) => {
+            calls.push(command);
+            assert.fail("Unexpected registry copy");
+          }
+        ),
+        /Test registry allowlist mismatch/
+      );
+      assert.deepEqual(calls, []);
+    });
+  }
+}
 
 test("uploads retain the authenticated producer tag across full and downstream-only reruns", async (t) => {
   for (const [producingAttempt, retryAttempt] of [

@@ -55,7 +55,7 @@ export const images = [
 export const registries = {
   images: "ghcr.io/radius-project/dev",
   recipes: "ghcr.io/radius-project/dev",
-  types: "crradfunctest1b2s.azurecr.io"
+  types: "crradfunctestl83v.azurecr.io"
 };
 
 export async function tool(args, options = {}) {
