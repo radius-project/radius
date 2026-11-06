@@ -79,6 +79,9 @@ on:
       release_metadata:
         description: Returns 'true' when release metadata changed in a PR-like comparison.
         value: ${{ jobs.changes.outputs.release_metadata }}
+      authz_changed:
+        description: Returns 'false' only when a PR-like comparison changed no authorization-related paths.
+        value: ${{ jobs.changes.outputs.authz_changed }}
 
 permissions: {}
 
@@ -93,6 +96,7 @@ jobs:
     outputs:
       only_changed: ${{ steps.set-result.outputs.only_changed }}
       release_metadata: ${{ steps.set-result.outputs.release_metadata }}
+      authz_changed: ${{ steps.set-result.outputs.authz_changed }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -137,6 +141,31 @@ jobs:
               - .github/release-plans/v*.yaml
             workflows:
               - .github/workflows/**
+            # Paths whose changes can alter behavior under non-default authorization modes.
+            authz:
+              - pkg/authz/**
+              - pkg/armrpc/api/**
+              - pkg/armrpc/asyncoperation/worker/**
+              - pkg/armrpc/frontend/**
+              - pkg/armrpc/hostoptions/**
+              - pkg/corerp/backend/deployment/**
+              - pkg/corerp/frontend/controller/applications/**
+              - pkg/corerp/frontend/controller/environments/**
+              - pkg/kubeutil/namespace*.go
+              - pkg/cli/helm/cert_manager*.go
+              - pkg/ucp/proxy/**
+              - pkg/ucp/config.go
+              - pkg/dynamicrp/config.go
+              - cmd/*/cmd/**
+              - deploy/Chart/**
+              - test/functional-portable/authz/**
+              - hack/authz/**
+              - .github/scripts/authz-*
+              - .github/scripts/run-with-authz-logs*
+              - .github/scripts/functional-test-matrix*.mjs
+              - .github/scripts/changes*.mjs
+              - .github/workflows/__changes.yml
+              - .github/workflows/functional-test-noncloud.yaml
           base_sha: ${{ inputs.base_sha }}
           output_renamed_files_as_deleted_and_added: true
           fail_on_initial_diff_error: true
@@ -183,4 +212,5 @@ jobs:
           INPUT_IGNORED_FILES_COUNT: ${{ steps.filter.outputs.ignored_all_changed_and_modified_files_count }}
           INPUT_RELEASE_FILES_COUNT: ${{ steps.filter.outputs.release_metadata_all_changed_and_modified_files_count }}
           INPUT_WORKFLOW_FILES_COUNT: ${{ steps.filter.outputs.workflows_all_changed_and_modified_files_count }}
+          INPUT_AUTHZ_FILES_COUNT: ${{ steps.filter.outputs.authz_all_changed_and_modified_files_count }}
           INPUT_BASE_SHA: ${{ inputs.base_sha }}
