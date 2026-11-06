@@ -496,6 +496,18 @@ func Test_Create(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, id, again)
 
+		// A delete that finds a lost create sends it again with the last create's values, which leave out the
+		// write-only BackupId, so the handler calls CreateFileSystem. FSx scopes the token to the file system, so it
+		// rejects the token with other parameters, and the handler finds the restored file system by its tag.
+		withoutBackup := maps.Clone(restore)
+		delete(withoutBackup, "BackupId")
+		api.calls = nil
+		resent, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, withoutBackup), ClientToken: "token-r"})
+		require.NoError(t, err)
+		require.Equal(t, id, resent, "the resend finds the restored file system")
+		require.Contains(t, api.calls, "CreateFileSystem")
+		require.Equal(t, 1, api.store.Count(fileSystemType), "no second file system")
+
 		_, err = h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, with(restore, map[string]any{"OntapConfiguration": map[string]any{}})), ClientToken: "t"})
 		failure := &native.Failure{}
 		require.ErrorAs(t, err, &failure)
