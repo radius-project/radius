@@ -122,7 +122,11 @@ func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
 // a resource while creating it or taking a final backup while deleting it, and those are listed in implied.
 func Test_SchemaPermissionsAreUsed(t *testing.T) {
 	implied := map[string][]string{
-		"create": {"dms:AddTagsToResource", "rds:AddTagsToResource", "fsx:TagResource", "dax:TagResource", "elasticmapreduce:AddTags"},
+		"create": {
+			"dms:AddTagsToResource", "rds:AddTagsToResource", "fsx:TagResource", "dax:TagResource", "elasticmapreduce:AddTags",
+			// Tags sent in the create call itself: TagSpecifications, or Tags.
+			"ec2:CreateTags", "medialive:CreateTags", "sagemaker:AddTags",
+		},
 		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}
 	catalog, err := schemas.Load()
