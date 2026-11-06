@@ -509,6 +509,111 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 	}
 }
 
+// TestClientTransport_RetiredPool holds a request open on a connection to one server while a
+// connection to another server expires. The connection that stays valid must not keep its
+// retired pool open: it closes once it goes idle, or once it expires, without replacing the
+// current pool again.
+func TestClientTransport_RetiredPool(t *testing.T) {
+	for _, expireB := range []bool{false, true} {
+		t.Run(fmt.Sprintf("expireB=%t", expireB), func(t *testing.T) {
+			now := time.Now().UTC().Truncate(time.Second)
+			root := expiringCA(t, nil, now.Add(5*time.Hour))
+			issue := func(notAfter time.Time) *tls.Certificate {
+				cert := root.issue(t, certOptions{dnsNames: componentSANs("applications-rp"), notAfter: notAfter}).tlsCertificate(t)
+				return &cert
+			}
+			start := func(cert *atomic.Pointer[tls.Certificate], handler http.HandlerFunc) *httptest.Server {
+				srv := httptest.NewUnstartedServer(handler)
+				srv.TLS = &tls.Config{
+					MinVersion: tls.VersionTLS12,
+					GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+						return cert.Load(), nil
+					},
+				}
+				srv.StartTLS()
+				t.Cleanup(srv.Close)
+				return srv
+			}
+
+			var certA, certB atomic.Pointer[tls.Certificate]
+			certA.Store(issue(now.Add(10 * time.Minute)))
+			certB.Store(issue(now.Add(time.Hour)))
+			srvA := start(&certA, func(http.ResponseWriter, *http.Request) {})
+			entered := make(chan struct{})
+			unblock := make(chan struct{})
+			srvB := start(&certB, func(w http.ResponseWriter, r *http.Request) {
+				close(entered)
+				select {
+				case <-unblock:
+				case <-r.Context().Done():
+				}
+			})
+
+			dir := t.TempDir()
+			writeFiles(t, dir, root.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: now.Add(4 * time.Hour)}), root.pem)
+			transport, err := newClientTransport(authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: dir, Namespace: testNamespace}, appsRPServerName)
+			require.NoError(t, err)
+			t.Cleanup(transport.CloseIdleConnections)
+			client := &http.Client{Transport: transport, Timeout: 10 * time.Second}
+			setNow := func(at time.Time) {
+				transport.source.mu.Lock()
+				transport.source.now = func() time.Time { return at }
+				transport.source.mu.Unlock()
+			}
+
+			status, err := get(client, srvA.URL)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
+			pending := make(chan error, 1)
+			go func() {
+				_, err := get(client, srvB.URL)
+				pending <- err
+			}()
+			<-entered
+
+			// A's connection expires while B's request is in flight, which retires their pool.
+			setNow(now.Add(30 * time.Minute))
+			certA.Store(issue(now.Add(4 * time.Hour)))
+			status, err = get(client, srvA.URL)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
+			current := transport.pool()
+			require.Equal(t, 2, transport.openConns())
+
+			if expireB {
+				setNow(now.Add(2 * time.Hour))
+			} else {
+				close(unblock)
+				require.NoError(t, <-pending)
+			}
+			status, err = get(client, srvA.URL)
+			require.NoError(t, err)
+			require.Equal(t, http.StatusOK, status)
+			if expireB {
+				require.Error(t, <-pending, "closing the expired connection must interrupt its request")
+			}
+			require.Same(t, current, transport.pool(), "a connection in a retired pool must not replace the current pool")
+			require.Equal(t, 1, transport.openConns())
+
+			_, err = get(client, srvA.URL)
+			require.NoError(t, err)
+			require.Zero(t, transport.retiredPools())
+		})
+	}
+}
+
+func (t *clientTransport) pool() *http.Transport {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.current
+}
+
+func (t *clientTransport) retiredPools() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return len(t.retired)
+}
+
 func (t *clientTransport) openConns() int {
 	t.mu.Lock()
 	defer t.mu.Unlock()

@@ -452,7 +452,7 @@ func Test_ensureCertManager_RBACWarning(t *testing.T) {
 		{name: "dry run", setArgs: []string{"global.rbac.dryRun=true"}, wantWarning: true},
 		{name: "enforce", setArgs: []string{"global.rbac.enabled=true"}, wantWarning: true},
 		{name: "file override", setFileArgs: []string{"global.rbac.enabled=" + enabledFile}, wantWarning: true},
-		{name: "stored on reinstall", stored: storedDryRun, upgrade: true, wantWarning: true},
+		{name: "stored on reinstall", stored: storedDryRun, wantWarning: true},
 		{name: "stored on upgrade", stored: storedDryRun, upgrade: true, wantWarning: true},
 		{name: "disable stored dry run", stored: storedDryRun, setArgs: []string{"global.rbac.dryRun=false"}},
 	} {
