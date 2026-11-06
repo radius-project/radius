@@ -79,13 +79,31 @@ func readSnapshot(t *testing.T) map[string][]string {
 // Test_EveryNonProvisionableTypeIsClassified checks that each type Cloud Control cannot create is exactly one of
 // read-only, legacy, deprecated, or a native gap.
 func Test_EveryNonProvisionableTypeIsClassified(t *testing.T) {
+	requireClassified(t)
+}
+
+// Test_EveryNonProvisionableTypeIsClassified_HandWrittenName checks that the classification still holds after a
+// refresh adds a read-only AWS type with a hand-written type's name, which IsReadOnly then reports as not read-only.
+func Test_EveryNonProvisionableTypeIsClassified_HandWrittenName(t *testing.T) {
+	clash := ReadOnlyTypes()[0]
+	original := handWrittenTypes
+	handWrittenTypes = func() map[string]string { return map[string]string{clash: `{}`} }
+	t.Cleanup(func() { handWrittenTypes = original })
+
+	require.False(t, IsReadOnly(clash))
+	requireClassified(t)
+}
+
+// requireClassified checks the classification against the generated read-only list, not IsReadOnly, because IsReadOnly
+// leaves out hand-written types, and the snapshot classifies AWS's types.
+func requireClassified(t *testing.T) {
 	counts := map[string]int{}
 	for typeName := range readSnapshot(t) {
 		_, legacy := Replacement(typeName)
 		_, deprecated := DeprecatedReason(typeName)
 		classes := []string{}
 		for class, ok := range map[string]bool{
-			"read-only":  IsReadOnly(typeName),
+			"read-only":  slices.Contains(readOnlyTypes, typeName),
 			"legacy":     legacy,
 			"deprecated": deprecated,
 			"native gap": slices.Contains(nativeGapTypes, typeName),
@@ -168,4 +186,13 @@ func Test_IsReadOnly(t *testing.T) {
 	require.NotEqual(t, "changed", ReadOnlyTypes()[0], "ReadOnlyTypes returns a copy")
 
 	require.Equal(t, "The AWS resource type AWS::EC2::Image is created by AWS, so Radius cannot create or change it. Reference an existing resource with the Bicep `existing` keyword instead.", ReadOnlyMessage("AWS::EC2::Image"))
+}
+
+func Test_isReadOnly(t *testing.T) {
+	readOnly := []string{"AWS::EC2::Image", "AWS::Test::Object"}
+	handWritten := map[string]string{"aws::test::object": `{}`}
+	require.True(t, isReadOnly("aws::ec2::image", readOnly, handWritten))
+	require.False(t, isReadOnly("AWS::Test::Object", readOnly, handWritten), "a hand-written type is never read-only")
+	require.True(t, isReadOnly("AWS::Test::Object", readOnly, nil))
+	require.False(t, isReadOnly("AWS::S3::Bucket", readOnly, handWritten))
 }

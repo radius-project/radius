@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"uuid"
 
@@ -459,10 +460,18 @@ type CloudFormation struct {
 
 	// ProvisioningTypes maps a type to its provisioning type. A type that is not in it is FULLY_MUTABLE.
 	ProvisioningTypes map[string]cftypes.ProvisioningType
+
+	describeTypeCalls atomic.Int64
+}
+
+// DescribeTypeCalls returns how many times DescribeType was called.
+func (c *CloudFormation) DescribeTypeCalls() int {
+	return int(c.describeTypeCalls.Load())
 }
 
 // DescribeType returns the schema and provisioning type of a type.
 func (c *CloudFormation) DescribeType(ctx context.Context, params *cloudformation.DescribeTypeInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error) {
+	c.describeTypeCalls.Add(1)
 	schema, ok := c.Schemas[aws.ToString(params.TypeName)]
 	if !ok {
 		return nil, fmt.Errorf("no schema for %s", aws.ToString(params.TypeName))

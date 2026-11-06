@@ -54,7 +54,16 @@ func Test_Lookup(t *testing.T) {
 
 func Test_byLowerType(t *testing.T) {
 	property := func(name string) *string { return &name }
-	generated := map[string]string{"AWS::DocDB::DBCluster": "DBClusterArn", "AWS::SNS::Topic": "TopicArn"}
+	// AWS::S3::Object and AWS::KMS::Grant are hand-written, and stand for a refresh that found AWS types with their
+	// names. AWS::IAM::AccountPasswordPolicy is hand-written with no arnProperty.
+	generated := map[string]string{
+		"AWS::DocDB::DBCluster":           "DBClusterArn",
+		"AWS::SNS::Topic":                 "TopicArn",
+		"AWS::S3::Object":                 "Arn",
+		"AWS::KMS::Grant":                 "Arn",
+		"AWS::IAM::AccountPasswordPolicy": "Arn",
+	}
+	handWritten := map[string]string{"AWS::S3::Object": `{}`, "aws::kms::grant": `{}`, "AWS::IAM::AccountPasswordPolicy": `{}`}
 	metadata := map[string]schemas.Metadata{
 		"AWS::DocDB::DBCluster":           {TypeName: "AWS::DocDB::DBCluster", ARNProperty: property("ClusterArn")},
 		"AWS::SNS::Topic":                 {TypeName: "AWS::SNS::Topic"},
@@ -67,7 +76,7 @@ func Test_byLowerType(t *testing.T) {
 		"aws::sns::topic":       "TopicArn",
 		"aws::s3::object":       "",
 		"aws::kms::grant":       "GrantArn",
-	}, byLowerType(generated, metadata))
+	}, byLowerType(generated, schemas.Catalog{HandWritten: handWritten, Metadata: metadata}))
 }
 
 func Test_ProviderResourceID(t *testing.T) {
