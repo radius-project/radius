@@ -8,6 +8,8 @@ Both user and internal RBAC are enforced. Internal RBAC originated from prototyp
 
 The prototype includes reviewed component certificate reload and connection-expiry fixes and requires explicit client-authentication usage on the Kubernetes aggregation proxy certificate. Its full user enforcement and broader admission rules remain prototype-specific; the smaller production stacks are not drop-in replacements.
 
+The prototype also checks Applications.Core container Secret-store and persistent-volume references, records compound bootstrap grants in settings audit deltas, and stores oversized history in bounded immutable chunks. Chunked history supports both imperative changes and atomic multi-resource Bicep policy deployments, including interrupted publication and receipt-based retries. Existing inline history remains readable.
+
 ## Prerequisites
 
 - This checkout, Go, GNU Make, Git, kind, kubectl, Helm, jq, Bicep, and curl (setup only). Install Bicep with `make install-bicep` and add `$HOME/.local/bin` to `PATH`.

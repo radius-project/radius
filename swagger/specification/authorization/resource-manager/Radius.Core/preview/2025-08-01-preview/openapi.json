@@ -1715,7 +1715,7 @@
     },
     "PolicySnapshot": {
       "type": "object",
-      "description": "An access configuration snapshot. Exactly the property matching the target resource type is present.",
+      "description": "An access configuration snapshot. The property matching the target resource type is present. Settings changes may also include compound assignment deltas in roleAssignments.",
       "properties": {
         "roleDefinition": {
           "$ref": "#/definitions/RoleDefinitionProperties",
@@ -1724,6 +1724,13 @@
         "roleAssignment": {
           "$ref": "#/definitions/RoleAssignmentProperties",
           "description": "An assignment snapshot."
+        },
+        "roleAssignments": {
+          "type": "array",
+          "description": "Assignment deltas accompanying a compound settings change in the same policy generation. Before and after snapshots contain the corresponding full assignment resources, including IDs, principals, and provenance; this is not the complete assignment inventory. Standalone assignment changes retain the singular roleAssignment field.",
+          "items": {
+            "$ref": "#/definitions/RoleAssignmentResource"
+          }
         },
         "authorizationSettings": {
           "$ref": "#/definitions/AuthorizationSettingsProperties",

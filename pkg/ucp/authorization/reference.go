@@ -35,7 +35,9 @@ type ReferenceDescriptor struct {
 // built-in and registered resources, built-in connections, and schema-declared
 // references on PUT/PATCH, including unchanged references. URL connection
 // sources are skipped; Azure and AWS connection sources require credential use
-// on the trusted cloud plane. For PATCH the caller
+// on the trusted cloud plane. Applications.Core/containers environment-variable
+// secret-store IDs and persistent volume sources require connect/action on the
+// referenced resource; Kubernetes secret names are not resource references. For PATCH the caller
 // must supply the complete effective resource after applying the patch, not
 // just its changed fields. The top-level properties field must use exact casing.
 // It does not read target resources or follow their
@@ -155,6 +157,11 @@ func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, op
 					}
 				}
 			}
+			if strings.EqualFold(typ, "Applications.Core/containers") {
+				if err := containerReferences(body, add); err != nil {
+					return nil, err
+				}
+			}
 			if containsFold([]string{"Radius.Core/environments", "Applications.Core/environments"}, typ) {
 				if value, exists := properties["recipePacks"]; exists {
 					packs, ok := value.([]any)
@@ -228,6 +235,45 @@ var legacyRecipeSecretPaths = [][]string{
 	{"properties", "recipeConfig", "terraform", "providers", "{}", "[]", "secrets", "{}", "source"},
 	{"properties", "recipeConfig", "bicep", "authentication", "{}", "secret"},
 	{"properties", "recipeConfig", "envSecrets", "{}", "source"},
+}
+
+// containerReferences checks Applications.Core/containers nested references
+// the container renderer resolves as dependencies: environment variable
+// secretRef sources that are resource IDs (a leading "/", as in the renderer;
+// other values are Kubernetes secret names) and persistent volume sources.
+func containerReferences(body map[string]any, add func(any, string, []string) error) error {
+	envPath := []string{"properties", "container", "env", "{}", "valueFrom", "secretRef", "source"}
+	err := walkTyped(envPath, body, func(value any) error {
+		if source, ok := value.(string); ok && source != "" && source[0] != '/' {
+			return nil
+		}
+		return add(value, "connect/action", []string{"Applications.Core/secretStores"})
+	})
+	if err != nil {
+		return fmt.Errorf("%s: %w", strings.Join(envPath, "."), err)
+	}
+	volumePath := []string{"properties", "container", "volumes", "{}"}
+	err = walkTyped(volumePath, body, func(value any) error {
+		volume, ok := value.(map[string]any)
+		if !ok {
+			return fmt.Errorf("volume must be an object")
+		}
+		switch volume["kind"] {
+		case "ephemeral":
+			return nil
+		case "persistent":
+			if err := add(volume["source"], "connect/action", []string{"Applications.Core/volumes"}); err != nil {
+				return fmt.Errorf("source: %w", err)
+			}
+			return nil
+		default:
+			return fmt.Errorf("unsupported volume kind %v", volume["kind"])
+		}
+	})
+	if err != nil {
+		return fmt.Errorf("%s: %w", strings.Join(volumePath, "."), err)
+	}
+	return nil
 }
 
 // walkTyped visits optional values at path, rejecting values whose JSON kind

@@ -167,7 +167,7 @@ func (s *PolicyStore) ApplyDeployment(ctx context.Context, execution string, gen
 				},
 			}
 			events[index] = policyObjectID + intent + "-event-" + strconv.Itoa(index)
-			if err := s.immutable(ctx, events[index], event); err != nil {
+			if err := s.prepareHistory(ctx, events[index], event); err != nil {
 				return nil, err
 			}
 		}

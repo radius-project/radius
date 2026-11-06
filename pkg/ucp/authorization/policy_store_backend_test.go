@@ -27,9 +27,17 @@ func runPolicyBackend(t *testing.T, newClient func(*testing.T) database.Client) 
 	t.Run("contract", func(t *testing.T) { runPolicyStoreContract(t, newClient(t)) })
 	t.Run("crashes", func(t *testing.T) { runPolicyStoreCrashRecovery(t, newClient) })
 	t.Run("delayed_recoverer", func(t *testing.T) { runPolicyStoreDelayedRecovery(t, newClient(t)) })
+	t.Run("chunked_history_crashes", func(t *testing.T) {
+		runPolicyStoreMutationCrashRecovery(t, newClient, largeHistoryMutation(),
+			[]string{"chunk-0", "chunk-1", "chunk-2", "event", "claim", "history", "finalize"})
+	})
+	t.Run("chunked_history_delayed_recoverer", func(t *testing.T) {
+		runPolicyStoreMutationDelayedRecovery(t, newClient(t), largeHistoryMutation())
+	})
 	t.Run("role_races", func(t *testing.T) { runPolicyRoleRaces(t, newClient) })
 	t.Run("deployment", func(t *testing.T) { runDeploymentPolicyContract(t, newClient(t)) })
 	t.Run("deployment_crashes", func(t *testing.T) { runDeploymentPolicyCrashRecovery(t, newClient) })
+	t.Run("deployment_chunked_history_crashes", func(t *testing.T) { runDeploymentPolicyChunkedHistoryRecovery(t, newClient) })
 }
 
 func TestPolicyStoreAPIServer(t *testing.T) {

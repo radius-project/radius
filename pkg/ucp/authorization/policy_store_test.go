@@ -122,6 +122,9 @@ func saveStage(obj *database.Object) string {
 	if strings.HasPrefix(obj.ID, historyPrefix) {
 		return "history"
 	}
+	if index := strings.Index(obj.ID, "-event-chunk-"); index >= 0 {
+		return "chunk-" + obj.ID[index+len("-event-chunk-"):]
+	}
 	for _, suffix := range []string{"-event", "-root", "-page-", "-object-"} {
 		if strings.Contains(obj.ID, suffix) {
 			return strings.Trim(suffix, "-")
@@ -393,7 +396,11 @@ func TestPolicyStoreCrashRecovery(t *testing.T) {
 }
 
 func runPolicyStoreCrashRecovery(t *testing.T, newClient func(*testing.T) database.Client) {
-	for _, stage := range []string{"object", "page", "root", "event", "claim", "history", "finalize"} {
+	runPolicyStoreMutationCrashRecovery(t, newClient, readerMutation(), []string{"object", "page", "root", "event", "claim", "history", "finalize"})
+}
+
+func runPolicyStoreMutationCrashRecovery(t *testing.T, newClient func(*testing.T) database.Client, mutation PolicyMutation, stages []string) {
+	for _, stage := range stages {
 		for _, after := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/after=%v", stage, after), func(t *testing.T) {
 				db := newClient(t)
@@ -414,7 +421,7 @@ func runPolicyStoreCrashRecovery(t *testing.T, newClient func(*testing.T) databa
 					wrapped.before = hook
 				}
 				store := newTestPolicyStore(t, wrapped, false)
-				_, err := store.Mutate(t.Context(), policyActor(), readerMutation())
+				_, err := store.Mutate(t.Context(), policyActor(), mutation)
 				require.True(t, fired)
 				require.ErrorIs(t, err, crash)
 				restarted := newTestPolicyStore(t, db, false)
@@ -426,11 +433,12 @@ func runPolicyStoreCrashRecovery(t *testing.T, newClient func(*testing.T) databa
 				} else {
 					require.Equal(t, int64(0), snapshot.Generation())
 				}
-				snapshot, err = restarted.Mutate(t.Context(), policyActor(), readerMutation())
+				snapshot, err = restarted.Mutate(t.Context(), policyActor(), mutation)
 				require.NoError(t, err)
 				require.Equal(t, int64(1), snapshot.Generation())
 				event, err := restarted.AccessChange(t.Context(), 1)
 				require.NoError(t, err)
+				require.Equal(t, mutation.Assignment.Description, event.Properties.PolicyChange.After.RoleAssignment.Description)
 				require.Equal(t, "request-1", *event.Properties.RequestID)
 				require.Equal(t, time.Date(2026, 10, 19, 0, 0, 0, 0, time.UTC), *event.Properties.Time)
 				items, err := db.Query(t.Context(), database.Query{RootScope: "/", ResourceType: "Radius.Core/accessChanges", ScopeRecursive: true})
@@ -446,6 +454,10 @@ func TestPolicyStoreDelayedRecoveryCannotResurrectAssignment(t *testing.T) {
 }
 
 func runPolicyStoreDelayedRecovery(t *testing.T, db database.Client) {
+	runPolicyStoreMutationDelayedRecovery(t, db, readerMutation())
+}
+
+func runPolicyStoreMutationDelayedRecovery(t *testing.T, db database.Client, mutation PolicyMutation) {
 	newTestPolicyStore(t, db, true)
 	crash := errors.New("crash after claiming intent")
 	claimCrash := &policyHookClient{Client: db, after: func(_ context.Context, obj *database.Object) error {
@@ -454,7 +466,7 @@ func runPolicyStoreDelayedRecovery(t *testing.T, db database.Client) {
 		}
 		return nil
 	}}
-	_, err := newTestPolicyStore(t, claimCrash, false).Mutate(t.Context(), policyActor(), readerMutation())
+	_, err := newTestPolicyStore(t, claimCrash, false).Mutate(t.Context(), policyActor(), mutation)
 	require.ErrorIs(t, err, crash)
 	reached, release := make(chan struct{}), make(chan struct{})
 	var paused atomic.Bool
@@ -481,7 +493,7 @@ func runPolicyStoreDelayedRecovery(t *testing.T, db database.Client) {
 	recovered, err := store.LoadPolicy(t.Context(), -1)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), recovered.Generation())
-	deleted, err := store.Mutate(t.Context(), policyActor(), PolicyMutation{Target: readerMutation().Target, Delete: true})
+	deleted, err := store.Mutate(t.Context(), policyActor(), PolicyMutation{Target: mutation.Target, Delete: true})
 	require.NoError(t, err)
 	require.Equal(t, int64(2), deleted.Generation())
 	close(release)
@@ -498,6 +510,9 @@ func runPolicyStoreDelayedRecovery(t *testing.T, db database.Client) {
 		require.Equal(t, generation, *event.Properties.Generation)
 		if generation == 1 {
 			require.Equal(t, time.Date(2026, 10, 19, 0, 0, 0, 0, time.UTC), *event.Properties.Time)
+			require.Equal(t, mutation.Assignment.Description, event.Properties.PolicyChange.After.RoleAssignment.Description)
+		} else {
+			require.Equal(t, mutation.Assignment.Description, event.Properties.PolicyChange.Before.RoleAssignment.Description)
 		}
 	}
 	t.Log("paused generation-1 recoverer resumed after generation-2 delete: no resurrection, one event per generation")
@@ -667,6 +682,19 @@ func TestPolicyStorePayloadByteBound(t *testing.T) {
 				largest = max(largest, len(payload))
 			}
 			require.Equal(t, maxPolicyBytes, largest)
+			replacement := *assignment.Properties
+			replacement.Description = to.Ptr(strings.Repeat("y", len(*assignment.Properties.Description)))
+			_, err = store.Mutate(t.Context(), policyActor(), PolicyMutation{Target: *assignment.ID, Assignment: &replacement})
+			require.NoError(t, err, "an initialized payload-bound assignment must remain updateable")
+			event, err := store.AccessChange(t.Context(), 1)
+			require.NoError(t, err)
+			require.Equal(t, assignment.Properties, event.Properties.PolicyChange.Before.RoleAssignment)
+			require.Equal(t, replacement.Description, event.Properties.PolicyChange.After.RoleAssignment.Description)
+			_, err = store.Mutate(t.Context(), policyActor(), PolicyMutation{Target: *assignment.ID, Delete: true})
+			require.NoError(t, err, "an initialized payload-bound assignment must remain revocable")
+			event, err = store.AccessChange(t.Context(), 2)
+			require.NoError(t, err)
+			require.Equal(t, replacement.Description, event.Properties.PolicyChange.Before.RoleAssignment.Description)
 		})
 	}
 }

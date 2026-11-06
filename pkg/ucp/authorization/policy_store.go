@@ -6,6 +6,8 @@ package authorization
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,13 +23,20 @@ import (
 )
 
 const (
-	accessVersionID = "/providers/System.Authorization/accessVersions/default"
-	policyObjectID  = "/providers/System.Authorization/policyObjects/"
-	historyPrefix   = "/providers/Radius.Core/accessChanges/"
-	maxPolicyBytes  = 128 * 1024
-	manifestFanout  = 128
-	maxGeneration   = int64(1<<53 - 1) // All current JSON-backed clients preserve these integers.
-	policyRetries   = 5
+	accessVersionID   = "/providers/System.Authorization/accessVersions/default"
+	policyObjectID    = "/providers/System.Authorization/policyObjects/"
+	historyPrefix     = "/providers/Radius.Core/accessChanges/"
+	maxPolicyBytes    = 128 * 1024
+	manifestFanout    = 128
+	maxGeneration     = int64(1<<53 - 1) // All current JSON-backed clients preserve these integers.
+	policyRetries     = 5
+	historyChunkBytes = maxPolicyBytes / 2
+	// A snapshot can include all packed policy resources plus field/array wrappers.
+	// Bound actor, request and provenance metadata separately from policy contents.
+	maxHistorySnapshotBytes = (manifestFanout + 1) * maxPolicyBytes
+	maxHistoryMetadataBytes = maxPolicyBytes
+	maxHistoryEnvelopeBytes = maxHistoryMetadataBytes + maxPolicyBytes
+	maxHistoryChunks        = (2*maxHistorySnapshotBytes + maxHistoryEnvelopeBytes) / historyChunkBytes
 )
 
 // ErrPolicyConflict means five optimistic version-conflict retries were exhausted.
@@ -65,6 +74,150 @@ type manifestPage struct {
 
 type policyPayload struct {
 	Entries map[string]json.RawMessage `json:"entries"`
+}
+
+type historyManifest struct {
+	Chunks []string `json:"historyChunks"`
+	Size   int      `json:"size"`
+	SHA256 string   `json:"sha256"`
+}
+
+type historyChunk struct {
+	Data []byte `json:"data"`
+}
+
+// prepareHistory preserves small, existing inline events and splits larger
+// events into immutable bounded objects before the intent can be claimed.
+func (s *PolicyStore) prepareHistory(ctx context.Context, id string, event api.AccessChangeResource) error {
+	if event.Properties == nil || event.Properties.PolicyChange == nil {
+		return fmt.Errorf("invalid access history properties")
+	}
+	// Bound variable metadata independently of operation, generation digit count,
+	// timestamp precision, and before/after presence, so those cannot consume the
+	// headroom needed to revoke an already accepted entry.
+	metadata := api.AccessChangeResource{Properties: &api.AccessChangeProperties{
+		Principal: event.Properties.Principal, RequestID: event.Properties.RequestID, CorrelationID: event.Properties.CorrelationID,
+		PolicyChange: &api.PolicyChange{Target: event.Properties.PolicyChange.Target, ManagedBy: event.Properties.PolicyChange.ManagedBy},
+	}}
+	rawMetadata, err := json.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	if len(rawMetadata) > maxHistoryMetadataBytes {
+		return fmt.Errorf("PolicyCapacityExceeded: access history metadata exceeds byte bound")
+	}
+	envelope := event
+	properties := *event.Properties
+	change := *properties.PolicyChange
+	for _, snapshot := range []*api.PolicySnapshot{change.Before, change.After} {
+		if snapshot == nil {
+			continue
+		}
+		raw, err := json.Marshal(snapshot)
+		if err != nil {
+			return err
+		}
+		if len(raw) > maxHistorySnapshotBytes {
+			return fmt.Errorf("PolicyCapacityExceeded: access history snapshot exceeds byte bound")
+		}
+	}
+	if change.Before != nil {
+		change.Before = &api.PolicySnapshot{}
+	}
+	if change.After != nil {
+		change.After = &api.PolicySnapshot{}
+	}
+	properties.PolicyChange = &change
+	envelope.Properties = &properties
+	rawEnvelope, err := json.Marshal(envelope)
+	if err != nil {
+		return err
+	}
+	if len(rawEnvelope) > maxHistoryEnvelopeBytes {
+		return fmt.Errorf("PolicyCapacityExceeded: access history envelope exceeds byte bound")
+	}
+	raw, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	if len(raw) <= maxPolicyBytes {
+		return s.immutable(ctx, id, event)
+	}
+	if len(raw) > maxHistoryChunks*historyChunkBytes {
+		return fmt.Errorf("PolicyCapacityExceeded: access history exceeds chunk bound")
+	}
+	checksum := sha256.Sum256(raw)
+	manifest := historyManifest{Size: len(raw), SHA256: hex.EncodeToString(checksum[:])}
+	for offset := 0; offset < len(raw); offset += historyChunkBytes {
+		chunkID := id + "-chunk-" + strconv.Itoa(len(manifest.Chunks))
+		chunk := historyChunk{Data: raw[offset:min(offset+historyChunkBytes, len(raw))]}
+		if err := s.immutable(ctx, chunkID, chunk); err != nil {
+			return err
+		}
+		manifest.Chunks = append(manifest.Chunks, chunkID)
+	}
+	return s.immutable(ctx, id, manifest)
+}
+
+func (s *PolicyStore) readHistory(ctx context.Context, id string) (*api.AccessChangeResource, json.RawMessage, error) {
+	var record json.RawMessage
+	if _, err := s.read(ctx, id, &record); err != nil {
+		return nil, nil, err
+	}
+	var manifest historyManifest
+	if err := json.Unmarshal(record, &manifest); err != nil {
+		return nil, nil, err
+	}
+	raw := record
+	if manifest.Chunks != nil {
+		if len(manifest.Chunks) < 2 || len(manifest.Chunks) > maxHistoryChunks ||
+			manifest.Size <= maxPolicyBytes || manifest.Size > maxHistoryChunks*historyChunkBytes ||
+			len(manifest.Chunks) != (manifest.Size+historyChunkBytes-1)/historyChunkBytes ||
+			len(manifest.SHA256) != sha256.Size*2 {
+			return nil, nil, fmt.Errorf("invalid access history chunk count")
+		}
+		prefix := strings.TrimSuffix(manifest.Chunks[0], "-chunk-0")
+		intent, suffix, found := strings.Cut(strings.TrimPrefix(prefix, policyObjectID), "-event")
+		parsed, err := uuid.Parse(intent)
+		validSuffix := suffix == ""
+		if strings.HasPrefix(suffix, "-") {
+			index, err := strconv.Atoi(strings.TrimPrefix(suffix, "-"))
+			validSuffix = err == nil && index >= 0 && index < 100 && suffix == "-"+strconv.Itoa(index)
+		}
+		if !found || !validSuffix || err != nil || parsed.String() != intent ||
+			prefix != policyObjectID+intent+"-event"+suffix ||
+			(strings.HasPrefix(id, policyObjectID) && prefix != id) {
+			return nil, nil, fmt.Errorf("invalid access history chunk prefix")
+		}
+		raw = make([]byte, 0, manifest.Size)
+		for index, chunkID := range manifest.Chunks {
+			if chunkID != prefix+"-chunk-"+strconv.Itoa(index) {
+				return nil, nil, fmt.Errorf("invalid access history chunk reference")
+			}
+			var chunk historyChunk
+			if _, err := s.read(ctx, chunkID, &chunk); err != nil {
+				return nil, nil, err
+			}
+			if len(chunk.Data) == 0 || len(chunk.Data) > historyChunkBytes ||
+				(index < len(manifest.Chunks)-1 && len(chunk.Data) != historyChunkBytes) {
+				return nil, nil, fmt.Errorf("invalid access history chunk size")
+			}
+			raw = append(raw, chunk.Data...)
+		}
+		checksum := sha256.Sum256(raw)
+		if len(raw) != manifest.Size || hex.EncodeToString(checksum[:]) != manifest.SHA256 {
+			return nil, nil, fmt.Errorf("access history integrity mismatch")
+		}
+	}
+	var event api.AccessChangeResource
+	if err := json.Unmarshal(raw, &event); err != nil {
+		return nil, nil, fmt.Errorf("decode access history: %w", err)
+	}
+	if event.ID == nil || event.Properties == nil || event.Properties.Generation == nil ||
+		*event.ID != historyPrefix+strconv.FormatInt(*event.Properties.Generation, 10) {
+		return nil, nil, fmt.Errorf("invalid access history identity")
+	}
+	return &event, record, nil
 }
 
 type storedPolicy struct {
@@ -503,8 +656,8 @@ func (s *PolicyStore) finish(ctx context.Context, version accessVersion, etag st
 		if pending.Event == "" && reference != policyObjectID+pending.Intent+"-event-"+strconv.Itoa(index) {
 			return fmt.Errorf("invalid pending policy event reference")
 		}
-		var event api.AccessChangeResource
-		if _, err := s.read(ctx, reference, &event); err != nil {
+		event, record, err := s.readHistory(ctx, reference)
+		if err != nil {
 			return err
 		}
 		generation := version.Generation + int64(index) + 1
@@ -513,7 +666,7 @@ func (s *PolicyStore) finish(ctx context.Context, version accessVersion, etag st
 			event.ID == nil || *event.ID != historyID {
 			return fmt.Errorf("invalid pending access history")
 		}
-		if err := s.immutable(ctx, historyID, event); err != nil {
+		if err := s.immutable(ctx, historyID, record); err != nil {
 			return err
 		}
 	}
@@ -622,7 +775,7 @@ func (s *PolicyStore) Mutate(ctx context.Context, actor PolicyActor, mutation Po
 				Time: to.Ptr(s.clock.Now().UTC()),
 			},
 		}
-		if err := s.immutable(ctx, eventID, event); err != nil {
+		if err := s.prepareHistory(ctx, eventID, event); err != nil {
 			return nil, err
 		}
 		version.Pending = &pendingPolicy{Generation: next.Generation, Intent: intent.String(), Root: root, Event: eventID}
@@ -669,11 +822,14 @@ func (s *PolicyStore) AccessChange(ctx context.Context, generation int64) (*api.
 	if generation <= 0 || generation > version.Generation {
 		return nil, &database.ErrNotFound{ID: historyPrefix + strconv.FormatInt(generation, 10)}
 	}
-	var event api.AccessChangeResource
-	if _, err := s.read(ctx, historyPrefix+strconv.FormatInt(generation, 10), &event); err != nil {
+	event, _, err := s.readHistory(ctx, historyPrefix+strconv.FormatInt(generation, 10))
+	if err != nil {
 		return nil, err
 	}
-	return &event, nil
+	if *event.Properties.Generation != generation {
+		return nil, fmt.Errorf("access history generation mismatch")
+	}
+	return event, nil
 }
 
 var _ PolicySource = (*PolicyStore)(nil)

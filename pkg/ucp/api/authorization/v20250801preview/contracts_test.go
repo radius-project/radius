@@ -91,6 +91,33 @@ func TestAssignmentResponseRoundTrip(t *testing.T) {
 	require.JSONEq(t, response, string(body))
 }
 
+func TestCompoundPolicySnapshotRoundTrip(t *testing.T) {
+	t.Parallel()
+	const response = `{"authorizationSettings":{"mode":"Enforce","generation":2},"roleAssignments":[{"id":"/providers/Radius.Core/roleAssignments/bootstrap-alice","name":"bootstrap-alice","type":"Radius.Core/roleAssignments","properties":{"roleDefinitionId":"/providers/Radius.Core/roleDefinitions/radius-administrator","principal":{"type":"user","issuer":"kubernetes:cluster-id","subject":"alice"},"scope":"/","managedBy":{"kind":"Bootstrap"},"createdBy":"user:kubernetes:cluster-id:operator"}},{"id":"/providers/Radius.Core/roleAssignments/bootstrap-bob","name":"bootstrap-bob","type":"Radius.Core/roleAssignments","properties":{"roleDefinitionId":"/providers/Radius.Core/roleDefinitions/radius-administrator","principal":{"type":"user","issuer":"kubernetes:cluster-id","subject":"bob"},"scope":"/","managedBy":{"kind":"Bootstrap"},"createdBy":"user:kubernetes:cluster-id:operator"}}]}`
+	var snapshot PolicySnapshot
+	require.NoError(t, json.Unmarshal([]byte(response), &snapshot))
+	require.Equal(t, UserAuthorizationModeEnforce, *snapshot.AuthorizationSettings.Mode)
+	require.Len(t, snapshot.RoleAssignments, 2)
+	for i, subject := range []string{"alice", "bob"} {
+		assignment := snapshot.RoleAssignments[i]
+		require.Equal(t, "/providers/Radius.Core/roleAssignments/bootstrap-"+subject, *assignment.ID)
+		require.Equal(t, subject, *assignment.Properties.Principal.Subject)
+		require.Equal(t, AssignmentManagementKindBootstrap, *assignment.Properties.ManagedBy.Kind)
+	}
+	body, err := json.Marshal(snapshot)
+	require.NoError(t, err)
+	require.JSONEq(t, response, string(body))
+
+	const standalone = `{"roleAssignment":{"roleDefinitionId":"/providers/Radius.Core/roleDefinitions/reader","principal":{"type":"group","issuer":"kubernetes:cluster-id","subject":"readers"}}}`
+	snapshot = PolicySnapshot{}
+	require.NoError(t, json.Unmarshal([]byte(standalone), &snapshot))
+	require.Nil(t, snapshot.RoleAssignments)
+	require.NotNil(t, snapshot.RoleAssignment)
+	body, err = json.Marshal(snapshot)
+	require.NoError(t, err)
+	require.JSONEq(t, standalone, string(body))
+}
+
 func TestAccessInspectionDoesNotAssertGroups(t *testing.T) {
 	t.Parallel()
 	client, err := NewInstallationAccessClient(nil, nil)

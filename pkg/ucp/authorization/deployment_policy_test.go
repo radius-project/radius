@@ -5,7 +5,9 @@ package authorization
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -188,6 +190,98 @@ func TestDeploymentPolicyGenerationBindingAndConcurrency(t *testing.T) {
 func TestDeploymentPolicyCrashRecovery(t *testing.T) {
 	t.Parallel()
 	runDeploymentPolicyCrashRecovery(t, func(*testing.T) database.Client { return inmemory.NewClient() })
+}
+
+func TestDeploymentPolicyChunkedHistoryRecovery(t *testing.T) {
+	runDeploymentPolicyChunkedHistoryRecovery(t, func(*testing.T) database.Client { return inmemory.NewClient() })
+}
+
+func runDeploymentPolicyChunkedHistoryRecovery(t *testing.T, newClient func(*testing.T) database.Client) {
+	t.Helper()
+	for _, stage := range []string{"chunk", "event", "claim", "history", "receipt", "finalize"} {
+		for _, afterWrite := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/after=%v", stage, afterWrite), func(t *testing.T) {
+				t.Parallel()
+				client := newClient(t)
+				store := newTestPolicyStore(t, client, true)
+				mutations := deploymentMutations()
+				mutations[0].Assignment.Description = to.Ptr(strings.Repeat("x", 90000))
+				mutations[1].Role.Description = to.Ptr(strings.Repeat("x", 90000))
+				before, err := store.ApplyDeployment(t.Context(), "large-initial", 0, deploymentActor(), mutations)
+				require.NoError(t, err)
+				require.Equal(t, int64(2), before.Generation())
+				mutations[0].Assignment.Description = to.Ptr(strings.Repeat("y", 90000))
+				mutations[1].Role.Description = to.Ptr(strings.Repeat("y", 90000))
+				crash := errors.New("interrupted chunked deployment")
+				var fired atomic.Bool
+				hook := func(_ context.Context, object *database.Object) error {
+					matches := saveStage(object) == stage
+					switch stage {
+					case "chunk":
+						matches = strings.HasSuffix(object.ID, "-event-1-chunk-0")
+					case "event":
+						matches = strings.HasSuffix(object.ID, "-event-1")
+					case "receipt":
+						matches = object.ID == deploymentReceiptID("large-update")
+					}
+					if matches && fired.CompareAndSwap(false, true) {
+						return crash
+					}
+					return nil
+				}
+				wrapped := &policyHookClient{Client: client}
+				wrapped.before = func(ctx context.Context, object *database.Object) error {
+					raw, err := json.Marshal(object.Data)
+					require.NoError(t, err)
+					require.LessOrEqual(t, len(raw), maxPolicyBytes)
+					if !afterWrite {
+						return hook(ctx, object)
+					}
+					return nil
+				}
+				if afterWrite {
+					wrapped.after = hook
+				}
+				store.db = wrapped
+				_, err = store.ApplyDeployment(t.Context(), "large-update", before.Generation(), deploymentActor(), mutations)
+				require.ErrorIs(t, err, crash)
+				require.True(t, fired.Load())
+				restarted := newTestPolicyStore(t, client, false)
+				recovered, err := restarted.LoadPolicy(t.Context(), -1)
+				require.NoError(t, err)
+				if stage == "chunk" || stage == "event" || (stage == "claim" && !afterWrite) {
+					require.Equal(t, before.Generation(), recovered.Generation())
+				} else {
+					require.Equal(t, before.Generation()+2, recovered.Generation())
+				}
+				retry, err := restarted.ApplyDeployment(t.Context(), "large-update", before.Generation(), deploymentActor(), mutations)
+				require.NoError(t, err)
+				require.Equal(t, int64(4), retry.Generation())
+				for generation := int64(3); generation <= 4; generation++ {
+					event, err := restarted.AccessChange(t.Context(), generation)
+					require.NoError(t, err)
+					change := event.Properties.PolicyChange
+					var oldDescription, newDescription *string
+					if change.Before.RoleAssignment != nil {
+						oldDescription, newDescription = change.Before.RoleAssignment.Description, change.After.RoleAssignment.Description
+					} else {
+						oldDescription, newDescription = change.Before.RoleDefinition.Description, change.After.RoleDefinition.Description
+					}
+					require.Equal(t, strings.Repeat("x", 90000), *oldDescription)
+					require.Equal(t, strings.Repeat("y", 90000), *newDescription)
+					var manifest historyManifest
+					_, err = restarted.read(t.Context(), *event.ID, &manifest)
+					require.NoError(t, err)
+					require.Len(t, manifest.Chunks, 3)
+				}
+				deleted, err := restarted.Mutate(t.Context(), policyActor(), PolicyMutation{Target: mutations[0].Target, Delete: true})
+				require.NoError(t, err)
+				retry, err = restarted.ApplyDeployment(t.Context(), "large-update", before.Generation(), deploymentActor(), mutations)
+				require.NoError(t, err)
+				require.Equal(t, deleted.Generation(), retry.Generation(), "receipt cannot resurrect a revoked grant")
+			})
+		}
+	}
 }
 
 func runDeploymentPolicyCrashRecovery(t *testing.T, newClient func(*testing.T) database.Client) {

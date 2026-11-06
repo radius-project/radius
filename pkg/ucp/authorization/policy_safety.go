@@ -454,6 +454,7 @@ func applyPolicyMutationWithAuthority(ctx context.Context, current, authority *P
 		if err := guard.ValidateSettingsChange(ctx, actor, *policy.Settings.Properties, *mutation.Settings); err != nil {
 			return fail(err)
 		}
+		assignmentStart := len(policy.Assignments)
 		if !enforcing {
 			if provider, ok := guard.(BootstrapAdministratorProvider); ok {
 				principals, err := provider.BootstrapAdministrators(ctx, actor, *policy.Settings.Properties, *mutation.Settings)
@@ -473,6 +474,9 @@ func applyPolicyMutationWithAuthority(ctx context.Context, current, authority *P
 		change.Before = &api.PolicySnapshot{AuthorizationSettings: policy.Settings.Properties}
 		policy.Settings.Properties = mutation.Settings
 		change.After = &api.PolicySnapshot{AuthorizationSettings: mutation.Settings}
+		for i := assignmentStart; i < len(policy.Assignments); i++ {
+			change.After.RoleAssignments = append(change.After.RoleAssignments, &policy.Assignments[i])
+		}
 		highImpact = true
 	default:
 		return fail(fmt.Errorf("unsupported policy resource %s", id))
