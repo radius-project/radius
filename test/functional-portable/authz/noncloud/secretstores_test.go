@@ -36,6 +36,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
 	core "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/secretstore"
 )
@@ -67,7 +68,9 @@ func Test_SecretStores_ProtectedReferences(t *testing.T) {
 		t.Run(tt.suffix, func(t *testing.T) {
 			name := id + "-" + tt.suffix
 			ref := radiusNamespace + "/" + tt.secret
-			target := "/" + client.Scope + "/providers/Applications.Core/secretStores/" + name
+			targetID, err := resources.ParseResource("/" + client.Scope + "/providers/Applications.Core/secretStores/" + name)
+			require.NoError(t, err)
+			target := targetID.String()
 			start := metav1.Now()
 			backing, err := secrets.Get(ctx, tt.secret, metav1.GetOptions{})
 			switch {
