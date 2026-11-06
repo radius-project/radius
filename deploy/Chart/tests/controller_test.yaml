@@ -94,14 +94,14 @@ tests:
           path: data["controller-config.yaml"]
           pattern: 'workerServer:\s+port: 3000'
 
-  - it: retains deployment and Flux permissions without legacy resource permissions
+  - it: retains deployment and Flux permissions and permits Kubernetes output cleanup
     templates:
       - controller/rbac.yaml
     documentIndex: 0
     asserts:
       - lengthEqual:
           path: rules
-          count: 6
+          count: 8
       - equal:
           path: rules[0].resources
           value:
@@ -134,3 +134,23 @@ tests:
           path: rules[5].resources
           value:
             - customresourcedefinitions
+      - equal:
+          path: rules[6]
+          value:
+            apiGroups:
+              - apiextensions.k8s.io
+            resources:
+              - customresourcedefinitions
+            resourceNames:
+              - deploymentresources.radapp.io
+            verbs:
+              - patch
+      - equal:
+          path: rules[7]
+          value:
+            apiGroups:
+              - "*"
+            resources:
+              - "*"
+            verbs:
+              - delete

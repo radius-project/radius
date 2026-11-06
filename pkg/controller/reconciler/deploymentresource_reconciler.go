@@ -18,13 +18,18 @@ package reconciler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,12 +40,16 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // DeploymentResourceReconciler reconciles a DeploymentResource object.
 type DeploymentResourceReconciler struct {
+	// Discovery confirms API removal before abandoning a Kubernetes output.
+	Discovery discovery.DiscoveryInterface
+
 	// Client is the Kubernetes client.
 	Client client.Client
 
@@ -206,8 +215,8 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 
 	// Only delete the referenced resource if this controller provisioned it for a DeploymentTemplate.
 	// A DeploymentResource is eligible for deletion when it is a controller-owned child of an existing
-	// DeploymentTemplate and its Spec.Id falls within that template's deployment scope. Skipping the
-	// delete otherwise avoids issuing a UCP delete for a resource the controller never created (for
+	// DeploymentTemplate and its Spec.Id falls within that template's deployment scope or is a
+	// recorded Kubernetes output. Skipping the delete otherwise avoids deleting a resource the controller never created (for
 	// example a DeploymentResource whose Spec.Id points outside its owning template).
 	ownerRef := metav1.GetControllerOf(deploymentResource)
 	eligible, err := r.deleteIsEligible(ctx, deploymentResource, ownerRef)
@@ -218,9 +227,9 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		// deleteIsEligible can return false for several reasons (no controller owner, owner not
 		// found, UID mismatch, unresolvable scope, or Spec.Id outside scope); the specific reason is
 		// logged within deleteIsEligible. Keep this message general so it is not misleading.
-		logger.Info("Skipping delete: DeploymentResource is not an eligible controller-owned child of a DeploymentTemplate within its scope.", "resourceId", deploymentResource.Spec.Id)
+		logger.Info("Skipping delete: DeploymentResource is not an eligible controller-owned child of a DeploymentTemplate.", "resourceId", deploymentResource.Spec.Id)
 		r.EventRecorder.Event(deploymentResource, corev1.EventTypeNormal, EventDeploymentResourceDeleteSkipped,
-			fmt.Sprintf("Skipping delete of %q: it is not an eligible controller-owned child of a DeploymentTemplate within the matching deployment scope", deploymentResource.Spec.Id))
+			fmt.Sprintf("Skipping delete of %q: it is not an eligible controller-owned child of a DeploymentTemplate within the matching deployment scope or recorded Kubernetes output inventory", deploymentResource.Spec.Id))
 
 		// Nothing to delete in UCP. Remove the finalizer so the object is not wedged in
 		// Terminating; the controller never provisioned the referenced resource.
@@ -255,6 +264,23 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	err = r.Client.Status().Update(ctx, deploymentResource)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	id, err := resources.ParseResource(deploymentResource.Spec.Id)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if id.FindScope(resources_kubernetes.PlaneTypeKubernetes) != "" {
+		result, err := r.deleteKubernetesResource(ctx, deploymentResource, id)
+		if err == nil {
+			return result, nil
+		}
+		logger.Error(err, "Unable to delete Kubernetes output.")
+		r.EventRecorder.Event(deploymentResource, corev1.EventTypeWarning, "ResourceError", err.Error())
+		if statusErr := r.updateFailedStatus(ctx, deploymentResource); statusErr != nil {
+			return ctrl.Result{}, statusErr
+		}
+		return ctrl.Result{RequeueAfter: r.deleteRetryDelay()}, nil
 	}
 
 	deletePoller, err := r.startDeleteOperation(ctx, deploymentResource)
@@ -313,6 +339,104 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	return ctrl.Result{}, nil
 }
 
+func (r *DeploymentResourceReconciler) deleteKubernetesResource(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource, id resources.ID) (ctrl.Result, error) {
+	done, err := r.deleteKubernetesOutput(ctx, deploymentResource.Namespace, id)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if done {
+		return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+	}
+	return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+}
+
+func (r *DeploymentResourceReconciler) deleteKubernetesOutput(ctx context.Context, trackerNamespace string, id resources.ID) (bool, error) {
+	group, kind, namespace, name := resources_kubernetes.ToParts(id)
+	mapping, err := r.Client.RESTMapper().RESTMapping(schema.GroupKind{Group: group, Kind: kind})
+	refreshed := false
+	if err != nil {
+		if !meta.IsNoMatchError(err) || r.Discovery == nil {
+			return false, fmt.Errorf("failed to resolve Kubernetes output resource %q: %w", id.String(), err)
+		}
+		mapping, err = r.freshKubernetesMapping(group, kind)
+		if err != nil {
+			return false, err
+		}
+		refreshed = true
+	}
+
+	for {
+		if mapping == nil {
+			return true, nil
+		}
+		resource := &unstructured.Unstructured{}
+		resource.SetGroupVersionKind(mapping.GroupVersionKind)
+		resource.SetNamespace(namespace)
+		resource.SetName(name)
+		// Poll with DELETE rather than GET so cleanup does not require reading arbitrary Secrets.
+		err = r.Client.Delete(ctx, resource, client.PropagationPolicy(metav1.DeletePropagationBackground))
+		if apierrors.IsNotFound(err) {
+			// A cached mapping can resolve to an API version which is no longer served.
+			if !refreshed && r.Discovery != nil {
+				mapping, err = r.freshKubernetesMapping(group, kind)
+				if err != nil {
+					return false, err
+				}
+				refreshed = true
+				continue
+			}
+			return true, nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("failed to delete Kubernetes output resource %q: %w", id.String(), err)
+		}
+		// Waiting for our own namespace would deadlock its content deletion against this finalizer.
+		if group == "" && kind == "Namespace" && name == trackerNamespace {
+			if err := r.Client.Get(ctx, client.ObjectKeyFromObject(resource), resource); err != nil {
+				if apierrors.IsNotFound(err) {
+					return true, nil
+				}
+				return false, fmt.Errorf("failed to check output namespace %q: %w", name, err)
+			}
+			if resource.GetDeletionTimestamp() != nil {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+}
+
+func (r *DeploymentResourceReconciler) freshKubernetesMapping(group, kind string) (*meta.RESTMapping, error) {
+	_, lists, err := r.Discovery.ServerGroupsAndResources()
+	if err != nil {
+		var partial *discovery.ErrGroupDiscoveryFailed
+		if !errors.As(err, &partial) || len(partial.Groups) == 0 {
+			return nil, fmt.Errorf("failed to refresh Kubernetes output discovery: %w", err)
+		}
+		for gv := range partial.Groups {
+			if gv.Group == group {
+				return nil, fmt.Errorf("failed to refresh Kubernetes output discovery: %w", err)
+			}
+		}
+	}
+	for _, list := range lists {
+		gv, err := schema.ParseGroupVersion(list.GroupVersion)
+		if err != nil {
+			return nil, fmt.Errorf("invalid discovered group version: %w", err)
+		}
+		for _, resource := range list.APIResources {
+			if gv.Group == group && resource.Kind == kind && !strings.Contains(resource.Name, "/") {
+				scope := meta.RESTScopeRoot
+				if resource.Namespaced {
+					scope = meta.RESTScopeNamespace
+				}
+				return &meta.RESTMapping{Resource: gv.WithResource(resource.Name), GroupVersionKind: gv.WithKind(kind), Scope: scope}, nil
+			}
+		}
+	}
+	return nil, nil
+}
+
 func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) (sdkclients.Poller[sdkclients.ClientDeleteResponse], error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
@@ -331,10 +455,11 @@ func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context,
 	return nil, nil
 }
 
-// deleteIsEligible reports whether the controller should issue a UCP delete for deploymentResource.
+// deleteIsEligible reports whether the controller should delete the referenced resource.
 // A DeploymentResource is eligible only when it is controlled by a DeploymentTemplate that still
 // exists in the same namespace and the resource it references (Spec.Id) is within that template's
-// deployment scope. This keeps the controller from deleting a resource it did not provision, such as
+// deployment scope or is a recorded local Kubernetes output. This keeps the controller from
+// deleting a resource it did not provision, such as
 // a DeploymentResource whose Spec.Id points outside its owning template. It returns false (without an
 // error) when eligibility cannot be established so the caller can safely skip the delete.
 func (r *DeploymentResourceReconciler) deleteIsEligible(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource, ownerRef *metav1.OwnerReference) (bool, error) {
@@ -360,6 +485,29 @@ func (r *DeploymentResourceReconciler) deleteIsEligible(ctx context.Context, dep
 	// UID (for example a template that was deleted and recreated under the same name).
 	if owner.UID != ownerRef.UID {
 		logger.Info("Owning DeploymentTemplate UID does not match the owner reference.", "owner", ownerRef.Name)
+		return false, nil
+	}
+
+	id, err := resources.ParseResource(deploymentResource.Spec.Id)
+	if err != nil {
+		logger.Info("Unable to parse resource id for ownership check; skipping delete.", "resourceId", deploymentResource.Spec.Id, "error", err.Error())
+		return false, nil
+	}
+	if plane := id.FindScope(resources_kubernetes.PlaneTypeKubernetes); plane != "" {
+		if !strings.EqualFold(plane, resources_kubernetes.PlaneNameTODO) {
+			logger.Info("Kubernetes output belongs to a different cluster; skipping delete.", "resourceId", deploymentResource.Spec.Id)
+			return false, nil
+		}
+		// Never fall back to another output when a recorded identity no longer matches spec.
+		if recordedID := deploymentResource.Status.ProvisionedResourceID; recordedID != "" {
+			return recordedID == id.String(), nil
+		}
+		for _, outputID := range owner.Status.OutputResources {
+			if outputID == id.String() {
+				return true, nil
+			}
+		}
+		logger.Info("Kubernetes resource is not a recorded deployment output; skipping delete.", "resourceId", deploymentResource.Spec.Id)
 		return false, nil
 	}
 
