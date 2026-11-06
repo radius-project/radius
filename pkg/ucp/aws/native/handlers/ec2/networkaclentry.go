@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"math"
 	"net/netip"
 	"slices"
 	"strconv"
@@ -84,34 +85,51 @@ func (k entryKey) String() string {
 	return fmt.Sprintf("%s|%d|%t", k.acl, k.rule, k.egress)
 }
 
-// Identifier returns NetworkAclId, RuleNumber, and Egress joined with "|". Egress defaults to false, as in AWS.
+// Identifier returns NetworkAclId, RuleNumber, and Egress joined with "|". Egress defaults to false, as in AWS. A
+// RuleNumber outside 1 to 32766 is rejected, before it is narrowed to the API's int32.
 func (h *NetworkAclEntry) Identifier(properties map[string]any) (string, error) {
 	acl := awsapi.String(properties, "NetworkAclId")
 	rule, ok := integer(properties["RuleNumber"])
 	if acl == "" || !ok {
 		return "", nil
 	}
+	if !validRule(rule) {
+		return "", &native.Failure{
+			Message:     fmt.Sprintf("RuleNumber %v of the network ACL entry is not one of 1 to %d. AWS keeps the rule numbers above %d for the network ACL's own rules.", properties["RuleNumber"], maxRuleNumber, maxRuleNumber),
+			ClientError: true,
+			Outcome:     native.OutcomeRejected,
+		}
+	}
 	egress, _ := properties["Egress"].(bool)
 	return entryKey{acl: acl, rule: int32(rule), egress: egress}.String(), nil
+}
+
+// validRule reports whether rule is a rule number a template can use.
+func validRule(rule int64) bool {
+	return rule >= 1 && rule <= maxRuleNumber
 }
 
 func parseEntryKey(identifier string) (entryKey, error) {
 	parts := strings.Split(identifier, "|")
 	if len(parts) == 3 && parts[0] != "" {
-		rule, ruleErr := strconv.ParseInt(parts[1], 10, 32)
+		rule, ruleErr := strconv.ParseInt(parts[1], 10, 64)
 		egress, egressErr := strconv.ParseBool(parts[2])
-		if ruleErr == nil && egressErr == nil {
+		if ruleErr == nil && egressErr == nil && validRule(rule) {
 			return entryKey{acl: parts[0], rule: int32(rule), egress: egress}, nil
 		}
 	}
-	return entryKey{}, invalidIdentifier(networkAclEntryType, identifier, "NetworkAclId|RuleNumber|Egress")
+	return entryKey{}, invalidIdentifier(networkAclEntryType, identifier, "NetworkAclId|RuleNumber|Egress, with RuleNumber one of 1 to 32766,")
 }
 
-// integer returns v, a JSON number, as an integer.
+// integer returns v, a JSON number, as an integer. A whole number too large for an int64 is returned as the nearest
+// int64, which no rule number check accepts.
 func integer(v any) (int64, bool) {
 	switch n := v.(type) {
 	case float64:
-		return int64(n), n == float64(int64(n))
+		if n != math.Trunc(n) || math.IsInf(n, 0) {
+			return 0, false
+		}
+		return int64(max(min(n, math.MaxInt64/2), math.MinInt64/2)), true
 	case int:
 		return int64(n), true
 	case int32:

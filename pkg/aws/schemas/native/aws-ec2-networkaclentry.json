@@ -82,7 +82,9 @@
     },
     "RuleNumber": {
       "description": "Rule number to assign to the entry, such as 100. ACL entries are processed in ascending order by rule number. Entries can't use the same rule number unless one is an egress rule and the other is an ingress rule",
-      "type": "integer"
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32766
     },
     "Id": {
       "type": "string",

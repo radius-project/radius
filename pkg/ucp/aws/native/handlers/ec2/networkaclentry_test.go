@@ -17,6 +17,7 @@ limitations under the License.
 package ec2
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -66,6 +67,55 @@ func Test_NetworkAclEntry_Identifier(t *testing.T) {
 		require.ErrorAs(t, err, &failure, identifier)
 		require.Contains(t, failure.Message, "NetworkAclId|RuleNumber|Egress")
 	}
+}
+
+// Test_NetworkAclEntry_RuleNumberBounds rejects a rule number outside 1 to 32766 before any AWS call, so a number
+// that doesn't fit in an int32, such as 4294967396, never wraps to another rule such as 100. Rules 32767 and above
+// belong to AWS.
+func Test_NetworkAclEntry_RuleNumberBounds(t *testing.T) {
+	for _, rule := range []any{float64(0), float64(-1), float64(32767), float64(32768), float64(4294967396), int64(-4294967196), float64(1e20)} {
+		t.Run(fmt.Sprint(rule), func(t *testing.T) {
+			api := newFakeAPI(awsfake.NewCloudControl())
+			h := NewNetworkAclEntry(api)
+			properties := with(icmpEntry(), map[string]any{"RuleNumber": rule})
+			_, err := h.Identifier(properties)
+			requireRuleNumberRejected(t, err)
+			_, err = h.Create(t.Context(), createRequest(properties))
+			requireRuleNumberRejected(t, err)
+			require.Empty(t, api.calls, "nothing reaches AWS")
+		})
+	}
+	for _, identifier := range []string{"acl-1|0|false", "acl-1|-1|false", "acl-1|32767|true", "acl-1|4294967396|false"} {
+		t.Run(identifier, func(t *testing.T) {
+			api := newFakeAPI(awsfake.NewCloudControl())
+			h := NewNetworkAclEntry(api)
+			_, err := h.Read(t.Context(), testRegion, identifier)
+			requireRejected(t, err)
+			require.ErrorContains(t, err, "RuleNumber one of 1 to 32766")
+			requireRejected(t, h.Delete(t.Context(), testRegion, identifier))
+			require.Empty(t, api.calls, "nothing reaches AWS")
+		})
+	}
+	for _, rule := range []float64{1, maxRuleNumber} {
+		id, err := NewNetworkAclEntry(nil).Identifier(with(icmpEntry(), map[string]any{"RuleNumber": rule}))
+		require.NoError(t, err)
+		require.Equal(t, fmt.Sprintf("acl-1|%d|true", int(rule)), id)
+	}
+}
+
+func requireRuleNumberRejected(t *testing.T, err error) {
+	t.Helper()
+	requireRejected(t, err)
+	require.ErrorContains(t, err, "RuleNumber")
+	require.ErrorContains(t, err, "1 to 32766")
+}
+
+func requireRejected(t *testing.T, err error) {
+	t.Helper()
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 }
 
 func Test_NetworkAclEntry_Equivalent(t *testing.T) {
