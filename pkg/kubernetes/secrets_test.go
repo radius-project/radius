@@ -17,10 +17,10 @@ limitations under the License.
 package kubernetes
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // Computes the legacy secret hash independently to pin its format.
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex" //nolint:gosec // Computes the legacy secret hash independently to pin its format.
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"testing"

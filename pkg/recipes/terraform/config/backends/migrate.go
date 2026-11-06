@@ -718,6 +718,43 @@ func lockError(err error) error {
 	return err
 }
 
+// RetireCopiedState deletes the legacy state that the migration copied to the state stored under currentSuffix, if
+// the legacy Secrets are still the versions that the first Secret of the copy records. Radius calls it when it deletes
+// a resource, after it destroyed the resources of the state under currentSuffix and before it deletes that state. If
+// the migration published the copy but did not finish the move, the legacy state still exists, and a resource created
+// again with the same ID would otherwise resolve it and use the state of the deleted resource. A legacy state that the
+// copy does not record, or that changed since, is left in place.
+func RetireCopiedState(ctx context.Context, client kubernetes.Interface, currentSuffix string, legacySuffix string) error {
+	m := NewStateMigrator(client)
+	first, err := m.getSecret(ctx, stateSecretName(currentSuffix, 0))
+	if apierrors.IsNotFound(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to read %s: %w", stateSecretName(currentSuffix, 0), err)
+	}
+
+	copied := []statePart{}
+	if value := first.Annotations[AnnotationStateMigratedParts]; value == "" || json.Unmarshal([]byte(value), &copied) != nil {
+		return nil
+	}
+
+	chunks, err := m.listChunks(ctx, legacySuffix)
+	if errors.Is(err, errUnexpectedState) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	// A move whose commit stopped while it deleted the legacy state leaves the first parts, which are copied versions.
+	legacy, complete := orderedChunks(chunks)
+	if !complete || len(legacy) == 0 || len(legacy) > len(copied) || !slices.Equal(stateParts(legacy), copied[:len(legacy)]) {
+		return nil
+	}
+
+	ucplog.FromContextOrDiscard(ctx).Info("Deleting the legacy copy of a Terraform state whose resources were destroyed", "secret", stateSecretName(legacySuffix, 0))
+	return m.deleteChunks(ctx, legacy)
+}
+
 // deleteChunks deletes a legacy state. The first Secret is deleted last, so an interrupted delete leaves a state that
 // a later pass recognizes and finishes deleting.
 func (m *StateMigrator) deleteChunks(ctx context.Context, chunks []corev1.Secret) error {

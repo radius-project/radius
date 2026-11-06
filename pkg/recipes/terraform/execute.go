@@ -264,6 +264,15 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return err
 	}
 
+	// The SHA-256 migration publishes a copy of a state under its current name before it deletes the legacy state. If
+	// the destroy used such a copy before the migration deleted the legacy state, delete it now, or a resource created
+	// again with the same ID would use it. It is deleted first, so a retry of a failed delete finds the copy again.
+	if current, legacy, err := backends.SecretSuffixes(options.ResourceRecipe); err == nil && backend.kubernetesSecretName == backends.KubernetesBackendNamePrefix+current {
+		if err := backends.RetireCopiedState(ctx, kubernetesClient, current, legacy); err != nil {
+			return fmt.Errorf("error deleting the legacy copy of the terraform state: %w", err)
+		}
+	}
+
 	// Delete the kubernetes secret created for terraform state file.
 	err = kubernetesClient.CoreV1().
 		Secrets(backends.RadiusNamespace).

@@ -412,6 +412,10 @@ func TestKubernetesBackendStateIdentity(t *testing.T) {
 				}
 				expectedReads = append(expectedReads, selectedName)
 			}
+			if tt.current && !tt.failDestroy {
+				// After the destroy, the delete checks whether the current state is a copy of the legacy state.
+				expectedReads = append(expectedReads, currentName)
+			}
 			require.Equal(t, expectedReads, reads, "apply validation and pre-destroy checks must use the resolved name")
 			if tt.failDestroy {
 				require.Empty(t, deletes)
@@ -503,6 +507,73 @@ func TestDeleteUsesMovedState(t *testing.T) {
 	remaining, err := kube.CoreV1().Secrets(backends.RadiusNamespace).List(t.Context(), metav1.ListOptions{})
 	require.NoError(t, err)
 	require.Empty(t, remaining.Items, "the moved state is deleted after the destroy")
+}
+
+// TestDeleteRetiresCopiedLegacyState covers a delete that destroys the resources of a state that the SHA-256 migration
+// copied to its current name but did not finish moving. The legacy state the copy was made from must be deleted too, or
+// a resource created again with the same ID would use the state of the deleted resource.
+func TestDeleteRetiresCopiedLegacyState(t *testing.T) {
+	const currentSuffix = "09ed17eb3264f9613cc5cdee1a9c01e3765da963"
+	const legacySuffix = "3e4dc89bbe6e3ad3b17e413b3f776184a6d3c75f"
+	currentName, legacyName := backends.KubernetesBackendNamePrefix+currentSuffix, backends.KubernetesBackendNamePrefix+legacySuffix
+
+	snapshotsPath := installBackendTestTerraform(t)
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "")
+	options := Options{
+		RootDir:   t.TempDir(),
+		EnvConfig: &recipes.Configuration{},
+		EnvRecipe: &recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: "test/module/source"},
+		ResourceRecipe: &recipes.ResourceMetadata{
+			Name:          "widget",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/extenders/widget",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+		},
+	}
+
+	stateLabels := func(suffix string) map[string]string {
+		return map[string]string{"tfstate": "true", "tfstateSecretSuffix": suffix, "tfstateWorkspace": "default"}
+	}
+	kube := fake.NewClientset()
+	legacy, err := kube.CoreV1().Secrets(backends.RadiusNamespace).Create(t.Context(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: legacyName, Namespace: backends.RadiusNamespace, UID: "uid-legacy", Labels: stateLabels(legacySuffix)},
+		Data:       map[string][]byte{"tfstate": []byte("existing-state")},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// The migration published a copy that records the version of the legacy state it was copied from.
+	parts := fmt.Sprintf(`[{"uid":%q,"resourceVersion":%q}]`, legacy.UID, legacy.ResourceVersion)
+	_, err = kube.CoreV1().Secrets(backends.RadiusNamespace).Create(t.Context(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: currentName, Namespace: backends.RadiusNamespace, Labels: stateLabels(currentSuffix),
+			Annotations: map[string]string{backends.AnnotationStateMigratedParts: parts},
+		},
+		Data: map[string][]byte{"tfstate": []byte("existing-state")},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	provider := kubernetesclientprovider.KubernetesClientProvider{}
+	provider.SetClientGoClient(kube)
+	e := executor{kubernetesClients: provider}
+	require.NoError(t, e.Delete(t.Context(), options))
+
+	destroyed := false
+	for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+		if snapshot.Command != "destroy" {
+			continue
+		}
+		var cfg config.TerraformConfig
+		require.NoError(t, json.Unmarshal(snapshot.Config, &cfg))
+		backend, ok := cfg.Terraform.Backend[backends.BackendKubernetes].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, currentSuffix, backend["secret_suffix"], "the destroy must use the published copy")
+		destroyed = true
+	}
+	require.True(t, destroyed)
+
+	remaining, err := kube.CoreV1().Secrets(backends.RadiusNamespace).List(t.Context(), metav1.ListOptions{})
+	require.NoError(t, err)
+	require.Empty(t, remaining.Items, "the legacy state the copy was made from must be deleted with the copy")
 }
 
 func TestGenerateConfigRejectsInvalidOutputMappingBeforeProviderSetup(t *testing.T) {

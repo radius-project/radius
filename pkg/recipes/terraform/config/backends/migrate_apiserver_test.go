@@ -20,6 +20,7 @@ package backends
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -192,6 +193,35 @@ func Test_StateMigrator_APIServer(t *testing.T) {
 		require.True(t, apierrors.IsConflict(err), "a stale resource version must fail the delete: %v", err)
 		_, err = client.CoreV1().Secrets(RadiusNamespace).Get(t.Context(), sources[0].Name, metav1.GetOptions{})
 		require.NoError(t, err)
+	})
+
+	t.Run("retires only the legacy state a copy records", func(t *testing.T) {
+		migrator := NewStateMigrator(client)
+		for _, change := range []bool{false, true} {
+			current, legacy := addResource(t, fmt.Sprintf("retired-%t", change))
+			sources := addState(t, legacy, "a", "b")
+			for index := len(sources) - 1; index >= 0; index-- {
+				copied := stateCopy(sources[index], current, index)
+				if index == 0 {
+					copied.Annotations[AnnotationStateMigratedParts] = encodeStateParts(stateParts(sources))
+				}
+				_, err := client.CoreV1().Secrets(RadiusNamespace).Create(t.Context(), copied, metav1.CreateOptions{})
+				require.NoError(t, err)
+			}
+
+			expected := []string{}
+			if change {
+				changed := sources[1].DeepCopy()
+				changed.Data[tfstateDataKey] = []byte("changed")
+				_, err := client.CoreV1().Secrets(RadiusNamespace).Update(t.Context(), changed, metav1.UpdateOptions{})
+				require.NoError(t, err)
+				expected = []string{"a", "changed"}
+			}
+
+			require.NoError(t, RetireCopiedState(t.Context(), client, current, legacy))
+			require.Equal(t, expected, state(t, migrator, legacy))
+			require.Equal(t, []string{"a", "b"}, state(t, migrator, current))
+		}
 	})
 
 	t.Run("concurrent migrators move a state once", func(t *testing.T) {
