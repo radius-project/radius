@@ -385,7 +385,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err := e.route(ctx, r); err != nil {
 		return handleError(ctx, r.id, err)
 	}
-	if name, err = resolveIdentifier(ctx, r.handler, r.region, name); err != nil {
+	if name, err = resolveIdentifier(ctx, r.native, r.region, name); err != nil {
 		return handleError(ctx, r.id, err)
 	}
 	typeInfo := r.typeInfo
@@ -470,7 +470,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 			if err != nil {
 				return identifierError(ctx, r, err)
 			}
-			if lookup, err = resolveIdentifier(ctx, r.handler, r.region, lookup); err != nil {
+			if lookup, err = resolveIdentifier(ctx, r.native, r.region, lookup); err != nil {
 				return handleError(ctx, r.id, err)
 			}
 		}
@@ -629,7 +629,7 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	if err != nil {
 		return identifierError(ctx, r, err)
 	}
-	if known, err = resolveIdentifier(ctx, r.handler, r.region, known); err != nil {
+	if known, err = resolveIdentifier(ctx, r.native, r.region, known); err != nil {
 		return handleError(ctx, r.id, err)
 	}
 	if name != "" && known != name {

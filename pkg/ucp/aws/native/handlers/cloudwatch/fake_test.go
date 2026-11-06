@@ -178,6 +178,14 @@ func (f *fakeAPI) PutAnomalyDetector(ctx context.Context, in *cloudwatch.PutAnom
 	if identifier == "" {
 		return nil, fault("MissingRequiredParameterException")
 	}
+	// A detector of the current account is one detector, whether the put names the account or not, so it is kept
+	// under the identifier without the account.
+	if id, err := parseIdentifier(identifier); err == nil && id.AccountId == f.account {
+		id.AccountId = ""
+		if identifier, err = id.encode(); err != nil {
+			return nil, err
+		}
+	}
 	if err := f.failer.Before(); err != nil {
 		return nil, err
 	}

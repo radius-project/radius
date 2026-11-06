@@ -1388,11 +1388,25 @@ func withValue(properties map[string]any, property string, value any) map[string
 	return out
 }
 
+// requireSubset requires got to have every value of want. An object in want is compared the same way, so got may have
+// more values inside it, such as an AccountId AWS fills in, as UCP's patch keeps a value AWS has that the template
+// leaves out. Any other value, including a list, must be equal.
 func requireSubset(t testing.TB, want map[string]any, got map[string]any) {
 	t.Helper()
+	requireSubsetAt(t, "", normalize(t, want).(map[string]any), normalize(t, got).(map[string]any))
+}
+
+func requireSubsetAt(t testing.TB, path string, want map[string]any, got map[string]any) {
+	t.Helper()
 	for k, v := range want {
-		require.Contains(t, got, k)
-		require.EqualValues(t, normalize(t, v), normalize(t, got[k]), k)
+		require.Contains(t, got, k, path)
+		w, wantObject := v.(map[string]any)
+		g, gotObject := got[k].(map[string]any)
+		if wantObject && gotObject && len(w) > 0 {
+			requireSubsetAt(t, path+"/"+k, w, g)
+			continue
+		}
+		require.EqualValues(t, v, got[k], strings.TrimPrefix(path+"/"+k, "/"))
 	}
 }
 

@@ -190,11 +190,15 @@ func identifierFor(t *native.Type, properties map[string]any, schema string) (st
 	return t.Handler.(native.IdentifierEncoder).Identifier(properties)
 }
 
-// resolveIdentifier returns the native handler's one form of identifier (native.IdentifierResolver), or identifier
-// when the handler has one form, or there is no identifier.
-func resolveIdentifier(ctx context.Context, h native.Handler, region string, identifier string) (string, error) {
-	resolver, ok := h.(native.IdentifierResolver)
-	if !ok || identifier == "" {
+// resolveIdentifier returns the one form of identifier that the native handler of t declares (native.IdentifierResolver),
+// with either handler, as an identifier encoding applies with either handler. It returns identifier when the type has
+// no native handler, or one form, or there is no identifier.
+func resolveIdentifier(ctx context.Context, t *native.Type, region string, identifier string) (string, error) {
+	if t == nil || identifier == "" {
+		return identifier, nil
+	}
+	resolver, ok := t.Handler.(native.IdentifierResolver)
+	if !ok {
 		return identifier, nil
 	}
 	return resolver.ResolveIdentifier(ctx, region, identifier)
