@@ -345,6 +345,21 @@ func TestClientTransport_CertificateExpiresOnOpenConnection(t *testing.T) {
 	}
 }
 
+// delayedReadErrorConn keeps HTTP/2's read loop from removing a closed connection
+// from its pool until the next request has tried to select a connection.
+type delayedReadErrorConn struct {
+	net.Conn
+	release <-chan struct{}
+}
+
+func (c *delayedReadErrorConn) Read(p []byte) (int, error) {
+	n, err := c.Conn.Read(p)
+	if err != nil {
+		<-c.release
+	}
+	return n, err
+}
+
 func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 	for _, http2 := range []bool{false, true} {
 		for _, kind := range []string{"leaf", "intermediate", "root"} {
@@ -396,7 +411,20 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 					transport, err := newClientTransport(authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: dir, Namespace: testNamespace}, appsRPServerName)
 					require.NoError(t, err)
 					t.Cleanup(transport.CloseIdleConnections)
-					client := &http.Client{Transport: transport}
+					releaseReadError := make(chan struct{})
+					var releaseOnce sync.Once
+					release := func() { releaseOnce.Do(func() { close(releaseReadError) }) }
+					defer release()
+					dial := transport.DialContext
+					var dials atomic.Int32
+					transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+						conn, err := dial(ctx, network, addr)
+						if err == nil && http2 && dials.Add(1) == 1 {
+							return &delayedReadErrorConn{Conn: conn, release: releaseReadError}, nil
+						}
+						return conn, err
+					}
+					client := &http.Client{Transport: transport, Timeout: 10 * time.Second}
 					request := func() (bool, error) {
 						var reused bool
 						req, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), &httptrace.ClientTrace{
@@ -458,6 +486,7 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 						require.True(t, changed)
 					}
 					reused, err = request()
+					release()
 					if renewed {
 						require.NoError(t, err)
 						require.False(t, reused, "renewal must replace the expired peer connection")

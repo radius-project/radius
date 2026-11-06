@@ -217,6 +217,8 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		return nil
 	}
 
+	i.logInfo("Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed. Do not rely on it for production access control.")
+
 	helmAction := NewHelmAction(i.Helm)
 	chartOptions := options.CertManager.ChartOptions
 	ownedRelease, err := i.radOwnedCertManagerRelease(chartOptions, kubeContext)

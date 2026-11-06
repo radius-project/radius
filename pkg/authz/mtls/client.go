@@ -76,8 +76,9 @@ type clientTransport struct {
 	*http.Transport
 	source *Source
 
-	mu    sync.Mutex
-	conns map[*trackedConn]connectionValidity
+	mu      sync.Mutex
+	current *http.Transport
+	conns   map[*trackedConn]connectionValidity
 }
 
 type connectionValidity struct {
@@ -171,11 +172,20 @@ func newClientTransport(options authz.Options, serverName string) (*clientTransp
 // RoundTrip closes connections whose client certificate or verified server chain is no
 // longer valid, forcing a fresh handshake with current material.
 func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	t.closeExpired()
-	return t.Transport.RoundTrip(req)
+	return t.transportForRequest().RoundTrip(req)
 }
 
-func (t *clientTransport) closeExpired() {
+// CloseIdleConnections closes idle connections in the current connection pool.
+func (t *clientTransport) CloseIdleConnections() {
+	t.mu.Lock()
+	current := t.current
+	t.mu.Unlock()
+	if current != nil {
+		current.CloseIdleConnections()
+	}
+}
+
+func (t *clientTransport) transportForRequest() *http.Transport {
 	var expired []*trackedConn
 	t.mu.Lock()
 	now := t.source.now()
@@ -184,18 +194,27 @@ func (t *clientTransport) closeExpired() {
 			expired = append(expired, conn)
 		}
 	}
+	previous := t.current
+	if previous == nil || len(expired) > 0 {
+		// An active HTTP/2 connection stays in its pool until its read loop observes
+		// the close. Use a fresh pool so this request cannot select that connection.
+		t.current = t.Transport.Clone()
+	}
+	current := t.current
 	t.mu.Unlock()
 	if len(expired) == 0 {
-		return
+		return current
 	}
 
-	// Closing idle connections removes them from the pool before this request picks one.
 	// Connections in use are closed too, which aborts their in-flight requests: an HTTP/2
 	// connection in use would otherwise take new requests.
-	t.CloseIdleConnections()
+	if previous != nil {
+		previous.CloseIdleConnections()
+	}
 	for _, conn := range expired {
 		_ = conn.Close()
 	}
+	return current
 }
 
 // NewUpgradeTransport returns plain when the authorization mode is off. Otherwise it returns
