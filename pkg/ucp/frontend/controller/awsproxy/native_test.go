@@ -782,18 +782,16 @@ func Test_Native_ListEscapesIdentifier(t *testing.T) {
 
 // Test_AddressSegment checks the escaping of an identifier into a resource ID segment, and back.
 func Test_AddressSegment(t *testing.T) {
-	typ := &native.Type{}
-	for _, identifier := range []string{"plain", "a|b", "arn:aws:s3:::b/k", ".", "..", "a%2Fb", "100%"} {
-		segment := addressSegment(typ, identifier)
+	for _, identifier := range []string{"plain", "a|b", "arn:aws:s3:::b/k", ".", "..", "a%2Fb", "100%", "a/../b"} {
+		segment := addressSegment(identifier)
 		require.NotContains(t, segment, "/")
 		require.NotContains(t, []string{".", ".."}, segment)
-		require.Equal(t, identifier, identifierOfSegment(typ, segment), identifier)
+		require.Equal(t, identifier, identifierOfSegment(segment), identifier)
 	}
-	// Types without a native handler keep the raw identifier, as before native handlers.
-	require.Equal(t, "a/b", addressSegment(nil, "a/b"))
-	require.Equal(t, "a%2Fb", identifierOfSegment(nil, "a%2Fb"))
+	// Only what would split a segment, and "%", is escaped, so other identifiers keep their IDs.
+	require.Equal(t, "a|b:c d", addressSegment("a|b:c d"))
 	// A segment that isn't valid escaping is used as is.
-	require.Equal(t, "100%", identifierOfSegment(typ, "100%"))
+	require.Equal(t, "100%", identifierOfSegment("100%"))
 }
 
 // Test_Native_ExistingNameIsLiteral checks that POST /:get reads a top-level name as the AWS identifier itself, even
@@ -802,14 +800,13 @@ func Test_AddressSegment(t *testing.T) {
 // Cloud Control, and a type with none, whose IDs are never escaped.
 func Test_Native_ExistingNameIsLiteral(t *testing.T) {
 	tests := []struct {
-		name     string
-		typ      string
-		path     string
-		setup    func(h *nativeHarness)
-		escaping bool
+		name  string
+		typ   string
+		path  string
+		setup func(h *nativeHarness)
 	}{
-		{name: "native handler", typ: nativeType, path: "AWS.Test/Native", escaping: true},
-		{name: "native type served by Cloud Control", typ: nativeType, path: "AWS.Test/Native", escaping: true, setup: func(h *nativeHarness) {
+		{name: "native handler", typ: nativeType, path: "AWS.Test/Native"},
+		{name: "native type served by Cloud Control", typ: nativeType, path: "AWS.Test/Native", setup: func(h *nativeHarness) {
 			h.provisioningTypes[nativeType] = cftypes.ProvisioningTypeFullyMutable
 		}},
 		{name: "no native handler", typ: bucketType, path: "AWS.S3/Bucket"},
@@ -841,14 +838,11 @@ func Test_Native_ExistingNameIsLiteral(t *testing.T) {
 			require.Equal(t, "literal", marker(read("a%2Fb", "")))
 			require.Equal(t, "decoded", marker(read("a/b", "")))
 
-			// An ID's last segment is decoded only for a type whose IDs UCP escapes, and the ID wins over the name.
+			// An ID's last segment is decoded, for every type, because lists escape every identifier, and the ID wins
+			// over the name.
 			idOf := func(segment string) string { return providers + tt.path + "/" + segment }
-			if tt.escaping {
-				require.Equal(t, "decoded", marker(read("a%2Fb", idOf("a%2Fb"))))
-				require.Equal(t, "literal", marker(read("a/b", idOf("a%252Fb"))))
-			} else {
-				require.Equal(t, "literal", marker(read("a/b", idOf("a%2Fb"))))
-			}
+			require.Equal(t, "decoded", marker(read("a%2Fb", idOf("a%2Fb"))))
+			require.Equal(t, "literal", marker(read("a/b", idOf("a%252Fb"))))
 		})
 	}
 }
@@ -871,6 +865,52 @@ func Test_Native_ExistingIDHeaderMismatch(t *testing.T) {
 			require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
 			require.Contains(t, resp.message(), "X-Radius-AWS-Resource-ID header must be the ID of an AWS resource of type AWS.Test/Native")
 			require.Empty(t, h.cc.Calls())
+		})
+	}
+}
+
+// Test_ListIDsAreOneSegment lists identifiers that would split a resource ID, through Cloud Control and a native
+// handler. Each listed ID is one segment that decodes to the identifier, and a recipe's read by that ID finds the same
+// resource. Plain identifiers keep the IDs they had before.
+func Test_ListIDsAreOneSegment(t *testing.T) {
+	identifiers := []string{"arn:aws:s3:::b/k", ".", "..", "a/../b", "a%2Fb", "plain|x"}
+	for _, nativeHandler := range []bool{true, false} {
+		t.Run(fmt.Sprintf("native=%t", nativeHandler), func(t *testing.T) {
+			h := newNativeHarness(t)
+			h.fake.Opts.List = native.ListRegion
+			typ, path := nativeType, "AWS.Test/Native"
+			if !nativeHandler {
+				typ, path = bucketType, "AWS.S3/Bucket"
+			}
+			for i, identifier := range identifiers {
+				h.cc.Put(typ, identifier, map[string]any{"Marker": i})
+			}
+
+			resp := h.do(NewListAWSResources, http.MethodGet, providers+path, "", nil)
+			require.Equal(t, http.StatusOK, resp.status, resp.raw)
+			items := resp.body["value"].([]any)
+			require.Len(t, items, len(identifiers))
+			for _, item := range items {
+				item := item.(map[string]any)
+				id := item["id"].(string)
+				parsed, err := resources.ParseResource(id)
+				require.NoError(t, err)
+				require.Equal(t, providers+path+"/"+parsed.Name(), id, "one segment")
+				require.Equal(t, item["name"], identifierOfSegment(parsed.Name()))
+
+				h.headers = map[string]string{sdkclients.AWSResourceIDHeader: id}
+				read := h.do(func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
+					return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
+				}, http.MethodPost, providers+path+"/:get", "", map[string]any{"name": parsed.Name()})
+				h.headers = nil
+				require.Equal(t, http.StatusOK, read.status, read.raw)
+				require.Equal(t, item["properties"].(map[string]any)["Marker"], read.body["properties"].(map[string]any)["Marker"])
+			}
+			for _, item := range items {
+				if item.(map[string]any)["name"] == "plain|x" {
+					require.Equal(t, providers+path+"/plain|x", item.(map[string]any)["id"])
+				}
+			}
 		})
 	}
 }

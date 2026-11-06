@@ -171,39 +171,37 @@ func identifierFor(t *native.Type, properties map[string]any, schema string) (st
 	return t.Handler.(native.IdentifierEncoder).Identifier(properties)
 }
 
-// addressSegment returns the last segment of the resource ID UCP returns for the AWS identifier of a type t serves,
-// in a list or `existing`. An AWS identifier can contain "/", such as an S3 ARN, or be "..", so for a type with a
-// native handler, with either handler, the identifier is escaped into one segment and identifierOfSegment reverses it.
-// Other types keep the raw identifier, as before native handlers.
-func addressSegment(t *native.Type, identifier string) string {
-	if t == nil {
-		return identifier
-	}
+// segmentEscaper escapes the characters that would split a resource ID segment, and "%", so the escaping can be
+// reversed.
+var segmentEscaper = strings.NewReplacer("%", "%25", "/", "%2F")
+
+// addressSegment returns the last segment of the resource ID UCP returns for an AWS identifier, in a list or
+// `existing`, with either handler. An AWS identifier can contain "/", such as an S3 ARN, or be "..", so it is escaped
+// into one segment, and identifierOfSegment reverses it. Only "%", "/", and a whole "." or ".." are escaped, so an
+// identifier without them, such as "a|b", keeps the ID it had before.
+func addressSegment(identifier string) string {
 	switch identifier {
 	case ".":
 		return "%2E"
 	case "..":
 		return "%2E%2E"
 	}
-	return url.PathEscape(identifier)
+	return segmentEscaper.Replace(identifier)
 }
 
 // identifierOfID returns the AWS identifier in the last segment of id, an AWS resource ID UCP returned, for a POST
 // /:get on collection. id must name a resource of the same type in the same account and region.
-func identifierOfID(collection resources.ID, t *native.Type, id string) (string, armrpc_rest.Response) {
+func identifierOfID(collection resources.ID, id string) (string, armrpc_rest.Response) {
 	parsed, err := resources.ParseResource(id)
 	if err != nil || !strings.EqualFold(parsed.RootScope(), collection.RootScope()) || !strings.EqualFold(parsed.Type(), collection.Type()) {
 		return "", badRequest(fmt.Sprintf("The %s header must be the ID of an AWS resource of type %s in %s.", sdkclients.AWSResourceIDHeader, collection.Type(), collection.RootScope()))
 	}
-	return identifierOfSegment(t, parsed.Name()), nil
+	return identifierOfSegment(parsed.Name()), nil
 }
 
 // identifierOfSegment returns the AWS identifier in a resource ID segment addressSegment made. A segment that isn't
 // valid escaping is returned unchanged.
-func identifierOfSegment(t *native.Type, segment string) string {
-	if t == nil {
-		return segment
-	}
+func identifierOfSegment(segment string) string {
 	if identifier, err := url.PathUnescape(segment); err == nil {
 		return identifier
 	}
