@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/emr"
+	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
@@ -47,14 +48,32 @@ func Test_Replay_Cluster(t *testing.T) {
 		},
 		"Tags": tags("radius-recording", run),
 	}
-	// The update leaves out Instances: the lifecycle compares it with what AWS returns as it is, and AWS fills in
-	// defaults there that EMR can't change.
+	// Read returns Instances as AWS reports it, with the defaults EMR fills in, such as the master group's name and
+	// EBS volumes, and the security groups EMR made. A new recording has its own security group IDs.
+	recorded := map[string]any{
+		"Ec2SubnetId":                   s.Input("RADIUS_REC_SUBNET"),
+		"EmrManagedMasterSecurityGroup": "sg-0123456789abcdef1",
+		"EmrManagedSlaveSecurityGroup":  "sg-0123456789abcdef2",
+		"KeepJobFlowAliveWhenNoSteps":   true,
+		"MasterInstanceGroup": map[string]any{
+			"EbsConfiguration": map[string]any{
+				"EbsBlockDeviceConfigs": []any{map[string]any{"VolumeSpecification": map[string]any{"SizeInGB": 32.0, "VolumeType": "gp2"}, "VolumesPerInstance": 2.0}},
+				"EbsOptimized":          true,
+			},
+			"InstanceCount": 1.0, "InstanceType": "m5.xlarge", "Market": "ON_DEMAND", "Name": "Master - 1",
+		},
+		"Placement":                map[string]any{"AvailabilityZone": "us-west-2a"},
+		"TerminationProtected":     false,
+		"UnhealthyNodeReplacement": false,
+	}
+	require.True(t, covers(jsonValue(t, properties)["Instances"], recorded, false), "every value the template sets in Instances is the one AWS recorded")
+	// The update leaves out Instances, which EMR can't change on a running cluster.
 	updated := with(properties, map[string]any{"Instances": nil, "StepConcurrencyLevel": 2.0, "Tags": tags("radius-recording", run, "stage", "updated")})
 	nativetest.Lifecycle{
 		Handler:     h,
 		Session:     s,
 		Properties:  properties,
-		Want:        with(properties, map[string]any{"Instances": nil}),
+		Want:        with(properties, map[string]any{"Instances": recorded}),
 		Update:      updated,
 		WantUpdated: updated,
 		Poll:        30 * time.Second,
