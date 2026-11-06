@@ -213,10 +213,11 @@ func Test_Cluster_Delete(t *testing.T) {
 		h, api := newCluster(t)
 		deployed(t, h, map[string]any{"DBClusterIdentifier": "app"})
 		api.errs["DeleteDBCluster"] = fault("InvalidDBClusterStateFault")
-		api.status[clusterType+"/app"] = "deleted-next"
-		api.store.Put(clusterType, "app", api.store.Resource(clusterType, "app"))
+		api.goneAfterDelete = true
+		api.calls = nil
 		err := h.DeleteWithToken(t.Context(), region, "app", "snap")
-		require.Error(t, err)
+		require.Contains(t, api.calls, "DeleteDBCluster")
+		require.ErrorIs(t, err, native.ErrNotFound, "the cluster is gone, so the delete is done")
 	})
 }
 

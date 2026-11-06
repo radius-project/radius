@@ -46,6 +46,10 @@ type fakeAPI struct {
 	snapshots []string
 	calls     []string
 
+	// goneAfterDelete makes a DeleteDBCluster call that fails remove the cluster first, as when AWS finishes another
+	// delete between the call and the next describe.
+	goneAfterDelete bool
+
 	// lastModifyInstance is the input of the last ModifyDBInstance call.
 	lastModifyInstance *docdb.ModifyDBInstanceInput
 
@@ -253,6 +257,9 @@ func (f *fakeAPI) DeleteDBCluster(ctx context.Context, in *docdb.DeleteDBCluster
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.call("DeleteDBCluster"); err != nil {
+		if f.goneAfterDelete {
+			f.store.Remove(clusterType, aws.ToString(in.DBClusterIdentifier))
+		}
 		return nil, err
 	}
 	id := aws.ToString(in.DBClusterIdentifier)
