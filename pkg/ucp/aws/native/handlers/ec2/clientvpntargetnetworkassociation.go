@@ -65,10 +65,11 @@ func (h *ClientVpnTargetNetworkAssociation) TypeName() string {
 // Options returns how UCP uses the handler. Associating and disassociating a subnet can take several minutes.
 func (h *ClientVpnTargetNetworkAssociation) Options() native.Options {
 	return native.Options{
-		List:          native.ListNone,
+		// AWS lists associations only per endpoint, which UCP's list can't name.
+		List:          native.ListParent,
 		Recovery:      native.RecoverByResend,
-		CreateTimeout: 30 * time.Minute,
-		DeleteTimeout: 30 * time.Minute,
+		CreateTimeout: 130 * time.Minute,
+		DeleteTimeout: 130 * time.Minute,
 	}
 }
 
@@ -162,7 +163,8 @@ func (h *ClientVpnTargetNetworkAssociation) Delete(ctx context.Context, region s
 	return awsapi.NotFound(err, associationNotFound...)
 }
 
-// List is not supported: AWS lists associations only per endpoint. UCP calls it only for types it can list.
+// List is not supported: AWS lists associations only per endpoint (native.ListParent). UCP calls it only for types it
+// can list in a region.
 func (h *ClientVpnTargetNetworkAssociation) List(ctx context.Context, region string) ([]native.Resource, error) {
 	return nil, fmt.Errorf("the AWS type %s can't be listed", clientVpnTargetNetworkAssociationType)
 }

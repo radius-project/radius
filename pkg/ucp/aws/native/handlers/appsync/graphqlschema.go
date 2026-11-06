@@ -23,6 +23,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/appsync"
@@ -78,6 +79,9 @@ func (h *GraphQLSchema) Options() native.Options {
 	return native.Options{
 		List:     native.ListNone,
 		Recovery: native.RecoverByIdentifier,
+		// A schema can take a long time to create, as CloudFormation's handler allows.
+		CreateTimeout: 125 * time.Minute,
+		UpdateTimeout: 125 * time.Minute,
 	}
 }
 
