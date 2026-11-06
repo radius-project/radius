@@ -205,8 +205,12 @@ func (l Lifecycle) poll() time.Duration {
 }
 
 // delete starts deleting the resource. For a handler that sends a delete token, it sends token, or a new one when
-// token is "", and returns the token it sent.
+// token is "", and returns the token it sent. A handler whose resource is some members of a parent removes only the
+// members the lifecycle applies.
 func (l Lifecycle) delete(ctx context.Context, identifier string, token string) (string, error) {
+	if scoped, ok := l.Handler.(native.ScopedDeleter); ok {
+		return "", scoped.DeleteScoped(ctx, awsreplay.Region, identifier, l.managed())
+	}
 	preparer, ok := l.Handler.(native.DeletePreparer)
 	if !ok {
 		return "", l.Handler.Delete(ctx, awsreplay.Region, identifier)
@@ -220,9 +224,24 @@ func (l Lifecycle) delete(ctx context.Context, identifier string, token string) 
 	return token, preparer.DeleteWithToken(ctx, awsreplay.Region, identifier, token)
 }
 
+// managed returns the property sets the lifecycle applies, for a handler whose resource is some members of a parent.
+func (l Lifecycle) managed() []map[string]any {
+	managed := []map[string]any{l.Properties}
+	if l.Update != nil {
+		managed = append(managed, l.Update)
+	}
+	return managed
+}
+
 func (l Lifecycle) read(t testing.TB, ctx context.Context, identifier string) map[string]any {
 	t.Helper()
-	properties, err := l.Handler.Read(ctx, awsreplay.Region, identifier)
+	var properties map[string]any
+	var err error
+	if scoped, ok := l.Handler.(native.ScopedReader); ok {
+		properties, err = scoped.ReadScoped(ctx, awsreplay.Region, identifier, l.managed())
+	} else {
+		properties, err = l.Handler.Read(ctx, awsreplay.Region, identifier)
+	}
 	require.NoError(t, err)
 	catalog, err := schemas.Load()
 	require.NoError(t, err)

@@ -135,10 +135,15 @@ type Suite struct {
 	Calls     int
 	FailCall  func(handler native.Handler, call int, err error)
 
+	// RejectedCalls is how many of the first calls of MultiCall only remove members, for a handler whose resource is
+	// some members of a parent (native.ScopedReader). Such a handler reports a failure in them as rejected, even when
+	// the response is lost, so the record keeps every member it may still have to remove.
+	RejectedCalls int
+
 	// CloudControlCreate, when set, returns the identifier and properties the suite's Cloud Control gives a new
-	// resource, for a type whose identifier includes a value AWS assigns, such as an association ID. When it is nil,
-	// the suite's Cloud Control names a resource with the handler's identifier encoding (native.IdentifierEncoder) when
-	// it has one, and with IdentifierProperty otherwise.
+	// resource, for a type whose identifier includes a value AWS assigns, such as a Client VPN association's
+	// AssociationId. When it is nil, the suite's Cloud Control names a resource with the handler's identifier
+	// encoding (native.IdentifierEncoder) when it has one, and with IdentifierProperty otherwise.
 	CloudControlCreate func(properties map[string]any) (string, map[string]any)
 
 	// IdentifierProperties, when set, returns the properties that give identifier, for `existing` of a type whose
@@ -150,6 +155,11 @@ type Suite struct {
 	// UCP can't rebuild from what Cloud Control returns sets it.
 	NoCloudControl bool
 
+	// Outside adds a member to the parent that properties name, as if someone added it outside Radius, for a handler
+	// whose resource is some members of a parent (native.ScopedReader). It returns whether the member is still there.
+	// It is nil for other handlers.
+	Outside func(store *awsfake.CloudControl, properties map[string]any) func() bool
+
 	// Duplicates is true when AWS lets more than one resource have the values the handler's Find searches by, for a
 	// handler whose Recovery is native.RecoverBySearch.
 	Duplicates bool
@@ -157,6 +167,30 @@ type Suite struct {
 	// RemovedItemField, when set, is a field inside an array item that a deploy sets and the next one leaves out, for
 	// a type whose Equivalent compares array items only on the values the template sets.
 	RemovedItemField *RemovedItemField
+
+	// Invalid are templates the handler rejects as a client failure before any AWS call, such as a value out of the
+	// range AWS takes. Each deploy gets 400 and leaves no record.
+	Invalid []map[string]any
+
+	// SameResource, when set, is another template for the resource Properties gives, such as one that sets a value
+	// AWS defaults to, like the current account. Two aliases must not both own the resource, whichever deploys first.
+	SameResource map[string]any
+
+	// ChangedOutside, when set, is a change to the resource in AWS outside Radius that a deploy of its template must
+	// undo, for a type whose Equivalent compares values only on what the template sets.
+	ChangedOutside *ChangedOutside
+}
+
+// ChangedOutside is a change to the resource in AWS outside Radius, such as another HLS container than the template's.
+type ChangedOutside struct {
+	// Properties is the template.
+	Properties map[string]any
+
+	// Change returns the resource as AWS has it after the change, given the resource as AWS had it.
+	Change func(stored map[string]any) map[string]any
+
+	// Restored reports whether AWS has the template's values again, given the resource as AWS has it.
+	Restored func(stored map[string]any) bool
 }
 
 // RemovedItemField is a field inside an array item, such as an EMR task group's AutoScalingPolicy.
@@ -176,6 +210,11 @@ func Run(t *testing.T, s Suite) {
 	t.Run("deleted outside Radius", func(t *testing.T) { s.deletedOutsideRadius(t) })
 	t.Run("removed property", func(t *testing.T) { s.removedProperty(t) })
 	t.Run("removed field of an array item", func(t *testing.T) { s.removedItemField(t) })
+	t.Run("template the handler rejects", func(t *testing.T) { s.invalid(t) })
+	t.Run("another template for a resource another alias holds", func(t *testing.T) { s.sameResource(t, false) })
+	t.Run("a template for a resource another alias holds in another form", func(t *testing.T) { s.sameResource(t, true) })
+	t.Run("redeploy after a change outside Radius", func(t *testing.T) { s.changedOutside(t, false) })
+	t.Run("take over a resource changed outside Radius", func(t *testing.T) { s.changedOutside(t, true) })
 	t.Run("create-only change", func(t *testing.T) { s.createOnlyChange(t) })
 	t.Run("unchanged and changed write-only values", func(t *testing.T) { s.writeOnlyValues(t) })
 	t.Run("no write-only value in any response", func(t *testing.T) { s.noWriteOnlyInResponses(t) })
@@ -188,6 +227,8 @@ func Run(t *testing.T, s Suite) {
 	t.Run("value AWS returns in another form", func(t *testing.T) { s.otherForm(t) })
 	t.Run("identifier of another product", func(t *testing.T) { s.otherProduct(t) })
 	t.Run("update fails between calls", func(t *testing.T) { s.multiCall(t) })
+	t.Run("member added outside Radius", func(t *testing.T) { s.outsideMember(t) })
+	t.Run("update interrupted before its first call", func(t *testing.T) { s.interruptedScopedUpdate(t) })
 	t.Run("delete again after the response is lost", func(t *testing.T) { s.deleteTokenRetry(t) })
 	nameProperty := s.NewHandler(awsfake.NewCloudControl()).Options().NameProperty
 	for _, reached := range []bool{true, false} {
@@ -197,6 +238,8 @@ func Run(t *testing.T, s Suite) {
 	}
 	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
 	t.Run("delete fails after it finds a lost create", func(t *testing.T) { s.lostCreateFailedDelete(t) })
+	t.Run("delete after the create sent again is lost", func(t *testing.T) { s.lostResend(t) })
+	t.Run("create-only change after a lost create", func(t *testing.T) { s.lostResendCreateOnly(t) })
 	t.Run("lost create that matches more than one resource", func(t *testing.T) { s.lostCreateDuplicates(t) })
 	if s.NewHandler(awsfake.NewCloudControl()).Options().Recovery == native.RecoverByResend {
 		t.Run("deploy after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodPut, errPartway) })
@@ -334,6 +377,31 @@ func (s Suite) removedItemField(t *testing.T) {
 	resp = h.put(f.After)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	require.Equal(t, []string{"Read"}, h.handler.reset(), "the removal is fully applied")
+}
+
+// changedOutside changes the resource in AWS outside Radius, and deploys its template: after a deploy, so the record's
+// last-applied values are stale, or as a take-over by name, so the record has none. The deploy must undo the change.
+func (s Suite) changedOutside(t *testing.T, takeOver bool) {
+	c := s.ChangedOutside
+	if c == nil {
+		t.Skip("the type compares every value it reads")
+	}
+	h := s.newHarness(t)
+	if takeOver {
+		identifier, err := h.handler.Handler.Create(t.Context(), native.CreateRequest{Region: region, Properties: c.Properties, ClientToken: uuid.NewString()})
+		require.NoError(t, err)
+		h.cc.Put(s.TypeName, identifier, c.Change(h.cc.Resource(s.TypeName, identifier)))
+		resp := h.do(h.putFactory(), http.MethodPut, h.path(), owner, map[string]any{"name": identifier, "properties": c.Properties})
+		require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
+		h.finish()
+		h.requireDeployed()
+	} else {
+		h.deploy(c.Properties)
+		h.cc.Put(s.TypeName, h.identifier(), c.Change(h.stored()))
+		require.False(t, c.Restored(h.stored()), "the change outside Radius is in AWS")
+		h.deploy(c.Properties)
+	}
+	require.True(t, c.Restored(h.stored()), "the deploy succeeded, so AWS has the template's values")
 }
 
 func (s Suite) createOnlyChange(t *testing.T) {
@@ -645,6 +713,9 @@ func (s Suite) resendFailsPartway(t *testing.T, method string, failure error) {
 	resp := h.put(s.Properties)
 	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
 	require.Equal(t, 1, h.cc.Count(s.TypeName))
+	if h.record().Properties.AWSIdentifier != "" {
+		t.Skip("UCP saves the identifier before the create, so it reads AWS by it instead of sending the create again")
+	}
 
 	h.handler.failCreatesPartway(failure)
 	if method == http.MethodPut {
@@ -737,7 +808,8 @@ func (s Suite) lostCreateDuplicates(t *testing.T) {
 }
 
 // lostCreateFailedDelete loses a create that reached AWS, and deletes the alias. The delete finds the resource, and
-// its call to AWS fails, so the record keeps what the create may have applied. The next delete removes it all.
+// its call to AWS fails, so the record keeps what the create may have applied. The next delete removes it all, including
+// the members of a handler whose resource is some members of a parent (native.ScopedDeleter).
 func (s Suite) lostCreateFailedDelete(t *testing.T) {
 	h := s.newHarness(t)
 	if od := h.onDelete(); od != schemas.OnDeleteDelete {
@@ -760,6 +832,63 @@ func (s Suite) lostCreateFailedDelete(t *testing.T) {
 
 	h.removeEventually()
 	h.requireRemoved(nil)
+}
+
+// lostResend loses a create that reached AWS, deploys a changed template, and loses the create UCP sends again for
+// it too, for a handler whose resource is some members of a parent and that finds a lost create by sending it again.
+// Both creates may have added members, so the delete removes the members of both templates.
+func (s Suite) lostResend(t *testing.T) {
+	if s.Outside == nil {
+		t.Skip("the resource is not some members of a parent")
+	}
+	h := s.resendHarness(t)
+	h.handler.lose("Create", true)
+	resp := h.put(s.Changed)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+
+	h.removeEventually()
+	h.requireRemoved(nil)
+}
+
+// lostResendCreateOnly loses a create that reached AWS, and deploys a template that changes a create-only property, for
+// a handler whose resource is some members of a parent and that finds a lost create by sending it again. Sending the
+// create again would add members to another parent, so the deploy gets 400 and changes nothing, and the delete removes
+// the lost create's members.
+func (s Suite) lostResendCreateOnly(t *testing.T) {
+	if s.Outside == nil || s.CreateOnlyChange == nil {
+		t.Skip("the resource is not some members of a parent, or the type has no create-only property")
+	}
+	h := s.resendHarness(t)
+	before := h.record().Properties.PendingLastApplied
+	h.handler.reset()
+
+	resp := h.put(s.CreateOnlyChange)
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.NotContains(t, h.handler.reset(), "Create", "the create is not sent again")
+	require.Equal(t, before, h.record().Properties.PendingLastApplied)
+
+	h.removeEventually()
+	h.requireRemoved(nil)
+}
+
+// resendHarness returns a harness whose first create reached AWS and was lost, for a handler that finds a lost create
+// by sending it again and deletes it in AWS. It skips a handler that saves the identifier before the create, which UCP
+// reads AWS by instead.
+func (s Suite) resendHarness(t *testing.T) *harness {
+	h := s.newHarness(t)
+	if h.handler.Options().Recovery != native.RecoverByResend {
+		t.Skip("the handler finds a lost create by search")
+	}
+	if od := h.onDelete(); od != schemas.OnDeleteDelete {
+		t.Skipf("a delete of the type doesn't delete it in AWS (onDelete %s)", od)
+	}
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	if h.record().Properties.AWSIdentifier != "" {
+		t.Skip("UCP saves the identifier before the create, so it reads AWS by it instead of sending the create again")
+	}
+	return h
 }
 
 // generatedNameRetry loses a create of a template that leaves out the name, after it reached AWS or before, and
@@ -906,6 +1035,46 @@ func (s Suite) identifierHeld(t *testing.T) {
 	require.Nil(t, h.recordAt(other))
 }
 
+// invalid deploys each of Invalid, which gets 400 before any AWS call and leaves no record.
+func (s Suite) invalid(t *testing.T) {
+	if len(s.Invalid) == 0 {
+		t.Skip("the type has no template the handler rejects before calling AWS")
+	}
+	for _, properties := range s.Invalid {
+		h := s.newHarness(t)
+		h.handler.reset()
+		resp := h.put(properties)
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Empty(t, h.handler.reset(), "nothing reaches AWS")
+		require.Nil(t, h.record())
+		require.Zero(t, h.cc.Count(s.TypeName))
+	}
+}
+
+// sameResource deploys Properties under one alias and SameResource under another, or the other way around when
+// reversed. Both templates give the same resource, so the second deploy gets 409 and changes nothing, and deleting
+// the first alias deletes the resource.
+func (s Suite) sameResource(t *testing.T, reversed bool) {
+	if s.SameResource == nil {
+		t.Skip("the type has one template form for a resource")
+	}
+	first, second := s.Properties, s.SameResource
+	if reversed {
+		first, second = second, first
+	}
+	h := s.newHarness(t)
+	h.deploy(first)
+	other := strings.TrimSuffix(h.path(), alias) + otherAlias
+	resp := h.putAt(other, second)
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	require.Contains(t, resp.raw, alias)
+	require.Nil(t, h.recordAt(other))
+	require.Equal(t, 1, h.cc.Count(s.TypeName))
+
+	h.remove()
+	h.requireRemoved(nil)
+}
+
 // otherForm makes AWS return values of the template in another form, and deploys the template again. The values
 // don't count as changes, so UCP only reads AWS.
 func (s Suite) otherForm(t *testing.T) {
@@ -981,6 +1150,33 @@ func (s Suite) otherProduct(t *testing.T) {
 	require.Equal(t, before, h.cc.Resource(s.TypeName, identifier), "UCP never touches the other product's resource")
 }
 
+// interruptedScopedUpdate stops UCP after it reserves the update to MultiCall and before the first call, for a
+// handler whose resource is some members of a parent (native.ScopedReader), and deploys MultiCall again. The record
+// still owns the members only the last deploy had, so the redeploy removes them.
+func (s Suite) interruptedScopedUpdate(t *testing.T) {
+	if s.RejectedCalls == 0 {
+		t.Skip("the handler's resource is not some members of a parent, or its update removes none")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	id, err := resources.ParseResource(h.path())
+	require.NoError(t, err)
+	store := records.NewStore(h.db)
+	rec, etag, err := store.Get(t.Context(), id)
+	require.NoError(t, err)
+	rec.Properties.PendingOperation = records.OperationUpdate
+	rec.Properties.PendingLastApplied = s.readable(s.MultiCall)
+	rec.SetProvisioningState(records.StateOf(records.OperationUpdate))
+	_, err = store.Save(t.Context(), rec, etag)
+	require.NoError(t, err)
+
+	defer func() { records.Now = time.Now }()
+	records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+	h.deploy(s.MultiCall)
+	records.Now = time.Now
+	requireSubset(t, s.readable(s.MultiCall), h.stored())
+}
+
 // multiCall fails an update that makes several AWS calls before each call and after the last one, with an error
 // AWS returns and with a lost response, and deploys again. The record keeps the pending values as possibly applied,
 // except when AWS rejected the first call, and makes them last-applied when every call took effect. The next deploy
@@ -1012,6 +1208,8 @@ func (s Suite) multiCall(t *testing.T) {
 				require.GreaterOrEqual(t, resp.status, http.StatusBadRequest, resp.raw)
 				applied := h.record().Properties.LastApplied
 				switch {
+				case call < s.RejectedCalls:
+					require.Equal(t, before, applied, "the call only removed members, so the record keeps every member it may still have to remove")
 				case call == 0 && failure.err != errLost:
 					require.Equal(t, before, applied, "AWS rejected the first call, so the pending values are dropped")
 				case call == s.Calls:
@@ -1040,11 +1238,38 @@ func (s Suite) multiCall(t *testing.T) {
 	}
 }
 
+// outsideMember adds a member to the parent outside Radius, before the first deploy, and checks that a take-over, an
+// update, and a delete all leave it in place.
+func (s Suite) outsideMember(t *testing.T) {
+	if s.Outside == nil {
+		t.Skip("the resource is not some members of a parent")
+	}
+	h := s.newHarness(t)
+	there := s.Outside(h.cc, s.Properties)
+	h.deploy(s.Properties)
+	require.True(t, there(), "a take-over keeps a member added outside Radius")
+
+	h.deploy(s.Changed)
+	require.True(t, there(), "an update keeps a member added outside Radius")
+
+	resp := h.get()
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	requireSubset(t, s.readable(s.Changed), resp.properties())
+
+	h.remove()
+	require.Nil(t, h.record())
+	require.True(t, there(), "a delete keeps a member added outside Radius")
+}
+
 // deleteTokenRetry loses the response of a delete that reached AWS, and deletes again. UCP saved the delete token on
 // the record before the first call, and the retry sends the same token, so AWS takes no second copy.
 func (s Suite) deleteTokenRetry(t *testing.T) {
-	if _, ok := s.NewHandler(awsfake.NewCloudControl()).(native.DeletePreparer); !ok {
+	handler := s.NewHandler(awsfake.NewCloudControl())
+	if _, ok := handler.(native.DeletePreparer); !ok {
 		t.Skip("the handler sends no delete token")
+	}
+	if _, ok := handler.(native.ScopedDeleter); ok {
+		t.Skip("the handler removes only the members it manages, which takes no delete token")
 	}
 	h := s.newHarness(t)
 	h.deploy(s.Properties)
@@ -1167,11 +1392,25 @@ func withValue(properties map[string]any, property string, value any) map[string
 	return out
 }
 
+// requireSubset requires got to have every value of want. An object in want is compared the same way, so got may have
+// more values inside it, such as an AccountId AWS fills in, as UCP's patch keeps a value AWS has that the template
+// leaves out. Any other value, including a list, must be equal.
 func requireSubset(t testing.TB, want map[string]any, got map[string]any) {
 	t.Helper()
+	requireSubsetAt(t, "", normalize(t, want).(map[string]any), normalize(t, got).(map[string]any))
+}
+
+func requireSubsetAt(t testing.TB, path string, want map[string]any, got map[string]any) {
+	t.Helper()
 	for k, v := range want {
-		require.Contains(t, got, k)
-		require.EqualValues(t, normalize(t, v), normalize(t, got[k]), k)
+		require.Contains(t, got, k, path)
+		w, wantObject := v.(map[string]any)
+		g, gotObject := got[k].(map[string]any)
+		if wantObject && gotObject && len(w) > 0 {
+			requireSubsetAt(t, path+"/"+k, w, g)
+			continue
+		}
+		require.EqualValues(t, v, got[k], strings.TrimPrefix(path+"/"+k, "/"))
 	}
 }
 
@@ -1421,10 +1660,14 @@ func (h *harness) put(properties map[string]any) response {
 }
 
 func (h *harness) putAt(path string, properties map[string]any) response {
-	put := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+	return h.do(h.putFactory(), http.MethodPut, path, owner, map[string]any{"properties": properties})
+}
+
+// putFactory returns the factory of UCP's PUT controller.
+func (h *harness) putFactory() controllerFactory {
+	return func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 		return awsproxy.NewCreateOrUpdateAWSResource(opts, clients, func() (*ucp_aws.FingerprintKey, error) { return h.key, nil })
 	}
-	return h.do(put, http.MethodPut, path, owner, map[string]any{"properties": properties})
 }
 
 func (h *harness) get() response {
@@ -1651,27 +1894,54 @@ func (f finder) Find(ctx context.Context, request native.CreateRequest) (string,
 	return f.r.Handler.(native.Finder).Find(ctx, request)
 }
 
-// wrap returns the handler the registry gets for r: r, with the optional methods the handler under test has.
+// wrap returns the handler the registry gets for r: r, with the optional methods the handler under test has, so UCP
+// sees the same interfaces as for the handler itself.
 func (r *recorder) wrap() native.Handler {
 	_, encodes := r.Handler.(native.IdentifierEncoder)
 	_, finds := r.Handler.(native.Finder)
+	_, scopes := r.Handler.(native.ScopedReader)
+	e, f, sc := encoder{r}, finder{r}, scoped{r}
 	switch {
+	case encodes && finds && scopes:
+		return struct {
+			*recorder
+			encoder
+			finder
+			scoped
+		}{r, e, f, sc}
 	case encodes && finds:
 		return struct {
 			*recorder
 			encoder
 			finder
-		}{r, encoder{r}, finder{r}}
+		}{r, e, f}
+	case encodes && scopes:
+		return struct {
+			*recorder
+			encoder
+			scoped
+		}{r, e, sc}
+	case finds && scopes:
+		return struct {
+			*recorder
+			finder
+			scoped
+		}{r, f, sc}
 	case encodes:
 		return struct {
 			*recorder
 			encoder
-		}{r, encoder{r}}
+		}{r, e}
 	case finds:
 		return struct {
 			*recorder
 			finder
-		}{r, finder{r}}
+		}{r, f}
+	case scopes:
+		return struct {
+			*recorder
+			scoped
+		}{r, sc}
 	}
 	return r
 }
@@ -1745,8 +2015,35 @@ func (r *recorder) lostDelete(call func() error) error {
 	return call()
 }
 
-// The recorder always has the methods of native.DeletePreparer, so the registry and UCP see them whatever the handler
-// under test has. DeleteToken returns "" for a handler without them, so UCP never calls DeleteWithToken.
+// scoped passes the methods of a handler under test whose resource is some members of a parent (native.ScopedReader
+// and native.ScopedDeleter) through a recorder.
+type scoped struct {
+	r *recorder
+}
+
+func (s scoped) ReadScoped(ctx context.Context, region string, identifier string, managed []map[string]any) (map[string]any, error) {
+	s.r.note("Read")
+	return s.r.Handler.(native.ScopedReader).ReadScoped(ctx, region, identifier, managed)
+}
+
+func (s scoped) DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error {
+	s.r.note("Delete")
+	return s.r.lostDelete(func() error {
+		return s.r.Handler.(native.ScopedDeleter).DeleteScoped(ctx, region, identifier, managed)
+	})
+}
+
+// The recorder always has the methods of native.DeletePreparer, so the registry and UCP see them whatever the
+// handler under test has. DeleteToken returns "" for a handler without them, so UCP never calls DeleteWithToken.
+
+// ResolveIdentifier passes the identifier to the handler under test when it resolves identifiers
+// (native.IdentifierResolver), and otherwise returns it as UCP uses it for a handler that doesn't.
+func (r *recorder) ResolveIdentifier(ctx context.Context, region string, identifier string) (string, error) {
+	if resolver, ok := r.Handler.(native.IdentifierResolver); ok {
+		return resolver.ResolveIdentifier(ctx, region, identifier)
+	}
+	return identifier, nil
+}
 
 func (r *recorder) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
 	if preparer, ok := r.Handler.(native.DeletePreparer); ok {

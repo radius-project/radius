@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -74,6 +76,52 @@ type request struct {
 
 	// route is the handler that serves the request. put, get, and delete set it.
 	route
+
+	// managed are the property sets the alias may have applied, which a native handler that reads only the members it
+	// manages gets (native.ScopedReader). put, get, and startDelete set them from the record. They are nil when UCP
+	// has no record.
+	managed []map[string]any
+}
+
+// managedValues returns the property sets the alias may have applied: the record's last-applied and possibly applied
+// properties, and desired when it isn't nil.
+func managedValues(rec *datamodel.AWSResource, desired map[string]any) []map[string]any {
+	out := []map[string]any{}
+	for _, properties := range []map[string]any{rec.Properties.LastApplied, rec.Properties.PendingLastApplied, desired} {
+		if properties != nil {
+			out = append(out, properties)
+		}
+	}
+	return out
+}
+
+// keepPending treats the values of an interrupted operation as applied, as records.KeepPending does. For a native
+// handler whose resource is some members of a parent (native.ScopedReader), a member list keeps the members of both
+// the last deploy and the interrupted one: the operation may have stopped before it removed the old members, so Radius
+// still owns them until a later deploy removes them.
+func keepPending(r *request, rec *datamodel.AWSResource) {
+	if _, scoped := r.handler.(native.ScopedReader); scoped {
+		addMembers(rec.Properties.PendingLastApplied, rec.Properties.LastApplied)
+	}
+	records.KeepPending(rec)
+}
+
+// addMembers adds to each list in properties the members of the same list in previous that it doesn't have.
+func addMembers(properties map[string]any, previous map[string]any) {
+	for name, value := range properties {
+		list, ok := value.([]any)
+		earlier, wasList := previous[name].([]any)
+		if !ok || !wasList {
+			continue
+		}
+		list = slices.Clone(list)
+		for _, member := range earlier {
+			if !slices.ContainsFunc(list, func(v any) bool { return reflect.DeepEqual(v, member) }) {
+				list = append(list, member)
+			}
+		}
+		properties[name] = list
+	}
 }
 
 // begin reads the region and rejects legacy and deprecated types. A non-nil response ends the request.
@@ -173,7 +221,7 @@ func (e *engine) resume(ctx context.Context, r *request, rec *datamodel.AWSResou
 		case records.OperationCreate:
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
 		default:
-			records.KeepPending(rec)
+			keepPending(r, rec)
 			rec.SetProvisioningState(v1.ProvisioningStateFailed)
 		}
 		etag, err := e.store.Save(ctx, rec, etag)
@@ -276,7 +324,7 @@ func (e *engine) readResource(ctx context.Context, r *request, identifier string
 	var out *cloudcontrol.GetResourceOutput
 	var err error
 	if r.handler != nil {
-		out, err = readNative(ctx, r.handler, r.region, identifier)
+		out, err = readNative(ctx, r.handler, r.region, identifier, r.managed)
 	} else {
 		out, err = e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			TypeName:   aws.String(r.typeName),
@@ -337,6 +385,9 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err := e.route(ctx, r); err != nil {
 		return handleError(ctx, r.id, err)
 	}
+	if name, err = resolveIdentifier(ctx, r.native, r.region, name); err != nil {
+		return handleError(ctx, r.id, err)
+	}
 	typeInfo := r.typeInfo
 	if typeInfo == nil {
 		typeInfo, err = describeType(ctx, e.clients, r.typeName, r.region)
@@ -390,6 +441,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	}
 
 	properties := body.Properties
+	r.managed = managedValues(rec, properties)
 	identifier := rec.Properties.AWSIdentifier
 	var current *cloudcontrol.GetResourceOutput
 	applied := applied{properties: withoutSecrets(properties, secrets), fingerprints: fingerprints}
@@ -417,6 +469,9 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 			lookup, err = identifierFor(r.native, properties, schema)
 			if err != nil {
 				return identifierError(ctx, r, err)
+			}
+			if lookup, err = resolveIdentifier(ctx, r.native, r.region, lookup); err != nil {
+				return handleError(ctx, r.id, err)
 			}
 		}
 		if lookup != "" {
@@ -573,6 +628,9 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	known, err := identifierFor(r.native, properties, schema)
 	if err != nil {
 		return identifierError(ctx, r, err)
+	}
+	if known, err = resolveIdentifier(ctx, r.native, r.region, known); err != nil {
+		return handleError(ctx, r.id, err)
 	}
 	if name != "" && known != name {
 		return badRequest(fmt.Sprintf("name %q does not match an AWS resource of type %s. Set name only to take over an existing resource, or remove it and set the identifier properties to create one.", name, r.typeName)), nil
@@ -824,6 +882,7 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 // it never sends the create again, so a create only a resend could find removes only the record.
 func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	r.managed = managedValues(rec, nil)
 	switch onDelete(r) {
 	case schemas.OnDeleteNothing:
 		logger.Info("Removing the record of an AWS resource without changing it in AWS", "alias", r.id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier)
@@ -1036,6 +1095,7 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err := e.route(ctx, r); err != nil {
 		return handleError(ctx, r.id, err)
 	}
+	r.managed = managedValues(rec, nil)
 
 	current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)
 	if err != nil {

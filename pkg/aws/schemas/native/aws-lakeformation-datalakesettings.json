@@ -1,0 +1,129 @@
+{
+  "typeName": "AWS::LakeFormation::DataLakeSettings",
+  "description": "Resource Type definition for AWS::LakeFormation::DataLakeSettings",
+  "additionalProperties": false,
+  "properties": {
+    "AllowExternalDataFiltering": {
+      "type": "boolean"
+    },
+    "ExternalDataFilteringAllowList": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/DataLakePrincipal"
+      }
+    },
+    "CreateTableDefaultPermissions": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/PrincipalPermissions"
+      }
+    },
+    "MutationType": {
+      "type": "string"
+    },
+    "Parameters": {
+      "type": "object"
+    },
+    "ReadOnlyAdmins": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/DataLakePrincipal"
+      }
+    },
+    "AllowFullTableExternalDataAccess": {
+      "type": "boolean"
+    },
+    "Admins": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/DataLakePrincipal"
+      }
+    },
+    "CreateDatabaseDefaultPermissions": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/PrincipalPermissions"
+      }
+    },
+    "Id": {
+      "type": "string",
+      "description": "Always DataLakeSettings, because an account has one set of settings in each Region."
+    },
+    "AuthorizedSessionTagValueList": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "TrustedResourceOwners": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "definitions": {
+    "DataLakePrincipal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "DataLakePrincipalIdentifier": {
+          "type": "string"
+        }
+      },
+      "required": ["DataLakePrincipalIdentifier"]
+    },
+    "PrincipalPermissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Permissions": {
+          "type": "array",
+          "insertionOrder": false,
+          "uniqueItems": false,
+          "items": {
+            "type": "string"
+          }
+        },
+        "Principal": {
+          "$ref": "#/definitions/DataLakePrincipal"
+        }
+      },
+      "required": ["Permissions", "Principal"]
+    }
+  },
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id"],
+  "writeOnlyProperties": ["/properties/MutationType"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "lakeformation:GetDataLakeSettings",
+        "lakeformation:PutDataLakeSettings"
+      ]
+    },
+    "read": {
+      "permissions": ["lakeformation:GetDataLakeSettings"]
+    },
+    "update": {
+      "permissions": [
+        "lakeformation:GetDataLakeSettings",
+        "lakeformation:PutDataLakeSettings"
+      ]
+    }
+  }
+}

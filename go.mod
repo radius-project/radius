@@ -27,17 +27,27 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.47.6
 	github.com/aws/aws-sdk-go-v2/config v1.33.12
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.12
+	github.com/aws/aws-sdk-go-v2/service/appsync v1.62.9
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.7
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.82.3
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.75.4
+	github.com/aws/aws-sdk-go-v2/service/codebuild v1.78.9
 	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.75.6
 	github.com/aws/aws-sdk-go-v2/service/dax v1.38.12
 	github.com/aws/aws-sdk-go-v2/service/docdb v1.58.1
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.343.0
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.67.1
+	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.63.7
 	github.com/aws/aws-sdk-go-v2/service/emr v1.71.0
 	github.com/aws/aws-sdk-go-v2/service/fsx v1.74.9
+	github.com/aws/aws-sdk-go-v2/service/iam v1.64.7
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.65.8
+	github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.47.9
+	github.com/aws/aws-sdk-go-v2/service/lakeformation v1.57.2
+	github.com/aws/aws-sdk-go-v2/service/medialive v1.114.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.6
+	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.286.1
+	github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.49.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.6
 	github.com/aws/smithy-go v1.28.8
 	github.com/charmbracelet/x/ansi v0.11.9

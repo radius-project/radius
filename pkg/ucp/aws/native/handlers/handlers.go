@@ -19,25 +19,51 @@ package handlers
 
 import (
 	"github.com/aws/aws-sdk-go-v2/aws"
+	appsyncsdk "github.com/aws/aws-sdk-go-v2/service/appsync"
+	cloudwatchsdk "github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	codebuildsdk "github.com/aws/aws-sdk-go-v2/service/codebuild"
 	dmssdk "github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
 	daxsdk "github.com/aws/aws-sdk-go-v2/service/dax"
 	docdbsdk "github.com/aws/aws-sdk-go-v2/service/docdb"
+	ec2sdk "github.com/aws/aws-sdk-go-v2/service/ec2"
+	elbv2sdk "github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	emrsdk "github.com/aws/aws-sdk-go-v2/service/emr"
 	fsxsdk "github.com/aws/aws-sdk-go-v2/service/fsx"
+	iamsdk "github.com/aws/aws-sdk-go-v2/service/iam"
+	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
+	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
+	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
+	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
+	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
+	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
+	stssdk "github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/appsync"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/cloudwatch"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/codebuild"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dax"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/dms"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/docdb"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/ec2"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/elbv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/emr"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/fsx"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iam"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/servicecatalog"
 )
 
 // All returns the native handlers UCP serves, each using cfg for its AWS clients. Add a handler here when its schema
 // is in pkg/aws/schemas.
 func All(cfg aws.Config) []native.Handler {
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
+	ec2API := ec2sdk.NewFromConfig(cfg)
+	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
 	return []native.Handler{
 		docdb.NewCluster(docdbAPI),
 		docdb.NewInstance(docdbAPI),
@@ -45,6 +71,23 @@ func All(cfg aws.Config) []native.Handler {
 		dms.NewReplicationInstance(dmssdk.NewFromConfig(cfg)),
 		emr.NewCluster(emrsdk.NewFromConfig(cfg)),
 		fsx.NewFileSystem(fsxsdk.NewFromConfig(cfg)),
+		ec2.NewClientVpnEndpoint(ec2API),
+		ec2.NewClientVpnTargetNetworkAssociation(ec2API),
+		ec2.NewNetworkAclEntry(ec2API),
+		ec2.NewNetworkInterfacePermission(ec2API),
+		ec2.NewVPNGatewayRoutePropagation(ec2API),
+		elbv2.NewListenerCertificate(elbv2sdk.NewFromConfig(cfg)),
+		lakeformation.NewDataLakeSettings(lakeformationAPI),
+		lakeformation.NewPermissions(lakeformationAPI),
+		lakeformation.NewResource(lakeformationAPI),
+		codebuild.NewProject(codebuildsdk.NewFromConfig(cfg)),
+		medialive.NewChannel(medialivesdk.NewFromConfig(cfg)),
+		appsync.NewGraphQLSchema(appsyncsdk.NewFromConfig(cfg), s3sdk.NewFromConfig(cfg)),
+		cloudwatch.NewAnomalyDetector(cloudwatchsdk.NewFromConfig(cfg), stssdk.NewFromConfig(cfg)),
+		sagemaker.NewTrialComponent(sagemakersdk.NewFromConfig(cfg)),
+		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
+		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
+		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
 	}
 }
 
