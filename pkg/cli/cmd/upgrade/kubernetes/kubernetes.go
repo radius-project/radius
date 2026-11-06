@@ -64,6 +64,14 @@ aggregation DNS profiles; external requires aggregation DNS only. Local CA feasi
 proof of issuance by an external backend. Public trust staging and convergence require the
 paired certificate lifecycle implementation.
 
+For an installed chart and all five component images supporting loaded-trust evidence, use
+'--ca-rotation-phase publish' to select a target CA, then run separate 'adopt', 'issue' and 'retire'
+phases. Omit target flags in publish to migrate legacy aggregation to the installed component CA.
+Issuance stops before retirement; old trust is removed only after an explicit retire request.
+Do not combine rotation with chart, version, values, Contour or authorization changes.
+'--ca-rotation-phase recover' explicitly permits an outage to establish new-only trust after
+expiry or compromise; select a fresh CA with '--ca-secret' or '--ca-cert' and '--ca-key'.
+
 When Contour is installed, the upgrade also upgrades it. Contour chart values can be set with
 '--contour-set' and '--contour-set-file'. They take precedence over the values stored on the Contour
 release and over the values that Radius sets, and --reset-values discards the stored Contour values too.
