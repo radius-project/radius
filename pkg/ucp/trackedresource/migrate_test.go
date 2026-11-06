@@ -471,60 +471,99 @@ func (c *failingQueryClient) Query(context.Context, database.Query, ...database.
 	return nil, c.err
 }
 
-// notFoundTransport answers every request with a 404 after it runs during, so a test can act while the updater fetches
-// a resource that is gone.
-type notFoundTransport struct {
-	during func()
+// sequenceTransport answers the requests for a resource in order, with the status codes in statuses. before runs
+// before the first answer, so a test can act while the updater fetches the resource.
+type sequenceTransport struct {
+	statuses []int
+	before   func()
+	requests int
 }
 
-func (rt *notFoundTransport) RoundTrip(*http.Request) (*http.Response, error) {
-	rt.during()
+func (rt *sequenceTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	if rt.requests == 0 {
+		rt.before()
+	}
+	status := rt.statuses[rt.requests]
+	rt.requests++
+
+	body := `{"error":{"code":"Internal","message":"the resource provider failed"}}`
+	switch status {
+	case http.StatusOK:
+		body = `{"properties":{"provisioningState":"Succeeded"}}`
+	case http.StatusNotFound:
+		body = `{"error":{"code":"NotFound","message":"the resource does not exist"}}`
+	}
 	w := httptest.NewRecorder()
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotFound)
-	_, _ = w.Write([]byte("{}"))
+	w.WriteHeader(status)
+	_, _ = w.Write([]byte(body))
 	return w.Result(), nil
 }
 
 // Two migrators read a legacy entry while it is idle, then a request queues an operation on it, and the updater finds
 // the resource gone. While the updater fetches the resource, one migrator saves its copy of the entry and the other
 // changes the salt of that copy, so the first cannot delete its copy once the updater deleted the legacy entry. The
-// updater deletes the copy itself, so the gone resource is not listed.
+// updater deletes the copy itself if the resource is still gone when it checks again, so a gone resource is not listed
+// and a resource created again keeps its entry.
 func Test_MigrateLegacyEntries_UpdaterAndConcurrentMigrators(t *testing.T) {
 	t.Parallel()
 	original := resources.MustParse(migrateGroup + "/providers/Applications.Test/testResources/my-resource")
 	legacyID, currentID := LegacyIDFor(original), IDFor(original)
-	for name, newStore := range newStores(t) {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			client := newStore()
-			idle := saveTracked(t, client, original, legacyID, v1.ProvisioningStateSucceeded)
-			entry := datamodel.GenericResource{}
-			require.NoError(t, idle.As(&entry))
-			saveTracked(t, client, original, legacyID, v1.ProvisioningStateAccepted)
+	for _, tt := range []struct {
+		name string
 
-			var copied *database.Object
-			transport := &notFoundTransport{during: func() {
-				moved := entry
-				moved.ID = currentID.String()
-				moved.Name = currentID.Name()
-				copied = &database.Object{ID: currentID.String(), Data: &moved}
-				require.NoError(t, client.Save(t.Context(), copied, database.WithCreateOnly()))
-				current, err := client.Get(t.Context(), currentID.String())
-				require.NoError(t, err)
-				require.NoError(t, changeSalt(t.Context(), client, current))
-			}}
-			require.NoError(t, NewUpdater(client, &http.Client{Transport: transport}).run(t.Context(), original, testURL, "2023-01-01"))
-			require.NotNil(t, copied)
+		// recheck is the status of the second fetch of the resource.
+		recheck int
 
-			// The first migrator resumes: its delete of the legacy entry fails, and the entry is gone, so it deletes its copy
-			// unless the copy changed.
-			require.Error(t, client.Delete(t.Context(), legacyID.String(), database.WithETag(idle.ETag)))
-			require.Equal(t, hashmigration.Result{}, removeUnusedCopy(t.Context(), client, logr.Discard(), legacyID.String(), copied))
+		wantErr bool
+		kept    bool
+	}{
+		{name: "resource still gone", recheck: http.StatusNotFound},
+		{name: "resource created again", recheck: http.StatusOK, kept: true},
+		{name: "resource cannot be fetched again", recheck: http.StatusInternalServerError, wantErr: true, kept: true},
+	} {
+		for name, newStore := range newStores(t) {
+			t.Run(tt.name+"/"+name, func(t *testing.T) {
+				t.Parallel()
+				client := newStore()
+				idle := saveTracked(t, client, original, legacyID, v1.ProvisioningStateSucceeded)
+				entry := datamodel.GenericResource{}
+				require.NoError(t, idle.As(&entry))
+				saveTracked(t, client, original, legacyID, v1.ProvisioningStateAccepted)
 
-			require.Nil(t, readTracked(t, client, currentID), "a gone resource must not be listed")
-			require.Nil(t, readTracked(t, client, legacyID))
-		})
+				var copied *database.Object
+				transport := &sequenceTransport{statuses: []int{http.StatusNotFound, tt.recheck}, before: func() {
+					moved := entry
+					moved.ID = currentID.String()
+					moved.Name = currentID.Name()
+					copied = &database.Object{ID: currentID.String(), Data: &moved}
+					require.NoError(t, client.Save(t.Context(), copied, database.WithCreateOnly()))
+					current, err := client.Get(t.Context(), currentID.String())
+					require.NoError(t, err)
+					require.NoError(t, changeSalt(t.Context(), client, current))
+				}}
+				err := NewUpdater(client, &http.Client{Transport: transport}).run(t.Context(), original, testURL, "2023-01-01")
+				if tt.wantErr {
+					require.Error(t, err, "the operation is retried")
+				} else {
+					require.NoError(t, err)
+				}
+				require.NotNil(t, copied)
+				require.Equal(t, 2, transport.requests, "the updater checks again that the resource is gone before it deletes the copy")
+
+				// The first migrator resumes: its delete of the legacy entry fails, and the entry is gone, so it deletes its
+				// copy unless the copy changed.
+				require.Error(t, client.Delete(t.Context(), legacyID.String(), database.WithETag(idle.ETag)))
+				require.Equal(t, hashmigration.Result{}, removeUnusedCopy(t.Context(), client, logr.Discard(), legacyID.String(), copied))
+
+				require.Nil(t, readTracked(t, client, legacyID))
+				if tt.kept {
+					require.NotNil(t, readTracked(t, client, currentID), "the entry is kept unless the resource is still gone")
+				} else {
+					require.Nil(t, readTracked(t, client, currentID), "a gone resource must not be listed")
+				}
+			})
+		}
 	}
 }
 

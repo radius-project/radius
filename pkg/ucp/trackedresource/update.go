@@ -240,8 +240,10 @@ func deleteTrackingEntry(ctx context.Context, client database.Client, trackingID
 // tracking ID after the entries were read, if any. trackingID and existing are the entry that was read and deleted,
 // and other the entry read under the other tracking ID. A migrator deletes such a copy itself when it finds the legacy
 // entry gone, but not if another migrator changed the copy meanwhile. The migration copies only idle entries, and a
-// request for a resource created again queues an operation on its entry, so an idle entry is such a copy.
-func deleteMigratedCopy(ctx context.Context, client database.Client, id resources.ID, trackingID resources.ID, existing *database.Object, other *database.Object) error {
+// request for a resource created again queues an operation on its entry, so an idle entry is such a copy, unless the
+// operation of a resource created again already finished. gone therefore checks that the resource is still gone, and
+// the entry is deleted only as it was read before that check.
+func deleteMigratedCopy(ctx context.Context, client database.Client, id resources.ID, trackingID resources.ID, existing *database.Object, other *database.Object, gone func(context.Context) (bool, error)) error {
 	currentID := IDFor(id)
 	if existing == nil || other != nil || strings.EqualFold(trackingID.String(), currentID.String()) {
 		return nil
@@ -261,6 +263,11 @@ func deleteMigratedCopy(ctx context.Context, client database.Client, id resource
 
 	if state := entry.AsyncProvisioningState; state != "" && !state.IsTerminal() {
 		return nil
+	}
+
+	if stillGone, err := gone(ctx); err != nil || !stillGone {
+		// A resource created again keeps its entry. After an error, the operation is retried and finds the entry.
+		return err
 	}
 
 	err = deleteTrackingEntry(ctx, client, currentID, obj)
@@ -317,7 +324,10 @@ func (u *Updater) run(ctx context.Context, id resources.ID, destination *url.URL
 			return err
 		}
 
-		return deleteMigratedCopy(ctx, u.DatabaseClient, id, trackingID, existing, other)
+		return deleteMigratedCopy(ctx, u.DatabaseClient, id, trackingID, existing, other, func(ctx context.Context) (bool, error) {
+			data, err := u.fetch(ctx, destination)
+			return data == nil && err == nil, err
+		})
 	} else if data.Properties.ProvisioningState != nil && !data.Properties.ProvisioningState.IsTerminal() {
 		// Resource is still being provisioned. We should not update anything yet.
 		logger.V(ucplog.LevelDebug).Info("resource is still being provisioned")
