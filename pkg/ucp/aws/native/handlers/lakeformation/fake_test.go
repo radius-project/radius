@@ -17,6 +17,7 @@ limitations under the License.
 package lakeformation
 
 import (
+	"fmt"
 	"context"
 	"encoding/json"
 	"errors"
@@ -513,6 +514,10 @@ func (f *fakeAPI) UpdateResource(ctx context.Context, in *lakeformation.UpdateRe
 			return clientError(notFoundCode)
 		}
 		if in.RoleArn == nil {
+			return clientError("InvalidInputException")
+		}
+		// AWS doesn't let UpdateResource edit a location registered with the service-linked role.
+		if props["UseServiceLinkedRole"] == true || isServiceLinkedRole(fmt.Sprint(props["RoleArn"])) {
 			return clientError("InvalidInputException")
 		}
 		props["RoleArn"] = *in.RoleArn

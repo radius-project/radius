@@ -46,10 +46,31 @@ func Test_Resource_Update(t *testing.T) {
 	}{
 		{
 			name:    "from the service-linked role to another role",
+			stored:  map[string]any{"ResourceArn": dataArn, "UseServiceLinkedRole": true, "HybridAccessEnabled": true},
+			desired: map[string]any{"ResourceArn": dataArn, "RoleArn": roleArn, "UseServiceLinkedRole": false, "HybridAccessEnabled": true},
+			calls:   []string{"DescribeResource", "DeregisterResource", "RegisterResource"},
+			want:    map[string]any{"RoleArn": roleArn, "HybridAccessEnabled": true},
+		},
+		{
+			name:    "only HybridAccessEnabled with the service-linked role",
+			stored:  map[string]any{"ResourceArn": dataArn, "UseServiceLinkedRole": true, "WithFederation": true},
+			desired: map[string]any{"ResourceArn": dataArn, "UseServiceLinkedRole": true, "WithFederation": true, "HybridAccessEnabled": true},
+			calls:   []string{"DescribeResource", "DeregisterResource", "RegisterResource"},
+			want:    map[string]any{"RoleArn": slrArn, "HybridAccessEnabled": true, "WithFederation": true},
+		},
+		{
+			name:    "only WithFederation with the service-linked role the template leaves out",
 			stored:  map[string]any{"ResourceArn": dataArn, "UseServiceLinkedRole": true},
-			desired: map[string]any{"ResourceArn": dataArn, "RoleArn": roleArn, "UseServiceLinkedRole": false},
+			desired: map[string]any{"ResourceArn": dataArn, "WithFederation": true},
+			calls:   []string{"DescribeResource", "DeregisterResource", "RegisterResource"},
+			want:    map[string]any{"RoleArn": slrArn, "WithFederation": true},
+		},
+		{
+			name:    "only HybridAccessEnabled with another role",
+			stored:  map[string]any{"ResourceArn": dataArn, "RoleArn": roleArn},
+			desired: map[string]any{"ResourceArn": dataArn, "RoleArn": roleArn, "HybridAccessEnabled": true},
 			calls:   []string{"DescribeResource", "UpdateResource"},
-			want:    map[string]any{"RoleArn": roleArn},
+			want:    map[string]any{"RoleArn": roleArn, "HybridAccessEnabled": true},
 		},
 		{
 			name:    "to the service-linked role",
@@ -71,8 +92,8 @@ func Test_Resource_Update(t *testing.T) {
 			name:    "a role while the service-linked role is on",
 			stored:  map[string]any{"ResourceArn": dataArn, "UseServiceLinkedRole": true},
 			desired: map[string]any{"ResourceArn": dataArn, "UseServiceLinkedRole": true, "RoleArn": otherRole, "WithFederation": true},
-			calls:   []string{"DescribeResource", "UpdateResource"},
-			want:    map[string]any{"RoleArn": slrArn, "WithFederation": true},
+			calls:   []string{"DescribeResource", "DeregisterResource", "RegisterResource"},
+			want:    map[string]any{"WithFederation": true},
 		},
 		{
 			name:    "only the service-linked role turned off",
@@ -106,6 +127,24 @@ func Test_Resource_Update(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test_Resource_ReregisterFails fails the RegisterResource call that follows DeregisterResource when a location with
+// the service-linked role moves to another role. The failure is partly applied, so the record keeps both values as
+// possibly applied, and the location is gone, so the next deploy registers it again.
+func Test_Resource_ReregisterFails(t *testing.T) {
+	ctx := t.Context()
+	h, api := newResource(map[string]any{"ResourceArn": dataArn, "UseServiceLinkedRole": true})
+	current, err := h.Read(ctx, region, dataArn)
+	require.NoError(t, err)
+	desired := map[string]any{"ResourceArn": dataArn, "RoleArn": roleArn}
+	api.errs["RegisterResource"] = nativefake.ClientError("AccessDeniedException", "denied")
+	err = h.Update(ctx, native.UpdateRequest{Region: region, Identifier: dataArn, Current: current, Desired: desired, Patch: patchOf(t, current, desired)})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomePartial, failure.Outcome)
+	_, err = h.Read(ctx, region, dataArn)
+	require.ErrorIs(t, err, native.ErrNotFound, "the next deploy finds the location gone and registers it again")
 }
 
 func Test_Resource_Errors(t *testing.T) {

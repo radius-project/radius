@@ -45,9 +45,10 @@ var (
 // Resource serves AWS::LakeFormation::Resource, a data location registered with Lake Formation. Its identifier, Id,
 // is ResourceArn.
 //
-// UseServiceLinkedRole is write-only, because AWS returns only the role, as RoleArn. An update that turns it on for a
-// resource registered with another role registers the resource again, because only RegisterResource sets up the
-// service-linked role. Every other change goes through UpdateResource.
+// UseServiceLinkedRole is write-only, because AWS returns only the role, as RoleArn. AWS can't edit a location
+// registered with the service-linked role, and only RegisterResource sets that role up, so an update that changes a
+// location with the service-linked role, or turns it on, registers the location again. Every other change goes
+// through UpdateResource.
 type Resource struct {
 	api API
 }
@@ -133,43 +134,75 @@ func (h *Resource) register(ctx context.Context, region string, properties map[s
 // updatable are the properties UpdateResource changes.
 var updatable = []string{"RoleArn", "HybridAccessEnabled", "WithFederation"}
 
-// Update registers the resource again when the template turns UseServiceLinkedRole on for a resource registered with
-// another role. Otherwise it changes the role, HybridAccessEnabled, and WithFederation with UpdateResource. A boolean
-// the template removed goes back to false. UpdateResource needs a role, so a template that leaves out RoleArn, or uses
-// the service-linked role, keeps the role AWS has.
+// Update changes the role, HybridAccessEnabled, and WithFederation. A boolean the template removed goes back to
+// false, and a template that leaves out RoleArn and UseServiceLinkedRole keeps the role AWS has.
+//
+// When the location has the service-linked role, or the template turns it on, Update deregisters the location and
+// registers it again with the template's values, because AWS can't edit such a location. The template must then give
+// a role, unless it keeps the service-linked role, and that is checked before any call. When registering fails after
+// the location was deregistered, the failure is partly applied, and the next deploy registers it again, because the
+// location is gone. Otherwise Update calls UpdateResource.
 func (h *Resource) Update(ctx context.Context, request native.UpdateRequest) error {
 	info, err := h.describe(ctx, request.Region, request.Identifier)
 	if err != nil {
 		return err
 	}
 	changed := awsapi.Changed(request)
-	useServiceLinkedRole, _ := request.Desired["UseServiceLinkedRole"].(bool)
-	if slices.Contains(changed, "UseServiceLinkedRole") && useServiceLinkedRole && !isServiceLinkedRole(aws.ToString(info.RoleArn)) {
-		return awsapi.Calls(
-			func() error {
-				_, err := h.api.DeregisterResource(ctx, &lakeformation.DeregisterResourceInput{ResourceArn: aws.String(request.Identifier)}, inRegion(request.Region))
-				return err
-			},
-			func() error { return h.register(ctx, request.Region, request.Desired) },
-		)
-	}
-	if !slices.ContainsFunc(changed, func(name string) bool { return slices.Contains(updatable, name) }) {
+	if !slices.ContainsFunc(changed, func(name string) bool { return slices.Contains(updatable, name) || name == "UseServiceLinkedRole" }) {
 		return nil
 	}
-	input := &lakeformation.UpdateResourceInput{ResourceArn: aws.String(request.Identifier), RoleArn: info.RoleArn}
-	if role := awsapi.String(request.Desired, "RoleArn"); role != "" && !useServiceLinkedRole {
+	current := aws.ToString(info.RoleArn)
+	useServiceLinkedRole, _ := request.Desired["UseServiceLinkedRole"].(bool)
+	role := awsapi.String(request.Desired, "RoleArn")
+	if !useServiceLinkedRole && role == "" {
+		// The template leaves the role out, so the location keeps the one AWS has.
+		useServiceLinkedRole, role = isServiceLinkedRole(current), current
+	}
+	hybrid, _ := request.Desired["HybridAccessEnabled"].(bool)
+	federation, _ := request.Desired["WithFederation"].(bool)
+
+	if !isServiceLinkedRole(current) && !useServiceLinkedRole {
+		if !slices.ContainsFunc(changed, func(name string) bool { return slices.Contains(updatable, name) }) {
+			return nil
+		}
+		input := &lakeformation.UpdateResourceInput{ResourceArn: aws.String(request.Identifier), RoleArn: aws.String(role)}
+		if slices.Contains(changed, "HybridAccessEnabled") {
+			input.HybridAccessEnabled = aws.Bool(hybrid)
+		}
+		if slices.Contains(changed, "WithFederation") {
+			input.WithFederation = aws.Bool(federation)
+		}
+		_, err = h.api.UpdateResource(ctx, input, inRegion(request.Region))
+		return err
+	}
+
+	if useServiceLinkedRole && isServiceLinkedRole(current) && hybrid == aws.ToBool(info.HybridAccessEnabled) && federation == aws.ToBool(info.WithFederation) {
+		// The location already has the template's values, such as when the template only adds RoleArn next to the
+		// service-linked role, which AWS ignores.
+		return nil
+	}
+	input := &lakeformation.RegisterResourceInput{
+		ResourceArn:         aws.String(request.Identifier),
+		HybridAccessEnabled: aws.Bool(hybrid),
+		WithFederation:      aws.Bool(federation),
+	}
+	if useServiceLinkedRole {
+		input.UseServiceLinkedRole = aws.Bool(true)
+	}
+	if role != "" && !isServiceLinkedRole(role) {
+		// As a create does, RoleArn is sent when the template gives it, next to the service-linked role too.
 		input.RoleArn = aws.String(role)
 	}
-	if slices.Contains(changed, "HybridAccessEnabled") {
-		value, _ := request.Desired["HybridAccessEnabled"].(bool)
-		input.HybridAccessEnabled = aws.Bool(value)
-	}
-	if slices.Contains(changed, "WithFederation") {
-		value, _ := request.Desired["WithFederation"].(bool)
-		input.WithFederation = aws.Bool(value)
-	}
-	_, err = h.api.UpdateResource(ctx, input, inRegion(request.Region))
-	return err
+	return awsapi.Calls(
+		func() error {
+			_, err := h.api.DeregisterResource(ctx, &lakeformation.DeregisterResourceInput{ResourceArn: aws.String(request.Identifier)}, inRegion(request.Region))
+			return err
+		},
+		func() error {
+			_, err := h.api.RegisterResource(ctx, input, inRegion(request.Region))
+			return err
+		},
+	)
 }
 
 // Delete deregisters the resource.
