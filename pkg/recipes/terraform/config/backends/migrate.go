@@ -158,6 +158,11 @@ type StateMigrator struct {
 	// uncertain outcome may still be applied. Every write follows a renewal of the lock and is applied, if at all,
 	// within stateMigrationLeaseDuration, which is also how long another migrator waits before it takes over a lock.
 	unsettled map[string]time.Time
+
+	// kept records, by legacy suffix, the current suffix of each state whose lock this migrator kept after a pass. A
+	// later pass resolves the move even if the resource that owns the state was deleted meanwhile, because Terraform
+	// never expires the lock.
+	kept map[string]string
 }
 
 // NewStateMigrator creates a StateMigrator for the states in the Radius namespace.
@@ -168,7 +173,29 @@ func NewStateMigrator(client kubernetes.Interface) *StateMigrator {
 		holder:    StateMigrationHolderPrefix + uuid.New().String(),
 		now:       time.Now,
 		unsettled: map[string]time.Time{},
+		kept:      map[string]string{},
 	}
+}
+
+// keep records that this migrator keeps the lock of the state stored under legacySuffix.
+func (m *StateMigrator) keep(legacySuffix string, currentSuffix string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.kept[legacySuffix] = currentSuffix
+}
+
+// forget records that this migrator no longer keeps the lock of the state stored under legacySuffix.
+func (m *StateMigrator) forget(legacySuffix string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.kept, legacySuffix)
+}
+
+// keptMoves returns the states whose lock this migrator keeps, by legacy suffix.
+func (m *StateMigrator) keptMoves() map[string]string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return maps.Clone(m.kept)
 }
 
 // markUnsettled records that the first Secret of a copy may still be created under the lock name.
@@ -213,12 +240,13 @@ func (m *StateMigrator) MigrateLegacyStates(ctx context.Context, db database.Cli
 		return hashmigration.Result{}, err
 	}
 
+	moves := map[string]stateMove{}
+	enumerate := enumerator.Enumerate
 	if len(stored) == 0 {
-		return hashmigration.Result{}, nil
+		enumerate = func(context.Context, func(*database.Object) error) error { return nil }
 	}
 
-	moves := map[string]stateMove{}
-	err = enumerator.Enumerate(ctx, func(obj *database.Object) error {
+	err = enumerate(ctx, func(obj *database.Object) error {
 		owner, ok := stateOwnerOf(obj)
 		if !ok {
 			return nil
@@ -246,6 +274,7 @@ func (m *StateMigrator) MigrateLegacyStates(ctx context.Context, db database.Cli
 	}
 
 	result := hashmigration.Result{}
+	visited := map[string]bool{}
 	for _, legacy := range slices.Sorted(maps.Keys(moves)) {
 		move := moves[legacy]
 		if !move.busy {
@@ -253,15 +282,18 @@ func (m *StateMigrator) MigrateLegacyStates(ctx context.Context, db database.Cli
 			// move. Read the resource again right before the move to keep that window small.
 			move.busy, err = m.ownerBusy(ctx, db, move.owner)
 			if errors.Is(err, &database.ErrNotFound{}) {
-				// The resource was deleted, and its deletion removes the state.
+				// The resource was deleted, and its deletion removes the state. A lock this migrator kept is resolved
+				// below.
 				continue
 			} else if err != nil {
+				visited[legacy] = true
 				result.Remaining++
 				result.Message = err.Error()
 				continue
 			}
 		}
 
+		visited[legacy] = true
 		if move.busy {
 			if held, err := m.holdsLock(ctx, legacy); err == nil && held {
 				// An earlier pass of this migrator kept the lock of the state, so an operation that resolved the legacy
@@ -282,6 +314,21 @@ func (m *StateMigrator) MigrateLegacyStates(ctx context.Context, db database.Cli
 		moved := m.moveState(ctx, legacy, move.current, func(ctx context.Context) (bool, error) {
 			return m.ownerBusy(ctx, db, move.owner)
 		})
+		result.Add(moved)
+		if moved.Message != "" {
+			result.Message = moved.Message
+		}
+	}
+
+	// A state whose lock an earlier pass kept is resolved even if its resource was deleted since, or the lock would
+	// block a resource created again with the same name. The copy is not published for a resource that is gone.
+	kept := m.keptMoves()
+	for _, legacy := range slices.Sorted(maps.Keys(kept)) {
+		if visited[legacy] {
+			continue
+		}
+
+		moved := m.moveState(ctx, legacy, kept[legacy], func(context.Context) (bool, error) { return true, nil })
 		result.Add(moved)
 		if moved.Message != "" {
 			result.Message = moved.Message
@@ -348,8 +395,10 @@ func (m *StateMigrator) moveState(ctx context.Context, legacySuffix string, curr
 	case errors.Is(err, errLockLost):
 		// The migrator that took over the lock finishes the move, so this one must not write again.
 		logger.Info("Another migrator took over the Terraform state lock; the move continues there", "reason", err.Error())
+		m.forget(legacySuffix)
 		return hashmigration.Result{Remaining: 1, Message: err.Error()}
 	case outcome == lockHold:
+		m.keep(legacySuffix, currentSuffix)
 		// The lock stays held, so the legacy state cannot change under a copy that is or may become published, until a
 		// later pass of this migrator, or of one that takes over the expired lock, commits or removes the copy. Terraform
 		// ignores the lock duration, so the state is remaining work whatever this pass found, and the step is retried.
@@ -380,16 +429,20 @@ func (m *StateMigrator) moveState(ctx context.Context, legacySuffix string, curr
 		if outcome == lockTombstone {
 			// The state is stored under its current name, and Terraform cannot acquire the lock this migrator still holds.
 			logger.Error(err, "Unable to turn the Terraform state lock into a tombstone")
+			m.forget(legacySuffix)
 			return result
 		}
 
 		// The lock stays held by this migrator, and Terraform ignores the lock duration, so a later pass re-acquires the
 		// lock and releases it.
 		logger.Error(err, "Unable to release the Terraform state lock; it will be retried")
+		m.keep(legacySuffix, currentSuffix)
 		result.Remaining = 1
 		result.Message = fmt.Sprintf("unable to release the lock of the Terraform state in %s: %s", stateSecretName(legacySuffix, 0), err.Error())
+		return result
 	}
 
+	m.forget(legacySuffix)
 	return result
 }
 
