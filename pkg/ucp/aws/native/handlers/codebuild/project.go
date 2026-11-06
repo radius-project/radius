@@ -55,9 +55,7 @@ type API interface {
 	DeleteWebhook(ctx context.Context, params *codebuild.DeleteWebhookInput, optFns ...func(*codebuild.Options)) (*codebuild.DeleteWebhookOutput, error)
 }
 
-func inRegion(region string) func(*codebuild.Options) {
-	return func(o *codebuild.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[codebuild.Options]
 
 var _ native.Handler = (*Project)(nil)
 
@@ -199,7 +197,7 @@ func properties(project *types.Project) (map[string]any, error) {
 	if project.ProjectVisibility != "" {
 		p["Visibility"] = string(project.ProjectVisibility)
 	}
-	if tags := tagList(project.Tags); tags != nil {
+	if tags := awsapi.TagListOf(project.Tags); tags != nil {
 		p["Tags"] = tags
 	}
 	if p["Triggers"], err = triggersOf(project.Webhook); err != nil {
@@ -239,23 +237,6 @@ func objects(p map[string]any, name string) []map[string]any {
 	return out
 }
 
-func tagList(tags []types.Tag) []any {
-	m := map[string]string{}
-	for _, t := range tags {
-		m[aws.ToString(t.Key)] = aws.ToString(t.Value)
-	}
-	return awsapi.TagList(m)
-}
-
-// sdkTags returns tags for an API call. It is never nil, so an update with no tags removes them all.
-func sdkTags(tags []awsapi.Tag) []types.Tag {
-	out := []types.Tag{}
-	for _, t := range tags {
-		out = append(out, types.Tag{Key: aws.String(t.Key), Value: aws.String(t.Value)})
-	}
-	return out
-}
-
 // separate are the properties CreateProject doesn't take. Arn is read-only.
 var separate = []string{"Arn", "ResourceAccessRole", "Tags", "Triggers", "Visibility"}
 
@@ -268,7 +249,7 @@ func (h *Project) Create(ctx context.Context, request native.CreateRequest) (str
 	if err := awsapi.Decode(awsapi.Without(p, separate...), input); err != nil {
 		return "", err
 	}
-	input.Tags = sdkTags(awsapi.Tags(p))
+	input.Tags = awsapi.SDKTags[types.Tag](awsapi.Tags(p))
 	want, err := webhookOf(p)
 	if err != nil {
 		return "", err
@@ -473,7 +454,7 @@ func (h *Project) Update(ctx context.Context, request native.UpdateRequest) erro
 		}
 		input.Name = aws.String(request.Identifier)
 		if slices.Contains(changed, "Tags") {
-			input.Tags = sdkTags(awsapi.Tags(request.Desired))
+			input.Tags = awsapi.SDKTags[types.Tag](awsapi.Tags(request.Desired))
 		}
 		calls = append(calls, func() error {
 			_, err := h.api.UpdateProject(ctx, input, opt)
