@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
@@ -30,7 +31,8 @@ import (
 // against AWS's recorded responses. The metric needs no data points, and detectors aren't taggable.
 func Test_Replay_AnomalyDetector(t *testing.T) {
 	s := awsreplay.New(t, "testdata/anomaly-detector.json")
-	api := cloudwatch.NewFromConfig(s.Config(t.Context()))
+	cfg := s.Config(t.Context())
+	api := cloudwatch.NewFromConfig(cfg)
 	run := s.Input("RADIUS_REC_RUN")
 
 	properties := map[string]any{
@@ -43,7 +45,7 @@ func Test_Replay_AnomalyDetector(t *testing.T) {
 		"Configuration": config("UTC"),
 	}
 	nativetest.Lifecycle{
-		Handler:    NewAnomalyDetector(api),
+		Handler:    NewAnomalyDetector(api, sts.NewFromConfig(cfg)),
 		Session:    s,
 		Properties: properties,
 		Update:     with(properties, map[string]any{"Configuration": config("America/New_York")}),

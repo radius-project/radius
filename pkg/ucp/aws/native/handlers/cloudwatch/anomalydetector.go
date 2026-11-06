@@ -22,6 +22,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -41,6 +43,11 @@ type API interface {
 	PutAnomalyDetector(ctx context.Context, params *cloudwatch.PutAnomalyDetectorInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.PutAnomalyDetectorOutput, error)
 	DescribeAnomalyDetectors(ctx context.Context, params *cloudwatch.DescribeAnomalyDetectorsInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.DescribeAnomalyDetectorsOutput, error)
 	DeleteAnomalyDetector(ctx context.Context, params *cloudwatch.DeleteAnomalyDetectorInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.DeleteAnomalyDetectorOutput, error)
+}
+
+// AccountAPI is the part of the STS client the handler uses, to learn the current account.
+type AccountAPI interface {
+	GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
 }
 
 func inRegion(region string) func(*cloudwatch.Options) {
@@ -59,13 +66,39 @@ var notFoundCodes = []string{"ResourceNotFoundException", "ResourceNotFound"}
 // watches, or its metric math queries, identify it. Its identifier, Id, is that identity as JSON, the same for the
 // SingleMetricAnomalyDetector form and the older top-level Namespace, MetricName, Dimensions, and Stat form.
 // PutAnomalyDetector creates or updates a detector, and takes effect at once.
+//
+// A detector of one metric without AccountId is in the current account, as the CloudWatch API defines it. AWS may
+// return that detector with the current account's ID or without one, and a monitoring account also sees detectors of
+// the same metric in its source accounts. So the handler compares a detector's account only after it fills in the
+// current account, which it asks STS for when a comparison needs it, and an identifier has no AccountId for a
+// detector of the current account.
 type AnomalyDetector struct {
-	api API
+	api      API
+	accounts AccountAPI
 }
 
-// NewAnomalyDetector returns the handler for CloudWatch anomaly detectors.
-func NewAnomalyDetector(api API) *AnomalyDetector {
-	return &AnomalyDetector{api: api}
+// NewAnomalyDetector returns the handler for CloudWatch anomaly detectors. It learns the current account with accounts.
+func NewAnomalyDetector(api API, accounts AccountAPI) *AnomalyDetector {
+	return &AnomalyDetector{api: api, accounts: accounts}
+}
+
+// currentAccount returns a function that returns the account of the handler's credentials. It asks STS on its first
+// call only, so an operation that never needs the account makes no STS call.
+func (h *AnomalyDetector) currentAccount(ctx context.Context, region string) func() (string, error) {
+	account := ""
+	return func() (string, error) {
+		if account != "" {
+			return account, nil
+		}
+		out, err := h.accounts.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{}, func(o *sts.Options) { o.Region = region })
+		if err != nil {
+			return "", err
+		}
+		if account = aws.ToString(out.Account); account == "" {
+			return "", errors.New("STS returned no account ID for the AWS credentials")
+		}
+		return account, nil
+	}
 }
 
 // TypeName returns AWS::CloudWatch::AnomalyDetector.
@@ -107,12 +140,27 @@ func (id identity) encode() (string, error) {
 	return string(b), err
 }
 
-// same reports whether id and other identify the same detector. AWS may return the account ID of a detector the
-// template created without one, so the account is compared only when both have it.
-func (id identity) same(other identity) bool {
-	if id.AccountId == "" || other.AccountId == "" {
-		id.AccountId, other.AccountId = "", ""
+// same reports whether id and other identify the same detector. An identity without AccountId is in the current
+// account, which account returns. It calls account only when the rest of the identities match and only one of them
+// has an AccountId.
+func (id identity) same(other identity, account func() (string, error)) (bool, error) {
+	a, b := id, other
+	a.AccountId, b.AccountId = "", ""
+	if !a.equal(b) {
+		return false, nil
 	}
+	if (id.AccountId == "") == (other.AccountId == "") {
+		return id.AccountId == other.AccountId, nil
+	}
+	current, err := account()
+	if err != nil {
+		return false, err
+	}
+	return cmp.Or(id.AccountId, current) == cmp.Or(other.AccountId, current), nil
+}
+
+// equal reports whether id and other are the same identity, account included.
+func (id identity) equal(other identity) bool {
 	a, errA := id.encode()
 	b, errB := other.encode()
 	return errA == nil && errB == nil && a == b
@@ -259,11 +307,16 @@ func (h *AnomalyDetector) find(ctx context.Context, region string, id identity) 
 		}
 	}
 	var found *types.AnomalyDetector
+	account := h.currentAccount(ctx, region)
 	err := h.describe(ctx, region, input, func(d *types.AnomalyDetector, other identity) error {
-		if found == nil && id.same(other) {
+		if found != nil {
+			return nil
+		}
+		same, err := id.same(other, account)
+		if same {
 			found = d
 		}
-		return nil
+		return err
 	})
 	if err != nil {
 		return nil, err
@@ -480,7 +533,8 @@ func (h *AnomalyDetector) Update(ctx context.Context, request native.UpdateReque
 	return h.put(ctx, request.Region, request.Desired)
 }
 
-// Delete deletes the detector.
+// Delete deletes the detector. One without AccountId is the current account's, which AWS deletes when the request has
+// no AccountId.
 func (h *AnomalyDetector) Delete(ctx context.Context, region string, identifier string) error {
 	id, err := parseIdentifier(identifier)
 	if err != nil {
@@ -508,13 +562,24 @@ func (h *AnomalyDetector) Delete(ctx context.Context, region string, identifier 
 	return awsapi.NotFound(err, notFoundCodes...)
 }
 
-// List returns every anomaly detector in the region.
+// List returns every anomaly detector in the region. A detector of the current account gets the identifier a template
+// without AccountId gives, so the identifier check finds an alias that created it.
 func (h *AnomalyDetector) List(ctx context.Context, region string) ([]native.Resource, error) {
 	out := []native.Resource{}
 	input := &cloudwatch.DescribeAnomalyDetectorsInput{
 		AnomalyDetectorTypes: []types.AnomalyDetectorType{types.AnomalyDetectorTypeSingleMetric, types.AnomalyDetectorTypeMetricMath},
 	}
+	account := h.currentAccount(ctx, region)
 	err := h.describe(ctx, region, input, func(d *types.AnomalyDetector, id identity) error {
+		if id.AccountId != "" {
+			current, err := account()
+			if err != nil {
+				return err
+			}
+			if id.AccountId == current {
+				id.AccountId = ""
+			}
+		}
 		identifier, err := id.encode()
 		if err != nil {
 			return err

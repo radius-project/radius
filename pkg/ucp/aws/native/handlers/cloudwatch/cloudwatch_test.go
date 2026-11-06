@@ -18,6 +18,7 @@ package cloudwatch
 
 import (
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"strings"
@@ -71,9 +72,14 @@ func config(zone string) map[string]any {
 	}
 }
 
+// newHandler returns the handler with api for both CloudWatch and STS.
+func newHandler(api *fakeAPI) *AnomalyDetector {
+	return NewAnomalyDetector(api, api)
+}
+
 // identifierOf returns the identifier of properties, failing the test on an error.
 func identifierOf(t *testing.T, properties map[string]any) string {
-	id, err := NewAnomalyDetector(nil).Identifier(properties)
+	id, err := NewAnomalyDetector(nil, nil).Identifier(properties)
 	require.NoError(t, err)
 	return id
 }
@@ -90,7 +96,7 @@ func Test_Suite_AnomalyDetector(t *testing.T) {
 		TypeName: anomalyDetectorType,
 		Schema:   schema(t),
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			return NewAnomalyDetector(newFakeAPI(store))
+			return newHandler(newFakeAPI(store))
 		},
 		IdentifierProperty: "Id",
 		Properties:         detector,
@@ -113,7 +119,7 @@ func Test_Identifier(t *testing.T) {
 
 	require.Empty(t, identifierOf(t, map[string]any{"Configuration": config("UTC")}), "no metric, no identifier")
 
-	_, err := NewAnomalyDetector(nil).Identifier(map[string]any{"Stat": 5})
+	_, err := NewAnomalyDetector(nil, nil).Identifier(map[string]any{"Stat": 5})
 	require.Error(t, err)
 }
 
@@ -131,7 +137,7 @@ func mathDetector(id string) map[string]any {
 
 func Test_LegacyForm(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
-	h := NewAnomalyDetector(api)
+	h := newHandler(api)
 	legacy := map[string]any{"Namespace": "AWS/EC2", "MetricName": "CPUUtilization", "Stat": "Average", "Dimensions": dims("a", "1")}
 
 	identifier, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: legacy})
@@ -156,7 +162,7 @@ func Test_LegacyForm(t *testing.T) {
 
 func Test_MetricMath(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
-	h := NewAnomalyDetector(api)
+	h := newHandler(api)
 	properties := map[string]any{"MetricMathAnomalyDetector": mathDetector("m1"), "Configuration": config("UTC")}
 
 	identifier, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
@@ -186,7 +192,7 @@ func Test_MetricMath(t *testing.T) {
 
 func Test_ReadMatchesExactly(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
-	h := NewAnomalyDetector(api)
+	h := newHandler(api)
 	// A detector with more dimensions matches the dimension filter, but is another detector.
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"SingleMetricAnomalyDetector": single("Average", dims("a", "1", "b", "2"))}})
 	require.NoError(t, err)
@@ -203,23 +209,100 @@ func Test_AccountID(t *testing.T) {
 	withAccount.AccountId = "123456789012"
 	otherAccount := id
 	otherAccount.AccountId = "210987654321"
-	require.True(t, id.same(withAccount), "AWS may add the account of a detector the template created without one")
-	require.False(t, withAccount.same(otherAccount))
+	asked := 0
+	account := func() (string, error) {
+		asked++
+		return "123456789012", nil
+	}
+	same := func(a, b identity) bool {
+		ok, err := a.same(b, account)
+		require.NoError(t, err)
+		return ok
+	}
+	require.True(t, same(id, withAccount), "AWS may add the current account's ID to a detector the template created without one")
+	require.False(t, same(id, otherAccount), "a detector of another account is another detector")
+	require.False(t, same(withAccount, otherAccount))
+	require.Equal(t, 2, asked)
+	require.True(t, same(id, id))
+	sum := id
+	sum.Stat = "Sum"
+	require.False(t, same(id, sum))
+	require.Equal(t, 2, asked, "the account is asked for only when the rest of the identities match")
+	failure := errors.New("denied")
+	_, err := id.same(withAccount, func() (string, error) { return "", failure })
+	require.ErrorIs(t, err, failure)
 
 	api := newFakeAPI(awsfake.NewCloudControl())
-	h := NewAnomalyDetector(api)
+	h := newHandler(api)
+	api.errs["GetCallerIdentity"] = fault("AccessDenied")
+	_, err = h.Read(t.Context(), region, identifierOf(t, map[string]any{"SingleMetricAnomalyDetector": single("Average", nil)}))
+	require.ErrorIs(t, err, native.ErrNotFound, "a read that finds no detector needs no account")
 	properties := map[string]any{"SingleMetricAnomalyDetector": map[string]any{"AccountId": "123456789012", "Namespace": "AWS/EC2", "MetricName": "CPUUtilization", "Stat": "Average"}}
 	identifier, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
 	require.NoError(t, err)
 	require.Contains(t, identifier, "123456789012")
+	_, err = h.Read(t.Context(), region, identifier)
+	require.NoError(t, err, "a detector the identifier names with its account needs no STS call")
+	_, err = h.Read(t.Context(), region, identifierOf(t, map[string]any{"SingleMetricAnomalyDetector": map[string]any{"Namespace": "AWS/EC2", "MetricName": "CPUUtilization", "Stat": "Average"}}))
+	require.ErrorContains(t, err, "AccessDenied", "an identifier without AccountId needs the current account")
+	_, err = h.List(t.Context(), region)
+	require.ErrorContains(t, err, "AccessDenied")
+	delete(api.errs, "GetCallerIdentity")
 	require.NoError(t, h.Delete(t.Context(), region, identifier))
 	require.Empty(t, api.store.List(anomalyDetectorType))
+}
+
+// Test_SourceAccountDetector deploys a detector next to one of the same metric in a source account, as a monitoring
+// account sees them. A template without AccountId means the current account, so it reads, updates, and deletes only
+// that detector, whether AWS returns its account ID or not, and the delete finishes while the source detector stays.
+func Test_SourceAccountDetector(t *testing.T) {
+	for _, omit := range []bool{false, true} {
+		t.Run(fmt.Sprintf("AWS returns the account ID %v", !omit), func(t *testing.T) {
+			ctx := t.Context()
+			api := newFakeAPI(awsfake.NewCloudControl())
+			api.omitAccount = omit
+			h := newHandler(api)
+			zone := func(identifier string) any {
+				got, err := h.Read(ctx, region, identifier)
+				require.NoError(t, err)
+				return got["Configuration"].(map[string]any)["MetricTimeZone"]
+			}
+			metric := single("Average", nil)
+			source, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: map[string]any{
+				"SingleMetricAnomalyDetector": with(metric, map[string]any{"AccountId": sourceAccount}), "Configuration": config("Europe/London"),
+			}})
+			require.NoError(t, err)
+			local, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: map[string]any{"SingleMetricAnomalyDetector": metric, "Configuration": config("UTC")}})
+			require.NoError(t, err)
+			require.Equal(t, "UTC", zone(local))
+
+			list, err := h.List(ctx, region)
+			require.NoError(t, err)
+			identifiers := []string{}
+			for _, r := range list {
+				identifiers = append(identifiers, r.Identifier)
+			}
+			require.ElementsMatch(t, []string{local, source}, identifiers, "a detector of the current account has the identifier a template without AccountId gives")
+
+			desired := map[string]any{"SingleMetricAnomalyDetector": metric, "Configuration": config("Asia/Tokyo")}
+			require.NoError(t, h.Update(ctx, native.UpdateRequest{Region: region, Identifier: local, Desired: desired}))
+			require.Equal(t, "Asia/Tokyo", zone(local))
+			require.Equal(t, "Europe/London", zone(source))
+
+			require.NoError(t, h.Delete(ctx, region, local))
+			_, err = h.Progress(ctx, region, local, native.OperationDelete)
+			require.ErrorIs(t, err, native.ErrNotFound, "the delete finishes while the source account's detector stays")
+			_, err = h.Read(ctx, region, local)
+			require.ErrorIs(t, err, native.ErrNotFound)
+			require.Equal(t, "Europe/London", zone(source))
+		})
+	}
 }
 
 func Test_List(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
 	api.pageSize = 1
-	h := NewAnomalyDetector(api)
+	h := newHandler(api)
 	for _, p := range []map[string]any{
 		{"SingleMetricAnomalyDetector": single("Average", dims("a", "1"))},
 		{"SingleMetricAnomalyDetector": single("Sum", nil)},
@@ -241,7 +324,7 @@ func Test_List(t *testing.T) {
 
 func Test_Update(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
-	h := NewAnomalyDetector(api)
+	h := newHandler(api)
 	properties := map[string]any{"SingleMetricAnomalyDetector": single("Average", nil), "Configuration": config("UTC"), "MetricCharacteristics": map[string]any{"PeriodicSpikes": true}}
 	identifier, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
 	require.NoError(t, err)
@@ -257,7 +340,7 @@ func Test_Update(t *testing.T) {
 func Test_Errors(t *testing.T) {
 	failure := &native.Failure{}
 
-	h := NewAnomalyDetector(newFakeAPI(awsfake.NewCloudControl()))
+	h := newHandler(newFakeAPI(awsfake.NewCloudControl()))
 	for _, identifier := range []string{"not-json", `{"Stat":"Average"}`} {
 		_, err := h.Read(t.Context(), region, identifier)
 		require.ErrorAs(t, err, &failure)
@@ -293,7 +376,7 @@ func Test_Errors(t *testing.T) {
 	require.Error(t, h.Delete(t.Context(), region, `{"MetricDataQueries":[{"Id":"m1","Period":"often"}]}`))
 
 	api := newFakeAPI(awsfake.NewCloudControl())
-	h = NewAnomalyDetector(api)
+	h = newHandler(api)
 	boom := errors.New("boom")
 	api.errs["DescribeAnomalyDetectors"] = boom
 	identifier := identifierOf(t, map[string]any{"SingleMetricAnomalyDetector": single("Average", nil)})

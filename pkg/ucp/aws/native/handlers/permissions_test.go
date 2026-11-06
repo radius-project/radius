@@ -53,6 +53,7 @@ var iamPrefixes = map[string]string{
 	"s3":                       "s3",
 	"sagemaker":                "sagemaker",
 	"servicecatalog":           "servicecatalog",
+	"sts":                      "sts",
 }
 
 // sdkServicePrefix is the import path prefix of the AWS SDK service packages.

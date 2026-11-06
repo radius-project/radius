@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -34,11 +35,19 @@ import (
 
 // fakeAPI is an in-memory CloudWatch API for anomaly detectors. It keeps detectors in an awsfake store, keyed by
 // their identifier, in the type's property format, so the suite's Cloud Control sees the same resources. Like AWS,
-// it returns every detector of one metric with SingleMetricAnomalyDetector set, whichever form created it. It leaves
-// out the deprecated top-level fields AWS also returns, which the handler never reads.
+// it returns every detector of one metric with SingleMetricAnomalyDetector set, whichever form created it, and with
+// AccountId set to the current account for a detector created without one. A detector created with another account's
+// AccountId is another detector, as a monitoring account sees one of a source account. It leaves out the deprecated
+// top-level fields AWS also returns, which the handler never reads. It also serves the STS call for the current
+// account.
 type fakeAPI struct {
 	store  *awsfake.CloudControl
 	failer nativetest.Failer
+
+	// account is the current account, and omitAccount makes a detector created without AccountId come back without
+	// one.
+	account     string
+	omitAccount bool
 
 	mu    sync.Mutex
 	calls []string
@@ -53,7 +62,35 @@ type fakeAPI struct {
 var _ API = (*fakeAPI)(nil)
 
 func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
-	return &fakeAPI{store: store, errs: map[string]error{}}
+	return &fakeAPI{store: store, errs: map[string]error{}, account: fakeAccount}
+}
+
+// fakeAccount is the current account of the fake, and sourceAccount another account a monitoring account sees.
+const (
+	fakeAccount   = "123456789012"
+	sourceAccount = "111122223333"
+)
+
+func (f *fakeAPI) GetCallerIdentity(ctx context.Context, in *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	opts := sts.Options{}
+	for _, fn := range optFns {
+		fn(&opts)
+	}
+	f.calls = append(f.calls, "GetCallerIdentity "+opts.Region)
+	if err := f.errs["GetCallerIdentity"]; err != nil {
+		return nil, err
+	}
+	return &sts.GetCallerIdentityOutput{Account: aws.String(f.account)}, nil
+}
+
+// owned returns id with the current account when it has none, as AWS reads a detector's AccountId.
+func (f *fakeAPI) owned(id identity) identity {
+	if id.AccountId == "" && !id.isMath() {
+		id.AccountId = f.account
+	}
+	return id
 }
 
 func fault(code string) error {
@@ -87,6 +124,9 @@ func (f *fakeAPI) detector(identifier string) (types.AnomalyDetector, error) {
 	d.MetricMathAnomalyDetector = t.MetricMathAnomalyDetector
 	if d.MetricMathAnomalyDetector == nil {
 		d.SingleMetricAnomalyDetector = single
+		if single != nil && aws.ToString(single.AccountId) == "" && !f.omitAccount {
+			single.AccountId = aws.String(f.account)
+		}
 	}
 	d.AnomalyDetectorId = aws.String(identifier)
 	d.StateValue = types.AnomalyDetectorStateValuePendingTraining
@@ -112,7 +152,7 @@ func (f *fakeAPI) PutAnomalyDetector(ctx context.Context, in *cloudwatch.PutAnom
 	if config := configurationProperties(in.Configuration); len(config) > 0 {
 		props["Configuration"] = config
 	}
-	identifier, err := NewAnomalyDetector(f).Identifier(props)
+	identifier, err := NewAnomalyDetector(f, f).Identifier(props)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +264,9 @@ func (f *fakeAPI) DeleteAnomalyDetector(ctx context.Context, in *cloudwatch.Dele
 		if err != nil {
 			return nil, err
 		}
-		if id.same(stored) {
+		a, errA := f.owned(id).encode()
+		b, errB := f.owned(stored).encode()
+		if errA == nil && errB == nil && a == b {
 			if err := f.failer.Before(); err != nil {
 				return nil, err
 			}

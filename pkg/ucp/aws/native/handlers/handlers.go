@@ -36,6 +36,7 @@ import (
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
 	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
+	stssdk "github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -82,7 +83,7 @@ func All(cfg aws.Config) []native.Handler {
 		codebuild.NewProject(codebuildsdk.NewFromConfig(cfg)),
 		medialive.NewChannel(medialivesdk.NewFromConfig(cfg)),
 		appsync.NewGraphQLSchema(appsyncsdk.NewFromConfig(cfg), s3sdk.NewFromConfig(cfg)),
-		cloudwatch.NewAnomalyDetector(cloudwatchsdk.NewFromConfig(cfg)),
+		cloudwatch.NewAnomalyDetector(cloudwatchsdk.NewFromConfig(cfg), stssdk.NewFromConfig(cfg)),
 		sagemaker.NewTrialComponent(sagemakersdk.NewFromConfig(cfg)),
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),

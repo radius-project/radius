@@ -212,26 +212,35 @@
     "create": {
       "permissions": [
         "cloudwatch:DescribeAnomalyDetectors",
-        "cloudwatch:PutAnomalyDetector"
+        "cloudwatch:PutAnomalyDetector",
+        "sts:GetCallerIdentity"
       ]
     },
     "read": {
-      "permissions": ["cloudwatch:DescribeAnomalyDetectors"]
+      "permissions": [
+        "cloudwatch:DescribeAnomalyDetectors",
+        "sts:GetCallerIdentity"
+      ]
     },
     "update": {
       "permissions": [
         "cloudwatch:DescribeAnomalyDetectors",
-        "cloudwatch:PutAnomalyDetector"
+        "cloudwatch:PutAnomalyDetector",
+        "sts:GetCallerIdentity"
       ]
     },
     "delete": {
       "permissions": [
         "cloudwatch:DeleteAnomalyDetector",
-        "cloudwatch:DescribeAnomalyDetectors"
+        "cloudwatch:DescribeAnomalyDetectors",
+        "sts:GetCallerIdentity"
       ]
     },
     "list": {
-      "permissions": ["cloudwatch:DescribeAnomalyDetectors"]
+      "permissions": [
+        "cloudwatch:DescribeAnomalyDetectors",
+        "sts:GetCallerIdentity"
+      ]
     }
   }
 }
