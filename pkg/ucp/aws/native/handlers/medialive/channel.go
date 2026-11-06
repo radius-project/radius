@@ -167,7 +167,6 @@ func within(template any, aws any) bool {
 	return reflect.DeepEqual(template, aws)
 }
 
-
 // describe returns the channel with the identifier, or ErrNotFound. AWS lists a deleted channel for a while, as
 // DELETED, which counts as not found.
 func (h *Channel) describe(ctx context.Context, region string, identifier string) (*medialive.DescribeChannelOutput, error) {

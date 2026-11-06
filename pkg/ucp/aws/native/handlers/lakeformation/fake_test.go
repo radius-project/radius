@@ -17,10 +17,10 @@ limitations under the License.
 package lakeformation
 
 import (
-	"fmt"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strconv"
 	"sync"
