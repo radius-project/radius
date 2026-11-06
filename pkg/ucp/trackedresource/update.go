@@ -179,7 +179,104 @@ func ResolveTrackingEntry(ctx context.Context, client database.Client, id resour
 		return currentID, nil, err
 	}
 
+	// The migration may have moved the entry to the current ID between the two reads. It saves the current entry
+	// before it deletes the legacy entry, so one more read of the current ID finds it.
+	obj, err = client.Get(ctx, currentID.String())
+	if err == nil {
+		return currentID, obj, nil
+	} else if !errors.Is(err, &database.ErrNotFound{}) {
+		return currentID, nil, err
+	}
+
 	return currentID, nil, nil
+}
+
+// SaveCondition returns the option that saves a tracking entry that was read as obj: an update conditioned on the
+// ETag of obj, or, when no entry was found, a create that fails if another writer created the entry since. Neither
+// overwrites a concurrent write, such as an operation queued for the resource or the migration of its entry.
+func SaveCondition(obj *database.Object) database.SaveOptions {
+	if obj == nil {
+		return database.WithCreateOnly()
+	}
+
+	return database.WithETag(obj.ETag)
+}
+
+// otherTrackingEntry reads the entry for id stored under the tracking ID other than trackingID, if any. An interrupted
+// migration leaves an entry under both IDs, and if the resource is gone, the one left behind would keep listing it.
+func otherTrackingEntry(ctx context.Context, client database.Client, id resources.ID, trackingID resources.ID) (resources.ID, *database.Object, error) {
+	other := LegacyIDFor(id)
+	if strings.EqualFold(trackingID.String(), other.String()) {
+		other = IDFor(id)
+	}
+
+	obj, err := client.Get(ctx, other.String())
+	if errors.Is(err, &database.ErrNotFound{}) {
+		return other, nil, nil
+	} else if err != nil {
+		return other, nil, err
+	}
+
+	return other, obj, nil
+}
+
+// deleteTrackingEntry deletes the tracking entry trackingID as it was read, obj. Nothing is deleted if no entry was
+// read, and a concurrent update makes the delete fail and be retried, so an entry created or updated after it was read,
+// for example for a resource that was created again, is kept.
+func deleteTrackingEntry(ctx context.Context, client database.Client, trackingID resources.ID, obj *database.Object) error {
+	if obj == nil {
+		return nil
+	}
+
+	err := client.Delete(ctx, trackingID.String(), database.WithETag(obj.ETag))
+	if errors.Is(err, &database.ErrNotFound{}) {
+		return nil
+	}
+
+	return err
+}
+
+// deleteMigratedCopy deletes the copy of a gone resource's legacy entry that the migration saved under the current
+// tracking ID after the entries were read, if any. trackingID and existing are the entry that was read and deleted,
+// and other the entry read under the other tracking ID. A migrator deletes such a copy itself when it finds the legacy
+// entry gone, but not if another migrator changed the copy meanwhile. The migration copies only idle entries, and a
+// request for a resource created again queues an operation on its entry, so an idle entry is such a copy, unless the
+// operation of a resource created again already finished. gone therefore checks that the resource is still gone, and
+// the entry is deleted only as it was read before that check.
+func deleteMigratedCopy(ctx context.Context, client database.Client, id resources.ID, trackingID resources.ID, existing *database.Object, other *database.Object, gone func(context.Context) (bool, error)) error {
+	currentID := IDFor(id)
+	if existing == nil || other != nil || strings.EqualFold(trackingID.String(), currentID.String()) {
+		return nil
+	}
+
+	obj, err := client.Get(ctx, currentID.String())
+	if errors.Is(err, &database.ErrNotFound{}) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	entry := datamodel.GenericResource{}
+	if err := obj.As(&entry); err != nil {
+		return err
+	}
+
+	if state := entry.AsyncProvisioningState; state != "" && !state.IsTerminal() {
+		return nil
+	}
+
+	if stillGone, err := gone(ctx); err != nil || !stillGone {
+		// A resource created again keeps its entry. After an error, the operation is retried and finds the entry.
+		return err
+	}
+
+	err = deleteTrackingEntry(ctx, client, currentID, obj)
+	if errors.Is(err, &database.ErrConcurrency{}) {
+		// The entry changed after it was read, for example because a request queued an operation on it.
+		return nil
+	}
+
+	return err
 }
 
 func (u *Updater) run(ctx context.Context, id resources.ID, destination *url.URL, apiVersion string) error {
@@ -193,15 +290,21 @@ func (u *Updater) run(ctx context.Context, id resources.ID, destination *url.URL
 		return err
 	}
 
-	etag := ""
+	existing := obj
 	entry := datamodel.GenericResourceFromID(id, trackingID)
 	entry.Properties.APIVersion = apiVersion
 	if obj != nil {
-		etag = obj.ETag
 		err := obj.As(&entry)
 		if err != nil {
 			return err
 		}
+	}
+
+	// Read the entry under the other tracking ID before the resource is fetched too, so that only entries that existed
+	// before the fetch are deleted if the resource is gone.
+	otherID, other, err := otherTrackingEntry(ctx, u.DatabaseClient, id, trackingID)
+	if err != nil {
+		return err
 	}
 
 	data, err := u.fetch(ctx, destination)
@@ -210,16 +313,21 @@ func (u *Updater) run(ctx context.Context, id resources.ID, destination *url.URL
 	}
 
 	if data == nil {
-		// Resource was not found. We can delete the tracked resource entry.
+		// Resource was not found. We can delete the tracked resource entry, under both of its tracking IDs, as they were
+		// before the fetch.
 		logger.V(ucplog.LevelDebug).Info("deleting tracked resource entry")
-		err = u.DatabaseClient.Delete(ctx, trackingID.String(), database.WithETag(etag))
-		if errors.Is(err, &database.ErrNotFound{}) {
-			return nil
-		} else if err != nil {
+		if err := deleteTrackingEntry(ctx, u.DatabaseClient, trackingID, existing); err != nil {
 			return err
 		}
 
-		return nil
+		if err := deleteTrackingEntry(ctx, u.DatabaseClient, otherID, other); err != nil {
+			return err
+		}
+
+		return deleteMigratedCopy(ctx, u.DatabaseClient, id, trackingID, existing, other, func(ctx context.Context) (bool, error) {
+			data, err := u.fetch(ctx, destination)
+			return data == nil && err == nil, err
+		})
 	} else if data.Properties.ProvisioningState != nil && !data.Properties.ProvisioningState.IsTerminal() {
 		// Resource is still being provisioned. We should not update anything yet.
 		logger.V(ucplog.LevelDebug).Info("resource is still being provisioned")
@@ -239,7 +347,7 @@ func (u *Updater) run(ctx context.Context, id resources.ID, destination *url.URL
 		Data: entry,
 	}
 	logger.V(ucplog.LevelDebug).Info("updating tracked resource entry")
-	err = u.DatabaseClient.Save(ctx, obj, database.WithETag(etag))
+	err = u.DatabaseClient.Save(ctx, obj, SaveCondition(existing))
 	if errors.Is(err, &database.ErrConcurrency{}) {
 		logger.V(ucplog.LevelDebug).Info("tracked resource was updated concurrently")
 		return &InProgressErr{}

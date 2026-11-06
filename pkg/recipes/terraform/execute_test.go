@@ -38,7 +38,10 @@ import (
 	goretry "github.com/sethvargo/go-retry"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 )
@@ -290,6 +293,287 @@ func TestGenerateConfig(t *testing.T) {
 			require.ErrorContains(t, err, tc.err)
 		})
 	}
+}
+
+func TestKubernetesBackendStateIdentity(t *testing.T) {
+	const currentSuffix = "09ed17eb3264f9613cc5cdee1a9c01e3765da963"
+	const legacySuffix = "3e4dc89bbe6e3ad3b17e413b3f776184a6d3c75f"
+	currentName, legacyName := backends.KubernetesBackendNamePrefix+currentSuffix, backends.KubernetesBackendNamePrefix+legacySuffix
+	for _, tt := range []struct {
+		name        string
+		current     bool
+		legacy      bool
+		failLookup  string
+		failDestroy bool
+	}{
+		{name: "current", current: true},
+		{name: "legacy", legacy: true},
+		{name: "both prefer current", current: true, legacy: true},
+		{name: "failed destroy preserves legacy state", legacy: true, failDestroy: true},
+		{name: "current lookup error", failLookup: currentName},
+		{name: "legacy lookup error", failLookup: legacyName},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			snapshotsPath := installBackendTestTerraform(t)
+			t.Setenv("KUBERNETES_SERVICE_HOST", "")
+			t.Setenv("KUBERNETES_SERVICE_PORT", "")
+			options := Options{
+				RootDir:   t.TempDir(),
+				EnvConfig: &recipes.Configuration{},
+				EnvRecipe: &recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: "test/module/source"},
+				ResourceRecipe: &recipes.ResourceMetadata{
+					Name:          "widget",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/extenders/widget",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+				},
+			}
+			kube := fake.NewClientset()
+			for name, exists := range map[string]bool{currentName: tt.current, legacyName: tt.legacy} {
+				if exists {
+					_, err := kube.CoreV1().Secrets(backends.RadiusNamespace).Create(t.Context(), &corev1.Secret{
+						Name: name, Namespace: backends.RadiusNamespace,
+						Data: map[string][]byte{"tfstate": []byte("existing-state")},
+					}, metav1.CreateOptions{})
+					require.NoError(t, err)
+				}
+			}
+			kube.ClearActions()
+			failure := apierrors.NewForbidden(schema.GroupResource{Resource: "secrets"}, tt.failLookup, errors.New("denied"))
+			kube.PrependReactor("get", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+				if action.(k8stesting.GetAction).GetName() == tt.failLookup {
+					return true, nil, failure
+				}
+				return false, nil, nil
+			})
+			provider := kubernetesclientprovider.KubernetesClientProvider{}
+			provider.SetClientGoClient(kube)
+			e := executor{kubernetesClients: provider}
+			_, err := e.Deploy(t.Context(), options)
+			if tt.failLookup != "" {
+				require.ErrorIs(t, err, failure)
+				require.ErrorIs(t, e.Delete(t.Context(), options), failure)
+				for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+					require.NotContains(t, []string{"init", "apply", "destroy"}, snapshot.Command)
+				}
+				for _, action := range kube.Actions() {
+					require.True(t, action.Matches("get", "secrets"))
+				}
+				return
+			}
+			require.NoError(t, err)
+			_, err = e.Deploy(t.Context(), options)
+			require.NoError(t, err)
+			if tt.failDestroy {
+				t.Setenv("RADIUS_TERRAFORM_FAIL_COMMAND", "destroy")
+				require.ErrorContains(t, e.Delete(t.Context(), options), "terraform destroy failure")
+			} else {
+				require.NoError(t, e.Delete(t.Context(), options))
+			}
+
+			selectedSuffix, selectedName := currentSuffix, currentName
+			if !tt.current {
+				selectedSuffix, selectedName = legacySuffix, legacyName
+			}
+			var commands []string
+			for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+				if snapshot.Command != "init" && snapshot.Command != "apply" && snapshot.Command != "destroy" {
+					continue
+				}
+				var cfg config.TerraformConfig
+				require.NoError(t, json.Unmarshal(snapshot.Config, &cfg))
+				require.NotNil(t, cfg.Terraform)
+				backend, ok := cfg.Terraform.Backend[backends.BackendKubernetes].(map[string]any)
+				require.True(t, ok)
+				require.Equal(t, selectedSuffix, backend["secret_suffix"])
+				require.Equal(t, backends.RadiusNamespace, backend["namespace"])
+				if snapshot.Command != "init" {
+					commands = append(commands, snapshot.Command)
+				}
+			}
+			require.Equal(t, []string{"apply", "apply", "destroy"}, commands)
+
+			var reads, deletes []string
+			for _, action := range kube.Actions() {
+				require.Equal(t, backends.RadiusNamespace, action.GetNamespace())
+				switch {
+				case action.Matches("get", "secrets"):
+					reads = append(reads, action.(k8stesting.GetAction).GetName())
+				case action.Matches("delete", "secrets"):
+					deletes = append(deletes, action.(k8stesting.DeleteAction).GetName())
+				default:
+					t.Fatalf("unexpected state operation: %s %s", action.GetVerb(), action.GetResource().Resource)
+				}
+			}
+			var expectedReads []string
+			for range 3 {
+				expectedReads = append(expectedReads, currentName)
+				if !tt.current {
+					expectedReads = append(expectedReads, legacyName)
+				}
+				expectedReads = append(expectedReads, selectedName)
+			}
+			if tt.current && !tt.failDestroy {
+				// After the destroy, the delete checks whether the current state is a copy of the legacy state.
+				expectedReads = append(expectedReads, currentName)
+			}
+			require.Equal(t, expectedReads, reads, "apply validation and pre-destroy checks must use the resolved name")
+			if tt.failDestroy {
+				require.Empty(t, deletes)
+			} else {
+				require.Equal(t, []string{selectedName}, deletes)
+			}
+			remaining, err := kube.CoreV1().Secrets(backends.RadiusNamespace).List(t.Context(), metav1.ListOptions{})
+			require.NoError(t, err)
+			if tt.failDestroy || (tt.current && tt.legacy) {
+				require.Len(t, remaining.Items, 1)
+				require.Equal(t, legacyName, remaining.Items[0].Name)
+				require.Equal(t, []byte("existing-state"), remaining.Items[0].Data["tfstate"])
+			} else {
+				require.Empty(t, remaining.Items)
+			}
+		})
+	}
+}
+
+// TestDeleteUsesMovedState covers a delete that resolves the legacy state name just before the SHA-256 migration moves
+// the state to its current name. The delete must destroy the resources recorded in the moved state rather than treat
+// the state as missing and orphan them.
+func TestDeleteUsesMovedState(t *testing.T) {
+	const currentSuffix = "09ed17eb3264f9613cc5cdee1a9c01e3765da963"
+	const legacySuffix = "3e4dc89bbe6e3ad3b17e413b3f776184a6d3c75f"
+	currentName, legacyName := backends.KubernetesBackendNamePrefix+currentSuffix, backends.KubernetesBackendNamePrefix+legacySuffix
+	secrets := corev1.SchemeGroupVersion.WithResource("secrets")
+
+	snapshotsPath := installBackendTestTerraform(t)
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "")
+	options := Options{
+		RootDir:   t.TempDir(),
+		EnvConfig: &recipes.Configuration{},
+		EnvRecipe: &recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: "test/module/source"},
+		ResourceRecipe: &recipes.ResourceMetadata{
+			Name:          "widget",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/extenders/widget",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+		},
+	}
+
+	kube := fake.NewClientset()
+	_, err := kube.CoreV1().Secrets(backends.RadiusNamespace).Create(t.Context(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: legacyName, Namespace: backends.RadiusNamespace},
+		Data:       map[string][]byte{"tfstate": []byte("existing-state")},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// The first lookup of the legacy name resolves the backend. The migration moves the state before the second one,
+	// the check that the state exists before it is destroyed.
+	legacyLookups := 0
+	kube.PrependReactor("get", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		if action.(k8stesting.GetAction).GetName() != legacyName {
+			return false, nil, nil
+		}
+		legacyLookups++
+		if legacyLookups == 2 {
+			stored, err := kube.Tracker().Get(secrets, backends.RadiusNamespace, legacyName)
+			require.NoError(t, err)
+			moved := stored.(*corev1.Secret).DeepCopy()
+			moved.Name = currentName
+			require.NoError(t, kube.Tracker().Create(secrets, moved, backends.RadiusNamespace))
+			require.NoError(t, kube.Tracker().Delete(secrets, backends.RadiusNamespace, legacyName))
+		}
+		return false, nil, nil
+	})
+	provider := kubernetesclientprovider.KubernetesClientProvider{}
+	provider.SetClientGoClient(kube)
+	e := executor{kubernetesClients: provider}
+
+	require.NoError(t, e.Delete(t.Context(), options))
+	require.Equal(t, 2, legacyLookups)
+
+	destroyed := false
+	for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+		if snapshot.Command != "destroy" {
+			continue
+		}
+		var cfg config.TerraformConfig
+		require.NoError(t, json.Unmarshal(snapshot.Config, &cfg))
+		backend, ok := cfg.Terraform.Backend[backends.BackendKubernetes].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, currentSuffix, backend["secret_suffix"], "the destroy must use the moved state")
+		destroyed = true
+	}
+	require.True(t, destroyed, "the resources recorded in the moved state must be destroyed")
+
+	remaining, err := kube.CoreV1().Secrets(backends.RadiusNamespace).List(t.Context(), metav1.ListOptions{})
+	require.NoError(t, err)
+	require.Empty(t, remaining.Items, "the moved state is deleted after the destroy")
+}
+
+// TestDeleteRetiresCopiedLegacyState covers a delete that destroys the resources of a state that the SHA-256 migration
+// copied to its current name but did not finish moving. The legacy state the copy was made from must be deleted too, or
+// a resource created again with the same ID would use the state of the deleted resource.
+func TestDeleteRetiresCopiedLegacyState(t *testing.T) {
+	const currentSuffix = "09ed17eb3264f9613cc5cdee1a9c01e3765da963"
+	const legacySuffix = "3e4dc89bbe6e3ad3b17e413b3f776184a6d3c75f"
+	currentName, legacyName := backends.KubernetesBackendNamePrefix+currentSuffix, backends.KubernetesBackendNamePrefix+legacySuffix
+
+	snapshotsPath := installBackendTestTerraform(t)
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "")
+	options := Options{
+		RootDir:   t.TempDir(),
+		EnvConfig: &recipes.Configuration{},
+		EnvRecipe: &recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: "test/module/source"},
+		ResourceRecipe: &recipes.ResourceMetadata{
+			Name:          "widget",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/extenders/widget",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+		},
+	}
+
+	stateLabels := func(suffix string) map[string]string {
+		return map[string]string{"tfstate": "true", "tfstateSecretSuffix": suffix, "tfstateWorkspace": "default"}
+	}
+	kube := fake.NewClientset()
+	legacy, err := kube.CoreV1().Secrets(backends.RadiusNamespace).Create(t.Context(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: legacyName, Namespace: backends.RadiusNamespace, UID: "uid-legacy", Labels: stateLabels(legacySuffix)},
+		Data:       map[string][]byte{"tfstate": []byte("existing-state")},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// The migration published a copy that records the version of the legacy state it was copied from.
+	parts := fmt.Sprintf(`[{"uid":%q,"resourceVersion":%q}]`, legacy.UID, legacy.ResourceVersion)
+	_, err = kube.CoreV1().Secrets(backends.RadiusNamespace).Create(t.Context(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: currentName, Namespace: backends.RadiusNamespace, Labels: stateLabels(currentSuffix),
+			Annotations: map[string]string{backends.AnnotationStateMigratedParts: parts},
+		},
+		Data: map[string][]byte{"tfstate": []byte("existing-state")},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	provider := kubernetesclientprovider.KubernetesClientProvider{}
+	provider.SetClientGoClient(kube)
+	e := executor{kubernetesClients: provider}
+	require.NoError(t, e.Delete(t.Context(), options))
+
+	destroyed := false
+	for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+		if snapshot.Command != "destroy" {
+			continue
+		}
+		var cfg config.TerraformConfig
+		require.NoError(t, json.Unmarshal(snapshot.Config, &cfg))
+		backend, ok := cfg.Terraform.Backend[backends.BackendKubernetes].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, currentSuffix, backend["secret_suffix"], "the destroy must use the published copy")
+		destroyed = true
+	}
+	require.True(t, destroyed)
+
+	remaining, err := kube.CoreV1().Secrets(backends.RadiusNamespace).List(t.Context(), metav1.ListOptions{})
+	require.NoError(t, err)
+	require.Empty(t, remaining.Items, "the legacy state the copy was made from must be deleted with the copy")
 }
 
 func TestGenerateConfigRejectsInvalidOutputMappingBeforeProviderSetup(t *testing.T) {

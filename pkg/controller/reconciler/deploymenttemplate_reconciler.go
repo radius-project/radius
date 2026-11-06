@@ -615,14 +615,25 @@ func computeHash(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (strin
 // It accepts both the current SHA-256 hash and the legacy SHA-1 hash so that
 // upgrading Radius (which changes the hash algorithm) does not flag an otherwise
 // unchanged DeploymentTemplate as out-of-date and trigger an unnecessary deployment.
+// A legacy hash is replaced with the current hash, which reconcileUpdate saves with
+// the status, so every DeploymentTemplate the controller reconciles is migrated
+// without a deployment.
 func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
 	b, err := json.Marshal(deploymentTemplate.Spec)
 	if err != nil {
 		return false
 	}
 
-	stored := deploymentTemplate.Status.StatusHash
-	return stored == hashutil.Hex(b) || stored == hashutil.LegacyHex(b)
+	current := hashutil.Hex(b)
+	switch deploymentTemplate.Status.StatusHash {
+	case current:
+		return true
+	case hashutil.LegacyHex(b):
+		deploymentTemplate.Status.StatusHash = current
+		return true
+	default:
+		return false
+	}
 }
 
 // updateFailedStatus updates the deployment template status to failed state and clears the operation.

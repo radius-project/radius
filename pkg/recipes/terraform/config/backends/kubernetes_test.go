@@ -19,6 +19,7 @@ package backends
 import (
 	"crypto/sha1"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -220,4 +221,100 @@ func Test_ValidateBackendExists(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, k8s_errors.IsServerTimeout(err))
 	require.False(t, exists)
+}
+
+func Test_BuildBackend_Resolution(t *testing.T) {
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	t.Setenv("KUBERNETES_SERVICE_PORT", "")
+	const currentSuffix = "0e7e36ea6908760c61b1c6945c3399a846c265dd"
+	const legacySuffix = "344e96f40425a7345c4f24f5e957661a9bb4c8e5"
+	currentName, legacyName := KubernetesBackendNamePrefix+currentSuffix, KubernetesBackendNamePrefix+legacySuffix
+	for _, tt := range []struct {
+		name       string
+		existing   []string
+		failLookup string
+		nilClient  bool
+	}{
+		{name: "current only", existing: []string{currentName}},
+		{name: "both prefer current", existing: []string{currentName, legacyName}},
+		{name: "current error", failLookup: currentName},
+		{name: "legacy error", failLookup: legacyName},
+		{name: "tooling without client", nilClient: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			_, metadata := getTestInputs()
+			client := fake.NewClientset()
+			for _, name := range tt.existing {
+				_, err := client.CoreV1().Secrets(RadiusNamespace).Create(t.Context(), &v1.Secret{
+					Name: name, Namespace: RadiusNamespace,
+				}, metav1.CreateOptions{})
+				require.NoError(t, err)
+			}
+			client.ClearActions()
+			failure := k8s_errors.NewForbidden(schema.GroupResource{Resource: "secrets"}, tt.failLookup, errors.New("denied"))
+			client.PrependReactor("get", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+				if action.(k8stesting.GetAction).GetName() == tt.failLookup {
+					return true, nil, failure
+				}
+				return false, nil, nil
+			})
+			backend := NewKubernetesBackend(client)
+			if tt.nilClient {
+				backend = NewKubernetesBackend(nil)
+			}
+			cfg, err := backend.BuildBackend(&metadata)
+			if tt.failLookup != "" {
+				require.ErrorIs(t, err, failure)
+				require.Nil(t, cfg)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, currentSuffix, cfg[BackendKubernetes].(map[string]any)["secret_suffix"])
+			}
+			var reads []string
+			for _, action := range client.Actions() {
+				require.True(t, action.Matches("get", "secrets"), "resolution must not mutate state")
+				require.Equal(t, RadiusNamespace, action.GetNamespace())
+				reads = append(reads, action.(k8stesting.GetAction).GetName())
+			}
+			var expected []string
+			if !tt.nilClient {
+				expected = []string{currentName}
+				if tt.failLookup == legacyName {
+					expected = append(expected, legacyName)
+				}
+			}
+			require.Equal(t, expected, reads)
+		})
+	}
+}
+
+func Test_SecretSuffixCompatibility(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name    string
+		app     bool
+		current string
+		legacy  string
+	}{
+		{"application", true, "0e7e36ea6908760c61b1c6945c3399a846c265dd", "344e96f40425a7345c4f24f5e957661a9bb4c8e5"},
+		{"no application", false, "a98c5f1cb31c68fc8355c3a595b4b6b8cf18aa2a", "4ca7f67eba2d1ddb9d3854a50d88e2086cd9dc59"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, metadata := getTestInputs()
+			metadata.ResourceID = strings.TrimSuffix(metadata.ResourceID, "/redis") + "/REDIS"
+			metadata.EnvironmentID = strings.TrimSuffix(metadata.EnvironmentID, "/env") + "/ENV"
+			metadata.ApplicationID = strings.TrimSuffix(metadata.ApplicationID, "/app") + "/APP"
+			if !tt.app {
+				metadata.ApplicationID = ""
+			}
+			current, err := generateSecretSuffix(&metadata)
+			require.NoError(t, err)
+			require.Equal(t, tt.current, current)
+			require.Regexp(t, `^[0-9a-f]{40}$`, current)
+			legacy, err := generateLegacySecretSuffix(&metadata)
+			require.NoError(t, err)
+			require.Equal(t, tt.legacy, legacy)
+		})
+	}
 }

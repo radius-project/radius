@@ -96,11 +96,11 @@ After deployment completes, each resource in the database contains:
 
 ### Storage Implementations
 
-| Provider | Backend | Usage |
-|---|---|---|
-| `apiserver` | Kubernetes CRDs (key-value via SHA1-hashed names) | Default for Kubernetes deployments |
-| `postgresql` | PostgreSQL (via `pgx/v5`) | Alternative persistent store |
-| `inmemory` | Go `map` with mutex | Testing and development |
+| Provider     | Backend                                                                      | Usage                              |
+|--------------|------------------------------------------------------------------------------|------------------------------------|
+| `apiserver`  | Kubernetes CRDs (truncated SHA-256 names; SHA-1 names are read and migrated) | Default for Kubernetes deployments |
+| `postgresql` | PostgreSQL (via `pgx/v5`)                                                    | Alternative persistent store       |
+| `inmemory`   | Go `map` with mutex                                                          | Testing and development            |
 
 All implementations share the `database.Client` interface
 (`Get`, `Save`, `Delete`, `Query`) and store resources as `database.Object`

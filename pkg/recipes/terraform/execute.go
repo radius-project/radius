@@ -164,11 +164,18 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, fmt.Errorf("error getting kubernetes client: %w", err)
 	}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backend.kubernetesSecretName)
+	kubernetesBackend := backends.NewKubernetesBackend(kubernetesClient)
+	backendExists, err := kubernetesBackend.ValidateBackendExists(ctx, backend.kubernetesSecretName)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving kubernetes secret for terraform state: %w", err)
 	} else if !backendExists {
-		return nil, errors.New("expected kubernetes secret for terraform state is not found")
+		// The SHA-256 migration can move the state to its other name once Terraform releases its lock.
+		moved, err := movedKubernetesState(ctx, kubernetesBackend, options.ResourceRecipe, backend.kubernetesSecretName)
+		if err != nil {
+			return nil, err
+		} else if moved == "" {
+			return nil, errors.New("expected kubernetes secret for terraform state is not found")
+		}
 	}
 
 	return state, nil
@@ -223,21 +230,47 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return fmt.Errorf("error getting kubernetes client: %w", err)
 	}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backend.kubernetesSecretName)
+	kubernetesBackend := backends.NewKubernetesBackend(kubernetesClient)
+	backendExists, err := kubernetesBackend.ValidateBackendExists(ctx, backend.kubernetesSecretName)
 	if err != nil {
 		// Continue with the delete flow for all errors other than backend not found.
 		// If it is an intermittent error then the delete flow will fail and should be retried from the client.
 		logger.Info(fmt.Sprintf("Error retrieving Terraform state file backend: %s", err.Error()))
 	} else if !backendExists {
-		// Skip deletion if the backend does not exist. Delete can't be performed without Terraform state file.
-		logger.Info("Skipping deletion of recipe resources: Terraform state file backend does not exist.")
-		return nil
+		// The SHA-256 migration moves a state from its legacy name to its current name in the background. If it moved
+		// the state after the backend was resolved, the state is not missing: resolve the backend again and destroy the
+		// resources it records, rather than skip the destroy and orphan them.
+		moved, err := movedKubernetesState(ctx, kubernetesBackend, options.ResourceRecipe, backend.kubernetesSecretName)
+		if err != nil {
+			return err
+		} else if moved == "" {
+			// Skip deletion if the backend does not exist. Delete can't be performed without Terraform state file.
+			logger.Info("Skipping deletion of recipe resources: Terraform state file backend does not exist.")
+			return nil
+		}
+
+		logger.Info("The Terraform state moved after the backend was resolved; resolving the backend again", "secret", moved)
+		backend, err = e.generateConfig(ctx, tf, options, auth, skipOutputMappingValidation, bestEffortParameterResolution)
+		if err != nil {
+			return err
+		} else if backend.kubernetesSecretName != moved {
+			return fmt.Errorf("the Terraform state of the resource moved to Kubernetes Secret %s while the resource was being deleted; retry the operation", moved)
+		}
 	}
 
 	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
 	err = initAndDestroy(ctx, tf, stateLockTimeout)
 	if err != nil {
 		return err
+	}
+
+	// The SHA-256 migration publishes a copy of a state under its current name before it deletes the legacy state. If
+	// the destroy used such a copy before the migration deleted the legacy state, delete it now, or a resource created
+	// again with the same ID would use it. It is deleted first, so a retry of a failed delete finds the copy again.
+	if current, legacy, err := backends.SecretSuffixes(options.ResourceRecipe); err == nil && backend.kubernetesSecretName == backends.KubernetesBackendNamePrefix+current {
+		if err := backends.RetireCopiedState(ctx, kubernetesClient, current, legacy); err != nil {
+			return fmt.Errorf("error deleting the legacy copy of the terraform state: %w", err)
+		}
 	}
 
 	// Delete the kubernetes secret created for terraform state file.
@@ -249,6 +282,31 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	return nil
+}
+
+// movedKubernetesState returns the name of the Kubernetes Secret that stores the state of the resource under the name
+// other than resolved, if that Secret exists. A resource's state has a current (SHA-256) and a legacy (SHA-1) name, and
+// the SHA-256 migration moves a state from its legacy name to its current name. See
+// https://github.com/radius-project/radius/issues/8084.
+func movedKubernetesState(ctx context.Context, backend backends.Backend, resource *recipes.ResourceMetadata, resolved string) (string, error) {
+	current, legacy, err := backends.SecretSuffixes(resource)
+	if err != nil {
+		return "", err
+	}
+
+	other := backends.KubernetesBackendNamePrefix + current
+	if resolved == other {
+		other = backends.KubernetesBackendNamePrefix + legacy
+	}
+
+	exists, err := backend.ValidateBackendExists(ctx, other)
+	if err != nil {
+		return "", fmt.Errorf("error retrieving kubernetes secret for terraform state: %w", err)
+	} else if !exists {
+		return "", nil
+	}
+
+	return other, nil
 }
 
 func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[string]any, error) {

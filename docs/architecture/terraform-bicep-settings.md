@@ -97,7 +97,7 @@ include/exclude), `TerraformProviderMirror` (url, include, exclude),
 
 ### Terraform state backends
 
-`properties.backend` optionally selects Terraform's built-in **S3** or **Azure Blob (`azurerm`)** backend. When absent, including on settings that only configure the CLI or environment variables, Radius continues using Kubernetes secrets with its existing state names and SHA-1 compatibility lookup. Backend configuration is carried through `recipes.Configuration.TerraformBackend`, not the legacy persisted `RecipeConfig.Terraform` object.
+`properties.backend` optionally selects Terraform's built-in **S3** or **Azure Blob (`azurerm`)** backend. When absent, including on settings that only configure the CLI or environment variables, Radius continues using Kubernetes secrets. A state that an older version stored under a SHA-1 name is still found there, and Applications RP and Dynamic RP move it to its SHA-256 name in the background; see the [SHA-256 migration design note](../../eng/design-notes/security/2026-06-sha1-to-sha256-migration.md#automatic-migration). Backend configuration is carried through `recipes.Configuration.TerraformBackend`, not the legacy persisted `RecipeConfig.Terraform` object.
 
 S3 settings example:
 

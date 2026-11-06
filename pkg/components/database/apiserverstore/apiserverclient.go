@@ -25,7 +25,7 @@ limitations under the License.
 // Since this scheme allows collisions we need to use optimistic concurrency controls when writing and
 // consider the possibility of multiple resources being present when reading.
 //
-// Each Kubernetes Resource object stores a list of UCP resources. Since we use SHA1 to generate hashes,
+// Each Kubernetes Resource object stores a list of UCP resources. Since we use truncated SHA-256 hashes,
 // we expect collisions to be extremely rare. The only case we need to be concerned about is when collisions
 // cause the total size of the Kubernetes Resource object to be larger than the 8mb limit of Kubernetes.
 //
@@ -56,7 +56,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"github.com/radius-project/radius/pkg/ucp/util/etag"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
@@ -123,9 +122,20 @@ func (c *APIServerClient) Query(ctx context.Context, query database.Query, optio
 		return nil, err
 	}
 
-	results := database.ObjectQueryResult{}
-	for _, resource := range rs.Items {
-		for _, entry := range resource.Entries {
+	// A resource can be stored under both its current (SHA-256) object name and its legacy (SHA-1) object name, for
+	// example while it is being moved or after an older writer created a second copy. Reads return the current copy,
+	// so a query selects that copy first and then applies filters: a stale legacy copy must not match a filter that
+	// the copy reads return does not match.
+	type selection struct {
+		entry   *ucpv1alpha1.ResourceEntry
+		current bool
+	}
+	order := []string{}
+	selected := map[string]selection{}
+	for i := range rs.Items {
+		resource := &rs.Items[i]
+		for j := range resource.Entries {
+			entry := &resource.Entries[j]
 			id, err := resources.Parse(entry.ID)
 			if err != nil {
 				// Ignore invalid IDs when querying, we don't want a single piece of bad data to
@@ -135,22 +145,39 @@ func (c *APIServerClient) Query(ctx context.Context, query database.Query, optio
 				continue
 			}
 
-			if databaseutil.IDMatchesQuery(id, query) {
-				converted, err := readEntry(&entry)
-				if err != nil {
-					return nil, err
-				}
-
-				match, err := converted.MatchesFilters(query.Filters)
-				if err != nil {
-					return nil, err
-				} else if !match {
-					continue
-				}
-
-				results.Items = append(results.Items, *converted)
+			if !databaseutil.IDMatchesQuery(id, query) {
+				continue
 			}
+
+			key := strings.ToLower(entry.ID)
+			current := resource.Name == resourceName(id)
+			if existing, ok := selected[key]; ok {
+				if current && !existing.current {
+					selected[key] = selection{entry: entry, current: true}
+				}
+				continue
+			}
+
+			order = append(order, key)
+			selected[key] = selection{entry: entry, current: current}
 		}
+	}
+
+	results := database.ObjectQueryResult{}
+	for _, key := range order {
+		converted, err := readEntry(selected[key].entry)
+		if err != nil {
+			return nil, err
+		}
+
+		match, err := converted.MatchesFilters(query.Filters)
+		if err != nil {
+			return nil, err
+		} else if !match {
+			continue
+		}
+
+		results.Items = append(results.Items, *converted)
 	}
 
 	return &results, nil
@@ -208,64 +235,123 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...data
 
 	config := database.NewDeleteConfig(options...)
 
+	// removed holds the ETags of the copies this delete removed. A later attempt that finds no copy succeeds, and one
+	// that finds a copy of a removed value removes it without checking the ETag again. removedLegacy records that one of
+	// them was the legacy copy.
+	removed := map[string]bool{}
+	removedLegacy := false
 	err = c.doWithRetry(func() (bool, error) {
-		resource := ucpv1alpha1.Resource{}
-		err := c.getResourceWithFallback(ctx, parsed, &resource)
-		if err != nil && apierrors.IsNotFound(err) && config.ETag != "" {
-			return false, &database.ErrConcurrency{}
-		} else if err != nil && apierrors.IsNotFound(err) {
-			return false, &database.ErrNotFound{ID: id}
-		} else if err != nil {
+		copies, exists, err := c.storedCopies(ctx, parsed)
+		if err != nil {
 			return false, err
 		}
 
-		index := findIndex(&resource, parsed)
-		if index == nil {
-			return false, &database.ErrNotFound{ID: id}
+		if len(copies) == 0 {
+			switch {
+			case len(removed) > 0:
+				// The remaining copy was removed concurrently.
+				return false, nil
+			case !exists && config.ETag != "":
+				return false, &database.ErrConcurrency{}
+			default:
+				return false, &database.ErrNotFound{ID: id}
+			}
 		}
 
-		if config.ETag != "" && config.ETag != resource.Entries[*index].ETag {
+		// Reads return the first copy, so it decides whether the ETag matches.
+		first := copies[0].Entries[*findIndex(&copies[0], parsed)].ETag
+		if config.ETag != "" && config.ETag != first && !removed[first] {
 			return false, &database.ErrConcurrency{}
 		}
 
 		c.synchronize()
 
-		if len(resource.Entries) == 1 {
-			// If this is the last resource we can delete (common case)
-			options := runtimeclient.DeleteOptions{
-				Preconditions: &v1.Preconditions{
-					UID:             &resource.UID,
-					ResourceVersion: &resource.ResourceVersion,
-				},
-			}
-			err := c.client.Delete(ctx, &resource, &options)
-			if err != nil && apierrors.IsNotFound(err) {
-				return false, &database.ErrNotFound{ID: id}
-			} else if apierrors.IsConflict(err) {
+		// Every copy is removed, so a read cannot fall back to a copy the delete left behind. The copy reads return is
+		// removed last, so a concurrent read finds the resource until the delete completes.
+		for i := len(copies) - 1; i >= 0; i-- {
+			index := *findIndex(&copies[i], parsed)
+			etag := copies[i].Entries[index].ETag
+			err := c.removeEntry(ctx, &copies[i], index)
+			if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 				return true, err // RETRY this!
 			} else if err != nil {
 				return false, err
 			}
-		} else {
-			// If there was more than one resource we need to update. There's no need to explicitly
-			// pass the options here as OCC is implicit.
-			resource.Entries = append(resource.Entries[:*index], resource.Entries[*index+1:]...)
-			resource.Labels = assignLabels(&resource)
 
-			err := c.client.Update(ctx, &resource)
-			if err != nil && apierrors.IsNotFound(err) {
-				return false, &database.ErrNotFound{ID: id}
-			} else if apierrors.IsConflict(err) {
-				return true, err // RETRY this!
-			} else if err != nil {
-				return false, err
-			}
+			removed[etag] = true
+			removedLegacy = removedLegacy || copies[i].Name == legacyResourceName(parsed)
 		}
 
-		return false, nil
+		if !removedLegacy {
+			return false, nil
+		}
+
+		return c.copyOfRemoved(ctx, parsed, removed)
 	})
 
 	return err
+}
+
+// copyOfRemoved returns a retryable error if the current object stores a copy of a value in removed. The migration
+// writes such a copy when it read the legacy copy before a delete removed it, and the write can land after the delete
+// read the current object. The migration removes that copy itself when it finds the legacy copy gone, but it may stop
+// before it does, so the delete checks again.
+func (c *APIServerClient) copyOfRemoved(ctx context.Context, id resources.ID, removed map[string]bool) (bool, error) {
+	current := ucpv1alpha1.Resource{}
+	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, &current)
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	if index := findIndex(&current, id); index != nil && removed[current.Entries[*index].ETag] {
+		return true, &database.ErrConcurrency{}
+	}
+
+	return false, nil
+}
+
+// storedCopies returns the Kubernetes objects that store an entry for id, the current (SHA-256) object first. An entry
+// has two copies while it is moved to its current object name, after an interrupted move, or when an older writer
+// created a second copy. exists reports whether either object exists.
+func (c *APIServerClient) storedCopies(ctx context.Context, id resources.ID) ([]ucpv1alpha1.Resource, bool, error) {
+	copies := []ucpv1alpha1.Resource{}
+	exists := false
+	for _, name := range []string{resourceName(id), legacyResourceName(id)} {
+		resource := ucpv1alpha1.Resource{}
+		err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: name}, &resource)
+		if apierrors.IsNotFound(err) {
+			continue
+		} else if err != nil {
+			return nil, false, err
+		}
+
+		exists = true
+		if findIndex(&resource, id) != nil {
+			copies = append(copies, resource)
+		}
+	}
+
+	if len(copies) > 0 {
+		return copies, exists, nil
+	}
+
+	// The migration may have moved the entry from the legacy object to the current object between the two reads. It
+	// writes the current copy before it removes the legacy copy, so one more read of the current object finds it.
+	current := ucpv1alpha1.Resource{}
+	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, &current)
+	if apierrors.IsNotFound(err) {
+		return copies, exists, nil
+	} else if err != nil {
+		return nil, false, err
+	}
+
+	if findIndex(&current, id) != nil {
+		copies = append(copies, current)
+	}
+
+	return copies, true, nil
 }
 
 // Save saves an object to the store, or updates an existing object if it already exists, and returns an error if the operation fails.
@@ -287,7 +373,10 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 		return &database.ErrInvalid{Message: "invalid argument. 'CreateOnly' cannot be combined with an ETag"}
 	}
 
+	// replaced and written are the entry a write to the legacy object of the entry replaced, and the entry it wrote.
+	var replaced, written *ucpv1alpha1.ResourceEntry
 	err = c.doWithRetry(func() (bool, error) {
+		replaced, written = nil, nil
 		name, resource, found, err := c.getResourceForSave(ctx, id)
 		if err != nil {
 			return false, err
@@ -319,6 +408,9 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 				return false, &database.ErrConcurrency{}
 			}
 
+			if name == legacyResourceName(id) {
+				replaced, written = resource.Entries[*index].DeepCopy(), converted.DeepCopy()
+			}
 			resource.Entries[*index] = *converted
 		}
 
@@ -346,8 +438,93 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 
 		return false, nil
 	})
+	if err != nil || written == nil {
+		return err
+	}
 
-	return err
+	return c.reconcileLegacyWrite(ctx, id, *replaced, *written, config.ETag != "")
+}
+
+// reconcileLegacyWrite makes a write to the legacy object of an entry visible, or undoes it. A save writes to the
+// legacy object when the entry was not in its current object, but the migration can copy the entry there before the
+// write. Reads then return the copy, and the migration leaves the two different copies in place as a conflict, so the
+// write would be lost.
+//
+// If the current object holds the value the save replaced, it is a copy that is now stale, and it is updated to the
+// written value. If it holds another value, another writer saved it to the copy, and the write to the legacy object is
+// removed: a conditional save then fails as if it had read the copy, and an unconditional save is ordered before the
+// other write. A write that a later write to the legacy object replaced is left to it.
+func (c *APIServerClient) reconcileLegacyWrite(ctx context.Context, id resources.ID, replaced ucpv1alpha1.ResourceEntry, written ucpv1alpha1.ResourceEntry, conditional bool) error {
+	currentKey := runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}
+	for range RetryCount {
+		current := ucpv1alpha1.Resource{}
+		err := c.get(ctx, currentKey, &current)
+		if apierrors.IsNotFound(err) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		index := findIndex(&current, id)
+		switch {
+		case index == nil || sameEntry(current.Entries[*index], written):
+			// There is no copy, or the migration already copied the written value.
+			return nil
+		case sameEntry(current.Entries[*index], replaced):
+			current.Entries[*index] = *written.DeepCopy()
+			current.Labels = assignLabels(&current)
+			err = c.client.Update(ctx, &current)
+			if isRetryable(err) || apierrors.IsNotFound(err) {
+				continue
+			} else if err != nil {
+				return err
+			}
+
+			return nil
+		default:
+			removed, err := c.removeLegacyWrite(ctx, id, written)
+			if err != nil {
+				return err
+			} else if removed && conditional {
+				return &database.ErrConcurrency{}
+			}
+
+			return nil
+		}
+	}
+
+	return &database.ErrConcurrency{}
+}
+
+// removeLegacyWrite removes written from the legacy object of id, and reports whether it did. It leaves an entry that
+// was written or removed since.
+func (c *APIServerClient) removeLegacyWrite(ctx context.Context, id resources.ID, written ucpv1alpha1.ResourceEntry) (bool, error) {
+	legacyKey := runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacyResourceName(id)}
+	for range RetryCount {
+		legacy := ucpv1alpha1.Resource{}
+		err := c.get(ctx, legacyKey, &legacy)
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		} else if err != nil {
+			return false, err
+		}
+
+		index := findIndex(&legacy, id)
+		if index == nil || legacy.Entries[*index].ETag != written.ETag {
+			return false, nil
+		}
+
+		err = c.removeEntry(ctx, &legacy, *index)
+		if isRetryable(err) || apierrors.IsNotFound(err) {
+			continue
+		} else if err != nil {
+			return false, err
+		}
+
+		return true, nil
+	}
+
+	return false, &database.ErrConcurrency{}
 }
 
 // transientBackoff is the backoff used to retry reads that fail with a transient API server error.
@@ -483,16 +660,46 @@ func makeResourceName(id resources.ID, hash string) string {
 }
 
 // getResourceWithFallback reads the Kubernetes Resource object that stores id, preferring the
-// current (SHA-256) object name and falling back to the legacy (SHA-1) name written by older
-// versions of Radius. The returned error is NotFound only if neither object exists. See
+// current (SHA-256) entry and falling back to the legacy (SHA-1) entry written by older versions
+// of Radius. If neither object contains id, it retains the current object when present, so a new
+// entry can share its collision bucket. The returned error is NotFound only if neither object exists. See
 // https://github.com/radius-project/radius/issues/8084.
 func (c *APIServerClient) getResourceWithFallback(ctx context.Context, id resources.ID, resource *ucpv1alpha1.Resource) error {
-	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, resource)
-	if apierrors.IsNotFound(err) {
-		return c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacyResourceName(id)}, resource)
+	currentKey := runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}
+	currentErr := c.get(ctx, currentKey, resource)
+	if currentErr != nil && !apierrors.IsNotFound(currentErr) {
+		return currentErr
+	}
+	if currentErr == nil && findIndex(resource, id) != nil {
+		return nil
 	}
 
-	return err
+	legacy := ucpv1alpha1.Resource{}
+	legacyErr := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacyResourceName(id)}, &legacy)
+	if legacyErr != nil && !apierrors.IsNotFound(legacyErr) {
+		return legacyErr
+	}
+	if legacyErr == nil && findIndex(&legacy, id) != nil {
+		*resource = legacy
+		return nil
+	}
+
+	// The migration may have moved the entry from the legacy object to the current object between the two reads. It
+	// writes the current copy before it removes the legacy copy, so one more read of the current object finds it.
+	recheck := ucpv1alpha1.Resource{}
+	recheckErr := c.get(ctx, currentKey, &recheck)
+	if recheckErr != nil && !apierrors.IsNotFound(recheckErr) {
+		return recheckErr
+	}
+	if recheckErr == nil {
+		*resource = recheck
+		return nil
+	}
+	if legacyErr == nil {
+		*resource = legacy
+	}
+
+	return legacyErr
 }
 
 // getResourceForSave reads the Kubernetes Resource object that should store id for a write. It
@@ -504,22 +711,13 @@ func (c *APIServerClient) getResourceWithFallback(ctx context.Context, id resour
 func (c *APIServerClient) getResourceForSave(ctx context.Context, id resources.ID) (string, ucpv1alpha1.Resource, bool, error) {
 	current := resourceName(id)
 	resource := ucpv1alpha1.Resource{}
-	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: current}, &resource)
-	if err == nil {
-		return current, resource, true, nil
-	} else if !apierrors.IsNotFound(err) {
+	err := c.getResourceWithFallback(ctx, id, &resource)
+	if err != nil && !apierrors.IsNotFound(err) {
 		return "", ucpv1alpha1.Resource{}, false, err
 	}
 
-	// The current-named object does not exist. Fall back to the legacy name if this resource's entry
-	// was written by an older version of Radius, so we update it in place.
-	legacy := legacyResourceName(id)
-	legacyResource := ucpv1alpha1.Resource{}
-	err = c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacy}, &legacyResource)
-	if err == nil && findIndex(&legacyResource, id) != nil {
-		return legacy, legacyResource, true, nil
-	} else if err != nil && !apierrors.IsNotFound(err) {
-		return "", ucpv1alpha1.Resource{}, false, err
+	if err == nil && (resource.Name == current || findIndex(&resource, id) != nil) {
+		return resource.Name, resource, true, nil
 	}
 
 	return current, ucpv1alpha1.Resource{}, false, nil

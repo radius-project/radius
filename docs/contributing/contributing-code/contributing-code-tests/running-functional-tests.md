@@ -339,6 +339,25 @@ For database tests, install Radius into a fresh cluster with `--set database.ena
 
 For multicluster tests, create a `target-kubeconfig` Secret in `radius-system`, install Radius with `global.targetCluster.enabled=true`, and set `RADIUS_TEST_EXTERNAL_KUBECONFIG` to the host-side kubeconfig.
 
+#### Exercise persisted-hash compatibility during an upgrade
+
+[`Test_HashCompatibilityUpgrade`](../../../../test/functional-portable/upgrade/hash_compatibility_test.go) is an opt-in, destructive scenario within the isolated upgrade group. Supply distinct baseline and candidate control-plane images, accessible to the dedicated cluster, and keep the repository's development chart unchanged:
+
+```bash
+RADIUS_HASH_BASELINE_REGISTRY=<baseline-registry> \
+RADIUS_HASH_BASELINE_TAG=<baseline-tag> \
+DOCKER_REGISTRY=<candidate-registry> \
+REL_VERSION=<candidate-tag> \
+make test-functional-upgrade-noncloud \
+  GOTEST_OPTS='-count=1 -run ^Test_HashCompatibilityUpgrade$'
+```
+
+Both baseline variables are required; omitting both skips this scenario, and providing an incomplete or identical baseline/candidate pair fails before installation. Use the normal custom-build workflow to prepare the images. Preserve the baseline source revision and image digests with the run's evidence. Set `DE_IMAGE` and `DE_TAG` together when using a custom registry, as for the other upgrade tests. `RADIUS_HASH_WORKLOAD_IMAGE` can override the default Alpine test workload with an image that provides `/bin/sh` and `sleep`.
+
+The test installs its own small Terraform module server using the existing module-server manifest. Its Terraform fixture uses the built-in `terraform_data` resource, so no cloud account or external Terraform provider is required. It pauses only the Radius control-plane Deployments while preparing test-owned legacy datastore, tracking, and Terraform-state identities, restores the baseline, then performs a real image upgrade with version preflight enabled. After the upgrade it waits up to 10 minutes for every component to record a completed SHA-256 migration in the `radius-sha256-migration` ConfigMap. The scenario checks workload pod/template/ReplicaSet/restart identities, that each legacy record was moved to its current name exactly once, that the Terraform state moved with its lineage and managed-resource identity and left its legacy lock held, that the workload kept its secret hash and gained the recorded `radapp.io/secret-hash-sha256` annotation, writes during rollout, no-op and intentional updates, and deletion.
+
+This is historical-format fixture coverage using actual baseline and candidate binaries. It does not establish the safety of mixed writers when one binary understands only SHA-1. A release-to-release claim still needs real release artifacts and a supported incremental version route; do not obtain it by inventing chart versions or disabling preflight.
+
 ### Check for authorization dry-run would-deny logs
 
 When authorization-related paths change, and in every full run, CI runs the `corerp`, `dynamicrp`, `kubernetes`, and `ucp` non-cloud groups a second time with Radius installed with `--set global.rbac.dryRun=true`, then fails the leg if any component logged that an authorization check would deny a request (`authzWouldDeny=true`). Under enforcement those requests would be rejected, so this catches false positives before enforcement is turned on. To run the same check locally, install Radius with the dry run enabled, run the tests, then check the current kube context:
