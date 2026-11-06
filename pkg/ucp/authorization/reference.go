@@ -1,0 +1,393 @@
+// Copyright 2026 The Radius Authors.
+// Licensed under the Apache License, Version 2.0.
+
+package authorization
+
+import (
+	"fmt"
+	"net/http"
+	"net/url"
+	"slices"
+	"strings"
+
+	"github.com/radius-project/radius/pkg/ucp/resources"
+)
+
+// ReferenceOptions supplies resolved reference descriptors for the exact
+// registered API version and credential planes. Plane selection is a trusted caller responsibility:
+// the evaluator cannot infer a cloud plane from an Azure subscription or AWS account.
+type ReferenceOptions struct {
+	References  []ReferenceDescriptor
+	CloudPlanes map[string]string
+}
+
+// ReferenceDescriptor is an internal, resolved schema reference, not a public
+// x-radius-reference wire format. The schema adapter must resolve $ref and
+// conditional branches before producing these descriptors. "*" traverses each
+// array element or dictionary value. Required rejects a missing or empty path.
+type ReferenceDescriptor struct {
+	Path         []string
+	ResourceType string
+	Required     bool
+}
+
+// ReferenceChecks extracts standard environment/application references on
+// built-in and registered resources, built-in connections, and schema-declared
+// references on PUT/PATCH, including unchanged references. URL connection
+// sources are skipped; Azure and AWS connection sources require credential use
+// on the trusted cloud plane. Applications.Core/containers environment-variable
+// secret-store IDs and persistent volume sources require connect/action on the
+// referenced resource; Kubernetes secret names are not resource references. For PATCH the caller
+// must supply the complete effective resource after applying the patch, not
+// just its changed fields. The top-level properties field must use exact casing.
+// It does not read target resources or follow their
+// references. Reads/deletes require no reference checks.
+// Required marked references and malformed values fail closed. Public
+// x-radius-reference syntax and the registration schema adapter are not defined here.
+func (c *Catalog) ReferenceChecks(method, target string, body map[string]any, options ReferenceOptions) ([]Check, error) {
+	if method == http.MethodGet || method == http.MethodDelete {
+		return nil, nil
+	}
+	if method != http.MethodPut && method != http.MethodPatch {
+		return nil, fmt.Errorf("unsupported reference-check method %q", method)
+	}
+	canonical, err := canonicalTarget(target)
+	if err != nil {
+		return nil, err
+	}
+	id, err := resources.Parse(canonical)
+	if err != nil || !id.IsResource() {
+		return nil, fmt.Errorf("reference checks require a resource target")
+	}
+	if body == nil {
+		return nil, fmt.Errorf("request body is required")
+	}
+	for name := range body {
+		if name != "properties" && strings.EqualFold(name, "properties") {
+			return nil, fmt.Errorf("noncanonical properties field %q", name)
+		}
+	}
+	checks := []Check{}
+	add := func(value any, operation string, expected []string) error {
+		reference, ok := value.(string)
+		if !ok || reference == "" {
+			return fmt.Errorf("reference must be a nonempty concrete resource ID")
+		}
+		canonical, err := canonicalTarget(reference)
+		if err != nil {
+			return err
+		}
+		referenced, err := resources.Parse(canonical)
+		if err != nil || !referenced.IsResource() {
+			return fmt.Errorf("reference is not a resource ID")
+		}
+		if len(expected) > 0 && !containsFold(expected, referenced.Type()) {
+			return fmt.Errorf("reference has unexpected type %q", referenced.Type())
+		}
+		permission := referenced.Type() + "/" + operation
+		if err := c.ValidatePermissions([]string{permission}); err != nil {
+			return err
+		}
+		checks = append(checks, Check{c.permissions[strings.ToLower(permission)], canonical})
+		return nil
+	}
+	// addCredential checks use of the trusted credential plane for a cloud.
+	addCredential := func(cloud string) error {
+		plane, err := canonicalTarget(options.CloudPlanes[cloud])
+		if err != nil {
+			return fmt.Errorf("resolve %s credential plane: %w", cloud, err)
+		}
+		parsed, err := resources.Parse(plane)
+		if err != nil || !parsed.IsScope() || len(parsed.ScopeSegments()) != 1 ||
+			!strings.EqualFold(parsed.ScopeSegments()[0].Type, cloud) {
+			return fmt.Errorf("invalid %s credential plane", cloud)
+		}
+		namespace := map[string]string{"azure": "Azure", "aws": "AWS"}[cloud]
+		checks = append(checks, Check{"System." + namespace + "/credentials/use/action", plane})
+		return nil
+	}
+	typ := strings.ToLower(id.Type())
+	isBuiltIn := c.builtInConnections[typ] ||
+		containsFold([]string{"Radius.Core/environments", "Applications.Core/environments", "Radius.Core/recipePacks"}, typ)
+	if isBuiltIn || c.registered[typ] {
+		if value, exists := body["properties"]; exists {
+			properties, ok := value.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("properties must be an object")
+			}
+			for _, reference := range []struct {
+				property, operation string
+				types               []string
+			}{
+				{"environment", "use/action", []string{"Radius.Core/environments", "Applications.Core/environments"}},
+				{"application", "write", []string{"Radius.Core/applications", "Applications.Core/applications"}},
+			} {
+				if value, exists := properties[reference.property]; exists {
+					if err := add(value, reference.operation, reference.types); err != nil {
+						return nil, fmt.Errorf("properties.%s: %w", reference.property, err)
+					}
+				}
+			}
+			if value, exists := properties["connections"]; exists && isBuiltIn {
+				connections, ok := value.(map[string]any)
+				if !ok {
+					return nil, fmt.Errorf("connections must be an object")
+				}
+				for _, name := range sortedKeys(connections) {
+					connection, ok := connections[name].(map[string]any)
+					if !ok {
+						return nil, fmt.Errorf("connection %q must be an object", name)
+					}
+					source, _ := connection["source"].(string)
+					if isURLSource(source) {
+						// URLs address endpoints, not resources, so they grant nothing to check.
+						continue
+					}
+					if cloud := cloudSourcePlane(source); cloud != "" {
+						if _, err := resources.ParseResource(source); err != nil {
+							return nil, fmt.Errorf("connection %q: invalid %s resource ID", name, cloud)
+						}
+						if err := addCredential(cloud); err != nil {
+							return nil, fmt.Errorf("connection %q: %w", name, err)
+						}
+						continue
+					}
+					if err := add(connection["source"], "connect/action", nil); err != nil {
+						return nil, fmt.Errorf("connection %q: %w", name, err)
+					}
+				}
+			}
+			if strings.EqualFold(typ, "Applications.Core/containers") {
+				if err := containerReferences(body, add); err != nil {
+					return nil, err
+				}
+			}
+			if containsFold([]string{"Radius.Core/environments", "Applications.Core/environments"}, typ) {
+				if value, exists := properties["recipePacks"]; exists {
+					packs, ok := value.([]any)
+					if !ok {
+						return nil, fmt.Errorf("recipePacks must be an array")
+					}
+					for _, pack := range packs {
+						if err := add(pack, "use/action", []string{"Radius.Core/recipePacks"}); err != nil {
+							return nil, fmt.Errorf("recipePacks: %w", err)
+						}
+					}
+				}
+				for _, settings := range []string{"terraformSettings", "bicepSettings"} {
+					if value, exists := properties[settings]; exists {
+						if !strings.EqualFold(typ, "Radius.Core/environments") {
+							return nil, fmt.Errorf("properties.%s is not supported on %s", settings, id.Type())
+						}
+						if err := add(value, "use/action", []string{"Radius.Core/" + settings}); err != nil {
+							return nil, fmt.Errorf("properties.%s: %w", settings, err)
+						}
+					}
+				}
+				if strings.EqualFold(typ, "Applications.Core/environments") {
+					use := func(value any) error {
+						return add(value, "use/action", []string{"Applications.Core/secretStores"})
+					}
+					for _, path := range legacyRecipeSecretPaths {
+						if err := walkTyped(path, body, use); err != nil {
+							return nil, fmt.Errorf("%s: %w", strings.Join(path, "."), err)
+						}
+					}
+				}
+				if value, exists := properties["providers"]; exists {
+					providers, ok := value.(map[string]any)
+					if !ok {
+						return nil, fmt.Errorf("providers must be an object")
+					}
+					for _, cloud := range []string{"azure", "aws"} {
+						if provider, exists := providers[cloud]; exists {
+							if _, ok := provider.(map[string]any); !ok {
+								return nil, fmt.Errorf("provider %s must be an object", cloud)
+							}
+							if err := addCredential(cloud); err != nil {
+								return nil, err
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	for _, descriptor := range options.References {
+		if len(descriptor.Path) == 0 || len(descriptor.Path) > 64 || !resourceTypePattern.MatchString(descriptor.ResourceType) {
+			return nil, fmt.Errorf("invalid resolved reference descriptor")
+		}
+		if err := walkReference(descriptor, descriptor.Path, body, add); err != nil {
+			return nil, err
+		}
+	}
+	slices.SortFunc(checks, func(a, b Check) int {
+		return strings.Compare(a.Target+" "+a.Permission, b.Target+" "+b.Permission)
+	})
+	return slices.Compact(checks), nil
+}
+
+// legacyRecipeSecretPaths lists the Applications.Core/environments recipeConfig
+// fields that reference an Applications.Core/secretStores resource. "{}" visits
+// each dictionary value and "[]" each array element.
+var legacyRecipeSecretPaths = [][]string{
+	{"properties", "recipeConfig", "terraform", "authentication", "git", "pat", "{}", "secret"},
+	{"properties", "recipeConfig", "terraform", "providers", "{}", "[]", "secrets", "{}", "source"},
+	{"properties", "recipeConfig", "bicep", "authentication", "{}", "secret"},
+	{"properties", "recipeConfig", "envSecrets", "{}", "source"},
+}
+
+// containerReferences checks Applications.Core/containers nested references
+// the container renderer resolves as dependencies: environment variable
+// secretRef sources that are resource IDs (a leading "/", as in the renderer;
+// other values are Kubernetes secret names) and persistent volume sources.
+func containerReferences(body map[string]any, add func(any, string, []string) error) error {
+	envPath := []string{"properties", "container", "env", "{}", "valueFrom", "secretRef", "source"}
+	err := walkTyped(envPath, body, func(value any) error {
+		if source, ok := value.(string); ok && source != "" && source[0] != '/' {
+			return nil
+		}
+		return add(value, "connect/action", []string{"Applications.Core/secretStores"})
+	})
+	if err != nil {
+		return fmt.Errorf("%s: %w", strings.Join(envPath, "."), err)
+	}
+	volumePath := []string{"properties", "container", "volumes", "{}"}
+	err = walkTyped(volumePath, body, func(value any) error {
+		volume, ok := value.(map[string]any)
+		if !ok {
+			return fmt.Errorf("volume must be an object")
+		}
+		switch volume["kind"] {
+		case "ephemeral":
+			return nil
+		case "persistent":
+			if err := add(volume["source"], "connect/action", []string{"Applications.Core/volumes"}); err != nil {
+				return fmt.Errorf("source: %w", err)
+			}
+			return nil
+		default:
+			return fmt.Errorf("unsupported volume kind %v", volume["kind"])
+		}
+	})
+	if err != nil {
+		return fmt.Errorf("%s: %w", strings.Join(volumePath, "."), err)
+	}
+	return nil
+}
+
+// walkTyped visits optional values at path, rejecting values whose JSON kind
+// does not match the schema.
+func walkTyped(path []string, value any, visit func(any) error) error {
+	if len(path) == 0 {
+		return visit(value)
+	}
+	switch path[0] {
+	case "[]":
+		items, ok := value.([]any)
+		if !ok {
+			return fmt.Errorf("expected an array")
+		}
+		for _, item := range items {
+			if err := walkTyped(path[1:], item, visit); err != nil {
+				return err
+			}
+		}
+		return nil
+	case "{}":
+		entries, ok := value.(map[string]any)
+		if !ok {
+			return fmt.Errorf("expected an object")
+		}
+		for _, name := range sortedKeys(entries) {
+			if err := walkTyped(path[1:], entries[name], visit); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	object, ok := value.(map[string]any)
+	if !ok {
+		return fmt.Errorf("%q requires an object", path[0])
+	}
+	child, exists := object[path[0]]
+	if !exists {
+		return nil
+	}
+	return walkTyped(path[1:], child, visit)
+}
+
+// isURLSource mirrors the container renderer: a parseable URI that does not
+// start with "/" is an endpoint, not a resource ID.
+func isURLSource(source string) bool {
+	if source == "" || source[0] == '/' {
+		return false
+	}
+	_, err := url.ParseRequestURI(source)
+	return err == nil
+}
+
+// cloudSourcePlane returns the cloud whose credential a connection source uses:
+// Azure for ARM IDs and Azure-plane UCP IDs, AWS for AWS-plane UCP IDs.
+func cloudSourcePlane(source string) string {
+	lower := strings.ToLower(source)
+	switch {
+	case strings.HasPrefix(lower, "/subscriptions/"), strings.HasPrefix(lower, "/planes/azure/"):
+		return "azure"
+	case strings.HasPrefix(lower, "/planes/aws/"):
+		return "aws"
+	}
+	return ""
+}
+
+func sortedKeys(values map[string]any) []string {
+	keys := make([]string, 0, len(values))
+	for name := range values {
+		keys = append(keys, name)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+func walkReference(descriptor ReferenceDescriptor, path []string, value any, add func(any, string, []string) error) error {
+	if len(path) == 0 {
+		return add(value, "read", []string{descriptor.ResourceType})
+	}
+	if path[0] == "*" {
+		switch collection := value.(type) {
+		case []any:
+			if descriptor.Required && len(collection) == 0 {
+				return fmt.Errorf("AuthorizationIndeterminate: required reference collection is empty")
+			}
+			for _, child := range collection {
+				if err := walkReference(descriptor, path[1:], child, add); err != nil {
+					return err
+				}
+			}
+		case map[string]any:
+			if descriptor.Required && len(collection) == 0 {
+				return fmt.Errorf("AuthorizationIndeterminate: required reference dictionary is empty")
+			}
+			for _, name := range sortedKeys(collection) {
+				if err := walkReference(descriptor, path[1:], collection[name], add); err != nil {
+					return err
+				}
+			}
+		default:
+			return fmt.Errorf("reference path wildcard requires an array or dictionary")
+		}
+		return nil
+	}
+	object, ok := value.(map[string]any)
+	if !ok {
+		return fmt.Errorf("reference path %q requires an object", path[0])
+	}
+	child, exists := object[path[0]]
+	if !exists {
+		if descriptor.Required {
+			return fmt.Errorf("AuthorizationIndeterminate: required reference %q is missing", strings.Join(descriptor.Path, "."))
+		}
+		return nil
+	}
+	return walkReference(descriptor, path[1:], child, add)
+}
