@@ -1,0 +1,107 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_RUN": "nk13946"
+  },
+  "interactions": [
+    {
+      "service": "CloudWatch",
+      "operation": "PutAnomalyDetector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3FBbm9tYWx5RGV0ZWN0b3JJZHgrNTliOUpyMnViTllZMDZodk1Vb0pkcW1mZ1NJTUpzYjVaaC1SU1dSUDhnQf8=",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn79xQW5vbWFseURldGVjdG9ySWR4KzU5YjlKcjJ1Yk5ZWTA2aHZNVW9KZHFtZmdTSU1Kc2I1WmgtUlNXUlA4Z0FtQ29uZmlndXJhdGlvbr9yRXhjbHVkZWRUaW1lUmFuZ2Vzn///eBlNZXRyaWNNYXRoQW5vbWFseURldGVjdG9yv3FNZXRyaWNEYXRhUXVlcmllc5+/YklkYm0xak1ldHJpY1N0YXS/Zk1ldHJpY79qRGltZW5zaW9uc5+/ZE5hbWVwcmFkaXVzLXJlY29yZGluZ2VWYWx1ZWduazEzOTQ2//9qTWV0cmljTmFtZXJyYWRpdXMtcmVjLW5rMTM5NDZpTmFtZXNwYWNlcFJhZGl1cy9SZWNvcmRpbmf/ZlBlcmlvZBkBLGRTdGF0Z0F2ZXJhZ2X/alJldHVybkRhdGH0/79qRXhwcmVzc2lvbmZtMSAqIDJiSWRiZTFqUmV0dXJuRGF0YfX///9qU3RhdGVWYWx1ZXBQRU5ESU5HX1RSQUlOSU5H////",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn79xQW5vbWFseURldGVjdG9ySWR4KzU5YjlKcjJ1Yk5ZWTA2aHZNVW9KZHFtZmdTSU1Kc2I1WmgtUlNXUlA4Z0FtQ29uZmlndXJhdGlvbr9yRXhjbHVkZWRUaW1lUmFuZ2Vzn///eBlNZXRyaWNNYXRoQW5vbWFseURldGVjdG9yv3FNZXRyaWNEYXRhUXVlcmllc5+/YklkYm0xak1ldHJpY1N0YXS/Zk1ldHJpY79qRGltZW5zaW9uc5+/ZE5hbWVwcmFkaXVzLXJlY29yZGluZ2VWYWx1ZWduazEzOTQ2//9qTWV0cmljTmFtZXJyYWRpdXMtcmVjLW5rMTM5NDZpTmFtZXNwYWNlcFJhZGl1cy9SZWNvcmRpbmf/ZlBlcmlvZBkBLGRTdGF0Z0F2ZXJhZ2X/alJldHVybkRhdGH0/79qRXhwcmVzc2lvbmZtMSAqIDJiSWRiZTFqUmV0dXJuRGF0YfX///9qU3RhdGVWYWx1ZXBQRU5ESU5HX1RSQUlOSU5H////",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn79xQW5vbWFseURldGVjdG9ySWR4KzU5YjlKcjJ1Yk5ZWTA2aHZNVW9KZHFtZmdTSU1Kc2I1WmgtUlNXUlA4Z0FtQ29uZmlndXJhdGlvbr9yRXhjbHVkZWRUaW1lUmFuZ2Vzn///eBlNZXRyaWNNYXRoQW5vbWFseURldGVjdG9yv3FNZXRyaWNEYXRhUXVlcmllc5+/YklkYm0xak1ldHJpY1N0YXS/Zk1ldHJpY79qRGltZW5zaW9uc5+/ZE5hbWVwcmFkaXVzLXJlY29yZGluZ2VWYWx1ZWduazEzOTQ2//9qTWV0cmljTmFtZXJyYWRpdXMtcmVjLW5rMTM5NDZpTmFtZXNwYWNlcFJhZGl1cy9SZWNvcmRpbmf/ZlBlcmlvZBkBLGRTdGF0Z0F2ZXJhZ2X/alJldHVybkRhdGH0/79qRXhwcmVzc2lvbmZtMSAqIDJiSWRiZTFqUmV0dXJuRGF0YfX///9qU3RhdGVWYWx1ZXBQRU5ESU5HX1RSQUlOSU5H////",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "PutAnomalyDetector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3FBbm9tYWx5RGV0ZWN0b3JJZHgrNTliOUpyMnViTllZMDZodk1Vb0pkcW1mZ1NJTUpzYjVaaC1SU1dSUDhnQf8=",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn79xQW5vbWFseURldGVjdG9ySWR4KzU5YjlKcjJ1Yk5ZWTA2aHZNVW9KZHFtZmdTSU1Kc2I1WmgtUlNXUlA4Z0FtQ29uZmlndXJhdGlvbr9yRXhjbHVkZWRUaW1lUmFuZ2Vzn79nRW5kVGltZcH7QdpVwqAAAABpU3RhcnRUaW1lwftB2lVuQAAAAP//bk1ldHJpY1RpbWV6b25lY1VUQ/94GU1ldHJpY01hdGhBbm9tYWx5RGV0ZWN0b3K/cU1ldHJpY0RhdGFRdWVyaWVzn79iSWRibTFqTWV0cmljU3RhdL9mTWV0cmljv2pEaW1lbnNpb25zn79kTmFtZXByYWRpdXMtcmVjb3JkaW5nZVZhbHVlZ25rMTM5NDb//2pNZXRyaWNOYW1lcnJhZGl1cy1yZWMtbmsxMzk0NmlOYW1lc3BhY2VwUmFkaXVzL1JlY29yZGluZ/9mUGVyaW9kGQEsZFN0YXRnQXZlcmFnZf9qUmV0dXJuRGF0YfT/v2pFeHByZXNzaW9uZm0xICogMmJJZGJlMWpSZXR1cm5EYXRh9f///2pTdGF0ZVZhbHVlcFBFTkRJTkdfVFJBSU5JTkf///8=",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn79xQW5vbWFseURldGVjdG9ySWR4KzU5YjlKcjJ1Yk5ZWTA2aHZNVW9KZHFtZmdTSU1Kc2I1WmgtUlNXUlA4Z0FtQ29uZmlndXJhdGlvbr9yRXhjbHVkZWRUaW1lUmFuZ2Vzn79nRW5kVGltZcH7QdpVwqAAAABpU3RhcnRUaW1lwftB2lVuQAAAAP//bk1ldHJpY1RpbWV6b25lY1VUQ/94GU1ldHJpY01hdGhBbm9tYWx5RGV0ZWN0b3K/cU1ldHJpY0RhdGFRdWVyaWVzn79iSWRibTFqTWV0cmljU3RhdL9mTWV0cmljv2pEaW1lbnNpb25zn79kTmFtZXByYWRpdXMtcmVjb3JkaW5nZVZhbHVlZ25rMTM5NDb//2pNZXRyaWNOYW1lcnJhZGl1cy1yZWMtbmsxMzk0NmlOYW1lc3BhY2VwUmFkaXVzL1JlY29yZGluZ/9mUGVyaW9kGQEsZFN0YXRnQXZlcmFnZf9qUmV0dXJuRGF0YfT/v2pFeHByZXNzaW9uZm0xICogMmJJZGJlMWpSZXR1cm5EYXRh9f///2pTdGF0ZVZhbHVlcFBFTkRJTkdfVFJBSU5JTkf///8=",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DeleteAnomalyDetector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v/8=",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn///",
+      "binary": true
+    }
+  ]
+}

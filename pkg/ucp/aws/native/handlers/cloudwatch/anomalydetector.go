@@ -189,10 +189,14 @@ func sdkDimensions(dims []dimension) []types.Dimension {
 	return out
 }
 
-// mathIdentity returns the identity of metric math queries, with the dimensions of each metric sorted.
+// mathIdentity returns the identity of metric math queries, with the dimensions of each metric sorted, and ReturnData
+// set to true where it is unset, as AWS returns it.
 func mathIdentity(math *types.MetricMathAnomalyDetector) (identity, error) {
 	queries := slices.Clone(math.MetricDataQueries)
 	for i, q := range queries {
+		if q.ReturnData == nil {
+			queries[i].ReturnData = aws.Bool(true)
+		}
 		if q.MetricStat != nil && q.MetricStat.Metric != nil {
 			stat, metric := *q.MetricStat, *q.MetricStat.Metric
 			metric.Dimensions = sdkDimensions(dimensions(metric.Dimensions))

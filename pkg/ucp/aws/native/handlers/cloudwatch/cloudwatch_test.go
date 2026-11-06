@@ -138,6 +138,34 @@ func mathDetector(id string) map[string]any {
 	}}}
 }
 
+// Test_MetricMath_ReturnDataDefault creates a metric math detector whose expression leaves out ReturnData, as the
+// fewest fields a template sets. AWS returns the expression with ReturnData true, and the detector is still the
+// template's.
+func Test_MetricMath_ReturnDataDefault(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := newHandler(api)
+	metric := mathDetector("m1")["MetricDataQueries"].([]any)[0].(map[string]any)
+	properties := map[string]any{"MetricMathAnomalyDetector": map[string]any{"MetricDataQueries": []any{
+		with(metric, map[string]any{"ReturnData": false}),
+		map[string]any{"Id": "e1", "Expression": "m1 * 2"},
+	}}}
+	identifier, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	require.NoError(t, err)
+	require.Equal(t, identifierOf(t, properties), identifier)
+
+	got, err := h.Read(t.Context(), region, identifier)
+	require.NoError(t, err, "the detector AWS returns with ReturnData true is the template's")
+	list, err := h.List(t.Context(), region)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	require.Equal(t, identifier, list[0].Identifier)
+	require.Equal(t, got, list[0].Properties)
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: identifier, Desired: with(properties, map[string]any{"Configuration": config("UTC")})}))
+	require.NoError(t, h.Delete(t.Context(), region, identifier))
+	_, err = h.Progress(t.Context(), region, identifier, native.OperationDelete)
+	require.ErrorIs(t, err, native.ErrNotFound)
+}
+
 func Test_LegacyForm(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
 	h := newHandler(api)

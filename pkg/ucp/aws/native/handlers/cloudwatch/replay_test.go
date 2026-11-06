@@ -22,6 +22,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
@@ -52,3 +53,46 @@ func Test_Replay_AnomalyDetector(t *testing.T) {
 		Poll:       5 * time.Second,
 	}.Run(t)
 }
+
+// Test_Replay_MetricMathAnomalyDetector creates a metric math detector with the fewest fields a template sets, lists
+// it, changes its configuration, and deletes it, against AWS's recorded responses. AWS returns the expression query
+// with ReturnData true, which the template leaves out.
+func Test_Replay_MetricMathAnomalyDetector(t *testing.T) {
+	s := awsreplay.New(t, "testdata/metric-math-anomaly-detector.json")
+	cfg := s.Config(t.Context())
+	h := NewAnomalyDetector(cloudwatch.NewFromConfig(cfg), sts.NewFromConfig(cfg))
+	run := s.Input("RADIUS_REC_RUN")
+
+	properties := map[string]any{"MetricMathAnomalyDetector": map[string]any{"MetricDataQueries": []any{
+		map[string]any{
+			"Id": "m1",
+			"MetricStat": map[string]any{
+				"Metric": map[string]any{"Namespace": "Radius/Recording", "MetricName": "radius-rec-" + run, "Dimensions": dims("radius-recording", run)},
+				"Period": 300,
+				"Stat":   "Average",
+			},
+			"ReturnData": false,
+		},
+		map[string]any{"Id": "e1", "Expression": "m1 * 2"},
+	}}}
+	identifier := identifierOf(t, properties)
+	nativetest.Lifecycle{
+		Handler:     h,
+		Session:     s,
+		Properties:  properties,
+		Want:        map[string]any{"Id": identifier},
+		Update:      with(properties, map[string]any{"Configuration": config("UTC")}),
+		WantUpdated: map[string]any{"Id": identifier, "Configuration": config("UTC")},
+		Poll:        5 * time.Second,
+		Between: func() {
+			list, err := h.List(t.Context(), awsreplay.Region)
+			require.NoError(t, err)
+			identifiers := []string{}
+			for _, r := range list {
+				identifiers = append(identifiers, r.Identifier)
+			}
+			require.Contains(t, identifiers, identifier, "List gives the detector the template's identifier")
+		},
+	}.Run(t)
+}
+

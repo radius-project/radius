@@ -142,6 +142,19 @@ func (f *fakeAPI) PutAnomalyDetector(ctx context.Context, in *cloudwatch.PutAnom
 	if in.MetricMathAnomalyDetector != nil && in.SingleMetricAnomalyDetector != nil {
 		return nil, fault("InvalidParameterCombinationException")
 	}
+	if math := in.MetricMathAnomalyDetector; math != nil {
+		// Like AWS, the detector has ReturnData true on a query the put leaves it unset on.
+		queries := slices.Clone(math.MetricDataQueries)
+		for i := range queries {
+			if queries[i].ReturnData == nil {
+				queries[i].ReturnData = aws.Bool(true)
+			}
+		}
+		in = &cloudwatch.PutAnomalyDetectorInput{
+			MetricCharacteristics: in.MetricCharacteristics, Configuration: in.Configuration,
+			MetricMathAnomalyDetector: &types.MetricMathAnomalyDetector{MetricDataQueries: queries},
+		}
+	}
 	props, err := awsapi.EncodeObject(&cloudwatch.PutAnomalyDetectorInput{
 		MetricCharacteristics: in.MetricCharacteristics, MetricMathAnomalyDetector: in.MetricMathAnomalyDetector,
 		SingleMetricAnomalyDetector: in.SingleMetricAnomalyDetector,
