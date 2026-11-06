@@ -66,7 +66,7 @@ metricsProvider:
     port: 9091
 ```
 
-Use a `direct` UCP connection only for local process debugging:
+For local process debugging with authorization mode `off`, use a `direct` UCP connection to the local HTTP endpoint:
 
 ```yaml
 ucp:
@@ -84,9 +84,11 @@ The `authorization.mode` setting is read by UCP, Applications RP, Dynamic RP, an
 > [!NOTE]
 > Besides the admission controls below, the mode controls mutual TLS between control-plane components. When the mode is not `off`, the chart mounts each component's `<component>-mtls` Secret at `/var/run/radius/mtls` and renders `certificateDirectory` (that path, holding `tls.crt`, `tls.key`, and `ca.crt`) and `namespace` (the release namespace, used to check peer certificate identities) for UCP, Applications RP, Dynamic RP, and the controller. UCP serves internal traffic on port 9444; its aggregated API on 9443 is unchanged.
 >
-> In `dryRun`, servers accept both TLS and plain HTTP on their existing ports and log requests they would deny. In `enforce`, they require a client certificate issued by the Radius CA. A missing, untrusted, or expired certificate returns HTTP 401 `InvalidAuthenticationInfo` and closes the connection. The resource providers accept only UCP's identity and return HTTP 403 `AuthorizationFailed` for any other component. Certificate validity is checked on every request, including on reused connections.
+> In `dryRun`, the mTLS listeners accept both TLS and plain HTTP and log requests they would deny. In `enforce`, they require a client certificate issued by the Radius CA. A missing, untrusted, or expired client certificate fails the initial TLS handshake before an HTTP response can be returned. If a previously authenticated connection fails a request-time certificate or trust check, the server returns HTTP 401 `InvalidAuthenticationInfo`. The resource providers accept only UCP's identity and return HTTP 403 `AuthorizationFailed` for any other component. Certificate validity is checked on every request, including on reused connections.
 
 When the mode is not `off`, UCP presents its certificate when it calls Applications RP and Dynamic RP over `https`, and the RPs and the controller present theirs when they call UCP on port 9444. The deployment engine still calls UCP through port 9443 without a client certificate.
+
+Before sending a request, component clients close connections outside the validity period shared by their client certificate and the verified server certificate chains. This can interrupt active HTTP/2 response streams; it is not a timer that closes connections at the exact expiry instant. A successful certificate or CA-bundle reload applies to new client handshakes. Removing a server CA from that bundle does not immediately revoke already-open client connections.
 
 When the mode is not `off`, the chart also renders `podSecurityLevel` (from `global.rbac.podSecurityLevel`, `baseline` by default or `restricted`) and `controlPlaneNamespace` (the release namespace, which is never labeled). `dryRun` adds the `pod-security.kubernetes.io/warn` and `audit` labels; `enforce` also adds `enforce`. Labels that an operator already set on a namespace are never overwritten.
 

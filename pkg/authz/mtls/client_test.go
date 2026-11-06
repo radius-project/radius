@@ -370,7 +370,15 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 					}
 					var served atomic.Pointer[tls.Certificate]
 					served.Store(&first)
+					streamCanceled := make(chan struct{})
 					srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						if r.URL.Path == "/stream" {
+							w.WriteHeader(http.StatusOK)
+							w.(http.Flusher).Flush()
+							<-r.Context().Done()
+							close(streamCanceled)
+							return
+						}
 						fmt.Fprint(w, r.RemoteAddr)
 					}))
 					srv.EnableHTTP2 = http2
@@ -414,6 +422,29 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 					reused, err = request()
 					require.NoError(t, err)
 					require.True(t, reused, "keep a real TLS connection open across expiry")
+
+					ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+					defer cancel()
+					var stream *http.Response
+					if http2 {
+						var streamReused bool
+						req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
+							GotConn: func(info httptrace.GotConnInfo) { streamReused = info.Reused },
+						}), http.MethodGet, srv.URL+"/stream", nil)
+						require.NoError(t, err)
+						stream, err = client.Do(req)
+						require.NoError(t, err)
+						defer stream.Body.Close()
+						require.Equal(t, http.StatusOK, stream.StatusCode)
+						require.Equal(t, 2, stream.ProtoMajor)
+						require.True(t, streamReused, "hold a stream open on the connection whose certificate will expire")
+						select {
+						case <-streamCanceled:
+							t.Fatal("stream ended before certificate expiry")
+						default:
+						}
+					}
+
 					transport.source.mu.Lock()
 					transport.source.now = func() time.Time { return now.Add(30 * time.Minute) }
 					transport.source.mu.Unlock()
@@ -432,6 +463,16 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 						require.False(t, reused, "renewal must replace the expired peer connection")
 					} else {
 						require.ErrorContains(t, err, "certificate has expired")
+					}
+					if http2 {
+						_, err := io.Copy(io.Discard, stream.Body)
+						require.Error(t, err, "closing the expired connection must interrupt the active response")
+						require.NotErrorIs(t, err, context.DeadlineExceeded)
+						select {
+						case <-streamCanceled:
+						case <-ctx.Done():
+							t.Fatal("server did not observe cancellation of the active stream")
+						}
 					}
 				})
 			}
