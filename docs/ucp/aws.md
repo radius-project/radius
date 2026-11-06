@@ -150,7 +150,7 @@ When a later deploy finds the resource of an interrupted create, the values of t
 
 Each handler also declares:
 
-- **Values AWS returns in another form**, such as an engine version `5.0` that comes back as `5.0.0`, so they don't count as changes. The native schema's `propertyTransform` covers what it can, as for Cloud Control types (see [Comparing values AWS reports in a different form](#comparing-values-aws-reports-in-a-different-form)). Otherwise the handler sets `Options.Equivalent`.
+- **Values AWS returns in another form**, such as an engine version `5.0` that comes back as `5.0.0`, so they don't count as changes. The native schema's `propertyTransform` covers what it can, as for Cloud Control types (see [Comparing values AWS reports in a different form](#comparing-values-aws-reports-in-a-different-form)). Otherwise the handler sets `Options.Equivalent`. UCP doesn't use `Options.Equivalent` for a value that leaves out something the last deploy set, such as a field inside a list item, because a rule that lets AWS's value hold more than the template, such as defaults AWS fills in, would hide the removal. The update then sends the template's value.
 - **A filter when the service API also serves other products**, such as DocumentDB's API returning Aurora clusters. The handler checks the product before every read, update, delete, and reset, and returns `native.OtherProductError` for another product. A PUT, GET, or `existing` gets `409` naming the identifier, and UCP changes nothing. A DELETE removes only the record, so deleting an app is never blocked, and the other product's resource stays as it is.
 
 #### Per-type metadata

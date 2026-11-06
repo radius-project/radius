@@ -280,7 +280,9 @@ type Options struct {
 	// returns in another form that the schema's propertyTransform can't express, such as an engine version 5.0 that
 	// comes back as 5.0.0. Such values don't count as changes. path is the property's path relative to the properties
 	// object, with "/" between segments, such as EngineVersion or Config/Version. UCP uses the schema's
-	// propertyTransform first, so prefer it where it can express the rule.
+	// propertyTransform first, so prefer it where it can express the rule. UCP doesn't call Equivalent for a value that
+	// leaves out something the last deploy set, such as a field inside a list item, so a rule that lets AWS's value
+	// hold more than the template, such as defaults AWS fills in, never hides a removal.
 	Equivalent func(path string, template any, aws any) bool
 
 	// CreateTimeout, UpdateTimeout, and DeleteTimeout are how long UCP waits for each operation. Zero means
