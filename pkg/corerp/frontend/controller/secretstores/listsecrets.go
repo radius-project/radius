@@ -69,7 +69,7 @@ func (l *ListSecrets) Run(ctx context.Context, w http.ResponseWriter, req *http.
 		return nil, err
 	}
 
-	ksecret, err := getSecretFromOutputResources(resource.Properties.Status.OutputResources, l.Options())
+	ksecret, err := getSecretFromOutputResources(ctx, resource.Properties.Status.OutputResources, l.Options())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from output resource: %w", err)
 	}

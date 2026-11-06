@@ -57,6 +57,7 @@ const (
 	sentinelSecretValue = "sentinel-secret-value"
 
 	testControlPlaneSecret = "database-secret"
+	testSecretUID          = "test-secret-uid"
 )
 
 func admissionContext(t *testing.T) (context.Context, *observer.ObservedLogs) {
@@ -72,6 +73,7 @@ func existingSecret(ns, name string, labels map[string]string) *corev1.Secret {
 	return &corev1.Secret{
 		Name:      name,
 		Namespace: ns,
+		UID:       testSecretUID,
 		Labels:    labels,
 		Data: map[string][]byte{
 			"tls.crt": []byte(sentinelSecretValue),
@@ -203,7 +205,7 @@ func TestUpsertSecret_ControlPlaneNamespaceFromScope(t *testing.T) {
 
 			newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValue)
 			newResource.Properties.Resource = ""
-			kubeClient := k8sutil.NewFakeKubeClient(nil)
+			kubeClient := newSecretClient()
 			opt := &controller.Options{DatabaseClient: sc, KubeClient: kubeClient, Authorization: authzOptions(mode)}
 
 			ctx, logs := admissionContext(t)
@@ -335,7 +337,7 @@ func TestUpsertSecret_BackwardCompatibleUpdate(t *testing.T) {
 
 // TestUpsertSecret_LegacyControlPlaneReferenceLifecycle covers a secret store that referenced a
 // control-plane Secret before enforcement: updates and deletion are denied, while ordinary
-// labeled Secrets can still be cleaned up.
+// owned Secrets can still be cleaned up.
 func TestUpsertSecret_LegacyControlPlaneReferenceLifecycle(t *testing.T) {
 	t.Setenv(kubeutil.TargetKubeconfigEnvVar, "")
 	ref := "radius-system/" + testControlPlaneSecret
@@ -364,8 +366,10 @@ func TestUpsertSecret_LegacyControlPlaneReferenceLifecycle(t *testing.T) {
 	require.NoError(t, kubeClient.Create(ctx, managed))
 	current := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 	current.Properties.Status.OutputResources = []rpv1.OutputResource{{
-		LocalID: rpv1.LocalIDSecret,
-		ID:      resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, "", resources_kubernetes.KindSecret, "default", "secret0"),
+		LocalID:              rpv1.LocalIDSecret,
+		ID:                   resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, "", resources_kubernetes.KindSecret, "default", "secret0"),
+		RadiusManaged:        new(true),
+		AdditionalProperties: map[string]string{secretUIDProperty: testSecretUID},
 	}}
 	_, err = DeleteRadiusSecret(ctx, current, opt)
 	require.NoError(t, err)
@@ -457,10 +461,13 @@ func TestDeleteRadiusSecret_ControlPlaneSecretReference(t *testing.T) {
 	labels := []struct {
 		name   string
 		values map[string]string
+		owned  bool
 	}{
 		{name: "unlabeled"},
 		{name: "secretstore label", values: map[string]string{kubernetes.LabelRadiusResourceType: "applications.core-secretstores"}},
 		{name: "unrelated resource label", values: map[string]string{kubernetes.LabelRadiusResourceType: "unrelated"}},
+		{name: "owned without label", owned: true},
+		{name: "owned with label", values: map[string]string{kubernetes.LabelRadiusResourceType: "applications.core-secretstores"}, owned: true},
 	}
 	for _, mode := range []authz.Mode{"", authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
 		for _, ref := range references {
@@ -474,6 +481,10 @@ func TestDeleteRadiusSecret_ControlPlaneSecretReference(t *testing.T) {
 						LocalID: rpv1.LocalIDSecret,
 						ID:      resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, "", resources_kubernetes.KindSecret, ref.ns, ref.secret),
 					}}
+					if label.owned {
+						store.Properties.Status.OutputResources[0].RadiusManaged = new(true)
+						store.Properties.Status.OutputResources[0].AdditionalProperties = map[string]string{secretUIDProperty: testSecretUID}
+					}
 					backingClient := k8sutil.NewFakeKubeClient(nil, existingSecret(ref.ns, ref.secret, label.values))
 					secretReads, secretDeletes := 0, 0
 					client := interceptor.NewClient(backingClient, interceptor.Funcs{
@@ -505,12 +516,14 @@ func TestDeleteRadiusSecret_ControlPlaneSecretReference(t *testing.T) {
 						denial, ok := errors.AsType[*authz.DeniedError](err)
 						require.True(t, ok)
 						require.Equal(t, ResourceTypeName+"/delete", denial.Action)
-					} else {
+					} else if label.owned {
 						require.Equal(t, 1, secretReads)
+					} else {
+						require.Zero(t, secretReads, "unowned references need no Secret access for cleanup")
 					}
 					stored := &corev1.Secret{}
 					getErr := backingClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ref.ns, Name: ref.secret}, stored)
-					if !denied && label.values != nil {
+					if !denied && label.owned {
 						require.Equal(t, 1, secretDeletes)
 						require.True(t, apierrors.IsNotFound(getErr))
 					} else {
