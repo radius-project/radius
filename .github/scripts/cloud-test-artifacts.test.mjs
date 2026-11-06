@@ -308,10 +308,6 @@ test("approved tests share Test ACR write access while GHCR publication stays is
     undefined
   );
   assert.equal(
-    step(uploader, "Login only to the private test registry").run,
-    "az acr login --name crradfunctestl83v"
-  );
-  assert.equal(
     step(cloud.tests, "Login to Azure").env.AZURE_CLIENT_ID,
     "${{ secrets.AZURE_SP_TESTS_APPID }}"
   );
@@ -335,11 +331,11 @@ test("approved tests share Test ACR write access while GHCR publication stays is
   assert.doesNotMatch(JSON.stringify(uploader), /BICEPTYPES_CLIENT_ID/);
 });
 
-test("upload jobs use the configured registry settings and the intended Test ACR login", () => {
+test("upload jobs use repository registry settings without candidate overrides", () => {
   const settings = {
     FUNCTIONAL_TEST_CONTAINER_REGISTRY: "ghcr.io/radius-project/dev",
     FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY: "ghcr.io/radius-project/dev",
-    TEST_BICEP_TYPES_REGISTRY: "crradfunctestl83v.azurecr.io"
+    TEST_BICEP_TYPES_REGISTRY: "testregistry123.azurecr.io"
   };
   const expected = {
     CONTAINER_REGISTRY: settings.FUNCTIONAL_TEST_CONTAINER_REGISTRY,
@@ -354,15 +350,6 @@ test("upload jobs use the configured registry settings and the intended Test ACR
       assert.equal(settings[match[1]], value);
     }
   }
-  const command = step(
-    cloud["upload-test-types"],
-    "Login only to the private test registry"
-  ).run;
-  assert.equal(command, "az acr login --name crradfunctestl83v");
-  assert.equal(
-    `${command.split(" ").at(-1)}.azurecr.io`,
-    settings.TEST_BICEP_TYPES_REGISTRY
-  );
   assert.equal(
     step(cloud["upload-ghcr"], "Copy validated images and recipes").env
       .INPUT_DESTINATION,
@@ -373,6 +360,58 @@ test("upload jobs use the configured registry settings and the intended Test ACR
       .INPUT_DESTINATION,
     "acr"
   );
+});
+
+test("actual Test ACR login validates and derives the configured registry name", () => {
+  const login = step(
+    cloud["upload-test-types"],
+    "Login only to the private test registry"
+  );
+  assert.equal(login.env?.TEST_BICEP_TYPES_REGISTRY, undefined);
+  assert.doesNotMatch(login.run, /\$\{\{/);
+  const script = `az() { printf 'az-argument:%s\\n' "$@"; }\n${login.run}`;
+  for (const name of [
+    "testregistry123",
+    "anotherregistry456",
+    "abcde",
+    "a".repeat(50)
+  ]) {
+    const result = spawnSync("bash", ["-e", "-c", script], {
+      env: { ...process.env, TEST_BICEP_TYPES_REGISTRY: `${name}.azurecr.io` },
+      encoding: "utf8"
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      result.stdout,
+      `az-argument:acr\naz-argument:login\naz-argument:--name\naz-argument:${name}\n`
+    );
+  }
+  for (const hostname of [
+    undefined,
+    "",
+    "abcd.azurecr.io",
+    `${"a".repeat(51)}.azurecr.io`,
+    "https://testregistry123.azurecr.io",
+    "testregistry123.azurecr.io/test/radius",
+    "testregistry123.azurecr.io:443",
+    "UPPER.azurecr.io",
+    "test-registry.azurecr.io",
+    "testregistry123.azurecr.io.evil.invalid",
+    "testregistry123.azurecr.io\n",
+    "$(echo injected).azurecr.io",
+    "testregistry123.azurecr.cn"
+  ]) {
+    const env = { ...process.env };
+    delete env.TEST_BICEP_TYPES_REGISTRY;
+    if (hostname !== undefined) env.TEST_BICEP_TYPES_REGISTRY = hostname;
+    const result = spawnSync("bash", ["-e", "-c", script], {
+      env,
+      encoding: "utf8"
+    });
+    assert.equal(result.status, 1, hostname);
+    assert.match(result.stdout, /::error::TEST_BICEP_TYPES_REGISTRY must be/);
+    assert.doesNotMatch(result.stdout, /az-argument:|injected/);
+  }
 });
 
 test("merge-group Test ACR uploader executes the trusted helper, not the candidate revision", async () => {

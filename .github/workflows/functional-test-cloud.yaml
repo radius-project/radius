@@ -643,7 +643,14 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Login only to the private test registry
-        run: az acr login --name crradfunctestl83v
+        run: |
+          set -euo pipefail
+          if [[ ! "${TEST_BICEP_TYPES_REGISTRY:-}" =~ ^[a-z0-9]{5,50}\.azurecr\.io$ ]]; then
+            echo "::error::TEST_BICEP_TYPES_REGISTRY must be a bare lowercase Azure Container Registry hostname."
+            exit 1
+          fi
+          registry_name="${TEST_BICEP_TYPES_REGISTRY%.azurecr.io}"
+          az acr login --name "${registry_name}"
 
       - name: Copy validated Radius test types
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
