@@ -773,8 +773,10 @@ jobs:
         id: authz-enforce-tests
         if: ${{ !cancelled() && matrix.name == 'authz-noncloud' && steps.functional-tests.outcome == 'success' }}
         run: |
+          set -euo pipefail
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
-          helm upgrade radius "${RADIUS_CHART_LOCATION}" -n radius-system --reuse-values \
+          # Keep rad's field manager and stored image/registry values from the initial install.
+          rad install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}" \
             --set global.rbac.dryRun=false --set global.rbac.enabled=true
           kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
           make test-functional-authz-noncloud GOTEST_OPTS="-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)\$\$'"

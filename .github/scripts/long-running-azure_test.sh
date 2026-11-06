@@ -211,4 +211,65 @@ if [[ "${fresh_skip_options}" == *Test_AuthzMode_LoggedByEveryComponent* ]]; the
     fail "fresh-install CI excludes the startup-log smoke test"
 fi
 
+yq -e -r '.jobs[].steps[] | select(.id == "authz-enforce-tests") | .run' \
+    "${FRESH_WORKFLOW}" >"${WORK_DIR}/enforce.sh"
+export RADIUS_CHART_LOCATION="${WORK_DIR}/chart with spaces"
+cat >"${GITHUB_WORKSPACE}/bin/rad" <<'MOCK'
+#!/bin/bash
+set -euo pipefail
+expected=(install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}"
+    --set global.rbac.dryRun=false --set global.rbac.enabled=true)
+[[ "$#" == "${#expected[@]}" ]]
+for arg in "${expected[@]}"; do
+    [[ "$1" == "${arg}" ]]
+    shift
+done
+echo rad-enforce >>"${MOCK_CALLS}"
+exit "${MOCK_INSTALL_EXIT:-0}"
+MOCK
+cat >"${GITHUB_WORKSPACE}/bin/helm" <<'MOCK'
+#!/bin/bash
+echo "Use rad to retain the install's field manager" >&2
+exit 45
+MOCK
+chmod +x "${GITHUB_WORKSPACE}/bin/helm"
+: >"${MOCK_CALLS}"
+bash "${WORK_DIR}/enforce.sh" >"${WORK_DIR}/enforce.log" 2>&1 || {
+    cat "${WORK_DIR}/enforce.log" >&2
+    fail "enforce mode should reinstall with rad and run boundary tests"
+}
+cat >"${WORK_DIR}/enforce-expected" <<'EXPECTED'
+rad-enforce
+kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
+make test-functional-authz-noncloud GOTEST_OPTS=-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)$$'
+EXPECTED
+diff -u "${WORK_DIR}/enforce-expected" "${MOCK_CALLS}"
+
+for scenario in install rollout tests; do
+    : >"${MOCK_CALLS}"
+    result=0
+    case "${scenario}" in
+        install)
+            MOCK_INSTALL_EXIT=46 bash "${WORK_DIR}/enforce.sh" \
+                >"${WORK_DIR}/enforce.log" 2>&1 || result=$?
+            [[ "${result}" == 46 ]] || fail "reinstall failure was not propagated"
+            [[ "$(cat "${MOCK_CALLS}")" == rad-enforce ]] \
+                || fail "enforce checks ran after reinstall failed"
+            ;;
+        rollout)
+            MOCK_UNREADY=applications-rp bash "${WORK_DIR}/enforce.sh" \
+                >"${WORK_DIR}/enforce.log" 2>&1 || result=$?
+            [[ "${result}" == 42 ]] || fail "enforce rollout failure was not propagated"
+            if grep -q '^make ' "${MOCK_CALLS}"; then
+                fail "enforce tests ran before rollout completed"
+            fi
+            ;;
+        tests)
+            MOCK_FAILED_TARGET=test-functional-authz-noncloud bash "${WORK_DIR}/enforce.sh" \
+                >"${WORK_DIR}/enforce.log" 2>&1 || result=$?
+            [[ "${result}" == 43 ]] || fail "enforce test failure was not propagated"
+            ;;
+    esac
+done
+
 echo "Long-running Azure workflow tests passed"
