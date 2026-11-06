@@ -643,7 +643,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Login only to the private test registry
-        run: az acr login --name crradfunctest1b2s
+        run: az acr login --name crradfunctestl83v
 
       - name: Copy validated Radius test types
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0

@@ -12,7 +12,8 @@ import { setup } from "./cloud-test-context.mjs";
 
 const readYaml = (file) =>
   JSON.parse(execFileSync("yq", ["-o=json", ".", file], { encoding: "utf8" }));
-const cloud = readYaml(".github/workflows/functional-test-cloud.yaml").jobs;
+const workflow = readYaml(".github/workflows/functional-test-cloud.yaml");
+const cloud = workflow.jobs;
 const step = (job, name) => job.steps.find((item) => item.name === name);
 const tag = "test-func0123456789-101-1";
 async function temporary(t) {
@@ -308,7 +309,7 @@ test("approved tests share Test ACR write access while GHCR publication stays is
   );
   assert.equal(
     step(uploader, "Login only to the private test registry").run,
-    "az acr login --name crradfunctest1b2s"
+    "az acr login --name crradfunctestl83v"
   );
   assert.equal(
     step(cloud.tests, "Login to Azure").env.AZURE_CLIENT_ID,
@@ -332,6 +333,46 @@ test("approved tests share Test ACR write access while GHCR publication stays is
     "external-contributor-approval"
   );
   assert.doesNotMatch(JSON.stringify(uploader), /BICEPTYPES_CLIENT_ID/);
+});
+
+test("upload jobs use the configured registry settings and the intended Test ACR login", () => {
+  const settings = {
+    FUNCTIONAL_TEST_CONTAINER_REGISTRY: "ghcr.io/radius-project/dev",
+    FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY: "ghcr.io/radius-project/dev",
+    TEST_BICEP_TYPES_REGISTRY: "crradfunctestl83v.azurecr.io"
+  };
+  const expected = {
+    CONTAINER_REGISTRY: settings.FUNCTIONAL_TEST_CONTAINER_REGISTRY,
+    BICEP_RECIPE_REGISTRY: settings.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY,
+    TEST_BICEP_TYPES_REGISTRY: settings.TEST_BICEP_TYPES_REGISTRY
+  };
+  for (const job of ["upload-ghcr", "upload-test-types"]) {
+    const effective = { ...workflow.env, ...cloud[job].env };
+    for (const [name, value] of Object.entries(expected)) {
+      const match = /^\$\{\{ vars\.([A-Z_]+) \}\}$/.exec(effective[name]);
+      assert.ok(match, `${job} must read ${name} from repository settings`);
+      assert.equal(settings[match[1]], value);
+    }
+  }
+  const command = step(
+    cloud["upload-test-types"],
+    "Login only to the private test registry"
+  ).run;
+  assert.equal(command, "az acr login --name crradfunctestl83v");
+  assert.equal(
+    `${command.split(" ").at(-1)}.azurecr.io`,
+    settings.TEST_BICEP_TYPES_REGISTRY
+  );
+  assert.equal(
+    step(cloud["upload-ghcr"], "Copy validated images and recipes").env
+      .INPUT_DESTINATION,
+    "ghcr"
+  );
+  assert.equal(
+    step(cloud["upload-test-types"], "Copy validated Radius test types").env
+      .INPUT_DESTINATION,
+    "acr"
+  );
 });
 
 test("merge-group Test ACR uploader executes the trusted helper, not the candidate revision", async () => {
