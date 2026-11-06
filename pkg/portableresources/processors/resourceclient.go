@@ -141,8 +141,9 @@ func (c *resourceClient) GetProperties(ctx context.Context, id string) (map[stri
 	return response.Properties, nil
 }
 
-// GetAWSPropertiesByIdentifier reads an AWS resource with UCP's POST /:get, which reads AWS by the top-level name in
-// the body. The name is the AWS identifier at the end of id.
+// GetAWSPropertiesByIdentifier reads an AWS resource with UCP's POST /:get, which reads AWS by the identifier at the end
+// of id. It sends id in the AWS resource ID header, so UCP decodes that segment the way it encoded it, and also as the
+// top-level name, which a UCP that predates the header reads instead.
 func (c *resourceClient) GetAWSPropertiesByIdentifier(ctx context.Context, id string) (map[string]any, error) {
 	parsed, err := resources.ParseResource(id)
 	if err != nil {
@@ -162,6 +163,7 @@ func (c *resourceClient) GetAWSPropertiesByIdentifier(ctx context.Context, id st
 		query := req.Raw().URL.Query()
 		query.Set("api-version", awsAPIVersion)
 		req.Raw().URL.RawQuery = query.Encode()
+		req.Raw().Header.Set(sdkclients.AWSResourceIDHeader, parsed.String())
 		err = runtime.MarshalAsJSON(req, map[string]any{"name": parsed.Name(), "properties": map[string]any{}})
 	}
 	if err != nil {

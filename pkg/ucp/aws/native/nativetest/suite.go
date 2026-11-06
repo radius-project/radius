@@ -205,7 +205,8 @@ func Run(t *testing.T, s Suite) {
 		t.Run("delete after the create sent again is partly applied", func(t *testing.T) { s.resendFailsPartway(t, http.MethodDelete, failurePartway) })
 	}
 	if nameProperty != "" {
-		t.Run("generated name is the same on a retry", func(t *testing.T) { s.generatedNameRetry(t, nameProperty) })
+		t.Run("generated name is the same on a retry after the create reached AWS", func(t *testing.T) { s.generatedNameRetry(t, nameProperty, true) })
+		t.Run("generated name is the same on a retry before the create reached AWS", func(t *testing.T) { s.generatedNameRetry(t, nameProperty, false) })
 	}
 	if s.HandWritten {
 		t.Run("never asks CloudFormation", func(t *testing.T) { s.neverAsksCloudFormation(t) })
@@ -576,9 +577,12 @@ func (s Suite) existing(t *testing.T) {
 	require.Equal(t, h.identifier(), requireSegment(t, h.collection(), id))
 	parsed, err := resources.ParseResource(id)
 	require.NoError(t, err)
+	h.headers = map[string]string{sdkclients.AWSResourceIDHeader: id}
 	resp = h.getWithPost(map[string]any{"name": parsed.Name()})
+	h.headers = nil
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	requireSubset(t, s.readable(s.Properties), resp.properties())
+	require.Equal(t, id, resp.body["id"])
 }
 
 // requireSegment requires id to be one resource ID segment under collection, and returns the AWS identifier that
@@ -758,21 +762,24 @@ func (s Suite) lostCreateFailedDelete(t *testing.T) {
 	h.requireRemoved(nil)
 }
 
-// generatedNameRetry loses a create of a template that leaves out the name, and deploys again. Both attempts send
-// the same generated name, which fits the type's name rules, and AWS ends with one resource.
-func (s Suite) generatedNameRetry(t *testing.T, nameProperty string) {
+// generatedNameRetry loses a create of a template that leaves out the name, after it reached AWS or before, and
+// deploys again. Every attempt sends the same generated name, which fits the type's name rules, the identifier is the
+// one the properties with that name give, and AWS ends with one resource.
+func (s Suite) generatedNameRetry(t *testing.T, nameProperty string, reached bool) {
 	h := s.newHarness(t)
 	unnamed := without(s.Properties, nameProperty)
-	h.handler.lose("Create", true)
+	h.handler.lose("Create", reached)
 	resp := h.put(unnamed)
 	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
-	first := h.record().Properties.AWSIdentifier
-	h.requireGeneratedName(first)
+	name := h.requireGeneratedName(nameProperty)
+	identifier := h.identifierFor(withValue(unnamed, nameProperty, name))
+	require.Equal(t, identifier, h.record().Properties.AWSIdentifier, "the identifier is saved before UCP calls AWS")
 
 	h.deployEventually(unnamed)
-	require.Equal(t, first, h.record().Properties.AWSIdentifier)
+	require.Equal(t, name, h.requireGeneratedName(nameProperty), "every attempt sends the same name")
+	require.Equal(t, identifier, h.record().Properties.AWSIdentifier)
 	require.Equal(t, 1, h.cc.Count(s.TypeName))
-	require.Equal(t, first, h.cc.Resource(s.TypeName, first)[nameProperty])
+	require.Equal(t, name, h.cc.Resource(s.TypeName, identifier)[nameProperty])
 }
 
 // workerRestart stops the worker while it waits for a create, and runs it again. Waiting only reads AWS, so the
@@ -814,7 +821,8 @@ func (s Suite) switchHandlers(t *testing.T, nativeFirst bool, nameProperty strin
 	h.deploy(properties)
 	switch {
 	case nameProperty != "" && nativeFirst:
-		h.requireGeneratedName(h.identifier())
+		name := h.requireGeneratedName(nameProperty)
+		require.Equal(t, h.identifierFor(withValue(properties, nameProperty, name)), h.identifier())
 	case nameProperty == "" && s.Identifier != "":
 		require.Equal(t, s.Identifier, h.record().Properties.AWSIdentifier)
 	}
@@ -1153,6 +1161,12 @@ func without(properties map[string]any, property string) map[string]any {
 	return out
 }
 
+func withValue(properties map[string]any, property string, value any) map[string]any {
+	out := maps.Clone(properties)
+	out[property] = value
+	return out
+}
+
 func requireSubset(t testing.TB, want map[string]any, got map[string]any) {
 	t.Helper()
 	for k, v := range want {
@@ -1185,6 +1199,9 @@ type harness struct {
 
 	// lastID is the AWS identifier the last deploy saved, which AWS or UCP may have chosen.
 	lastID string
+
+	// headers are added to every request.
+	headers map[string]string
 }
 
 func (s Suite) newHarness(t *testing.T) *harness {
@@ -1197,10 +1214,10 @@ func (s Suite) newHarness(t *testing.T) *harness {
 	case s.CloudControlCreate != nil:
 		cc.Assign[s.TypeName] = s.CloudControlCreate
 	case ok:
-		cc.Assign[s.TypeName] = func(properties map[string]any) (string, map[string]any) {
-			identifier, err := encoder.Identifier(properties)
-			require.NoError(t, err)
-			return identifier, properties
+		// Both handlers store the same identifier, so Cloud Control computes it the way the handler encodes it.
+		cc.IdentifierOf[s.TypeName] = func(properties map[string]any) string {
+			identifier, _ := encoder.Identifier(properties)
+			return identifier
 		}
 	}
 
@@ -1297,9 +1314,16 @@ func (h *harness) identifier() string {
 	return h.s.Identifier
 }
 
-// requireGeneratedName requires name to be a name UCP generated that fits the type's name rules.
-func (h *harness) requireGeneratedName(name string) {
+// requireGeneratedName requires every create the handler got to send the same value of the name property, a name UCP
+// generated that fits the type's name rules, and returns it.
+func (h *harness) requireGeneratedName(nameProperty string) string {
 	h.t.Helper()
+	creates := h.handler.createRequests()
+	require.NotEmpty(h.t, creates, "the handler got a create")
+	name, _ := creates[0].Properties[nameProperty].(string)
+	for _, create := range creates[1:] {
+		require.Equal(h.t, name, create.Properties[nameProperty], "every create sends the same name")
+	}
 	rules := h.types.Lookup(h.s.TypeName).NameRules
 	require.Regexp(h.t, "^radius-[0-9a-f]{8,12}$", name)
 	if rules.MaxLength > 0 {
@@ -1309,6 +1333,19 @@ func (h *harness) requireGeneratedName(name string) {
 	if rules.Pattern != nil {
 		require.Regexp(h.t, rules.Pattern, name)
 	}
+	return name
+}
+
+// identifierFor returns the identifier properties give: the handler's own encoding, or the identifier property.
+func (h *harness) identifierFor(properties map[string]any) string {
+	h.t.Helper()
+	if encoder, ok := h.handler.Handler.(native.IdentifierEncoder); ok {
+		identifier, err := encoder.Identifier(properties)
+		require.NoError(h.t, err)
+		return identifier
+	}
+	identifier, _ := properties[h.s.IdentifierProperty].(string)
+	return identifier
 }
 
 func (h *harness) stored() map[string]any {
@@ -1357,6 +1394,9 @@ func (h *harness) do(factory controllerFactory, method string, path string, owne
 	req.Host, req.URL.Host, req.URL.Scheme = testHost, testHost, "http"
 	if owner != "" {
 		req.Header.Set(sdkclients.AWSResourceOwnerHeader, owner)
+	}
+	for k, v := range h.headers {
+		req.Header.Set(k, v)
 	}
 	controller, err := factory(armrpc_controller.Options{DatabaseClient: h.db, StatusManager: h.sm}, h.clients)
 	require.NoError(h.t, err)
@@ -1538,6 +1578,9 @@ type recorder struct {
 	// partway, when set, makes every Create call the handler and then return its identifier with this error.
 	partway error
 
+	// creates are the requests Create got.
+	creates []native.CreateRequest
+
 	// onProgress, when set, runs on each Progress call.
 	onProgress func()
 
@@ -1652,10 +1695,18 @@ var (
 	failurePartway = &native.Failure{Message: "the create made the resource, but a later call failed", ClientError: true, Outcome: native.OutcomePartial}
 )
 
+// createRequests returns the requests Create got.
+func (r *recorder) createRequests() []native.CreateRequest {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return slices.Clone(r.creates)
+}
+
 func (r *recorder) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	r.note("Create")
 	r.mu.Lock()
 	partway := r.partway
+	r.creates = append(r.creates, request)
 	r.mu.Unlock()
 	if partway != nil {
 		identifier, err := r.Handler.Create(ctx, request)

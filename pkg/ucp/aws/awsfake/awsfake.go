@@ -81,10 +81,15 @@ type CloudControl struct {
 	// its value; otherwise the fake assigns an identifier, like AWS does for a VPC.
 	Identifiers map[string]string
 
-	// Assign maps a type to how the fake names a new resource of it, for a type whose identifier isn't one property,
-	// such as one that joins several properties or includes a value AWS assigns. It returns the identifier and the
-	// properties to store, or "" to fall back to Identifiers.
+	// Assign maps a type to how the fake names a new resource of it, for a type whose identifier includes a value AWS
+	// assigns, such as an association ID. It returns the identifier and the properties to store, or "" to fall back to
+	// IdentifierOf and Identifiers.
 	Assign map[string]func(properties map[string]any) (string, map[string]any)
+
+	// IdentifierOf maps a type to the function that computes its identifier from its properties, for a type whose
+	// identifier is more than one property. It takes the place of Identifiers for the type, and returns "" when the
+	// properties don't give all of it.
+	IdentifierOf map[string]func(properties map[string]any) string
 
 	// WriteOnly maps a type to the paths of its write-only properties, which GetResource never returns, like AWS. "*"
 	// matches every array item.
@@ -112,14 +117,15 @@ type CloudControl struct {
 // NewCloudControl returns an empty CloudControl.
 func NewCloudControl() *CloudControl {
 	return &CloudControl{
-		resources:   map[string]map[string]any{},
-		requests:    map[string]*request{},
-		tokens:      map[string]clientRequest{},
-		Identifiers: map[string]string{},
-		WriteOnly:   map[string][]string{},
-		Assign:      map[string]func(map[string]any) (string, map[string]any){},
-		Errors:      map[string]error{},
-		Before:      map[string]func(){},
+		resources:    map[string]map[string]any{},
+		requests:     map[string]*request{},
+		tokens:       map[string]clientRequest{},
+		Identifiers:  map[string]string{},
+		IdentifierOf: map[string]func(map[string]any) string{},
+		WriteOnly:    map[string][]string{},
+		Assign:       map[string]func(map[string]any) (string, map[string]any){},
+		Errors:       map[string]error{},
+		Before:       map[string]func(){},
 	}
 }
 
@@ -175,12 +181,21 @@ func (c *CloudControl) name(typeName string, properties map[string]any) (string,
 			return identifier, assigned
 		}
 	}
-	identifier, _ := properties[c.Identifiers[typeName]].(string)
+	identifier := c.identifierOf(typeName, properties)
 	if identifier == "" {
 		c.next++
 		identifier = "id-" + strconv.Itoa(c.next)
 	}
 	return identifier, properties
+}
+
+// identifierOf returns the identifier properties give for typeName, or "" when they don't give it.
+func (c *CloudControl) identifierOf(typeName string, properties map[string]any) string {
+	if f := c.IdentifierOf[typeName]; f != nil {
+		return f(properties)
+	}
+	identifier, _ := properties[c.Identifiers[typeName]].(string)
+	return identifier
 }
 
 // Patch applies JSON patch operations to a resource, as UpdateResource does. It is not recorded as a call.
