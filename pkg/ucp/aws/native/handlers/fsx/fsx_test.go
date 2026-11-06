@@ -474,7 +474,11 @@ func Test_Create(t *testing.T) {
 		api.tokens[id] = "token-a"
 		api.errs["CreateFileSystem"] = fault("IncompatibleParameterError", "other parameters")
 		_, err = h.Create(t.Context(), request)
-		require.ErrorContains(t, err, "found 2 FSx file systems")
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure, "UCP can't tell which one it made")
+		require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+		require.Contains(t, failure.Message, "2 FSx file systems")
+		require.Contains(t, failure.Message, id)
 
 		api.errs["DescribeFileSystems"] = fault("ThrottlingException", "slow down")
 		_, err = h.Create(t.Context(), request)

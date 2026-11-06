@@ -374,7 +374,7 @@ func (h *FileSystem) findByToken(ctx context.Context, region string, token strin
 	case 1:
 		return found[0], nil
 	}
-	return "", fmt.Errorf("found %d FSx file systems tagged with the same operation ID: %s", len(found), strings.Join(found, ", "))
+	return "", awsapi.Ambiguous("FSx file systems", found)
 }
 
 // all returns every file system in the region.
