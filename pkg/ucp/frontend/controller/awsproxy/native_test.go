@@ -728,8 +728,8 @@ func Test_Native_DeleteTokenClearedByUpdate(t *testing.T) {
 	require.Empty(t, h.record(nativePath).Properties.DeleteToken, "an update clears the token")
 }
 
-// Test_Native_DeleteTokenClearedByFailedDelete checks that a delete AWS reports as failed, such as a final snapshot
-// that failed, clears the delete token, so the next delete is a new request with a new token.
+// Test_Native_DeleteTokenClearedByFailedDelete checks that a delete whose progress reports that it failed, such as a
+// final snapshot that failed, clears the delete token, so the next delete is a new request with a new token.
 func Test_Native_DeleteTokenClearedByFailedDelete(t *testing.T) {
 	h := newNativeHarness(t)
 	catalog := schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}

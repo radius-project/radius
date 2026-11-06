@@ -176,7 +176,7 @@ UCP applies the metadata with either handler. A file that names another type, ha
 
 #### More handler declarations
 
-- **A delete token** (`native.DeletePreparer`), for a delete that takes a copy of the data, such as a DocumentDB cluster's final snapshot or an FSx file system's final backup. Before the first delete call, UCP saves the handler's token on the record (`deleteToken`), such as the snapshot name, and sends the same token on every attempt, so a retried delete never takes a second copy. A create or update clears it, and so does a delete AWS reports as failed.
+- **A delete token** (`native.DeletePreparer`), for a delete that takes a copy of the data, such as a DocumentDB cluster's final snapshot or an FSx file system's final backup. Before the first delete call, UCP saves the handler's token on the record (`deleteToken`), such as the snapshot name, and sends the same token on every attempt, so a retried delete never takes a second copy. A create or update clears it, and so does a delete whose progress reports that it failed. A delete call that returns an error, a timeout, or an error while waiting keeps it, because the delete may still be running.
 
 UCP also checks the native schema's create-only properties before it calls a native handler, and returns `400` naming the ones a template changed, because a service API may ignore such a change where Cloud Control rejects it. A first create that failed with nothing applied in AWS (`native.OutcomeRejected`), such as a value AWS rejected only once it started the create, is sent again by the next deploy with that deploy's template.
 

@@ -122,8 +122,9 @@ type Resetter interface {
 // DeletePreparer is implemented by a handler whose delete must send the same value on every attempt, so a retried
 // delete never takes a second copy of the data, such as the name of a DocumentDB cluster's final snapshot or the
 // idempotency token of an FSx delete. Before the first delete call, UCP calls DeleteToken and saves the value on the
-// record, then calls DeleteWithToken instead of Delete with that value on every attempt. A delete AWS reports as failed, or a create
-// or update, clears the value, so the next delete gets a new one.
+// record, then calls DeleteWithToken instead of Delete with that value on every attempt. A create or update clears the
+// value, and so does a delete whose Progress reports that it failed, so the next delete gets a new one. A DeleteWithToken
+// call that returns an error, a timeout, or an error while waiting keeps it, because the delete may still be running.
 type DeletePreparer interface {
 	// DeleteToken returns the value to send with every attempt to delete the resource with the identifier. UCP calls
 	// it once per delete, so it may use the current time.
