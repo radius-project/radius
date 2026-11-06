@@ -124,7 +124,10 @@ func Test_Service_Run_RetriesUntilDone(t *testing.T) {
 	require.NoError(t, service.Run(t.Context()))
 	require.Equal(t, 3, attempts)
 	require.Equal(t, StateComplete, reporter.last("c.s").State)
-	require.Len(t, reporter.statuses["c.s"], 3)
+
+	// The step is recorded as pending when the process starts, then once per pass.
+	require.Len(t, reporter.statuses["c.s"], 4)
+	require.Equal(t, pendingMessage, reporter.statuses["c.s"][0].Message)
 }
 
 func Test_Service_RunPass_AccumulatesMigratedValues(t *testing.T) {
@@ -183,6 +186,61 @@ func Test_Service_Run_RetriesUntilStatusIsRecorded(t *testing.T) {
 
 	require.NoError(t, service.Run(t.Context()))
 	require.Len(t, reporter.statuses["c.s"], 3)
+	require.Equal(t, StateComplete, reporter.last("c.s").State)
+}
+
+func Test_Service_Run_ReportsPendingAtStart(t *testing.T) {
+	t.Parallel()
+
+	// An earlier process recorded the steps as complete, for example before a rollback.
+	client := fake.NewClientset()
+	reporter := NewConfigMapReporter(client, "radius-system")
+	for _, step := range []string{"first", "second"} {
+		require.NoError(t, reporter.Report(t.Context(), StatusKey("c", step), Status{State: StateComplete, Result: Result{Migrated: 3}}))
+	}
+
+	ran := false
+	ctx, cancel := context.WithCancel(t.Context())
+	service := NewService(Options{Component: "c", Reporter: reporter, InitialDelay: time.Hour, Steps: []Step{
+		StepFunc{StepName: "first", Fn: func(context.Context) (Result, error) { ran = true; return Result{}, nil }},
+		StepFunc{StepName: "second", Fn: func(context.Context) (Result, error) { ran = true; return Result{}, nil }},
+	}})
+	service.now = func() time.Time { return time.Date(2026, 11, 6, 1, 2, 3, 0, time.UTC) }
+
+	// The process stops during the initial delay, before any pass.
+	done := make(chan error, 1)
+	go func() { done <- service.Run(ctx) }()
+	require.Eventually(t, func() bool {
+		statuses, err := ReadStatus(t.Context(), client, "radius-system")
+		return err == nil && statuses[StatusKey("c", "second")].State == StateInProgress
+	}, 10*time.Second, 10*time.Millisecond)
+	cancel()
+	require.ErrorIs(t, <-done, context.Canceled)
+	require.False(t, ran)
+
+	statuses, err := ReadStatus(t.Context(), client, "radius-system")
+	require.NoError(t, err)
+	for _, step := range []string{"first", "second"} {
+		status := statuses[StatusKey("c", step)]
+		require.Equal(t, StateInProgress, status.State, "a status from an earlier process must not stay complete")
+		require.False(t, status.Done())
+		require.Equal(t, pendingMessage, status.Message)
+		require.Zero(t, status.Migrated)
+		require.Equal(t, time.Date(2026, 11, 6, 1, 2, 3, 0, time.UTC), status.Updated)
+		require.NotEmpty(t, status.Version)
+	}
+}
+
+func Test_Service_Run_PendingReportFailureDoesNotStopTheMigration(t *testing.T) {
+	t.Parallel()
+	reporter := &recordingReporter{failures: 1}
+	service := NewService(Options{Component: "c", Reporter: reporter, Steps: []Step{
+		StepFunc{StepName: "s", Fn: func(context.Context) (Result, error) { return Result{Migrated: 1}, nil }},
+	}})
+
+	require.NoError(t, service.Run(t.Context()))
+	require.Len(t, reporter.statuses["c.s"], 2)
+	require.Equal(t, StateInProgress, reporter.statuses["c.s"][0].State)
 	require.Equal(t, StateComplete, reporter.last("c.s").State)
 }
 

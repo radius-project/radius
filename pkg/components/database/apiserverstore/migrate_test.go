@@ -446,6 +446,219 @@ func Test_APIServerClient_MigrateLegacyNames_ConcurrentDelete(t *testing.T) {
 	}
 }
 
+// A move that read the legacy copy before a delete removed it can write its copy after the delete read the current
+// object. The delete reads that object again and removes such a copy, even if the move stops before it does.
+func Test_APIServerClient_Delete_RemovesCopyWrittenDuringDelete(t *testing.T) {
+	t.Parallel()
+	current, legacy := resourceName(migrateTarget), legacyResourceName(migrateTarget)
+	for _, tt := range []struct {
+		name string
+
+		// currentCopy adds a current copy with this value to the stored entry: a copy of the legacy entry, as an
+		// interrupted move leaves, or another value.
+		currentCopy string
+
+		// conflictOnce fails the first removal of the current copy with a conflict, so the delete removes it on a retry.
+		conflictOnce bool
+
+		// trigger is the call after which format is written to the current object.
+		trigger string
+		format  string
+		etag    string
+
+		// kept means the value written to the current object is not a copy of a removed value, so it is kept.
+		kept bool
+	}{
+		{name: "copy written after the delete read the current object", trigger: "get " + legacy, format: "legacy", etag: "legacy-etag"},
+		{name: "copy written after a retried removal", currentCopy: "legacy", conflictOnce: true, trigger: "delete " + current, format: "legacy", etag: "legacy-etag"},
+		{name: "copy of a removed value with another ETag", currentCopy: "current", trigger: "delete " + current, format: "legacy", etag: "current-etag"},
+		{name: "value saved after the delete", trigger: "delete " + legacy, format: "recreated", etag: "legacy-etag", kept: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			written, conflicted := false, false
+			write := func(ctx context.Context, c runtimeclient.WithWatch, call string) {
+				if call == tt.trigger && !written {
+					written = true
+					require.NoError(t, c.Create(ctx, fallbackTestResource(t, migrateNamespace, current, tt.format, []resources.ID{migrateTarget})))
+				}
+			}
+
+			objects := []*ucpv1alpha1.Resource{fallbackTestResource(t, migrateNamespace, legacy, "legacy", []resources.ID{migrateTarget})}
+			if tt.currentCopy != "" {
+				objects = append(objects, fallbackTestResource(t, migrateNamespace, current, tt.currentCopy, []resources.ID{migrateTarget}))
+			}
+			client, raw := newMigrateClient(t, interceptor.Funcs{
+				Get: func(ctx context.Context, c runtimeclient.WithWatch, key runtimeclient.ObjectKey, obj runtimeclient.Object, opts ...runtimeclient.GetOption) error {
+					write(ctx, c, "get "+key.Name)
+					return c.Get(ctx, key, obj, opts...)
+				},
+				Delete: func(ctx context.Context, c runtimeclient.WithWatch, obj runtimeclient.Object, opts ...runtimeclient.DeleteOption) error {
+					if tt.conflictOnce && obj.GetName() == current && !conflicted {
+						conflicted = true
+						return apierrors.NewConflict(schema.GroupResource{Resource: "resources"}, obj.GetName(), errors.New("changed"))
+					}
+					if err := c.Delete(ctx, obj, opts...); err != nil {
+						return err
+					}
+					write(ctx, c, "delete "+obj.GetName())
+					return nil
+				},
+			}, objects...)
+
+			require.NoError(t, client.Delete(t.Context(), migrateTarget.String(), database.WithETag(tt.etag)))
+			require.True(t, written)
+			require.Equal(t, tt.conflictOnce, conflicted)
+			obj, err := client.Get(t.Context(), migrateTarget.String())
+			if tt.kept {
+				require.NoError(t, err, "a value saved after the delete must be kept")
+				require.Equal(t, "recreated-etag", obj.ETag)
+				return
+			}
+
+			require.ErrorIs(t, err, &database.ErrNotFound{}, "the delete must remove a copy of the value it removed")
+			require.Empty(t, listBuckets(t, raw))
+		})
+	}
+}
+
+// A save that read the entry from its legacy object writes to that object. If the migration copied the entry to its
+// current object before that write, reads no longer return the legacy object, so the save makes its write visible
+// or undoes it.
+func Test_APIServerClient_Save_ReconcilesLegacyWrite(t *testing.T) {
+	t.Parallel()
+	current, legacy := resourceName(migrateTarget), legacyResourceName(migrateTarget)
+	for _, tt := range []struct {
+		name string
+
+		// copied is the value of the current copy when the save writes to the legacy object: a copy of the legacy
+		// entry, or a value another writer saved to the copy.
+		copied string
+
+		// later writes another value to the legacy object after the save, as an older writer that knows only legacy
+		// names would.
+		later bool
+
+		conditional bool
+		wantErr     error
+
+		// stored is the value reads return after the save, objects the objects that remain, and migrated the result of
+		// the migration that runs after the save.
+		stored   string
+		objects  []string
+		migrated hashmigration.Result
+	}{
+		{name: "copy of the replaced value", copied: "legacy", conditional: true, stored: "updated", objects: []string{current, legacy}, migrated: hashmigration.Result{Deduplicated: 1}},
+		{name: "copy saved by another writer", copied: "other", conditional: true, wantErr: &database.ErrConcurrency{}, stored: "other", objects: []string{current}},
+		{name: "copy saved by another writer, unconditional save", copied: "other", stored: "other", objects: []string{current}},
+		{name: "legacy write replaced by a later write", copied: "other", later: true, conditional: true, stored: "other", objects: []string{current, legacy}, migrated: hashmigration.Result{Conflicts: 1}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			saved := false
+			client, raw := newMigrateClient(t, interceptor.Funcs{
+				Update: func(ctx context.Context, c runtimeclient.WithWatch, obj runtimeclient.Object, opts ...runtimeclient.UpdateOption) error {
+					if obj.GetName() != legacy || saved {
+						return c.Update(ctx, obj, opts...)
+					}
+
+					// The migration copies the entry after the save read it from the legacy object, and another writer
+					// may save a new value to that copy.
+					saved = true
+					require.NoError(t, c.Create(ctx, fallbackTestResource(t, migrateNamespace, current, tt.copied, []resources.ID{migrateTarget})))
+					if err := c.Update(ctx, obj, opts...); err != nil {
+						return err
+					}
+
+					if tt.later {
+						stored := &ucpv1alpha1.Resource{}
+						require.NoError(t, c.Get(ctx, runtimeclient.ObjectKey{Namespace: migrateNamespace, Name: legacy}, stored))
+						stored.Entries = fallbackTestResource(t, migrateNamespace, legacy, "later", []resources.ID{migrateTarget}).Entries
+						require.NoError(t, c.Update(ctx, stored))
+					}
+					return nil
+				},
+			}, fallbackTestResource(t, migrateNamespace, legacy, "legacy", []resources.ID{migrateTarget}))
+
+			options := []database.SaveOptions{}
+			if tt.conditional {
+				options = append(options, database.WithETag("legacy-etag"))
+			}
+			err := client.Save(t.Context(), &database.Object{ID: migrateTarget.String(), Data: map[string]any{"format": "updated"}}, options...)
+			require.True(t, saved)
+			if tt.wantErr != nil {
+				require.ErrorIs(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+
+			obj, err := client.Get(t.Context(), migrateTarget.String())
+			require.NoError(t, err)
+			require.Equal(t, map[string]any{"format": tt.stored}, obj.Data)
+			objects := slices.Clone(tt.objects)
+			slices.Sort(objects)
+			require.Equal(t, objects, bucketNames(listBuckets(t, raw)))
+
+			result, err := client.MigrateLegacyNames(t.Context())
+			require.NoError(t, err)
+			require.Equal(t, tt.migrated, result)
+			obj, err = client.Get(t.Context(), migrateTarget.String())
+			require.NoError(t, err)
+			require.Equal(t, map[string]any{"format": tt.stored}, obj.Data, "the migration must keep the value reads returned")
+		})
+	}
+}
+
+// A shutdown that cancels the pass right after the move wrote its copy must not leave a copy of an entry that a delete
+// removed meanwhile, because nothing else would remove it.
+func Test_APIServerClient_MigrateLegacyNames_FinishesWhenCanceled(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	legacy := legacyResourceName(migrateTarget)
+	client, raw := newMigrateClient(t, interceptor.Funcs{
+		Get: func(ctx context.Context, c runtimeclient.WithWatch, key runtimeclient.ObjectKey, obj runtimeclient.Object, opts ...runtimeclient.GetOption) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			return c.Get(ctx, key, obj, opts...)
+		},
+		Update: func(ctx context.Context, c runtimeclient.WithWatch, obj runtimeclient.Object, opts ...runtimeclient.UpdateOption) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			return c.Update(ctx, obj, opts...)
+		},
+		Delete: func(ctx context.Context, c runtimeclient.WithWatch, obj runtimeclient.Object, opts ...runtimeclient.DeleteOption) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			return c.Delete(ctx, obj, opts...)
+		},
+		Create: func(ctx context.Context, c runtimeclient.WithWatch, obj runtimeclient.Object, opts ...runtimeclient.CreateOption) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if err := c.Create(ctx, obj, opts...); err != nil {
+				return err
+			}
+
+			// A delete that read the current object before the copy existed removes the legacy copy, and the component
+			// shuts down.
+			stored := &ucpv1alpha1.Resource{}
+			require.NoError(t, c.Get(ctx, runtimeclient.ObjectKey{Namespace: migrateNamespace, Name: legacy}, stored))
+			require.NoError(t, c.Delete(ctx, stored))
+			cancel()
+			return nil
+		},
+	}, fallbackTestResource(t, migrateNamespace, legacy, "legacy", []resources.ID{migrateTarget}))
+
+	result, err := client.MigrateLegacyNames(ctx)
+	require.NoError(t, err)
+	require.Equal(t, hashmigration.Result{}, result)
+	require.Empty(t, listBuckets(t, raw), "the move must remove its copy of the deleted entry")
+}
+
 func Test_APIServerClient_MigrateLegacyNames_ConcurrentMigrators(t *testing.T) {
 	t.Parallel()
 	var other hashmigration.Result

@@ -120,6 +120,12 @@ func (f *stateFixture) state(suffix string) []string {
 }
 
 func (f *stateFixture) setLease(suffix string, holder *string, renewed time.Time) {
+	f.setMigrationLease(suffix, "", holder, renewed)
+}
+
+// setMigrationLease creates the lock of the state stored under suffix. A lock held by a migrator records where the
+// state moves, current, as the migrator writes it.
+func (f *stateFixture) setMigrationLease(suffix string, current string, holder *string, renewed time.Time) {
 	duration := int32(stateMigrationLeaseDuration.Seconds())
 	renewTime := metav1.NewMicroTime(renewed)
 	lease := &coordinationv1.Lease{
@@ -128,6 +134,9 @@ func (f *stateFixture) setLease(suffix string, holder *string, renewed time.Time
 	}
 	if holder != nil {
 		lease.Annotations = map[string]string{tfstateLockInfoAnnotation: `{"ID":"` + *holder + `","Operation":"OperationTypeApply","Who":"terraform"}`}
+		if current != "" {
+			lease.Annotations[AnnotationStateMigratedTo] = current
+		}
 	}
 	_, err := f.client.CoordinationV1().Leases(RadiusNamespace).Create(f.t.Context(), lease, metav1.CreateOptions{})
 	require.NoError(f.t, err)
@@ -1050,6 +1059,139 @@ func Test_MigrateLegacyStates_HeldLocks(t *testing.T) {
 
 		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
 		require.Equal(t, StateMigrationHolderPrefix+"other", *f.lease(legacy).Spec.HolderIdentity)
+	})
+}
+
+func Test_MigrateLegacyStates_UnfinishedMoves(t *testing.T) {
+	t.Parallel()
+
+	// keepAfterFailedCommit runs a pass whose commit fails, so the migrator keeps the lock of a published copy.
+	keepAfterFailedCommit := func(f *stateFixture, legacy string) {
+		failing := true
+		f.client.PrependReactor("update", "leases", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			if failing && action.(k8stesting.UpdateAction).GetObject().(*coordinationv1.Lease).Annotations[AnnotationStateMigratedParts] != "" {
+				return true, nil, errors.New("connection reset")
+			}
+			return false, nil, nil
+		})
+		require.Equal(f.t, hashmigration.Result{Remaining: 1}, f.migrate())
+		f.requireHeld(legacy)
+		failing = false
+	}
+
+	// restart returns a migrator in a new process, after the lock of the stopped one expired.
+	restart := func(f *stateFixture) {
+		f.migrator = NewStateMigrator(f.client)
+		f.migrator.now = func() time.Time { return f.now }
+		f.now = f.now.Add(stateMigrationLeaseDuration + time.Second)
+	}
+
+	t.Run("restarted migrator releases the lock of a deleted resource", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a", "b")
+		keepAfterFailedCommit(f, legacy)
+		require.Equal(t, current, f.lease(legacy).Annotations[AnnotationStateMigratedTo], "the lock records where the state moves")
+
+		// The resource is deleted: its destroy uses the published copy and deletes its first Secret. Then the component
+		// restarts, so the new migrator knows nothing of the lock it kept.
+		require.NoError(t, f.client.CoreV1().Secrets(RadiusNamespace).Delete(t.Context(), stateSecretName(current, 0), metav1.DeleteOptions{}))
+		require.NoError(t, f.db.Delete(t.Context(), migrateResourcePath+"redis"))
+		restart(f)
+
+		require.Equal(t, 1, f.migrate().Remaining)
+		f.requireFree(legacy)
+		require.NotContains(t, f.lease(legacy).Annotations, AnnotationStateMigratedTo, "a released lock does not record a move")
+		require.Empty(t, f.chunkNames(current))
+		require.Equal(t, []string{"a", "b"}, f.state(legacy))
+		require.Equal(t, hashmigration.Result{}, f.migrate())
+	})
+
+	t.Run("restarted migrator commits a published copy of a deleted resource", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a", "b")
+		keepAfterFailedCommit(f, legacy)
+		require.NoError(t, f.db.Delete(t.Context(), migrateResourcePath+"redis"))
+		restart(f)
+
+		require.Equal(t, hashmigration.Result{Migrated: 1}, f.migrate())
+		require.Empty(t, f.state(legacy))
+		require.Equal(t, []string{"a", "b"}, f.state(current))
+		f.requireTombstone(legacy, current)
+		require.Equal(t, current, f.lease(legacy).Annotations[AnnotationStateMigratedTo], "a tombstone records where the state moved")
+	})
+
+	t.Run("restarted migrator resolves a kept lock that an operation waits for", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a", "b")
+		keepAfterFailedCommit(f, legacy)
+		f.addResourceInState("redis", migrateApplicationID, "Updating")
+		restart(f)
+
+		require.Equal(t, hashmigration.Result{Migrated: 1}, f.migrate())
+		f.requireTombstone(legacy, current)
+	})
+
+	t.Run("live migrator keeps its lock until it expires", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a")
+		require.NoError(t, f.db.Delete(t.Context(), migrateResourcePath+"redis"))
+		f.setMigrationLease(legacy, current, new(StateMigrationHolderPrefix+"other"), f.now)
+
+		require.Equal(t, 1, f.migrate().Remaining)
+		require.Equal(t, StateMigrationHolderPrefix+"other", *f.lease(legacy).Spec.HolderIdentity)
+
+		f.now = f.now.Add(stateMigrationLeaseDuration + time.Second)
+		require.Equal(t, 1, f.migrate().Remaining, "the copy of a state whose resource is not known is not published")
+		f.requireFree(legacy)
+		require.Equal(t, hashmigration.Result{}, f.migrate())
+	})
+
+	t.Run("locks the migration does not hold are left alone", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		_, terraform := f.addResource("terraform", migrateApplicationID)
+		f.setLease(terraform, new("terraform-run"), f.now.Add(-time.Hour))
+		moved, tombstone := f.addResource("moved", migrateApplicationID)
+		f.setMigrationLease(tombstone, moved, new(StateMigrationTombstone), f.now.Add(-time.Hour))
+		_, free := f.addResource("free", migrateApplicationID)
+		f.setLease(free, nil, f.now)
+
+		require.Equal(t, hashmigration.Result{}, f.migrate())
+		require.Equal(t, "terraform-run", *f.lease(terraform).Spec.HolderIdentity)
+		require.Equal(t, StateMigrationTombstone, *f.lease(tombstone).Spec.HolderIdentity)
+		f.requireFree(free)
+	})
+
+	t.Run("lock without a destination is reported", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		_, legacy := f.addResource("redis", migrateApplicationID)
+		require.NoError(t, f.db.Delete(t.Context(), migrateResourcePath+"redis"))
+		f.setLease(legacy, new(StateMigrationHolderPrefix+"other"), f.now.Add(-time.Hour))
+
+		result, err := f.migrator.MigrateLegacyStates(t.Context(), f.db)
+		require.NoError(t, err)
+		require.Equal(t, 1, result.Skipped)
+		require.Contains(t, result.Message, "does not record where the state moves")
+	})
+
+	t.Run("listing the locks fails", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		f.client.PrependReactor("list", "leases", func(k8stesting.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewForbidden(schema.GroupResource{Group: "coordination.k8s.io", Resource: "leases"}, "", errors.New("denied"))
+		})
+
+		_, err := f.migrator.MigrateLegacyStates(t.Context(), f.db)
+		require.ErrorContains(t, err, "failed to list Terraform state locks")
 	})
 }
 

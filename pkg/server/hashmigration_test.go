@@ -18,6 +18,7 @@ package server
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
+	"github.com/radius-project/radius/pkg/corerp/renderers/container"
 	k8slabels "github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
@@ -87,6 +89,41 @@ func Test_HashMigrationService(t *testing.T) {
 	deployment, err := client.AppsV1().Deployments("app").Get(ctx, "frontend", metav1.GetOptions{})
 	require.NoError(t, err)
 	require.Equal(t, k8slabels.RecordSecretHash(k8slabels.LegacyHashSecretData(secretData), k8slabels.HashSecretData(secretData)), deployment.Annotations[k8slabels.AnnotationSecretHashSHA256])
+}
+
+// Pods of an earlier Applications RP release can still deploy containers with legacy secret hashes, so the migration
+// is not complete while they run.
+func Test_HashMigrationService_WaitsForOtherReleases(t *testing.T) {
+	ctx := t.Context()
+	self, err := os.Hostname()
+	require.NoError(t, err)
+
+	pod := func(name string, image string) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: hashmigration.DefaultNamespace, Labels: map[string]string{hashmigration.LabelAppName: "applications-rp"}},
+			Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "applications-rp", Image: image}}},
+			Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+		}
+	}
+
+	client := fake.NewClientset(pod(self, "applications-rp:new"), pod("applications-rp-old", "applications-rp:old"))
+	clientFn := func() (kubernetes.Interface, error) { return client, nil }
+	targetFn := func(context.Context) (kubernetes.Interface, error) { return client, nil }
+	reporter := hashmigration.NewConfigMapReporter(client, hashmigration.DefaultNamespace)
+	service := newHashMigrationService(databaseprovider.FromMemory(), clientFn, targetFn, reporter)
+	require.False(t, service.RunPass(ctx))
+
+	key := hashmigration.StatusKey(HashMigrationComponent, container.SecretHashMigrationStepName)
+	statuses, err := hashmigration.ReadStatus(ctx, client, hashmigration.DefaultNamespace)
+	require.NoError(t, err)
+	require.Equal(t, hashmigration.StateInProgress, statuses[key].State)
+	require.Contains(t, statuses[key].Message, "applications-rp-old")
+
+	require.NoError(t, client.CoreV1().Pods(hashmigration.DefaultNamespace).Delete(ctx, "applications-rp-old", metav1.DeleteOptions{}))
+	require.True(t, service.RunPass(ctx))
+	statuses, err = hashmigration.ReadStatus(ctx, client, hashmigration.DefaultNamespace)
+	require.NoError(t, err)
+	require.Equal(t, hashmigration.StateComplete, statuses[key].State)
 }
 
 func Test_NewHashMigrationService_WithoutKubernetes(t *testing.T) {

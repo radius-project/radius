@@ -85,7 +85,8 @@ type Result struct {
 	// Deduplicated counts legacy copies that were removed because an identical current copy already existed.
 	Deduplicated int `json:"deduplicated,omitempty"`
 
-	// Remaining counts legacy values that could not be migrated during the pass. They are retried.
+	// Remaining counts legacy values that could not be migrated during the pass, and work the step waits for, such as
+	// pods of an earlier release that can still write legacy values. They are retried.
 	Remaining int `json:"remaining"`
 
 	// Conflicts counts values that exist under both their legacy and current names with different content. The
@@ -231,6 +232,12 @@ func (s *Service) Name() string {
 // Run implements hosting.Service.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// A status recorded before this process started can be stale. For example, after a rollback to an earlier release
+	// that writes legacy values and an upgrade back, the recorded status still says Complete until this process has run
+	// the step again.
+	s.reportPending(ctx)
+
 	if !sleep(ctx, s.options.InitialDelay) {
 		return ctx.Err()
 	}
@@ -248,6 +255,30 @@ func (s *Service) Run(ctx context.Context) error {
 		}
 
 		interval = min(interval*2, s.options.MaxRetryInterval)
+	}
+}
+
+// pendingMessage is the message of the status that records a step as in progress until this process runs it.
+const pendingMessage = "waiting for the first pass of the migration after the component started"
+
+// reportPending records every step as in progress until this process runs it. It is best effort: every pass records
+// the status of each step again, and the migration is not complete until those statuses are recorded.
+func (s *Service) reportPending(ctx context.Context) {
+	if s.options.Reporter == nil {
+		return
+	}
+
+	logger := ucplog.FromContextOrDiscard(ctx)
+	for _, step := range s.options.Steps {
+		status := Status{
+			Result:  Result{Message: pendingMessage},
+			State:   StateInProgress,
+			Version: version.Version(),
+			Updated: s.now().UTC(),
+		}
+		if err := s.options.Reporter.Report(ctx, StatusKey(s.options.Component, step.Name()), status); err != nil {
+			logger.Info("Unable to record SHA-256 migration status", "component", s.options.Component, "step", step.Name(), "error", err.Error())
+		}
 	}
 }
 
