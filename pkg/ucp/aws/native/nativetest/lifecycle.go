@@ -28,6 +28,7 @@ import (
 	"github.com/wI2L/jsondiff"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 )
@@ -67,8 +68,10 @@ type Lifecycle struct {
 const cleanupTimeout = 10 * time.Minute
 
 // Run creates the resource, waits for it, and checks Read; updates it when Update is set; then deletes it and waits
-// until AWS no longer has it. It returns the resource's identifier. When recording, a run that fails after the create
-// still deletes the resource in cleanup, so a failed recording leaves nothing running in AWS.
+// until AWS no longer has it. It returns the resource's identifier. When recording, a run that fails once the create
+// may have made the resource, including a create that failed partway, still deletes it in cleanup, so a failed
+// recording leaves nothing running in AWS. A create AWS rejected made nothing, so its identifier, which may name a
+// resource that already existed, is never deleted.
 func (l Lifecycle) Run(t testing.TB) string {
 	t.Helper()
 	ctx := t.Context()
@@ -82,15 +85,14 @@ func (l Lifecycle) Run(t testing.TB) string {
 	// A new client token for every run, so a recording never gets a resource an earlier recording made. A replay
 	// doesn't compare request bodies, so the token can differ from the one recorded.
 	identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: l.Properties, ClientToken: uuid.NewString()})
-	require.NoError(t, err)
-	if identifier == "" {
+	if identifier == "" && err == nil {
 		encoder, ok := h.(native.IdentifierEncoder)
 		require.True(t, ok, "Create returned no identifier, and the handler has no identifier encoding")
 		identifier, err = encoder.Identifier(l.Properties)
 		require.NoError(t, err)
 	}
 	deleted := false
-	if l.Session.Recording() && !l.SkipDelete {
+	if l.Session.Recording() && !l.SkipDelete && identifier != "" && mayHaveCreated(err) {
 		t.Cleanup(func() {
 			if deleted {
 				return
@@ -104,6 +106,7 @@ func (l Lifecycle) Run(t testing.TB) string {
 			t.Logf("deleted %s after the recording failed", identifier)
 		})
 	}
+	require.NoError(t, err)
 	l.wait(t, ctx, identifier, native.OperationCreate)
 	current := l.read(t, ctx, identifier)
 	RequireSubset(t, want, current)
@@ -130,6 +133,20 @@ func (l Lifecycle) Run(t testing.TB) string {
 	deleted = true
 	l.wait(t, ctx, identifier, native.OperationDelete)
 	return identifier
+}
+
+// mayHaveCreated reports whether a create that returned err may have made the resource: it succeeded, or failed after
+// AWS applied some of it, or failed without saying. A create AWS rejected, by its outcome or as a client fault, made
+// nothing.
+func mayHaveCreated(err error) bool {
+	if err == nil {
+		return true
+	}
+	var failure *native.Failure
+	if errors.As(err, &failure) {
+		return failure.Outcome != native.OutcomeRejected
+	}
+	return !ucp_aws.IsClientFault(err)
 }
 
 // deleteAndWait deletes the resource and waits until AWS no longer has it, or ctx ends.

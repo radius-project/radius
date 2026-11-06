@@ -94,6 +94,23 @@ func (d doneOnDelete) Progress(ctx context.Context, region string, identifier st
 	return d.Handler.Progress(ctx, region, identifier, op)
 }
 
+// createFails makes Create return its identifier with err, after the create reached AWS, or before it when reached is
+// false, as a handler does for a create AWS applied partly or rejected.
+type createFails struct {
+	*nativefake.Handler
+	err     error
+	reached bool
+}
+
+func (c createFails) Create(ctx context.Context, request native.CreateRequest) (string, error) {
+	if c.reached {
+		if _, err := c.Handler.Create(ctx, request); err != nil {
+			return "", err
+		}
+	}
+	return "app", c.err
+}
+
 func Test_Lifecycle_Cleanup(t *testing.T) {
 	const typeName = "AWS::Test::Recorded"
 	newRun := func(t *testing.T, recording bool) (Lifecycle, *nativefake.Handler, *awsfake.CloudControl) {
@@ -128,6 +145,42 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		require.True(t, f.failed)
 		require.Equal(t, 1, deletes(h))
 		require.Zero(t, store.Count(typeName))
+	})
+
+	t.Run("a partly applied create is deleted in cleanup", func(t *testing.T) {
+		for _, err := range []error{&native.Failure{Message: "partly applied", Outcome: native.OutcomePartial}, errors.New("the response was lost")} {
+			l, h, store := newRun(t, true)
+			l.Handler = createFails{Handler: h, err: err, reached: true}
+			f := newFakeTB(t)
+			f.run(func() { l.Run(f) })
+			require.True(t, f.failed)
+			require.Equal(t, 1, deletes(h), err.Error())
+			require.Zero(t, store.Count(typeName), err.Error())
+		}
+	})
+
+	t.Run("a rejected create leaves a resource of the same name alone", func(t *testing.T) {
+		for _, err := range []error{&native.Failure{Message: "already exists", ClientError: true, Outcome: native.OutcomeRejected}, nativefake.ClientError("AlreadyExistsFault", "already exists")} {
+			l, h, store := newRun(t, true)
+			store.Put(typeName, "app", map[string]any{"Name": "app"})
+			l.Handler = createFails{Handler: h, err: err}
+			f := newFakeTB(t)
+			f.run(func() { l.Run(f) })
+			require.True(t, f.failed)
+			require.Empty(t, f.cleanups, err.Error())
+			require.Zero(t, deletes(h), err.Error())
+			require.Equal(t, 1, store.Count(typeName), err.Error())
+		}
+	})
+
+	t.Run("SkipDelete leaves a partly applied create", func(t *testing.T) {
+		l, h, store := newRun(t, true)
+		l.SkipDelete = true
+		l.Handler = createFails{Handler: h, err: &native.Failure{Message: "partly applied", Outcome: native.OutcomePartial}, reached: true}
+		f := newFakeTB(t)
+		f.run(func() { l.Run(f) })
+		require.Empty(t, f.cleanups)
+		require.Equal(t, 1, store.Count(typeName))
 	})
 
 	t.Run("a successful recording deletes once", func(t *testing.T) {
