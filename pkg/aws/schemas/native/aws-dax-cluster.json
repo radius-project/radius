@@ -130,8 +130,6 @@
         "dax:DescribeClusters",
         "dax:TagResource",
         "dax:ListTags",
-        "dax:CreateParameterGroup",
-        "dax:CreateSubnetGroup",
         "ec2:CreateNetworkInterface",
         "ec2:DeleteNetworkInterface",
         "ec2:DescribeNetworkInterfaces",
