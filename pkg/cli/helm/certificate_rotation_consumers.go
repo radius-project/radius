@@ -51,6 +51,9 @@ type rotationConsumerObserver struct {
 	namespace string
 	release   string
 	observe   func(context.Context, *rest.Config, TLSProofTarget) (PodTLSProof, error)
+	// initial permits the pre-rotation Secret/mutable-ConfigMap layout only for
+	// the read-only compatibility check. Phase barriers require immutable trust.
+	initial bool
 }
 
 type rotationInventory struct {
@@ -99,7 +102,7 @@ func (o *rotationConsumerObserver) inventory(ctx context.Context, expected []rot
 	replicas := map[types.UID]int32{}
 	for _, consumer := range expected {
 		if !slices.Contains(rotationComponents, consumer.Name) || consumers[consumer.Name].Name != "" ||
-			consumer.DeploymentUID == "" || consumer.TrustMap == "" || consumer.ProofPort == 0 || consumer.LeafSHA256 == "" {
+			consumer.DeploymentUID == "" || (!o.initial && consumer.TrustMap == "") || consumer.ProofPort == 0 || consumer.LeafSHA256 == "" {
 			return inventory, errors.New("invalid or duplicate CA rotation consumer")
 		}
 		consumers[consumer.Name] = consumer
@@ -121,22 +124,24 @@ func (o *rotationConsumerObserver) inventory(ctx context.Context, expected []rot
 			deployment.Status.AvailableReplicas != count || deployment.Status.Replicas != count {
 			return inventory, fmt.Errorf("CA rotation deployment %s has not converged", consumer.Name)
 		}
-		if consumer.Name == "controller" && (count != 1 || deployment.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType) {
+		if consumer.Name == "controller" && (count != 1 || (!o.initial && deployment.Spec.Strategy.Type != appsv1.RecreateDeploymentStrategyType)) {
 			return inventory, errors.New("CA rotation requires a single controller with Recreate strategy, not concurrent active controllers")
 		}
 		if err := rotationConsumerTemplate(deployment.Spec.Template, consumer); err != nil {
 			return inventory, fmt.Errorf("CA rotation deployment %s: %w", consumer.Name, err)
 		}
-		trust, err := o.kube.CoreV1().ConfigMaps(o.namespace).Get(ctx, consumer.TrustMap, metav1.GetOptions{})
-		if err != nil {
-			return inventory, fmt.Errorf("cannot inspect CA rotation public trust: %w", err)
+		if !o.initial {
+			trust, err := o.kube.CoreV1().ConfigMaps(o.namespace).Get(ctx, consumer.TrustMap, metav1.GetOptions{})
+			if err != nil {
+				return inventory, fmt.Errorf("cannot inspect CA rotation public trust: %w", err)
+			}
+			digest, _, err := mtls.TrustBundleDigest([]byte(trust.Data["ca.crt"]), time.Now())
+			if err != nil || digest != consumer.TrustSHA256 || trust.Immutable == nil || !*trust.Immutable ||
+				trust.UID == "" || trust.DeletionTimestamp != nil || trust.Labels[rotationOwner] != o.release {
+				return inventory, errors.New("CA rotation consumer trust must be an intact immutable public generation")
+			}
+			inventory.versions[trust.UID] = trust.ResourceVersion
 		}
-		digest, _, err := mtls.TrustBundleDigest([]byte(trust.Data["ca.crt"]), time.Now())
-		if err != nil || digest != consumer.TrustSHA256 || trust.Immutable == nil || !*trust.Immutable ||
-			trust.UID == "" || trust.DeletionTimestamp != nil || trust.Labels[rotationOwner] != o.release {
-			return inventory, errors.New("CA rotation consumer trust must be an intact immutable public generation")
-		}
-		inventory.versions[trust.UID] = trust.ResourceVersion
 		inventory.versions[deployment.UID] = deployment.ResourceVersion
 		deployments[deployment.UID], replicas[deployment.UID] = deployment, count
 	}
@@ -267,6 +272,9 @@ func rotationConsumerTemplate(template corev1.PodTemplateSpec, expected rotation
 			podUID.Value != "" || podUID.ValueFrom == nil || podUID.ValueFrom.FieldRef == nil ||
 			podUID.ValueFrom.FieldRef.FieldPath != "metadata.uid" {
 			return errors.New("process evidence is not pinned to the intended trust generation and pod identity")
+		}
+		if expected.TrustMap == "" {
+			return nil
 		}
 		for _, mount := range container.VolumeMounts {
 			if mount.Name != "mtls" || mount.MountPath != "/var/run/radius/mtls" ||

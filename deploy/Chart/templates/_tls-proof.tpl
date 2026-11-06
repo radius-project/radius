@@ -3,8 +3,12 @@ Opt-in public component TLS evidence on the existing Go metrics listener.
 Deployment-engine proof remains a separate opt-in for compatible engine images.
 */}}
 {{- define "radius.authz.startupProofEnv" -}}
+{{- $rotation := include "radius.rotationState" . | mustFromJson -}}
 {{- $rbac := .Values.global.rbac | default dict -}}
-{{- $proof := $rbac.startupProof | default dict -}}
+{{- $proof := deepCopy ($rbac.startupProof | default dict) -}}
+{{- if and $rotation $proof.enabled -}}
+{{- $_ := set $proof "expectedTrustSHA256" $rotation.plan.targetTrustSHA256 -}}
+{{- end -}}
 {{- $enabled := false -}}
 {{- if hasKey $proof "enabled" -}}
 {{- $enabled = $proof.enabled -}}

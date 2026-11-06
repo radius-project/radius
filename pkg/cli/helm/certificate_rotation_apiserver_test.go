@@ -104,7 +104,7 @@ func TestRotationStoreLifecycle(t *testing.T) {
 	_, err = store.begin(t.Context(), uuid.NewString(), next)
 	require.Error(t, err, "cannot replace an unfinished transaction")
 
-	for _, phase := range []rotationPhase{rotationAdopt, rotationIssue, rotationRetire, rotationComplete} {
+	for _, phase := range rotationPhases[1:] {
 		advanceRotationTest(t, store, phase)
 	}
 	live, err := store.dynamic.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
@@ -120,7 +120,7 @@ func TestRotationStoreLifecycle(t *testing.T) {
 	require.Equal(t, next, second.OldCA)
 	require.NoError(t, store.reconcileTrust(t.Context(), second.ID))
 	require.ErrorContains(t, store.reconcileTrust(t.Context(), id), "transaction or APIService identity changed")
-	for _, phase := range []rotationPhase{rotationAdopt, rotationIssue, rotationRetire, rotationComplete} {
+	for _, phase := range rotationPhases[1:] {
 		advanceRotationTest(t, store, phase)
 	}
 }
@@ -168,7 +168,7 @@ func TestRotationStoreRejectsDelayedWriteWithoutAdmissionPolicy(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatal("writer did not reach its conditional update")
 	}
-	for _, phase := range []rotationPhase{rotationAdopt, rotationIssue, rotationRetire, rotationComplete} {
+	for _, phase := range rotationPhases[1:] {
 		advanceRotationTest(t, store, phase)
 	}
 	unblock.Do(func() { close(release) })
@@ -216,7 +216,7 @@ func TestRotationStoreRejectsJournalReplay(t *testing.T) {
 	require.NoError(t, store.reconcileTrust(t.Context(), id))
 	initial, _, err := store.read(t.Context())
 	require.NoError(t, err)
-	for _, phase := range []rotationPhase{rotationAdopt, rotationIssue, rotationRetire, rotationComplete} {
+	for _, phase := range rotationPhases[1:] {
 		advanceRotationTest(t, store, phase)
 	}
 	maps := store.kube.CoreV1().ConfigMaps(store.namespace)

@@ -69,7 +69,7 @@ func TestRotationHelmTrustOwnership(t *testing.T) {
 				state, err := store.begin(t.Context(), uuid.NewString(), next)
 				require.NoError(t, err)
 				require.NoError(t, store.reconcileTrust(t.Context(), state.ID))
-				for _, phase := range []rotationPhase{rotationAdopt, rotationIssue, rotationRetire, rotationComplete} {
+				for _, phase := range rotationPhases[1:] {
 					advanceRotationTest(t, store, phase)
 				}
 			})

@@ -22,6 +22,7 @@ kind: Certificate
 metadata:
   name: radius-ca
   namespace: {{ $ns }}
+  {{- include "radius.rotationMetadata" (dict "object" $caObject "state" $rotation) | nindent 2 }}
   labels:
     app.kubernetes.io/part-of: radius
 spec:
@@ -50,6 +51,7 @@ kind: Issuer
 metadata:
   name: radius-ca-issuer
   namespace: {{ $ns }}
+  {{- include "radius.rotationMetadata" (dict "object" $issuerObject "state" $rotation) | nindent 2 }}
   labels:
     app.kubernetes.io/part-of: radius
 spec:
@@ -65,6 +67,7 @@ kind: Certificate
 metadata:
   name: radius-apiserver-ca
   namespace: {{ $ns }}
+  {{- include "radius.rotationMetadata" (dict "object" (index $objects $component) "state" $rotation) | nindent 2 }}
   labels:
     app.kubernetes.io/part-of: radius
 spec:

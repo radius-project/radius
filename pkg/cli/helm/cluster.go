@@ -370,6 +370,12 @@ func (i *Impl) logInfo(format string, v ...any) {
 // csi-driver-spiffe). It prepares and checks the Radius and Contour charts before it changes the cluster, and then
 // installs cert-manager, csi-driver-spiffe, Contour, Radius, and the Radius Contour Gateway in that order.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	if clusterOptions.Certificates.RotationPhase != "" {
+		return fmt.Errorf("CA rotation requires an installed Radius; use rad upgrade kubernetes --ca-rotation-phase")
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "install", nil); err != nil {
+		return err
+	}
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
 	// The RPs and other resources are all deployed to the
@@ -388,6 +394,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil); err != nil {
+		return err
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "install", radiusHelmChart); err != nil {
 		return err
 	}
 
@@ -482,6 +491,9 @@ func setCertManagerRequesters(radiusValues map[string]any, requesters []string) 
 // once the Radius Pods that mount its certificate volumes are gone, so the driver can unmount them. When it keeps the
 // driver, it returns a *CSIDriverSPIFFEKeptError after removing Radius and Contour.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "uninstall", nil); err != nil {
+		return err
+	}
 	// Uninstall Radius
 	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
 		return err
@@ -595,6 +607,12 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 // See the Helm upgrade documentation for details on ResetThenReuseValues behavior:
 // https://helm.sh/docs/helm/helm_upgrade/#options
 func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	if clusterOptions.Certificates.RotationPhase != "" {
+		return i.runCertificateRotation(ctx, clusterOptions, kubeContext, false)
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "upgrade", nil); err != nil {
+		return err
+	}
 	helmAction := NewHelmAction(i.Helm)
 
 	// reuseValues is the inverse of the user-facing --reset-values flag: by default we
@@ -617,6 +635,9 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, true); err != nil {
+		return err
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "upgrade", radiusHelmChart); err != nil {
 		return err
 	}
 
@@ -732,6 +753,9 @@ func (i *Impl) GetLatestRadiusVersion(ctx context.Context) (string, error) {
 // RollbackRadius rolls back the Radius installation to the previous revision.
 func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	clusterOptions := NewDefaultClusterOptions()
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "rollback", nil); err != nil {
+		return err
+	}
 
 	// Initialize helm configuration
 	flags := genericclioptions.ConfigFlags{
@@ -856,6 +880,9 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 // RollbackRadiusToRevision rolls back the Radius installation to a specific revision.
 func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string, revision int) error {
 	clusterOptions := NewDefaultClusterOptions()
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "rollback", nil); err != nil {
+		return err
+	}
 
 	// Initialize helm configuration
 	flags := genericclioptions.ConfigFlags{
