@@ -524,6 +524,26 @@ func (f *fakeAPI) ModifyCluster(ctx context.Context, in *emr.ModifyClusterInput,
 	})
 }
 
+// instanceGroup returns the group with the ID instanceGroups gives it, in the cluster's Instances.
+func instanceGroup(inst map[string]any, groupID string) map[string]any {
+	if groupID == "ig-core" {
+		return asMap(inst["CoreInstanceGroup"])
+	}
+	var i int
+	if _, err := fmt.Sscanf(groupID, "ig-task-%d", &i); err != nil {
+		panic(err)
+	}
+	return asMap(asList(inst["TaskInstanceGroups"])[i])
+}
+
+func (f *fakeAPI) RemoveAutoScalingPolicy(ctx context.Context, in *emr.RemoveAutoScalingPolicyInput, _ ...func(*emr.Options)) (*emr.RemoveAutoScalingPolicyOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return &emr.RemoveAutoScalingPolicyOutput{}, f.change("RemoveAutoScalingPolicy", aws.ToString(in.ClusterId), func(props map[string]any) {
+		delete(instanceGroup(asMap(props["Instances"]), aws.ToString(in.InstanceGroupId)), "AutoScalingPolicy")
+	})
+}
+
 func (f *fakeAPI) ModifyInstanceGroups(ctx context.Context, in *emr.ModifyInstanceGroupsInput, _ ...func(*emr.Options)) (*emr.ModifyInstanceGroupsOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -531,17 +551,7 @@ func (f *fakeAPI) ModifyInstanceGroups(ctx context.Context, in *emr.ModifyInstan
 	return &emr.ModifyInstanceGroupsOutput{}, f.change("ModifyInstanceGroups", id, func(props map[string]any) {
 		inst := asMap(props["Instances"])
 		for _, m := range in.InstanceGroups {
-			count := float64(aws.ToInt32(m.InstanceCount))
-			switch groupID := aws.ToString(m.InstanceGroupId); groupID {
-			case "ig-core":
-				asMap(inst["CoreInstanceGroup"])["InstanceCount"] = count
-			default:
-				var i int
-				if _, err := fmt.Sscanf(groupID, "ig-task-%d", &i); err != nil {
-					panic(err)
-				}
-				asMap(asList(inst["TaskInstanceGroups"])[i])["InstanceCount"] = count
-			}
+			instanceGroup(inst, aws.ToString(m.InstanceGroupId))["InstanceCount"] = float64(aws.ToInt32(m.InstanceCount))
 		}
 		f.resizing[id] = true
 	})

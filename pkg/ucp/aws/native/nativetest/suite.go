@@ -153,6 +153,20 @@ type Suite struct {
 	// Duplicates is true when AWS lets more than one resource have the values the handler's Find searches by, for a
 	// handler whose Recovery is native.RecoverBySearch.
 	Duplicates bool
+
+	// RemovedItemField, when set, is a field inside an array item that a deploy sets and the next one leaves out, for
+	// a type whose Equivalent compares array items only on the values the template sets.
+	RemovedItemField *RemovedItemField
+}
+
+// RemovedItemField is a field inside an array item, such as an EMR task group's AutoScalingPolicy.
+type RemovedItemField struct {
+	// Before sets the field, and After is Before without it.
+	Before map[string]any
+	After  map[string]any
+
+	// Gone reports whether AWS no longer has the field, given the resource as AWS has it.
+	Gone func(stored map[string]any) bool
 }
 
 // Run runs every case of the suite for s.
@@ -161,6 +175,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("redeploy with no change", func(t *testing.T) { s.redeployNoChange(t) })
 	t.Run("deleted outside Radius", func(t *testing.T) { s.deletedOutsideRadius(t) })
 	t.Run("removed property", func(t *testing.T) { s.removedProperty(t) })
+	t.Run("removed field of an array item", func(t *testing.T) { s.removedItemField(t) })
 	t.Run("create-only change", func(t *testing.T) { s.createOnlyChange(t) })
 	t.Run("unchanged and changed write-only values", func(t *testing.T) { s.writeOnlyValues(t) })
 	t.Run("no write-only value in any response", func(t *testing.T) { s.noWriteOnlyInResponses(t) })
@@ -289,6 +304,35 @@ func (s Suite) removedProperty(t *testing.T) {
 	delete(without, s.Removable)
 	h.deploy(without)
 	require.NotContains(t, h.stored(), s.Removable)
+}
+
+// removedItemField deploys a template with a field inside an array item, then one without it. UCP must remove the
+// field in AWS, or reject the deploy with 400 and change nothing, never record the removal while AWS keeps it.
+func (s Suite) removedItemField(t *testing.T) {
+	f := s.RemovedItemField
+	if f == nil {
+		t.Skip("the type has no array item field to remove")
+	}
+	h := s.newHarness(t)
+	h.deploy(f.Before)
+	require.False(t, f.Gone(h.stored()), "AWS has the field after the first deploy")
+	before, applied := h.stored(), h.record().Properties.LastApplied
+
+	resp := h.put(f.After)
+	if resp.status == http.StatusBadRequest {
+		require.Equal(t, before, h.stored(), "a rejected deploy changes nothing in AWS")
+		require.Equal(t, applied, h.record().Properties.LastApplied, "a rejected deploy changes nothing in the record")
+		return
+	}
+	require.Contains(t, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted}, resp.status, resp.raw)
+	h.finish()
+	h.requireDeployed()
+	require.True(t, f.Gone(h.stored()), "the deploy succeeded, so AWS no longer has the field")
+
+	h.handler.reset()
+	resp = h.put(f.After)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, h.handler.reset(), "the removal is fully applied")
 }
 
 func (s Suite) createOnlyChange(t *testing.T) {

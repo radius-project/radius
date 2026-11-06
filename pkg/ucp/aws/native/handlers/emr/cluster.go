@@ -63,6 +63,7 @@ type API interface {
 	RemoveManagedScalingPolicy(ctx context.Context, params *emr.RemoveManagedScalingPolicyInput, optFns ...func(*emr.Options)) (*emr.RemoveManagedScalingPolicyOutput, error)
 	PutAutoTerminationPolicy(ctx context.Context, params *emr.PutAutoTerminationPolicyInput, optFns ...func(*emr.Options)) (*emr.PutAutoTerminationPolicyOutput, error)
 	RemoveAutoTerminationPolicy(ctx context.Context, params *emr.RemoveAutoTerminationPolicyInput, optFns ...func(*emr.Options)) (*emr.RemoveAutoTerminationPolicyOutput, error)
+	RemoveAutoScalingPolicy(ctx context.Context, params *emr.RemoveAutoScalingPolicyInput, optFns ...func(*emr.Options)) (*emr.RemoveAutoScalingPolicyOutput, error)
 	AddTags(ctx context.Context, params *emr.AddTagsInput, optFns ...func(*emr.Options)) (*emr.AddTagsOutput, error)
 	RemoveTags(ctx context.Context, params *emr.RemoveTagsInput, optFns ...func(*emr.Options)) (*emr.RemoveTagsOutput, error)
 	TerminateJobFlows(ctx context.Context, params *emr.TerminateJobFlowsInput, optFns ...func(*emr.Options)) (*emr.TerminateJobFlowsOutput, error)
@@ -733,8 +734,9 @@ func (h *Cluster) tagCalls(ctx context.Context, request native.UpdateRequest, op
 }
 
 // instanceCalls returns the calls that make the changes to the Instances property, and the parts of it EMR can't
-// change. EMR can resize the core and task instance groups, and set termination protection and unhealthy node
-// replacement. Everything else in Instances is fixed once the cluster starts.
+// change. EMR can resize the core and task instance groups, remove a group's automatic scaling policy, and set
+// termination protection and unhealthy node replacement. Everything else in Instances is fixed once the cluster
+// starts.
 func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateRequest) ([]func() error, []string, error) {
 	opt := inRegion(request.Region)
 	current := asMap(request.Current["Instances"])
@@ -742,6 +744,7 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 	calls := []func() error{}
 	unsupported := []string{}
 	resizes := []types.InstanceGroupModifyConfig{}
+	unscaled := []string{}
 	var groups []types.InstanceGroup
 	// With a managed scaling policy, EMR sets the instance counts and target capacities itself, so the template's
 	// values are where the cluster starts, not values to restore.
@@ -765,7 +768,7 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 				return err
 			})
 		case "CoreInstanceGroup", "TaskInstanceGroups":
-			if removesField(request.Patch, key, nil) {
+			if removesField(request.Patch, key, []string{"AutoScalingPolicy"}) {
 				unsupported = append(unsupported, "Instances/"+key)
 				continue
 			}
@@ -780,7 +783,8 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 				unsupported = append(unsupported, "Instances/"+key)
 				continue
 			}
-			resizes = append(resizes, changes...)
+			resizes = append(resizes, changes.resizes...)
+			unscaled = append(unscaled, changes.unscaled...)
 		case "MasterInstanceFleet", "CoreInstanceFleet", "TaskInstanceFleets":
 			if !scaled || removesField(request.Patch, key, capacities) || !covers(without(desired[key], capacities...), without(current[key], capacities...), false) {
 				unsupported = append(unsupported, "Instances/"+key)
@@ -789,18 +793,25 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 			unsupported = append(unsupported, "Instances/"+key)
 		}
 	}
+	groupCalls := []func() error{}
+	for _, id := range unscaled {
+		groupCalls = append(groupCalls, func() error {
+			_, err := h.api.RemoveAutoScalingPolicy(ctx, &emr.RemoveAutoScalingPolicyInput{ClusterId: aws.String(request.Identifier), InstanceGroupId: aws.String(id)}, opt)
+			return err
+		})
+	}
 	if len(resizes) > 0 {
-		calls = append([]func() error{func() error {
+		groupCalls = append(groupCalls, func() error {
 			_, err := h.api.ModifyInstanceGroups(ctx, &emr.ModifyInstanceGroupsInput{ClusterId: aws.String(request.Identifier), InstanceGroups: resizes}, opt)
 			return err
-		}}, calls...)
+		})
 	}
-	return calls, unsupported, nil
+	return append(groupCalls, calls...), unsupported, nil
 }
 
 // removesField reports whether the patch removes a property inside the Instances property key, other than those in
-// allowed. EMR has no call that clears one, and the comparison with AWS only checks the properties the template still
-// sets, so a removal would otherwise count as applied.
+// allowed, which the update handles. EMR has no call that clears any other, and the comparison with AWS only checks
+// the properties the template still sets, so a removal would otherwise count as applied.
 func removesField(patch jsondiff.Patch, key string, allowed []string) bool {
 	prefix := "/Instances/" + key + "/"
 	for _, op := range patch {
@@ -845,16 +856,24 @@ func changedKeys(patch jsondiff.Patch, current map[string]any, desired map[strin
 	return out
 }
 
-// groupResizes returns the instance count changes that take the AWS instance groups to desired, the template's
-// CoreInstanceGroup or TaskInstanceGroups. It returns false when desired changes anything else, such as the instance
-// type or the number of task groups. It leaves the count of a group EMR scales as it is: every group when scaled is
-// true, because the cluster has a managed scaling policy, and a group with an automatic scaling policy.
-func groupResizes(key string, desired any, groups []types.InstanceGroup, clusterID string, scaled bool) ([]types.InstanceGroupModifyConfig, bool) {
+// groupChanges are the changes that take the AWS instance groups to the template's: the groups whose automatic scaling
+// policy the template no longer sets, and the instance count changes.
+type groupChanges struct {
+	unscaled []string
+	resizes  []types.InstanceGroupModifyConfig
+}
+
+// groupResizes returns the changes that take the AWS instance groups to desired, the template's CoreInstanceGroup or
+// TaskInstanceGroups. It returns false when desired changes anything else, such as the instance type, the automatic
+// scaling policy, or the number of task groups. It leaves the count of a group EMR scales as it is: every group when
+// scaled is true, because the cluster has a managed scaling policy, and a group that keeps an automatic scaling policy.
+// A group whose policy the template no longer sets loses it and then gets the template's count.
+func groupResizes(key string, desired any, groups []types.InstanceGroup, clusterID string, scaled bool) (groupChanges, bool) {
 	role := types.InstanceGroupTypeTask
 	want := asList(desired)
 	if key == "CoreInstanceGroup" {
 		if desired == nil {
-			return nil, false
+			return groupChanges{}, false
 		}
 		role = types.InstanceGroupTypeCore
 		want = []any{desired}
@@ -866,7 +885,7 @@ func groupResizes(key string, desired any, groups []types.InstanceGroup, cluster
 		}
 	}
 	if len(want) != len(have) {
-		return nil, false
+		return groupChanges{}, false
 	}
 	matches := make([][]bool, len(want))
 	for i := range want {
@@ -877,19 +896,23 @@ func groupResizes(key string, desired any, groups []types.InstanceGroup, cluster
 	}
 	pairs, ok := matching(matches)
 	if !ok {
-		return nil, false
+		return groupChanges{}, false
 	}
-	out := []types.InstanceGroupModifyConfig{}
+	out := groupChanges{}
 	for i, j := range pairs {
-		if scaled || have[j].AutoScalingPolicy != nil || asMap(want[i])["AutoScalingPolicy"] != nil {
+		policy := asMap(want[i])["AutoScalingPolicy"] != nil
+		if have[j].AutoScalingPolicy != nil && !policy {
+			out.unscaled = append(out.unscaled, aws.ToString(have[j].Id))
+		}
+		if scaled || policy {
 			continue
 		}
 		count, ok := intValue(asMap(want[i])["InstanceCount"])
 		if !ok {
-			return nil, false
+			return groupChanges{}, false
 		}
 		if count != aws.ToInt32(have[j].RequestedInstanceCount) {
-			out = append(out, types.InstanceGroupModifyConfig{InstanceGroupId: have[j].Id, InstanceCount: aws.Int32(count)})
+			out.resizes = append(out.resizes, types.InstanceGroupModifyConfig{InstanceGroupId: have[j].Id, InstanceCount: aws.Int32(count)})
 		}
 	}
 	return out, true
