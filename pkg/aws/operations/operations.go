@@ -123,6 +123,20 @@ type PatchOptions struct {
 	// object and with "/" between segments, like the keys of FlattenProperties. The patch removes them, except
 	// read-only and create-only properties, which AWS cannot clear.
 	Removed []string
+
+	// Equivalent, when set, reports whether AWS's value at path, a key of FlattenProperties, means the same as the
+	// template's, for a value AWS returns in another form that the schema's rules don't cover. Such a value counts as
+	// unchanged. It isn't used for a value that leaves out something the last deploy set at or under its path (see
+	// LastApplied).
+	Equivalent func(path string, template any, aws any) bool
+
+	// LastApplied is what the last successful deploy set, or nil when UCP has no record of it. Equivalent may count
+	// AWS's value as matching when it holds more than the template, such as defaults AWS fills in inside the items of
+	// a list. Such a value also matches when the template leaves out a field the last deploy set, such as a field
+	// inside a list item, which Removed can't name. So Equivalent isn't used for a template value that leaves out
+	// something LastApplied set at that path, or that has a Removed path under it: the patch sends the template's
+	// value, and AWS clears what it no longer has.
+	LastApplied map[string]any
 }
 
 // GeneratePatch takes in the current state, desired state and type schema of a resource and returns a JSON patch to update the
@@ -175,11 +189,17 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	flattenedDesiredStateObject := FlattenProperties(desiredStateObject)
 
 	rules := parseSchemaRules(schema)
+	lastApplied := FlattenProperties(opts.LastApplied)
 
 	// A value AWS reports in a different form, such as reordered subnets or a fuller engine version, is unchanged:
 	// use AWS's value so the patch leaves it alone.
 	for k, v := range flattenedDesiredStateObject {
-		if current, ok := flattenedCurrentStateObject[k]; ok && rules.equivalentAt(k, v, current, desiredStateObject) {
+		current, ok := flattenedCurrentStateObject[k]
+		if !ok {
+			continue
+		}
+		if rules.equivalentAt(k, v, current, desiredStateObject) ||
+			(opts.Equivalent != nil && !drops(lastApplied[k], v) && !removedUnder(k, opts.Removed) && opts.Equivalent(k, v, current)) {
 			flattenedDesiredStateObject[k] = current
 		}
 	}
@@ -230,6 +250,53 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 
 	// Calculate the patch based on the current state and the updated desired state
 	return jsondiff.CompareJSON(currentState, updatedDesiredState)
+}
+
+// drops reports whether template leaves out a value applied sets: a property of an object, an item of a list, or a
+// value. Each item of applied must have its own template item that keeps everything it set, in any order. A value
+// the template changes is not left out.
+func drops(applied any, template any) bool {
+	switch a := applied.(type) {
+	case nil:
+		return false
+	case map[string]any:
+		t, ok := template.(map[string]any)
+		if !ok {
+			return len(a) > 0
+		}
+		for k, v := range a {
+			if drops(v, t[k]) {
+				return true
+			}
+		}
+		return false
+	case []any:
+		t, ok := template.([]any)
+		if !ok {
+			return len(a) > 0
+		}
+		matches := make([][]bool, len(a))
+		for i := range a {
+			matches[i] = make([]bool, len(t))
+			for j := range t {
+				matches[i][j] = !drops(a[i], t[j])
+			}
+		}
+		return !perfectMatching(matches)
+	default:
+		return template == nil
+	}
+}
+
+// removedUnder reports whether a path in removed is under k, as when the last deploy set k to an object and the
+// template sets it to another kind of value.
+func removedUnder(k string, removed []string) bool {
+	for _, p := range removed {
+		if strings.HasPrefix(p, k+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // emptyObjects returns the flattened paths of the empty objects in state, which FlattenProperties leaves out.

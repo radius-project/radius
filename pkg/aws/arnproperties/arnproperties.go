@@ -25,18 +25,35 @@ import (
 	"sync"
 
 	awsarn "github.com/aws/aws-sdk-go-v2/aws/arn"
+
+	"github.com/radius-project/radius/pkg/aws/schemas"
 )
 
 var arnPropertiesByLowerType = sync.OnceValue(func() map[string]string {
-	result := make(map[string]string, len(arnProperties))
-	for resourceType, property := range arnProperties {
-		result[strings.ToLower(resourceType)] = property
-	}
-	return result
+	// The schemas are built into Radius, and a test in pkg/aws/schemas loads them. If they failed to load, the catalog
+	// would have no metadata, and only the generated catalog would be used.
+	catalog, _ := schemas.Load()
+	return byLowerType(arnProperties, catalog.Metadata)
 })
 
+// byLowerType returns generated, keyed by the lowercase type, with the arnProperty of each type in metadata that
+// declares one. Hand-written types aren't in the generated catalog, and metadata overrides it for the others.
+func byLowerType(generated map[string]string, metadata map[string]schemas.Metadata) map[string]string {
+	result := map[string]string{}
+	for resourceType, property := range generated {
+		result[strings.ToLower(resourceType)] = property
+	}
+	for resourceType, m := range metadata {
+		if m.ARNProperty != nil {
+			result[strings.ToLower(resourceType)] = *m.ARNProperty
+		}
+	}
+	return result
+}
+
 // Lookup returns the property that holds the ARN of a resource of the given CloudFormation type, such as "TopicArn"
-// for "AWS::SNS::Topic". The type is matched case-insensitively.
+// for "AWS::SNS::Topic". The type is matched case-insensitively. A type's arnProperty in its metadata in
+// pkg/aws/schemas takes precedence over the generated catalog.
 //
 // known is false when the type isn't in the catalog. When known is true and property is empty, the type has no
 // property with the resource's own ARN.
