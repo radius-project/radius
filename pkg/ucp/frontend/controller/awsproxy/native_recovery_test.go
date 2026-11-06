@@ -696,8 +696,8 @@ func Test_Native_GeneratedNameRecoveryFails(t *testing.T) {
 			} else {
 				resp = h.delete(nativePath, testOwner)
 			}
-			require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
-			require.Contains(t, resp.raw, "Set Name in the template")
+			require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+			require.Contains(t, resp.message(), "Set Name in the template", method)
 			require.Empty(t, h.fake.Calls())
 			require.NotEmpty(t, h.record(nativePath).Properties.ClientToken)
 		}
@@ -904,4 +904,32 @@ func Test_Native_ResendFailsWithHeldIdentifier(t *testing.T) {
 		h.db = db
 		require.Empty(t, h.record(assignedPath).Properties.AWSIdentifier, "UCP can't tell whether another alias manages it")
 	})
+}
+
+// Test_Native_FindFailure checks that a handler's Find that reports a native.Failure gets the failure's response on
+// PUT and DELETE recovery, as a failed identifier does: 400 for a client failure, and 500 otherwise. The record keeps
+// the create.
+func Test_Native_FindFailure(t *testing.T) {
+	for _, clientError := range []bool{true, false} {
+		for _, method := range []string{http.MethodPut, http.MethodDelete} {
+			h := newNativeHarness(t)
+			h.assigned.Opts.Recovery = native.RecoverBySearch
+			h.loseCreate(h.assigned, assignedPath, map[string]any{"Size": 1})
+			h.assigned.Errors["Find"] = &native.Failure{Message: "the tag filter is invalid", ClientError: clientError}
+
+			var resp response
+			if method == http.MethodPut {
+				resp = h.put(assignedPath, map[string]any{"Size": 1})
+			} else {
+				resp = h.delete(assignedPath, testOwner)
+			}
+			want := http.StatusInternalServerError
+			if clientError {
+				want = http.StatusBadRequest
+			}
+			require.Equal(t, want, resp.status, method+": "+resp.raw)
+			require.Equal(t, "the tag filter is invalid", resp.message(), method)
+			require.NotEmpty(t, h.record(assignedPath).Properties.ClientToken)
+		}
+	}
 }

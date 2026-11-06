@@ -416,7 +416,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		if lookup == "" {
 			lookup, err = identifierFor(r.native, properties, schema)
 			if err != nil {
-				return nil, err
+				return identifierError(ctx, r, err)
 			}
 		}
 		if lookup != "" {
@@ -565,14 +565,14 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}
 	properties, err := withGeneratedName(r, rec, properties)
 	if err != nil {
-		return badRequest(err.Error()), nil
+		return identifierError(ctx, r, err)
 	}
 
 	// name takes over a resource that already exists. When AWS has none, create one only if the identifier properties
 	// give that same name; otherwise the template asked for a resource that is not there.
 	known, err := identifierFor(r.native, properties, schema)
 	if err != nil {
-		return nil, err
+		return identifierError(ctx, r, err)
 	}
 	if name != "" && known != name {
 		return badRequest(fmt.Sprintf("name %q does not match an AWS resource of type %s. Set name only to take over an existing resource, or remove it and set the identifier properties to create one.", name, r.typeName)), nil
