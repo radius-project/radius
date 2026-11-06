@@ -57,3 +57,26 @@ func Test_NewDirectConnection_InvalidWithoutScheme(t *testing.T) {
 	require.Contains(t, err.Error(), "the endpoint must use the http or https scheme")
 	require.Nil(t, connection)
 }
+
+type recordingTransport struct {
+	called bool
+}
+
+func (r *recordingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	r.called = true
+	header := http.Header{}
+	header.Set("Location", "http://ucp.radius-system:9443/apis/api.ucp.dev/v1alpha3/operations/1")
+	return &http.Response{StatusCode: http.StatusOK, Header: header, Body: http.NoBody, Request: req}, nil
+}
+
+func Test_NewDirectConnectionWithTransport(t *testing.T) {
+	transport := &recordingTransport{}
+	connection, err := NewDirectConnectionWithTransport("https://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3", transport)
+	require.NoError(t, err)
+
+	resp, err := connection.Client().Get(connection.Endpoint())
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	require.True(t, transport.called)
+	require.Equal(t, "https://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3/operations/1", resp.Header.Get("Location"))
+}

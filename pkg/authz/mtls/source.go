@@ -162,11 +162,16 @@ func (s *Source) parse(certPEM, keyPEM, caPEM []byte) (*material, error) {
 }
 
 func (s *Source) checkExpiry(cert *tls.Certificate) error {
-	now := s.now()
-	if now.After(cert.Leaf.NotAfter) || now.Before(cert.Leaf.NotBefore) {
+	if !s.isValid(cert.Leaf) {
 		return &Error{Code: authz.CodeCertificateExpired, Reason: "own certificate is outside its validity period"}
 	}
 	return nil
+}
+
+// isValid reports whether leaf is within its validity period.
+func (s *Source) isValid(leaf *x509.Certificate) bool {
+	now := s.now()
+	return !now.After(leaf.NotAfter) && !now.Before(leaf.NotBefore)
 }
 
 // Start polls the files every interval until ctx is done, reloading them when they

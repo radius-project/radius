@@ -52,8 +52,7 @@ data:
       {{- with dig "workerServer" "dequeueInterval" "" .Values.dynamicrp }}
       dequeueInterval: {{ . | quote }}
       {{- end }}
-    ucp:
-      kind: kubernetes
+    {{- include "radius.authz.ucpConnection" . | nindent 4 }}
     logging:
       level: "info"
       json: true
