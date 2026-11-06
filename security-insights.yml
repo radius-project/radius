@@ -1,0 +1,103 @@
+---
+header:
+  schema-version: 2.2.0
+  last-updated: "2026-10-15"
+  last-reviewed: "2026-10-15"
+  url: https://raw.githubusercontent.com/radius-project/radius/main/security-insights.yml
+  project-si-source: https://raw.githubusercontent.com/radius-project/.github/main/security-insights.yml
+  comment: |
+    Child Security Insights file for the radius-project/radius repository.
+    Project-level information is inherited from header.project-si-source.
+
+repository:
+  url: https://github.com/radius-project/radius
+  status: active
+  accepts-change-request: true
+  accepts-automated-change-request: true
+  no-third-party-packages: false
+  core-team:
+    - name: Radius maintainers
+      social: https://github.com/orgs/radius-project/teams/maintainers-radius
+      primary: true
+  license:
+    url: https://github.com/radius-project/radius/blob/main/LICENSE
+    expression: Apache-2.0
+  documentation:
+    contributing-guide: https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md
+    dependency-management-policy: https://github.com/radius-project/radius/blob/main/.github/dependabot.yml
+    governance: https://github.com/radius-project/community/blob/main/community-membership.md
+    review-policy: https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-code/contributing-code-reviewing/README.md
+    security-policy: https://github.com/radius-project/radius/blob/main/SECURITY.md
+  security:
+    assessments:
+      self:
+        name: Radius component threat models
+        evidence: https://github.com/radius-project/radius/tree/main/eng/design-notes/security
+        comment: |
+          The repository contains threat models for major Radius components and
+          additional security design notes. These artifacts do not constitute a
+          completed project-wide OSPS self-assessment.
+    tools:
+      - name: CodeQL
+        type: SAST
+        version: 4.38.3
+        comment: |
+          Version is the pinned github/codeql-action release; query suites are
+          set in .github/configs/.codeql.yml. Runs through
+          https://github.com/radius-project/radius/actions/workflows/codeql.yml.
+        rulesets:
+          - security-extended
+          - security-and-quality
+          - security-experimental
+        integration:
+          adhoc: true
+          ci: true
+          release: false
+        results: {}
+      - name: GoSec
+        type: SAST
+        version: 2.29.0
+        comment: |
+          Runs through
+          https://github.com/radius-project/radius/actions/workflows/codeql.yml.
+        rulesets:
+          - default
+        integration:
+          adhoc: true
+          ci: true
+          release: false
+        results: {}
+      - name: Dependency Review
+        type: SCA
+        comment: |
+          Runs actions/dependency-review-action through the radius-project/.github
+          reusable workflow at
+          https://github.com/radius-project/radius/actions/workflows/dependency-review.yml.
+        rulesets:
+          - default
+        integration:
+          adhoc: false
+          ci: true
+          release: false
+        results: {}
+      - name: OpenSSF Scorecard
+        type: other
+        version: 2.4.4
+        comment: |
+          Runs through
+          https://github.com/radius-project/radius/actions/workflows/scorecard.yaml.
+        rulesets:
+          - default
+        integration:
+          adhoc: true
+          ci: true
+          release: false
+        results: {}
+  release:
+    automated-pipeline: true
+    distribution-points:
+      - uri: https://github.com/radius-project/radius/releases
+        comment: Radius CLI binaries and checksums published through GitHub Releases.
+      - uri: https://github.com/orgs/radius-project/packages?repo_name=radius
+        comment: Radius container images and Helm chart packages published through GitHub Packages.
+    changelog: https://github.com/radius-project/radius/blob/main/docs/release-notes/v{version}.md
