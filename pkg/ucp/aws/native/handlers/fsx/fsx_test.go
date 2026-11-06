@@ -727,6 +727,23 @@ func Test_Progress(t *testing.T) {
 		require.Nil(t, finish(t, h, id, native.OperationUpdate).Failure, "a later update that succeeds is done, though an earlier one failed")
 	})
 
+	t.Run("an update with no calls after one that failed", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewFileSystem(api)
+		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
+		id := create(t, h, base)
+		api.failUpdate = "The throughput capacity is not supported."
+		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 4096}})))
+		require.NotNil(t, finish(t, h, id, native.OperationUpdate).Failure)
+
+		api.calls = nil
+		removed := maps.Clone(base)
+		delete(removed, "StorageCapacity")
+		require.NoError(t, update(t, h, id, base, removed))
+		require.NotContains(t, api.calls, "UpdateFileSystem", "FSx keeps a removed StorageCapacity")
+		require.Nil(t, finish(t, h, id, native.OperationUpdate).Failure, "the update made no action, so the earlier failure isn't its")
+	})
+
 	t.Run("an update with no administrative action after one that failed", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)

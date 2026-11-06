@@ -455,8 +455,9 @@ func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) e
 			return err
 		}}, calls...)
 	}
-	if baseline := failedBaseline(fs); baseline != "" && len(calls) > 0 {
-		// An update that makes no administrative action, such as a tag change, must not take the failed one as its.
+	if baseline := failedBaseline(fs); baseline != "" {
+		// An update that makes no administrative action, such as a tag change or none at all, must not take the
+		// failed one as its.
 		calls = append([]func() error{func() error {
 			_, err := h.api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: fs.ResourceARN, Tags: []types.Tag{{Key: aws.String(updateBaselineTag), Value: aws.String(baseline)}}}, opt)
 			return err
