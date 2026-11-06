@@ -341,7 +341,7 @@ For multicluster tests, create a `target-kubeconfig` Secret in `radius-system`, 
 
 ### Check for authorization dry-run would-deny logs
 
-CI runs the `corerp`, `dynamicrp`, `kubernetes`, and `ucp` non-cloud groups a second time with Radius installed with `--set global.rbac.dryRun=true`, then fails the leg if any component logged that an authorization check would deny a request (`authzWouldDeny=true`). Under enforcement those requests would be rejected, so this catches false positives before enforcement is turned on. To run the same check locally, install Radius with the dry run enabled, run the tests, then check the current kube context:
+When authorization-related paths change, and in every full run, CI runs the `corerp`, `dynamicrp`, `kubernetes`, and `ucp` non-cloud groups a second time with Radius installed with `--set global.rbac.dryRun=true`, then fails the leg if any component logged that an authorization check would deny a request (`authzWouldDeny=true`). Under enforcement those requests would be rejected, so this catches false positives before enforcement is turned on. To run the same check locally, install Radius with the dry run enabled, run the tests, then check the current kube context:
 
 ```bash
 rad install kubernetes --set global.rbac.dryRun=true
@@ -360,8 +360,6 @@ make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--collector-dir ./dist/authz-
 ```
 
 The Make target also passes `--require-dry-run`: it requires startup logs reporting `authz mode=dryRun` from `ucp`, `applications-rp`, `dynamic-rp`, and `controller`, checking every current replica. With `--collector-dir DIR`, the check requires the collector's `complete` marker and reads startup evidence only from `<pod>.<uid>.<container>.<restart>.log` files matching the live pod UID and container restart count. This preserves startup evidence after kubelet log rotation without accepting logs from replaced pods or earlier container restarts. All retained collector logs are still scanned for would-deny lines, including replaced pods. Without `--collector-dir`, startup verification reads live container logs; arbitrary `--logs-dir` files and previous-container logs cannot substitute for startup evidence. Missing components, missing matching collector files or startup messages, and other modes fail the check. Pod-listing failures, unreadable current or previous logs, file traversal/read errors, and empty saved-log directories also fail rather than reporting a clean run. An allowlist cannot bypass these errors. To scan saved logs without accessing a cluster or verifying startup modes, invoke the script directly with `--logs-dir DIR`.
-
-To check authorization trust boundaries by hand on a local kind cluster, for example when reviewing a pull request that adds one, use the manual test kit in [`hack/authz`](../../../../hack/authz/README.md).
 
 ### Configure test execution
 
@@ -394,9 +392,13 @@ Set `go.testTimeout` to `60m` and add `-v` to `go.testFlags`. Set `RAD_PATH` in 
 
 The `functional-test-noncloud.yaml` and `functional-test-cloud.yaml` workflows build Radius, publish test assets, create isolated infrastructure, run each selected group, capture diagnostics, and remove the test infrastructure.
 
-For PRs targeting `main` or `features/*` and for the `main` merge queue, the non-cloud workflow omits the legacy-only `daprrp-noncloud`, `datastoresrp-noncloud`, and `msgrp-noncloud` groups before allocating test runners. Mixed suites, all authorization dry-run variants, and cloud coverage remain unchanged. The Dapr Redis-helper unit tests still run on every PR through `make test-dapr-helpers`. `make test` checks the omitted suites' test inventory so new tests require an explicit decision about whether they need per-PR coverage.
+For PRs targeting `main` or `features/*` and the `main` merge queue, changes matching the `authz` paths in [`.github/workflows/__changes.yml`](../../../../.github/workflows/__changes.yml) run all 18 non-cloud jobs. Unrelated changes run 10, omitting `daprrp-noncloud`, `datastoresrp-noncloud`, `msgrp-noncloud`, `authz-noncloud`, and the four dry-run variants. Missing change-detection results retain all jobs. Cloud coverage is unchanged.
 
-All three scheduled runs, at 01:00, 13:00, and 19:00 UTC, retain the full matrix. PRs targeting `release/*`, deployment-engine repository dispatches, and manual runs also retain full coverage by default. To reproduce the reduced matrix manually, dispatch `functional-test-noncloud.yaml` with the desired `branch` and `test-profile: pr`; leave `test-profile: full` for compatibility fixes. Legacy-only regressions can merge before a scheduled run detects them. Existing local functional-test Make targets continue to run their complete groups.
+Default jobs test existing behavior with authorization off; `corerp-noncloud` also verifies each component's startup mode. Coverage includes internal authorization Off and DryRun, not Enforce or user-facing RBAC. Add future modes as variants in [the matrix selector](../../../../.github/scripts/functional-test-matrix.mjs), update the `authz` paths, and preserve explicit both-disabled coverage when user-facing RBAC lands.
+
+The Dapr Redis-helper unit tests still run on every PR through `make test-dapr-helpers`. `make test` checks the legacy suites' inventory so new tests require a coverage decision.
+
+Scheduled runs (01:00, 13:00, and 19:00 UTC), release PRs, deployment-engine dispatches, and manual runs retain full coverage. Manual runs lack a comparison base, so even `test-profile: pr` runs all jobs. Regressions outside the `authz` paths may escape reduced PR coverage until a scheduled run. Local Make targets still run their complete groups.
 
 The scheduled purge workflows remove cloud resources left by cancelled or timed-out runs. The `long-running-azure.yaml` workflow uses published Radius artifacts while running diagnostics from the `main` workflow checkout.
 

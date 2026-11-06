@@ -195,7 +195,7 @@ if grep -Fq 'make test-functional-all-noncloud' "${MOCK_CALLS}"; then
 fi
 
 fresh_options="$(yq -r '.jobs[].steps[] |
-    select(.env.AUTHZ_EXPECTED_MODE != null) | .env.AUTHZ_EXPECTED_MODE' \
+    select(.name == "Run functional tests") | .env.AUTHZ_EXPECTED_MODE' \
     "${FRESH_WORKFLOW}")"
 [[ "${fresh_options}" == \
     "\${{ matrix.name == 'authz-noncloud' && 'dryRun' || '' }}" ]] \
