@@ -186,6 +186,11 @@ test-release-branch-commits: ## Tests backport provenance and commit validation 
 test-build-summary: ## Tests the build job summary rendering shared by the build workflows
 	@bash ./.github/scripts/build-summary_test.sh
 
+.PHONY: test-publishing-isolation
+test-publishing-isolation: install-yq ## Tests activation workflow boundaries without credentials (requires Node.js and OpenSSL; installs pinned yq)
+	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
+		node --test .github/scripts/cloud-test-artifacts.test.mjs
+
 .PHONY: test-capture-release-image-digests
 test-capture-release-image-digests: ## Tests production release image digest capture
 	@bash ./.github/scripts/capture-release-image-digests_test.sh
