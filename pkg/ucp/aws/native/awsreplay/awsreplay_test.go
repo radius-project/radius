@@ -186,3 +186,19 @@ func Test_Scrub(t *testing.T) {
 		require.NotContains(t, string(scrubbed), "999988887777")
 	}
 }
+
+// Test_ScrubKeepsJSONValid checks that scrubbing a value that starts or ends with a quote, which JSON escapes, leaves
+// the body valid JSON with the escape intact.
+func Test_ScrubKeepsJSONValid(t *testing.T) {
+	for _, secret := range []string{`pa"`, `"pa`, `"pa"`, `pa\`} {
+		s := &Session{}
+		s.Scrub(secret)
+		body, err := json.Marshal(map[string]string{"Password": secret})
+		require.NoError(t, err)
+		scrubbed := s.scrub(body)
+		var parsed map[string]string
+		require.NoError(t, json.Unmarshal(scrubbed, &parsed), "%q scrubs to %s", secret, scrubbed)
+		require.NotEqual(t, secret, parsed["Password"])
+		require.NotContains(t, parsed["Password"], "pa")
+	}
+}
