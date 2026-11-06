@@ -30,6 +30,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/aws/awstypes"
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 )
 
 // Error messages name the type and properties, never property values, because values can hold secrets.
@@ -77,6 +78,29 @@ func checkRecordPatch(typeName string, typeInfo *cloudformation.DescribeTypeOutp
 		}
 	}
 	return immutableChanged(typeName, changed)
+}
+
+// createOnlyChanged returns the 400 response for a patch that changes a create-only property of a type a native
+// handler serves. Cloud Control rejects such a change itself, but a service API may ignore it, so UCP checks the native
+// schema before it calls the handler.
+func createOnlyChanged(r *request, schema *typeSchema, patch jsondiff.Patch) armrpc_rest.Response {
+	if r.handler == nil {
+		return nil
+	}
+	changed := []string{}
+	for _, op := range patch {
+		for _, path := range awsoperations.PropertyPaths(schema.CreateOnlyProperties) {
+			prefix := "/" + path
+			if (op.Path == prefix || strings.HasPrefix(op.Path, prefix+"/")) && !slices.Contains(changed, path) {
+				changed = append(changed, path)
+			}
+		}
+	}
+	if len(changed) == 0 {
+		return nil
+	}
+	slices.Sort(changed)
+	return badRequest(fmt.Sprintf("These properties of the AWS resource %q can't change after it is created: %s. Set them back, or delete the resource and deploy again.", r.id.Name(), strings.Join(changed, ", ")))
 }
 
 // immutableChanged returns the 400 response for changes to the top-level properties changed of an existing resource

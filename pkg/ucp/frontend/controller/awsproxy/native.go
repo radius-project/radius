@@ -342,15 +342,42 @@ func (e *engine) startCreate(ctx context.Context, r *request, rec *datamodel.AWS
 	return aws.ToString(response.ProgressEvent.Identifier), aws.ToString(response.ProgressEvent.RequestToken), nil
 }
 
+// prepareDelete saves on the record the value a native handler sends with every attempt to delete the resource
+// (native.DeletePreparer), before the first delete call, so a retried delete sends the same value. It returns the new
+// ETag, or etag when there is nothing to save.
+func (e *engine) prepareDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, identifier string) (string, error) {
+	preparer, ok := r.handler.(native.DeletePreparer)
+	if !ok || rec.Properties.DeleteToken != "" || onDelete(r) == schemas.OnDeleteReset {
+		return etag, nil
+	}
+	token, err := preparer.DeleteToken(ctx, r.region, identifier)
+	if err != nil || token == "" {
+		return etag, err
+	}
+	rec.Properties.DeleteToken = token
+	saved, err := e.store.Save(ctx, rec, etag)
+	if err != nil {
+		rec.Properties.DeleteToken = ""
+		return etag, fmt.Errorf("failed to save the delete token of %s: %w", r.id.String(), err)
+	}
+	return saved, nil
+}
+
 // startDeleteCall starts a delete and returns the token the worker polls. For a type whose onDelete metadata is reset,
-// the native handler resets the resource instead (native.Resetter). Where Cloud Control serves such a type, Cloud
-// Control deletes it as CloudFormation defines.
-func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier string) (string, error) {
+// the native handler resets the resource instead (native.Resetter). A native handler that sends the same value on
+// every attempt (native.DeletePreparer) gets deleteToken. Where Cloud Control serves the type, Cloud Control deletes it
+// as CloudFormation defines.
+func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier string, deleteToken string) (string, error) {
 	if r.handler != nil {
 		var err error
-		if resetter, ok := r.handler.(native.Resetter); ok && onDelete(r) == schemas.OnDeleteReset {
+		resetter, resets := r.handler.(native.Resetter)
+		preparer, prepares := r.handler.(native.DeletePreparer)
+		switch {
+		case resets && onDelete(r) == schemas.OnDeleteReset:
 			err = resetter.Reset(ctx, r.region, identifier)
-		} else {
+		case prepares && deleteToken != "":
+			err = preparer.DeleteWithToken(ctx, r.region, identifier, deleteToken)
+		default:
 			err = r.handler.Delete(ctx, r.region, identifier)
 		}
 		if err != nil {
@@ -388,7 +415,9 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //     deploy sends them.
 //   - created: the create is finished, and the request continues as an update with the template, which sends every
 //     write-only value, because the record has no fingerprints for them.
-//   - failed: the request returns the failure, and the record stays, so a DELETE can remove the resource.
+//   - failed, and AWS changed nothing (native.OutcomeRejected), such as a value AWS rejected only once it started the
+//     create: the create is sent again with this deploy's template.
+//   - failed otherwise: the request returns the failure, and the record stays, so a DELETE can remove the resource.
 func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, properties map[string]any, deploy applied, typeInfo *cloudformation.DescribeTypeOutput, parsed *typeSchema, secrets []string) (armrpc_rest.Response, error) {
 	identifier := rec.Properties.AWSIdentifier
 	if identifier == "" {
@@ -427,6 +456,8 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 			return nil, err
 		}
 		return conflict("A create of the AWS resource %q is still running in AWS. Deploy again when it finishes.", r.id.Name()), nil
+	case progress.Failure != nil && progress.Failure.Outcome == native.OutcomeRejected:
+		return e.create(ctx, r, rec, etag, "", properties, deploy, typeInfo, parsed, secrets)
 	case progress.Failure != nil:
 		return failureResponse(r.id, progress.Failure), nil
 	}

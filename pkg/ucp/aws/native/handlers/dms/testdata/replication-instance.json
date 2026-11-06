@@ -1,0 +1,530 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_DMS_SUBNET_GROUP": "radius-rec-rc899e",
+    "RADIUS_REC_RUN": "rc899e",
+    "RADIUS_REC_SECURITY_GROUP": "sg-025abd55fc53a734b"
+  },
+  "interactions": [
+    {
+      "service": "Database Migration Service",
+      "operation": "CreateReplicationInstance",
+      "request": "{\"AllocatedStorage\":20,\"MultiAZ\":false,\"PubliclyAccessible\":false,\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"}],\"VpcSecurityGroupIds\":[\"sg-025abd55fc53a734b\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstance\":{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"creating\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"available\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"available\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "ListTagsForResource",
+      "request": "{\"ResourceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"TagList\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"mon:06:00-mon:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"available\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "ModifyReplicationInstance",
+      "request": "{\"ApplyImmediately\":true,\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstance\":{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"available\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"available\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"available\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "ListTagsForResource",
+      "request": "{\"ResourceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"TagList\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"available\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DeleteReplicationInstance",
+      "request": "{\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstance\":{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceIpv6Addresses\":[],\"ReplicationInstancePrivateIpAddress\":\"10.77.1.67\",\"ReplicationInstancePrivateIpAddresses\":[\"10.77.1.67\"],\"ReplicationInstancePublicIpAddresses\":[],\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"ReplicationInstances\":[{\"AllocatedStorage\":20,\"AutoMinorVersionUpgrade\":true,\"AvailabilityZone\":\"us-west-2a\",\"EngineVersion\":\"3.5.4\",\"InstanceCreateTime\":1.79386132112E9,\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/7544181a-ac1d-4f95-bfee-15210a277644\",\"MultiAZ\":false,\"NetworkType\":\"IPV4\",\"PatchingPrecedence\":0,\"PendingModifiedValues\":{},\"PreferredMaintenanceWindow\":\"sun:06:00-sun:06:30\",\"PubliclyAccessible\":false,\"ReplicationInstanceArn\":\"arn:aws:dms:us-west-2:123456789012:rep:HTAW4RBTAFEQTJSEB2BARBHU34\",\"ReplicationInstanceClass\":\"dms.t3.small\",\"ReplicationInstanceIdentifier\":\"radius-rec-rc899e\",\"ReplicationInstanceStatus\":\"deleting\",\"ReplicationSubnetGroup\":{\"IsReadOnly\":false,\"ReplicationSubnetGroupArn\":\"arn:aws:dms:us-west-2:123456789012:subgrp:radius-rec-rc899e\",\"ReplicationSubnetGroupDescription\":\"Radius recording rc899e\",\"ReplicationSubnetGroupIdentifier\":\"radius-rec-rc899e\",\"SubnetGroupStatus\":\"Complete\",\"Subnets\":[{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2a\"},\"SubnetIdentifier\":\"subnet-0a25e6291b3a86d5e\",\"SubnetStatus\":\"Active\"},{\"SubnetAvailabilityZone\":{\"Name\":\"us-west-2b\"},\"SubnetIdentifier\":\"subnet-0d8fa7a3a1d1222e7\",\"SubnetStatus\":\"Active\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"},\"VpcSecurityGroups\":[{\"Status\":\"active\",\"VpcSecurityGroupId\":\"sg-025abd55fc53a734b\"}]}]}"
+    },
+    {
+      "service": "Database Migration Service",
+      "operation": "DescribeReplicationInstances",
+      "request": "{\"Filters\":[{\"Name\":\"replication-instance-id\",\"Values\":[\"radius-rec-rc899e\"]}]}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"ResourceNotFoundFault\",\"message\":\"No instances found matching provided filters\"}"
+    }
+  ]
+}

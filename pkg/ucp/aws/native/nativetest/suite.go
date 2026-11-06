@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -38,6 +39,7 @@ import (
 	"time"
 
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -87,9 +89,10 @@ type Suite struct {
 	// Control also uses, so the suite can serve the type with either handler.
 	NewHandler func(store *awsfake.CloudControl) native.Handler
 
-	// IdentifierProperty is the property whose value is the resource's identifier, and WriteOnly lists the top-level
-	// write-only properties. The suite's Cloud Control uses them like AWS does: it assigns an identifier when
-	// IdentifierProperty isn't set, and never returns write-only values.
+	// IdentifierProperty is the property whose value is the resource's identifier, and WriteOnly lists the paths of the
+	// write-only properties, relative to the properties object with "/" between segments and "*" for every array item,
+	// such as MasterUserPassword or Config/*/Password. The suite's Cloud Control uses them like AWS does: it assigns an
+	// identifier when IdentifierProperty isn't set, and never returns write-only values.
 	IdentifierProperty string
 	WriteOnly          []string
 
@@ -131,6 +134,39 @@ type Suite struct {
 	MultiCall map[string]any
 	Calls     int
 	FailCall  func(handler native.Handler, call int, err error)
+
+	// CloudControlCreate, when set, returns the identifier and properties the suite's Cloud Control gives a new
+	// resource, for a type whose identifier includes a value AWS assigns, such as an association ID. When it is nil,
+	// the suite's Cloud Control names a resource with the handler's identifier encoding (native.IdentifierEncoder) when
+	// it has one, and with IdentifierProperty otherwise.
+	CloudControlCreate func(properties map[string]any) (string, map[string]any)
+
+	// IdentifierProperties, when set, returns the properties that give identifier, for `existing` of a type whose
+	// identifier joins several properties. When it is nil, `existing` sets IdentifierProperty to the identifier.
+	IdentifierProperties func(identifier string) map[string]any
+
+	// NoCloudControl is true when the type's CloudFormation schema has no handlers in any region, so Cloud Control
+	// can't create it anywhere, and the cases that switch between handlers don't apply. A handler whose identifier
+	// UCP can't rebuild from what Cloud Control returns sets it.
+	NoCloudControl bool
+
+	// Duplicates is true when AWS lets more than one resource have the values the handler's Find searches by, for a
+	// handler whose Recovery is native.RecoverBySearch.
+	Duplicates bool
+
+	// RemovedItemField, when set, is a field inside an array item that a deploy sets and the next one leaves out, for
+	// a type whose Equivalent compares array items only on the values the template sets.
+	RemovedItemField *RemovedItemField
+}
+
+// RemovedItemField is a field inside an array item, such as an EMR task group's AutoScalingPolicy.
+type RemovedItemField struct {
+	// Before sets the field, and After is Before without it.
+	Before map[string]any
+	After  map[string]any
+
+	// Gone reports whether AWS no longer has the field, given the resource as AWS has it.
+	Gone func(stored map[string]any) bool
 }
 
 // Run runs every case of the suite for s.
@@ -139,10 +175,12 @@ func Run(t *testing.T, s Suite) {
 	t.Run("redeploy with no change", func(t *testing.T) { s.redeployNoChange(t) })
 	t.Run("deleted outside Radius", func(t *testing.T) { s.deletedOutsideRadius(t) })
 	t.Run("removed property", func(t *testing.T) { s.removedProperty(t) })
+	t.Run("removed field of an array item", func(t *testing.T) { s.removedItemField(t) })
 	t.Run("create-only change", func(t *testing.T) { s.createOnlyChange(t) })
 	t.Run("unchanged and changed write-only values", func(t *testing.T) { s.writeOnlyValues(t) })
 	t.Run("no write-only value in any response", func(t *testing.T) { s.noWriteOnlyInResponses(t) })
 	t.Run("list", func(t *testing.T) { s.list(t) })
+	t.Run("read values have the schema's types", func(t *testing.T) { s.readTypes(t) })
 	t.Run("existing", func(t *testing.T) { s.existing(t) })
 	t.Run("worker restart while waiting", func(t *testing.T) { s.workerRestart(t) })
 	t.Run("delete as the metadata says", func(t *testing.T) { s.deleteByMetadata(t) })
@@ -150,6 +188,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("value AWS returns in another form", func(t *testing.T) { s.otherForm(t) })
 	t.Run("identifier of another product", func(t *testing.T) { s.otherProduct(t) })
 	t.Run("update fails between calls", func(t *testing.T) { s.multiCall(t) })
+	t.Run("delete again after the response is lost", func(t *testing.T) { s.deleteTokenRetry(t) })
 	nameProperty := s.NewHandler(awsfake.NewCloudControl()).Options().NameProperty
 	for _, reached := range []bool{true, false} {
 		suffix := map[bool]string{true: "after the create reached AWS", false: "before the create reached AWS"}[reached]
@@ -157,6 +196,8 @@ func Run(t *testing.T, s Suite) {
 		t.Run("delete "+suffix, func(t *testing.T) { s.lostCreateDelete(t, reached) })
 	}
 	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
+	t.Run("delete fails after it finds a lost create", func(t *testing.T) { s.lostCreateFailedDelete(t) })
+	t.Run("lost create that matches more than one resource", func(t *testing.T) { s.lostCreateDuplicates(t) })
 	if s.NewHandler(awsfake.NewCloudControl()).Options().Recovery == native.RecoverByResend {
 		t.Run("deploy after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodPut, errPartway) })
 		t.Run("delete after the create sent again fails partway", func(t *testing.T) { s.resendFailsPartway(t, http.MethodDelete, errPartway) })
@@ -170,13 +211,45 @@ func Run(t *testing.T, s Suite) {
 	if s.HandWritten {
 		t.Run("never asks CloudFormation", func(t *testing.T) { s.neverAsksCloudFormation(t) })
 	} else {
-		t.Run("create natively, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, "") })
-		t.Run("create with Cloud Control, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, "") })
-		if nameProperty != "" {
-			t.Run("create natively without the name, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, nameProperty) })
-			t.Run("create with Cloud Control without the name, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, nameProperty) })
+		if !s.NoCloudControl {
+			s.runSwitchCases(t, nameProperty)
 		}
 		t.Run("DescribeType fails", func(t *testing.T) { s.describeTypeFails(t) })
+	}
+}
+
+// Updatable returns the top-level properties of the schema a deploy can change after create: those that are neither
+// read-only nor create-only. A handler's Update must apply each one, or UCP records a change AWS never got.
+func Updatable(t *testing.T, schema string) []string {
+	var doc struct {
+		Properties map[string]any `json:"properties"`
+		ReadOnly   []string       `json:"readOnlyProperties"`
+		CreateOnly []string       `json:"createOnlyProperties"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(schema), &doc))
+	fixed := map[string]bool{}
+	for _, path := range slices.Concat(doc.ReadOnly, doc.CreateOnly) {
+		if name, ok := strings.CutPrefix(path, "/properties/"); ok && !strings.Contains(name, "/") {
+			fixed[name] = true
+		}
+	}
+	out := []string{}
+	for name := range doc.Properties {
+		if !fixed[name] {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// runSwitchCases runs the cases that create a resource with one handler, then use the other.
+func (s Suite) runSwitchCases(t *testing.T, nameProperty string) {
+	t.Run("create natively, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, "") })
+	t.Run("create with Cloud Control, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, "") })
+	if nameProperty != "" {
+		t.Run("create natively without the name, then use Cloud Control", func(t *testing.T) { s.switchHandlers(t, true, nameProperty) })
+		t.Run("create with Cloud Control without the name, then use the native handler", func(t *testing.T) { s.switchHandlers(t, false, nameProperty) })
 	}
 }
 
@@ -234,6 +307,35 @@ func (s Suite) removedProperty(t *testing.T) {
 	require.NotContains(t, h.stored(), s.Removable)
 }
 
+// removedItemField deploys a template with a field inside an array item, then one without it. UCP must remove the
+// field in AWS, or reject the deploy with 400 and change nothing, never record the removal while AWS keeps it.
+func (s Suite) removedItemField(t *testing.T) {
+	f := s.RemovedItemField
+	if f == nil {
+		t.Skip("the type has no array item field to remove")
+	}
+	h := s.newHarness(t)
+	h.deploy(f.Before)
+	require.False(t, f.Gone(h.stored()), "AWS has the field after the first deploy")
+	before, applied := h.stored(), h.record().Properties.LastApplied
+
+	resp := h.put(f.After)
+	if resp.status == http.StatusBadRequest {
+		require.Equal(t, before, h.stored(), "a rejected deploy changes nothing in AWS")
+		require.Equal(t, applied, h.record().Properties.LastApplied, "a rejected deploy changes nothing in the record")
+		return
+	}
+	require.Contains(t, []int{http.StatusOK, http.StatusCreated, http.StatusAccepted}, resp.status, resp.raw)
+	h.finish()
+	h.requireDeployed()
+	require.True(t, f.Gone(h.stored()), "the deploy succeeded, so AWS no longer has the field")
+
+	h.handler.reset()
+	resp = h.put(f.After)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, h.handler.reset(), "the removal is fully applied")
+}
+
 func (s Suite) createOnlyChange(t *testing.T) {
 	if s.CreateOnlyChange == nil {
 		t.Skip("the type has no create-only property")
@@ -265,7 +367,8 @@ func (s Suite) writeOnlyValues(t *testing.T) {
 	require.Contains(t, h.handler.reset(), "Update")
 	resource := h.cc.Resource(s.TypeName, h.identifier())
 	for _, p := range s.WriteOnly {
-		require.EqualValues(t, normalize(t, s.ChangedWriteOnly[p]), normalize(t, resource[p]), "AWS has the changed %s", p)
+		segments := strings.Split(p, "/")
+		require.EqualValues(t, valuesAt(normalizeValue(s.ChangedWriteOnly), segments), valuesAt(normalizeValue(resource), segments), "AWS has the changed %s", p)
 	}
 
 	resp = h.put(s.ChangedWriteOnly)
@@ -324,7 +427,7 @@ func (s Suite) writeOnlyStrings(t *testing.T) []string {
 	out := []string{}
 	for _, properties := range []map[string]any{s.Properties, s.Changed, s.ChangedWriteOnly} {
 		for _, p := range s.WriteOnly {
-			if v, ok := properties[p]; ok {
+			for _, v := range valuesAt(normalizeValue(properties), strings.Split(p, "/")) {
 				b, err := json.Marshal(v)
 				require.NoError(t, err)
 				out = append(out, strings.Trim(string(b), `"`))
@@ -349,6 +452,115 @@ func (s Suite) list(t *testing.T) {
 	default:
 		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
 	}
+}
+
+// readTypes deploys Properties and reads the resource through the handler, and through List when the type can be
+// listed. Every value must have the JSON type the schema gives its property, such as a string for a port the schema
+// declares as a string, so a read matches what Cloud Control returns for the type.
+func (s Suite) readTypes(t *testing.T) {
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+
+	reads := map[string]map[string]any{}
+	read, err := h.handler.Handler.Read(t.Context(), region, h.identifier())
+	require.NoError(t, err)
+	reads["Read"] = read
+	if h.handler.Options().List == native.ListRegion {
+		listed, err := h.handler.Handler.List(t.Context(), region)
+		require.NoError(t, err)
+		for _, r := range listed {
+			reads["List "+r.Identifier] = r.Properties
+		}
+	}
+	for source, properties := range reads {
+		requireSchemaTypes(t, s.Schema, properties, source)
+	}
+}
+
+// requireSchemaTypes requires every value of properties, which source returned, to have the JSON type the schema
+// gives its property.
+func requireSchemaTypes(t testing.TB, schemaJSON string, properties map[string]any, source string) {
+	t.Helper()
+	var schema map[string]any
+	require.NoError(t, json.Unmarshal([]byte(schemaJSON), &schema))
+	var value any
+	b, err := json.Marshal(properties)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(b, &value))
+	mismatches := []string{}
+	schemaTypes(schema, map[string]any{"type": "object", "properties": schema["properties"]}, "", value, &mismatches)
+	require.Empty(t, mismatches, "%s returns values whose JSON type doesn't match the schema", source)
+}
+
+// schemaTypes adds to mismatches each value under path whose JSON type isn't one the schema definition def allows. It
+// follows $ref, properties, patternProperties, and items, and checks nothing a definition doesn't type.
+func schemaTypes(schema map[string]any, def map[string]any, path string, value any, mismatches *[]string) {
+	if ref, ok := def["$ref"].(string); ok {
+		resolved, _ := schema["definitions"].(map[string]any)[strings.TrimPrefix(ref, "#/definitions/")].(map[string]any)
+		if resolved == nil {
+			*mismatches = append(*mismatches, path+": unknown $ref "+ref)
+			return
+		}
+		def = resolved
+	}
+	var allowed []string
+	switch typ := def["type"].(type) {
+	case string:
+		allowed = []string{typ}
+	case []any:
+		for _, v := range typ {
+			allowed = append(allowed, fmt.Sprint(v))
+		}
+	}
+	if len(allowed) > 0 && !slices.Contains(allowed, jsonType(value)) && !(jsonType(value) == "integer" && slices.Contains(allowed, "number")) {
+		*mismatches = append(*mismatches, fmt.Sprintf("%s: %s, but the schema says %s", path, jsonType(value), strings.Join(allowed, " or ")))
+		return
+	}
+	switch v := value.(type) {
+	case map[string]any:
+		properties, _ := def["properties"].(map[string]any)
+		patterns, _ := def["patternProperties"].(map[string]any)
+		for key, item := range v {
+			if child, ok := properties[key].(map[string]any); ok {
+				schemaTypes(schema, child, path+"/"+key, item, mismatches)
+				continue
+			}
+			for pattern, child := range patterns {
+				if childDef, ok := child.(map[string]any); ok && regexp.MustCompile(pattern).MatchString(key) {
+					schemaTypes(schema, childDef, path+"/"+key, item, mismatches)
+					break
+				}
+			}
+		}
+	case []any:
+		if items, ok := def["items"].(map[string]any); ok {
+			for i, item := range v {
+				schemaTypes(schema, items, fmt.Sprintf("%s/%d", path, i), item, mismatches)
+			}
+		}
+	}
+}
+
+// jsonType returns the JSON schema type of a value read as JSON.
+func jsonType(v any) string {
+	switch t := v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "boolean"
+	case string:
+		return "string"
+	case float64:
+		if t == float64(int64(t)) {
+			return "integer"
+		}
+		return "number"
+	case []any:
+		return "array"
+	case map[string]any:
+		return "object"
+	}
+	return fmt.Sprintf("%T", v)
 }
 
 func (s Suite) existing(t *testing.T) {
@@ -488,6 +700,66 @@ func (s Suite) lostCreateDelete(t *testing.T, reached bool) {
 	called := h.handler.reset()
 	require.NotContains(t, called, "Delete")
 	require.NotContains(t, called, "Reset")
+}
+
+// lostCreateDuplicates loses a create that reached AWS, and adds a second resource with the same values. Find then
+// matches both, so UCP can't tell which one it made: a deploy and a delete fail, naming both, and keep the record,
+// and AWS keeps both resources.
+func (s Suite) lostCreateDuplicates(t *testing.T) {
+	if !s.Duplicates {
+		t.Skip("AWS allows one resource with the values Find searches by")
+	}
+	h := s.newHarness(t)
+	require.Equal(t, native.RecoverBySearch, h.handler.Options().Recovery, "Duplicates is for a handler that recovers by search")
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	first := h.cc.List(s.TypeName)
+	require.Len(t, first, 1)
+	second, err := h.handler.Handler.Create(t.Context(), native.CreateRequest{Region: region, Properties: s.Properties, ClientToken: uuid.NewString()})
+	require.NoError(t, err)
+
+	requireAmbiguous := func(resp response) {
+		require.Equal(t, http.StatusInternalServerError, resp.status, resp.raw)
+		require.Contains(t, resp.raw, first[0])
+		require.Contains(t, resp.raw, second)
+		require.True(t, records.IsFirstCreate(h.record()), "the record keeps the create")
+		require.Equal(t, 2, h.cc.Count(s.TypeName), "AWS keeps both")
+		called := h.handler.reset()
+		require.NotContains(t, called, "Delete")
+		require.NotContains(t, called, "Create")
+	}
+	h.handler.reset()
+	requireAmbiguous(h.put(s.Properties))
+	resp = h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+	h.finish()
+	requireAmbiguous(resp)
+}
+
+// lostCreateFailedDelete loses a create that reached AWS, and deletes the alias. The delete finds the resource, and
+// its call to AWS fails, so the record keeps what the create may have applied. The next delete removes it all.
+func (s Suite) lostCreateFailedDelete(t *testing.T) {
+	h := s.newHarness(t)
+	if od := h.onDelete(); od != schemas.OnDeleteDelete {
+		t.Skipf("a delete of the type doesn't delete it in AWS (onDelete %s)", od)
+	}
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+
+	h.handler.lose("Delete", false)
+	for range maxAttempts {
+		resp = h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+		h.finish()
+		if resp.status != http.StatusConflict {
+			break
+		}
+	}
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	require.NotNil(t, h.record())
+
+	h.removeEventually()
+	h.requireRemoved(nil)
 }
 
 // generatedNameRetry loses a create of a template that leaves out the name, after it reached AWS or before, and
@@ -768,6 +1040,36 @@ func (s Suite) multiCall(t *testing.T) {
 	}
 }
 
+// deleteTokenRetry loses the response of a delete that reached AWS, and deletes again. UCP saved the delete token on
+// the record before the first call, and the retry sends the same token, so AWS takes no second copy.
+func (s Suite) deleteTokenRetry(t *testing.T) {
+	if _, ok := s.NewHandler(awsfake.NewCloudControl()).(native.DeletePreparer); !ok {
+		t.Skip("the handler sends no delete token")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	saved := []string{}
+	h.handler.onDelete = func(token string) {
+		saved = append(saved, h.record().Properties.DeleteToken)
+	}
+	h.handler.lose("Delete", true)
+	resp := h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	require.NotNil(t, h.record())
+	first := h.record().Properties.DeleteToken
+	require.NotEmpty(t, first, "the delete token is saved before the first delete call")
+
+	h.removeEventually()
+	h.requireRemoved(nil)
+	require.GreaterOrEqual(t, len(h.handler.tokens), 2, "the lost delete and its retry both send a token")
+	for _, token := range h.handler.tokens {
+		require.Equal(t, first, token, "every attempt sends the same delete token")
+	}
+	for _, token := range saved {
+		require.Equal(t, first, token, "the record has the token when the delete call is made")
+	}
+}
+
 func (s Suite) describeTypeFails(t *testing.T) {
 	h := s.newHarness(t)
 	h.cf.Schemas = map[string]string{}
@@ -789,13 +1091,68 @@ func (s Suite) neverAsksCloudFormation(t *testing.T) {
 	require.Empty(t, h.cc.Calls())
 }
 
-// readable returns properties without the write-only ones, which UCP never returns.
+// readable returns properties without the write-only values, which UCP never returns.
 func (s Suite) readable(properties map[string]any) map[string]any {
-	out := maps.Clone(properties)
+	out, _ := normalizeValue(properties).(map[string]any)
 	for _, p := range s.WriteOnly {
-		delete(out, p)
+		removeAt(out, strings.Split(p, "/"))
 	}
 	return out
+}
+
+// normalizeValue returns a deep copy of v as JSON reads it.
+func normalizeValue(v any) any {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	var out any
+	if err := json.Unmarshal(b, &out); err != nil {
+		panic(err)
+	}
+	return out
+}
+
+// valuesAt returns the values at the path segments of v, where "*" matches every array item.
+func valuesAt(v any, segments []string) []any {
+	if len(segments) == 0 {
+		return []any{v}
+	}
+	switch t := v.(type) {
+	case map[string]any:
+		if child, ok := t[segments[0]]; ok {
+			return valuesAt(child, segments[1:])
+		}
+	case []any:
+		if segments[0] == "*" {
+			out := []any{}
+			for _, item := range t {
+				out = append(out, valuesAt(item, segments[1:])...)
+			}
+			return out
+		}
+	}
+	return nil
+}
+
+// removeAt removes the value at the path segments of obj, where "*" matches every array item.
+func removeAt(obj map[string]any, segments []string) {
+	if len(segments) == 1 {
+		delete(obj, segments[0])
+		return
+	}
+	switch child := obj[segments[0]].(type) {
+	case map[string]any:
+		removeAt(child, segments[1:])
+	case []any:
+		if segments[1] == "*" && len(segments) > 2 {
+			for _, item := range child {
+				if m, ok := item.(map[string]any); ok {
+					removeAt(m, segments[2:])
+				}
+			}
+		}
+	}
 }
 
 func without(properties map[string]any, property string) map[string]any {
@@ -810,7 +1167,7 @@ func withValue(properties map[string]any, property string, value any) map[string
 	return out
 }
 
-func requireSubset(t *testing.T, want map[string]any, got map[string]any) {
+func requireSubset(t testing.TB, want map[string]any, got map[string]any) {
 	t.Helper()
 	for k, v := range want {
 		require.Contains(t, got, k)
@@ -818,7 +1175,7 @@ func requireSubset(t *testing.T, want map[string]any, got map[string]any) {
 	}
 }
 
-func normalize(t *testing.T, v any) any {
+func normalize(t testing.TB, v any) any {
 	b, err := json.Marshal(v)
 	require.NoError(t, err)
 	var out any
@@ -853,7 +1210,10 @@ func (s Suite) newHarness(t *testing.T) *harness {
 	cc.Identifiers[s.TypeName] = s.IdentifierProperty
 	cc.WriteOnly[s.TypeName] = s.WriteOnly
 	handler := &recorder{Handler: s.NewHandler(cc)}
-	if encoder, ok := handler.Handler.(native.IdentifierEncoder); ok {
+	switch encoder, ok := handler.Handler.(native.IdentifierEncoder); {
+	case s.CloudControlCreate != nil:
+		cc.Assign[s.TypeName] = s.CloudControlCreate
+	case ok:
 		// Both handlers store the same identifier, so Cloud Control computes it the way the handler encodes it.
 		cc.IdentifierOf[s.TypeName] = func(properties map[string]any) string {
 			identifier, _ := encoder.Identifier(properties)
@@ -1074,7 +1434,10 @@ func (h *harness) get() response {
 // existingResponse reads the resource as an `existing` block does, by the template's properties and the identifier.
 func (h *harness) existingResponse() response {
 	properties := maps.Clone(h.s.Properties)
-	if h.s.Identifier == "" {
+	switch {
+	case h.s.IdentifierProperties != nil:
+		maps.Copy(properties, h.s.IdentifierProperties(h.identifier()))
+	case h.s.Identifier == "":
 		properties[h.s.IdentifierProperty] = h.identifier()
 	}
 	return h.getWithPost(map[string]any{"properties": properties})
@@ -1220,6 +1583,11 @@ type recorder struct {
 
 	// onProgress, when set, runs on each Progress call.
 	onProgress func()
+
+	// onDelete, when set, runs on each delete call that sends a delete token, before the handler gets it. tokens are
+	// the delete tokens the handler got.
+	onDelete func(token string)
+	tokens   []string
 }
 
 func (r *recorder) note(method string) {
@@ -1362,7 +1730,43 @@ func (r *recorder) Update(ctx context.Context, request native.UpdateRequest) err
 
 func (r *recorder) Delete(ctx context.Context, region string, identifier string) error {
 	r.note("Delete")
-	return r.Handler.Delete(ctx, region, identifier)
+	return r.lostDelete(func() error { return r.Handler.Delete(ctx, region, identifier) })
+}
+
+// lostDelete makes a delete call, losing its response as lose set.
+func (r *recorder) lostDelete(call func() error) error {
+	reached, lost := r.takeLoss("Delete")
+	switch {
+	case lost && !reached:
+		return errLost
+	case lost:
+		return errors.Join(errLost, call())
+	}
+	return call()
+}
+
+// The recorder always has the methods of native.DeletePreparer, so the registry and UCP see them whatever the handler
+// under test has. DeleteToken returns "" for a handler without them, so UCP never calls DeleteWithToken.
+
+func (r *recorder) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
+	if preparer, ok := r.Handler.(native.DeletePreparer); ok {
+		return preparer.DeleteToken(ctx, region, identifier)
+	}
+	return "", nil
+}
+
+func (r *recorder) DeleteWithToken(ctx context.Context, region string, identifier string, token string) error {
+	r.note("Delete")
+	r.mu.Lock()
+	r.tokens = append(r.tokens, token)
+	onDelete := r.onDelete
+	r.mu.Unlock()
+	if onDelete != nil {
+		onDelete(token)
+	}
+	return r.lostDelete(func() error {
+		return r.Handler.(native.DeletePreparer).DeleteWithToken(ctx, region, identifier, token)
+	})
 }
 
 // Reset passes a reset to the handler under test. The recorder always has Reset, so the registry accepts it for a type

@@ -222,6 +222,9 @@ func (e *engine) reserve(ctx context.Context, r *request, rec *datamodel.AWSReso
 	rec.Properties.PendingOperation = op
 	rec.Properties.RequestToken = ""
 	rec.Properties.Handler = handlerName(r)
+	if op != records.OperationDelete {
+		rec.Properties.DeleteToken = ""
+	}
 	rec.SetProvisioningState(records.StateOf(op))
 	etag, err := e.store.Save(ctx, rec, etag)
 	if err != nil {
@@ -491,6 +494,9 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	patch = withoutUnsentWriteOnly(patch, parsed, immutable, compareFingerprints(rec.Properties.Fingerprints, applied.fingerprints))
 	if len(patch) > 0 {
 		if errResponse := checkRecordPatch(r.typeName, typeInfo, patch); errResponse != nil {
+			return errResponse, nil
+		}
+		if errResponse := createOnlyChanged(r, parsed, patch); errResponse != nil {
 			return errResponse, nil
 		}
 	}
@@ -880,8 +886,16 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	}
 
 	identifier := rec.Properties.AWSIdentifier
+	etag, err = e.prepareDelete(ctx, r, rec, etag, identifier)
+	if err != nil {
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			records.ClearPending(rec)
+			rec.SetProvisioningState(prior)
+		})
+		return handleError(ctx, r.id, err)
+	}
 	logger.Info("Deleting AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier, "handler", handlerName(r))
-	requestToken, err := e.startDeleteCall(ctx, r, identifier)
+	requestToken, err := e.startDeleteCall(ctx, r, identifier, rec.Properties.DeleteToken)
 	if isGoneForDelete(err) {
 		return e.removeRecord(ctx, r, etag)
 	} else if err != nil {

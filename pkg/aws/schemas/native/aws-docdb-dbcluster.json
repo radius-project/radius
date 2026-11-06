@@ -1,0 +1,228 @@
+{
+  "typeName": "AWS::DocDB::DBCluster",
+  "description": "Resource Type definition for AWS::DocDB::DBCluster",
+  "additionalProperties": false,
+  "properties": {
+    "StorageEncrypted": {
+      "type": "boolean"
+    },
+    "RestoreToTime": {
+      "type": "string"
+    },
+    "SnapshotIdentifier": {
+      "type": "string"
+    },
+    "Port": {
+      "type": "integer"
+    },
+    "ServerlessV2PlatformVersion": {
+      "type": "string"
+    },
+    "DBClusterIdentifier": {
+      "type": "string"
+    },
+    "PreferredBackupWindow": {
+      "type": "string"
+    },
+    "ClusterResourceId": {
+      "type": "string"
+    },
+    "Endpoint": {
+      "type": "string"
+    },
+    "RotateMasterUserPassword": {
+      "type": "boolean"
+    },
+    "VpcSecurityGroupIds": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      },
+      "insertionOrder": false
+    },
+    "NetworkType": {
+      "type": "string"
+    },
+    "CopyTagsToSnapshot": {
+      "type": "boolean"
+    },
+    "GlobalClusterIdentifier": {
+      "type": "string"
+    },
+    "RestoreType": {
+      "type": "string"
+    },
+    "Tags": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "insertionOrder": false
+    },
+    "EngineVersion": {
+      "type": "string"
+    },
+    "StorageType": {
+      "type": "string"
+    },
+    "KmsKeyId": {
+      "type": "string"
+    },
+    "AvailabilityZones": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      },
+      "insertionOrder": false
+    },
+    "ServerlessV2ScalingConfiguration": {
+      "$ref": "#/definitions/ServerlessV2ScalingConfiguration"
+    },
+    "PreferredMaintenanceWindow": {
+      "type": "string"
+    },
+    "MasterUserSecretKmsKeyId": {
+      "type": "string"
+    },
+    "DBSubnetGroupName": {
+      "type": "string"
+    },
+    "DeletionProtection": {
+      "type": "boolean"
+    },
+    "UseLatestRestorableTime": {
+      "type": "boolean"
+    },
+    "ManageMasterUserPassword": {
+      "type": "boolean"
+    },
+    "MasterUserPassword": {
+      "type": "string"
+    },
+    "SourceDBClusterIdentifier": {
+      "type": "string"
+    },
+    "MasterUsername": {
+      "type": "string"
+    },
+    "ReadEndpoint": {
+      "type": "string"
+    },
+    "DBClusterParameterGroupName": {
+      "type": "string"
+    },
+    "BackupRetentionPeriod": {
+      "type": "integer"
+    },
+    "Id": {
+      "type": "string",
+      "description": "The cluster identifier, the same as DBClusterIdentifier."
+    },
+    "EnableCloudwatchLogsExports": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      },
+      "insertionOrder": false
+    }
+  },
+  "definitions": {
+    "ServerlessV2ScalingConfiguration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "MinCapacity": {
+          "type": "number"
+        },
+        "MaxCapacity": {
+          "type": "number"
+        }
+      },
+      "required": ["MinCapacity", "MaxCapacity"]
+    },
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "type": "string"
+        },
+        "Key": {
+          "type": "string"
+        }
+      },
+      "required": ["Value", "Key"]
+    }
+  },
+  "createOnlyProperties": [
+    "/properties/SnapshotIdentifier",
+    "/properties/KmsKeyId",
+    "/properties/MasterUsername",
+    "/properties/SourceDBClusterIdentifier",
+    "/properties/DBClusterIdentifier",
+    "/properties/AvailabilityZones",
+    "/properties/DBSubnetGroupName",
+    "/properties/StorageEncrypted",
+    "/properties/RestoreToTime",
+    "/properties/RestoreType",
+    "/properties/UseLatestRestorableTime",
+    "/properties/GlobalClusterIdentifier"
+  ],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": [
+    "/properties/ReadEndpoint",
+    "/properties/Id",
+    "/properties/ServerlessV2PlatformVersion",
+    "/properties/Endpoint",
+    "/properties/ClusterResourceId"
+  ],
+  "writeOnlyProperties": [
+    "/properties/MasterUserPassword",
+    "/properties/SnapshotIdentifier",
+    "/properties/SourceDBClusterIdentifier",
+    "/properties/RestoreToTime",
+    "/properties/RestoreType",
+    "/properties/UseLatestRestorableTime",
+    "/properties/RotateMasterUserPassword",
+    "/properties/GlobalClusterIdentifier",
+    "/properties/AvailabilityZones",
+    "/properties/KmsKeyId",
+    "/properties/MasterUserSecretKmsKeyId"
+  ],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "rds:AddTagsToResource",
+        "rds:CreateDBCluster",
+        "rds:DescribeDBClusters",
+        "rds:RestoreDBClusterFromSnapshot",
+        "rds:RestoreDBClusterToPointInTime"
+      ]
+    },
+    "read": {
+      "permissions": ["rds:DescribeDBClusters", "rds:ListTagsForResource"]
+    },
+    "update": {
+      "permissions": [
+        "rds:AddTagsToResource",
+        "rds:DescribeDBClusters",
+        "rds:ModifyDBCluster",
+        "rds:RemoveTagsFromResource"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "rds:CreateDBClusterSnapshot",
+        "rds:DeleteDBCluster",
+        "rds:DescribeDBClusters"
+      ]
+    },
+    "list": {
+      "permissions": ["rds:DescribeDBClusters", "rds:ListTagsForResource"]
+    }
+  }
+}

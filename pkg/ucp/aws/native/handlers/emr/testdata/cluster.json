@@ -1,0 +1,211 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_EMR_INSTANCE_PROFILE": "EMR_EC2_DefaultRole",
+    "RADIUS_REC_EMR_SERVICE_ROLE": "EMR_DefaultRole",
+    "RADIUS_REC_RUN": "example",
+    "RADIUS_REC_SUBNET": "subnet-0123456789abcdef0"
+  },
+  "interactions": [
+    {
+      "service": "EMR",
+      "operation": "RunJobFlow",
+      "request": "{\"Instances\":{\"Ec2SubnetId\":\"subnet-0123456789abcdef0\",\"InstanceGroups\":[{\"InstanceCount\":1,\"InstanceRole\":\"MASTER\",\"InstanceType\":\"m5.xlarge\",\"Market\":\"ON_DEMAND\"}],\"KeepJobFlowAliveWhenNoSteps\":true,\"TerminationProtected\":false},\"JobFlowRole\":\"EMR_EC2_DefaultRole\",\"Name\":\"radius-rec-example\",\"ReleaseLabel\":\"emr-7.1.0\",\"ServiceRole\":\"EMR_DefaultRole\",\"StepConcurrencyLevel\":1,\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"example\"},{\"Key\":\"radius-operation-id\",\"Value\":\"11111111-2222-3333-4444-555555555555\"}],\"VisibleToAllUsers\":true}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"JobFlowId\":\"j-2AXXXXXXGAPLF\",\"ClusterArn\":\"arn:aws:elasticmapreduce:us-west-2:123456789012:cluster/j-2AXXXXXXGAPLF\"}"
+    },
+    {
+      "service": "EMR",
+      "operation": "DescribeCluster",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"Id\":\"j-2AXXXXXXGAPLF\",\"Name\":\"radius-rec-example\",\"Status\":{\"State\":\"STARTING\",\"StateChangeReason\":{},\"Timeline\":{\"CreationDateTime\":1793865600.0}},\"Ec2InstanceAttributes\":{\"Ec2SubnetId\":\"subnet-0123456789abcdef0\",\"RequestedEc2SubnetIds\":[\"subnet-0123456789abcdef0\"],\"Ec2AvailabilityZone\":\"us-west-2a\",\"RequestedEc2AvailabilityZones\":[],\"IamInstanceProfile\":\"EMR_EC2_DefaultRole\",\"EmrManagedMasterSecurityGroup\":\"sg-0123456789abcdef1\",\"EmrManagedSlaveSecurityGroup\":\"sg-0123456789abcdef2\"},\"InstanceCollectionType\":\"INSTANCE_GROUP\",\"ReleaseLabel\":\"emr-7.1.0\",\"AutoTerminate\":false,\"TerminationProtected\":false,\"UnhealthyNodeReplacement\":false,\"VisibleToAllUsers\":true,\"Applications\":[{\"Name\":\"Hadoop\",\"Version\":\"3.3.6\"}],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"example\"},{\"Key\":\"radius-operation-id\",\"Value\":\"11111111-2222-3333-4444-555555555555\"}],\"ServiceRole\":\"EMR_DefaultRole\",\"NormalizedInstanceHours\":0,\"MasterPublicDnsName\":\"ip-10-0-1-25.us-west-2.compute.internal\",\"Configurations\":[],\"ScaleDownBehavior\":\"TERMINATE_AT_TASK_COMPLETION\",\"EbsRootVolumeSize\":15,\"EbsRootVolumeIops\":3000,\"EbsRootVolumeThroughput\":125,\"KerberosAttributes\":{},\"ClusterArn\":\"arn:aws:elasticmapreduce:us-west-2:123456789012:cluster/j-2AXXXXXXGAPLF\",\"StepConcurrencyLevel\":1,\"PlacementGroups\":[],\"OSReleaseLabel\":\"2.0.20241001.0\",\"ExtendedSupport\":false}}"
+    },
+    {
+      "service": "EMR",
+      "operation": "DescribeCluster",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"Id\":\"j-2AXXXXXXGAPLF\",\"Name\":\"radius-rec-example\",\"Status\":{\"State\":\"WAITING\",\"StateChangeReason\":{},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0}},\"Ec2InstanceAttributes\":{\"Ec2SubnetId\":\"subnet-0123456789abcdef0\",\"RequestedEc2SubnetIds\":[\"subnet-0123456789abcdef0\"],\"Ec2AvailabilityZone\":\"us-west-2a\",\"RequestedEc2AvailabilityZones\":[],\"IamInstanceProfile\":\"EMR_EC2_DefaultRole\",\"EmrManagedMasterSecurityGroup\":\"sg-0123456789abcdef1\",\"EmrManagedSlaveSecurityGroup\":\"sg-0123456789abcdef2\"},\"InstanceCollectionType\":\"INSTANCE_GROUP\",\"ReleaseLabel\":\"emr-7.1.0\",\"AutoTerminate\":false,\"TerminationProtected\":false,\"UnhealthyNodeReplacement\":false,\"VisibleToAllUsers\":true,\"Applications\":[{\"Name\":\"Hadoop\",\"Version\":\"3.3.6\"}],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"example\"},{\"Key\":\"radius-operation-id\",\"Value\":\"11111111-2222-3333-4444-555555555555\"}],\"ServiceRole\":\"EMR_DefaultRole\",\"NormalizedInstanceHours\":16,\"MasterPublicDnsName\":\"ip-10-0-1-25.us-west-2.compute.internal\",\"Configurations\":[],\"ScaleDownBehavior\":\"TERMINATE_AT_TASK_COMPLETION\",\"EbsRootVolumeSize\":15,\"EbsRootVolumeIops\":3000,\"EbsRootVolumeThroughput\":125,\"KerberosAttributes\":{},\"ClusterArn\":\"arn:aws:elasticmapreduce:us-west-2:123456789012:cluster/j-2AXXXXXXGAPLF\",\"StepConcurrencyLevel\":1,\"PlacementGroups\":[],\"OSReleaseLabel\":\"2.0.20241001.0\",\"ExtendedSupport\":false}}"
+    },
+    {
+      "service": "EMR",
+      "operation": "DescribeCluster",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"Id\":\"j-2AXXXXXXGAPLF\",\"Name\":\"radius-rec-example\",\"Status\":{\"State\":\"WAITING\",\"StateChangeReason\":{},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0}},\"Ec2InstanceAttributes\":{\"Ec2SubnetId\":\"subnet-0123456789abcdef0\",\"RequestedEc2SubnetIds\":[\"subnet-0123456789abcdef0\"],\"Ec2AvailabilityZone\":\"us-west-2a\",\"RequestedEc2AvailabilityZones\":[],\"IamInstanceProfile\":\"EMR_EC2_DefaultRole\",\"EmrManagedMasterSecurityGroup\":\"sg-0123456789abcdef1\",\"EmrManagedSlaveSecurityGroup\":\"sg-0123456789abcdef2\"},\"InstanceCollectionType\":\"INSTANCE_GROUP\",\"ReleaseLabel\":\"emr-7.1.0\",\"AutoTerminate\":false,\"TerminationProtected\":false,\"UnhealthyNodeReplacement\":false,\"VisibleToAllUsers\":true,\"Applications\":[{\"Name\":\"Hadoop\",\"Version\":\"3.3.6\"}],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"example\"},{\"Key\":\"radius-operation-id\",\"Value\":\"11111111-2222-3333-4444-555555555555\"}],\"ServiceRole\":\"EMR_DefaultRole\",\"NormalizedInstanceHours\":16,\"MasterPublicDnsName\":\"ip-10-0-1-25.us-west-2.compute.internal\",\"Configurations\":[],\"ScaleDownBehavior\":\"TERMINATE_AT_TASK_COMPLETION\",\"EbsRootVolumeSize\":15,\"EbsRootVolumeIops\":3000,\"EbsRootVolumeThroughput\":125,\"KerberosAttributes\":{},\"ClusterArn\":\"arn:aws:elasticmapreduce:us-west-2:123456789012:cluster/j-2AXXXXXXGAPLF\",\"StepConcurrencyLevel\":1,\"PlacementGroups\":[],\"OSReleaseLabel\":\"2.0.20241001.0\",\"ExtendedSupport\":false}}"
+    },
+    {
+      "service": "EMR",
+      "operation": "ListInstanceGroups",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"InstanceGroups\":[{\"Id\":\"ig-1ABCDEFGHIJKL\",\"Name\":\"Master - 1\",\"Market\":\"ON_DEMAND\",\"InstanceGroupType\":\"MASTER\",\"InstanceType\":\"m5.xlarge\",\"RequestedInstanceCount\":1,\"RunningInstanceCount\":1,\"Status\":{\"State\":\"RUNNING\",\"StateChangeReason\":{\"Message\":\"\"},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0}},\"Configurations\":[],\"ConfigurationsVersion\":0,\"LastSuccessfullyAppliedConfigurations\":[],\"LastSuccessfullyAppliedConfigurationsVersion\":0,\"EbsBlockDevices\":[{\"VolumeSpecification\":{\"VolumeType\":\"gp2\",\"SizeInGB\":32},\"Device\":\"/dev/sdb\"},{\"VolumeSpecification\":{\"VolumeType\":\"gp2\",\"SizeInGB\":32},\"Device\":\"/dev/sdc\"}],\"EbsOptimized\":true,\"ShrinkPolicy\":{}}]}"
+    },
+    {
+      "service": "EMR",
+      "operation": "GetManagedScalingPolicy",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "EMR",
+      "operation": "GetAutoTerminationPolicy",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "EMR",
+      "operation": "DescribeCluster",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"Id\":\"j-2AXXXXXXGAPLF\",\"Name\":\"radius-rec-example\",\"Status\":{\"State\":\"WAITING\",\"StateChangeReason\":{},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0}},\"Ec2InstanceAttributes\":{\"Ec2SubnetId\":\"subnet-0123456789abcdef0\",\"RequestedEc2SubnetIds\":[\"subnet-0123456789abcdef0\"],\"Ec2AvailabilityZone\":\"us-west-2a\",\"RequestedEc2AvailabilityZones\":[],\"IamInstanceProfile\":\"EMR_EC2_DefaultRole\",\"EmrManagedMasterSecurityGroup\":\"sg-0123456789abcdef1\",\"EmrManagedSlaveSecurityGroup\":\"sg-0123456789abcdef2\"},\"InstanceCollectionType\":\"INSTANCE_GROUP\",\"ReleaseLabel\":\"emr-7.1.0\",\"AutoTerminate\":false,\"TerminationProtected\":false,\"UnhealthyNodeReplacement\":false,\"VisibleToAllUsers\":true,\"Applications\":[{\"Name\":\"Hadoop\",\"Version\":\"3.3.6\"}],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"example\"},{\"Key\":\"radius-operation-id\",\"Value\":\"11111111-2222-3333-4444-555555555555\"}],\"ServiceRole\":\"EMR_DefaultRole\",\"NormalizedInstanceHours\":16,\"MasterPublicDnsName\":\"ip-10-0-1-25.us-west-2.compute.internal\",\"Configurations\":[],\"ScaleDownBehavior\":\"TERMINATE_AT_TASK_COMPLETION\",\"EbsRootVolumeSize\":15,\"EbsRootVolumeIops\":3000,\"EbsRootVolumeThroughput\":125,\"KerberosAttributes\":{},\"ClusterArn\":\"arn:aws:elasticmapreduce:us-west-2:123456789012:cluster/j-2AXXXXXXGAPLF\",\"StepConcurrencyLevel\":1,\"PlacementGroups\":[],\"OSReleaseLabel\":\"2.0.20241001.0\",\"ExtendedSupport\":false}}"
+    },
+    {
+      "service": "EMR",
+      "operation": "ModifyCluster",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\",\"StepConcurrencyLevel\":2}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"StepConcurrencyLevel\":2}"
+    },
+    {
+      "service": "EMR",
+      "operation": "AddTags",
+      "request": "{\"ResourceId\":\"j-2AXXXXXXGAPLF\",\"Tags\":[{\"Key\":\"stage\",\"Value\":\"updated\"}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "EMR",
+      "operation": "DescribeCluster",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"Id\":\"j-2AXXXXXXGAPLF\",\"Name\":\"radius-rec-example\",\"Status\":{\"State\":\"WAITING\",\"StateChangeReason\":{},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0}},\"Ec2InstanceAttributes\":{\"Ec2SubnetId\":\"subnet-0123456789abcdef0\",\"RequestedEc2SubnetIds\":[\"subnet-0123456789abcdef0\"],\"Ec2AvailabilityZone\":\"us-west-2a\",\"RequestedEc2AvailabilityZones\":[],\"IamInstanceProfile\":\"EMR_EC2_DefaultRole\",\"EmrManagedMasterSecurityGroup\":\"sg-0123456789abcdef1\",\"EmrManagedSlaveSecurityGroup\":\"sg-0123456789abcdef2\"},\"InstanceCollectionType\":\"INSTANCE_GROUP\",\"ReleaseLabel\":\"emr-7.1.0\",\"AutoTerminate\":false,\"TerminationProtected\":false,\"UnhealthyNodeReplacement\":false,\"VisibleToAllUsers\":true,\"Applications\":[{\"Name\":\"Hadoop\",\"Version\":\"3.3.6\"}],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"example\"},{\"Key\":\"radius-operation-id\",\"Value\":\"11111111-2222-3333-4444-555555555555\"},{\"Key\":\"stage\",\"Value\":\"updated\"}],\"ServiceRole\":\"EMR_DefaultRole\",\"NormalizedInstanceHours\":16,\"MasterPublicDnsName\":\"ip-10-0-1-25.us-west-2.compute.internal\",\"Configurations\":[],\"ScaleDownBehavior\":\"TERMINATE_AT_TASK_COMPLETION\",\"EbsRootVolumeSize\":15,\"EbsRootVolumeIops\":3000,\"EbsRootVolumeThroughput\":125,\"KerberosAttributes\":{},\"ClusterArn\":\"arn:aws:elasticmapreduce:us-west-2:123456789012:cluster/j-2AXXXXXXGAPLF\",\"StepConcurrencyLevel\":2,\"PlacementGroups\":[],\"OSReleaseLabel\":\"2.0.20241001.0\",\"ExtendedSupport\":false}}"
+    },
+    {
+      "service": "EMR",
+      "operation": "ListInstanceGroups",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"InstanceGroups\":[{\"Id\":\"ig-1ABCDEFGHIJKL\",\"Name\":\"Master - 1\",\"Market\":\"ON_DEMAND\",\"InstanceGroupType\":\"MASTER\",\"InstanceType\":\"m5.xlarge\",\"RequestedInstanceCount\":1,\"RunningInstanceCount\":1,\"Status\":{\"State\":\"RUNNING\",\"StateChangeReason\":{\"Message\":\"\"},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0}},\"Configurations\":[],\"ConfigurationsVersion\":0,\"LastSuccessfullyAppliedConfigurations\":[],\"LastSuccessfullyAppliedConfigurationsVersion\":0,\"EbsBlockDevices\":[{\"VolumeSpecification\":{\"VolumeType\":\"gp2\",\"SizeInGB\":32},\"Device\":\"/dev/sdb\"},{\"VolumeSpecification\":{\"VolumeType\":\"gp2\",\"SizeInGB\":32},\"Device\":\"/dev/sdc\"}],\"EbsOptimized\":true,\"ShrinkPolicy\":{}}]}"
+    },
+    {
+      "service": "EMR",
+      "operation": "DescribeCluster",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"Id\":\"j-2AXXXXXXGAPLF\",\"Name\":\"radius-rec-example\",\"Status\":{\"State\":\"WAITING\",\"StateChangeReason\":{},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0}},\"Ec2InstanceAttributes\":{\"Ec2SubnetId\":\"subnet-0123456789abcdef0\",\"RequestedEc2SubnetIds\":[\"subnet-0123456789abcdef0\"],\"Ec2AvailabilityZone\":\"us-west-2a\",\"RequestedEc2AvailabilityZones\":[],\"IamInstanceProfile\":\"EMR_EC2_DefaultRole\",\"EmrManagedMasterSecurityGroup\":\"sg-0123456789abcdef1\",\"EmrManagedSlaveSecurityGroup\":\"sg-0123456789abcdef2\"},\"InstanceCollectionType\":\"INSTANCE_GROUP\",\"ReleaseLabel\":\"emr-7.1.0\",\"AutoTerminate\":false,\"TerminationProtected\":false,\"UnhealthyNodeReplacement\":false,\"VisibleToAllUsers\":true,\"Applications\":[{\"Name\":\"Hadoop\",\"Version\":\"3.3.6\"}],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"example\"},{\"Key\":\"radius-operation-id\",\"Value\":\"11111111-2222-3333-4444-555555555555\"},{\"Key\":\"stage\",\"Value\":\"updated\"}],\"ServiceRole\":\"EMR_DefaultRole\",\"NormalizedInstanceHours\":16,\"MasterPublicDnsName\":\"ip-10-0-1-25.us-west-2.compute.internal\",\"Configurations\":[],\"ScaleDownBehavior\":\"TERMINATE_AT_TASK_COMPLETION\",\"EbsRootVolumeSize\":15,\"EbsRootVolumeIops\":3000,\"EbsRootVolumeThroughput\":125,\"KerberosAttributes\":{},\"ClusterArn\":\"arn:aws:elasticmapreduce:us-west-2:123456789012:cluster/j-2AXXXXXXGAPLF\",\"StepConcurrencyLevel\":2,\"PlacementGroups\":[],\"OSReleaseLabel\":\"2.0.20241001.0\",\"ExtendedSupport\":false}}"
+    },
+    {
+      "service": "EMR",
+      "operation": "ListInstanceGroups",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"InstanceGroups\":[{\"Id\":\"ig-1ABCDEFGHIJKL\",\"Name\":\"Master - 1\",\"Market\":\"ON_DEMAND\",\"InstanceGroupType\":\"MASTER\",\"InstanceType\":\"m5.xlarge\",\"RequestedInstanceCount\":1,\"RunningInstanceCount\":1,\"Status\":{\"State\":\"RUNNING\",\"StateChangeReason\":{\"Message\":\"\"},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0}},\"Configurations\":[],\"ConfigurationsVersion\":0,\"LastSuccessfullyAppliedConfigurations\":[],\"LastSuccessfullyAppliedConfigurationsVersion\":0,\"EbsBlockDevices\":[{\"VolumeSpecification\":{\"VolumeType\":\"gp2\",\"SizeInGB\":32},\"Device\":\"/dev/sdb\"},{\"VolumeSpecification\":{\"VolumeType\":\"gp2\",\"SizeInGB\":32},\"Device\":\"/dev/sdc\"}],\"EbsOptimized\":true,\"ShrinkPolicy\":{}}]}"
+    },
+    {
+      "service": "EMR",
+      "operation": "GetManagedScalingPolicy",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "EMR",
+      "operation": "GetAutoTerminationPolicy",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "EMR",
+      "operation": "DescribeCluster",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"Id\":\"j-2AXXXXXXGAPLF\",\"Name\":\"radius-rec-example\",\"Status\":{\"State\":\"WAITING\",\"StateChangeReason\":{},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0}},\"Ec2InstanceAttributes\":{\"Ec2SubnetId\":\"subnet-0123456789abcdef0\",\"RequestedEc2SubnetIds\":[\"subnet-0123456789abcdef0\"],\"Ec2AvailabilityZone\":\"us-west-2a\",\"RequestedEc2AvailabilityZones\":[],\"IamInstanceProfile\":\"EMR_EC2_DefaultRole\",\"EmrManagedMasterSecurityGroup\":\"sg-0123456789abcdef1\",\"EmrManagedSlaveSecurityGroup\":\"sg-0123456789abcdef2\"},\"InstanceCollectionType\":\"INSTANCE_GROUP\",\"ReleaseLabel\":\"emr-7.1.0\",\"AutoTerminate\":false,\"TerminationProtected\":false,\"UnhealthyNodeReplacement\":false,\"VisibleToAllUsers\":true,\"Applications\":[{\"Name\":\"Hadoop\",\"Version\":\"3.3.6\"}],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"example\"},{\"Key\":\"radius-operation-id\",\"Value\":\"11111111-2222-3333-4444-555555555555\"},{\"Key\":\"stage\",\"Value\":\"updated\"}],\"ServiceRole\":\"EMR_DefaultRole\",\"NormalizedInstanceHours\":16,\"MasterPublicDnsName\":\"ip-10-0-1-25.us-west-2.compute.internal\",\"Configurations\":[],\"ScaleDownBehavior\":\"TERMINATE_AT_TASK_COMPLETION\",\"EbsRootVolumeSize\":15,\"EbsRootVolumeIops\":3000,\"EbsRootVolumeThroughput\":125,\"KerberosAttributes\":{},\"ClusterArn\":\"arn:aws:elasticmapreduce:us-west-2:123456789012:cluster/j-2AXXXXXXGAPLF\",\"StepConcurrencyLevel\":2,\"PlacementGroups\":[],\"OSReleaseLabel\":\"2.0.20241001.0\",\"ExtendedSupport\":false}}"
+    },
+    {
+      "service": "EMR",
+      "operation": "TerminateJobFlows",
+      "request": "{\"JobFlowIds\":[\"j-2AXXXXXXGAPLF\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "EMR",
+      "operation": "DescribeCluster",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"Id\":\"j-2AXXXXXXGAPLF\",\"Name\":\"radius-rec-example\",\"Status\":{\"State\":\"TERMINATING\",\"StateChangeReason\":{\"Code\":\"USER_REQUEST\",\"Message\":\"Terminated by user request\"},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0}},\"Ec2InstanceAttributes\":{\"Ec2SubnetId\":\"subnet-0123456789abcdef0\",\"RequestedEc2SubnetIds\":[\"subnet-0123456789abcdef0\"],\"Ec2AvailabilityZone\":\"us-west-2a\",\"RequestedEc2AvailabilityZones\":[],\"IamInstanceProfile\":\"EMR_EC2_DefaultRole\",\"EmrManagedMasterSecurityGroup\":\"sg-0123456789abcdef1\",\"EmrManagedSlaveSecurityGroup\":\"sg-0123456789abcdef2\"},\"InstanceCollectionType\":\"INSTANCE_GROUP\",\"ReleaseLabel\":\"emr-7.1.0\",\"AutoTerminate\":false,\"TerminationProtected\":false,\"UnhealthyNodeReplacement\":false,\"VisibleToAllUsers\":true,\"Applications\":[{\"Name\":\"Hadoop\",\"Version\":\"3.3.6\"}],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"example\"},{\"Key\":\"radius-operation-id\",\"Value\":\"11111111-2222-3333-4444-555555555555\"},{\"Key\":\"stage\",\"Value\":\"updated\"}],\"ServiceRole\":\"EMR_DefaultRole\",\"NormalizedInstanceHours\":16,\"MasterPublicDnsName\":\"ip-10-0-1-25.us-west-2.compute.internal\",\"Configurations\":[],\"ScaleDownBehavior\":\"TERMINATE_AT_TASK_COMPLETION\",\"EbsRootVolumeSize\":15,\"EbsRootVolumeIops\":3000,\"EbsRootVolumeThroughput\":125,\"KerberosAttributes\":{},\"ClusterArn\":\"arn:aws:elasticmapreduce:us-west-2:123456789012:cluster/j-2AXXXXXXGAPLF\",\"StepConcurrencyLevel\":2,\"PlacementGroups\":[],\"OSReleaseLabel\":\"2.0.20241001.0\",\"ExtendedSupport\":false}}"
+    },
+    {
+      "service": "EMR",
+      "operation": "DescribeCluster",
+      "request": "{\"ClusterId\":\"j-2AXXXXXXGAPLF\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"Id\":\"j-2AXXXXXXGAPLF\",\"Name\":\"radius-rec-example\",\"Status\":{\"State\":\"TERMINATED\",\"StateChangeReason\":{\"Code\":\"USER_REQUEST\",\"Message\":\"Terminated by user request\"},\"Timeline\":{\"CreationDateTime\":1793865600.0,\"ReadyDateTime\":1793866200.0,\"EndDateTime\":1793867100.0}},\"Ec2InstanceAttributes\":{\"Ec2SubnetId\":\"subnet-0123456789abcdef0\",\"RequestedEc2SubnetIds\":[\"subnet-0123456789abcdef0\"],\"Ec2AvailabilityZone\":\"us-west-2a\",\"RequestedEc2AvailabilityZones\":[],\"IamInstanceProfile\":\"EMR_EC2_DefaultRole\",\"EmrManagedMasterSecurityGroup\":\"sg-0123456789abcdef1\",\"EmrManagedSlaveSecurityGroup\":\"sg-0123456789abcdef2\"},\"InstanceCollectionType\":\"INSTANCE_GROUP\",\"ReleaseLabel\":\"emr-7.1.0\",\"AutoTerminate\":false,\"TerminationProtected\":false,\"UnhealthyNodeReplacement\":false,\"VisibleToAllUsers\":true,\"Applications\":[{\"Name\":\"Hadoop\",\"Version\":\"3.3.6\"}],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"example\"},{\"Key\":\"radius-operation-id\",\"Value\":\"11111111-2222-3333-4444-555555555555\"},{\"Key\":\"stage\",\"Value\":\"updated\"}],\"ServiceRole\":\"EMR_DefaultRole\",\"NormalizedInstanceHours\":16,\"MasterPublicDnsName\":\"ip-10-0-1-25.us-west-2.compute.internal\",\"Configurations\":[],\"ScaleDownBehavior\":\"TERMINATE_AT_TASK_COMPLETION\",\"EbsRootVolumeSize\":15,\"EbsRootVolumeIops\":3000,\"EbsRootVolumeThroughput\":125,\"KerberosAttributes\":{},\"ClusterArn\":\"arn:aws:elasticmapreduce:us-west-2:123456789012:cluster/j-2AXXXXXXGAPLF\",\"StepConcurrencyLevel\":2,\"PlacementGroups\":[],\"OSReleaseLabel\":\"2.0.20241001.0\",\"ExtendedSupport\":false}}"
+    }
+  ]
+}

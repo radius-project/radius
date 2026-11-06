@@ -38,6 +38,7 @@ import (
 var _ native.Handler = (*Handler)(nil)
 var _ native.Finder = (*Handler)(nil)
 var _ native.Resetter = (*Handler)(nil)
+var _ native.DeletePreparer = tokens{}
 
 // Handler is a fake native handler. Create and Update change the store at once, a delete removes the resource when it
 // finishes, and Progress reports each operation as running for Waits calls before it finishes, like an AWS service
@@ -109,6 +110,10 @@ type Handler struct {
 
 	// tags maps a client token to the resource the create sent with it made.
 	tags map[string]string
+
+	// deletes counts the delete tokens DeleteTokens made, and copies are the tokens deletes took a copy with.
+	deletes int
+	copies  map[string]bool
 }
 
 // Call is a call the handler received.
@@ -470,4 +475,41 @@ type encoding struct {
 
 func (e encoding) Identifier(properties map[string]any) (string, error) {
 	return e.IdentifierOf(properties)
+}
+
+// DeleteTokens returns h as a handler that sends a delete token (native.DeletePreparer), like a type whose delete
+// takes a final snapshot. Each delete that reaches AWS with a token it hasn't seen takes a copy, which Copies counts.
+func (h *Handler) DeleteTokens() native.Handler {
+	return tokens{h}
+}
+
+// Copies returns how many copies deletes with a delete token took.
+func (h *Handler) Copies() int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.copies)
+}
+
+type tokens struct {
+	*Handler
+}
+
+func (t tokens) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.deletes++
+	return fmt.Sprintf("%s-final-%d", identifier, t.deletes), nil
+}
+
+func (t tokens) DeleteWithToken(ctx context.Context, region string, identifier string, token string) error {
+	if err := t.Delete(ctx, region, identifier); err != nil {
+		return err
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.copies == nil {
+		t.copies = map[string]bool{}
+	}
+	t.copies[token] = true
+	return nil
 }
