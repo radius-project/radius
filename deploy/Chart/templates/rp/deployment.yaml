@@ -1,3 +1,4 @@
+{{- $rotation := include "radius.rotationSnapshot" (dict "root" . "apiVersion" "apps/v1" "kind" "Deployment" "name" "applications-rp") | mustFromJson }}
 {{- $appversion := include "radius.versiontag" . }}
 {{- $authzConfig := include "radius.authz.mode" . }}
 {{- if ne $authzConfig "off" }}
@@ -15,6 +16,7 @@ metadata:
     app.kubernetes.io/part-of: radius
   name: applications-rp
   namespace: {{ .Release.Namespace }}
+  {{- include "radius.rotationMetadata" $rotation | nindent 2 }}
 spec:
   replicas: 1
   selector:

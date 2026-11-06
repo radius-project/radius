@@ -36,6 +36,10 @@ import (
 // StartupProofPath is the public-only initialization endpoint shared with the deployment engine.
 const StartupProofPath = "/healthz/ucp-mtls"
 
+// AggregationPodUIDHeader identifies the UCP process that actually handled an
+// aggregated request, avoiding a false migration check against an old pooled backend.
+const AggregationPodUIDHeader = "X-Radius-Aggregation-Pod-Uid"
+
 const maxProofCAs = 16
 
 var processBootID = uuid.NewString()

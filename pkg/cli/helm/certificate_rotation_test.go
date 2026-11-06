@@ -33,6 +33,9 @@ func TestRotationJournalDecoding(t *testing.T) {
 	tests := []struct{ name, data, want string }{
 		{"duplicate", `{"phase":"publish","phase":"retire"}`, "duplicate"},
 		{"duplicate escaped key", `{"phase":"publish","\u0070hase":"retire"}`, "duplicate"},
+		{"duplicate nested plan", `{"plan":{"targetMode":"selfSigned","targetMode":"caSecret"}}`, "duplicate"},
+		{"duplicate workload", `{"plan":{"consumers":[{"name":"ucp","name":"controller"}]}}`, "duplicate"},
+		{"nested null", `{"plan":{"consumers":[null]}}`, "null"},
 		{"unknown", `{"unexpected":true}`, "schema"},
 		{"null", `{"phase":null}`, "null"},
 		{"array", `[]`, "one object"},
@@ -60,6 +63,10 @@ func TestRotationJournalDecoding(t *testing.T) {
 	loaded.PreviousRevision = uuid.NewString() + "/publish"
 	require.ErrorContains(t, loaded.validate(now), "previous")
 	loaded.PreviousRevision = ""
+	loaded.Recovery = true
+	loaded.PriorRevisions = []string{uuid.NewString() + "/issue"}
+	require.ErrorContains(t, loaded.validate(now), "predecessor")
+	loaded.Recovery, loaded.PriorRevisions = false, nil
 	loaded.ID = uuid.Nil.String()
 	require.ErrorContains(t, loaded.validate(now), "identity")
 }

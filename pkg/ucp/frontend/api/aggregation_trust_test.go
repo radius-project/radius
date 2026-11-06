@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp"
@@ -193,4 +194,21 @@ func TestInternalServer_DoesNotInheritAggregationTLSPolicy(t *testing.T) {
 	internal.Handler.ServeHTTP(response, request.WithContext(internal.BaseContext(nil)))
 	require.True(t, called)
 	require.Equal(t, http.StatusNoContent, response.Code)
+}
+
+func TestAggregationPodIdentityHeader(t *testing.T) {
+	t.Parallel()
+	const podUID = "9a27ad76-9b01-4646-a83a-817053216718"
+	for _, status := range []int{http.StatusOK, http.StatusForbidden} {
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/planes/radius/local", nil)
+		request.Header.Set(mtls.AggregationPodUIDHeader, "caller-controlled")
+		handler := withAggregationPodUID(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(status)
+		}), podUID)
+		handler.ServeHTTP(response, request)
+		require.Equal(t, status, response.Code)
+		require.Equal(t, podUID, response.Header().Get(mtls.AggregationPodUIDHeader))
+		require.Equal(t, "no-store", response.Header().Get("Cache-Control"))
+	}
 }

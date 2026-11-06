@@ -704,7 +704,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 						detectCalls++
 						kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 						return kubeClient, apiextClient, nil
-					},
+					}, newRotationStore: emptyRotationTestStore,
 				}
 
 				state, err := impl.CheckRadiusInstall("test-context")

@@ -122,7 +122,7 @@ func Test_Helm_InstallRadius_ContourValues(t *testing.T) {
 			impl := &Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-				contourCluster:                 staticCRDs(tt.crds...),
+				contourCluster:                 staticCRDs(tt.crds...), newRotationStore: emptyRotationTestStore,
 			}
 			require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 
@@ -149,7 +149,7 @@ func Test_Helm_InstallRadius_ContourPreflightFailureInstallsNothing(t *testing.T
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
+		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...), newRotationStore: emptyRotationTestStore,
 	}
 
 	err := impl.InstallRadius(t.Context(), options, "test-context")
@@ -193,7 +193,7 @@ func Test_Helm_InstallRadius_ExistingContourIsNotChecked(t *testing.T) {
 		contourCluster: &fakeContourCluster{readCRDs: func(context.Context, string, []string) ([]crdInfo, error) {
 			t.Error("the CRDs must not be checked when Contour does not change")
 			return traefikGatewayAPICRDs(), nil
-		}},
+		}}, newRotationStore: emptyRotationTestStore,
 	}
 
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
@@ -213,7 +213,7 @@ func Test_Helm_InstallRadius_ListCRDsError(t *testing.T) {
 		Helm: client,
 		contourCluster: &fakeContourCluster{readCRDs: func(context.Context, string, []string) ([]crdInfo, error) {
 			return nil, errors.New("customresourcedefinitions is forbidden")
-		}},
+		}}, newRotationStore: emptyRotationTestStore,
 	}
 
 	err := impl.InstallRadius(t.Context(), options, "test-context")
@@ -245,7 +245,7 @@ func Test_Helm_UpgradeRadius_ReusesStoredContourValues(t *testing.T) {
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
+		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...), newRotationStore: emptyRotationTestStore,
 	}
 
 	require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
@@ -269,7 +269,7 @@ func Test_Helm_UpgradeRadius_ResetValuesWithoutContourValuesFails(t *testing.T) 
 
 	impl := &Impl{
 		Helm:           client,
-		contourCluster: staticCRDs(traefikGatewayAPICRDs()...),
+		contourCluster: staticCRDs(traefikGatewayAPICRDs()...), newRotationStore: emptyRotationTestStore,
 	}
 
 	err := impl.UpgradeRadius(t.Context(), options, "test-context")
@@ -316,7 +316,7 @@ func Test_Helm_UpgradeRadius_ContourValuesFromFlags(t *testing.T) {
 			impl := &Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-				contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
+				contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...), newRotationStore: emptyRotationTestStore,
 			}
 
 			require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
@@ -417,7 +417,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeBaseline(t *testing.T) {
 			impl := &Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-				contourCluster:                 staticCRDs(tt.crds...),
+				contourCluster:                 staticCRDs(tt.crds...), newRotationStore: emptyRotationTestStore,
 			}
 
 			err := impl.UpgradeRadius(t.Context(), options, "test-context")
@@ -463,7 +463,7 @@ func Test_Helm_InstallRadius_ReinstallContourUsesUpgradeBaseline(t *testing.T) {
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
+		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...), newRotationStore: emptyRotationTestStore,
 	}
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 }
@@ -491,7 +491,7 @@ func Test_Helm_UpgradeRadius_RefusesToDeleteCRDs(t *testing.T) {
 
 	impl := &Impl{
 		Helm:           client,
-		contourCluster: staticCRDs(append(contourBundleCRDs(), listenerSets)...),
+		contourCluster: staticCRDs(append(contourBundleCRDs(), listenerSets)...), newRotationStore: emptyRotationTestStore,
 	}
 
 	err := impl.UpgradeRadius(t.Context(), options, "test-context")
@@ -551,7 +551,7 @@ func Test_Helm_CheckContourUpgrade(t *testing.T) {
 			}
 			// No install or upgrade is expected.
 
-			impl := &Impl{Helm: client, contourCluster: staticCRDs(traefikGatewayAPICRDs()...)}
+			impl := &Impl{Helm: client, contourCluster: staticCRDs(traefikGatewayAPICRDs()...), newRotationStore: emptyRotationTestStore}
 			upgrade, err := impl.CheckContourUpgrade(t.Context(), options, "test-context")
 			if tt.wantErr != "" {
 				require.True(t, clierrors.IsFriendlyError(err), "the CLI shows the message as is: %v", err)
@@ -591,7 +591,7 @@ func Test_Helm_InstallRadius_InstallsContourBeforeRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		contourCluster:                 staticCRDs(),
+		contourCluster:                 staticCRDs(), newRotationStore: emptyRotationTestStore,
 	}
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 	require.Equal(t, 1, gatewayCalls.configureCalls)
@@ -616,7 +616,7 @@ func Test_Helm_InstallRadius_ContourInstallFailureInstallsNoRadius(t *testing.T)
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: gatewayCalls.configure,
-		contourCluster:                 staticCRDs(),
+		contourCluster:                 staticCRDs(), newRotationStore: emptyRotationTestStore,
 	}
 	err := impl.InstallRadius(t.Context(), options, "test-context")
 	require.ErrorContains(t, err, "failed to apply Contour Helm chart")
@@ -647,7 +647,7 @@ func Test_Helm_InstallRadius_ContourInstallUsesClusterConfiguration(t *testing.T
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-		contourCluster:                 staticCRDs(),
+		contourCluster:                 staticCRDs(), newRotationStore: emptyRotationTestStore,
 	}
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 
@@ -681,7 +681,7 @@ func Test_Helm_UpgradeRadius_DownloadsContourChartOnce(t *testing.T) {
 		contourCluster: &fakeContourCluster{readCRDs: func(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
 			checks++
 			return staticCRDs(traefikGatewayAPICRDs()...).CRDs(ctx, kubeContext, names)
-		}},
+		}}, newRotationStore: emptyRotationTestStore,
 	}
 
 	upgrade, err := impl.CheckContourUpgrade(t.Context(), options, "test-context")
@@ -728,7 +728,7 @@ func Test_Helm_UpgradeRadius_WaitsForK3sOnce(t *testing.T) {
 				helmCharts: []helmControllerChart{{name: "traefik-crd", namespace: "kube-system", releaseNamespace: "kube-system", jobName: "helm-install-traefik-crd"}},
 				jobs:       map[string]helmControllerJob{"kube-system/helm-install-traefik-crd": {}},
 			},
-			logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
+			logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }, newRotationStore: emptyRotationTestStore,
 		}
 
 		start := time.Now()
@@ -816,7 +816,7 @@ func Test_Helm_InstallRadius_WaitsForK3sTraefikCRDs(t *testing.T) {
 				impl := &Impl{
 					Helm:                           client,
 					configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-					contourCluster:                 cluster,
+					contourCluster:                 cluster, newRotationStore: emptyRotationTestStore,
 				}
 				start := time.Now()
 				err := impl.InstallRadius(t.Context(), options, "test-context")
@@ -933,7 +933,7 @@ func Test_Helm_InstallRadius_ExistingContourRelease(t *testing.T) {
 			impl := &Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: gatewayCalls.configure,
-				contourCluster:                 staticCRDs(contourBundleCRDs()...),
+				contourCluster:                 staticCRDs(contourBundleCRDs()...), newRotationStore: emptyRotationTestStore,
 			}
 			err := impl.InstallRadius(t.Context(), options, "test-context")
 			if tt.wantErr != "" {
@@ -1060,7 +1060,7 @@ func recordHelmCalls(t *testing.T, options ClusterOptions, upgrade bool) []strin
 	impl := &Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
-		contourCluster:                 staticCRDs(),
+		contourCluster:                 staticCRDs(), newRotationStore: emptyRotationTestStore,
 	}
 	if upgrade {
 		require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))

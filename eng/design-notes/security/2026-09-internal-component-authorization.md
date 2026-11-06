@@ -585,13 +585,13 @@ Service certificates last **24 hours** and are renewed after two-thirds of their
 
 Local development does not need cert-manager: `--skip-rbac` (see [CLI Design](#cli-design-if-applicable)) leaves the installation in the Off stage without cert-manager or mTLS.
 
-**A10 implementation direction:** cert-manager remains the issuer and renewer; Radius owns the public trust bundles and its APIService `caBundle`. The staged operation publishes overlap, observes every component's loaded trust, switches issuance and serving identity, then explicitly retires old trust. The shared cainjector is not disabled. Existing APIService injection requires a safe explicit handover; deleting annotations does not cancel already submitted writes. This local direction differs from the cainjector proposal in pending [#13230](https://github.com/radius-project/radius/pull/13230); it does not claim that proposal has been changed or accepted. See [the implementation status](../../../docs/architecture/ucp.md#internal-mtls-endpoint) for the distinction between completed storage/evidence primitives and the unfinished rotation workflow.
+**A10 local implementation direction:** cert-manager remains the issuer and renewer; Radius owns the public trust bundles and its APIService `caBundle`. The explicit CLI phases publish overlap, observe every component's loaded trust, switch issuance and serving identity, then retire old trust only on a separate operator request. A retained signing snapshot prevents automatic renewal of the self-signed bootstrap CA from silently changing the selected issuer. Replacement CA certificates must use a new key. Expiry or compromise recovery records new-only intent, permits an availability interruption, and still requires final consumer and aggregation evidence. The aggregation probe covers the configured Kubernetes endpoint, not every hidden HA API server. The shared cainjector is not disabled. Detected existing APIService injection is rejected until a safe explicit handover exists; deleting annotations does not cancel already submitted writes. This local direction differs from the cainjector proposal in pending [#13230](https://github.com/radius-project/radius/pull/13230); it does not claim that proposal has been changed or accepted. See [the implementation and validation boundaries](../../../docs/architecture/ucp.md#internal-mtls-endpoint) and [operator recovery procedure](../../../deploy/Chart/README.md#radius-owned-public-trust). Live issuance, paired-image and HA acceptance remain separate from local tests.
 
 Remaining implementation details:
 
 - The supported cert-manager version range.
 - Certificate request-policy enforcement for external issuers; public trust distribution follows the Radius-owned direction above.
-- How existing installations move from the Helm-generated certificates.
+- Acceptance of the staged Helm-generated aggregation certificate migration on supported clusters, including safe handover for any preexisting injector ownership.
 
 **Q: What are the execution record's limits?**
 

@@ -43,16 +43,18 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 )
 
 // CertificateOptions selects a dedicated signing CA without passing private material through Helm.
 type CertificateOptions struct {
-	CACert     string
-	CAKey      string
-	CASecret   string
-	CertIssuer string
-	CABundle   string
+	CACert        string
+	CAKey         string
+	CASecret      string
+	CertIssuer    string
+	CABundle      string
+	RotationPhase string
 }
 
 // AddFlags registers the certificate options shared by install and upgrade.
@@ -62,10 +64,18 @@ func (o *CertificateOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.CASecret, "ca-secret", "", "Existing operator-owned TLS signing Secret in radius-system; never adopted or overwritten")
 	flags.StringVar(&o.CertIssuer, "cert-issuer", "", "Existing cert-manager.io Issuer/name or ClusterIssuer/name; requires dedicated public --ca-bundle on fresh install and live request-policy verification")
 	flags.StringVar(&o.CABundle, "ca-bundle", "", "Path to exactly one public dedicated signing CA PEM for --cert-issuer; never a private key or parent chain")
+	flags.StringVar(&o.RotationPhase, "ca-rotation-phase", "", "Run publish, adopt, issue, retire, or recover on installed Radius; recover performs an outage-capable new-only CA cutover")
 }
 
 // Validate checks flag combinations before contacting the cluster.
 func (o CertificateOptions) Validate() error {
+	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "adopt" &&
+		o.RotationPhase != "issue" && o.RotationPhase != "retire" && o.RotationPhase != "recover" {
+		return fmt.Errorf("--ca-rotation-phase must be publish, adopt, issue, retire, or recover")
+	}
+	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "recover" && o.Specified() {
+		return fmt.Errorf("select the target CA only in publish or explicit incident recovery; subsequent phases use the persisted rotation")
+	}
 	if (o.CACert == "") != (o.CAKey == "") {
 		return fmt.Errorf("--ca-cert and --ca-key must be supplied together")
 	}
@@ -94,7 +104,7 @@ func (o CertificateOptions) Validate() error {
 
 // ValidateFlags also rejects explicitly empty certificate flags rather than treating them as omitted.
 func (o CertificateOptions) ValidateFlags(flags *pflag.FlagSet) error {
-	for _, name := range []string{"ca-cert", "ca-key", "ca-secret", "cert-issuer", "ca-bundle"} {
+	for _, name := range []string{"ca-cert", "ca-key", "ca-secret", "cert-issuer", "ca-bundle", "ca-rotation-phase"} {
 		flag := flags.Lookup(name)
 		if flag != nil && flag.Changed && flag.Value.String() == "" {
 			return fmt.Errorf("--%s must not be empty", name)
@@ -615,6 +625,12 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 
 // CheckRadiusCertificates validates the upgrade's certificate settings without creating Secrets.
 func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptions, kubeContext string) error {
+	if options.Certificates.RotationPhase != "" {
+		return i.runCertificateRotation(ctx, options, kubeContext, true)
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, options.Radius.Namespace, "upgrade preflight", nil); err != nil {
+		return err
+	}
 	chart, configuration, current, err := prepareRadiusChart(ctx, NewHelmAction(i.Helm), options.Radius, kubeContext)
 	if err != nil {
 		return err

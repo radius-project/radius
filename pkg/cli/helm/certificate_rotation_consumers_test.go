@@ -39,6 +39,11 @@ import (
 func rotationObserverFixture(t *testing.T) (*rotationConsumerObserver, []rotationConsumer) {
 	t.Helper()
 	ca, _, _ := testSigningCA(t, nil, nil, nil, nil)
+	return rotationObserverFixtureForCA(t, ca)
+}
+
+func rotationObserverFixtureForCA(t *testing.T, ca []byte) (*rotationConsumerObserver, []rotationConsumer) {
+	t.Helper()
 	digest, roots, err := mtls.TrustBundleDigest(ca, time.Now())
 	require.NoError(t, err)
 	trust := &corev1.ConfigMap{

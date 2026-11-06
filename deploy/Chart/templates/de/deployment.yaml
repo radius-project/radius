@@ -1,3 +1,4 @@
+{{- $rotation := include "radius.rotationSnapshot" (dict "root" . "apiVersion" "apps/v1" "kind" "Deployment" "name" "bicep-de") | mustFromJson }}
 {{- $appversion := include "radius.versiontag" . }}
 {{- $image := include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
 {{- $settings := .Values.de.ucpMTLS | default dict }}
@@ -11,7 +12,10 @@
 {{- if and $mtls (eq (include "radius.authz.mode" .) "off") }}
 {{- fail "de.ucpMTLS.enabled requires global.rbac.dryRun=true or global.rbac.enabled=true" }}
 {{- end }}
-{{- $proof := $settings.startupProof | default dict }}
+{{- $proof := deepCopy ($settings.startupProof | default dict) }}
+{{- if and $rotation.state $proof.enabled }}
+{{- $_ := set $proof "expectedTrustSHA256" $rotation.state.plan.targetTrustSHA256 }}
+{{- end }}
 {{- $proofEnabled := false }}
 {{- if hasKey $proof "enabled" }}
 {{- $proofEnabled = $proof.enabled }}
@@ -34,6 +38,7 @@ kind: Deployment
 metadata:
   name: bicep-de
   namespace: {{ .Release.Namespace }}
+  {{- include "radius.rotationMetadata" $rotation | nindent 2 }}
   labels:
     control-plane: bicep-de
     app.kubernetes.io/name: bicep-de
