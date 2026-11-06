@@ -175,6 +175,13 @@ func (h *Instance) Update(ctx context.Context, request native.UpdateRequest) err
 		}
 		values[name] = value
 	}
+	if _, ok := values["CACertificateIdentifier"]; ok {
+		// CertificateRotationRestart is write-only, so the patch leaves it out when it didn't change, but it says
+		// whether this CA change restarts the instance.
+		if restart, ok := request.Desired["CertificateRotationRestart"]; ok {
+			values["CertificateRotationRestart"] = restart
+		}
+	}
 	calls := []func() error{}
 	if len(values) > 0 {
 		input := &docdb.ModifyDBInstanceInput{}

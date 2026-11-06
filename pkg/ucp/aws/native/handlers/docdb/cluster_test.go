@@ -351,3 +351,33 @@ func Test_Instance_RemovedDefaults(t *testing.T) {
 	require.Equal(t, false, got["EnablePerformanceInsights"])
 	require.Equal(t, "sun:05:00-sun:05:30", got["PreferredMaintenanceWindow"], "the window has no default, so AWS keeps it")
 }
+
+// Test_Instance_CertificateRotationRestart checks that a change of only the CA certificate sends the template's
+// CertificateRotationRestart, which is write-only and so not in the patch when it didn't change. Without it, DocumentDB
+// restarts the instance whatever the template says.
+func Test_Instance_CertificateRotationRestart(t *testing.T) {
+	for _, restart := range []bool{false, true} {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewInstance(api)
+		properties := map[string]any{"DBInstanceIdentifier": "one", "DBClusterIdentifier": "app", "CACertificateIdentifier": "rds-ca-2019", "CertificateRotationRestart": restart}
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+		require.NoError(t, err)
+
+		desired := map[string]any{"DBInstanceIdentifier": "one", "DBClusterIdentifier": "app", "CACertificateIdentifier": "rds-ca-rsa2048-g1", "CertificateRotationRestart": restart}
+		require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: "one", Desired: desired, Patch: jsondiff.Patch{
+			{Type: jsondiff.OperationReplace, Path: "/CACertificateIdentifier", Value: "rds-ca-rsa2048-g1"},
+		}}))
+		require.NotNil(t, api.lastModifyInstance.CertificateRotationRestart, "restart %v", restart)
+		require.Equal(t, restart, *api.lastModifyInstance.CertificateRotationRestart)
+	}
+
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewInstance(api)
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"DBInstanceIdentifier": "one", "DBClusterIdentifier": "app"}})
+	require.NoError(t, err)
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: "one", Desired: map[string]any{"CACertificateIdentifier": "rds-ca-rsa2048-g1"}, Patch: jsondiff.Patch{
+		{Type: jsondiff.OperationAdd, Path: "/CACertificateIdentifier", Value: "rds-ca-rsa2048-g1"},
+	}}))
+	require.Nil(t, api.lastModifyInstance.CertificateRotationRestart, "a template without the flag leaves DocumentDB's default")
+}
+

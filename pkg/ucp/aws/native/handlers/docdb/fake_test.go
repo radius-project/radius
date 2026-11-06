@@ -46,6 +46,9 @@ type fakeAPI struct {
 	snapshots []string
 	calls     []string
 
+	// lastModifyInstance is the input of the last ModifyDBInstance call.
+	lastModifyInstance *docdb.ModifyDBInstanceInput
+
 	// errs maps a method name to an error the call returns instead of acting.
 	errs map[string]error
 }
@@ -325,6 +328,7 @@ func (f *fakeAPI) ModifyDBInstance(ctx context.Context, in *docdb.ModifyDBInstan
 	if err := f.call("ModifyDBInstance"); err != nil {
 		return nil, err
 	}
+	f.lastModifyInstance = in
 	id := aws.ToString(in.DBInstanceIdentifier)
 	values, err := awsapi.EncodeObject(in)
 	if err != nil {
