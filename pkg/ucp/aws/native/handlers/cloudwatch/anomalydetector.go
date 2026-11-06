@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -441,6 +442,7 @@ func configuration(properties map[string]any) (*types.AnomalyDetectorConfigurati
 		out.MetricTimezone = aws.String(zone)
 	}
 	ranges, _ := c["ExcludedTimeRanges"].([]any)
+	out.ExcludedTimeRanges = []types.Range{}
 	for _, item := range ranges {
 		r, _ := item.(map[string]any)
 		start, okStart := parseTime(r["StartTime"])
@@ -556,9 +558,16 @@ func (h *AnomalyDetector) Create(ctx context.Context, request native.CreateReque
 }
 
 // Update sends the template's properties with PutAnomalyDetector, which replaces the detector's configuration. Every
-// other property is create-only. A configuration the template no longer sets goes back to AWS's default.
+// other property is create-only. A configuration the template no longer sets goes back to AWS's default: a put
+// without a Configuration may leave the detector's as it is, so Update sends an empty one, with no excluded time
+// ranges and the default time zone.
 func (h *AnomalyDetector) Update(ctx context.Context, request native.UpdateRequest) error {
-	return h.put(ctx, request.Region, request.Desired)
+	desired := request.Desired
+	if _, ok := desired["Configuration"]; !ok {
+		desired = maps.Clone(desired)
+		desired["Configuration"] = map[string]any{"ExcludedTimeRanges": []any{}}
+	}
+	return h.put(ctx, request.Region, desired)
 }
 
 // Delete deletes the detector. One without AccountId is the current account's, which AWS deletes when the request has

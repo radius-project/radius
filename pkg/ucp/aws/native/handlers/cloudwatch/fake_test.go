@@ -149,8 +149,14 @@ func (f *fakeAPI) PutAnomalyDetector(ctx context.Context, in *cloudwatch.PutAnom
 	if err != nil {
 		return nil, err
 	}
+	// An empty configuration is AWS's default, which the detector then has instead of a configuration.
 	if config := configurationProperties(in.Configuration); len(config) > 0 {
-		props["Configuration"] = config
+		if ranges, _ := config["ExcludedTimeRanges"].([]any); len(ranges) == 0 {
+			delete(config, "ExcludedTimeRanges")
+		}
+		if len(config) > 0 {
+			props["Configuration"] = config
+		}
 	}
 	identifier, err := NewAnomalyDetector(f, f).Identifier(props)
 	if err != nil {
@@ -163,8 +169,12 @@ func (f *fakeAPI) PutAnomalyDetector(ctx context.Context, in *cloudwatch.PutAnom
 		return nil, err
 	}
 	if existing := f.store.Resource(anomalyDetectorType, identifier); existing != nil {
-		// A put of a detector AWS has keeps the form that created it, and replaces its settings.
+		// A put of a detector AWS has keeps the form that created it, and replaces its settings. A put without a
+		// Configuration leaves the detector's configuration as it is.
 		for _, k := range []string{"Configuration", "MetricCharacteristics"} {
+			if k == "Configuration" && in.Configuration == nil {
+				continue
+			}
 			delete(existing, k)
 			if v, ok := props[k]; ok {
 				existing[k] = v
