@@ -198,6 +198,12 @@ func Test_Suite_NetworkAclEntry(t *testing.T) {
 		Removable:          "PortRange",
 		CreateOnlyChange:   with(entry, map[string]any{"RuleNumber": 101}),
 		OtherForm:          map[string]any{"Ipv6CidrBlock": "2001:db8::/32", "RuleAction": "ALLOW", "Protocol": "6"},
+		// A rule number outside 1 to 32766, including one that would wrap to 100 as an int32.
+		Invalid: []map[string]any{
+			with(entry, map[string]any{"RuleNumber": 0}),
+			with(entry, map[string]any{"RuleNumber": 32767}),
+			with(entry, map[string]any{"RuleNumber": 4294967396}),
+		},
 	})
 }
 

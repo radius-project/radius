@@ -168,6 +168,10 @@ type Suite struct {
 	// a type whose Equivalent compares array items only on the values the template sets.
 	RemovedItemField *RemovedItemField
 
+	// Invalid are templates the handler rejects as a client failure before any AWS call, such as a value out of the
+	// range AWS takes. Each deploy gets 400 and leaves no record.
+	Invalid []map[string]any
+
 	// SameResource, when set, is another template for the resource Properties gives, such as one that sets a value
 	// AWS defaults to, like the current account. Two aliases must not both own the resource, whichever deploys first.
 	SameResource map[string]any
@@ -206,6 +210,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("deleted outside Radius", func(t *testing.T) { s.deletedOutsideRadius(t) })
 	t.Run("removed property", func(t *testing.T) { s.removedProperty(t) })
 	t.Run("removed field of an array item", func(t *testing.T) { s.removedItemField(t) })
+	t.Run("template the handler rejects", func(t *testing.T) { s.invalid(t) })
 	t.Run("another template for a resource another alias holds", func(t *testing.T) { s.sameResource(t, false) })
 	t.Run("a template for a resource another alias holds in another form", func(t *testing.T) { s.sameResource(t, true) })
 	t.Run("redeploy after a change outside Radius", func(t *testing.T) { s.changedOutside(t, false) })
@@ -1028,6 +1033,22 @@ func (s Suite) identifierHeld(t *testing.T) {
 	require.Subset(t, []string{"Read"}, h.handler.reset(), "UCP only reads AWS")
 	require.Equal(t, before, h.stored())
 	require.Nil(t, h.recordAt(other))
+}
+
+// invalid deploys each of Invalid, which gets 400 before any AWS call and leaves no record.
+func (s Suite) invalid(t *testing.T) {
+	if len(s.Invalid) == 0 {
+		t.Skip("the type has no template the handler rejects before calling AWS")
+	}
+	for _, properties := range s.Invalid {
+		h := s.newHarness(t)
+		h.handler.reset()
+		resp := h.put(properties)
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Empty(t, h.handler.reset(), "nothing reaches AWS")
+		require.Nil(t, h.record())
+		require.Zero(t, h.cc.Count(s.TypeName))
+	}
 }
 
 // sameResource deploys Properties under one alias and SameResource under another, or the other way around when
