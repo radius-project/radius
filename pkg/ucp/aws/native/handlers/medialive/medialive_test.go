@@ -194,7 +194,25 @@ func Test_Suite_Channel(t *testing.T) {
 		FailCall: nativetest.FailCall(2, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		// AWS fills in defaults inside video descriptions, so Equivalent compares them only on the template's values.
+		// A field the template drops, such as Sharpness, must still be removed in AWS.
+		RemovedItemField: &nativetest.RemovedItemField{
+			Before: withVideo(t, properties, `[{"Name": "video", "Width": 1280, "Height": 720, "Sharpness": 75, "CodecSettings": {"H264Settings": {"Bitrate": 3000000, "RateControlMode": "CBR"}}}]`),
+			After:  properties,
+			Gone: func(stored map[string]any) bool {
+				video := stored["EncoderSettings"].(map[string]any)["VideoDescriptions"].([]any)[0].(map[string]any)
+				_, ok := video["Sharpness"]
+				return !ok
+			},
+		},
 	})
+}
+
+// withVideo returns properties with the video descriptions in the JSON videos.
+func withVideo(t *testing.T, properties map[string]any, videos string) map[string]any {
+	settings := maps.Clone(properties["EncoderSettings"].(map[string]any))
+	settings["VideoDescriptions"] = object(t, videos)
+	return with(properties, map[string]any{"EncoderSettings": settings})
 }
 
 // Test_ReadReturnsSecrets checks that DescribeChannel and Read return the secrets, as AWS does, so the suite's check
