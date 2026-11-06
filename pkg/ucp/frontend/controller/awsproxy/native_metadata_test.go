@@ -21,6 +21,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -685,4 +686,73 @@ func Test_Native_RejectNeverCreates(t *testing.T) {
 		require.Equal(t, "id-1", h.record(assignedPath).Properties.AWSIdentifier)
 		require.Equal(t, []string{"Find"}, methods(h.assigned.Calls()))
 	})
+}
+
+// within reports whether every value template sets is in aws, as for a handler whose service fills in defaults inside
+// the items of a list, such as MediaLive's video descriptions. Lists match item by item.
+func within(template any, aws any) bool {
+	switch t := template.(type) {
+	case map[string]any:
+		a, ok := aws.(map[string]any)
+		if !ok {
+			return false
+		}
+		for k, v := range t {
+			if !within(v, a[k]) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		a, ok := aws.([]any)
+		if !ok || len(a) != len(t) {
+			return false
+		}
+		for i := range t {
+			if !within(t[i], a[i]) {
+				return false
+			}
+		}
+		return true
+	}
+	return reflect.DeepEqual(template, aws)
+}
+
+// Test_Native_EquivalentRemovedItemField checks that a field the template stops setting inside an array item is
+// cleared in AWS, though the handler's Equivalent counts AWS's items as matching when they hold extra fields.
+func Test_Native_EquivalentRemovedItemField(t *testing.T) {
+	video := func(item map[string]any) map[string]any {
+		properties := nativeProperties(1)
+		properties["VideoDescriptions"] = []any{item}
+		return properties
+	}
+	withSharpness := video(map[string]any{"Name": "hd", "Sharpness": 75})
+	withoutSharpness := video(map[string]any{"Name": "hd"})
+
+	h := newNativeHarness(t)
+	h.fake.Opts.Equivalent = func(path string, template any, aws any) bool {
+		return path == "VideoDescriptions" && within(template, aws)
+	}
+	h.deploy(nativePath, withSharpness)
+	// AWS fills in a default inside the item.
+	require.NoError(t, h.cc.Patch(nativeType, "app-native", []map[string]any{{"op": "add", "path": "/VideoDescriptions/0/Codec", "value": "h264"}}))
+	h.fake.Calls()
+
+	resp := h.put(nativePath, withSharpness)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()), "AWS's default doesn't count as a change")
+
+	resp = h.put(nativePath, withoutSharpness)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	require.Equal(t, []string{"Read", "Update"}, methods(h.fake.Calls()), "the update sends the template's list")
+	for _, result := range h.finish() {
+		require.Nil(t, result.Error)
+	}
+	require.Equal(t, []any{map[string]any{"Name": "hd"}}, h.cc.Resource(nativeType, "app-native")["VideoDescriptions"], "AWS no longer has the field")
+
+	// AWS fills in its default again, and the next unchanged deploy changes nothing.
+	require.NoError(t, h.cc.Patch(nativeType, "app-native", []map[string]any{{"op": "add", "path": "/VideoDescriptions/0/Codec", "value": "h264"}}))
+	resp = h.put(nativePath, withoutSharpness)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()))
 }
