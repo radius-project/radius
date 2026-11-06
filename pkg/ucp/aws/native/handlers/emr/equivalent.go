@@ -28,6 +28,11 @@ import (
 //     Each application the template lists must be among them.
 //   - Instances/TaskInstanceGroups: as other lists, but EMR changes the count of a group with an automatic scaling
 //     policy, so its count isn't compared.
+//
+// The core group's count, and every count under a managed scaling policy, can't be skipped here: Equivalent sees only
+// the count's path and its two values, not the group's policy or ManagedScalingPolicy, so skipping it would also hide
+// a real change of an unscaled group. Such a count AWS changed starts an update that makes no AWS call, because the
+// update leaves the count of a scaled group as it is. #13673 tracks giving Equivalent the whole resource.
 //   - Other lists of objects, such as instance groups, configurations, and placement groups: EMR fills in defaults,
 //     such as an instance group's Market or EBS volumes, and may return the items in another order. Each item the
 //     template lists must match its own item in AWS's list, on the values the template sets.
