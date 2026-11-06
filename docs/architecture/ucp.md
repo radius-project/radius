@@ -81,6 +81,8 @@ Radius component identity, and reloads certificates without a restart. See
 
 The aggregation server also uses a polling TLS Source for its mounted `ucp-cert` certificate, key and CA bundle. New handshakes capture one coherent serving certificate without replacing the aggregation endpoint's separate client-authentication policy. Invalid updates retain the previous material only while its full verified chain remains valid. This enables serving-certificate renewal; it does not migrate the legacy CA, update APIService trust, acknowledge aggregator adoption or complete coordinated CA rotation. The old backend must remain available until separately observed aggregation trust can verify the new serving identity.
 
+The [candidate trust-fence tests](../../pkg/cli/helm/certificate_fence_candidate_test.go) explore a built-in ValidatingAdmissionPolicy that restricts APIService bundle writes using protected public allowances on the same object. The fixtures exercise native CEL and resource matching; the [isolated API-server regression](../../pkg/cli/helm/certificate_fence_candidate_apiserver_test.go) exercises queued force-apply when envtest assets are available. These are test-only candidates, not an installed policy, an approved privilege model or an enabled rotation path. Kubernetes distributes policy hooks asynchronously: policy existence, type-check status or a denial through a load balancer does not establish enforcement on every writable API server. Missing hooks or bindings provide no protection even with `failurePolicy: Fail`. A supported activation procedure and the complete consumer/aggregation transition remain prerequisites.
+
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.
