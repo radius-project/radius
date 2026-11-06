@@ -91,16 +91,14 @@ func (h *Cluster) TypeName() string {
 	return clusterType
 }
 
-// Options returns how UCP uses the handler.
+// Options returns how UCP uses the handler. A restore from a large snapshot can take hours, so UCP waits
+// native.DefaultTimeout.
 func (h *Cluster) Options() native.Options {
 	return native.Options{
-		List:          native.ListRegion,
-		Recovery:      native.RecoverByIdentifier,
-		NameProperty:  "DBClusterIdentifier",
-		Equivalent:    equivalent,
-		CreateTimeout: time.Hour,
-		UpdateTimeout: time.Hour,
-		DeleteTimeout: time.Hour,
+		List:         native.ListRegion,
+		Recovery:     native.RecoverByIdentifier,
+		NameProperty: "DBClusterIdentifier",
+		Equivalent:   equivalent,
 	}
 }
 

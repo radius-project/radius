@@ -45,6 +45,9 @@ func Test_Options(t *testing.T) {
 	require.Equal(t, instanceType, instance.TypeName())
 	require.Equal(t, "DBClusterIdentifier", cluster.Options().NameProperty)
 	require.Equal(t, "DBInstanceIdentifier", instance.Options().NameProperty)
+	for _, o := range []native.Options{cluster.Options(), instance.Options()} {
+		require.Zero(t, o.CreateTimeout+o.UpdateTimeout+o.DeleteTimeout, "UCP waits native.DefaultTimeout, because a restore from a large snapshot can take hours")
+	}
 
 	options := &docdb.Options{}
 	inRegion("eu-west-2")(options)
@@ -381,4 +384,3 @@ func Test_Instance_CertificateRotationRestart(t *testing.T) {
 	}}))
 	require.Nil(t, api.lastModifyInstance.CertificateRotationRestart, "a template without the flag leaves DocumentDB's default")
 }
-

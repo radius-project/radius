@@ -21,7 +21,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/docdb"
@@ -60,13 +59,10 @@ func (h *Instance) TypeName() string {
 // Options returns how UCP uses the handler.
 func (h *Instance) Options() native.Options {
 	return native.Options{
-		List:          native.ListRegion,
-		Recovery:      native.RecoverByIdentifier,
-		NameProperty:  "DBInstanceIdentifier",
-		Equivalent:    equivalent,
-		CreateTimeout: time.Hour,
-		UpdateTimeout: time.Hour,
-		DeleteTimeout: time.Hour,
+		List:         native.ListRegion,
+		Recovery:     native.RecoverByIdentifier,
+		NameProperty: "DBInstanceIdentifier",
+		Equivalent:   equivalent,
 	}
 }
 

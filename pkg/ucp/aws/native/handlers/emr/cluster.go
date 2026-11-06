@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/emr"
@@ -104,16 +103,13 @@ func (h *Cluster) TypeName() string {
 	return clusterType
 }
 
-// Options returns how UCP uses the handler. A cluster usually starts in 10 to 20 minutes, and resizes and
-// terminations take about as long.
+// Options returns how UCP uses the handler. A cluster usually starts in 10 to 20 minutes, but bootstrap actions can
+// make a start take much longer, so UCP waits native.DefaultTimeout.
 func (h *Cluster) Options() native.Options {
 	return native.Options{
-		List:          native.ListRegion,
-		Recovery:      native.RecoverBySearch,
-		Equivalent:    equivalent,
-		CreateTimeout: time.Hour,
-		UpdateTimeout: time.Hour,
-		DeleteTimeout: time.Hour,
+		List:       native.ListRegion,
+		Recovery:   native.RecoverBySearch,
+		Equivalent: equivalent,
 	}
 }
 

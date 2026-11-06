@@ -735,6 +735,7 @@ func Test_Options(t *testing.T) {
 	require.Equal(t, native.RecoverBySearch, options.Recovery)
 	require.Equal(t, native.ListRegion, options.List)
 	require.Empty(t, options.NameProperty, "AWS assigns the cluster ID")
+	require.Zero(t, options.CreateTimeout+options.UpdateTimeout+options.DeleteTimeout, "UCP waits native.DefaultTimeout, because bootstrap actions can make a start take long")
 }
 
 func Test_DescribeWithoutCluster(t *testing.T) {
