@@ -753,6 +753,8 @@ jobs:
           TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || matrix.name == 'upgrade-noncloud' && '30m' || env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           AUTHZ_EXPECTED_MODE: ${{ matrix.name == 'authz-noncloud' && 'dryRun' || '' }}
+          SECRETSTORE_AUTHZ_ID: ss-authz-${{ github.run_id }}-${{ github.run_attempt }}
+          SECRETSTORE_AUTHZ_RETAIN: ${{ matrix.name == 'authz-noncloud' && 'true' || 'false' }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
@@ -765,11 +767,11 @@ jobs:
           # local registry; ignored by other legs.
           RADIUS_REGISTRY_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
-      - name: Run authz mTLS boundary tests in enforce mode
+      - name: Run authz mTLS and secretStore boundary tests in enforce mode
         # The authz leg installs dryRun above. Switch the same installation to enforce and rerun
-        # only the tests that call applications-rp directly from rogue pods, so the enforce
-        # branches of the mTLS boundary tests run in CI. Other tests are not rerun because, until
-        # clients present certificates, enforce breaks UCP->RP calls.
+        # the rogue-pod mTLS tests and direct secretStore API tests. UCP presents its component
+        # certificate to applications-rp. No deployment-engine calls are needed here.
+        # The dryRun run retained synthetic records so enforce also tests existing resources.
         id: authz-enforce-tests
         if: ${{ !cancelled() && matrix.name == 'authz-noncloud' && steps.functional-tests.outcome == 'success' }}
         run: |
@@ -779,12 +781,35 @@ jobs:
           rad install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}" \
             --set global.rbac.dryRun=false --set global.rbac.enabled=true
           kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
-          make test-functional-authz-noncloud GOTEST_OPTS="-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)\$\$'"
+          kubectl rollout status deployment/ucp -n radius-system --timeout=5m
+          make test-functional-authz-noncloud GOTEST_OPTS="-run '^Test_(Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)|SecretStores_ProtectedReferences)\$\$'"
+          make test-functional-corerp-noncloud GOTEST_OPTS="-run '^Test_SecretStores_Lifecycle\$\$'" \
+            GOTESTSUM_OPTS="--junitfile ./dist/functional_test/results-secretstores-enforce.xml"
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           AUTHZ_EXPECTED_MODE: enforce
+          SECRETSTORE_AUTHZ_ID: ss-authz-${{ github.run_id }}-${{ github.run_attempt }}
+          SECRETSTORE_AUTHZ_RETAIN: "true"
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results-enforce.xml
+
+      - name: Run secretStore protected references in off mode and clean fixtures
+        id: secretstores-off-tests
+        if: ${{ !cancelled() && matrix.name == 'authz-noncloud' && steps.functional-tests.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          rad install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}" \
+            --set global.rbac.dryRun=false --set global.rbac.enabled=false
+          kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
+          kubectl rollout status deployment/ucp -n radius-system --timeout=5m
+          make test-functional-authz-noncloud GOTEST_OPTS="-run '^Test_SecretStores_ProtectedReferences\$\$'"
+        env:
+          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
+          AUTHZ_EXPECTED_MODE: "off"
+          SECRETSTORE_AUTHZ_ID: ss-authz-${{ github.run_id }}-${{ github.run_attempt }}
+          SECRETSTORE_AUTHZ_RETAIN: "false"
+          GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results-secretstores-off.xml
 
       - name: Check for authorization would-deny logs
         # Fails the authz dry-run legs if any component logged that an authorization check would

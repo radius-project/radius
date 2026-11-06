@@ -124,6 +124,11 @@ echo "make $*" >>"${MOCK_CALLS}"
 if [[ "$1" == "${MOCK_FAILED_TARGET:-}" ]]; then
     exit 43
 fi
+if [[ -n "${SELECTION_MAKE:-}" ]]; then
+    exec "${SELECTION_MAKE}" --no-print-directory -C "${SELECTION_REPO}" \
+        -f build/test.mk "$@" GOTEST_TOOL="bash '${SELECTION_RUNNER}'" \
+        TEST_TIMEOUT=60s
+fi
 MOCK
 cat >"${GITHUB_WORKSPACE}/.github/scripts/run-with-cluster-diagnostics.sh" <<'MOCK'
 #!/bin/bash
@@ -241,9 +246,44 @@ bash "${WORK_DIR}/enforce.sh" >"${WORK_DIR}/enforce.log" 2>&1 || {
 cat >"${WORK_DIR}/enforce-expected" <<'EXPECTED'
 rad-enforce
 kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
-make test-functional-authz-noncloud GOTEST_OPTS=-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)$$'
+kubectl rollout status deployment/ucp -n radius-system --timeout=5m
+make test-functional-authz-noncloud GOTEST_OPTS=-run '^Test_(Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)|SecretStores_ProtectedReferences)$$'
+make test-functional-corerp-noncloud GOTEST_OPTS=-run '^Test_SecretStores_Lifecycle$$' GOTESTSUM_OPTS=--junitfile ./dist/functional_test/results-secretstores-enforce.xml
 EXPECTED
 diff -u "${WORK_DIR}/enforce-expected" "${MOCK_CALLS}"
+
+# Execute the selectors extracted from YAML through Make and Go, not a copied regex.
+printf 'package fixture\nimport "testing"\n' >"${WORK_DIR}/fixture/selection_test.go"
+selected=(
+    Test_Boundary_UnauthenticatedCallToApplicationsRP
+    Test_Boundary_DisallowedPeerKey
+    Test_Boundary_DisallowedCaller
+    Test_SecretStores_ProtectedReferences
+    Test_SecretStores_Lifecycle
+)
+for name in "${selected[@]}"; do
+    printf 'func %s(t *testing.T) {}\n' "${name}" \
+        >>"${WORK_DIR}/fixture/selection_test.go"
+    printf 'func %s_Extra(t *testing.T) { t.Fatal("selector must be anchored") }\n' \
+        "${name}" >>"${WORK_DIR}/fixture/selection_test.go"
+done
+cat >"${WORK_DIR}/run-selected-tests.sh" <<'MOCK'
+#!/bin/bash
+set -euo pipefail
+shift
+cd "${SELECTION_FIXTURE}"
+GO111MODULE=off GOWORK=off exec go test "$@"
+MOCK
+SELECTION_MAKE="$(command -v make)" SELECTION_REPO="${REPO_ROOT}" \
+    SELECTION_RUNNER="${WORK_DIR}/run-selected-tests.sh" \
+    bash "${WORK_DIR}/enforce.sh" >"${WORK_DIR}/enforce-selection.log" 2>&1 || {
+    cat "${WORK_DIR}/enforce-selection.log" >&2
+    fail "enforce selectors did not execute through Make and Go"
+}
+for name in "${selected[@]}"; do
+    grep -Fq -- "--- PASS: ${name} " "${WORK_DIR}/enforce-selection.log" \
+        || fail "${name} was not selected in enforce"
+done
 
 for scenario in install rollout tests; do
     : >"${MOCK_CALLS}"
@@ -271,5 +311,43 @@ for scenario in install rollout tests; do
             ;;
     esac
 done
+
+for step in functional-tests authz-enforce-tests secretstores-off-tests; do
+    fixture_id="$(STEP="${step}" yq -r '.jobs[].steps[] |
+        select(.id == strenv(STEP)) | .env.SECRETSTORE_AUTHZ_ID' "${FRESH_WORKFLOW}")"
+    [[ "${fixture_id}" == 'ss-authz-${{ github.run_id }}-${{ github.run_attempt }}' ]] \
+        || fail "${step} does not share the persisted secretStore fixtures"
+done
+[[ "$(yq -r '.jobs[].steps[] | select(.id == "authz-enforce-tests") |
+    .env.SECRETSTORE_AUTHZ_RETAIN' "${FRESH_WORKFLOW}")" == true ]] \
+    || fail "enforce must retain fixtures until off-mode cleanup"
+[[ "$(yq -r '.jobs[].steps[] | select(.id == "secretstores-off-tests") |
+    .env.AUTHZ_EXPECTED_MODE' "${FRESH_WORKFLOW}")" == off ]] \
+    || fail "off-mode coverage must verify installed mode"
+[[ "$(yq -r '.jobs[].steps[] | select(.id == "secretstores-off-tests") |
+    .env.SECRETSTORE_AUTHZ_RETAIN' "${FRESH_WORKFLOW}")" == false ]] \
+    || fail "off-mode run must clean up"
+
+yq -e -r '.jobs[].steps[] | select(.id == "secretstores-off-tests") | .run' \
+    "${FRESH_WORKFLOW}" >"${WORK_DIR}/off.sh"
+sed 's/global.rbac.enabled=true/global.rbac.enabled=false/; s/rad-enforce/rad-off/' \
+    "${GITHUB_WORKSPACE}/bin/rad" >"${WORK_DIR}/rad-off"
+cp "${WORK_DIR}/rad-off" "${GITHUB_WORKSPACE}/bin/rad"
+: >"${MOCK_CALLS}"
+bash "${WORK_DIR}/off.sh" >"${WORK_DIR}/off.log" 2>&1 || {
+    cat "${WORK_DIR}/off.log" >&2
+    fail "off mode must run protected references and cleanup"
+}
+cat >"${WORK_DIR}/off-expected" <<'EXPECTED'
+rad-off
+kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
+kubectl rollout status deployment/ucp -n radius-system --timeout=5m
+make test-functional-authz-noncloud GOTEST_OPTS=-run '^Test_SecretStores_ProtectedReferences$$'
+EXPECTED
+diff -u "${WORK_DIR}/off-expected" "${MOCK_CALLS}"
+result=0
+MOCK_FAILED_TARGET=test-functional-authz-noncloud bash "${WORK_DIR}/off.sh" \
+    >"${WORK_DIR}/off.log" 2>&1 || result=$?
+[[ "${result}" == 43 ]] || fail "off-mode test failure was not propagated"
 
 echo "Long-running Azure workflow tests passed"

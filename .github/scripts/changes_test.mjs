@@ -208,6 +208,17 @@ for (const [files, expected] of [
   [["pkg/corerp/backend/deployment/deploymentprocessor.go"], true],
   [["pkg/corerp/frontend/controller/applications/updatefilter.go"], true],
   [["pkg/corerp/frontend/controller/applications/admission_test.go"], true],
+  [["pkg/corerp/frontend/controller/secretstores/kubernetes.go"], true],
+  [["pkg/corerp/api/v20231001preview/secretstore_conversion.go"], true],
+  [
+    ["pkg/corerp/api/v20231001preview/zz_generated_secretstores_client.go"],
+    true
+  ],
+  [["pkg/corerp/datamodel/secretstore.go"], true],
+  [["typespec/Applications.Core/secretStores.tsp"], true],
+  [["test/functional-portable/corerp/noncloud/secretstores_test.go"], true],
+  [["test/functional-portable/upgrade/secretstores_test.go"], true],
+  [["test/secretstore/client.go"], true],
   [
     [
       "pkg/corerp/frontend/controller/environments/v20250801preview/createorupdateenvironment.go"
