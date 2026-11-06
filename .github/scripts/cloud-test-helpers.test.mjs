@@ -544,16 +544,6 @@ test("preparation rejects mismatched sources before writes and publication recor
     /authenticated producer/
   );
   await save(receiptPath, receipt);
-  test("Test ACR configuration accepts minimum and maximum registry name lengths", () => {
-    for (const name of ["abc12", "a".repeat(50)]) {
-      const registry = `${name}.azurecr.io`;
-      assert.equal(
-        bundle.testTypesRegistry({ TEST_BICEP_TYPES_REGISTRY: registry }),
-        registry
-      );
-    }
-  });
-
   for (const destination of ["ghcr", "acr"]) {
     args.core = core({ directory, destination });
     await bundle.publish(args, env, run);
@@ -578,6 +568,16 @@ test("preparation rejects mismatched sources before writes and publication recor
     bundle.publish(args, env, async () => "{}"),
     /digest changed/
   );
+});
+
+test("Test ACR configuration accepts minimum and maximum registry name lengths", () => {
+  for (const name of ["abc12", "a".repeat(50)]) {
+    const registry = `${name}.azurecr.io`;
+    assert.equal(
+      bundle.testTypesRegistry({ TEST_BICEP_TYPES_REGISTRY: registry }),
+      registry
+    );
+  }
 });
 
 for (const destination of ["ghcr", "acr"]) {
