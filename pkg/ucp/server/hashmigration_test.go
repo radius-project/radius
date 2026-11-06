@@ -68,7 +68,7 @@ func Test_HashMigrationService(t *testing.T) {
 		require.NoError(t, client.Save(t.Context(), &database.Object{ID: trackedresource.LegacyIDFor(original).String(), Data: entry}))
 
 		reporter := &recordingReporter{statuses: map[string]hashmigration.Status{}}
-		require.True(t, newHashMigrationService(databaseprovider.FromClient(client), reporter, nil).RunPass(t.Context()))
+		require.True(t, newHashMigrationService(databaseprovider.FromClient(client), reporter).RunPass(t.Context()))
 
 		tracked := reporter.statuses["ucp.trackedResources"]
 		require.Equal(t, hashmigration.StateComplete, tracked.State)
@@ -98,7 +98,7 @@ func Test_HashMigrationService(t *testing.T) {
 				t.Parallel()
 				client := &migratingClient{Client: inmemory.NewClient(), result: tt.result, err: tt.err}
 				reporter := &recordingReporter{statuses: map[string]hashmigration.Status{}}
-				require.Equal(t, tt.done, newHashMigrationService(databaseprovider.FromClient(client), reporter, nil).RunPass(t.Context()))
+				require.Equal(t, tt.done, newHashMigrationService(databaseprovider.FromClient(client), reporter).RunPass(t.Context()))
 				require.Equal(t, 1, client.calls)
 				require.Equal(t, tt.expected, reporter.statuses["ucp.datastore"].State)
 				require.Equal(t, tt.result.Migrated, reporter.statuses["ucp.datastore"].Migrated)
@@ -110,7 +110,7 @@ func Test_HashMigrationService(t *testing.T) {
 		t.Parallel()
 		provider := databaseprovider.FromOptions(databaseprovider.Options{Provider: "unsupported"})
 		reporter := &recordingReporter{statuses: map[string]hashmigration.Status{}}
-		require.False(t, newHashMigrationService(provider, reporter, nil).RunPass(t.Context()))
+		require.False(t, newHashMigrationService(provider, reporter).RunPass(t.Context()))
 		require.Equal(t, hashmigration.StateFailed, reporter.statuses["ucp.trackedResources"].State)
 		require.Equal(t, hashmigration.StateFailed, reporter.statuses["ucp.datastore"].State)
 	})
@@ -134,13 +134,6 @@ func Test_NewServer_HashMigration(t *testing.T) {
 		}
 		require.Equal(t, !disabled, found)
 	}
-}
-
-func Test_HashMigrationLeaseName(t *testing.T) {
-	t.Parallel()
-
-	// The chart grants UCP access to this Lease only, in deploy/Chart/templates/ucp/rbac.yaml.
-	require.Equal(t, "radius-sha256-migration-ucp", hashmigration.LeaseName(hashMigrationComponent))
 }
 
 func Test_LoadConfig_SHA256Migration(t *testing.T) {

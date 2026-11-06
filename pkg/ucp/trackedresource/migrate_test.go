@@ -221,9 +221,9 @@ func Test_MigrateLegacyEntries_ConcurrentUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, hashmigration.Result{Remaining: 1}, result, "a concurrently updated legacy entry must not be deleted")
 	require.Equal(t, v1.ProvisioningStateAccepted, readTracked(t, store, LegacyIDFor(original)).AsyncProvisioningState)
-	require.NotNil(t, readTracked(t, store, IDFor(original)))
+	require.Nil(t, readTracked(t, store, IDFor(original)), "an idle copy of a busy entry must not stay where requests find it")
 
-	// Once the queued operation finishes, the legacy entry is idle and the next pass removes the redundant copy.
+	// Once the queued operation finishes, the legacy entry is idle and the next pass moves it.
 	legacy, err := store.Get(t.Context(), LegacyIDFor(original).String())
 	require.NoError(t, err)
 	entry := datamodel.GenericResource{}
@@ -233,8 +233,112 @@ func Test_MigrateLegacyEntries_ConcurrentUpdate(t *testing.T) {
 
 	result, err = MigrateLegacyEntries(t.Context(), store)
 	require.NoError(t, err)
-	require.Equal(t, hashmigration.Result{Deduplicated: 1}, result)
+	require.Equal(t, hashmigration.Result{Migrated: 1}, result)
 	require.Nil(t, readTracked(t, store, LegacyIDFor(original)))
+	require.NotNil(t, readTracked(t, store, IDFor(original)))
+}
+
+// usingClient changes the legacy entry and then the copy right after the migration saves the copy, as a request that
+// updates the legacy entry and another request that finds the copy would.
+type usingClient struct {
+	database.Client
+	currentID string
+	legacyID  string
+	done      bool
+}
+
+func (c *usingClient) Save(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
+	if err := c.Client.Save(ctx, obj, options...); err != nil {
+		return err
+	}
+	if c.done || obj.ID != c.currentID {
+		return nil
+	}
+
+	c.done = true
+	for _, id := range []string{c.legacyID, c.currentID} {
+		stored, err := c.Client.Get(ctx, id)
+		if err != nil {
+			return err
+		}
+		entry := datamodel.GenericResource{}
+		if err := stored.As(&entry); err != nil {
+			return err
+		}
+		entry.AsyncProvisioningState = v1.ProvisioningStateAccepted
+		if err := c.Client.Save(ctx, &database.Object{ID: id, Data: entry}, database.WithETag(stored.ETag)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func Test_MigrateLegacyEntries_CopyUsedBeforeRemoval(t *testing.T) {
+	t.Parallel()
+	original := resources.MustParse(migrateGroup + "/providers/Applications.Test/testResources/my-resource")
+	for storeName, newStore := range newStores(t) {
+		t.Run(storeName, func(t *testing.T) {
+			t.Parallel()
+			store := newStore()
+			require.NoError(t, store.Save(t.Context(), &database.Object{ID: migrateGroup, Data: map[string]any{"name": "test-group"}}))
+			saveTracked(t, store, original, LegacyIDFor(original), v1.ProvisioningStateSucceeded)
+			client := &usingClient{Client: store, currentID: IDFor(original).String(), legacyID: LegacyIDFor(original).String()}
+
+			// A copy that a request used is kept; both entries are busy and a later pass deduplicates them.
+			result, err := MigrateLegacyEntries(t.Context(), client)
+			require.NoError(t, err)
+			require.Equal(t, hashmigration.Result{Remaining: 1}, result)
+			require.True(t, client.done)
+			require.Equal(t, v1.ProvisioningStateAccepted, readTracked(t, store, LegacyIDFor(original)).AsyncProvisioningState)
+			require.Equal(t, v1.ProvisioningStateAccepted, readTracked(t, store, IDFor(original)).AsyncProvisioningState)
+		})
+	}
+}
+
+// deduplicatingClient runs another migrator right after the migration saves the copy, as a second UCP replica would.
+type deduplicatingClient struct {
+	database.Client
+	currentID string
+	result    hashmigration.Result
+	done      bool
+}
+
+func (c *deduplicatingClient) Save(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
+	if err := c.Client.Save(ctx, obj, options...); err != nil {
+		return err
+	}
+	if c.done || obj.ID != c.currentID {
+		return nil
+	}
+
+	c.done = true
+	result, err := MigrateLegacyEntries(ctx, c.Client)
+	c.result = result
+	return err
+}
+
+func Test_MigrateLegacyEntries_ConcurrentMigrators(t *testing.T) {
+	t.Parallel()
+	original := resources.MustParse(migrateGroup + "/providers/Applications.Test/testResources/my-resource")
+	for storeName, newStore := range newStores(t) {
+		t.Run(storeName, func(t *testing.T) {
+			t.Parallel()
+			store := newStore()
+			require.NoError(t, store.Save(t.Context(), &database.Object{ID: migrateGroup, Data: map[string]any{"name": "test-group"}}))
+			saveTracked(t, store, original, LegacyIDFor(original), v1.ProvisioningStateSucceeded)
+			client := &deduplicatingClient{Client: store, currentID: IDFor(original).String()}
+
+			// The other migrator deletes the legacy entry after the copy was saved. The first one must not mistake that
+			// for a deleted resource and delete the copy, which would lose the entry.
+			result, err := MigrateLegacyEntries(t.Context(), client)
+			require.NoError(t, err)
+			require.True(t, client.done)
+			require.Equal(t, hashmigration.Result{Deduplicated: 1}, client.result)
+			require.Equal(t, hashmigration.Result{}, result)
+			require.Nil(t, readTracked(t, store, LegacyIDFor(original)))
+			require.NotNil(t, readTracked(t, store, IDFor(original)), "the entry must not be lost")
+		})
+	}
 }
 
 // creatingClient creates the current entry right before the migration copies the legacy entry, as another writer would.
@@ -323,18 +427,14 @@ func Test_MigrateLegacyEntries_DeletedDuringMove(t *testing.T) {
 	original := resources.MustParse(migrateGroup + "/providers/Applications.Test/testResources/my-resource")
 	for storeName, newStore := range newStores(t) {
 		for _, tt := range []struct {
-			name      string
-			exclusive bool
-			recreate  bool
-			expected  hashmigration.Result
+			name     string
+			recreate bool
 
 			// currentRemains records that the entry under the current tracking ID must remain.
 			currentRemains bool
 		}{
-			{name: "exclusive", exclusive: true},
-			{name: "exclusive and created again", exclusive: true, recreate: true, currentRemains: true},
-			// Without exclusion, the delete cannot be told apart from another replica moving the entry.
-			{name: "not exclusive", expected: hashmigration.Result{Remaining: 1}, currentRemains: true},
+			{name: "deleted"},
+			{name: "deleted and created again", recreate: true, currentRemains: true},
 		} {
 			t.Run(storeName+"/"+tt.name, func(t *testing.T) {
 				t.Parallel()
@@ -342,15 +442,11 @@ func Test_MigrateLegacyEntries_DeletedDuringMove(t *testing.T) {
 				require.NoError(t, store.Save(t.Context(), &database.Object{ID: migrateGroup, Data: map[string]any{"name": "test-group"}}))
 				saveTracked(t, store, original, LegacyIDFor(original), v1.ProvisioningStateSucceeded)
 				client := &deletingClient{Client: store, currentID: IDFor(original).String(), legacyID: LegacyIDFor(original).String(), recreate: tt.recreate}
-				ctx := t.Context()
-				if tt.exclusive {
-					ctx = hashmigration.WithExclusive(ctx)
-				}
 
-				result, err := MigrateLegacyEntries(ctx, client)
+				result, err := MigrateLegacyEntries(t.Context(), client)
 				require.NoError(t, err)
 				result.Message = ""
-				require.Equal(t, tt.expected, result)
+				require.Equal(t, hashmigration.Result{}, result)
 				require.True(t, client.done)
 				require.Nil(t, readTracked(t, store, LegacyIDFor(original)))
 				if tt.currentRemains {

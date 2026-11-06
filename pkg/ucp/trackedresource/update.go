@@ -202,10 +202,9 @@ func SaveCondition(obj *database.Object) database.SaveOptions {
 	return database.WithETag(obj.ETag)
 }
 
-// deleteOtherTrackingEntry deletes the entry for id stored under the tracking ID other than trackingID. An interrupted
-// migration leaves an entry under both IDs, and the one left behind would keep listing a resource that no longer
-// exists. The delete is conditioned on the entry as it was read, so a concurrent update makes it fail and be retried.
-func deleteOtherTrackingEntry(ctx context.Context, client database.Client, id resources.ID, trackingID resources.ID) error {
+// otherTrackingEntry reads the entry for id stored under the tracking ID other than trackingID, if any. An interrupted
+// migration leaves an entry under both IDs, and if the resource is gone, the one left behind would keep listing it.
+func otherTrackingEntry(ctx context.Context, client database.Client, id resources.ID, trackingID resources.ID) (resources.ID, *database.Object, error) {
 	other := LegacyIDFor(id)
 	if strings.EqualFold(trackingID.String(), other.String()) {
 		other = IDFor(id)
@@ -213,12 +212,23 @@ func deleteOtherTrackingEntry(ctx context.Context, client database.Client, id re
 
 	obj, err := client.Get(ctx, other.String())
 	if errors.Is(err, &database.ErrNotFound{}) {
-		return nil
+		return other, nil, nil
 	} else if err != nil {
-		return err
+		return other, nil, err
 	}
 
-	err = client.Delete(ctx, other.String(), database.WithETag(obj.ETag))
+	return other, obj, nil
+}
+
+// deleteTrackingEntry deletes the tracking entry trackingID as it was read, obj. Nothing is deleted if no entry was
+// read, and a concurrent update makes the delete fail and be retried, so an entry created or updated after it was read,
+// for example for a resource that was created again, is kept.
+func deleteTrackingEntry(ctx context.Context, client database.Client, trackingID resources.ID, obj *database.Object) error {
+	if obj == nil {
+		return nil
+	}
+
+	err := client.Delete(ctx, trackingID.String(), database.WithETag(obj.ETag))
 	if errors.Is(err, &database.ErrNotFound{}) {
 		return nil
 	}
@@ -238,15 +248,20 @@ func (u *Updater) run(ctx context.Context, id resources.ID, destination *url.URL
 	}
 
 	existing := obj
-	etag := ""
 	entry := datamodel.GenericResourceFromID(id, trackingID)
 	entry.Properties.APIVersion = apiVersion
 	if obj != nil {
-		etag = obj.ETag
 		err := obj.As(&entry)
 		if err != nil {
 			return err
 		}
+	}
+
+	// Read the entry under the other tracking ID before the resource is fetched too, so that only entries that existed
+	// before the fetch are deleted if the resource is gone.
+	otherID, other, err := otherTrackingEntry(ctx, u.DatabaseClient, id, trackingID)
+	if err != nil {
+		return err
 	}
 
 	data, err := u.fetch(ctx, destination)
@@ -255,14 +270,14 @@ func (u *Updater) run(ctx context.Context, id resources.ID, destination *url.URL
 	}
 
 	if data == nil {
-		// Resource was not found. We can delete the tracked resource entry, under both of its tracking IDs.
+		// Resource was not found. We can delete the tracked resource entry, under both of its tracking IDs, as they were
+		// before the fetch.
 		logger.V(ucplog.LevelDebug).Info("deleting tracked resource entry")
-		err = u.DatabaseClient.Delete(ctx, trackingID.String(), database.WithETag(etag))
-		if err != nil && !errors.Is(err, &database.ErrNotFound{}) {
+		if err := deleteTrackingEntry(ctx, u.DatabaseClient, trackingID, existing); err != nil {
 			return err
 		}
 
-		return deleteOtherTrackingEntry(ctx, u.DatabaseClient, id, trackingID)
+		return deleteTrackingEntry(ctx, u.DatabaseClient, otherID, other)
 	} else if data.Properties.ProvisioningState != nil && !data.Properties.ProvisioningState.IsTerminal() {
 		// Resource is still being provisioned. We should not update anything yet.
 		logger.V(ucplog.LevelDebug).Info("resource is still being provisioned")

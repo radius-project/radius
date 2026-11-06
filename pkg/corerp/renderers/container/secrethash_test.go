@@ -40,6 +40,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/pkg/upgrade/hashmigration"
 )
 
@@ -177,6 +178,14 @@ func Test_SecretHashTransformer_Skips(t *testing.T) {
 		options := &handlers.PutOptions{Resource: &rpv1.OutputResource{CreateResource: &rpv1.Resource{Data: data}}}
 		require.NoError(t, NewSecretHashTransformer(failing)(t.Context(), options), name)
 	}
+
+	// A Deployment that a container only references has no resource to apply.
+	reference := &handlers.PutOptions{Resource: &rpv1.OutputResource{
+		ID:            resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, "apps", "Deployment", secretHashTestNamespace, secretHashTestName),
+		RadiusManaged: new(false),
+	}}
+	require.NoError(t, NewSecretHashTransformer(failing)(t.Context(), reference))
+	require.NoError(t, NewSecretHashTransformer(failing)(t.Context(), &handlers.PutOptions{}))
 
 	// Without a reader, as in tests that do not apply resources, the current hash is used.
 	desired := secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: "sha256:value"}, nil)
