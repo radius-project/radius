@@ -253,10 +253,21 @@ func keyedSuite(typeName string, handWritten bool) Suite {
 		HandWritten: handWritten,
 		Schema: `{
 			"typeName": "` + typeName + `",
-			"properties": {"Key": {"type": "string", "minLength": 1, "maxLength": 1024}},
+			"properties": {
+				"Bucket": {"type": "string"},
+				"Key": {"type": "string", "minLength": 1, "maxLength": 1024},
+				"ContentType": {"type": "string"},
+				"Body": {"type": "string"}
+			},
 			"primaryIdentifier": ["/properties/Bucket", "/properties/Key"],
 			"createOnlyProperties": ["/properties/Bucket", "/properties/Key"],
-			"writeOnlyProperties": ["/properties/Body"]
+			"writeOnlyProperties": ["/properties/Body"],
+			"handlers": {
+				"create": {"permissions": ["test:PutObject"]},
+				"read": {"permissions": ["test:GetObject"]},
+				"update": {"permissions": ["test:PutObject"]},
+				"delete": {"permissions": ["test:DeleteObject"]}
+			}
 		}`,
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
 			h := nativefake.New(typeName, store)
