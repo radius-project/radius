@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/aws/extraproperties"
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/components/database"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
@@ -254,16 +255,6 @@ func (e *engine) checkIdentifier(ctx context.Context, id resources.ID, identifie
 	return nil, nil
 }
 
-// checkUnmanaged returns a 409 when an alias's record manages the AWS identifier. id is the request's resource ID, and
-// gives the type and scope to search.
-//
-// TRANSITIONAL: POST /:put, POST /:delete, and a DELETE that finds no record act on an AWS identifier without a record.
-// This keeps them from changing or deleting a resource a record manages, which would skip that record's owner check.
-// Resources with no record behave as before records. Remove this with those paths.
-func checkUnmanaged(ctx context.Context, opts armrpc_controller.Options, id resources.ID, identifier string) (armrpc_rest.Response, error) {
-	return newEngine(opts, ucp_aws.Clients{}, nil).checkIdentifier(ctx, id, identifier)
-}
-
 // readResource reads a resource from AWS by its identifier. It returns nil when AWS has no such resource.
 func (e *engine) readResource(ctx context.Context, r *request, identifier string) (*cloudcontrol.GetResourceOutput, error) {
 	out, err := e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
@@ -332,6 +323,12 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 		return errResponse, nil
 	}
 	schema := aws.ToString(typeInfo.Schema)
+	// UCP adds extra properties only to its read responses, so they are never sent to AWS or stored.
+	extras, err := extraPropertyNames(r.typeName, schema)
+	if err != nil {
+		return nil, err
+	}
+	body.Properties = extraproperties.Without(extras, body.Properties)
 	secrets, err := secretProperties(r.typeName, schema)
 	if err != nil {
 		return nil, err
@@ -349,11 +346,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err != nil {
 		return nil, err
 	}
-	if rec != nil && records.IsDeleted(rec) {
-		// A tombstone starts the alias over. The new record replaces it with the tombstone's ETag, so two first deploys
-		// of the alias still never both create a resource.
-		rec = records.NewRecord(r.id, owner)
-	} else if rec != nil {
+	if rec != nil {
 		rec, etag, resp, err = e.checkRecord(ctx, r, rec, etag, owner, v1.OperationPut)
 		if resp != nil || err != nil {
 			return resp, err
@@ -588,12 +581,12 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}, CloudControlRegionOption(r.region))
 	if err != nil {
 		if !replay && ucp_aws.IsClientFault(err) {
-			// AWS rejected the first attempt, so nothing exists: leave a tombstone, so the next deploy starts over.
-			_, delErr := e.saveTombstone(ctx, rec, etag)
+			// AWS rejected the first attempt, so nothing exists: remove the record, so the next deploy starts over.
+			delErr := e.store.DeleteIfUnchanged(ctx, r.id, etag)
 			if delErr == nil {
 				return ucp_aws.HandleAWSError(ctx, err)
 			}
-			logger.Error(delErr, "Failed to leave a tombstone after AWS rejected a create", "alias", r.id.Name())
+			logger.Error(delErr, "Failed to remove the record after AWS rejected a create", "alias", r.id.Name())
 		}
 		if replay {
 			if token, ok := ucp_aws.ConflictingRequestToken(err, rec.Properties.ClientToken); ok {
@@ -651,8 +644,8 @@ func restorePending(rec *datamodel.AWSResource, p applied) {
 //   - succeeded: the pending values and fingerprints become last-applied, as when the worker finishes a create, the
 //     record gets the identifier, and the request continues as an update with the template. The update compares the
 //     template's write-only values with those fingerprints, as for any other update.
-//   - failed: nothing exists, so the record becomes a tombstone, as when the worker finds a create failed, and the
-//     request returns the failure. The next deploy starts over.
+//   - failed: nothing exists, so the record is removed, as when the worker finds a create failed, and the request
+//     returns the failure. The next deploy starts over.
 //   - still running: UCP tracks the create and returns 409, and the caller deploys again when it finishes.
 //   - reading the status fails: the record is kept, and the request returns the error.
 func (e *engine) recoverReplay(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, requestToken string, previous applied, properties map[string]any, deploy applied, typeInfo *cloudformation.DescribeTypeOutput, parsed *typeSchema, secrets []string) (armrpc_rest.Response, error) {
@@ -671,7 +664,7 @@ func (e *engine) recoverReplay(ctx context.Context, r *request, rec *datamodel.A
 		}
 		return conflict("A create of the AWS resource %q is still running in AWS. Deploy again when it finishes.", r.id.Name()), nil
 	case !status.Succeeded:
-		if _, err := e.saveTombstone(ctx, rec, etag); err != nil {
+		if err := e.store.DeleteIfUnchanged(ctx, r.id, etag); err != nil {
 			return saveError(r.id, err)
 		}
 		failure := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInternal, Message: status.Error(), Target: r.id.String()}}
@@ -752,10 +745,14 @@ func (e *engine) asyncResponse(id resources.ID, body any, code int, operationID 
 }
 
 // delete deletes the AWS resource under the alias in the URL. It checks the owner and deletes the resource in AWS by
-// the record's identifier (see startDelete). A URL with no record is deleted in AWS by its last segment (see
-// deleteWithoutRecord).
+// the record's identifier (see startDelete). An alias with no record returns 204 without calling AWS, so a retried
+// DELETE never deletes a different resource that happens to have the alias as its identifier.
 func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest.Response, error) {
 	r, resp := e.begin(ctx, httpReq)
+	if resp != nil {
+		return resp, nil
+	}
+	owner, resp := ownerFromRequest(httpReq)
 	if resp != nil {
 		return resp, nil
 	}
@@ -765,16 +762,7 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 		return nil, err
 	}
 	if rec == nil {
-		return e.deleteWithoutRecord(ctx, httpReq, r)
-	}
-	if records.IsDeleted(rec) {
-		// The alias's resource is already deleted. This never falls back to deleting by the URL, which could delete an
-		// unrelated resource whose AWS identifier matches the alias.
 		return armrpc_rest.NewNoContentResponse(), nil
-	}
-	owner, resp := ownerFromRequest(httpReq)
-	if resp != nil {
-		return resp, nil
 	}
 	rec, etag, resp, err = e.checkRecord(ctx, r, rec, etag, owner, v1.OperationDelete)
 	if resp != nil || err != nil {
@@ -783,52 +771,13 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 	return e.startDelete(ctx, r, rec, etag)
 }
 
-// deleteWithoutRecord deletes a URL that has no record in AWS, using the URL's last segment as the AWS identifier, as
-// UCP did before records. It returns 204 when AWS does not have the resource, and 409 when another alias's record
-// manages it. The owner header is optional, but a header that is sent must not be blank.
-//
-// TRANSITIONAL: Deployment Engine releases before azure-octo/deployment-engine#705 deploy AWS resources with
-// POST /:put, which saves no record, so the IDs of those resources end in the AWS identifier. Recipe deletes send
-// those IDs with the owner header, so the header cannot tell old IDs from aliases. Remove this once the Deployment
-// Engine deploys AWS resources by alias; a URL with no record then returns 204 without calling AWS, so a retried
-// DELETE never deletes a different resource whose AWS identifier matches the alias.
-func (e *engine) deleteWithoutRecord(ctx context.Context, httpReq *http.Request, r *request) (armrpc_rest.Response, error) {
-	if len(httpReq.Header.Values(sdkclients.AWSResourceOwnerHeader)) > 0 {
-		if _, resp := ownerFromRequest(httpReq); resp != nil {
-			return resp, nil
-		}
-	}
-
-	identifier := r.id.Name()
-	if resp, err := e.checkIdentifier(ctx, r.id, identifier); resp != nil || err != nil {
-		return resp, err
-	}
-	ucplog.FromContextOrDiscard(ctx).Info("Deleting AWS resource with no record", "awsIdentifier", identifier)
-	response, err := e.clients.CloudControl.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-		TypeName:   aws.String(r.typeName),
-		Identifier: aws.String(identifier),
-	}, CloudControlRegionOption(r.region))
-	if ucp_aws.IsAWSResourceNotFoundError(err) {
-		return armrpc_rest.NewNoContentResponse(), nil
-	} else if err != nil {
-		return ucp_aws.HandleAWSError(ctx, err)
-	}
-
-	// UCP saves no operation, so the operation routes read the status from Cloud Control by the request token.
-	operationID, err := uuid.Parse(aws.ToString(response.ProgressEvent.RequestToken))
-	if err != nil {
-		return nil, err
-	}
-	return e.asyncResponse(r.id, map[string]any{}, 202, operationID), nil
-}
-
-// startDelete reserves the record and deletes its AWS resource, and the worker leaves a tombstone when AWS finishes.
-// A record with no identifier and no client token has nothing in AWS, so it becomes a tombstone at once. One with a client
+// startDelete reserves the record and deletes its AWS resource, and the worker removes the record when AWS finishes.
+// A record with no identifier and no client token has nothing in AWS, so only the record is removed. One with a client
 // token has a create that may have reached AWS, which recoverCreate finds first.
 func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if rec.Properties.AWSIdentifier == "" && !records.IsFirstCreate(rec) {
-		return e.removeRecord(ctx, r, rec, etag)
+		return e.removeRecord(ctx, r, etag)
 	}
 
 	// A resumed delete finds the record still marked in progress; if AWS rejects the delete, it is released as Failed.
@@ -854,7 +803,7 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		Identifier: aws.String(identifier),
 	}, CloudControlRegionOption(r.region))
 	if ucp_aws.IsAWSResourceNotFoundError(err) {
-		return e.removeRecord(ctx, r, rec, etag)
+		return e.removeRecord(ctx, r, etag)
 	} else if err != nil {
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			records.ClearPending(rec)
@@ -876,7 +825,7 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 // request when AWS accepted it, and reads that request's status:
 //
 //   - succeeded: the record gets the identifier, and the delete continues.
-//   - failed: nothing exists, so the record becomes a tombstone.
+//   - failed: nothing exists, so only the record is removed.
 //   - AWS rejects the resend: the record is kept, and the DELETE returns the error, because a rejected replay does not
 //     show that the original create failed.
 //   - still running: UCP tracks the create and returns 409, and the caller deletes again when it finishes.
@@ -937,7 +886,7 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 		}
 		return "", conflict("A create of the AWS resource %q is still running in AWS. Delete again when it finishes.", r.id.Name()), nil
 	case !status.Succeeded:
-		resp, err := e.removeRecord(ctx, r, rec, etag)
+		resp, err := e.removeRecord(ctx, r, etag)
 		return "", resp, err
 	}
 
@@ -951,28 +900,21 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 	return etag, nil, nil
 }
 
-// removeRecord replaces the record with a tombstone when AWS has nothing to delete. The save uses the ETag the record
-// was read with, so it never replaces a record another request saved meanwhile: that request gets the alias, and this
-// one gets 409. When the save fails otherwise, the request fails, and the caller deletes again.
-func (e *engine) removeRecord(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
-	if _, err := e.saveTombstone(ctx, rec, etag); errors.Is(err, &database.ErrConcurrency{}) {
+// removeRecord removes the record when AWS has nothing to delete. It removes the record only if it is unchanged since
+// the request read it at etag, so it never removes a record another request saved meanwhile: that request keeps the
+// alias, and this one gets 409. When the removal fails otherwise, the request fails, and the caller deletes again.
+func (e *engine) removeRecord(ctx context.Context, r *request, etag string) (armrpc_rest.Response, error) {
+	if err := e.store.DeleteIfUnchanged(ctx, r.id, etag); errors.Is(err, &database.ErrConcurrency{}) {
 		return saveError(r.id, err)
 	} else if err != nil {
-		return nil, fmt.Errorf("the AWS resource for the alias %q is deleted, but UCP failed to save its tombstone. Delete again: %w", r.id.Name(), err)
+		return nil, fmt.Errorf("the AWS resource for the alias %q is deleted, but UCP failed to remove its record. Delete again: %w", r.id.Name(), err)
 	}
 	return armrpc_rest.NewNoContentResponse(), nil
 }
 
-// saveTombstone saves a tombstone in place of the record, with the ETag the record was read with. rec is unchanged.
-func (e *engine) saveTombstone(ctx context.Context, rec *datamodel.AWSResource, etag string) (string, error) {
-	tombstone := *rec
-	records.Tombstone(&tombstone, nil)
-	return e.store.Save(ctx, &tombstone, etag)
-}
-
 // get reads the AWS resource under the alias in the URL: the record, then AWS by the identifier in the record. It
-// always reads AWS, so the result shows changes made outside Radius. A URL with no record is read from AWS by its last
-// segment for now (see below). It does not check the owner, because reading another owner's resource does not change it.
+// always reads AWS, so the result shows changes made outside Radius. It does not check the owner, because reading
+// another owner's resource does not change it.
 func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Response, error) {
 	r, resp := e.begin(ctx, httpReq)
 	if resp != nil {
@@ -983,21 +925,14 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err != nil {
 		return nil, err
 	}
-
-	// TRANSITIONAL: a URL with no record is read from AWS by its last segment, as UCP did before records. Resources the
-	// Deployment Engine created with POST /:put have no record, and their IDs end in the AWS identifier. The Bicep
-	// recipe driver reads each AWS output resource by that ID to find its ARN. Remove this with POST /:put; a URL with
-	// no record then returns 404.
-	identifier := r.id.Name()
-	if rec != nil {
-		// A tombstone has no identifier, so it returns 404 without the fallback.
-		identifier = rec.Properties.AWSIdentifier
+	if rec == nil {
+		return noRecordResponse(r.id), nil
 	}
-	if identifier == "" {
+	if rec.Properties.AWSIdentifier == "" {
 		return armrpc_rest.NewNotFoundResponse(r.id), nil
 	}
 
-	current, err := e.readResource(ctx, r, identifier)
+	current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)
 	if err != nil {
 		return ucp_aws.HandleAWSError(ctx, err)
 	}
@@ -1011,12 +946,33 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 			return nil, err
 		}
 	}
+	if extraproperties.Names(r.typeName) != nil {
+		// Only types with extra properties need the schema here. DescribeType answers are cached.
+		typeInfo, err := e.describeType(ctx, r)
+		if err != nil {
+			return ucp_aws.HandleAWSError(ctx, err)
+		}
+		if resp, err := addExtraProperties(ctx, e.clients.Kafka, r.typeName, r.region, aws.ToString(typeInfo.Schema), properties); resp != nil || err != nil {
+			return resp, err
+		}
+	}
 	return armrpc_rest.NewOKResponse(map[string]any{
 		"id":         r.id.String(),
 		"name":       r.id.Name(),
 		"type":       r.id.Type(),
 		"properties": properties,
 	}), nil
+}
+
+// noRecordResponse returns the 404 for an AWS resource ID that has no record. Its code tells it apart from a record
+// whose AWS resource is gone, so a caller can read a resource Radius did not deploy with POST /:get instead, and never
+// does so for an alias, which could read an unrelated resource whose AWS identifier matches the alias.
+func noRecordResponse(id resources.ID) armrpc_rest.Response {
+	return &armrpc_rest.NotFoundResponse{Body: v1.ErrorResponse{Error: &v1.ErrorDetails{
+		Code:    sdkclients.AWSResourceNoRecordCode,
+		Message: fmt.Sprintf("UCP has no record of the AWS resource %q. Deploy it by alias, or reference it with existing and name or properties.", id.String()),
+		Target:  id.String(),
+	}}}
 }
 
 // identifierFromProperties returns the AWS identifier the properties give, or "" when they do not set every primary

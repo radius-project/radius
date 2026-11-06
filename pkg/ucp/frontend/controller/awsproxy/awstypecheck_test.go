@@ -109,13 +109,11 @@ func Test_UnsupportedTypes_FailWithoutCallingAWS(t *testing.T) {
 		body    map[string]any
 	}{
 		{"PUT", newTestPutController, http.MethodPut, "/name", body},
-		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, "", body},
 		{"GET", NewGetAWSResource, http.MethodGet, "/name", nil},
 		{"POST /:get", func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
 			return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
 		}, http.MethodPost, "", body},
 		{"DELETE", NewDeleteAWSResource, http.MethodDelete, "/name", nil},
-		{"POST /:delete", NewDeleteAWSResourceWithPost, http.MethodPost, "", body},
 		{"LIST", NewListAWSResources, http.MethodGet, "", nil},
 	}
 	for _, tt := range types {
@@ -172,7 +170,6 @@ func Test_Put_NonProvisionableTypes(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", newTestPutController, http.MethodPut, "/name"},
-		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, tt := range tests {
 		for _, op := range puts {
@@ -205,18 +202,16 @@ const immutableSchema = `{
 }`
 
 // Test_Update_ImmutableType updates an existing resource of a create-and-delete-only type. A changed readable property
-// fails on both routes. PUT by alias takes the resource over, so it has no fingerprints yet: a write-only value is not
-// sent and does not fail. POST /:put keeps no record, so a write-only value fails because UCP cannot confirm it is
-// unchanged. Test_WriteOnly_ImmutableType covers write-only values with fingerprints.
+// fails. PUT takes the resource over, so it has no fingerprints yet: a write-only value is not sent and does not fail.
+// Test_WriteOnly_ImmutableType covers write-only values with fingerprints.
 func Test_Update_ImmutableType(t *testing.T) {
 	current := `{"Name": "name", "Arn": "arn:aws:x:us-west-2:1:y/name", "Size": 1, "Settings": {"Mode": "a"}, "Users": [{"Name": "u"}]}`
 	tests := []struct {
 		name       string
 		properties map[string]any
 		// want is the error message, or "" when the deploy succeeds without calling AWS. No case calls UpdateResource,
-		// and the mock fails the test if one does. wantPost is the error message of POST /:put when it differs.
-		want     string
-		wantPost string
+		// and the mock fails the test if one does.
+		want string
 	}{
 		{
 			name:       "changed properties",
@@ -230,13 +225,11 @@ func Test_Update_ImmutableType(t *testing.T) {
 		{
 			name:       "write-only property",
 			properties: map[string]any{"Name": "name", "Size": 1, "Password": secretValue},
-			wantPost:   "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Password. To change them, delete the resource and deploy again.",
 		},
 		{
 			// AWS omits Auth because its only property is write-only, so the patch adds the whole object.
 			name:       "write-only property in an absent parent",
 			properties: map[string]any{"Name": "name", "Size": 1, "Auth": map[string]any{"Token": secretValue}},
-			wantPost:   "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Auth. To change them, delete the resource and deploy again.",
 		},
 		{
 			name:       "readable property next to a write-only property in an absent parent",
@@ -246,12 +239,10 @@ func Test_Update_ImmutableType(t *testing.T) {
 		{
 			name:       "write-only property in array items",
 			properties: map[string]any{"Name": "name", "Size": 1, "Users": []any{map[string]any{"Name": "u", "Secret": secretValue}}},
-			wantPost:   "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Users. To change them, delete the resource and deploy again.",
 		},
 		{
 			name:       "several write-only properties",
 			properties: map[string]any{"Name": "name", "Size": 1, "Users": []any{map[string]any{"Name": "u", "Secret": secretValue}}, "Password": secretValue},
-			wantPost:   "The AWS resource type AWS::Test::Immutable can only be created and deleted, and AWS cannot update it in place. Radius cannot confirm that these write-only properties of the existing resource are unchanged, because AWS does not return their values: Password, Users. To change them, delete the resource and deploy again.",
 		},
 	}
 	updates := []struct {
@@ -261,7 +252,6 @@ func Test_Update_ImmutableType(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", newTestPutController, http.MethodPut, "/name"},
-		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, tt := range tests {
 		for _, op := range updates {
@@ -278,9 +268,6 @@ func Test_Update_ImmutableType(t *testing.T) {
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Immutable" + op.suffix
 				status, message, raw := runTypeCheckRequest(t, op.factory, options, op.method, path, map[string]any{"properties": tt.properties})
 				want := tt.want
-				if op.name == "POST /:put" && tt.wantPost != "" {
-					want = tt.wantPost
-				}
 				if want == "" {
 					require.Equal(t, http.StatusOK, status, raw)
 					return
@@ -310,13 +297,9 @@ func Test_Create_ImmutableType(t *testing.T) {
 	require.Equal(t, http.StatusCreated, status, raw)
 }
 
-func Test_CheckPatch_FullyMutable(t *testing.T) {
+func Test_CheckRecordPatch_FullyMutable(t *testing.T) {
 	patch := jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}}
 	for _, provisioningType := range []cftypes.ProvisioningType{cftypes.ProvisioningTypeFullyMutable, ""} {
-		got, errResponse, err := checkPatch("AWS::Test::Mutable", &cloudformation.DescribeTypeOutput{ProvisioningType: provisioningType}, patch)
-		require.NoError(t, err)
-		require.Nil(t, errResponse)
-		require.Equal(t, patch, got)
 		require.Nil(t, checkRecordPatch("AWS::Test::Mutable", &cloudformation.DescribeTypeOutput{ProvisioningType: provisioningType}, patch))
 	}
 }
@@ -352,29 +335,6 @@ func Test_WriteOnlyPattern(t *testing.T) {
 	}
 }
 
-func Test_OnlyWriteOnly(t *testing.T) {
-	schema := &typeSchema{WriteOnlyProperties: []string{"/properties/Auth/Token", "/properties/Users/*/Secret"}}
-	tests := []struct {
-		name string
-		op   jsondiff.Operation
-		want bool
-	}{
-		{"write-only path", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Auth/Token", Value: "x"}, true},
-		{"object of write-only properties", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{"Token": "x"}}, true},
-		{"object with a readable property", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{"Token": "x", "Type": "y"}}, false},
-		{"empty object", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Auth", Value: map[string]any{}}, false},
-		{"array item of write-only properties", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Users/0", Value: map[string]any{"Secret": "x"}}, true},
-		{"array item with a readable property", jsondiff.Operation{Type: jsondiff.OperationAdd, Path: "/Users/0", Value: map[string]any{"Secret": "x", "Name": "y"}}, false},
-		{"readable scalar", jsondiff.Operation{Type: jsondiff.OperationReplace, Path: "/Size", Value: 2}, false},
-		{"remove of a parent", jsondiff.Operation{Type: jsondiff.OperationRemove, Path: "/Auth"}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, schema.onlyWriteOnly(tt.op))
-		})
-	}
-}
-
 func Test_LeafPaths(t *testing.T) {
 	got := leafPaths("/Auth", map[string]any{
 		"Token":   "x",
@@ -388,21 +348,19 @@ func Test_LeafPaths(t *testing.T) {
 }
 
 // Test_InvalidSchema checks that a schema UCP cannot read fails the request instead of letting it through. "handlers"
-// that is not an object passes the secrets check but not the type check. PUT by alias runs the type check for every
-// type before it reads the resource; POST /:put runs it for an IMMUTABLE update.
+// that is not an object passes the secrets check but not the type check. PUT runs the type check for every type before
+// it reads the resource.
 func Test_InvalidSchema(t *testing.T) {
 	tests := []struct {
 		name             string
 		provisioningType cftypes.ProvisioningType
 		schema           string
-		existing         bool
 	}{
 		{name: "NON_PROVISIONABLE", provisioningType: cftypes.ProvisioningTypeNonProvisionable, schema: "not json"},
 		{
 			name:             "IMMUTABLE",
 			provisioningType: cftypes.ProvisioningTypeImmutable,
 			schema:           `{"primaryIdentifier": ["/properties/Name"], "handlers": ["create"]}`,
-			existing:         true,
 		},
 	}
 	puts := []struct {
@@ -412,7 +370,6 @@ func Test_InvalidSchema(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", newTestPutController, http.MethodPut, "/name"},
-		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, tt := range tests {
 		for _, op := range puts {
@@ -422,11 +379,6 @@ func Test_InvalidSchema(t *testing.T) {
 					ProvisioningType: tt.provisioningType,
 					Schema:           aws.String(tt.schema),
 				}, nil)
-				if tt.existing && op.name == "POST /:put" {
-					options.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudcontrol.GetResourceOutput{
-						ResourceDescription: &cctypes.ResourceDescription{Identifier: aws.String("name"), Properties: aws.String(`{"Name": "name", "Size": 1}`)},
-					}, nil)
-				}
 
 				path := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Test/Type" + op.suffix
 				request, err := http.NewRequest(op.method, path, bytes.NewBufferString(`{"properties": {"Name": "name", "Size": 2}}`))
@@ -451,7 +403,6 @@ func Test_Put_DescribeTypeError(t *testing.T) {
 		suffix  string
 	}{
 		{"PUT", newTestPutController, http.MethodPut, "/name"},
-		{"POST /:put", NewCreateOrUpdateAWSResourceWithPost, http.MethodPost, ""},
 	}
 	for _, op := range puts {
 		t.Run(op.name, func(t *testing.T) {

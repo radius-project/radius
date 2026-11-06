@@ -52,6 +52,8 @@ For an existing `release/X.Y` channel, also review and **rebase-merge the genera
 
 Open the automatically started [Release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml). For an existing channel, select the run started by the metadata backport merge and confirm **State: validated and ready to reconcile**, not the initial main-merge run that reports waiting. Review its version, Radius source commit, Deployment Engine commit, and frozen sibling commits. Record the exact **version and source commit** from this run's summary for recovery.
 
+- **Until v0.63.0 final ships:** confirm the Deployment Engine commit includes azure-octo/deployment-engine#705 (`e537d7e4b`). This release removes the AWS routes that older Deployment Engines call.
+
 In **Review deployments**, approve **Approve release reconciliation** in the `release` environment.
 
 For a frozen first RC, the controller then creates or reuses a signed release-App commit based on the frozen product cutoff, adding only the reviewed release metadata files, including the PM notes. The release branch, tag, builds, and artifact locks use this resolved commit, not the later `main` squash commit. Record the resolved source SHA from the summary for subsequent recovery.

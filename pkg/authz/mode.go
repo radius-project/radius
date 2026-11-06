@@ -86,6 +86,14 @@ type Options struct {
 	// namespace protections and Pod Security labels to a verified deployment target, not a
 	// configured kubeconfig or API-server address. It cannot be set through configuration.
 	TargetClusterIsDistinct bool `yaml:"-" json:"-"`
+
+	// CertificateDirectory is the directory that holds the component's mTLS certificate
+	// (tls.crt, tls.key, and ca.crt). It is required when the mode is not off.
+	CertificateDirectory string `yaml:"certificateDirectory,omitempty"`
+
+	// Namespace is the Radius namespace used to check peer certificate identities.
+	// It is required when the mode is not off.
+	Namespace string `yaml:"namespace,omitempty"`
 }
 
 // EffectiveMode returns the configured mode, or ModeOff when it is unset.

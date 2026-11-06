@@ -107,8 +107,8 @@ global:
   #   enabled=true                -> enforce (denials will be rejected)
   # Setting both enabled=true and dryRun=true fails installation: the dry run is a
   # preflight check for an installation that is not yet enforcing.
-  # NOTE: no component authorization checks are implemented yet. The only runtime effects are
-  # admission controls. Pod Security Admission labels on environment and application namespaces:
+  # Non-off modes issue component certificates and require cert-manager >=1.20.0.
+  # Pod Security Admission labels also apply to environment and application namespaces:
   #   off     -> no labels (default)
   #   dryRun  -> pod-security.kubernetes.io/warn and /audit (violations warned, not rejected)
   #   enforce -> pod-security.kubernetes.io/enforce, /warn and /audit (violations rejected)
@@ -120,11 +120,19 @@ global:
   # rejected with AdmissionPolicyDenied (enforce). Not rendered when the mode is off.
   # Applications RP also rejects environments and applications in that namespace, and output
   # resources there that reference a control-plane Secret (dryRun: logged; enforce: rejected).
+  # In dryRun and enforce, ucp, applications-rp, dynamic-rp, and controller mount their
+  # "<component>-mtls" Secret. UCP presents its certificate to the resource providers;
+  # the resource providers and controller call UCP over mTLS on internal port 9444.
+  # UCP port 9443 is not protected yet (planned for A6). Probes and metrics stay plain.
   # Example: rad install kubernetes --set global.rbac.dryRun=true
   rbac:
-    # Enforce internal component authorization (only Pod Security labels so far).
+    # Enforce internal component authorization: require a client certificate from the Radius CA
+    # and reject unauthorized callers. Internal UCP-to-resource-provider calls use client mTLS.
+    # Also enforce Pod Security labels on environment and application namespaces.
     enabled: false
-    # Log what authorization checks would deny without rejecting requests (only Pod Security labels so far).
+    # Log what authorization checks would deny without rejecting requests. Servers accept both
+    # TLS and plain HTTP, and need the mounted certificate files.
+    # Also warn/audit Pod Security violations on environment and application namespaces.
     dryRun: false
     # Pod Security Standards level for the labels: "baseline" or "restricted".
     podSecurityLevel: baseline
@@ -134,6 +142,16 @@ global:
       # Applications.Core containers; only objects with the radapp.io/resource-type label match.
       # TODO(D7): default to the application-template identity once the broker issues it.
       applicationIdentities: []
+    # Service certificates for mTLS between Radius components. Rendered only when the
+    # authorization mode is not off, and require cert-manager >=1.20.0.
+    # rad install/upgrade manages this prerequisite; plain Helm users must install it first.
+    certificates:
+      # Where the Radius CA comes from. Only selfSigned is supported today: cert-manager
+      # creates a Radius-only CA (Certificate and Secret "radius-ca") and Issuer "radius-ca-issuer".
+      # Each component gets Certificate "<component>-cert" stored in Secret "<component>-mtls"
+      # (tls.crt, tls.key, ca.crt) for ucp, applications-rp, dynamic-rp, controller, and bicep-de.
+      # Keys are ECDSA P-256; certificates last 24h and renew 8h before expiry.
+      mode: selfSigned
 
 controller:
   image: controller

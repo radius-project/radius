@@ -32,6 +32,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/funcr"
@@ -1695,6 +1696,37 @@ func Test_Bicep_AddAWSProviderResourceIDs(t *testing.T) {
 		fleetID:   "arn:aws:gamelift:us-west-2:123456789012:containerfleet/fleet-1",
 		unknownID: "arn:aws:example:us-west-2:123456789012:thing/thing-1",
 	}, output.ProviderResourceIDs)
+}
+
+// A resource the recipe references with existing has no record in UCP, so GET returns 404 with the no-record code. The
+// driver then reads it by the AWS identifier at the end of its ID. A 404 with any other code is for an alias whose
+// resource is gone, and other read errors are not retried either.
+func Test_Bicep_AddAWSProviderResourceIDs_NoRecord(t *testing.T) {
+	const (
+		prefix     = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/"
+		existingID = prefix + "existing-bucket"
+		missingID  = prefix + "missing-bucket"
+		goneID     = prefix + "gone-bucket"
+		deniedID   = prefix + "denied-bucket"
+	)
+	noRecord := &processors.ResourceError{ID: existingID, Inner: &azcore.ResponseError{StatusCode: http.StatusNotFound, ErrorCode: clients.AWSResourceNoRecordCode}}
+	notFound := &processors.ResourceError{ID: goneID, Inner: &azcore.ResponseError{StatusCode: http.StatusNotFound, ErrorCode: v1.CodeNotFound}}
+
+	ctrl := gomock.NewController(t)
+	client := processors.NewMockResourceClient(ctrl)
+	client.EXPECT().GetProperties(gomock.Any(), existingID).Return(nil, noRecord)
+	client.EXPECT().GetAWSPropertiesByIdentifier(gomock.Any(), existingID).Return(map[string]any{"Arn": "arn:aws:s3:::existing-bucket"}, nil)
+	client.EXPECT().GetProperties(gomock.Any(), missingID).Return(nil, noRecord)
+	client.EXPECT().GetAWSPropertiesByIdentifier(gomock.Any(), missingID).Return(nil, notFound)
+	// The mock fails the test if GetAWSPropertiesByIdentifier is called for goneID.
+	client.EXPECT().GetProperties(gomock.Any(), goneID).Return(nil, notFound)
+	client.EXPECT().GetProperties(gomock.Any(), deniedID).Return(nil, &azcore.ResponseError{StatusCode: http.StatusForbidden})
+
+	d := &bicepDriver{resourceClientFactory: func(*rest.Config) processors.ResourceClient { return client }}
+	output := &recipes.RecipeOutput{Resources: []string{existingID, missingID, goneID, deniedID}}
+	d.addAWSProviderResourceIDs(t.Context(), output)
+
+	require.Equal(t, map[string]string{existingID: "arn:aws:s3:::existing-bucket"}, output.ProviderResourceIDs)
 }
 
 func Test_Bicep_AddAWSProviderResourceIDs_NoResourceClient(t *testing.T) {
