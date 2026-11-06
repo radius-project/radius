@@ -28,6 +28,7 @@ import (
 	"github.com/wI2L/jsondiff"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 )
@@ -67,8 +68,10 @@ type Lifecycle struct {
 const cleanupTimeout = 10 * time.Minute
 
 // Run creates the resource, waits for it, and checks Read; updates it when Update is set; then deletes it and waits
-// until AWS no longer has it. It returns the resource's identifier. When recording, a run that fails after the create
-// still deletes the resource in cleanup, so a failed recording leaves nothing running in AWS.
+// until AWS no longer has it. It returns the resource's identifier. When recording, a run that fails once the create
+// may have made the resource, including a create that failed partway, still deletes it in cleanup, so a failed
+// recording leaves nothing running in AWS. A create AWS rejected made nothing, so its identifier, which may name a
+// resource that already existed, is never deleted.
 func (l Lifecycle) Run(t testing.TB) string {
 	t.Helper()
 	ctx := t.Context()
@@ -82,28 +85,31 @@ func (l Lifecycle) Run(t testing.TB) string {
 	// A new client token for every run, so a recording never gets a resource an earlier recording made. A replay
 	// doesn't compare request bodies, so the token can differ from the one recorded.
 	identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: l.Properties, ClientToken: uuid.NewString()})
-	require.NoError(t, err)
-	if identifier == "" {
+	if identifier == "" && err == nil {
 		encoder, ok := h.(native.IdentifierEncoder)
 		require.True(t, ok, "Create returned no identifier, and the handler has no identifier encoding")
 		identifier, err = encoder.Identifier(l.Properties)
 		require.NoError(t, err)
 	}
-	deleted := false
-	if l.Session.Recording() && !l.SkipDelete {
+	// deleteToken is the token of the delete Run started, deleting is true once it started, and deleted once AWS no
+	// longer has the resource.
+	var deleteToken string
+	deleting, deleted := false, false
+	if l.Session.Recording() && !l.SkipDelete && identifier != "" && mayHaveCreated(err) {
 		t.Cleanup(func() {
 			if deleted {
 				return
 			}
 			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
 			defer cancel()
-			if err := l.deleteAndWait(cleanupCtx, identifier); err != nil {
+			if err := l.cleanup(cleanupCtx, identifier, deleting, deleteToken); err != nil {
 				t.Errorf("failed to delete %s after the recording failed, so delete it in AWS: %v", identifier, err)
 				return
 			}
 			t.Logf("deleted %s after the recording failed", identifier)
 		})
 	}
+	require.NoError(t, err)
 	l.wait(t, ctx, identifier, native.OperationCreate)
 	current := l.read(t, ctx, identifier)
 	RequireSubset(t, want, current)
@@ -126,20 +132,50 @@ func (l Lifecycle) Run(t testing.TB) string {
 	if l.SkipDelete {
 		return identifier
 	}
-	require.NoError(t, l.delete(ctx, identifier))
-	deleted = true
+	deleteToken, err = l.delete(ctx, identifier, "")
+	require.NoError(t, err)
+	deleting = true
 	l.wait(t, ctx, identifier, native.OperationDelete)
+	deleted = true
 	return identifier
 }
 
-// deleteAndWait deletes the resource and waits until AWS no longer has it, or ctx ends.
-func (l Lifecycle) deleteAndWait(ctx context.Context, identifier string) error {
-	if err := l.delete(ctx, identifier); err != nil {
+// mayHaveCreated reports whether a create that returned err may have made the resource: it succeeded, or failed after
+// AWS applied some of it, or failed without saying. A create AWS rejected, by its outcome or as a client fault, made
+// nothing.
+func mayHaveCreated(err error) bool {
+	if err == nil {
+		return true
+	}
+	var failure *native.Failure
+	if errors.As(err, &failure) {
+		return failure.Outcome != native.OutcomeRejected
+	}
+	return !ucp_aws.IsClientFault(err)
+}
+
+// cleanup deletes the resource after a failed recording and waits until AWS no longer has it, or ctx ends. When Run
+// already started a delete, it first waits for that delete, and sends it again, with the same token, only when the
+// resource is still there.
+func (l Lifecycle) cleanup(ctx context.Context, identifier string, deleting bool, token string) error {
+	if deleting {
+		err := l.waitDeleted(ctx, identifier)
+		if err == nil || ctx.Err() != nil {
+			return err
+		}
+	}
+	if _, err := l.delete(ctx, identifier, token); err != nil {
 		if errors.Is(err, native.ErrNotFound) {
 			return nil
 		}
 		return err
 	}
+	return l.waitDeleted(ctx, identifier)
+}
+
+// waitDeleted reads the delete's progress until AWS no longer has the resource, or ctx ends. A delete AWS reports as
+// done while the resource is still there didn't delete it.
+func (l Lifecycle) waitDeleted(ctx context.Context, identifier string) error {
 	for ctx.Err() == nil {
 		progress, err := l.Handler.Progress(ctx, awsreplay.Region, identifier, native.OperationDelete)
 		switch {
@@ -150,6 +186,9 @@ func (l Lifecycle) deleteAndWait(ctx context.Context, identifier string) error {
 		case progress.Failure != nil:
 			return progress.Failure
 		case progress.Done:
+			if _, err := l.Handler.Read(ctx, awsreplay.Region, identifier); !errors.Is(err, native.ErrNotFound) {
+				return errors.Join(errors.New("AWS still has the resource after the delete finished"), err)
+			}
 			return nil
 		}
 		l.Session.Wait(l.poll())
@@ -165,19 +204,24 @@ func (l Lifecycle) poll() time.Duration {
 	return l.Poll
 }
 
-// delete starts deleting the resource, with a delete token for a handler that sends one.
-func (l Lifecycle) delete(ctx context.Context, identifier string) error {
+// delete starts deleting the resource. For a handler that sends a delete token, it sends token, or a new one when
+// token is "", and returns the token it sent. A handler whose resource is some members of a parent removes only the
+// members the lifecycle applies.
+func (l Lifecycle) delete(ctx context.Context, identifier string, token string) (string, error) {
 	if scoped, ok := l.Handler.(native.ScopedDeleter); ok {
-		return scoped.DeleteScoped(ctx, awsreplay.Region, identifier, l.managed())
+		return "", scoped.DeleteScoped(ctx, awsreplay.Region, identifier, l.managed())
 	}
-	if preparer, ok := l.Handler.(native.DeletePreparer); ok {
-		token, err := preparer.DeleteToken(ctx, awsreplay.Region, identifier)
-		if err != nil {
-			return err
+	preparer, ok := l.Handler.(native.DeletePreparer)
+	if !ok {
+		return "", l.Handler.Delete(ctx, awsreplay.Region, identifier)
+	}
+	if token == "" {
+		var err error
+		if token, err = preparer.DeleteToken(ctx, awsreplay.Region, identifier); err != nil {
+			return "", err
 		}
-		return preparer.DeleteWithToken(ctx, awsreplay.Region, identifier, token)
 	}
-	return l.Handler.Delete(ctx, awsreplay.Region, identifier)
+	return token, preparer.DeleteWithToken(ctx, awsreplay.Region, identifier, token)
 }
 
 // managed returns the property sets the lifecycle applies, for a handler whose resource is some members of a parent.

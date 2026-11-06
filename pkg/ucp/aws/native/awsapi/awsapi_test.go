@@ -215,3 +215,16 @@ func Test_FieldNames(t *testing.T) {
 	require.Equal(t, []string{"Mode"}, FieldNames(&sdkSettings{}))
 	require.Equal(t, []string{"Key", "Value"}, FieldNames(sdkTag{}))
 }
+
+func Test_ReservedTags(t *testing.T) {
+	require.NoError(t, ReservedTags(map[string]any{"Tags": []any{map[string]any{"Key": "team", "Value": "a"}}}, OperationTag))
+	require.NoError(t, ReservedTags(map[string]any{}, OperationTag))
+	err := ReservedTags(map[string]any{"Tags": []any{
+		map[string]any{"Key": "b", "Value": "1"}, map[string]any{"Key": "a", "Value": "2"}, map[string]any{"Key": "b", "Value": "3"},
+	}}, "a", "b")
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, "can't set them: a, b.")
+}

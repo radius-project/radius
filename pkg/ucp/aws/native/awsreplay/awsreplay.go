@@ -35,7 +35,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -244,7 +244,7 @@ func encodings(v string) []string {
 		v,
 		url.QueryEscape(v),
 		url.PathEscape(v),
-		strings.Trim(string(escaped), `"`),
+		string(escaped[1 : len(escaped)-1]),
 		base64.StdEncoding.EncodeToString([]byte(v)),
 		base64.RawStdEncoding.EncodeToString([]byte(v)),
 	}
@@ -262,7 +262,7 @@ func (s *Session) save() error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(path.Dir(s.file), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(s.file), 0o755); err != nil {
 		return err
 	}
 	return os.WriteFile(s.file, append(b, '\n'), 0o644)

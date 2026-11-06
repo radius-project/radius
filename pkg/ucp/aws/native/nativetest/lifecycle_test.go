@@ -82,7 +82,7 @@ func (f *fakeTB) run(fn func()) {
 	}
 }
 
-// doneOnDelete reports every delete as done at once, as a handler can before AWS no longer has the resource.
+// doneOnDelete reports every delete as done at once, though AWS still has the resource.
 type doneOnDelete struct {
 	*nativefake.Handler
 }
@@ -90,6 +90,37 @@ type doneOnDelete struct {
 func (d doneOnDelete) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
 	if op == native.OperationDelete {
 		return native.Progress{Done: true}, nil
+	}
+	return d.Handler.Progress(ctx, region, identifier, op)
+}
+
+// createFails makes Create return its identifier with err, after the create reached AWS, or before it when reached is
+// false, as a handler does for a create AWS applied partly or rejected.
+type createFails struct {
+	*nativefake.Handler
+	err     error
+	reached bool
+}
+
+func (c createFails) Create(ctx context.Context, request native.CreateRequest) (string, error) {
+	if c.reached {
+		if _, err := c.Handler.Create(ctx, request); err != nil {
+			return "", err
+		}
+	}
+	return "app", c.err
+}
+
+// firstDeleteFails reports the first delete as failed while AWS is still deleting the resource.
+type firstDeleteFails struct {
+	*nativefake.Handler
+	failed *bool
+}
+
+func (d firstDeleteFails) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
+	if op == native.OperationDelete && !*d.failed {
+		*d.failed = true
+		return native.Progress{Done: true, Failure: &native.Failure{Message: "AWS reported the delete as failed"}}, nil
 	}
 	return d.Handler.Progress(ctx, region, identifier, op)
 }
@@ -127,6 +158,68 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		f.run(func() { l.Run(f) })
 		require.True(t, f.failed)
 		require.Equal(t, 1, deletes(h))
+		require.Zero(t, store.Count(typeName))
+	})
+
+	t.Run("a partly applied create is deleted in cleanup", func(t *testing.T) {
+		for _, err := range []error{&native.Failure{Message: "partly applied", Outcome: native.OutcomePartial}, errors.New("the response was lost")} {
+			l, h, store := newRun(t, true)
+			l.Handler = createFails{Handler: h, err: err, reached: true}
+			f := newFakeTB(t)
+			f.run(func() { l.Run(f) })
+			require.True(t, f.failed)
+			require.Equal(t, 1, deletes(h), err.Error())
+			require.Zero(t, store.Count(typeName), err.Error())
+		}
+	})
+
+	t.Run("a rejected create leaves a resource of the same name alone", func(t *testing.T) {
+		for _, err := range []error{&native.Failure{Message: "already exists", ClientError: true, Outcome: native.OutcomeRejected}, nativefake.ClientError("AlreadyExistsFault", "already exists")} {
+			l, h, store := newRun(t, true)
+			store.Put(typeName, "app", map[string]any{"Name": "app"})
+			l.Handler = createFails{Handler: h, err: err}
+			f := newFakeTB(t)
+			f.run(func() { l.Run(f) })
+			require.True(t, f.failed)
+			require.Empty(t, f.cleanups, err.Error())
+			require.Zero(t, deletes(h), err.Error())
+			require.Equal(t, 1, store.Count(typeName), err.Error())
+		}
+	})
+
+	t.Run("SkipDelete leaves a partly applied create", func(t *testing.T) {
+		l, h, store := newRun(t, true)
+		l.SkipDelete = true
+		l.Handler = createFails{Handler: h, err: &native.Failure{Message: "partly applied", Outcome: native.OutcomePartial}, reached: true}
+		f := newFakeTB(t)
+		f.run(func() { l.Run(f) })
+		require.Empty(t, f.cleanups)
+		require.Equal(t, 1, store.Count(typeName))
+	})
+
+	t.Run("a delete AWS reports as failed while still deleting is waited for, not sent again", func(t *testing.T) {
+		l, h, store := newRun(t, true)
+		failed := false
+		l.Handler = firstDeleteFails{Handler: h, failed: &failed}
+		f := newFakeTB(t)
+		f.run(func() { l.Run(f) })
+		require.True(t, f.failed)
+		require.Len(t, f.errors, 1, f.errors)
+		require.Equal(t, 1, deletes(h))
+		require.Zero(t, store.Count(typeName))
+	})
+
+	t.Run("a delete AWS stopped is sent again with the same token", func(t *testing.T) {
+		l, h, store := newRun(t, true)
+		h.Failures[native.OperationDelete] = &native.Failure{Message: "the final snapshot failed"}
+		l.Handler = h.DeleteTokens()
+		f := newFakeTB(t)
+		l.Between = func() { f.Cleanup(func() { delete(h.Failures, native.OperationDelete) }) }
+		f.run(func() { l.Run(f) })
+		require.True(t, f.failed)
+		require.Len(t, f.errors, 1, f.errors)
+		require.Equal(t, 2, deletes(h))
+		require.Equal(t, 1, h.Copies(), "the second delete reuses the first one's token")
 		require.Zero(t, store.Count(typeName))
 	})
 
@@ -189,15 +282,16 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		require.Equal(t, 1, deletes(h))
 	})
 
-	t.Run("a cleanup stops when the delete reports done", func(t *testing.T) {
+	t.Run("a cleanup delete AWS reports as done while it still has the resource says so", func(t *testing.T) {
 		l, h, store := newRun(t, true)
 		l.Handler = doneOnDelete{h}
 		f := newFakeTB(t)
 		l.Between = func() { f.Fatalf("boom") }
 		f.run(func() { l.Run(f) })
-		require.Len(t, f.errors, 1)
+		require.Len(t, f.errors, 2)
+		require.Contains(t, f.errors[1], "AWS still has the resource")
 		require.Equal(t, 1, deletes(h))
-		require.Equal(t, 1, store.Count(typeName), "AWS said the delete is done before it removed the resource")
+		require.Equal(t, 1, store.Count(typeName))
 	})
 
 	t.Run("the cleanup stops at its bound", func(t *testing.T) {
@@ -206,7 +300,7 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		cancel()
 		_, err := l.Handler.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: l.Properties, ClientToken: "token"})
 		require.NoError(t, err)
-		require.ErrorIs(t, l.deleteAndWait(ctx, "app"), context.Canceled)
+		require.ErrorIs(t, l.cleanup(ctx, "app", false, ""), context.Canceled)
 	})
 
 	t.Run("SkipDelete leaves the resource", func(t *testing.T) {

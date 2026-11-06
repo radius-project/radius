@@ -287,6 +287,9 @@ func sdkTags(tags []awsapi.Tag) []types.Tag {
 // file system with the token: FSx rejects a resent create whose properties differ, as when UCP looks for a lost create
 // before a delete without the write-only values, and then the handler finds the file system by that tag.
 func (h *FileSystem) Create(ctx context.Context, request native.CreateRequest) (string, error) {
+	if err := awsapi.ReservedTags(request.Properties, reservedTags...); err != nil {
+		return "", err
+	}
 	p := request.Properties
 	token := aws.String(request.ClientToken)
 	tags := createTags(p, token)
@@ -417,6 +420,9 @@ var updatable = map[string][]string{
 // Update makes the patch's changes with one UpdateFileSystem call, then adds and removes tags. A property the
 // template no longer sets keeps AWS's value, because FSx has no call to clear it.
 func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) error {
+	if err := awsapi.ReservedTags(request.Desired, reservedTags...); err != nil {
+		return err
+	}
 	fs, err := h.describe(ctx, request.Region, request.Identifier)
 	if err != nil {
 		return err
@@ -458,6 +464,9 @@ func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) e
 	}
 	return awsapi.Calls(calls...)
 }
+
+// reservedTags are the tag keys the handler keeps its own state in, which a template can't set.
+var reservedTags = []string{awsapi.OperationTag, deleteOptionsTag, updateBaselineTag}
 
 // updateBaselineTag is the tag key the handler puts on a file system whose latest administrative action failed, with
 // that action's request time, before it starts an update. Progress ignores the actions it names, so an update that
