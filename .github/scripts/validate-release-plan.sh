@@ -175,6 +175,11 @@ verify_planned_siblings() {
         git -C "${scratch}" merge-base --is-ancestor "${source_commit}" \
             "${head}" 2> /dev/null \
                                   || fail "planned ${name} commit ${source_commit} is not reachable from ${source_ref} at ${head}"
+        if [[ "${name}" == "bicep-types-aws" ]]; then
+            bash "${SCRIPT_DIR}/verify-bicep-types-aws-radius-pin.sh" \
+                "${scratch}" "${source_commit}" \
+                "$(plan_value '.source.productCommit')" < /dev/null
+        fi
     done < <(jq -r '.[] | [.name, .sourceRef, .sourceCommit] | @tsv' \
         "${planned}")
 }
