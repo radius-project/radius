@@ -167,6 +167,22 @@ type Suite struct {
 	// RemovedItemField, when set, is a field inside an array item that a deploy sets and the next one leaves out, for
 	// a type whose Equivalent compares array items only on the values the template sets.
 	RemovedItemField *RemovedItemField
+
+	// ChangedOutside, when set, is a change to the resource in AWS outside Radius that a deploy of its template must
+	// undo, for a type whose Equivalent compares values only on what the template sets.
+	ChangedOutside *ChangedOutside
+}
+
+// ChangedOutside is a change to the resource in AWS outside Radius, such as another HLS container than the template's.
+type ChangedOutside struct {
+	// Properties is the template.
+	Properties map[string]any
+
+	// Change returns the resource as AWS has it after the change, given the resource as AWS had it.
+	Change func(stored map[string]any) map[string]any
+
+	// Restored reports whether AWS has the template's values again, given the resource as AWS has it.
+	Restored func(stored map[string]any) bool
 }
 
 // RemovedItemField is a field inside an array item, such as an EMR task group's AutoScalingPolicy.
@@ -186,6 +202,8 @@ func Run(t *testing.T, s Suite) {
 	t.Run("deleted outside Radius", func(t *testing.T) { s.deletedOutsideRadius(t) })
 	t.Run("removed property", func(t *testing.T) { s.removedProperty(t) })
 	t.Run("removed field of an array item", func(t *testing.T) { s.removedItemField(t) })
+	t.Run("redeploy after a change outside Radius", func(t *testing.T) { s.changedOutside(t, false) })
+	t.Run("take over a resource changed outside Radius", func(t *testing.T) { s.changedOutside(t, true) })
 	t.Run("create-only change", func(t *testing.T) { s.createOnlyChange(t) })
 	t.Run("unchanged and changed write-only values", func(t *testing.T) { s.writeOnlyValues(t) })
 	t.Run("no write-only value in any response", func(t *testing.T) { s.noWriteOnlyInResponses(t) })
@@ -348,6 +366,31 @@ func (s Suite) removedItemField(t *testing.T) {
 	resp = h.put(f.After)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	require.Equal(t, []string{"Read"}, h.handler.reset(), "the removal is fully applied")
+}
+
+// changedOutside changes the resource in AWS outside Radius, and deploys its template: after a deploy, so the record's
+// last-applied values are stale, or as a take-over by name, so the record has none. The deploy must undo the change.
+func (s Suite) changedOutside(t *testing.T, takeOver bool) {
+	c := s.ChangedOutside
+	if c == nil {
+		t.Skip("the type compares every value it reads")
+	}
+	h := s.newHarness(t)
+	if takeOver {
+		identifier, err := h.handler.Handler.Create(t.Context(), native.CreateRequest{Region: region, Properties: c.Properties, ClientToken: uuid.NewString()})
+		require.NoError(t, err)
+		h.cc.Put(s.TypeName, identifier, c.Change(h.cc.Resource(s.TypeName, identifier)))
+		resp := h.do(h.putFactory(), http.MethodPut, h.path(), owner, map[string]any{"name": identifier, "properties": c.Properties})
+		require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
+		h.finish()
+		h.requireDeployed()
+	} else {
+		h.deploy(c.Properties)
+		h.cc.Put(s.TypeName, h.identifier(), c.Change(h.stored()))
+		require.False(t, c.Restored(h.stored()), "the change outside Radius is in AWS")
+		h.deploy(c.Properties)
+	}
+	require.True(t, c.Restored(h.stored()), "the deploy succeeded, so AWS has the template's values")
 }
 
 func (s Suite) createOnlyChange(t *testing.T) {
@@ -1548,10 +1591,14 @@ func (h *harness) put(properties map[string]any) response {
 }
 
 func (h *harness) putAt(path string, properties map[string]any) response {
-	put := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+	return h.do(h.putFactory(), http.MethodPut, path, owner, map[string]any{"properties": properties})
+}
+
+// putFactory returns the factory of UCP's PUT controller.
+func (h *harness) putFactory() controllerFactory {
+	return func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 		return awsproxy.NewCreateOrUpdateAWSResource(opts, clients, func() (*ucp_aws.FingerprintKey, error) { return h.key, nil })
 	}
-	return h.do(put, http.MethodPut, path, owner, map[string]any{"properties": properties})
 }
 
 func (h *harness) get() response {

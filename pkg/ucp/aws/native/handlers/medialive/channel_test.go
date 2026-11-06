@@ -410,7 +410,9 @@ func Test_Equivalent(t *testing.T) {
 		{"nested lists", []any{[]any{"a"}}, []any{[]any{"b"}}, false},
 		{"a value, not a list", "a", "a", false},
 		{"an empty object AWS returns", []any{map[string]any{"M3u8Settings": map[string]any{}}}, []any{map[string]any{"M3u8Settings": map[string]any{}}}, true},
-		{"an empty object or list AWS lacks", []any{map[string]any{"Name": "a", "M3u8Settings": map[string]any{}, "Names": []any{}}}, []any{map[string]any{"Name": "a"}}, true},
+		{"an empty list AWS lacks", []any{map[string]any{"Name": "a", "Names": []any{}}}, []any{map[string]any{"Name": "a"}}, true},
+		{"an empty selector AWS lacks", []any{map[string]any{"Name": "a", "M3u8Settings": map[string]any{}}}, []any{map[string]any{"Name": "a"}}, false},
+		{"another container than an empty selector", []any{map[string]any{"HlsSettings": map[string]any{"Fmp4HlsSettings": map[string]any{}}}}, []any{map[string]any{"HlsSettings": map[string]any{"StandardHlsSettings": map[string]any{"M3u8Settings": map[string]any{}}}}}, false},
 		{"a string AWS lacks", []any{map[string]any{"Name": "a", "Mode": "X"}}, []any{map[string]any{"Name": "a"}}, false},
 		{"an object AWS lacks", []any{map[string]any{"M3u8Settings": map[string]any{"PcrPid": "1"}}}, []any{map[string]any{}}, false},
 	}

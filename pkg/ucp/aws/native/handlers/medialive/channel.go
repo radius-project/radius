@@ -132,8 +132,9 @@ func setsSecret(groups any) bool {
 	return false
 }
 
-// within reports whether every value template sets is in aws, the same. An empty object or list that AWS lacks
-// sets nothing.
+// within reports whether every value template sets is in aws, the same. An empty list that AWS lacks sets nothing,
+// because a read leaves out empty lists. An empty object is a value: it selects a kind of settings, such as
+// "Fmp4HlsSettings": {} for an HLS output's container, and a read keeps it (see encodeSettings), so AWS must have it.
 func within(template any, aws any) bool {
 	switch t := template.(type) {
 	case map[string]any:
@@ -143,7 +144,7 @@ func within(template any, aws any) bool {
 		}
 		for k, v := range t {
 			av, ok := a[k]
-			if !ok && isEmpty(v) {
+			if list, isList := v.([]any); !ok && isList && len(list) == 0 {
 				continue
 			}
 			if !ok || !within(v, av) {
@@ -166,15 +167,6 @@ func within(template any, aws any) bool {
 	return reflect.DeepEqual(template, aws)
 }
 
-func isEmpty(v any) bool {
-	switch t := v.(type) {
-	case map[string]any:
-		return len(t) == 0
-	case []any:
-		return len(t) == 0
-	}
-	return false
-}
 
 // describe returns the channel with the identifier, or ErrNotFound. AWS lists a deleted channel for a while, as
 // DELETED, which counts as not found.

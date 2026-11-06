@@ -196,6 +196,22 @@ func Test_Suite_Channel(t *testing.T) {
 		}),
 		// AWS fills in defaults inside video descriptions, so Equivalent compares them only on the template's values.
 		// A field the template drops, such as Sharpness, must still be removed in AWS.
+		// An empty HLS container selector, such as Fmp4HlsSettings, picks a container, so another container AWS has is
+		// a change.
+		ChangedOutside: &nativetest.ChangedOutside{
+			Properties: channel(t, withHLS(t, `{"Fmp4HlsSettings": {}}`)),
+			Change: func(stored map[string]any) map[string]any {
+				settings := hlsSettings(stored)
+				delete(settings, "Fmp4HlsSettings")
+				settings["StandardHlsSettings"] = map[string]any{"M3u8Settings": map[string]any{}}
+				return stored
+			},
+			Restored: func(stored map[string]any) bool {
+				_, fmp4 := hlsSettings(stored)["Fmp4HlsSettings"]
+				_, standard := hlsSettings(stored)["StandardHlsSettings"]
+				return fmp4 && !standard
+			},
+		},
 		RemovedItemField: &nativetest.RemovedItemField{
 			Before: withVideo(t, properties, `[{"Name": "video", "Width": 1280, "Height": 720, "Sharpness": 75, "CodecSettings": {"H264Settings": {"Bitrate": 3000000, "RateControlMode": "CBR"}}}]`),
 			After:  properties,
@@ -206,6 +222,36 @@ func Test_Suite_Channel(t *testing.T) {
 			},
 		},
 	})
+}
+
+// withHLS returns the output groups of outputGroups without secrets, and an HLS group whose output has the HLS
+// settings in the JSON hls.
+func withHLS(t *testing.T, hls string) any {
+	groups := outputGroups(t, "", "").([]any)
+	return append(groups, object(t, `{
+		"Name": "hls",
+		"OutputGroupSettings": {"HlsGroupSettings": {"Destination": {"DestinationRefId": "hls"}}},
+		"Outputs": [{
+			"OutputName": "hls-out",
+			"VideoDescriptionName": "video",
+			"AudioDescriptionNames": ["audio"],
+			"OutputSettings": {"HlsOutputSettings": {"NameModifier": "_720p", "HlsSettings": `+hls+`}}
+		}]
+	}`))
+}
+
+// hlsSettings returns the HlsSettings of the HLS output of a channel's properties.
+func hlsSettings(properties map[string]any) map[string]any {
+	groups := properties["EncoderSettings"].(map[string]any)["OutputGroups"].([]any)
+	for _, g := range groups {
+		group := g.(map[string]any)
+		if group["Name"] != "hls" {
+			continue
+		}
+		output := group["Outputs"].([]any)[0].(map[string]any)
+		return output["OutputSettings"].(map[string]any)["HlsOutputSettings"].(map[string]any)["HlsSettings"].(map[string]any)
+	}
+	return nil
 }
 
 // withVideo returns properties with the video descriptions in the JSON videos.
