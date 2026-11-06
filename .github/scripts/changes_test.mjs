@@ -17,6 +17,7 @@ import { pathToFileURL } from "node:url";
 import test from "node:test";
 
 import changes from "./changes.mjs";
+import { selectNonCloudTests } from "./functional-test-matrix.mjs";
 
 const workflow = (
   await readFile(new URL("../workflows/__changes.yml", import.meta.url), "utf8")
@@ -202,6 +203,21 @@ for (const eventName of filteringEvents) {
 for (const [files, expected] of [
   [["pkg/authz/mode.go"], true],
   [["pkg/armrpc/frontend/server/server.go"], true],
+  [["pkg/armrpc/asyncoperation/worker/worker.go"], true],
+  [["pkg/corerp/backend/deployment/admission.go"], true],
+  [["pkg/corerp/backend/deployment/deploymentprocessor.go"], true],
+  [["pkg/corerp/frontend/controller/applications/updatefilter.go"], true],
+  [["pkg/corerp/frontend/controller/applications/admission_test.go"], true],
+  [
+    [
+      "pkg/corerp/frontend/controller/environments/v20250801preview/createorupdateenvironment.go"
+    ],
+    true
+  ],
+  [["pkg/kubeutil/namespace.go"], true],
+  [["pkg/kubeutil/namespace_test.go"], true],
+  [["pkg/cli/helm/cert_manager.go"], true],
+  [["pkg/cli/helm/cert_manager_test.go"], true],
   [["pkg/ucp/proxy/proxy.go"], true],
   [["cmd/ucpd/cmd/root.go"], true],
   [["deploy/Chart/templates/ucp/deployment.yaml"], true],
@@ -212,20 +228,54 @@ for (const [files, expected] of [
     [
       "pkg/corerp/frontend/controller/environments/createorupdateenvironment.go"
     ],
-    false
+    true
   ],
   [["pkg/cli/cmd/env/create/create.go"], false],
+  [["pkg/kubeutil/client.go"], false],
   [
     ["test/functional-portable/corerp/noncloud/resources/application_test.go"],
     false
   ],
   [["docs/contributing/README.md"], false]
 ]) {
-  test(`authorization paths: ${files.join(", ")} -> ${expected}`, () => {
+  test(`authorization paths: ${files.join(", ")} -> ${expected}`, async () => {
     assert.equal(
       Number(countMatchingFiles(files, authzPatterns)) > 0,
       expected
     );
+    const context = {
+      eventName: "pull_request",
+      payload: { pull_request: { base: { ref: "main" } } }
+    };
+    const core = createCore();
+    const getInput = core.getInput;
+    core.getInput = (name) =>
+      name === "AUTHZ_FILES_COUNT" ?
+        countMatchingFiles(files, authzPatterns)
+      : getInput(name);
+    await changes({ context, core });
+    assert.deepEqual(core.failures, []);
+    const authzChanged = Object.fromEntries(core.outputs).authz_changed;
+    assert.equal(authzChanged, String(expected));
+    const { matrix } = selectNonCloudTests({
+      ...context,
+      authzChanged: authzChanged !== "false"
+    });
+    assert.equal(matrix.include.length, expected ? 18 : 10);
+    assert.equal(
+      matrix.include.some(({ authzDryRun }) => authzDryRun),
+      expected
+    );
+    for (const name of [
+      "daprrp-noncloud",
+      "datastoresrp-noncloud",
+      "msgrp-noncloud"
+    ]) {
+      assert.equal(
+        matrix.include.some((leg) => leg.name === name && !leg.authzDryRun),
+        expected
+      );
+    }
   });
 }
 
