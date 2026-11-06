@@ -105,6 +105,9 @@ func Test_Suite_AnomalyDetector(t *testing.T) {
 		Removable:          "Configuration",
 		CreateOnlyChange:   with(detector, map[string]any{"SingleMetricAnomalyDetector": single("p90", dims("InstanceId", "i-1", "AutoScalingGroupName", "asg"))}),
 		OtherForm:          map[string]any{"SingleMetricAnomalyDetector": reordered},
+		// A detector without AccountId is in the current account, so a template that names that account explicitly is
+		// the same detector.
+		SameResource: with(detector, map[string]any{"SingleMetricAnomalyDetector": with(single("Average", dims("InstanceId", "i-1", "AutoScalingGroupName", "asg")), map[string]any{"AccountId": fakeAccount})}),
 	})
 }
 
@@ -237,14 +240,34 @@ func Test_AccountID(t *testing.T) {
 	api.errs["GetCallerIdentity"] = fault("AccessDenied")
 	_, err = h.Read(t.Context(), region, identifierOf(t, map[string]any{"SingleMetricAnomalyDetector": single("Average", nil)}))
 	require.ErrorIs(t, err, native.ErrNotFound, "a read that finds no detector needs no account")
-	properties := map[string]any{"SingleMetricAnomalyDetector": map[string]any{"AccountId": "123456789012", "Namespace": "AWS/EC2", "MetricName": "CPUUtilization", "Stat": "Average"}}
-	identifier, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	explicit := map[string]any{"SingleMetricAnomalyDetector": map[string]any{"AccountId": "123456789012", "Namespace": "AWS/EC2", "MetricName": "CPUUtilization", "Stat": "Average"}}
+	implicit := identifierOf(t, map[string]any{"SingleMetricAnomalyDetector": map[string]any{"Namespace": "AWS/EC2", "MetricName": "CPUUtilization", "Stat": "Average"}})
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: explicit})
+	require.ErrorContains(t, err, "AccessDenied", "the identifier of a template with AccountId needs the current account")
+	_, err = h.ResolveIdentifier(t.Context(), region, identifierOf(t, explicit))
+	require.ErrorContains(t, err, "AccessDenied")
+	resolved, err := h.ResolveIdentifier(t.Context(), region, implicit)
+	require.NoError(t, err, "an identifier without AccountId needs no STS call to resolve")
+	require.Equal(t, implicit, resolved)
+	delete(api.errs, "GetCallerIdentity")
+
+	// The current account's detector has one identifier, whether the template names the account or not.
+	identifier, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: explicit})
 	require.NoError(t, err)
-	require.Contains(t, identifier, "123456789012")
-	_, err = h.Read(t.Context(), region, identifier)
-	require.NoError(t, err, "a detector the identifier names with its account needs no STS call")
-	_, err = h.Read(t.Context(), region, identifierOf(t, map[string]any{"SingleMetricAnomalyDetector": map[string]any{"Namespace": "AWS/EC2", "MetricName": "CPUUtilization", "Stat": "Average"}}))
-	require.ErrorContains(t, err, "AccessDenied", "an identifier without AccountId needs the current account")
+	require.Equal(t, implicit, identifier)
+	resolved, err = h.ResolveIdentifier(t.Context(), region, identifierOf(t, explicit))
+	require.NoError(t, err)
+	require.Equal(t, implicit, resolved)
+	source := identifierOf(t, map[string]any{"SingleMetricAnomalyDetector": map[string]any{"AccountId": sourceAccount, "Namespace": "AWS/EC2", "MetricName": "CPUUtilization", "Stat": "Average"}})
+	resolved, err = h.ResolveIdentifier(t.Context(), region, source)
+	require.NoError(t, err)
+	require.Equal(t, source, resolved, "another account's detector keeps its AccountId")
+	_, err = h.ResolveIdentifier(t.Context(), region, "not-json")
+	require.ErrorContains(t, err, "is not the identifier of a CloudWatch anomaly detector")
+
+	api.errs["GetCallerIdentity"] = fault("AccessDenied")
+	_, err = h.Read(t.Context(), region, implicit)
+	require.ErrorContains(t, err, "AccessDenied", "an identifier without AccountId needs the current account to match AWS's")
 	_, err = h.List(t.Context(), region)
 	require.ErrorContains(t, err, "AccessDenied")
 	delete(api.errs, "GetCallerIdentity")

@@ -190,6 +190,16 @@ func identifierFor(t *native.Type, properties map[string]any, schema string) (st
 	return t.Handler.(native.IdentifierEncoder).Identifier(properties)
 }
 
+// resolveIdentifier returns the native handler's one form of identifier (native.IdentifierResolver), or identifier
+// when the handler has one form, or there is no identifier.
+func resolveIdentifier(ctx context.Context, h native.Handler, region string, identifier string) (string, error) {
+	resolver, ok := h.(native.IdentifierResolver)
+	if !ok || identifier == "" {
+		return identifier, nil
+	}
+	return resolver.ResolveIdentifier(ctx, region, identifier)
+}
+
 // addressSegment returns the last segment of the resource ID UCP returns for the AWS identifier of a type t serves,
 // in a list or `existing`. An AWS identifier can contain "/", such as an S3 ARN, or be "..", so for a type with a
 // native handler, with either handler, the identifier is escaped into one segment and identifierOfSegment reverses it.

@@ -55,8 +55,9 @@ func inRegion(region string) func(*cloudwatch.Options) {
 }
 
 var (
-	_ native.Handler           = (*AnomalyDetector)(nil)
-	_ native.IdentifierEncoder = (*AnomalyDetector)(nil)
+	_ native.Handler            = (*AnomalyDetector)(nil)
+	_ native.IdentifierEncoder  = (*AnomalyDetector)(nil)
+	_ native.IdentifierResolver = (*AnomalyDetector)(nil)
 )
 
 // notFoundCodes are the codes CloudWatch returns for an anomaly detector it doesn't have.
@@ -70,8 +71,9 @@ var notFoundCodes = []string{"ResourceNotFoundException", "ResourceNotFound"}
 // A detector of one metric without AccountId is in the current account, as the CloudWatch API defines it. AWS may
 // return that detector with the current account's ID or without one, and a monitoring account also sees detectors of
 // the same metric in its source accounts. So the handler compares a detector's account only after it fills in the
-// current account, which it asks STS for when a comparison needs it, and an identifier has no AccountId for a
-// detector of the current account.
+// current account, which it asks STS for when a comparison needs it. An identifier has no AccountId for a detector of
+// the current account, so a template that names the current account and one that leaves it out give one identifier
+// (see ResolveIdentifier), and two aliases can't both hold the detector.
 type AnomalyDetector struct {
 	api      API
 	accounts AccountAPI
@@ -515,10 +517,36 @@ func btoi(b bool) int {
 	return 0
 }
 
-// Create creates the detector with PutAnomalyDetector. Sending it again makes the same detector.
+// ResolveIdentifier returns identifier without AccountId when that is the current account, the form List and Create
+// return. It asks STS for the current account only when the identifier has an AccountId. A detector of another
+// account keeps its AccountId.
+func (h *AnomalyDetector) ResolveIdentifier(ctx context.Context, region string, identifier string) (string, error) {
+	id, err := parseIdentifier(identifier)
+	if err != nil {
+		return "", err
+	}
+	if id.AccountId == "" {
+		return identifier, nil
+	}
+	current, err := h.currentAccount(ctx, region)()
+	if err != nil {
+		return "", err
+	}
+	if id.AccountId != current {
+		return identifier, nil
+	}
+	id.AccountId = ""
+	return id.encode()
+}
+
+// Create creates the detector with PutAnomalyDetector, and returns its identifier in the form ResolveIdentifier gives.
+// Sending it again makes the same detector.
 func (h *AnomalyDetector) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	identifier, err := h.Identifier(request.Properties)
 	if err != nil {
+		return "", err
+	}
+	if identifier, err = h.ResolveIdentifier(ctx, request.Region, identifier); err != nil {
 		return "", err
 	}
 	if err := h.put(ctx, request.Region, request.Properties); err != nil {

@@ -385,6 +385,9 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err := e.route(ctx, r); err != nil {
 		return handleError(ctx, r.id, err)
 	}
+	if name, err = resolveIdentifier(ctx, r.handler, r.region, name); err != nil {
+		return handleError(ctx, r.id, err)
+	}
 	typeInfo := r.typeInfo
 	if typeInfo == nil {
 		typeInfo, err = describeType(ctx, e.clients, r.typeName, r.region)
@@ -466,6 +469,9 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 			lookup, err = identifierFor(r.native, properties, schema)
 			if err != nil {
 				return nil, err
+			}
+			if lookup, err = resolveIdentifier(ctx, r.handler, r.region, lookup); err != nil {
+				return handleError(ctx, r.id, err)
 			}
 		}
 		if lookup != "" {
@@ -622,6 +628,9 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	known, err := identifierFor(r.native, properties, schema)
 	if err != nil {
 		return nil, err
+	}
+	if known, err = resolveIdentifier(ctx, r.handler, r.region, known); err != nil {
+		return handleError(ctx, r.id, err)
 	}
 	if name != "" && known != name {
 		return badRequest(fmt.Sprintf("name %q does not match an AWS resource of type %s. Set name only to take over an existing resource, or remove it and set the identifier properties to create one.", name, r.typeName)), nil

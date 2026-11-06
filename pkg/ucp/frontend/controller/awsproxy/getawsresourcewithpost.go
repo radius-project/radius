@@ -117,6 +117,11 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 			return badRequest(fmt.Sprintf("Set the primary identifier properties of the AWS resource type %s to reference it with existing.", serviceCtx.ResourceTypeInAWSFormat())), nil
 		}
 	}
+	if rt.handler != nil {
+		if awsResourceIdentifier, err = resolveIdentifier(ctx, rt.handler, region, awsResourceIdentifier); err != nil {
+			return handleError(ctx, serviceCtx.ResourceID, err)
+		}
+	}
 	if awsResourceIdentifier == "" {
 		awsResourceIdentifier, response, errResponse, err = p.resolveReadIdentifier(ctx, body.Properties, *describeTypeOutput.Schema, serviceCtx.ResourceTypeInAWSFormat(), region)
 		if err != nil || errResponse != nil {

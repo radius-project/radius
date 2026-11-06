@@ -153,6 +153,17 @@ type ScopedDeleter interface {
 	DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error
 }
 
+// IdentifierResolver is implemented by a handler whose identifier has more than one form for one resource, such as one
+// that names a default value, like the current account, or leaves it out. UCP resolves every identifier it takes from
+// a template or a name to the handler's one form, before it looks up the alias that holds it, reserves it, or saves
+// it. The identifiers the handler returns, from Create, Find, and List, must already be in that form. A record holds
+// the resolved form, so a request by alias needs no resolving.
+type IdentifierResolver interface {
+	// ResolveIdentifier returns the handler's one form of identifier. An error is reported as handleError reports a
+	// handler's error, such as 400 for a client failure.
+	ResolveIdentifier(ctx context.Context, region string, identifier string) (string, error)
+}
+
 // Finder is implemented by a handler whose Options().Recovery is RecoverBySearch.
 type Finder interface {
 	// Find returns the identifier of the resource a create sent with request made, or "" when AWS has none. It finds

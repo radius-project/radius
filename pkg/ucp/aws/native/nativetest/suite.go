@@ -168,6 +168,10 @@ type Suite struct {
 	// a type whose Equivalent compares array items only on the values the template sets.
 	RemovedItemField *RemovedItemField
 
+	// SameResource, when set, is another template for the resource Properties gives, such as one that sets a value
+	// AWS defaults to, like the current account. Two aliases must not both own the resource, whichever deploys first.
+	SameResource map[string]any
+
 	// ChangedOutside, when set, is a change to the resource in AWS outside Radius that a deploy of its template must
 	// undo, for a type whose Equivalent compares values only on what the template sets.
 	ChangedOutside *ChangedOutside
@@ -202,6 +206,8 @@ func Run(t *testing.T, s Suite) {
 	t.Run("deleted outside Radius", func(t *testing.T) { s.deletedOutsideRadius(t) })
 	t.Run("removed property", func(t *testing.T) { s.removedProperty(t) })
 	t.Run("removed field of an array item", func(t *testing.T) { s.removedItemField(t) })
+	t.Run("another template for a resource another alias holds", func(t *testing.T) { s.sameResource(t, false) })
+	t.Run("a template for a resource another alias holds in another form", func(t *testing.T) { s.sameResource(t, true) })
 	t.Run("redeploy after a change outside Radius", func(t *testing.T) { s.changedOutside(t, false) })
 	t.Run("take over a resource changed outside Radius", func(t *testing.T) { s.changedOutside(t, true) })
 	t.Run("create-only change", func(t *testing.T) { s.createOnlyChange(t) })
@@ -1022,6 +1028,30 @@ func (s Suite) identifierHeld(t *testing.T) {
 	require.Subset(t, []string{"Read"}, h.handler.reset(), "UCP only reads AWS")
 	require.Equal(t, before, h.stored())
 	require.Nil(t, h.recordAt(other))
+}
+
+// sameResource deploys Properties under one alias and SameResource under another, or the other way around when
+// reversed. Both templates give the same resource, so the second deploy gets 409 and changes nothing, and deleting
+// the first alias deletes the resource.
+func (s Suite) sameResource(t *testing.T, reversed bool) {
+	if s.SameResource == nil {
+		t.Skip("the type has one template form for a resource")
+	}
+	first, second := s.Properties, s.SameResource
+	if reversed {
+		first, second = second, first
+	}
+	h := s.newHarness(t)
+	h.deploy(first)
+	other := strings.TrimSuffix(h.path(), alias) + otherAlias
+	resp := h.putAt(other, second)
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	require.Contains(t, resp.raw, alias)
+	require.Nil(t, h.recordAt(other))
+	require.Equal(t, 1, h.cc.Count(s.TypeName))
+
+	h.remove()
+	h.requireRemoved(nil)
 }
 
 // otherForm makes AWS return values of the template in another form, and deploys the template again. The values
@@ -1940,6 +1970,15 @@ func (r *recorder) DeleteScoped(ctx context.Context, region string, identifier s
 		}
 		return r.Handler.Delete(ctx, region, identifier)
 	})
+}
+
+// ResolveIdentifier passes the identifier to the handler under test when it resolves identifiers
+// (native.IdentifierResolver), and otherwise returns it as UCP uses it for a handler that doesn't.
+func (r *recorder) ResolveIdentifier(ctx context.Context, region string, identifier string) (string, error) {
+	if resolver, ok := r.Handler.(native.IdentifierResolver); ok {
+		return resolver.ResolveIdentifier(ctx, region, identifier)
+	}
+	return identifier, nil
 }
 
 func (r *recorder) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
