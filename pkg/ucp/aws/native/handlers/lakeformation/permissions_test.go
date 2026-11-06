@@ -41,6 +41,33 @@ func grantOutside(t *testing.T, store *awsfake.CloudControl, resource map[string
 	store.Put(outsideType, identifierOf(t, properties), properties)
 }
 
+// Test_Permissions_CoveredByWildcard grants SELECT on some columns of a table and on the whole table, while the
+// principal also has SELECT on every table of the database, granted outside Radius. AWS then lists only the
+// whole-table grant, so the handler reads each template's permissions as held, a redeploy changes nothing, and a
+// delete revokes only the template's grant: the wildcard grant stays.
+func Test_Permissions_CoveredByWildcard(t *testing.T) {
+	ctx := t.Context()
+	wildcard := map[string]any{"TableResource": map[string]any{"DatabaseName": "sales", "TableWildcard": map[string]any{}}}
+	for name, resource := range map[string]map[string]any{
+		"some columns":          {"TableWithColumnsResource": map[string]any{"DatabaseName": "sales", "Name": "orders", "ColumnNames": list("c1")}},
+		"every column but some": {"TableWithColumnsResource": map[string]any{"DatabaseName": "sales", "Name": "orders", "ColumnWildcard": map[string]any{"ExcludedColumnNames": list("c2")}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h, _, store := newPermissions()
+			grantOutside(t, store, wildcard, "SELECT")
+			outside := identifierOf(t, permissionsOf(wildcard, list("SELECT"), nil))
+			properties := permissionsOf(resource, list("SELECT"), nil)
+			id, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: properties})
+			require.NoError(t, err)
+			got, err := h.ReadScoped(ctx, region, id, []map[string]any{properties})
+			require.NoError(t, err, "the grant AWS lists only as the wildcard's is still the template's")
+			require.Equal(t, properties["Permissions"], got["Permissions"], "a redeploy changes nothing")
+			require.NoError(t, h.DeleteScoped(ctx, region, id, []map[string]any{properties}))
+			require.Equal(t, list("SELECT"), store.Resource(outsideType, outside)["Permissions"], "the delete leaves the wildcard grant")
+		})
+	}
+}
+
 func requireRejected(t *testing.T, err error, message string) {
 	t.Helper()
 	var failure *native.Failure

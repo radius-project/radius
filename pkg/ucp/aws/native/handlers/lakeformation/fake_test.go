@@ -349,6 +349,31 @@ func listed(query *types.Resource, resource *types.Resource) bool {
 	return canonical(query) == canonical(resource)
 }
 
+// withoutCovered leaves out the permissions of a grant on some columns of a table that a grant on the whole table to
+// the same principal also has, as AWS lists them: such a grant isn't listed while the whole-table grant exists.
+func withoutCovered(found []types.PrincipalResourcePermissions) []types.PrincipalResourcePermissions {
+	whole := map[string][]string{}
+	for _, p := range found {
+		if _, _, ok := wholeTable(p.Resource); ok {
+			who := aws.ToString(p.Principal.DataLakePrincipalIdentifier)
+			whole[who] = union(whole[who], names(p.Permissions))
+		}
+	}
+	out := []types.PrincipalResourcePermissions{}
+	for _, p := range found {
+		if _, _, ok := wholeTable(p.Resource); !ok {
+			covered := whole[aws.ToString(p.Principal.DataLakePrincipalIdentifier)]
+			p.Permissions = sdkPermissions(minus(names(p.Permissions), covered))
+			p.PermissionsWithGrantOption = sdkPermissions(minus(names(p.PermissionsWithGrantOption), covered))
+			if len(p.Permissions) == 0 && len(p.PermissionsWithGrantOption) == 0 {
+				continue
+			}
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
 // shapes returns the grants of perms and grants on resource as ListPermissions returns them. A grant on a whole table
 // comes back as SELECT on a TableWithColumns with an empty ColumnWildcard and the other permissions on a Table, and a
 // TableWildcard as the table ALL_TABLES.
@@ -416,6 +441,8 @@ func (f *fakeAPI) ListPermissions(ctx context.Context, in *lakeformation.ListPer
 		return nil, clientError("InvalidInputException")
 	}
 	found := []types.PrincipalResourcePermissions{}
+	qdb, qname, tableQuery := wholeTable(in.Resource)
+	tableQuery = tableQuery && in.Resource.Table != nil && qname != allTables
 	for _, e := range f.entries() {
 		if in.Principal != nil && e.principal() != aws.ToString(in.Principal.DataLakePrincipalIdentifier) {
 			continue
@@ -423,6 +450,10 @@ func (f *fakeAPI) ListPermissions(ctx context.Context, in *lakeformation.ListPer
 		resource := e.resource()
 		if resource == nil {
 			continue
+		}
+		if db, name, ok := wholeTable(resource); ok && tableQuery && name == allTables && db == qdb {
+			// Like AWS, a grant on every table of the database is listed on each table.
+			resource = &types.Resource{Table: &types.TableResource{CatalogId: resource.Table.CatalogId, DatabaseName: aws.String(qdb), Name: aws.String(qname)}}
 		}
 		for _, p := range shapes(resource, awsapi.Strings(e.props, "Permissions"), awsapi.Strings(e.props, "PermissionsWithGrantOption")) {
 			if !listed(in.Resource, p.Resource) {
@@ -432,6 +463,9 @@ func (f *fakeAPI) ListPermissions(ctx context.Context, in *lakeformation.ListPer
 			p.Resource = withCatalog(p.Resource)
 			found = append(found, p)
 		}
+	}
+	if tableQuery {
+		found = withoutCovered(found)
 	}
 	if len(found) == 0 {
 		return &lakeformation.ListPermissionsOutput{}, nil

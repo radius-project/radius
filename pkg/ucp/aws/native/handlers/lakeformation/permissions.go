@@ -240,6 +240,23 @@ func matches(want *types.Resource, got *types.Resource) bool {
 	return false
 }
 
+// columnPermissions are the permissions a grant on some columns of a table can have.
+var columnPermissions = []string{string(types.PermissionSelect)}
+
+// covers reports whether got, a grant on a whole table that ListPermissions returns, covers want, a grant on some
+// columns of that table. While the principal has SELECT on the whole table, such as on every table of the database,
+// AWS lists only that grant, not the column grant it covers. The column grant still exists, so its SELECT counts as
+// held, and a delete revokes it, which leaves the whole-table grant.
+func covers(want *types.Resource, got *types.Resource) bool {
+	w, ok := tableGrantOf(want)
+	if !ok || w.whole {
+		return false
+	}
+	g, ok := tableGrantOf(got)
+	return ok && g.whole && (w.catalog == nil || aws.ToString(w.catalog) == aws.ToString(g.catalog)) &&
+		strings.EqualFold(w.database, g.database) && strings.EqualFold(w.name, g.name)
+}
+
 // sameNames reports whether a and b have the same names in any order, ignoring case.
 func sameNames(a []string, b []string) bool {
 	lower := func(list []string) []string {
@@ -268,11 +285,17 @@ func (h *Permissions) list(ctx context.Context, region string, t target) ([]stri
 			return nil, nil, awsapi.NotFound(err, notFoundCode)
 		}
 		for _, p := range out.PrincipalResourcePermissions {
-			if p.Principal == nil || aws.ToString(p.Principal.DataLakePrincipalIdentifier) != aws.ToString(t.principal.DataLakePrincipalIdentifier) || !matches(t.resource, p.Resource) {
+			if p.Principal == nil || aws.ToString(p.Principal.DataLakePrincipalIdentifier) != aws.ToString(t.principal.DataLakePrincipalIdentifier) {
 				continue
 			}
-			perms = union(perms, names(p.Permissions))
-			grants = union(grants, names(p.PermissionsWithGrantOption))
+			switch {
+			case matches(t.resource, p.Resource):
+				perms = union(perms, names(p.Permissions))
+				grants = union(grants, names(p.PermissionsWithGrantOption))
+			case covers(t.resource, p.Resource):
+				perms = union(perms, only(names(p.Permissions), columnPermissions))
+				grants = union(grants, only(names(p.PermissionsWithGrantOption), columnPermissions))
+			}
 		}
 		if token = out.NextToken; token == nil {
 			return perms, grants, nil
