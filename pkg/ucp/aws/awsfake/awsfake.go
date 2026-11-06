@@ -430,9 +430,16 @@ func (c *CloudControl) GetResourceRequestStatus(ctx context.Context, params *clo
 	return &cloudcontrol.GetResourceRequestStatusOutput{ProgressEvent: event}, nil
 }
 
-// ListResources is not supported.
+// ListResources returns every resource of the type, in one page.
 func (c *CloudControl) ListResources(ctx context.Context, params *cloudcontrol.ListResourcesInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourcesOutput, error) {
-	return nil, fmt.Errorf("ListResources is not supported by the fake")
+	typeName := aws.ToString(params.TypeName)
+	out := &cloudcontrol.ListResourcesOutput{TypeName: params.TypeName}
+	for _, identifier := range c.List(typeName) {
+		props, _ := c.Read(typeName, identifier)
+		b, _ := json.Marshal(props)
+		out.ResourceDescriptions = append(out.ResourceDescriptions, cctypes.ResourceDescription{Identifier: aws.String(identifier), Properties: aws.String(string(b))})
+	}
+	return out, nil
 }
 
 // CancelResourceRequest is not supported.
