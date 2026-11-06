@@ -215,6 +215,9 @@ func Test_NameRules_Generate(t *testing.T) {
 		rules := &native.NameRules{Property: "Name", Pattern: regexp.MustCompile("^radius-[0-9a-f]{11}[b7]$")}
 		_, err := rules.Generate("2f1c6a9e-5b7d-4c3e-9a8f-0d1e2f3a4b5c")
 		require.EqualError(t, err, "UCP generated the name "+name+", which doesn't fit the rules of Name. Set Name in the template.")
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure)
+		require.True(t, failure.IsClientError(), "the template can set the name instead")
 	})
 }
 

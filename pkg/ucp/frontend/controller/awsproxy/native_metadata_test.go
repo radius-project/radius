@@ -30,7 +30,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/aws/schemas"
+	"github.com/radius-project/radius/pkg/retry"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
@@ -755,4 +758,25 @@ func Test_Native_EquivalentRemovedItemField(t *testing.T) {
 	resp = h.put(nativePath, withoutSharpness)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()))
+}
+
+// Test_Native_IdentifierErrors_OtherProduct checks that an identifier encoding that finds the identifier names
+// another product gets 409 naming it on PUT and on `existing`, as from any other handler call. Nothing is saved or
+// changed in AWS. Test_Native_IdentifierErrors covers the other kinds of error.
+func Test_Native_IdentifierErrors_OtherProduct(t *testing.T) {
+	other := &native.OtherProductError{Identifier: "app-native", Product: "neptune"}
+	message := `The AWS identifier "app-native" belongs to another product (neptune), not to the AWS type AWS::Test::Native, so UCP changed nothing. Use an identifier of that type.`
+	h := encodingHarness(t, func(map[string]any) (string, error) { return "", other })
+
+	resp := h.put(nativePath, nativeProperties(1))
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	require.Equal(t, message, resp.message())
+	require.Nil(t, h.record(nativePath))
+
+	resp = h.do(func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
+		return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
+	}, http.MethodPost, providers+"AWS.Test/Native/:get", "", map[string]any{"properties": nativeProperties(1)})
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	require.Equal(t, message, resp.message())
+	require.Empty(t, h.fake.Calls())
 }
