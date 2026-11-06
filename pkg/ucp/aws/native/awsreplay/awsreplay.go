@@ -35,7 +35,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -262,7 +262,7 @@ func (s *Session) save() error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(path.Dir(s.file), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(s.file), 0o755); err != nil {
 		return err
 	}
 	return os.WriteFile(s.file, append(b, '\n'), 0o644)
