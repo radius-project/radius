@@ -35,6 +35,7 @@ import (
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/components/queue"
 	"github.com/radius-project/radius/pkg/retry"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
@@ -726,7 +727,9 @@ func Test_Native_IdentifierWithSlash(t *testing.T) {
 				require.Equal(t, providers+"AWS.Test/Native/"+parsed.Name(), id, "the identifier is one segment of the ID")
 				require.Equal(t, identifier, resp.body["name"])
 
+				h.headers = map[string]string{sdkclients.AWSResourceIDHeader: id}
 				resp = existing(map[string]any{"name": parsed.Name()})
+				h.headers = nil
 				require.Equal(t, http.StatusOK, resp.status, resp.raw)
 				require.Equal(t, id, resp.body["id"])
 
@@ -776,4 +779,83 @@ func Test_AddressSegment(t *testing.T) {
 	require.Equal(t, "a%2Fb", identifierOfSegment(nil, "a%2Fb"))
 	// A segment that isn't valid escaping is used as is.
 	require.Equal(t, "100%", identifierOfSegment(typ, "100%"))
+}
+
+// Test_Native_ExistingNameIsLiteral checks that POST /:get reads a top-level name as the AWS identifier itself, even
+// when it looks escaped, and decodes only the last segment of the ID in the AWS resource ID header. Both "a%2Fb" and
+// "a/b" exist in AWS, so reading the wrong one shows. It covers a type with a native handler, served natively and by
+// Cloud Control, and a type with none, whose IDs are never escaped.
+func Test_Native_ExistingNameIsLiteral(t *testing.T) {
+	tests := []struct {
+		name     string
+		typ      string
+		path     string
+		setup    func(h *nativeHarness)
+		escaping bool
+	}{
+		{name: "native handler", typ: nativeType, path: "AWS.Test/Native", escaping: true},
+		{name: "native type served by Cloud Control", typ: nativeType, path: "AWS.Test/Native", escaping: true, setup: func(h *nativeHarness) {
+			h.provisioningTypes[nativeType] = cftypes.ProvisioningTypeFullyMutable
+		}},
+		{name: "no native handler", typ: bucketType, path: "AWS.S3/Bucket"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newNativeHarness(t)
+			if tt.setup != nil {
+				tt.setup(h)
+			}
+			h.cc.Put(tt.typ, "a%2Fb", map[string]any{"Marker": "literal"})
+			h.cc.Put(tt.typ, "a/b", map[string]any{"Marker": "decoded"})
+			read := func(name string, id string) response {
+				h.headers = map[string]string{}
+				if id != "" {
+					h.headers[sdkclients.AWSResourceIDHeader] = id
+				}
+				defer func() { h.headers = nil }()
+				return h.do(func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
+					return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
+				}, http.MethodPost, providers+tt.path+"/:get", "", map[string]any{"name": name})
+			}
+			marker := func(resp response) any {
+				require.Equal(t, http.StatusOK, resp.status, resp.raw)
+				return resp.body["properties"].(map[string]any)["Marker"]
+			}
+
+			// A name is literal, as on PUT.
+			require.Equal(t, "literal", marker(read("a%2Fb", "")))
+			require.Equal(t, "decoded", marker(read("a/b", "")))
+
+			// An ID's last segment is decoded only for a type whose IDs UCP escapes, and the ID wins over the name.
+			idOf := func(segment string) string { return providers + tt.path + "/" + segment }
+			if tt.escaping {
+				require.Equal(t, "decoded", marker(read("a%2Fb", idOf("a%2Fb"))))
+				require.Equal(t, "literal", marker(read("a/b", idOf("a%252Fb"))))
+			} else {
+				require.Equal(t, "literal", marker(read("a/b", idOf("a%2Fb"))))
+			}
+		})
+	}
+}
+
+// Test_Native_ExistingIDHeaderMismatch checks that the AWS resource ID header must name a resource of the request's
+// type, account, and region.
+func Test_Native_ExistingIDHeaderMismatch(t *testing.T) {
+	for _, id := range []string{
+		"not an id",
+		providers + "AWS.Test/Other/app",
+		"/planes/aws/aws/accounts/999/regions/us-west-2/providers/AWS.Test/Native/app",
+		"/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Test/Native/app",
+	} {
+		t.Run(id, func(t *testing.T) {
+			h := newNativeHarness(t)
+			h.headers = map[string]string{sdkclients.AWSResourceIDHeader: id}
+			resp := h.do(func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
+				return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
+			}, http.MethodPost, providers+"AWS.Test/Native/:get", "", map[string]any{"name": "app"})
+			require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+			require.Contains(t, resp.message(), "X-Radius-AWS-Resource-ID header must be the ID of an AWS resource of type AWS.Test/Native")
+			require.Empty(t, h.cc.Calls())
+		})
+	}
 }

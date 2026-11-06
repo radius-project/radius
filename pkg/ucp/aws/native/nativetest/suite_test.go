@@ -233,3 +233,57 @@ func Test_Suite_HandWrittenType(t *testing.T) {
 		CreateOnlyChange: map[string]any{"Bucket": "app-assets", "Key": "config/other.json", "ContentType": "application/json", "Body": "e30="},
 	})
 }
+
+// keyedSuite returns the suite for a type whose identifier is Bucket + "/" + Key, from the handler's own encoding,
+// and whose name property is Key, which UCP generates when the template leaves it out. So the identifier holds the
+// generated name but isn't the generated name.
+func keyedSuite(typeName string, handWritten bool) Suite {
+	identifierOf := func(properties map[string]any) (string, error) {
+		bucket, _ := properties["Bucket"].(string)
+		key, _ := properties["Key"].(string)
+		if bucket == "" || key == "" {
+			return "", nil
+		}
+		return bucket + "/" + key, nil
+	}
+	properties := map[string]any{"Bucket": "app-assets", "Key": "config/app.json", "ContentType": "application/json", "Body": "e30="}
+	identifier, _ := identifierOf(properties)
+	return Suite{
+		TypeName:    typeName,
+		HandWritten: handWritten,
+		Schema: `{
+			"typeName": "` + typeName + `",
+			"properties": {"Key": {"type": "string", "minLength": 1, "maxLength": 1024}},
+			"primaryIdentifier": ["/properties/Bucket", "/properties/Key"],
+			"createOnlyProperties": ["/properties/Bucket", "/properties/Key"],
+			"writeOnlyProperties": ["/properties/Body"]
+		}`,
+		NewHandler: func(store *awsfake.CloudControl) native.Handler {
+			h := nativefake.New(typeName, store)
+			h.IdentifierOf = identifierOf
+			h.CreateOnly = []string{"Bucket", "Key"}
+			h.Opts.NameProperty = "Key"
+			h.Waits = 1
+			return h.Encoding()
+		},
+		IdentifierProperty: "Key",
+		WriteOnly:          []string{"Body"},
+		Properties:         properties,
+		Identifier:         identifier,
+		Changed:            map[string]any{"Bucket": "app-assets", "Key": "config/app.json", "ContentType": "text/plain", "Body": "e30="},
+		ChangedWriteOnly:   map[string]any{"Bucket": "app-assets", "Key": "config/app.json", "ContentType": "application/json", "Body": "eyJhIjoxfQ=="},
+		Removable:          "ContentType",
+	}
+}
+
+// Test_Suite_GeneratedNameInIdentifier runs the suite for a hand-written type whose generated name is part of an
+// encoded identifier.
+func Test_Suite_GeneratedNameInIdentifier(t *testing.T) {
+	Run(t, keyedSuite("AWS::Test::KeyedObject", true))
+}
+
+// Test_Suite_GeneratedNameInIdentifier_NativeType runs the same suite for a type with a CloudFormation type, so the
+// switch between handlers also covers a generated name inside an encoded identifier.
+func Test_Suite_GeneratedNameInIdentifier_NativeType(t *testing.T) {
+	Run(t, keyedSuite("AWS::Test::KeyedItem", false))
+}

@@ -23,6 +23,12 @@ import "strings"
 // account and region cannot change each other's resources.
 const AWSResourceOwnerHeader = "X-Radius-Resource-Owner"
 
+// AWSResourceIDHeader carries the AWS resource ID a POST /:get reads, such as the ID of a recipe's output resource.
+// UCP reads AWS by the identifier in the ID's last segment, decoded the way UCP encoded it in a response. Without the
+// header, the body's top-level name is the AWS identifier itself and is never decoded. It is a header rather than a
+// body field so a template, whose existing block becomes the body, cannot set it.
+const AWSResourceIDHeader = "X-Radius-AWS-Resource-ID"
+
 // AWSResourceNoRecordCode is the error code of the 404 UCP returns for a GET of an AWS resource ID that has no record,
 // such as a resource Radius did not deploy. A 404 for a record whose AWS resource no longer exists has the code
 // NotFound instead.
