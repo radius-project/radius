@@ -757,14 +757,6 @@ func Test_Native_IdentifierWithSlash(t *testing.T) {
 		}
 	}
 
-	t.Run("encoder error", func(t *testing.T) {
-		h := encodingHarness(t, func(map[string]any) (string, error) { return "", errors.New("Key is not a string") })
-		resp := h.do(func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
-			return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
-		}, http.MethodPost, providers+"AWS.Test/Native/:get", "", map[string]any{"properties": map[string]any{"Name": "app"}})
-		require.Equal(t, http.StatusBadRequest, resp.status)
-		require.Equal(t, "Key is not a string", resp.message())
-	})
 }
 
 // Test_Native_ListEscapesIdentifier checks that a list escapes each identifier into one ID segment, without resolving
@@ -912,5 +904,50 @@ func Test_ListIDsAreOneSegment(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Test_Native_IdentifierErrors checks that a handler's identifier error gets the response its kind calls for on every
+// path that computes the identifier: 400 with its message for a client Failure, 500 for a server Failure or another
+// error. Nothing is called in AWS, and no record is saved.
+func Test_Native_IdentifierErrors(t *testing.T) {
+	errs := []struct {
+		name   string
+		err    error
+		status int
+	}{
+		{"client failure", &native.Failure{Message: "RuleNumber must be between 1 and 32766", ClientError: true}, http.StatusBadRequest},
+		{"server failure", &native.Failure{Message: "the identifier could not be computed"}, http.StatusInternalServerError},
+		{"other error", errors.New("json: unsupported value"), http.StatusInternalServerError},
+	}
+	paths := []struct {
+		name string
+		send func(h *nativeHarness) response
+	}{
+		{"PUT, take over", func(h *nativeHarness) response { return h.put(nativePath, nativeProperties(1)) }},
+		{"PUT, create with name", func(h *nativeHarness) response {
+			return h.putBody(nativePath, testOwner, map[string]any{"name": "app-native", "properties": nativeProperties(1)})
+		}},
+		{"existing", func(h *nativeHarness) response {
+			return h.do(func(o armrpc_controller.Options, c ucp_aws.Clients) (armrpc_controller.Controller, error) {
+				return NewGetAWSResourceWithPost(o, c, retry.NewNoOpRetryer())
+			}, http.MethodPost, providers+"AWS.Test/Native/:get", "", map[string]any{"properties": nativeProperties(1)})
+		}},
+	}
+	for _, e := range errs {
+		for _, p := range paths {
+			t.Run(e.name+" "+p.name, func(t *testing.T) {
+				h := encodingHarness(t, func(map[string]any) (string, error) { return "", e.err })
+				resp := p.send(h)
+				require.Equal(t, e.status, resp.status, resp.raw)
+				if e.status == http.StatusBadRequest {
+					require.Equal(t, "RuleNumber must be between 1 and 32766", resp.message())
+				}
+				for _, call := range h.fake.Calls() {
+					require.Equal(t, "Read", call.Method, "nothing changes in AWS")
+				}
+				require.Nil(t, h.record(nativePath))
+			})
+		}
 	}
 }

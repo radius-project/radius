@@ -111,7 +111,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	if awsResourceIdentifier == "" && (rt.handler != nil || hasEncoder(rt.native)) {
 		awsResourceIdentifier, err = identifierFor(rt.native, body.Properties, *describeTypeOutput.Schema)
 		if err != nil {
-			return badRequest(err.Error()), nil
+			return identifierError(ctx, &request{id: serviceCtx.ResourceID}, err)
 		}
 		if awsResourceIdentifier == "" && rt.handler != nil {
 			return badRequest(fmt.Sprintf("Set the primary identifier properties of the AWS resource type %s to reference it with existing.", serviceCtx.ResourceTypeInAWSFormat())), nil

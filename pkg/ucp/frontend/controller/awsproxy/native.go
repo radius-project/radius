@@ -349,6 +349,17 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 	return e.update(ctx, r, rec, etag, current, identifier, properties, deploy, typeInfo, parsed, secrets)
 }
 
+// identifierError returns the response for an error computing the identifier from a template's properties. A
+// handler reports a property value it can't use as a client native.Failure, which gets 400 with its message, as AWS's
+// own rejection would.
+func identifierError(ctx context.Context, r *request, err error) (armrpc_rest.Response, error) {
+	var failure *native.Failure
+	if errors.As(err, &failure) {
+		return failureResponse(r, failure), nil
+	}
+	return ucp_aws.HandleAWSError(ctx, err)
+}
+
 // failureResponse returns the response for an operation AWS finished with failure.
 func failureResponse(r *request, failure interface {
 	error
