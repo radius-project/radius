@@ -166,7 +166,9 @@ func matching(matches [][]bool) ([]int, bool) {
 }
 
 // scaledGroupsCover reports whether aws, the task instance groups AWS returns, covers template, the template's,
-// leaving out the count of each AWS group with an automatic scaling policy.
+// leaving out the count of each AWS group with an automatic scaling policy. An AWS group with a policy the template's
+// group doesn't set doesn't match it: AWS never adds a policy itself, and the template owns each group in its list, so
+// the update removes the policy in AWS.
 func scaledGroupsCover(template any, aws any) bool {
 	t, okT := template.([]any)
 	a, okA := aws.([]any)
@@ -179,6 +181,9 @@ func scaledGroupsCover(template any, aws any) bool {
 		for j := range a {
 			ti, aj := t[i], a[j]
 			if asMap(aj)["AutoScalingPolicy"] != nil {
+				if asMap(ti)["AutoScalingPolicy"] == nil {
+					continue
+				}
 				ti, aj = withoutCount(ti), withoutCount(aj)
 			}
 			matches[i][j] = covers(ti, aj, false)

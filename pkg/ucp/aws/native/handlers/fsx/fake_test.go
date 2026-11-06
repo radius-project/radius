@@ -87,8 +87,10 @@ type fakeAPI struct {
 	failBackup bool
 	failures   map[string]string
 
-	// failUpdate, when set, makes the administrative action of the next update fail with this message.
+	// failUpdate, when set, makes the administrative action of the next update fail with this message. FSx then keeps
+	// the file system's values from before the update, which undo holds.
 	failUpdate string
+	undo       map[string]map[string]any
 
 	// errs maps a method name to an error the call returns instead of acting.
 	errs  map[string]error
@@ -105,6 +107,7 @@ func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
 		creates:       map[string]request{},
 		deletes:       map[string]request{},
 		tokens:        map[string]string{},
+		undo:          map[string]map[string]any{},
 		options:       map[string]string{},
 		deleteOptions: map[string][]types.DeleteFileSystemOpenZFSOption{},
 		associations:  map[string]int{},
@@ -286,6 +289,10 @@ func (f *fakeAPI) describe(id string) (*types.FileSystem, bool) {
 		if actions[i].Status == types.StatusInProgress && !slices.Contains(optimizations, actions[i].AdministrativeActionType) {
 			actions[i].Status = types.StatusCompleted
 			if f.failUpdate != "" {
+				if before, ok := f.undo[id]; ok {
+					f.store.Put(fileSystemType, id, before)
+					delete(f.undo, id)
+				}
 				actions[i].Status = types.StatusFailed
 				actions[i].FailureDetails = &types.AdministrativeActionFailureDetails{Message: aws.String(f.failUpdate)}
 				f.failUpdate = ""
@@ -351,6 +358,19 @@ func (f *fakeAPI) change(name string, id string, apply func(props map[string]any
 	return f.failer.After()
 }
 
+// copyProps returns a deep copy of a resource's properties.
+func copyProps(props map[string]any) map[string]any {
+	b, err := json.Marshal(props)
+	if err != nil {
+		panic(err)
+	}
+	out := map[string]any{}
+	if err := json.Unmarshal(b, &out); err != nil {
+		panic(err)
+	}
+	return out
+}
+
 func (f *fakeAPI) UpdateFileSystem(ctx context.Context, in *fsx.UpdateFileSystemInput, _ ...func(*fsx.Options)) (*fsx.UpdateFileSystemOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -361,6 +381,9 @@ func (f *fakeAPI) UpdateFileSystem(ctx context.Context, in *fsx.UpdateFileSystem
 	}
 	delete(values, "FileSystemId")
 	return &fsx.UpdateFileSystemOutput{}, f.change("UpdateFileSystem", id, func(props map[string]any) {
+		if f.failUpdate != "" {
+			f.undo[id] = copyProps(props)
+		}
 		for k, v := range values {
 			config, ok := v.(map[string]any)
 			if !ok {

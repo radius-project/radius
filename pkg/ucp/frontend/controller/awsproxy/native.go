@@ -40,6 +40,7 @@ import (
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/aws/schemas"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
@@ -204,6 +205,16 @@ func addressSegment(t *native.Type, identifier string) string {
 		return "%2E%2E"
 	}
 	return url.PathEscape(identifier)
+}
+
+// identifierOfID returns the AWS identifier in the last segment of id, an AWS resource ID UCP returned, for a POST
+// /:get on collection. id must name a resource of the same type in the same account and region.
+func identifierOfID(collection resources.ID, t *native.Type, id string) (string, armrpc_rest.Response) {
+	parsed, err := resources.ParseResource(id)
+	if err != nil || !strings.EqualFold(parsed.RootScope(), collection.RootScope()) || !strings.EqualFold(parsed.Type(), collection.Type()) {
+		return "", badRequest(fmt.Sprintf("The %s header must be the ID of an AWS resource of type %s in %s.", sdkclients.AWSResourceIDHeader, collection.Type(), collection.RootScope()))
+	}
+	return identifierOfSegment(t, parsed.Name()), nil
 }
 
 // identifierOfSegment returns the AWS identifier in a resource ID segment addressSegment made. A segment that isn't

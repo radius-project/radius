@@ -170,7 +170,35 @@ func Test_Suite_Cluster(t *testing.T) {
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		RemovedItemField: &nativetest.RemovedItemField{
+			Before: with(cluster, map[string]any{"Instances": instances(1, map[string]any{"TaskInstanceGroups": []any{taskGroup(scalingRule)}})}),
+			After:  with(cluster, map[string]any{"Instances": instances(1, map[string]any{"TaskInstanceGroups": []any{taskGroup(nil)}})}),
+			Gone: func(stored map[string]any) bool {
+				return asMap(asList(asMap(stored["Instances"])["TaskInstanceGroups"])[0])["AutoScalingPolicy"] == nil
+			},
+		},
 	})
+}
+
+// scalingRule is an automatic scaling policy for an instance group.
+var scalingRule = map[string]any{
+	"Constraints": map[string]any{"MaxCapacity": 6, "MinCapacity": 1},
+	"Rules": []any{map[string]any{
+		"Name":   "scale-out",
+		"Action": map[string]any{"SimpleScalingPolicyConfiguration": map[string]any{"ScalingAdjustment": 1}},
+		"Trigger": map[string]any{"CloudWatchAlarmDefinition": map[string]any{
+			"ComparisonOperator": "LESS_THAN", "MetricName": "YARNMemoryAvailablePercentage", "Period": 300, "Threshold": 15,
+		}},
+	}},
+}
+
+// taskGroup returns a task instance group with the automatic scaling policy, or none when policy is nil.
+func taskGroup(policy any) map[string]any {
+	group := map[string]any{"InstanceCount": 1, "InstanceType": "m5.xlarge", "Name": "task"}
+	if policy != nil {
+		group["AutoScalingPolicy"] = policy
+	}
+	return group
 }
 
 // create creates a cluster from properties through the handler and returns its ID, once it runs.
@@ -895,4 +923,55 @@ func Test_ScaledCounts(t *testing.T) {
 		require.ErrorContains(t, update(t, h, id, unscaled, "ManagedScalingPolicy/ComputeLimits/MaximumCapacityUnits"), "Instances/CoreInstanceFleet, Instances/TaskInstanceFleets",
 			"EMR has no call here to set a fleet's capacity")
 	})
+}
+
+// Test_RemovedAutoScalingPolicy checks that a template that no longer sets a group's automatic scaling policy removes
+// it in AWS, and then sets the template's count, for the core group and a task group. A change inside the policy is
+// still rejected.
+func Test_RemovedAutoScalingPolicy(t *testing.T) {
+	core := func(policy any) map[string]any {
+		group := map[string]any{"InstanceCount": 1, "InstanceType": "m5.xlarge", "Market": "ON_DEMAND", "Name": "core"}
+		if policy != nil {
+			group["AutoScalingPolicy"] = policy
+		}
+		return group
+	}
+	cluster := func(corePolicy any, taskPolicy any) map[string]any {
+		return with(clusterProperties(), map[string]any{"Instances": instances(1, map[string]any{
+			"CoreInstanceGroup":  core(corePolicy),
+			"TaskInstanceGroups": []any{taskGroup(taskPolicy)},
+		})})
+	}
+
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewCluster(api)
+	base := cluster(scalingRule, scalingRule)
+	id := create(t, h, base)
+	setInstances(api, id, func(inst map[string]any) {
+		asMap(inst["CoreInstanceGroup"])["InstanceCount"] = 3.0
+		asMap(asList(inst["TaskInstanceGroups"])[0])["InstanceCount"] = 4.0
+	})
+	changes(api)
+
+	changed := jsonValue(t, base)
+	rules := asList(asMap(asMap(asMap(changed["Instances"])["CoreInstanceGroup"])["AutoScalingPolicy"])["Rules"])
+	asMap(rules[0])["Name"] = "scale-out-faster"
+	err := update(t, h, id, changed, awsoperations.RemovedPaths(jsonValue(t, base), changed)...)
+	require.ErrorContains(t, err, "Instances/CoreInstanceGroup", "a change inside the policy can't be applied")
+	require.Empty(t, changes(api))
+
+	removed := cluster(nil, nil)
+	require.NoError(t, update(t, h, id, removed, awsoperations.RemovedPaths(jsonValue(t, base), jsonValue(t, removed))...))
+	require.Equal(t, []string{"RemoveAutoScalingPolicy", "RemoveAutoScalingPolicy", "ModifyInstanceGroups"}, changes(api), "the policies go first, then the counts")
+	finish(t, h, id, native.OperationUpdate)
+	read, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+	inst := asMap(read["Instances"])
+	require.Nil(t, asMap(inst["CoreInstanceGroup"])["AutoScalingPolicy"])
+	require.Nil(t, asMap(asList(inst["TaskInstanceGroups"])[0])["AutoScalingPolicy"])
+	require.EqualValues(t, 1, asMap(inst["CoreInstanceGroup"])["InstanceCount"], "the template's count applies once the policy is gone")
+	require.EqualValues(t, 1, asMap(asList(inst["TaskInstanceGroups"])[0])["InstanceCount"])
+
+	require.NoError(t, update(t, h, id, removed))
+	require.Empty(t, changes(api), "the removal is fully applied")
 }

@@ -76,6 +76,14 @@ func (f *fakeAPI) call(name string) error {
 	return f.errs[name]
 }
 
+// busy returns DAX's error for a call that needs the cluster available while it is creating or modifying, or nil.
+func (f *fakeAPI) busy(name *string) error {
+	if _, ok := f.status[strings.ToLower(aws.ToString(name))]; ok {
+		return fault("InvalidClusterStateFault")
+	}
+	return nil
+}
+
 // state returns the status of the cluster, and moves a transitional status on: a create or update finishes, and a
 // delete removes the cluster, which then returns false.
 func (f *fakeAPI) state(id string) (string, bool) {
@@ -258,6 +266,9 @@ func (f *fakeAPI) UpdateCluster(ctx context.Context, in *dax.UpdateClusterInput,
 	if err := f.call("UpdateCluster"); err != nil {
 		return nil, err
 	}
+	if err := f.busy(in.ClusterName); err != nil {
+		return nil, err
+	}
 	id := strings.ToLower(aws.ToString(in.ClusterName))
 	err := f.change(id, func(props map[string]any) {
 		set := func(name string, value *string) {
@@ -286,6 +297,9 @@ func (f *fakeAPI) IncreaseReplicationFactor(ctx context.Context, in *dax.Increas
 	if err := f.call("IncreaseReplicationFactor"); err != nil {
 		return nil, err
 	}
+	if err := f.busy(in.ClusterName); err != nil {
+		return nil, err
+	}
 	f.lastIncrease = in
 	id := strings.ToLower(aws.ToString(in.ClusterName))
 	err := f.change(id, func(props map[string]any) {
@@ -302,6 +316,9 @@ func (f *fakeAPI) DecreaseReplicationFactor(ctx context.Context, in *dax.Decreas
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.call("DecreaseReplicationFactor"); err != nil {
+		return nil, err
+	}
+	if err := f.busy(in.ClusterName); err != nil {
 		return nil, err
 	}
 	f.lastDecrease = in
