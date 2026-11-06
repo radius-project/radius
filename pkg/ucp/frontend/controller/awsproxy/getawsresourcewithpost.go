@@ -87,7 +87,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	// A recipe reads an output resource again by the ID UCP returned for it. Only that ID's last segment is decoded:
 	// a top-level name is the AWS identifier itself, even when it looks escaped, as on PUT.
 	if id := req.Header.Get(sdkclients.AWSResourceIDHeader); id != "" {
-		if name, errResponse = identifierOfID(serviceCtx.ResourceID, rt.native, id); errResponse != nil {
+		if name, errResponse = identifierOfID(serviceCtx.ResourceID, id); errResponse != nil {
 			return errResponse, nil
 		}
 	}
@@ -111,7 +111,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	if awsResourceIdentifier == "" && (rt.handler != nil || hasEncoder(rt.native)) {
 		awsResourceIdentifier, err = identifierFor(rt.native, body.Properties, *describeTypeOutput.Schema)
 		if err != nil {
-			return badRequest(err.Error()), nil
+			return identifierError(ctx, &request{id: serviceCtx.ResourceID}, err)
 		}
 		if awsResourceIdentifier == "" && rt.handler != nil {
 			return badRequest(fmt.Sprintf("Set the primary identifier properties of the AWS resource type %s to reference it with existing.", serviceCtx.ResourceTypeInAWSFormat())), nil
@@ -180,7 +180,13 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	}
 	removePaths(resourceProperties, writeOnly)
 
-	computedResourceID := computeResourceID(serviceCtx.ResourceID, addressSegment(rt.native, awsResourceIdentifier))
+	// A type with a native handler gets one escaped segment. Cloud Control types keep the IDs they had before native
+	// handlers, which other parts of Radius already store.
+	segment := awsResourceIdentifier
+	if rt.native != nil {
+		segment = addressSegment(awsResourceIdentifier)
+	}
+	computedResourceID := computeResourceID(serviceCtx.ResourceID, segment)
 	responseBody := map[string]any{
 		"id":         computedResourceID,
 		"name":       response.ResourceDescription.Identifier,

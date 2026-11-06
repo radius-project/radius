@@ -200,39 +200,37 @@ func resolveIdentifier(ctx context.Context, h native.Handler, region string, ide
 	return resolver.ResolveIdentifier(ctx, region, identifier)
 }
 
-// addressSegment returns the last segment of the resource ID UCP returns for the AWS identifier of a type t serves,
-// in a list or `existing`. An AWS identifier can contain "/", such as an S3 ARN, or be "..", so for a type with a
-// native handler, with either handler, the identifier is escaped into one segment and identifierOfSegment reverses it.
-// Other types keep the raw identifier, as before native handlers.
-func addressSegment(t *native.Type, identifier string) string {
-	if t == nil {
-		return identifier
-	}
+// segmentEscaper escapes the characters that would split a resource ID segment, and "%", so the escaping can be
+// reversed.
+var segmentEscaper = strings.NewReplacer("%", "%25", "/", "%2F")
+
+// addressSegment returns the last segment of the resource ID UCP returns for an AWS identifier, in a list or
+// `existing`, with either handler. An AWS identifier can contain "/", such as an S3 ARN, or be "..", so it is escaped
+// into one segment, and identifierOfSegment reverses it. Only "%", "/", and a whole "." or ".." are escaped, so an
+// identifier without them, such as "a|b", keeps the ID it had before.
+func addressSegment(identifier string) string {
 	switch identifier {
 	case ".":
 		return "%2E"
 	case "..":
 		return "%2E%2E"
 	}
-	return url.PathEscape(identifier)
+	return segmentEscaper.Replace(identifier)
 }
 
 // identifierOfID returns the AWS identifier in the last segment of id, an AWS resource ID UCP returned, for a POST
 // /:get on collection. id must name a resource of the same type in the same account and region.
-func identifierOfID(collection resources.ID, t *native.Type, id string) (string, armrpc_rest.Response) {
+func identifierOfID(collection resources.ID, id string) (string, armrpc_rest.Response) {
 	parsed, err := resources.ParseResource(id)
 	if err != nil || !strings.EqualFold(parsed.RootScope(), collection.RootScope()) || !strings.EqualFold(parsed.Type(), collection.Type()) {
 		return "", badRequest(fmt.Sprintf("The %s header must be the ID of an AWS resource of type %s in %s.", sdkclients.AWSResourceIDHeader, collection.Type(), collection.RootScope()))
 	}
-	return identifierOfSegment(t, parsed.Name()), nil
+	return identifierOfSegment(parsed.Name()), nil
 }
 
 // identifierOfSegment returns the AWS identifier in a resource ID segment addressSegment made. A segment that isn't
 // valid escaping is returned unchanged.
-func identifierOfSegment(t *native.Type, segment string) string {
-	if t == nil {
-		return segment
-	}
+func identifierOfSegment(segment string) string {
 	if identifier, err := url.PathUnescape(segment); err == nil {
 		return identifier
 	}
@@ -463,7 +461,7 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 					rec.Properties.AWSIdentifier = found
 				})
 			}
-			return handleError(ctx, r.id, err)
+			return identifierError(ctx, r, err)
 		}
 		if identifier == "" {
 			return e.create(ctx, r, rec, etag, "", properties, deploy, typeInfo, parsed, secrets)
@@ -552,7 +550,7 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 	}
 	keep := func(err error) (string, armrpc_rest.Response, error) {
 		keepCreate()
-		resp, err := handleError(ctx, r.id, err)
+		resp, err := identifierError(ctx, r, err)
 		return "", resp, err
 	}
 	removed := func() (string, armrpc_rest.Response, error) {
@@ -685,6 +683,14 @@ func (e *engine) resendCreate(ctx context.Context, r *request, rec *datamodel.AW
 		return "", fmt.Errorf("the native handler for %s sent the create of the AWS resource %q again, but returned no identifier", r.typeName, r.id.Name())
 	}
 	return identifier, err
+}
+
+// identifierError returns the response for an error computing the identifier from a template's properties, including
+// a generated name, or finding a lost create. A handler reports a property value it can't use as a client
+// native.Failure, which gets 400 with its message, as AWS's own rejection would, and an identifier of another product
+// gets 409 (see handleError).
+func identifierError(ctx context.Context, r *request, err error) (armrpc_rest.Response, error) {
+	return handleError(ctx, r.id, err)
 }
 
 // failureResponse returns the response for an operation on the resource id that AWS finished with failure.
