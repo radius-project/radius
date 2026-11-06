@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"time"
 )
 
 // ServerConfig returns a TLS config for a server that requires a client certificate
@@ -100,6 +101,43 @@ func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
 			return err
 		},
 	}, nil
+}
+
+// verifyClient checks a client's certificate chain against pool, the CA bundle of the
+// handshake's snapshot, and returns its identity and the earliest verified-chain expiry.
+// Servers use it during dry-run handshakes and to recheck trust on open connections.
+func (s *Source) verifyClient(pool *x509.CertPool, certs []*x509.Certificate, namespace string) (Identity, time.Time, error) {
+	if len(certs) == 0 {
+		return Identity{}, time.Time{}, peerError("no client certificate", nil)
+	}
+
+	intermediates := x509.NewCertPool()
+	for _, cert := range certs[1:] {
+		intermediates.AddCert(cert)
+	}
+
+	chains, err := certs[0].Verify(x509.VerifyOptions{
+		Roots:         pool,
+		Intermediates: intermediates,
+		CurrentTime:   s.now(),
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	})
+	if err != nil {
+		return Identity{}, time.Time{}, peerError("certificate verification failed", err)
+	}
+	id, err := identityFromChains(chains, namespace)
+	if err != nil {
+		return Identity{}, time.Time{}, err
+	}
+	expiresAt := certs[0].NotAfter
+	for _, chain := range chains {
+		for _, cert := range chain {
+			if cert.NotAfter.Before(expiresAt) {
+				expiresAt = cert.NotAfter
+			}
+		}
+	}
+	return id, expiresAt, nil
 }
 
 // identityFromChains returns the identity from the first verified chain that passes
