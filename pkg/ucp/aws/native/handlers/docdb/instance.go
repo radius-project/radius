@@ -21,7 +21,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/docdb"
@@ -60,13 +59,10 @@ func (h *Instance) TypeName() string {
 // Options returns how UCP uses the handler.
 func (h *Instance) Options() native.Options {
 	return native.Options{
-		List:          native.ListRegion,
-		Recovery:      native.RecoverByIdentifier,
-		NameProperty:  "DBInstanceIdentifier",
-		Equivalent:    equivalent,
-		CreateTimeout: time.Hour,
-		UpdateTimeout: time.Hour,
-		DeleteTimeout: time.Hour,
+		List:         native.ListRegion,
+		Recovery:     native.RecoverByIdentifier,
+		NameProperty: "DBInstanceIdentifier",
+		Equivalent:   equivalent,
 	}
 }
 
@@ -115,7 +111,7 @@ func (h *Instance) properties(ctx context.Context, region string, i *types.DBIns
 		"CACertificateIdentifier":    i.CACertificateIdentifier,
 		"EnablePerformanceInsights":  i.PerformanceInsightsEnabled,
 		"PreferredMaintenanceWindow": i.PreferredMaintenanceWindow,
-		"Tags":                       tagList(tags.TagList),
+		"Tags":                       awsapi.TagListOf(tags.TagList),
 	}
 	if i.Endpoint != nil {
 		p["Endpoint"] = i.Endpoint.Address
@@ -134,7 +130,7 @@ func (h *Instance) Create(ctx context.Context, request native.CreateRequest) (st
 		return "", err
 	}
 	input.Engine = aws.String(Engine)
-	input.Tags = sdkTags(awsapi.Tags(request.Properties))
+	input.Tags = awsapi.SDKTags[types.Tag](awsapi.Tags(request.Properties))
 	if _, err := h.api.CreateDBInstance(ctx, input, inRegion(request.Region)); err != nil {
 		return "", err
 	}
@@ -174,6 +170,13 @@ func (h *Instance) Update(ctx context.Context, request native.UpdateRequest) err
 			}
 		}
 		values[name] = value
+	}
+	if _, ok := values["CACertificateIdentifier"]; ok {
+		// CertificateRotationRestart is write-only, so the patch leaves it out when it didn't change, but it says
+		// whether this CA change restarts the instance.
+		if restart, ok := request.Desired["CertificateRotationRestart"]; ok {
+			values["CertificateRotationRestart"] = restart
+		}
 	}
 	calls := []func() error{}
 	if len(values) > 0 {

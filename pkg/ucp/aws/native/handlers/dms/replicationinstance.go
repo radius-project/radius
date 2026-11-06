@@ -44,9 +44,7 @@ type API interface {
 	ListTagsForResource(ctx context.Context, params *dms.ListTagsForResourceInput, optFns ...func(*dms.Options)) (*dms.ListTagsForResourceOutput, error)
 }
 
-func inRegion(region string) func(*dms.Options) {
-	return func(o *dms.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[dms.Options]
 
 var (
 	_ native.Handler           = (*ReplicationInstance)(nil)
@@ -78,7 +76,7 @@ func (h *ReplicationInstance) Options() native.Options {
 		List:         native.ListRegion,
 		Recovery:     native.RecoverByIdentifier,
 		NameProperty: "ReplicationInstanceIdentifier",
-		Equivalent:   equivalent,
+		Equivalent:   awsapi.CaseInsensitive(caseInsensitive...),
 	}
 }
 
@@ -90,13 +88,6 @@ func (h *ReplicationInstance) Identifier(properties map[string]any) (string, err
 // caseInsensitive are the properties DMS returns in another case than the template may set them: names it stores in
 // lowercase, and the maintenance window.
 var caseInsensitive = []string{"ReplicationInstanceIdentifier", "ReplicationSubnetGroupIdentifier", "ResourceIdentifier", "PreferredMaintenanceWindow"}
-
-// equivalent treats a value of caseInsensitive that differs only in case as the template's value.
-func equivalent(path string, template any, aws any) bool {
-	t, okT := template.(string)
-	a, okA := aws.(string)
-	return okT && okA && slices.Contains(caseInsensitive, path) && strings.EqualFold(t, a)
-}
 
 // describe returns the replication instance with the identifier, or ErrNotFound. An instance DMS reports as deleted
 // is gone.
@@ -158,7 +149,7 @@ func (h *ReplicationInstance) properties(ctx context.Context, region string, i *
 		"VpcSecurityGroupIds":                   groups,
 		"ReplicationInstancePrivateIpAddresses": strings.Join(i.ReplicationInstancePrivateIpAddresses, ","),
 		"ReplicationInstancePublicIpAddresses":  strings.Join(i.ReplicationInstancePublicIpAddresses, ","),
-		"Tags":                                  tagList(tags.TagList),
+		"Tags":                                  awsapi.TagListOf(tags.TagList),
 	}
 	if i.ReplicationSubnetGroup != nil {
 		p["ReplicationSubnetGroupIdentifier"] = i.ReplicationSubnetGroup.ReplicationSubnetGroupIdentifier
@@ -172,29 +163,13 @@ func resourceIdentifier(arn string) string {
 	return arn[strings.LastIndex(arn, ":")+1:]
 }
 
-func tagList(tags []types.Tag) []any {
-	m := map[string]string{}
-	for _, t := range tags {
-		m[aws.ToString(t.Key)] = aws.ToString(t.Value)
-	}
-	return awsapi.TagList(m)
-}
-
-func sdkTags(tags []awsapi.Tag) []types.Tag {
-	out := []types.Tag{}
-	for _, t := range tags {
-		out = append(out, types.Tag{Key: aws.String(t.Key), Value: aws.String(t.Value)})
-	}
-	return out
-}
-
 // Create creates the replication instance.
 func (h *ReplicationInstance) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	input := &dms.CreateReplicationInstanceInput{}
 	if err := awsapi.Decode(awsapi.Without(request.Properties, "Tags"), input); err != nil {
 		return "", err
 	}
-	input.Tags = sdkTags(awsapi.Tags(request.Properties))
+	input.Tags = awsapi.SDKTags[types.Tag](awsapi.Tags(request.Properties))
 	if _, err := h.api.CreateReplicationInstance(ctx, input, inRegion(request.Region)); err != nil {
 		return "", err
 	}
@@ -265,7 +240,7 @@ func (h *ReplicationInstance) tagCalls(ctx context.Context, arn *string, request
 	calls := []func() error{}
 	if len(set) > 0 {
 		calls = append(calls, func() error {
-			_, err := h.api.AddTagsToResource(ctx, &dms.AddTagsToResourceInput{ResourceArn: arn, Tags: sdkTags(set)}, opt)
+			_, err := h.api.AddTagsToResource(ctx, &dms.AddTagsToResourceInput{ResourceArn: arn, Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 			return err
 		})
 	}

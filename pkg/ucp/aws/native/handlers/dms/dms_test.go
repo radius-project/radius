@@ -396,7 +396,7 @@ func Test_Equivalent(t *testing.T) {
 		{"AllocatedStorage", 50, 50, false},
 	}
 	for _, tt := range tests {
-		require.Equal(t, tt.want, equivalent(tt.path, tt.template, tt.aws), "%s %v %v", tt.path, tt.template, tt.aws)
+		require.Equal(t, tt.want, NewReplicationInstance(nil).Options().Equivalent(tt.path, tt.template, tt.aws), "%s %v %v", tt.path, tt.template, tt.aws)
 	}
 }
 
