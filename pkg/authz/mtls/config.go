@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"time"
 )
 
 // ServerConfig returns a TLS config for a server that requires a client certificate
@@ -74,9 +75,15 @@ func (s *Source) ServerConfig(namespace string) *tls.Config {
 // rotating the CA requires a CA bundle that trusts both the old and new CA until every
 // component has reloaded.
 func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
+	config, _, err := s.clientConfig(namespace)
+	return config, err
+}
+
+// clientConfig is ClientConfig that also returns the certificate the config presents.
+func (s *Source) clientConfig(namespace string) (*tls.Config, *x509.Certificate, error) {
 	m, err := s.load()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &tls.Config{
@@ -99,7 +106,44 @@ func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
 			_, err := identityFromChains(cs.VerifiedChains, namespace)
 			return err
 		},
-	}, nil
+	}, m.cert.Leaf, nil
+}
+
+// verifyClient checks a client's certificate chain against pool, the CA bundle of the
+// handshake's snapshot, and returns its identity and the earliest verified-chain expiry.
+// Servers use it during dry-run handshakes and to recheck trust on open connections.
+func (s *Source) verifyClient(pool *x509.CertPool, certs []*x509.Certificate, namespace string) (Identity, time.Time, error) {
+	if len(certs) == 0 {
+		return Identity{}, time.Time{}, peerError("no client certificate", nil)
+	}
+
+	intermediates := x509.NewCertPool()
+	for _, cert := range certs[1:] {
+		intermediates.AddCert(cert)
+	}
+
+	chains, err := certs[0].Verify(x509.VerifyOptions{
+		Roots:         pool,
+		Intermediates: intermediates,
+		CurrentTime:   s.now(),
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	})
+	if err != nil {
+		return Identity{}, time.Time{}, peerError("certificate verification failed", err)
+	}
+	id, err := identityFromChains(chains, namespace)
+	if err != nil {
+		return Identity{}, time.Time{}, err
+	}
+	expiresAt := certs[0].NotAfter
+	for _, chain := range chains {
+		for _, cert := range chain {
+			if cert.NotAfter.Before(expiresAt) {
+				expiresAt = cert.NotAfter
+			}
+		}
+	}
+	return id, expiresAt, nil
 }
 
 // identityFromChains returns the identity from the first verified chain that passes

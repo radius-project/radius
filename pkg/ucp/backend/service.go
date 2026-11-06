@@ -32,7 +32,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourcegroups"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourceproviders"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // Service is a service to run AsyncReqeustProcessWorker.
@@ -92,7 +91,11 @@ func (w *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	transport := otelhttp.NewTransport(http.DefaultTransport)
+	transport, err := ucp.NewDownstreamTransport(w.options.Config)
+	if err != nil {
+		return err
+	}
+
 	err = RegisterControllers(w.Controllers(), w.options.UCP, transport, opts, defaultDownstream)
 	if err != nil {
 		return err

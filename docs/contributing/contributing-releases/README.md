@@ -50,6 +50,25 @@ Complete this step before starting Radius release preparation so the approved pr
 
 Stop if the update is missing or incomplete. Publishing namespaces and recipe packs alone is not enough: their generated update must be merged into the code that Radius will release.
 
+### Pin Radius in bicep-types-aws
+
+`bicep-types-aws` builds the AWS Bicep extension from the Radius schemas at the commit its `radius` submodule pins. Release plan validation fails unless the `radius` submodule at the planned `bicep-types-aws` commit pins the plan's `source.productCommit`. The release controller runs the same check before approval, so nothing is tagged on a mismatch even if the release PR merged without a passing plan check. In that case the merged plan can't change: follow [break-glass recovery](#break-glass-recovery). A `bicep-types-aws` commit from before the submodule was added passes both checks with a notice. Nothing sets the pin automatically yet, so set it by hand:
+
+1. Find the product commit. For a later RC, a final, or a patch, it's the head of Radius `release/X.Y` after its backports merge, so you can set the pin before preparation. For a first RC, it's the `main` commit that preparation freezes: run Prepare Release, then read `source.productCommit` from the release PR's plan.
+2. In `radius-project/bicep-types-aws`, create `release/X.Y` from `main` if it doesn't exist (`git push origin origin/main:refs/heads/release/X.Y` after the clone below). Then set the `radius` submodule on `release/X.Y` to the product commit through a pull request, and merge it:
+
+   ```bash
+   git clone https://github.com/radius-project/bicep-types-aws.git
+   cd bicep-types-aws
+   git switch -c pin-radius-X.Y origin/release/X.Y
+   git update-index --cacheinfo "160000,<product-commit>,radius"
+   git commit -s -m "chore: pin Radius to <product-commit>"
+   git push origin pin-radius-X.Y
+   gh pr create --repo radius-project/bicep-types-aws --base release/X.Y --fill
+   ```
+
+3. Rerun Prepare Release with the same inputs. Preparation captures `bicep-types-aws` from `release/X.Y`. For a first RC, if Radius `main` moved since the last run, the new plan freezes a newer commit and the check fails again. Repeat these steps with the new product commit.
+
 ### Approve the plan
 
 1. Run [Prepare Release](https://github.com/radius-project/radius/actions/workflows/prepare-release.yaml) from `main` with `release-type`, `channel`, and optional comma-separated `backport-pr-numbers`.

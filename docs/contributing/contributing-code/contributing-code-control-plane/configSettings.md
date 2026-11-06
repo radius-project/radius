@@ -29,15 +29,15 @@ For Kubernetes installations, configuration is rendered from `deploy/Chart/templ
 
 The development files combine shared host options with service-specific settings. Use the option types linked below instead of treating this page as a manually duplicated schema:
 
-| YAML section                    | Source of truth                                                                                       | Current values or shape                                                                                                    |
-|---------------------------------|-------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `environment`                   | [`hostoptions.EnvironmentOptions`](../../../../pkg/armrpc/hostoptions/options.go)                     | `name`, `roleLocation`                                                                                                     |
-| `databaseProvider`              | [`databaseprovider.Options`](../../../../pkg/components/database/databaseprovider/options.go)         | Provider is `apiserver`, `inmemory`, or `postgresql`                                                                       |
-| `queueProvider`                 | [`queueprovider.QueueProviderOptions`](../../../../pkg/components/queue/queueprovider/options.go)     | Provider is `apiserver` or `inmemory`; includes a queue `name`                                                             |
-| `secretProvider`                | [`secretprovider.SecretProviderOptions`](../../../../pkg/components/secret/secretprovider/options.go) | Provider is `kubernetes` or `inmemory`                                                                                     |
-| `metricsProvider`               | [`metricsservice.Options`](../../../../pkg/components/metrics/metricsservice/options.go)              | `enabled`, `serviceName`, and nested `prometheus.path` / `prometheus.port`                                                 |
-| `server`, `workerServer`, `ucp` | [`pkg/armrpc/hostoptions`](../../../../pkg/armrpc/hostoptions/)                                       | HTTP listener, async worker, and UCP connection settings                                                                   |
-| `authorization`                 | [`authz.Options`](../../../../pkg/authz/mode.go)                                                      | `mode` is `off` (default), `dryRun`, or `enforce`; also `podSecurityLevel`, `controlPlaneNamespace`, `controlPlaneSecrets` |
+| YAML section                    | Source of truth                                                                                       | Current values or shape                                                                                                                                         |
+|---------------------------------|-------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `environment`                   | [`hostoptions.EnvironmentOptions`](../../../../pkg/armrpc/hostoptions/options.go)                     | `name`, `roleLocation`                                                                                                                                          |
+| `databaseProvider`              | [`databaseprovider.Options`](../../../../pkg/components/database/databaseprovider/options.go)         | Provider is `apiserver`, `inmemory`, or `postgresql`                                                                                                            |
+| `queueProvider`                 | [`queueprovider.QueueProviderOptions`](../../../../pkg/components/queue/queueprovider/options.go)     | Provider is `apiserver` or `inmemory`; includes a queue `name`                                                                                                  |
+| `secretProvider`                | [`secretprovider.SecretProviderOptions`](../../../../pkg/components/secret/secretprovider/options.go) | Provider is `kubernetes` or `inmemory`                                                                                                                          |
+| `metricsProvider`               | [`metricsservice.Options`](../../../../pkg/components/metrics/metricsservice/options.go)              | `enabled`, `serviceName`, and nested `prometheus.path` / `prometheus.port`                                                                                      |
+| `server`, `workerServer`, `ucp` | [`pkg/armrpc/hostoptions`](../../../../pkg/armrpc/hostoptions/)                                       | HTTP listener, async worker, and UCP connection settings                                                                                                        |
+| `authorization`                 | [`authz.Options`](../../../../pkg/authz/mode.go)                                                      | `mode` is `off` (default), `dryRun`, or `enforce`; also `podSecurityLevel`, `controlPlaneNamespace`, `controlPlaneSecrets`, `certificateDirectory`, `namespace` |
 
 For example, local services commonly use Kubernetes API server storage and expose Prometheus settings in this shape:
 
@@ -66,7 +66,7 @@ metricsProvider:
     port: 9091
 ```
 
-Use a `direct` UCP connection only for local process debugging:
+For local process debugging with authorization mode `off`, use a `direct` UCP connection to the local HTTP endpoint:
 
 ```yaml
 ucp:
@@ -75,12 +75,20 @@ ucp:
     endpoint: http://localhost:9000/apis/api.ucp.dev/v1alpha3
 ```
 
-Kubernetes deployments use the chart-rendered UCP connection instead of the local endpoint.
+Kubernetes deployments use the chart-rendered UCP connection instead of the local endpoint. When the authorization mode is `off`, the chart renders `kind: kubernetes`. Otherwise it renders a `direct` connection to UCP's internal mTLS port, `https://ucp.<namespace>.svc:9444/apis/api.ucp.dev/v1alpha3`, for Applications RP, Dynamic RP, and the controller.
+
+When the authorization mode is not `off`, a `direct` endpoint must use `https`, and the service presents the certificate from `authorization.certificateDirectory`. Keep the mode `off` for local process debugging over `http`.
 
 The `authorization.mode` setting is read by UCP, Applications RP, Dynamic RP, and the controller, and each logs `authz mode=<mode>` at startup. The chart renders it from `global.rbac.enabled` and `global.rbac.dryRun`: `dryRun=true` renders `dryRun`, `enabled=true` renders `enforce`, and setting both fails rendering. In `off` mode the chart omits the section so older service binaries can still load the config.
 
 > [!NOTE]
-> No component authorization checks use this setting yet. Its only runtime effects are the admission controls below: Pod Security Admission labels, the admission policy, and the Applications RP control-plane namespace and Secret checks.
+> Besides the admission controls below, the mode controls mutual TLS between control-plane components. When the mode is not `off`, the chart mounts each component's `<component>-mtls` Secret at `/var/run/radius/mtls` and renders `certificateDirectory` (that path, holding `tls.crt`, `tls.key`, and `ca.crt`) and `namespace` (the release namespace, used to check peer certificate identities) for UCP, Applications RP, Dynamic RP, and the controller. UCP serves internal traffic on port 9444; its aggregated API on 9443 is unchanged.
+>
+> In `dryRun`, the mTLS listeners accept both TLS and plain HTTP and log requests they would deny. In `enforce`, they require a client certificate issued by the Radius CA. A missing, untrusted, or expired client certificate fails the initial TLS handshake before an HTTP response can be returned. If a previously authenticated connection fails a request-time certificate or trust check, the server returns HTTP 401 `InvalidAuthenticationInfo`. The resource providers accept only UCP's identity and return HTTP 403 `AuthorizationFailed` for any other component. Certificate validity is checked on every request, including on reused connections.
+
+When the mode is not `off`, UCP presents its certificate when it calls Applications RP and Dynamic RP over `https`, and the RPs and the controller present theirs when they call UCP on port 9444. The deployment engine still calls UCP through port 9443 without a client certificate.
+
+Before sending a request, component clients close connections outside the validity period shared by their client certificate and the verified server certificate chains. This can interrupt active HTTP/2 response streams; it is not a timer that closes connections at the exact expiry instant. A successful certificate or CA-bundle reload applies to new client handshakes. Removing a server CA from that bundle does not immediately revoke already-open client connections.
 
 When the mode is not `off`, the chart also renders `podSecurityLevel` (from `global.rbac.podSecurityLevel`, `baseline` by default or `restricted`) and `controlPlaneNamespace` (the release namespace, which is never labeled). `dryRun` adds the `pod-security.kubernetes.io/warn` and `audit` labels; `enforce` also adds `enforce`. Labels that an operator already set on a namespace are never overwritten.
 
