@@ -79,13 +79,13 @@ func Test_ApplicationsCoreRegression(t *testing.T) {
 		return nil
 	}
 	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 10*time.Minute)
 		defer cancel()
 		assert.NoError(t, install(ctx, enabled, dryRun), "restore original authorization flags")
 	})
 	references := secretStoreReferences(t)
 	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 10*time.Minute)
 		defer cancel()
 		assert.NoError(t, install(ctx, false, false), "allow protected fixture cleanup")
 	})

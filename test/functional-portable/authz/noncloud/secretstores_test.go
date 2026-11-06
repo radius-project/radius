@@ -58,7 +58,7 @@ func secretStoreReferences(t *testing.T) func(*testing.T, authz.Mode) {
 		}, metav1.CreateOptions{})
 		require.NoError(t, err, "fixtures are create-only; never adopt an existing control-plane Secret")
 		t.Cleanup(func() {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), time.Minute)
 			defer cancel()
 			client := secretstore.New(t, rp.NewRPTestOptions(t))
 			assert.NoError(t, client.Delete(ctx, id+"-"+tt.suffix))
