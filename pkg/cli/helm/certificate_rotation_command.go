@@ -47,7 +47,7 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 	if err := options.Certificates.Validate(); err != nil {
 		return err
 	}
-	if options.ResetValues || len(options.Radius.SetArgs)+len(options.Radius.SetFileArgs)+len(options.Contour.SetArgs)+len(options.Contour.SetFileArgs) != 0 ||
+	if options.MTLS.Provider != "" || options.ResetValues || len(options.Radius.SetArgs)+len(options.Radius.SetFileArgs)+len(options.Contour.SetArgs)+len(options.Contour.SetFileArgs) != 0 ||
 		options.Radius.ChartPath != "" || options.Radius.Reinstall {
 		return errors.New("CA rotation cannot be combined with release configuration changes")
 	}
@@ -68,6 +68,13 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 		return errors.New("a Helm operation is pending; recover it before changing CA trust")
 	}
 	effective := valuesutil.CoalesceTables(copyValues(release.Config), copyValues(release.Chart.Values))
+	provider, _, err := providerValue(effective)
+	if err != nil {
+		return err
+	}
+	if provider != "radius" {
+		return errors.New("CA rotation requires the radius mTLS provider; external-provider aggregation rotation is not supported")
+	}
 	mode, err := resolveAuthzMode(nil, effective)
 	if err != nil {
 		return err

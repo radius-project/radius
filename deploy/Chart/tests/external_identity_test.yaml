@@ -213,6 +213,13 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: external provider cannot use de.ucpMTLS.enabled
+  - it: rejects external issuer mode without entering managed rotation
+    set:
+      global.rbac.certificates.mode: issuerRef
+    template: global/external-identity.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: external provider supports only the existing selfSigned aggregation certificate; caSecret/issuerRef require coordinated aggregation CA migration
   - it: supports dry run without changing its authorization mode
     set:
       global.rbac.enabled: false

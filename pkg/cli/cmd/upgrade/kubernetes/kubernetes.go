@@ -224,9 +224,9 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	currentVersion := state.RadiusVersion
 	if r.Certificates.RotationPhase != "" {
-		if r.Chart != "" || r.Version != "" || len(r.Set) != 0 || len(r.SetFile) != 0 ||
+		if r.MTLS.Provider != "" || r.Chart != "" || r.Version != "" || len(r.Set) != 0 || len(r.SetFile) != 0 ||
 			len(r.ContourSet) != 0 || len(r.ContourSetFile) != 0 || r.ResetValues {
-			return fmt.Errorf("CA rotation cannot be combined with chart, version, values, or Contour changes")
+			return fmt.Errorf("CA rotation cannot be combined with mTLS provider, chart, version, values, or Contour changes")
 		}
 		options := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{Certificates: r.Certificates})
 		options.RadiusReleaseValues = state.RadiusValues

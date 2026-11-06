@@ -203,6 +203,19 @@ func TestRotationShippingWorkloadTrust(t *testing.T) {
 					require.Equal(t, state.Plan.Issuer, issuer)
 					require.Equal(t, state.ID+"/complete", certificate.GetAnnotations()[rotationRevision])
 				}
+
+				// A stored rotation must not disappear behind external token projections,
+				// including when component authorization is dormant.
+				_, externalChart := shippingTemplatesChart(t, "_helpers.tpl", "_rotation.tpl", "_bootstrap.tpl", "global/certificates.yaml")
+				for _, enabled := range []bool{false, true} {
+					externalValues := externalProviderValues()
+					rbacSettings(externalValues)["dryRun"] = enabled
+					render := helm.NewInstall(configuration)
+					render.ReleaseName, render.Namespace = store.release, store.namespace
+					render.DryRunStrategy = helm.DryRunServer
+					_, err := render.RunWithContext(t.Context(), externalChart, externalValues)
+					require.ErrorContains(t, err, "external provider cannot use an existing CA rotation journal")
+				}
 			})
 		}
 	}
