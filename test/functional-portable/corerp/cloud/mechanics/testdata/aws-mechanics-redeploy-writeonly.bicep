@@ -1,17 +1,17 @@
 extension aws
 
-@description('Name and alias of the key pair.')
-param keyPairName string
+@description('Name and alias of the bucket.')
+param bucketName string
 
 @description('Unix time the test started, used by the job that purges leaked test resources.')
 param creationTimestamp string
 
-// KeyFormat is write-only and create-only: AWS never returns it and it cannot change after create.
-resource keyPair 'AWS.EC2/KeyPair@default' = {
-  alias: keyPairName
+// BucketNamespace is write-only and create-only: AWS never returns it and it cannot change after create.
+resource bucket 'AWS.S3/Bucket@default' = {
+  alias: bucketName
   properties: {
-    KeyName: keyPairName
-    KeyFormat: 'pem'
+    BucketName: bucketName
+    BucketNamespace: 'global'
     Tags: [
       {
         Key: 'RadiusCreationTimestamp'

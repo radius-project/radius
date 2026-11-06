@@ -3,8 +3,8 @@ extension aws
 @description('Name and alias of the log group.')
 param logGroupName string
 
-@description('Alias of the DHCP option set, also set as its Name tag so the test can find it in AWS.')
-param dhcpOptionsName string
+@description('Name and alias of the query definition. The test finds it in AWS by this name.')
+param queryDefinitionName string
 
 @description('Unix time the test started, used by the job that purges leaked test resources.')
 param creationTimestamp string
@@ -23,22 +23,11 @@ resource logGroup 'AWS.Logs/LogGroup@default' = {
   }
 }
 
-// AWS assigns the identifier of a DHCP option set, so UCP deletes it by the identifier it recorded for the alias.
-resource dhcpOptions 'AWS.EC2/DHCPOptions@default' = {
-  alias: dhcpOptionsName
+// AWS assigns the identifier of a query definition, so UCP deletes it by the identifier it recorded for the alias.
+resource queryDefinition 'AWS.Logs/QueryDefinition@default' = {
+  alias: queryDefinitionName
   properties: {
-    DomainNameServers: [
-      'AmazonProvidedDNS'
-    ]
-    Tags: [
-      {
-        Key: 'Name'
-        Value: dhcpOptionsName
-      }
-      {
-        Key: 'RadiusCreationTimestamp'
-        Value: creationTimestamp
-      }
-    ]
+    Name: queryDefinitionName
+    QueryString: 'fields @timestamp, @message | limit 1'
   }
 }

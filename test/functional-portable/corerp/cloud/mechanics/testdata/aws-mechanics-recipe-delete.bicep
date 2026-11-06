@@ -3,8 +3,8 @@ extension radius
 @description('Name and alias of the log group the recipe creates.')
 param logGroupName string
 
-@description('Alias and Name tag of the DHCP option set the recipe creates.')
-param dhcpOptionsName string
+@description('Name and alias of the query definition the recipe creates.')
+param queryDefinitionName string
 
 @description('Unix time the test started, used by the job that purges leaked test resources.')
 param creationTimestamp string
@@ -69,7 +69,7 @@ resource extender 'Applications.Core/extenders@2023-10-01-preview' = {
       name: 'awsresources'
       parameters: {
         logGroupName: logGroupName
-        dhcpOptionsName: dhcpOptionsName
+        queryDefinitionName: queryDefinitionName
         creationTimestamp: creationTimestamp
       }
     }
