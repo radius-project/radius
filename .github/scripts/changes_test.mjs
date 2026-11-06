@@ -17,6 +17,7 @@ import { pathToFileURL } from "node:url";
 import test from "node:test";
 
 import changes from "./changes.mjs";
+import { selectNonCloudTests } from "./functional-test-matrix.mjs";
 
 const workflow = (
   await readFile(new URL("../workflows/__changes.yml", import.meta.url), "utf8")
@@ -38,7 +39,8 @@ function createCore(
         ALL_FILES_COUNT: "2",
         IGNORED_FILES_COUNT: onlyChanged === "true" ? "2" : "1",
         RELEASE_FILES_COUNT: releaseMetadata === "true" ? "1" : "0",
-        WORKFLOW_FILES_COUNT: "0"
+        WORKFLOW_FILES_COUNT: "0",
+        AUTHZ_FILES_COUNT: "0"
       })[name],
     info() {},
     setOutput: (name, value) => outputs.push([name, value]),
@@ -67,7 +69,8 @@ for (const eventName of [...filteringEvents, ...otherEvents]) {
             filteringEvents.includes(eventName) || Boolean(baseSha);
           assert.deepEqual(core.outputs, [
             ["only_changed", filtered ? onlyChanged : "false"],
-            ["release_metadata", filtered ? releaseMetadata : "false"]
+            ["release_metadata", filtered ? releaseMetadata : "false"],
+            ["authz_changed", filtered ? "false" : "true"]
           ]);
           assert.deepEqual(core.failures, []);
         });
@@ -95,6 +98,7 @@ function filterGroup(name) {
 
 const releasePatterns = filterGroup("release_metadata");
 const workflowPatterns = filterGroup("workflows");
+const authzPatterns = filterGroup("authz");
 
 function countMatchingFiles(files, filePatterns = patterns) {
   const included = filePatterns.filter((pattern) => !pattern.startsWith("!"));
@@ -179,20 +183,110 @@ for (const eventName of filteringEvents) {
           ALL_FILES_COUNT: String(files.length),
           IGNORED_FILES_COUNT: countMatchingFiles(files),
           RELEASE_FILES_COUNT: releaseFiles,
-          WORKFLOW_FILES_COUNT: countMatchingFiles(files, workflowPatterns)
+          WORKFLOW_FILES_COUNT: countMatchingFiles(files, workflowPatterns),
+          AUTHZ_FILES_COUNT: countMatchingFiles(files, authzPatterns)
         })[name];
       await changes({ context: { eventName }, core });
       assert.deepEqual(core.outputs, [
         ["only_changed", String(expected)],
-        ["release_metadata", String(Number(releaseFiles) > 0)]
+        ["release_metadata", String(Number(releaseFiles) > 0)],
+        [
+          "authz_changed",
+          String(Number(countMatchingFiles(files, authzPatterns)) > 0)
+        ]
       ]);
       assert.deepEqual(core.failures, []);
     });
   }
 }
 
+for (const [files, expected] of [
+  [["pkg/authz/mode.go"], true],
+  [["pkg/armrpc/frontend/server/server.go"], true],
+  [["pkg/armrpc/asyncoperation/worker/worker.go"], true],
+  [["pkg/corerp/backend/deployment/admission.go"], true],
+  [["pkg/corerp/backend/deployment/deploymentprocessor.go"], true],
+  [["pkg/corerp/frontend/controller/applications/updatefilter.go"], true],
+  [["pkg/corerp/frontend/controller/applications/admission_test.go"], true],
+  [
+    [
+      "pkg/corerp/frontend/controller/environments/v20250801preview/createorupdateenvironment.go"
+    ],
+    true
+  ],
+  [["pkg/kubeutil/namespace.go"], true],
+  [["pkg/kubeutil/namespace_test.go"], true],
+  [["pkg/cli/helm/cert_manager.go"], true],
+  [["pkg/cli/helm/cert_manager_test.go"], true],
+  [["pkg/ucp/proxy/proxy.go"], true],
+  [["cmd/ucpd/cmd/root.go"], true],
+  [["deploy/Chart/templates/ucp/deployment.yaml"], true],
+  [["test/functional-portable/authz/noncloud/mode_test.go"], true],
+  [[".github/scripts/functional-test-matrix.mjs"], true],
+  [[".github/workflows/functional-test-noncloud.yaml"], true],
+  [
+    [
+      "pkg/corerp/frontend/controller/environments/createorupdateenvironment.go"
+    ],
+    true
+  ],
+  [["pkg/cli/cmd/env/create/create.go"], false],
+  [["pkg/kubeutil/client.go"], false],
+  [
+    ["test/functional-portable/corerp/noncloud/resources/application_test.go"],
+    false
+  ],
+  [["docs/contributing/README.md"], false]
+]) {
+  test(`authorization paths: ${files.join(", ")} -> ${expected}`, async () => {
+    assert.equal(
+      Number(countMatchingFiles(files, authzPatterns)) > 0,
+      expected
+    );
+    const context = {
+      eventName: "pull_request",
+      payload: { pull_request: { base: { ref: "main" } } }
+    };
+    const core = createCore();
+    const getInput = core.getInput;
+    core.getInput = (name) =>
+      name === "AUTHZ_FILES_COUNT" ?
+        countMatchingFiles(files, authzPatterns)
+      : getInput(name);
+    await changes({ context, core });
+    assert.deepEqual(core.failures, []);
+    const authzChanged = Object.fromEntries(core.outputs).authz_changed;
+    assert.equal(authzChanged, String(expected));
+    const { matrix } = selectNonCloudTests({
+      ...context,
+      authzChanged: authzChanged !== "false"
+    });
+    assert.equal(matrix.include.length, expected ? 18 : 10);
+    assert.equal(
+      matrix.include.some(({ authzDryRun }) => authzDryRun),
+      expected
+    );
+    for (const name of [
+      "daprrp-noncloud",
+      "datastoresrp-noncloud",
+      "msgrp-noncloud"
+    ]) {
+      assert.equal(
+        matrix.include.some((leg) => leg.name === name && !leg.authzDryRun),
+        expected
+      );
+    }
+  });
+}
+
 for (const eventName of [...filteringEvents, "workflow_run"]) {
-  for (const [allFiles, ignoredFiles, releaseFiles, workflowFiles] of [
+  for (const [
+    allFiles,
+    ignoredFiles,
+    releaseFiles,
+    workflowFiles,
+    authzFiles = "0"
+  ] of [
     ["", "2", "0", "0"],
     ["2", undefined, "0", "0"],
     ["2", "unknown", "0", "0"],
@@ -203,9 +297,11 @@ for (const eventName of [...filteringEvents, "workflow_run"]) {
     ["2", "2", "", "0"],
     ["2", "2", "0", undefined],
     ["2", "2", "3", "0"],
-    ["2", "2", "0", "3"]
+    ["2", "2", "0", "3"],
+    ["2", "2", "0", "0", "3"],
+    ["2", "2", "0", "0", "unknown"]
   ]) {
-    test(`${eventName}: rejects invalid file counts ${allFiles}/${ignoredFiles}/${releaseFiles}/${workflowFiles}`, async () => {
+    test(`${eventName}: rejects invalid file counts ${allFiles}/${ignoredFiles}/${releaseFiles}/${workflowFiles}/${authzFiles}`, async () => {
       const core = createCore();
       core.getInput = (name) =>
         ({
@@ -213,7 +309,8 @@ for (const eventName of [...filteringEvents, "workflow_run"]) {
           ALL_FILES_COUNT: allFiles,
           IGNORED_FILES_COUNT: ignoredFiles,
           RELEASE_FILES_COUNT: releaseFiles,
-          WORKFLOW_FILES_COUNT: workflowFiles
+          WORKFLOW_FILES_COUNT: workflowFiles,
+          AUTHZ_FILES_COUNT: authzFiles
         })[name];
       await changes({ context: { eventName }, core });
       assert.deepEqual(core.outputs, []);
@@ -478,6 +575,11 @@ test("restoration failures cannot bypass the normal success gate or change outpu
       "INPUT_WORKFLOW_FILES_COUNT: ${{ steps.filter.outputs.workflows_all_changed_and_modified_files_count }}"
     )
   );
+  assert.ok(
+    result.includes(
+      "INPUT_AUTHZ_FILES_COUNT: ${{ steps.filter.outputs.authz_all_changed_and_modified_files_count }}"
+    )
+  );
   assert.ok(result.includes("INPUT_BASE_SHA: ${{ inputs.base_sha }}"));
   assert.ok(
     workflow.includes(
@@ -494,6 +596,14 @@ test("restoration failures cannot bypass the normal success gate or change outpu
   );
   assert.ok(
     workflow.includes("value: ${{ jobs.changes.outputs.release_metadata }}")
+  );
+  assert.ok(
+    workflow.includes(
+      "authz_changed: ${{ steps.set-result.outputs.authz_changed }}"
+    )
+  );
+  assert.ok(
+    workflow.includes("value: ${{ jobs.changes.outputs.authz_changed }}")
   );
 });
 
@@ -537,7 +647,8 @@ test("the actual result script imports the restored helper, not PR content", asy
   });
   assert.deepEqual(core.outputs, [
     ["only_changed", "false"],
-    ["release_metadata", "false"]
+    ["release_metadata", "false"],
+    ["authz_changed", "false"]
   ]);
   assert.deepEqual(core.failures, []);
 });

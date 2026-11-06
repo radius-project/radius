@@ -15,6 +15,7 @@ export default async ({ context, core }) => {
 
     let result;
     let releaseMetadata = "false";
+    let authzChanged = "true";
     if (
       eventName === "pull_request" ||
       eventName === "pull_request_target" ||
@@ -25,7 +26,8 @@ export default async ({ context, core }) => {
       const ignoredFiles = core.getInput("IGNORED_FILES_COUNT");
       const releaseFiles = core.getInput("RELEASE_FILES_COUNT");
       const workflowFiles = core.getInput("WORKFLOW_FILES_COUNT");
-      const subsets = [ignoredFiles, releaseFiles, workflowFiles];
+      const authzFiles = core.getInput("AUTHZ_FILES_COUNT");
+      const subsets = [ignoredFiles, releaseFiles, workflowFiles, authzFiles];
       if (
         [allFiles, ...subsets].some(
           (count) =>
@@ -37,13 +39,14 @@ export default async ({ context, core }) => {
         throw new Error("Change filter returned invalid file counts");
       }
       releaseMetadata = String(Number(releaseFiles) > 0);
+      authzChanged = String(Number(authzFiles) > 0);
       result = String(
         Number(allFiles) > 0 &&
           allFiles === ignoredFiles &&
           !(releaseMetadata === "true" && Number(workflowFiles) > 0)
       );
       core.info(
-        `PR-like event: ${ignoredFiles}/${allFiles} paths match the skip patterns; release=${releaseFiles}, workflows=${workflowFiles}`
+        `PR-like event: ${ignoredFiles}/${allFiles} paths match the skip patterns; release=${releaseFiles}, workflows=${workflowFiles}, authz=${authzFiles}`
       );
     } else {
       core.info(
@@ -54,6 +57,7 @@ export default async ({ context, core }) => {
 
     core.setOutput("only_changed", result);
     core.setOutput("release_metadata", releaseMetadata);
+    core.setOutput("authz_changed", authzChanged);
   } catch (error) {
     const message =
       error instanceof Error ?

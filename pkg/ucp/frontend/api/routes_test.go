@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp"
+	"github.com/radius-project/radius/pkg/ucp/authorization/routetest"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
@@ -124,7 +125,11 @@ func Test_Routes(t *testing.T) {
 
 	rpctest.AssertRouters(t, tests, pathBase, "", func(ctx context.Context) (chi.Router, error) {
 		r := chi.NewRouter()
-		return r, Register(ctx, r, []modules.Initializer{&testModule{}}, options)
+		err := Register(ctx, r, []modules.Initializer{&testModule{}}, options)
+		if err == nil {
+			routetest.AssertMapped(t, r, pathBase)
+		}
+		return r, err
 	})
 }
 
