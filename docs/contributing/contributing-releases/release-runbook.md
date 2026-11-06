@@ -125,4 +125,6 @@ For a frozen first RC, use the resolved release commit from the summary. Before 
 
 **Release plan check fails on the bicep-types-aws Radius pin:** the planned `bicep-types-aws` commit doesn't pin the plan's product commit. [Set the pin](./README.md#pin-radius-in-bicep-types-aws) on `bicep-types-aws` `release/X.Y` to the product commit named in the error, then rerun Prepare Release with the same inputs.
 
+**Release controller fails on the bicep-types-aws Radius pin:** the release PR merged without a passing release plan check. Nothing was tagged, but the merged plan and its `bicep-types-aws` commit can't change, so resuming fails the same way. Follow [break-glass recovery](./README.md#break-glass-recovery).
+
 Never move approved tags, delete locks, overwrite published artifacts, or disable verification. Follow [break-glass recovery](./README.md#break-glass-recovery) for conflicts or fixes needed in already-tagged build code.

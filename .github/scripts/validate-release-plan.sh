@@ -29,7 +29,6 @@ REPOSITORY=""
 BACKPORTS_FILE=""
 TEMP_DIR=""
 GENERATED_WORKTREE=""
-readonly RADIUS_PIN_DOC='https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-releases/README.md#pin-radius-in-bicep-types-aws'
 PREPARE_RELEASE_SCRIPT="${PREPARE_RELEASE_SCRIPT:-}"
 if [[ -z "${PREPARE_RELEASE_SCRIPT}" ]]; then
     PREPARE_RELEASE_SCRIPT="${SCRIPT_DIR}/prepare-release.sh"
@@ -177,39 +176,12 @@ verify_planned_siblings() {
             "${head}" 2> /dev/null \
                                   || fail "planned ${name} commit ${source_commit} is not reachable from ${source_ref} at ${head}"
         if [[ "${name}" == "bicep-types-aws" ]]; then
-            verify_radius_pin "${scratch}" "${channel}" "${source_commit}"
+            bash "${SCRIPT_DIR}/verify-bicep-types-aws-radius-pin.sh" \
+                "${scratch}" "${source_commit}" \
+                "$(plan_value '.source.productCommit')" < /dev/null
         fi
     done < <(jq -r '.[] | [.name, .sourceRef, .sourceCommit] | @tsv' \
         "${planned}")
-}
-
-# bicep-types-aws generates Bicep types from the Radius schemas at the commit
-# its radius submodule pins, so its release must pin the commit this release
-# ships. Commits from before the submodule existed have nothing to check.
-verify_radius_pin() {
-    local scratch="$1"
-    local channel="$2"
-    local source_commit="$3"
-    local product_commit entry mode object_type pinned fix
-
-    product_commit="$(plan_value '.source.productCommit')"
-    fix="Set the radius submodule on bicep-types-aws release/${channel} to ${product_commit}, then rerun Prepare Release. See ${RADIUS_PIN_DOC}"
-    entry="$(git -C "${scratch}" ls-tree "${source_commit}" -- radius)"
-    if [[ -z "${entry}" ]]; then
-        if [[ -n "$(git -C "${scratch}" log -1 --format=%H \
-            "${source_commit}" -- radius)" ]]; then
-            fail "bicep-types-aws commit ${source_commit} removed its radius submodule. ${fix}"
-        fi
-        echo "::notice::bicep-types-aws commit ${source_commit} has no radius submodule, so there is no Radius pin to check."
-        return
-    fi
-    read -r mode object_type pinned _ <<< "${entry}"
-    if [[ "${mode}" != "160000" || "${object_type}" != "commit" ]]; then
-        fail "bicep-types-aws commit ${source_commit} has a radius path that is not a submodule. ${fix}"
-    fi
-    if [[ "${pinned}" != "${product_commit}" ]]; then
-        fail "bicep-types-aws commit ${source_commit} pins Radius ${pinned}, but this release ships Radius ${product_commit}. ${fix}"
-    fi
 }
 
 regenerate_release() {
