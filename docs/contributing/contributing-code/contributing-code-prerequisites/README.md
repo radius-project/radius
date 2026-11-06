@@ -8,7 +8,7 @@ This guide sets up a development environment for contributing to Radius. It is t
 
 ## Prerequisites
 
-- A supported operating system: macOS, Linux, or Windows with [WSL](https://docs.microsoft.com/windows/wsl/install).
+- A supported operating system: macOS, Linux, or Windows. Native Windows supports the [Task build/test proof of concept](#native-task-build-and-test); use [WSL](https://docs.microsoft.com/windows/wsl/install) for the remaining shell-based workflows.
 - A GitHub account and a clone (or fork) of the repository.
 - For either container-based option, a way to run Linux containers — [Docker](https://docs.docker.com/engine/install/) locally, or a Codespace in the cloud.
 
@@ -75,7 +75,7 @@ Install both, then follow the *Quick Start* for the Go extension. It walks you t
 
 #### Core dependencies
 
-Install these for the most common tasks. We expect all contributors to have all of them:
+Install these for the full contributor workflow. For only native builds and local tests, the smaller [Task setup](#native-task-build-and-test) is sufficient:
 
 - [Git](https://git-scm.com/downloads)
 - [Go](https://golang.org/doc/install)
@@ -86,6 +86,23 @@ Install these for the most common tasks. We expect all contributors to have all 
 - Make (see [Install Make](#install-make))
 
 [Docker](https://docs.docker.com/engine/install/) is not needed for `make build` or `make lint`, but you do need it to build the container images or to run the [VS Code dev container](#vs-code-and-dev-container). Install it if your task involves either.
+
+#### Native Task build and test
+
+Install [Task 3.53+](https://taskfile.dev/installation/), Git, and the Go version specified in [go.mod](../../../../go.mod). `task test` also needs a C compiler compatible with Go's cgo support; builds use Go's platform defaults and may need one when cgo is enabled. Only the separate `task test:helm` command needs [Helm](https://helm.sh/docs/intro/install/) and a preinstalled [unittest plugin](https://github.com/helm-unittest/helm-unittest#install). Ordinary Task commands do not need Python, WSL, a container runtime, or a cluster. They automate local development, not generation, image builds, release packaging, or comprehensive CI checks. See [building with Task](../contributing-code-building/README.md#cross-platform-task-proof-of-concept) and [local Task tests](../contributing-code-tests/README.md#cross-platform-task-tests) for usage.
+
+On **Windows amd64**, one compiler option is the prebuilt `ucrt-x86_64` Windows ZIP from [LLVM-MinGW releases](https://github.com/mstorsjo/llvm-mingw/releases). Extract it into a tools directory, then set `CC` and add its `bin` directory to `PATH` in the terminal running Task. For example, if `bin` is under `C:\Tools\llvm-mingw`:
+
+```powershell
+$env:CC = 'C:\Tools\llvm-mingw\bin\clang.exe'
+$env:PATH = "C:\Tools\llvm-mingw\bin;$env:PATH"
+& $env:CC --version
+task test
+```
+
+These assignments affect only the current PowerShell session; Task does not configure the machine or require PowerShell internally. MinGW-w64 GCC is another supported option. Use a GCC-compatible driver, not the Visual Studio `cl.exe` compiler. On **macOS**, install Xcode command-line tools with `xcode-select --install`; on **Linux**, install your distribution's GCC toolchain. The current envtest selection uses amd64 assets, so ARM64 hosts require compatibility support.
+
+Ensure `task --version`, `go version`, and `git --version` resolve in the same terminal. On Windows, `Get-Command task, go, git` identifies missing tools. `go env CC` reports the configured C compiler. `task test -- -count=1` bypasses Go's test-result cache, not its compilation cache; investigate compiler errors explicitly rather than disabling cgo. `task install` writes to `%LOCALAPPDATA%\radius` on Windows or `$HOME/.local/bin` on macOS/Linux, so add that directory to `PATH` as described by the official installer if it is not already present. If you will use `task test:helm`, also check `helm version --short` and `helm unittest --help`.
 
 #### Install Make
 
@@ -144,7 +161,7 @@ pnpm -C typespec install
 
 ## Verification
 
-Whichever option you chose, verify the toolchain by building and linting from the repository root:
+For the native Task setup, run `task build` followed by `task test` from the repository root. For the full contributor setup, verify building and linting:
 
 ```bash
 make build && make lint

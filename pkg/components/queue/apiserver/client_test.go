@@ -97,10 +97,10 @@ func TestGenerateID(t *testing.T) {
 func TestClient(t *testing.T) {
 	rc, env, err := kubeenv.StartEnvironment([]string{filepath.Join("..", "..", "..", "..", "deploy", "Chart", "crds", "ucpd")})
 
-	require.NoError(t, err, "If this step is failing for you, run `make test` inside the repository and try again. If you are still stuck then ask for help.")
-	defer func() {
-		_ = env.Stop()
-	}()
+	require.NoError(t, err, "If this step is failing for you, run the package through `task test` or run `make test` inside the repository and try again. If you are still stuck then ask for help.")
+	t.Cleanup(func() {
+		require.NoError(t, env.Stop())
+	})
 
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)

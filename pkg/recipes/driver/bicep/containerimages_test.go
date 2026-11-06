@@ -527,10 +527,13 @@ users:
 	require.NoError(t, err)
 	dirInfo, err := os.Stat(dir)
 	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0o700), dirInfo.Mode().Perm())
 	configInfo, err := os.Stat(filepath.Join(dir, "config.json"))
 	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0o600), configInfo.Mode().Perm())
+	// Windows reports synthesized mode bits, not the file's ACL permissions.
+	if filepath.Separator != '\\' {
+		require.Equal(t, os.FileMode(0o700), dirInfo.Mode().Perm())
+		require.Equal(t, os.FileMode(0o600), configInfo.Mode().Perm())
+	}
 	var config map[string]map[string]map[string]string
 	require.NoError(t, json.Unmarshal(data, &config))
 	require.Equal(t, "b2N0b2NhdDpzM2NyZXQ=", config["auths"]["ghcr.io"]["auth"])

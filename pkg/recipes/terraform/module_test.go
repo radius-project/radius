@@ -18,6 +18,7 @@ package terraform
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -106,7 +107,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 						"required":     true,
 						"sensitive":    false,
 						"pos": tfconfig.SourcePos{
-							Filename: "testdata/.terraform/modules/test-module-recipe-context-outputs/variables.tf",
+							Filename: filepath.FromSlash("testdata/.terraform/modules/test-module-recipe-context-outputs/variables.tf"),
 							Line:     1,
 						},
 					},
@@ -169,7 +170,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 				Name:         "test-submodule",
 				TemplatePath: "test-submodule//../missing-submodule",
 			},
-			err: "module path \"../missing-submodule\" must be local",
+			err: fmt.Sprintf("module path %q must be local", filepath.Join("..", "missing-submodule")),
 		},
 		{
 			name: "module directory without Terraform configuration",

@@ -141,7 +141,7 @@ func (th *TestHost) T() *testing.T {
 
 // AllocateFreePort chooses a random port for use in tests.
 func AllocateFreePort(t *testing.T) int {
-	listener, err := net.Listen("tcp", ":0")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err, "failed to allocate port")
 
 	port := listener.Addr().(*net.TCPAddr).Port

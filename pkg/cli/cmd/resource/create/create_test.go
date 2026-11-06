@@ -63,11 +63,10 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
-			Name:                "Invalid: non-JSON file",
-			Input:               []string{"Applications.Test/exampleResources", "my-example", "--from-file", filepath.Join(directory, "invalid-resource.json")},
-			ExpectedValid:       false,
-			ConfigHolder:        framework.ConfigHolder{Config: config},
-			CreateTempDirectory: directory,
+			Name:          "Invalid: non-JSON file",
+			Input:         []string{"Applications.Test/exampleResources", "my-example", "--from-file", filepath.Join(directory, "invalid-resource.json")},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
 			Name:          "Invalid: missing input file",

@@ -7,6 +7,7 @@ This is the authoritative overview of the Radius test suite. It names every test
 ## Prerequisites
 
 - The [basic prerequisites](../contributing-code-prerequisites/) (Go toolchain, `make`, Git). These cover the unit, integration, and CLI integration tiers. The Helm chart unit tests run as part of `make test`, so **Helm** must also be installed (listed under [additional tools](../contributing-code-prerequisites/#additional-tools)).
+- For native `task test`, use the [Task setup](../contributing-code-prerequisites/README.md#native-task-build-and-test) instead; it does not require the legacy build tools.
 - A Kubernetes cluster and extra setup are required only for the functional and local-iteration tiers — those prerequisites are listed on their own pages, linked below. The Bicep validation tier additionally needs Bicep downloaded (`rad bicep download`).
 
 ## Steps
@@ -36,6 +37,29 @@ make test
 `make test` runs the Go unit tests under `./pkg/...` and the Helm chart unit tests. We require unit tests for new code and for fixes or refactors of existing code; as a rule, every PR should add or change some tests. Unit tests must run with only the [basic prerequisites](../contributing-code-prerequisites/) installed — do not add external dependencies for a unit test; write an integration test instead.
 
 To compile every test without running them, use `make test-compile`.
+
+### Cross-platform Task tests
+
+With the [Task prerequisites](../contributing-code-prerequisites/README.md#native-task-build-and-test) installed, run `task test` on native Windows, macOS, or Linux. It runs local Go tests under `./pkg/...` by default; set `PACKAGE` to focus on a package or pattern. It does not run Helm, Python, installation lifecycle, validation, or functional suites automatically, and it does not create a Kubernetes cluster. The broader Make/CI workflows remain responsible for comprehensive validation.
+
+```sh
+task test
+task test -- -count=1
+task test PACKAGE=./pkg/recipes/terraform -- -run TestExample
+task test PACKAGE=./test/validation/...
+task test PACKAGE=./test/ucp/kubeenv
+task test:helm
+```
+
+Pass Go test options after Task's `--`. Tests use gotestsum's default reporting, the local OS/architecture, and `CGO_ENABLED=1`, even if cross-compilation environment defaults are set. Set `CC` to your C compiler if Go cannot find it on `PATH`. `task --exit-code test` preserves a failing test command's exit code; without that option Task still returns nonzero on failure.
+
+The Go-module-pinned `setup-envtest` tool selects and caches Kubernetes `1.30.*` assets for the local OS and returns their absolute path to the tests. Setup runs even for a focused test invocation so envtest-dependent tests are not silently skipped. Task currently selects amd64 assets; ARM64 hosts need compatibility support. Network access is needed for uncached Go dependencies and envtest assets. Task manages `KUBEBUILDER_ASSETS` itself rather than accepting an override.
+
+Tests starting an envtest control plane should use `kubeenv.NewEnvironment` from `test/ucp/kubeenv` and check `Stop` errors during cleanup. This wrapper handles Windows child-process termination, where envtest's POSIX signal-based shutdown is unsupported, while retaining normal envtest shutdown on Unix. It also cleans up after failed initialization.
+
+`task test:helm` runs `helm unittest .` in `deploy/Chart`. Install Helm and its [unittest plugin](https://github.com/helm-unittest/helm-unittest#install) separately before invoking it. Task does not install or update plugins; a missing plugin fails with Helm's diagnostic. Standard `HELM_PLUGINS` configuration is respected.
+
+When editing the Taskfile, its optional command-level regression tests run with `python -m unittest discover -s build/task -p "*_test.py"` (use `python3` on Unix). These require Python 3.9+, Task, and Go, but no real Helm installation or servers. They execute the actual Taskfile with native command fakes to cover local-platform selection, package/flag forwarding, working directories, and failure propagation. They are not part of ordinary `task build` or `task test`. Installation lifecycle tests likewise remain separate: run their existing script/test entry point when changing that logic.
 
 ### Integration tests
 

@@ -7,7 +7,7 @@ This is the authoritative guide for building Radius from source. It covers build
 ## Prerequisites
 
 - The repository cloned locally. See [Creating your own fork](../contributing-code-forks/index.md).
-- The tools listed in the [prerequisites guide](../contributing-code-prerequisites/README.md) — at minimum Go (the version pinned in [go.mod](../../../../go.mod)) and GNU Make.
+- For native builds and local tests, follow the [Task setup](../contributing-code-prerequisites/README.md#native-task-build-and-test). Other workflows use the tools listed in the [prerequisites guide](../contributing-code-prerequisites/README.md).
 - For building container images: a working Docker daemon and a registry you can push to.
 - For `make generate`: the extra code-generation tools listed under [Install code-generation tools](../contributing-code-prerequisites/README.md#install-code-generation-tools).
 
@@ -36,6 +36,31 @@ To build with debug symbols (`-gcflags "all=-N -l"`), set `DEBUG=1`:
 ```sh
 DEBUG=1 make build-rad
 ```
+
+### Cross-platform Task proof of concept
+
+The root [Taskfile](../../../../Taskfile.yml) provides developer automation on native Windows, macOS, and Linux, not a replacement for the comprehensive build and validation workflows above. Follow the [native Task setup](../contributing-code-prerequisites/README.md#native-task-build-and-test). These commands do not require Python or invoke Make or shell scripts. Task uses its built-in `mkdir` on Windows; do not disable `TASK_CORE_UTILS`.
+
+```sh
+task --list
+task build
+task build PACKAGE=./cmd/rad
+task build PACKAGE=./cmd/controller
+task build PACKAGE=./pkg/version
+task build PACKAGE=./cmd/rad -- -gcflags="all=-N -l"
+task build -- -trimpath
+task install
+task test
+task test:helm
+```
+
+`task build` compiles all non-test Go packages in the root module and the nested `test/testrp` and `test/magpiego` modules. Each module gets one `go build ./...` invocation because Go's package patterns do not cross module boundaries. Executables are written to `dist/dev`, with names and Windows `.exe` suffixes chosen by Go. Set `PACKAGE` to a specific package or narrower pattern in the root module to build only that selection, including library packages that do not produce executables. Paths are resolved from the repository root, including when Task is called from a subdirectory. Builds target the local platform regardless of cross-compilation environment defaults and otherwise use Go's configuration and default parallelism. Arguments after `--` go to every selected `go build` invocation, including debug compiler flags.
+
+Local binaries retain Go's normal symbols and the development version defaults in the source (`edge`, with an `unknown` commit in `rad version`). Task does not inject release metadata or stage a Linux Bicep container payload; use the existing build/image/release workflows for packaging. `go build` does not compile files ending in `_test.go`; use the [Task test commands](../contributing-code-tests/README.md#cross-platform-task-tests) to exercise tests. Local Go testing is separate from optional chart testing.
+
+Build commands use `go build -v`, so compiled package names and compiler diagnostics appear directly in the console. Packages reused from Go's build cache do not print compilation lines; Task does not force unnecessary recompilation to produce output.
+
+`task install` builds `./cmd/rad` and copies the local development binary to the same user-profile directory used by the official installer scripts: `%LOCALAPPDATA%\radius\rad.exe` on Windows and `$HOME/.local/bin/rad` on macOS/Linux. It never uses an administrator-owned directory or `sudo`. Set `INSTALL_DIR` to override the destination, matching the installer scripts' override name. The command replaces an existing binary at that destination; ensure the directory is on `PATH` using the guidance printed by the official installers.
 
 ### Build, test, lint, and check formatting
 

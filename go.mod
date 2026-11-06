@@ -338,3 +338,6 @@ tool (
 	// sigs.k8s.io/controller-tools vX.Y.Z <- the actual pinned version above of this tool
 	sigs.k8s.io/controller-tools/cmd/controller-gen
 )
+
+// controller-runtime v0.25.2 does not compile envtest on Windows. Remove this replacement after #13174 is resolved.
+replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.24.1

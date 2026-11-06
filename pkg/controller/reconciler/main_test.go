@@ -24,6 +24,7 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/go-logr/logr"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/test/ucp/kubeenv"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -56,13 +57,13 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	env := &envtest.Environment{
+	env := kubeenv.NewEnvironment(&envtest.Environment{
 		CRDDirectoryPaths: []string{
 			filepath.Join("..", "..", "..", "deploy", "Chart", "crds", "radius"),
 			filepath.Join("..", "..", "..", "test", "crd", "flux"),
 		},
 		ErrorIfCRDPathMissing: true,
-	}
+	})
 
 	cfg, err := env.Start()
 	if err != nil {
@@ -91,7 +92,7 @@ func TestMain(m *testing.M) {
 
 func SkipWithoutEnvironment(t *testing.T) {
 	if config == nil {
-		t.Skip("Skipping test because envtest could not be started. Running `make test` will run tests with the correct setting.")
+		t.Skip("Skipping test because envtest could not be started. Running through `task test` or `make test` will provide the correct setting.")
 		return
 	}
 }

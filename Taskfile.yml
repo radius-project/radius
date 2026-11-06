@@ -1,0 +1,61 @@
+version: '3.53'
+
+tasks:
+  default:
+    cmds:
+      - '{{.TASK_EXE | q}} --list'
+
+  build:
+    desc: Compile all Go modules locally, or select a PACKAGE; executables go to dist/dev
+    vars:
+      PACKAGE: '{{.PACKAGE | default "./..."}}'
+      MODULES:
+        ref: 'ternary (list "." "./test/testrp" "./test/magpiego") (list ".") (eq .PACKAGE "./...")'
+      PACKAGE_NAMES:
+        sh: GOOS={{OS}} GOARCH={{ARCH}} go list -f '{{"{{.Name}}"}}' {{range .CLI_ARGS_LIST}}{{. | q}} {{end}} {{.PACKAGE | q}}
+      OUTPUT: '{{if has "main" (splitLines .PACKAGE_NAMES)}}-o {{joinPath .ROOT_DIR "dist/dev" | q}}{{end}}'
+    cmds:
+      - mkdir -p dist/dev
+      - for:
+          var: MODULES
+        cmd: >-
+          GOOS={{OS}} GOARCH={{ARCH}}
+          go -C {{.ITEM | q}} build {{.OUTPUT}} -v
+          {{range .CLI_ARGS_LIST}}{{. | q}} {{end}}
+          {{.PACKAGE | q}}
+
+  install:
+    desc: Build rad locally and install it to the user-profile CLI directory
+    vars:
+      DEFAULT_INSTALL_DIR: '{{if eq OS "windows"}}{{joinPath .LOCALAPPDATA "radius"}}{{else}}{{joinPath .HOME ".local/bin"}}{{end}}'
+      INSTALL_DIR: '{{.INSTALL_DIR | default .DEFAULT_INSTALL_DIR}}'
+      RAD: '{{joinPath .ROOT_DIR "dist/dev" (printf "rad%s" (exeExt))}}'
+      DESTINATION: '{{joinPath .INSTALL_DIR (printf "rad%s" (exeExt))}}'
+    cmds:
+      - task: build
+        vars:
+          PACKAGE: ./cmd/rad
+      - mkdir -p {{.INSTALL_DIR | q}}
+      - cp {{.RAD | q}} {{.DESTINATION | q}}
+
+  test:
+    desc: Run local Go tests; optionally select a PACKAGE
+    vars:
+      PACKAGE: '{{.PACKAGE | default "./pkg/..."}}'
+      ASSETS:
+        sh: >-
+          GOOS={{OS}} GOARCH={{ARCH}}
+          go tool setup-envtest use -p path '1.30.*' --arch amd64
+    cmds:
+      - >-
+        GOOS={{OS}} GOARCH={{ARCH}} CGO_ENABLED=1
+        KUBEBUILDER_ASSETS={{.ASSETS | q}}
+        go tool gotestsum --
+        {{.PACKAGE | q}}
+        {{range .CLI_ARGS_LIST}}{{. | q}} {{end}}
+
+  test:helm:
+    desc: Run chart tests using the installed unittest plugin
+    dir: deploy/Chart
+    cmds:
+      - helm unittest .

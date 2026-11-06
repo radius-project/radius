@@ -27,6 +27,7 @@ app.bicep
 bicepconfig.json
 
 # Build Output
+__pycache__/
 bin/
 dist/
 logs/

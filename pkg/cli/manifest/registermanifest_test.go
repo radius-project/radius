@@ -45,6 +45,7 @@ func TestRegisterDirectory(t *testing.T) {
 		directoryPath            string
 		expectError              bool
 		expectedErrorMessage     string
+		expectedErrorCause       error
 		expectedResourceProvider string
 	}{
 		{
@@ -68,7 +69,8 @@ func TestRegisterDirectory(t *testing.T) {
 			planeName:                "local",
 			directoryPath:            "#^$/invalid",
 			expectError:              true,
-			expectedErrorMessage:     "failed to access manifest path #^$/invalid: stat #^$/invalid: no such file or directory",
+			expectedErrorMessage:     "failed to access manifest path #^$/invalid:",
+			expectedErrorCause:       os.ErrNotExist,
 			expectedResourceProvider: "",
 		},
 		{
@@ -89,6 +91,9 @@ func TestRegisterDirectory(t *testing.T) {
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErrorMessage)
+				if tt.expectedErrorCause != nil {
+					require.ErrorIs(t, err, tt.expectedErrorCause)
+				}
 			} else {
 				require.NoError(t, err)
 

@@ -41,6 +41,40 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
+func TestFluxControllerNativeFilePaths(t *testing.T) {
+	directory := t.TempDir()
+	fs := filesystem.NewMemMapFileSystem()
+	config := []byte("config:\n  - name: nested/app.bicep\n    params: nested/app.bicepparam\n")
+	require.NoError(t, fs.WriteFile(filepath.Join(directory, radiusConfigFileName), config, 0600))
+	for _, name := range []string{"app.bicep", "app.bicepparam"} {
+		require.NoError(t, fs.WriteFile(filepath.Join(directory, "nested", name), nil, 0600))
+	}
+	compiler := bicep.NewMockInterface(gomock.NewController(t))
+	templatePath := filepath.Join(directory, "nested", "app.json")
+	compiler.EXPECT().
+		Call("build", filepath.Join(directory, "nested", "app.bicep"), "--outfile", templatePath).
+		DoAndReturn(func(...string) ([]byte, error) {
+			return nil, fs.WriteFile(templatePath, []byte(`{"resources":[]}`), 0600)
+		})
+	paramsPath := filepath.Join(directory, "nested", "app.parameters.json")
+	compiler.EXPECT().
+		Call("build-params", filepath.Join(directory, "nested", "app.bicepparam"), "--outfile", paramsPath).
+		DoAndReturn(func(...string) ([]byte, error) {
+			return nil, fs.WriteFile(paramsPath, []byte(`{"parameters":{"name":{"value":"test"}}}`), 0600)
+		})
+
+	controller := &FluxController{FileSystem: fs, Bicep: compiler}
+	parsed, err := controller.parseAndValidateRadiusGitOpsConfigFromFile(directory, radiusConfigFileName)
+	require.NoError(t, err)
+	require.Len(t, parsed.Config, 1)
+	template, err := controller.runBicepBuild(t.Context(), directory, parsed.Config[0].Name)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"resources":[]}`, template)
+	params, err := controller.runBicepBuildParams(t.Context(), directory, parsed.Config[0].Params)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"name": map[string]any{"value": "test"}}, params)
+}
+
 func Test_FluxController_Basic(t *testing.T) {
 	testGitRepoName := "flux-basic-repo"
 	testGitRepoURL := fmt.Sprintf("https://github.com/radius-project/%s.git", testGitRepoName)
@@ -247,13 +281,12 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 				Return(nil, nil).
 				Times(1).
 				Do(func(args ...string) {
-					filePath := args[1]
 					outFilePath := args[3]
 					outFileName := filepath.Base(outFilePath)
 					localFilePath := s.Path
 					fileContent, err := os.ReadFile(path.Join(localFilePath, outFileName))
 					require.NoError(t, err)
-					err = fs.WriteFile(filePath, fileContent, 0644)
+					err = fs.WriteFile(outFilePath, fileContent, 0644)
 					require.NoError(t, err)
 				})
 			bicepCalls = append(bicepCalls, bicepBuildCall)
@@ -264,13 +297,12 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 					Return(nil, nil).
 					Times(1).
 					Do(func(args ...string) {
-						filePath := args[1]
 						outFilePath := args[3]
 						outFileName := filepath.Base(outFilePath)
 						localFilePath := s.Path
 						fileContent, err := os.ReadFile(path.Join(localFilePath, outFileName))
 						require.NoError(t, err)
-						err = fs.WriteFile(filePath, fileContent, 0644)
+						err = fs.WriteFile(outFilePath, fileContent, 0644)
 						require.NoError(t, err)
 					})
 				bicepCalls = append(bicepCalls, bicepBuildParamsCall)

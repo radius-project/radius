@@ -19,6 +19,7 @@ package kubeenv
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -34,17 +35,17 @@ import (
 
 // StartEnvironment creates k8s client and test environment. It returns an error if it
 // fails to initialize the environment or create the client.
-func StartEnvironment(crdPaths []string) (runtimeclient.Client, *envtest.Environment, error) {
+func StartEnvironment(crdPaths []string) (runtimeclient.Client, *Environment, error) {
 	assetDir, err := getKubeAssetsDir()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	testEnv := &envtest.Environment{
+	testEnv := NewEnvironment(&envtest.Environment{
 		CRDDirectoryPaths:     crdPaths,
 		ErrorIfCRDPathMissing: true,
 		BinaryAssetsDirectory: assetDir,
-	}
+	})
 
 	scheme := runtime.NewScheme()
 
@@ -60,8 +61,7 @@ func StartEnvironment(crdPaths []string) (runtimeclient.Client, *envtest.Environ
 		Scheme: scheme,
 	})
 	if err != nil {
-		_ = testEnv.Stop()
-		return nil, nil, fmt.Errorf("failed to create kubernetes client: %w", err)
+		return nil, nil, errors.Join(fmt.Errorf("failed to create kubernetes client: %w", err), testEnv.Stop())
 	}
 
 	return client, testEnv, nil

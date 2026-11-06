@@ -313,11 +313,11 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	return ctrl.Result{}, nil
 }
 
-func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename string) (armJSON string, err error) {
+func (r *FluxController) runBicepBuild(ctx context.Context, directory, filename string) (armJSON string, err error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	bicepFile := path.Join(filepath, filename)
-	outFile := path.Join(filepath, strings.ReplaceAll(filename, ".bicep", ".json"))
+	bicepFile := filepath.Join(directory, filename)
+	outFile := filepath.Join(directory, strings.ReplaceAll(filename, ".bicep", ".json"))
 
 	// Run bicep build on the bicep file
 	logger.Info(fmt.Sprintf("Running command: bicep build %s --outfile %s", bicepFile, outFile))
@@ -337,11 +337,11 @@ func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename s
 	return string(contents), nil
 }
 
-func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, filename string) (map[string]any, error) {
+func (r *FluxController) runBicepBuildParams(ctx context.Context, directory, filename string) (map[string]any, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	bicepParamsFile := path.Join(filepath, filename)
-	outfile := path.Join(filepath, strings.ReplaceAll(filename, ".bicepparam", ".parameters.json"))
+	bicepParamsFile := filepath.Join(directory, filename)
+	outfile := filepath.Join(directory, strings.ReplaceAll(filename, ".bicepparam", ".parameters.json"))
 
 	// Run bicep build-params on the bicep file
 	logger.Info("Running bicep build-params on " + bicepParamsFile)
@@ -437,7 +437,7 @@ func (r *FluxController) parseAndValidateRadiusGitOpsConfigFromFile(dir, configF
 	radiusConfig := RadiusGitOpsConfig{}
 
 	// Read the file contents
-	b, err := r.FileSystem.ReadFile(path.Join(dir, configFileName))
+	b, err := r.FileSystem.ReadFile(filepath.Join(dir, configFileName))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read radius-gitops-config.yaml, error: %w", err)
 	}
@@ -461,7 +461,7 @@ func (r *FluxController) parseAndValidateRadiusGitOpsConfigFromFile(dir, configF
 		}
 
 		// Validate that the file exists
-		_, err := r.FileSystem.Stat(path.Join(dir, bicepFile.Name))
+		_, err := r.FileSystem.Stat(filepath.Join(dir, bicepFile.Name))
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
 				return nil, fmt.Errorf("failed to find bicep file %s, error: %w", bicepFile.Name, err)
@@ -472,7 +472,7 @@ func (r *FluxController) parseAndValidateRadiusGitOpsConfigFromFile(dir, configF
 
 		// If the bicepFile.Params field is set, validate that the file exists
 		if bicepFile.Params != "" {
-			_, err := r.FileSystem.Stat(path.Join(dir, bicepFile.Params))
+			_, err := r.FileSystem.Stat(filepath.Join(dir, bicepFile.Params))
 			if err != nil {
 				if errors.Is(err, fs.ErrNotExist) {
 					return nil, fmt.Errorf("failed to find bicepparams file %s, error: %w", bicepFile.Params, err)

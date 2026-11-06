@@ -20,12 +20,34 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	install "github.com/hashicorp/hc-install"
+	"github.com/hashicorp/hc-install/product"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGetGlobalTerraformPaths(t *testing.T) {
+	binaryName := "terraform"
+	if runtime.GOOS == "windows" {
+		binaryName += ".exe"
+	}
+	for _, directory := range []string{"", filepath.Join(t.TempDir(), "global tools")} {
+		t.Run(directory, func(t *testing.T) {
+			t.Setenv("TERRAFORM_TEST_GLOBAL_DIR", directory)
+			expectedDirectory := directory
+			if expectedDirectory == "" {
+				expectedDirectory = defaultGlobalTerraformDir
+			}
+			dir, binary, marker := getGlobalTerraformPaths()
+			require.Equal(t, expectedDirectory, dir)
+			require.Equal(t, filepath.Join(expectedDirectory, binaryName), binary)
+			require.Equal(t, filepath.Join(expectedDirectory, ".terraform-ready"), marker)
+		})
+	}
+}
 
 func TestInstall_SuccessfulDownload(t *testing.T) {
 	// Skip this test in short mode as it requires downloading Terraform
@@ -64,7 +86,7 @@ func TestInstall_SuccessfulDownload(t *testing.T) {
 	require.NoError(t, err, "Terraform version check should work")
 
 	// Verify global terraform directory was created with expected files
-	globalBinary := filepath.Join(globalTmpDir, "terraform")
+	globalBinary := filepath.Join(globalTmpDir, product.Terraform.BinaryName())
 	globalMarker := filepath.Join(globalTmpDir, ".terraform-ready")
 
 	_, err = os.Stat(globalBinary)
@@ -106,7 +128,7 @@ func TestInstall_GlobalBinaryReuse(t *testing.T) {
 	require.NotNil(t, tf1)
 
 	// Verify global files exist after first install
-	globalBinary := filepath.Join(globalTmpDir, "terraform")
+	globalBinary := filepath.Join(globalTmpDir, product.Terraform.BinaryName())
 	globalMarker := filepath.Join(globalTmpDir, ".terraform-ready")
 
 	_, err = os.Stat(globalBinary)
@@ -180,7 +202,7 @@ func TestInstall_MultipleConcurrentCallsUseSameBinary(t *testing.T) {
 	require.NoError(t, err, "Second terraform instance should work")
 
 	// Verify only one set of global files exists
-	globalBinary := filepath.Join(globalTmpDir, "terraform")
+	globalBinary := filepath.Join(globalTmpDir, product.Terraform.BinaryName())
 	globalMarker := filepath.Join(globalTmpDir, ".terraform-ready")
 
 	_, err = os.Stat(globalBinary)

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -42,9 +43,7 @@ const (
 
 	// Global shared terraform binary paths (persistent hidden directory under terraform root)
 	// Using .terraform-global as a more recognizable and persistent directory name
-	defaultGlobalTerraformDir    = "/terraform/.terraform-global"
-	defaultGlobalTerraformBinary = "/terraform/.terraform-global/terraform"
-	defaultGlobalMarkerFile      = "/terraform/.terraform-global/.terraform-ready"
+	defaultGlobalTerraformDir = "/terraform/.terraform-global"
 )
 
 // InstallOptions configures how Terraform is installed and initialized.
@@ -58,10 +57,11 @@ type InstallOptions struct {
 
 // getGlobalTerraformPaths returns the terraform paths, allowing override for testing
 func getGlobalTerraformPaths() (dir, binary, marker string) {
-	if testDir := os.Getenv("TERRAFORM_TEST_GLOBAL_DIR"); testDir != "" {
-		return testDir, testDir + "/terraform", testDir + "/.terraform-ready"
+	dir = os.Getenv("TERRAFORM_TEST_GLOBAL_DIR")
+	if dir == "" {
+		dir = defaultGlobalTerraformDir
 	}
-	return defaultGlobalTerraformDir, defaultGlobalTerraformBinary, defaultGlobalMarkerFile
+	return dir, filepath.Join(dir, product.Terraform.BinaryName()), filepath.Join(dir, ".terraform-ready")
 }
 
 var (

@@ -65,6 +65,7 @@ func TestDeleteNamespace(t *testing.T) {
 func TestGetContextFromConfigFileIfExists(t *testing.T) {
 	configFile, err := os.CreateTemp("", "")
 	require.NoError(t, err)
+	require.NoError(t, configFile.Close())
 	defer os.Remove(configFile.Name())
 
 	err = os.WriteFile(configFile.Name(), []byte(`
@@ -94,6 +95,7 @@ users:
 
 	emptyConfig, err := os.CreateTemp("", "")
 	require.NoError(t, err)
+	require.NoError(t, emptyConfig.Close())
 	defer os.Remove(emptyConfig.Name())
 
 	err = os.WriteFile(emptyConfig.Name(), []byte(`
@@ -116,6 +118,7 @@ users:
 		in         string
 		out        string
 		err        error
+		errIs      error
 	}{
 		{
 			name:       "get kubeconfig-context",
@@ -154,14 +157,16 @@ users:
 			name:       "try to get non-existing config file",
 			configFile: "non-existing",
 			in:         "",
-			err:        errors.New("open non-existing: no such file or directory"),
+			errIs:      os.ErrNotExist,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			contextName, err := GetContextFromConfigFileIfExists(tc.configFile, tc.in)
-			if tc.err != nil {
+			if tc.errIs != nil {
+				require.ErrorIs(t, err, tc.errIs)
+			} else if tc.err != nil {
 				require.ErrorContains(t, err, tc.err.Error())
 			} else {
 				require.NoError(t, err)

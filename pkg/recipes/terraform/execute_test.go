@@ -194,7 +194,13 @@ func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
 	commandLog := filepath.Join(t.TempDir(), "terraform-commands.log")
 	t.Setenv(terraformCommandLog, commandLog)
 
-	require.NoError(t, os.Symlink(os.Args[0], filepath.Join(globalDir, "terraform")))
+	// A real native executable works without Windows symlink privileges.
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	helper, err := os.ReadFile(executable)
+	require.NoError(t, err)
+	_, binary, _ := getGlobalTerraformPaths()
+	require.NoError(t, os.WriteFile(binary, helper, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(globalDir, ".terraform-ready"), nil, 0644))
 
 	globalTerraformMutex.Lock()
@@ -227,7 +233,7 @@ func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
 	kubernetesClients.SetClientGoClient(kubernetesClient)
 
 	e := executor{kubernetesClients: kubernetesClients}
-	err := e.Delete(t.Context(), Options{
+	err = e.Delete(t.Context(), Options{
 		RootDir:   t.TempDir(),
 		EnvConfig: &recipes.Configuration{},
 		EnvRecipe: &recipes.EnvironmentDefinition{
@@ -544,8 +550,8 @@ func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
 	}
 
 	_, err := getTerraformConfig(t.Context(), workingDir, options)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "error creating file: open invalid-directory/main.tf.json: no such file or directory")
+	require.ErrorIs(t, err, os.ErrNotExist)
+	require.ErrorContains(t, err, "error creating file:")
 }
 
 func TestSetEnvironmentVariables(t *testing.T) {
