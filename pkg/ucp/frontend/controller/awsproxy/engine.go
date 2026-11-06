@@ -479,7 +479,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	if err != nil {
 		return nil, err
 	}
-	patch, err := awsoperations.GeneratePatchWithOptions(currentState, desiredState, schema, awsoperations.PatchOptions{Removed: removed, Equivalent: equivalentFor(r)})
+	patch, err := awsoperations.GeneratePatchWithOptions(currentState, desiredState, schema, awsoperations.PatchOptions{Removed: removed, Equivalent: equivalentFor(r), LastApplied: rec.Properties.LastApplied})
 	if err != nil {
 		return nil, err
 	}
