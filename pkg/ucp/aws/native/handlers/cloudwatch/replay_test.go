@@ -17,6 +17,8 @@ limitations under the License.
 package cloudwatch
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -24,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/require"
 
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
@@ -96,3 +99,50 @@ func Test_Replay_MetricMathAnomalyDetector(t *testing.T) {
 	}.Run(t)
 }
 
+// Test_Replay_AnomalyDetectorConfigurationRemoved creates a detector with a configuration, deploys the template
+// without it, and checks that AWS has no excluded time ranges or time zone left, against AWS's recorded responses.
+func Test_Replay_AnomalyDetectorConfigurationRemoved(t *testing.T) {
+	s := awsreplay.New(t, "testdata/anomaly-detector-configuration-removed.json")
+	cfg := s.Config(t.Context())
+	h := NewAnomalyDetector(cloudwatch.NewFromConfig(cfg), sts.NewFromConfig(cfg))
+	run := s.Input("RADIUS_REC_RUN")
+
+	properties := map[string]any{
+		"SingleMetricAnomalyDetector": map[string]any{
+			"Namespace":  "Radius/Recording",
+			"MetricName": "radius-rec-" + run,
+			"Stat":       "Average",
+			"Dimensions": dims("radius-recording", run),
+		},
+		"Configuration": config("America/New_York"),
+	}
+	update := with(properties, map[string]any{"Configuration": nil})
+	identifier := identifierOf(t, properties)
+	if s.Recording() {
+		t.Cleanup(func() {
+			if !t.Failed() {
+				return
+			}
+			// t.Context() ends before cleanups run.
+			err := h.Delete(context.WithoutCancel(t.Context()), awsreplay.Region, identifier)
+			if err != nil && !errors.Is(err, native.ErrNotFound) {
+				t.Errorf("failed to delete the anomaly detector %s: %v", identifier, err)
+			}
+		})
+	}
+	nativetest.Lifecycle{
+		Handler:    h,
+		Session:    s,
+		Properties: properties,
+		Update:     update,
+		Poll:       5 * time.Second,
+		SkipDelete: true,
+	}.Run(t)
+
+	got, err := h.Read(t.Context(), awsreplay.Region, identifier)
+	require.NoError(t, err)
+	require.NotContains(t, got, "Configuration", "AWS has no excluded time ranges or time zone left")
+	require.NoError(t, h.Delete(t.Context(), awsreplay.Region, identifier))
+	_, err = h.Progress(t.Context(), awsreplay.Region, identifier, native.OperationDelete)
+	require.ErrorIs(t, err, native.ErrNotFound)
+}

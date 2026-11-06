@@ -182,12 +182,9 @@ func (f *fakeAPI) PutAnomalyDetector(ctx context.Context, in *cloudwatch.PutAnom
 		return nil, err
 	}
 	if existing := f.store.Resource(anomalyDetectorType, identifier); existing != nil {
-		// A put of a detector AWS has keeps the form that created it, and replaces its settings. A put without a
-		// Configuration leaves the detector's configuration as it is.
+		// A put of a detector AWS has keeps the form that created it, and replaces its settings. Like AWS, a put
+		// without a Configuration clears the detector's configuration.
 		for _, k := range []string{"Configuration", "MetricCharacteristics"} {
-			if k == "Configuration" && in.Configuration == nil {
-				continue
-			}
 			delete(existing, k)
 			if v, ok := props[k]; ok {
 				existing[k] = v
