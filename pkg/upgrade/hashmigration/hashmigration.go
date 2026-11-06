@@ -113,8 +113,7 @@ func (r *Result) Add(other Result) {
 }
 
 // Step migrates one kind of value. Run must be idempotent and safe to run concurrently with the component's normal
-// operations and with other replicas running the same step. IsExclusive reports whether the service runs the step on
-// one replica at a time.
+// operations and with other replicas running the same step.
 type Step interface {
 	// Name returns the stable name used in the status ConfigMap key.
 	Name() string
@@ -189,10 +188,6 @@ type Options struct {
 
 	// MaxRetryInterval caps the retry delay. Zero means DefaultMaxRetryInterval.
 	MaxRetryInterval time.Duration
-
-	// Exclusion, if set, runs each pass on one replica of the component at a time and marks the context of its steps
-	// with WithExclusive.
-	Exclusion Exclusion
 }
 
 // Service runs migration passes until every step is done. It implements hosting.Service and returns nil once the
@@ -242,7 +237,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	interval := s.options.RetryInterval
 	for pass := 1; ; pass++ {
-		if s.runExclusivePass(ctx) {
+		if s.RunPass(ctx) {
 			logger.Info("SHA-256 migration is complete", "component", s.options.Component, "passes", pass)
 			return nil
 		}
@@ -254,23 +249,6 @@ func (s *Service) Run(ctx context.Context) error {
 
 		interval = min(interval*2, s.options.MaxRetryInterval)
 	}
-}
-
-// runExclusivePass runs a pass, while the replica holds the exclusion of the component if one is configured.
-func (s *Service) runExclusivePass(ctx context.Context) bool {
-	if s.options.Exclusion == nil {
-		return s.RunPass(ctx)
-	}
-
-	done := false
-	err := s.options.Exclusion.Run(ctx, func(ctx context.Context) {
-		done = s.RunPass(WithExclusive(ctx))
-	})
-	if err != nil {
-		ucplog.FromContextOrDiscard(ctx).Info("Unable to run the SHA-256 migration exclusively", "component", s.options.Component, "error", err.Error())
-	}
-
-	return done
 }
 
 // RunPass runs every step that is not done, records the status of each, and reports whether all steps are done and

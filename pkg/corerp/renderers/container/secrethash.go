@@ -53,8 +53,14 @@ const (
 // reader reads the cluster the Deployment is applied to. See https://github.com/radius-project/radius/issues/8084.
 func NewSecretHashTransformer(reader client.Reader) func(context.Context, *handlers.PutOptions) error {
 	return func(ctx context.Context, options *handlers.PutOptions) error {
+		if reader == nil || options.Resource == nil || options.Resource.CreateResource == nil {
+			// A resource that Radius only references, such as an existing Deployment in the resources of a container,
+			// is not applied.
+			return nil
+		}
+
 		deployment, ok := options.Resource.CreateResource.Data.(*appsv1.Deployment)
-		if !ok || reader == nil {
+		if !ok {
 			return nil
 		}
 

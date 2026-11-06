@@ -403,22 +403,13 @@ func Test_APIServerClient_Delete_RemovesEveryCopy(t *testing.T) {
 func Test_APIServerClient_MigrateLegacyNames_ConcurrentDelete(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
-		name      string
-		exclusive bool
+		name string
 
 		// afterCopy deletes the resource right after the move writes the current copy, instead of right before.
 		afterCopy bool
-
-		expected hashmigration.Result
-
-		// ghost records that the copy the move wrote remains although the resource was deleted.
-		ghost bool
 	}{
-		{name: "before the copy", exclusive: true},
-		{name: "after the copy", exclusive: true, afterCopy: true},
-		{name: "after the copy without exclusion", afterCopy: true, expected: hashmigration.Result{Migrated: 1}},
-		// Without exclusion, the delete cannot be told apart from another replica moving the entry, so the copy stays.
-		{name: "before the copy without exclusion", expected: hashmigration.Result{Migrated: 1}, ghost: true},
+		{name: "before the copy"},
+		{name: "after the copy", afterCopy: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -443,24 +434,53 @@ func Test_APIServerClient_MigrateLegacyNames_ConcurrentDelete(t *testing.T) {
 					return nil
 				},
 			}, fallbackTestResource(t, migrateNamespace, legacyResourceName(migrateTarget), "legacy", []resources.ID{migrateTarget}))
-			ctx := t.Context()
-			if tt.exclusive {
-				ctx = hashmigration.WithExclusive(ctx)
-			}
 
-			result, err := client.MigrateLegacyNames(ctx)
+			result, err := client.MigrateLegacyNames(t.Context())
 			require.NoError(t, err)
 			require.True(t, deleted)
-			require.Equal(t, tt.expected, result)
+			require.Equal(t, hashmigration.Result{}, result)
 			_, err = client.Get(t.Context(), migrateTarget.String())
-			if tt.ghost {
-				require.NoError(t, err)
-				return
-			}
 			require.ErrorIs(t, err, &database.ErrNotFound{}, "the move must not bring back a deleted resource")
 			require.Empty(t, listBuckets(t, raw))
 		})
 	}
+}
+
+func Test_APIServerClient_MigrateLegacyNames_ConcurrentMigrators(t *testing.T) {
+	t.Parallel()
+	var other hashmigration.Result
+	ran := false
+	client, raw := newMigrateClient(t, interceptor.Funcs{
+		Create: func(ctx context.Context, c runtimeclient.WithWatch, obj runtimeclient.Object, opts ...runtimeclient.CreateOption) error {
+			if err := c.Create(ctx, obj, opts...); err != nil {
+				return err
+			}
+			if ran {
+				return nil
+			}
+
+			// Another migrator, such as one in a second UCP replica, finds both copies right after the move wrote the
+			// current copy, and removes the legacy copy.
+			ran = true
+			var err error
+			other, err = NewAPIServerClient(c, migrateNamespace).MigrateLegacyNames(ctx)
+			return err
+		},
+	}, fallbackTestResource(t, migrateNamespace, legacyResourceName(migrateTarget), "legacy", []resources.ID{migrateTarget}))
+
+	// The first migrator must not mistake that removal for a delete and remove its copy, which would lose the entry.
+	result, err := client.MigrateLegacyNames(t.Context())
+	require.NoError(t, err)
+	require.True(t, ran)
+	require.Equal(t, hashmigration.Result{Deduplicated: 1}, other)
+	require.Equal(t, hashmigration.Result{Migrated: 1}, result)
+
+	obj, err := client.Get(t.Context(), migrateTarget.String())
+	require.NoError(t, err, "the entry must not be lost")
+	require.Equal(t, "legacy-etag", obj.ETag)
+	buckets := listBuckets(t, raw)
+	require.Equal(t, []string{resourceName(migrateTarget)}, bucketNames(buckets))
+	require.NotEmpty(t, buckets[resourceName(migrateTarget)].Annotations[annotationDeduplicated], "a migrator changes the current object before it removes a legacy copy it did not copy")
 }
 
 func Test_APIServerClient_OperationsDuringMove(t *testing.T) {

@@ -42,15 +42,11 @@ type legacyNameMigrator interface {
 
 // newHashMigrationService creates the service that migrates the SHA-1-derived values UCP owns: tracked resource IDs
 // and, with the apiserver database provider, the object names of the data store every component shares.
-//
-// With exclusion, one UCP replica migrates at a time, which lets both steps remove a copy they wrote when a delete
-// overtook the move. See hashmigration.IsExclusive.
-func newHashMigrationService(provider *databaseprovider.DatabaseProvider, reporter hashmigration.Reporter, exclusion hashmigration.Exclusion) *hashmigration.Service {
+func newHashMigrationService(provider *databaseprovider.DatabaseProvider, reporter hashmigration.Reporter) *hashmigration.Service {
 	return hashmigration.NewService(hashmigration.Options{
 		Component:    hashMigrationComponent,
 		Steps:        hashMigrationSteps(provider),
 		Reporter:     reporter,
-		Exclusion:    exclusion,
 		InitialDelay: hashmigration.DefaultInitialDelay,
 	})
 }

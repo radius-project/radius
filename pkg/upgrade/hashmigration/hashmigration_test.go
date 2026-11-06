@@ -186,60 +186,6 @@ func Test_Service_Run_RetriesUntilStatusIsRecorded(t *testing.T) {
 	require.Equal(t, StateComplete, reporter.last("c.s").State)
 }
 
-// funcExclusion is an Exclusion that runs fn with the context it is given, or fails.
-type funcExclusion struct {
-	err  error
-	runs int
-}
-
-func (e *funcExclusion) Run(ctx context.Context, fn func(context.Context)) error {
-	e.runs++
-	if e.err != nil {
-		return e.err
-	}
-	fn(ctx)
-	return nil
-}
-
-func Test_Service_Exclusion(t *testing.T) {
-	t.Parallel()
-
-	newService := func(exclusion Exclusion, observed *[]bool) *Service {
-		return NewService(Options{Component: "c", Exclusion: exclusion, RetryInterval: time.Millisecond, MaxRetryInterval: time.Millisecond,
-			Steps: []Step{StepFunc{StepName: "s", Fn: func(ctx context.Context) (Result, error) {
-				*observed = append(*observed, IsExclusive(ctx))
-				return Result{}, nil
-			}}}})
-	}
-
-	t.Run("steps run exclusively", func(t *testing.T) {
-		t.Parallel()
-		observed := []bool{}
-		exclusion := &funcExclusion{}
-		require.NoError(t, newService(exclusion, &observed).Run(t.Context()))
-		require.Equal(t, []bool{true}, observed)
-		require.Equal(t, 1, exclusion.runs)
-	})
-
-	t.Run("without exclusion", func(t *testing.T) {
-		t.Parallel()
-		observed := []bool{}
-		require.NoError(t, newService(nil, &observed).Run(t.Context()))
-		require.Equal(t, []bool{false}, observed)
-	})
-
-	t.Run("exclusion fails", func(t *testing.T) {
-		t.Parallel()
-		observed := []bool{}
-		exclusion := &funcExclusion{err: errors.New("invalid configuration")}
-		ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
-		defer cancel()
-		require.ErrorIs(t, newService(exclusion, &observed).Run(ctx), context.DeadlineExceeded)
-		require.Empty(t, observed, "steps must not run without the exclusion")
-		require.Greater(t, exclusion.runs, 1, "the exclusion is retried")
-	})
-}
-
 func Test_Service_Run_StopsOnCancellation(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())

@@ -58,15 +58,7 @@ func NewServer(ctx context.Context, options *ucp.Options) (*hosting.Host, error)
 	services = append(services, initializer.NewService(options))
 
 	if !options.Config.SHA256Migration.Disabled {
-		// Without a Kubernetes configuration, the migration only logs its progress and runs without exclusion.
-		var reporter hashmigration.Reporter
-		var exclusion hashmigration.Exclusion
-		if client := hashmigration.NewKubernetesClient(); client != nil {
-			reporter = hashmigration.NewConfigMapReporter(client, hashmigration.DefaultNamespace)
-			exclusion = hashmigration.NewLeaseExclusion(client, hashmigration.DefaultNamespace, hashMigrationComponent)
-		}
-
-		services = append(services, newHashMigrationService(options.DatabaseProvider, reporter, exclusion))
+		services = append(services, newHashMigrationService(options.DatabaseProvider, hashmigration.NewKubernetesReporter()))
 	}
 
 	return &hosting.Host{

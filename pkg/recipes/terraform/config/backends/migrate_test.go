@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -859,6 +860,167 @@ func Test_MigrateLegacyStates_Failures(t *testing.T) {
 
 		_, err := f.migrator.MigrateLegacyStates(t.Context(), f.db)
 		require.ErrorContains(t, err, "failed to list Terraform state Secrets")
+	})
+}
+
+func Test_MigrateLegacyStates_HeldLocks(t *testing.T) {
+	t.Parallel()
+
+	// failFirstCreate makes the create of the first Secret of the copy time out without being applied while failing is set.
+	failFirstCreate := func(f *stateFixture, current string, failing *bool) {
+		f.client.PrependReactor("create", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			if *failing && action.(k8stesting.CreateAction).GetObject().(*corev1.Secret).Name == stateSecretName(current, 0) {
+				return true, nil, apierrors.NewTimeoutError("the request timed out", 1)
+			}
+			return false, nil, nil
+		})
+	}
+
+	t.Run("another writer creates the first Secret during the move", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a", "b")
+		racing := true
+		f.client.PrependReactor("create", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			secret := action.(k8stesting.CreateAction).GetObject().(*corev1.Secret)
+			if !racing || secret.Name != stateSecretName(current, 0) {
+				return false, nil, nil
+			}
+			racing = false
+			other := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: secret.Name, Namespace: RadiusNamespace, Labels: stateLabels(current)},
+				Data:       map[string][]byte{tfstateDataKey: []byte("other")},
+			}
+			require.NoError(t, f.client.Tracker().Create(corev1.SchemeGroupVersion.WithResource("secrets"), other, RadiusNamespace))
+			return true, nil, apierrors.NewAlreadyExists(schema.GroupResource{Resource: "secrets"}, secret.Name)
+		})
+
+		// The lock stays held, so the step must not finish with the state locked.
+		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
+		f.requireHeld(legacy)
+
+		// The next pass finds the other state under the current name and releases the lock.
+		require.Equal(t, hashmigration.Result{Conflicts: 1}, f.migrate())
+		require.Equal(t, []string{"a", "b"}, f.state(legacy))
+		f.requireFree(legacy)
+	})
+
+	t.Run("releasing the lock fails", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a")
+		_, err := f.client.CoreV1().Secrets(RadiusNamespace).Create(t.Context(), &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "unexpected", Namespace: RadiusNamespace, Labels: stateLabels(legacy)},
+		}, metav1.CreateOptions{})
+		require.NoError(t, err)
+		failing := true
+		f.client.PrependReactor("update", "leases", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			if failing && action.(k8stesting.UpdateAction).GetObject().(*coordinationv1.Lease).Spec.HolderIdentity == nil {
+				return true, nil, errors.New("connection reset")
+			}
+			return false, nil, nil
+		})
+
+		// Terraform ignores the lock duration, so the step must retry the release instead of finishing.
+		require.Equal(t, hashmigration.Result{Skipped: 1, Remaining: 1}, f.migrate())
+		f.requireHeld(legacy)
+
+		failing = false
+		require.Equal(t, hashmigration.Result{Skipped: 1}, f.migrate())
+		require.Empty(t, f.chunkNames(current))
+		f.requireFree(legacy)
+	})
+
+	t.Run("state cannot be read after an uncertain copy", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a", "b", "c")
+		failing := true
+		failFirstCreate(f, current, &failing)
+		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
+		f.requireHeld(legacy)
+
+		// The copy may still become published, so a pass that cannot read the state keeps the lock and the copy.
+		failing = false
+		listing := true
+		f.client.PrependReactor("list", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			if listing && strings.Contains(action.(k8stesting.ListAction).GetListRestrictions().Labels.String(), legacy) {
+				return true, nil, apierrors.NewServiceUnavailable("the API server is unavailable")
+			}
+			return false, nil, nil
+		})
+		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
+		f.requireHeld(legacy)
+		require.Equal(t, map[int]string{1: stateSecretName(current, 1), 2: stateSecretName(current, 2)}, f.chunkNames(current))
+
+		listing = false
+		require.Equal(t, hashmigration.Result{Migrated: 1}, f.migrate())
+		require.Equal(t, []string{"a", "b", "c"}, f.state(current))
+		f.requireTombstone(legacy, current)
+	})
+
+	t.Run("operation waits for a lock kept after an uncertain copy", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a", "b")
+		failing := true
+		failFirstCreate(f, current, &failing)
+		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
+		f.requireHeld(legacy)
+
+		// An operation resolved the legacy name and waits for the lock. While the earlier create may still be applied,
+		// the copy is kept and the lock stays held.
+		failing = false
+		f.addResourceInState("redis", migrateApplicationID, "Updating")
+		require.Equal(t, 1, f.migrate().Remaining)
+		f.requireHeld(legacy)
+		require.Equal(t, map[int]string{1: stateSecretName(current, 1)}, f.chunkNames(current))
+
+		// Once the create can no longer be applied, the copy is removed and the operation gets the lock.
+		f.now = f.now.Add(stateMigrationLeaseDuration + time.Second)
+		require.Equal(t, 1, f.migrate().Remaining)
+		require.Empty(t, f.chunkNames(current))
+		require.Equal(t, []string{"a", "b"}, f.state(legacy))
+		f.requireFree(legacy)
+	})
+
+	t.Run("operation waits for a lock kept after a failed commit", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a", "b")
+		failing := true
+		f.client.PrependReactor("update", "leases", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			if failing && action.(k8stesting.UpdateAction).GetObject().(*coordinationv1.Lease).Annotations[AnnotationStateMigratedParts] != "" {
+				return true, nil, errors.New("connection reset")
+			}
+			return false, nil, nil
+		})
+		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
+		f.requireHeld(legacy)
+
+		// The copy is published, so the move is committed although an operation is in progress. The operation fails
+		// with the tombstone's message and its retry uses the moved state.
+		failing = false
+		f.addResourceInState("redis", migrateApplicationID, "Deleting")
+		require.Equal(t, hashmigration.Result{Migrated: 1}, f.migrate())
+		require.Empty(t, f.state(legacy))
+		f.requireTombstone(legacy, current)
+	})
+
+	t.Run("busy owner without a kept lock", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		_, legacy := f.addResourceInState("redis", migrateApplicationID, "Updating")
+		f.addState(legacy, "a")
+		f.setLease(legacy, new(StateMigrationHolderPrefix+"other"), f.now)
+
+		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
+		require.Equal(t, StateMigrationHolderPrefix+"other", *f.lease(legacy).Spec.HolderIdentity)
 	})
 }
 

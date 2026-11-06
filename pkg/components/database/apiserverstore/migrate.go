@@ -19,6 +19,7 @@ package apiserverstore
 import (
 	"bytes"
 	"context"
+	"uuid"
 
 	"github.com/radius-project/radius/pkg/components/database"
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
@@ -32,6 +33,10 @@ import (
 
 // listPageSize bounds the number of Kubernetes objects read per list call during maintenance scans.
 const listPageSize = 250
+
+// annotationDeduplicated is set to a new value on the current object of an entry each time a migrator removes a legacy
+// copy of the entry that it did not copy itself. See legacyCopyRemoved.
+const annotationDeduplicated = "ucp.dev/sha256-deduplicated"
 
 var _ database.Enumerator = (*APIServerClient)(nil)
 
@@ -102,8 +107,9 @@ const (
 // the copies differ, both are left in place and reported as a conflict; reads already use the current copy.
 //
 // A delete removes every copy of an entry. A delete that runs after the move read the legacy copy and before it wrote
-// the current copy removes only the legacy copy, so when the migration is exclusive (see hashmigration.IsExclusive) the
-// move then removes the current copy it wrote, unless the entry was written again since.
+// the current copy removes only the legacy copy, so the move then removes the current copy it wrote, unless the current
+// object changed since. A migrator that removes a legacy copy it did not copy itself first changes the current object,
+// so a concurrent migrator never mistakes that removal for a delete and removes the copy.
 //
 // The method is idempotent and safe to run concurrently with normal client operations and with other replicas. See
 // https://github.com/radius-project/radius/issues/8084.
@@ -162,20 +168,22 @@ func (c *APIServerClient) migrateEntry(ctx context.Context, id resources.ID) (en
 	currentKey := runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}
 
 	// copied is the legacy version this call wrote to the current object. It distinguishes a move performed here
-	// from a pre-existing duplicate and lets the call promote a legacy update made after the copy.
+	// from a pre-existing duplicate and lets the call promote a legacy update made after the copy. copiedVersion is the
+	// resource version of the current object after that write.
 	var copied *ucpv1alpha1.ResourceEntry
+	copiedVersion := ""
 	for range RetryCount {
 		legacy := ucpv1alpha1.Resource{}
 		err := c.get(ctx, legacyKey, &legacy)
 		if apierrors.IsNotFound(err) {
-			return c.legacyCopyRemoved(ctx, id, copied)
+			return c.legacyCopyRemoved(ctx, id, copied, copiedVersion)
 		} else if err != nil {
 			return 0, err
 		}
 
 		legacyIndex := findIndex(&legacy, id)
 		if legacyIndex == nil {
-			return c.legacyCopyRemoved(ctx, id, copied)
+			return c.legacyCopyRemoved(ctx, id, copied, copiedVersion)
 		}
 		legacyEntry := legacy.Entries[*legacyIndex]
 
@@ -193,7 +201,16 @@ func (c *APIServerClient) migrateEntry(ctx context.Context, id resources.ID) (en
 
 		switch {
 		case currentIndex != nil && sameEntry(current.Entries[*currentIndex], legacyEntry):
-			// The current copy matches; only the legacy copy needs to be removed.
+			// The current copy matches; only the legacy copy needs to be removed. Unless this call wrote the current
+			// object as it is now, another migrator may have just copied the entry and may remove its copy if the legacy
+			// copy disappears while the current object is unchanged. Change the current object first, so it keeps it.
+			if copied == nil || current.ResourceVersion != copiedVersion {
+				if err := c.markDeduplicated(ctx, &current); isRetryable(err) || apierrors.IsNotFound(err) {
+					continue
+				} else if err != nil {
+					return 0, err
+				}
+			}
 		case currentIndex != nil && copied != nil && sameEntry(current.Entries[*currentIndex], *copied):
 			// The legacy copy changed after this call copied it, and the current copy is unchanged. Only a writer that
 			// knows nothing of current names updates a legacy copy once a current copy exists, so keep its newer value.
@@ -205,6 +222,7 @@ func (c *APIServerClient) migrateEntry(ctx context.Context, id resources.ID) (en
 				return 0, err
 			}
 			copied = legacyEntry.DeepCopy()
+			copiedVersion = current.ResourceVersion
 		case currentIndex != nil:
 			return entryConflict, nil
 		default:
@@ -228,6 +246,7 @@ func (c *APIServerClient) migrateEntry(ctx context.Context, id resources.ID) (en
 				return 0, err
 			}
 			copied = &entry
+			copiedVersion = current.ResourceVersion
 		}
 
 		err = c.removeEntry(ctx, &legacy, *legacyIndex)
@@ -263,19 +282,27 @@ func (c *APIServerClient) removeEntry(ctx context.Context, resource *ucpv1alpha1
 	return c.client.Update(ctx, resource)
 }
 
+// markDeduplicated changes the current object, with a resource-version precondition, before a legacy copy that this
+// call did not copy is removed. See legacyCopyRemoved.
+func (c *APIServerClient) markDeduplicated(ctx context.Context, current *ucpv1alpha1.Resource) error {
+	if current.Annotations == nil {
+		current.Annotations = map[string]string{}
+	}
+	current.Annotations[annotationDeduplicated] = uuid.New().String()
+	return c.client.Update(ctx, current)
+}
+
 // legacyCopyRemoved handles a legacy copy that no longer exists. copied is the entry this call wrote to the current
-// object, if any.
+// object, if any, and copiedVersion the resource version of the current object after that write.
 //
-// Only a delete or a migration removes a legacy copy. When the migration is exclusive, no other migration runs, so a
-// delete removed it. A delete removes every copy, but one that ran after this call read the legacy copy and before it
-// wrote copied did not see copied, so copied would bring the deleted resource back. It is removed unless the entry was
-// written again since. Without exclusion, another replica's migration of the entry cannot be told apart from a delete,
-// so the copy is kept.
-func (c *APIServerClient) legacyCopyRemoved(ctx context.Context, id resources.ID, copied *ucpv1alpha1.ResourceEntry) (entryOutcome, error) {
+// A delete removes every copy of an entry, so one that ran after this call wrote copied also removed copied, which
+// changed the current object. A migrator that removes a legacy copy it did not copy changes the current object first
+// (see markDeduplicated). If the current object is still as this call wrote it, the legacy copy was therefore removed
+// by a delete that ran before copied existed, or by an older writer that knows only legacy names, and copied would
+// bring the deleted resource back. It is removed, with a resource-version precondition.
+func (c *APIServerClient) legacyCopyRemoved(ctx context.Context, id resources.ID, copied *ucpv1alpha1.ResourceEntry, copiedVersion string) (entryOutcome, error) {
 	if copied == nil {
 		return entryGone, nil
-	} else if !hashmigration.IsExclusive(ctx) {
-		return entryMoved, nil
 	}
 
 	currentKey := runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}
@@ -289,9 +316,12 @@ func (c *APIServerClient) legacyCopyRemoved(ctx context.Context, id resources.ID
 		}
 
 		index := findIndex(&current, id)
-		if index == nil || current.Entries[*index].ETag != copied.ETag {
-			// The delete removed the copy too, or the entry was written again after the delete.
+		if index == nil {
+			// A delete removed the copy too.
 			return entryGone, nil
+		} else if current.ResourceVersion != copiedVersion {
+			// The entry was written again, or another migrator removed the legacy copy after this call copied it.
+			return entryMoved, nil
 		}
 
 		err = c.removeEntry(ctx, &current, *index)
