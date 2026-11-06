@@ -9,7 +9,7 @@ import {
   mkdtemp,
   readFile,
   rm,
-  writeFile
+  writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -26,7 +26,7 @@ const workflow = (
 function createCore(
   baseSha = "",
   onlyChanged = "true",
-  releaseMetadata = "false"
+  releaseMetadata = "false",
 ) {
   const outputs = [];
   const failures = [];
@@ -40,11 +40,11 @@ function createCore(
         IGNORED_FILES_COUNT: onlyChanged === "true" ? "2" : "1",
         RELEASE_FILES_COUNT: releaseMetadata === "true" ? "1" : "0",
         WORKFLOW_FILES_COUNT: "0",
-        AUTHZ_FILES_COUNT: "0"
+        AUTHZ_FILES_COUNT: "0",
       })[name],
     info() {},
     setOutput: (name, value) => outputs.push([name, value]),
-    setFailed: (message) => failures.push(message)
+    setFailed: (message) => failures.push(message),
   };
 }
 
@@ -55,7 +55,7 @@ const otherEvents = [
   "schedule",
   "repository_dispatch",
   "workflow_dispatch",
-  "other"
+  "other",
 ];
 
 for (const eventName of [...filteringEvents, ...otherEvents]) {
@@ -70,7 +70,7 @@ for (const eventName of [...filteringEvents, ...otherEvents]) {
           assert.deepEqual(core.outputs, [
             ["only_changed", filtered ? onlyChanged : "false"],
             ["release_metadata", filtered ? releaseMetadata : "false"],
-            ["authz_changed", filtered ? "false" : "true"]
+            ["authz_changed", filtered ? "false" : "true"],
           ]);
           assert.deepEqual(core.failures, []);
         });
@@ -87,7 +87,7 @@ const patterns = workflow
 
 function filterGroup(name) {
   const match = workflow.match(
-    new RegExp(`^            ${name}:\\n((?:              - .+\\n)+)`, "m")
+    new RegExp(`^            ${name}:\\n((?:              - .+\\n)+)`, "m"),
   );
   assert.ok(match, `missing filter group ${name}`);
   return match[1]
@@ -109,8 +109,8 @@ function countMatchingFiles(files, filePatterns = patterns) {
     files.filter(
       (file) =>
         included.some((pattern) => path.posix.matchesGlob(file, pattern)) &&
-        !excluded.some((pattern) => path.posix.matchesGlob(file, pattern))
-    ).length
+        !excluded.some((pattern) => path.posix.matchesGlob(file, pattern)),
+    ).length,
   );
 }
 
@@ -119,7 +119,7 @@ const releaseMetadata = [
   ".github/release-plans/v0.62.0-rc.1.yaml",
   "CHANGELOG.md",
   "docs/release-notes/v0.62.0-rc.1.md",
-  "versions.yaml"
+  "versions.yaml",
 ];
 const consumerWorkflows = [
   "build-main.yaml",
@@ -129,7 +129,7 @@ const consumerWorkflows = [
   "lint.yaml",
   "publish-docs.yaml",
   "unit-tests.yaml",
-  "validate-bicep.yaml"
+  "validate-bicep.yaml",
 ];
 const relevantInputs = [
   "cmd/rad/main.go",
@@ -145,7 +145,7 @@ const relevantInputs = [
   ".github/workflows/__changes.yml",
   ".github/workflows/release-plan.yaml",
   ".github/workflows/build-release.yaml",
-  ...consumerWorkflows.map((file) => `.github/workflows/${file}`)
+  ...consumerWorkflows.map((file) => `.github/workflows/${file}`),
 ];
 
 for (const eventName of filteringEvents) {
@@ -172,7 +172,7 @@ for (const eventName of filteringEvents) {
     [["deploy/Chart/values.yaml"], false],
     [[".github/workflows/unit-tests.yaml"], false],
     [[".github/workflows/build-release.yaml"], false],
-    [[], false]
+    [[], false],
   ]) {
     test(`${eventName}: classify ${files.join(", ") || "empty changes"}`, async () => {
       const core = createCore();
@@ -184,7 +184,7 @@ for (const eventName of filteringEvents) {
           IGNORED_FILES_COUNT: countMatchingFiles(files),
           RELEASE_FILES_COUNT: releaseFiles,
           WORKFLOW_FILES_COUNT: countMatchingFiles(files, workflowPatterns),
-          AUTHZ_FILES_COUNT: countMatchingFiles(files, authzPatterns)
+          AUTHZ_FILES_COUNT: countMatchingFiles(files, authzPatterns),
         })[name];
       await changes({ context: { eventName }, core });
       assert.deepEqual(core.outputs, [
@@ -192,8 +192,8 @@ for (const eventName of filteringEvents) {
         ["release_metadata", String(Number(releaseFiles) > 0)],
         [
           "authz_changed",
-          String(Number(countMatchingFiles(files, authzPatterns)) > 0)
-        ]
+          String(Number(countMatchingFiles(files, authzPatterns)) > 0),
+        ],
       ]);
       assert.deepEqual(core.failures, []);
     });
@@ -212,18 +212,20 @@ for (const [files, expected] of [
   [["pkg/corerp/api/v20231001preview/secretstore_conversion.go"], true],
   [
     ["pkg/corerp/api/v20231001preview/zz_generated_secretstores_client.go"],
-    true
+    true,
   ],
   [["pkg/corerp/datamodel/secretstore.go"], true],
   [["typespec/Applications.Core/secretStores.tsp"], true],
-  [["test/functional-portable/corerp/noncloud/secretstores_test.go"], true],
+  [["test/functional-portable/corerp/secretstores.go"], true],
+  [["test/functional-portable/corerp/util.go"], true],
+  [["test/functional-portable/corerp/noncloud/regression_test.go"], true],
   [["test/functional-portable/upgrade/secretstores_test.go"], true],
   [["test/secretstore/client.go"], true],
   [
     [
-      "pkg/corerp/frontend/controller/environments/v20250801preview/createorupdateenvironment.go"
+      "pkg/corerp/frontend/controller/environments/v20250801preview/createorupdateenvironment.go",
     ],
-    true
+    true,
   ],
   [["pkg/kubeutil/namespace.go"], true],
   [["pkg/kubeutil/namespace_test.go"], true],
@@ -237,54 +239,54 @@ for (const [files, expected] of [
   [[".github/workflows/functional-test-noncloud.yaml"], true],
   [
     [
-      "pkg/corerp/frontend/controller/environments/createorupdateenvironment.go"
+      "pkg/corerp/frontend/controller/environments/createorupdateenvironment.go",
     ],
-    true
+    true,
   ],
   [["pkg/cli/cmd/env/create/create.go"], false],
   [["pkg/kubeutil/client.go"], false],
   [
     ["test/functional-portable/corerp/noncloud/resources/application_test.go"],
-    false
+    false,
   ],
-  [["docs/contributing/README.md"], false]
+  [["docs/contributing/README.md"], false],
 ]) {
   test(`authorization paths: ${files.join(", ")} -> ${expected}`, async () => {
     assert.equal(
       Number(countMatchingFiles(files, authzPatterns)) > 0,
-      expected
+      expected,
     );
     const context = {
       eventName: "pull_request",
-      payload: { pull_request: { base: { ref: "main" } } }
+      payload: { pull_request: { base: { ref: "main" } } },
     };
     const core = createCore();
     const getInput = core.getInput;
     core.getInput = (name) =>
-      name === "AUTHZ_FILES_COUNT" ?
-        countMatchingFiles(files, authzPatterns)
-      : getInput(name);
+      name === "AUTHZ_FILES_COUNT"
+        ? countMatchingFiles(files, authzPatterns)
+        : getInput(name);
     await changes({ context, core });
     assert.deepEqual(core.failures, []);
     const authzChanged = Object.fromEntries(core.outputs).authz_changed;
     assert.equal(authzChanged, String(expected));
     const { matrix } = selectNonCloudTests({
       ...context,
-      authzChanged: authzChanged !== "false"
+      authzChanged: authzChanged !== "false",
     });
     assert.equal(matrix.include.length, expected ? 18 : 10);
     assert.equal(
       matrix.include.some(({ authzDryRun }) => authzDryRun),
-      expected
+      expected,
     );
     for (const name of [
       "daprrp-noncloud",
       "datastoresrp-noncloud",
-      "msgrp-noncloud"
+      "msgrp-noncloud",
     ]) {
       assert.equal(
         matrix.include.some((leg) => leg.name === name && !leg.authzDryRun),
-        expected
+        expected,
       );
     }
   });
@@ -296,7 +298,7 @@ for (const eventName of [...filteringEvents, "workflow_run"]) {
     ignoredFiles,
     releaseFiles,
     workflowFiles,
-    authzFiles = "0"
+    authzFiles = "0",
   ] of [
     ["", "2", "0", "0"],
     ["2", undefined, "0", "0"],
@@ -310,7 +312,7 @@ for (const eventName of [...filteringEvents, "workflow_run"]) {
     ["2", "2", "3", "0"],
     ["2", "2", "0", "3"],
     ["2", "2", "0", "0", "3"],
-    ["2", "2", "0", "0", "unknown"]
+    ["2", "2", "0", "0", "unknown"],
   ]) {
     test(`${eventName}: rejects invalid file counts ${allFiles}/${ignoredFiles}/${releaseFiles}/${workflowFiles}/${authzFiles}`, async () => {
       const core = createCore();
@@ -321,12 +323,12 @@ for (const eventName of [...filteringEvents, "workflow_run"]) {
           IGNORED_FILES_COUNT: ignoredFiles,
           RELEASE_FILES_COUNT: releaseFiles,
           WORKFLOW_FILES_COUNT: workflowFiles,
-          AUTHZ_FILES_COUNT: authzFiles
+          AUTHZ_FILES_COUNT: authzFiles,
         })[name];
       await changes({ context: { eventName }, core });
       assert.deepEqual(core.outputs, []);
       assert.deepEqual(core.failures, [
-        "Change filter returned invalid file counts"
+        "Change filter returned invalid file counts",
       ]);
     });
   }
@@ -350,7 +352,7 @@ for (const error of [new Error("input unavailable"), "input unavailable"]) {
     await changes({ context: { eventName: "pull_request_target" }, core });
     assert.deepEqual(core.outputs, []);
     assert.deepEqual(core.failures, [
-      error instanceof Error ? error.message : `Unexpected error: ${error}`
+      error instanceof Error ? error.message : `Unexpected error: ${error}`,
     ]);
   });
 }
@@ -367,15 +369,15 @@ test("comparison precedes trusted restoration and preserves the caller inputs", 
       "Fetch comparison base",
       "Filter",
       "Checkout trusted changes helper",
-      "Set result"
-    ]
+      "Set result",
+    ],
   );
   for (const input of [
     "fetch-depth: 0",
     "persist-credentials: false",
     "ref: ${{ inputs.ref }}",
     "repository: ${{ inputs.repository }}",
-    "allow-unsafe-pr-checkout: true"
+    "allow-unsafe-pr-checkout: true",
   ]) {
     assert.ok(comparison.includes(input), input);
   }
@@ -387,7 +389,7 @@ test("comparison precedes trusted restoration and preserves the caller inputs", 
     "base_sha: ${{ inputs.base_sha }}",
     "output_renamed_files_as_deleted_and_added: true",
     "fail_on_initial_diff_error: true",
-    "fail_on_submodule_diff_error: true"
+    "fail_on_submodule_diff_error: true",
   ]) {
     assert.ok(filter.includes(input), input);
   }
@@ -404,13 +406,13 @@ test("base fetching uses upstream identity and does not execute checkout content
     "shell: bash",
     "BASE_REPOSITORY: ${{ github.repository }}",
     "BASE_SERVER_URL: ${{ github.server_url }}",
-    "GH_TOKEN: ${{ github.token }}"
+    "GH_TOKEN: ${{ github.token }}",
   ]) {
     assert.ok(fetchBase.includes(input), input);
   }
   assert.doesNotMatch(
     fetchBase,
-    /inputs\.repository|head\.repo|^\s+(?:uses|working-directory):/m
+    /inputs\.repository|head\.repo|^\s+(?:uses|working-directory):/m,
   );
 });
 
@@ -426,8 +428,8 @@ function runGit(cwd, args) {
     env: {
       ...process.env,
       GIT_CONFIG_NOSYSTEM: "1",
-      GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null"
-    }
+      GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
+    },
   });
   assert.equal(result.status, 0, result.error?.message || result.stderr);
   return result.stdout.trim();
@@ -475,9 +477,9 @@ function runFetchBase({ workspace, checkout, baseSha }) {
         BASE_SERVER_URL: pathToFileURL(workspace).href,
         GH_TOKEN: "test-token",
         GIT_CONFIG_NOSYSTEM: "1",
-        GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null"
-      }
-    }
+        GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
+      },
+    },
   );
 }
 
@@ -486,11 +488,11 @@ test("fetches a missing upstream base into a full fork checkout without changing
   const { checkout, baseSha, headSha, sharedBase } = fixture;
   assert.equal(
     runGit(checkout, ["rev-parse", "--is-shallow-repository"]),
-    "false"
+    "false",
   );
   const before = spawnSync("git", ["merge-base", baseSha, headSha], {
     cwd: checkout,
-    encoding: "utf8"
+    encoding: "utf8",
   });
   assert.notEqual(before.status, 0);
   assert.match(before.stderr, /Not a valid commit name/);
@@ -502,12 +504,12 @@ test("fetches a missing upstream base into a full fork checkout without changing
   assert.equal(runGit(checkout, ["merge-base", baseSha, headSha]), sharedBase);
   assert.equal(
     runGit(checkout, ["diff", "--name-only", `${baseSha}...${headSha}`]),
-    "pr.txt"
+    "pr.txt",
   );
   assert.equal(runGit(checkout, ["status", "--porcelain"]), "");
   assert.doesNotMatch(
     await readFile(path.join(checkout, ".git", "config"), "utf8"),
-    /test-token|extraheader/
+    /test-token|extraheader/,
   );
 });
 
@@ -516,12 +518,12 @@ test("an existing base skips fetching even when the upstream URL is unavailable"
   const fetched = runFetchBase({
     ...fixture,
     workspace: path.join(fixture.workspace, "missing"),
-    baseSha: fixture.sharedBase
+    baseSha: fixture.sharedBase,
   });
   assert.equal(fetched.status, 0, fetched.error?.message || fetched.stderr);
   assert.equal(
     runGit(fixture.checkout, ["rev-parse", "HEAD"]),
-    fixture.headSha
+    fixture.headSha,
   );
 });
 
@@ -531,35 +533,35 @@ test("an unavailable comparison commit fails instead of allowing filtering", asy
   assert.notEqual(fetched.status, 0);
   assert.match(
     fetched.stderr,
-    /not our ref|unadvertised object|couldn't find remote ref/
+    /not our ref|unadvertised object|couldn't find remote ref/,
   );
   assert.equal(
     runGit(fixture.checkout, ["rev-parse", "HEAD"]),
-    fixture.headSha
+    fixture.headSha,
   );
 });
 
 test("only privileged PR-derived events restore the trusted triggering revision", () => {
   assert.match(
     trusted,
-    /^\s+if: github\.event_name == 'pull_request_target' \|\| github\.event_name == 'workflow_run'$/m
+    /^\s+if: github\.event_name == 'pull_request_target' \|\| github\.event_name == 'workflow_run'$/m,
   );
   assert.match(
     trusted,
-    /uses: actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/
+    /uses: actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/,
   );
   for (const input of [
     "repository: ${{ github.repository }}",
     "ref: ${{ github.sha }}",
     "sparse-checkout: |\n            .github/scripts/changes.mjs",
     "sparse-checkout-cone-mode: false",
-    "persist-credentials: false"
+    "persist-credentials: false",
   ]) {
     assert.ok(trusted.includes(input), input);
   }
   assert.doesNotMatch(
     trusted,
-    /inputs\.|head\.sha|head_sha|allow-unsafe-pr-checkout|^\s+(?:path|clean):/m
+    /inputs\.|head\.sha|head_sha|allow-unsafe-pr-checkout|^\s+(?:path|clean):/m,
   );
 });
 
@@ -568,58 +570,58 @@ test("restoration failures cannot bypass the normal success gate or change outpu
   assert.doesNotMatch(result, /^\s+if:/m);
   assert.ok(
     result.includes(
-      "INPUT_ALL_FILES_COUNT: ${{ steps.filter.outputs.all_all_changed_and_modified_files_count }}"
-    )
+      "INPUT_ALL_FILES_COUNT: ${{ steps.filter.outputs.all_all_changed_and_modified_files_count }}",
+    ),
   );
   assert.ok(
     result.includes(
-      "INPUT_IGNORED_FILES_COUNT: ${{ steps.filter.outputs.ignored_all_changed_and_modified_files_count }}"
-    )
+      "INPUT_IGNORED_FILES_COUNT: ${{ steps.filter.outputs.ignored_all_changed_and_modified_files_count }}",
+    ),
   );
   assert.ok(
     result.includes(
-      "INPUT_RELEASE_FILES_COUNT: ${{ steps.filter.outputs.release_metadata_all_changed_and_modified_files_count }}"
-    )
+      "INPUT_RELEASE_FILES_COUNT: ${{ steps.filter.outputs.release_metadata_all_changed_and_modified_files_count }}",
+    ),
   );
   assert.ok(
     result.includes(
-      "INPUT_WORKFLOW_FILES_COUNT: ${{ steps.filter.outputs.workflows_all_changed_and_modified_files_count }}"
-    )
+      "INPUT_WORKFLOW_FILES_COUNT: ${{ steps.filter.outputs.workflows_all_changed_and_modified_files_count }}",
+    ),
   );
   assert.ok(
     result.includes(
-      "INPUT_AUTHZ_FILES_COUNT: ${{ steps.filter.outputs.authz_all_changed_and_modified_files_count }}"
-    )
+      "INPUT_AUTHZ_FILES_COUNT: ${{ steps.filter.outputs.authz_all_changed_and_modified_files_count }}",
+    ),
   );
   assert.ok(result.includes("INPUT_BASE_SHA: ${{ inputs.base_sha }}"));
   assert.ok(
     workflow.includes(
-      "only_changed: ${{ steps.set-result.outputs.only_changed }}"
-    )
+      "only_changed: ${{ steps.set-result.outputs.only_changed }}",
+    ),
   );
   assert.ok(
-    workflow.includes("value: ${{ jobs.changes.outputs.only_changed }}")
-  );
-  assert.ok(
-    workflow.includes(
-      "release_metadata: ${{ steps.set-result.outputs.release_metadata }}"
-    )
-  );
-  assert.ok(
-    workflow.includes("value: ${{ jobs.changes.outputs.release_metadata }}")
+    workflow.includes("value: ${{ jobs.changes.outputs.only_changed }}"),
   );
   assert.ok(
     workflow.includes(
-      "authz_changed: ${{ steps.set-result.outputs.authz_changed }}"
-    )
+      "release_metadata: ${{ steps.set-result.outputs.release_metadata }}",
+    ),
   );
   assert.ok(
-    workflow.includes("value: ${{ jobs.changes.outputs.authz_changed }}")
+    workflow.includes("value: ${{ jobs.changes.outputs.release_metadata }}"),
+  );
+  assert.ok(
+    workflow.includes(
+      "authz_changed: ${{ steps.set-result.outputs.authz_changed }}",
+    ),
+  );
+  assert.ok(
+    workflow.includes("value: ${{ jobs.changes.outputs.authz_changed }}"),
   );
 });
 
 const scriptMatch = result.match(
-  /          script: \|\r?\n([\s\S]*?)        env:/
+  /          script: \|\r?\n([\s\S]*?)        env:/,
 );
 assert.ok(scriptMatch, "Set result must have a script and input environment");
 const scriptBody = scriptMatch[1].replace(/^            /gm, "");
@@ -640,9 +642,9 @@ test("without restoration the result script would execute the PR helper", async 
   const core = createCore("base-sha");
   await assert.rejects(
     runResult({ eventName: "pull_request_target" }, core, {
-      env: { GITHUB_WORKSPACE: pathToFileURL(workspace).href }
+      env: { GITHUB_WORKSPACE: pathToFileURL(workspace).href },
     }),
-    { message: "PR helper executed" }
+    { message: "PR helper executed" },
   );
   assert.deepEqual(core.outputs, []);
 });
@@ -654,12 +656,12 @@ test("the actual result script imports the restored helper, not PR content", asy
   await copyFile(new URL("./changes.mjs", import.meta.url), helper);
   const core = createCore("base-sha", "false");
   await runResult({ eventName: "pull_request_target" }, core, {
-    env: { GITHUB_WORKSPACE: pathToFileURL(workspace).href }
+    env: { GITHUB_WORKSPACE: pathToFileURL(workspace).href },
   });
   assert.deepEqual(core.outputs, [
     ["only_changed", "false"],
     ["release_metadata", "false"],
-    ["authz_changed", "false"]
+    ["authz_changed", "false"],
   ]);
   assert.deepEqual(core.failures, []);
 });
@@ -669,9 +671,9 @@ test("a missing restored helper fails import without a fallback or output", asyn
   const core = createCore("base-sha");
   await assert.rejects(
     runResult({ eventName: "workflow_run" }, core, {
-      env: { GITHUB_WORKSPACE: pathToFileURL(workspace).href }
+      env: { GITHUB_WORKSPACE: pathToFileURL(workspace).href },
     }),
-    { code: "ERR_MODULE_NOT_FOUND" }
+    { code: "ERR_MODULE_NOT_FOUND" },
   );
   assert.deepEqual(core.outputs, []);
 });
@@ -682,9 +684,9 @@ const consumers = Object.fromEntries(
       file,
       (
         await readFile(new URL(`../workflows/${file}`, import.meta.url), "utf8")
-      ).replace(/\r\n/g, "\n")
-    ])
-  )
+      ).replace(/\r\n/g, "\n"),
+    ]),
+  ),
 );
 
 function job(source, name) {
@@ -709,13 +711,13 @@ test("every heavy workflow consumer uses the shared filter without overriding it
     assert.match(
       selection,
       /uses: \.\/\.github\/workflows\/__changes\.yml/,
-      file
+      file,
     );
     assert.doesNotMatch(selection, /^\s+files:/m, file);
     assert.match(
       source,
       /needs\.changes\.outputs\.only_changed != 'true'/,
-      file
+      file,
     );
   }
 });
@@ -727,15 +729,15 @@ test("Build Check includes change detection failures and cancellations", () => {
     assert.match(buildCheck, /^    name: Build Check$/m);
     assert.match(
       buildCheck,
-      /^    needs: \[changes, build-snapshot, build-and-push-cli, build-and-push-images\]$/m
+      /^    needs: \[changes, build-snapshot, build-and-push-cli, build-and-push-images\]$/m,
     );
     assert.match(
       step(buildCheck, "Check build matrix results"),
-      /if: needs\.changes\.result != 'success' \|\| contains\(needs\.\*\.result, 'failure'\) \|\| contains\(needs\.\*\.result, 'cancelled'\)/
+      /if: needs\.changes\.result != 'success' \|\| contains\(needs\.\*\.result, 'failure'\) \|\| contains\(needs\.\*\.result, 'cancelled'\)/,
     );
     assert.match(
       step(buildCheck, "Build matrix succeeded"),
-      /needs\.changes\.result == 'success' && !contains\(needs\.\*\.result, 'failure'\) && !contains\(needs\.\*\.result, 'cancelled'\)/
+      /needs\.changes\.result == 'success' && !contains\(needs\.\*\.result, 'failure'\) && !contains\(needs\.\*\.result, 'cancelled'\)/,
     );
   }
 });
@@ -755,7 +757,7 @@ test("Lint keeps its required status and release tests without running unrelated
     "test-changelog-range",
     "test-changelog-config",
     "test-prepare-release",
-    "test-release-plan"
+    "test-release-plan",
   ]) {
     assert.ok(metadata.includes(target), target);
   }
@@ -771,23 +773,23 @@ test("Lint keeps its required status and release tests without running unrelated
     "Shell lint",
     "Run make generate",
     "Check if generated code is up to date",
-    "Check failures"
+    "Check failures",
   ]) {
     assert.match(
       step(lint, name),
       /if: needs\.changes\.outputs\.only_changed != 'true'/,
-      name
+      name,
     );
   }
 });
 
 const lintCondition = job(consumers["lint.yaml"], "lint").match(
-  /^    if: (.+)$/m
+  /^    if: (.+)$/m,
 )[1];
 const runLintCondition = new Function(
   "needs",
   "always",
-  `return ${lintCondition}`
+  `return ${lintCondition}`,
 );
 
 for (const [name, result, onlyChanged, releaseMetadata, expected] of [
@@ -797,7 +799,7 @@ for (const [name, result, onlyChanged, releaseMetadata, expected] of [
   ["ordinary docs/config/publisher only", "success", "true", "false", false],
   ["failed classification", "failure", "", "", true],
   ["cancelled classification", "cancelled", "", "", true],
-  ["skipped classification", "skipped", "", "", true]
+  ["skipped classification", "skipped", "", "", true],
 ]) {
   test(`Lint selection: ${name}`, () => {
     assert.equal(
@@ -807,13 +809,13 @@ for (const [name, result, onlyChanged, releaseMetadata, expected] of [
             result,
             outputs: {
               only_changed: onlyChanged,
-              release_metadata: releaseMetadata
-            }
-          }
+              release_metadata: releaseMetadata,
+            },
+          },
         },
-        () => true
+        () => true,
       ),
-      expected
+      expected,
     );
   });
 }
@@ -825,21 +827,21 @@ test("cloud skips and final status require successful change detection", () => {
   for (const name of ["build", "skip-tests"]) {
     assert.match(
       job(cloud, name),
-      /if: always\(\) && needs\.setup\.result == 'success' && needs\.changes\.result == 'success'/
+      /if: always\(\) && needs\.setup\.result == 'success' && needs\.changes\.result == 'success'/,
     );
   }
   assert.match(
     report,
-    /^    needs: \[authorize, setup, changes, build, skip-tests, tests\]$/m
+    /^    needs: \[authorize, setup, changes, build, skip-tests, tests\]$/m,
   );
   assert.match(
     report,
-    /CHECKOUT_REF: \$\{\{ needs\.setup\.outputs\.CHECKOUT_REF \|\| github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/
+    /CHECKOUT_REF: \$\{\{ needs\.setup\.outputs\.CHECKOUT_REF \|\| github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/,
   );
   assert.match(report, /name: Functional Test Run/);
   assert.match(
     report,
-    /conclusion: \$\{\{ steps\.get_test_status\.outputs\.test_status \}\}/
+    /conclusion: \$\{\{ steps\.get_test_status\.outputs\.test_status \}\}/,
   );
 });
 
@@ -855,9 +857,9 @@ for (const [name, overrides, expected] of [
       ONLY_CHANGED: "true",
       BUILD_RESULT: "skipped",
       SKIP_RESULT: "success",
-      TESTS_RESULT: "skipped"
+      TESTS_RESULT: "skipped",
     },
-    "success"
+    "success",
   ],
   ["classification fails", { CHANGES_RESULT: "failure" }, "failure"],
   ["classification is cancelled", { CHANGES_RESULT: "cancelled" }, "cancelled"],
@@ -876,13 +878,13 @@ for (const [name, overrides, expected] of [
   [
     "metadata skip reporting is absent",
     { ONLY_CHANGED: "true", BUILD_RESULT: "skipped", TESTS_RESULT: "skipped" },
-    "failure"
+    "failure",
   ],
   [
     "failure takes precedence over cancellation",
     { CHANGES_RESULT: "failure", TESTS_RESULT: "cancelled" },
-    "failure"
-  ]
+    "failure",
+  ],
 ]) {
   test(`Functional Test Run: ${name}`, async (t) => {
     const { workspace } = await createWorkspace(t);
@@ -902,14 +904,14 @@ for (const [name, overrides, expected] of [
           BUILD_RESULT: "success",
           SKIP_RESULT: "skipped",
           TESTS_RESULT: "success",
-          ...overrides
-        }
-      }
+          ...overrides,
+        },
+      },
     );
     assert.equal(result.status, 0, result.error?.message || result.stderr);
     assert.equal(
       (await readFile(output, "utf8")).trim(),
-      `test_status=${expected}`
+      `test_status=${expected}`,
     );
   });
 }

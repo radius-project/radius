@@ -36,7 +36,7 @@ import (
 	"github.com/radius-project/radius/test/secretstore"
 )
 
-func Test_SecretStores_Lifecycle(t *testing.T) {
+func testSecretStores(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 	client := secretstore.New(t, options)
 	ctx := t.Context()

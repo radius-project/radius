@@ -318,42 +318,25 @@ make test-functional-all-noncloud
 
 The supported groups, including `authz`, and variants are defined in [`build/test.mk`](../../../../build/test.mk).
 
-The `authz` group (`make test-functional-authz-noncloud`) covers internal component authorization. Its startup-log smoke test reads the installed Helm values and checks that every Radius component logs the matching `authz mode=<mode>`. This check requires startup messages to remain available in the current pod logs; use a fresh installation because log rotation can remove those messages from long-running pods. The `authz-noncloud` CI leg installs Radius with `--set global.rbac.dryRun=true` so the test checks a non-default mode; to reproduce that locally, run `rad install kubernetes --reinstall --set global.rbac.dryRun=true` before the tests. The leg then switches the same installation to enforce and runs the rogue-pod mTLS boundary tests plus direct `Applications.Core/secretStores` tests. UCP presents its component certificate to applications-rp; these tests do not need deployment-engine authentication. Finally, the leg switches to off, runs the protected-reference tests again, and cleans their synthetic fixtures. Use the same chart and `rad` installer for all modes: reinstall preserves stored image and registry values and retains the `rad` server-side apply field manager; switching with the Helm CLI causes ownership conflicts.
+The `authz` group (`make test-functional-authz-noncloud`) covers internal component authorization. Its startup-log smoke test reads the installed Helm values and checks that every Radius component logs the matching `authz mode=<mode>`. This check requires startup messages to remain available in the current pod logs; use a fresh installation because log rotation can remove those messages from long-running pods. The `authz-noncloud` CI leg installs Radius with `--set global.rbac.dryRun=true` so the test checks a non-default mode; to reproduce that locally, run `rad install kubernetes --reinstall --set global.rbac.dryRun=true` before the tests. The leg then switches the same installation to enforce and runs the rogue-pod mTLS boundary tests. Use only a disposable, single-cluster installation: the Applications.Core regression suite also changes authorization modes and restores the original flags during cleanup.
 
-#### Applications.Core secretStore regressions
+#### Applications.Core regression suite
 
-`Test_SecretStores_Lifecycle` runs automatically in Core RP's off and dry-run jobs. It covers create, GET redaction, PATCH, listSecrets, deletion, repeat deletion, recreation, explicit references, inherited application/environment namespaces, and application namespace overrides. It checks backing Secret UIDs and state for owned, adopted, labeled, replaced, shared, and missing Secrets. A protected-looking name in an ordinary namespace must remain usable; the ordinary dry-run job's zero-would-deny gate remains unchanged. The public secretStore API does not currently honor a standalone `properties.environment`; the supported environment-derived case goes through an application.
+`Test_ApplicationsCoreRegression` runs automatically in the Core RP jobs through the shared `corerp.RunRegression` entry point. Add direct API resource regressions there, not to workflow selectors. Its secretStore cases cover create, GET redaction, PATCH, listSecrets, deletion, repeat deletion, recreation, explicit references, application/environment-derived namespaces, and namespace overrides. Backing Secret UID and state assertions distinguish owned, adopted, labeled, replaced, shared, and missing Secrets. A protected-looking name in an ordinary namespace must remain usable; the ordinary dry-run job's zero-would-deny gate remains unchanged. Standalone secretStore `properties.environment` is not currently honored; environment-derived coverage goes through an application.
 
-Run just that test against an existing disposable installation and workspace:
-
-```bash
-make test-functional-corerp-noncloud GOTEST_OPTS='-count=1 -run ^Test_SecretStores_Lifecycle$$'
-```
-
-`Test_SecretStores_ProtectedReferences` belongs only to the dedicated authorization suite, where warnings are intentional. It uses synthetic data in the otherwise unused `target-kubeconfig` Secret and a run-specific Secret in `radius-system`, checking both `control-plane-secret` and `control-plane-namespace`. It refuses to use an existing Secret from another run or one referenced by a pod. Do not run it on a shared or production installation.
-
-To reproduce the CI mode sequence, start with a disposable single-cluster installation, its selected Radius workspace, and `RADIUS_CHART_LOCATION=deploy/Chart`. The retained records are created through the public API before enforcement, not inserted directly into storage:
+Run the suite against the current disposable installation and workspace:
 
 ```bash
-export SECRETSTORE_AUTHZ_ID="ss-authz-$(date +%s)"
-export SECRETSTORE_AUTHZ_RETAIN=true
-rad install kubernetes --reinstall --chart "$RADIUS_CHART_LOCATION" \
-  --set global.rbac.enabled=false --set global.rbac.dryRun=true
-AUTHZ_EXPECTED_MODE=dryRun make test-functional-authz-noncloud \
-  GOTEST_OPTS='-count=1 -run ^Test_SecretStores_ProtectedReferences$$'
-rad install kubernetes --reinstall --chart "$RADIUS_CHART_LOCATION" \
-  --set global.rbac.dryRun=false --set global.rbac.enabled=true
-AUTHZ_EXPECTED_MODE=enforce make test-functional-authz-noncloud \
-  GOTEST_OPTS='-count=1 -run ^Test_SecretStores_ProtectedReferences$$'
-make test-functional-corerp-noncloud GOTEST_OPTS='-count=1 -run ^Test_SecretStores_Lifecycle$$'
-rad install kubernetes --reinstall --chart "$RADIUS_CHART_LOCATION" \
-  --set global.rbac.dryRun=false --set global.rbac.enabled=false
-SECRETSTORE_AUTHZ_RETAIN=false AUTHZ_EXPECTED_MODE=off \
-  make test-functional-authz-noncloud GOTEST_OPTS='-count=1 -run ^Test_SecretStores_ProtectedReferences$$'
-unset SECRETSTORE_AUTHZ_ID SECRETSTORE_AUTHZ_RETAIN
+make test-functional-corerp-noncloud GOTEST_OPTS='-count=1 -run ^Test_ApplicationsCoreRegression$$'
 ```
 
-Dry-run assertions require the exact rule, action, target, and `authzWouldDeny` decision in applications-rp logs. Enforce assertions require HTTP 403 with `AdmissionPolicyDenied`, no returned values, and unchanged Radius records and backing Secret resource versions. Missing pre-enforcement fixtures or a mismatched installed mode fail the test, rather than skipping it. If an enforce run fails, still switch to off and run the final command to clean up using the same fixture ID.
+The dedicated `authz` group runs the same shared suite across **dryRun, enforce, and off**, together with intentional protected-reference checks. Its serial `Test_ApplicationsCoreRegression` owns mode changes, persistence across rollouts, and cleanup within one process. It creates real records before enforcement and checks exact admission decisions, HTTP 403 responses, and unchanged records and backing Secrets on denial. Synthetic control-plane fixtures must be absent and unused by pods; existing credentials are never adopted. No resource-specific workflow steps or fixture environment variables are required:
+
+```bash
+make test-functional-authz-noncloud GOTEST_OPTS='-count=1 -run ^Test_ApplicationsCoreRegression$$'
+```
+
+The mode suite uses `rad install --reinstall` with the checkout's chart, preserving stored image/registry settings and the server-side apply field manager. `RADIUS_CHART_LOCATION` optionally selects another chart (absolute or repository-relative). UCP authenticates directly to applications-rp; no deployment-engine calls are needed. Do not run other tests or use the cluster concurrently. Normal failures clean up fixtures and restore the original authorization flags; after a process timeout or forced termination, discard the disposable cluster.
 
 `Test_SecretStores_Upgrade` runs in the isolated `upgrade-noncloud` job. It installs the released **0.62.0 chart and binaries**, creates a record, upgrades in place to the candidate chart and images, and verifies read/update/delete/recreate behavior and retention of the pre-upgrade Secret. The baseline intentionally predates UID ownership; do not replace it with a version-renamed candidate chart. This test uninstalls Radius and requires a disposable cluster. It also requires network access to the released chart and images. Run it with `make test-functional-upgrade-noncloud GOTEST_OPTS='-count=1 -run ^Test_SecretStores_Upgrade$$'`.
 
@@ -433,7 +416,7 @@ The `functional-test-noncloud.yaml` and `functional-test-cloud.yaml` workflows b
 
 For PRs targeting `main` or `features/*` and the `main` merge queue, changes matching the `authz` paths in [`.github/workflows/__changes.yml`](../../../../.github/workflows/__changes.yml) run all 18 non-cloud jobs. Unrelated changes run 10, omitting `daprrp-noncloud`, `datastoresrp-noncloud`, `msgrp-noncloud`, `authz-noncloud`, and the four dry-run variants. Missing change-detection results retain all jobs. Cloud coverage is unchanged.
 
-Default jobs test existing behavior with authorization off; `corerp-noncloud` also verifies each component's startup mode. Ordinary groups cover Off and DryRun. The dedicated authorization job additionally covers Enforce for the selected mTLS boundaries and direct secretStore lifecycles, not the full resource-provider suite or user-facing RBAC. SecretStore controller, model, conversion, shared test-helper, and regression-test changes are included in the `authz` path filter, so they select all relevant jobs. Preserve explicit both-disabled coverage when user-facing RBAC lands.
+Default jobs test existing behavior with authorization off; `corerp-noncloud` also verifies each component's startup mode. Ordinary groups cover Off and DryRun. The dedicated authorization job additionally runs the shared direct Applications.Core regression suite in all three modes and selected mTLS boundaries in Enforce, not the deployment-engine-based resource-provider tests or user-facing RBAC. Relevant controller, model, conversion, shared helper, and regression-suite changes are included in the `authz` path filter. Preserve explicit both-disabled coverage when user-facing RBAC lands.
 
 The Dapr Redis-helper unit tests still run on every PR through `make test-dapr-helpers`. `make test` checks the legacy suites' inventory so new tests require a coverage decision.
 
