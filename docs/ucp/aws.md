@@ -184,10 +184,10 @@ UCP also checks the native schema's create-only properties before it calls a nat
 
 Each service has a package in `pkg/ucp/aws/native/handlers`, which `handlers.All` registers. Schemas start from CloudFormation's, using the version with Cloud Control handlers where a region has one, so both handlers store the same identifier. Native schemas also mark write-only every secret and every input AWS can't return, such as a restore source, and set `insertionOrder` to `false` on lists AWS returns in its own order.
 
-| Service       | Types                                                                                                                                                                                            |
-|---------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| DocumentDB    | `DBCluster` (final snapshot on delete), `DBInstance`                                                                                                                                             |
-| One type each | DAX `Cluster`, DMS `ReplicationInstance`, EMR `Cluster`, FSx `FileSystem` (final backup on delete; an OpenZFS template's `Options` are kept in a `radius-delete-options` tag and sent on delete) |
+| Service       | Types                                                                                                                                                                                                                                                                                                               |
+|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| DocumentDB    | `DBCluster` (final snapshot on delete), `DBInstance`                                                                                                                                                                                                                                                                |
+| One type each | DAX `Cluster`, DMS `ReplicationInstance`, EMR `Cluster`, FSx `FileSystem` (final backup on delete; an OpenZFS template's `Options` are kept in a `radius-delete-options` tag and sent on delete; after a failed update, a `radius-update-baseline` tag marks the failed action so a later update doesn't report it) |
 
 The final snapshot or backup needs the permission to take it, such as `rds:CreateDBClusterSnapshot` or `fsx:CreateBackup`. Radius never deletes it.
 

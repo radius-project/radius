@@ -727,6 +727,31 @@ func Test_Progress(t *testing.T) {
 		require.Nil(t, finish(t, h, id, native.OperationUpdate).Failure, "a later update that succeeds is done, though an earlier one failed")
 	})
 
+	t.Run("an update with no administrative action after one that failed", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewFileSystem(api)
+		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
+		id := create(t, h, base)
+		api.failUpdate = "The throughput capacity is not supported."
+		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 4096}})))
+		require.NotNil(t, finish(t, h, id, native.OperationUpdate).Failure)
+
+		tagged := with(base, map[string]any{"Tags": tags("env", "dev")})
+		api.calls = nil
+		require.NoError(t, update(t, h, id, base, tagged))
+		require.Equal(t, []string{"TagResource", "TagResource"}, slices.DeleteFunc(api.calls, func(c string) bool { return strings.HasPrefix(c, "Describe") }), "the baseline tag, then the template's tags")
+		require.Nil(t, finish(t, h, id, native.OperationUpdate).Failure, "a tag change makes no administrative action, so the earlier failure isn't its")
+		read, err := h.Read(t.Context(), testRegion, id)
+		require.NoError(t, err)
+		require.Equal(t, tags("env", "dev"), read["Tags"], "Read leaves out the tag UCP keeps for updates")
+
+		api.failUpdate = "The throughput capacity is not supported."
+		api.calls = nil
+		require.NoError(t, update(t, h, id, tagged, with(tagged, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 2048}})))
+		require.Equal(t, []string{"UpdateFileSystem"}, slices.DeleteFunc(api.calls, func(c string) bool { return strings.HasPrefix(c, "Describe") }), "the baseline tag already names the failed action")
+		require.NotNil(t, finish(t, h, id, native.OperationUpdate).Failure, "a new failed action is the update's")
+	})
+
 	t.Run("a Lustre update waits while the file system is updating", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)

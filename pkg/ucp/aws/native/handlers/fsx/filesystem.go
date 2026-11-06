@@ -247,6 +247,7 @@ func tagList(tags []types.Tag) []any {
 		m[aws.ToString(t.Key)] = aws.ToString(t.Value)
 	}
 	delete(m, deleteOptionsTag)
+	delete(m, updateBaselineTag)
 	return awsapi.TagList(m)
 }
 
@@ -448,7 +449,59 @@ func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) e
 			return err
 		}}, calls...)
 	}
+	if baseline := failedBaseline(fs); baseline != "" && len(calls) > 0 {
+		// An update that makes no administrative action, such as a tag change, must not take the failed one as its.
+		calls = append([]func() error{func() error {
+			_, err := h.api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: fs.ResourceARN, Tags: []types.Tag{{Key: aws.String(updateBaselineTag), Value: aws.String(baseline)}}}, opt)
+			return err
+		}}, calls...)
+	}
 	return awsapi.Calls(calls...)
+}
+
+// updateBaselineTag is the tag key the handler puts on a file system whose latest administrative action failed, with
+// that action's request time, before it starts an update. Progress ignores the actions it names, so an update that
+// makes no action of its own, such as a tag change, isn't reported as failed. Read leaves the tag out.
+const updateBaselineTag = "radius-update-baseline"
+
+// failedBaseline returns the request time of the file system's latest administrative action, other than optimizations,
+// when that action failed and the file system's baseline tag doesn't name it yet, and "" otherwise.
+func failedBaseline(fs *types.FileSystem) string {
+	latest := latestAction(fs, time.Time{})
+	if latest == nil || latest.Status != types.StatusFailed {
+		return ""
+	}
+	value := aws.ToTime(latest.RequestTime).UTC().Format(time.RFC3339Nano)
+	if value == tagValue(fs.Tags, updateBaselineTag) {
+		return ""
+	}
+	return value
+}
+
+// latestAction returns the file system's latest administrative action other than optimizations that FSx requested
+// after since, or nil when there is none.
+func latestAction(fs *types.FileSystem, since time.Time) *types.AdministrativeAction {
+	var latest *types.AdministrativeAction
+	for i := range fs.AdministrativeActions {
+		a := &fs.AdministrativeActions[i]
+		if slices.Contains(optimizations, a.AdministrativeActionType) || !aws.ToTime(a.RequestTime).After(since) {
+			continue
+		}
+		if latest == nil || aws.ToTime(a.RequestTime).After(aws.ToTime(latest.RequestTime)) {
+			latest = a
+		}
+	}
+	return latest
+}
+
+// tagValue returns the value of the tag with the key, or "".
+func tagValue(tags []types.Tag, key string) string {
+	for _, t := range tags {
+		if aws.ToString(t.Key) == key {
+			return aws.ToString(t.Value)
+		}
+	}
+	return ""
 }
 
 // configChanges returns the changes to the configuration name, such as LustreConfiguration, in the format of
@@ -616,7 +669,7 @@ func backupTags(tags []types.Tag) []types.Tag {
 	var out []types.Tag
 	for _, t := range tags {
 		key := aws.ToString(t.Key)
-		if !strings.HasPrefix(key, "aws:") && key != awsapi.OperationTag && key != deleteOptionsTag {
+		if !strings.HasPrefix(key, "aws:") && key != awsapi.OperationTag && key != deleteOptionsTag && key != updateBaselineTag {
 			out = append(out, t)
 		}
 	}
@@ -697,22 +750,15 @@ func (h *FileSystem) Progress(ctx context.Context, region string, identifier str
 	if fs.Lifecycle != types.FileSystemLifecycleAvailable {
 		return native.Progress{State: state, Waiting: string(types.FileSystemLifecycleAvailable)}, nil
 	}
-	var latest *types.AdministrativeAction
-	for i := range fs.AdministrativeActions {
-		a := &fs.AdministrativeActions[i]
-		if slices.Contains(optimizations, a.AdministrativeActionType) {
-			continue
-		}
-		if a.Status == types.StatusPending || a.Status == types.StatusInProgress {
+	for _, a := range fs.AdministrativeActions {
+		if !slices.Contains(optimizations, a.AdministrativeActionType) && (a.Status == types.StatusPending || a.Status == types.StatusInProgress) {
 			return native.Progress{State: fmt.Sprintf("%s %s", a.AdministrativeActionType, a.Status), Waiting: string(types.StatusCompleted)}, nil
 		}
-		if latest == nil || aws.ToTime(a.RequestTime).After(aws.ToTime(latest.RequestTime)) {
-			latest = a
-		}
 	}
-	// The latest action is the update's. FSx accepts an update and then runs it, so a change it can't make fails
-	// there, and the file system stays as it was.
-	if latest != nil && latest.Status == types.StatusFailed {
+	// The latest action after the baseline is the update's. FSx accepts an update and then runs it, so a change it
+	// can't make fails there, and the file system stays as it was. An update that made no action has none.
+	since, _ := time.Parse(time.RFC3339Nano, tagValue(fs.Tags, updateBaselineTag))
+	if latest := latestAction(fs, since); latest != nil && latest.Status == types.StatusFailed {
 		message := fmt.Sprintf("FSx failed the %s", latest.AdministrativeActionType)
 		if d := latest.FailureDetails; d != nil && d.Message != nil {
 			message += ": " + aws.ToString(d.Message)
