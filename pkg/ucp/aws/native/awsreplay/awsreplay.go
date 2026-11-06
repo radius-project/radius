@@ -20,9 +20,12 @@ limitations under the License.
 // how it reads AWS's real responses, without AWS.
 //
 // Set RADIUS_AWS_RECORD=1, with AWS credentials, to call AWS and save the cassette instead. Recording keeps no request
-// or response headers except the few the SDK needs to read a response, replaces the account ID with 123456789012 in
-// every value it keeps, and replaces each value registered with Scrub, such as a password, with x characters of the
-// same length.
+// or response headers except the few the SDK needs to read a response. In every value it keeps, it replaces the
+// recording identity: the account ID with 123456789012, the user ID with AIDAREPLAY, and the principal name in the
+// identity's ARN (the user name, or the role and session names of an assumed role) with radius-recording. In a binary
+// body, such as CBOR, the user ID and names are replaced with x characters of the same length instead, so the body
+// stays valid. It also replaces each value registered with Scrub, such as a password, with x characters of the same
+// length.
 package awsreplay
 
 import (
@@ -44,6 +47,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -54,8 +58,11 @@ const (
 	// RecordEnv turns recording on when set to 1.
 	RecordEnv = "RADIUS_AWS_RECORD"
 
-	// Account is the account ID cassettes use in place of the one that recorded them.
-	Account = "123456789012"
+	// Account, UserID, and Principal are the account ID, user ID, and principal name cassettes use in place of the
+	// identity that recorded them.
+	Account   = "123456789012"
+	UserID    = "AIDAREPLAY"
+	Principal = "radius-recording"
 
 	// Region is the region every cassette is recorded and replayed in.
 	Region = "us-west-2"
@@ -108,7 +115,7 @@ type Session struct {
 	mu       sync.Mutex
 	cassette Cassette
 	next     int
-	account  string
+	identity *sts.GetCallerIdentityOutput
 	scrubbed []string
 }
 
@@ -175,7 +182,7 @@ func (s *Session) Config(ctx context.Context) aws.Config {
 	if err != nil {
 		s.t.Fatalf("failed to read the AWS account to record in: %v", err)
 	}
-	s.account = aws.ToString(identity.Account)
+	s.identity = identity
 	cfg.HTTPClient = &http.Client{Transport: recorder{s: s, next: http.DefaultTransport}}
 	return cfg
 }
@@ -220,20 +227,61 @@ func (s *Session) Wait(d time.Duration) {
 	}
 }
 
-// scrub returns b with the account ID and every scrubbed value replaced by values of the same length, so a binary
-// body, such as CBOR, stays valid. A scrubbed value is also replaced in the forms a request or response can carry it
-// in: percent-encoded in a form body, escaped in JSON, and base64 encoded.
-func (s *Session) scrub(b []byte) []byte {
-	out := b
-	if s.account != "" {
-		out = bytes.ReplaceAll(out, []byte(s.account), []byte(Account))
+// scrub returns b with the recording identity and every scrubbed value replaced. A scrubbed value is replaced with x
+// characters of the same length in each form a request or response can carry it in: percent-encoded in a form body,
+// escaped in JSON, and base64 encoded. In a binary body, every replacement keeps the length, so a body such as CBOR
+// stays valid. All values are replaced in one pass, longest first, so a value that contains another, such as a
+// scrubbed value that contains the account ID, is replaced whole, and no replacement is replaced again.
+func (s *Session) scrub(b []byte, binary bool) []byte {
+	type replacement struct{ old, new string }
+	var rs []replacement
+	add := func(old, new string) {
+		if old == "" {
+			return
+		}
+		if binary && len(new) != len(old) {
+			new = strings.Repeat("x", len(old))
+		}
+		rs = append(rs, replacement{old, new})
+	}
+	if s.identity != nil {
+		add(aws.ToString(s.identity.Account), Account)
+		add(aws.ToString(s.identity.UserId), UserID)
+		for _, name := range principalNames(aws.ToString(s.identity.Arn)) {
+			add(name, Principal)
+		}
 	}
 	for _, v := range s.scrubbed {
 		for _, form := range encodings(v) {
-			out = bytes.ReplaceAll(out, []byte(form), bytes.Repeat([]byte("x"), len(form)))
+			add(form, strings.Repeat("x", len(form)))
 		}
 	}
-	return out
+	if len(rs) == 0 {
+		return b
+	}
+	slices.SortStableFunc(rs, func(a, b replacement) int { return len(b.old) - len(a.old) })
+	pairs := make([]string, 0, 2*len(rs))
+	for _, r := range rs {
+		pairs = append(pairs, r.old, r.new)
+	}
+	return []byte(strings.NewReplacer(pairs...).Replace(string(b)))
+}
+
+// principalNames returns the names in the ARN of a caller identity: the user name of an IAM user, the role and session
+// names of an assumed role, and the name of a federated user. The root user has none.
+func principalNames(identityARN string) []string {
+	parsed, err := arn.Parse(identityARN)
+	if err != nil {
+		return nil
+	}
+	kind, names, ok := strings.Cut(parsed.Resource, "/")
+	if !ok {
+		return nil
+	}
+	if kind == "assumed-role" {
+		return strings.Split(names, "/")
+	}
+	return []string{names[strings.LastIndex(names, "/")+1:]}
 }
 
 // encodings returns v and the other forms it can appear in, longest first, so a form that contains another is
@@ -256,7 +304,7 @@ func (s *Session) save() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for name, v := range s.cassette.Inputs {
-		s.cassette.Inputs[name] = string(s.scrub([]byte(v)))
+		s.cassette.Inputs[name] = string(s.scrub([]byte(v), false))
 	}
 	b, err := json.MarshalIndent(s.cassette, "", "  ")
 	if err != nil {
@@ -351,12 +399,13 @@ func (r recorder) RoundTrip(req *http.Request) (*http.Response, error) {
 			i.Headers[h] = v
 		}
 	}
-	i.Request = text(s.scrub(request))
-	scrubbed := s.scrub(body)
-	if utf8.Valid(scrubbed) && !strings.Contains(resp.Header.Get("Content-Type"), "cbor") {
-		i.Body = string(scrubbed)
+	i.Request = text(s.scrub(request, false))
+	i.Binary = !utf8.Valid(body) || strings.Contains(resp.Header.Get("Content-Type"), "cbor")
+	scrubbed := s.scrub(body, i.Binary)
+	if i.Binary {
+		i.Body = base64.StdEncoding.EncodeToString(scrubbed)
 	} else {
-		i.Body, i.Binary = base64.StdEncoding.EncodeToString(scrubbed), true
+		i.Body = string(scrubbed)
 	}
 	s.cassette.Interactions = append(s.cassette.Interactions, i)
 	return resp, nil
