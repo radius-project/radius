@@ -125,7 +125,7 @@ func TestRotationConsumerBarrier(t *testing.T) {
 		change func(*testing.T, *rotationConsumerObserver, *[]rotationConsumer)
 		want   string
 	}{
-		{name: "all actual process evidence", change: func(_ *testing.T, _ *rotationConsumerObserver, _ *[]rotationConsumer) {}},
+		{name: "all expected process evidence", change: func(_ *testing.T, _ *rotationConsumerObserver, _ *[]rotationConsumer) {}},
 		{name: "missing engine", want: "must account for", change: func(_ *testing.T, _ *rotationConsumerObserver, expected *[]rotationConsumer) {
 			*expected = (*expected)[:4]
 		}},

@@ -244,3 +244,40 @@ func initialCA(t *testing.T, journal *corev1.ConfigMap) []byte {
 	require.NoError(t, json.Unmarshal([]byte(journal.Data[rotationJournalKey]), &state))
 	return state.OldCA
 }
+
+func TestRotationImmutablePublicTrust(t *testing.T) {
+	store, _, old, next := newRotationTestStore(t)
+	bundle := append(append([]byte{}, old...), next...)
+	overlap, digest, err := store.publishComponentTrust(t.Context(), bundle)
+	require.NoError(t, err)
+	require.True(t, *overlap.Immutable)
+	require.Empty(t, overlap.OwnerReferences)
+	require.Empty(t, overlap.Annotations["meta.helm.sh/release-name"])
+	retry, repeated, err := store.publishComponentTrust(t.Context(), bundle)
+	require.NoError(t, err)
+	require.Equal(t, digest, repeated)
+	require.Equal(t, overlap.UID, retry.UID)
+	require.Equal(t, overlap.ResourceVersion, retry.ResourceVersion)
+
+	changed := overlap.DeepCopy()
+	changed.Data["ca.crt"] = string(next)
+	_, err = store.kube.CoreV1().ConfigMaps(store.namespace).Update(t.Context(), changed, metav1.UpdateOptions{})
+	require.True(t, apierrors.IsInvalid(err), "native immutability must prevent changing mounted trust underneath old processes")
+	retired, _, err := store.publishComponentTrust(t.Context(), next)
+	require.NoError(t, err)
+	require.NotEqual(t, overlap.Name, retired.Name)
+	retained, err := store.kube.CoreV1().ConfigMaps(store.namespace).Get(t.Context(), overlap.Name, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, string(bundle), retained.Data["ca.crt"], "publishing retirement must not mutate the overlap still used by old pods")
+
+	retired.Labels[rotationOwner] = "someone-else"
+	_, err = store.kube.CoreV1().ConfigMaps(store.namespace).Update(t.Context(), retired, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	_, _, err = store.publishComponentTrust(t.Context(), next)
+	require.ErrorContains(t, err, "ownership")
+	_, _, err = store.publishComponentTrust(t.Context(), []byte("not a public certificate"))
+	require.Error(t, err)
+	third, _, _ := testSigningCA(t, nil, nil, nil, nil)
+	_, _, err = store.publishComponentTrust(t.Context(), append(bundle, third...))
+	require.Error(t, err, "component overlap must not silently expand to extra trust roots")
+}
