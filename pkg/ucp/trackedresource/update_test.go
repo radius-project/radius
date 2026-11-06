@@ -471,6 +471,10 @@ func Test_run(t *testing.T) {
 
 				// The entry is deleted under the other tracking ID too, so it does not keep listing the deleted resource.
 				if !tt.stale {
+					if tt.id.String() == LegacyIDFor(testID).String() {
+						// After it deleted a legacy entry, the updater looks for a copy that the migration saved meanwhile.
+						databaseClient.EXPECT().Get(gomock.Any(), IDFor(testID).String()).Return(nil, &database.ErrNotFound{}).After(deleted)
+					}
 					require.NoError(t, updater.run(t.Context(), testID, testURL, apiVersion))
 					return
 				}
@@ -518,11 +522,18 @@ func Test_run(t *testing.T) {
 				} else {
 					dm := datamodel.GenericResourceFromID(testID, legacyID)
 					databaseClient.EXPECT().Get(gomock.Any(), legacyID.String()).Return(&database.Object{ETag: "legacy-etag", Data: dm}, nil)
-					databaseClient.EXPECT().Delete(gomock.Any(), legacyID.String(), gomock.Any()).
+					deleted := databaseClient.EXPECT().Delete(gomock.Any(), legacyID.String(), gomock.Any()).
 						DoAndReturn(func(_ context.Context, _ string, options ...database.DeleteOptions) error {
 							require.Equal(t, "legacy-etag", database.NewDeleteConfig(options...).ETag)
 							return nil
 						})
+
+					// The updater then reads the current ID again, in case the migration copied the legacy entry there.
+					// The entry it finds has an operation queued by the request that recreated the resource, so it is kept.
+					recreated := datamodel.GenericResourceFromID(testID, IDFor(testID))
+					recreated.AsyncProvisioningState = v1.ProvisioningStateAccepted
+					databaseClient.EXPECT().Get(gomock.Any(), IDFor(testID).String()).
+						Return(&database.Object{ID: IDFor(testID).String(), ETag: "recreated-etag", Data: recreated}, nil).After(deleted.Call)
 				}
 
 				roundTripper.RespondWithJSON(t, http.StatusNotFound, &v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeNotFound}})

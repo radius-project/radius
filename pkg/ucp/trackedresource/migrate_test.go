@@ -19,8 +19,11 @@ package trackedresource
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/apiserverstore"
@@ -466,6 +469,63 @@ type failingQueryClient struct {
 
 func (c *failingQueryClient) Query(context.Context, database.Query, ...database.QueryOptions) (*database.ObjectQueryResult, error) {
 	return nil, c.err
+}
+
+// notFoundTransport answers every request with a 404 after it runs during, so a test can act while the updater fetches
+// a resource that is gone.
+type notFoundTransport struct {
+	during func()
+}
+
+func (rt *notFoundTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	rt.during()
+	w := httptest.NewRecorder()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	_, _ = w.Write([]byte("{}"))
+	return w.Result(), nil
+}
+
+// Two migrators read a legacy entry while it is idle, then a request queues an operation on it, and the updater finds
+// the resource gone. While the updater fetches the resource, one migrator saves its copy of the entry and the other
+// changes the salt of that copy, so the first cannot delete its copy once the updater deleted the legacy entry. The
+// updater deletes the copy itself, so the gone resource is not listed.
+func Test_MigrateLegacyEntries_UpdaterAndConcurrentMigrators(t *testing.T) {
+	t.Parallel()
+	original := resources.MustParse(migrateGroup + "/providers/Applications.Test/testResources/my-resource")
+	legacyID, currentID := LegacyIDFor(original), IDFor(original)
+	for name, newStore := range newStores(t) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			client := newStore()
+			idle := saveTracked(t, client, original, legacyID, v1.ProvisioningStateSucceeded)
+			entry := datamodel.GenericResource{}
+			require.NoError(t, idle.As(&entry))
+			saveTracked(t, client, original, legacyID, v1.ProvisioningStateAccepted)
+
+			var copied *database.Object
+			transport := &notFoundTransport{during: func() {
+				moved := entry
+				moved.ID = currentID.String()
+				moved.Name = currentID.Name()
+				copied = &database.Object{ID: currentID.String(), Data: &moved}
+				require.NoError(t, client.Save(t.Context(), copied, database.WithCreateOnly()))
+				current, err := client.Get(t.Context(), currentID.String())
+				require.NoError(t, err)
+				require.NoError(t, changeSalt(t.Context(), client, current))
+			}}
+			require.NoError(t, NewUpdater(client, &http.Client{Transport: transport}).run(t.Context(), original, testURL, "2023-01-01"))
+			require.NotNil(t, copied)
+
+			// The first migrator resumes: its delete of the legacy entry fails, and the entry is gone, so it deletes its copy
+			// unless the copy changed.
+			require.Error(t, client.Delete(t.Context(), legacyID.String(), database.WithETag(idle.ETag)))
+			require.Equal(t, hashmigration.Result{}, removeUnusedCopy(t.Context(), client, logr.Discard(), legacyID.String(), copied))
+
+			require.Nil(t, readTracked(t, client, currentID), "a gone resource must not be listed")
+			require.Nil(t, readTracked(t, client, legacyID))
+		})
+	}
 }
 
 func Test_MigrateLegacyEntries_QueryError(t *testing.T) {

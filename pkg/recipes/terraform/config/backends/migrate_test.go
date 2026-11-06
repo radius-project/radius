@@ -1021,7 +1021,7 @@ func Test_MigrateLegacyStates_HeldLocks(t *testing.T) {
 		f.requireTombstone(legacy, current)
 	})
 
-	t.Run("owner deleted while the lock is kept", func(t *testing.T) {
+	t.Run("owner deleted through the published copy while the lock is kept, then created again", func(t *testing.T) {
 		t.Parallel()
 		f := newStateFixture(t)
 		current, legacy := f.addResource("redis", migrateApplicationID)
@@ -1036,7 +1036,45 @@ func Test_MigrateLegacyStates_HeldLocks(t *testing.T) {
 		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
 		f.requireHeld(legacy)
 
-		// The resource is deleted: its destroy uses the published copy and deletes its first Secret.
+		// Radius deletes the resource: its destroy uses the published copy, then Radius deletes the legacy state the
+		// copy was made from, and the copy.
+		failing = false
+		require.NoError(t, RetireCopiedState(t.Context(), f.client, current, legacy))
+		require.Empty(t, f.chunkNames(legacy), "the legacy state of the destroyed resources must be deleted")
+		for _, name := range f.chunkNames(current) {
+			require.NoError(t, f.client.CoreV1().Secrets(RadiusNamespace).Delete(t.Context(), name, metav1.DeleteOptions{}))
+		}
+		require.NoError(t, f.db.Delete(t.Context(), migrateResourcePath+"redis"))
+
+		require.Equal(t, hashmigration.Result{}, f.migrate())
+		f.requireFree(legacy)
+
+		// A resource created again with the same ID starts with a new state under the current name.
+		f.addResource("redis", migrateApplicationID)
+		config, err := NewKubernetesBackend(f.client).BuildBackend(&recipes.ResourceMetadata{ResourceID: migrateResourcePath + "redis", EnvironmentID: migrateEnvironmentID, ApplicationID: migrateApplicationID})
+		require.NoError(t, err)
+		require.Equal(t, current, config[BackendKubernetes].(map[string]any)["secret_suffix"])
+		require.Empty(t, f.chunkNames(current))
+		require.Equal(t, hashmigration.Result{}, f.migrate())
+	})
+
+	t.Run("owner deleted by an earlier release while the lock is kept", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a", "b")
+		failing := true
+		f.client.PrependReactor("update", "leases", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			if failing && action.(k8stesting.UpdateAction).GetObject().(*coordinationv1.Lease).Annotations[AnnotationStateMigratedParts] != "" {
+				return true, nil, errors.New("connection reset")
+			}
+			return false, nil, nil
+		})
+		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
+		f.requireHeld(legacy)
+
+		// A pod of an earlier release deletes the resource during a rolling upgrade: its destroy uses the published
+		// copy and deletes its first Secret, but it does not delete the legacy state.
 		failing = false
 		require.NoError(t, f.client.CoreV1().Secrets(RadiusNamespace).Delete(t.Context(), stateSecretName(current, 0), metav1.DeleteOptions{}))
 		require.NoError(t, f.db.Delete(t.Context(), migrateResourcePath+"redis"))
@@ -1059,6 +1097,83 @@ func Test_MigrateLegacyStates_HeldLocks(t *testing.T) {
 
 		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
 		require.Equal(t, StateMigrationHolderPrefix+"other", *f.lease(legacy).Spec.HolderIdentity)
+	})
+}
+
+func Test_RetireCopiedState(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name string
+
+		// parts is the legacy state; copied publishes a copy of it under the current suffix that records its parts.
+		parts  []string
+		copied bool
+
+		// prepare changes the state after the copy.
+		prepare func(f *stateFixture, current string, legacy []corev1.Secret)
+
+		retired bool
+	}{
+		{name: "published copy of an unfinished move", parts: []string{"a", "b"}, copied: true, retired: true},
+		{
+			name: "legacy parts left by an interrupted commit", parts: []string{"a", "b", "c"}, copied: true, retired: true,
+			prepare: func(f *stateFixture, _ string, legacy []corev1.Secret) {
+				require.NoError(f.t, f.client.CoreV1().Secrets(RadiusNamespace).Delete(f.t.Context(), legacy[2].Name, metav1.DeleteOptions{}))
+			},
+		},
+		{
+			// The fake client does not assign resource versions, so the API-server test covers a changed Secret.
+			name: "legacy state replaced after the copy", parts: []string{"a"}, copied: true,
+			prepare: func(f *stateFixture, _ string, legacy []corev1.Secret) {
+				require.NoError(f.t, f.client.CoreV1().Secrets(RadiusNamespace).Delete(f.t.Context(), legacy[0].Name, metav1.DeleteOptions{}))
+				replaced := legacy[0].DeepCopy()
+				replaced.UID = "uid-replaced"
+				replaced.Data[tfstateDataKey] = []byte("replaced")
+				_, err := f.client.CoreV1().Secrets(RadiusNamespace).Create(f.t.Context(), replaced, metav1.CreateOptions{})
+				require.NoError(f.t, err)
+			},
+		},
+		{
+			name: "current state that is not a copy", parts: []string{"a"},
+			prepare: func(f *stateFixture, current string, _ []corev1.Secret) {
+				f.addState(current, "x")
+			},
+		},
+		{name: "no current state", parts: []string{"a"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f := newStateFixture(t)
+			current, legacy := f.addResource("redis", migrateApplicationID)
+			secrets := f.addState(legacy, tt.parts...)
+			if tt.copied {
+				f.publishCopy(secrets, current)
+			}
+			if tt.prepare != nil {
+				tt.prepare(f, current, secrets)
+			}
+			before := f.chunkNames(current)
+
+			require.NoError(t, RetireCopiedState(t.Context(), f.client, current, legacy))
+			require.Equal(t, before, f.chunkNames(current), "the current state is not changed")
+			if tt.retired {
+				require.Empty(t, f.chunkNames(legacy))
+			} else {
+				require.NotEmpty(t, f.chunkNames(legacy), "a legacy state that the copy does not record is kept")
+			}
+		})
+	}
+
+	t.Run("reading the copy fails", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.publishCopy(f.addState(legacy, "a"), current)
+		f.client.PrependReactor("get", "secrets", func(k8stesting.Action) (bool, runtime.Object, error) {
+			return true, nil, apierrors.NewServiceUnavailable("the API server is unavailable")
+		})
+		require.ErrorContains(t, RetireCopiedState(t.Context(), f.client, current, legacy), "unavailable")
+		require.Equal(t, []string{"a"}, f.state(legacy))
 	})
 }
 
@@ -1094,8 +1209,9 @@ func Test_MigrateLegacyStates_UnfinishedMoves(t *testing.T) {
 		keepAfterFailedCommit(f, legacy)
 		require.Equal(t, current, f.lease(legacy).Annotations[AnnotationStateMigratedTo], "the lock records where the state moves")
 
-		// The resource is deleted: its destroy uses the published copy and deletes its first Secret. Then the component
-		// restarts, so the new migrator knows nothing of the lock it kept.
+		// A pod of an earlier release deletes the resource: its destroy uses the published copy and deletes its first
+		// Secret, but not the legacy state. Then the component restarts, so the new migrator knows nothing of the lock
+		// it kept.
 		require.NoError(t, f.client.CoreV1().Secrets(RadiusNamespace).Delete(t.Context(), stateSecretName(current, 0), metav1.DeleteOptions{}))
 		require.NoError(t, f.db.Delete(t.Context(), migrateResourcePath+"redis"))
 		restart(f)

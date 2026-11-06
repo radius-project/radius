@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/components/database"
@@ -520,6 +521,82 @@ func Test_APIServerClient_Delete_RemovesCopyWrittenDuringDelete(t *testing.T) {
 			require.Empty(t, listBuckets(t, raw))
 		})
 	}
+}
+
+// A delete reads the current object before migrator A writes its copy, and migrator B, for example in a second UCP
+// replica, marks that copy before the delete removes the legacy entry. A then keeps its copy, because the marker changed
+// the current object, and B removes nothing. The delete reads the current object again and removes the copy itself.
+func Test_APIServerClient_Delete_DuringTwoMigrators(t *testing.T) {
+	t.Parallel()
+	current, legacy := resourceName(migrateTarget), legacyResourceName(migrateTarget)
+	_, raw := newMigrateClient(t, interceptor.Funcs{}, fallbackTestResource(t, migrateNamespace, legacy, "legacy", []resources.ID{migrateTarget}))
+
+	type outcome struct {
+		result hashmigration.Result
+		err    error
+	}
+	copiedByA, resumeA, doneA := make(chan struct{}), make(chan struct{}), make(chan outcome, 1)
+	markedByB, resumeB, doneB := make(chan struct{}), make(chan struct{}), make(chan outcome, 1)
+	var copyOnce, markOnce sync.Once
+	migratorA := NewAPIServerClient(interceptor.NewClient(raw, interceptor.Funcs{
+		Create: func(ctx context.Context, c runtimeclient.WithWatch, obj runtimeclient.Object, opts ...runtimeclient.CreateOption) error {
+			err := c.Create(ctx, obj, opts...)
+			if obj.GetName() == current {
+				copyOnce.Do(func() {
+					close(copiedByA)
+					<-resumeA
+				})
+			}
+			return err
+		},
+	}), migrateNamespace)
+	migratorB := NewAPIServerClient(interceptor.NewClient(raw, interceptor.Funcs{
+		Update: func(ctx context.Context, c runtimeclient.WithWatch, obj runtimeclient.Object, opts ...runtimeclient.UpdateOption) error {
+			err := c.Update(ctx, obj, opts...)
+			if obj.GetName() == current && obj.GetAnnotations()[annotationDeduplicated] != "" {
+				markOnce.Do(func() {
+					close(markedByB)
+					<-resumeB
+				})
+			}
+			return err
+		},
+	}), migrateNamespace)
+
+	readCurrent := false
+	deleter := NewAPIServerClient(interceptor.NewClient(raw, interceptor.Funcs{
+		Get: func(ctx context.Context, c runtimeclient.WithWatch, key runtimeclient.ObjectKey, obj runtimeclient.Object, opts ...runtimeclient.GetOption) error {
+			err := c.Get(ctx, key, obj, opts...)
+			if key.Name == current && !readCurrent {
+				// The delete found no current copy. A copies the entry and B marks the copy before the delete goes on.
+				readCurrent = true
+				go func() {
+					result, err := migratorA.MigrateLegacyNames(context.WithoutCancel(ctx))
+					doneA <- outcome{result, err}
+				}()
+				<-copiedByA
+				go func() {
+					result, err := migratorB.MigrateLegacyNames(context.WithoutCancel(ctx))
+					doneB <- outcome{result, err}
+				}()
+				<-markedByB
+			}
+			return err
+		},
+	}), migrateNamespace)
+
+	require.NoError(t, deleter.Delete(t.Context(), migrateTarget.String()))
+	close(resumeA)
+	close(resumeB)
+	for _, done := range []chan outcome{doneA, doneB} {
+		finished := <-done
+		require.NoError(t, finished.err)
+		require.Zero(t, finished.result.Migrated+finished.result.Deduplicated+finished.result.Conflicts)
+	}
+
+	_, err := deleter.Get(t.Context(), migrateTarget.String())
+	require.ErrorIs(t, err, &database.ErrNotFound{}, "the migrators must not bring back the deleted resource")
+	require.Empty(t, listBuckets(t, raw))
 }
 
 // A save that read the entry from its legacy object writes to that object. If the migration copied the entry to its
