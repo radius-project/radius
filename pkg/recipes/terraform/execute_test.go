@@ -187,13 +187,8 @@ func TestIsTransientTerraformInitError(t *testing.T) {
 	}
 }
 
-func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
-	globalDir := t.TempDir()
-	t.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalDir)
-	t.Setenv(terraformGetTestHelper, "1")
-	commandLog := filepath.Join(t.TempDir(), "terraform-commands.log")
-	t.Setenv(terraformCommandLog, commandLog)
-
+func copyTerraformTestExecutable(t *testing.T) {
+	t.Helper()
 	// A real native executable works without Windows symlink privileges.
 	executable, err := os.Executable()
 	require.NoError(t, err)
@@ -201,6 +196,16 @@ func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
 	require.NoError(t, err)
 	_, binary, _ := getGlobalTerraformPaths()
 	require.NoError(t, os.WriteFile(binary, helper, 0755))
+}
+
+func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
+	globalDir := t.TempDir()
+	t.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalDir)
+	t.Setenv(terraformGetTestHelper, "1")
+	commandLog := filepath.Join(t.TempDir(), "terraform-commands.log")
+	t.Setenv(terraformCommandLog, commandLog)
+
+	copyTerraformTestExecutable(t)
 	require.NoError(t, os.WriteFile(filepath.Join(globalDir, ".terraform-ready"), nil, 0644))
 
 	globalTerraformMutex.Lock()
@@ -233,7 +238,7 @@ func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
 	kubernetesClients.SetClientGoClient(kubernetesClient)
 
 	e := executor{kubernetesClients: kubernetesClients}
-	err = e.Delete(t.Context(), Options{
+	err := e.Delete(t.Context(), Options{
 		RootDir:   t.TempDir(),
 		EnvConfig: &recipes.Configuration{},
 		EnvRecipe: &recipes.EnvironmentDefinition{

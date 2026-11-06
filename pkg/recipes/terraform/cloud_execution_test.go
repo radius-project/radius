@@ -123,7 +123,7 @@ func installBackendTestTerraform(t *testing.T) string {
 	globalDir := t.TempDir()
 	t.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalDir)
 	t.Setenv(terraformGetTestHelper, "1")
-	require.NoError(t, os.Symlink(os.Args[0], filepath.Join(globalDir, "terraform")))
+	copyTerraformTestExecutable(t)
 	require.NoError(t, os.WriteFile(filepath.Join(globalDir, ".terraform-ready"), nil, 0600))
 	globalTerraformMutex.Lock()
 	previous := globalTerraformReady
@@ -137,6 +137,31 @@ func installBackendTestTerraform(t *testing.T) string {
 	snapshots := filepath.Join(t.TempDir(), "executions.jsonl")
 	t.Setenv(terraformBackendSnapshots, snapshots)
 	return snapshots
+}
+
+func TestInstallBackendTestTerraform(t *testing.T) {
+	snapshotsPath := installBackendTestTerraform(t)
+	_, binary, marker := getGlobalTerraformPaths()
+	info, err := os.Lstat(binary)
+	require.NoError(t, err)
+	require.True(t, info.Mode().IsRegular(), "the fake must be a native executable, not a symlink")
+	require.FileExists(t, marker)
+
+	// A nil installer prevents a missing fixture from downloading real Terraform.
+	selected, err := ensureGlobalTerraformBinary(t.Context(), nil, logr.Discard())
+	require.NoError(t, err)
+	require.Equal(t, binary, selected)
+
+	workingDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(workingDir, "main.tf.json"), []byte(`{}`), 0600))
+	tf, err := tfexec.NewTerraform(workingDir, selected)
+	require.NoError(t, err)
+	version, _, err := tf.Version(t.Context(), false)
+	require.NoError(t, err)
+	require.Equal(t, "1.15.8", version.String())
+	snapshots := readBackendSnapshots(t, snapshotsPath)
+	require.Len(t, snapshots, 1)
+	require.Equal(t, "version", snapshots[0].Command)
 }
 
 // clearAzureConflictingAuthentication resets the Azure variables that Terraform resolves ahead of a
