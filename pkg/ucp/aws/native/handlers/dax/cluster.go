@@ -265,7 +265,7 @@ func (h *Cluster) Update(ctx context.Context, request native.UpdateRequest) erro
 		settings := slices.DeleteFunc(slices.Clone(changed), func(name string) bool { return !slices.Contains(modifiable, name) })
 		slices.Sort(settings)
 		return &native.Failure{
-			Message:     "DAX can't change the number of nodes while UpdateCluster changes " + strings.Join(settings, ", ") + ", because both need the cluster available. Change ReplicationFactor in one deploy, and the other properties in the next.",
+			Message:     "DAX can't change ReplicationFactor and " + strings.Join(settings, ", ") + " in one deploy, because each change needs the cluster available. Change ReplicationFactor in one deploy, and the other properties in the next.",
 			ClientError: true,
 			Outcome:     native.OutcomeRejected,
 		}
