@@ -65,7 +65,7 @@ func Test_waitForPostgreSQL(t *testing.T) {
 				return nil
 			}
 
-			err := waitForPostgreSQL(context.Background(), ping, testWaitOptions(tt.timeout))
+			err := waitForPostgreSQL(t.Context(), ping, testWaitOptions(tt.timeout))
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -80,14 +80,14 @@ func Test_waitForPostgreSQL(t *testing.T) {
 	t.Run("times out", func(t *testing.T) {
 		t.Parallel()
 
-		err := waitForPostgreSQL(context.Background(), func(context.Context) error { return connRefused }, testWaitOptions(50*time.Millisecond))
+		err := waitForPostgreSQL(t.Context(), func(context.Context) error { return connRefused }, testWaitOptions(50*time.Millisecond))
 		require.ErrorContains(t, err, "timed out")
 	})
 
 	t.Run("cancelled context", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 		err := waitForPostgreSQL(ctx, func(context.Context) error { return connRefused }, testWaitOptions(time.Minute))
 		require.ErrorIs(t, err, context.Canceled)
@@ -108,7 +108,7 @@ func Test_waitForPostgreSQL(t *testing.T) {
 		}
 		opts := testWaitOptions(5 * time.Second)
 		opts.attemptTimeout = 10 * time.Millisecond
-		require.NoError(t, waitForPostgreSQL(context.Background(), ping, opts))
+		require.NoError(t, waitForPostgreSQL(t.Context(), ping, opts))
 		require.Equal(t, 2, attempts)
 	})
 }

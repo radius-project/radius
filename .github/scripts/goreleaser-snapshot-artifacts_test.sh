@@ -18,6 +18,9 @@ jq '[.images[] | select(.category == "production") | .name as $id | .requiredPla
     {type: "Docker Image", name: $name, path: $name, extra: {ID: $id, Platforms: [.]}}]
 ' "${SCRIPT_DIR}/../release-parity/targets.json" >"${GORELEASER_DIST_DIR}/artifacts.json"
 cp "${GORELEASER_DIST_DIR}/artifacts.json" "${TEST_ROOT}/complete.json"
+image_count="$(jq '[.images[] | select(.category == "production")] | length' "${SCRIPT_DIR}/../release-parity/targets.json")"
+platform_count="$(jq 'length' "${TEST_ROOT}/complete.json")"
+readonly image_count platform_count
 cat >"${TEST_ROOT}/bin/docker" <<'EOF'
 #!/bin/bash
 set -euo pipefail
@@ -35,18 +38,18 @@ chmod +x "${TEST_ROOT}/bin/"*
 export PATH="${TEST_ROOT}/bin:${PATH}"
 
 bash "${SCRIPT_DIR}/goreleaser-snapshot-artifacts.sh" save
-[[ "$(grep -c '^docker save ' "${COMMAND_LOG}")" == 5 ]]
-[[ "$(grep -c '^docker tag ' "${COMMAND_LOG}")" == 5 ]]
+[[ "$(grep -c '^docker save ' "${COMMAND_LOG}")" == "${image_count}" ]]
+[[ "$(grep -c '^docker tag ' "${COMMAND_LOG}")" == "${image_count}" ]]
 grep -Fq 'registry.example/radius/ucpd:pr-123' "${COMMAND_LOG}"
 if grep -Eq 'push|buildx|latest|testrp|magpiego' "${COMMAND_LOG}"; then exit 1; fi
 
 : >"${COMMAND_LOG}"
 DOCKER_TAG_VERSION=edge bash "${SCRIPT_DIR}/goreleaser-snapshot-artifacts.sh" push-edge
-[[ "$(grep -c '^docker push ' "${COMMAND_LOG}")" == 15 ]]
-[[ "$(grep -c '^docker tag .* registry.example/radius/[a-z-]*:edge-linux-' "${COMMAND_LOG}")" == 15 ]]
+[[ "$(grep -c '^docker push ' "${COMMAND_LOG}")" == "${platform_count}" ]]
+[[ "$(grep -c '^docker tag .* registry.example/radius/[a-z-]*:edge-linux-' "${COMMAND_LOG}")" == "${platform_count}" ]]
 grep -Eq '^docker push registry.example/radius/ucpd:edge-linux-arm-v7$' "${COMMAND_LOG}"
 if grep -Eq '^docker push .*0.0.0-snapshot' "${COMMAND_LOG}"; then exit 1; fi
-[[ "$(grep -c '^docker buildx imagetools create ' "${COMMAND_LOG}")" == 5 ]]
+[[ "$(grep -c '^docker buildx imagetools create ' "${COMMAND_LOG}")" == "${image_count}" ]]
 grep -Eq '^docker buildx imagetools create --tag registry.example/radius/ucpd:edge( registry.example/radius/ucpd@sha256:[a-f0-9]{64}){3}$' "${COMMAND_LOG}"
 if grep -Eq ':latest|:0\.[0-9]+ |testrp|magpiego' "${COMMAND_LOG}"; then exit 1; fi
 cp "${COMMAND_LOG}" "${TEST_ROOT}/push-edge.log"

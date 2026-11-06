@@ -153,7 +153,7 @@ func TestInstallTerraform(t *testing.T) {
 			calls := 0
 			logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-			err := installTerraform(context.Background(), o, tt.want, logger, tt.download(t, &calls), tt.verify)
+			err := installTerraform(t.Context(), o, tt.want, logger, tt.download(t, &calls), tt.verify)
 			require.Equal(t, 1, calls)
 
 			marker := filepath.Join(o.dir, tfbinary.MarkerFileName)
@@ -190,13 +190,13 @@ func TestTerraformVersion(t *testing.T) {
 		return p
 	}
 
-	got, err := terraformVersion(context.Background(), write("ok", `echo '{"terraform_version":"1.16.5","platform":"linux_amd64"}'`))
+	got, err := terraformVersion(t.Context(), write("ok", `echo '{"terraform_version":"1.16.5","platform":"linux_amd64"}'`))
 	require.NoError(t, err)
 	require.Equal(t, "1.16.5", got)
 
-	_, err = terraformVersion(context.Background(), write("bad-json", "echo Terraform v1.16.5"))
+	_, err = terraformVersion(t.Context(), write("bad-json", "echo Terraform v1.16.5"))
 	require.ErrorContains(t, err, "unexpected output")
 
-	_, err = terraformVersion(context.Background(), write("fails", "echo boom >&2; exit 3"))
+	_, err = terraformVersion(t.Context(), write("fails", "echo boom >&2; exit 3"))
 	require.ErrorContains(t, err, "boom")
 }

@@ -76,7 +76,7 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	if err := run(ctx, os.Args[1:], logger); err != nil {
 		logger.Error("Terraform init failed", "error", err.Error())
-		os.Exit(1)
+		os.Exit(1) //nolint:forbidigo // this is OK inside the main function.
 	}
 }
 

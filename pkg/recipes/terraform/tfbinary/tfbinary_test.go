@@ -19,7 +19,6 @@ package tfbinary
 import (
 	"archive/zip"
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
@@ -147,7 +146,7 @@ func TestDownloadURL(t *testing.T) {
 
 			dir := t.TempDir()
 			dst := filepath.Join(dir, BinaryName)
-			err := DownloadURL(context.Background(), server.Client(), server.URL+"/terraform.zip", tt.checksum, dst)
+			err := DownloadURL(t.Context(), server.Client(), server.URL+"/terraform.zip", tt.checksum, dst)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				require.NoFileExists(t, dst)
