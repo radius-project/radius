@@ -361,7 +361,7 @@ function payload() {
 
 test("closed targets/media types preserve images and underscore recipes, excluding foreign/executable data", () => {
   const { roots, manifests } = payload();
-  const targets = bundle.destinations(roots, env.REL_VERSION);
+  const targets = bundle.destinations(roots, env.REL_VERSION, env);
   assert.equal(targets.filter((item) => item.kind === "images").length, 8);
   assert.match(
     targets.at(-1).reference,
@@ -370,22 +370,26 @@ test("closed targets/media types preserve images and underscore recipes, excludi
   for (const name of [
     "images-unknown",
     "types-aws",
+    "types-unknown.azurecr.io",
+    "types-unknown.azurecr.io/test/radius",
     "recipes-../escape",
     "production-radius"
   ]) {
     const changed = structuredClone(roots);
     changed[0].annotations["org.opencontainers.image.ref.name"] = name;
-    assert.throws(() => bundle.destinations(changed, env.REL_VERSION));
+    assert.throws(() => bundle.destinations(changed, env.REL_VERSION, env));
   }
-  assert.throws(() => bundle.destinations(roots, "latest"));
+  assert.throws(() => bundle.destinations(roots, "latest", env));
   for (const tag of [
     "edge",
     "pr-func0123456789",
     "test-local",
     "test-func0123456789-0-1"
   ])
-    assert.throws(() => bundle.destinations(roots, tag));
-  assert.throws(() => bundle.destinations(roots.slice(1), env.REL_VERSION));
+    assert.throws(() => bundle.destinations(roots, tag, env));
+  assert.throws(() =>
+    bundle.destinations(roots.slice(1), env.REL_VERSION, env)
+  );
   for (const entry of targets)
     bundle.validateManifest(manifests.get(entry.digest), entry);
   const entry = targets.find((item) => item.kind === "types");
@@ -488,7 +492,7 @@ test("preparation rejects mismatched sources before writes and publication recor
         : { schemaVersion: 2, manifests: roots }
       );
     const target = bundle
-      .destinations(roots, env.REL_VERSION)
+      .destinations(roots, env.REL_VERSION, env)
       .find((item) => item.reference === args.at(-1));
     return args[2] === "fetch" ?
         manifests.get(target?.digest ?? args.at(-1).split("@")[1])
@@ -540,6 +544,16 @@ test("preparation rejects mismatched sources before writes and publication recor
     /authenticated producer/
   );
   await save(receiptPath, receipt);
+  test("Test ACR configuration accepts minimum and maximum registry name lengths", () => {
+    for (const name of ["abc12", "a".repeat(50)]) {
+      const registry = `${name}.azurecr.io`;
+      assert.equal(
+        bundle.testTypesRegistry({ TEST_BICEP_TYPES_REGISTRY: registry }),
+        registry
+      );
+    }
+  });
+
   for (const destination of ["ghcr", "acr"]) {
     args.core = core({ directory, destination });
     await bundle.publish(args, env, run);
@@ -566,84 +580,124 @@ test("preparation rejects mismatched sources before writes and publication recor
   );
 });
 
-for (const [destination, paths] of [
-  [
-    "ghcr",
+for (const destination of ["ghcr", "acr"]) {
+  for (const [registry, typesPath] of [
     [
-      "ghcr.io/radius-project/dev/ucpd",
-      "ghcr.io/radius-project/dev/applications-rp",
-      "ghcr.io/radius-project/dev/dynamic-rp",
-      "ghcr.io/radius-project/dev/controller",
-      "ghcr.io/radius-project/dev/testrp",
-      "ghcr.io/radius-project/dev/magpiego",
-      "ghcr.io/radius-project/dev/bicep",
-      "ghcr.io/radius-project/dev/pre-upgrade",
-      "ghcr.io/radius-project/dev/test/testrecipes/test-bicep-recipes/dynamicrp_recipe"
-    ]
-  ],
-  ["acr", ["crradfunctestl83v.azurecr.io/test/radius"]]
-]) {
-  test(`${destination} publication uses configured fixed targets and verifies readback`, async (t) => {
-    const directory = await temporary(t);
-    const { roots, manifests } = payload();
-    const receiptPath = join(directory, "receipt.json");
-    const receipt = {
-      source,
-      artifact: { id: artifact.id, digest: artifact.digest },
-      tag: env.REL_VERSION,
-      roots,
-      published: []
-    };
-    await save(receiptPath, receipt);
-    const targets = paths.map((path) => `${path}:test-func0123456789-101-1`);
-    const selected = roots.filter(
-      (root) =>
-        root.annotations["org.opencontainers.image.ref.name"].startsWith(
-          "types-"
-        ) ===
-        (destination === "acr")
-    );
-    const calls = [];
-    const args = { context, core: core({ directory, destination }) };
-    await bundle.publish(args, env, async (command) => {
-      calls.push(command);
-      if (command[1] === "cp") return "";
-      const index = targets.indexOf(command.at(-1));
-      assert.notEqual(index, -1, "Readback must use an expected fixed target");
-      return manifests.get(selected[index].digest);
+      "crradfunctestl83v.azurecr.io",
+      "crradfunctestl83v.azurecr.io/test/radius"
+    ],
+    [
+      "crradfunctest1b2s.azurecr.io",
+      "crradfunctest1b2s.azurecr.io/test/radius"
+    ],
+    ["unknown.azurecr.io", "unknown.azurecr.io/test/radius"]
+  ]) {
+    test(`${destination} publication uses configured ${registry} and verifies readback`, async (t) => {
+      const settings = { ...env, TEST_BICEP_TYPES_REGISTRY: registry };
+      const paths =
+        destination === "acr" ?
+          [typesPath]
+        : [
+            "ghcr.io/radius-project/dev/ucpd",
+            "ghcr.io/radius-project/dev/applications-rp",
+            "ghcr.io/radius-project/dev/dynamic-rp",
+            "ghcr.io/radius-project/dev/controller",
+            "ghcr.io/radius-project/dev/testrp",
+            "ghcr.io/radius-project/dev/magpiego",
+            "ghcr.io/radius-project/dev/bicep",
+            "ghcr.io/radius-project/dev/pre-upgrade",
+            "ghcr.io/radius-project/dev/test/testrecipes/test-bicep-recipes/dynamicrp_recipe"
+          ];
+      const directory = await temporary(t);
+      const { roots, manifests } = payload();
+      const receiptPath = join(directory, "receipt.json");
+      const receipt = {
+        source,
+        artifact: { id: artifact.id, digest: artifact.digest },
+        tag: env.REL_VERSION,
+        roots,
+        published: []
+      };
+      await save(receiptPath, receipt);
+      const targets = paths.map((path) => `${path}:test-func0123456789-101-1`);
+      const selected = roots.filter(
+        (root) =>
+          root.annotations["org.opencontainers.image.ref.name"].startsWith(
+            "types-"
+          ) ===
+          (destination === "acr")
+      );
+      const calls = [];
+      const args = { context, core: core({ directory, destination }) };
+      await bundle.publish(args, settings, async (command) => {
+        calls.push(command);
+        if (command[1] === "cp") return "";
+        const index = targets.indexOf(command.at(-1));
+        assert.notEqual(
+          index,
+          -1,
+          "Readback must use an expected fixed target"
+        );
+        return manifests.get(selected[index].digest);
+      });
+      assert.deepEqual(
+        calls,
+        targets.flatMap((reference, index) => [
+          [
+            "oras",
+            "cp",
+            "--from-oci-layout",
+            `${join(directory, "layout")}@${selected[index].digest}`,
+            reference
+          ],
+          ["oras", "manifest", "fetch", reference]
+        ])
+      );
+      assert.deepEqual(JSON.parse(await readFile(receiptPath)), {
+        ...receipt,
+        published: targets
+      });
+      await save(receiptPath, receipt);
+      await assert.rejects(
+        bundle.publish(args, settings, async () => "{}"),
+        /Published digest changed/
+      );
+      assert.deepEqual(JSON.parse(await readFile(receiptPath)), receipt);
     });
-    assert.deepEqual(
-      calls,
-      targets.flatMap((reference, index) => [
-        [
-          "oras",
-          "cp",
-          "--from-oci-layout",
-          `${join(directory, "layout")}@${selected[index].digest}`,
-          reference
-        ],
-        ["oras", "manifest", "fetch", reference]
-      ])
-    );
-    assert.deepEqual(JSON.parse(await readFile(receiptPath)), {
-      ...receipt,
-      published: targets
-    });
-    await save(receiptPath, receipt);
-    await assert.rejects(
-      bundle.publish(args, env, async () => "{}"),
-      /Published digest changed/
-    );
-    assert.deepEqual(JSON.parse(await readFile(receiptPath)), receipt);
-  });
+  }
 
   for (const [setting, registry] of [
-    ["TEST_BICEP_TYPES_REGISTRY", "crradfunctest1b2s.azurecr.io"],
-    ["TEST_BICEP_TYPES_REGISTRY", "unknown.azurecr.io"],
+    ...[
+      undefined,
+      null,
+      12345,
+      "",
+      "abcd.azurecr.io",
+      `${"a".repeat(51)}.azurecr.io`,
+      "UPPERCASE.azurecr.io",
+      "https://validregistry.azurecr.io",
+      "user:password@validregistry.azurecr.io",
+      "validregistry.azurecr.io:443",
+      "validregistry.azurecr.io/test/radius",
+      "validregistry.azurecr.io/",
+      "validregistry.azurecr.io?query=value",
+      "validregistry.azurecr.io#fragment",
+      "validregistry.azurecr.io.evil.invalid",
+      "valid-registry.azurecr.io",
+      "validregistry.example.com",
+      "validregistry.azurecr.cn",
+      "validregistry.azurecr.io;echo injected",
+      "$(echo injected).azurecr.io",
+      " validregistry.azurecr.io",
+      "validregistry.azurecr.io ",
+      "validregistry.azurecr.io\n",
+      "validregistry.azurecr.io\r\n",
+      "validregistry.azurecr.io\u2028"
+    ].map((registry) => ["TEST_BICEP_TYPES_REGISTRY", registry]),
     ["CONTAINER_REGISTRY", "ghcr.io/unknown/dev"],
     ["BICEP_RECIPE_REGISTRY", "ghcr.io/unknown/dev"]
   ]) {
-    test(`${destination} rejects ${setting}=${registry} before any copy`, async (t) => {
+    test(`${destination} rejects ${setting}=${JSON.stringify(registry)} before any copy`, async (t) => {
       const directory = await temporary(t);
       await save(join(directory, "receipt.json"), {
         source,
@@ -662,7 +716,9 @@ for (const [destination, paths] of [
             assert.fail("Unexpected registry copy");
           }
         ),
-        /Test registry allowlist mismatch/
+        setting === "TEST_BICEP_TYPES_REGISTRY" ?
+          /Invalid TEST_BICEP_TYPES_REGISTRY/
+        : /Test registry allowlist mismatch/
       );
       assert.deepEqual(calls, []);
     });
@@ -724,7 +780,7 @@ test("uploads retain the authenticated producer tag across full and downstream-o
         );
         const { roots, manifests } = payload();
         const copies = [];
-        const targets = bundle.destinations(roots, tag);
+        const targets = bundle.destinations(roots, tag, settings);
         const run = async (cmd) => {
           if (cmd[0] === "tar")
             return JSON.stringify(

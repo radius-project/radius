@@ -235,7 +235,7 @@ At inventory time, the registry had no ACR tasks, webhooks, tokens, custom scope
 
 ### Resources retained
 
-- The private functional-test ACR identified by `TEST_BICEP_TYPES_REGISTRY` (`crradfunctestl83v.azurecr.io`) and its identities remain out of scope.
+- The private functional-test ACR identified by the repository variable `TEST_BICEP_TYPES_REGISTRY` and its identities remain out of scope.
 - Bicep recipe registries and their credentials remain out of scope.
 - `radiusdeploymentengine.azurecr.io` remains out of scope.
 - GHCR packages unrelated to Bicep extension distribution remain unchanged.
