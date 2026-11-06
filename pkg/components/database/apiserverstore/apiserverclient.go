@@ -235,8 +235,11 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...data
 
 	config := database.NewDeleteConfig(options...)
 
-	// removed records that an attempt removed a copy of the entry, so a later attempt that finds no copy succeeds.
-	removed := false
+	// removed holds the ETags of the copies this delete removed. A later attempt that finds no copy succeeds, and one
+	// that finds a copy of a removed value removes it without checking the ETag again. removedLegacy records that one of
+	// them was the legacy copy.
+	removed := map[string]bool{}
+	removedLegacy := false
 	err = c.doWithRetry(func() (bool, error) {
 		copies, exists, err := c.storedCopies(ctx, parsed)
 		if err != nil {
@@ -245,7 +248,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...data
 
 		if len(copies) == 0 {
 			switch {
-			case removed:
+			case len(removed) > 0:
 				// The remaining copy was removed concurrently.
 				return false, nil
 			case !exists && config.ETag != "":
@@ -256,7 +259,8 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...data
 		}
 
 		// Reads return the first copy, so it decides whether the ETag matches.
-		if config.ETag != "" && config.ETag != copies[0].Entries[*findIndex(&copies[0], parsed)].ETag {
+		first := copies[0].Entries[*findIndex(&copies[0], parsed)].ETag
+		if config.ETag != "" && config.ETag != first && !removed[first] {
 			return false, &database.ErrConcurrency{}
 		}
 
@@ -265,20 +269,47 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...data
 		// Every copy is removed, so a read cannot fall back to a copy the delete left behind. The copy reads return is
 		// removed last, so a concurrent read finds the resource until the delete completes.
 		for i := len(copies) - 1; i >= 0; i-- {
-			err := c.removeEntry(ctx, &copies[i], *findIndex(&copies[i], parsed))
+			index := *findIndex(&copies[i], parsed)
+			etag := copies[i].Entries[index].ETag
+			err := c.removeEntry(ctx, &copies[i], index)
 			if apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
 				return true, err // RETRY this!
 			} else if err != nil {
 				return false, err
 			}
 
-			removed = true
+			removed[etag] = true
+			removedLegacy = removedLegacy || copies[i].Name == legacyResourceName(parsed)
 		}
 
-		return false, nil
+		if !removedLegacy {
+			return false, nil
+		}
+
+		return c.copyOfRemoved(ctx, parsed, removed)
 	})
 
 	return err
+}
+
+// copyOfRemoved returns a retryable error if the current object stores a copy of a value in removed. The migration
+// writes such a copy when it read the legacy copy before a delete removed it, and the write can land after the delete
+// read the current object. The migration removes that copy itself when it finds the legacy copy gone, but it may stop
+// before it does, so the delete checks again.
+func (c *APIServerClient) copyOfRemoved(ctx context.Context, id resources.ID, removed map[string]bool) (bool, error) {
+	current := ucpv1alpha1.Resource{}
+	err := c.get(ctx, runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}, &current)
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	if index := findIndex(&current, id); index != nil && removed[current.Entries[*index].ETag] {
+		return true, &database.ErrConcurrency{}
+	}
+
+	return false, nil
 }
 
 // storedCopies returns the Kubernetes objects that store an entry for id, the current (SHA-256) object first. An entry
@@ -342,7 +373,10 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 		return &database.ErrInvalid{Message: "invalid argument. 'CreateOnly' cannot be combined with an ETag"}
 	}
 
+	// replaced and written are the entry a write to the legacy object of the entry replaced, and the entry it wrote.
+	var replaced, written *ucpv1alpha1.ResourceEntry
 	err = c.doWithRetry(func() (bool, error) {
+		replaced, written = nil, nil
 		name, resource, found, err := c.getResourceForSave(ctx, id)
 		if err != nil {
 			return false, err
@@ -374,6 +408,9 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 				return false, &database.ErrConcurrency{}
 			}
 
+			if name == legacyResourceName(id) {
+				replaced, written = resource.Entries[*index].DeepCopy(), converted.DeepCopy()
+			}
 			resource.Entries[*index] = *converted
 		}
 
@@ -401,8 +438,93 @@ func (c *APIServerClient) Save(ctx context.Context, obj *database.Object, option
 
 		return false, nil
 	})
+	if err != nil || written == nil {
+		return err
+	}
 
-	return err
+	return c.reconcileLegacyWrite(ctx, id, *replaced, *written, config.ETag != "")
+}
+
+// reconcileLegacyWrite makes a write to the legacy object of an entry visible, or undoes it. A save writes to the
+// legacy object when the entry was not in its current object, but the migration can copy the entry there before the
+// write. Reads then return the copy, and the migration leaves the two different copies in place as a conflict, so the
+// write would be lost.
+//
+// If the current object holds the value the save replaced, it is a copy that is now stale, and it is updated to the
+// written value. If it holds another value, another writer saved it to the copy, and the write to the legacy object is
+// removed: a conditional save then fails as if it had read the copy, and an unconditional save is ordered before the
+// other write. A write that a later write to the legacy object replaced is left to it.
+func (c *APIServerClient) reconcileLegacyWrite(ctx context.Context, id resources.ID, replaced ucpv1alpha1.ResourceEntry, written ucpv1alpha1.ResourceEntry, conditional bool) error {
+	currentKey := runtimeclient.ObjectKey{Namespace: c.namespace, Name: resourceName(id)}
+	for range RetryCount {
+		current := ucpv1alpha1.Resource{}
+		err := c.get(ctx, currentKey, &current)
+		if apierrors.IsNotFound(err) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		index := findIndex(&current, id)
+		switch {
+		case index == nil || sameEntry(current.Entries[*index], written):
+			// There is no copy, or the migration already copied the written value.
+			return nil
+		case sameEntry(current.Entries[*index], replaced):
+			current.Entries[*index] = *written.DeepCopy()
+			current.Labels = assignLabels(&current)
+			err = c.client.Update(ctx, &current)
+			if isRetryable(err) || apierrors.IsNotFound(err) {
+				continue
+			} else if err != nil {
+				return err
+			}
+
+			return nil
+		default:
+			removed, err := c.removeLegacyWrite(ctx, id, written)
+			if err != nil {
+				return err
+			} else if removed && conditional {
+				return &database.ErrConcurrency{}
+			}
+
+			return nil
+		}
+	}
+
+	return &database.ErrConcurrency{}
+}
+
+// removeLegacyWrite removes written from the legacy object of id, and reports whether it did. It leaves an entry that
+// was written or removed since.
+func (c *APIServerClient) removeLegacyWrite(ctx context.Context, id resources.ID, written ucpv1alpha1.ResourceEntry) (bool, error) {
+	legacyKey := runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacyResourceName(id)}
+	for range RetryCount {
+		legacy := ucpv1alpha1.Resource{}
+		err := c.get(ctx, legacyKey, &legacy)
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		} else if err != nil {
+			return false, err
+		}
+
+		index := findIndex(&legacy, id)
+		if index == nil || legacy.Entries[*index].ETag != written.ETag {
+			return false, nil
+		}
+
+		err = c.removeEntry(ctx, &legacy, *index)
+		if isRetryable(err) || apierrors.IsNotFound(err) {
+			continue
+		} else if err != nil {
+			return false, err
+		}
+
+		return true, nil
+	}
+
+	return false, &database.ErrConcurrency{}
 }
 
 // transientBackoff is the backoff used to retry reads that fail with a transient API server error.

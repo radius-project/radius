@@ -143,13 +143,20 @@ func Test_APIServerClient_HashFallback(t *testing.T) {
 					}
 					// A delete reads both objects to remove every copy of the entry. A lookup that finds the entry in
 					// neither object reads the current object again, in case the migration moved the entry between the
-					// two reads.
+					// two reads. A delete that removed a legacy copy, and a save that wrote to the legacy object, also
+					// read the current object again, in case the migration copied the entry there meanwhile.
 					deleting := strings.Contains(operation, "delete")
 					expectedReads := []string{resourceName(id)}
 					if tt.stored != "current" || deleting {
 						expectedReads = append(expectedReads, legacyResourceName(id))
 					}
 					if tt.stored == "" {
+						expectedReads = append(expectedReads, resourceName(id))
+					}
+					legacyTarget := slices.ContainsFunc(tt.legacy, func(legacyID resources.ID) bool { return legacyID.String() == id.String() })
+					removedLegacy := deleting && operation != "stale delete" && legacyTarget
+					savedLegacy := tt.stored == "legacy" && (operation == "save" || operation == "conditional save")
+					if removedLegacy || savedLegacy {
 						expectedReads = append(expectedReads, resourceName(id))
 					}
 					require.Equal(t, expectedReads, reads)

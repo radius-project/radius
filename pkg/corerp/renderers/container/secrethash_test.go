@@ -367,13 +367,68 @@ func Test_RecordSecretHashes_Retries(t *testing.T) {
 func Test_NewSecretHashMigrationStep(t *testing.T) {
 	t.Parallel()
 
-	step := NewSecretHashMigrationStep(func(context.Context) (k8s.Interface, error) { return k8sfake.NewClientset(), nil })
+	cluster := func(context.Context) (k8s.Interface, error) { return k8sfake.NewClientset(), nil }
+	none := func(context.Context) ([]string, error) { return nil, nil }
+	step := NewSecretHashMigrationStep(cluster, none)
 	require.Equal(t, SecretHashMigrationStepName, step.Name())
 	result, err := step.Run(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, hashmigration.Result{}, result)
 
-	step = NewSecretHashMigrationStep(func(context.Context) (k8s.Interface, error) { return nil, errors.New("no cluster") })
+	step = NewSecretHashMigrationStep(func(context.Context) (k8s.Interface, error) { return nil, errors.New("no cluster") }, none)
 	_, err = step.Run(t.Context())
 	require.ErrorContains(t, err, "no cluster")
+
+	step = NewSecretHashMigrationStep(cluster, func(context.Context) ([]string, error) { return nil, errors.New("pods unavailable") })
+	_, err = step.Run(t.Context())
+	require.ErrorContains(t, err, "pods unavailable")
+}
+
+// A pod of an earlier release can deploy a container with a legacy secret hash after a scan, so the step is not
+// complete until a scan starts after those pods have stopped.
+func Test_NewSecretHashMigrationStep_WaitsForOtherReleases(t *testing.T) {
+	t.Parallel()
+
+	data := map[string][]byte{"KEY": []byte("value")}
+	legacy := kubernetes.LegacyHashSecretData(data)
+	record := kubernetes.RecordSecretHash(legacy, kubernetes.HashSecretData(data))
+	client := k8sfake.NewClientset(secretHashTestLabeled(secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, nil)), secretHashTestSecret(secretHashTestName, data))
+	order := []string{}
+	client.PrependReactor("list", "deployments", func(k8stesting.Action) (bool, runtime.Object, error) {
+		order = append(order, "scan")
+		return false, nil, nil
+	})
+
+	others := []string{"applications-rp-old"}
+	step := NewSecretHashMigrationStep(
+		func(context.Context) (k8s.Interface, error) { return client, nil },
+		func(context.Context) ([]string, error) {
+			order = append(order, "pods")
+			return others, nil
+		})
+
+	result, err := step.Run(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, []string{"pods", "scan"}, order)
+	require.Equal(t, 1, result.Migrated)
+	require.Equal(t, 1, result.Remaining)
+	require.Contains(t, result.Message, "applications-rp-old")
+
+	// The pod of the earlier release deploys another container with a legacy hash, then stops.
+	late := secretHashTestLabeled(secretHashTestDeployment(map[string]string{kubernetes.AnnotationSecretHash: legacy}, nil))
+	late.Name = "backend"
+	_, err = client.AppsV1().Deployments(secretHashTestNamespace).Create(t.Context(), late, metav1.CreateOptions{})
+	require.NoError(t, err)
+	_, err = client.CoreV1().Secrets(secretHashTestNamespace).Create(t.Context(), secretHashTestSecret(late.Name, data), metav1.CreateOptions{})
+	require.NoError(t, err)
+	others = nil
+
+	result, err = step.Run(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, hashmigration.Result{Migrated: 1}, result)
+	for _, name := range []string{secretHashTestName, late.Name} {
+		deployment, err := client.AppsV1().Deployments(secretHashTestNamespace).Get(t.Context(), name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.Equal(t, record, deployment.Annotations[kubernetes.AnnotationSecretHashSHA256], name)
+	}
 }

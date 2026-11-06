@@ -19,6 +19,7 @@ package apiserverstore
 import (
 	"bytes"
 	"context"
+	"time"
 	"uuid"
 
 	"github.com/radius-project/radius/pkg/components/database"
@@ -108,8 +109,12 @@ const (
 //
 // A delete removes every copy of an entry. A delete that runs after the move read the legacy copy and before it wrote
 // the current copy removes only the legacy copy, so the move then removes the current copy it wrote, unless the current
-// object changed since. A migrator that removes a legacy copy it did not copy itself first changes the current object,
-// so a concurrent migrator never mistakes that removal for a delete and removes the copy.
+// object changed since. The move does that even if the pass is canceled after it started to write the copy. The delete
+// also reads the current object again after it removed a legacy copy, and removes a copy of the value it removed, so a
+// copy of a deleted entry remains only if the process is killed in the milliseconds between the write of the copy and
+// its removal, after the delete read the current object again. A migrator that removes a legacy copy it did not copy
+// itself first changes the current object, so a concurrent migrator never mistakes that removal for a delete and
+// removes the copy.
 //
 // The method is idempotent and safe to run concurrently with normal client operations and with other replicas. See
 // https://github.com/radius-project/radius/issues/8084.
@@ -162,6 +167,9 @@ func (c *APIServerClient) MigrateLegacyNames(ctx context.Context) (hashmigration
 	return result, err
 }
 
+// moveFinishTimeout bounds a move, whose calls from the write of a copy on are not canceled with the pass.
+const moveFinishTimeout = time.Minute
+
 // migrateEntry moves the entry for id from its legacy object to its current object.
 func (c *APIServerClient) migrateEntry(ctx context.Context, id resources.ID) (entryOutcome, error) {
 	legacyKey := runtimeclient.ObjectKey{Namespace: c.namespace, Name: legacyResourceName(id)}
@@ -172,6 +180,14 @@ func (c *APIServerClient) migrateEntry(ctx context.Context, id resources.ID) (en
 	// resource version of the current object after that write.
 	var copied *ucpv1alpha1.ResourceEntry
 	copiedVersion := ""
+
+	// From the write of a copy on, this call uses finishCtx, so it finishes the move, or removes the copy if a delete
+	// removed the legacy copy, even if ctx is canceled. A shutdown in between would otherwise leave a copy of a deleted
+	// entry.
+	finishCtx, stopFinishing := context.WithTimeout(context.WithoutCancel(ctx), moveFinishTimeout)
+	defer stopFinishing()
+	finishing := false
+
 	for range RetryCount {
 		legacy := ucpv1alpha1.Resource{}
 		err := c.get(ctx, legacyKey, &legacy)
@@ -226,6 +242,13 @@ func (c *APIServerClient) migrateEntry(ctx context.Context, id resources.ID) (en
 		case currentIndex != nil:
 			return entryConflict, nil
 		default:
+			if !finishing {
+				if err := ctx.Err(); err != nil {
+					return 0, err
+				}
+				ctx, finishing = finishCtx, true
+			}
+
 			entry := *legacyEntry.DeepCopy()
 			if currentExists {
 				current.Entries = append(current.Entries, entry)
