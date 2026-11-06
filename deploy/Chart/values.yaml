@@ -142,6 +142,12 @@ global:
       # Applications.Core containers; only objects with the radapp.io/resource-type label match.
       # TODO(D7): default to the application-template identity once the broker issues it.
       applicationIdentities: []
+    # External authenticates HTTP with projected receiver-bound ServiceAccount tokens.
+    # The operator must encrypt every connection, including storage and queues.
+    # Requires an explicitly selected, paired token-capable deployment-engine image.
+    # Only existing selfSigned aggregation TLS is supported; CA migration stays gated.
+    mtls:
+      provider: radius
     # Public loaded-trust evidence on the existing Go metrics listener.
     # Does not enable CA rotation or change the deployment-engine opt-in.
     startupProof:
@@ -203,6 +209,10 @@ controller:
 
 de:
   image: deployment-engine
+  externalIdentity:
+    # Opt in only with a verified paired A11 engine supplied via de.image and de.tag.
+    # The default published engine does not implement this contract.
+    enabled: false
   # Default tag uses Chart AppVersion.
   # tag: latest
   # Opt in only with a deployment-engine image supporting UCP_MTLS_* (not yet

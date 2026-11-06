@@ -82,15 +82,16 @@ func (h *headers) Set(value string) error {
 }
 
 type requestOptions struct {
-	method   string
-	headers  headers
-	data     string
-	cert     string
-	key      string
-	caCert   string
-	insecure bool
-	timeout  time.Duration
-	url      string
+	method    string
+	headers   headers
+	data      string
+	cert      string
+	key       string
+	caCert    string
+	tokenFile string
+	insecure  bool
+	timeout   time.Duration
+	url       string
 }
 
 func request(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -131,6 +132,7 @@ func parseRequest(args []string, stderr io.Writer) (requestOptions, error) {
 	fs.StringVar(&opts.cert, "cert", "", "client certificate PEM file")
 	fs.StringVar(&opts.key, "key", "", "client private key PEM file")
 	fs.StringVar(&opts.caCert, "cacert", "", "CA certificate PEM file used to verify the server")
+	fs.StringVar(&opts.tokenFile, "token-file", "", "file containing a receiver-bound bearer token (never passed in process arguments)")
 	fs.BoolVar(&opts.insecure, "k", false, "skip server certificate verification")
 	fs.DurationVar(&opts.timeout, "max-time", 30*time.Second, "request timeout")
 	if err := fs.Parse(args); err != nil {
@@ -162,6 +164,20 @@ func buildRequest(ctx context.Context, opts requestOptions) (*http.Request, *htt
 		}
 		req.Header.Add(strings.TrimSpace(name), strings.TrimSpace(value))
 	}
+	if opts.tokenFile != "" {
+		if req.Header.Get("Authorization") != "" || opts.cert != "" {
+			return nil, nil, errors.New("--token-file conflicts with Authorization headers and client certificates")
+		}
+		raw, err := os.ReadFile(opts.tokenFile)
+		if err != nil {
+			return nil, nil, errors.New("cannot read receiver token file")
+		}
+		token := strings.TrimSpace(string(raw))
+		if token == "" || len(token) > 16384 || strings.ContainsAny(token, " \t\r\n") {
+			return nil, nil, errors.New("invalid receiver token file")
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	tlsConfig := &tls.Config{InsecureSkipVerify: opts.insecure} //nolint:gosec // -k deliberately skips verification for negative tests.
 	if opts.caCert != "" {
@@ -185,5 +201,7 @@ func buildRequest(ctx context.Context, opts requestOptions) (*http.Request, *htt
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.TLSClientConfig = tlsConfig
-	return req, &http.Client{Transport: transport, Timeout: opts.timeout}, nil
+	return req, &http.Client{Transport: transport, Timeout: opts.timeout, CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}}, nil
 }

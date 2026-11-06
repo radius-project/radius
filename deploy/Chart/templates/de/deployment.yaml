@@ -3,6 +3,8 @@
 {{- $image := include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
 {{- $settings := .Values.de.ucpMTLS | default dict }}
 {{- $mtls := false }}
+{{- $externalSelected := eq (include "radius.authz.provider" .) "external" }}
+{{- $external := and $externalSelected (ne (include "radius.authz.mode" .) "off") }}
 {{- if hasKey $settings "enabled" }}
 {{- $mtls = $settings.enabled }}
 {{- end }}
@@ -57,11 +59,16 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if eq .Values.global.prometheus.enabled true }}
+      {{- if or $external (eq .Values.global.prometheus.enabled true) }}
       annotations:
+        {{- if $external }}
+        checksum/authz-config: {{ include "radius.authz.rolloutKey" . | sha256sum }}
+        {{- end }}
+        {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "/metrics"
         prometheus.io/port: "6443"
         prometheus.io/scrape: "true"
+        {{- end }}
       {{- end }}
     spec:
       serviceAccountName: bicep-de
@@ -90,7 +97,7 @@ spec:
         - name: appsettings-vol
           configMap:
             name: bicep-de-config
-        {{- if $mtls }}
+        {{- if or $mtls $external }}
         {{- include "radius.authz.mtls.volume" (dict "root" . "component" "bicep-de") | nindent 8 }}
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
@@ -115,7 +122,7 @@ spec:
         - name: appsettings-vol
           mountPath: /app/appsettings.Production.json
           subPath: appsettings.Production.json
-        {{- if $mtls }}
+        {{- if or $mtls $external }}
         {{- include "radius.authz.mtls.volumeMount" . | nindent 8 }}
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
@@ -141,7 +148,9 @@ spec:
         - name: kubernetes
           value: "true"
         - name: RADIUSBACKENDURL
-        {{- if $mtls }}
+        {{- if $external }}
+          value: http://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3
+        {{- else if $mtls }}
           value: https://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3
         - name: UCP_MTLS_ENABLED
           value: "true"
@@ -161,6 +170,22 @@ spec:
         {{- end }}
         {{- else }}
           value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
+        {{- end }}
+        {{- if $externalSelected }}
+        - name: RADIUS_INTERNAL_AUTH_PROVIDER
+          value: external
+        - name: RADIUS_INTERNAL_AUTH_MODE
+          value: {{ include "radius.authz.mode" . | quote }}
+        - name: RADIUS_INTERNAL_AUTH_NAMESPACE
+          value: {{ .Release.Namespace | quote }}
+        - name: RADIUS_INTERNAL_AUTH_UCP_TOKEN_FILE
+          value: /var/run/radius/tokens/ucp
+        - name: RADIUS_INTERNAL_AUTH_API_SERVER
+          value: https://kubernetes.default.svc:443
+        - name: RADIUS_INTERNAL_AUTH_API_CA_FILE
+          value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        - name: RADIUS_INTERNAL_AUTH_API_TOKEN_FILE
+          value: /var/run/secrets/kubernetes.io/serviceaccount/token
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}

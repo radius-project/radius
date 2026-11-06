@@ -299,6 +299,9 @@ func setCertificateValues(values map[string]any, certificates map[string]any) {
 // prepareCertificates performs all certificate checks without changing the cluster. Only public
 // certificate values are added to current; signing material stays in the returned in-memory plan.
 func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, defaults, current map[string]any, kubeContext string, installed bool) (*certificatePlan, error) {
+	if err := i.prepareMTLSProvider(options, defaults, current, installed); err != nil {
+		return nil, err
+	}
 	o := options.Certificates
 	if err := o.Validate(); err != nil {
 		return nil, err

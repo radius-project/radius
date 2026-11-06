@@ -1,5 +1,8 @@
 {{- $journalPresent := lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation" }}
-{{- if or $journalPresent (ne (include "radius.authz.mode" .) "off") }}
+{{- if and $journalPresent (eq (include "radius.authz.provider" .) "external") }}
+{{- fail "external provider cannot use an existing CA rotation journal; managed rotation and provider transitions require separate supported workflows" }}
+{{- end }}
+{{- if and (eq (include "radius.authz.provider" .) "radius") (or $journalPresent (ne (include "radius.authz.mode" .) "off")) }}
 {{- $objects := dict }}
 {{- $provider := default "radius" ((.Values.global.rbac.mtls | default dict).provider) }}
 {{- if ne $provider "external" }}

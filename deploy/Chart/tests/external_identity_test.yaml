@@ -1,0 +1,226 @@
+suite: external component identity
+templates:
+  - global/external-identity.yaml
+  - global/certificates.yaml
+  - ucp/deployment.yaml
+  - ucp/configmaps.yaml
+  - ucp/apiservice.yaml
+  - rp/deployment.yaml
+  - rp/configmaps.yaml
+  - controller/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - de/deployment.yaml
+release:
+  namespace: radius-system
+set:
+  global.rbac.enabled: true
+  global.rbac.mtls.provider: external
+  de.externalIdentity.enabled: true
+  de.image: local-engine
+  de.tag: local-test
+tests:
+  - it: projects only exact receiver tokens into the caller container
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: component-tokens
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: applications-rp.radius-system.svc
+                    expirationSeconds: 600
+                    path: applications-rp
+                - serviceAccountToken:
+                    audience: dynamic-rp.radius-system.svc
+                    expirationSeconds: 600
+                    path: dynamic-rp
+                - serviceAccountToken:
+                    audience: bicep-de.radius-system.svc
+                    expirationSeconds: 600
+                    path: bicep-de
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: component-tokens
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: ucp.radius-system.svc
+                    expirationSeconds: 600
+                    path: ucp
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: component-tokens
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: ucp.radius-system.svc
+                    expirationSeconds: 600
+                    path: ucp
+        template: controller/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: component-tokens
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: ucp.radius-system.svc
+                    expirationSeconds: 600
+                    path: ucp
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: component-tokens
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: ucp.radius-system.svc
+                    expirationSeconds: 600
+                    path: ucp
+        template: de/deployment.yaml
+  - it: keeps aggregation TLS and uses separate token-authenticated HTTP
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: global/certificates.yaml
+      - hasDocuments:
+          count: 2
+        template: ucp/apiservice.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'tlsCertificateDirectory: /var/tls/cert'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'mtlsProvider: external\n  component: "ucp"\n  tokenDirectory: /var/run/radius/tokens'
+        template: ucp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'endpoint: "http://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3"'
+        template: rp/configmaps.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_UCP_TOKEN_FILE
+            value: /var/run/radius/tokens/ucp
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUSBACKENDURL
+            value: http://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3
+        template: de/deployment.yaml
+  - it: grants only fixed offline discovery reads
+    template: global/external-identity.yaml
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: rules
+          value:
+            - nonResourceURLs:
+                - /.well-known/openid-configuration
+                - /openid/v1/jwks
+              verbs: ["get"]
+  - it: preserves a dormant external provider in Off without tokens or internal routing
+    set:
+      global.rbac.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: global/external-identity.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: component-tokens
+          any: true
+        template: ucp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: component-tokens
+          any: true
+        template: rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: component-tokens
+          any: true
+        template: dynamic-rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: component-tokens
+          any: true
+        template: controller/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: component-tokens
+          any: true
+        template: de/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: component-tokens
+          any: true
+        template: de/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: internal
+          any: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_MODE
+            value: "off"
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUSBACKENDURL
+            value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
+        template: de/deployment.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'kind: kubernetes'
+        template: rp/configmaps.yaml
+  - it: refuses the default unpaired engine
+    set:
+      de.externalIdentity.enabled: false
+    template: global/external-identity.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: external provider requires de.externalIdentity.enabled=true and an explicit de.image/de.tag for a paired token-capable engine; the published default image is not supported
+  - it: rejects unsupported aggregation CA mode without falling back
+    set:
+      global.rbac.certificates.mode: caSecret
+    template: global/external-identity.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: external provider supports only the existing selfSigned aggregation certificate; caSecret/issuerRef require coordinated aggregation CA migration
+  - it: rejects mixing managed engine TLS with external identity
+    set:
+      de.ucpMTLS.enabled: true
+    template: global/external-identity.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: external provider cannot use de.ucpMTLS.enabled
+  - it: supports dry run without changing its authorization mode
+    set:
+      global.rbac.enabled: false
+      global.rbac.dryRun: true
+    template: de/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_MODE
+            value: dryRun

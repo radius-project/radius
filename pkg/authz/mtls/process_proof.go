@@ -51,7 +51,7 @@ func configuredStartupProof(options authz.Options) (*StartupProof, error) {
 	}
 	digest := os.Getenv("UCP_MTLS_EXPECTED_TRUST_SHA256")
 	podUID := os.Getenv("UCP_MTLS_POD_UID")
-	if options.EffectiveMode() == authz.ModeOff || options.CertificateDirectory == "" ||
+	if options.EffectiveMode() == authz.ModeOff || options.EffectiveMTLSProvider() != "radius" || options.CertificateDirectory == "" ||
 		options.Namespace == "" || !validFingerprint(digest) || !validProofUUID(podUID) {
 		return nil, errors.New("TLS startup proof requires enabled component mTLS, an expected trust digest and a pod UID")
 	}

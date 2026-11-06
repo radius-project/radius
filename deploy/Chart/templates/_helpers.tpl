@@ -202,12 +202,27 @@ Renders the authorization config block for a component. Renders nothing when
 the authorization mode is off, so a default install is unchanged.
 */}}
 {{- define "radius.authz.serverConfig" -}}
-{{- $mode := include "radius.authz.mode" . -}}
+{{- $mode := include "radius.authz.mode" .root -}}
+{{- $podSecurityLevel := "" -}}
+{{- if eq .component "applications-rp" -}}
+{{- $podSecurityLevel = include "radius.authz.podSecurityLevel" .root -}}
+{{- end -}}
 {{- if ne $mode "off" }}
 authorization:
   mode: {{ $mode | quote }}
-  certificateDirectory: {{ include "radius.authz.mtls.mountPath" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
+  {{- if eq .component "applications-rp" }}
+  podSecurityLevel: {{ $podSecurityLevel | quote }}
+  controlPlaneNamespace: {{ .root.Release.Namespace | quote }}
+  controlPlaneSecrets: {{ include "radius.authz.controlPlaneSecrets" .root }}
+  {{- end }}
+  {{- if eq (include "radius.authz.provider" .root) "external" }}
+  mtlsProvider: external
+  component: {{ .component | quote }}
+  tokenDirectory: /var/run/radius/tokens
+  {{- else }}
+  certificateDirectory: {{ include "radius.authz.mtls.mountPath" .root | quote }}
+  {{- end }}
+  namespace: {{ .root.Release.Namespace | quote }}
 {{- end }}
 {{- end -}}
 
@@ -221,7 +236,7 @@ through the Kubernetes API server.
 ucp:
   kind: direct
   direct:
-    endpoint: "https://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3"
+    endpoint: "{{ if eq (include "radius.authz.provider" .) "external" }}http{{ else }}https{{ end }}://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3"
 {{- else }}
 ucp:
   kind: kubernetes
@@ -233,9 +248,15 @@ Renders the mTLS volume mount for a component container when the authorization m
 */}}
 {{- define "radius.authz.mtls.volumeMount" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
+{{- if eq (include "radius.authz.provider" .) "external" }}
+- name: component-tokens
+  mountPath: /var/run/radius/tokens
+  readOnly: true
+{{- else }}
 - name: mtls
   mountPath: {{ include "radius.authz.mtls.mountPath" . }}
   readOnly: true
+{{- end }}
 {{- end }}
 {{- end -}}
 
@@ -246,6 +267,21 @@ Call with (dict "root" $ "component" "<component>").
 */}}
 {{- define "radius.authz.mtls.volume" -}}
 {{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- if eq (include "radius.authz.provider" .root) "external" }}
+{{- $receivers := list "ucp" }}
+{{- if eq .component "ucp" }}
+{{- $receivers = list "applications-rp" "dynamic-rp" "bicep-de" }}
+{{- end }}
+- name: component-tokens
+  projected:
+    sources:
+      {{- range $receiver := $receivers }}
+      - serviceAccountToken:
+          audience: {{ printf "%s.%s.svc" $receiver $.root.Release.Namespace | quote }}
+          expirationSeconds: 600
+          path: {{ $receiver }}
+      {{- end }}
+{{- else }}
 {{- $rotation := include "radius.rotationState" .root | mustFromJson }}
 {{- $certificates := ((.root.Values.global.rbac).certificates) | default dict }}
 - name: mtls
@@ -270,4 +306,26 @@ Call with (dict "root" $ "component" "<component>").
     secretName: {{ .component }}-mtls
   {{- end }}
 {{- end }}
+{{- end -}}
+{{- end -}}
+
+{{- define "radius.authz.provider" -}}
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- $settings := dict "provider" "radius" -}}
+{{- if hasKey $rbac "mtls" -}}
+{{- $settings = $rbac.mtls -}}
+{{- end -}}
+{{- if not (kindIs "map" $settings) -}}
+{{- fail "global.rbac.mtls must be a mapping" -}}
+{{- end -}}
+{{- $provider := $settings.provider -}}
+{{- if not (has $provider (list "radius" "external")) -}}
+{{- fail "global.rbac.mtls.provider must be radius or external" -}}
+{{- end -}}
+{{- $provider -}}
+{{- end -}}
+
+{{- define "radius.authz.rolloutKey" -}}
+{{- include "radius.authz.mode" . -}}
+{{- if eq (include "radius.authz.provider" .) "external" -}}/external{{- end -}}
 {{- end -}}

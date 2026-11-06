@@ -38,7 +38,7 @@ Deployment-engine proof remains a separate opt-in for compatible engine images.
 {{- fail "global.rbac.startupProof.enabled must be a boolean" -}}
 {{- end -}}
 {{- if $enabled -}}
-{{- if eq (include "radius.authz.mode" .) "off" -}}
+{{- if or (eq (include "radius.authz.mode" .) "off") (eq (include "radius.authz.provider" .) "external") -}}
 {{- fail "global.rbac.startupProof.enabled requires component mTLS" -}}
 {{- end -}}
 {{- if or (not (kindIs "bool" .Values.global.prometheus.enabled)) (not .Values.global.prometheus.enabled) (le (int .Values.global.prometheus.port) 0) (gt (int .Values.global.prometheus.port) 65535) -}}

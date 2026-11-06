@@ -84,6 +84,7 @@ func Test_NewConnectionFromUCPConfig(t *testing.T) {
 	direct := func(endpoint string) *UCPOptions {
 		return &UCPOptions{Kind: UCPConnectionKindDirect, Direct: &UCPDirectConnectionOptions{Endpoint: endpoint}}
 	}
+	external := authz.Options{Mode: authz.ModeEnforce, MTLSProvider: "external", Namespace: "radius-system", TokenDirectory: t.TempDir()}
 
 	tests := []struct {
 		name          string
@@ -93,6 +94,10 @@ func Test_NewConnectionFromUCPConfig(t *testing.T) {
 		wantErr       string
 	}{
 		{name: "off direct http", option: direct("http://localhost:9000/apis/api.ucp.dev/v1alpha3"), wantEndpoint: "http://localhost:9000/apis/api.ucp.dev/v1alpha3"},
+		{name: "external direct http", option: direct("http://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3"), authorization: external, wantEndpoint: "http://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3"},
+		{name: "external rejects managed TLS endpoint", option: direct("https://ucp.radius-system.svc:9444"), authorization: external, wantErr: "must use http"},
+		{name: "external rejects aggregation port", option: direct("http://ucp.radius-system.svc:9443"), authorization: external, wantErr: "internal port 9444"},
+		{name: "external rejects noncanonical host", option: direct("http://ucp.radius-system:9444"), authorization: external, wantErr: "canonical UCP service"},
 		{name: "off kubernetes", option: &UCPOptions{Kind: UCPConnectionKindKubernetes}, wantEndpoint: "https://kube:6443/apis/api.ucp.dev/v1alpha3"},
 		{name: "dryRun direct https", option: direct("https://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3"), authorization: on(authz.ModeDryRun), wantEndpoint: "https://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3"},
 		{name: "enforce direct https", option: direct("https://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3"), authorization: on(authz.ModeEnforce), wantEndpoint: "https://ucp.radius-system.svc:9444/apis/api.ucp.dev/v1alpha3"},

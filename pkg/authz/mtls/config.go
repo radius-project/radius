@@ -211,7 +211,7 @@ func WithIdentity(ctx context.Context, id Identity) context.Context {
 // IdentityFromContext returns the caller's identity stored by WithIdentity.
 func IdentityFromContext(ctx context.Context) (Identity, bool) {
 	id, ok := ctx.Value(identityKey{}).(Identity)
-	return id, ok
+	return id, ok && id.Component != "" && id.Namespace != ""
 }
 
 // IdentityFromRequest returns the caller's identity from the request's verified client

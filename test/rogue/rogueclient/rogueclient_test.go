@@ -73,6 +73,7 @@ func Test_Run_DefaultsToGET(t *testing.T) {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
+
 		_, _ = w.Write([]byte("ok"))
 	}))
 	t.Cleanup(server.Close)
@@ -81,6 +82,30 @@ func Test_Run_DefaultsToGET(t *testing.T) {
 
 	require.Equal(t, ExitOK, code)
 	require.Equal(t, "ok"+StatusMarker+"200", stdout)
+}
+
+func Test_Run_ReceiverTokenFile(t *testing.T) {
+	t.Parallel()
+	file := filepath.Join(t.TempDir(), "token")
+	require.NoError(t, os.WriteFile(file, []byte("synthetic-token\n"), 0600))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "Bearer synthetic-token", r.Header.Get("Authorization"))
+		w.Header().Set("Location", "http://never-follow.example")
+		w.WriteHeader(http.StatusTemporaryRedirect)
+	}))
+	defer server.Close()
+	code, stdout, stderr := run(t, "request", "--token-file", file, server.URL)
+	require.Equal(t, ExitOK, code)
+	require.Contains(t, stdout, StatusMarker+"307")
+	require.Empty(t, stderr)
+	for _, args := range [][]string{
+		{"request", "--token-file", file, "-H", "Authorization: other", server.URL},
+		{"request", "--token-file", file + ".missing", server.URL},
+	} {
+		code, stdout, stderr = run(t, args...)
+		require.Equal(t, ExitUsage, code)
+		require.NotContains(t, stdout+stderr, "synthetic-token")
+	}
 }
 
 func Test_Run_TransportFailure(t *testing.T) {

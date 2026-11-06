@@ -70,7 +70,12 @@ const (
 //
 // An empty allowedCallers accepts any Radius component. ListenAndServe changes srv's
 // Handler and ConnContext when the mode is not off.
+// With the external provider it serves HTTP, verifies receiver-bound ServiceAccount
+// tokens per request, and depends on the operator's network encryption instead of TLS.
 func ListenAndServe(ctx context.Context, srv *http.Server, options authz.Options, allowedCallers []string) error {
+	if err := options.ValidateProvider(); err != nil {
+		return err
+	}
 	mode := options.EffectiveMode()
 	if mode == authz.ModeOff {
 		return srv.ListenAndServe()
@@ -95,9 +100,20 @@ func Serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 
 // serve is Serve with the interval at which the certificate files are polled for changes.
 func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, allowedCallers []string, pollInterval time.Duration) error {
+	if err := options.ValidateProvider(); err != nil {
+		_ = ln.Close()
+		return err
+	}
 	mode := options.EffectiveMode()
 	if mode == authz.ModeOff {
 		return srv.Serve(ln)
+	}
+	if _, err := authz.ParseMode(string(mode)); err != nil {
+		_ = ln.Close()
+		return err
+	}
+	if options.EffectiveMTLSProvider() == "external" {
+		return serveExternal(ctx, srv, ln, options, allowedCallers)
 	}
 
 	if options.CertificateDirectory == "" || options.Namespace == "" {

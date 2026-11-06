@@ -55,17 +55,7 @@ data:
       level: "info"
       json: true
 
-    {{- $authzMode := include "radius.authz.mode" . }}
-    {{- $podSecurityLevel := include "radius.authz.podSecurityLevel" . }}
-    {{- if ne $authzMode "off" }}
-    authorization:
-      mode: {{ $authzMode | quote }}
-      podSecurityLevel: {{ $podSecurityLevel | quote }}
-      controlPlaneNamespace: {{ .Release.Namespace | quote }}
-      controlPlaneSecrets: {{ include "radius.authz.controlPlaneSecrets" . }}
-      certificateDirectory: {{ include "radius.authz.mtls.mountPath" . | quote }}
-      namespace: {{ .Release.Namespace | quote }}
-    {{- end }}
+    {{- with include "radius.authz.serverConfig" (dict "root" . "component" "applications-rp") | trim }}{{ . | nindent 4 }}{{- end }}
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
       enabled: true

@@ -149,6 +149,7 @@ rad upgrade kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsro
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
 	runner.Certificates.AddFlags(cmd.Flags())
+	runner.MTLS.AddFlags(cmd.Flags())
 	cmd.Flags().StringVar(&runner.Chart, "chart", "", "Specify a file path to a helm chart to upgrade Radius from")
 	cmd.Flags().StringVar(&runner.Version, "version", "", "Specify the version to upgrade to (default: CLI version, use 'latest' for latest available)")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -178,6 +179,7 @@ type Runner struct {
 	ContourSet     []string
 	ContourSetFile []string
 	Certificates   helm.CertificateOptions
+	MTLS           helm.MTLSProviderOptions
 
 	// runChecks runs the preflight checks. Tests replace it so that the checks that need a cluster do not run.
 	runChecks func(ctx context.Context, checks []preflight.PreflightCheck) error
@@ -197,7 +199,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("cannot specify both --skip-preflight and --preflight-only")
 	}
 	if cmd != nil {
+		if err := r.MTLS.ValidateFlags(cmd.Flags()); err != nil {
+			return err
+		}
 		return r.Certificates.ValidateFlags(cmd.Flags())
+	}
+	if err := r.MTLS.ValidateFlags(nil); err != nil {
+		return err
 	}
 	return r.Certificates.Validate()
 }
@@ -243,6 +251,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// The preflight checks and the upgrade use the same options, so that they agree.
 	cliOptions := helm.CLIClusterOptions{
+		MTLS:         r.MTLS,
 		Certificates: r.Certificates,
 		Radius: helm.ChartOptions{
 			ChartPath:    r.Chart,

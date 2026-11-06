@@ -1,7 +1,8 @@
 {{- $rotation := include "radius.rotationSnapshot" (dict "root" . "apiVersion" "apps/v1" "kind" "Deployment" "name" "applications-rp") | mustFromJson }}
 {{- $appversion := include "radius.versiontag" . }}
-{{- $authzConfig := include "radius.authz.mode" . }}
-{{- if ne $authzConfig "off" }}
+{{- $authzMode := include "radius.authz.mode" . }}
+{{- $authzConfig := include "radius.authz.rolloutKey" . }}
+{{- if ne $authzMode "off" }}
 {{- $authzConfig = printf "%s:%s:%s:%s" $authzConfig (include "radius.authz.podSecurityLevel" .) .Release.Namespace (include "radius.authz.controlPlaneSecrets" .) }}
 {{- end }}
 {{- if ne .Values.rp.terraform.path "/terraform" }}

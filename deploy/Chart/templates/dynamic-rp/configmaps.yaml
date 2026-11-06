@@ -57,7 +57,7 @@ data:
       level: "info"
       json: true
 
-    {{- with include "radius.authz.serverConfig" . | trim }}{{ . | nindent 4 }}{{- end }}
+    {{- with include "radius.authz.serverConfig" (dict "root" . "component" "dynamic-rp") | trim }}{{ . | nindent 4 }}{{- end }}
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
       enabled: true

@@ -25,7 +25,7 @@ spec:
         azure.workload.identity/use: "true"
         {{- end }}
       annotations:
-        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        checksum/authz-config: {{ include "radius.authz.rolloutKey" . | sha256sum }}
         checksum/caller-authentication: {{ .Values.ucp.kubernetesIssuer | default "kubernetes:local" | sha256sum }}
         checksum/metrics-port: {{ .Values.global.prometheus.port | toString | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}

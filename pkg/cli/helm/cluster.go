@@ -37,6 +37,7 @@ import (
 )
 
 type CLIClusterOptions struct {
+	MTLS         MTLSProviderOptions
 	Radius       ChartOptions
 	Contour      ChartOptions
 	Certificates CertificateOptions
@@ -50,6 +51,7 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
+	MTLS         MTLSProviderOptions
 	Radius       RadiusChartOptions
 	Contour      ContourChartOptions
 	CertManager  CertManagerChartOptions
@@ -183,6 +185,7 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 
 	options.ResetValues = cliOptions.ResetValues
 	options.Certificates = cliOptions.Certificates
+	options.MTLS = cliOptions.MTLS
 
 	return options
 }

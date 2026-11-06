@@ -243,6 +243,9 @@ func (d *denialLogs) matches(line string) bool {
 // because servers do not use mTLS then.
 func requireMTLSMode(t *testing.T) authz.Mode {
 	t.Helper()
+	if installedExternalProvider(t) {
+		t.Skip("certificate boundary applies only to Radius-managed mTLS")
+	}
 	mode := expectedInstalledMode(t)
 	if mode == authz.ModeOff {
 		t.Skip("servers use mTLS only when the authorization mode is dryRun or enforce")
