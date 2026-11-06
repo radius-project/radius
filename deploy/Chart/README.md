@@ -50,7 +50,7 @@ The versioned response reports `schemaVersion: 1`, `ready`, `proofKind: "startup
 
 Observe this endpoint through authenticated Kubernetes exact-pod proxy, with pod-read and pod-proxy permissions. Independently bind the response to the live pod UID and running container identity before and after the request, compare expected roots and the current public leaf, and re-list all consumers before a phase transition. A replacement or restart invalidates earlier observations. Generic Pod Ready, projected files and this initialization response do not prove a successful UCP handshake, completion of old streams, or termination of old processes.
 
-This is a rotation prerequisite, not a rotation command or completed consumer barrier. Full consumer inventory and restart orchestration, safe aggregation migration and a server-enforced injector write fence remain required.
+This is a rotation prerequisite, not a rotation command. The CLI's internal consumer observer checks all five component deployments, their ReplicaSets, immutable public trust generations, exact-pod evidence and a second inventory after observation. Controlled restarts, issuance, aggregation migration and end-to-end phase orchestration are still required before enabling rotation.
 
 ### Go component loaded-trust evidence
 
@@ -90,7 +90,13 @@ For the CLI, use `--cert-issuer Issuer/name` or `--cert-issuer ClusterIssuer/nam
 
 This layer does not implement mode switching, CA replacement, continuous expiry monitoring, or coordinated rotation. The CLI preserves stored certificate settings on upgrade and reinstall and rejects mode, signing Secret and CA trust changes, including attempts to discard stored settings with `--reset-values`. Do not replace a CA on an existing installation using Helm values or direct Secret edits: A10 must publish old/new trust, wait for consumers, reissue certificates, and explicitly retire old trust. UCP's aggregated API certificate and APIService `caBundle` on port 9443 remain separately managed by the legacy chart. UCP now reloads a valid aggregation serving certificate from its mounted Secret without a restart; this neither changes the APIService trust nor proves that the aggregator has loaded it. Local chart and cryptographic tests do not establish cert-manager issuance or intermediate-CA installation on a live cluster.
 
-The selected future injection source is a separate public-only Secret containing the intended Radius aggregation trust, not a leaf Secret's potentially broader `ca.crt`. It is not enabled here. Supported cainjector versions can merge still-valid old roots, and a queued force-apply can restore an old root even after an annotation is removed and a resource-version-checked update succeeds. Updating the source, trimming once, sleeping or restarting a shared injector is not a safe retirement protocol. Keep CA changes disabled until a bounded write fence and recovery path are implemented and verified.
+### Radius-owned public trust
+
+The selected A10 direction retains cert-manager for issuance and renewal but gives Radius ownership of public trust, including its APIService `caBundle`. It does not configure cainjector for Radius's APIService and does not disable shared cainjector. This replaces the earlier injector-fence approach; production admission-policy activation is not a rotation prerequisite.
+
+The internal rotation store records public intent in the independently owned `radius-ca-rotation` ConfigMap. It reads the APIService before the journal and writes with the observed APIService resourceVersion. A delayed write cannot overwrite a later trust transition; retry must reread both resources. The chart follows the same ordering, preserves completed journal trust instead of restoring the legacy CA, and rejects an unfinished or missing journal for managed trust. These are storage and rendering protections, not a complete rotation workflow.
+
+Existing injection annotations or known injector managed-field history cause an explicit handover error. Removing annotations is not sufficient because an already submitted injector write may still arrive. No automatic handover is implemented. Keep CA changes disabled until the consumer, issuance, migration, retirement and recovery orchestration is connected. Directly replaying historical Helm manifests or using older charts without these protections is not a supported managed-trust workflow.
 
 #### Issuer policy prerequisites
 
