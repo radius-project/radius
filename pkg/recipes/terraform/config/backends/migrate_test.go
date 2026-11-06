@@ -1012,6 +1012,35 @@ func Test_MigrateLegacyStates_HeldLocks(t *testing.T) {
 		f.requireTombstone(legacy, current)
 	})
 
+	t.Run("owner deleted while the lock is kept", func(t *testing.T) {
+		t.Parallel()
+		f := newStateFixture(t)
+		current, legacy := f.addResource("redis", migrateApplicationID)
+		f.addState(legacy, "a", "b")
+		failing := true
+		f.client.PrependReactor("update", "leases", func(action k8stesting.Action) (bool, runtime.Object, error) {
+			if failing && action.(k8stesting.UpdateAction).GetObject().(*coordinationv1.Lease).Annotations[AnnotationStateMigratedParts] != "" {
+				return true, nil, errors.New("connection reset")
+			}
+			return false, nil, nil
+		})
+		require.Equal(t, hashmigration.Result{Remaining: 1}, f.migrate())
+		f.requireHeld(legacy)
+
+		// The resource is deleted: its destroy uses the published copy and deletes its first Secret.
+		failing = false
+		require.NoError(t, f.client.CoreV1().Secrets(RadiusNamespace).Delete(t.Context(), stateSecretName(current, 0), metav1.DeleteOptions{}))
+		require.NoError(t, f.db.Delete(t.Context(), migrateResourcePath+"redis"))
+
+		// The kept lock would block a resource created again with the same name, so the step must not finish before
+		// a pass releases it.
+		require.Equal(t, 1, f.migrate().Remaining)
+		f.requireFree(legacy)
+		require.Empty(t, f.chunkNames(current))
+		require.Equal(t, []string{"a", "b"}, f.state(legacy))
+		require.Equal(t, hashmigration.Result{}, f.migrate())
+	})
+
 	t.Run("busy owner without a kept lock", func(t *testing.T) {
 		t.Parallel()
 		f := newStateFixture(t)
