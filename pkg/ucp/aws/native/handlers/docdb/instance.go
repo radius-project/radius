@@ -111,7 +111,7 @@ func (h *Instance) properties(ctx context.Context, region string, i *types.DBIns
 		"CACertificateIdentifier":    i.CACertificateIdentifier,
 		"EnablePerformanceInsights":  i.PerformanceInsightsEnabled,
 		"PreferredMaintenanceWindow": i.PreferredMaintenanceWindow,
-		"Tags":                       tagList(tags.TagList),
+		"Tags":                       awsapi.TagListOf(tags.TagList),
 	}
 	if i.Endpoint != nil {
 		p["Endpoint"] = i.Endpoint.Address
@@ -130,7 +130,7 @@ func (h *Instance) Create(ctx context.Context, request native.CreateRequest) (st
 		return "", err
 	}
 	input.Engine = aws.String(Engine)
-	input.Tags = sdkTags(awsapi.Tags(request.Properties))
+	input.Tags = awsapi.SDKTags[types.Tag](awsapi.Tags(request.Properties))
 	if _, err := h.api.CreateDBInstance(ctx, input, inRegion(request.Region)); err != nil {
 		return "", err
 	}

@@ -58,9 +58,7 @@ type API interface {
 	RemoveTagsFromResource(ctx context.Context, params *docdb.RemoveTagsFromResourceInput, optFns ...func(*docdb.Options)) (*docdb.RemoveTagsFromResourceOutput, error)
 }
 
-func inRegion(region string) func(*docdb.Options) {
-	return func(o *docdb.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[docdb.Options]
 
 var (
 	_ native.Handler           = (*Cluster)(nil)
@@ -115,16 +113,10 @@ var lowercased = []string{"DBClusterIdentifier", "DBInstanceIdentifier", "DBSubn
 func equivalent(path string, template any, aws any) bool {
 	t, okT := template.(string)
 	a, okA := aws.(string)
-	if !okT || !okA {
-		return false
-	}
-	switch {
-	case path == "EngineVersion":
+	if okT && okA && path == "EngineVersion" {
 		return sameVersion(t, a)
-	case slices.Contains(lowercased, path):
-		return strings.EqualFold(t, a)
 	}
-	return false
+	return awsapi.CaseInsensitive(lowercased...)(path, template, aws)
 }
 
 // sameVersion reports whether aws is template with zero parts added, such as 5.0.0 for 5.0.
@@ -197,7 +189,7 @@ func (h *Cluster) properties(ctx context.Context, region string, c *types.DBClus
 		"StorageEncrypted":                 c.StorageEncrypted,
 		"StorageType":                      c.StorageType,
 		"VpcSecurityGroupIds":              groups,
-		"Tags":                             tagList(tags.TagList),
+		"Tags":                             awsapi.TagListOf(tags.TagList),
 	}
 	encoded, err := awsapi.EncodeObject(p)
 	if err != nil {
@@ -205,22 +197,6 @@ func (h *Cluster) properties(ctx context.Context, region string, c *types.DBClus
 	}
 	encoded["ManageMasterUserPassword"] = c.MasterUserSecret != nil
 	return encoded, nil
-}
-
-func tagList(tags []types.Tag) []any {
-	m := map[string]string{}
-	for _, t := range tags {
-		m[aws.ToString(t.Key)] = aws.ToString(t.Value)
-	}
-	return awsapi.TagList(m)
-}
-
-func sdkTags(tags []awsapi.Tag) []types.Tag {
-	out := []types.Tag{}
-	for _, t := range tags {
-		out = append(out, types.Tag{Key: aws.String(t.Key), Value: aws.String(t.Value)})
-	}
-	return out
 }
 
 // Create creates the cluster, or restores it from a snapshot or another cluster when the template sets
@@ -237,14 +213,14 @@ func (h *Cluster) Create(ctx context.Context, request native.CreateRequest) (str
 			return "", err
 		}
 		input.Engine = aws.String(Engine)
-		input.Tags = sdkTags(awsapi.Tags(p))
+		input.Tags = awsapi.SDKTags[types.Tag](awsapi.Tags(p))
 		_, err = h.api.RestoreDBClusterFromSnapshot(ctx, input, opt)
 	case awsapi.String(p, "SourceDBClusterIdentifier") != "":
 		input := &docdb.RestoreDBClusterToPointInTimeInput{}
 		if err := restoreInput(p, "SourceDBClusterIdentifier", input); err != nil {
 			return "", err
 		}
-		input.Tags = sdkTags(awsapi.Tags(p))
+		input.Tags = awsapi.SDKTags[types.Tag](awsapi.Tags(p))
 		_, err = h.api.RestoreDBClusterToPointInTime(ctx, input, opt)
 	default:
 		input := &docdb.CreateDBClusterInput{}
@@ -252,7 +228,7 @@ func (h *Cluster) Create(ctx context.Context, request native.CreateRequest) (str
 			return "", err
 		}
 		input.Engine = aws.String(Engine)
-		input.Tags = sdkTags(awsapi.Tags(p))
+		input.Tags = awsapi.SDKTags[types.Tag](awsapi.Tags(p))
 		_, err = h.api.CreateDBCluster(ctx, input, opt)
 	}
 	if err != nil {
@@ -355,7 +331,7 @@ func tagCalls(ctx context.Context, api API, arn *string, request native.UpdateRe
 	calls := []func() error{}
 	if len(set) > 0 {
 		calls = append(calls, func() error {
-			_, err := api.AddTagsToResource(ctx, &docdb.AddTagsToResourceInput{ResourceName: arn, Tags: sdkTags(set)}, opt)
+			_, err := api.AddTagsToResource(ctx, &docdb.AddTagsToResourceInput{ResourceName: arn, Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 			return err
 		})
 	}

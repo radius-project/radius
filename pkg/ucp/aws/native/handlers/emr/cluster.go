@@ -68,9 +68,7 @@ type API interface {
 	TerminateJobFlows(ctx context.Context, params *emr.TerminateJobFlowsInput, optFns ...func(*emr.Options)) (*emr.TerminateJobFlowsOutput, error)
 }
 
-func inRegion(region string) func(*emr.Options) {
-	return func(o *emr.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[emr.Options]
 
 var (
 	_ native.Handler = (*Cluster)(nil)
@@ -184,7 +182,7 @@ func (h *Cluster) properties(ctx context.Context, region string, c *types.Cluste
 		"SessionEnabled":          c.SessionEnabled,
 		"StepConcurrencyLevel":    c.StepConcurrencyLevel,
 		"VisibleToAllUsers":       c.VisibleToAllUsers,
-		"Tags":                    tagList(c.Tags),
+		"Tags":                    awsapi.TagListOf(c.Tags),
 	}
 	if k := c.KerberosAttributes; k != nil {
 		p["KerberosAttributes"] = map[string]any{"Realm": k.Realm}
@@ -406,22 +404,6 @@ func autoScalingPolicy(p *types.AutoScalingPolicyDescription, clusterID string) 
 	return map[string]any{"Constraints": p.Constraints, "Rules": p.Rules}
 }
 
-func tagList(tags []types.Tag) []any {
-	m := map[string]string{}
-	for _, t := range tags {
-		m[aws.ToString(t.Key)] = aws.ToString(t.Value)
-	}
-	return awsapi.TagList(m)
-}
-
-func sdkTags(tags []awsapi.Tag) []types.Tag {
-	out := []types.Tag{}
-	for _, t := range tags {
-		out = append(out, types.Tag{Key: aws.String(t.Key), Value: aws.String(t.Value)})
-	}
-	return out
-}
-
 // apiNames returns a copy of v, properties in the schema's format, with the names the EMR API uses where they differ:
 // a configuration's ConfigurationProperties and a step's StepProperties are both Properties in the API.
 func apiNames(v any) any {
@@ -476,7 +458,7 @@ func (h *Cluster) Create(ctx context.Context, request native.CreateRequest) (str
 			return "", err
 		}
 	}
-	input.Tags = append(sdkTags(awsapi.Tags(p)), types.Tag{Key: aws.String(awsapi.OperationTag), Value: aws.String(request.ClientToken)})
+	input.Tags = append(awsapi.SDKTags[types.Tag](awsapi.Tags(p)), types.Tag{Key: aws.String(awsapi.OperationTag), Value: aws.String(request.ClientToken)})
 	out, err := h.api.RunJobFlow(ctx, input, inRegion(request.Region))
 	if err != nil {
 		return "", err
@@ -722,7 +704,7 @@ func (h *Cluster) tagCalls(ctx context.Context, request native.UpdateRequest, op
 	calls := []func() error{}
 	if len(set) > 0 {
 		calls = append(calls, func() error {
-			_, err := h.api.AddTags(ctx, &emr.AddTagsInput{ResourceId: aws.String(request.Identifier), Tags: sdkTags(set)}, opt)
+			_, err := h.api.AddTags(ctx, &emr.AddTagsInput{ResourceId: aws.String(request.Identifier), Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 			return err
 		})
 	}

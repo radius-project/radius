@@ -187,6 +187,58 @@ func Changed(request native.UpdateRequest) []string {
 // resource, with the record's client token as the value. Read leaves it out, so it never counts as a change.
 const OperationTag = "radius-operation-id"
 
+// InRegion returns the option that sets the Region of an AWS SDK client's Options type O, such as docdb.Options, for
+// one call. Every SDK client's Options has a Region field.
+func InRegion[O any](region string) func(*O) {
+	return func(o *O) {
+		reflect.ValueOf(o).Elem().FieldByName("Region").SetString(region)
+	}
+}
+
+// SDKTags returns tags as an AWS SDK service's tag type T, such as docdb types.Tag, which has Key and Value fields.
+func SDKTags[T any](tags []Tag) []T {
+	out := []T{}
+	if err := convert(tags, &out); err != nil {
+		panic(fmt.Sprintf("can't convert tags to %T: %v", out, err))
+	}
+	return out
+}
+
+// TagListOf returns tags of an AWS SDK service's tag type T as a resource's Tags property, like TagList, leaving out
+// the keys in exclude as well, such as tags a handler keeps its own state in.
+func TagListOf[T any](tags []T, exclude ...string) []any {
+	var converted []Tag
+	if err := convert(tags, &converted); err != nil {
+		panic(fmt.Sprintf("can't read tags of type %T: %v", tags, err))
+	}
+	m := map[string]string{}
+	for _, t := range converted {
+		if !slices.Contains(exclude, t.Key) {
+			m[t.Key] = t.Value
+		}
+	}
+	return TagList(m)
+}
+
+// convert copies in to out through JSON, so fields with the same names match.
+func convert(in any, out any) error {
+	b, err := json.Marshal(in)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, out)
+}
+
+// CaseInsensitive returns a native.Options.Equivalent that treats a string at one of paths as the template's value
+// when the two differ only in case, such as a name AWS stores in lowercase.
+func CaseInsensitive(paths ...string) func(path string, template any, aws any) bool {
+	return func(path string, template any, aws any) bool {
+		t, okT := template.(string)
+		a, okA := aws.(string)
+		return okT && okA && slices.Contains(paths, path) && strings.EqualFold(t, a)
+	}
+}
+
 // ReservedTags returns a rejected failure when the template's Tags set a key the handler keeps its own state in, such
 // as OperationTag, and nil otherwise. A handler calls it before any AWS call of a create or an update, so a template
 // can't change that state.

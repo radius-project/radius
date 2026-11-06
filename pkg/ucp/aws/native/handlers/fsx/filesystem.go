@@ -52,9 +52,7 @@ type API interface {
 	UntagResource(ctx context.Context, params *fsx.UntagResourceInput, optFns ...func(*fsx.Options)) (*fsx.UntagResourceOutput, error)
 }
 
-func inRegion(region string) func(*fsx.Options) {
-	return func(o *fsx.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[fsx.Options]
 
 var (
 	_ native.Handler        = (*FileSystem)(nil)
@@ -151,7 +149,7 @@ func properties(fs *types.FileSystem) (map[string]any, error) {
 		"StorageCapacity":       fs.StorageCapacity,
 		"StorageType":           fs.StorageType,
 		"SubnetIds":             fs.SubnetIds,
-		"Tags":                  tagList(fs.Tags),
+		"Tags":                  awsapi.TagListOf(fs.Tags, deleteOptionsTag, updateBaselineTag),
 	}
 	if c := fs.LustreConfiguration; c != nil {
 		p["LustreMountName"] = c.MountName
@@ -241,20 +239,10 @@ func properties(fs *types.FileSystem) (map[string]any, error) {
 // delete reads them from this tag. Read leaves the tag out, so it never counts as a change.
 const deleteOptionsTag = "radius-delete-options"
 
-func tagList(tags []types.Tag) []any {
-	m := map[string]string{}
-	for _, t := range tags {
-		m[aws.ToString(t.Key)] = aws.ToString(t.Value)
-	}
-	delete(m, deleteOptionsTag)
-	delete(m, updateBaselineTag)
-	return awsapi.TagList(m)
-}
-
 // createTags returns the tags a create sends: the template's tags, the operation tag with token, and the delete
 // options tag when the template sets OpenZFSConfiguration Options.
 func createTags(properties map[string]any, token *string) []types.Tag {
-	tags := append(sdkTags(awsapi.Tags(properties)), types.Tag{Key: aws.String(awsapi.OperationTag), Value: token})
+	tags := append(awsapi.SDKTags[types.Tag](awsapi.Tags(properties)), types.Tag{Key: aws.String(awsapi.OperationTag), Value: token})
 	if options := awsapi.Strings(asMap(properties["OpenZFSConfiguration"]), "Options"); len(options) > 0 {
 		tags = append(tags, types.Tag{Key: aws.String(deleteOptionsTag), Value: aws.String(strings.Join(options, " "))})
 	}
@@ -270,14 +258,6 @@ func deleteOptions(tags []types.Tag) []types.DeleteFileSystemOpenZFSOption {
 				out = append(out, types.DeleteFileSystemOpenZFSOption(option))
 			}
 		}
-	}
-	return out
-}
-
-func sdkTags(tags []awsapi.Tag) []types.Tag {
-	out := []types.Tag{}
-	for _, t := range tags {
-		out = append(out, types.Tag{Key: aws.String(t.Key), Value: aws.String(t.Value)})
 	}
 	return out
 }
@@ -617,7 +597,7 @@ func (h *FileSystem) tagCalls(ctx context.Context, arn *string, request native.U
 	calls := []func() error{}
 	if len(set) > 0 {
 		calls = append(calls, func() error {
-			_, err := h.api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: arn, Tags: sdkTags(set)}, opt)
+			_, err := h.api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: arn, Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 			return err
 		})
 	}
