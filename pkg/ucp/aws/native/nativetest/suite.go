@@ -218,9 +218,12 @@ func (s Suite) existing(t *testing.T) {
 	require.Equal(t, s.Identifier, requireSegment(t, h.collection(), id))
 	parsed, err := resources.ParseResource(id)
 	require.NoError(t, err)
+	h.headers = map[string]string{sdkclients.AWSResourceIDHeader: id}
 	resp = h.do(getWithPost, http.MethodPost, h.collection()+"/:get", "", map[string]any{"name": parsed.Name()})
+	h.headers = nil
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	requireSubset(t, s.readable(s.Properties), resp.properties())
+	require.Equal(t, id, resp.body["id"])
 }
 
 // requireSegment requires id to be one resource ID segment under collection, and returns the AWS identifier that
@@ -347,6 +350,9 @@ type harness struct {
 	queue   *queueinmemory.Client
 	sm      statusmanager.StatusManager
 	key     *ucp_aws.FingerprintKey
+
+	// headers are added to every request.
+	headers map[string]string
 }
 
 func (s Suite) newHarness(t *testing.T) *harness {
@@ -440,6 +446,9 @@ func (h *harness) do(factory controllerFactory, method string, path string, owne
 	req.Host, req.URL.Host, req.URL.Scheme = testHost, testHost, "http"
 	if owner != "" {
 		req.Header.Set(sdkclients.AWSResourceOwnerHeader, owner)
+	}
+	for k, v := range h.headers {
+		req.Header.Set(k, v)
 	}
 	controller, err := factory(armrpc_controller.Options{DatabaseClient: h.db, StatusManager: h.sm}, h.clients)
 	require.NoError(h.t, err)

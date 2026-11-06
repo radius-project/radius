@@ -25,6 +25,7 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/middleware"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
@@ -83,8 +84,13 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	if err != nil {
 		return ucpaws.HandleAWSError(ctx, err)
 	}
-	// Recipes read an output resource again by the last segment of the ID this returned.
-	name = identifierOfSegment(rt.native, name)
+	// A recipe reads an output resource again by the ID UCP returned for it. Only that ID's last segment is decoded:
+	// a top-level name is the AWS identifier itself, even when it looks escaped, as on PUT.
+	if id := req.Header.Get(sdkclients.AWSResourceIDHeader); id != "" {
+		if name, errResponse = identifierOfID(serviceCtx.ResourceID, rt.native, id); errResponse != nil {
+			return errResponse, nil
+		}
+	}
 	describeTypeOutput := rt.typeInfo
 	if describeTypeOutput == nil {
 		describeTypeOutput, err = describeType(ctx, p.awsClients, serviceCtx.ResourceTypeInAWSFormat(), region)
