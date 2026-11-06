@@ -236,12 +236,12 @@ chmod +x "${GITHUB_WORKSPACE}/bin/helm"
 : >"${MOCK_CALLS}"
 bash "${WORK_DIR}/enforce.sh" >"${WORK_DIR}/enforce.log" 2>&1 || {
     cat "${WORK_DIR}/enforce.log" >&2
-    fail "enforce mode should reinstall with rad and run boundary tests"
+    fail "enforce mode should reinstall with rad and run boundary and Applications.Core tests"
 }
 cat >"${WORK_DIR}/enforce-expected" <<'EXPECTED'
 rad-enforce
 kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
-make test-functional-authz-noncloud GOTEST_OPTS=-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)$$'
+make test-functional-authz-noncloud GOTEST_OPTS=-run '^(Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)|Test_ApplicationsCoreRegression)$$'
 EXPECTED
 diff -u "${WORK_DIR}/enforce-expected" "${MOCK_CALLS}"
 

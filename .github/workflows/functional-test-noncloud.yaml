@@ -765,10 +765,10 @@ jobs:
           # local registry; ignored by other legs.
           RADIUS_REGISTRY_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
-      - name: Run authz mTLS boundary tests in enforce mode
+      - name: Run authz enforce-mode tests
         # The authz leg installs dryRun above. Switch the same installation to enforce and rerun
-        # the rogue-pod mTLS tests. The Applications.Core regression suite owns its mode
-        # coverage in the functional test run above; no resource-specific selectors are needed.
+        # the rogue-pod mTLS tests and the shared Applications.Core regression suite, which calls
+        # applications-rp through UCP with client certificates.
         id: authz-enforce-tests
         if: ${{ !cancelled() && matrix.name == 'authz-noncloud' && steps.functional-tests.outcome == 'success' }}
         run: |
@@ -778,7 +778,7 @@ jobs:
           rad install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}" \
             --set global.rbac.dryRun=false --set global.rbac.enabled=true
           kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
-          make test-functional-authz-noncloud GOTEST_OPTS="-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)\$\$'"
+          make test-functional-authz-noncloud GOTEST_OPTS="-run '^(Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)|Test_ApplicationsCoreRegression)\$\$'"
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
