@@ -50,8 +50,7 @@ data:
       {{- with dig "workerServer" "dequeueInterval" "" .Values.rp }}
       dequeueInterval: {{ . | quote }}
       {{- end }}
-    ucp:
-      kind: kubernetes
+    {{- include "radius.authz.ucpConnection" . | nindent 4 }}
     logging:
       level: "info"
       json: true
@@ -64,6 +63,8 @@ data:
       podSecurityLevel: {{ $podSecurityLevel | quote }}
       controlPlaneNamespace: {{ .Release.Namespace | quote }}
       controlPlaneSecrets: {{ include "radius.authz.controlPlaneSecrets" . }}
+      certificateDirectory: {{ include "radius.authz.mtls.mountPath" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
     {{- end }}
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:

@@ -16,7 +16,11 @@
 
 import type { Model, Program } from "@typespec/compiler";
 import { getAllHttpServices, type HttpOperation } from "@typespec/http";
-import { getArmResources } from "@azure-tools/typespec-azure-resource-manager";
+import {
+  getArmResources,
+  getResourceBaseType,
+  ResourceBaseType
+} from "@azure-tools/typespec-azure-resource-manager";
 import { getVersions } from "@typespec/versioning";
 import { ScopeType } from "./bicep.js";
 import { armResourceKindToScopeType } from "./scopes.js";
@@ -64,7 +68,13 @@ export function discoverResources(program: Program): DiscoveredResource[] {
   const discovered: DiscoveredResource[] = [];
 
   for (const resource of getArmResources(program)) {
-    if (!resource.collectionName) {
+    // Installation-only and read-only APIs are not resource-group deployments.
+    if (
+      !resource.collectionName ||
+      !resource.operations.lifecycle.createOrUpdate ||
+      getResourceBaseType(program, resource.typespecType) ===
+        ResourceBaseType.Tenant
+    ) {
       continue;
     }
 
