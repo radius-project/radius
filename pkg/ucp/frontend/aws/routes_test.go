@@ -137,6 +137,7 @@ func Test_InitializeClients(t *testing.T) {
 		require.NotNil(t, options.AWSClients.CloudControl)
 		require.NotNil(t, options.AWSClients.CloudFormation)
 		require.NotNil(t, options.AWSClients.Kafka)
+		require.NotNil(t, options.AWSClients.Native)
 	})
 
 	t.Run("creates only the clients that are not set", func(t *testing.T) {

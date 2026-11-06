@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -132,6 +133,69 @@ func (c *CloudControl) Resource(typeName string, identifier string) map[string]a
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return clone(c.resources[key(typeName, identifier)])
+}
+
+// Read returns a resource without its write-only values, as GetResource does, and whether it exists. It is not
+// recorded as a call. A native handler fake uses it, so both handlers see the same resources.
+func (c *CloudControl) Read(typeName string, identifier string) (map[string]any, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	props, ok := c.resources[key(typeName, identifier)]
+	if !ok {
+		return nil, false
+	}
+	props = clone(props)
+	for _, p := range c.WriteOnly[typeName] {
+		removePath(props, strings.Split(p, "/"))
+	}
+	return props, true
+}
+
+// Create stores a new resource and returns its identifier: the value of the type's identifier property, or one the
+// fake assigns, as CreateResource does. It is not recorded as a call.
+func (c *CloudControl) Create(typeName string, properties map[string]any) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	identifier, _ := properties[c.Identifiers[typeName]].(string)
+	if identifier == "" {
+		c.next++
+		identifier = "id-" + strconv.Itoa(c.next)
+	}
+	c.resources[key(typeName, identifier)] = clone(properties)
+	return identifier
+}
+
+// Patch applies JSON patch operations to a resource, as UpdateResource does. It is not recorded as a call.
+func (c *CloudControl) Patch(typeName string, identifier string, patch []map[string]any) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	props, ok := c.resources[key(typeName, identifier)]
+	if !ok {
+		return &cctypes.ResourceNotFoundException{Message: aws.String("not found")}
+	}
+	updated := clone(props)
+	for _, op := range patch {
+		if err := applyOperation(updated, op); err != nil {
+			return err
+		}
+	}
+	c.resources[key(typeName, identifier)] = updated
+	return nil
+}
+
+// List returns the identifiers of the resources of a type.
+func (c *CloudControl) List(typeName string) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	prefix := strings.ToLower(typeName) + "|"
+	out := []string{}
+	for k := range c.resources {
+		if identifier, ok := strings.CutPrefix(k, prefix); ok {
+			out = append(out, identifier)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // Remove deletes a resource, as if it was deleted outside Radius.
@@ -351,9 +415,16 @@ func (c *CloudControl) GetResourceRequestStatus(ctx context.Context, params *clo
 	return &cloudcontrol.GetResourceRequestStatusOutput{ProgressEvent: event}, nil
 }
 
-// ListResources is not supported.
+// ListResources returns every resource of the type, in one page.
 func (c *CloudControl) ListResources(ctx context.Context, params *cloudcontrol.ListResourcesInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourcesOutput, error) {
-	return nil, fmt.Errorf("ListResources is not supported by the fake")
+	typeName := aws.ToString(params.TypeName)
+	out := &cloudcontrol.ListResourcesOutput{TypeName: params.TypeName}
+	for _, identifier := range c.List(typeName) {
+		props, _ := c.Read(typeName, identifier)
+		b, _ := json.Marshal(props)
+		out.ResourceDescriptions = append(out.ResourceDescriptions, cctypes.ResourceDescription{Identifier: aws.String(identifier), Properties: aws.String(string(b))})
+	}
+	return out, nil
 }
 
 // CancelResourceRequest is not supported.

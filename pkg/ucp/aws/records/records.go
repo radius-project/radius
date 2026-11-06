@@ -36,12 +36,21 @@ import (
 // under it, and the backend controller that waits for AWS is registered under it.
 const OperationType = "AWSRESOURCE"
 
+// NativeOperationType is the async operation type of AWS resource operations a native handler serves. The type
+// travels with the queued operation, so a worker that finds the record gone still knows Cloud Control has no request
+// for it.
+const NativeOperationType = "AWSRESOURCENATIVE"
+
 // Operation names, as saved in PendingOperation.
 const (
 	OperationCreate = "CREATE"
 	OperationUpdate = "UPDATE"
 	OperationDelete = "DELETE"
 )
+
+// HandlerNative is the record's Handler when a native handler serves its operation. An empty Handler means Cloud
+// Control.
+const HandlerNative = "native"
 
 // StaleAfter is how long an operation in progress can go without a poll before UCP treats it as stale. The worker
 // saves the record at least every PollInterval while it polls AWS, so an operation a worker is polling never looks
