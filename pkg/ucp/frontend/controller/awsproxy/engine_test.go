@@ -321,6 +321,81 @@ func operations(calls []awsfake.Call) []string {
 	return out
 }
 
+func Test_Put_MetricFilterByAlias_UsesCompositeIdentifier(t *testing.T) {
+	const (
+		typeName   = "AWS::Logs::MetricFilter"
+		alias      = "filter-alias"
+		path       = providers + "AWS.Logs/MetricFilter/" + alias
+		identifier = "application-logs|404-count"
+		schema     = `{"primaryIdentifier":["/properties/LogGroupName","/properties/FilterName"]}`
+	)
+	for _, tt := range []struct {
+		name   string
+		exists bool
+	}{{"create", false}, {"adopt", true}} {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := setupTest(t)
+			properties := map[string]any{
+				"LogGroupName": "application-logs",
+				"FilterName":   "404-count",
+			}
+			opts.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(&cloudformation.DescribeTypeOutput{Schema: aws.String(schema)}, nil)
+			var current *cloudcontrol.GetResourceOutput
+			var readErr error
+			status := http.StatusCreated
+			if tt.exists {
+				body, err := json.Marshal(properties)
+				require.NoError(t, err)
+				current = &cloudcontrol.GetResourceOutput{
+					ResourceDescription: &cctypes.ResourceDescription{
+						Identifier: aws.String(identifier),
+						Properties: aws.String(string(body)),
+					},
+				}
+				status = http.StatusOK
+			} else {
+				readErr = &cctypes.ResourceNotFoundException{}
+				opts.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(_ context.Context, input *cloudcontrol.CreateResourceInput, _ ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
+						require.Equal(t, typeName, aws.ToString(input.TypeName))
+						require.NotEmpty(t, aws.ToString(input.ClientToken))
+						var desired map[string]any
+						require.NoError(t, json.Unmarshal([]byte(aws.ToString(input.DesiredState)), &desired))
+						require.Equal(t, properties, desired)
+						return &cloudcontrol.CreateResourceOutput{ProgressEvent: &cctypes.ProgressEvent{
+							Identifier: aws.String(identifier), RequestToken: aws.String(testAWSRequestToken),
+						}}, nil
+					})
+			}
+			opts.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, input *cloudcontrol.GetResourceInput, _ ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+					require.Equal(t, typeName, aws.ToString(input.TypeName))
+					require.Equal(t, identifier, aws.ToString(input.Identifier), "the URL alias is not an AWS identifier")
+					return current, readErr
+				})
+
+			reqBody, err := json.Marshal(map[string]any{"properties": properties})
+			require.NoError(t, err)
+			req := withOwner(httptest.NewRequest(http.MethodPut, path, bytes.NewReader(reqBody)))
+			controller, err := newTestPutController(opts.ControllerOptions(), opts.Clients())
+			require.NoError(t, err)
+			ctx := rpctest.NewARMRequestContext(req)
+			resp, err := controller.Run(ctx, nil, req)
+			require.NoError(t, err)
+			w := httptest.NewRecorder()
+			require.NoError(t, resp.Apply(ctx, w, req))
+			require.Equal(t, status, w.Code, w.Body.String())
+			var result map[string]any
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &result))
+			require.Equal(t, path, result["id"])
+			require.Equal(t, alias, result["name"])
+			h := &harness{t: t, db: opts.DatabaseClient}
+			require.Equal(t, identifier, h.record(path).Properties.AWSIdentifier)
+		})
+	}
+}
+
 func Test_Put_VPCByAlias_Idempotent(t *testing.T) {
 	h := newHarness(t)
 
