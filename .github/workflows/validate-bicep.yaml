@@ -88,6 +88,9 @@ jobs:
           mkdir -p tmp-radius-bicep-extension
           mkdir -p tmp-testresources-bicep-extension
 
+      - name: Compile resource-group RBAC declarations
+        run: make test-authorization-bicep
+
       # The two publish-extension commands are independent: they write to separate
       # output files (tmp-radius-bicep-extension/radius.tgz and
       # tmp-testresources-bicep-extension/testresources.tgz, both created above).

@@ -1,0 +1,8 @@
+// Licensed under the Apache License, Version 2.0 . See LICENSE in the repository root for license information.
+
+package v20250801preview
+
+const (
+	moduleName    = "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
+	moduleVersion = "v0.1.0"
+)

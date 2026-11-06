@@ -77,6 +77,11 @@ spec:
         - containerPort: 9443
           name: ucp
           protocol: TCP
+        {{- if ne (include "radius.authz.mode" .) "off" }}
+        - containerPort: 9444
+          name: internal
+          protocol: TCP
+        {{- end }}
         {{- if eq .Values.global.prometheus.enabled true }}
         - containerPort: {{ .Values.global.prometheus.port }}
           name: metrics
@@ -137,6 +142,7 @@ spec:
         - name: aws-fingerprint-key
           mountPath: /var/secrets/aws-fingerprint
           readOnly: true
+        {{- with include "radius.authz.mtls.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
       volumes:
         - name: config-volume
           configMap:
@@ -175,3 +181,4 @@ spec:
             secretName: radius-aws-fingerprint-key
             defaultMode: 0444
             optional: true
+        {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "ucp") | trim }}{{ . | nindent 8 }}{{- end }}

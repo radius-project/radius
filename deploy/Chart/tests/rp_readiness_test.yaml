@@ -23,6 +23,18 @@ tests:
           value: 5443
         template: rp/deployment.yaml
 
+  - it: uses a certificate-free TCP readiness probe for applications-rp in dryRun mode
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.tcpSocket.port
+          value: applications-rp
+        template: rp/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet
+        template: rp/deployment.yaml
+
   - it: gates dynamic-rp readiness on its API listener
     asserts:
       - equal:
