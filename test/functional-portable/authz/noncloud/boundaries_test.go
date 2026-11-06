@@ -39,6 +39,14 @@ func Test_Boundary_DisallowedPeerKey(t *testing.T) {
 	testDisallowedPeerKey(t)
 }
 
+// Expected: a pod presenting a valid Radius component certificate for a component that is
+// not an allowed caller of applications-rp (dynamic-rp; only UCP is allowed) completes the
+// mTLS handshake and is rejected with AuthorizationFailed (403), or logged as a would-deny
+// in dryRun.
+func Test_Boundary_DisallowedCaller(t *testing.T) {
+	testDisallowedCaller(t)
+}
+
 // Expected: a request to UCP carrying a forged x-remote-user header, without a verified
 // Kubernetes proxy certificate, is rejected with InvalidAuthenticationInfo (401).
 func Test_Boundary_ForgedRemoteUserHeader(t *testing.T) {

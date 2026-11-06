@@ -765,6 +765,25 @@ jobs:
           # local registry; ignored by other legs.
           RADIUS_REGISTRY_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
+      - name: Run authz mTLS boundary tests in enforce mode
+        # The authz leg installs dryRun above. Switch the same installation to enforce and rerun
+        # only the tests that call applications-rp directly from rogue pods, so the enforce
+        # branches of the mTLS boundary tests run in CI. Other tests are not rerun because, until
+        # clients present certificates, enforce breaks UCP->RP calls.
+        id: authz-enforce-tests
+        if: ${{ !cancelled() && matrix.name == 'authz-noncloud' && steps.functional-tests.outcome == 'success' }}
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          helm upgrade radius "${RADIUS_CHART_LOCATION}" -n radius-system --reuse-values \
+            --set global.rbac.dryRun=false --set global.rbac.enabled=true
+          kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
+          make test-functional-authz-noncloud GOTEST_OPTS="-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)\$\$'"
+        env:
+          DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
+          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
+          AUTHZ_EXPECTED_MODE: enforce
+          GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results-enforce.xml
+
       - name: Check for authorization would-deny logs
         # Fails the authz dry-run legs if any component logged that an authorization check would
         # deny a request. Under enforcement those requests would be rejected, so this catches

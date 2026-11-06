@@ -195,11 +195,16 @@ if grep -Fq 'make test-functional-all-noncloud' "${MOCK_CALLS}"; then
 fi
 
 fresh_options="$(yq -r '.jobs[].steps[] |
-    select(.name == "Run functional tests") | .env.AUTHZ_EXPECTED_MODE' \
+    select(.id == "functional-tests") | .env.AUTHZ_EXPECTED_MODE' \
     "${FRESH_WORKFLOW}")"
 [[ "${fresh_options}" == \
     "\${{ matrix.name == 'authz-noncloud' && 'dryRun' || '' }}" ]] \
     || fail "fresh-install CI no longer requires dryRun mode"
+enforce_options="$(yq -r '.jobs[].steps[] |
+    select(.id == "authz-enforce-tests") | .env.AUTHZ_EXPECTED_MODE' \
+    "${FRESH_WORKFLOW}")"
+[[ "${enforce_options}" == "enforce" ]] \
+    || fail "fresh-install CI no longer runs the authz boundary tests in enforce mode"
 fresh_skip_options="$(yq -r '.jobs[].steps[] | select(.env.GOTEST_OPTS != null) |
     .env.GOTEST_OPTS' "${FRESH_WORKFLOW}")"
 if [[ "${fresh_skip_options}" == *Test_AuthzMode_LoggedByEveryComponent* ]]; then

@@ -25,6 +25,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
+	"io"
 	"math/big"
 	"net/http"
 	"strings"
@@ -37,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	k8s "k8s.io/client-go/kubernetes"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/test"
@@ -45,8 +47,9 @@ import (
 )
 
 const (
-	applicationsRPOperationsURL = "https://applications-rp.radius-system.svc:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview"
-	logTimeout                  = time.Minute
+	applicationsRPOperationsPath = "/planes/radius/local/providers/Applications.Core/operations"
+	applicationsRPOperationsURL  = "https://applications-rp.radius-system.svc:5443" + applicationsRPOperationsPath + "?api-version=2023-10-01-preview"
+	logTimeout                   = time.Minute
 )
 
 func testUnauthenticatedCallToApplicationsRP(t *testing.T) {
@@ -106,6 +109,134 @@ func testDisallowedPeerKey(t *testing.T) {
 	}
 
 	requirePeerFailureLogged(t, options.K8sClient, mode, client.Pod().Status.PodIP, "RSA key size 1024")
+}
+
+func testDisallowedCaller(t *testing.T) {
+	mode := requireMTLSMode(t)
+	options := test.NewTestOptions(t)
+	ctx := t.Context()
+
+	// Positive control: UCP, the only allowed caller, gets the same route.
+	ucp := componentClient(t, options, "ucp-mtls")
+	resp, err := ucp.Do(ctx, rogue.Request{URL: applicationsRPOperationsURL, ClientCert: true, CACert: true})
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, resp.StatusCode, "UCP's certificate was not accepted: %+v", resp)
+
+	// dynamic-rp has a valid certificate from the Radius CA, but applications-rp only accepts
+	// calls from UCP, so the caller check is the only reason for rejection.
+	caller := "dynamic-rp." + radiusNamespace + ".svc"
+	client := componentClient(t, options, "dynamic-rp-mtls")
+	logs := newDenialLogs(t, options.K8sClient, mode, caller)
+
+	resp, err = client.Do(ctx, rogue.Request{URL: applicationsRPOperationsURL, ClientCert: true, CACert: true})
+	require.NoError(t, err)
+	require.Equalf(t, rogueclient.ExitOK, resp.ExitCode, "expected the mTLS handshake to succeed: %+v", resp)
+	if mode == authz.ModeEnforce {
+		require.Equalf(t, http.StatusForbidden, resp.StatusCode, "expected dynamic-rp to be rejected: %+v", resp)
+		var body v1.ErrorResponse
+		require.NoErrorf(t, json.Unmarshal([]byte(resp.Body), &body), "expected an ARM error body: %+v", resp)
+		require.NotNilf(t, body.Error, "expected an ARM error body: %+v", resp)
+		require.Equal(t, authz.CodeAuthorizationFailed, body.Error.Code)
+	} else {
+		require.Equalf(t, http.StatusOK, resp.StatusCode, "dryRun must not reject the request: %+v", resp)
+	}
+
+	logs.requireNew(t)
+}
+
+// componentClient starts a rogue pod with a copy of the named Radius component mTLS Secret.
+func componentClient(t *testing.T, options test.TestOptions, secretName string) *rogue.Client {
+	t.Helper()
+	source, err := options.K8sClient.CoreV1().Secrets(radiusNamespace).Get(t.Context(), secretName, metav1.GetOptions{})
+	require.NoError(t, err)
+	namespace := createNamespace(t, options.K8sClient)
+	secret := createTLSSecret(t, options.K8sClient, namespace, source.Data["tls.crt"], source.Data["tls.key"], source.Data["ca.crt"])
+	return rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{Namespace: namespace, TLSSecretName: secret})
+}
+
+// denialLogs finds applications-rp AuthorizationFailed denial (enforce) or would-deny (dryRun)
+// lines for a caller on the operations route. The caller check log has no peer address, so a
+// match is tied to this test by reading only logs since the test started and requiring more
+// matching lines than were present before the request.
+type denialLogs struct {
+	client   k8s.Interface
+	marker   string
+	caller   string
+	since    metav1.Time
+	baseline map[string]int
+}
+
+func newDenialLogs(t *testing.T, client k8s.Interface, mode authz.Mode, caller string) *denialLogs {
+	t.Helper()
+	// Log timestamps have second precision, so start one second early; the baseline
+	// excludes anything already logged.
+	d := &denialLogs{client: client, marker: denialMarker(mode), caller: caller, since: metav1.NewTime(time.Now().Add(-time.Second))}
+	var last string
+	d.baseline, last = d.count(t.Context(), t)
+	t.Logf("applications-rp %s lines for %s before the request: %v; last logs:\n%s", d.marker, caller, d.baseline, tail(last, 5))
+	return d
+}
+
+// denialMarker returns the log field that marks a denial in mode.
+func denialMarker(mode authz.Mode) string {
+	if mode == authz.ModeDryRun {
+		return authz.LogFieldWouldDeny
+	}
+	return authz.LogFieldDenied
+}
+
+func (d *denialLogs) requireNew(t *testing.T) {
+	t.Helper()
+	var last string
+	err := wait.PollUntilContextTimeout(t.Context(), 2*time.Second, logTimeout, true, func(ctx context.Context) (bool, error) {
+		var counts map[string]int
+		counts, last = d.count(ctx, t)
+		for pod, n := range counts {
+			if n > d.baseline[pod] {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	require.NoErrorf(t, err, "applications-rp did not log %s with %s=%s for caller %s on %s after the request; last logs:\n%s",
+		d.marker, authz.LogFieldCode, authz.CodeAuthorizationFailed, d.caller, applicationsRPOperationsPath, tail(last, 20))
+}
+
+func (d *denialLogs) count(ctx context.Context, t *testing.T) (map[string]int, string) {
+	t.Helper()
+	pods, err := d.client.CoreV1().Pods(radiusNamespace).List(ctx, metav1.ListOptions{LabelSelector: "app.kubernetes.io/name=applications-rp"})
+	require.NoError(t, err)
+
+	counts := map[string]int{}
+	var last string
+	for _, pod := range pods.Items {
+		if pod.Status.Phase != corev1.PodRunning {
+			continue
+		}
+		stream, err := d.client.CoreV1().Pods(radiusNamespace).GetLogs(pod.Name, &corev1.PodLogOptions{Container: "applications-rp", SinceTime: &d.since}).Stream(ctx)
+		require.NoError(t, err, "failed to read logs for %s", pod.Name)
+		data, err := io.ReadAll(stream)
+		stream.Close()
+		require.NoError(t, err)
+
+		last = string(data)
+		for _, line := range strings.Split(last, "\n") {
+			if d.matches(line) {
+				counts[pod.Name]++
+			}
+		}
+	}
+	return counts, last
+}
+
+func (d *denialLogs) matches(line string) bool {
+	entry, ok := jsonLogEntry(line)
+	return ok &&
+		entry[d.marker] == true &&
+		entry[authz.LogFieldCode] == authz.CodeAuthorizationFailed &&
+		entry[mtls.LogFieldCaller] == d.caller &&
+		entry[authz.LogFieldAction] == http.MethodGet &&
+		entry[authz.LogFieldTarget] == applicationsRPOperationsPath
 }
 
 // requireMTLSMode returns the installed authorization mode, skipping the test when it is off
@@ -211,13 +342,22 @@ func requirePeerFailureLogged(t *testing.T, client k8s.Interface, mode authz.Mod
 		authz.LogFieldCode, authz.CodePeerCertificateInvalid, podIP, reason, tail(last, 20))
 }
 
-func peerFailureLine(line, marker, podIP, reason string) bool {
+// jsonLogEntry parses the JSON object in a log line, ignoring any prefix before it.
+func jsonLogEntry(line string) (map[string]any, bool) {
 	start := strings.IndexByte(line, '{')
 	if start < 0 {
-		return false
+		return nil, false
 	}
 	var entry map[string]any
 	if err := json.Unmarshal([]byte(line[start:]), &entry); err != nil {
+		return nil, false
+	}
+	return entry, true
+}
+
+func peerFailureLine(line, marker, podIP, reason string) bool {
+	entry, ok := jsonLogEntry(line)
+	if !ok {
 		return false
 	}
 	address, _ := entry[mtls.LogFieldPeerAddress].(string)
@@ -234,4 +374,41 @@ func tail(s string, n int) string {
 		lines = lines[len(lines)-n:]
 	}
 	return strings.Join(lines, "\n")
+}
+
+func Test_DenialLogsMatches(t *testing.T) {
+	t.Parallel()
+
+	caller := "dynamic-rp.radius-system.svc"
+	line := func(marker, code, gotCaller, action, target string) string {
+		data, err := json.Marshal(map[string]any{
+			marker: true, authz.LogFieldCode: code, mtls.LogFieldCaller: gotCaller,
+			authz.LogFieldAction: action, authz.LogFieldTarget: target,
+		})
+		require.NoError(t, err)
+		return "2026-11-06T00:00:00Z " + string(data)
+	}
+	ok := line(authz.LogFieldWouldDeny, authz.CodeAuthorizationFailed, caller, http.MethodGet, applicationsRPOperationsPath)
+
+	tests := []struct {
+		name string
+		mode authz.Mode
+		line string
+		want bool
+	}{
+		{name: "dryRun match", mode: authz.ModeDryRun, line: ok, want: true},
+		{name: "enforce match", mode: authz.ModeEnforce, line: line(authz.LogFieldDenied, authz.CodeAuthorizationFailed, caller, http.MethodGet, applicationsRPOperationsPath), want: true},
+		{name: "wrong marker for enforce", mode: authz.ModeEnforce, line: ok},
+		{name: "other code", mode: authz.ModeDryRun, line: line(authz.LogFieldWouldDeny, authz.CodePeerCertificateInvalid, caller, http.MethodGet, applicationsRPOperationsPath)},
+		{name: "other caller", mode: authz.ModeDryRun, line: line(authz.LogFieldWouldDeny, authz.CodeAuthorizationFailed, "controller.radius-system.svc", http.MethodGet, applicationsRPOperationsPath)},
+		{name: "other target", mode: authz.ModeDryRun, line: line(authz.LogFieldWouldDeny, authz.CodeAuthorizationFailed, caller, http.MethodGet, applicationsRPOperationsPath+"/x")},
+		{name: "not JSON", mode: authz.ModeDryRun, line: "authorization check would deny request"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			d := &denialLogs{marker: denialMarker(tt.mode), caller: caller}
+			require.Equal(t, tt.want, d.matches(tt.line))
+		})
+	}
 }
