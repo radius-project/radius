@@ -949,6 +949,32 @@ Linked from [D1](#d1-who-compiles-bicep-for-argo-cd). All options assume Radius 
 5. **Radius controller, automatically:** compiles the Bicep, creates the `DeploymentTemplate`, deploys it, and reports the result on the source resource.
 6. **If compilation fails:** the sync succeeds, then the source resource turns Degraded with the error.
 
+### Visual comparison of all approaches (Flux reference + 3 Argo CD approaches)
+
+#### Reference: How Flux works today (why Flux did not need a sidecar)
+
+Flux's `source-controller` includes an internal HTTP server (`GitRepository.status.artifact.url`) that serves a `.tar.gz` archive of the repository inside the cluster, so Radius's `FluxController` downloads and compiles `.bicep` files without needing Git credentials. Argo CD has no tarball HTTP server.
+
+![How Flux works today](2026-10-argocd-functional-spec/flux-reference-architecture.svg)
+
+#### Approach 1 (chosen primary): Argo CD CMP sidecar (`radius-bicep`)
+
+Developers commit pure `.bicep` and `.bicepparam` files. `argocd-repo-server` clones the repository and streams the application files over a pod-local Unix domain socket to the non-root `radius-bicep` sidecar, which compiles them into a `DeploymentTemplate` before sync.
+
+![Approach 1: Argo CD plugin architecture](2026-10-argocd-functional-spec/plugin-approach-architecture.svg)
+
+#### Approach 2 (chosen fallback): CI-generated `DeploymentTemplate` YAML (no sidecar)
+
+When an organization prohibits custom sidecars on `argocd-repo-server`, a CI workflow runs `rad bicep generate-kubernetes-manifest` and commits the resulting `DeploymentTemplate` YAML. Plain Argo CD applies the same `DeploymentTemplate` CR and uses the same Lua health checks and Radius controller.
+
+![Approach 2: CI fallback architecture](2026-10-argocd-functional-spec/ci-fallback-architecture.svg)
+
+#### Approach 3 (rejected): Wrapper CRD / Radius controller compiles
+
+Argo CD applies a wrapper resource (or Kustomize `ConfigMap`) and marks the Application `Synced` before Bicep is compiled; a new Radius controller reconciler then compiles Bicep asynchronously and rolls status back up.
+
+![Approach 3: Radius controller approach architecture](2026-10-argocd-functional-spec/controller-approach-architecture.svg)
+
 ## Design Review Notes
 
 Not yet reviewed.
