@@ -110,9 +110,13 @@ func Test_AWSRedeployWithRemovedPropertyClearsProperty(t *testing.T) {
 					Identifier: &logGroup.Identifier,
 				})
 				require.NoError(t, err)
+				require.NotNil(t, output.ResourceDescription)
+				require.NotNil(t, output.ResourceDescription.Properties)
 
 				properties := map[string]any{}
 				require.NoError(t, json.Unmarshal([]byte(*output.ResourceDescription.Properties), &properties))
+				// A read without the name is incomplete, so it cannot show that the retention period is gone.
+				require.Equal(t, name, properties["LogGroupName"], "AWS returned incomplete properties for the log group")
 				require.NotContains(t, properties, "RetentionInDays", "the redeploy did not clear the retention period")
 			},
 		},
@@ -255,24 +259,7 @@ const queryDefinitionTypeName = "AWS::Logs::QueryDefinition"
 // listQueryDefinitions returns the IDs of the query definitions named name. The tests find query definitions by name
 // because AWS assigns their identifiers.
 func listQueryDefinitions(ctx context.Context, client awsclient.AWSCloudControlClient, name string) ([]string, error) {
-	ids := []string{}
-	paginator := cloudcontrol.NewListResourcesPaginator(client, &cloudcontrol.ListResourcesInput{TypeName: new(queryDefinitionTypeName)})
-	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, description := range page.ResourceDescriptions {
-			properties := struct{ Name string }{}
-			if err := json.Unmarshal([]byte(*description.Properties), &properties); err != nil {
-				return nil, err
-			}
-			if properties.Name == name {
-				ids = append(ids, *description.Identifier)
-			}
-		}
-	}
-	return ids, nil
+	return validation.ListAWSResourcesByProperty(ctx, client, queryDefinitionTypeName, "Name", name)
 }
 
 // requireOneQueryDefinition requires that AWS has exactly one query definition named name, and returns its ID. It waits
