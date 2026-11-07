@@ -69,3 +69,26 @@ func Test_LoadConfig_AWS(t *testing.T) {
 	_, err = LoadConfig([]byte("aws:\n  unknown: true\n"))
 	require.Error(t, err)
 }
+
+func Test_LoadConfig_CallerAuthentication(t *testing.T) {
+	t.Parallel()
+	config, err := LoadConfig([]byte(`
+callerAuthentication:
+  caFile: /etc/radius/requestheader-ca.crt
+  allowedNames:
+    - front-proxy-client
+  kubernetesIssuer: kubernetes:cluster-id
+`))
+	require.NoError(t, err)
+	require.NotNil(t, config.CallerAuthentication)
+	require.Equal(t, "/etc/radius/requestheader-ca.crt", config.CallerAuthentication.CAFile)
+	require.Equal(t, []string{"front-proxy-client"}, config.CallerAuthentication.AllowedNames)
+	require.Equal(t, "kubernetes:cluster-id", config.CallerAuthentication.KubernetesIssuer)
+
+	config, err = LoadConfig([]byte("logging:\n  level: info\n"))
+	require.NoError(t, err)
+	require.Nil(t, config.CallerAuthentication)
+
+	_, err = LoadConfig([]byte("callerAuthentication:\n  allowUnverifiedHeaders: true\n"))
+	require.ErrorContains(t, err, "field allowUnverifiedHeaders not found")
+}
