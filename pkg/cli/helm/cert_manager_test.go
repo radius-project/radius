@@ -50,6 +50,7 @@ import (
 	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/test/k8sutil"
 )
 
 func certManagerCRD() *apiextensionsv1.CustomResourceDefinition {
@@ -95,6 +96,91 @@ func (c fakeCertManagerCluster) clients() (kubernetes.Interface, apiextclient.In
 	}
 
 	return k8sfake.NewClientset(kubeObjects...), apiextfake.NewClientset(apiextObjects...)
+}
+
+func TestCertManagerClientsKubeconfigLoading(t *testing.T) {
+	tests := []struct {
+		name        string
+		kubeconfig  []string
+		contextName string
+		wantServer  string
+		wantErr     string
+	}{
+		{name: "default kubeconfig", wantServer: "home"},
+		{name: "KUBECONFIG current context", kubeconfig: []string{"env"}, wantServer: "env"},
+		{name: "KUBECONFIG replaces matching home context", kubeconfig: []string{"env"}, contextName: "shared", wantServer: "env"},
+		{name: "explicit context in later merged file", kubeconfig: []string{"env", "extra"}, contextName: "extra-context", wantServer: "extra"},
+		{name: "unknown context", kubeconfig: []string{"env"}, contextName: "missing-context", wantErr: "missing-context"},
+		{name: "missing KUBECONFIG does not fall back home", kubeconfig: []string{"missing"}, wantErr: "no usable kubeconfig found"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			servers := map[string]*k8sutil.ForbiddenAPIServer{
+				"home":  k8sutil.NewForbiddenAPIServer(t),
+				"env":   k8sutil.NewForbiddenAPIServer(t),
+				"extra": k8sutil.NewForbiddenAPIServer(t),
+			}
+			paths := map[string]string{
+				"home":    k8sutil.IsolateKubeconfig(t),
+				"env":     filepath.Join(t.TempDir(), "env"),
+				"extra":   filepath.Join(t.TempDir(), "extra"),
+				"missing": filepath.Join(t.TempDir(), "missing"),
+			}
+			k8sutil.WriteKubeconfig(t, paths["home"], "home-context", map[string]string{
+				"home-context": servers["home"].URL,
+				"shared":       servers["home"].URL,
+			})
+			k8sutil.WriteKubeconfig(t, paths["env"], "env-context", map[string]string{
+				"env-context": servers["env"].URL,
+				"shared":      servers["env"].URL,
+			})
+			k8sutil.WriteKubeconfig(t, paths["extra"], "extra-context", map[string]string{
+				"extra-context": servers["extra"].URL,
+			})
+			if tt.kubeconfig != nil {
+				var files []string
+				for _, name := range tt.kubeconfig {
+					files = append(files, paths[name])
+				}
+				t.Setenv("KUBECONFIG", strings.Join(files, string(os.PathListSeparator)))
+			}
+
+			kubeClient, apiextClient, err := newCertManagerClients(tt.contextName)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, kubeClient)
+				require.Nil(t, apiextClient)
+			} else {
+				require.NoError(t, err)
+				_, err = kubeClient.CoreV1().Namespaces().List(t.Context(), metav1.ListOptions{})
+				require.True(t, apierrors.IsForbidden(err), "expected fixture rejection, got %v", err)
+				_, err = apiextClient.ApiextensionsV1().CustomResourceDefinitions().List(t.Context(), metav1.ListOptions{})
+				require.True(t, apierrors.IsForbidden(err), "expected fixture rejection, got %v", err)
+			}
+
+			dynamicClient, err := newCertManagerDynamicClient(tt.contextName)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, dynamicClient)
+			} else {
+				require.NoError(t, err)
+				_, err = dynamicClient.Resource(certManagerResources[0]).List(t.Context(), metav1.ListOptions{})
+				require.True(t, apierrors.IsForbidden(err), "expected fixture rejection, got %v", err)
+			}
+			for name, server := range servers {
+				if name == tt.wantServer {
+					require.Equal(t, []string{
+						"GET /api/v1/namespaces",
+						"GET /apis/apiextensions.k8s.io/v1/customresourcedefinitions",
+						"GET /apis/cert-manager.io/v1/certificates",
+					}, server.Requests())
+				} else {
+					require.Empty(t, server.Requests(), "must not contact the %s cluster", name)
+				}
+			}
+		})
+	}
 }
 
 func Test_resolveAuthzMode(t *testing.T) {
