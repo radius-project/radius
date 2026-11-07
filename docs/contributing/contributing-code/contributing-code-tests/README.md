@@ -91,7 +91,7 @@ When you are iterating on control-plane images (for example the applications res
 Run fast policy checks with `go test -race ./pkg/ucp/authorization ./pkg/components/database/inmemory -short -count=1`. For the full 10,000-assignment/1,000-role capacity checks, run:
 
 ```bash
-go test -race ./pkg/ucp/authorization -run '^(TestPolicyStoreManifestCapacity|TestPolicyCacheRateLimitedCapacity)$' -count=1 -v
+go test -race ./pkg/ucp/authorization -run '^TestPolicyCapacity$' -count=1 -v
 ```
 
 Assignment metadata regressions cover description and principal display-label updates, clearing optional metadata, history and generation changes, identical-PUT idempotency, and preservation of identity and ownership. Only metadata is mutable; changing the assignment's role or principal identity still requires a different assignment.

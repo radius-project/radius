@@ -597,42 +597,6 @@ func fullCapacityPolicy() Policy {
 	return policy
 }
 
-func TestPolicyStoreManifestCapacity(t *testing.T) {
-	if testing.Short() {
-		t.Skip("full 10000 assignment and 1000 role capacity exercise")
-	}
-	db := inmemory.NewClient()
-	store := newTestPolicyStore(t, db, false)
-	policy := fullCapacityPolicy()
-	initializer, err := NewPolicyInitializer(store, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
-	require.NoError(t, err)
-	require.NoError(t, initializer.Initialize(t.Context(), policy))
-	var version accessVersion
-	obj, err := store.read(t.Context(), accessVersionID, &version)
-	require.NoError(t, err)
-	raw, err := json.Marshal(obj.Data)
-	require.NoError(t, err)
-	require.Less(t, len(raw), 1024)
-	var root manifestRoot
-	_, err = store.read(t.Context(), version.Root, &root)
-	require.NoError(t, err)
-	require.Len(t, root.Pages, 86)
-	snapshot, err := store.LoadPolicy(t.Context(), -1)
-	require.NoError(t, err)
-	copy, err := snapshot.Policy()
-	require.NoError(t, err)
-	require.Len(t, copy.Assignments, 10000)
-	require.Len(t, copy.CustomRoles, 1000)
-	_, err = store.Mutate(t.Context(), policyActor(), readerMutation())
-	require.ErrorContains(t, err, "PolicyCapacityExceeded")
-	roleID := teamA + "/providers/Radius.Core/roleDefinitions/over-capacity"
-	_, err = store.Mutate(t.Context(), policyActor(), PolicyMutation{
-		Target: roleID, Role: customRole(roleID, "Radius.Core/applications/read").Properties,
-	})
-	require.ErrorContains(t, err, "PolicyCapacityExceeded")
-	t.Logf("assignments=%d roles=%d pages=%d anchorBytes=%d", len(copy.Assignments), len(copy.CustomRoles), len(root.Pages), len(raw))
-}
-
 func TestPolicyStorePayloadByteBound(t *testing.T) {
 	for _, over := range []bool{false, true} {
 		t.Run(fmt.Sprintf("over=%v", over), func(t *testing.T) {

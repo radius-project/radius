@@ -5,6 +5,7 @@ package authorization
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"testing"
@@ -232,15 +233,30 @@ func (c *rateLimitedPolicyClient) Get(ctx context.Context, id string, opts ...da
 	return c.Client.Get(ctx, id, opts...)
 }
 
-func TestPolicyCacheRateLimitedCapacity(t *testing.T) {
+// TestPolicyCapacity shares one full 10000 assignment and 1000 role policy
+// across the manifest layout, rate-limited refresh, and capacity-limit checks
+// because building and decoding that policy dominates the package's -race runtime.
+func TestPolicyCapacity(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
-		t.Skip("full 10000 assignment and 1000 role rate-limited refresh exercise")
+		t.Skip("full 10000 assignment and 1000 role capacity exercise")
 	}
 	db := inmemory.NewClient()
 	writer := newTestPolicyStore(t, db, false)
 	initializer, err := NewPolicyInitializer(writer, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
 	require.NoError(t, err)
 	require.NoError(t, initializer.Initialize(t.Context(), fullCapacityPolicy()))
+	var version accessVersion
+	obj, err := writer.read(t.Context(), accessVersionID, &version)
+	require.NoError(t, err)
+	anchor, err := json.Marshal(obj.Data)
+	require.NoError(t, err)
+	require.Less(t, len(anchor), 1024)
+	var root manifestRoot
+	_, err = writer.read(t.Context(), version.Root, &root)
+	require.NoError(t, err)
+	require.Len(t, root.Pages, 86)
+	t.Logf("pages=%d anchorBytes=%d", len(root.Pages), len(anchor))
 	clk := clocktesting.NewFakeClock(time.Now())
 	limited := &rateLimitedPolicyClient{Client: db, clock: clk, limiter: rate.NewLimiter(200, 200)}
 	reader := newTestPolicyStore(t, limited, false)
@@ -273,4 +289,11 @@ func TestPolicyCacheRateLimitedCapacity(t *testing.T) {
 		t.Logf("generation=%d gets=%d rateLimitedDuration=%s ready=true", generation, limited.gets, clk.Since(started))
 		clk.Step(PolicyRefreshInterval)
 	}
+	_, err = writer.Mutate(t.Context(), policyActor(), readerMutation())
+	require.ErrorContains(t, err, "PolicyCapacityExceeded")
+	roleID := teamA + "/providers/Radius.Core/roleDefinitions/over-capacity"
+	_, err = writer.Mutate(t.Context(), policyActor(), PolicyMutation{
+		Target: roleID, Role: customRole(roleID, "Radius.Core/applications/read").Properties,
+	})
+	require.ErrorContains(t, err, "PolicyCapacityExceeded")
 }
