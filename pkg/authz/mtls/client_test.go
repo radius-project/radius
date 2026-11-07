@@ -569,7 +569,13 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 				_, err := get(client, srvB.URL)
 				pending <- err
 			}()
-			<-entered
+			select {
+			case <-entered:
+			case err := <-pending:
+				t.Fatalf("request to B ended before reaching its handler: %v", err)
+			case <-time.After(10 * time.Second):
+				t.Fatal("request to B did not reach its handler")
+			}
 
 			// A's connection expires while B's request is in flight, which retires their pool.
 			setNow(now.Add(30 * time.Minute))
