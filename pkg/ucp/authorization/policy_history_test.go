@@ -184,6 +184,7 @@ func TestPolicyStoreHistoryMetadataHeadroom(t *testing.T) {
 }
 
 func TestPolicyStoreMaximumHistorySnapshots(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("full-size history boundary; omit -short to run")
 	}
@@ -225,6 +226,7 @@ func TestPolicyStoreMaximumHistorySnapshots(t *testing.T) {
 }
 
 func TestPolicyStoreBootstrapHistoryCapacity(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("full-size compound bootstrap history; omit -short to run")
 	}
@@ -295,9 +297,10 @@ func TestPolicyStoreBootstrapHistoryCapacity(t *testing.T) {
 	guard.principals = append(guard.principals, principal)
 	_, err = store.Mutate(t.Context(), actor, mutation)
 	require.ErrorContains(t, err, "PolicyCapacityExceeded")
-	snapshot, err = store.LoadPolicy(t.Context(), -1)
+	// A nil snapshot for known generation 1 proves no generation was claimed without re-decoding full policy.
+	snapshot, err = store.LoadPolicy(t.Context(), 1)
 	require.NoError(t, err)
-	require.Equal(t, int64(1), snapshot.Generation())
+	require.Nil(t, snapshot)
 }
 
 func TestPolicyStoreLargeAssignmentHistory(t *testing.T) {
