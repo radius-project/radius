@@ -1,0 +1,980 @@
+# Radius support for Argo CD
+
+- **Author**: Nithya Subramanian (@nithyatsu)
+- **Status**: Draft
+- **Feature spec**: [Radius support for Argo CD](https://github.com/radius-project/radius/pull/13284), called "the feature spec" below
+- **Issue**: N/A
+- **Authoring notes**: Drafted with AI help (GitHub Copilot) and restructured to the decision-first template. Verified by hand: the Phase 1 prototype on branch `nithyatsu-argocd-prototype` (plugin, Lua health checks, display labels, deploying annotation, template naming, `Radius.Core` skip, delete API-version fix) on a kind cluster with Argo CD; the code paths linked below. Not verified by running: the non-string parameter failures (read from code), Bicep output stability across compiler versions, and the effort estimates.
+
+## Review guide
+
+- **What this is:** a high-level design for the feature spec. It proposes a Radius Argo CD plugin that compiles Bicep. Generated manifests committed by CI are the fallback where plugins are not allowed.
+- **What to approve:** decisions D1–D9 below. D1 is the main choice; the rest follow from it.
+- **Sign-offs needed:**
+  - Controller owners: D4 and D6 change the `DeploymentTemplate` CRD and controller, which Flux also uses, so Flux users see the new fields too. D9 also changes Flux unless the opt-in option is chosen.
+  - Security: the plugin runs repository content inside Argo CD. See [Security](#security).
+- **Not up for decision yet:** the [Open Questions](#open-questions-phase-1--core-functionality).
+- **Phasing:** the work ships in two [delivery phases](#delivery-phases) (Phase 1: Core functionality; Phase 2: Rest of the capabilities). Phase 1 needs no CRD changes.
+- **Alternative:** a Radius controller approach was also designed and is kept under [Alternatives considered](#alternatives-considered).
+
+## Decisions for review
+
+| #  | Decision                                                                                                            | Options considered                                                                                                                        | Recommendation                                                                                                                                   | Risk if wrong                                                                                 | Status |
+|----|---------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|--------|
+| D1 | [Who compiles Bicep for Argo CD?](#d1-who-compiles-bicep-for-argo-cd)                                               | Argo CD plugin / CI / Radius controller                                                                                                   | Argo CD plugin, as the feature spec proposes; generated manifests from CI as the fallback where plugins are not allowed                          | Radius maintains a sidecar inside Argo CD, and admins who cannot install it fall back to CI   | Open   |
+| D2 | [How is the plugin sidecar installed?](#d2-how-the-plugin-sidecar-is-installed)                                     | Admin adds it / script-only sidecar on a stock image / `rad install` switch / `rad argocd configure` helper                               | Admin adds the Radius sidecar image from published snippets                                                                                      | A manual step that admins skip or let drift                                                   | Open   |
+| D3 | [How are health checks delivered?](#d3-how-the-health-checks-are-delivered)                                         | Upstream to Argo CD / `argocd-cm` snippet / Radius patches `argocd-cm`                                                                    | Upstream, plus a snippet for older Argo CD versions                                                                                              | Older Argo CD shows Radius objects with no health                                             | Open   |
+| D4 | [How do Radius CRDs report why a deployment failed?](#d4-how-radius-crds-report-failure-reasons)                    | `status.message` / `status.conditions` / both                                                                                             | `status.conditions`, keeping `phrase`                                                                                                            | Argo CD shows Degraded with no reason                                                         | Open   |
+| D5 | [How is the sidecar versioned?](#d5-how-the-sidecar-is-versioned)                                                   | Released with each Radius release / versioned independently                                                                               | Released with each Radius release, with a mismatch check                                                                                         | Compiled output silently differs from what the Radius control plane expects                   | Open   |
+| D6 | [How are non-string parameters carried?](#d6-how-non-string-parameters-are-carried)                                 | Strings only, documented / new typed field / JSON-encode in strings                                                                       | New typed field, added alongside the existing one                                                                                                | Parameter-only changes (scenario 1) fail for integers, booleans, arrays and objects           | Open   |
+| D7 | [How does the plugin name the `DeploymentTemplate`?](#d7-how-the-plugin-names-the-deploymenttemplate)               | Bicep file name / Argo CD Application name / user-set parameter                                                                           | The Argo CD Application name when the Application deploys one file; the file name when it deploys several                                        | Renaming the Application redeploys the app once                                               | Open   |
+| D8 | [How are environments kept out of the application view?](#d8-how-environments-are-kept-out-of-the-application-view) | One Application for both / separate environment Application / environments set up with `rad` / UI extension / per-user collapse or filter | The application's Argo CD Application deploys only `app/`; environments are set up outside it, by a separate environment Application or by `rad` | Developers see platform objects in their app, or the app syncs before its Environment exists  | Open   |
+| D9 | [Which output resources get a `DeploymentResource`?](#d9-which-output-resources-get-a-deploymentresource)           | Every output resource / all except `Radius.Core` types / UI extension hides them / skip `Radius.Core` only for Argo CD                    | All except `Radius.Core` types; the controller deletes those with the template                                                                   | Removing an application or environment from Bicep while the template stays leaves it in place | Open   |
+
+## Overview
+
+Radius supports GitOps with Flux today: a Radius controller compiles Bicep from a Flux `GitRepository` into `DeploymentTemplate` resources, and a second controller deploys them through the Radius API. Argo CD users have no equivalent. This design proposes supporting Argo CD.
+
+Users keep `.bicep` and `.bicepparam` files in Git and point an Argo CD Application at them. Argo CD cannot render Bicep, so something must compile it into a `DeploymentTemplate`:
+
+- **Argo CD plugin (proposed):** a Radius Config Management Plugin (CMP) sidecar compiles during sync, and Argo CD applies the `DeploymentTemplate`.
+- **Generated manifests (fallback):** where Argo CD admins do not allow plugins, a CI pipeline compiles the Bicep and commits the generated YAML, and Argo CD applies it as plain manifests.
+- **Radius controller (alternative considered):** Argo CD applies the Bicep source, and the Radius controller compiles it, as with Flux.
+
+Either way, Argo CD compares the `DeploymentTemplate` with the one in the cluster and applies the changes. The existing Radius `DeploymentTemplate` controller then deploys it, and Argo CD health checks report the Radius result.
+
+## Terms and definitions
+
+| Term                            | Definition                                                                                                                                                                                                    |
+|---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Argo CD Application             | Argo CD custom resource that maps a Git source (repository, revision, path, renderer) to a destination cluster and namespace.                                                                                 |
+| AppProject                      | Argo CD custom resource that limits which repositories, clusters, namespaces and resource kinds an Application may use.                                                                                       |
+| ApplicationSet                  | Argo CD custom resource that generates many Applications from a template, for example one per environment or cluster.                                                                                         |
+| `argocd-repo-server`            | Argo CD component that clones Git and renders manifests (plain YAML, Kustomize, Helm, or a plugin). It never talks to the destination cluster.                                                                |
+| `argocd-application-controller` | Argo CD component that diffs rendered manifests with the live cluster, syncs, prunes, and computes health.                                                                                                    |
+| Config Management Plugin (CMP)  | An Argo CD extension point for custom renderers. It runs as a sidecar container in the `argocd-repo-server` pod and prints manifests to stdout.                                                               |
+| Sync status                     | Whether live objects match the rendered manifests: Synced or OutOfSync.                                                                                                                                       |
+| Health status                   | Argo CD's per-object and per-Application health: Healthy, Progressing, Degraded, Suspended, Missing or Unknown. Custom kinds get health from Lua scripts.                                                     |
+| Prune                           | Argo CD deleting live objects that are no longer in the rendered manifests.                                                                                                                                   |
+| Self-heal                       | Argo CD reverting live changes that were not made through Git.                                                                                                                                                |
+| `DeploymentTemplate`            | Radius CRD (`radapp.io/v1alpha3`) holding compiled ARM JSON, parameters and provider config. Its controller deploys it through the Radius API.                                                                |
+| `DeploymentResource`            | Radius CRD that the `DeploymentTemplate` controller creates and owns for each output resource except `Radius.Core` types (applications, environments, Recipe packs). Deleting it deletes the Radius resource. |
+| Phrase                          | The `status.phrase` field on the Radius CRDs. `DeploymentTemplate`: Updating, Ready, ReadyPendingCleanup, Failed, Deleting, Deleted. `DeploymentResource`: Ready, Failed, Deleting, Deleted.                  |
+| Ops repo                        | The Git repository that holds deployable definitions (`.bicep`, `.bicepparam`) and that Argo CD watches.                                                                                                      |
+
+## Objectives
+
+> **Issue Reference:** N/A. The tool-neutral scenarios are in the [GitOps feature spec](2024-06-gitops-feature-spec.md); the Argo CD requirements are in the feature spec linked in the header.
+
+This design shares its deployment engine and first three goals with the [Flux controller design](2025-01-gitops-technical-design.md#goals). It diverges from that design in one way: Radius does not read Git or select files itself, because Argo CD already does both.
+
+### Goals
+
+1. **(Phase 1) Integrate GitOps workflows with Radius and Bicep.** Users put Bicep files and parameters in Git, and Argo CD deploys them through Radius without Flux. This covers Radius Environments, Recipe registrations, Applications and resources. Changing only a parameter file or `bicepconfig.json` triggers a deployment, just as changing a definition does. Non-string and secure parameters follow in Phase 2.
+2. **(Phase 1) Make the deployed state match Git.** Radius creates, updates and deletes resources as Git changes, including resources removed from a Bicep file and whole Bicep files removed from the repository. Reverting a commit restores the previous configuration. Documented limits: reverting does not restore deleted data, and Radius does not detect drift in cloud resources.
+3. **(Phase 1) Fit existing Argo CD workflows.** Users keep Applications, ApplicationSets, projects, sync policies, prune, and the Argo CD UI and CLI. Radius adds only a plugin and health checks. It adds no Radius-specific configuration file such as `radius-gitops-config.yaml` and no Radius code that reads Git. Radius does not change Kubernetes garbage-collection relationships or make shared resources prune targets.
+4. **Report the Radius outcome as Argo CD health**, including Recipe failures, kept separate from sync status. Phase 1 reports provisioning health and labels Healthy as provisioning health. Phase 2 makes supported failures after provisioning turn the Application Degraded, as the feature spec requires (see [Health mapping](#health-mapping)).
+5. **(Phase 2) Make failures traceable** from the Argo CD Application and the attempted Git revision to the Radius resource that failed, with a redacted error message. Phase 1 already shows the revision and the raw Radius message. Pinning a failure to one Radius resource needs data Radius does not record today.
+6. **(All phases) No breaking changes for Flux.** Existing Flux setups keep working without changes. Flux and Argo CD share the `DeploymentTemplate` CRD and controller, so the additive status conditions and typed parameters also appear for Flux users, and typed parameters fix non-string parameters being silently dropped on the Flux path.
+
+### Non goals
+
+- Replacing Argo CD sync, prune or RBAC, or building a separate GitOps dashboard in Radius. Argo CD already owns these.
+- Having Argo CD reconcile cloud resources directly. Radius and Recipes own that.
+- CI work: building images, publishing Recipes, or updating image tags. Existing CI tools own that.
+- Terraform-plan-style previews or recovery of deleted data. Out of scope for a first release.
+- Migrating applications between Flux and Argo CD. Possible follow-up.
+- Showing the Git revision on Radius resources outside Argo CD, for example in `rad` or the Radius dashboard. Argo CD and the Radius CRD status already answer which revision was applied.
+
+### Delivery phases
+
+Delivery is organized into two phases. The [Development plan](#development-plan) breaks Phase 1 down into a concrete sequence of pull requests.
+
+| Phase                                | Scenarios     | Users get                                                                                                                                                                                            | Main changes                                                                                                                         | Waiting on                                                                                            |
+|--------------------------------------|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| 1. Core functionality                | 1, 2, 3, 4, 5 | Bicep in Git deployed through Argo CD with the plugin or the CI fallback; per-resource tree with Radius type/status chips, in-flight deploy progress, and Healthy/Progressing/Degraded health checks | CLI fixes, controller delete/label/progress updates, plugin sidecar image, Lua health checks, functional tests, docs. No CRD changes | [Open question 1](#open-questions-phase-1--core-functionality) (order of `env.bicep` and `app.bicep`) |
+| 2. Follow-up & extended capabilities | 1, 2, 3, 4, 5 | Redacted failure conditions and pending-cleanup list, typed and secure parameters, Argo CD UI extension ("Radius" graph tab behind a scoped proxy), and post-provisioning/stale runtime health       | Status conditions, typed/secure parameters on shared CRDs, Argo CD UI extension + proxy, runtime observation                         | Phase 2 design items ([Development plan](#phase-2-rest-of-the-capabilities-follow-up-backlog))        |
+
+### User scenarios (optional)
+
+The scenarios are the [feature spec's key scenarios](https://github.com/radius-project/radius/pull/13284), quoted as written. Under each, **This design** says how it is delivered and in which phase.
+
+#### Scenario 1: Connect Radius definitions to Argo CD
+
+> As an operator with Radius installed, I configure an Argo CD Application to consume generated `DeploymentTemplate` manifests or the proposed Radius Bicep source integration. Definition and parameter changes use the same Radius deployment semantics as the Flux path. I can identify the input revision and destination, and compilation or input errors prevent deployment with an actionable message. I do not need to install Flux.
+
+**This design:**
+
+- **(Phase 1)** An operator commits `env.bicep` (the Radius Environment and its Recipe pack); a developer commits `app.bicep` and `app.bicepparam`. An Argo CD Application points at that path with the Radius plugin, Argo CD syncs it, and Radius deploys it. Where plugins are not allowed, a CI job commits the generated manifests and the Application points at those instead (see [Who compiles Bicep for Argo CD](#d1-who-compiles-bicep-for-argo-cd)).
+- **(Phase 1)** The application deploys only after the Environment exists. The developer's Argo CD Application deploys only the `app/` folder, so its tree shows the application's resources and not the Environment or Recipe pack. The operator sets up the Environment outside that Application, either with a separate Argo CD Application for `env/` or with `rad` commands (see [How environments are kept out of the application view](#d8-how-environments-are-kept-out-of-the-application-view)). Within one Application, the plugin parameter `bicepFiles` lists the files in deploy order; the plugin compiles each file into its own `DeploymentTemplate` and sets the `argocd.argoproj.io/sync-wave` annotation to the file's position. Argo CD applies a wave only after the previous wave is Healthy, and the health check reports Healthy only when Radius reports Ready. See [open question 1](#open-questions-phase-1--core-functionality).
+- **(Phase 1)** Argo CD shows the synced revision and destination, and the plugin stamps the revision on the `DeploymentTemplate`. A hard Bicep compile error (syntax or type mismatch) fails rendering, so Argo CD shows a ComparisonError and does not sync; however, an unrecognized resource type (for example, a typo such as `Radius.Compute/containerss`) only produces a Bicep warning (`BCP081`), so compilation still exits zero and fails later during controller deployment (see [open question 2](#open-questions-phase-1--core-functionality)).
+- **(Phase 1, non-string parameters in Phase 2)** Changing only `app.bicepparam`, for example `replicaCount`, changes the `DeploymentTemplate` parameters, so Argo CD syncs and Radius redeploys. Phase 1 supports string parameters only.
+- **(Phase 1)** Installing Radius itself as an Argo CD Application from the Helm chart is not in the feature spec's scenarios. Phase 1 validates and documents it, because operators who use Argo CD will try it.
+
+#### Scenario 2: Navigate Radius resources and dependencies inside Argo CD
+
+> As a developer, I open an Argo CD application's resource tree and inspect its Radius deployment and discoverable Kubernetes resources. From that context, I open the proposed Radius graph view to follow application dependencies, including external or shared resources and custom resource types. The view identifies each relationship and its source; resources with no live observation are explicitly shown as unobserved rather than healthy.
+
+**This design:**
+
+- **(Phase 1)** The tree shows the `DeploymentTemplate` and its `DeploymentResource` children, with Radius-derived health. Kubernetes objects and cloud resources that Radius creates are not in the tree.
+- **(Phase 2)** An optional Argo CD UI extension adds a "Radius" view with the application graph, including Radius-created Kubernetes objects, external and shared dependencies, and custom resource types. The graph comes from the existing Radius application graph API, the same data as `rad app graph`, which works for applications the controller deploys.
+- **(Phase 2)** The graph has each relationship today. The "unobserved" state needs Radius to observe resources after provisioning; until then every resource is shown with provisioning status only, labelled as such.
+
+#### Scenario 3: Diagnose convergence and Recipe failures through Argo CD
+
+> As an SRE, I open an application that is synchronized but still provisioning or degraded. I locate the blocked dependency and see a safe error summary, attempted revision, operation context, and last-observed state. A Terraform failure is visible even if it occurs before any child resource is created. After an authorized correction and reconciliation, the view shows the new attempt and outcome without presenting the previous attempt's success as current.
+
+**This design:**
+
+- **(Phase 1)** Argo CD computes Application health only from the `DeploymentTemplate`, because it is the object Argo CD applied from Git; the `DeploymentResource` children are shown for navigation and do not count. So the `DeploymentTemplate` status carries every failure below it, including a Recipe that fails before any child resource exists. Health shows Progressing, Healthy (provisioning only) or Degraded with the attempted revision (mapping in [Health mapping](#health-mapping)).
+- **(Phase 2)** Status conditions add a redacted error summary, failure category, operation ID and last-observed time. The health check reports Progressing while the observed generation is behind, so a new attempt never shows the previous success as current.
+- **(Phase 2)** Pinning the failure to one blocked dependency, failures after provisioning, and stale results when the Radius controller stops are part of Phase 2.
+
+#### Scenario 4: Review changes and recover through Argo CD
+
+> As a developer or SRE, I inspect the desired-input diff and deployment history for an application or parameter change. I can connect a failed attempt to its input revision and correct or revert that input in Git. Requested logical resource removals and pending cleanup are visible; Argo CD's manifest diff and rollback history do not imply a complete cloud-resource plan or restoration of deleted data.
+
+**This design:**
+
+- **(Phase 1)** Argo CD's diff and history show the `DeploymentTemplate` change. The plugin pretty-prints `spec.template` so the diff shows only the changed lines.
+- **(Phase 1) Revert:** `git revert` makes Argo CD apply the previous template, and Radius redeploys it. Argo CD history rollback works only when automated sync is off, so documentation recommends Git-based recovery.
+- **(Phase 1, cleanup list in Phase 2) Remove one resource from a Bicep file:** the `DeploymentTemplate` is updated, not pruned. Radius deletes the removed resource through `DeploymentResource` cleanup, even when Argo CD prune is off, and documentation must say so. While cleanup runs, Argo CD shows Progressing; from Phase 2 the status also lists the resources being removed. `Radius.Core` resources have no `DeploymentResource`, so removing one from the Bicep leaves it in place until the whole template is deleted; see [Which output resources get a `DeploymentResource`?](#d9-which-output-resources-get-a-deploymentresource).
+- **(Phase 1) Remove a whole Bicep file:** with prune on, Argo CD prunes the `DeploymentTemplate`, and Radius finalizers delete all of its resources.
+- **(Phase 1) Retry:** fixing the input in Git and committing creates a new attempt. Refreshing the Application in Argo CD only re-renders; it is not a retry and never redeploys an unchanged template.
+
+**Two levels of deletion.** Argo CD prune only decides whether the `DeploymentTemplate` object itself goes away. What happens to the real resources is always Radius's job. Removing a line from `app.bicep` is a Radius-level delete that Argo CD never sees as a prune.
+
+```mermaid
+flowchart TB
+    A["Remove a resource<br/>from app.bicep"] --> B["DeploymentTemplate updated<br/>(Argo CD: normal sync)"] --> C["Radius deletes that<br/>DeploymentResource"]
+    D["Delete app.bicep<br/>from Git"] --> E["Argo CD prunes the DeploymentTemplate<br/>(if prune on)"] --> F["Radius finalizer deletes<br/>all its resources"]
+```
+
+#### Scenario 5: Find and inspect only the applications within my scope
+
+> As a developer or SRE, I enter through my existing Argo CD project and select an application and environment without browsing the organization's entire resource inventory. Searches, graph expansion, diagnostics, and direct links enforce the same effective access boundaries. Missing permission, unavailable data, and an empty authorized result have distinct, actionable states without revealing protected resource details.
+
+**This design:**
+
+- **(Phase 1)** Argo CD projects and RBAC already scope which Applications, and so which `DeploymentTemplate` objects, a user sees. Radius adds nothing here.
+- **(Phase 2)** Radius has no per-user authorization, so the UI extension's proxy backend enforces the viewer's Argo CD project and Application scope on every search, graph expansion, diagnostic and direct link, and returns only the Radius application that the Application deployed. It shows distinct states for missing permission, unavailable data and an empty result, without protected names or details. It supports keyboard navigation and text status labels.
+
+## User Experience
+
+**What changes for a Radius user who adopts Argo CD:**
+
+| Today, without Argo CD support                                 | With Argo CD support                                                                            |
+|----------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| Deploy with `rad deploy app.bicep`, or install Flux for GitOps | Commit `app.bicep` and `app.bicepparam`; Argo CD deploys them                                   |
+| Status from `rad app status` or the Radius dashboard           | Status in the Argo CD UI: Synced/OutOfSync, plus Radius health (Progressing, Healthy, Degraded) |
+| Recover by redeploying an earlier file by hand                 | Recover with `git revert`                                                                       |
+| SREs need `rad` access to change values                        | SREs change `.bicepparam` through a PR                                                          |
+
+Users still write Bicep, use Recipes and Environments, and get the Radius application graph.
+
+**What changes for an Argo CD user who adopts Radius:** without Radius, Argo CD manages only Kubernetes objects, and cloud databases, queues and buckets need a separate tool such as Terraform pipelines or Crossplane. With Radius, one Argo CD Application delivers an app and its infrastructure, provisioned by Recipes. Argo CD stays the GitOps engine and UI; Radius compiles the application model and runs Recipes.
+
+**Sample Input, Argo CD plugin:** an Argo CD Application using the proposed plugin. The plugin name and parameter names are new in this design.
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: { name: orders-dev, namespace: argocd }
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/contoso/orders
+    targetRevision: main
+    path: app # the Environment is set up separately
+    plugin:
+      name: radius-bicep
+      parameters:
+        - { name: bicepFiles, string: app.bicep } # deploy order
+        - { name: resourceGroup, string: orders-dev }
+  destination: { server: https://kubernetes.default.svc, namespace: orders }
+  syncPolicy: { automated: { prune: true, selfHeal: true } }
+  info: # optional rows in the Argo CD app header
+    - { name: Radius group, value: orders-dev }
+    - { name: Radius environment, value: dev }
+```
+
+**Sample Input, generated-manifest fallback:** CI runs `rad bicep generate-kubernetes-manifest` and commits the result to `generated/`. The Application points at that directory with no plugin, as in the feature spec.
+
+```bash
+rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --group orders-dev --destination-file generated/app.yaml
+```
+
+```yaml
+spec:
+  source:
+    repoURL: https://github.com/contoso/orders
+    targetRevision: main
+    path: generated
+```
+
+**Sample Output:** the Argo CD Application tree after a Recipe failure.
+
+```text
+Argo CD Application "orders-dev"     Sync: Synced   Health: Degraded
+└── DeploymentTemplate app.bicep     Health: Degraded  "Recipe 'db' failed: ... (revision 3f2a1c9)"
+    ├── DeploymentResource .../containers/frontend   Healthy
+    └── DeploymentResource .../redisCaches/db        Degraded
+```
+
+**Sample Recipe Contract:** No Recipe contract changes.
+
+## Design
+
+### High Level Design
+
+Argo CD only applies Kubernetes YAML, so something must compile the user's Bicep and parameters into a `DeploymentTemplate`. The existing `DeploymentTemplate` controller then deploys it, as it does for Flux. There are three places the compiling can happen:
+
+- **In Argo CD, through a plugin (proposed).** Argo CD's rendering hook (CMP) runs a Radius sidecar that compiles the Bicep. Argo CD applies and prunes the `DeploymentTemplate`, and Radius health checks (Lua) report its status. This is the source integration the feature spec proposes.
+- **In CI (fallback).** A CI pipeline in each app repository runs `rad bicep generate-kubernetes-manifest` on every change and commits the generated `DeploymentTemplate` YAML. Argo CD applies that YAML with no plugin. It works today apart from the [CLI fixes](#cli-design), and the feature spec keeps it for organizations that do not allow plugins. It is not the default because it costs both personas:
+  - Developers get generated YAML they never edit committed next to their Bicep, and wait for the bot's commit before Argo CD can sync.
+  - The platform team adds a workflow file, permissions and a bot with push rights to every app repository, and updates the pinned `rad` version in each one on every Radius release.
+  - Radius documents this path but does not supply the per-repository workflows; see [D1](#d1-who-compiles-bicep-for-argo-cd).
+- **In the Radius controller (alternative considered).** Argo CD applies the Bicep source (a ConfigMap) and a Radius source resource, and Radius compiles them, as it does with Flux. It needs no Radius code inside Argo CD, but Argo CD health and compile-error feedback are indirect. See [Alternatives considered](#alternatives-considered).
+
+The rest of this design details the plugin. The health checks, status conditions and typed parameters serve both the plugin and the CI fallback, because both end with Argo CD applying the same `DeploymentTemplate`.
+
+A point-by-point comparison with the Flux integration is in [Appendix: integration points compared with Flux](#integration-points-compared-with-flux).
+
+**Where Radius hooks in, side by side.** Green boxes are Radius code.
+
+```mermaid
+flowchart LR
+    classDef radius fill:#d4f7d4,stroke:#2a7a2a
+    subgraph Flux["Flux today"]
+        direction LR
+        F1["source-controller<br/>fetch Git"] --> F2["Radius: read config,<br/>compile, apply, prune"]:::radius --> F5["Radius DeploymentTemplate<br/>controller"]:::radius
+    end
+    subgraph Plugin["Argo CD plugin"]
+        direction LR
+        A1["repo-server<br/>fetch Git"] --> A2["Radius CMP:<br/>compile only"]:::radius --> A3["application-controller<br/>apply, prune"] --> A5["Radius DeploymentTemplate<br/>controller"]:::radius
+        A4["Radius Lua:<br/>health"]:::radius -.-> A3
+    end
+```
+
+### Architecture Diagram
+
+Argo CD keeps the `DeploymentTemplate` in sync with Git, and Radius keeps the real resources in sync with the `DeploymentTemplate`. Green boxes are new.
+
+1. The Radius plugin compiles the Bicep in Git into a `DeploymentTemplate`, the desired state.
+2. Argo CD compares it with the one in the cluster and applies it when they differ.
+3. The Radius controller sees the change and calls the Radius API to deploy the containers, Recipes and cloud resources.
+4. The controller writes the result into the template's status, which Argo CD shows as health.
+
+```mermaid
+flowchart LR
+    classDef new fill:#d4f7d4,stroke:#2a7a2a
+    Git[(Git: app.bicep,<br/>parameters)] --> RS[argocd-repo-server]
+    RS --> CMP["Radius CMP sidecar<br/>(new)"]:::new
+    CMP -->|DeploymentTemplate YAML| AC[argocd-application-controller]
+    Lua["Radius Lua health checks<br/>(new)"]:::new -.-> AC
+    AC -->|apply, prune| DT[DeploymentTemplate]
+    DT --> DTC[DeploymentTemplate controller]
+    DTC --> DR[DeploymentResource objects]
+    DTC --> API[Radius API]
+    API --> Res[Containers, Recipes,<br/>cloud resources]
+```
+
+The same architecture as an Excalidraw drawing:
+
+![Argo CD plugin architecture](2026-10-argocd-functional-spec/plugin-approach-architecture.svg)
+
+> Source files: [plugin-approach-architecture.svg](2026-10-argocd-functional-spec/plugin-approach-architecture.svg) (rendered above) and [plugin-approach-architecture.excalidraw](2026-10-argocd-functional-spec/plugin-approach-architecture.excalidraw) (editable in Excalidraw).
+
+### Data flow and sequence
+
+```mermaid
+sequenceDiagram
+    participant Git
+    participant RS as argocd-repo-server
+    participant CMP as Radius CMP
+    participant AC as application-controller
+    participant DTC as DeploymentTemplate controller
+    participant API as Radius API
+    AC->>RS: render Application at commit
+    RS->>Git: fetch revision
+    RS->>CMP: generate (PARAM_* and ARGOCD_APP_REVISION env)
+    CMP-->>RS: DeploymentTemplate YAML on stdout, stamped with the revision
+    RS-->>AC: manifests
+    AC->>DTC: apply DeploymentTemplate (Synced)
+    DTC->>API: PUT deployment
+    API-->>DTC: operation result
+    DTC->>DTC: set status (phrase, conditions with attempted revision)
+    AC->>AC: Lua health → Healthy / Degraded
+```
+
+1. The CMP only compiles. It never calls the cluster or the Radius API, so it needs no cluster credentials. Viewing a diff or refreshing an Application therefore never provisions anything.
+2. The CMP stamps the Git revision and source file paths onto the `DeploymentTemplate` as an annotation. The controller copies them into its status conditions, so Argo CD shows which revision Radius attempted. In the CI fallback, the CI job stamps the same annotation.
+3. If compilation fails with a Bicep error, the CMP exits non-zero. Argo CD shows a ComparisonError and does not sync, so the previous `DeploymentTemplate` stays in place. (By default Bicep treats an unrecognized resource type as warning `BCP081` rather than an error, so that case compiles and fails at deployment time unless promoted to an error; see [open question 2](#open-questions-phase-1--core-functionality).)
+4. Argo CD marks the Application Synced as soon as the apply succeeds. Health stays Progressing until the controller's observed generation catches up and the phrase is terminal.
+5. `DeploymentResource` objects are owned by the `DeploymentTemplate`, so Argo CD shows them in the tree. Argo CD does not include them in Application health, because they do not come from Git; the `DeploymentTemplate` status must carry their failures.
+
+**Synced and Healthy run on two clocks.** Sync finishes in seconds, when the `DeploymentTemplate` object is written. Health can take minutes, while Radius runs Recipes. Without the Lua checks, Argo CD would say "Synced, Healthy" the moment the object is written, even if the Recipe later fails. That is the core problem the feature spec calls out.
+
+```text
+time ─────────────────────────────────────────────────────────►
+Argo CD sync:   OutOfSync ─► Synced
+Radius phrase:               Updating ─────────────► Ready / Failed
+Argo CD health:              Progressing ──────────► Healthy / Degraded
+```
+
+### Detailed Design
+
+#### Decision details
+
+##### D1: Who compiles Bicep for Argo CD
+
+**Context:** Argo CD cannot read Bicep, so something must compile it into the `DeploymentTemplate` that Radius deploys. Flux never faced this choice because it has no rendering plugin point and no UI that shows where compilation happens. Argo CD has both, so where compilation runs decides what users see in Argo CD.
+
+**Options:**
+
+1. **Argo CD plugin.** A Radius sidecar in `argocd-repo-server` compiles the Bicep and returns the `DeploymentTemplate`, which Argo CD diffs and applies. Radius ships a sidecar image and plugin definition.
+2. **CI workflow.** A pipeline in each app repository runs `rad bicep generate-kubernetes-manifest` and commits the generated YAML, which Argo CD applies as plain manifests. Radius needs only the [CLI fixes](#cli-design).
+3. **Radius controller.** Each app repository also commits a `kustomization.yaml`, which packs the Bicep into a ConfigMap, and a hand-written Radius source resource. The Radius controller must be extended to watch the source resource, compile the Bicep from its ConfigMap into a `DeploymentTemplate`, and deploy it.
+
+The steps each role takes are in [Appendix: steps per role for each compile option](#steps-per-role-for-each-compile-option). Rows marked (feature spec) are its requirements.
+
+| Criterion                             | Argo CD plugin                                                                                                                                                                 | CI workflow                                                                                                                                         | Radius controller                                                                                                                                                                                                                                                                                                                  |
+|---------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Health (feature spec)                 | **Direct.** Argo CD applied the `DeploymentTemplate`, so its health feeds the Application.                                                                                     | **Direct.** Same as the plugin.                                                                                                                     | **Indirect.** Argo CD computes health only from objects it applied. Radius creates the `DeploymentTemplate`, so it must copy the result onto the source resource.                                                                                                                                                                  |
+| Compile errors (feature spec)         | **Best.** Block the sync inside Argo CD.                                                                                                                                       | **Outside Argo CD.** Fail in CI; Argo CD keeps the last good render.                                                                                | **Late.** Degraded after the sync.                                                                                                                                                                                                                                                                                                 |
+| Diff in the Argo CD UI (feature spec) | **Best.** Argo CD diffs the `DeploymentTemplate`: parameters per key, and the compiled ARM JSON pretty-printed so only changed lines show. Compiler-version changes also show. | **Good.** Same as the plugin, but compiler-version changes show only after CI runs again.                                                           | **Poor.** Argo CD only sees the ConfigMap. Its name hash changes on every edit, so Argo CD shows a new ConfigMap holding the whole Bicep, not the changed lines. Turning the hash off gives a line diff of the Bicep text, but then Radius must watch ConfigMaps to notice edits. The diff never shows which app resources change. |
+| Developer effort                      | **Low.** Commit Bicep and parameters only.                                                                                                                                     | **High.** Commit Bicep, wait for the bot's commit before Argo CD can sync, and resolve conflicts in generated files.                                | **Medium.** Also commit a `kustomization.yaml` and a source resource, and handle the ConfigMap name hash. All Bicep, including local modules, must fit in one 1 MiB ConfigMap.                                                                                                                                                     |
+| Platform and admin effort             | **Medium.** The Argo CD admin installs the sidecar, upgrades it with each Radius release, and may open access to the Bicep extension registry.                                 | **High.** The platform team adds a workflow to every app repository, keeps its `rad` version in step with the cluster, and gives a bot push rights. | **None** beyond installing Radius.                                                                                                                                                                                                                                                                                                 |
+| Rollback                              | **Exact.** Reapplies the compiled template.                                                                                                                                    | **Exact.** Same as the plugin.                                                                                                                      | **Approximate.** Compiles old Bicep with the current Radius.                                                                                                                                                                                                                                                                       |
+| New Radius code                       | **Medium.** Sidecar image and plugin definition.                                                                                                                               | **Small.** CLI fixes only.                                                                                                                          | **Medium.** Source CRD, a compiling reconciler, a status roll-up and ConfigMap read access.                                                                                                                                                                                                                                        |
+
+The options are equal for the other feature-spec requirements, because removals, the graph, scoping and authorization all go through the Radius API.
+
+**Proposed Option:** the Argo CD plugin, as the feature spec proposes, because it is the only option that meets all three feature-spec rows inside Argo CD. Generated manifests from CI are the documented fallback for organizations that do not allow plugins. The Radius controller is not pursued; see [Alternatives considered](#alternatives-considered).
+
+**Consequences:**
+
+- Radius owns a sidecar image for its lifetime: build, CVE scanning and patches, and a release with a matched compiler per Radius version (D2, D5, [Radius CMP sidecar](#radius-cmp-sidecar-new-phase-1)).
+- The sidecar compiler downloads Bicep extension types, such as `br:biceptypes.azurecr.io/radius:<version>`, from an OCI registry. On hardened clusters the admin opens outbound HTTPS from Argo CD's namespace or mirrors the extensions.
+- `argocd-repo-server` reads every repository Argo CD renders, so a flaw in the sidecar exposes more than Radius apps. This needs security sign-off.
+- Radius documents the CI fallback, including how to stamp the revision annotation, but does not supply per-repository workflows.
+- The health checks, status conditions and typed parameters serve both the plugin and the CI fallback.
+
+**How we'll know it's right:** a plugin prototype completes the feature spec's success scenarios (connect, navigate, diagnose, recover, scoped access) on its representative application: a Kubernetes workload, an external dependency and a failed Recipe, without cluster-admin. The prototype also covers the cases the feature spec asks to test: a failure before any resource is created, partial provisioning, delayed cleanup, the Radius controller being unavailable, and a workload that fails after provisioning. Separately, at least one Argo CD admin confirms they would install the sidecar.
+
+**Outcome:** <!-- Fill in after review. -->
+
+##### D2: How the plugin sidecar is installed
+
+**Context:**
+
+- Nothing on the Radius side needs enabling, because the `DeploymentTemplate` controller always runs.
+- Argo CD 2.8 and later run a Config Management Plugin only as a sidecar container in the `argocd-repo-server` pod. Registering a plugin in `argocd-cm` was removed in 2.8. So a plugin is always a sidecar; the choices are which image it runs and who adds it.
+- The plugin itself is a script (`radius-generate.sh` in the prototype). The sidecar is the container it runs in.
+- Flux precedent: Radius detects the Flux `GitRepository` CRD and starts watching on its own (`registerFluxController` in [`flux_controller.go`](../../../pkg/controller/reconciler/flux_controller.go)). It never modifies Flux's installation. A Radius install switch would exist only to modify Argo CD.
+
+**Options:**
+
+| Option                                                                                                                                                                                                       | Advantages                                                                                                                                                             | Disadvantages                                                                                                                                                                                          |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Admin adds the Radius sidecar image to the Argo CD installation                                                                                                                                              | Matches the Flux precedent. Works when Argo CD manages itself through GitOps and when Argo CD runs in a separate hub cluster. Extensions are pre-fetched in the image. | Manual step. Admin keeps the sidecar version in line with Radius. Radius builds, scans and patches the image.                                                                                          |
+| Script-only sidecar: admin adds a sidecar on a stock image (for example the Argo CD image); the script and `plugin.yaml` come from a ConfigMap, and an init container downloads `bicep` into a shared volume | No Radius image to build, scan or patch; Radius ships only the script, `plugin.yaml` and docs. A common pattern in the Argo CD docs.                                   | The init container downloads `bicep` and the Radius Bicep types on every pod start: needs outbound access and slows start-up. Versions are pinned in YAML, not in an image. More YAML for the admin.   |
+| `rad install kubernetes --set argocd.enabled=true` patches `argocd-repo-server`                                                                                                                              | One command.                                                                                                                                                           | Radius needs write access to the `argocd` namespace. Argo CD self-heal or a later Argo CD Helm upgrade reverts the patch. Fails when Argo CD runs in another cluster. Two tools write the same object. |
+| A `rad argocd configure` helper prints or applies the snippet                                                                                                                                                | Easier than adding the sidecar by hand, and explicitly opt-in.                                                                                                         | Same drift problems as the `rad install` switch if it applies rather than prints.                                                                                                                      |
+
+**Proposed Option:** the admin adds the Radius sidecar image. Radius publishes the image, `plugin.yaml`, Argo CD Helm chart values (`repoServer.extraContainers`) and a Kustomize patch. The image avoids downloads at pod start, which matters on hardened clusters. The script-only sidecar stays documented as an option for admins who do not want a Radius image. The `rad argocd configure` helper in print-only mode is a possible follow-up.
+
+**Consequences:** installing the plugin is a manual, documented step for each Argo CD install. Radius owns the image's release and CVE patching (see D5).
+
+**How we'll know it's right:** the snippets apply cleanly to the Argo CD Helm chart and the upstream install manifests in CI, and survive an Argo CD upgrade.
+
+**Outcome:** <!-- Fill in after review. -->
+
+**Why Radius should not patch Argo CD.** Many teams manage Argo CD with Argo CD. If `rad install` edits the repo-server Deployment, Argo CD sees drift from its own Git and reverts it, so the sidecar disappears.
+
+```mermaid
+sequenceDiagram
+    participant Rad as rad install
+    participant RSD as argocd-repo-server Deployment
+    participant Argo as Argo CD (managing itself)
+    Rad->>RSD: add Radius sidecar
+    Argo->>RSD: drift from Git detected
+    Argo->>RSD: self-heal: remove sidecar
+```
+
+##### D3: How the health checks are delivered
+
+**Context:** Argo CD has no built-in health for Radius CRDs and treats them as Healthy once applied. Health checks are Lua scripts loaded from Argo CD's built-in `resource_customizations` directory or from the `argocd-cm` ConfigMap. The same checks serve the plugin and the CI fallback.
+
+**Options:**
+
+| Option                                           | Advantages                                                           | Disadvantages                                                                                            |
+|--------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| Contribute upstream to `resource_customizations` | No configuration; works in every Argo CD release that includes them. | Depends on Argo CD review and release timing. Older Argo CD versions still need the `argocd-cm` snippet. |
+| Admin applies an `argocd-cm` snippet             | Works on any Argo CD version.                                        | Manual step.                                                                                             |
+| Radius patches `argocd-cm` during install        | Automatic.                                                           | Same drift and ownership problems as having `rad install` patch the Argo CD install.                     |
+
+**Proposed Option:** contribute upstream, and publish the `argocd-cm` snippet for older versions.
+
+**Consequences:** Radius maintains the scripts in Argo CD's repository as well as the snippet until the oldest supported Argo CD version includes them.
+
+**How we'll know it's right:** upstream accepts the scripts, and their test fixtures cover every phrase in [Health mapping](#health-mapping).
+
+**Outcome:** <!-- Fill in after review. -->
+
+##### D4: How Radius CRDs report failure reasons
+
+**Context:** `DeploymentTemplateStatus` has only `observedGeneration`, `statusHash`, `outputResources`, `operation` and `phrase`. The [2024-10 design](2024-10-deploymenttemplate-controller.md) included a message field that was not implemented. Without a reason, Argo CD can show Degraded but not why. This also benefits Flux users.
+
+**Options:**
+
+| Option              | Advantages                                                                                                                             | Disadvantages                                                     |
+|---------------------|----------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------|
+| `status.message`    | Smallest change; trivial for Lua to read.                                                                                              | One string; cannot separate compile, deploy and cleanup failures. |
+| `status.conditions` | Standard Kubernetes shape (`metav1.Condition`); type, reason, message, and observed generation per condition; read by generic tooling. | More code; Lua must pick the right condition.                     |
+| Both                | Simple Lua plus standard conditions.                                                                                                   | Two sources of truth that can disagree.                           |
+
+**Proposed Option:** `status.conditions`, keeping `phrase` for compatibility. Conditions carry the failure reason, attempted generation and operation ID, with messages redacted.
+
+**Consequences:** an additive change to both shared CRDs in Phase 2, so Flux users see the conditions too. The Lua health checks read conditions from Phase 2 and `phrase` before that.
+
+**How we'll know it's right:** a failed Recipe shows its redacted reason in the Argo CD UI and in `kubectl describe`.
+
+**Outcome:** <!-- Fill in after review. -->
+
+##### D5: How the sidecar is versioned
+
+**Context:** the sidecar compiles Bicep with Radius extension types, so it must match the Radius control plane it deploys to, not the Argo CD version.
+
+**Options:**
+
+| Option                                       | Advantages                                                     | Disadvantages                               |
+|----------------------------------------------|----------------------------------------------------------------|---------------------------------------------|
+| Released and tagged with each Radius release | One version to reason about; release notes prompt the upgrade. | Admin must upgrade the sidecar with Radius. |
+| Versioned independently                      | Fewer sidecar releases.                                        | Users must look up a compatibility matrix.  |
+
+**Proposed Option:** released with each Radius release. Define what the plugin does when its version and the destination's Radius version differ. Because the plugin has no cluster access, the check likely belongs in the `DeploymentTemplate` controller, for example a version annotation that the controller validates.
+
+**Consequences:** each Radius release also releases the sidecar image, and release notes tell Argo CD admins to upgrade it. The supported skew is still open; see [Radius CMP sidecar](#radius-cmp-sidecar-new-phase-1).
+
+**How we'll know it's right:** a deliberate version mismatch in a functional test fails with a clear message instead of a silent difference.
+
+**Outcome:** <!-- Fill in after review. -->
+
+##### D6: How non-string parameters are carried
+
+**Context:** `DeploymentTemplateSpec.Parameters` is `map[string]string`. `convertFromARMJSONParameters` in [`util.go`](../../../pkg/controller/reconciler/util.go) silently drops non-string values on the Flux path, and `generateDeploymentTemplate` in [`generatekubernetesmanifest.go`](../../../pkg/cli/cmd/bicep/generatekubernetesmanifest/generatekubernetesmanifest.go) asserts every value is a string, which would panic on others. A parameter-only change (scenario 1, `replicaCount`) therefore fails for integers, booleans, arrays and objects on every path. This was found by reading code, not by running it.
+
+**What breaks today.** Given `param replicaCount int = 2` in Bicep and `param replicaCount = 3` in `.bicepparam`, `bicep build-params` emits `{"replicaCount": {"value": 3}}`. The number 3 is not a Go `string`, so the Flux path drops it and Radius deploys the default of 2; the CLI path panics on the type assertion. Only `param tag string` style parameters survive today.
+
+**Options:**
+
+| Option                                                                               | Advantages                          | Disadvantages                                                                         |
+|--------------------------------------------------------------------------------------|-------------------------------------|---------------------------------------------------------------------------------------|
+| Strings only; document and fail clearly on others                                    | No API change.                      | Users rewrite Bicep to take strings and convert them; poor fit for GitOps parameters. |
+| Add a typed field (for example `apiextensionsv1.JSON` values) alongside `parameters` | Full ARM parameter types; additive. | CRD and controller change; two fields to reconcile.                                   |
+| JSON-encode non-strings into the existing strings                                    | No schema change.                   | Ambiguous (is `"3"` a string or a number?); hard to read in diffs.                    |
+
+**Proposed Option:** add a typed field. Fix both the CLI and the Flux path to use the shared conversion.
+
+**Consequences:** an additive CRD and controller change in Phase 2 that also fixes the silent drop on the Flux path. Until then, Phase 1 supports string parameters only.
+
+**How we'll know it's right:** functional tests for Flux and Argo CD deploy an integer, a boolean and an object parameter, and changing only that value redeploys.
+
+**Outcome:** <!-- Fill in after review. -->
+
+##### D7: How the plugin names the `DeploymentTemplate`
+
+**Context:** `rad bicep generate-kubernetes-manifest` sets `metadata.name` to the Bicep file name. Most applications use `app.bicep`, so every generated `DeploymentTemplate` is named `app.bicep`. Two Argo CD Applications that deploy into the same namespace would then write the same object, and each sync would overwrite the other's template. This was seen while prototyping.
+
+**Options:**
+
+| Option                                               | Advantages                                                            | Disadvantages                                                                                       |
+|------------------------------------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| Keep the Bicep file name                             | No change; matches `rad bicep generate-kubernetes-manifest` and Flux. | Collides when two Applications share a namespace.                                                   |
+| Use the Argo CD Application name (`ARGOCD_APP_NAME`) | Unique per Application in a namespace.                                | Renaming the Application renames the object, so Argo CD prunes it and Radius deletes and redeploys. |
+| Let the user set the name as a plugin parameter      | Explicit and stable.                                                  | One more setting to get right.                                                                      |
+
+**Proposed Option:** when the Application deploys one Bicep file, name the `DeploymentTemplate` after the Argo CD Application. When it deploys several, keep each file name so the names stay unique. The plugin reads the name from `ARGOCD_APP_NAME`.
+
+- With the [recommended layout](#d8-how-environments-are-kept-out-of-the-application-view), each app's Application deploys one file. The tree reads Application `example-voting-app` → template `example-voting-app`, as in the feature spec's mockup, and two apps can share a namespace.
+- A user-set name parameter can be added later if renaming proves a problem.
+
+**Consequences:** renaming an Application makes Argo CD prune the old template and create a new one, so Radius deletes and redeploys the app once. Docs must say so.
+
+**How we'll know it's right:** two Applications deploying `app.bicep` into one namespace each get their own template. Prototyped and checked.
+
+**Outcome:** <!-- Fill in after review. -->
+
+##### D8: How environments are kept out of the application view
+
+**Context:** a developer opening their app in Argo CD should see the app's resources, not the Environment and Recipe pack the platform team owns. The prototype deployed `env/env.bicep` and `app/app.bicep` from one Application, with sync waves for order, and the tree showed the Environment and Recipe pack next to the containers and database. Argo CD shows everything an Application owns and cannot hide one folder's resources while still syncing them: `resource.exclusions` matches only API group and kind, and each `DeploymentResource` must keep its owner reference to its `DeploymentTemplate`, because Radius uses it to decide what it may delete. So the Environment has to be deployed by something other than the app's Application. This was checked in the prototype.
+
+**Options:**
+
+| Option                                                                                                                                      | Advantages                                                                                                                                  | Disadvantages                                                                                                                                                                           |
+|---------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| One Application for `env/` and `app/`, ordered by sync waves (prototype)                                                                    | One object to create; order is built in                                                                                                     | Environment and Recipe pack show in every app's tree; the developer's Application owns platform objects                                                                                 |
+| Two Argo CD Applications: one for `env/`, one for `app/`                                                                                    | Both are GitOps; the app's tree shows only the app; the environment Application can sit in a platform AppProject that developers cannot see | Order across Applications is not built in: needs a parent Application with sync waves and a health check for `argoproj.io/Application`, or the app retries until the Environment exists |
+| Argo CD deploys only `app/`; the platform team sets up Environments with `rad` (for example `rad deploy env/env.bicep` or `rad env create`) | Matches how Radius Environments are set up today; Environments are long-lived and change rarely; no Argo CD ordering needed                 | Environment changes are not GitOps unless the team runs them from CI; drift is not shown in Argo CD                                                                                     |
+| Argo CD UI extension hides Environment and Recipe pack nodes                                                                                | One Application                                                                                                                             | Only in Phase 3; the objects are still owned by the app's Application, so pruning and sync still act on them                                                                            |
+| Each user collapses the `env.bicep` node or filters the tree                                                                                | No change                                                                                                                                   | Per user and per browser; not saved for others                                                                                                                                          |
+
+**Proposed Option:** the application's Argo CD Application deploys only `app/`. The platform team sets up the Environment outside it, with a separate environment Application in a platform AppProject when they want GitOps, or with `rad` commands. Docs show both. `bicepFiles` stays for ordering several files within one Application.
+
+**How we'll know it's right:** in the prototype, the app's tree shows only the containers and database (checked: Application `example-voting-app` deploys only `app/`, and the Environment template is no longer in its tree), and an app synced before its Environment exists turns Degraded with a clear message and recovers once the Environment is Ready.
+
+**Consequences:** the operator runs a second Argo CD Application or `rad` for each Environment. Order across Applications is not built in, which leaves [open question 1](#open-questions-phase-1--core-functionality).
+
+**Outcome:** <!-- Fill in after review. -->
+
+##### D9: Which output resources get a `DeploymentResource`
+
+**Context:** the `DeploymentTemplate` controller creates one `DeploymentResource` for each output resource, and Argo CD shows each as a tile. The Radius application resource (`Radius.Core/applications`) then shows as a tile next to the containers, although the Argo CD Application and the `DeploymentTemplate` already stand for it; the feature spec's mockup shows only the containers and the database. A `DeploymentResource` is also how Radius knows what to delete: when an output resource leaves the template, the controller deletes its `DeploymentResource`, and the finalizer deletes the Radius resource.
+
+**Options:**
+
+| Option                                                                                                                           | Advantages                                               | Disadvantages                                                                                                                |
+|----------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| Every output resource (today)                                                                                                    | Every resource is cleaned up when it leaves the template | Application, environment and Recipe pack tiles add noise                                                                     |
+| All except `Radius.Core` types; the controller deletes those with the template                                                   | Tree matches the mockup; no UI extension needed          | Removing an application or environment from the Bicep while the template stays leaves it in place; changes the Flux path too |
+| UI extension hides them                                                                                                          | No controller change                                     | Phase 3 only                                                                                                                 |
+| Skip `Radius.Core` only for Argo CD: the plugin sets an annotation on the template, and the controller skips only when it is set | Flux behavior unchanged                                  | Two behaviors of the same controller to document and test                                                                    |
+
+**Proposed Option:** create no `DeploymentResource` for `Radius.Core` types. They stay in `status.outputResources`, and when the `DeploymentTemplate` is deleted, the controller deletes them itself after every tracked resource is gone: applications first, then environments, then Recipe packs. Removing a lone application or environment from a Bicep file while the file stays is rare, because every other resource in the file depends on it; the docs state that it is left in place. Prototyped: the tree shows only `db`, `result` and `vote`, and deleting the template deleted the application resource and kept the Environment from the other template.
+
+**Consequences:**
+
+- **Effect on Flux.** Flux reaches the same `DeploymentTemplate` controller through the Radius `FluxController`, so the proposed option changes Flux too: `Radius.Core` resources get no `DeploymentResource`, are deleted with the template, and are left in place if removed from a Bicep file on their own. Flux has no tree view, so users notice only fewer `DeploymentResource` objects in `kubectl` and that edge case. If that change is not acceptable for Flux, use the opt-in option instead: the plugin sets an annotation on each `DeploymentTemplate` it generates, and the controller skips `Radius.Core` types only for those templates.
+- Docs state that a lone application or environment removed from a Bicep file is left in place until the template is deleted.
+
+**How we'll know it's right:** the tree shows only the app's resources, and deleting the template deletes the `Radius.Core` resources it created and leaves those from other templates. Prototyped and checked.
+
+**Outcome:** <!-- Fill in after review. -->
+
+#### Health mapping
+
+| Radius state                                                   | Argo CD health and message (prototype wording)                                                            |
+|----------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| `status.observedGeneration` behind `metadata.generation`       | Progressing, "Waiting for Radius to pick up this revision"                                                |
+| `Updating`                                                     | Progressing, "Deploying: Radius is applying this revision"                                                |
+| `ReadyPendingCleanup`                                          | Progressing, "Finishing the change: new outputs are ready, cleanup of removed resources has not finished" |
+| `Ready` and observed generation current                        | Healthy, "Ready: N outputs tracked (generation G)" (provisioning scope only)                              |
+| `Failed`, including failures before any output resource exists | Degraded, with the redacted reason                                                                        |
+| `Deleting`                                                     | Progressing                                                                                               |
+| `DeploymentResource` Ready, owning template deploying          | Progressing, "Deploying: Radius is applying template generation G"                                        |
+| `DeploymentResource` Ready                                     | Healthy, "Output tracked (provisioned; not runtime health)"                                               |
+| `DeploymentResource` Deleting or Deleted                       | Progressing, "Cleanup in progress: removed from the desired template"                                     |
+
+`DeploymentResource` uses the same mapping for its Ready, Failed and Deleting phrases, without the generation check: its controller sets `observedGeneration` only while deleting, and Ready means only that the Radius resource exists. The prototype confirmed that without its own health check every `DeploymentResource` shows no health in the Argo CD tree, and with it each shows Healthy. Every message includes the Git revision: in Phase 1 the health check reads it from the revision annotation, and from Phase 2 from the conditions. The redacted reason comes from conditions in Phase 2; in Phase 1 the message is the raw Radius error. **Healthy means Radius finished provisioning, not that the workload or cloud service is healthy now.** Health messages must state that scope. Argo CD reports any object with a `deletionTimestamp` as Progressing "Pending deletion" before it runs a custom health check, so a `DeploymentResource` that Radius is removing shows that message, not the Deleting text above.
+
+What plain Argo CD can show without a UI extension, checked in the prototype, is in [Appendix: what plain Argo CD can show](#what-plain-argo-cd-can-show).
+
+The feature spec also asks for three situations that provisioning status alone does not cover (all part of Phase 2):
+
+- **Stale or unavailable observation (Phase 2):** if the Radius controller stops, the last result stays in status. Conditions carry the time Radius last observed the result, but a Lua health check cannot reliably compare it with the current time, so the check cannot turn it into Unknown on its own. How to show staleness is part of Phase 2; it must never show as a fresh Healthy.
+- **Failure after provisioning (Phase 2),** for example a workload that later crashes or a cloud dependency that fails: Radius does not watch these today. The feature spec requires supported failures to turn the Application Degraded, so this ships in Phase 2. In Phase 1, health messages say provisioning health only.
+- **Access denied (Phase 2):** handled by the UI extension, which shows that the view is restricted without protected details. Lua health checks show only the status of objects the user can already see in Argo CD. A Lua sketch is in [Appendix: health check sketch](#health-check-sketch).
+
+### API design
+
+No REST or TypeSpec changes. Kubernetes API changes on `radapp.io/v1alpha3`:
+
+- **Additive changes to existing CRDs:**
+  - (Phase 2) `DeploymentTemplateStatus` and `DeploymentResourceStatus` gain `conditions []metav1.Condition`.
+  - (Phase 2) `DeploymentTemplateSpec` gains a typed parameters field. Name to be chosen in the detailed design.
+- **(Phase 1) Annotation, set by the plugin or CI:** the Git revision and source file paths the template was compiled from. Name to be chosen in the detailed design.
+- **(Phase 2) Status conditions content:** the attempted generation and Git revision, the operation ID, a failure category, a redacted message, and the time Radius last observed the result.
+- **(Phase 2) Pending cleanup:** while the phrase is `ReadyPendingCleanup`, status lists the resources still being removed.
+
+### CLI Design
+
+No new commands. `rad bicep generate-kubernetes-manifest` is reused by the plugin and by the CI fallback, and needs four fixes, all in Phase 1 except non-string parameters (Phase 2):
+
+- accept a `.bicepparam` file by running `bicep build-params`, as the Flux controller does; today `@file` is parsed as JSON even though the command's help shows `--parameters @app.bicepparam`
+- carry non-string parameters
+- write to stdout (for example `--destination-file -`), because a CMP must print manifests to stdout
+- stamp the source revision and file paths as an annotation (for example a `--source-revision` flag; the plugin passes `ARGOCD_APP_REVISION`)
+
+### Implementation Details
+
+#### Radius CMP sidecar (new, Phase 1)
+
+One container image plus a `plugin.yaml`; it compiles and never deploys.
+
+- **Image:** `rad` and a pinned Bicep binary preinstalled, plus pre-fetched Radius Bicep extensions so the common case needs no network. Released with Radius.
+- **Maintenance and security ownership:** Radius owns this image for its lifetime. Build from a minimal base and run as non-root with a read-only root file system. Include it in Radius image scanning and SBOM publishing, and cover it in the Radius security policy so CVE fixes in the base image, Bicep or `rad` ship as patch releases. Test it against each supported Argo CD version, because Argo CD can change the sidecar contract (mounts, environment, socket) between releases. The container must not mount the repo-server's service account token.
+- **Supply chain and hardening:** publish the image signed (for example with cosign) and document its digest, so admins reference it by digest rather than by a mutable tag and can verify it before adding it to `argocd-repo-server`. The documented container settings drop all Linux capabilities and set CPU and memory requests and limits, so a large or hostile Bicep file cannot starve the repo-server pod.
+- **Version skew with the control plane:** the sidecar is upgraded by the Argo CD admin, separately from Radius, so its `rad` can be older or newer than the cluster's Radius. The sidecar's output must use a `DeploymentTemplate` API version and fields the cluster's controller accepts. For example, typed parameters written by a newer sidecar must not be dropped silently by an older controller. The supported skew (for example, the same minor release, or one minor release apart) and the error a user sees outside it are not yet decided.
+- **Plugin definition:** discovers `*.bicep`; parameters `bicepFiles` (in deploy order; each file's position becomes its sync wave), `resourceGroup`, and optional cloud scopes mapped to `--azure-scope` and `--aws-scope`. Sketch in [Appendix: plugin definition sketch](#plugin-definition-sketch).
+- **Determinism:** output must be byte-identical for identical inputs, or Argo CD shows OutOfSync forever and redeploys repeatedly. The manifest's `metadata.name` comes from the Application name or the template file name (see [naming](#d7-how-the-plugin-names-the-deploymenttemplate)). `json.MarshalIndent` sorts map keys; Bicep output stability needs a test. Pretty-print `spec.template` with stable key order so Argo CD's diff shows only the changed lines.
+- **Compiler configuration:** `bicepconfig.json` in the source directory is an input. Argo CD re-renders on every new commit, so a change to it produces a new template; the sidecar must not cache extension resolution across renders in a way that ignores it.
+- **No side effects:** Argo CD may call `generate` many times and caches by commit. The plugin must not write outside its working directory or call any cluster.
+- **Network:** fetching Bicep extensions from registries named in `bicepconfig.json` needs egress or a mirror.
+
+#### Radius health checks (new, Phase 1)
+
+Lua scripts for `DeploymentTemplate` and `DeploymentResource` implementing [Health mapping](#health-mapping).
+
+#### `DeploymentTemplate` and `DeploymentResource` controllers (changed, Phases 2 and 4)
+
+The deploying annotation and display labels in Phase 1, richer status and typed parameters in Phase 2, and observation after provisioning in Phase 4; deploy logic unchanged.
+
+- Packages: [`pkg/controller/api/radapp.io/v1alpha3`](../../../pkg/controller/api/radapp.io/v1alpha3/), [`pkg/controller/reconciler`](../../../pkg/controller/reconciler/).
+- (Phase 1) Create no `DeploymentResource` for `Radius.Core` types and delete them when the template is deleted ([D9](#d9-which-output-resources-get-a-deploymentresource)).
+- (Phase 1) Delete each resource with the API version its template deployed it with. Found while prototyping: the `DeploymentResource` controller deleted every resource with API version `2023-10-01-preview`, which `Radius.*` types reject. Deleting a template left its resources `Failed` and the template stuck in Deleting. The prototype uses the version from the template (for example `Radius.Compute/containers@2025-08-01-preview`) and falls back to the old default. Flux needs this fix too. Tracked in [#13136](https://github.com/radius-project/radius/issues/13136), which also covers the same bug in recipe-output cleanup; this work fixes both.
+- (Phase 1) Set `radapp.io/resource-type` and `radapp.io/phrase` labels on each `DeploymentResource`, and the `radapp.io/deploying-generation` annotation while its template deploys. See [What plain Argo CD can show](#what-plain-argo-cd-can-show).
+- Set conditions on every phrase transition, with redacted messages.
+- Read the typed parameters field and convert it with a helper shared by the Flux path.
+- Copy the source revision annotation into conditions, and refresh the last-observed time on each reconcile.
+- **Kubernetes objects and cloud resources Radius creates:** Deployments, Services and cloud resources that Radius renders are not owned by the `DeploymentTemplate`, so they do not appear in the Argo CD tree. The feature spec forbids changing Kubernetes garbage-collection relationships, so Radius does not add owner references to make them appear. The Phase 2 UI extension shows them instead.
+
+#### Argo CD UI extension (new, Phase 2)
+
+A read-only "Radius" tab behind an Argo CD proxy extension that shows the application graph and diagnostics.
+
+- **Data:** the backend reads the existing Radius application graph API, the same data as `rad app graph`. Applications that the controller deploys go through the Radius API, so they are in the graph.
+- **Access:** Radius has no per-user authorization, and Argo CD project permissions are not Radius resource-group permissions. The proxy backend therefore enforces the viewer's Argo CD project and Application scope itself, and returns only the Radius application that the Application deployed.
+- **Fits Argo CD's extension points:** a resource tab on the `DeploymentTemplate`, an app view for the graph, and a status panel. Argo CD extensions cannot change node subtitles in the native tree or add a permanent side card, so the feature spec's mockups need those parts moved into a tab or a flyout.
+- **Data Radius does not have today:** the last successful revision per resource, a failure pinned to one resource, a "not observed" state, a failure category, and timestamps for each step (part of Phase 2).
+
+#### Documentation and validation (Phase 1)
+
+Validate installing Radius with Argo CD (see scenario 1) and the plugin end to end. Document the CI fallback as a supported path for organizations that do not allow plugins, including the revision annotation; Radius does not supply per-repository workflows. Document the order of the environment and application Applications, and the v1 limit of one Radius application per namespace.
+
+#### UCP
+
+No UCP changes.
+
+#### Bicep
+
+No Bicep language or extension changes. The sidecar pins and ships the Bicep binary and Radius extensions.
+
+#### Deployment Engine
+
+No Deployment Engine changes.
+
+#### Core RP
+
+No Core RP changes.
+
+#### Portable Resources / Recipes RP
+
+No Recipes changes. Recipe failures are surfaced through the new status conditions.
+
+### Error Handling
+
+| Scenario                                               | Detection                                | User sees                                                                 | Recovery                                                                                                        |
+|--------------------------------------------------------|------------------------------------------|---------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| Bicep compile error (syntax or type error)             | Plugin exits non-zero                    | ComparisonError on the Application; no sync                               | Fix the Bicep and commit                                                                                        |
+| Unrecognized resource type in Bicep (`BCP081` warning) | Bicep warns and exits zero; deploy fails | Synced, then `DeploymentTemplate` turns Degraded (`InvalidDeployment`)    | Fix the type and commit; see [open question 2](#open-questions-phase-1--core-functionality) on failing pre-sync |
+| Plugin cannot fetch a Bicep extension                  | Plugin exits non-zero                    | ComparisonError naming the registry                                       | Allow egress or mirror the registry                                                                             |
+| Radius CRDs missing on the destination cluster         | Argo CD sync fails                       | "no matches for kind DeploymentTemplate"                                  | Install Radius on the destination                                                                               |
+| Radius deployment or Recipe fails                      | Phrase `Failed`                          | Degraded with redacted reason                                             | Fix and commit, or `git revert`                                                                                 |
+| Recipe fails before any resource is created            | Phrase `Failed` with no output resources | Degraded on the `DeploymentTemplate` and the Application, with the reason | Fix and commit                                                                                                  |
+| Radius controller unavailable                          | Conditions stop updating                 | Last result, with the time Radius last observed it                        | Restore the controller; stale health is Phase 4                                                                 |
+| User refreshes the Application after a failure         | Not a Radius event                       | Same result; nothing is redeployed                                        | Commit a fix to start a new attempt                                                                             |
+| Non-deterministic plugin output                        | Perpetual OutOfSync                      | Repeated syncs and redeploys                                              | Bug in the plugin; normalize output                                                                             |
+| Noisy or unstable diffs in `spec.template` (plugin)    | Large diffs on small changes             | Hard-to-read diffs                                                        | Normalize `spec.template`; document `ignoreDifferences`                                                         |
+| Sidecar and Radius versions differ                     | Version check                            | Clear mismatch error                                                      | Upgrade the sidecar with Radius                                                                                 |
+| Flux and Argo CD both manage one `DeploymentTemplate`  | Not detected today                       | Flapping updates                                                          | Documented as unsupported; detection via Argo CD tracking labels plus `spec.repository` considered              |
+| Child `DeploymentResource` deleted manually in UI/CLI  | `statusHash` unchanged; not detected     | Deleted resource is gone while `DeploymentTemplate` stays Synced, Healthy | Roll back to a different commit or clear `status.statusHash`; fix by watching owned child CRs                   |
+| Non-string parameter                                   | Today: dropped (Flux) or panic (CLI)     | Wrong value deployed, or plugin crash                                     | Typed parameters field (Phase 2)                                                                                |
+
+## Test plan
+
+- **Unit (Phase 1):** CLI fixes (`.bicepparam`, stdout, revision annotation); plugin output determinism, including a `bicepconfig.json` change.
+- **Unit (Phase 2):** controller condition transitions, revision annotation and pending-cleanup list; shared parameter conversion; typed parameters in the CLI.
+- **Lua (Phase 1):** Argo CD's health-check test fixtures, one per phrase and for a stale observed generation.
+- **Functional:** a new test installs Argo CD and the sidecar in a kind cluster and syncs the feature spec's representative application: a Kubernetes workload, an external dependency and a failed Recipe. Each phase adds assertions:
+  - Phase 1 (scenarios 1, 3, 4): Synced plus Progressing, then Healthy, with the revision in the message; Degraded for a failed Recipe, including one that fails before any resource is created; the environment and application Applications synced in order; a refresh does not redeploy; a file removal prunes the template and Radius cleans up; the same application deploys through the CI fallback.
+  - Phase 2 (scenarios 1, 3, 4): Degraded with a redacted reason, including partial provisioning; Progressing while removed resources are cleaned up, with the resources listed; a non-string parameter-only change redeploys on the plugin and Flux paths.
+  - Phase 3 (scenarios 2, 5): the UI extension returns the graph for an Application in the viewer's scope, and distinct states for missing permission, unavailable data and an empty result.
+  - Phase 4 (scenarios 2, 3): a workload failure after provisioning turns the Application Degraded; a stopped Radius controller does not show as fresh Healthy.
+- **New challenges:** functional tests depend on an Argo CD release and its images; compiling needs Bicep extension registries or a local mirror.
+
+## Security
+
+| Threat                                                                                                            | Mitigation                                                                                                                                                                                                                                                                                |
+|-------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Plugin runs repository content inside `argocd-repo-server`                                                        | Compile only; no cluster or Radius credentials; Argo CD sidecar isolation.                                                                                                                                                                                                                |
+| A vulnerable or compromised sidecar weakens `argocd-repo-server`, which can read every repository Argo CD renders | Minimal non-root image with no service account token, all capabilities dropped and resource limits; signed and referenced by digest; Radius image scanning, SBOM and patch releases for CVEs in the base image, Bicep and `rad`.                                                          |
+| Plugin downloads Bicep extensions from registries                                                                 | Pre-fetch extensions in the image; pin versions; support registry mirrors.                                                                                                                                                                                                                |
+| Anyone who can create a `DeploymentTemplate` can deploy anything Radius allows in that resource group             | Restrict `DeploymentTemplate` with Argo CD AppProject resource allow-lists and Kubernetes RBAC on namespaces. This applies equally to CI-generated manifests.                                                                                                                             |
+| Secrets in status messages or in rendered templates and parameters                                                | Redact status messages. `spec.parameters` is plain text in the cluster and in Argo CD diffs, so in Phase 1 secrets belong in Radius secret stores, not `.bicepparam`. Phase 2 adds secure parameters.                                                                                     |
+| UI extension exposes Radius data to users without Radius rights                                                   | Phase 3. Radius has no per-user authorization, so the proxy backend enforces the viewer's Argo CD project and Application scope on every graph query, error detail and direct URL; filtering is not an authorization boundary. Read-only viewers cannot sync, retry or delete through it. |
+
+## Compatibility
+
+- No breaking changes for Flux users. Because the CRDs are shared, Flux users will also see the new status and parameter fields. Both are additive, and the shared parameter conversion fixes a silent drop on the Flux path.
+- The plugin requires Argo CD 2.8 or later (sidecar plugins). The CI fallback works with any Argo CD version that can apply a custom resource, and works today apart from the CLI fixes.
+- Flux and Argo CD must not reconcile the same inputs. Using both on one `DeploymentTemplate` is documented as unsupported.
+- Older Argo CD versions without the upstream health checks need the `argocd-cm` snippet.
+
+## Monitoring and Logging
+
+- **Argo CD:** Application sync and health in the UI and in `argocd_app_info` metrics.
+- **Plugin:** logs in the sidecar container, for example `kubectl logs deploy/argocd-repo-server -c radius-bicep`; errors also appear as the Application's ComparisonError.
+- **Radius:** `DeploymentTemplate` conditions in `kubectl describe`, and existing controller logs keyed by namespace and name.
+
+## Development plan
+
+Delivery is split into two phases: **Phase 1 (Core functionality)** and **Phase 2 (Rest of the capabilities)**. Phase 1 is broken down into a concrete sequence of pull requests based on the working prototype (`nithyatsu-argocd-prototype`).
+
+### Phase 1: Core functionality (PR breakdown)
+
+| PR   | Title / Scope                                                                                                                                                                                                                                                                                                                                                                                                          | Packages / Files                                                                                                               | Size | Depends on |
+|------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|------|------------|
+| PR 1 | **fix(cli): clean up `rad bicep generate-kubernetes-manifest` for GitOps (`#13436`)** — omit empty `parameters: {}` so parameterless templates do not stay `OutOfSync`, pretty-print `spec.template` for line-by-line diffs, support stdout (`-d -`), add `--name` and `--source-revision`, and support `.bicepparam` files                                                                                            | `pkg/cli/cmd/bicep/generatekubernetesmanifest/`                                                                                | S    | —          |
+| PR 2 | **fix(controller): use deployed resource API version on `DeploymentResource` delete (`#13136`)** — resolve the resource's API version from the owning `DeploymentTemplate` instead of hardcoding `2023-10-01-preview` so deleting `Radius.*` resources succeeds in both Argo CD and Flux                                                                                                                               | `pkg/controller/reconciler/deploymentresource_reconciler.go`, `deploymenttemplate_apiversion.go`                               | S    | —          |
+| PR 3 | **feat(controller): add `DeploymentResource` display labels and in-flight deploy progress** — stamp `radapp.io/resource-type` and `radapp.io/phrase` labels on each `DeploymentResource`, and set `radapp.io/deploying-generation` on owned child resources while the parent `DeploymentTemplate` deploys (optional: skip `Radius.Core/*` child CRs pending [D9](#d9-which-output-resources-get-a-deploymentresource)) | `pkg/controller/reconciler/deploymentresource_labels.go`, `deploymenttemplate_progress.go`, `deploymenttemplate_reconciler.go` | S    | PR 2       |
+| PR 4 | **feat(argocd): add `radius-bicep` CMP sidecar image, `plugin.yaml`, and build/release targets** — build the non-root sidecar image with `rad`, pinned `bicep`, pre-fetched Radius extensions, `plugin.yaml`, and `radius-generate.sh` (supporting ordered `bicepFiles` with sync waves)                                                                                                                               | `deploy/images/argocd-cmp/` (or `deploy/argocd-plugin/`), `build/docker.mk`, `.github/workflows/`                              | M    | PR 1       |
+| PR 5 | **feat(argocd): add Lua health checks and `argocd-cm` configuration snippet** — ship Lua health scripts for `radapp.io/DeploymentTemplate` and `radapp.io/DeploymentResource` plus `resource.customLabels` config, with offline Lua test fixtures (and open upstream PR to `argoproj/argo-cd`)                                                                                                                         | `deploy/argocd-plugin/argocd-values.yaml`, Lua test fixtures                                                                   | S    | PR 3       |
+| PR 6 | **test(argocd) & docs: end-to-end functional test and operator/developer documentation** — add kind functional test covering sync, update, failure, and prune; document installing the sidecar/health checks, environment-before-application ordering, and the CI-generated manifest fallback                                                                                                                          | `test/functional-portable/`, `docs/`                                                                                           | M    | PR 4, PR 5 |
+
+### Phase 2: Rest of the capabilities (follow-up backlog)
+
+| Work item                                                                                                                                                                                                                                                             | Size |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------|
+| **Richer status conditions & failure diagnostics:** add `conditions` on `DeploymentTemplate` and `DeploymentResource` with attempted revision, redacted error reason, failure category, last-observed timestamp, and pending-cleanup resource list (shared with Flux) | M    |
+| **Typed & secure parameters:** support non-string parameters and Kubernetes `Secret` references for `@secure()` parameters across compilation, diff, and controller deployment                                                                                        | M    |
+| **Child `DeploymentResource` drift handling:** decide and implement controller behavior when an owned `DeploymentResource` is manually deleted while still declared in `DeploymentTemplate.spec` ([Open Question 3](#open-questions-phase-1--core-functionality))     | S    |
+| **Argo CD UI extension:** read-only "Radius" application graph and diagnostics tab behind a proxy backend enforcing the viewer's Argo CD project/Application scope                                                                                                    | L    |
+| **Post-provisioning runtime & stale health:** observe workload/dependency failures after initial provisioning and surface controller staleness                                                                                                                        | L    |
+
+Estimates include unit and functional tests. Staffing, ordering and duration are in [Engineering plan and estimate](#engineering-plan-and-estimate).
+
+### Engineering plan and estimate
+
+This plan estimates the two phases for **one engineer** working through them in order.
+
+#### Assumptions
+
+- The engineer knows Go and the Radius controller, and uses AI coding agents (for example Copilot coding agent and Copilot CLI) every day. The durations assume that; without AI help, add roughly 30%.
+- The Phase 1 prototype on branch `nithyatsu-argocd-prototype` is the starting point. The plugin, Lua health checks, display labels, deploying annotation, `Radius.Core` skip and delete API-version fix already work end to end on a kind cluster, so Phase 1 hardens and ships them across PRs 1–6.
+- Each open question is answered before the work item that needs it starts. Review time for pull requests is included; upstream review in `argoproj/argo-cd` is not, because the `argocd-cm` snippet ships first.
+
+#### Phases
+
+| Phase                           | Scope & feature-spec user stories                                                                                | Weeks  |
+|---------------------------------|------------------------------------------------------------------------------------------------------------------|--------|
+| 1. Core functionality (PRs 1–6) | End-to-end GitOps deploy, per-resource tree, labels, and health checks (Scenario 1 + core of Scenarios 2, 3, 4)  | 3      |
+| 2. Rest of capabilities         | Status conditions, typed/secure parameters, UI extension, runtime health (Scenarios 2, 3, 4, 5 + runtime health) | 10     |
+| **Total**                       |                                                                                                                  | **13** |
+
+Phase 1 alone, about 3 weeks, is the shortest path to something users can try.
+
+#### Risks to the estimate
+
+- **Phase 2 scope:** Post-provisioning runtime observation and the UI extension access model grow if they need new Radius APIs.
+- **Functional tests:** Argo CD, the sidecar and Bicep extension downloads make tests slower and flakier than the Flux tests.
+- **Shared CRDs:** Phase 2 CRD changes affect Flux too, so they need Flux regression tests.
+
+## Open Questions (Phase 1 — Core Functionality)
+
+Only the questions that affect **Phase 1 (Core Functionality)** are listed below. (Questions for Phase 2—such as `@secure()` Secret references, UI extension authorization, and post-provisioning runtime health—are tracked with the Phase 2 backlog in [Development plan](#phase-2-rest-of-the-capabilities-follow-up-backlog).)
+
+1. **Order of environment and application (`env.bicep` before `app.bicep`).**
+   `app.bicep` requires the Radius Environment from `env.bicep` to exist before the application deploys.
+   - **Proposed in Phase 1:** The operator sets up the Environment outside the developer's Argo CD Application (either via a separate environment Argo CD Application or `rad` commands; see [D8](#d8-how-environments-are-kept-out-of-the-application-view)). If both files are deployed in a single Application, the `bicepFiles` plugin parameter orders them with Argo CD sync waves (`0`, `1`, ...).
+   - **Still open:** Confirm with BlackRock/PM how they structure environment vs. application repositories, and what the application should show if it is synced before the Environment exists or is Ready.
+
+2. **Unrecognized resource types (`BCP081` warning) at compile time vs. deploy time.**
+   Verified in the prototype: a typo in a resource type (for example `Radius.Compute/containerss@2025-08-01-preview`) emits `Warning BCP081` ("does not have types available... this will not block the resource from being deployed") and exits zero. Because the sidecar succeeds, Argo CD marks the Application `OutOfSync`, syncs the `DeploymentTemplate` to the cluster, and only fails later when the Radius controller gets `400 Bad Request (InvalidDeployment)` from UCP, turning the `DeploymentTemplate` tile `Degraded` while existing `DeploymentResource` tiles remain `Healthy` and the controller retries.
+   - **Question for PM:** Should the plugin/CLI treat `BCP081` (missing resource type definitions) as a hard error so Argo CD blocks the sync with a `ComparisonError` before touching the cluster, or keep Bicep's default warning behavior so custom/unregistered types without published Bicep schemas can still be deployed?
+
+3. **Manual deletion of a child `DeploymentResource` tile in Argo CD (drift recovery vs. drift reporting).**
+   - **Exact steps reproduced in the prototype:**
+     1. Sync `example-voting-app` at commit `918612f` so `DeploymentTemplate/example-voting-app` and child tiles `DeploymentResource/db`, `DeploymentResource/vote`, and `DeploymentResource/result` are all `Ready` (`Synced`, `Healthy`).
+     2. In the Argo CD tree UI, click the child `DeploymentResource/vote` tile and click **Delete**.
+     3. `DeploymentResource/vote` receives a `deletionTimestamp`; `DeploymentResourceReconciler` runs its finalizer (`radapp.io/deployment-resource-finalizer`), sends a `DELETE` to UCP (`/planes/radius/local/resourceGroups/voting-argo/providers/Radius.Compute/containers/vote`), tears down the real `vote` container and its Kubernetes `Deployment`/`Service`/`Pod`, and removes the `DeploymentResource/vote` object.
+     4. Click **Sync** or **History and Rollback** to the same commit (`918612f`) in Argo CD. The `vote` tile does not come back, and the Argo CD Application stays `Synced` and `Healthy`.
+   - **Observed controller logs:**
+
+     ```text
+     17:39:41.942Z  deploymentresource_reconciler.go:209  Resource is being deleted.        vote
+     17:39:41.950Z  deploymentresource_reconciler.go:335  Starting DELETE operation.        vote
+     17:39:45.026Z  deploymentresource_reconciler.go:312  Resource is deleted.              vote
+     17:39:45.028Z  deploymenttemplate_reconciler.go:331  Reconciling resource.             example-voting-app
+     17:39:45.028Z  deploymenttemplate_reconciler.go:488  Resource is up-to-date.           example-voting-app
+     17:39:45.028Z  deploymenttemplate_reconciler.go:381  Resource is in desired state.     example-voting-app
+     ```
+
+   - **Why this happens and how drift could be captured:**
+     - `DeploymentTemplateReconciler` already watches its owned `DeploymentResource` children via `.Owns(&radappiov1alpha3.DeploymentResource{})`, so deleting `DeploymentResource/vote` immediately wakes `DeploymentTemplateReconciler.Reconcile(example-voting-app)` at `17:39:45.028Z`.
+     - At that point `DeploymentTemplate/example-voting-app` still has `vote` in `spec.template` and still lists `/planes/radius/local/resourceGroups/voting-argo/providers/Radius.Compute/containers/vote` in `status.outputResources`.
+     - However, `startPutOperationIfNeeded` (`deploymenttemplate_reconciler.go:487`) only checks `isUpToDate(deploymentTemplate)` (`computeSpecHash(spec) == status.statusHash`). Because `DeploymentTemplate.spec` did not change, it logs `"Resource is up-to-date"` and exits without re-running the deployment. (Clearing `status.statusHash` immediately triggers a `PUT` deployment and recreates `vote`.)
+     - **Design question:** When `DeploymentTemplateReconciler` is woken up and finds that an expected child `DeploymentResource` listed in `status.outputResources` is missing in the cluster while `spec` still declares it, should the controller (a) automatically re-run the `PUT` deployment to self-heal and recreate the deleted resource, (b) mark the `DeploymentTemplate` status as drifted/`Degraded` so the user must explicitly trigger a redeploy, or (c) leave it as-is for Phase 1?
+
+4. **`DeploymentTemplate` robustness items surfaced during Phase 1 prototyping.**
+   - **Empty `parameters: {}` causes perpetual `OutOfSync` ([#13436](https://github.com/radius-project/radius/issues/13436)):** When a Bicep file has no parameters, `rad bicep generate-kubernetes-manifest` writes `parameters: {}`, which the controller strips when adding its finalizer (`omitempty`). Fixed in Phase 1 PR 1 by omitting empty `parameters`.
+   - **Compiler metadata in `spec.template` across sidecar upgrades:** Upgrading Bicep in the sidecar changes `_generator.version` and `templateHash` in the compiled ARM JSON even when no `.bicep` file changed, which marks existing Applications `OutOfSync`. Should PR 1 strip `_generator` metadata when generating `DeploymentTemplate` manifests so sidecar upgrades do not trigger mass redeploys?
+   - **Large templates and 256 KB annotation limit:** Argo CD's default client-side apply copies the manifest into `kubectl.kubernetes.io/last-applied-configuration` (capped at 256 KB). Phase 1 docs will recommend `ServerSideApply=true` on the Argo CD Application.
+
+## Alternatives considered
+
+### Radius controller compiles
+
+Kustomize packs the Bicep files from Git into a ConfigMap, and Argo CD applies that ConfigMap and a new Radius source resource (working name `BicepSource`) like any other objects. A new source reconciler in the Radius controller compiles the Bicep with the code the Flux integration uses, and creates a `DeploymentTemplate` that it owns. The existing `DeploymentTemplate` controller deploys it. Argo CD never applies the `DeploymentTemplate`, so the source reconciler copies its result onto the source resource's status, where a Lua health check reads it.
+
+![Radius controller approach architecture](2026-10-argocd-functional-spec/controller-approach-architecture.svg)
+
+> Source files: [controller-approach-architecture.svg](2026-10-argocd-functional-spec/controller-approach-architecture.svg) and [controller-approach-architecture.excalidraw](2026-10-argocd-functional-spec/controller-approach-architecture.excalidraw).
+
+Its strengths: no Radius code inside Argo CD, no new image, the compiler always matches the cluster's Radius, and the compile code is shared with Flux. We do not pursue it because the feature spec asks for an Argo CD-native experience that it delivers only indirectly:
+
+- Health reaches Argo CD only through a roll-up onto the source resource.
+- Compile errors appear after the sync instead of blocking it.
+- Argo CD's diff shows each change as a new ConfigMap holding the whole Bicep, because the name hash changes on every edit.
+- Rollback compiles old Bicep again with the current Radius.
+- Developers also commit a `kustomization.yaml` and a source resource, and handle the ConfigMap name hash.
+- A ConfigMap holds at most 1 MiB, its keys cannot contain `/` (so local module paths break), and Argo CD's client-side apply stores it in an annotation capped at 256 KiB.
+
+### Other alternatives
+
+- **A Radius controller that reads Git itself for Argo CD users:** duplicates Argo CD's source handling and breaks goal 3.
+- **Reusing `radius-gitops-config.yaml` with Argo CD:** a second configuration surface; the Application spec already selects files and parameters.
+- **Argo CD reconciling cloud resources directly (for example rendering to Crossplane objects):** loses Recipes and the Radius application model; a non-goal.
+- **Owner references from Radius-created objects to `DeploymentResource`,** so they show in the Argo CD tree: changes Kubernetes garbage-collection relationships, which the feature spec rules out.
+- **Per-decision alternatives** (install switches, health check delivery) are in [Decision details](#decision-details).
+
+## Appendix (optional)
+
+### Plugin definition sketch
+
+Not final. Argo CD exposes Application plugin parameters to the plugin as `PARAM_<NAME>` environment variables. This sketch assumes the CLI fixes in [CLI Design](#cli-design).
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ConfigManagementPlugin
+metadata:
+  name: radius-bicep
+spec:
+  discover:
+    fileName: "*.bicep"
+  parameters:
+    static:
+      - name: bicepFiles # space-separated, deploy order
+      - name: resourceGroup
+  generate:
+    # For each file in $PARAM_BICEPFILES, in order: run
+    #   rad bicep generate-kubernetes-manifest <file> --group "$PARAM_RESOURCEGROUP"
+    #     [--parameters @<matching parameters file>] --destination-file -
+    # and add the annotations argocd.argoproj.io/sync-wave: "<position>" and
+    # radapp.io/source-revision: "$ARGOCD_APP_REVISION".
+    command: [/usr/local/bin/radius-generate.sh]
+```
+
+**How Argo CD runs this.** `discover` tells Argo CD the plugin applies to a directory containing `*.bicep`. On every render, the repo-server checks out the commit into a shared volume, then runs `generate` inside the sidecar with the Application's parameters as environment variables. Whatever the command prints on stdout is the manifest set; anything non-zero is a ComparisonError. The plugin never applies anything; the application-controller does that later.
+
+### Health check sketch
+
+Not final; status conditions would replace the generic Degraded message with the condition's reason.
+
+```lua
+hs = {}
+if obj.status == nil or obj.status.observedGeneration ~= obj.metadata.generation then
+  hs.status = "Progressing"; hs.message = "Waiting for Radius"; return hs
+end
+local p = obj.status.phrase
+if p == "Ready" then
+  hs.status = "Healthy"; hs.message = "Radius provisioning complete"
+elseif p == "Failed" then
+  hs.status = "Degraded"; hs.message = "Radius deployment failed"
+else
+  hs.status = "Progressing"; hs.message = p
+end
+return hs
+```
+
+### Integration points compared with Flux
+
+| Integration point                                  | Flux: how Radius plugs in today                                                                                                 | Argo CD plugin                                                                   |
+|----------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| Activation                                         | The Radius controller registers itself when the `GitRepository` CRD is established (`registerFluxController`)                   | Admin adds the sidecar to `argocd-repo-server`; Argo CD loads the health checks  |
+| Change trigger                                     | Watches `GitRepository` and reconciles when `status.artifact.revision` changes (`GitRepositoryRevisionChangePredicate`)         | Argo CD polls Git or receives a webhook, then re-renders through the plugin      |
+| Reading Git                                        | Downloads the source-controller archive from `status.artifact.url` and verifies its digest                                      | `argocd-repo-server` checks out the commit into a volume shared with the sidecar |
+| Choosing files and parameters                      | `radius-gitops-config.yaml` at the repository root: Bicep file, parameter file, namespace, resource group                       | Application `spec.source.path` and plugin parameters                             |
+| Compiling Bicep                                    | The Radius controller runs `bicep build` and `bicep build-params` in the cluster                                                | The Radius CMP runs `rad bicep generate-kubernetes-manifest` in the sidecar      |
+| Applying the `DeploymentTemplate`                  | The Radius controller creates the namespace, then creates or updates the `DeploymentTemplate`                                   | Argo CD sync                                                                     |
+| Removing a `DeploymentTemplate` when its file goes | The Radius controller lists templates by the indexed `spec.repository` field and deletes those no longer in the config          | Argo CD prune, using its tracking label or annotation                            |
+| Deploying and deleting Radius resources            | `DeploymentTemplate` and `DeploymentResource` controllers                                                                       | Same controllers, unchanged                                                      |
+| Status and health                                  | None; users run `kubectl get deploymenttemplates`                                                                               | Lua health checks on the `DeploymentTemplate` and richer conditions              |
+| Cloud scopes                                       | Resource group only; the provider config is built with empty Azure and AWS scopes                                               | Plugin parameters map to `--azure-scope` and `--aws-scope`                       |
+| Radius code delivered                              | A Go controller in the Radius controller binary ([`flux_controller.go`](../../../pkg/controller/reconciler/flux_controller.go)) | A sidecar image, `plugin.yaml`, Lua scripts and docs; no new Go controller       |
+
+### What plain Argo CD can show
+
+Without a UI extension, checked in the prototype. Linked from [Health mapping](#health-mapping).
+
+- App health Progressing while cleanup runs: comes from the `DeploymentTemplate` health check above.
+- Sync status with branch and commit, and the tree of `Application` → `DeploymentTemplate` → `DeploymentResource`: built in.
+- Health and the message above on each tree node: shown on the health icon and in the node's summary panel, not as text on the tile.
+- Header rows such as Radius group, environment and application: `spec.info` on the Application, set by the user or an ApplicationSet template. They are static; the observed generation cannot be shown there.
+- Radius type and status on each `DeploymentResource` tile: the Radius controller sets labels `radapp.io/resource-type` (for example `Radius.Compute.containers`) and `radapp.io/phrase` (mirrors `status.phrase`), and `resource.customLabels` in `argocd-cm` lists both. Argo CD shows at most two such chips per tile. This is a small controller change, prototyped on Phase 1.
+- Per-resource progress during a deploy: Radius deploys the whole template in one call and does not touch `DeploymentResource` objects unless the set of outputs changes, so without help every resource tile stays Healthy while the template tile shows Deploying. The prototype adds a small controller change: while a `DeploymentTemplate` deploys, the controller sets the annotation `radapp.io/deploying-generation` on every `DeploymentResource` it owns and removes it when the deploy succeeds or fails; the phrase label reads `Updating` and the health check returns Progressing. Marking every resource is accurate because a Radius deploy re-applies every resource in the template. Two limits remain: resources new in this revision appear only after the deploy finishes, and the Kubernetes objects Radius creates (Deployments, pods) are not in the tree, so Argo CD cannot show a pod rollout.
+- Template and tree names that match the mockup: the plugin names the `DeploymentTemplate` after the Application, and the controller creates no tile for `Radius.Core` resources. See [How the plugin names the `DeploymentTemplate`](#d7-how-the-plugin-names-the-deploymenttemplate) and [Which output resources get a `DeploymentResource`?](#d9-which-output-resources-get-a-deploymentresource).
+- Not possible: a Radius status side panel, a Radius graph tab, and hiding other nodes from the tree. These need an Argo CD UI extension. `resource.exclusions` matches only API group and kind, and each `DeploymentResource` must keep its owner reference to the `DeploymentTemplate`, because Radius uses that reference to decide which resources it may delete when they leave Git.
+
+### Steps per role for each compile option
+
+Linked from [D1](#d1-who-compiles-bicep-for-argo-cd). All options assume Radius is installed on the destination cluster and the Radius health checks are configured in Argo CD. In a hub-and-spoke setup, Argo CD and its repo-server run on a management cluster that `rad install` on the workload cluster never touches.
+
+*Argo CD plugin:*
+
+1. **Argo CD admin, once:** add the Radius sidecar and `plugin.yaml` to the Argo CD install (Helm values or Kustomize patch) and, on hardened clusters, allow outbound access to the Bicep extension registry.
+2. **Developer, once per app:** commit `app.bicep` and `app.bicepparam` under `app/`, then create one Application for that folder with the plugin parameters `bicepFiles` (in deploy order) and `resourceGroup`. The operator has already set up the Environment (see [How environments are kept out of the application view](#d8-how-environments-are-kept-out-of-the-application-view)). Each file's parameters come from a parameters file with the same base name next to it.
+3. **Developer, each change:** edit the Bicep or parameters and merge.
+4. **Argo CD, automatically:** the sidecar compiles the Bicep into a `DeploymentTemplate`; Argo CD diffs and applies it, and Radius deploys it.
+5. **If compilation fails:** the sync is blocked and the error shows in Argo CD.
+6. **Argo CD admin, each Radius release:** upgrade the sidecar to match.
+
+*CI workflow:*
+
+1. **Argo CD admin:** nothing.
+2. **Platform team, once per repo:** write and own a CI workflow that installs a `rad` version matching the cluster, runs `rad bicep generate-kubernetes-manifest`, and commits the output; grant a bot push rights past branch protection.
+3. **Developer, once per app:** commit `app.bicep` and parameters, then create an Application pointing at the generated directory.
+4. **Developer, each change:** edit and merge, wait for the bot commit, then review it or resolve conflicts in the generated file.
+5. **Argo CD, automatically:** applies the generated `DeploymentTemplate`, and Radius deploys it.
+6. **If compilation fails:** the error shows in CI, and Argo CD keeps the last good render.
+7. **Platform team, each Radius release:** update the `rad` version in the workflow.
+
+*Radius controller:*
+
+1. **Argo CD admin and platform team:** nothing.
+2. **Developer, once per app:** commit `app.bicep`, `app.bicepparam`, a `kustomization.yaml` that packs them into a ConfigMap, and a Radius source resource, then create an Application.
+3. **Developer, each change:** edit the Bicep or parameters and merge.
+4. **Argo CD, automatically:** applies the ConfigMap and source resource.
+5. **Radius controller, automatically:** compiles the Bicep, creates the `DeploymentTemplate`, deploys it, and reports the result on the source resource.
+6. **If compilation fails:** the sync succeeds, then the source resource turns Degraded with the error.
+
+### Visual comparison of all approaches (Flux reference + 3 Argo CD approaches)
+
+#### Reference: How Flux works today (why Flux did not need a sidecar)
+
+Flux's `source-controller` includes an internal HTTP server (`GitRepository.status.artifact.url`) that serves a `.tar.gz` archive of the repository inside the cluster, so Radius's `FluxController` downloads and compiles `.bicep` files without needing Git credentials. Argo CD has no tarball HTTP server.
+
+![How Flux works today](2026-10-argocd-functional-spec/flux-reference-architecture.svg)
+
+#### Approach 1 (chosen primary): Argo CD CMP sidecar (`radius-bicep`)
+
+Developers commit pure `.bicep` and `.bicepparam` files. `argocd-repo-server` clones the repository and streams the application files over a pod-local Unix domain socket to the non-root `radius-bicep` sidecar, which compiles them into a `DeploymentTemplate` before sync.
+
+![Approach 1: Argo CD plugin architecture](2026-10-argocd-functional-spec/plugin-approach-architecture.svg)
+
+#### Approach 2 (chosen fallback): CI-generated `DeploymentTemplate` YAML (no sidecar)
+
+When an organization prohibits custom sidecars on `argocd-repo-server`, a CI workflow runs `rad bicep generate-kubernetes-manifest` and commits the resulting `DeploymentTemplate` YAML. Plain Argo CD applies the same `DeploymentTemplate` CR and uses the same Lua health checks and Radius controller.
+
+![Approach 2: CI fallback architecture](2026-10-argocd-functional-spec/ci-fallback-architecture.svg)
+
+#### Approach 3 (rejected): Wrapper CRD / Radius controller compiles
+
+Argo CD applies a wrapper resource (or Kustomize `ConfigMap`) and marks the Application `Synced` before Bicep is compiled; a new Radius controller reconciler then compiles Bicep asynchronously and rolls status back up.
+
+![Approach 3: Radius controller approach architecture](2026-10-argocd-functional-spec/controller-approach-architecture.svg)
+
+## Design Review Notes
+
+Not yet reviewed.
