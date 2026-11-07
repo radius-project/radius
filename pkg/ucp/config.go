@@ -47,6 +47,9 @@ type Config struct {
 	// When absent, forwarded identity headers are rejected.
 	CallerAuthentication *authorization.RequestHeaderOptions `yaml:"callerAuthentication,omitempty"`
 
+	// UserAuthorization enables the user-facing policy runtime, not enforcement.
+	UserAuthorization authorization.RuntimeOptions `yaml:"userAuthorization"`
+
 	// Database is the configuration for the database used for resource data.
 	Database databaseprovider.Options `yaml:"databaseProvider"`
 
