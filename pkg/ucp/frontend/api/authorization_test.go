@@ -297,6 +297,7 @@ func TestServiceProtectedMutationsEveryMode(t *testing.T) {
 			options.Config.CallerAuthentication = &authorization.RequestHeaderOptions{
 				CAFile: caFile, AllowedNames: []string{"front-proxy-client"}, KubernetesIssuer: "kubernetes:test-cluster",
 			}
+
 			db, err := options.DatabaseProvider.GetClient(t.Context())
 			require.NoError(t, err)
 			store, runtime := frontendRequestPolicy(t, db, mode)
@@ -406,6 +407,103 @@ func TestServiceProtectedMutationsEveryMode(t *testing.T) {
 			afterPolicy, err := after.Policy()
 			require.NoError(t, err)
 			require.Equal(t, beforePolicy, afterPolicy)
+		})
+	}
+}
+
+func TestServiceAzureProxyEncodedProtectedMutations(t *testing.T) {
+	t.Parallel()
+	caFile, certificate := frontendProxyCertificate(t, "front-proxy-client")
+	for _, mode := range []string{"Unconfigured", "Disabled", "DryRun", "Enforce"} {
+		t.Run(mode, func(t *testing.T) {
+			const pathBase = "/apis/api.ucp.dev/v1alpha3"
+			options := frontendRequestOptions(t, pathBase)
+			options.Config.Server.TLSCertificateDirectory = t.TempDir()
+			options.Config.CallerAuthentication = &authorization.RequestHeaderOptions{
+				CAFile: caFile, AllowedNames: []string{"front-proxy-client"}, KubernetesIssuer: "kubernetes:test-cluster",
+			}
+			var calls atomic.Int32
+			downstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				require.Equal(t, http.MethodPut, r.Method)
+				require.Contains(t, r.URL.Path, "/providers/Microsoft")
+				w.WriteHeader(http.StatusCreated)
+			}))
+			defer downstream.Close()
+			db, err := options.DatabaseProvider.GetClient(t.Context())
+			require.NoError(t, err)
+			require.NoError(t, db.Save(t.Context(), &database.Object{
+				Metadata: database.Metadata{ID: "/planes/azure/local"},
+				Data: &datamodel.AzurePlane{
+					BaseResource: v1.BaseResource{ID: "/planes/azure/local", Type: datamodel.AzurePlaneResourceType},
+					Properties:   datamodel.AzurePlaneProperties{URL: downstream.URL},
+				},
+			}))
+			var store *authorization.PolicyStore
+			if mode != "Unconfigured" {
+				store, options.UserAuthorization = frontendRequestPolicy(t, db, authapi.UserAuthorizationMode(mode))
+			}
+			server, err := NewService(options).Initialize(t.Context())
+			require.NoError(t, err)
+			listener := httptest.NewUnstartedServer(server.Handler)
+			listener.TLS = server.TLSConfig
+			listener.StartTLS()
+			defer listener.Close()
+			transport := listener.Client().Transport.(*http.Transport).Clone()
+			defer transport.CloseIdleConnections()
+			transport.TLSClientConfig.Certificates = []tls.Certificate{certificate}
+			client := &http.Client{Transport: transport}
+			send := func(path string) int {
+				t.Helper()
+				request, err := http.NewRequest(http.MethodPut, listener.URL+pathBase+"/planes/azure/local"+path+"?api-version=2025-08-01-preview", strings.NewReader(`{"properties":{}}`))
+				require.NoError(t, err)
+				request.Header.Set("X-Remote-User", "alice")
+				response, err := client.Do(request)
+				require.NoError(t, err)
+				defer response.Body.Close()
+				_, err = io.Copy(io.Discard, response.Body)
+				require.NoError(t, err)
+				return response.StatusCode
+			}
+			for _, namespace := range []string{"Radius.Core", "System.Authorization", "rAdIuS.cOrE", "sYsTeM.aUtHoRiZaTiOn"} {
+				for _, typ := range []string{"roleAssignments", "roleDefinitions", "authorizationSettings", "accessChanges"} {
+					for _, dot := range []string{".", "%2e", "%252e", "%25252e"} {
+						path := "/providers/" + strings.ReplaceAll(namespace, ".", dot) + "/" + typ + "/a"
+						require.Equal(t, http.StatusServiceUnavailable, send(path), path)
+						require.Zero(t, calls.Load(), "protected request must not dispatch to Azure proxy")
+					}
+				}
+			}
+			for _, path := range []string{
+				"/providers/Radius%252eCore%252froleAssignments/a",
+				"/providers/System%252eAuthorization%252fpolicyObjects/a",
+				"/providers/%2552adius%252eCore/role%2541ssignments/a",
+			} {
+				require.Equal(t, http.StatusServiceUnavailable, send(path), path)
+				require.Zero(t, calls.Load())
+			}
+			for _, path := range []string{
+				"/providers/Microsoft.Test/widgets/a",
+				"/providers/Microsoft%2eTest/widgets/a",
+				"/providers/Microsoft%252eTest/widgets/a",
+			} {
+				expected := http.StatusCreated
+				if mode == "Enforce" {
+					expected = http.StatusServiceUnavailable
+				}
+				before := calls.Load()
+				require.Equal(t, expected, send(path), path)
+				if mode == "Enforce" {
+					require.Equal(t, before, calls.Load())
+				} else {
+					require.Equal(t, before+1, calls.Load(), "ordinary encoded control must reach proxy")
+				}
+			}
+			if store != nil {
+				policy, err := store.LoadPolicy(t.Context(), -1)
+				require.NoError(t, err)
+				require.Equal(t, int64(0), policy.Generation())
+			}
 		})
 	}
 }
