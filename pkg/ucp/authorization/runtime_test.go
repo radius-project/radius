@@ -48,6 +48,7 @@ func TestPolicyRuntimeEvaluateAvailabilityChanges(t *testing.T) {
 					} else {
 						return PolicyMaxAge
 					}
+
 				}
 				return 0
 			}}
@@ -63,6 +64,36 @@ func TestPolicyRuntimeEvaluateAvailabilityChanges(t *testing.T) {
 			require.Nil(t, decisions)
 		})
 	}
+}
+
+func TestPolicyRuntimeInvalidAndUnconfigured(t *testing.T) {
+	runtime, err := NewPolicyRuntime(nil, nil)
+	require.ErrorContains(t, err, "policy store is required")
+	require.Nil(t, runtime)
+	decisions, err := runtime.Evaluate(testIdentity(), nil)
+	require.ErrorIs(t, err, ErrAuthorizationUnavailable)
+	require.Nil(t, decisions)
+	ctx, cancel, err := runtime.operationContext(t.Context())
+	require.ErrorIs(t, err, ErrAuthorizationUnavailable)
+	require.Nil(t, ctx)
+	require.Nil(t, cancel)
+}
+
+func TestPolicyRuntimeMutationCancellationAfterReadiness(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
+		t.Fatal("cancelled mutation must not refresh")
+		return nil, nil
+	}), evaluationClock{WithTicker: clock.RealClock{}, since: func(time.Time) time.Duration {
+		// State has already checked liveness when it checks freshness.
+		cancel()
+		return 0
+	}})
+	require.NoError(t, err)
+	cache.value, cache.asOf = testPolicySnapshot(t, 1), time.Now()
+	runtime := &PolicyRuntime{cache: cache, ctx: ctx}
+	require.ErrorIs(t, runtime.Mutate(t.Context(), policyActor(), readerMutation()), ErrAuthorizationUnavailable)
 }
 
 func (d *runtimeDatabase) setGet(get func(context.Context, string) error) {
