@@ -12,6 +12,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -20,10 +21,55 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/stretchr/testify/require"
 )
+
+type failingAuthenticationWriter struct {
+	header http.Header
+	status int
+	body   []byte
+	err    error
+}
+
+func (w *failingAuthenticationWriter) Header() http.Header    { return w.header }
+func (w *failingAuthenticationWriter) WriteHeader(status int) { w.status = status }
+func (w *failingAuthenticationWriter) Write(body []byte) (int, error) {
+	w.body = append(w.body, body...)
+	return 0, w.err
+}
+
+func TestRequestHeaderAuthenticationResponseWriteFailure(t *testing.T) {
+	t.Parallel()
+	authenticator, err := NewRequestHeaderAuthenticator(nil)
+	require.NoError(t, err)
+	var logs []string
+	logger := funcr.NewJSON(func(entry string) { logs = append(logs, entry) }, funcr.Options{})
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.Header.Set("X-Remote-User", "forged")
+	request = request.WithContext(logr.NewContext(request.Context(), logger))
+	writer := &failingAuthenticationWriter{
+		header: http.Header{}, err: errors.New("response connection closed"),
+	}
+	called := false
+	authenticator.Middleware(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	})).ServeHTTP(writer, request)
+	require.False(t, called, "a response write failure must not admit the rejected request")
+	require.Equal(t, http.StatusUnauthorized, writer.status)
+	require.Equal(t, "application/json", writer.header.Get("Content-Type"))
+	var body v1.ErrorResponse
+	require.NoError(t, json.Unmarshal(writer.body, &body))
+	require.Equal(t, v1.CodeInvalidAuthenticationInfo, body.Error.Code)
+	require.NotEmpty(t, logs)
+	require.Contains(t, logs[len(logs)-1], "failed to write authentication error response")
+	require.Contains(t, logs[len(logs)-1], writer.err.Error())
+	_, ok := IdentityFromContext(request.Context())
+	require.False(t, ok)
+}
 
 type proxyPKI struct {
 	ca   *x509.Certificate
