@@ -6,9 +6,13 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli"
@@ -19,6 +23,8 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/spf13/cobra"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NewCommand creates the read-only auth command group.
@@ -232,14 +238,33 @@ func connect(ctx context.Context, workspace workspaces.Workspace) (inspectionCli
 
 func (c *apiClient) whoAmI(ctx context.Context) (api.WhoAmIResult, error) {
 	response, err := c.installation.WhoAmI(ctx, nil)
-	return response.WhoAmIResult, err
+	return response.WhoAmIResult, inspectionError(err)
 }
 
 func (c *apiClient) checkAccess(ctx context.Context, scope string, request api.AccessCheckRequest) (api.CheckAccessResponse, error) {
 	if scope == "/" {
 		response, err := c.installation.CheckAccess(ctx, request, nil)
-		return response.CheckAccessResponse, err
+		return response.CheckAccessResponse, inspectionError(err)
 	}
 	response, err := c.scoped.CheckAccess(ctx, strings.TrimPrefix(scope, "/"), request, nil)
-	return response.CheckAccessResponse, err
+	return response.CheckAccessResponse, inspectionError(err)
+}
+
+func inspectionError(err error) error {
+	var responseError *azcore.ResponseError
+	if !errors.As(err, &responseError) || responseError.RawResponse == nil {
+		return err
+	}
+	body, readErr := runtime.Payload(responseError.RawResponse)
+	if readErr != nil {
+		return err
+	}
+	var status metav1.Status
+	if json.Unmarshal(body, &status) != nil || status.Kind != "Status" || status.Status != metav1.StatusFailure || status.Message == "" {
+		return err
+	}
+	// Kubernetes gateway errors are Status objects, not ARM error envelopes.
+	// Keep their diagnostic instead of letting the CLI render an empty ARM error.
+	status.Code = int32(responseError.StatusCode)
+	return &apierrors.StatusError{ErrStatus: status}
 }
