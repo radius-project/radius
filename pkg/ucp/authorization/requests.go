@@ -6,6 +6,7 @@ package authorization
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -103,6 +104,28 @@ func protectedMutation(method, path string) bool {
 }
 
 func protectedTarget(path string) bool {
+	// Azure proxy routing reparses URL.Path, so one decoded spelling is not
+	// sufficient. Inspect every spelling up to a bounded decoding depth; malformed
+	// or still-escaped input at that boundary cannot safely authorize a mutation.
+	for depth := 0; ; depth++ {
+		if protectedPath(path) {
+			return true
+		}
+		if !strings.Contains(path, "%") {
+			return false
+		}
+		if depth == 8 {
+			return true
+		}
+		decoded, err := url.PathUnescape(path)
+		if err != nil {
+			return true
+		}
+		path = decoded
+	}
+}
+
+func protectedPath(path string) bool {
 	// Match namespace/type pairs anywhere in the path, including extension
 	// resources and proxy paths. Do not rely on successful catalog mapping:
 	// malformed, unknown, and private store targets must not bypass the guard.
