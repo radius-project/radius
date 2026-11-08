@@ -17,9 +17,13 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 	"k8s.io/utils/clock"
 	clocktesting "k8s.io/utils/clock/testing"
 )
@@ -414,7 +418,122 @@ func TestInspectionHTTPValidation(t *testing.T) {
 					require.NotContains(t, response.Body.String(), "assignment")
 					require.Contains(t, wire, "generation")
 				}
+
 			}
 		}
 	})
+}
+
+func TestInspectionInvalidCaller(t *testing.T) {
+	t.Parallel()
+	runtime := &PolicyRuntime{ctx: t.Context(), cache: &PolicyCache{
+		value: testPolicySnapshot(t, 1), asOf: time.Now(), clock: clock.RealClock{},
+	}}
+	checks := []*api.AccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")}}
+	for _, tt := range []struct {
+		name     string
+		identity Identity
+	}{
+		{"missing principal", Identity{}},
+		{"malformed group", Identity{Principal: testIdentity().Principal, Groups: []api.Principal{{}}}},
+		{"wrong group issuer", Identity{Principal: testIdentity().Principal, Groups: []api.Principal{
+			testPrincipal(api.PrincipalTypeGroup, "kubernetes:another", "admins"),
+		}}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			current, err := runtime.WhoAmI(tt.identity)
+			require.Error(t, err)
+			require.Nil(t, current.Principal)
+			require.Nil(t, current.Mode)
+			result, err := runtime.CheckAccess(tt.identity, "/", api.AccessCheckRequest{Checks: checks})
+			require.Error(t, err)
+			require.Nil(t, result.Checks)
+			result, err = runtime.CheckAccess(tt.identity, "/", api.AccessCheckRequest{
+				Checks: checks, Principal: to.Ptr(policyActor().Identity.Groups[0]),
+			})
+			require.Error(t, err)
+			require.Nil(t, result.Checks)
+		})
+	}
+}
+
+func TestInspectionRoutingAndPermissionErrors(t *testing.T) {
+	t.Parallel()
+	runtime := &PolicyRuntime{ctx: t.Context(), cache: &PolicyCache{
+		value: testPolicySnapshot(t, 1), asOf: time.Now(), clock: clock.RealClock{},
+	}}
+	const prefix = "/apis/api.ucp.dev/v1alpha3"
+	for _, tt := range []struct {
+		name, path, body string
+		caller           Identity
+		status           int
+		code             string
+	}{
+		{"outside path base", "/providers/Radius.Core/whoAmI", "", Identity{}, 204, ""},
+		{"unknown operation", prefix + "/providers/Radius.Core/unknown", "", Identity{}, 204, ""},
+		{"group inspection denied", prefix + "/providers/Radius.Core/checkAccess",
+			`{"principal":{"type":"group","issuer":"kubernetes:cluster-a","subject":"admins"},"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`,
+			Identity{Principal: testPrincipal(api.PrincipalTypeUser, "kubernetes:cluster-a", "bob")}, 403, "AuthorizationFailed"},
+		{"other membership unavailable", prefix + "/providers/Radius.Core/checkAccess",
+			`{"principal":{"type":"user","issuer":"kubernetes:cluster-a","subject":"bob"},"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`,
+			policyActor().Identity, 503, "AuthorizationIndeterminate"},
+		{"null check", prefix + "/providers/Radius.Core/checkAccess", `{"checks":[null]}`, policyActor().Identity, 400, "InvalidRequestContent"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, tt.path+"?api-version=2025-08-01-preview", strings.NewReader(tt.body))
+			req = req.WithContext(context.WithValue(req.Context(), identityContextKey{}, tt.caller))
+			response := httptest.NewRecorder()
+			fellThrough := false
+			Inspection(runtime, prefix)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fellThrough = true
+				require.Equal(t, req.URL.Path, r.URL.Path, "routing must preserve the incoming path")
+				w.WriteHeader(http.StatusNoContent)
+			})).ServeHTTP(response, req)
+			require.Equal(t, tt.status, response.Code, response.Body.String())
+			require.Equal(t, tt.status == 204, fellThrough)
+			if tt.code != "" {
+				require.Contains(t, response.Body.String(), tt.code)
+				require.NotContains(t, response.Body.String(), `"checks"`)
+			}
+		})
+	}
+}
+
+type inspectionFailingWriter struct {
+	header http.Header
+	status int
+}
+
+func (w *inspectionFailingWriter) Header() http.Header    { return w.header }
+func (w *inspectionFailingWriter) WriteHeader(status int) { w.status = status }
+func (w *inspectionFailingWriter) Write([]byte) (int, error) {
+	return 0, fmt.Errorf("response disconnected")
+}
+
+func TestInspectionResponseWriteErrors(t *testing.T) {
+	t.Parallel()
+	runtime := &PolicyRuntime{ctx: t.Context(), cache: &PolicyCache{
+		value: testPolicySnapshot(t, 1), asOf: time.Now(), clock: clock.RealClock{},
+	}}
+	for _, verified := range []bool{false, true} {
+		t.Run(fmt.Sprintf("verified=%t", verified), func(t *testing.T) {
+			core, entries := observer.New(zap.ErrorLevel)
+			ctx := logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core)))
+			if verified {
+				ctx = context.WithValue(ctx, identityContextKey{}, policyActor().Identity)
+			}
+			req := httptest.NewRequest(http.MethodGet, "/providers/Radius.Core/whoAmI?api-version=2025-08-01-preview", nil).WithContext(ctx)
+			writer := &inspectionFailingWriter{header: http.Header{}}
+			Inspection(runtime, "")(http.NotFoundHandler()).ServeHTTP(writer, req)
+			message := "Failed to write inspection error"
+			if verified {
+				message = "Failed to write inspection response"
+			}
+			require.Len(t, entries.FilterMessage(message).All(), 1)
+			require.Contains(t, entries.All()[0].ContextMap()["error"], "response disconnected")
+			require.Equal(t, "application/json", writer.Header().Get("Content-Type"))
+			require.Equal(t, 0, entries.FilterMessage("request").Len())
+			require.NotContains(t, entries.All()[0].ContextMap(), "resourceId")
+		})
+	}
 }

@@ -94,6 +94,25 @@ func Test_HandlePanic(t *testing.T) {
 	require.Contains(t, stderr.String(), "test panic")
 }
 
+func TestAuthCommandsRegistered(t *testing.T) {
+	for _, path := range [][]string{{"auth", "whoami"}, {"auth", "status"}, {"auth", "access", "check"}} {
+		t.Run(strings.Join(path, "/"), func(t *testing.T) {
+			command, remaining, err := RootCmd.Find(path)
+			require.NoError(t, err)
+			require.Empty(t, remaining)
+			require.Equal(t, path[len(path)-1], command.Name())
+			require.NotNil(t, command.RunE)
+			require.NotNil(t, command.Flags().Lookup("output"))
+			require.NotNil(t, command.Flags().Lookup("workspace"))
+			if command.Name() == "check" {
+				for _, flag := range []string{"scope", "action", "target", "principal", "issuer"} {
+					require.NotNil(t, command.Flags().Lookup(flag))
+				}
+			}
+		})
+	}
+}
+
 func Test_ConfigureOutput(t *testing.T) {
 	t.Cleanup(func() { output.SetLogWriter(nil) })
 	for _, localFlag := range []bool{false, true} {

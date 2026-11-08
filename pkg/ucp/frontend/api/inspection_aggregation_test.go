@@ -37,6 +37,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	authenticationv1 "k8s.io/api/authentication/v1"
+	authorizationv1 "k8s.io/api/authorization/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,6 +50,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	"sigs.k8s.io/yaml"
 )
 
 func aggregationServingCertificate(t *testing.T, address string) (tls.Certificate, []byte) {
@@ -156,18 +158,20 @@ func TestInspectionKubernetesAggregation(t *testing.T) {
 		},
 	}}, metav1.CreateOptions{})
 	require.NoError(t, err)
-	_, err = admin.RbacV1().ClusterRoles().Create(t.Context(), &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{Name: "radius-inspection"},
-		Rules: []rbacv1.PolicyRule{
-			{APIGroups: []string{"api.ucp.dev"}, Resources: []string{"*"}, Verbs: []string{"get", "create"}},
-			{NonResourceURLs: []string{"/apis/api.ucp.dev", "/apis/api.ucp.dev/*"}, Verbs: []string{"get"}},
-		},
-	}, metav1.CreateOptions{})
+	roleData, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "deploy", "Chart", "templates", "ucp", "inspection-rbac.yaml"))
+	require.NoError(t, err)
+	var inspectionRole rbacv1.ClusterRole
+	require.NoError(t, yaml.UnmarshalStrict(roleData, &inspectionRole))
+	_, err = admin.RbacV1().ClusterRoles().Create(t.Context(), &inspectionRole, metav1.CreateOptions{})
 	require.NoError(t, err)
 	_, err = admin.RbacV1().ClusterRoleBindings().Create(t.Context(), &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{Name: "radius-inspection"},
-		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: "radius-inspection"},
-		Subjects:   []rbacv1.Subject{{Kind: "Group", APIGroup: rbacv1.GroupName, Name: "system:authenticated"}},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: inspectionRole.Name},
+		Subjects: []rbacv1.Subject{
+			{Kind: "User", APIGroup: rbacv1.GroupName, Name: "alice"},
+			{Kind: "User", APIGroup: rbacv1.GroupName, Name: "bob"},
+			{Kind: "ServiceAccount", Name: "inspection", Namespace: "default"},
+		},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 	_, err = admin.CoreV1().ServiceAccounts("default").Create(t.Context(), &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "inspection"}}, metav1.CreateOptions{})
@@ -182,12 +186,48 @@ func TestInspectionKubernetesAggregation(t *testing.T) {
 	require.NoError(t, err)
 	bob, err := environment.ControlPlane.AddUser(envtest.User{Name: "bob", Groups: []string{"developers"}}, adminConfig)
 	require.NoError(t, err)
+	unbound, err := environment.ControlPlane.AddUser(envtest.User{Name: "unbound", Groups: []string{"developers"}}, adminConfig)
+	require.NoError(t, err)
+	unboundClient, err := rest.HTTPClientFor(unbound.Config())
+	require.NoError(t, err)
 	kubeconfig := filepath.Join(directory, "kubeconfig")
 	t.Setenv("KUBECONFIG", kubeconfig)
 	require.EventuallyWithT(t, func(collect *assert.CollectT) {
 		response, err := admin.RESTClient().Get().AbsPath(pathBase).DoRaw(t.Context())
 		require.NoError(collect, err, string(response))
 	}, 30*time.Second, 100*time.Millisecond)
+	for _, tt := range []struct {
+		user, verb, resource, subresource, name string
+		allowed                                 bool
+	}{
+		{"bob", "get", "providers", "whoAmI", "Radius.Core", true},
+		{"bob", "create", "providers", "checkAccess", "Radius.Core", true},
+		{"unbound", "get", "providers", "whoAmI", "Radius.Core", false},
+		{"unbound", "create", "providers", "checkAccess", "Radius.Core", false},
+		{"bob", "create", "providers", "checkAccess", "Other.Provider", false},
+		{"bob", "create", "providers", "roleAssignments", "Radius.Core", false},
+		{"bob", "create", "planes", "local", "radius", false},
+	} {
+		review, err := admin.AuthorizationV1().SubjectAccessReviews().Create(t.Context(), &authorizationv1.SubjectAccessReview{
+			Spec: authorizationv1.SubjectAccessReviewSpec{User: tt.user, Groups: []string{"system:authenticated"},
+				ResourceAttributes: &authorizationv1.ResourceAttributes{Group: "api.ucp.dev", Version: "v1alpha3",
+					Verb: tt.verb, Resource: tt.resource, Subresource: tt.subresource, Name: tt.name}},
+		}, metav1.CreateOptions{})
+		require.NoError(t, err)
+		require.Equal(t, tt.allowed, review.Status.Allowed, "%+v: %s", tt, review.Status.Reason)
+	}
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		operation := "whoAmI"
+		if method == http.MethodPost {
+			operation = "checkAccess"
+		}
+		request, err := http.NewRequestWithContext(t.Context(), method, adminConfig.Host+pathBase+"/providers/Radius.Core/"+operation+"?api-version=2025-08-01-preview", nil)
+		require.NoError(t, err)
+		response, err := unboundClient.Do(request)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, response.StatusCode, "Kubernetes must reject the unbound caller before UCP")
+		require.NoError(t, response.Body.Close())
+	}
 
 	for _, identity := range []struct {
 		name, typ, group string
@@ -215,6 +255,9 @@ func TestInspectionKubernetesAggregation(t *testing.T) {
 				var buffer bytes.Buffer
 				command := auth.NewCommand(&framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: config}, Output: &output.OutputWriter{Writer: &buffer}})
 				command.SilenceUsage, command.SilenceErrors = true, true
+				if len(args) > 1 && args[0] == "access" {
+					args = append(args, "--scope", "/")
+				}
 				command.SetArgs(append(args, "--output", "json"))
 				err := command.ExecuteContext(t.Context())
 				var result map[string]any
@@ -282,6 +325,20 @@ func TestInspectionKubernetesAggregation(t *testing.T) {
 			// replaced by the authenticating proxy, never reach UCP as claims.
 			client, err := rest.HTTPClientFor(identity.config)
 			require.NoError(t, err)
+			for _, path := range []string{
+				"/providers/Other.Provider/checkAccess",
+				"/providers/Radius.Core/roleAssignments",
+				"/planes/radius/local/resourceGroups/forbidden",
+				"/planes/radius/local/resourceGroups/test/providers/Radius.Core/checkAccess",
+			} {
+				request, err := http.NewRequestWithContext(t.Context(), http.MethodPost,
+					identity.config.Host+pathBase+path+"?api-version=2025-08-01-preview", strings.NewReader(`{}`))
+				require.NoError(t, err)
+				response, err := client.Do(request)
+				require.NoError(t, err)
+				require.Equal(t, http.StatusForbidden, response.StatusCode, "narrow role must not authorize %s", path)
+				require.NoError(t, response.Body.Close())
+			}
 			request, err := http.NewRequestWithContext(t.Context(), "GET", strings.TrimSuffix(identity.config.Host, "/")+pathBase+"/providers/Radius.Core/whoAmI?api-version=2025-08-01-preview", nil)
 			require.NoError(t, err)
 			request.Header.Set("X-Remote-User", "mallory")
