@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -332,6 +333,7 @@ func TestPolicyRuntimeEvaluateRequestAvailabilityChanges(t *testing.T) {
 							} else {
 								return PolicyMaxAge
 							}
+
 						}
 						return 0
 					}}
@@ -349,4 +351,93 @@ func TestPolicyRuntimeEvaluateRequestAvailabilityChanges(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestProtectedMutationEncodedTargets(t *testing.T) {
+	t.Parallel()
+	for _, namespace := range []string{"Radius.Core", "rAdIuS.cOrE", "System.Authorization", "sYsTeM.aUtHoRiZaTiOn"} {
+		for _, typ := range []string{"roleAssignments", "roleDefinitions", "authorizationSettings", "accessChanges"} {
+			path := "/planes/azure/local/providers/" + namespace + "/" + typ + "/a"
+			for depth := 0; depth <= 3; depth++ {
+				require.True(t, protectedMutation(http.MethodPut, path), path)
+				require.False(t, protectedMutation(http.MethodGet, path))
+				path = url.PathEscape(path)
+			}
+		}
+	}
+	for _, path := range []string{
+		"/planes/azure/local/providers/Radius%2eCore%2froleAssignments/a",
+		"/planes/azure/local/providers/Radius%252eCore/role%2541ssignments/a",
+		"/planes/azure/local/providers/Radius%25252eCore/roleAssignments/a",
+		"/planes/azure/local/providers/System%252eAuthorization/policyObjects/a",
+		"/providers/Radius.Core",
+	} {
+		require.Equal(t, path != "/providers/Radius.Core", protectedMutation(http.MethodPut, path), path)
+	}
+	for _, path := range []string{
+		"/providers/Microsoft.Test/widgets/a",
+		"/providers/Microsoft%2eTest/widgets/a%20b",
+		"/providers/Microsoft%252eTest/widgets/a",
+		"/providers/Microsoft%25252eTest/widgets/a",
+	} {
+		require.False(t, protectedMutation(http.MethodPut, path), path)
+	}
+	for _, path := range []string{"/providers/Microsoft.Test/widgets/%", "/providers/%zz/widgets/a", "/" + strings.Repeat("%25", 1) + strings.Repeat("25", 9)} {
+		require.True(t, protectedMutation(http.MethodPut, path), path)
+	}
+}
+
+type failingResponseWriter struct {
+	header http.Header
+	status int
+}
+
+func (w *failingResponseWriter) Header() http.Header    { return w.header }
+func (w *failingResponseWriter) WriteHeader(status int) { w.status = status }
+func (w *failingResponseWriter) Write([]byte) (int, error) {
+	return 0, errors.New("response disconnected")
+}
+
+func TestObserveRequestsErrorResponses(t *testing.T) {
+	t.Parallel()
+	var runtime *PolicyRuntime
+	result, err := runtime.EvaluateRequest(testIdentity(), http.MethodGet, appA)
+	require.ErrorIs(t, err, ErrAuthorizationUnavailable)
+	require.Equal(t, RequestEvaluation{Generation: -1}, result)
+	for _, authenticated := range []bool{false, true} {
+		core, logs := observer.New(zap.InfoLevel)
+		request := httptest.NewRequest(http.MethodPut, "/providers/Radius.Core/roleAssignments/a", nil)
+		ctx := logr.NewContext(request.Context(), zapr.NewLogger(zap.New(core)))
+		if authenticated {
+			ctx = context.WithValue(ctx, identityContextKey{}, testIdentity())
+		}
+		writer := &failingResponseWriter{header: http.Header{}}
+		ObserveRequests(nil, "")(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+			t.Fatal("protected request reached handler")
+		})).ServeHTTP(writer, request.WithContext(ctx))
+		expectedStatus, expectedMessage := http.StatusUnauthorized, "Failed to write authentication error response"
+		if authenticated {
+			expectedStatus, expectedMessage = http.StatusServiceUnavailable, "Failed to write authorization error response"
+		}
+		require.Equal(t, expectedStatus, writer.status)
+		require.Len(t, logs.FilterMessage(expectedMessage).All(), 1)
+		require.Contains(t, logs.FilterMessage(expectedMessage).All()[0].ContextMap()["error"], "response disconnected")
+	}
+}
+
+func TestObserveRequestsPathBaseDiscovery(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		runtime, _, stop := requestRuntime(t, api.UserAuthorizationModeDryRun)
+		defer stop()
+		core, logs := observer.New(zap.InfoLevel)
+		request := httptest.NewRequest(http.MethodGet, "/apis/api.ucp.dev/v1alpha3", nil)
+		request = request.WithContext(logr.NewContext(request.Context(), zapr.NewLogger(zap.New(core))))
+		response := httptest.NewRecorder()
+		ObserveRequests(runtime, request.URL.Path)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/apis/api.ucp.dev/v1alpha3", r.URL.Path)
+			w.WriteHeader(http.StatusNoContent)
+		})).ServeHTTP(response, request)
+		require.Equal(t, http.StatusNoContent, response.Code)
+		require.Empty(t, logs.FilterMessage("User authorization request").All())
+	})
 }
