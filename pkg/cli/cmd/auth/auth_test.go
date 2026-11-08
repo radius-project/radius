@@ -21,14 +21,18 @@ import (
 )
 
 type testClient struct {
-	err     error
-	scope   string
-	request api.AccessCheckRequest
-	calls   int
+	err      error
+	identity *api.WhoAmIResult
+	scope    string
+	request  api.AccessCheckRequest
+	calls    int
 }
 
 func (c *testClient) whoAmI(context.Context) (api.WhoAmIResult, error) {
 	c.calls++
+	if c.identity != nil {
+		return *c.identity, c.err
+	}
 	return api.WhoAmIResult{
 		Principal: &api.Principal{Type: to.Ptr(api.PrincipalTypeUser), Issuer: to.Ptr("kubernetes:test"), Subject: to.Ptr("alice")},
 		Issuer:    to.Ptr("kubernetes:test"), Mode: to.Ptr(api.UserAuthorizationModeDryRun),
@@ -171,11 +175,23 @@ type failedWriter struct{}
 func (failedWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
 
 func TestInspectionOutputFailure(t *testing.T) {
-	factory := &framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}, Output: &output.OutputWriter{Writer: failedWriter{}}}
-	cmd, runner := newCommand(factory, "status")
-	runner.connect = func(context.Context, workspaces.Workspace) (inspectionClient, error) { return &testClient{}, nil }
-	cmd.SetArgs([]string{})
-	require.ErrorIs(t, cmd.ExecuteContext(t.Context()), io.ErrClosedPipe)
+	t.Parallel()
+	for _, operation := range []string{"whoami", "status", "check"} {
+		for _, format := range []string{"json", "table"} {
+			t.Run(operation+"/"+format, func(t *testing.T) {
+				t.Parallel()
+				factory := &framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}, Output: &output.OutputWriter{Writer: failedWriter{}}}
+				cmd, runner := newCommand(factory, operation)
+				runner.connect = func(context.Context, workspaces.Workspace) (inspectionClient, error) { return &testClient{}, nil }
+				args := []string{"--output", format}
+				if operation == "check" {
+					args = append(args, "--action", "Radius.Core/applications/read")
+				}
+				cmd.SetArgs(args)
+				require.ErrorIs(t, cmd.ExecuteContext(t.Context()), io.ErrClosedPipe)
+			})
+		}
+	}
 }
 
 func TestInspectionCommandTree(t *testing.T) {

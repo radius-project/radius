@@ -131,6 +131,23 @@ rad auth access check --scope / --principal group:developers --action Radius.Cor
 
 `access check` defaults scope and target to the workspace resource group. Repeat `--action` for a batch; either omit all `--target` flags or supply one per action in the same order. `--principal` takes `user:<subject>`, `group:<subject>`, or `workload:<subject>`; `--issuer` defaults to the current caller's verified issuer. A denied policy check is a successful inspection with `allowed: false`, not a command failure or a workload-enforcement decision. Transport, authentication, authorization, unavailable-policy, and indeterminate-membership errors are command failures with no success-shaped output.
 
+#### Kubernetes access to inspection
+
+The chart creates the unbound `ucp-inspection` ClusterRole for ordinary users of the aggregated API. It grants only `get` on `providers/whoAmI` (used by both `whoami` and `status`) and `create` on `providers/checkAccess`, with resource name `Radius.Core` in API group `api.ucp.dev`. Kubernetes classifies the read-only access-check POST as `create`, like its own access-review APIs; this does not grant policy or workload writes. The chart adds no binding, no `system:authenticated` grant, and no aggregation into Kubernetes' `view` role. A cluster administrator can opt in an existing Kubernetes user explicitly:
+
+```bash
+kubectl --context <cluster-context> create clusterrolebinding radius-inspection-alice \
+  --clusterrole=ucp-inspection --user=alice
+rad auth whoami --output json
+rad auth status --output json
+rad auth access check --scope / --action Radius.Core/applications/read \
+  --target /planes/radius/local/resourceGroups/team-a
+```
+
+Replace `<cluster-context>` with the intended cluster; use the matching Radius workspace for the `rad` commands. `--scope /` selects the installation endpoint covered by this role, while `--target` can still select a concrete resource group or descendant. The default workspace-scoped POST is **not** covered: Kubernetes interprets that URL as `create` on `planes/local` named `radius`, which cannot be restricted to the inspection suffix and would grant unrelated plane writes. Such a caller receives Kubernetes HTTP 403 before reaching UCP. Other provider names/subresources and all plane mutations remain forbidden by `ucp-inspection`; an unbound ordinary user receives Kubernetes 403 even for inspection.
+
+This Kubernetes role only permits transport to UCP. It does not configure trusted caller authentication, initialize user policy, assign Radius grants, or bypass the Radius permission required to inspect another principal. Those prerequisites remain separate; successful transport can still return the documented UCP 401/403/503 errors.
+
 ## Invariants And Constraints
 
 - UCP should stay focused on routing, identity of targets, and translation.
