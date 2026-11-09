@@ -818,6 +818,7 @@ func TestProviderTransitionRechecksMutableStateAfterEvidence(t *testing.T) {
 						require.NoError(t, err)
 					}
 				}
+
 				require.Error(t, s.step(t.Context(), plan.Namespace, plan.ID, targets))
 				_, state, err := s.read(t.Context(), plan.Namespace)
 				require.NoError(t, err)
@@ -825,4 +826,56 @@ func TestProviderTransitionRechecksMutableStateAfterEvidence(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestProviderTransitionCompletedJournalAdapter(t *testing.T) {
+	t.Parallel()
+	s, plan, targets, _ := providerFakeFixture(t, "radius", "external", "enforce")
+	require.NoError(t, s.begin(t.Context(), plan, targets, true))
+	for range 4 {
+		providerStepConverged(t, s, plan, targets)
+	}
+	completed, _, err := s.read(t.Context(), plan.Namespace)
+	require.NoError(t, err)
+	require.NoError(t, validateCompletedProviderTransitionJournal(completed, plan.Namespace, plan.Release))
+	tests := []struct {
+		name   string
+		change func(*corev1.ConfigMap)
+	}{
+		{"wrong name", func(cm *corev1.ConfigMap) { cm.Name = "unrelated" }},
+		{"wrong namespace", func(cm *corev1.ConfigMap) { cm.Namespace = "other" }},
+		{"missing uid", func(cm *corev1.ConfigMap) { cm.UID = "" }},
+		{"missing version", func(cm *corev1.ConfigMap) { cm.ResourceVersion = "" }},
+		{"wrong owner", func(cm *corev1.ConfigMap) { cm.Labels[providerTransitionMarker] = "other" }},
+		{"deleting", func(cm *corev1.ConfigMap) { cm.DeletionTimestamp = ptr.To(metav1.Now()) }},
+		{"phase alone", func(cm *corev1.ConfigMap) { cm.Data[providerTransitionKey] = `{"version":1,"phase":"complete"}` }},
+		{"unknown schema", func(cm *corev1.ConfigMap) {
+			cm.Data[providerTransitionKey] = strings.ReplaceAll(cm.Data[providerTransitionKey], `"version":1`, `"version":2`)
+		}},
+		{"duplicate phase", func(cm *corev1.ConfigMap) {
+			cm.Data[providerTransitionKey] = strings.ReplaceAll(cm.Data[providerTransitionKey], `"phase":"complete"`, `"phase":"stopping","phase":"complete"`)
+		}},
+		{"invalid workload", func(cm *corev1.ConfigMap) {
+			cm.Data[providerTransitionKey] = strings.ReplaceAll(cm.Data[providerTransitionKey], `"name":"ucp"`, `"name":"unrelated"`)
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cm := completed.DeepCopy()
+			tt.change(cm)
+			before := cm.DeepCopy()
+			require.Error(t, validateCompletedProviderTransitionJournal(cm, plan.Namespace, plan.Release))
+			require.Equal(t, before, cm, "the validator must be read-only")
+		})
+	}
+	for _, phase := range []providerTransitionPhase{providerStopping, providerStaging, providerStarting, providerVerifying} {
+		t.Run(string(phase), func(t *testing.T) {
+			cm := completed.DeepCopy()
+			cm.Data[providerTransitionKey] = strings.ReplaceAll(cm.Data[providerTransitionKey], `"phase":"complete"`, `"phase":"`+string(phase)+`"`)
+			require.ErrorContains(t, validateCompletedProviderTransitionJournal(cm, plan.Namespace, plan.Release), "unfinished")
+		})
+	}
+	require.Error(t, validateCompletedProviderTransitionJournal(nil, plan.Namespace, plan.Release))
+	require.Error(t, validateCompletedProviderTransitionJournal(completed, "other", plan.Release))
+	require.Error(t, validateCompletedProviderTransitionJournal(completed, plan.Namespace, "other"))
 }

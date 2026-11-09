@@ -310,36 +310,61 @@ func checkProviderTransitionJSON(raw string) error {
 }
 
 func (s *providerTransitionStore) read(ctx context.Context, namespace string) (*corev1.ConfigMap, providerTransitionState, error) {
-	var state providerTransitionState
 	cm, err := s.kube.CoreV1().ConfigMaps(namespace).Get(ctx, providerTransitionJournal, metav1.GetOptions{})
+	if err != nil {
+		return nil, providerTransitionState{}, err
+	}
+	state, err := decodeProviderTransitionJournal(cm, namespace, radiusReleaseName)
 	if err != nil {
 		return nil, state, err
 	}
+	return cm, state, nil
+}
+
+func decodeProviderTransitionJournal(cm *corev1.ConfigMap, namespace, release string) (providerTransitionState, error) {
+	var state providerTransitionState
+	if cm == nil || cm.Name != providerTransitionJournal || cm.Namespace != namespace {
+		return state, errors.New("provider transition journal identity changed")
+	}
 	raw := cm.Data[providerTransitionKey]
 	if cm.UID == "" || cm.ResourceVersion == "" || cm.DeletionTimestamp != nil ||
-		cm.Labels[providerTransitionMarker] != radiusReleaseName || len(cm.OwnerReferences) != 0 ||
+		cm.Labels[providerTransitionMarker] != release || len(cm.OwnerReferences) != 0 ||
 		cm.Annotations["meta.helm.sh/release-name"] != "" || len(cm.Data) != 1 ||
 		len(cm.BinaryData) != 0 || len(raw) > 64*1024 {
-		return nil, state, errors.New("invalid provider transition journal ownership or content")
+		return state, errors.New("invalid provider transition journal ownership or content")
 	}
 	if err := checkProviderTransitionJSON(raw); err != nil {
-		return nil, state, err
+		return state, err
 	}
 	decoder := json.NewDecoder(bytes.NewBufferString(raw))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&state); err != nil {
-		return nil, state, fmt.Errorf("invalid provider transition journal: %w", err)
+		return state, fmt.Errorf("invalid provider transition journal: %w", err)
 	}
 	if err := decoder.Decode(new(any)); err != io.EOF {
-		return nil, state, errors.New("trailing provider transition journal content")
+		return state, errors.New("trailing provider transition journal content")
 	}
 	if err := state.validate(); err != nil {
-		return nil, state, err
+		return state, err
 	}
-	if state.Plan.Namespace != namespace {
-		return nil, state, errors.New("provider transition namespace changed")
+	if state.Plan.Namespace != namespace || state.Plan.Release != release {
+		return state, errors.New("provider transition namespace or release changed")
 	}
-	return cm, state, nil
+	return state, nil
+}
+
+// validateCompletedProviderTransitionJournal validates the exact object observed
+// by the shared operation guard, not a second GET that could race its snapshot.
+// The guard must hold the operation lease and recheck this object's UID/version.
+func validateCompletedProviderTransitionJournal(cm *corev1.ConfigMap, namespace, release string) error {
+	state, err := decodeProviderTransitionJournal(cm, namespace, release)
+	if err != nil {
+		return err
+	}
+	if state.Phase != providerComplete {
+		return errors.New("provider transition is unfinished; resume it before changing the CA")
+	}
+	return nil
 }
 
 func (s *providerTransitionStore) advance(ctx context.Context, lease *coordinationv1.Lease, cm *corev1.ConfigMap, state providerTransitionState, next providerTransitionPhase) error {
