@@ -247,7 +247,7 @@ func (s *Service) Run(ctx context.Context) error {
 		}()
 		go func() {
 			logger.Info(fmt.Sprintf("listening for internal traffic on: '%s'...", internal.Addr))
-			err := mtls.ListenAndServe(ctx, internal, s.options.Config.Authorization, nil)
+			err := mtls.ListenAndServe(ctx, internal, s.options.Config.Authorization, mtls.Receiver{Name: "ucp"})
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				internalErr <- fmt.Errorf("internal endpoint failed: %w", err)
 				_ = service.Shutdown(ctx)
