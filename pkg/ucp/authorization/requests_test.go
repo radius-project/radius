@@ -385,6 +385,30 @@ func TestProtectedMutationEncodedTargets(t *testing.T) {
 	require.True(t, protectedMutation(http.MethodPut, "/%"+strings.Repeat("25", 10)))
 }
 
+func TestProtectedMutationFixedPoint(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		path      string
+		protected bool
+	}{
+		{"/providers/Radius.Core/roleAssignments/a", true},
+		{"/providers/rAdIuS.cOrE/roleDefinitions/a", true},
+		{"/providers/Radius.Core/authorizationSettings/default", true},
+		{"/providers/Radius.Core/accessChanges/a", true},
+		{"/providers/System.Authorization/policies/a", true},
+		{"/providers/Microsoft.Test/widgets/a", false},
+	} {
+		t.Run(tt.path, func(t *testing.T) {
+			path := "/planes/azure/local" + tt.path
+			target, err := url.Parse(path)
+			require.NoError(t, err)
+			require.Equal(t, path, target.Path, "the attacker can choose a parser fixed point")
+			require.Equal(t, tt.protected, protectedMutation(http.MethodPut, path),
+				"a fixed point must not bypass the protected namespace check")
+		})
+	}
+}
+
 func TestProtectedMutationURLReparsing(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
