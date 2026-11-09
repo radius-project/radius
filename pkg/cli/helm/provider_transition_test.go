@@ -43,6 +43,7 @@ type providerChecksStub struct {
 	snapshot     providerAggregationSnapshot
 	preflightErr error
 	verifyErr    error
+	verifyHook   func()
 	verified     int
 }
 
@@ -64,6 +65,9 @@ func (c *providerChecksStub) preflight(_ context.Context, plan providerTransitio
 
 func (c *providerChecksStub) verify(context.Context, providerTransitionPlan) error {
 	c.verified++
+	if c.verifyHook != nil {
+		c.verifyHook()
+	}
 	return c.verifyErr
 }
 
@@ -492,6 +496,21 @@ func TestProviderTransitionJournalRejectsCorruption(t *testing.T) {
 		{"unknown field", func(cm *corev1.ConfigMap) {
 			cm.Data[providerTransitionKey] = strings.Replace(cm.Data[providerTransitionKey], `"version":`, `"unknown":true,"version":`, 1)
 		}},
+		{"duplicate field", func(cm *corev1.ConfigMap) {
+			cm.Data[providerTransitionKey] = strings.Replace(cm.Data[providerTransitionKey], `"version":`, `"version":1,"version":`, 1)
+		}},
+		{"escaped duplicate", func(cm *corev1.ConfigMap) {
+			cm.Data[providerTransitionKey] = strings.Replace(cm.Data[providerTransitionKey], `"phase":`, `"\u0070hase":"stopping","phase":`, 1)
+		}},
+		{"nested duplicate", func(cm *corev1.ConfigMap) {
+			cm.Data[providerTransitionKey] = strings.Replace(cm.Data[providerTransitionKey], `"mode":`, `"mode":"enforce","mode":`, 1)
+		}},
+		{"null optional array", func(cm *corev1.ConfigMap) {
+			cm.Data[providerTransitionKey] = strings.Replace(cm.Data[providerTransitionKey], `"workloads":`, `"configurations":null,"workloads":`, 1)
+		}},
+		{"null optional scalar", func(cm *corev1.ConfigMap) {
+			cm.Data[providerTransitionKey] = strings.Replace(cm.Data[providerTransitionKey], `"replicas":`, `"previousMarker":null,"replicas":`, 1)
+		}},
 		{"off", func(cm *corev1.ConfigMap) {
 			cm.Data[providerTransitionKey] = strings.ReplaceAll(cm.Data[providerTransitionKey], `"enforce"`, `"off"`)
 		}},
@@ -722,4 +741,88 @@ func TestProviderTransitionConfigurationReferences(t *testing.T) {
 		}},
 	}
 	require.Equal(t, []string{"init", "key", "projected", "volume"}, providerConfigurationNames(spec))
+}
+
+func TestProviderTransitionRechecksPopulationAfterEvidence(t *testing.T) {
+	t.Parallel()
+	for _, phase := range []providerTransitionPhase{providerVerifying, providerComplete} {
+		t.Run(string(phase), func(t *testing.T) {
+			s, plan, targets, kube := providerFakeFixture(t, "radius", "external", "enforce")
+			require.NoError(t, s.begin(t.Context(), plan, targets, true))
+			for {
+				_, state, err := s.read(t.Context(), plan.Namespace)
+				require.NoError(t, err)
+				if state.Phase == phase {
+					break
+				}
+				providerStepConverged(t, s, plan, targets)
+			}
+			providerConverge(t, s, plan)
+			s.checks.(*providerChecksStub).verifyHook = func() {
+				_, err := kube.CoreV1().Pods(plan.Namespace).Create(t.Context(), &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{Name: "unexpected-during-evidence", Labels: map[string]string{"app": "ucp"}},
+				}, metav1.CreateOptions{})
+				require.NoError(t, err)
+			}
+			require.ErrorContains(t, s.step(t.Context(), plan.Namespace, plan.ID, targets), "old or unowned provider pod")
+			_, state, err := s.read(t.Context(), plan.Namespace)
+			require.NoError(t, err)
+			require.Equal(t, phase, state.Phase)
+		})
+	}
+}
+
+func TestProviderTransitionRechecksMutableStateAfterEvidence(t *testing.T) {
+	t.Parallel()
+	for _, phase := range []providerTransitionPhase{providerVerifying, providerComplete} {
+		for _, change := range []string{"configuration", "readiness", "autoscaler"} {
+			t.Run(string(phase)+"/"+change, func(t *testing.T) {
+				s, plan, targets, kube := providerFakeFixture(t, "radius", "external", "enforce")
+				cm, err := kube.CoreV1().ConfigMaps(plan.Namespace).Create(t.Context(), &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: "pinned"},
+					Data:       map[string]string{"config": "original"},
+				}, metav1.CreateOptions{})
+				require.NoError(t, err)
+				pin, err := s.configuration(t.Context(), plan.Namespace, cm.Name)
+				require.NoError(t, err)
+				plan.Configurations = []providerTransitionConfig{pin}
+				require.NoError(t, s.begin(t.Context(), plan, targets, true))
+				for {
+					_, state, err := s.read(t.Context(), plan.Namespace)
+					require.NoError(t, err)
+					if state.Phase == phase {
+						break
+					}
+					providerStepConverged(t, s, plan, targets)
+				}
+				providerConverge(t, s, plan)
+				s.checks.(*providerChecksStub).verifyHook = func() {
+					switch change {
+					case "configuration":
+						cm.Data["config"] = "changed"
+						_, err := kube.CoreV1().ConfigMaps(plan.Namespace).Update(t.Context(), cm, metav1.UpdateOptions{})
+						require.NoError(t, err)
+					case "readiness":
+						d, err := kube.AppsV1().Deployments(plan.Namespace).Get(t.Context(), plan.Workloads[1].Name, metav1.GetOptions{})
+						require.NoError(t, err)
+						d.Status.ReadyReplicas = 0
+						_, err = kube.AppsV1().Deployments(plan.Namespace).UpdateStatus(t.Context(), d, metav1.UpdateOptions{})
+						require.NoError(t, err)
+					case "autoscaler":
+						_, err := kube.AutoscalingV2().HorizontalPodAutoscalers(plan.Namespace).Create(t.Context(), &autoscalingv2.HorizontalPodAutoscaler{
+							ObjectMeta: metav1.ObjectMeta{Name: "new-hpa"},
+							Spec: autoscalingv2.HorizontalPodAutoscalerSpec{ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
+								APIVersion: "apps/v1", Kind: "Deployment", Name: "ucp",
+							}},
+						}, metav1.CreateOptions{})
+						require.NoError(t, err)
+					}
+				}
+				require.Error(t, s.step(t.Context(), plan.Namespace, plan.ID, targets))
+				_, state, err := s.read(t.Context(), plan.Namespace)
+				require.NoError(t, err)
+				require.Equal(t, phase, state.Phase)
+			})
+		}
+	}
 }

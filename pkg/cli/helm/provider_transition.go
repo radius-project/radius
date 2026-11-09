@@ -291,6 +291,24 @@ func (s *providerTransitionStore) checkAggregation(ctx context.Context, plan pro
 	return nil
 }
 
+// encoding/json's struct decoder accepts duplicate keys and null scalar fields.
+// Reject both before decoding a journal that authorizes mutations.
+func checkProviderTransitionJSON(raw string) error {
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.UseNumber()
+	first, err := decoder.Token()
+	if err != nil || first != json.Delim('{') {
+		return errors.New("provider transition journal must contain one object")
+	}
+	if err := checkRotationJSON(decoder, first, 0); err != nil {
+		return fmt.Errorf("invalid provider transition journal JSON: %w", err)
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		return errors.New("trailing provider transition journal content")
+	}
+	return nil
+}
+
 func (s *providerTransitionStore) read(ctx context.Context, namespace string) (*corev1.ConfigMap, providerTransitionState, error) {
 	var state providerTransitionState
 	cm, err := s.kube.CoreV1().ConfigMaps(namespace).Get(ctx, providerTransitionJournal, metav1.GetOptions{})
@@ -303,6 +321,9 @@ func (s *providerTransitionStore) read(ctx context.Context, namespace string) (*
 		cm.Annotations["meta.helm.sh/release-name"] != "" || len(cm.Data) != 1 ||
 		len(cm.BinaryData) != 0 || len(raw) > 64*1024 {
 		return nil, state, errors.New("invalid provider transition journal ownership or content")
+	}
+	if err := checkProviderTransitionJSON(raw); err != nil {
+		return nil, state, err
 	}
 	decoder := json.NewDecoder(bytes.NewBufferString(raw))
 	decoder.DisallowUnknownFields()

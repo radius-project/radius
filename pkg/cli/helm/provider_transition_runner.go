@@ -447,6 +447,24 @@ func (s *providerTransitionStore) checkTargetPopulation(ctx context.Context, sta
 	return nil
 }
 
+func (s *providerTransitionStore) checkReady(ctx context.Context, state providerTransitionState) error {
+	if err := s.checkTargetPopulation(ctx, state); err != nil {
+		return err
+	}
+	for _, w := range state.Plan.Workloads {
+		d, _, err := s.deployment(ctx, state.Plan, w)
+		if err != nil {
+			return err
+		}
+		if d.Status.ObservedGeneration < d.Generation || d.Status.Replicas != w.Replicas ||
+			d.Status.UpdatedReplicas != w.Replicas || d.Status.AvailableReplicas != w.Replicas ||
+			d.Status.ReadyReplicas != w.Replicas {
+			return errProviderTransitionWaiting
+		}
+	}
+	return nil
+}
+
 func (s *providerTransitionStore) updateWorkload(ctx context.Context, lease *coordinationv1.Lease, cm *corev1.ConfigMap, state providerTransitionState, w providerTransitionWorkload, targets map[string]appsv1.DeploymentSpec) error {
 	d, _, err := s.deployment(ctx, state.Plan, w)
 	if err != nil {
@@ -556,19 +574,8 @@ func (s *providerTransitionStore) step(ctx context.Context, namespace, transacti
 			}[state.Phase]
 			return s.advance(ctx, lease, cm, state, next)
 		case providerVerifying, providerComplete:
-			if err := s.checkTargetPopulation(ctx, state); err != nil {
+			if err := s.checkReady(ctx, state); err != nil {
 				return err
-			}
-			for _, w := range state.Plan.Workloads {
-				d, _, err := s.deployment(ctx, state.Plan, w)
-				if err != nil {
-					return err
-				}
-				if d.Status.ObservedGeneration < d.Generation || d.Status.Replicas != w.Replicas ||
-					d.Status.UpdatedReplicas != w.Replicas || d.Status.AvailableReplicas != w.Replicas ||
-					d.Status.ReadyReplicas != w.Replicas {
-					return errProviderTransitionWaiting
-				}
 			}
 			if err := s.checks.verify(ctx, state.Plan); err != nil {
 				return err
@@ -576,7 +583,19 @@ func (s *providerTransitionStore) step(ctx context.Context, namespace, transacti
 			if err := s.inspect(ctx, state); err != nil {
 				return err
 			}
+			if err := s.checkReady(ctx, state); err != nil {
+				return err
+			}
+			if err := s.checkConfigurations(ctx, state.Plan); err != nil {
+				return err
+			}
+			if err := s.checkAutoscalers(ctx, state.Plan); err != nil {
+				return err
+			}
 			if err := s.checkAggregation(ctx, state.Plan); err != nil {
+				return err
+			}
+			if err := s.checkLock(ctx, lease); err != nil {
 				return err
 			}
 			if state.Phase == providerComplete {
