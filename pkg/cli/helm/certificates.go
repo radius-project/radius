@@ -445,10 +445,17 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 
 func issuerReference(settings map[string]any) (certificateIssuerReference, error) {
 	raw, ok := settings["issuerRef"].(map[string]any)
-	if !ok || raw["group"] != "cert-manager.io" {
+	if !ok {
 		return certificateIssuerReference{}, fmt.Errorf("issuerRef requires group cert-manager.io and an existing Issuer or ClusterIssuer name")
 	}
+	if group, specified := raw["group"]; specified && group != "cert-manager.io" {
+		return certificateIssuerReference{}, fmt.Errorf("issuerRef requires group cert-manager.io")
+	}
 	kind, kindOK := raw["kind"].(string)
+	// Direct Helm releases may store only name, inheriting these fixed chart defaults.
+	if _, specified := raw["kind"]; !specified {
+		kind, kindOK = "Issuer", true
+	}
 	name, nameOK := raw["name"].(string)
 	if !kindOK || !nameOK {
 		return certificateIssuerReference{}, fmt.Errorf("issuerRef requires string kind and name")
@@ -545,6 +552,15 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 		}
 		if !reflect.DeepEqual(copyValues(baseline.Config), copyValues(options.RadiusReleaseValues)) {
 			return fmt.Errorf("stored Radius settings changed since preflight; retry to validate the current issuer, trust and policy scope")
+		}
+		if baseline.Chart == nil {
+			return fmt.Errorf("stored Radius chart is missing; recover the installed issuer settings before upgrading")
+		}
+		previous := valuesutil.CoalesceTables(copyValues(baseline.Config), copyValues(baseline.Chart.Values))
+		oldIssuer, oldErr := issuerReference(certificateValues(previous))
+		newIssuer, newErr := issuerReference(certificateValues(current))
+		if oldErr != nil || newErr != nil || certificateMode(previous) != "issuerRef" || oldIssuer != newIssuer {
+			return fmt.Errorf("the installed chart selects a different certificate issuer; changing issuers requires coordinated CA migration")
 		}
 		configuration.Releases, err = releaseHistoryStorage(history)
 		if err != nil {
