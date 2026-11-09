@@ -18,28 +18,35 @@ Flux and Argo CD users already have tools such as SOPS, External Secrets Operato
 
 ## Decision
 
-Add optional Secret references alongside existing file-based parameters. Resolve them in the Radius deployment controller when deploying, not while generating manifests.
+Declare Secret references in `.bicepparam` using Bicep's `externalInput()` function. Resolve them in the Radius deployment controller when deploying, not while generating manifests.
 
 ### User workflow
 
 1. Provision a Kubernetes Secret using an existing secret-management tool.
-2. Reference its name and key in `radius-gitops-config.yaml`:
+2. Keep `radius-gitops-config.yaml` selecting the template, parameter file, and destination:
 
-```yaml
-config:
-  - name: app.bicep
-    params: app.bicepparam
-    namespace: my-app
-    parameterReferences:
-      databasePassword:
-        secretKeyRef:
-          name: database-credentials
-          key: password
-```
+   ```yaml
+   config:
+     - name: app.bicep
+       params: app.bicepparam
+       namespace: my-app
+   ```
 
-Keep ordinary values in `.bicepparam` and omit the referenced secret. When combining a parameter file with references, use Bicep's [`using none`](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-using#the-using-none-statement) declaration; Radius validates the combined inputs.
+3. Keep ordinary values and Secret references together in `app.bicepparam`:
 
-The template still declares `databasePassword` as a secure string. Users edit their source configuration, not the generated DeploymentTemplate.
+   ```bicep
+   using './app.bicep'
+
+   param applicationName = 'orders'
+   param databasePassword = externalInput('radius.secretKeyRef', {
+     name: 'database-credentials'
+     key: 'password'
+   })
+   ```
+
+[`externalInput()`](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-functions-parameters-file#externalinput) describes an input supplied by an external tool after compilation. `radius.secretKeyRef` is the proposed Radius input kind.
+
+The template still declares `databasePassword` as a secure string. The linked parameter file retains Bicep completion, hover information, and validation of known inputs. Radius checks the resolved credential before submission.
 
 ### Expected behavior
 
@@ -47,6 +54,7 @@ The template still declares `databasePassword` as a secure string. Users edit th
 - Generated manifests and deployment objects retain references, not resolved values. Secret values must also stay out of logs, events, and diagnostics.
 - Secret updates trigger reconciliation without a Git change.
 - Missing, invalid, or inaccessible inputs fail visibly before a new deployment. Radius does not fall back to another value.
+- The initial version accepts direct Secret bindings, not expressions that combine or transform them.
 - Deleting the application does not delete externally managed Secrets.
 
 Flux and Argo CD use the same Radius resolution path. Neither integration requires installing the other.
@@ -55,7 +63,7 @@ Flux and Argo CD use the same Radius resolution path. Neither integration requir
 
 Existing `params` configurations continue to work unchanged. Adoption is optional and per parameter; there is no required migration.
 
-Users adopting references remove the corresponding inline value and template default. Previously exposed credentials should be rotated. Editing the configuration does not remove historical copies.
+Users adopting references replace the corresponding literal assignment with `externalInput()` and remove any template default. This requires Bicep 0.37.4 or later; the repository pins 0.46.1. Previously exposed credentials should be rotated. Editing the configuration does not remove historical copies.
 
 ### Review decision
 
