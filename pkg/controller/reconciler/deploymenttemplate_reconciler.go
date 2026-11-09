@@ -26,6 +26,7 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/record"
@@ -48,6 +49,9 @@ import (
 )
 
 var errOutputTrackerTerminating = errors.New("deployment output tracker is terminating")
+
+// A completed PUT must not bless outputs which a concurrent cleanup may have deleted.
+const outputRedeploymentRequired = "output-redeployment-required"
 
 // DeploymentTemplateReconciler reconciles a DeploymentTemplate object.
 type DeploymentTemplateReconciler struct {
@@ -214,7 +218,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			newOutputResources[resource] = true
 		}
 
-		terminatingOutput := false
+		terminatingOutput := deploymentTemplate.Status.StatusHash == outputRedeploymentRequired
 		replacingTracker := false
 		for _, outputResourceId := range outputResources {
 			resourceName, err := generateDeploymentResourceName(outputResourceId)
@@ -249,6 +253,15 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			}
 			if err := r.recordOutputIdentity(ctx, deploymentTemplate, outputResourceId, false); err != nil {
 				if errors.Is(err, errOutputTrackerTerminating) {
+					dependency, err := isApplicationOrEnvironment(outputResourceId)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					if !dependency {
+						if err := r.requireOutputRedeployment(ctx, deploymentTemplate); err != nil {
+							return ctrl.Result{}, err
+						}
+					}
 					// Retain every output before discarding the completed deployment result.
 					if err := r.recordOutputIdentity(ctx, deploymentTemplate, outputResourceId, true); err != nil {
 						return ctrl.Result{}, err
@@ -262,6 +275,9 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 						continue
 					}
 					terminatingOutput = true
+					if err := r.requireOutputRedeployment(ctx, deploymentTemplate); err != nil {
+						return ctrl.Result{}, err
+					}
 					continue
 				}
 				return ctrl.Result{}, err
@@ -388,9 +404,11 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 			if dependent != "" && child.Status.Operation == nil && (deploymentTemplate.Generation != deploymentTemplate.Status.ObservedGeneration || retryFailed) {
 				continue
 			}
-			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
-			if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
-				return ctrl.Result{}, err
+			if !retryFailed && deploymentTemplate.Status.Phrase != radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup {
+				deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
+				if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
+					return ctrl.Result{}, err
+				}
 			}
 			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
@@ -466,16 +484,20 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 	//
 	// We don't want to do this if we're in the middle of an operation, because we haven't
 	// fully processed any status changes until the async operation completes.
-	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
-	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
-	err := r.Client.Status().Update(ctx, deploymentTemplate)
-	if err != nil {
-		return ctrl.Result{}, err
+	if deploymentTemplate.Status.ObservedGeneration != deploymentTemplate.Generation ||
+		(deploymentTemplate.Status.Phrase != radappiov1alpha3.DeploymentTemplatePhraseDeleting && deploymentTemplate.Status.Phrase != radappiov1alpha3.DeploymentTemplatePhraseFailed) {
+		deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
+		if deploymentTemplate.Status.Phrase != radappiov1alpha3.DeploymentTemplatePhraseFailed {
+			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
+		}
+		if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	// List all DeploymentResource objects in the same namespace
 	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
-	err = r.APIReader.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace))
+	err := r.APIReader.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace))
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -485,6 +507,33 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 	for _, resource := range deploymentResourceList.Items {
 		if isOwnedBy(resource, deploymentTemplate) {
 			ownedResources = append(ownedResources, resource)
+		}
+	}
+
+	namespaceTerminating := false
+	if len(deploymentTemplate.Status.OutputResources) > 0 {
+		namespace := &corev1.Namespace{}
+		if err := r.APIReader.Get(ctx, client.ObjectKey{Name: deploymentTemplate.Namespace}, namespace); err != nil {
+			return ctrl.Result{}, err
+		}
+		namespaceTerminating = namespace.DeletionTimestamp != nil
+	}
+	if namespaceTerminating {
+		for i, outputID := range deploymentTemplate.Status.OutputResources {
+			dependency, err := isApplicationOrEnvironment(outputID)
+			if err != nil {
+				return r.inventoryDeleteFailed(ctx, deploymentTemplate, err)
+			}
+			if dependency || slices.ContainsFunc(ownedResources, func(child radappiov1alpha3.DeploymentResource) bool { return child.Spec.Id == outputID }) {
+				continue
+			}
+			if i != 0 {
+				deploymentTemplate.Status.OutputResources[0], deploymentTemplate.Status.OutputResources[i] = outputID, deploymentTemplate.Status.OutputResources[0]
+				if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
+					return ctrl.Result{}, err
+				}
+			}
+			return r.deleteUntrackedOutput(ctx, deploymentTemplate)
 		}
 	}
 
@@ -504,14 +553,8 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 		return ctrl.Result{}, fmt.Errorf("Requeuing to wait for owned resources to be deleted, %d remaining", len(ownedResources))
 	}
 
-	if len(deploymentTemplate.Status.OutputResources) > 0 {
-		namespace := &corev1.Namespace{}
-		if err := r.APIReader.Get(ctx, client.ObjectKey{Name: deploymentTemplate.Namespace}, namespace); err != nil {
-			return ctrl.Result{}, err
-		}
-		if namespace.DeletionTimestamp != nil {
-			return r.deleteUntrackedOutput(ctx, deploymentTemplate)
-		}
+	if namespaceTerminating && len(deploymentTemplate.Status.OutputResources) > 0 {
+		return r.deleteUntrackedOutput(ctx, deploymentTemplate)
 	}
 
 	logger.Info("Resource is deleted.")
@@ -675,6 +718,14 @@ func (r *DeploymentTemplateReconciler) recordOutputIdentity(ctx context.Context,
 	return nil
 }
 
+func (r *DeploymentTemplateReconciler) requireOutputRedeployment(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) error {
+	if owner.Status.StatusHash == outputRedeploymentRequired {
+		return nil
+	}
+	owner.Status.StatusHash = outputRedeploymentRequired
+	return r.Client.Status().Update(ctx, owner)
+}
+
 func (r *DeploymentTemplateReconciler) replaceDependencyBlockedTracker(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, outputID string) (bool, error) {
 	children := &radappiov1alpha3.DeploymentResourceList{}
 	if err := r.APIReader.List(ctx, children, client.InNamespace(owner.Namespace)); err != nil {
@@ -803,6 +854,7 @@ func (r *DeploymentTemplateReconciler) deleteUntrackedOutput(ctx context.Context
 		return r.inventoryDeleteFailed(ctx, owner, err)
 	}
 	owner.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
+	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
 	if err := r.Client.Status().Update(ctx, owner); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -854,12 +906,9 @@ func (r *DeploymentTemplateReconciler) inventoryDeleteFailed(ctx context.Context
 }
 
 func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1alpha3.DeploymentTemplate) bool {
-	for _, ownerRef := range resource.OwnerReferences {
-		if ownerRef.Kind == "DeploymentTemplate" && ownerRef.Name == owner.Name && ownerRef.UID == owner.UID {
-			return true
-		}
-	}
-	return false
+	ref := metav1.GetControllerOf(&resource)
+	return ref != nil && ref.APIVersion == radappiov1alpha3.GroupVersion.String() &&
+		ref.Kind == deploymentTemplateKind && ref.Name == owner.Name && ref.UID == owner.UID
 }
 
 // hasResidualDeploymentResources reports whether any DeploymentResource owned
@@ -917,6 +966,9 @@ func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
 // updateFailedStatus updates the deployment template status to failed state and clears the operation.
 // This helper reduces duplication when handling operation failures.
 func (r *DeploymentTemplateReconciler) updateFailedStatus(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) error {
+	if deploymentTemplate.Status.Operation == nil && deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseFailed {
+		return nil
+	}
 	deploymentTemplate.Status.Operation = nil
 	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
 	return r.Client.Status().Update(ctx, deploymentTemplate)

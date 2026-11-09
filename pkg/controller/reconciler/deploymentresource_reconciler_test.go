@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -49,6 +50,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
@@ -91,6 +93,7 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 
 	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&DeploymentResourceReconciler{
+		APIReader:                 mgr.GetAPIReader(),
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
 		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
@@ -298,6 +301,114 @@ func Test_resourceWithinScope(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
 		})
+	}
+}
+
+func Test_KubernetesCleanupFailureRetryRate(t *testing.T) {
+	SkipWithoutEnvironment(t)
+	for _, inventory := range []bool{false, true} {
+		for _, discoveryFailure := range []bool{false, true} {
+			name := fmt.Sprintf("inventory-%t-discovery-%t", inventory, discoveryFailure)
+			t.Run(name, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(t.Context())
+				mgr, err := ctrl.NewManager(config, ctrl.Options{
+					Scheme: scheme, Metrics: server.Options{BindAddress: "0"},
+					Controller: crconfig.Controller{SkipNameValidation: new(true)},
+				})
+				require.NoError(t, err)
+				c, err := k8sClient.NewWithWatch(config, k8sClient.Options{Scheme: scheme})
+				require.NoError(t, err)
+				namespace := "retry-rate-" + name
+				ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+				require.NoError(t, c.Create(ctx, ns))
+				outputID := "/planes/kubernetes/local/namespaces/" + namespace + "/providers/core/ConfigMap/output"
+				owner := makeDeploymentTemplate(types.NamespacedName{Namespace: namespace, Name: "inventory"}, "{}", "", nil)
+				owner.Finalizers = []string{DeploymentTemplateFinalizer}
+				require.NoError(t, c.Create(ctx, owner))
+				owner.Status.OutputResources = []string{outputID}
+				require.NoError(t, c.Status().Update(ctx, owner))
+				var child *radappiov1alpha3.DeploymentResource
+				if inventory {
+					require.NoError(t, c.Delete(ctx, owner))
+					require.NoError(t, c.Delete(ctx, ns))
+				} else {
+					child = makeDeploymentResource(types.NamespacedName{Namespace: namespace, Name: "output"}, outputID)
+					child.Finalizers = []string{DeploymentResourceFinalizer}
+					require.NoError(t, controllerutil.SetControllerReference(owner, child, scheme))
+					require.NoError(t, c.Create(ctx, child))
+					child.Status.ProvisionedResourceID = outputID
+					require.NoError(t, c.Status().Update(ctx, child))
+					require.NoError(t, c.Delete(ctx, child))
+				}
+				var attempts atomic.Int64
+				writes := interceptor.NewClient(c, interceptor.Funcs{
+					Delete: func(ctx context.Context, c k8sClient.WithWatch, obj k8sClient.Object, opts ...k8sClient.DeleteOption) error {
+						if obj.GetObjectKind().GroupVersionKind().Kind == "ConfigMap" {
+							attempts.Add(1)
+							if discoveryFailure {
+								return apierrors.NewNotFound(schema.GroupResource{Resource: "configmaps"}, obj.GetName())
+							}
+							return errors.New("delete denied")
+						}
+						return c.Delete(ctx, obj, opts...)
+					},
+				})
+				d := &fakediscovery.FakeDiscovery{Fake: &k8stesting.Fake{}}
+				d.PrependReactor("get", "resource", func(k8stesting.Action) (bool, runtime.Object, error) {
+					return true, nil, errors.New("discovery unavailable")
+				})
+				recorder := record.NewFakeRecorder(100)
+				if inventory {
+					r := &DeploymentTemplateReconciler{
+						Client: writes, APIReader: mgr.GetAPIReader(), Scheme: scheme, Discovery: d,
+						EventRecorder: recorder, DelayInterval: time.Millisecond * 20,
+					}
+					require.NoError(t, r.SetupWithManager(mgr))
+				} else {
+					r := &DeploymentResourceReconciler{
+						Client: writes, Scheme: scheme, Discovery: d, EventRecorder: recorder,
+						DelayInterval: time.Millisecond * 20, DeleteRetryInterval: time.Second,
+					}
+					require.NoError(t, r.SetupWithManager(mgr))
+				}
+				startManager(t, mgr, ctx, cancel)
+				var version string
+				require.Eventually(t, func() bool {
+					if inventory {
+						if c.Get(ctx, k8sClient.ObjectKeyFromObject(owner), owner) != nil {
+							return false
+						}
+						version = owner.ResourceVersion
+						return owner.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseFailed && attempts.Load() > 0
+					}
+					if c.Get(ctx, k8sClient.ObjectKeyFromObject(child), child) != nil {
+						return false
+					}
+					version = child.ResourceVersion
+					return child.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseFailed && attempts.Load() > 0
+				}, time.Second*5, time.Millisecond*20)
+				// Let the initial Failed write's queued reconcile settle before measuring the delay.
+				time.Sleep(time.Millisecond * 150)
+				initial := attempts.Load()
+				maxInitial := int64(3)
+				if discoveryFailure {
+					// A served-version refresh may issue another DELETE before discovery fails.
+					maxInitial *= 2
+				}
+				require.LessOrEqual(t, initial, maxInitial, "self-generated status events must not spin retries")
+				require.Never(t, func() bool { return attempts.Load() != initial },
+					time.Millisecond*350, time.Millisecond*20, "persistent failures must respect the bounded retry instead of status-watch requeues")
+				if inventory {
+					require.NoError(t, c.Get(ctx, k8sClient.ObjectKeyFromObject(owner), owner))
+					require.Equal(t, version, owner.ResourceVersion, "failed inventory retries must not churn status")
+				} else {
+					require.NoError(t, c.Get(ctx, k8sClient.ObjectKeyFromObject(child), child))
+					require.Equal(t, version, child.ResourceVersion, "failed child retries must not churn status")
+					require.Eventually(t, func() bool { return attempts.Load() > initial }, time.Second*2, time.Millisecond*20,
+						"the timed retry must still run")
+				}
+			})
+		}
 	}
 }
 

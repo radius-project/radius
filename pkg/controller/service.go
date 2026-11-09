@@ -126,6 +126,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&reconciler.DeploymentResourceReconciler{
+		APIReader:                 mgr.GetAPIReader(),
 		Discovery:                 discoveryClient,
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),

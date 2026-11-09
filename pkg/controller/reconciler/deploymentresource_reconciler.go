@@ -47,6 +47,10 @@ import (
 
 // DeploymentResourceReconciler reconciles a DeploymentResource object.
 type DeploymentResourceReconciler struct {
+	// APIReader bypasses informer lag when checking protected namespace cleanup inventory.
+	// When unset, Client is used.
+	APIReader client.Reader
+
 	// Discovery confirms API removal before abandoning a Kubernetes output.
 	Discovery discovery.DiscoveryInterface
 
@@ -111,6 +115,9 @@ func (r *DeploymentResourceReconciler) Reconcile(ctx context.Context, req ctrl.R
 			logger.Error(err, "Unable to reconcile in-progress operation.")
 			return ctrl.Result{}, err
 		} else if result.IsZero() {
+			if !controllerutil.ContainsFinalizer(&deploymentResource, DeploymentResourceFinalizer) {
+				return ctrl.Result{}, nil
+			}
 			// NOTE: if reconcileOperation completes successfully, then it will return a "zero" result,
 			// this means the operation has completed and we should continue processing.
 			logger.Info("Operation completed successfully.")
@@ -255,15 +262,56 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	}
 
+	dependency, err := isApplicationOrEnvironment(deploymentResource.Spec.Id)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if dependency {
+		reader := r.APIReader
+		if reader == nil {
+			reader = r.Client
+		}
+		owner := &radappiov1alpha3.DeploymentTemplate{}
+		if err := reader.Get(ctx, client.ObjectKey{Namespace: deploymentResource.Namespace, Name: ownerRef.Name}, owner); err != nil {
+			return ctrl.Result{}, err
+		}
+		pendingLeaves := owner.Status.Operation != nil && owner.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut
+		for _, outputID := range owner.Status.OutputResources {
+			dependency, err := isApplicationOrEnvironment(outputID)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			if dependency {
+				continue
+			}
+			pendingLeaves = true
+			break
+		}
+		if pendingLeaves {
+			namespace := &corev1.Namespace{}
+			if err := reader.Get(ctx, client.ObjectKey{Name: deploymentResource.Namespace}, namespace); err != nil {
+				return ctrl.Result{}, err
+			}
+			if namespace.DeletionTimestamp != nil {
+				// Namespace admission can leave leaf outputs in inventory without child trackers.
+				return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+			}
+		}
+	}
+
 	// Since we're going to proceed with deletion, update the observed generation and status.
 	//
 	// We don't want to do this if we're in the middle of an operation, because we haven't
 	// fully processed any status changes until the async operation completes.
-	deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
-	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
-	err = r.Client.Status().Update(ctx, deploymentResource)
-	if err != nil {
-		return ctrl.Result{}, err
+	if deploymentResource.Status.ObservedGeneration != deploymentResource.Generation ||
+		(deploymentResource.Status.Phrase != radappiov1alpha3.DeploymentResourcePhraseDeleting && deploymentResource.Status.Phrase != radappiov1alpha3.DeploymentResourcePhraseFailed) {
+		deploymentResource.Status.ObservedGeneration = deploymentResource.Generation
+		if deploymentResource.Status.Phrase != radappiov1alpha3.DeploymentResourcePhraseFailed {
+			deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
+		}
+		if err := r.Client.Status().Update(ctx, deploymentResource); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	id, err := resources.ParseResource(deploymentResource.Spec.Id)
@@ -300,6 +348,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		}
 
 		deploymentResource.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
+		deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleting
 		err = r.Client.Status().Update(ctx, deploymentResource)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -578,9 +627,20 @@ func (r *DeploymentResourceReconciler) completeDeleteOperation(ctx context.Conte
 // updateFailedStatus updates the resource status to failed state and clears the operation.
 // This helper reduces duplication when handling operation failures.
 func (r *DeploymentResourceReconciler) updateFailedStatus(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource) error {
+	if deploymentResource.Status.Operation == nil && deploymentResource.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseFailed {
+		return nil
+	}
 	deploymentResource.Status.Operation = nil
 	deploymentResource.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseFailed
 	return r.Client.Status().Update(ctx, deploymentResource)
+}
+
+func isApplicationOrEnvironment(outputID string) (bool, error) {
+	id, err := resources.ParseResource(outputID)
+	if err != nil {
+		return false, err
+	}
+	return strings.EqualFold(id.Type(), "Applications.Core/applications") || strings.EqualFold(id.Type(), "Applications.Core/environments"), nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -22,6 +22,7 @@ import (
 	"errors"
 	"os"
 	"path"
+	"slices"
 	"testing"
 	"time"
 
@@ -95,6 +96,7 @@ func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 	// Set up DeploymentResourceReconciler.
 	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&DeploymentResourceReconciler{
+		APIReader:                 mgr.GetAPIReader(),
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),
 		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
@@ -1290,6 +1292,125 @@ func Test_DeploymentTemplateReconciler_ExistingTrackerAtQuota(t *testing.T) {
 	require.Equal(t, outputID, child.Status.ProvisionedResourceID)
 }
 
+func Test_DeploymentTemplateReconciler_ReplacementRetainsRedeploymentRequirement(t *testing.T) {
+	t.Parallel()
+	for _, configMapFirst := range []bool{false, true} {
+		name := "environment-first"
+		if configMapFirst {
+			name = "configmap-first"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			ctx := t.Context()
+			s := runtime.NewScheme()
+			require.NoError(t, radappiov1alpha3.AddToScheme(s))
+			require.NoError(t, corev1.AddToScheme(s))
+			providerConfig, err := sdkclients.NewDefaultProviderConfig("test").String()
+			require.NoError(t, err)
+			owner := makeDeploymentTemplate(types.NamespacedName{Namespace: "test", Name: "inventory"}, "{}", providerConfig, nil)
+			owner.UID = "owner"
+			owner.Finalizers = []string{DeploymentTemplateFinalizer}
+			owner.Generation = 2
+			owner.Status.ObservedGeneration = 2
+			envID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/environment"
+			cmID := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/output"
+			containerID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/container"
+			env := makeDeploymentResource(types.NamespacedName{Namespace: "test", Name: "environment"}, envID)
+			cm := makeDeploymentResource(types.NamespacedName{Namespace: "test", Name: "output"}, cmID)
+			container := makeDeploymentResource(types.NamespacedName{Namespace: "test", Name: "container"}, containerID)
+			now := metav1.Now()
+			for _, child := range []*radappiov1alpha3.DeploymentResource{env, cm, container} {
+				child.Finalizers = []string{DeploymentResourceFinalizer}
+				child.Status.ProvisionedResourceID = child.Spec.Id
+				require.NoError(t, controllerutil.SetControllerReference(owner, child, s))
+			}
+			env.DeletionTimestamp, cm.DeletionTimestamp = &now, &now
+			outputs := []string{envID, cmID, containerID}
+			if configMapFirst {
+				outputs[0], outputs[1] = outputs[1], outputs[0]
+			}
+			owner.Status.OutputResources = []string{containerID}
+			mockClient := sdkclients.NewMockResourceDeploymentsClient()
+			poller, err := mockClient.CreateOrUpdate(ctx, sdkclients.Deployment{}, "/deployment", "version")
+			require.NoError(t, err)
+			token, err := poller.ResumeToken()
+			require.NoError(t, err)
+			owner.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindPut}
+			complete := func(token string) {
+				mockClient.CompleteOperation(token, func(state *sdkclients.OperationState) {
+					refs := make([]*armdeployments.ResourceReference, 0, len(outputs))
+					for _, id := range outputs {
+						refs = append(refs, &armdeployments.ResourceReference{ID: new(id)})
+					}
+					state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{OutputResources: refs}}
+				})
+			}
+			complete(token)
+			c := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(owner, env, cm).WithObjects(owner, env, cm, container).Build()
+			newReconciler := func() *DeploymentTemplateReconciler {
+				return &DeploymentTemplateReconciler{
+					Client: c, APIReader: c, Scheme: s, Radius: NewMockRadiusClient(),
+					ResourceDeploymentsClient: mockClient, EventRecorder: record.NewFakeRecorder(10),
+				}
+			}
+			_, err = newReconciler().reconcileOperation(ctx, owner)
+			require.NoError(t, err)
+			require.NotNil(t, owner.Status.Operation, "replacement retries must retain the completed PUT")
+			require.Equal(t, outputRedeploymentRequired, owner.Status.StatusHash)
+			cm.Finalizers = nil
+			require.NoError(t, c.Update(ctx, cm))
+			require.NoError(t, c.Get(ctx, k8sclient.ObjectKeyFromObject(owner), owner))
+			_, err = newReconciler().reconcileOperation(ctx, owner)
+			require.NoError(t, err)
+			require.Nil(t, owner.Status.Operation)
+			require.Empty(t, owner.Status.StatusHash, "recreated trackers must not erase the need to redeploy their deleted output")
+			require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup, owner.Status.Phrase)
+			_, err = newReconciler().reconcileUpdate(ctx, owner)
+			require.NoError(t, err)
+			require.NotNil(t, owner.Status.Operation, "a fresh PUT must repair the ConfigMap deleted by old cleanup")
+			require.NotEqual(t, token, owner.Status.Operation.ResumeToken)
+			complete(owner.Status.Operation.ResumeToken)
+			_, err = newReconciler().reconcileOperation(ctx, owner)
+			require.NoError(t, err)
+			require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReady, owner.Status.Phrase)
+			require.NotEmpty(t, owner.Status.StatusHash)
+			require.NotEqual(t, outputRedeploymentRequired, owner.Status.StatusHash)
+		})
+	}
+}
+
+func Test_DeploymentTemplateReconciler_RejectsNonControllerTracker(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	s := runtime.NewScheme()
+	require.NoError(t, radappiov1alpha3.AddToScheme(s))
+	owner := makeDeploymentTemplate(types.NamespacedName{Namespace: "test", Name: "inventory"}, "{}", "", nil)
+	owner.UID = "owner"
+	id := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/output"
+	child := makeDeploymentResource(types.NamespacedName{Namespace: "test", Name: "output"}, id)
+	child.Finalizers = []string{DeploymentResourceFinalizer}
+	require.NoError(t, controllerutil.SetControllerReference(owner, child, s))
+	child.OwnerReferences[0].Controller = new(false)
+	mockClient := sdkclients.NewMockResourceDeploymentsClient()
+	poller, err := mockClient.CreateOrUpdate(ctx, sdkclients.Deployment{}, "/deployment", "version")
+	require.NoError(t, err)
+	token, err := poller.ResumeToken()
+	require.NoError(t, err)
+	owner.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindPut}
+	mockClient.CompleteOperation(token, func(state *sdkclients.OperationState) {
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+			OutputResources: []*armdeployments.ResourceReference{{ID: new(id)}},
+		}}
+	})
+	c := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(owner, child).WithObjects(owner, child).Build()
+	r := &DeploymentTemplateReconciler{Client: c, APIReader: c, Scheme: s, ResourceDeploymentsClient: mockClient}
+	_, err = r.reconcileOperation(ctx, owner)
+	require.ErrorContains(t, err, "does not match its owned DeploymentResource")
+	require.NotNil(t, owner.Status.Operation)
+	require.NoError(t, c.Get(ctx, k8sclient.ObjectKeyFromObject(child), child))
+	require.Empty(t, child.Status.ProvisionedResourceID)
+}
+
 func Test_DeploymentTemplateReconciler_DeleteInventoryBypassesCache(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
@@ -1313,7 +1434,8 @@ func Test_DeploymentTemplateReconciler_DeleteInventoryBypassesCache(t *testing.T
 			OutputResources: []*armdeployments.ResourceReference{{ID: new(outputID)}},
 		}}
 	})
-	c := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(owner, &radappiov1alpha3.DeploymentResource{}).WithObjects(owner).Build()
+	c := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(owner, &radappiov1alpha3.DeploymentResource{}).
+		WithObjects(owner, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: owner.Namespace}}).Build()
 	cached := interceptor.NewClient(c, interceptor.Funcs{
 		List: func(ctx context.Context, c k8sclient.WithWatch, list k8sclient.ObjectList, opts ...k8sclient.ListOption) error {
 			if children, ok := list.(*radappiov1alpha3.DeploymentResourceList); ok {
@@ -1391,11 +1513,9 @@ func Test_DeploymentTemplateReconciler_DisappearingCompletedOutputTracker(t *tes
 
 func Test_DeploymentTemplateReconciler_NamespaceTerminatesDuringPut(t *testing.T) {
 	SkipWithoutEnvironment(t)
-	for _, deletingTemplate := range []bool{false, true} {
-		name := "namespace-first"
-		if deletingTemplate {
-			name = "template-first"
-		}
+	for _, name := range []string{"namespace-first", "template-first", "mixed-inventory"} {
+		deletingTemplate := name == "template-first"
+		mixedInventory := name == "mixed-inventory"
 		t.Run(name, func(t *testing.T) {
 			ctx := t.Context()
 			c, err := k8sclient.NewWithWatch(config, k8sclient.Options{Scheme: scheme})
@@ -1425,12 +1545,24 @@ func Test_DeploymentTemplateReconciler_NamespaceTerminatesDuringPut(t *testing.T
 			roleID := "/planes/kubernetes/local/providers/rbac.authorization.k8s.io/ClusterRole/" + namespace
 			envID := "/planes/radius/local/resourceGroups/" + namespace + "/providers/Applications.Core/environments/environment"
 			containerID := "/planes/radius/local/resourceGroups/" + namespace + "/providers/Applications.Core/containers/container"
+			if mixedInventory {
+				containerID = "/planes/radius/local/resourceGroups/" + namespace + "/providers/Applications.Datastores/redisCaches/redis"
+			}
 			mockClient := sdkclients.NewMockResourceDeploymentsClient()
 			poller, err := mockClient.CreateOrUpdate(ctx, sdkclients.Deployment{}, "/deployment", "version")
 			require.NoError(t, err)
 			token, err := poller.ResumeToken()
 			require.NoError(t, err)
 			owner.Status.OutputResources = []string{oldID}
+			if mixedInventory {
+				child := makeDeploymentResource(types.NamespacedName{Namespace: namespace, Name: "environment"}, envID)
+				child.Finalizers = []string{DeploymentResourceFinalizer}
+				require.NoError(t, controllerutil.SetControllerReference(owner, child, scheme))
+				require.NoError(t, c.Create(ctx, child))
+				owner.Status.OutputResources = append(owner.Status.OutputResources, envID)
+				// Namespace content deletion may mark existing children before template cleanup.
+				require.NoError(t, c.Delete(ctx, child))
+			}
 			owner.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindPut}
 			require.NoError(t, c.Status().Update(ctx, owner))
 			mockClient.CompleteOperation(token, func(state *sdkclients.OperationState) {
@@ -1442,6 +1574,12 @@ func Test_DeploymentTemplateReconciler_NamespaceTerminatesDuringPut(t *testing.T
 				require.NoError(t, c.Delete(ctx, owner))
 			}
 			require.NoError(t, c.Delete(ctx, ns))
+			if mixedInventory {
+				dr := &DeploymentResourceReconciler{Client: c, APIReader: c, ResourceDeploymentsClient: mockClient, EventRecorder: record.NewFakeRecorder(10)}
+				_, err = dr.Reconcile(ctx, ctrl.Request{NamespacedName: types.NamespacedName{Namespace: namespace, Name: "environment"}})
+				require.NoError(t, err)
+				require.NotContains(t, mockClient.DeletedResourceIDs(), envID, "namespace cleanup must wait for the in-flight PUT's output inventory")
+			}
 			require.Eventually(t, func() bool {
 				child := makeDeploymentResource(types.NamespacedName{Namespace: namespace, Name: "rejected"}, outputID)
 				return apierrors.HasStatusCause(c.Create(ctx, child), corev1.NamespaceTerminatingCause)
@@ -1480,7 +1618,11 @@ func Test_DeploymentTemplateReconciler_NamespaceTerminatesDuringPut(t *testing.T
 				"new outputs and retired inventory must survive restart before cleanup")
 			children := &radappiov1alpha3.DeploymentResourceList{}
 			require.NoError(t, c.List(ctx, children, k8sclient.InNamespace(namespace)))
-			require.Empty(t, children.Items)
+			if mixedInventory {
+				require.Len(t, children.Items, 1)
+			} else {
+				require.Empty(t, children.Items)
+			}
 
 			held := false
 			deleted := false
@@ -1491,6 +1633,24 @@ func Test_DeploymentTemplateReconciler_NamespaceTerminatesDuringPut(t *testing.T
 					break
 				}
 				require.NoError(t, err)
+				if mixedInventory {
+					envKey := types.NamespacedName{Namespace: namespace, Name: "environment"}
+					child := &radappiov1alpha3.DeploymentResource{}
+					if err := c.Get(ctx, envKey, child); err == nil {
+						if slices.Contains(owner.Status.OutputResources, containerID) {
+							require.NotContains(t, mockClient.DeletedResourceIDs(), envID, "tracked environment must outlive untracked Redis cleanup")
+						}
+						if child.Status.Operation != nil {
+							require.NotContains(t, owner.Status.OutputResources, containerID)
+							mockClient.CompleteOperation(child.Status.Operation.ResumeToken, nil)
+						}
+						dr := &DeploymentResourceReconciler{Client: c, EventRecorder: recorder, ResourceDeploymentsClient: mockClient}
+						_, err = dr.Reconcile(ctx, ctrl.Request{NamespacedName: envKey})
+						require.NoError(t, err)
+					} else {
+						require.True(t, apierrors.IsNotFound(err))
+					}
+				}
 				if owner.Status.Operation != nil {
 					require.Equal(t, radappiov1alpha3.OperationKind(radappiov1alpha3.OperationKindDelete), owner.Status.Operation.OperationKind)
 					if owner.Status.OutputResources[0] == containerID {
@@ -1507,14 +1667,18 @@ func Test_DeploymentTemplateReconciler_NamespaceTerminatesDuringPut(t *testing.T
 				}
 				// Recreate the reconciler for each step to exercise status-only recovery.
 				_, err = newReconciler().Reconcile(ctx, ctrl.Request{NamespacedName: key})
-				require.NoError(t, err)
+				if err != nil {
+					require.True(t, mixedInventory)
+					require.ErrorContains(t, err, "wait for owned resources")
+				}
 			}
 			require.True(t, held, "external output finalizer must delay template deletion")
 			require.True(t, deleted, "template must drain outputs without creating children in the terminating namespace")
 			require.True(t, apierrors.IsNotFound(c.Get(ctx, k8sclient.ObjectKeyFromObject(configMap), &corev1.ConfigMap{})))
 			require.True(t, apierrors.IsNotFound(c.Get(ctx, k8sclient.ObjectKeyFromObject(oldOutput), &corev1.ConfigMap{})))
 			require.True(t, apierrors.IsNotFound(c.Get(ctx, k8sclient.ObjectKeyFromObject(role), &rbacv1.ClusterRole{})))
-			require.ElementsMatch(t, []string{containerID, envID}, mockClient.DeletedResourceIDs())
+			require.Contains(t, mockClient.DeletedResourceIDs(), containerID)
+			require.Contains(t, mockClient.DeletedResourceIDs(), envID)
 		})
 	}
 }
@@ -1724,18 +1888,23 @@ func Test_DeploymentTemplateReconciler_DependencyCleanupBarrier(t *testing.T) {
 			environment.Finalizers = []string{DeploymentResourceFinalizer}
 			now := metav1.Now()
 			environment.DeletionTimestamp = &now
+			mockClient := sdkclients.NewMockResourceDeploymentsClient()
 			if tc.inFlight {
-				environment.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: "in-flight", OperationKind: radappiov1alpha3.OperationKindDelete}
+				poller, err := mockClient.Delete(ctx, envID, "version")
+				require.NoError(t, err)
+				token, err := poller.ResumeToken()
+				require.NoError(t, err)
+				environment.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
 			}
 			container := makeDeploymentResource(types.NamespacedName{Namespace: owner.Namespace, Name: "container"}, containerID)
 			for _, child := range []*radappiov1alpha3.DeploymentResource{environment, container} {
 				require.NoError(t, controllerutil.SetControllerReference(owner, child, s))
 			}
 			owner.Status.OutputResources = []string{containerID}
-			c := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(owner).WithObjects(owner, environment, container).Build()
+			c := fake.NewClientBuilder().WithScheme(s).WithStatusSubresource(owner, environment).WithObjects(owner, environment, container).Build()
 			r := &DeploymentTemplateReconciler{
 				Client: c, APIReader: c, EventRecorder: record.NewFakeRecorder(10),
-				Radius: NewMockRadiusClient(), ResourceDeploymentsClient: sdkclients.NewMockResourceDeploymentsClient(),
+				Radius: NewMockRadiusClient(), ResourceDeploymentsClient: mockClient,
 			}
 			result, err := r.reconcileUpdate(ctx, owner)
 			require.NoError(t, err)
@@ -1745,8 +1914,23 @@ func Test_DeploymentTemplateReconciler_DependencyCleanupBarrier(t *testing.T) {
 				require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseUpdating, owner.Status.Phrase)
 				return
 			}
-			require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup, owner.Status.Phrase,
-				"unchanged successful generations and in-flight deletes must not bypass the barrier")
+			if tc.failed {
+				require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseFailed, owner.Status.Phrase, "waiting must preserve failed PUT retry intent")
+				mockClient.CompleteOperation(environment.Status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+					state.Err = errors.New("delete temporarily failed")
+				})
+				dr := &DeploymentResourceReconciler{Client: c, ResourceDeploymentsClient: mockClient, EventRecorder: record.NewFakeRecorder(10)}
+				_, err = dr.reconcileOperation(ctx, environment)
+				require.NoError(t, err)
+				require.Nil(t, environment.Status.Operation)
+				require.NoError(t, c.Get(ctx, k8sclient.ObjectKeyFromObject(owner), owner))
+				require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseFailed, owner.Status.Phrase)
+				_, err = r.reconcileUpdate(ctx, owner)
+				require.NoError(t, err)
+				require.NotNil(t, owner.Status.Operation, "failed PUT must retry after in-flight deletion fails and becomes dependency-blocked")
+				return
+			}
+			require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup, owner.Status.Phrase)
 			require.Nil(t, owner.Status.Operation)
 		})
 	}
