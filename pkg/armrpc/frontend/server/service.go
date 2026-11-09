@@ -106,7 +106,7 @@ func (s *Service) Start(ctx context.Context, opt Options) error {
 	}()
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", address))
-	err = mtls.ListenAndServe(ctx, server, s.Options.Config.Authorization, opt.AllowedCallers)
+	err = mtls.ListenAndServe(ctx, server, s.Options.Config.Authorization, mtls.Receiver{Name: opt.ReceiverName, AllowedCallers: opt.AllowedCallers})
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")
