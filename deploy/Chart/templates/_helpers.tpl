@@ -276,10 +276,15 @@ Renders nothing. Called by certificates.yaml, which renders only when the author
 {{- end -}}
 
 {{/*
-Path where a component's mTLS Secret (<component>-mtls) is mounted.
+Renders the authorization settings shared by every component's config: where the SPIFFE server
+certificate (or, for the controller, only the CA bundle) and the projected ServiceAccount tokens
+are mounted, the trust domain, and the release namespace.
 */}}
-{{- define "radius.authz.mtls.mountPath" -}}
-/var/run/radius/mtls
+{{- define "radius.authz.identityConfig" -}}
+certificateDirectory: {{ include "radius.authz.spiffe.mountPath" . | quote }}
+tokenDirectory: {{ include "radius.authz.tokens.mountPath" . | quote }}
+trustDomain: {{ include "radius.authz.spiffe.trustDomain" . | quote }}
+namespace: {{ .Release.Namespace | quote }}
 {{- end -}}
 
 {{/*
@@ -291,14 +296,13 @@ the authorization mode is off, so a default install is unchanged.
 {{- if ne $mode "off" }}
 authorization:
   mode: {{ $mode | quote }}
-  certificateDirectory: {{ include "radius.authz.mtls.mountPath" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
+  {{- include "radius.authz.identityConfig" . | nindent 2 }}
 {{- end }}
 {{- end -}}
 
 {{/*
 Renders the ucp connection block for a component that calls UCP. When the authorization
-mode is not off, the component calls UCP's internal mTLS port directly instead of going
+mode is not off, the component calls UCP's internal port directly instead of going
 through the Kubernetes API server.
 */}}
 {{- define "radius.authz.ucpConnection" -}}
@@ -314,26 +318,29 @@ ucp:
 {{- end -}}
 
 {{/*
-Renders the mTLS volume mount for a component container when the authorization mode is not off.
+Renders the Radius CA bundle volume mount for the controller, which calls UCP but serves no
+internal endpoint, so it mounts only ca.crt where receivers mount their SPIFFE volume.
 */}}
-{{- define "radius.authz.mtls.volumeMount" -}}
+{{- define "radius.authz.caBundle.volumeMount" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
-- name: mtls
-  mountPath: {{ include "radius.authz.mtls.mountPath" . }}
+- name: radius-ca
+  mountPath: {{ include "radius.authz.spiffe.mountPath" . }}
   readOnly: true
 {{- end }}
 {{- end -}}
 
 {{/*
-Renders the mTLS Secret volume for a component when the authorization mode is not off.
-Call with (dict "root" $ "component" "<component>").
+Renders the Radius CA bundle volume for the controller. Only ca.crt is projected; the CA private
+key in the same Secret is not mounted.
 */}}
-{{- define "radius.authz.mtls.volume" -}}
-{{- if ne (include "radius.authz.mode" .root) "off" }}
-{{- include "radius.authz.validateVolumeNames" .root }}
-- name: mtls
+{{- define "radius.authz.caBundle.volume" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+- name: radius-ca
   secret:
-    secretName: {{ .component }}-mtls
+    secretName: radius-ca
+    items:
+      - key: ca.crt
+        path: ca.crt
 {{- end }}
 {{- end -}}
 

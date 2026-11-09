@@ -38,7 +38,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
-	"github.com/radius-project/radius/pkg/authz/mtls"
 )
 
 const (
@@ -196,7 +195,7 @@ func TestNew_ZeroDurationsUseDefaults(t *testing.T) {
 }
 
 func TestServiceAccountsMatchComponents(t *testing.T) {
-	require.ElementsMatch(t, mtls.Components, slices.Collect(maps.Keys(serviceForAccount)))
+	require.ElementsMatch(t, authz.Components, slices.Collect(maps.Keys(serviceForAccount)))
 }
 
 func TestVerify_Valid(t *testing.T) {
@@ -204,11 +203,11 @@ func TestVerify_Valid(t *testing.T) {
 	v := newTestVerifier(t, newFakeSource(defaultKeys()), clock)
 	require.NoError(t, v.Refresh(t.Context()))
 
-	for _, account := range mtls.Components {
+	for _, account := range authz.Components {
 		t.Run(account+"/RS256", func(t *testing.T) {
 			id, err := v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor(account, start)))
 			require.NoError(t, err)
-			require.Equal(t, mtls.Identity{Component: account, Namespace: testNamespace}, id)
+			require.Equal(t, authz.Identity{Component: account, Namespace: testNamespace}, id)
 			require.Equal(t, account+"."+testNamespace+".svc", id.String())
 		})
 		t.Run(account+"/ES256", func(t *testing.T) {
