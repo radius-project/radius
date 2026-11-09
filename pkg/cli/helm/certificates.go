@@ -679,6 +679,9 @@ func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptio
 	if options.Certificates.RotationPhase != "" {
 		return i.runCertificateRotation(ctx, options, kubeContext, true)
 	}
+	if handled, err := i.runProviderTransition(ctx, options, kubeContext, true); handled || err != nil {
+		return err
+	}
 	if err := i.guardCertificateRotation(ctx, kubeContext, options.Radius.Namespace, "upgrade preflight", nil); err != nil {
 		return err
 	}

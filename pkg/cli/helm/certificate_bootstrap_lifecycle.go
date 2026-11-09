@@ -142,10 +142,16 @@ func bootstrapComponentProofPort(deployment appsv1.Deployment, name string) (uin
 }
 
 func (r *rotationRunner) verifyBootstrapLifecycle(ctx context.Context, state rotationState) error {
+	return r.verifyBootstrapEvidence(ctx, state, true)
+}
+
+// Provider changes preserve the completed CA record's historical scope. They
+// verify the aggregate separately from the new provider's component evidence.
+func (r *rotationRunner) verifyBootstrapEvidence(ctx context.Context, state rotationState, components bool) error {
 	if !state.Bootstrap || state.SchemaVersion != 3 || state.Phase != rotationComplete {
 		return errors.New("bootstrap verification requires the bound initial lifecycle")
 	}
-	if state.Plan.effectiveScope() == rotationComponentsAndAggregation {
+	if components && state.Plan.effectiveScope() == rotationComponentsAndAggregation {
 		if err := r.verifyConsumers(ctx, state); err != nil {
 			return err
 		}
@@ -187,7 +193,7 @@ func (r *rotationRunner) verifyBootstrapLifecycle(ctx context.Context, state rot
 	if err := probe(ctx, r.config, ids); err != nil {
 		return err
 	}
-	if state.Plan.effectiveScope() == rotationComponentsAndAggregation {
+	if components && state.Plan.effectiveScope() == rotationComponentsAndAggregation {
 		if err := r.verifyConsumers(ctx, state); err != nil {
 			return err
 		}

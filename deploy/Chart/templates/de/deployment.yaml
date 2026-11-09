@@ -46,7 +46,7 @@ metadata:
     app.kubernetes.io/name: bicep-de
     app.kubernetes.io/part-of: radius
 spec:
-  replicas: 1
+  replicas: {{ include "radius.providerReplicas" (dict "root" . "component" "bicep-de") }}
   selector:
     matchLabels:
       app.kubernetes.io/name: bicep-de

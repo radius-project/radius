@@ -50,6 +50,31 @@ func TestProviderPreparationAPIServer(t *testing.T) {
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 	store, plan, _ := providerFixture(t, kube, "radius", "external", "enforce")
+	t.Run("target defaulting is read only", func(t *testing.T) {
+		prepared := providerPreparedResources{deployments: map[string]*appsv1.Deployment{}}
+		replicas := map[string]int32{}
+		before := map[string]*appsv1.Deployment{}
+		for _, name := range rotationComponents {
+			current, err := kube.AppsV1().Deployments(plan.Namespace).Get(t.Context(), name, metav1.GetOptions{})
+			require.NoError(t, err)
+			before[name] = current
+			desired := current.DeepCopy()
+			desired.Spec.Replicas = ptr.To(int32(1))
+			desired.Spec.Template.Spec.Containers[0].Image = "test.invalid/target"
+			desired.Spec.RevisionHistoryLimit = nil
+			prepared.deployments[name] = desired
+			replicas[name] = 1
+		}
+		targets, err := store.materializeTargets(t.Context(), plan.Namespace, prepared, replicas)
+		require.NoError(t, err)
+		for _, name := range rotationComponents {
+			require.NotNil(t, targets[name].RevisionHistoryLimit)
+			require.Equal(t, "test.invalid/target", targets[name].Template.Spec.Containers[0].Image)
+			current, err := kube.AppsV1().Deployments(plan.Namespace).Get(t.Context(), name, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, before[name], current, "dry-run must not change source spec, UID, version or generation")
+		}
+	})
 	source, err := kube.CoreV1().ConfigMaps(plan.Namespace).Create(t.Context(), &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: "ucp-config", Namespace: plan.Namespace}, Data: map[string]string{"config": "source"},
 	}, metav1.CreateOptions{})

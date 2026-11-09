@@ -34,6 +34,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v4/pkg/chart/common"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	corev1 "k8s.io/api/core/v1"
@@ -93,7 +94,8 @@ func (r bootstrapIssuanceWriter) Create(ctx context.Context, object *unstructure
 	return created, err
 }
 
-func TestBootstrapNativeInstallRequiresRunningEvidence(t *testing.T) {
+func bootstrapNativeInstallFixture(t *testing.T, prepareChart func(*chart.Chart)) (*rotationStore, ClusterOptions, *Impl) {
+	t.Helper()
 	s, config, _, _ := newRotationTestStore(t)
 	ctx := t.Context()
 	require.NoError(t, s.dynamic.Resource(apiServiceResource).Delete(ctx, radiusAPIService, metav1.DeleteOptions{}))
@@ -115,6 +117,9 @@ func TestBootstrapNativeInstallRequiresRunningEvidence(t *testing.T) {
 	s.dynamic = &bootstrapIssuanceClient{Interface: s.dynamic, kube: s.kube, cert: leaf, key: leafKey}
 	selected, err := loader.Load("../../../deploy/Chart")
 	require.NoError(t, err)
+	if prepareChart != nil {
+		prepareChart(selected)
+	}
 	selected.Templates = slices.DeleteFunc(selected.Templates, func(file *common.File) bool {
 		return strings.HasPrefix(file.Name, "templates/control-plane-readiness/") ||
 			strings.HasPrefix(file.Name, "templates/pre-upgrade/")
@@ -156,6 +161,12 @@ func TestBootstrapNativeInstallRequiresRunningEvidence(t *testing.T) {
 		}
 	}
 	require.ErrorContains(t, impl.InstallRadius(runContext, options, "test"), "interrupted")
+	return s, options, impl
+}
+
+func TestBootstrapNativeInstallRequiresRunningEvidence(t *testing.T) {
+	s, _, _ := bootstrapNativeInstallFixture(t, nil)
+	ctx := t.Context()
 	_, pending, err := s.readBootstrap(ctx)
 	require.NoError(t, err)
 	require.Equal(t, bootstrapVerifying, pending.Phase, "Secret creation and Helm success cannot complete bootstrap")

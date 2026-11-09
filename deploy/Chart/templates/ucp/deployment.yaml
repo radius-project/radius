@@ -11,7 +11,7 @@ metadata:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
 spec:
-  replicas: 1
+  replicas: {{ include "radius.providerReplicas" (dict "root" . "component" "ucp") }}
   selector:
     matchLabels:
       app.kubernetes.io/name: ucp

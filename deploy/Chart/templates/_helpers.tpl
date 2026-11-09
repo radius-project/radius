@@ -341,6 +341,27 @@ Call with (dict "root" $ "component" "<component>").
 {{- $provider -}}
 {{- end -}}
 
+{{- define "radius.providerReplicas" -}}
+{{- $rbac := .root.Values.global.rbac | default dict -}}
+{{- $counts := dict -}}
+{{- if hasKey $rbac "providerReplicas" -}}{{- $counts = $rbac.providerReplicas -}}{{- end -}}
+{{- if not (kindIs "map" $counts) -}}
+{{- fail "global.rbac.providerReplicas must contain the pinned provider-transition replica inventory." -}}
+{{- end -}}
+{{- if $counts -}}
+{{- if ne (len $counts) 5 -}}
+{{- fail "Provider replica inventory must include exactly all five components." -}}
+{{- end -}}
+{{- range $name := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" -}}
+{{- $count := index $counts $name -}}
+{{- if or (not (hasKey $counts $name)) (not (kindIs "float64" (mustFromJson (toJson $count)))) (lt (int64 $count) 1) (gt (int64 $count) 2147483647) (ne (float64 (int64 $count)) (float64 $count)) (and (eq $name "controller") (ne (int64 $count) 1)) -}}
+{{- fail "Provider replicas require positive integer counts and exactly one controller." -}}
+{{- end -}}
+{{- end -}}
+{{- index $counts .component -}}
+{{- else -}}1{{- end -}}
+{{- end -}}
+
 {{- define "radius.authz.rolloutKey" -}}
 {{- include "radius.authz.mode" . -}}
 {{- if eq (include "radius.authz.provider" .) "external" -}}/external{{- end -}}

@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/upgrade/preflight"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
@@ -150,6 +151,7 @@ rad upgrade kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsro
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
 	runner.Certificates.AddFlags(cmd.Flags())
 	runner.MTLS.AddFlags(cmd.Flags())
+	cmd.Flags().BoolVarP(&runner.AssumeYes, "yes", "y", false, "Confirm the outage required by a coordinated mTLS provider change")
 	cmd.Flags().StringVar(&runner.Chart, "chart", "", "Specify a file path to a helm chart to upgrade Radius from")
 	cmd.Flags().StringVar(&runner.Version, "version", "", "Specify the version to upgrade to (default: CLI version, use 'latest' for latest available)")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -165,8 +167,9 @@ rad upgrade kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsro
 
 // Runner is the Runner implementation for the `rad upgrade kubernetes` command.
 type Runner struct {
-	Helm   helm.Interface
-	Output output.Interface
+	Helm     helm.Interface
+	Output   output.Interface
+	Prompter prompt.Interface
 
 	KubeContext    string
 	Chart          string
@@ -180,6 +183,7 @@ type Runner struct {
 	ContourSetFile []string
 	Certificates   helm.CertificateOptions
 	MTLS           helm.MTLSProviderOptions
+	AssumeYes      bool
 
 	// runChecks runs the preflight checks. Tests replace it so that the checks that need a cluster do not run.
 	runChecks func(ctx context.Context, checks []preflight.PreflightCheck) error
@@ -188,8 +192,9 @@ type Runner struct {
 // NewRunner creates an instance of the runner for the `rad upgrade kubernetes` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		Helm:   factory.GetHelmInterface(),
-		Output: factory.GetOutput(),
+		Helm:     factory.GetHelmInterface(),
+		Output:   factory.GetOutput(),
+		Prompter: factory.GetPrompter(),
 	}
 }
 
@@ -223,6 +228,47 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	currentVersion := state.RadiusVersion
+	if r.MTLS.Provider != "" && r.Certificates.RotationPhase == "" {
+		options := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
+			MTLS: r.MTLS, Certificates: r.Certificates, ResetValues: r.ResetValues,
+			Radius:  helm.ChartOptions{ChartPath: r.Chart, SetArgs: r.Set, SetFileArgs: r.SetFile},
+			Contour: helm.ChartOptions{SetArgs: r.ContourSet, SetFileArgs: r.ContourSetFile},
+		})
+		options.Radius.ChartVersion = r.Version
+		options.RadiusReleaseValues = state.RadiusValues
+		transition, err := r.Helm.CheckProviderTransition(ctx, options, r.KubeContext)
+		if err != nil {
+			return err
+		}
+		if transition {
+			if r.PreflightOnly {
+				r.Output.LogInfo("Provider transition preflight passed. No resources or Helm history were changed.")
+				return nil
+			}
+			confirmed := r.AssumeYes
+			if !confirmed {
+				if r.Prompter == nil {
+					return fmt.Errorf("provider change requires outage confirmation; rerun with --yes")
+				}
+				confirmed, err = prompt.YesOrNoPrompt(
+					"Changing the mTLS provider stops all five Radius components before restarting them. An interrupted change must be resumed; there is no automatic rollback. Continue?",
+					prompt.ConfirmNo, r.Prompter)
+				if err != nil {
+					return err
+				}
+			}
+			if !confirmed {
+				r.Output.LogInfo("Provider change cancelled. No resources were changed.")
+				return nil
+			}
+			options.MTLS.OutageConfirmed = true
+			if err := r.Helm.UpgradeRadius(ctx, options, r.KubeContext); err != nil {
+				return err
+			}
+			r.Output.LogInfo("Provider transition complete.")
+			return nil
+		}
+	}
 	if r.Certificates.RotationPhase != "" {
 		if r.MTLS.Provider != "" || r.Chart != "" || r.Version != "" || len(r.Set) != 0 || len(r.SetFile) != 0 ||
 			len(r.ContourSet) != 0 || len(r.ContourSetFile) != 0 || r.ResetValues {

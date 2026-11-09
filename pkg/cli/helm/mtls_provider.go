@@ -27,6 +27,9 @@ import (
 // MTLSProviderOptions selects internal transport identity independently of certificate mode.
 type MTLSProviderOptions struct {
 	Provider string
+	// OutageConfirmed is set only after read-only transition preflight and
+	// explicit operator consent. It is not a chart value or a persisted bypass.
+	OutageConfirmed bool
 }
 
 // AddFlags registers the provider selector without overwriting omitted upgrade values.
@@ -95,7 +98,7 @@ func (i *Impl) prepareMTLSProvider(options ClusterOptions, defaults, current map
 		provider = options.MTLS.Provider
 	}
 	if installed && old != provider {
-		return fmt.Errorf("mTLS provider changes require a coordinated restart of all callers and receivers; keep the installed provider")
+		return fmt.Errorf("mTLS provider changes require a coordinated restart of all callers and receivers; use the explicit --mtls-provider outage workflow instead of changing Helm values directly")
 	}
 	mode, err := resolveAuthzMode(nil, merged)
 	if err != nil {

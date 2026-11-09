@@ -150,6 +150,8 @@ global:
       provider: radius
     # Reserved for the provider transition driver. Omission retains legacy configuration names.
     providerGeneration: ""
+    # Reserved: preserve the entire fleet's replica counts across a provider change.
+    providerReplicas: {}
     # Public loaded-trust evidence on the existing Go metrics listener.
     # Does not enable CA rotation or change the deployment-engine opt-in.
     startupProof:

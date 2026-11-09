@@ -37,7 +37,16 @@ import (
 func installedExternalProvider(t *testing.T) bool {
 	t.Helper()
 	options := test.NewTestOptions(t)
-	config, err := options.K8sClient.CoreV1().ConfigMaps(radiusNamespace).Get(t.Context(), "ucp-config", metav1.GetOptions{})
+	deployment, err := options.K8sClient.AppsV1().Deployments(radiusNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})
+	require.NoError(t, err)
+	var name string
+	for _, volume := range deployment.Spec.Template.Spec.Volumes {
+		if volume.Name == "config-volume" && volume.ConfigMap != nil {
+			name = volume.ConfigMap.Name
+		}
+	}
+	require.NotEmpty(t, name, "UCP must reference its active configuration generation")
+	config, err := options.K8sClient.CoreV1().ConfigMaps(radiusNamespace).Get(t.Context(), name, metav1.GetOptions{})
 	require.NoError(t, err)
 	var parsed struct {
 		Authorization authz.Options `yaml:"authorization"`

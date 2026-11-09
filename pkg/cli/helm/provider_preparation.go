@@ -194,7 +194,12 @@ func validateProviderDiscovery(object *unstructured.Unstructured, namespace stri
 // it cannot overwrite either live source configuration or foreign resources.
 func (s *providerTransitionStore) prepareConfigurations(ctx context.Context, namespace string,
 	prepared providerPreparedResources, beforeWrite func(context.Context) error) error {
-	if beforeWrite == nil {
+	return s.prepareConfigurationsMode(ctx, namespace, prepared, beforeWrite, false)
+}
+
+func (s *providerTransitionStore) prepareConfigurationsMode(ctx context.Context, namespace string,
+	prepared providerPreparedResources, beforeWrite func(context.Context) error, readOnly bool) error {
+	if !readOnly && beforeWrite == nil {
 		return errors.New("provider preparation requires the shared operation write guard")
 	}
 	referenced := map[string]bool{}
@@ -238,6 +243,9 @@ func (s *providerTransitionStore) prepareConfigurations(ctx context.Context, nam
 		if err := validatePreparedConfiguration(current, desired, namespace); err != nil {
 			return err
 		}
+	}
+	if readOnly {
+		return nil
 	}
 	for _, desired := range missing {
 		if err := ctx.Err(); err != nil {

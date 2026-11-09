@@ -19,7 +19,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- include "radius.rotationMetadata" $rotation | nindent 2 }}
 spec:
-  replicas: 1
+  replicas: {{ include "radius.providerReplicas" (dict "root" . "component" "applications-rp") }}
   selector:
     matchLabels:
      app.kubernetes.io/name: applications-rp

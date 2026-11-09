@@ -15,7 +15,7 @@ spec:
   strategy:
     type: Recreate
   {{- end }}
-  replicas: 1
+  replicas: {{ include "radius.providerReplicas" (dict "root" . "component" "controller") }}
   selector:
     matchLabels:
       app.kubernetes.io/name: controller

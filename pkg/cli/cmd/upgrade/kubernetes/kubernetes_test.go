@@ -200,6 +200,7 @@ func TestNewCommand(t *testing.T) {
 
 	mockFactory.EXPECT().GetHelmInterface().Return(mockHelm)
 	mockFactory.EXPECT().GetOutput().Return(mockOutput)
+	mockFactory.EXPECT().GetPrompter().Return(nil)
 
 	cmd, runner := NewCommand(mockFactory)
 

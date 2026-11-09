@@ -265,13 +265,13 @@ func TestIdentityOperationNativeProviderJournalGuard(t *testing.T) {
 	s, _, _, _ := newRotationTestStore(t)
 	ctx, maps := t.Context(), s.kube.CoreV1().ConfigMaps(s.namespace)
 	complete := `{"version":1,"plan":{"testIdentity":"full validation delegated to A11"},"phase":"complete"}`
-	for _, scenario := range []string{"complete", "stopping", "staging", "starting", "verifying", "unknown phase", "unknown version",
+	for _, scenario := range []string{"complete", "stopping", "staging", "starting", "verifying", "recording", "unknown phase", "unknown version",
 		"unknown field", "duplicate phase", "nested duplicate", "null", "trailing", "oversize", "foreign owner", "foreign Helm",
 		"missing validator", "validator refusal", "journal mutation", "lease mutation"} {
 		t.Run(scenario, func(t *testing.T) {
 			raw := complete
 			switch scenario {
-			case "stopping", "staging", "starting", "verifying":
+			case "stopping", "staging", "starting", "verifying", "recording":
 				raw = strings.ReplaceAll(raw, `"complete"`, `"`+scenario+`"`)
 			case "unknown phase":
 				raw = strings.ReplaceAll(raw, `"complete"`, `"done"`)

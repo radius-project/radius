@@ -54,20 +54,22 @@ const (
 	providerStaging   providerTransitionPhase = "staging"
 	providerStarting  providerTransitionPhase = "starting"
 	providerVerifying providerTransitionPhase = "verifying"
+	providerRecording providerTransitionPhase = "recording"
 	providerComplete  providerTransitionPhase = "complete"
 )
 
 type providerAggregationSnapshot = aggregationTransitionSnapshot
 
 type providerTransitionWorkload struct {
-	Name            string    `json:"name"`
-	UID             types.UID `json:"uid"`
-	ResourceVersion string    `json:"resourceVersion"`
-	Replicas        int32     `json:"replicas"`
-	SourceSHA256    string    `json:"sourceSHA256"`
-	TargetSHA256    string    `json:"targetSHA256"`
-	MetadataSHA256  string    `json:"metadataSHA256"`
-	PreviousMarker  string    `json:"previousMarker,omitempty"`
+	Name               string    `json:"name"`
+	UID                types.UID `json:"uid"`
+	ResourceVersion    string    `json:"resourceVersion"`
+	Replicas           int32     `json:"replicas"`
+	SourceSHA256       string    `json:"sourceSHA256"`
+	TargetSHA256       string    `json:"targetSHA256"`
+	MetadataSHA256     string    `json:"metadataSHA256"`
+	HelmMetadataSHA256 string    `json:"helmMetadataSHA256,omitempty"`
+	PreviousMarker     string    `json:"previousMarker,omitempty"`
 }
 
 type providerTransitionConfig struct {
@@ -75,6 +77,20 @@ type providerTransitionConfig struct {
 	UID             types.UID `json:"uid"`
 	ResourceVersion string    `json:"resourceVersion"`
 	SHA256          string    `json:"sha256"`
+}
+
+type providerHelmIntent struct {
+	SourceRevision       int      `json:"sourceRevision"`
+	ChartSHA256          string   `json:"chartSHA256"`
+	SourceValuesSHA256   string   `json:"sourceValuesSHA256"`
+	SourceManifestSHA256 string   `json:"sourceManifestSHA256"`
+	TargetValuesSHA256   string   `json:"targetValuesSHA256"`
+	TargetConfigurations []string `json:"targetConfigurations"`
+}
+
+type providerSourceSecret struct {
+	Name string    `json:"name"`
+	UID  types.UID `json:"uid"`
 }
 
 // Persist hashes, never rendered pod specifications: inline environment values
@@ -91,6 +107,8 @@ type providerTransitionPlan struct {
 	Aggregation            providerAggregationSnapshot  `json:"aggregation"`
 	Workloads              []providerTransitionWorkload `json:"workloads"`
 	Configurations         []providerTransitionConfig   `json:"configurations,omitempty"`
+	Helm                   *providerHelmIntent          `json:"helm,omitempty"`
+	SourceSecrets          []providerSourceSecret       `json:"sourceSecrets,omitempty"`
 }
 
 type providerTransitionState struct {
@@ -154,7 +172,7 @@ func (s providerTransitionState) validate() error {
 		!slices.Contains([]string{"radius", "external"}, p.Source) ||
 		!slices.Contains([]string{"radius", "external"}, p.Target) || p.Source == p.Target ||
 		!slices.Contains([]string{"dryRun", "enforce"}, p.Mode) ||
-		!slices.Contains([]providerTransitionPhase{providerStopping, providerStaging, providerStarting, providerVerifying, providerComplete}, s.Phase) {
+		!slices.Contains([]providerTransitionPhase{providerStopping, providerStaging, providerStarting, providerVerifying, providerRecording, providerComplete}, s.Phase) {
 		return errors.New("invalid provider transition identity, mode or phase")
 	}
 	if (p.PreviousJournalUID == "") != (p.PreviousJournalVersion == "") {
@@ -180,6 +198,9 @@ func (s providerTransitionState) validate() error {
 			!providerDigestValid(w.MetadataSHA256) || w.SourceSHA256 == w.TargetSHA256 {
 			return errors.New("invalid provider transition workload")
 		}
+		if (p.Helm != nil || w.HelmMetadataSHA256 != "") && !providerDigestValid(w.HelmMetadataSHA256) {
+			return errors.New("provider Helm recording requires exact workload metadata pins")
+		}
 		if w.PreviousMarker != "" {
 			previous, phase, found := strings.Cut(w.PreviousMarker, "/")
 			id, err := uuid.Parse(previous)
@@ -197,6 +218,45 @@ func (s providerTransitionState) validate() error {
 			return errors.New("invalid or duplicate provider configuration pin")
 		}
 		seen[config.Name] = true
+	}
+	if s.Phase == providerRecording && p.Helm == nil {
+		return errors.New("provider recording requires pinned Helm intent")
+	}
+	if p.Helm == nil && len(p.SourceSecrets) != 0 {
+		return errors.New("provider credential retirement requires pinned Helm intent")
+	}
+	if h := p.Helm; h != nil {
+		if h.SourceRevision < 1 || !providerDigestValid(h.ChartSHA256) ||
+			!providerDigestValid(h.SourceValuesSHA256) || !providerDigestValid(h.SourceManifestSHA256) ||
+			!providerDigestValid(h.TargetValuesSHA256) {
+			return errors.New("invalid provider Helm intent")
+		}
+		targets := map[string]bool{}
+		for _, name := range h.TargetConfigurations {
+			if !seen[name] || targets[name] {
+				return errors.New("provider Helm intent requires distinct pinned target configurations")
+			}
+			targets[name] = true
+		}
+		generation := strings.ReplaceAll(p.ID, "-", "")
+		for _, base := range providerConfigurationBases[:5] {
+			if !targets[base+"-"+generation] {
+				return errors.New("provider Helm intent is missing a generated target configuration")
+			}
+		}
+		if p.Target == "external" || len(p.SourceSecrets) != 0 {
+			if p.Source != "radius" || p.Target != "external" || len(p.SourceSecrets) != len(rotationComponents) {
+				return errors.New("provider source credential inventory requires all five managed identities")
+			}
+			seen := map[string]bool{}
+			for _, secret := range p.SourceSecrets {
+				component, found := strings.CutSuffix(secret.Name, "-mtls")
+				if !found || !slices.Contains(rotationComponents, component) || secret.UID == "" || seen[secret.Name] {
+					return errors.New("invalid provider source credential identity")
+				}
+				seen[secret.Name] = true
+			}
+		}
 	}
 	data, err := json.Marshal(s)
 	if err != nil {
@@ -263,6 +323,27 @@ func (s *providerTransitionStore) checkConfigurations(ctx context.Context, plan 
 		}
 		if current != pin {
 			return fmt.Errorf("provider configuration %s changed during transition", pin.Name)
+		}
+	}
+	return nil
+}
+
+func (s *providerTransitionStore) checkStateConfigurations(ctx context.Context, state providerTransitionState) error {
+	if state.Plan.Helm == nil || state.Phase != providerRecording && state.Phase != providerComplete {
+		return s.checkConfigurations(ctx, state.Plan)
+	}
+	// Helm may have pruned source-only configurations or updated target metadata
+	// before an interrupted final write. It must not replace target identities or data.
+	for _, pin := range state.Plan.Configurations {
+		if !slices.Contains(state.Plan.Helm.TargetConfigurations, pin.Name) {
+			continue
+		}
+		current, err := s.configuration(ctx, state.Plan.Namespace, pin.Name)
+		if err != nil {
+			return err
+		}
+		if current.UID != pin.UID || current.SHA256 != pin.SHA256 {
+			return fmt.Errorf("provider target configuration %s changed during Helm recording", pin.Name)
 		}
 	}
 	return nil
@@ -385,7 +466,11 @@ func (s *providerTransitionStore) advance(ctx context.Context, lease *coordinati
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	phases := []providerTransitionPhase{providerStopping, providerStaging, providerStarting, providerVerifying, providerComplete}
+	phases := []providerTransitionPhase{providerStopping, providerStaging, providerStarting, providerVerifying}
+	if state.Plan.Helm != nil {
+		phases = append(phases, providerRecording)
+	}
+	phases = append(phases, providerComplete)
 	index := slices.Index(phases, state.Phase)
 	if index < 0 || index+1 >= len(phases) || phases[index+1] != next {
 		return errors.New("provider transition cannot skip or reverse a phase")
@@ -397,7 +482,7 @@ func (s *providerTransitionStore) advance(ctx context.Context, lease *coordinati
 	if err := s.checkAggregation(ctx, state.Plan); err != nil {
 		return err
 	}
-	if err := s.checkConfigurations(ctx, state.Plan); err != nil {
+	if err := s.checkStateConfigurations(ctx, state); err != nil {
 		return err
 	}
 	if err := s.checkLock(ctx, lease); err != nil {

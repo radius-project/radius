@@ -72,13 +72,18 @@ func (s *providerTransitionStore) deployment(ctx context.Context, plan providerT
 	if err != nil {
 		return nil, "", err
 	}
+	digest, err := providerSpecHash(d.Spec)
+	if err != nil {
+		return nil, "", err
+	}
+	recorded := plan.Helm != nil && metadata == w.HelmMetadataSHA256 &&
+		digest == w.TargetSHA256 && d.Annotations[providerTransitionMarker] == providerMarker(plan, providerStarting)
 	if d.UID != w.UID || d.ResourceVersion == "" || d.DeletionTimestamp != nil || d.Spec.Paused ||
-		!rotationOwned(d, plan.Namespace, plan.Release) || metadata != w.MetadataSHA256 ||
+		!rotationOwned(d, plan.Namespace, plan.Release) || metadata != w.MetadataSHA256 && !recorded ||
 		d.Spec.Replicas == nil || *d.Spec.Replicas < 0 {
 		return nil, "", fmt.Errorf("provider transition workload %s identity or metadata drifted", w.Name)
 	}
-	digest, err := providerSpecHash(d.Spec)
-	return d, digest, err
+	return d, digest, nil
 }
 
 func (s *providerTransitionStore) validateTargets(ctx context.Context, state providerTransitionState, targets map[string]appsv1.DeploymentSpec) error {
@@ -125,7 +130,7 @@ func (s *providerTransitionStore) validateTargets(ctx context.Context, state pro
 	if err := s.checkAutoscalers(ctx, state.Plan); err != nil {
 		return err
 	}
-	if err := s.checkConfigurations(ctx, state.Plan); err != nil {
+	if err := s.checkStateConfigurations(ctx, state); err != nil {
 		return err
 	}
 	return s.checks.preflight(ctx, state.Plan, targets)
@@ -166,7 +171,11 @@ func (s *providerTransitionStore) predecessor(ctx context.Context, plan provider
 }
 
 func (s *providerTransitionStore) plan(ctx context.Context, namespace, source, target, mode string, targets map[string]appsv1.DeploymentSpec) (providerTransitionPlan, error) {
-	p := providerTransitionPlan{ID: uuid.NewString(), Namespace: namespace, Release: radiusReleaseName, Source: source, Target: target, Mode: mode}
+	return s.planWithID(ctx, namespace, source, target, mode, uuid.NewString(), targets)
+}
+
+func (s *providerTransitionStore) planWithID(ctx context.Context, namespace, source, target, mode, id string, targets map[string]appsv1.DeploymentSpec) (providerTransitionPlan, error) {
+	p := providerTransitionPlan{ID: id, Namespace: namespace, Release: radiusReleaseName, Source: source, Target: target, Mode: mode}
 	if s.checks == nil {
 		return p, errors.New("provider transition requires aggregation and target evidence checks")
 	}
@@ -197,10 +206,21 @@ func (s *providerTransitionStore) plan(ctx context.Context, namespace, source, t
 		if err != nil {
 			return p, err
 		}
+		// The first Helm upgrade after bootstrap replaces its creation marker
+		// with the completed CA revision. Pin that exact metadata separately;
+		// do not relax ownership or accept arbitrary annotation changes.
+		recorded := d.DeepCopy()
+		delete(recorded.Annotations, aggregationBootstrapOwner)
+		recorded.Annotations[rotationRevision] = p.Aggregation.Revision
+		helmMetadata, err := providerMetadataHash(recorded)
+		if err != nil {
+			return p, err
+		}
 		p.Workloads = append(p.Workloads, providerTransitionWorkload{
 			Name: name, UID: d.UID, ResourceVersion: d.ResourceVersion, Replicas: *d.Spec.Replicas,
 			SourceSHA256: sourceHash, TargetSHA256: targetHash, MetadataSHA256: metadata,
-			PreviousMarker: d.Annotations[providerTransitionMarker],
+			HelmMetadataSHA256: helmMetadata,
+			PreviousMarker:     d.Annotations[providerTransitionMarker],
 		})
 		for _, pod := range []corev1.PodSpec{d.Spec.Template.Spec, spec.Template.Spec} {
 			for _, name := range providerConfigurationNames(pod) {
@@ -305,7 +325,7 @@ func (s *providerTransitionStore) inspect(ctx context.Context, state providerTra
 			valid = stopped || staged
 		case providerStarting:
 			valid = staged || started
-		case providerVerifying, providerComplete:
+		case providerVerifying, providerRecording, providerComplete:
 			valid = started
 		}
 		if !valid {
@@ -456,7 +476,7 @@ func (s *providerTransitionStore) updateWorkload(ctx context.Context, lease *coo
 	if err := s.checkAutoscalers(ctx, state.Plan); err != nil {
 		return err
 	}
-	if err := s.checkConfigurations(ctx, state.Plan); err != nil {
+	if err := s.checkStateConfigurations(ctx, state); err != nil {
 		return err
 	}
 	switch state.Phase {
@@ -569,9 +589,79 @@ func (s *providerTransitionStore) step(ctx context.Context, namespace, transacti
 			if state.Phase == providerComplete {
 				return nil
 			}
-			return s.advance(ctx, lease, cm, state, providerComplete)
+			next := providerComplete
+			if state.Plan.Helm != nil {
+				next = providerRecording
+			}
+			return s.advance(ctx, lease, cm, state, next)
+		case providerRecording:
+			return errors.New("provider transition requires its pinned final Helm recording")
 		default:
 			return errors.New("unknown provider transition phase")
 		}
+	})
+}
+
+// record keeps the journal unfinished while Helm catches up with the verified
+// workloads. The callback must record and verify the pinned release, using the
+// supplied fence before writes. A failed or interrupted recording stays resumable.
+func (s *providerTransitionStore) record(ctx context.Context, namespace, transaction string,
+	targets map[string]appsv1.DeploymentSpec, record func(context.Context, func(context.Context) error) error) error {
+	if record == nil {
+		return errors.New("provider transition requires a final Helm recorder")
+	}
+	before, planned, err := s.read(ctx, namespace)
+	if err != nil {
+		return err
+	}
+	if planned.Plan.ID != transaction || planned.Phase != providerRecording || planned.Plan.Helm == nil {
+		return errors.New("provider transition is not awaiting its pinned Helm recording")
+	}
+	return s.withLock(ctx, namespace, func(lease *coordinationv1.Lease) error {
+		fence := func(ctx context.Context) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			cm, current, err := s.read(ctx, namespace)
+			if err != nil {
+				return err
+			}
+			if cm.UID != before.UID || cm.ResourceVersion != before.ResourceVersion ||
+				!rotationJSONEqual(current, planned) {
+				return errors.New("provider transition changed during Helm recording")
+			}
+			if err := s.validateTargets(ctx, planned, targets); err != nil {
+				return err
+			}
+			if err := s.inspect(ctx, planned); err != nil {
+				return err
+			}
+			if err := s.checkReady(ctx, planned); err != nil {
+				return err
+			}
+			return s.checkLock(ctx, lease)
+		}
+		if err := fence(ctx); err != nil {
+			return err
+		}
+		if err := s.checks.verify(ctx, planned.Plan); err != nil {
+			return err
+		}
+		if err := fence(ctx); err != nil {
+			return err
+		}
+		if err := record(ctx, fence); err != nil {
+			return err
+		}
+		if err := fence(ctx); err != nil {
+			return err
+		}
+		if err := s.checks.verify(ctx, planned.Plan); err != nil {
+			return err
+		}
+		if err := fence(ctx); err != nil {
+			return err
+		}
+		return s.advance(ctx, lease, before, planned, providerComplete)
 	})
 }

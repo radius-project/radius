@@ -242,6 +242,8 @@ type RevisionInfo struct {
 
 // Interface provides an abstraction over Helm operations for installing Radius.
 type Interface interface {
+	// CheckProviderTransition validates an explicit provider change without persistent writes.
+	CheckProviderTransition(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error)
 	// CheckRadiusCertificates validates certificate settings without mutating cluster resources.
 	CheckRadiusCertificates(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 	// InstallRadius installs Radius on the cluster, based on the specified Kubernetes context.
@@ -306,6 +308,8 @@ type Impl struct {
 	newCertificateClient             func(kubeContext string) (kubernetes.Interface, error)
 	newRotationStore                 func(kubeContext, namespace string) (*rotationStore, error)
 	validateCompletedProviderJournal func(*corev1.ConfigMap) error
+	// Nil obtains live component and aggregated-API process evidence.
+	observeProviderTransition func(context.Context, providerTransitionPlan) error
 }
 
 var _ Interface = &Impl{}
@@ -574,6 +578,9 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	if clusterOptions.Certificates.RotationPhase != "" {
 		return i.runCertificateRotation(ctx, clusterOptions, kubeContext, false)
+	}
+	if handled, err := i.runProviderTransition(ctx, clusterOptions, kubeContext, false); handled || err != nil {
+		return err
 	}
 	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "upgrade", nil); err != nil {
 		return err
