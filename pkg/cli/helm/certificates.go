@@ -238,9 +238,10 @@ func parseSigningCertificates(certPEM []byte, now time.Time) ([]*x509.Certificat
 }
 
 type certificatePlan struct {
-	client    kubernetes.Interface
-	namespace string
-	secret    *corev1.Secret
+	client      kubernetes.Interface
+	namespace   string
+	secret      *corev1.Secret
+	beforeWrite func(context.Context) error
 }
 
 func (i *Impl) certificateClient(kubeContext string) (kubernetes.Interface, error) {
@@ -632,6 +633,11 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 	}
 	_, err := plan.client.CoreV1().Namespaces().Get(ctx, plan.namespace, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
+		if plan.beforeWrite != nil {
+			if err := plan.beforeWrite(ctx); err != nil {
+				return err
+			}
+		}
 		_, err = plan.client.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: plan.namespace}}, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			err = nil
@@ -639,6 +645,11 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 	}
 	if err != nil {
 		return fmt.Errorf("cannot prepare namespace for imported CA Secret; check namespace permissions")
+	}
+	if plan.beforeWrite != nil {
+		if err := plan.beforeWrite(ctx); err != nil {
+			return err
+		}
 	}
 	_, err = plan.client.CoreV1().Secrets(plan.namespace).Create(ctx, plan.secret, metav1.CreateOptions{})
 	if err != nil {

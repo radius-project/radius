@@ -46,6 +46,9 @@ func (s *rotationStore) publishComponentTrust(ctx context.Context, bundle []byte
 		return nil, "", fmt.Errorf("cannot inspect component trust generation: %w", err)
 	}
 	if apierrors.IsNotFound(err) {
+		if err := s.checkWrite(ctx); err != nil {
+			return nil, "", err
+		}
 		current, err = maps.Create(ctx, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: s.namespace, Labels: map[string]string{rotationOwner: s.release}},
 			Immutable:  ptr.To(true),

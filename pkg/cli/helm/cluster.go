@@ -26,6 +26,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -295,12 +296,13 @@ type Impl struct {
 	k3sWaited     map[string]bool
 
 	// contourCharts are the Contour charts that the Impl loaded, by source.
-	contourChartsLock           sync.Mutex
-	contourCharts               map[contourChartSource]*chart.Chart
-	newCertManagerClients       certManagerClientsFunc
-	newCertManagerDynamicClient func(kubeContext string) (dynamic.Interface, error)
-	newCertificateClient        func(kubeContext string) (kubernetes.Interface, error)
-	newRotationStore            func(kubeContext, namespace string) (*rotationStore, error)
+	contourChartsLock                sync.Mutex
+	contourCharts                    map[contourChartSource]*chart.Chart
+	newCertManagerClients            certManagerClientsFunc
+	newCertManagerDynamicClient      func(kubeContext string) (dynamic.Interface, error)
+	newCertificateClient             func(kubeContext string) (kubernetes.Interface, error)
+	newRotationStore                 func(kubeContext, namespace string) (*rotationStore, error)
+	validateCompletedProviderJournal func(*corev1.ConfigMap) error
 }
 
 var _ Interface = &Impl{}

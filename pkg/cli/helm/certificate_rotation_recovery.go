@@ -230,6 +230,9 @@ func (s *rotationStore) beginRecovery(ctx context.Context, id string, target []b
 	}
 	desired := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rotationJournalName, Namespace: s.namespace,
 		Labels: map[string]string{rotationOwner: s.release}}, Data: map[string]string{rotationJournalKey: string(encoded)}}
+	if err := s.checkWrite(ctx); err != nil {
+		return rotationState{}, err
+	}
 	if journal == nil {
 		_, err = s.kube.CoreV1().ConfigMaps(s.namespace).Create(ctx, desired, metav1.CreateOptions{FieldManager: FieldManager})
 	} else {
@@ -279,6 +282,9 @@ func (s *rotationStore) reconcileRecoveryRoute(ctx context.Context, transaction 
 	service.Annotations[rotationRoute] = "complete"
 	delete(service.Annotations, rotationOldHash)
 	delete(service.Annotations, rotationNewHash)
+	if err := s.checkWrite(ctx); err != nil {
+		return err
+	}
 	_, err = s.kube.CoreV1().Services(s.namespace).Update(ctx, service, metav1.UpdateOptions{FieldManager: FieldManager})
 	return err
 }

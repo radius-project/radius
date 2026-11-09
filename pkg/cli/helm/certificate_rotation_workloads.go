@@ -148,6 +148,9 @@ func (s *rotationStore) reconcileRotationDeployment(ctx context.Context, transac
 	annotations := deployment.Annotations
 	annotations[rotationRevision] = state.revision()
 	deployment.Annotations = annotations
+	if err := s.checkWrite(ctx); err != nil {
+		return err
+	}
 	_, err = client.Update(ctx, deployment, metav1.UpdateOptions{FieldManager: FieldManager})
 	if err != nil {
 		return fmt.Errorf("cannot update rotation deployment; reread the phase before retrying: %w", err)

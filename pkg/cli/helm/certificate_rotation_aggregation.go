@@ -233,6 +233,9 @@ func (s *rotationStore) setAggregationRoute(ctx context.Context, transaction, ro
 	}
 	annotations[rotationTransaction], annotations[rotationRevision], annotations[rotationRoute] = transaction, state.revision(), route
 	service.Spec.Selector, service.Annotations = selector, annotations
+	if err := s.checkWrite(ctx); err != nil {
+		return nil, err
+	}
 	updated, err := services.Update(ctx, service, metav1.UpdateOptions{FieldManager: FieldManager})
 	if err != nil {
 		return nil, fmt.Errorf("cannot change aggregation routing; reread before retrying: %w", err)

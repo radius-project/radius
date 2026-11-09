@@ -75,7 +75,8 @@ func newRotationTestStore(t *testing.T) (*rotationStore, *rest.Config, []byte, [
 		},
 	}}, metav1.CreateOptions{FieldManager: FieldManager})
 	require.NoError(t, err)
-	return &rotationStore{kube: kube, dynamic: client, namespace: RadiusSystemNamespace, release: radiusReleaseName, now: time.Now}, config, old, next
+	return &rotationStore{kube: kube, dynamic: client, namespace: RadiusSystemNamespace, release: radiusReleaseName,
+		now: time.Now, guardWrite: func(context.Context) error { return nil }}, config, old, next
 }
 
 func advanceRotationTest(t *testing.T, store *rotationStore, next rotationPhase) {
