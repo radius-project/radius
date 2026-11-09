@@ -163,7 +163,8 @@ global:
       # private key or parent/root chain. For issuerRef the signing key stays external.
       # Receivers trust only this dedicated CA via ConfigMap "radius-mtls-ca", not the
       # leaf Secret's ca.crt. Validate the CA/key/match before installation; chart
-      # rendering checks PEM shape only. A9 CLI validation is not implemented yet.
+      # rendering checks PEM shape only. The CLI validates CA cryptography and, for
+      # issuerRef, invokes the shared live policy verifier before any changes.
       caBundle: ""
       # issuerRef mode only: operator-owned cert-manager issuer, never adopted.
       issuerRef:

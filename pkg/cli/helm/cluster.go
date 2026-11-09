@@ -359,6 +359,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
+	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil); err != nil {
+		return err
+	}
 
 	// Check Contour before installing anything, so that a Contour problem leaves the cluster unchanged.
 	var contour *contourPlan
@@ -369,8 +372,10 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
-		return err
+	if certificateMode(radiusValues) != "issuerRef" {
+		if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+			return err
+		}
 	}
 
 	// Install Contour before Radius. The Contour checks then see the cluster seconds before Contour is installed
@@ -544,6 +549,9 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
+	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, true); err != nil {
+		return err
+	}
 
 	// Check the Contour upgrade before upgrading anything, so that a Contour problem leaves the cluster unchanged.
 	var contour *contourPlan
@@ -554,8 +562,10 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
-		return err
+	if certificateMode(radiusValues) != "issuerRef" {
+		if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
+			return err
+		}
 	}
 
 	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
