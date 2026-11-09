@@ -22,11 +22,9 @@ import (
 	"os"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
-	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	cli_credential "github.com/radius-project/radius/pkg/cli/credential"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -52,6 +50,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short:   "Initialize Radius",
 		Long: `
 Interactively install the Radius control-plane and setup a Radius.Core environment.
+
+Initialization uses an interactive human-readable display, not a machine-readable result.
 
 If an environment already exists, 'rad init' will prompt the user to use the existing environment or create a new one.
 
@@ -94,7 +94,9 @@ rad init --set-file global.rootCA.cert=/path/to/rootCA.crt
 		RunE: framework.RunCommand(runner),
 	}
 
-	commonflags.AddOutputFlag(cmd)
+	// Shadow the inherited output flag, retaining parsing only for compatibility.
+	cmd.Flags().StringP("output", "o", "", "Ignored by initialization")
+	cmd.Flags().Lookup("output").Hidden = true
 	cmd.Flags().Bool("full", false, "Prompt user for all available configuration options")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
 	cmd.Flags().StringArrayVar(&runner.SetFile, "set-file", []string{}, "Set values from files on the command line (can specify multiple or separate files with commas: key1=filename1,key2=filename2)")
@@ -135,9 +137,6 @@ type Runner struct {
 	// The default recipe pack is always created/queried in the default scope.
 	DefaultScopeClientFactory *corerpv20250801.ClientFactory
 
-	// Format is the output format.
-	Format string
-
 	// Workspace is the workspace to use. This will be populated by Validate.
 	Workspace *workspaces.Workspace
 
@@ -171,16 +170,18 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad init` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	format, err := cli.RequireOutput(cmd)
-	if err != nil {
-		return err
+	if cmd.Flags().Changed("output") {
+		_, err := fmt.Fprintln(cmd.ErrOrStderr(), "Warning: rad init ignores --output/-o and always uses an interactive human-readable display; no JSON result will be produced. Remove the option to suppress this warning.")
+		if err != nil {
+			return fmt.Errorf("failed to write output warning: %w", err)
+		}
 	}
-	r.Format = format
 
-	r.Full, err = cmd.Flags().GetBool("full")
+	full, err := cmd.Flags().GetBool("full")
 	if err != nil {
 		return err
 	}
+	r.Full = full
 
 	for {
 		options, workspace, err := r.enterInitOptions(cmd.Context())
