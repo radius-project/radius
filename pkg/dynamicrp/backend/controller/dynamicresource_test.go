@@ -43,7 +43,9 @@ const (
 )
 
 func Test_DynamicResourceController_selectController(t *testing.T) {
-	setup := func() *DynamicResourceController {
+	setup := func(t *testing.T) *DynamicResourceController {
+		t.Helper()
+
 		ucp, err := testUCPClientFactory()
 		require.NoError(t, err)
 
@@ -54,13 +56,16 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 	}
 
 	selectController := func(t *testing.T, request *ctrl.Request) (ctrl.Controller, error) {
-		controller := setup()
+		t.Helper()
+
+		controller := setup(t)
 		operationType, resourceTypeDetails, err := controller.extractOperationAndResourceTypeDetails(t.Context(), request)
 		require.NoError(t, err)
 		return controller.selectController(operationType, resourceTypeDetails)
 	}
 
 	t.Run("inert PUT", func(t *testing.T) {
+		t.Parallel()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationPut}.String(),
@@ -73,6 +78,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 	})
 
 	t.Run("inert DELETE", func(t *testing.T) {
+		t.Parallel()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationDelete}.String(),
@@ -85,6 +91,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 	})
 
 	t.Run("recipe PUT", func(t *testing.T) {
+		t.Parallel()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + recipeResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: recipeResourceType, Method: v1.OperationPut}.String(),
@@ -97,6 +104,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 	})
 
 	t.Run("recipe DELETE", func(t *testing.T) {
+		t.Parallel()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + recipeResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: recipeResourceType, Method: v1.OperationDelete}.String(),
@@ -109,6 +117,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 	})
 
 	t.Run("unknown operation", func(t *testing.T) {
+		t.Parallel()
 		request := &ctrl.Request{
 			ResourceID:    "/planes/radius/local/resourceGroups/test-group/providers/" + inertResourceType + "/test-resource",
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationGet}.String(),
@@ -123,28 +132,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 
 func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 	resourceTypesServer := fake.ResourceTypesServer{
-		Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
-			resourceType := resourceProviderName + resources.SegmentSeparator + resourceTypeName
-			response := v20231001preview.ResourceTypesClientGetResponse{
-				Name: new(resourceTypeName),
-			}
-
-			switch resourceType {
-			case inertResourceType:
-				response.Properties = &v20231001preview.ResourceTypeProperties{
-					Capabilities: []*string{to.Ptr(datamodel.CapabilityManualResourceProvisioning)},
-				}
-				resp.SetResponse(http.StatusOK, response, nil)
-				return
-			case recipeResourceType:
-				response.Properties = &v20231001preview.ResourceTypeProperties{}
-				resp.SetResponse(http.StatusOK, response, nil)
-				return
-			default:
-				errResp.SetError(fmt.Errorf("resource type %s not recognized", resourceType))
-				return
-			}
-		},
+		Get: getTestResourceType,
 	}
 
 	return v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
@@ -152,6 +140,29 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 			ResourceTypesServer: resourceTypesServer,
 		}),
 	})
+}
+
+// getTestResourceType is a fake UCP resource type GET handler that knows only the inert and recipe test types.
+func getTestResourceType(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
+	resourceType := resourceProviderName + resources.SegmentSeparator + resourceTypeName
+	response := v20231001preview.ResourceTypesClientGetResponse{
+		Name: new(resourceTypeName),
+	}
+
+	switch resourceType {
+	case inertResourceType:
+		response.Properties = &v20231001preview.ResourceTypeProperties{
+			Capabilities: []*string{to.Ptr(datamodel.CapabilityManualResourceProvisioning)},
+		}
+	case recipeResourceType:
+		response.Properties = &v20231001preview.ResourceTypeProperties{}
+	default:
+		errResp.SetError(fmt.Errorf("resource type %s not recognized", resourceType))
+		return
+	}
+
+	resp.SetResponse(http.StatusOK, response, nil)
+	return
 }
 
 func Test_hasCapability(t *testing.T) {
@@ -347,26 +358,13 @@ func Test_DynamicResourceController_Run(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			gets := 0
 			resourceTypesServer := fake.ResourceTypesServer{
-				Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
+				Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], azfake.ErrorResponder) {
 					gets++
-					properties := &v20231001preview.ResourceTypeProperties{}
-					switch resourceProviderName + resources.SegmentSeparator + resourceTypeName {
-					case inertResourceType:
-						properties.Capabilities = []*string{to.Ptr(datamodel.CapabilityManualResourceProvisioning)}
-					case recipeResourceType:
-					default:
-						errResp.SetError(fmt.Errorf("resource type %s/%s not recognized", resourceProviderName, resourceTypeName))
-						return
-					}
-					resp.SetResponse(http.StatusOK, v20231001preview.ResourceTypesClientGetResponse{
-						ResourceTypeResource: v20231001preview.ResourceTypeResource{
-							Name:       new(resourceTypeName),
-							Properties: properties,
-						},
-					}, nil)
-					return
+					return getTestResourceType(ctx, planeName, resourceProviderName, resourceTypeName, options)
 				},
 			}
 			apiVersionsServer := fake.APIVersionsServer{
@@ -415,6 +413,8 @@ func Test_DynamicResourceController_Run(t *testing.T) {
 	}
 
 	t.Run("invalid resource ID", func(t *testing.T) {
+		t.Parallel()
+
 		ucp, err := testUCPClientFactory()
 		require.NoError(t, err)
 

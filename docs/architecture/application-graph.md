@@ -152,7 +152,7 @@ are filtered:
 - **Environment resources**: resources whose `properties.environment` matches
   the linked environment name.
 
-The Applications.Core controller lists each resource type two times: one time in the application's root scope and one time in the environment's root scope. The Radius.Core preview controller lists each type one time in the application's root scope. It lists the environment's root scope only if that scope is different, with a case-insensitive comparison. If the scopes are the same, both filters use the same list.
+The Applications.Core controller lists each resource type two times: one time in the application's root scope and one time in the environment's root scope. The Radius.Core preview controller lists each type one time in the application's root scope. It lists the environment's root scope only if that scope is different, with a case-insensitive comparison. If the scopes are the same, it applies both filters to each resource in the same list. It filters each page before it requests the next page and keeps only the matching resources. If a page request fails, the graph request fails.
 
 ### Step 4: Compute the Graph
 

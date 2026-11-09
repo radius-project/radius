@@ -710,35 +710,63 @@ func Test_Resource(t *testing.T) {
 		require.Empty(t, resources)
 	})
 
-	t.Run("ListResourcesIn* list each type without a provider summary request", func(t *testing.T) {
-		mockResourceClient := NewMockgenericResourceClient(gomock.NewController(t))
-		mockResourceProviderClient := NewMockresourceProviderClient(gomock.NewController(t))
-		client := createResourceAndResourceProviderClient(mockResourceClient, mockResourceProviderClient)
+	inventoryListTests := []struct {
+		name          string
+		list          func(context.Context, *UCPApplicationsManagementClient) ([]generated.GenericResource, error)
+		wantResources int
+		// wantTypeLists is the number of per-type list traversals; each type is listed once.
+		wantTypeLists int
+	}{
+		{
+			name: "ListResourcesInApplication",
+			list: func(ctx context.Context, client *UCPApplicationsManagementClient) ([]generated.GenericResource, error) {
+				return client.ListResourcesInApplication(ctx, "test-application")
+			},
+			wantResources: inventoryResourceTypeCount,
+			wantTypeLists: inventoryResourceTypeCount,
+		},
+		{
+			name: "ListResourcesInEnvironment",
+			list: func(ctx context.Context, client *UCPApplicationsManagementClient) ([]generated.GenericResource, error) {
+				return client.ListResourcesInEnvironment(ctx, "test-environment")
+			},
+			wantResources: 2 * inventoryResourceTypeCount,
+			wantTypeLists: inventoryResourceTypeCount,
+		},
+		{
+			name: "ListResourcesInEnvironmentOrApplications",
+			list: func(ctx context.Context, client *UCPApplicationsManagementClient) ([]generated.GenericResource, error) {
+				return client.ListResourcesInEnvironmentOrApplications(ctx, "test-environment", []string{"test-application"})
+			},
+			wantResources: 2 * inventoryResourceTypeCount,
+			wantTypeLists: inventoryResourceTypeCount,
+		},
+	}
+	for _, tt := range inventoryListTests {
+		t.Run(tt.name+" lists each type without a provider summary request", func(t *testing.T) {
+			t.Parallel()
 
-		mockResourceProviderClient.EXPECT().
-			NewListProviderSummariesPager("local", gomock.Any()).
-			DoAndReturn(func(string, *ucp.ResourceProvidersClientListProviderSummariesOptions) *runtime.Pager[ucp.ResourceProvidersClientListProviderSummariesResponse] {
-				return pager(resourceProviderSummaryPages)
-			}).Times(3)
-		mockResourceProviderClient.EXPECT().GetProviderSummary(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-		mockResourceClient.EXPECT().
-			NewListByRootScopePager(gomock.Any()).
-			DoAndReturn(func(*generated.GenericResourcesClientListByRootScopeOptions) *runtime.Pager[generated.GenericResourcesClientListByRootScopeResponse] {
-				return pager(listPages)
-			}).Times(3 * inventoryResourceTypeCount)
+			mockResourceClient := NewMockgenericResourceClient(gomock.NewController(t))
+			mockResourceProviderClient := NewMockresourceProviderClient(gomock.NewController(t))
+			client := createResourceAndResourceProviderClient(mockResourceClient, mockResourceProviderClient)
 
-		resources, err := client.ListResourcesInApplication(t.Context(), "test-application")
-		require.NoError(t, err)
-		require.Len(t, resources, inventoryResourceTypeCount)
+			mockResourceProviderClient.EXPECT().
+				NewListProviderSummariesPager("local", gomock.Any()).
+				Return(pager(resourceProviderSummaryPages)).
+				Times(1)
+			mockResourceProviderClient.EXPECT().GetProviderSummary(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			mockResourceClient.EXPECT().
+				NewListByRootScopePager(gomock.Any()).
+				DoAndReturn(func(*generated.GenericResourcesClientListByRootScopeOptions) *runtime.Pager[generated.GenericResourcesClientListByRootScopeResponse] {
+					return pager(listPages)
+				}).
+				Times(tt.wantTypeLists)
 
-		resources, err = client.ListResourcesInEnvironment(t.Context(), "test-environment")
-		require.NoError(t, err)
-		require.Len(t, resources, 2*inventoryResourceTypeCount)
-
-		resources, err = client.ListResourcesInEnvironmentOrApplications(t.Context(), "test-environment", []string{"test-application"})
-		require.NoError(t, err)
-		require.Len(t, resources, 2*inventoryResourceTypeCount)
-	})
+			resources, err := tt.list(t.Context(), client)
+			require.NoError(t, err)
+			require.Len(t, resources, tt.wantResources)
+		})
+	}
 
 	t.Run("GetResource", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

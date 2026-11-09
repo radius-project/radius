@@ -90,25 +90,40 @@ func computeGraphPayload(ctx context.Context, applicationID resources.ID, enviro
 		return nil, err
 	}
 
-	applicationScopeResources, err := listAllResourcesInScope(ctx, applicationID.RootScope(), apiVersions, clientOptions)
-	if err != nil {
-		return nil, err
+	// Filter each page as it arrives so that resources outside the application and environment
+	// are not held in memory while the rest of the scope is listed.
+	applicationResources := []generated.GenericResource{}
+	environmentResources := []generated.GenericResource{}
+	collectApplicationResource := func(resource generated.GenericResource) {
+		if isResourceInApplication(resource, applicationID.Name()) {
+			applicationResources = append(applicationResources, resource)
+		}
 	}
-
-	environmentScopeResources := applicationScopeResources
-	if !strings.EqualFold(parsedEnvironmentID.RootScope(), applicationID.RootScope()) {
-		environmentScopeResources, err = listAllResourcesInScope(ctx, parsedEnvironmentID.RootScope(), apiVersions, clientOptions)
-		if err != nil {
-			return nil, err
+	collectEnvironmentResource := func(resource generated.GenericResource) {
+		if isResourceInEnvironment(resource, parsedEnvironmentID.Name()) {
+			environmentResources = append(environmentResources, resource)
 		}
 	}
 
-	applicationResources := filterResources(applicationScopeResources, func(resource generated.GenericResource) bool {
-		return isResourceInApplication(resource, applicationID.Name())
-	})
-	environmentResources := filterResources(environmentScopeResources, func(resource generated.GenericResource) bool {
-		return isResourceInEnvironment(resource, parsedEnvironmentID.Name())
-	})
+	// When both root scopes match, one listing of each type serves both filters.
+	sharedScope := strings.EqualFold(parsedEnvironmentID.RootScope(), applicationID.RootScope())
+	visitApplicationScope := collectApplicationResource
+	if sharedScope {
+		visitApplicationScope = func(resource generated.GenericResource) {
+			collectApplicationResource(resource)
+			collectEnvironmentResource(resource)
+		}
+	}
+
+	if err := visitResourcesInScope(ctx, applicationID.RootScope(), apiVersions, clientOptions, visitApplicationScope); err != nil {
+		return nil, err
+	}
+
+	if !sharedScope {
+		if err := visitResourcesInScope(ctx, parsedEnvironmentID.RootScope(), apiVersions, clientOptions, collectEnvironmentResource); err != nil {
+			return nil, err
+		}
+	}
 
 	// Only look up the registered Azure tenant when the fetched resources
 	// actually contain at least one Azure output resource. Pure-Kubernetes
@@ -124,25 +139,21 @@ func computeGraphPayload(ctx context.Context, applicationID resources.ID, enviro
 // resolver is a function type to resolve appgraph connection.
 type resolver func(any) (string, corerpv20250801preview.Direction, error)
 
-// listAllResourcesInScope lists the resources of the given resource types in rootScope.
-func listAllResourcesInScope(ctx context.Context, rootScope string, apiVersions map[string]string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
-	results := []generated.GenericResource{}
+// visitResourcesInScope calls visit for each resource of the given resource types in rootScope.
+func visitResourcesInScope(ctx context.Context, rootScope string, apiVersions map[string]string, clientOptions *policy.ClientOptions, visit func(generated.GenericResource)) error {
 	for resourceType, apiVersion := range apiVersions {
-		resourceList, err := listAllResourcesByType(ctx, rootScope, resourceType, apiVersion, clientOptions)
-		if err != nil {
-			return nil, err
+		if err := visitResourcesByType(ctx, rootScope, resourceType, apiVersion, clientOptions, visit); err != nil {
+			return err
 		}
-		results = append(results, resourceList...)
 	}
-	return results, nil
+	return nil
 }
 
-// listAllResourcesByType lists the resources of resourceType in rootScope using apiVersion.
-func listAllResourcesByType(ctx context.Context, rootScope string, resourceType string, apiVersion string, clientOptions *policy.ClientOptions) ([]generated.GenericResource, error) {
-	results := []generated.GenericResource{}
-
+// visitResourcesByType calls visit for each resource of resourceType in rootScope using apiVersion.
+// Each page is visited before the next page is requested, so the caller decides which resources to keep.
+func visitResourcesByType(ctx context.Context, rootScope string, resourceType string, apiVersion string, clientOptions *policy.ClientOptions, visit func(generated.GenericResource)) error {
 	if apiVersion == "" {
-		return []generated.GenericResource{}, fmt.Errorf("no API versions found for resource type %q", resourceType)
+		return fmt.Errorf("no API versions found for resource type %q", resourceType)
 	}
 
 	// Set the API version in the client options
@@ -151,31 +162,20 @@ func listAllResourcesByType(ctx context.Context, rootScope string, resourceType 
 
 	client, err := generated.NewGenericResourcesClient(resourceType, rootScope, &aztoken.AnonymousCredential{}, &clientOptionsWithAPIVersion)
 	if err != nil {
-		return []generated.GenericResource{}, err
+		return err
 	}
 	pager := client.NewListByRootScopePager(&generated.GenericResourcesClientListByRootScopeOptions{})
 
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
 		if err != nil {
-			return []generated.GenericResource{}, err
+			return err
 		}
-		resourceList := nextPage.GenericResourcesList.Value
-		for _, application := range resourceList {
-			results = append(results, *application)
-		}
-	}
-	return results, nil
-}
-
-func filterResources(resourceList []generated.GenericResource, include func(generated.GenericResource) bool) []generated.GenericResource {
-	results := []generated.GenericResource{}
-	for _, resource := range resourceList {
-		if include(resource) {
-			results = append(results, resource)
+		for _, resource := range nextPage.GenericResourcesList.Value {
+			visit(*resource)
 		}
 	}
-	return results
+	return nil
 }
 
 // isResourceInApplication takes in a context, a GenericResource and an application name and returns
