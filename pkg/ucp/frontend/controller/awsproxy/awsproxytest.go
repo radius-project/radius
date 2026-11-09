@@ -57,6 +57,7 @@ const (
 type TestOptions struct {
 	AWSCloudControlClient   *awsclient.MockAWSCloudControlClient
 	AWSCloudFormationClient *awsclient.MockAWSCloudFormationClient
+	AWSKafkaClient          *awsclient.MockAWSKafkaClient
 	DatabaseClient          database.Client
 	Queue                   *queueinmemory.Client
 	StatusManager           statusmanager.StatusManager
@@ -70,6 +71,7 @@ func setupTest(t *testing.T) TestOptions {
 	return TestOptions{
 		AWSCloudControlClient:   awsclient.NewMockAWSCloudControlClient(mockCtrl),
 		AWSCloudFormationClient: awsclient.NewMockAWSCloudFormationClient(mockCtrl),
+		AWSKafkaClient:          awsclient.NewMockAWSKafkaClient(mockCtrl),
 		DatabaseClient:          db,
 		Queue:                   queue,
 		StatusManager:           statusmanager.New(db, queue, "global"),
@@ -83,7 +85,7 @@ func (o TestOptions) ControllerOptions() armrpc_controller.Options {
 
 // Clients returns the test's AWS clients.
 func (o TestOptions) Clients() awsclient.Clients {
-	return awsclient.Clients{CloudControl: o.AWSCloudControlClient, CloudFormation: o.AWSCloudFormationClient}
+	return awsclient.Clients{CloudControl: o.AWSCloudControlClient, CloudFormation: o.AWSCloudFormationClient, Kafka: o.AWSKafkaClient}
 }
 
 // testFingerprintKeyBytes is the fingerprint key the tests use, unless a test replaces it.

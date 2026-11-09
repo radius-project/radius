@@ -86,6 +86,30 @@ When you are iterating on control-plane images (for example the applications res
 - For the scheduled OCI state archive end-to-end test, see [Repo Radius GHCR state end-to-end test](./repo-radius-state-e2e.md).
 - For investigating a test reported as flaky, see [Investigating flaky tests](./investigating-flaky-tests.md).
 
+#### RBAC policy storage
+
+Run fast policy checks with `go test -race ./pkg/ucp/authorization ./pkg/components/database/inmemory -short -count=1`. For the full 10,000-assignment/1,000-role capacity checks, run:
+
+```bash
+go test -race ./pkg/ucp/authorization -run '^(TestPolicyStoreManifestCapacity|TestPolicyCacheRateLimitedCapacity)$' -count=1 -v
+```
+
+Assignment metadata regressions cover description and principal display-label updates, clearing optional metadata, history and generation changes, identical-PUT idempotency, and preservation of identity and ownership. Only metadata is mutable; changing the assignment's role or principal identity still requires a different assignment.
+
+History regressions cover updating and deleting maximum-sized initialized assignments, metadata at its byte limit across generation digit changes, interrupted chunk preparation/publication, delayed recovery after deletion, and missing or corrupted audit chunks. Events up to 128 KiB retain the inline format; larger events use immutable 64 KiB binary chunks, encoded below the 128 KiB per-object limit, with ordered references, an exact byte count and a SHA-256 digest. Reassembly returns the same public access-change resource. Variable actor/request/target/provenance metadata has a separate 128 KiB bound; generated envelope fields have reserved space, so switching from `after` to `before` or adding generation digits cannot exhaust it. Each snapshot can hold the maximum packed policy plus a 128 KiB wrapper reserve, and the derived total bound reserves both snapshots and the envelope. Excessive request metadata fails explicitly before claiming a generation; audit contents are never truncated. Run the full snapshot-boundary and maximum Bootstrap batch checks with:
+
+```bash
+go test -race ./pkg/ucp/authorization -run '^(TestPolicyStoreMaximumHistorySnapshots|TestPolicyStoreBootstrapHistoryCapacity)$' -count=1
+```
+
+The manifest reports 86 index pages and an anchor smaller than 1 KiB. Cold-cache and changed-generation refreshes each use 174 GETs. The fake-clock rate limiter checks the deterministic 870 ms throttling cost at 200 QPS/200 burst with the burst exhausted; it does not gate race-instrumented validation on wall-clock time. Separate fake-clock tests enforce the unchanged thirty-second freshness boundary. Immutable payload chunks split at 128 entries or 128 KiB; manifests validate their IDs, kinds, entry counts and generation. A root holds at most 128 chunks, so large entries can exhaust this bound before reaching the role/assignment count limits; oversized data fails explicitly with `PolicyCapacityExceeded`.
+
+Policy-load regressions retain unregistered permissions for inspection and remediation but exclude them from grants; role writes still reject unknown permissions. Bootstrap tests start with no assignments, require the trusted Kubernetes settings guard outside `Enforce`, and publish guard-provided Bootstrap administrators atomically with settings. The same generation's audit includes each newly added full assignment resource in `after.roleAssignments`, including its ID, principal and Bootstrap provenance; it is a delta, not the policy inventory. Repeated guard identities do not create duplicate deltas, and same-mode additions and recovery preserve them. Standalone assignment changes retain singular `roleAssignment` snapshots. In `Enforce`, the Radius settings permission remains mandatory. Bootstrap-only policies allow additive changes and authorized same-tuple promotion to permanent ownership; once a permanent administrator exists, its last grant cannot be removed.
+
+**Required before production policy handlers:** each mutation currently rewrites the complete immutable policy and retains old or abandoned preparations. Implement unchanged-chunk reuse and a safe reclamation/retention protocol before exposing production handlers. Validate write counts and bytes at capacity, bound retained storage across repeated writes, and prove that concurrent readers, losing writers, and delayed recovery cannot lose reachable objects or resurrect deleted grants. Garbage collection is deliberately not implemented in this storage layer. Disposable-Postgres CI coverage for concurrent initialization, conflicting changes, and interrupted-write recovery is also required before production enforcement depends on this store.
+
+For real backend recovery checks, omit `-short` and select `TestPolicyStoreAPIServer` (envtest setup below) or `TestPolicyStorePostgres` (requires a disposable database via `TEST_POSTGRES_URL`, as shown by `make db-init`). Missing Postgres configuration skips those checks rather than proving concurrency. These tests cover storage/readiness interfaces, not management APIs or runtime enforcement.
+
 ## Verification
 
 - A passing run prints `ok` for every package that has tests and `[no test files]` for those that don't; `go test` exits non-zero if any test fails, so a failure is obvious in the output.

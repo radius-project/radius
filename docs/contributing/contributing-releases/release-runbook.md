@@ -11,6 +11,7 @@ Use this checklist to run a Radius RC, final, or patch release. The [full releas
 - If resource types or recipe packs changed, [release them and merge the generated Radius update](./README.md#release-resource-type-namespaces-and-recipe-packs) first. Unchanged, already-pinned releases need no action.
 - For an existing channel, select only PRs merged into `main`, label them `backport release/X.Y`, and **rebase-merge** their generated backports before preparation. Automation processes one PR at a time in main's merge order, regardless of input order. Keep each source marker and cherry-pick trailer; require `Validate release branch commits` in the branch rules. Every `supported` version in [`versions.yaml`](../../../versions.yaml) must already have its Radius tag; finish any pending release first.
 - Use the same label and shared backport workflow in `bicep-types-aws`, `dashboard`, and `recipes` after their [caller and credential rollout](https://github.com/radius-project/.github/blob/main/eng/SYNC.md#release-backports). Merge those backports before preparation freezes sibling commits; a change only on a sibling's `main` does not enter an existing release channel.
+- Once `bicep-types-aws` has a `radius` submodule, its `release/X.Y` must pin the Radius commit the release ships. For a later RC, a final, or a patch, [set the pin](./README.md#pin-radius-in-bicep-types-aws) before preparation. For a first RC, set it after the first Prepare Release run, then rerun.
 
 ## Steps
 
@@ -51,6 +52,8 @@ For an existing `release/X.Y` channel, also review and **rebase-merge the genera
 ### 3. Approve release reconciliation
 
 Open the automatically started [Release controller](https://github.com/radius-project/radius/actions/workflows/release-controller.yaml). For an existing channel, select the run started by the metadata backport merge and confirm **State: validated and ready to reconcile**, not the initial main-merge run that reports waiting. Review its version, Radius source commit, Deployment Engine commit, and frozen sibling commits. Record the exact **version and source commit** from this run's summary for recovery.
+
+- **Until v0.63.0 final ships:** confirm the Deployment Engine commit includes azure-octo/deployment-engine#705 (`e537d7e4b`). This release removes the AWS routes that older Deployment Engines call.
 
 In **Review deployments**, approve **Approve release reconciliation** in the `release` environment.
 
@@ -121,5 +124,9 @@ For a frozen first RC, use the resolved release commit from the summary. Before 
 **Controller never started after merge:** follow [manual-start recovery](./README.md#controller-never-started-after-merge) to get the version and source commit from the merged release PR or metadata backport, then run [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) from `main`. This starts reconciliation; it does not bypass environment approval.
 
 **Preparation blocked:** merge missing backports or finish the preceding release, then rerun Prepare Release with the same inputs. Never edit the generated plan to bypass validation.
+
+**Release plan check fails on the bicep-types-aws Radius pin:** the planned `bicep-types-aws` commit doesn't pin the plan's product commit. [Set the pin](./README.md#pin-radius-in-bicep-types-aws) on `bicep-types-aws` `release/X.Y` to the product commit named in the error, then rerun Prepare Release with the same inputs.
+
+**Release controller fails on the bicep-types-aws Radius pin:** the release PR merged without a passing release plan check. Nothing was tagged, but the merged plan and its `bicep-types-aws` commit can't change, so resuming fails the same way. Follow [break-glass recovery](./README.md#break-glass-recovery).
 
 Never move approved tags, delete locks, overwrite published artifacts, or disable verification. Follow [break-glass recovery](./README.md#break-glass-recovery) for conflicts or fixes needed in already-tagged build code.

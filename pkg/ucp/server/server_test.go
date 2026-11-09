@@ -30,7 +30,7 @@ func Test_NewServer(t *testing.T) {
 	t.Run("keeps the AWS clients that are set", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		cc := ucp_aws.NewMockAWSCloudControlClient(ctrl)
-		options := &ucp.Options{Config: &ucp.Config{}, AWSClients: ucp_aws.Clients{CloudControl: cc, CloudFormation: ucp_aws.NewMockAWSCloudFormationClient(ctrl)}}
+		options := &ucp.Options{Config: &ucp.Config{}, AWSClients: ucp_aws.Clients{CloudControl: cc, CloudFormation: ucp_aws.NewMockAWSCloudFormationClient(ctrl), Kafka: ucp_aws.NewMockAWSKafkaClient(ctrl)}}
 		host, err := NewServer(t.Context(), options)
 		require.NoError(t, err)
 		require.NotEmpty(t, host.Services)

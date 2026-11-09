@@ -510,6 +510,90 @@ test_de_bridge_uses_immutable_destinations() {
     ((++PASS))
 }
 
+# Runs the validate job's Radius pin step against a bicep-types-aws checkout
+# whose radius gitlink is $1, or that has no radius path when $1 is empty.
+run_radius_pin_step() {
+    local pinned="$1"
+    local product="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    local root checkout script status=0
+
+    script="$(yq -r '.jobs.validate.steps[] |
+        select(.run // "" | contains("verify-bicep-types-aws-radius-pin.sh")) |
+        .run' "${CONTROLLER}")"
+    [[ -n "${script}" ]] || {
+        echo "the validate job has no Radius pin step"
+        return 1
+    }
+    root="$(mktemp -d "${TMPDIR:-/tmp}/radius-pin-test-XXXXXX")"
+    checkout="${root}/controller-siblings/bicep-types-aws"
+    git init -q -b main "${checkout}"
+    git -C "${checkout}" config user.name "Radius Test"
+    git -C "${checkout}" config user.email "test@example.com"
+    git -C "${checkout}" config commit.gpgsign false
+    printf 'state\n' > "${checkout}/state.txt"
+    git -C "${checkout}" add state.txt
+    if [[ -n "${pinned}" ]]; then
+        git -C "${checkout}" update-index --add \
+            --cacheinfo "160000,${pinned},radius"
+    fi
+    git -C "${checkout}" commit -q -m "Planned state"
+    printf 'source:\n  productCommit: %s\n' "${product}" \
+        > "${root}/release-plan.yaml"
+    (
+        cd "${root}" &&
+            GITHUB_WORKSPACE="${ROOT}" RUNNER_TEMP="${root}" \
+                BICEP_TYPES_AWS_COMMIT="$(git -C "${checkout}" rev-parse HEAD)" \
+                bash -euo pipefail -c "${script}" 2>&1
+    ) || status=$?
+    rm -rf "${root}"
+    return "${status}"
+}
+
+validate_step_index() {
+    yq -r ".jobs.validate.steps | to_entries | map(select($1)) |
+        .[0].key // -1" "${CONTROLLER}"
+}
+
+# A failed release plan check alone can't block tagging, because merging the
+# release PR doesn't require it. The controller checks the frozen commit again
+# before approval, so every mutating job, which needs validate, never starts.
+test_controller_checks_radius_pin() {
+    local matching="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    local other="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    local output check checkout
+
+    check="$(validate_step_index \
+        '.value.run // "" | contains("verify-bicep-types-aws-radius-pin.sh")')"
+    checkout="$(validate_step_index \
+        '.value.name == "Checkout planned bicep-types-aws source"')"
+    if ((check < 0 || check < checkout)); then
+        fail_test "validation must check the frozen bicep-types-aws Radius pin after checking it out"
+    else
+        ((++PASS))
+    fi
+    assert_json "${CONTROLLER}" \
+        ".jobs.validate.steps[${check}].if" \
+        "\"steps.plan.outputs.ready == 'true'\"" \
+        "the Radius pin check must run whenever the controller can mutate"
+    if output="$(run_radius_pin_step "${other}")" ||
+        [[ "${output}" != *"pins Radius ${other}, but this release ships Radius ${matching}"* ]]; then
+        fail_test "a mismatched bicep-types-aws Radius pin must stop the controller before approval: ${output}"
+    else
+        ((++PASS))
+    fi
+    if ! output="$(run_radius_pin_step "${matching}")"; then
+        fail_test "a matching bicep-types-aws Radius pin must pass: ${output}"
+    else
+        ((++PASS))
+    fi
+    if ! output="$(run_radius_pin_step "")" ||
+        [[ "${output}" != *"::notice::"*"has no radius submodule"* ]]; then
+        fail_test "bicep-types-aws without a radius submodule must pass with a notice: ${output}"
+    else
+        ((++PASS))
+    fi
+}
+
 main() {
     command -v yq >/dev/null || {
         echo "yq is required" >&2
@@ -521,6 +605,7 @@ main() {
     test_frozen_output_contract
     test_unknown_dispatch_summary
     test_stage_order
+    test_controller_checks_radius_pin
     test_release_build_contract
     test_deployment_engine_tag_automation
     test_resume_waits_for_running_tag_build

@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/kafka"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
@@ -62,7 +63,7 @@ const (
 // InitializeClients creates the AWS clients in options that are not set yet. The server calls it before the frontend
 // and backend start, so both use the same clients. Tests set the clients first to use mocks.
 func InitializeClients(ctx context.Context, options *ucp.Options) error {
-	if options.AWSClients.CloudControl != nil && options.AWSClients.CloudFormation != nil {
+	if options.AWSClients.CloudControl != nil && options.AWSClients.CloudFormation != nil && options.AWSClients.Kafka != nil {
 		return nil
 	}
 
@@ -75,6 +76,9 @@ func InitializeClients(ctx context.Context, options *ucp.Options) error {
 	}
 	if options.AWSClients.CloudFormation == nil {
 		options.AWSClients.CloudFormation = ucp_aws.NewDescribeTypeCache(cloudformation.NewFromConfig(awsConfig), ucp_aws.DefaultDescribeTypeCacheTTL)
+	}
+	if options.AWSClients.Kafka == nil {
+		options.AWSClients.Kafka = kafka.NewFromConfig(awsConfig)
 	}
 	return nil
 }
@@ -157,7 +161,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationResultsResourceType, Method: v1.OperationGet},
 			ResourceType:  OperationResultsResourceType,
 			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewGetAWSOperationResults(opt, awsClients)
+				return awsproxy_ctrl.NewGetAWSOperationResults(opt)
 			},
 		},
 		{
@@ -167,7 +171,7 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 			OperationType: &v1.OperationType{Type: OperationStatusResourceType, Method: v1.OperationGet},
 			ResourceType:  OperationStatusResourceType,
 			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewGetAWSOperationStatuses(opts, awsClients)
+				return awsproxy_ctrl.NewGetAWSOperationStatuses(opts)
 			},
 		},
 	}
@@ -217,32 +221,8 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 	}...)
 
 	// POST /:get reads an AWS resource by its identifier properties, for an `existing` block that sets them. It reads
-	// AWS directly and never saves a record.
-	//
-	// Transitional: POST /:put and /:delete keep their behavior from before resource records, for the Deployment
-	// Engine releases that do not deploy AWS resources by alias yet. They need no owner header and save no record.
-	// They are removed once the Deployment Engine deploys by alias.
+	// AWS directly and never saves a record. Creates, updates, and deletes go by alias on the routes above.
 	handlerOptions = append(handlerOptions, []server.HandlerOptions{
-		{
-			ParentRouter:  resourceCollectionRouter,
-			Path:          "/:put",
-			Method:        v1.OperationPutImperative,
-			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationPutImperative},
-			ResourceType:  OperationTypeAWSResource,
-			ControllerFactory: func(opt controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewCreateOrUpdateAWSResourceWithPost(opt, awsClients)
-			},
-		},
-		{
-			ParentRouter:  resourceCollectionRouter,
-			Path:          "/:delete",
-			Method:        v1.OperationDeleteImperative,
-			OperationType: &v1.OperationType{Type: OperationTypeAWSResource, Method: v1.OperationDeleteImperative},
-			ResourceType:  OperationTypeAWSResource,
-			ControllerFactory: func(opts controller.Options) (controller.Controller, error) {
-				return awsproxy_ctrl.NewDeleteAWSResourceWithPost(opts, awsClients)
-			},
-		},
 		{
 			ParentRouter:  resourceCollectionRouter,
 			Path:          "/:get",
