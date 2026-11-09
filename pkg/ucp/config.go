@@ -44,8 +44,12 @@ type Config struct {
 	Authorization authz.Options `yaml:"authorization"`
 
 	// CallerAuthentication configures verified Kubernetes request-header identity.
-	// When absent, forwarded identity headers are rejected.
+	// When both trust sources are absent, forwarded identity headers are rejected.
 	CallerAuthentication *authorization.RequestHeaderOptions `yaml:"callerAuthentication,omitempty"`
+
+	// KubernetesCallerAuthentication loads dedicated aggregation-proxy trust from
+	// the cluster at startup. It is mutually exclusive with CallerAuthentication.
+	KubernetesCallerAuthentication *authorization.KubernetesRequestHeaderOptions `yaml:"kubernetesCallerAuthentication,omitempty"`
 
 	// Database is the configuration for the database used for resource data.
 	Database databaseprovider.Options `yaml:"databaseProvider"`

@@ -92,3 +92,18 @@ callerAuthentication:
 	_, err = LoadConfig([]byte("callerAuthentication:\n  allowUnverifiedHeaders: true\n"))
 	require.ErrorContains(t, err, "field allowUnverifiedHeaders not found")
 }
+
+func Test_LoadConfig_KubernetesCallerAuthentication(t *testing.T) {
+	t.Parallel()
+	config, err := LoadConfig([]byte("kubernetesCallerAuthentication:\n  kubernetesIssuer: kubernetes:cluster-a\n"))
+	require.NoError(t, err)
+	require.Equal(t, "kubernetes:cluster-a", config.KubernetesCallerAuthentication.KubernetesIssuer)
+	require.Nil(t, config.CallerAuthentication)
+
+	config, err = LoadConfig([]byte("logging:\n  level: info\n"))
+	require.NoError(t, err)
+	require.Nil(t, config.KubernetesCallerAuthentication)
+
+	_, err = LoadConfig([]byte("kubernetesCallerAuthentication:\n  allowUnverifiedHeaders: true\n"))
+	require.ErrorContains(t, err, "field allowUnverifiedHeaders not found")
+}

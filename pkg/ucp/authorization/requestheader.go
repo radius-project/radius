@@ -47,6 +47,16 @@ func NewRequestHeaderAuthenticator(options *RequestHeaderOptions) (*RequestHeade
 	if options == nil {
 		return &RequestHeaderAuthenticator{}, nil
 	}
+	return newRequestHeaderAuthenticator(options, func() ([]byte, error) {
+		pem, err := os.ReadFile(options.CAFile)
+		if err != nil {
+			return nil, fmt.Errorf("read request-header CA: %w", err)
+		}
+		return pem, nil
+	})
+}
+
+func newRequestHeaderAuthenticator(options *RequestHeaderOptions, loadCA func() ([]byte, error)) (*RequestHeaderAuthenticator, error) {
 	if !strings.HasPrefix(options.KubernetesIssuer, "kubernetes:") ||
 		strings.TrimSpace(strings.TrimPrefix(options.KubernetesIssuer, "kubernetes:")) == "" ||
 		strings.ContainsAny(options.KubernetesIssuer, " \t\r\n") {
@@ -57,9 +67,9 @@ func NewRequestHeaderAuthenticator(options *RequestHeaderOptions) (*RequestHeade
 			return nil, fmt.Errorf("caller authentication allowed names must not contain empty names")
 		}
 	}
-	pem, err := os.ReadFile(options.CAFile)
+	pem, err := loadCA()
 	if err != nil {
-		return nil, fmt.Errorf("read request-header CA: %w", err)
+		return nil, err
 	}
 	roots := x509.NewCertPool()
 	if !roots.AppendCertsFromPEM(pem) {

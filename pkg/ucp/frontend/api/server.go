@@ -49,11 +49,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Service implements the hosting.Service interface for the UCP frontend API.
 type Service struct {
-	options *ucp.Options
+	options                    *ucp.Options
+	loadRequestHeaderConfigMap func(context.Context) (*corev1.ConfigMap, error)
 }
 
 // DefaultModules returns a list of default modules that will be registered with the router.
@@ -70,7 +72,8 @@ var _ hosting.Service = (*Service)(nil)
 // NewService creates a server to serve UCP API requests.
 func NewService(options *ucp.Options) *Service {
 	return &Service{
-		options: options,
+		options:                    options,
+		loadRequestHeaderConfigMap: loadRequestHeaderConfigMap,
 	}
 }
 
@@ -83,12 +86,26 @@ func (s *Service) Name() string {
 // registers the routes, configures the default planes, and sets up the http server with the appropriate middleware. It
 // returns an http server and an error if one occurs.
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
-	if s.options.Config.CallerAuthentication != nil && s.options.Config.Server.TLSCertificateDirectory == "" {
+	config := s.options.Config
+	if config.CallerAuthentication != nil && config.KubernetesCallerAuthentication != nil {
+		return nil, fmt.Errorf("callerAuthentication and kubernetesCallerAuthentication are mutually exclusive")
+	}
+	if (config.CallerAuthentication != nil || config.KubernetesCallerAuthentication != nil) && config.Server.TLSCertificateDirectory == "" {
 		return nil, fmt.Errorf("caller authentication requires a TLS server certificate directory")
 	}
-	authenticator, err := authorization.NewRequestHeaderAuthenticator(s.options.Config.CallerAuthentication)
+	authenticator, err := authorization.NewRequestHeaderAuthenticator(config.CallerAuthentication)
 	if err != nil {
 		return nil, err
+	}
+	if config.KubernetesCallerAuthentication != nil {
+		configMap, err := s.loadRequestHeaderConfigMap(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("load Kubernetes request-header trust: %w", err)
+		}
+		authenticator, err = authorization.NewKubernetesRequestHeaderAuthenticator(configMap, *config.KubernetesCallerAuthentication)
+		if err != nil {
+			return nil, fmt.Errorf("configure Kubernetes request-header trust: %w", err)
+		}
 	}
 	r := chi.NewRouter()
 
