@@ -77,8 +77,18 @@ func (s *rotationStore) aggregationTransitionSnapshot(ctx context.Context) (aggr
 		api.GetAnnotations()[rotationRevision] != state.revision() || !bytes.Equal(public, state.NewCA) {
 		return aggregationTransitionSnapshot{}, errors.New("aggregation identity or trust changed outside its completed journal")
 	}
-	if err := s.checkPlannedSigner(ctx, state); err != nil {
-		return aggregationTransitionSnapshot{}, err
+	var issuer *unstructured.Unstructured
+	if state.Plan.ExternalIssuer != nil {
+		// A provider snapshot pins public identity; it neither issues a request
+		// nor claims that the target provider's policy or workloads are ready.
+		issuer, err = s.externalRotationIssuer(ctx, state.Plan)
+		if err != nil {
+			return aggregationTransitionSnapshot{}, err
+		}
+	} else {
+		if err := s.checkPlannedSigner(ctx, state); err != nil {
+			return aggregationTransitionSnapshot{}, err
+		}
 	}
 	workload, err := state.Plan.aggregationWorkload()
 	if err != nil {
@@ -111,14 +121,16 @@ func (s *rotationStore) aggregationTransitionSnapshot(ctx context.Context) (aggr
 		trust.Immutable == nil || !*trust.Immutable || trust.Labels[rotationOwner] != s.release {
 		return aggregationTransitionSnapshot{}, errors.New("aggregation immutable trust identity changed")
 	}
-	issuer, err := s.dynamic.Resource(rotationIssuerResource).Namespace(s.namespace).Get(ctx, state.Plan.Issuer, metav1.GetOptions{})
-	if err != nil {
-		return aggregationTransitionSnapshot{}, err
-	}
-	secretName, _, err := unstructured.NestedString(issuer.Object, "spec", "ca", "secretName")
-	if err != nil || secretName != state.Plan.SigningSecret || issuer.GetUID() == "" || issuer.GetDeletionTimestamp() != nil ||
-		issuer.GetLabels()[rotationOwner] != s.release || issuer.GetLabels()[rotationTransaction] != state.ID {
-		return aggregationTransitionSnapshot{}, errors.New("aggregation issuer identity or configuration changed")
+	if issuer == nil {
+		issuer, err = s.dynamic.Resource(rotationIssuerResource).Namespace(s.namespace).Get(ctx, state.Plan.Issuer, metav1.GetOptions{})
+		if err != nil {
+			return aggregationTransitionSnapshot{}, err
+		}
+		secretName, _, err := unstructured.NestedString(issuer.Object, "spec", "ca", "secretName")
+		if err != nil || secretName != state.Plan.SigningSecret || issuer.GetUID() == "" || issuer.GetDeletionTimestamp() != nil ||
+			issuer.GetLabels()[rotationOwner] != s.release || issuer.GetLabels()[rotationTransaction] != state.ID {
+			return aggregationTransitionSnapshot{}, errors.New("aggregation issuer identity or configuration changed")
+		}
 	}
 	certificate, err := s.dynamic.Resource(rotationCertificateResource).Namespace(s.namespace).Get(ctx, state.Plan.ServingSecret, metav1.GetOptions{})
 	if err != nil {
@@ -151,8 +163,9 @@ func (s *rotationStore) aggregationTransitionSnapshot(ctx context.Context) (aggr
 		TrustUID        types.UID
 		IssuerSpec      any
 		CertificateSpec any
+		ExternalIssuer  *rotationExternalIssuer `json:"ExternalIssuer,omitempty"`
 	}{state.Plan.TargetMode, state.Plan.SigningUID, issuer.GetUID(), certificate.GetUID(), serving.UID,
-		state.Plan.TargetTrustMap, deployment.UID, service.UID, trust.UID, issuer.Object["spec"], certificate.Object["spec"]}
+		state.Plan.TargetTrustMap, deployment.UID, service.UID, trust.UID, issuer.Object["spec"], certificate.Object["spec"], state.Plan.ExternalIssuer}
 	encoded, err := json.Marshal(config)
 	if err != nil {
 		return aggregationTransitionSnapshot{}, err
