@@ -90,7 +90,7 @@ data:
       json: true
 
     {{- $rotation := include "radius.rotationState" . | mustFromJson }}
-    {{- if and $rotation (eq (toString $rotation.schemaVersion) "2") (eq (include "radius.authz.mode" .) "off") }}
+    {{- if and $rotation (or (eq (toString $rotation.schemaVersion) "2") $rotation.bootstrap) (eq (include "radius.authz.mode" .) "off") }}
     authorization:
       mode: "off"
       namespace: {{ .Release.Namespace | quote }}

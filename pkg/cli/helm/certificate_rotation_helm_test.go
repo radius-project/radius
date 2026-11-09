@@ -49,7 +49,7 @@ func TestRotationHelmTrustOwnership(t *testing.T) {
 			flags.KubeConfig, flags.Namespace = &kubeconfig, &namespace
 			configuration := &helm.Configuration{}
 			require.NoError(t, configuration.Init(flags, namespace, helmDriverSecret))
-			_, chart := shippingTemplatesChart(t, "_helpers.tpl", "_rotation.tpl", "_aggregation-trust.tpl", "ucp/apiservice.yaml")
+			_, chart := shippingTemplatesChart(t, "_helpers.tpl", "_rotation.tpl", "_bootstrap.tpl", "_aggregation-trust.tpl", "ucp/apiservice.yaml")
 			install := newInstallClient(configuration, radiusReleaseName, namespace, false, time.Minute)
 			install.ServerSideApply = ssa
 			_, err := install.Run(chart, map[string]any{})

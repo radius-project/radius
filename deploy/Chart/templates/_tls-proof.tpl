@@ -5,7 +5,7 @@ Deployment-engine proof remains a separate opt-in for compatible engine images.
 {{- define "radius.aggregationProofEnv" -}}
 {{- $state := .state -}}
 {{- $root := .root -}}
-{{- if and $state (eq (toString $state.schemaVersion) "2") -}}
+{{- if and $state (or (eq (toString $state.schemaVersion) "2") $state.bootstrap) -}}
 {{- if or (not (kindIs "bool" $root.Values.global.prometheus.enabled)) (not $root.Values.global.prometheus.enabled) (ne (int $root.Values.global.prometheus.port) (int $state.plan.aggregation.proofPort)) -}}
 {{- fail "Managed aggregation proof requires its pinned metrics listener." -}}
 {{- end -}}

@@ -654,6 +654,11 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 	loadChart := func(t *testing.T) *chart.Chart {
 		c, err := loader.Load("../../../deploy/Chart")
 		require.NoError(t, err)
+		// This offline test exercises Helm value/history merging, not live
+		// aggregation bootstrap, which needs REST-backed identity and trust.
+		c.Templates = slices.DeleteFunc(c.Templates, func(file *common.File) bool {
+			return file.Name == "templates/ucp/apiservice.yaml"
+		})
 		c.Files = slices.DeleteFunc(c.Files, func(file *common.File) bool {
 			return strings.HasPrefix(file.Name, "crds/")
 		})

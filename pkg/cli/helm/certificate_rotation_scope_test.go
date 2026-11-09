@@ -145,7 +145,11 @@ func TestAggregationOnlyPlanning(t *testing.T) {
 	_, err = s.rotationConsumerTargets(ctx, state)
 	require.Error(t, err)
 	for _, action := range kube.Actions() {
-		require.Contains(t, []string{"configmaps", "secrets"}, action.GetResource().Resource)
+		require.Contains(t, []string{"configmaps", "secrets", "namespaces"}, action.GetResource().Resource)
+		if action.GetResource().Resource == "namespaces" {
+			require.Equal(t, "get", action.GetVerb())
+			require.Equal(t, s.namespace, action.(k8stesting.GetAction).GetName())
+		}
 		if action.GetResource().Resource == "secrets" {
 			require.Equal(t, plan.SigningSecret, action.(k8stesting.GetAction).GetName())
 		}

@@ -52,6 +52,7 @@ import (
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
@@ -493,8 +494,7 @@ func TestRadiusCertificateImportRetainedAfterFailureAndUninstall(t *testing.T) {
 	options.Radius.ChartPath = "local-chart"
 	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 	options.Certificates = CertificateOptions{CACert: certPath, CAKey: keyPath}
-	client.EXPECT().LoadChart("local-chart").Return(&chart.Chart{}, nil)
-	client.EXPECT().RunHelmGet(gomock.Any(), "cert-manager").Return(nil, driver.ErrReleaseNotFound).Times(2)
+	client.EXPECT().RunHelmGet(gomock.Any(), "cert-manager").Return(nil, driver.ErrReleaseNotFound)
 	client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(nil, driver.ErrReleaseNotFound)
 	var name string
 	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, true, gomock.Any(), gomock.Nil()).
@@ -509,7 +509,12 @@ func TestRadiusCertificateImportRetainedAfterFailureAndUninstall(t *testing.T) {
 			require.Equal(t, strings.TrimSpace(string(cert)), certificateValues(values)["caBundle"])
 			return nil, errors.New("Radius readiness failed")
 		})
-	require.ErrorContains(t, impl.InstallRadius(t.Context(), options, "context"), "Radius readiness failed")
+	values := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+	plan, err := impl.prepareCertificates(t.Context(), options, nil, values, "context", false)
+	require.NoError(t, err)
+	require.NoError(t, impl.applyCertificatePlan(t.Context(), plan))
+	require.ErrorContains(t, NewHelmAction(client).ApplyHelmChart("context", &chart.Chart{}, &helm.Configuration{},
+		options.Radius.ChartOptions, values), "Radius readiness failed")
 	require.NotEmpty(t, name)
 	client.EXPECT().RunHelmUninstall(gomock.Any(), "radius", RadiusSystemNamespace, true).Return(&release.UninstallReleaseResponse{}, nil)
 	client.EXPECT().RunHelmUninstall(gomock.Any(), "contour", RadiusSystemNamespace, true).Return(&release.UninstallReleaseResponse{}, nil)
@@ -635,7 +640,7 @@ func TestRadiusCertificateHelmValues(t *testing.T) {
 			}
 			if operation == "blocked upgrade" || operation == "blocked install" {
 				options.Radius.SetArgs = []string{"global.rbac.certificates.mode=selfSigned"}
-			} else if operation != "preflight-only" {
+			} else if operation != "preflight-only" && operation != "install" {
 				helmClient.EXPECT().RunHelmGet(gomock.Any(), "cert-manager").Return(nil, driver.ErrReleaseNotFound)
 			}
 			assertValues := func(values map[string]any) {
@@ -647,12 +652,8 @@ func TestRadiusCertificateHelmValues(t *testing.T) {
 			}
 			switch operation {
 			case "install":
-				helmClient.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(nil, driver.ErrReleaseNotFound)
-				helmClient.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, true, gomock.Any(), gomock.Nil()).
-					DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, values map[string]any, _, _ string, _ bool, _ time.Duration, _ map[string]string) (*releasev1.Release, error) {
-						assertValues(values)
-						return &releasev1.Release{}, nil
-					})
+				// A chart without the bootstrap protocol cannot install enabled
+				// Radius by falling back to an unrelated Helm aggregation CA.
 			case "reinstall", "upgrade":
 				if operation == "reinstall" {
 					options.Radius.Reinstall, options.RadiusInstalled = true, true
@@ -675,6 +676,8 @@ func TestRadiusCertificateHelmValues(t *testing.T) {
 			}
 			if strings.HasPrefix(operation, "blocked") {
 				require.ErrorContains(t, err, "mode changes")
+			} else if operation == "install" {
+				require.ErrorContains(t, err, "configured-CA aggregation bootstrap")
 			} else {
 				require.NoError(t, err)
 			}
@@ -840,6 +843,13 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 			if scenario.edit != nil {
 				scenario.edit(t, fixture)
 			}
+			install := scenario.operation == "install" || scenario.operation == "old chart"
+			if !install {
+				fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
+					"apiVersion": "apiregistration.k8s.io/v1", "kind": "APIService",
+					"metadata": map[string]any{"name": radiusAPIService, "uid": "existing-aggregation", "resourceVersion": "1"},
+				}})
+			}
 			target := fixture.server(t)
 			decoy := k8sutil.NewForbiddenAPIServer(t)
 			kubeContext := useTargetKubeconfig(t, target.URL, decoy.URL, scenario.explicitContext)
@@ -856,7 +866,6 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 			settings["caBundle"] = string(ca)
 			options := NewDefaultClusterOptions()
 			options.Contour.Disabled, options.Radius.ChartPath = true, "local-chart"
-			install := scenario.operation == "install" || scenario.operation == "old chart"
 			if install {
 				bundlePath := filepath.Join(t.TempDir(), "public-ca.pem")
 				require.NoError(t, os.WriteFile(bundlePath, ca, 0600))
@@ -908,24 +917,25 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 				}
 				client.EXPECT().RunHelmHistory(gomock.Any(), "radius").Return(history, nil)
 			}
-			if scenario.err == "" && scenario.operation != "preflight-only" {
-				if install {
-					client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(nil, driver.ErrReleaseNotFound)
-					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, true, gomock.Any(), gomock.Nil()).
-						DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, values map[string]any, _, _ string, _ bool, _ time.Duration, _ map[string]string) (*releasev1.Release, error) {
-							require.Equal(t, strings.TrimSpace(string(ca)), certificateValues(values)["caBundle"])
-							return &releasev1.Release{}, nil
-						})
-				} else {
-					if scenario.operation == "reinstall" {
-						client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(&releasev1.Release{Chart: selected}, nil)
-					}
-					client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, true, true, gomock.Any()).Return(&releasev1.Release{}, nil)
+			if scenario.err == "" && scenario.operation != "preflight-only" && !install {
+				if scenario.operation == "reinstall" {
+					client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(&releasev1.Release{Chart: selected}, nil)
 				}
+				client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, true, true, gomock.Any()).Return(&releasev1.Release{}, nil)
 			}
 			impl := &Impl{Helm: client}
 			switch scenario.operation {
-			case "install", "old chart", "reinstall":
+			case "install":
+				// This fixture proves the actual read-only policy seam. Fresh
+				// lifecycle success additionally requires bootstrap issuance and
+				// running-process evidence, not a mocked Helm install return.
+				selected, configuration, current, prepareErr := prepareRadiusChart(t.Context(), NewHelmAction(client), options.Radius, kubeContext)
+				require.NoError(t, prepareErr)
+				_, err = impl.prepareCertificates(t.Context(), options, selected.Values, current, kubeContext, false)
+				if err == nil {
+					err = impl.checkIssuerPolicy(t.Context(), options, selected, configuration, current, kubeContext, false)
+				}
+			case "old chart", "reinstall":
 				err = impl.InstallRadius(t.Context(), options, kubeContext)
 			case "preflight-only":
 				err = impl.CheckRadiusCertificates(t.Context(), options, kubeContext)

@@ -558,6 +558,17 @@ func (i *Impl) renderIssuerPolicy(ctx context.Context, options ClusterOptions, s
 		}
 		renderedChart.Templates = append(helpers, &common.File{Name: "templates/rotation-issuer-policy.yaml",
 			Data: []byte(`{{- include "radius.authz.issuerPolicy.validate" . -}}`)})
+	} else if !installed && selected.Metadata != nil && selected.Metadata.Annotations["radius.io/aggregation-bootstrap-protocol"] == "1" {
+		// Fresh issuance policy is proved before bootstrap can record intent or
+		// request a leaf. Workload rendering is deferred until that leaf exists.
+		helpers := make([]*common.File, 0, len(renderedChart.Templates)+1)
+		for _, template := range renderedChart.Templates {
+			if strings.HasPrefix(template.Name, "templates/_") {
+				helpers = append(helpers, template)
+			}
+		}
+		renderedChart.Templates = append(helpers, &common.File{Name: "templates/bootstrap-issuer-policy.yaml",
+			Data: []byte(`{{- include "radius.authz.issuerPolicy.validate" . -}}`)})
 	}
 	if installed {
 		history, historyErr := i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)

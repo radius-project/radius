@@ -56,6 +56,18 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 	if err != nil {
 		return fmt.Errorf("cannot check Radius CA rotation before %s: %w", operation, err)
 	}
+	bootstrap, found, bootstrapErr := store.bootstrapIntent(ctx)
+	if bootstrapErr != nil {
+		return bootstrapErr
+	}
+	if found && bootstrap.Phase != bootstrapComplete {
+		if operation == "install" {
+			// Install performs the stricter chart/settings/issuer identity check
+			// before entering its resumable bootstrap driver.
+			return nil
+		}
+		return errors.New("aggregation bootstrap is unfinished; resume the matching install before changing the release")
+	}
 	api, apiErr := store.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
 	if apiErr != nil && !apierrors.IsNotFound(apiErr) {
 		return fmt.Errorf("cannot inspect Radius APIService before %s: %w", operation, apiErr)

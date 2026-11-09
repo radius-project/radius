@@ -1,5 +1,8 @@
 {{- $trust := include "radius.aggregationTrust" . | mustFromJson }}
+{{- $legacyCA := "" }}
+{{- if not $trust.bootstrap }}
 {{- $ca := genCA "ucp-ca" 3650 }}
+{{- $legacyCA = $ca.Cert }}
 {{- $cn := printf "ucp" }}
 {{- $altName1 := printf "ucp.%s" .Release.Namespace }}
 {{- $altName2 := printf "ucp.%s.svc" .Release.Namespace }}
@@ -19,6 +22,7 @@ data:
   tls.key: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "tls.key" "defaultValue" $cert.Key) }}
   ca.crt: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
 ---
+{{- end }}
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
@@ -45,5 +49,5 @@ spec:
   {{- if $trust.caBundle }}
   caBundle: {{ $trust.caBundle | quote }}
   {{- else }}
-  caBundle: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
+  caBundle: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $legacyCA) }}
   {{- end }}

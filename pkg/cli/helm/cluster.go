@@ -368,10 +368,23 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
-	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil); err != nil {
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "install", radiusHelmChart); err != nil {
 		return err
 	}
-	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "install", radiusHelmChart); err != nil {
+	store, err := i.rotationStoreForContext(kubeContext, clusterOptions.Radius.Namespace)
+	if err != nil {
+		return err
+	}
+	intent, found, err := store.bootstrapIntent(ctx)
+	if err != nil {
+		return err
+	}
+	policyInstalled := !(found && intent.Phase != bootstrapComplete) && (clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil)
+	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, policyInstalled); err != nil {
+		return err
+	}
+	bootstrap, err := i.prepareAggregationBootstrap(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, certificates)
+	if err != nil {
 		return err
 	}
 
@@ -384,40 +397,53 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if certificateMode(radiusValues) != "issuerRef" {
-		if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
-			return err
+	installDependencies := func(ctx context.Context) error {
+		if certificateMode(radiusValues) != "issuerRef" {
+			if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+				return err
+			}
 		}
-	}
 
-	// Install Contour before Radius. The Contour checks then see the cluster seconds before Contour is installed
-	// rather than after the wait for Radius, during which a k3s cluster that just started can install the Gateway API
-	// CRDs of Traefik. If the Radius install fails afterwards, running the command again installs Radius and leaves the
-	// installed Contour release unchanged.
-	if clusterOptions.Contour.Disabled {
-		output.LogInfo("Contour is disabled, skipping installation")
-	} else if contour != nil {
-		// ApplyHelmChart upgrades an installed release only when Reinstall is set.
-		contourOptions := clusterOptions.Contour.ChartOptions
-		contourOptions.Reinstall = contour.upgrade
-		if contour.upgrade {
-			output.LogInfo("Upgrading Contour...")
-		} else {
-			output.LogInfo("Installing Contour...")
+		// Install Contour before Radius. The Contour checks then see the cluster seconds before Contour is installed
+		// rather than after the wait for Radius, during which a k3s cluster that just started can install the Gateway API
+		// CRDs of Traefik. If the Radius install fails afterwards, running the command again installs Radius and leaves the
+		// installed Contour release unchanged.
+		if clusterOptions.Contour.Disabled {
+			output.LogInfo("Contour is disabled, skipping installation")
+		} else if contour != nil {
+			// ApplyHelmChart upgrades an installed release only when Reinstall is set.
+			contourOptions := clusterOptions.Contour.ChartOptions
+			contourOptions.Reinstall = contour.upgrade
+			if contour.upgrade {
+				output.LogInfo("Upgrading Contour...")
+			} else {
+				output.LogInfo("Installing Contour...")
+			}
+			err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
+			if err != nil {
+				return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
+			}
 		}
-		err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
-		if err != nil {
-			return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
-		}
+		return nil
 	}
 
 	// Install Radius
-	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
-		return err
-	}
-	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
-	if err != nil {
-		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
+	if bootstrap != nil {
+		bootstrap.dependencies = installDependencies
+		if err := bootstrap.run(ctx); err != nil {
+			return err
+		}
+	} else {
+		if err := installDependencies(ctx); err != nil {
+			return err
+		}
+		if err := i.applyCertificatePlan(ctx, certificates); err != nil {
+			return err
+		}
+		err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
+		if err != nil {
+			return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
+		}
 	}
 
 	if clusterOptions.Contour.Disabled {
