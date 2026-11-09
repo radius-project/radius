@@ -21,6 +21,8 @@ The v0.62.0 chart described `global.rbac.enabled` and `global.rbac.dryRun` as re
 
 `rad install kubernetes` and `rad upgrade kubernetes` manage this prerequisite when a non-off mode is selected, including when upgrade reuses saved values. A plain `helm install` or `helm upgrade` does not install cert-manager: install a supported cert-manager, including its CRDs, and wait for its controller and webhook to be ready before applying the Radius chart with either setting enabled. Otherwise the upgrade fails because the cert-manager resource types are missing. See [cert-manager installation troubleshooting](../../docs/contributing/contributing-code/contributing-code-control-plane/troubleshooting-installation.md#cert-manager) for supported versions and ownership rules.
 
+With either setting enabled, ucp, applications-rp, and dynamic-rp also mount a csi-driver-spiffe CSI volume (driver `global.rbac.spiffe.csiDriverName`), so their pods start only when that driver is installed. `rad install kubernetes` and `rad upgrade kubernetes` install it; plain Helm users must install csi-driver-spiffe with the same driver name and trust domain, with its approver limited to the `radius-ca-issuer` Issuer, before applying the chart. See [csi-driver-spiffe installation troubleshooting](../../docs/contributing/contributing-code/contributing-code-control-plane/troubleshooting-installation.md#csi-driver-spiffe).
+
 ## Configuration Options
 
 ### In-Cluster Container Image Builds

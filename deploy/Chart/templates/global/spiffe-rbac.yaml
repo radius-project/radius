@@ -1,0 +1,39 @@
+{{- if ne (include "radius.authz.mode" .) "off" }}
+# csi-driver-spiffe creates each receiver's server CertificateRequest with the pod's own
+# ServiceAccount token, so the receivers that mount a SPIFFE volume need create on
+# certificaterequests in the release namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: radius-spiffe-certificaterequests
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: radius-spiffe-certificaterequests
+    app.kubernetes.io/part-of: radius
+rules:
+  - apiGroups:
+      - cert-manager.io
+    resources:
+      - certificaterequests
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: radius-spiffe-certificaterequests
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: radius-spiffe-certificaterequests
+    app.kubernetes.io/part-of: radius
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: radius-spiffe-certificaterequests
+subjects:
+{{- range list "ucp" "applications-rp" "dynamic-rp" }}
+  - kind: ServiceAccount
+    name: {{ . }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+{{- end }}
