@@ -98,6 +98,16 @@ func (o *identityOperation) check(ctx context.Context) error {
 	return nil
 }
 
+func (s *rotationStore) checkWrite(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if s.guardWrite == nil {
+		return errors.New("CA writes require the shared identity operation lock and provider journal guard")
+	}
+	return s.guardWrite(ctx)
+}
+
 // checkProviderJournal is the CA-side inter-phase guard. The callback must run
 // A11's full provider schema/identity validator on this exact observed document.
 // Until integrated, a missing callback blocks every existing provider journal.
@@ -110,6 +120,7 @@ func (o *identityOperation) checkProviderJournal(ctx context.Context, release st
 	if apierrors.IsNotFound(err) {
 		return o.check(ctx)
 	}
+
 	if err != nil {
 		return fmt.Errorf("cannot inspect provider transition journal: %w", err)
 	}

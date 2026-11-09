@@ -101,6 +101,9 @@ func (s *rotationStore) ensureRotationIssuer(ctx context.Context, transaction st
 	client := s.dynamic.Resource(rotationIssuerResource).Namespace(s.namespace)
 	issuer, err := client.Get(ctx, state.Plan.Issuer, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
+		if err := s.checkWrite(ctx); err != nil {
+			return err
+		}
 		issuer, err = client.Create(ctx, &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "cert-manager.io/v1", "kind": "Issuer",
 			"metadata": map[string]any{"name": state.Plan.Issuer, "namespace": s.namespace,
@@ -178,6 +181,9 @@ func (s *rotationStore) switchRotationCertificate(ctx context.Context, transacti
 	annotations := certificate.GetAnnotations()
 	annotations[rotationRevision] = state.revision()
 	certificate.SetAnnotations(annotations)
+	if err := s.checkWrite(ctx); err != nil {
+		return err
+	}
 	_, err = client.Update(ctx, certificate, metav1.UpdateOptions{FieldManager: FieldManager})
 	if err != nil {
 		return fmt.Errorf("cannot switch component Certificate issuer; reread before retrying: %w", err)
@@ -197,6 +203,9 @@ func (s *rotationStore) ensureAggregationCertificate(ctx context.Context, transa
 	desiredSpec := rotationAggregationCertificateSpec(state, s.namespace)
 	certificate, err := client.Get(ctx, state.Plan.ServingSecret, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
+		if err := s.checkWrite(ctx); err != nil {
+			return err
+		}
 		certificate, err = client.Create(ctx, &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "cert-manager.io/v1", "kind": "Certificate",
 			"metadata": map[string]any{"name": state.Plan.ServingSecret, "namespace": s.namespace,

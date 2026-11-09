@@ -260,6 +260,7 @@ type rotationStore struct {
 	release            string
 	now                func() time.Time
 	verifyIssuerPolicy func(context.Context, rotationState) error
+	guardWrite         func(context.Context) error
 }
 
 func (s *rotationStore) read(ctx context.Context) (*corev1.ConfigMap, rotationState, error) {
@@ -418,6 +419,9 @@ func (s *rotationStore) beginPlanned(ctx context.Context, id string, target []by
 		},
 		Data: map[string]string{rotationJournalKey: string(data)},
 	}
+	if err := s.checkWrite(ctx); err != nil {
+		return rotationState{}, err
+	}
 	if existing == nil {
 		_, err = s.kube.CoreV1().ConfigMaps(s.namespace).Create(ctx, desired, metav1.CreateOptions{FieldManager: FieldManager})
 	} else {
@@ -542,6 +546,9 @@ func (s *rotationStore) reconcileTrust(ctx context.Context, transaction string) 
 	if err := unstructured.SetNestedField(api.Object, base64.StdEncoding.EncodeToString(state.bundle()), "spec", "caBundle"); err != nil {
 		return fmt.Errorf("cannot prepare Radius APIService trust: %w", err)
 	}
+	if err := s.checkWrite(ctx); err != nil {
+		return err
+	}
 	_, err = s.dynamic.Resource(apiServiceResource).Update(ctx, api, metav1.UpdateOptions{FieldManager: FieldManager})
 	if err != nil {
 		return fmt.Errorf("cannot publish Radius APIService trust; reread the transaction before retrying: %w", err)
@@ -601,6 +608,9 @@ func (s *rotationStore) advance(ctx context.Context, observed *corev1.ConfigMap,
 	}
 	updated := observed.DeepCopy()
 	updated.Data[rotationJournalKey] = string(data)
+	if err := s.checkWrite(ctx); err != nil {
+		return err
+	}
 	_, err = s.kube.CoreV1().ConfigMaps(s.namespace).Update(ctx, updated, metav1.UpdateOptions{FieldManager: FieldManager})
 	if err != nil {
 		return fmt.Errorf("cannot advance CA rotation; inspect the journal before retrying: %w", err)

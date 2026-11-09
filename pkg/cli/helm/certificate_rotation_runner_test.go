@@ -234,7 +234,8 @@ func rotationRunnerFixture(t *testing.T) (*rotationRunner, rotationState) {
 		}
 		return false, nil, nil
 	})
-	store := &rotationStore{kube: kube, dynamic: client, namespace: ns, release: radiusReleaseName, now: time.Now}
+	store := &rotationStore{kube: kube, dynamic: client, namespace: ns, release: radiusReleaseName,
+		now: time.Now, guardWrite: func(context.Context) error { return nil }}
 	state, err := store.beginPlanned(ctx, id, next, plan)
 	require.NoError(t, err)
 	runner := &rotationRunner{store: store}

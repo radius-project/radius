@@ -89,147 +89,167 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 	store := &rotationStore{kube: kube, dynamic: dynamicClient, namespace: options.Radius.Namespace, release: radiusReleaseName, now: time.Now}
 	ctx, cancel := context.WithTimeout(ctx, effectiveTimeout(options.Radius.Timeout))
 	defer cancel()
-	requested := rotationPhase(options.Certificates.RotationPhase)
-	recovery := requested == rotationRecover
-	journal, state, readErr := store.readJournal(ctx, recovery)
-	if readErr != nil && !apierrors.IsNotFound(readErr) {
-		return readErr
-	}
-	start := apierrors.IsNotFound(readErr) || state.Phase == rotationComplete && requested == rotationPublish
-	if recovery {
-		start = apierrors.IsNotFound(readErr) || options.Certificates.Specified() || !state.Recovery && state.Phase != rotationComplete
-	}
-	if start {
-		if requested != rotationPublish && !recovery {
-			return errors.New("no active CA rotation; start with --ca-rotation-phase publish")
+	run := func() error {
+		requested := rotationPhase(options.Certificates.RotationPhase)
+		recovery := requested == rotationRecover
+		journal, state, readErr := store.readJournal(ctx, recovery)
+		if readErr != nil && !apierrors.IsNotFound(readErr) {
+			return readErr
 		}
-		if state.Phase == rotationComplete && !recovery {
-			recorded, _, err := unstructured.NestedString(effective, "global", "rbac", "completedCARotation")
-			if err != nil || recorded != state.ID {
-				return errors.New("the previous rotation has not recorded its final Helm settings; retry its retire phase before starting another rotation")
+		start := apierrors.IsNotFound(readErr) || state.Phase == rotationComplete && requested == rotationPublish
+		if recovery {
+			start = apierrors.IsNotFound(readErr) || options.Certificates.Specified() || !state.Recovery && state.Phase != rotationComplete
+		}
+		if start {
+			if requested != rotationPublish && !recovery {
+				return errors.New("no active CA rotation; start with --ca-rotation-phase publish")
 			}
-		}
-		var importPlan *certificatePlan
-		var target []byte
-		var secret, targetMode string
-		if recovery && state.Plan != nil && state.Phase != rotationComplete && !options.Certificates.Specified() {
-			target, secret, targetMode = state.NewCA, state.Plan.SigningSecret, state.Plan.TargetMode
-		} else {
-			importPlan, target, secret, targetMode, err = i.rotationTarget(ctx, options, effective, kubeContext)
-		}
-		if err != nil {
-			return err
-		}
-		oldCA, err := currentRotationComponentCA(ctx, store, effective, state, recovery)
-		if err != nil {
-			return err
-		}
-		id := uuid.NewString()
-		var recovering *rotationState
-		if recovery {
-			recovering = &state
-		}
-		plan, err := planRotationResources(ctx, store, config, id, secret, targetMode, oldCA, target, importPlan, recovering)
-		if err != nil {
-			return err
-		}
-		if readOnly {
-			return nil
-		}
-		if err := i.applyCertificatePlan(ctx, importPlan); err != nil {
-			return err
-		}
-		signing, err := kube.CoreV1().Secrets(store.namespace).Get(ctx, secret, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		plan.SigningUID = signing.UID
-		state = rotationState{NewCA: target, Plan: plan}
-		if err := store.checkPlannedSigner(ctx, state); err != nil {
-			return err
-		}
-		if recovery {
-			i.logInfo("Recording explicit incident recovery: publish only the selected CA, reissue leaves, and replace consumers. Radius availability may be interrupted; old trust will not be restored.")
-			state, err = store.beginRecovery(ctx, id, target, plan, journal)
-		} else {
-			state, err = store.beginPlanned(ctx, id, target, plan)
-		}
-		if err != nil {
-			return err
-		}
-	} else {
-		if state.Plan == nil {
-			return errors.New("the public journal has no workload plan; it cannot authorize rotation")
-		}
-		if options.Certificates.Specified() {
-			_, target, secret, _, err := i.rotationTarget(ctx, options, effective, kubeContext)
+			if state.Phase == rotationComplete && !recovery {
+				recorded, _, err := unstructured.NestedString(effective, "global", "rbac", "completedCARotation")
+				if err != nil || recorded != state.ID {
+					return errors.New("the previous rotation has not recorded its final Helm settings; retry its retire phase before starting another rotation")
+				}
+			}
+			var importPlan *certificatePlan
+			var target []byte
+			var secret, targetMode string
+			if recovery && state.Plan != nil && state.Phase != rotationComplete && !options.Certificates.Specified() {
+				target, secret, targetMode = state.NewCA, state.Plan.SigningSecret, state.Plan.TargetMode
+			} else {
+				importPlan, target, secret, targetMode, err = i.rotationTarget(ctx, options, effective, kubeContext)
+			}
 			if err != nil {
 				return err
 			}
-			digest, _, err := mtls.TrustBundleDigest(target, time.Now())
-			if err != nil || digest != state.Plan.TargetTrustSHA256 || secret != state.Plan.SigningSecret {
-				return errors.New("target CA differs from the active rotation; resume without changing its target")
+			oldCA, err := currentRotationComponentCA(ctx, store, effective, state, recovery)
+			if err != nil {
+				return err
+			}
+			id := uuid.NewString()
+			var recovering *rotationState
+			if recovery {
+				recovering = &state
+			}
+			plan, err := planRotationResources(ctx, store, config, id, secret, targetMode, oldCA, target, importPlan, recovering)
+			if err != nil {
+				return err
+			}
+			if readOnly {
+				return nil
+			}
+			if importPlan != nil {
+				importPlan.beforeWrite = store.checkWrite
+			}
+			if err := i.applyCertificatePlan(ctx, importPlan); err != nil {
+				return err
+			}
+			signing, err := kube.CoreV1().Secrets(store.namespace).Get(ctx, secret, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			plan.SigningUID = signing.UID
+			state = rotationState{NewCA: target, Plan: plan}
+			if err := store.checkPlannedSigner(ctx, state); err != nil {
+				return err
+			}
+			if recovery {
+				i.logInfo("Recording explicit incident recovery: publish only the selected CA, reissue leaves, and replace consumers. Radius availability may be interrupted; old trust will not be restored.")
+				state, err = store.beginRecovery(ctx, id, target, plan, journal)
+			} else {
+				state, err = store.beginPlanned(ctx, id, target, plan)
+			}
+			if err != nil {
+				return err
+			}
+		} else {
+			if state.Plan == nil {
+				return errors.New("the public journal has no workload plan; it cannot authorize rotation")
+			}
+			if options.Certificates.Specified() {
+				_, target, secret, _, err := i.rotationTarget(ctx, options, effective, kubeContext)
+				if err != nil {
+					return err
+				}
+				digest, _, err := mtls.TrustBundleDigest(target, time.Now())
+				if err != nil || digest != state.Plan.TargetTrustSHA256 || secret != state.Plan.SigningSecret {
+					return errors.New("target CA differs from the active rotation; resume without changing its target")
+				}
+			}
+			if err := store.checkPlannedSigner(ctx, state); err != nil {
+				return err
+			}
+			if readOnly {
+				phase := state.Phase
+				if requested == rotationRetire && phase == rotationReady {
+					phase = rotationRetire
+				}
+				if !recovery && slices.Index(rotationPhases, phase) < slices.Index(rotationPhases, requested) {
+					return fmt.Errorf("CA rotation is in phase %s; complete it before %s", state.Phase, requested)
+				}
+				return nil
 			}
 		}
-		if err := store.checkPlannedSigner(ctx, state); err != nil {
+		runner := rotationRunner{store: store, config: config, log: i.logInfo}
+		if err := runner.run(ctx, state.ID, requested); err != nil {
 			return err
 		}
-		if readOnly {
-			phase := state.Phase
-			if requested == rotationRetire && phase == rotationReady {
-				phase = rotationRetire
-			}
-			if !recovery && slices.Index(rotationPhases, phase) < slices.Index(rotationPhases, requested) {
-				return fmt.Errorf("CA rotation is in phase %s; complete it before %s", state.Phase, requested)
-			}
+		_, state, err = store.read(ctx)
+		if err != nil {
+			return err
+		}
+		if state.Phase != rotationComplete {
+			i.logInfo("CA rotation %s is now %s. Resume the next explicit phase; ordinary release changes remain guarded.", state.ID, state.Phase)
 			return nil
 		}
-	}
-	runner := rotationRunner{store: store, config: config, log: i.logInfo}
-	if err := runner.run(ctx, state.ID, requested); err != nil {
-		return err
-	}
-	_, state, err = store.read(ctx)
-	if err != nil {
-		return err
-	}
-	if state.Phase != rotationComplete {
-		i.logInfo("CA rotation %s is now %s. Resume the next explicit phase; ordinary release changes remain guarded.", state.ID, state.Phase)
+		// Record only the final certificate/proof settings. Reuse the current release
+		// rather than upgrading software or changing unrelated user values.
+		current, err := i.Helm.RunHelmGet(configuration, radiusReleaseName)
+		if err != nil {
+			return err
+		}
+		if current == nil || current.Chart == nil || current.Chart.Metadata == nil ||
+			current.Chart.Metadata.Annotations["radius.io/ca-rotation-protocol"] != "1" {
+			return errors.New("installed chart changed before final CA settings could be recorded")
+		}
+		values := map[string]any{}
+		certificates := map[string]any{"mode": state.Plan.TargetMode}
+		if state.Plan.TargetMode == "caSecret" {
+			certificates["caSecret"], certificates["caBundle"] = state.Plan.SigningSecret, strings.TrimSpace(string(state.NewCA))
+		}
+		setCertificateValues(values, certificates)
+		if err := unstructured.SetNestedField(values, state.ID, "global", "rbac", "completedCARotation"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(values, map[string]any{"enabled": true, "expectedTrustSHA256": state.Plan.TargetTrustSHA256},
+			"global", "rbac", "startupProof"); err != nil {
+			return err
+		}
+		if err := unstructured.SetNestedField(values, map[string]any{"enabled": true, "expectedTrustSHA256": state.Plan.TargetTrustSHA256},
+			"de", "ucpMTLS", "startupProof"); err != nil {
+			return err
+		}
+		upgrade := newUpgradeClient(configuration, store.namespace, true, true, options.Radius.Timeout, usesServerSideApply(configuration, radiusReleaseName))
+		if err := store.checkWrite(ctx); err != nil {
+			return err
+		}
+		_, err = upgrade.RunWithContext(ctx, radiusReleaseName, current.Chart, values)
+		if err != nil {
+			return fmt.Errorf("CA retirement completed but recording Helm settings failed; retry the retire phase without rolling trust back: %w", err)
+		}
 		return nil
 	}
-	// Record only the final certificate/proof settings. Reuse the current release
-	// rather than upgrading software or changing unrelated user values.
-	current, err := i.Helm.RunHelmGet(configuration, radiusReleaseName)
-	if err != nil {
-		return err
+	if readOnly {
+		return run()
 	}
-	if current == nil || current.Chart == nil || current.Chart.Metadata == nil ||
-		current.Chart.Metadata.Annotations["radius.io/ca-rotation-protocol"] != "1" {
-		return errors.New("installed chart changed before final CA settings could be recorded")
-	}
-	values := map[string]any{}
-	certificates := map[string]any{"mode": state.Plan.TargetMode}
-	if state.Plan.TargetMode == "caSecret" {
-		certificates["caSecret"], certificates["caBundle"] = state.Plan.SigningSecret, strings.TrimSpace(string(state.NewCA))
-	}
-	setCertificateValues(values, certificates)
-	if err := unstructured.SetNestedField(values, state.ID, "global", "rbac", "completedCARotation"); err != nil {
-		return err
-	}
-	if err := unstructured.SetNestedField(values, map[string]any{"enabled": true, "expectedTrustSHA256": state.Plan.TargetTrustSHA256},
-		"global", "rbac", "startupProof"); err != nil {
-		return err
-	}
-	if err := unstructured.SetNestedField(values, map[string]any{"enabled": true, "expectedTrustSHA256": state.Plan.TargetTrustSHA256},
-		"de", "ucpMTLS", "startupProof"); err != nil {
-		return err
-	}
-	upgrade := newUpgradeClient(configuration, store.namespace, true, true, options.Radius.Timeout, usesServerSideApply(configuration, radiusReleaseName))
-	_, err = upgrade.RunWithContext(ctx, radiusReleaseName, current.Chart, values)
-	if err != nil {
-		return fmt.Errorf("CA retirement completed but recording Helm settings failed; retry the retire phase without rolling trust back: %w", err)
-	}
-	return nil
+	return withIdentityOperation(ctx, kube, store.namespace, func(operation *identityOperation) error {
+		store.guardWrite = func(ctx context.Context) error {
+			return operation.checkProviderJournal(ctx, store.release, i.validateCompletedProviderJournal)
+		}
+		if err := store.checkWrite(ctx); err != nil {
+			return err
+		}
+		return run()
+	})
 }
 
 func (i *Impl) rotationTarget(ctx context.Context, options ClusterOptions, effective map[string]any, kubeContext string) (*certificatePlan, []byte, string, string, error) {

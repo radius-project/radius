@@ -55,6 +55,9 @@ func (r *rotationRunner) run(ctx context.Context, transaction string, requested 
 	if state.Plan.effectiveScope() != rotationComponentsAndAggregation {
 		return errors.New("aggregation-only rotation activation requires the integrated provider and issuer lifecycle")
 	}
+	if err := r.store.checkWrite(ctx); err != nil {
+		return err
+	}
 	if requested == rotationRecover {
 		if !state.Recovery && state.Phase != rotationComplete {
 			return errors.New("incident recovery must first record its explicit new-only intent")
