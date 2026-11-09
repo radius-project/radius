@@ -92,6 +92,7 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CSIDriverSPIFFEInstalledByRad("test-context").Return(false, nil).Times(1)
 		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
 			Return(false, nil).
 			Times(1)
@@ -167,6 +168,7 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", ContourInstalled: true}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CSIDriverSPIFFEInstalledByRad("test-context").Return(true, nil).Times(1)
 		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
 			Return(true, nil).
 			Times(1)
@@ -195,7 +197,7 @@ func Test_Run(t *testing.T) {
 			},
 			output.LogOutput{
 				Format: "- Helm releases: %s",
-				Params: []any{"radius, contour, cert-manager"},
+				Params: []any{"radius, contour, cert-manager-csi-driver-spiffe, cert-manager"},
 			},
 			output.LogOutput{
 				Format: "- Radius environments:",
@@ -290,6 +292,7 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CSIDriverSPIFFEInstalledByRad("test-context").Return(false, nil).Times(1)
 		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
 			Return(false, nil).
 			Times(1)
@@ -392,6 +395,7 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CSIDriverSPIFFEInstalledByRad("test-context").Return(false, nil).Times(1)
 		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
 			Return(false, nil).
 			Times(1)
@@ -437,6 +441,7 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CSIDriverSPIFFEInstalledByRad("test-context").Return(false, nil).Times(1)
 		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
 			Return(false, nil).
 			Times(1)
@@ -490,6 +495,7 @@ func Test_Run(t *testing.T) {
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version", ContourInstalled: true}, nil).
 			Times(1)
 
+		helmMock.EXPECT().CSIDriverSPIFFEInstalledByRad("test-context").Return(false, nil).Times(1)
 		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
 			Return(false, nil).
 			Times(1)
@@ -588,6 +594,7 @@ func Test_Run(t *testing.T) {
 		helmMock.EXPECT().CheckRadiusInstall("test-context").
 			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
 			Times(1)
+		helmMock.EXPECT().CSIDriverSPIFFEInstalledByRad("test-context").Return(false, nil).Times(1)
 		helmMock.EXPECT().CertManagerInstalledByRad("test-context").
 			Return(false, lookupErr).
 			Times(1)
@@ -608,8 +615,8 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(ctx)
 		require.NoError(t, err)
 		require.Contains(t, outputMock.Writes, output.LogOutput{
-			Format: "%s: unable to check for a cert-manager installed by rad: %v",
-			Params: []any{logWarningPrefix, lookupErr},
+			Format: "%s: unable to check for a %s installed by rad: %v",
+			Params: []any{logWarningPrefix, "cert-manager", lookupErr},
 		})
 		require.Contains(t, outputMock.Writes, output.LogOutput{
 			Format: "Radius was fully uninstalled. All data has been removed.",
@@ -621,17 +628,23 @@ func Test_Run_RadiusNotInstalled(t *testing.T) {
 	t.Parallel()
 
 	notInstalled := output.LogOutput{Format: "Radius is not installed on the Kubernetes cluster"}
-	certManagerPlan := []any{
-		notInstalled,
-		output.LogOutput{Format: "Found a cert-manager installed by rad. This will remove only:"},
-		output.LogOutput{Format: "- Helm releases: %s", Params: []any{"cert-manager"}},
+	plan := func(releases string) []any {
+		return []any{
+			notInstalled,
+			output.LogOutput{Format: "Found Radius dependencies installed by rad. This will remove only:"},
+			output.LogOutput{Format: "- Helm releases: %s", Params: []any{releases}},
+		}
 	}
+	certManagerPlan := plan("cert-manager")
+	finished := output.LogOutput{Format: "Dependency cleanup finished."}
 	lookupErr := errors.New("helm get failed")
 
 	tests := []struct {
 		name          string
 		owned         bool
 		ownedErr      error
+		spiffeOwned   bool
+		spiffeErr     error
 		assumeYes     bool
 		promptAnswer  string
 		wantUninstall bool
@@ -640,15 +653,17 @@ func Test_Run_RadiusNotInstalled(t *testing.T) {
 		wantWrites    []any
 	}{
 		{
-			name:       "cert-manager not owned by rad",
+			name:       "dependencies not owned by rad",
 			wantWrites: []any{notInstalled},
 		},
 		{
-			name:     "cert-manager ownership lookup fails",
-			ownedErr: lookupErr,
+			name:      "ownership lookups fail",
+			ownedErr:  lookupErr,
+			spiffeErr: lookupErr,
 			wantWrites: []any{
 				notInstalled,
-				output.LogOutput{Format: "%s: unable to check for a cert-manager installed by rad: %v", Params: []any{logWarningPrefix, lookupErr}},
+				output.LogOutput{Format: "%s: unable to check for a %s installed by rad: %v", Params: []any{logWarningPrefix, "csi-driver-spiffe", lookupErr}},
+				output.LogOutput{Format: "%s: unable to check for a %s installed by rad: %v", Params: []any{logWarningPrefix, "cert-manager", lookupErr}},
 			},
 		},
 		{
@@ -656,16 +671,24 @@ func Test_Run_RadiusNotInstalled(t *testing.T) {
 			owned:         true,
 			promptAnswer:  prompt.ConfirmYes,
 			wantUninstall: true,
-			wantWrites:    append(append([]any{}, certManagerPlan...), output.LogOutput{Format: "cert-manager cleanup finished."}),
+			wantWrites:    append(append([]any{}, certManagerPlan...), finished),
 		},
 		{
-			name:          "owned cert-manager removed with --yes",
+			name:          "owned csi-driver-spiffe removed after confirmation",
+			spiffeOwned:   true,
+			promptAnswer:  prompt.ConfirmYes,
+			wantUninstall: true,
+			wantWrites:    append(plan("cert-manager-csi-driver-spiffe"), finished),
+		},
+		{
+			name:          "owned csi-driver-spiffe and cert-manager removed with --yes",
 			owned:         true,
+			spiffeOwned:   true,
 			assumeYes:     true,
 			wantUninstall: true,
-			wantWrites: append(append([]any{}, certManagerPlan...),
+			wantWrites: append(plan("cert-manager-csi-driver-spiffe, cert-manager"),
 				output.LogOutput{Format: "Skipping confirmation because --yes flag was provided."},
-				output.LogOutput{Format: "cert-manager cleanup finished."},
+				finished,
 			),
 		},
 		{
@@ -712,6 +735,7 @@ func Test_Run_RadiusNotInstalled(t *testing.T) {
 			}
 
 			helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, nil)
+			helmMock.EXPECT().CSIDriverSPIFFEInstalledByRad("test-context").Return(tt.spiffeOwned, tt.spiffeErr)
 			helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(tt.owned, tt.ownedErr)
 			if tt.promptAnswer != "" {
 				promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).

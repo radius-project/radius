@@ -40,6 +40,45 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
+// CSIDriverSPIFFEInstalledByRad mocks base method.
+func (m *MockInterface) CSIDriverSPIFFEInstalledByRad(kubeContext string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CSIDriverSPIFFEInstalledByRad", kubeContext)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CSIDriverSPIFFEInstalledByRad indicates an expected call of CSIDriverSPIFFEInstalledByRad.
+func (mr *MockInterfaceMockRecorder) CSIDriverSPIFFEInstalledByRad(kubeContext any) *MockInterfaceCSIDriverSPIFFEInstalledByRadCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CSIDriverSPIFFEInstalledByRad", reflect.TypeOf((*MockInterface)(nil).CSIDriverSPIFFEInstalledByRad), kubeContext)
+	return &MockInterfaceCSIDriverSPIFFEInstalledByRadCall{Call: call}
+}
+
+// MockInterfaceCSIDriverSPIFFEInstalledByRadCall wrap *gomock.Call
+type MockInterfaceCSIDriverSPIFFEInstalledByRadCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceCSIDriverSPIFFEInstalledByRadCall) Return(arg0 bool, arg1 error) *MockInterfaceCSIDriverSPIFFEInstalledByRadCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceCSIDriverSPIFFEInstalledByRadCall) Do(f func(string) (bool, error)) *MockInterfaceCSIDriverSPIFFEInstalledByRadCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceCSIDriverSPIFFEInstalledByRadCall) DoAndReturn(f func(string) (bool, error)) *MockInterfaceCSIDriverSPIFFEInstalledByRadCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CertManagerInstalledByRad mocks base method.
 func (m *MockInterface) CertManagerInstalledByRad(kubeContext string) (bool, error) {
 	m.ctrl.T.Helper()

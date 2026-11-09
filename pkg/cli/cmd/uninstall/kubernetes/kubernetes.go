@@ -130,7 +130,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 //
 
 // Run checks if Radius is installed on the Kubernetes cluster, and if so, uninstalls it, logging a success message
-// if successful. When Radius is not installed, it only removes a cert-manager that rad installed, after confirmation.
+// if successful. When Radius is not installed, it only removes the csi-driver-spiffe and cert-manager that rad
+// installed, after confirmation.
 // It returns an error if an error occurs during the uninstallation.
 func (r *Runner) Run(ctx context.Context) error {
 	state, err := r.Helm.CheckRadiusInstall(r.KubeContext)
@@ -138,7 +139,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	if !state.RadiusInstalled {
-		return r.uninstallCertManagerOnly(ctx)
+		return r.uninstallDependenciesOnly(ctx)
 	}
 
 	plan, err := r.buildCleanupPlan(ctx, state)
@@ -202,24 +203,45 @@ func (r *Runner) Run(ctx context.Context) error {
 	return nil
 }
 
-// uninstallCertManagerOnly handles a cluster without Radius. It removes a cert-manager that rad installed, which
-// can remain when a Radius install fails after cert-manager is installed or a previous cert-manager removal failed.
+// radOwnedDependencies returns the Helm releases of the Radius dependencies that rad installed, in uninstall order.
+// A failed ownership lookup is logged and leaves that release out; the uninstall re-checks ownership itself.
+func (r *Runner) radOwnedDependencies() []string {
+	defaults := helm.NewDefaultClusterOptions()
+	var releases []string
+	for _, dependency := range []struct {
+		name        string
+		release     string
+		installedBy func(string) (bool, error)
+	}{
+		{name: "csi-driver-spiffe", release: defaults.CSIDriverSPIFFE.ReleaseName, installedBy: r.Helm.CSIDriverSPIFFEInstalledByRad},
+		{name: "cert-manager", release: defaults.CertManager.ReleaseName, installedBy: r.Helm.CertManagerInstalledByRad},
+	} {
+		owned, err := dependency.installedBy(r.KubeContext)
+		if err != nil {
+			r.Output.LogInfo("%s: unable to check for a %s installed by rad: %v", logWarningPrefix, dependency.name, err)
+			continue
+		}
+		if owned {
+			releases = append(releases, dependency.release)
+		}
+	}
+	return releases
+}
+
+// uninstallDependenciesOnly handles a cluster without Radius. It removes the csi-driver-spiffe and cert-manager that
+// rad installed, which can remain when a Radius install fails after they are installed or a previous removal failed.
 // It never touches the Radius or Contour releases or any Radius data.
-func (r *Runner) uninstallCertManagerOnly(ctx context.Context) error {
+func (r *Runner) uninstallDependenciesOnly(ctx context.Context) error {
 	r.Output.LogInfo("Radius is not installed on the Kubernetes cluster")
 
-	owned, err := r.Helm.CertManagerInstalledByRad(r.KubeContext)
-	if err != nil {
-		r.Output.LogInfo("%s: unable to check for a cert-manager installed by rad: %v", logWarningPrefix, err)
-		return nil
-	}
-	if !owned {
+	releases := r.radOwnedDependencies()
+	if len(releases) == 0 {
 		return nil
 	}
 
-	r.Output.LogInfo("Found a cert-manager installed by rad. This will remove only:")
-	r.Output.LogInfo("- Helm releases: %s", "cert-manager")
-	confirmed, err := r.confirm("Continue removing cert-manager?")
+	r.Output.LogInfo("Found Radius dependencies installed by rad. This will remove only:")
+	r.Output.LogInfo("- Helm releases: %s", strings.Join(releases, ", "))
+	confirmed, err := r.confirm("Continue removing them?")
 	if err != nil {
 		return err
 	}
@@ -232,7 +254,7 @@ func (r *Runner) uninstallCertManagerOnly(ctx context.Context) error {
 	if err := r.Helm.UninstallCertManager(ctx, helm.NewDefaultClusterOptions(), r.KubeContext); err != nil {
 		return err
 	}
-	r.Output.LogInfo("cert-manager cleanup finished.")
+	r.Output.LogInfo("Dependency cleanup finished.")
 	return nil
 }
 
@@ -254,14 +276,8 @@ func (r *Runner) buildCleanupPlan(ctx context.Context, state helm.InstallState) 
 	if state.ContourInstalled {
 		plan.HelmReleases = append(plan.HelmReleases, "contour")
 	}
-	// The uninstall re-checks cert-manager ownership itself, so a failed lookup only affects this plan.
-	certManagerOwned, err := r.Helm.CertManagerInstalledByRad(r.KubeContext)
-	if err != nil {
-		r.Output.LogInfo("%s: unable to check for a cert-manager installed by rad: %v", logWarningPrefix, err)
-	}
-	if certManagerOwned {
-		plan.HelmReleases = append(plan.HelmReleases, "cert-manager")
-	}
+	// The uninstall re-checks ownership itself, so a failed lookup only affects this plan.
+	plan.HelmReleases = append(plan.HelmReleases, r.radOwnedDependencies()...)
 
 	if !r.Purge {
 		return plan, nil
