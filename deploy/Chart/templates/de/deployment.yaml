@@ -96,7 +96,7 @@ spec:
       volumes:
         - name: appsettings-vol
           configMap:
-            name: bicep-de-config
+            name: {{ include "radius.providerConfigName" (dict "root" . "name" "bicep-de-config") }}
         {{- if or $mtls $external }}
         {{- include "radius.authz.mtls.volume" (dict "root" . "component" "bicep-de") | nindent 8 }}
         {{- end }}

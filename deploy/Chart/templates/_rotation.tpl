@@ -114,7 +114,7 @@ annotations:
   radius.io/trust-revision: {{ printf "%s/complete" .state.id | quote }}
   {{- end }}
   {{- $annotations := dig "metadata" "annotations" (dict) .object }}
-  {{- range $key := list "radius.io/ca-rotation" "radius.io/aggregation-route" "radius.io/aggregation-old-hash" "radius.io/aggregation-new-hash" }}
+  {{- range $key := list "radius.io/ca-rotation" "radius.io/aggregation-route" "radius.io/aggregation-old-hash" "radius.io/aggregation-new-hash" "radius.io/provider-transition" }}
   {{- if hasKey $annotations $key }}
   {{ $key }}: {{ index $annotations $key | quote }}
   {{- end }}

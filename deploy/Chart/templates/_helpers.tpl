@@ -2,6 +2,22 @@
 {{- .Chart.AppVersion -}}
 {{- end -}}
 
+{{/* Provider transitions prepare separate configuration without changing live mounts. */}}
+{{- define "radius.providerConfigName" -}}
+{{- $generation := get (.root.Values.global.rbac | default dict) "providerGeneration" -}}
+{{- if not (kindIs "string" $generation) -}}
+{{- fail "global.rbac.providerGeneration must be a string." -}}
+{{- end -}}
+{{- if $generation -}}
+{{- if not (regexMatch `^[0-9a-f]{32}$` $generation) -}}
+{{- fail "global.rbac.providerGeneration must be an exact lowercase 32-character transaction generation." -}}
+{{- end -}}
+{{- printf "%s-%s" .name $generation -}}
+{{- else -}}
+{{- .name -}}
+{{- end -}}
+{{- end -}}
+
 {{/*
 Reuses the value from an existing secret, otherwise sets its value to a default value.
 

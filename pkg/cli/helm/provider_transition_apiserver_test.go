@@ -40,6 +40,70 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+func TestProviderPreparationAPIServer(t *testing.T) {
+	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
+		t.Skip("Set KUBEBUILDER_ASSETS for isolated provider preparation tests.")
+	}
+	_, kube := startTestAPIServer(t)
+	_, err := kube.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{Name: RadiusSystemNamespace},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	store, plan, _ := providerFixture(t, kube, "radius", "external", "enforce")
+	source, err := kube.CoreV1().ConfigMaps(plan.Namespace).Create(t.Context(), &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "ucp-config", Namespace: plan.Namespace}, Data: map[string]string{"config": "source"},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	deployment, err := kube.AppsV1().Deployments(plan.Namespace).Get(t.Context(), "ucp", metav1.GetOptions{})
+	require.NoError(t, err)
+	deployment.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: "config", VolumeSource: corev1.VolumeSource{
+		ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: source.Name}},
+	}}}
+	_, err = kube.AppsV1().Deployments(plan.Namespace).Update(t.Context(), deployment, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	prepared := providerPreparedResources{configurations: map[string]*corev1.ConfigMap{}}
+	for _, base := range providerConfigurationBases[:5] {
+		name := base + "-" + strings.Repeat("a", 32)
+		prepared.configurations[name] = &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: plan.Namespace}, Data: map[string]string{"config": "target"},
+		}
+	}
+	err = withIdentityOperation(t.Context(), kube, plan.Namespace, func(operation *identityOperation) error {
+		writes := 0
+		guard := func(ctx context.Context) error {
+			writes++
+			if writes == 2 {
+				return errors.New("injected preparation interruption")
+			}
+			return operation.check(ctx)
+		}
+		require.ErrorContains(t, store.prepareConfigurations(t.Context(), plan.Namespace, prepared, guard), "interruption")
+		require.NoError(t, store.prepareConfigurations(t.Context(), plan.Namespace, prepared, guard))
+		before, err := kube.CoreV1().ConfigMaps(plan.Namespace).List(t.Context(), metav1.ListOptions{})
+		require.NoError(t, err)
+		require.Len(t, before.Items, 6)
+		calls := writes
+		require.NoError(t, store.prepareConfigurations(t.Context(), plan.Namespace, prepared, guard))
+		require.Equal(t, calls, writes, "completed preparation must not write on retry")
+		after, err := kube.CoreV1().ConfigMaps(plan.Namespace).List(t.Context(), metav1.ListOptions{})
+		require.NoError(t, err)
+		require.Equal(t, before.Items, after.Items)
+		name := "controller-config-" + strings.Repeat("a", 32)
+		changed, err := kube.CoreV1().ConfigMaps(plan.Namespace).Get(t.Context(), name, metav1.GetOptions{})
+		require.NoError(t, err)
+		changed.Data["config"] = "drift"
+		_, err = kube.CoreV1().ConfigMaps(plan.Namespace).Update(t.Context(), changed, metav1.UpdateOptions{})
+		require.NoError(t, err)
+		require.ErrorContains(t, store.prepareConfigurations(t.Context(), plan.Namespace, prepared, guard), "will not be overwritten")
+		require.Equal(t, calls, writes)
+		unchanged, err := kube.CoreV1().ConfigMaps(plan.Namespace).Get(t.Context(), source.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.Equal(t, source, unchanged, "live source configuration must retain its UID, version and content")
+		return nil
+	})
+	require.NoError(t, err)
+}
+
 func TestProviderTransitionAPIServer(t *testing.T) {
 	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
 		t.Skip("Set KUBEBUILDER_ASSETS for isolated provider transition tests.")

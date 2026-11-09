@@ -121,7 +121,7 @@ spec:
           emptyDir: {}
         - name: config-volume
           configMap:
-            name: controller-config
+            name: {{ include "radius.providerConfigName" (dict "root" . "name" "controller-config") }}
         {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "controller") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}

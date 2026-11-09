@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: controller-config
+  name: {{ include "radius.providerConfigName" (dict "root" . "name" "controller-config") }}
   namespace: "{{ .Release.Namespace }}"
   labels:
     app.kubernetes.io/name: controller
