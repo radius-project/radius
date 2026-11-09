@@ -34,11 +34,12 @@ import (
 )
 
 type rotationRunner struct {
-	store   *rotationStore
-	config  *rest.Config
-	log     func(string, ...any)
-	observe func(context.Context, *rest.Config, TLSProofTarget) (PodTLSProof, error)
-	probe   func(context.Context, *rest.Config, map[types.UID]bool) error
+	store              *rotationStore
+	config             *rest.Config
+	log                func(string, ...any)
+	observe            func(context.Context, *rest.Config, TLSProofTarget) (PodTLSProof, error)
+	observeAggregation func(context.Context, *rest.Config, TLSProofTarget) (PodAggregationProof, error)
+	probe              func(context.Context, *rest.Config, map[types.UID]bool) error
 }
 
 func (r *rotationRunner) run(ctx context.Context, transaction string, requested rotationPhase) error {
@@ -253,6 +254,13 @@ func (r *rotationRunner) verifyAggregation(ctx context.Context, state rotationSt
 	if !available {
 		return errors.New("Radius APIService is not available")
 	}
+	var serving rotationInventory
+	if state.SchemaVersion == 2 {
+		serving, err = r.store.aggregationServingEvidence(ctx, r.config, state, r.observeAggregation)
+		if err != nil {
+			return err
+		}
+	}
 	ids, _, err := r.store.aggregationPods(ctx, state, true)
 	if err != nil {
 		return err
@@ -271,10 +279,29 @@ func (r *rotationRunner) verifyAggregation(ctx context.Context, state rotationSt
 	if after.UID != service.UID || after.ResourceVersion != service.ResourceVersion {
 		return errors.New("aggregation Service changed during observation")
 	}
+	if state.SchemaVersion == 2 {
+		currentAPI, err := r.store.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if currentAPI.GetUID() != api.GetUID() || currentAPI.GetResourceVersion() != api.GetResourceVersion() {
+			return errors.New("aggregation APIService changed during observation")
+		}
+		current, err := r.store.aggregationServingEvidence(ctx, r.config, state, r.observeAggregation)
+		if err != nil {
+			return err
+		}
+		if !maps.Equal(serving.versions, current.versions) {
+			return errors.New("aggregation inventory changed during the API-server probe")
+		}
+	}
 	return nil
 }
 
 func (r *rotationRunner) observeAggregationCandidates(ctx context.Context, state rotationState) (map[types.UID]bool, string, error) {
+	if state.SchemaVersion == 2 {
+		return r.observeAggregationServingCandidates(ctx, state)
+	}
 	ids, hash, err := r.store.aggregationPods(ctx, state, true)
 	if err != nil {
 		return nil, "", err
@@ -371,11 +398,16 @@ func (r *rotationRunner) wait(ctx context.Context, operation string, check func(
 }
 
 func (r *rotationRunner) migrateAggregation(ctx context.Context, state rotationState) error {
-	var ucp rotationWorkload
-	for _, workload := range state.Plan.Consumers {
-		if workload.Name == "ucp" {
-			ucp = workload
+	reconcile := func() error {
+		if state.Plan.effectiveScope() == rotationAggregationOnly {
+			return r.store.reconcileAggregationDeployment(ctx, state.ID)
 		}
+		for _, workload := range state.Plan.Consumers {
+			if workload.Name == "ucp" {
+				return r.store.reconcileRotationDeployment(ctx, state.ID, workload)
+			}
+		}
+		return errors.New("managed aggregation rollout requires its UCP component identity")
 	}
 	service, err := r.store.kube.CoreV1().Services(r.store.namespace).Get(ctx, "ucp", metav1.GetOptions{})
 	if err != nil {
@@ -392,7 +424,7 @@ func (r *rotationRunner) migrateAggregation(ctx context.Context, state rotationS
 				return err
 			}
 		}
-		if err := r.store.reconcileRotationDeployment(ctx, state.ID, ucp); err != nil {
+		if err := reconcile(); err != nil {
 			return err
 		}
 		var ids map[types.UID]bool
@@ -424,7 +456,11 @@ func (r *rotationRunner) migrateAggregation(ctx context.Context, state rotationS
 			if err := probe(ctx, r.config, ids); err != nil {
 				return err
 			}
-			current, currentHash, err = r.store.aggregationPods(ctx, state, true)
+			if state.SchemaVersion == 2 {
+				current, currentHash, err = r.observeAggregationCandidates(ctx, state)
+			} else {
+				current, currentHash, err = r.store.aggregationPods(ctx, state, true)
+			}
 			if err != nil {
 				return err
 			}
@@ -441,8 +477,31 @@ func (r *rotationRunner) migrateAggregation(ctx context.Context, state rotationS
 		if _, err := r.store.setAggregationRoute(ctx, state.ID, "complete", "", routed); err != nil {
 			return err
 		}
-	} else if err := r.verifyAggregation(ctx, state); err != nil {
-		return err
+	} else {
+		if state.SchemaVersion == 2 {
+			// A crash can leave a completed route with the rollout still held.
+			// Recheck candidates before releasing it; final convergence follows.
+			ids, hash, err := r.observeAggregationCandidates(ctx, state)
+			if err != nil {
+				return err
+			}
+			probe := r.probe
+			if probe == nil {
+				probe = observeAggregatedPod
+			}
+			if err := probe(ctx, r.config, ids); err != nil {
+				return err
+			}
+			current, currentHash, err := r.observeAggregationCandidates(ctx, state)
+			if err != nil {
+				return err
+			}
+			if hash != currentHash || !maps.Equal(ids, current) {
+				return errors.New("aggregation candidates changed before releasing the completed route hold")
+			}
+		} else if err := r.verifyAggregation(ctx, state); err != nil {
+			return err
+		}
 	}
-	return r.store.reconcileRotationDeployment(ctx, state.ID, ucp)
+	return reconcile()
 }
