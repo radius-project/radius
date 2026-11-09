@@ -227,12 +227,14 @@ func TestExternalServerInitializationAndShutdown(t *testing.T) {
 			done := make(chan error, 1)
 			go func() {
 				done <- serveExternalWithConfig(t.Context(), server, listener,
-					authz.Options{Mode: authz.ModeEnforce, MTLSProvider: "external", Component: "applications-rp", Namespace: "radius-system"},
+					authz.Options{Mode: authz.ModeEnforce, MTLSProvider: "external", Component: "ucp", Namespace: "radius-system"},
 					[]string{"ucp"}, config)
 			}()
 			request, err := http.NewRequest(http.MethodGet, "http://"+listener.Addr().String()+"/resource", nil)
 			require.NoError(t, err)
-			request.Header.Set("Authorization", "Bearer "+signedToken(t, key, validTokenClaims(time.Now()), "key-1", jwt.SigningMethodES256))
+			claims := validTokenClaims(time.Now())
+			claims.Audience = jwt.ClaimStrings{"ucp.radius-system.svc"}
+			request.Header.Set("Authorization", "Bearer "+signedToken(t, key, claims, "key-1", jwt.SigningMethodES256))
 			client := &http.Client{Timeout: time.Second}
 			response, err := client.Do(request)
 			require.NoError(t, err)
@@ -256,7 +258,7 @@ func TestExternalServerInitializationAndShutdown(t *testing.T) {
 				var receipt InternalIdentityReceipt
 				require.NoError(t, json.NewDecoder(response.Body).Decode(&receipt))
 				require.Equal(t, "22222222-2222-4222-8222-222222222222", receipt.PodUID)
-				require.Equal(t, "applications-rp", receipt.Component)
+				require.Equal(t, "ucp", receipt.Component)
 				require.Equal(t, "system:serviceaccount:radius-system:ucp", receipt.Caller)
 			}
 			require.NoError(t, response.Body.Close())

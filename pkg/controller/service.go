@@ -23,6 +23,7 @@ import (
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/authz/mtls"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/bicep"
@@ -79,6 +80,20 @@ func (s *Service) Run(ctx context.Context) error {
 	var extraHandlers map[string]http.Handler
 	if proof != nil {
 		extraHandlers = map[string]http.Handler{mtls.StartupProofPath: proof}
+	}
+	authorization := s.Options.Config.Authorization
+	if authorization.EffectiveMode() != authz.ModeOff && authorization.EffectiveMTLSProvider() == "external" &&
+		metrics.Enabled && metrics.Prometheus != nil && metrics.Prometheus.Port > 0 && metrics.Prometheus.Port <= 65535 {
+		if s.Options.UCPConnection == nil {
+			return fmt.Errorf("external identity evidence requires the configured UCP connection")
+		}
+		handler, stop, err := mtls.NewExternalIdentityProbe(ctx, authorization,
+			s.Options.UCPConnection.Client(), s.Options.UCPConnection.Endpoint(), s.Options.K8sConfig)
+		if err != nil {
+			return err
+		}
+		defer stop()
+		extraHandlers = map[string]http.Handler{mtls.InternalIdentityPath: handler}
 	}
 
 	metricsAddr := "0" // Setting the address to 0 will disable the metrics server.

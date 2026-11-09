@@ -179,16 +179,45 @@ func serveExternal(ctx context.Context, srv *http.Server, ln net.Listener, optio
 
 func serveExternalWithConfig(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, allowed []string, config *rest.Config) error {
 	defer ln.Close()
-	if !validComponent(options.Component) || len(validation.IsDNS1123Label(options.Namespace)) != 0 {
-		return fmt.Errorf("external identity requires a known component and valid Radius namespace")
-	}
-	fetch, err := clusterTokenKeyFetcher(config)
+	handler, stop, err := externalTokenHandler(ctx, options, allowed, srv.Handler, config)
 	if err != nil {
 		return err
 	}
+	defer stop()
+	srv.Handler = handler
+	return srv.Serve(ln)
+}
+
+// NewExternalIdentityProbe protects a caller-only component's existing management
+// endpoint and exercises the actual configured UCP client on each observation.
+// The caller must invoke stop when its service terminates.
+func NewExternalIdentityProbe(ctx context.Context, options authz.Options, client *http.Client, endpoint string, config *rest.Config) (handler http.Handler, stop func(), err error) {
+	if options.EffectiveMTLSProvider() != "external" || options.EffectiveMode() == authz.ModeOff {
+		return nil, nil, errors.New("internal identity probe requires active external identity")
+	}
+	next, err := WithInternalIdentityClient(http.NotFoundHandler(), options, client, endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+	return externalTokenHandler(ctx, options, []string{"ucp"}, next, config)
+}
+
+func externalTokenHandler(ctx context.Context, options authz.Options, allowed []string, handler http.Handler, config *rest.Config) (http.Handler, func(), error) {
+	if _, err := authz.ParseMode(string(options.EffectiveMode())); err != nil {
+		return nil, nil, err
+	}
+	if options.EffectiveMTLSProvider() != "external" || options.EffectiveMode() == authz.ModeOff {
+		return nil, nil, errors.New("token verifier requires active external identity")
+	}
+	if !validComponent(options.Component) || len(validation.IsDNS1123Label(options.Namespace)) != 0 {
+		return nil, nil, fmt.Errorf("external identity requires a known component and valid Radius namespace")
+	}
+	fetch, err := clusterTokenKeyFetcher(config)
+	if err != nil {
+		return nil, nil, err
+	}
 	keys := &tokenKeys{clock: clock.RealClock{}, fetch: fetch}
 	sourceCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	if err := keys.update(sourceCtx, false); err != nil {
 		ucplog.FromContextOrDiscard(ctx).Error(err, "cluster signing keys unavailable; internal requests will fail closed")
 	}
@@ -197,13 +226,10 @@ func serveExternalWithConfig(ctx context.Context, srv *http.Server, ln net.Liste
 		defer close(done)
 		keys.run(sourceCtx)
 	}()
-	defer func() { cancel(); <-done }()
-	handler := srv.Handler
 	if handler == nil {
 		handler = http.DefaultServeMux
 	}
 	verifier := &tokenVerifier{keys: keys, namespace: options.Namespace, receiver: options.Component}
 	handler = internalIdentityHandler(handler, options, os.Getenv("RADIUS_INTERNAL_AUTH_POD_UID"), keys.clock.Now)
-	srv.Handler = verifier.authorizeToken(options.EffectiveMode(), allowed, handler)
-	return srv.Serve(ln)
+	return verifier.authorizeToken(options.EffectiveMode(), allowed, handler), func() { cancel(); <-done }, nil
 }

@@ -38,7 +38,7 @@ roleRef:
   kind: ClusterRole
   name: radius-token-discovery-{{ .Release.Namespace }}
 subjects:
-  {{- range $component := list "ucp" "applications-rp" "dynamic-rp" "bicep-de" }}
+  {{- range $component := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" }}
   - kind: ServiceAccount
     name: {{ $component }}
     namespace: {{ $.Release.Namespace }}
