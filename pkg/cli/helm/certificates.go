@@ -48,6 +48,7 @@ type CertificateOptions struct {
 	CAKey      string
 	CASecret   string
 	CertIssuer string
+	CABundle   string
 }
 
 // AddFlags registers the certificate options shared by install and upgrade.
@@ -55,7 +56,8 @@ func (o *CertificateOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.CACert, "ca-cert", "", "Path to a dedicated signing CA PEM (requires --ca-key; private material is never stored in Helm)")
 	flags.StringVar(&o.CAKey, "ca-key", "", "Path to the signing CA private key (requires --ca-cert; imports a retained, create-only Kubernetes Secret)")
 	flags.StringVar(&o.CASecret, "ca-secret", "", "Existing operator-owned TLS signing Secret in radius-system; never adopted or overwritten")
-	flags.StringVar(&o.CertIssuer, "cert-issuer", "", "External cert-manager issuer (currently rejected until effective request-policy protection can be verified)")
+	flags.StringVar(&o.CertIssuer, "cert-issuer", "", "External Issuer/name or ClusterIssuer/name in cert-manager.io (currently rejected until effective request-policy protection can be verified)")
+	flags.StringVar(&o.CABundle, "ca-bundle", "", "Path to exactly one public dedicated signing CA PEM for --cert-issuer; never a private key or parent chain")
 }
 
 // Validate checks flag combinations before contacting the cluster.
@@ -72,7 +74,13 @@ func (o CertificateOptions) Validate() error {
 	if count > 1 {
 		return fmt.Errorf("--ca-cert/--ca-key, --ca-secret and --cert-issuer are mutually exclusive")
 	}
+	if o.CABundle != "" && o.CertIssuer == "" {
+		return fmt.Errorf("--ca-bundle requires --cert-issuer")
+	}
 	if o.CertIssuer != "" {
+		if _, err := parseCertificateIssuer(o.CertIssuer); err != nil {
+			return err
+		}
 		return issuerPolicyError()
 	}
 	if o.CASecret != "" {
@@ -83,7 +91,7 @@ func (o CertificateOptions) Validate() error {
 
 // ValidateFlags also rejects explicitly empty certificate flags rather than treating them as omitted.
 func (o CertificateOptions) ValidateFlags(flags *pflag.FlagSet) error {
-	for _, name := range []string{"ca-cert", "ca-key", "ca-secret", "cert-issuer"} {
+	for _, name := range []string{"ca-cert", "ca-key", "ca-secret", "cert-issuer", "ca-bundle"} {
 		flag := flags.Lookup(name)
 		if flag != nil && flag.Changed && flag.Value.String() == "" {
 			return fmt.Errorf("--%s must not be empty", name)
@@ -94,7 +102,21 @@ func (o CertificateOptions) ValidateFlags(flags *pflag.FlagSet) error {
 
 // Specified reports whether certificate selection was requested.
 func (o CertificateOptions) Specified() bool {
-	return o.CACert != "" || o.CAKey != "" || o.CASecret != "" || o.CertIssuer != ""
+	return o.CACert != "" || o.CAKey != "" || o.CASecret != "" || o.CertIssuer != "" || o.CABundle != ""
+}
+
+type certificateIssuerReference struct {
+	Group string
+	Kind  string
+	Name  string
+}
+
+func parseCertificateIssuer(value string) (certificateIssuerReference, error) {
+	kind, name, found := strings.Cut(value, "/")
+	if !found || (kind != "Issuer" && kind != "ClusterIssuer") || len(validation.IsDNS1123Subdomain(name)) != 0 {
+		return certificateIssuerReference{}, fmt.Errorf("--cert-issuer must be Issuer/name or ClusterIssuer/name with a valid Kubernetes name; group is cert-manager.io")
+	}
+	return certificateIssuerReference{Group: "cert-manager.io", Kind: kind, Name: name}, nil
 }
 
 func issuerPolicyError() error {
@@ -115,6 +137,35 @@ func validateCASecretName(name string) error {
 // validateSigningCA accepts a signing CA followed by an optional, ordered issuance parent chain.
 // Only the first certificate becomes Radius trust, never the organization root or returned leaf ca.crt.
 func validateSigningCA(certPEM, keyPEM []byte, now time.Time) (*x509.Certificate, error) {
+	certs, err := parseSigningCertificates(certPEM, now)
+	if err != nil {
+		return nil, err
+	}
+	keyBlock, rest := pem.Decode(bytes.TrimSpace(keyPEM))
+	if keyBlock == nil || len(bytes.TrimSpace(rest)) != 0 || len(keyBlock.Headers) != 0 ||
+		bytes.Count(keyPEM, []byte("-----BEGIN ")) != 1 ||
+		!bytes.HasPrefix(bytes.TrimSpace(keyPEM), []byte("-----BEGIN "+keyBlock.Type+"-----")) {
+		return nil, fmt.Errorf("CA key must contain exactly one unencrypted PEM private key")
+	}
+	if _, err := tls.X509KeyPair(bytes.TrimSpace(certPEM), bytes.TrimSpace(keyPEM)); err != nil {
+		// Parser errors can contain input-derived data. Never forward them for signing material.
+		return nil, fmt.Errorf("CA key must be a supported unencrypted private key matching the first CA certificate")
+	}
+	return certs[0], nil
+}
+
+func validatePublicCA(certPEM []byte, now time.Time) (*x509.Certificate, error) {
+	certs, err := parseSigningCertificates(certPEM, now)
+	if err != nil {
+		return nil, err
+	}
+	if len(certs) != 1 {
+		return nil, fmt.Errorf("CA trust bundle must contain exactly one dedicated signing CA certificate, without its parent chain")
+	}
+	return certs[0], nil
+}
+
+func parseSigningCertificates(certPEM []byte, now time.Time) ([]*x509.Certificate, error) {
 	var certs []*x509.Certificate
 	for rest := bytes.TrimSpace(certPEM); len(rest) > 0; {
 		if !bytes.HasPrefix(rest, []byte("-----BEGIN CERTIFICATE-----")) {
@@ -174,17 +225,7 @@ func validateSigningCA(certPEM, keyPEM []byte, now time.Time) (*x509.Certificate
 			return nil, fmt.Errorf("self-signed CA certificate has an invalid or unsupported signature")
 		}
 	}
-	keyBlock, rest := pem.Decode(bytes.TrimSpace(keyPEM))
-	if keyBlock == nil || len(bytes.TrimSpace(rest)) != 0 || len(keyBlock.Headers) != 0 ||
-		bytes.Count(keyPEM, []byte("-----BEGIN ")) != 1 ||
-		!bytes.HasPrefix(bytes.TrimSpace(keyPEM), []byte("-----BEGIN "+keyBlock.Type+"-----")) {
-		return nil, fmt.Errorf("CA key must contain exactly one unencrypted PEM private key")
-	}
-	if _, err := tls.X509KeyPair(bytes.TrimSpace(certPEM), bytes.TrimSpace(keyPEM)); err != nil {
-		// Parser errors can contain input-derived data. Never forward them for signing material.
-		return nil, fmt.Errorf("CA key must be a supported unencrypted private key matching the first CA certificate")
-	}
-	return certs[0], nil
+	return certs, nil
 }
 
 type certificatePlan struct {
