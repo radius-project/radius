@@ -18,8 +18,10 @@ package helm
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -29,15 +31,20 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"helm.sh/helm/v4/pkg/chart/common"
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/engine"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/yaml"
 )
 
 func rotationIssuerFixture(t *testing.T, aggregationOnly, clusterIssuer bool) (*rotationRunner, rotationState, *issuerPolicyFixture) {
@@ -74,6 +81,190 @@ func rotationIssuerFixture(t *testing.T, aggregationOnly, clusterIssuer bool) (*
 	require.NoError(t, state.validate(time.Now()))
 	require.NoError(t, runner.store.dynamic.(*dynamicfake.FakeDynamicClient).Tracker().Add(issuer.DeepCopy()))
 	return runner, state, fixture
+}
+
+func TestCompletedRotationServingChartModes(t *testing.T) {
+	for _, mode := range []string{"off", "dryRun", "enforce"} {
+		t.Run(mode, func(t *testing.T) {
+			_, state, fixture := rotationIssuerFixture(t, true, false)
+			state.Phase = rotationComplete
+			data, err := json.Marshal(state)
+			require.NoError(t, err)
+			fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
+				"apiVersion": "v1", "kind": "ConfigMap",
+				"metadata": map[string]any{"name": rotationJournalName, "namespace": RadiusSystemNamespace,
+					"uid": "journal-uid", "resourceVersion": "1", "labels": map[string]any{rotationOwner: radiusReleaseName}},
+				"data": map[string]any{rotationJournalKey: string(data)},
+			}})
+			selected, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
+			require.NoError(t, err)
+			files := []*common.File{}
+			for _, file := range selected.Templates {
+				if strings.HasSuffix(file.Name, ".tpl") || file.Name == "templates/ucp/configmaps.yaml" || file.Name == "templates/ucp/deployment.yaml" {
+					files = append(files, file)
+				}
+			}
+			selected.Templates = files
+			values := valuesutil.CoalesceTables(copyValues(fixture.values), copyValues(selected.Values))
+			require.NoError(t, unstructured.SetNestedField(values, mode == "enforce", "global", "rbac", "enabled"))
+			require.NoError(t, unstructured.SetNestedField(values, mode == "dryRun", "global", "rbac", "dryRun"))
+			require.NoError(t, unstructured.SetNestedField(values, true, "global", "prometheus", "enabled"))
+			require.NoError(t, unstructured.SetNestedField(values, int64(state.Plan.Aggregation.ProofPort), "global", "prometheus", "port"))
+			server := fixture.server(t)
+			renderer := engine.New(&rest.Config{Host: server.URL})
+			render := func() (map[string]string, error) {
+				return renderer.Render(selected, common.Values{"Values": values, "Chart": selected.Metadata,
+					"Release": map[string]any{"Name": radiusReleaseName, "Namespace": RadiusSystemNamespace}})
+			}
+			rendered, err := render()
+			require.NoError(t, err)
+			require.Contains(t, rendered["radius/templates/ucp/deployment.yaml"], "UCP_AGGREGATION_STARTUP_PROOF_ENABLED")
+			require.Contains(t, rendered["radius/templates/ucp/deployment.yaml"], state.Plan.TargetTrustSHA256)
+			var config corev1.ConfigMap
+			require.NoError(t, yaml.Unmarshal([]byte(rendered["radius/templates/ucp/configmaps.yaml"]), &config))
+			var settings map[string]any
+			require.NoError(t, yaml.Unmarshal([]byte(config.Data["ucp-config.yaml"]), &settings))
+			require.Equal(t, mode, settings["authorization"].(map[string]any)["mode"])
+			require.Equal(t, RadiusSystemNamespace, settings["authorization"].(map[string]any)["namespace"])
+			require.NoError(t, unstructured.SetNestedField(values, false, "global", "prometheus", "enabled"))
+			_, err = render()
+			require.ErrorContains(t, err, "pinned metrics listener")
+			require.NoError(t, unstructured.SetNestedField(values, true, "global", "prometheus", "enabled"))
+			require.NoError(t, unstructured.SetNestedField(values, int64(state.Plan.Aggregation.ProofPort)+1, "global", "prometheus", "port"))
+			_, err = render()
+			require.ErrorContains(t, err, "pinned metrics listener")
+		})
+	}
+}
+
+func TestCompletedRotationAggregationChart(t *testing.T) {
+	for _, scope := range []string{"legacy", "managed", "aggregation"} {
+		for _, scenario := range []string{"complete", "unfinished", "APIService replaced", "trust changed"} {
+			t.Run(scope+"/"+scenario, func(t *testing.T) {
+				runner, state := rotationRunnerFixture(t)
+				if scope != "legacy" {
+					workload, err := state.Plan.aggregationWorkload()
+					require.NoError(t, err)
+					state.SchemaVersion, state.Plan.Scope, state.Plan.Aggregation = 2, rotationComponentsAndAggregation, &workload
+					if scope == "aggregation" {
+						state = aggregationOnlyState(t, state)
+					}
+				} else {
+					state.Plan = nil
+				}
+				state.Phase = rotationComplete
+				if scenario == "unfinished" {
+					state.Phase = rotationIssue
+				}
+				fixture := newIssuerPolicyFixture(t)
+				api, err := runner.store.dynamic.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
+				require.NoError(t, err)
+				bundle := base64.StdEncoding.EncodeToString(state.NewCA)
+				require.NoError(t, unstructured.SetNestedField(api.Object, bundle, "spec", "caBundle"))
+				annotations := api.GetAnnotations()
+				annotations[rotationOwner], annotations[rotationJournalUID], annotations[rotationRevision] = radiusReleaseName, "journal-uid", state.revision()
+				api.SetAnnotations(annotations)
+				switch scenario {
+				case "APIService replaced":
+					api.SetUID("replacement-uid")
+				case "trust changed":
+					require.NoError(t, unstructured.SetNestedField(api.Object, base64.StdEncoding.EncodeToString(state.OldCA), "spec", "caBundle"))
+				}
+				data, err := json.Marshal(state)
+				require.NoError(t, err)
+				fixture.objects = append(fixture.objects, api, &unstructured.Unstructured{Object: map[string]any{
+					"apiVersion": "v1", "kind": "ConfigMap",
+					"metadata": map[string]any{"name": rotationJournalName, "namespace": RadiusSystemNamespace,
+						"uid": "journal-uid", "resourceVersion": "1", "labels": map[string]any{rotationOwner: radiusReleaseName}},
+					"data": map[string]any{rotationJournalKey: string(data)},
+				}})
+				selected, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
+				require.NoError(t, err)
+				helpers := []*common.File{}
+				for _, file := range selected.Templates {
+					if strings.HasSuffix(file.Name, ".tpl") {
+						helpers = append(helpers, file)
+					}
+				}
+				selected.Templates = append(helpers, &common.File{Name: "templates/aggregation-state.yaml",
+					Data: []byte(`{{ include "radius.aggregationTrust" . }}`)})
+				server := fixture.server(t)
+				renderer := engine.New(&rest.Config{Host: server.URL})
+				rendered, err := renderer.Render(selected, common.Values{"Values": fixture.values,
+					"Release": map[string]any{"Name": radiusReleaseName, "Namespace": RadiusSystemNamespace}})
+				if scenario != "complete" {
+					require.Error(t, err)
+					return
+				}
+				require.NoError(t, err)
+				var trust map[string]any
+				require.NoError(t, json.Unmarshal([]byte(rendered["radius/templates/aggregation-state.yaml"]), &trust))
+				require.Equal(t, bundle, trust["caBundle"])
+			})
+		}
+	}
+}
+
+func TestCompletedIssuerRotationChart(t *testing.T) {
+	for _, aggregationOnly := range []bool{false, true} {
+		for _, clusterIssuer := range []bool{false, true} {
+			for _, scenario := range []string{"complete", "unfinished", "unknown version", "legacy with scope", "wrong scope", "missing serving identity", "private signing reference", "changed public trust", "replaced issuer", "changed issuer specification"} {
+				t.Run(fmt.Sprintf("aggregationOnly=%t/clusterIssuer=%t/%s", aggregationOnly, clusterIssuer, scenario), func(t *testing.T) {
+					_, state, fixture := rotationIssuerFixture(t, aggregationOnly, clusterIssuer)
+					state.Phase = rotationComplete
+					certificates := certificateValues(fixture.values)
+					certificates["caBundle"] = strings.TrimSpace(string(state.NewCA))
+					setCertificateValues(fixture.values, certificates)
+					if aggregationOnly {
+						require.NoError(t, unstructured.SetNestedField(fixture.values, "external", "global", "rbac", "mtls", "provider"))
+						fixture.forbiddenPath = "/apis/cert-manager.io/v1/namespaces/radius-system/certificates/applications-rp-cert"
+					}
+					switch scenario {
+					case "unfinished":
+						state.Phase = rotationIssue
+					case "unknown version":
+						state.SchemaVersion = 3
+					case "legacy with scope":
+						state.SchemaVersion = 1
+					case "wrong scope":
+						state.Plan.Scope = "unknown"
+					case "missing serving identity":
+						state.Plan.Aggregation = nil
+					case "private signing reference":
+						state.Plan.SigningSecret = "operator-key"
+					case "changed public trust":
+						next, _, _ := testSigningCA(t, nil, nil, nil, nil)
+						certificates["caBundle"] = strings.TrimSpace(string(next))
+						setCertificateValues(fixture.values, certificates)
+					case "replaced issuer":
+						fixture.object(state.Plan.ExternalIssuer.Kind, state.Plan.Issuer).SetUID("replacement-uid")
+					case "changed issuer specification":
+						fixture.set(t, state.Plan.ExternalIssuer.Kind, state.Plan.Issuer, "another-key", "spec", "ca", "secretName")
+					}
+					data, err := json.Marshal(state)
+					require.NoError(t, err)
+					fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
+						"apiVersion": "v1", "kind": "ConfigMap",
+						"metadata": map[string]any{"name": rotationJournalName, "namespace": RadiusSystemNamespace,
+							"uid": "journal-uid", "resourceVersion": "1", "labels": map[string]any{rotationOwner: radiusReleaseName}},
+						"data": map[string]any{rotationJournalKey: string(data)},
+					}})
+					rendered, err := fixture.render(t)
+					if scenario != "complete" {
+						require.Error(t, err)
+						return
+					}
+					require.NoError(t, err)
+					if aggregationOnly {
+						require.NotContains(t, rendered, "kind: Certificate")
+					} else {
+						require.Equal(t, 5, strings.Count(rendered, "kind: Certificate"))
+						require.Equal(t, 5, strings.Count(rendered, "kind: "+state.Plan.ExternalIssuer.Kind+"\n"))
+					}
+				})
+			}
+		}
+	}
 }
 
 func TestRotationIssuerJournalValidation(t *testing.T) {

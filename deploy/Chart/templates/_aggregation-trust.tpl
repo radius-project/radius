@@ -19,15 +19,9 @@ later Radius trust update. The journal is not a Helm-owned resource.
 {{- $journal := lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation" -}}
 {{- $result := dict "api" $api -}}
 {{- if $journal -}}
-{{- if or (ne (dig "metadata" "labels" "radius.io/trust-owner" "" $journal) .Release.Name) (dig "metadata" "deletionTimestamp" "" $journal) (dig "metadata" "ownerReferences" (list) $journal) (dig "metadata" "annotations" "meta.helm.sh/release-name" "" $journal) -}}
-{{- fail "Radius CA rotation journal has unexpected ownership or is terminating." -}}
-{{- end -}}
-{{- $state := mustFromJson (dig "data" "state.json" "" $journal) -}}
-{{- if or (not (kindIs "float64" $state.schemaVersion)) (ne (toString $state.schemaVersion) "1") (ne $state.namespace .Release.Namespace) (ne $state.release .Release.Name) (ne $state.apiServiceUID (dig "metadata" "uid" "" $api)) -}}
+{{- $state := include "radius.rotationJournal" (dict "journal" $journal "root" .) | mustFromJson -}}
+{{- if ne $state.apiServiceUID (dig "metadata" "uid" "" $api) -}}
 {{- fail "Radius CA rotation journal does not match this installation." -}}
-{{- end -}}
-{{- if ne $state.phase "complete" -}}
-{{- fail "Radius CA rotation is unfinished. Resume it before changing the Helm release; do not roll back its public trust." -}}
 {{- end -}}
 {{- if or (ne (index $annotations "meta.helm.sh/release-name") .Release.Name) (ne (index $annotations "meta.helm.sh/release-namespace") .Release.Namespace) (dig "spec" "insecureSkipTLSVerify" false $api) (ne (dig "spec" "service" "name" "" $api) "ucp") (ne (dig "spec" "service" "namespace" "" $api) .Release.Namespace) -}}
 {{- fail "Radius APIService ownership or verified service reference changed during managed trust." -}}

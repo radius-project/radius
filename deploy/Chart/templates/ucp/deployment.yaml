@@ -66,6 +66,7 @@ spec:
         - --config-file=/etc/config/ucp-config.yaml
         env:
         {{- with include "radius.authz.startupProofEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.aggregationProofEnv" (dict "root" . "state" $rotation.state) | trim }}{{ . | nindent 8 }}{{- end }}
         - name: TLS_CERT_DIR
           value: '/var/tls/cert'
         - name: PORT
