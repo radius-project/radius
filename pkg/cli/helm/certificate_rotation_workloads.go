@@ -176,6 +176,9 @@ func replaceRotationVolume(spec *corev1.PodSpec, volume corev1.Volume) error {
 }
 
 func (s *rotationStore) rotationConsumerTargets(ctx context.Context, state rotationState) ([]rotationConsumer, error) {
+	if state.Plan == nil || state.Plan.effectiveScope() != rotationComponentsAndAggregation {
+		return nil, errors.New("component TLS inventory is unavailable for aggregation-only rotation")
+	}
 	trust, digest, err := s.publishComponentTrust(ctx, rotationComponentBundle(state))
 	if err != nil {
 		return nil, err

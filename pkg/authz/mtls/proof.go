@@ -254,6 +254,10 @@ func (p *StartupProof) Snapshot() (StartupEvidence, error) {
 
 // ServeHTTP returns bounded public status. It grants no component identity or proxy access.
 func (p *StartupProof) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	serveStartupEvidence(w, r, p.Snapshot)
+}
+
+func serveStartupEvidence(w http.ResponseWriter, r *http.Request, snapshot func() (StartupEvidence, error)) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json")
 	if r.Method != http.MethodGet {
@@ -261,7 +265,7 @@ func (p *StartupProof) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	evidence, err := p.Snapshot()
+	evidence, err := snapshot()
 	if err != nil {
 		ucplog.FromContextOrDiscard(r.Context()).Error(err, "TLS startup proof unavailable")
 		w.WriteHeader(http.StatusServiceUnavailable)

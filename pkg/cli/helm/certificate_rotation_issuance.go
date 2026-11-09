@@ -177,12 +177,7 @@ func (s *rotationStore) ensureAggregationCertificate(ctx context.Context, transa
 		return err
 	}
 	client := s.dynamic.Resource(rotationCertificateResource).Namespace(s.namespace)
-	desiredSpec := map[string]any{
-		"secretName": state.Plan.ServingSecret, "duration": "24h", "renewBefore": "8h",
-		"privateKey": map[string]any{"algorithm": "ECDSA", "size": int64(256), "rotationPolicy": "Always"},
-		"usages":     []any{"digital signature", "server auth"}, "dnsNames": []any{"ucp." + s.namespace + ".svc"},
-		"issuerRef": map[string]any{"name": state.Plan.Issuer, "kind": "Issuer", "group": "cert-manager.io"},
-	}
+	desiredSpec := rotationAggregationCertificateSpec(state, s.namespace)
 	certificate, err := client.Get(ctx, state.Plan.ServingSecret, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		certificate, err = client.Create(ctx, &unstructured.Unstructured{Object: map[string]any{
@@ -198,14 +193,27 @@ func (s *rotationStore) ensureAggregationCertificate(ctx context.Context, transa
 	if err != nil {
 		return fmt.Errorf("cannot prepare aggregation Certificate: %w", err)
 	}
+	return checkAggregationCertificate(certificate, state, s.namespace)
+}
+
+func rotationAggregationCertificateSpec(state rotationState, namespace string) map[string]any {
+	return map[string]any{
+		"secretName": state.Plan.ServingSecret, "duration": "24h", "renewBefore": "8h",
+		"privateKey": map[string]any{"algorithm": "ECDSA", "size": int64(256), "rotationPolicy": "Always"},
+		"usages":     []any{"digital signature", "server auth"}, "dnsNames": []any{"ucp." + namespace + ".svc"},
+		"issuerRef": map[string]any{"name": state.Plan.Issuer, "kind": "Issuer", "group": "cert-manager.io"},
+	}
+}
+
+func checkAggregationCertificate(certificate *unstructured.Unstructured, state rotationState, namespace string) error {
 	spec, _, err := unstructured.NestedMap(certificate.Object, "spec")
-	if err != nil || certificate.GetLabels()[rotationOwner] != s.release ||
+	if err != nil || certificate.GetLabels()[rotationOwner] != state.Release ||
 		certificate.GetLabels()[rotationTransaction] != state.ID || certificate.GetDeletionTimestamp() != nil ||
 		len(certificate.GetOwnerReferences()) != 0 || certificate.GetAnnotations()["meta.helm.sh/release-name"] != "" {
 		return errors.New("aggregation Certificate has unexpected ownership")
 	}
 	// Compare the fields we declare while allowing cert-manager's API defaults.
-	for key, expected := range desiredSpec {
+	for key, expected := range rotationAggregationCertificateSpec(state, namespace) {
 		actual := spec[key]
 		if !rotationJSONEqual(actual, expected) {
 			return errors.New("aggregation Certificate specification changed; it was not overwritten")

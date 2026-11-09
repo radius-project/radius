@@ -59,6 +59,12 @@ type PodTLSProof struct {
 // ObserveTLSStartupProof reads bounded public evidence through the authenticated Kubernetes
 // pod proxy. It refuses redirects and verifies pod/container identity before and after the read.
 func ObserveTLSStartupProof(ctx context.Context, config *rest.Config, target TLSProofTarget) (PodTLSProof, error) {
+	return observePodTLSProof(ctx, config, target, mtls.StartupProofPath, func(evidence mtls.StartupEvidence) error {
+		return evidence.Validate(string(target.PodUID), target.TrustBundleSHA256, target.LeafSHA256, time.Now())
+	})
+}
+
+func observePodTLSProof(ctx context.Context, config *rest.Config, target TLSProofTarget, path string, validate func(mtls.StartupEvidence) error) (PodTLSProof, error) {
 	if config == nil || len(validation.IsDNS1123Label(target.Namespace)) != 0 ||
 		len(validation.IsDNS1123Subdomain(target.PodName)) != 0 || target.PodUID == "" ||
 		len(validation.IsDNS1123Label(target.ContainerName)) != 0 || target.Port == 0 {
@@ -88,7 +94,7 @@ func ObserveTLSStartupProof(ctx context.Context, config *rest.Config, target TLS
 	}
 	proxyURL := kube.CoreV1().RESTClient().Get().Namespace(target.Namespace).Resource("pods").
 		Name("http:" + target.PodName + ":" + strconv.Itoa(int(target.Port))).
-		SubResource("proxy").Suffix(mtls.StartupProofPath).URL()
+		SubResource("proxy").Suffix(path).URL()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, proxyURL.String(), nil)
 	if err != nil {
 		return PodTLSProof{}, errors.New("cannot construct TLS startup proof request")
@@ -116,7 +122,7 @@ func ObserveTLSStartupProof(ctx context.Context, config *rest.Config, target TLS
 	if err := decodeTLSProof(data, &evidence); err != nil {
 		return PodTLSProof{}, err
 	}
-	if err := evidence.Validate(string(target.PodUID), target.TrustBundleSHA256, target.LeafSHA256, time.Now()); err != nil {
+	if err := validate(evidence); err != nil {
 		return PodTLSProof{}, err
 	}
 	if evidence.InitializedAt.Before(container.State.Running.StartedAt.Time) {

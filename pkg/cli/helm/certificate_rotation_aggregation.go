@@ -104,11 +104,9 @@ func rotationServingSecret(spec corev1.PodSpec) string {
 }
 
 func (s *rotationStore) aggregationPods(ctx context.Context, state rotationState, candidate bool) (map[types.UID]bool, string, error) {
-	var ucp rotationWorkload
-	for _, workload := range state.Plan.Consumers {
-		if workload.Name == "ucp" {
-			ucp = workload
-		}
+	ucp, err := state.Plan.aggregationWorkload()
+	if err != nil {
+		return nil, "", err
 	}
 	pods, err := s.kube.CoreV1().Pods(s.namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: "app.kubernetes.io/name=ucp", Limit: 1000,
@@ -134,7 +132,7 @@ func (s *rotationStore) aggregationPods(ctx context.Context, state rotationState
 			return nil, "", err
 		}
 		parent := metav1.GetControllerOf(set)
-		if set.UID != owner.UID || parent == nil || parent.UID != ucp.UID || parent.Name != "ucp" || parent.Kind != "Deployment" {
+		if set.UID != owner.UID || parent == nil || parent.UID != ucp.DeploymentUID || parent.Name != "ucp" || parent.Kind != "Deployment" {
 			return nil, "", errors.New("aggregation backend pod has unexpected ownership")
 		}
 		target := TLSProofTarget{PodUID: pod.UID, ContainerName: "ucp"}

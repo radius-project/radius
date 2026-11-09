@@ -52,6 +52,9 @@ func (r *rotationRunner) run(ctx context.Context, transaction string, requested 
 	if state.ID != transaction || state.Plan == nil {
 		return errors.New("rotation transaction or resource plan changed")
 	}
+	if state.Plan.effectiveScope() != rotationComponentsAndAggregation {
+		return errors.New("aggregation-only rotation activation requires the integrated provider and issuer lifecycle")
+	}
 	if requested == rotationRecover {
 		if !state.Recovery && state.Phase != rotationComplete {
 			return errors.New("incident recovery must first record its explicit new-only intent")
@@ -197,6 +200,9 @@ func (r *rotationRunner) issueLeaves(ctx context.Context, state rotationState) e
 }
 
 func (r *rotationRunner) verifyConsumers(ctx context.Context, state rotationState) error {
+	if state.Plan == nil || state.Plan.effectiveScope() != rotationComponentsAndAggregation {
+		return errors.New("component trust evidence cannot verify an aggregation-only rotation")
+	}
 	targets, err := r.store.rotationConsumerTargets(ctx, state)
 	if err != nil {
 		return err

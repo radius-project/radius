@@ -174,6 +174,9 @@ func (s *rotationStore) beginRecovery(ctx context.Context, id string, target []b
 	state := rotationState{SchemaVersion: 1, ID: id, Namespace: s.namespace, Release: s.release,
 		APIServiceUID: api.GetUID(), Phase: rotationRetire, CreatedAt: s.now().UTC(), NewCA: bytes.Clone(target),
 		Plan: plan, Recovery: true}
+	if plan != nil && plan.Scope != "" {
+		state.SchemaVersion = 2
+	}
 	history := [][]byte{live}
 	if journal != nil {
 		if err := checkRecoveryTarget(target, previous); err != nil {
@@ -199,7 +202,7 @@ func (s *rotationStore) beginRecovery(ctx context.Context, id string, target []b
 			if !rotationHistoricalSubset(live, allowed) {
 				return rotationState{}, errors.New("public trust changed outside the interrupted transaction")
 			}
-			if previous.Plan != nil {
+			if previous.Plan != nil && previous.Plan.effectiveScope() == rotationComponentsAndAggregation {
 				history = append(history, previous.Plan.OldComponentCA)
 			}
 			state.PriorRevisions = slices.Clone(previous.PriorRevisions)
@@ -242,10 +245,10 @@ func (s *rotationStore) beginRecovery(ctx context.Context, id string, target []b
 func checkRecoveryTarget(target []byte, previous rotationState) error {
 	if previous.ID != "" && !rotationHistoricalSubset(target, previous.NewCA) {
 		if rotationHistoricalSubset(target, previous.OldCA) ||
-			previous.Plan != nil && rotationHistoricalSubset(target, previous.Plan.OldComponentCA) {
+			previous.Plan != nil && previous.Plan.effectiveScope() == rotationComponentsAndAggregation && rotationHistoricalSubset(target, previous.Plan.OldComponentCA) {
 			return errors.New("incident recovery cannot restore a previous CA; select a fresh signing CA or resume the interrupted target")
 		}
-		if previous.Plan != nil {
+		if previous.Plan != nil && previous.Plan.effectiveScope() == rotationComponentsAndAggregation {
 			return rotationCheckRootKeys(previous.Plan.OldComponentCA, target)
 		}
 	}
