@@ -423,10 +423,11 @@ func TestServiceAzureProxyEncodedProtectedMutations(t *testing.T) {
 				CAFile: caFile, AllowedNames: []string{"front-proxy-client"}, KubernetesIssuer: "kubernetes:test-cluster",
 			}
 			var calls atomic.Int32
+			var lastPath atomic.Value
 			downstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls.Add(1)
+				lastPath.Store(r.URL.Path)
 				require.Equal(t, http.MethodPut, r.Method)
-				require.Contains(t, r.URL.Path, "/providers/Microsoft")
 				w.WriteHeader(http.StatusCreated)
 			}))
 			defer downstream.Close()
@@ -478,25 +479,39 @@ func TestServiceAzureProxyEncodedProtectedMutations(t *testing.T) {
 				"/providers/Radius%252eCore%252froleAssignments/a",
 				"/providers/System%252eAuthorization%252fpolicyObjects/a",
 				"/providers/%2552adius%252eCore/role%2541ssignments/a",
+				"/providers/Radius.Core/roleAssignments%3Fignored/a",
+				"/providers/Radius.Core/roleDefinitions%23ignored/a",
+				"/providers/rAdIuS.cOrE/authorizationSettings%253fignored/a",
+				"/providers/Radius.Core/accessChanges%2523ignored/a",
+				"/providers/System.Authorization%3Fignored/a",
+				"/providers/sYsTeM.aUtHoRiZaTiOn%23ignored/a",
 			} {
 				require.Equal(t, http.StatusServiceUnavailable, send(path), path)
 				require.Zero(t, calls.Load())
 			}
-			for _, path := range []string{
-				"/providers/Microsoft.Test/widgets/a",
-				"/providers/Microsoft%2eTest/widgets/a",
-				"/providers/Microsoft%252eTest/widgets/a",
+			for _, control := range []struct {
+				path string
+				want string
+			}{
+				{"/providers/Microsoft.Test/widgets/a", "/providers/Microsoft.Test/widgets/a"},
+				{"/providers/Microsoft%2eTest/widgets/a", "/providers/Microsoft.Test/widgets/a"},
+				{"/providers/Microsoft%252eTest/widgets/a", "/providers/Microsoft.Test/widgets/a"},
+				{"/providers/Microsoft.Test/widgets/a%2525", "/providers/Microsoft.Test/widgets/a%"},
+				{"/providers/Microsoft.Test/widgets/a%2525zz", "/providers/Microsoft.Test/widgets/a%zz"},
+				{"/providers/Microsoft.Test/widgets%3Fignored/a", "/providers/Microsoft.Test/widgets"},
+				{"/providers/Microsoft.Test/widgets%23ignored/a", "/providers/Microsoft.Test/widgets"},
 			} {
 				expected := http.StatusCreated
 				if mode == "Enforce" {
 					expected = http.StatusServiceUnavailable
 				}
 				before := calls.Load()
-				require.Equal(t, expected, send(path), path)
+				require.Equal(t, expected, send(control.path), control.path)
 				if mode == "Enforce" {
 					require.Equal(t, before, calls.Load())
 				} else {
 					require.Equal(t, before+1, calls.Load(), "ordinary encoded control must reach proxy")
+					require.Equal(t, control.want, lastPath.Load(), control.path)
 				}
 			}
 			if store != nil {
