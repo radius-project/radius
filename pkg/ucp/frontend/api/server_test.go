@@ -205,6 +205,7 @@ func TestServiceRequestHeaderTrailers(t *testing.T) {
 								if _, err := io.Copy(io.Discard, r.Body); err != nil {
 									t.Errorf("read proxied body: %v", err)
 								}
+								w.Header().Set("X-Received-Safe-Trailer", r.Trailer.Get("X-Safe-Trailer"))
 								w.WriteHeader(http.StatusNoContent)
 							}))
 							defer backend.Close()
@@ -221,7 +222,19 @@ func TestServiceRequestHeaderTrailers(t *testing.T) {
 									CAFile: caFile, AllowedNames: []string{"front-proxy-client"}, KubernetesIssuer: "kubernetes:test-cluster",
 								}
 							}
-							server, err := NewService(identityTestOptions(t, config, httputil.NewSingleHostReverseProxy(target))).Initialize(t.Context())
+							proxy := httputil.NewSingleHostReverseProxy(target)
+							handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+								// Consume trailers before ReverseProxy clones the request.
+								body, err := io.ReadAll(r.Body)
+								if err != nil {
+									t.Errorf("read authenticated body: %v", err)
+									w.WriteHeader(http.StatusBadRequest)
+									return
+								}
+								r.Body = io.NopCloser(strings.NewReader(string(body)))
+								proxy.ServeHTTP(w, r)
+							})
+							server, err := NewService(identityTestOptions(t, config, handler)).Initialize(t.Context())
 							require.NoError(t, err)
 							type receivedRequest struct {
 								protocol int
@@ -290,6 +303,7 @@ func TestServiceRequestHeaderTrailers(t *testing.T) {
 											} else {
 												require.Equal(t, http.StatusNoContent, response.StatusCode, string(body))
 												require.Equal(t, before+1, forwarded.Load(), "unrelated trailers remain supported")
+												require.Equal(t, "asserted identity", response.Header.Get("X-Received-Safe-Trailer"), "trailer values must reach the backend after body consumption")
 											}
 										})
 									}
