@@ -24,7 +24,7 @@ func inspectionRoute(path string) (operation, scope string) {
 		return "", ""
 	}
 	operation = lower[index+len(prefix):]
-	scope = path[:index]
+	scope = lower[:index]
 	if scope == "" {
 		scope = "/"
 	}

@@ -424,6 +424,88 @@ func TestInspectionHTTPValidation(t *testing.T) {
 	})
 }
 
+func TestInspectionUnicodeScope(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"Kteam", "\u212ateam", "\u0130team", "\u1e9eteam"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			scope := "/planes/radius/local/resourceGroups/" + name
+			path := scope + "/providers/Radius.Core/checkAccess"
+			operation, actualScope := inspectionRoute(path)
+			require.Equal(t, "checkaccess", operation)
+			require.Equal(t, strings.ToLower(scope), actualScope)
+			runtime := &PolicyRuntime{ctx: t.Context(), cache: &PolicyCache{
+				value: testPolicySnapshot(t, 1), asOf: time.Now(), clock: clock.RealClock{},
+			}}
+			for _, target := range []string{scope, scope + "/providers/Radius.Core/applications/app", scope + "-neighbor"} {
+				body, err := json.Marshal(api.AccessCheckRequest{Checks: []*api.AccessCheck{
+					{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr(target)},
+				}})
+				require.NoError(t, err)
+				request := httptest.NewRequest(http.MethodPost, path+"?api-version=2025-08-01-preview", strings.NewReader(string(body)))
+				request = request.WithContext(context.WithValue(request.Context(), identityContextKey{}, policyActor().Identity))
+				response := httptest.NewRecorder()
+				Inspection(runtime, "")(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+					t.Fatal("inspection fell through to generic routing")
+				})).ServeHTTP(response, request)
+				if strings.HasSuffix(target, "-neighbor") {
+					require.Equal(t, http.StatusBadRequest, response.Code, response.Body.String())
+					require.Contains(t, response.Body.String(), "within the inspection scope")
+					continue
+				}
+				require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+				var result api.CheckAccessResponse
+				require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
+				require.Len(t, result.Checks, 1)
+				require.True(t, *result.Checks[0].Allowed)
+				require.Equal(t, target, *result.Checks[0].Target)
+			}
+		})
+	}
+}
+
+func TestInspectionAPIVersionDoesNotBypassAuthorization(t *testing.T) {
+	for _, mode := range []api.UserAuthorizationMode{
+		api.UserAuthorizationModeDisabled, api.UserAuthorizationModeDryRun, api.UserAuthorizationModeEnforce,
+	} {
+		t.Run(string(mode), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				store := newTestPolicyStore(t, inmemory.NewClient(), false)
+				policy := initialPolicy()
+				policy.Settings.Properties.Mode = &mode
+				initializer, err := NewPolicyInitializer(store, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
+				require.NoError(t, err)
+				require.NoError(t, initializer.Initialize(t.Context(), policy))
+				runtime, _ := startPolicyRuntime(t, store)
+				for _, version := range []string{"", "?api-version=unknown", "?api-version=2025-08-01-preview"} {
+					for _, verified := range []bool{false, true} {
+						body := `{"principal":{"type":"group","issuer":"kubernetes:cluster-a","subject":"admins"},"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`
+						request := httptest.NewRequest(http.MethodPost, "/providers/Radius.Core/checkAccess"+version, strings.NewReader(body))
+						if verified {
+							caller := Identity{Principal: testPrincipal(api.PrincipalTypeUser, "kubernetes:cluster-a", "bob")}
+							request = request.WithContext(context.WithValue(request.Context(), identityContextKey{}, caller))
+						}
+						response := httptest.NewRecorder()
+						Inspection(runtime, "")(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+							t.Fatal("inspection fell through to generic routing")
+						})).ServeHTTP(response, request)
+						status, code := http.StatusUnauthorized, "InvalidAuthenticationInfo"
+						if verified {
+							status, code = http.StatusBadRequest, "InvalidApiVersionParameter"
+							if version == "?api-version=2025-08-01-preview" {
+								status, code = http.StatusForbidden, "AuthorizationFailed"
+							}
+						}
+						require.Equal(t, status, response.Code, response.Body.String())
+						require.Contains(t, response.Body.String(), code)
+						require.NotContains(t, response.Body.String(), `"checks"`)
+					}
+				}
+			})
+		})
+	}
+}
+
 func TestInspectionInvalidCaller(t *testing.T) {
 	t.Parallel()
 	runtime := &PolicyRuntime{ctx: t.Context(), cache: &PolicyCache{
