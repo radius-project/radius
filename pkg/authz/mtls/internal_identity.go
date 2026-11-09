@@ -94,7 +94,7 @@ func (c *internalIdentityClient) observe(ctx context.Context, options authz.Opti
 	if err != nil || len(data) > 8192 {
 		return InternalIdentityReceipt{}, errors.New("UCP identity receipt is unreadable or oversized")
 	}
-	receipt, err := decodeInternalIdentityReceipt(data)
+	receipt, err := DecodeInternalIdentityReceipt(data)
 	if err != nil {
 		return InternalIdentityReceipt{}, err
 	}
@@ -108,8 +108,13 @@ func (c *internalIdentityClient) observe(ctx context.Context, options authz.Opti
 	return receipt, nil
 }
 
-func decodeInternalIdentityReceipt(data []byte) (InternalIdentityReceipt, error) {
+// DecodeInternalIdentityReceipt accepts only the exact, bounded base receipt
+// schema. Callers must also verify its challenge, identity and observation time.
+func DecodeInternalIdentityReceipt(data []byte) (InternalIdentityReceipt, error) {
 	fail := errors.New("invalid UCP identity receipt")
+	if len(data) > 8192 {
+		return InternalIdentityReceipt{}, fail
+	}
 	fields := map[string]bool{"schemaVersion": false, "provider": false, "mode": false, "component": false,
 		"namespace": false, "podUID": false, "bootID": false, "caller": false, "challenge": false, "observedAt": false}
 	decoder := json.NewDecoder(bytes.NewReader(data))
