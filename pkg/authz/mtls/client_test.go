@@ -514,8 +514,22 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 // retired pool open: it closes once it goes idle, or once it expires, without replacing the
 // current pool again.
 func TestClientTransport_RetiredPool(t *testing.T) {
-	for _, expireB := range []bool{false, true} {
-		t.Run(fmt.Sprintf("expireB=%t", expireB), func(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		http2   bool
+		expireB bool
+	}{
+		{name: "http1/expireB=false"},
+		{name: "http1/expireB=true", expireB: true},
+		{name: "http2/expireB=false", http2: true},
+		{name: "http2/expireB=true", http2: true, expireB: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			expireB := tc.expireB
+			wantProto := 1
+			if tc.http2 {
+				wantProto = 2
+			}
 			now := time.Now().UTC().Truncate(time.Second)
 			root := expiringCA(t, nil, now.Add(5*time.Hour))
 			issue := func(notAfter time.Time) *tls.Certificate {
@@ -523,7 +537,11 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 				return &cert
 			}
 			start := func(cert *atomic.Pointer[tls.Certificate], handler http.HandlerFunc) *httptest.Server {
-				srv := httptest.NewUnstartedServer(handler)
+				srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, wantProto, r.ProtoMajor)
+					handler(w, r)
+				}))
+				srv.EnableHTTP2 = tc.http2
 				srv.TLS = &tls.Config{
 					MinVersion: tls.VersionTLS12,
 					GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
