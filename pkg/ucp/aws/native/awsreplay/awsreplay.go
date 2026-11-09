@@ -30,6 +30,7 @@ package awsreplay
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -227,11 +228,11 @@ func (s *Session) Wait(d time.Duration) {
 	}
 }
 
-// scrub returns b with the recording identity and every scrubbed value replaced. A scrubbed value is replaced with x
-// characters of the same length in each form a request or response can carry it in: percent-encoded in a form body,
-// escaped in JSON, and base64 encoded. In a binary body, every replacement keeps the length, so a body such as CBOR
-// stays valid. All values are replaced in one pass, longest first, so a value that contains another, such as a
-// scrubbed value that contains the account ID, is replaced whole, and no replacement is replaced again.
+// scrub returns b with the recording identity and every scrubbed value replaced. Each identity value is replaced as
+// is, percent-encoded in a form body or path, and escaped in JSON. A scrubbed value is replaced with x characters of
+// the same length in those forms and base64 encoded. In a binary body, every replacement keeps the length, so a body
+// such as CBOR stays valid. All values are replaced in one pass, longest first, so a value that contains another, such
+// as a scrubbed value that contains the account ID, is replaced whole, and no replacement is replaced again.
 func (s *Session) scrub(b []byte, binary bool) []byte {
 	type replacement struct{ old, new string }
 	var rs []replacement
@@ -244,11 +245,17 @@ func (s *Session) scrub(b []byte, binary bool) []byte {
 		}
 		rs = append(rs, replacement{old, new})
 	}
+	// The replacements contain no character that any form escapes, so each form maps to the same replacement.
+	addEscaped := func(v, new string) {
+		for _, form := range escapes(v) {
+			add(form, new)
+		}
+	}
 	if s.identity != nil {
-		add(aws.ToString(s.identity.Account), Account)
-		add(aws.ToString(s.identity.UserId), UserID)
+		addEscaped(aws.ToString(s.identity.Account), Account)
+		addEscaped(aws.ToString(s.identity.UserId), UserID)
 		for _, name := range principalNames(aws.ToString(s.identity.Arn)) {
-			add(name, Principal)
+			addEscaped(name, Principal)
 		}
 	}
 	for _, v := range s.scrubbed {
@@ -284,19 +291,20 @@ func principalNames(identityARN string) []string {
 	return []string{names[strings.LastIndex(names, "/")+1:]}
 }
 
-// encodings returns v and the other forms it can appear in, longest first, so a form that contains another is
-// replaced whole.
-func encodings(v string) []string {
+// escapes returns v and the forms text can carry it in: percent-encoded in a form body or path, and escaped in JSON.
+func escapes(v string) []string {
 	escaped, _ := json.Marshal(v)
-	forms := []string{
-		v,
-		url.QueryEscape(v),
-		url.PathEscape(v),
-		string(escaped[1 : len(escaped)-1]),
-		base64.StdEncoding.EncodeToString([]byte(v)),
-		base64.RawStdEncoding.EncodeToString([]byte(v)),
-	}
-	slices.SortFunc(forms, func(a, b string) int { return len(b) - len(a) })
+	return unique([]string{v, url.QueryEscape(v), url.PathEscape(v), string(escaped[1 : len(escaped)-1])})
+}
+
+// encodings returns the forms of escapes and v base64 encoded.
+func encodings(v string) []string {
+	return unique(append(escapes(v), base64.StdEncoding.EncodeToString([]byte(v)), base64.RawStdEncoding.EncodeToString([]byte(v))))
+}
+
+// unique returns forms without duplicates, longest first.
+func unique(forms []string) []string {
+	slices.SortFunc(forms, func(a, b string) int { return cmp.Or(len(b)-len(a), strings.Compare(a, b)) })
 	return slices.Compact(forms)
 }
 

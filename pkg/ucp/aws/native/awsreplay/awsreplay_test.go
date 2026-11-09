@@ -32,6 +32,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -234,6 +235,48 @@ func Test_PrincipalNames(t *testing.T) {
 	for _, tt := range tests {
 		require.Equal(t, tt.want, principalNames(tt.arn), tt.arn)
 	}
+}
+
+// Test_Record_EscapedIdentity records a form request that carries the caller's names, which the SDK percent-encodes,
+// and checks that the cassette keeps neither the names nor the user ID in any form.
+func Test_Record_EscapedIdentity(t *testing.T) {
+	const account = "999988887777"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "text/xml")
+		_, _ = w.Write([]byte(`<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/"><AssumeRoleResult></AssumeRoleResult></AssumeRoleResponse>`))
+	}))
+	defer server.Close()
+
+	identity := &sts.GetCallerIdentityOutput{
+		Account: aws.String(account),
+		Arn:     aws.String("arn:aws:sts::" + account + ":assumed-role/Recorder+Role/alice@example.com"),
+		UserId:  aws.String("AROA5EXAMPLEROLEID123:alice@example.com"),
+	}
+	file := filepath.Join(t.TempDir(), "cassette.json")
+	s := &Session{t: t, file: file, recording: true, identity: identity, cassette: Cassette{Source: SourceRecorded, Inputs: map[string]string{}}}
+	cfg := aws.Config{
+		Region:       Region,
+		Credentials:  credentials.NewStaticCredentialsProvider("AKIA", "secret", ""),
+		BaseEndpoint: aws.String(server.URL),
+		HTTPClient:   &http.Client{Transport: recorder{s: s, next: http.DefaultTransport}},
+	}
+	_, err := sts.NewFromConfig(cfg).AssumeRole(t.Context(), &sts.AssumeRoleInput{
+		RoleArn:         aws.String("arn:aws:iam::" + account + ":role/Recorder+Role"),
+		RoleSessionName: aws.String("alice@example.com"),
+		PolicyArns:      []types.PolicyDescriptorType{{Arn: aws.String("AROA5EXAMPLEROLEID123:alice@example.com")}},
+	})
+	require.NoError(t, err)
+	require.NoError(t, s.save())
+
+	b, err := os.ReadFile(file)
+	require.NoError(t, err)
+	saved := string(b)
+	for _, v := range []string{"alice", "Recorder", "AROA5EXAMPLEROLEID123"} {
+		require.NotContains(t, saved, v)
+	}
+	require.Contains(t, saved, "RoleSessionName=radius-recording")
+	require.Contains(t, saved, "role%2Fradius-recording")
 }
 
 func Test_Text(t *testing.T) {
