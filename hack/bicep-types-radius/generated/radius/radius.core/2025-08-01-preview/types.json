@@ -2767,21 +2767,21 @@
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller."
+        "description": "The trusted identity system, including its trust domain, up to 256 characters. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller."
       },
       "subject": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>."
+        "description": "The identity within the issuer, up to 512 characters to accommodate Kubernetes service-account names and namespaces. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>."
       },
       "displayName": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "An optional mutable label that is never used to match principals."
+        "description": "An optional mutable label, up to 128 characters, that is never used to match principals."
       }
     }
   },
