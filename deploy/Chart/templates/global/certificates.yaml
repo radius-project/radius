@@ -1,8 +1,11 @@
 {{- $journalPresent := lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation" }}
 {{- if or $journalPresent (ne (include "radius.authz.mode" .) "off") }}
 {{- $objects := dict }}
+{{- $provider := default "radius" ((.Values.global.rbac.mtls | default dict).provider) }}
+{{- if ne $provider "external" }}
 {{- range $component := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" }}
 {{- $_ := set $objects $component (lookup "cert-manager.io/v1" "Certificate" $.Release.Namespace (printf "%s-cert" $component)) }}
+{{- end }}
 {{- end }}
 {{- $issuerObject := lookup "cert-manager.io/v1" "Issuer" .Release.Namespace "radius-ca-issuer" }}
 {{- $caObject := lookup "cert-manager.io/v1" "Certificate" .Release.Namespace "radius-ca" }}
@@ -25,6 +28,18 @@
 {{- end }}
 {{- if and (eq $mode "caSecret") (or (ne $certificates.caSecret $rotation.plan.signingSecret) (ne (trim $certificates.caBundle) (trim (b64dec $rotation.newCA)))) }}
 {{- fail "Certificate settings differ from the completed CA rotation; retry its retire phase to record final settings." }}
+{{- end }}
+{{- if eq $mode "issuerRef" }}
+{{- $pinned := $rotation.plan.externalIssuer }}
+{{- if or (not $pinned) (ne $certificates.issuerRef.group $pinned.group) (ne $certificates.issuerRef.kind $pinned.kind) (ne $certificates.issuerRef.name $pinned.name) (ne (trim $certificates.caBundle) (trim (b64dec $rotation.newCA))) (ne (toJson $certificates.requestPolicy) (toJson $pinned.requestPolicy)) }}
+{{- fail "Issuer, public trust or policy references differ from the completed CA rotation; use a coordinated transaction." }}
+{{- end }}
+{{- $issuerNamespace := .Release.Namespace }}
+{{- if eq $pinned.kind "ClusterIssuer" }}{{- $issuerNamespace = "" }}{{- end }}
+{{- $liveIssuer := lookup "cert-manager.io/v1" $pinned.kind $issuerNamespace $pinned.name }}
+{{- if or (ne (dig "metadata" "uid" "" $liveIssuer) $pinned.uid) (dig "metadata" "deletionTimestamp" "" $liveIssuer) (ne (sha256sum (toJson $liveIssuer.spec)) $pinned.specSHA256) }}
+{{- fail "Completed CA rotation issuer identity or specification changed; recover its pinned transaction before rendering." }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- $ns := .Release.Namespace }}
@@ -53,7 +68,13 @@
 {{- end }}
 {{- $issuer := dict "group" "cert-manager.io" "kind" "Issuer" "name" "radius-ca-issuer" }}
 {{- if eq $mode "issuerRef" }}{{- $issuer = $certificates.issuerRef }}{{- end }}
-{{- if $rotation }}{{- $issuer = dict "group" "cert-manager.io" "kind" "Issuer" "name" $rotation.plan.issuer }}{{- end }}
+{{- if $rotation }}
+{{- if eq $mode "issuerRef" }}
+{{- $issuer = dict "group" $rotation.plan.externalIssuer.group "kind" $rotation.plan.externalIssuer.kind "name" $rotation.plan.externalIssuer.name }}
+{{- else }}
+{{- $issuer = dict "group" "cert-manager.io" "kind" "Issuer" "name" $rotation.plan.issuer }}
+{{- end }}
+{{- end }}
 {{- if eq $mode "selfSigned" }}
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -118,7 +139,7 @@ spec:
     secretName: {{ $caSecret | quote }}
 ---
 {{- end }}
-{{- if ne (default "radius" ((.Values.global.rbac.mtls | default dict).provider)) "external" }}
+{{- if ne $provider "external" }}
 {{- range $i, $component := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" }}
 {{- if gt $i 0 }}
 ---

@@ -2,6 +2,27 @@
 Opt-in public component TLS evidence on the existing Go metrics listener.
 Deployment-engine proof remains a separate opt-in for compatible engine images.
 */}}
+{{- define "radius.aggregationProofEnv" -}}
+{{- $state := .state -}}
+{{- $root := .root -}}
+{{- if and $state (eq (toString $state.schemaVersion) "2") -}}
+{{- if or (not (kindIs "bool" $root.Values.global.prometheus.enabled)) (not $root.Values.global.prometheus.enabled) (ne (int $root.Values.global.prometheus.port) (int $state.plan.aggregation.proofPort)) -}}
+{{- fail "Managed aggregation proof requires its pinned metrics listener." -}}
+{{- end -}}
+{{- if has $root.Values.global.prometheus.path (list "/healthz/ucp-mtls" "/healthz/ucp-aggregation-tls") -}}
+{{- fail "global.prometheus.path conflicts with a TLS proof endpoint." -}}
+{{- end }}
+- name: UCP_AGGREGATION_STARTUP_PROOF_ENABLED
+  value: "true"
+- name: UCP_AGGREGATION_EXPECTED_TRUST_SHA256
+  value: {{ $state.plan.targetTrustSHA256 | quote }}
+- name: UCP_AGGREGATION_POD_UID
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.uid
+{{- end -}}
+{{- end -}}
+
 {{- define "radius.authz.startupProofEnv" -}}
 {{- $rotation := include "radius.rotationState" . | mustFromJson -}}
 {{- $rbac := .Values.global.rbac | default dict -}}
