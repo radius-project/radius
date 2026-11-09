@@ -29,7 +29,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/radius-project/radius/pkg/authz/mtls"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -300,13 +300,13 @@ func (v *Verifier) current() (KeySet, error) {
 
 // VerifyRequest verifies the bearer token in r's Authorization header. If the signing keys
 // are not fresh, it returns AuthorizationUnavailable before it reads the header.
-func (v *Verifier) VerifyRequest(r *http.Request) (mtls.Identity, error) {
+func (v *Verifier) VerifyRequest(r *http.Request) (authz.Identity, error) {
 	if _, err := v.current(); err != nil {
-		return mtls.Identity{}, err
+		return authz.Identity{}, err
 	}
 	token, err := BearerToken(r)
 	if err != nil {
-		return mtls.Identity{}, err
+		return authz.Identity{}, err
 	}
 	return v.Verify(r.Context(), token)
 }
@@ -315,12 +315,12 @@ func (v *Verifier) VerifyRequest(r *http.Request) (mtls.Identity, error) {
 // not-before time, namespace, and ServiceAccount, and returns the calling component's
 // identity. Failures are *Error values: AuthorizationUnavailable if the signing keys are
 // not fresh or none are usable, otherwise InvalidAuthenticationInfo.
-func (v *Verifier) Verify(ctx context.Context, token string) (mtls.Identity, error) {
+func (v *Verifier) Verify(ctx context.Context, token string) (authz.Identity, error) {
 	if _, err := v.current(); err != nil {
-		return mtls.Identity{}, err
+		return authz.Identity{}, err
 	}
 	if token == "" {
-		return mtls.Identity{}, invalid("missing bearer token", nil)
+		return authz.Identity{}, invalid("missing bearer token", nil)
 	}
 
 	claims, unknownKey, err := v.parse(token)
@@ -331,12 +331,12 @@ func (v *Verifier) Verify(ctx context.Context, token string) (mtls.Identity, err
 	if err != nil {
 		var tokenErr *Error
 		if errors.As(err, &tokenErr) {
-			return mtls.Identity{}, tokenErr
+			return authz.Identity{}, tokenErr
 		}
 		if unknownKey {
-			return mtls.Identity{}, invalid("token is signed with an unknown key", nil)
+			return authz.Identity{}, invalid("token is signed with an unknown key", nil)
 		}
-		return mtls.Identity{}, invalid("token is not valid", err)
+		return authz.Identity{}, invalid("token is not valid", err)
 	}
 	return v.identity(claims)
 }
@@ -389,24 +389,24 @@ func (v *Verifier) parse(token string) (claims *serviceAccountClaims, unknownKey
 }
 
 // identity maps verified claims to the calling component's identity.
-func (v *Verifier) identity(claims *serviceAccountClaims) (mtls.Identity, error) {
+func (v *Verifier) identity(claims *serviceAccountClaims) (authz.Identity, error) {
 	// The parser checks that aud contains this receiver. A token for more than one
 	// receiver could be replayed from one to another, so require exactly one.
 	if len(claims.Audience) != 1 {
-		return mtls.Identity{}, invalid("token must name exactly one audience", nil)
+		return authz.Identity{}, invalid("token must name exactly one audience", nil)
 	}
 	k := claims.Kubernetes
 	if k.Namespace != v.namespace {
-		return mtls.Identity{}, invalid(fmt.Sprintf("ServiceAccount namespace %q is not the Radius namespace", k.Namespace), nil)
+		return authz.Identity{}, invalid(fmt.Sprintf("ServiceAccount namespace %q is not the Radius namespace", k.Namespace), nil)
 	}
 	service, ok := serviceForAccount[k.ServiceAccount.Name]
 	if !ok {
-		return mtls.Identity{}, invalid(fmt.Sprintf("ServiceAccount %q is not a Radius component", k.ServiceAccount.Name), nil)
+		return authz.Identity{}, invalid(fmt.Sprintf("ServiceAccount %q is not a Radius component", k.ServiceAccount.Name), nil)
 	}
 	if want := "system:serviceaccount:" + k.Namespace + ":" + k.ServiceAccount.Name; claims.Subject != want {
-		return mtls.Identity{}, invalid("token subject does not match its ServiceAccount", nil)
+		return authz.Identity{}, invalid("token subject does not match its ServiceAccount", nil)
 	}
-	return mtls.Identity{Component: service, Namespace: v.namespace}, nil
+	return authz.Identity{Component: service, Namespace: v.namespace}, nil
 }
 
 // serviceAccountClaims are the claims in a Kubernetes ServiceAccount token.
