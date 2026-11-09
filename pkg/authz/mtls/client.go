@@ -74,8 +74,8 @@ func NewClientTransport(options authz.Options) (http.RoundTripper, error) {
 // certificate or any certificate in the server's verified chains.
 //
 // The embedded Transport is a template. Requests use current, a clone that is replaced when
-// one of its connections expires. Replaced pools are retired until their last tracked
-// connection closes.
+// one of its connections expires. Replaced pools are retired; a later request forgets a
+// retired pool once it has no unexpired tracked connections.
 type clientTransport struct {
 	*http.Transport
 	source     *Source
