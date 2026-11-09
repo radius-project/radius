@@ -42,29 +42,46 @@ The controller owns Kubernetes reconciliation for template deployment and Flux G
 The root command builds shared host options, creates the logger, and starts a
 single `controller.Service` through shared hosting.
 
-Inside [pkg/controller/service.go](../../pkg/controller/service.go), the service creates a controller-runtime manager, registers API schemes, configures metrics and health probes, then registers `DeploymentTemplateReconciler`, `DeploymentResourceReconciler`, and `FluxController`. The shared operation types in [operation_types.go](../../pkg/controller/api/radapp.io/v1alpha3/operation_types.go) preserve asynchronous operation tracking for both deployment CRDs.
+Inside [pkg/controller/service.go](../../pkg/controller/service.go), the service creates a controller-runtime manager, registers API schemes, configures metrics and health probes, then registers `DeploymentTemplateReconciler`, `DeploymentResourceReconciler`, and `FluxController`. The template reconciler is the sole dispatcher of deployment and output deletion requests. The resource reconciler maintains passive inventory objects; it cannot call the deployment client.
 
 Some reconcilers call back into Radius APIs using SDK clients configured with
 the current UCP connection. That is the main architectural bridge between the
 controller and the rest of the control plane.
 
-`DeploymentResourceReconciler` deletes Radius-scoped outputs through UCP. Local Kubernetes outputs are deleted through the Kubernetes client only when the owning `DeploymentTemplate` UID matches and `spec.id` exactly matches the child's controller-recorded `status.provisionedResourceID`. Retention requires a matching controller owner reference; a matching non-controller reference does not authorize provenance or cleanup. The template controller records this identity through the status subresource and backfills older children from its output inventory before removing outputs on redeploy. An unrecorded child can use the template's current inventory, but a recorded mismatch is never authorized through that fallback. Caller-writable annotations are not used as provenance.
+The authoritative output inventory is `DeploymentTemplate.status.coordinator.outputs`, with full resource IDs and explicit `Current` or `PendingDelete` state. A completed PUT commits this inventory before creating any `DeploymentResource` projections. `status.outputResources` remains the latest successful PUT's output list, and `status.statusHash` is only a spec hash, not a lifecycle marker. New tracker names hash the full, case-sensitive output identity, so resources sharing a name across kinds or namespaces do not collide. Existing owned trackers are found by exact resource ID rather than renamed. Reads bypass informer lag, and existing trackers are checked before Create to avoid duplicate POSTs failing quota admission.
 
-The controller retains the child finalizer until repeated DELETE requests confirm the Kubernetes object is gone, including when the object has its own finalizers. Deletes explicitly use background propagation so owned dependents, such as a Job's Pods, are also scheduled for cleanup. The exception is an output Namespace containing the child itself: once that Namespace is confirmed terminating, the child releases its finalizer so Kubernetes can finish deleting the namespace's contents without a finalizer cycle. If discovery cannot map an output's kind, fresh discovery must confirm the API is absent before cleanup can complete. Partial discovery failures in unrelated API groups do not block cleanup; failures affecting the output's own group or discovery globally remain retryable. A NotFound response against a cached mapping also refreshes discovery and retries against a served version before concluding that the output is gone. Kubernetes deletion failures emit a warning event, set the child status to `Failed`, and use the same bounded retry delay as UCP deletion failures.
+Before each PUT or DELETE request, the coordinator persists and verifies a dispatch intent containing its phase and target. The submitted spec hash is captured before a PUT; a spec edit while the HTTP request is outstanding cannot change which spec its result acknowledges. Resume tokens remain in the template's existing `status.operation`. Responses are attached only to the same persisted intent, using optimistic concurrency; a spec-only edit does not discard the response or cause the request to be sent again.
 
-New deployment operations wait for owned terminating trackers to drain, except applications and environments without an in-flight operation whose deletion is still blocked on dependent resources: a new template generation must be allowed to remove those dependents, and failed deployments remain retryable. Waiting preserves `Failed` so a failed PUT can still retry after an in-flight DELETE fails. An unchanged successful generation cannot repeatedly bypass cleanup. In-flight deletion operations remain a barrier even if new dependents appear. When a completed deployment reintroduces a dependency-blocked application or environment, the controller retires only the terminating tracker and retains the completed PUT until a replacement tracker is persisted; it does not delete the output or submit another PUT. Other terminating outputs persist an `output-redeployment-required` marker in the existing deployment hash before retrying retention. This marker survives retries and tracker replacement; completion clears the hash and schedules a fresh PUT rather than reporting `Ready` for outputs old cleanup may have deleted. Missing trackers remain retryable for completed outputs; only retired inventory entries may safely have no tracker. Existing trackers are read through the uncached reader before attempting creation, so unchanged-output redeployments do not consume additional object-count quota.
+| Coordinator phase   | Meaning and next action                                                                                                       |
+|---------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `Idle`              | Plan cleanup, submit a changed deployment, or project current inventory into trackers.                                        |
+| `PutDispatching`    | PUT intent is durable; the response has not yet been saved. A later reconcile blocks rather than replaying the request.       |
+| `PutRunning`        | Poll the saved PUT token; commit returned inventory before projecting trackers.                                               |
+| `DeleteDispatching` | DELETE intent and target are durable; do not infer safety from a missing token.                                               |
+| `DeleteRunning`     | Poll the saved UCP token, or issue the next Kubernetes DELETE after its persisted poll deadline.                              |
+| `RetryWaiting`      | A request was definitively rejected or an operation ended in failure. Retain inventory and wait for `retryAfter`.             |
+| `Blocked`           | The request outcome or legacy state is uncertain. Report `Failed` with a message and warning event; dispatch nothing further. |
 
-Template deletion enumerates owned children through the uncached reader before releasing its finalizer, including immediately after completed PUTs create trackers. If NamespaceLifecycle admission rejects tracker creation because the template's namespace is terminating, the controller atomically preserves both previous inventory and all completed outputs in the existing protected `status.outputResources`, clears the PUT, and requests template deletion. Cleanup orders both children and protected inventory together: untracked leaves drain directly, while application/environment children wait for pending PUT outputs and recorded leaves using uncached owner/namespace reads. Thus an existing environment remains available while an untracked Redis output is deleted. Local Kubernetes outputs use the same DELETE/discovery helper as child cleanup; Radius outputs retain the deployment-scope check and are deleted sequentially, with containers and other leaf resources preceding applications/environments. The first inventory entry identifies the output associated with any persisted DELETE resume token. Entries are removed only after cleanup completes or an out-of-scope output is explicitly skipped. Failures retain inventory, emit warning events, and retry with a bounded delay, so cross-namespace and cluster-scoped outputs remain recoverable across controller restarts.
+PUTs do not overlap an active DELETE. Cleanup processes leaf outputs before applications/environments using the complete inventory, including outputs with no tracker. A pending dependency DELETE that has not been dispatched may wait while a changed template removes its retained dependents. Reintroducing that dependency changes its inventory state back to `Current` without deleting it or repeatedly submitting PUTs. A tracker deletion request first becomes durable inventory state; the passive tracker can then be retired without losing cleanup responsibility. If the requested output remains desired, clearing the spec hash requires a repair PUT after cleanup.
 
-Persistent deletion failures keep the existing `Failed` status rather than toggling through `Deleting` or rewriting unchanged status on every attempt. Both child and direct-inventory cleanup avoid self-generated status-watch retry loops; a successfully started asynchronous DELETE can transition back to `Deleting`. Completing a child DELETE returns after finalizer removal instead of continuing cleanup against the removed tracker.
+Template deletion marks its inventory for cleanup and retains the template finalizer until that inventory drains. Namespace termination uses exactly the same path; no new child objects are needed to record or delete outputs in a terminating namespace. Local Kubernetes outputs use DELETE/discovery handling with background propagation, including cross-namespace and cluster-scoped outputs. The exception is an output Namespace containing the template: once confirmed terminating, it can leave inventory so namespace content deletion does not form a finalizer cycle. Removed APIs require fresh discovery; unrelated partial discovery failures are tolerated, but target-group and global failures remain retryable. No arbitrary output GET permission is required.
 
-Helm does not upgrade CRDs shipped under `crds/`. Before starting its reconcilers, the controller therefore performs an additive migration of the DeploymentResource status schema in [schema_upgrade.go](../../pkg/controller/schema_upgrade.go). This covers CLI and direct Helm upgrades. Migration failures prevent startup, and the template reconciler verifies identity persistence before replacing the template inventory, so schema pruning cannot silently bypass cleanup. The migration grants `patch` only on the named `deploymentresources.radapp.io` CRD and leaves other schema fields and versions unchanged.
+On upgrade, the coordinator imports the old template output list and eligible owned children. Controller owner references must match API version, kind, name, and UID. Kubernetes legacy provenance uses controller-written `status.provisionedResourceID`, or the old protected inventory when that field is absent; a recorded mismatch never falls back to another output. Known legacy child DELETE tokens are adopted and polled serially before any new operation. Tokenless legacy trackers already marked `Deleting` or `Failed` block adoption because their requests may already have been sent. Orphan trackers cannot authorize external deletion.
+
+The Helm controller Deployment uses `Recreate` with one replica, preventing the old independent child dispatcher from overlapping the new coordinator during an upgrade. Custom installations must likewise stop the old controller before starting the new one and establish the outcome of outstanding old requests. Requests that an older controller never recorded cannot be reconstructed automatically.
+
+An ambiguous transport failure, or a restart between dispatch intent and response persistence, deliberately trades availability for safety: `Blocked` prevents a late DELETE from removing a replacement output. Operator recovery must establish the outstanding request's outcome, preserve the full inventory, and resume any known operation with the matching target and token. Never blindly clear the coordinator or its finalizer to retry. Polling failures preserve existing tokens. Definitive failures and accepted Kubernetes deletes waiting on finalizers use persisted retry/poll deadlines so self-generated status events cannot bypass the delay.
+
+Helm does not upgrade CRDs shipped under `crds/`. Before starting its reconcilers, the controller performs an additive migration of both deployment CRDs in [schema_upgrade.go](../../pkg/controller/schema_upgrade.go). It adds resource provenance and the template coordinator schema without replacing unrelated fields or versions. Migration failures prevent startup. Each dispatch also verifies its intent survived the status round trip, so schema pruning cannot silently remove coordination state. The migration grants `patch` only on the named `deploymentresources.radapp.io` and `deploymenttemplates.radapp.io` CRDs.
 
 Generic templates can provision arbitrary built-in or custom Kubernetes resource types, including across namespaces and at cluster scope. The controller's ClusterRole therefore grants `delete` across resource types for cleanup, but does not add wildcard read, create, update, patch, list, or watch permissions. Namespace termination checks use the existing Namespace read grant; generic cleanup does not require reading Secret values. This is a privileged capability: deployments must restrict writes to `deploymentresources/status` and `deploymenttemplates/status` to trusted controllers, independently of access to the ordinary resources. Ordinary create/update requests cannot set or overwrite status provenance. A fixed resource allowlist would change which template outputs Radius supports rather than safely implementing generic cleanup.
 
 ## Invariants And Constraints
 
 - Reconciler logic should stay idempotent.
+- Only the template coordinator dispatches external operations; passive tracker removal is not proof of output deletion.
+- Persist operation intent before dispatch and preserve uncertain outcomes rather than replaying them.
+- Do not deploy replacements while an earlier DELETE can still affect their resource ID.
 - Cluster watch logic should stay in reconcilers, not in provider HTTP layers.
 - Radius API calls from reconcilers should use the configured UCP connection.
 - Manager registration is the single place to confirm which controllers are part
@@ -131,20 +148,24 @@ sequenceDiagram
   participant Out as DeploymentResource objects
 
   K8S->>Rec: reconcile DeploymentTemplate
-  Rec->>Status: check existing operation state
+  Rec->>Status: read coordinator inventory and phase
   alt operation in progress
     Rec->>Deploy: continue poll with resume token
     Deploy-->>Rec: done or still running
     Rec->>Status: update phase, outputs, operation state
-    Rec->>Out: create/delete DeploymentResource objects
+    Rec->>Out: project committed inventory into passive trackers
   else update path
-    Rec->>Status: ensure finalizer + observed generation
+    Rec->>Status: persist PUT intent, target, submitted hash
     Rec->>Deploy: create deployment if desired state changed
     Deploy-->>Rec: poller + resume token
     Rec->>Status: mark Updating and store token
   else delete path
-    Rec->>Out: delete owned DeploymentResources
-    Rec->>Status: remove finalizer when safe
+    Rec->>Status: persist DELETE intent and output target
+    Rec->>Deploy: delete scoped Radius output (Kubernetes outputs use Kubernetes API)
+    Deploy-->>Rec: completion or resume token
+    Rec->>Status: retain inventory until cleanup completes
+    Rec->>Out: retire passive trackers
+    Rec->>Status: remove finalizer after inventory drains
   end
 ```
 

@@ -23,6 +23,22 @@ tests:
           path: kind
           pattern: ^(Service|Secret|ValidatingWebhookConfiguration)$
 
+  - it: stops the previous singleton dispatcher before replacing it
+    templates:
+      - controller/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 1
+      - equal:
+          path: spec.strategy
+          value:
+            type: Recreate
+            rollingUpdate: null
+      - equal:
+          path: spec.strategy.rollingUpdate
+          value: null
+
   - it: retains Bicep and health without webhook ports or certificates
     set:
       global.prometheus.enabled: false
@@ -143,6 +159,7 @@ tests:
               - customresourcedefinitions
             resourceNames:
               - deploymentresources.radapp.io
+              - deploymenttemplates.radapp.io
             verbs:
               - patch
       - equal:

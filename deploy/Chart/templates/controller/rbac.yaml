@@ -68,6 +68,7 @@ rules:
   - customresourcedefinitions
   resourceNames:
   - deploymentresources.radapp.io
+  - deploymenttemplates.radapp.io
   verbs:
   - patch
 # Templates may own arbitrary built-in and custom outputs; status provenance gates cleanup.

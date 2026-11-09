@@ -95,7 +95,7 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to create CRD migration client: %w", err)
 	}
 	if err := ensureDeploymentResourceSchema(ctx, migrationClient); err != nil {
-		return fmt.Errorf("failed to migrate DeploymentResource status schema: %w", err)
+		return fmt.Errorf("failed to migrate deployment status schemas: %w", err)
 	}
 
 	logger.Info("Registering controllers.")
@@ -126,13 +126,11 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&reconciler.DeploymentResourceReconciler{
-		APIReader:                 mgr.GetAPIReader(),
-		Discovery:                 discoveryClient,
-		Client:                    mgr.GetClient(),
-		Scheme:                    mgr.GetScheme(),
-		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
-		Radius:                    reconciler.NewRadiusClient(s.Options.UCPConnection),
-		ResourceDeploymentsClient: resourceDeploymentsClient,
+		APIReader:     mgr.GetAPIReader(),
+		Discovery:     discoveryClient,
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		EventRecorder: mgr.GetEventRecorderFor("deploymentresource-controller"),
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentResource", err)

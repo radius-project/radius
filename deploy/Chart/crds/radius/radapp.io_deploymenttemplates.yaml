@@ -70,6 +70,44 @@ spec:
             description: DeploymentTemplateStatus defines the observed state of a
               DeploymentTemplate resource.
             properties:
+              coordinator:
+                description: Coordinator persists dispatch intent and output inventory
+                  independently of the operation resume token.
+                properties:
+                  message:
+                    description: Message explains a blocked or failed operation.
+                    type: string
+                  outputs:
+                    items:
+                      description: DeploymentOutputStatus tracks an output retained
+                        by the deployment coordinator.
+                      properties:
+                        id:
+                          type: string
+                        state:
+                          description: State is Current or PendingDelete.
+                          type: string
+                      required:
+                      - id
+                      - state
+                      type: object
+                    type: array
+                  phase:
+                    description: Phase is Idle, PutDispatching, PutRunning, DeleteDispatching,
+                      DeleteRunning, RetryWaiting, or Blocked.
+                    type: string
+                  resourceID:
+                    description: ResourceID identifies the active delete target or
+                      stable deployment PUT ID.
+                    type: string
+                  retryAfter:
+                    description: RetryAfter prevents retry dispatch before the persisted
+                      deadline.
+                    format: date-time
+                    type: string
+                  submittedHash:
+                    type: string
+                type: object
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
                   for this DeploymentTemplate.

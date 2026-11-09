@@ -18,6 +18,8 @@ package reconciler
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -69,7 +71,9 @@ func generateDeploymentResourceName(resourceId string) (string, error) {
 		return "", err
 	}
 
-	return id.Name(), nil
+	// Kubernetes names are case-sensitive; hash the exact, full output identity.
+	digest := sha256.Sum256([]byte(id.String()))
+	return "output-" + hex.EncodeToString(digest[:])[:56], nil
 }
 
 func convertToARMJSONParameters(parameters map[string]string) map[string]map[string]string {
