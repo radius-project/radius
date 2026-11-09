@@ -110,7 +110,7 @@ func TestRotationScopeJournalCompatibility(t *testing.T) {
 	}
 }
 
-func TestAggregationOnlyPlanningAndActivationGuard(t *testing.T) {
+func TestAggregationOnlyPlanning(t *testing.T) {
 	runner, state := rotationRunnerFixture(t)
 	s, ctx := runner.store, t.Context()
 	kube := s.kube.(*kubefake.Clientset)
@@ -119,32 +119,36 @@ func TestAggregationOnlyPlanningAndActivationGuard(t *testing.T) {
 	deployment.Spec.ProgressDeadlineSeconds = ptr.To(int32(600))
 	deployment.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{{Name: "metrics", ContainerPort: 9090}}
 	require.NoError(t, kube.Tracker().Update(appsv1.SchemeGroupVersion.WithResource("deployments"), deployment, s.namespace))
+	require.NoError(t, kube.Tracker().Delete(corev1.SchemeGroupVersion.WithResource("configmaps"), s.namespace, rotationJournalName))
 	kube.ClearActions()
-	plan, err := s.planAggregationOnlyRotation(ctx, state.ID, state.Plan.SigningSecret, state.Plan.TargetMode, state.NewCA)
+	selection, err := planRotationResources(ctx, s, nil, state.ID, state.Plan.SigningSecret, state.Plan.TargetMode,
+		nil, state.NewCA, nil, nil, nil, rotationAggregationOnly)
 	require.NoError(t, err)
+	plan := selection.Plan
 	require.Empty(t, plan.Consumers)
 	require.Empty(t, plan.OldComponentCA)
 	require.Equal(t, rotationAggregationOnly, plan.Scope)
 	for _, action := range kube.Actions() {
-		require.Equal(t, "get", action.GetVerb())
-		require.Contains(t, []string{"deployments", "services", "secrets"}, action.GetResource().Resource)
+		require.Contains(t, []string{"get", "list"}, action.GetVerb())
+		if action.GetResource().Resource == "deployments" {
+			require.Equal(t, "ucp", action.(k8stesting.GetAction).GetName())
+		}
 	}
-	state.SchemaVersion, state.Plan = 2, plan
-	journal, _, err := s.read(ctx)
-	require.NoError(t, err)
-	data, err := json.Marshal(state)
-	require.NoError(t, err)
-	journal.Data[rotationJournalKey] = string(data)
-	_, err = kube.CoreV1().ConfigMaps(s.namespace).Update(ctx, journal, metav1.UpdateOptions{})
+	state, err = s.beginPlanned(ctx, selection.ID, selection.NewCA, plan)
 	require.NoError(t, err)
 	kube.ClearActions()
-	require.ErrorContains(t, runner.run(ctx, state.ID, rotationPublish), "activation requires")
+	require.NoError(t, runner.run(ctx, state.ID, rotationPublish))
+	_, current, err := s.read(ctx)
+	require.NoError(t, err)
+	require.Equal(t, rotationAdopt, current.Phase)
 	require.Error(t, runner.verifyConsumers(ctx, state))
 	_, err = s.rotationConsumerTargets(ctx, state)
 	require.Error(t, err)
 	for _, action := range kube.Actions() {
-		require.Equal(t, "get", action.GetVerb(), "no writes or component inventory behind activation guard")
-		require.Equal(t, "configmaps", action.GetResource().Resource)
+		require.Contains(t, []string{"configmaps", "secrets"}, action.GetResource().Resource)
+		if action.GetResource().Resource == "secrets" {
+			require.Equal(t, plan.SigningSecret, action.(k8stesting.GetAction).GetName())
+		}
 	}
 }
 

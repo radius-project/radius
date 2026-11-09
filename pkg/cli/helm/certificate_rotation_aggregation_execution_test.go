@@ -23,6 +23,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,6 +33,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
@@ -106,6 +108,116 @@ func storeAggregationExecutionState(t *testing.T, s *rotationStore, state rotati
 	journal.Data[rotationJournalKey] = string(data)
 	_, err = s.kube.CoreV1().ConfigMaps(s.namespace).Update(t.Context(), journal, metav1.UpdateOptions{})
 	require.NoError(t, err)
+}
+
+func TestRotationAggregationOnlyPhases(t *testing.T) {
+	runner, state := aggregationExecutionFixture(t, true)
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	runner.observe = func(context.Context, *rest.Config, TLSProofTarget) (PodTLSProof, error) {
+		t.Fatal("aggregation-only phases must never request component evidence")
+		return PodTLSProof{}, nil
+	}
+	for _, phase := range []rotationPhase{rotationPublish, rotationAdopt, rotationIssue, rotationRetire} {
+		require.NoError(t, runner.run(ctx, state.ID, phase), phase)
+		require.NoError(t, runner.run(ctx, state.ID, phase), "phase retry")
+	}
+	_, complete, err := runner.store.read(ctx)
+	require.NoError(t, err)
+	require.Equal(t, rotationComplete, complete.Phase)
+	require.Empty(t, complete.Plan.Consumers)
+	require.NoError(t, runner.verifyAggregation(ctx, complete))
+}
+
+func TestRotationAggregationAdoptionPrecedesComponentIssuance(t *testing.T) {
+	runner, state := aggregationExecutionFixture(t, false)
+	s := runner.store
+	require.NoError(t, runner.run(t.Context(), state.ID, rotationPublish))
+	probe := runner.probe
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	runner.probe = func(context.Context, *rest.Config, map[types.UID]bool) error {
+		cancel()
+		return errors.New("API server has not loaded candidate trust")
+	}
+	require.ErrorContains(t, runner.run(ctx, state.ID, rotationAdopt), "interrupted")
+	_, current, err := s.read(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, rotationAdopt, current.Phase)
+	for _, workload := range state.Plan.Consumers {
+		certificate, err := s.dynamic.Resource(rotationCertificateResource).Namespace(s.namespace).Get(t.Context(), workload.Name+"-cert", metav1.GetOptions{})
+		require.NoError(t, err)
+		issuer, _, err := unstructured.NestedString(certificate.Object, "spec", "issuerRef", "name")
+		require.NoError(t, err)
+		require.Equal(t, workload.OldIssuer, issuer)
+	}
+	require.ErrorContains(t, runner.run(t.Context(), state.ID, rotationIssue), "complete it before")
+	runner.probe = probe
+	resumed, stop := context.WithTimeout(t.Context(), 15*time.Second)
+	defer stop()
+	require.NoError(t, runner.run(resumed, state.ID, rotationAdopt))
+	require.NoError(t, runner.run(resumed, state.ID, rotationIssue))
+}
+
+func TestRotationAggregationOnlyRecovery(t *testing.T) {
+	for _, held := range []bool{false, true} {
+		t.Run(map[bool]string{false: "before issuance", true: "held candidate"}[held], func(t *testing.T) {
+			runner, original := aggregationExecutionFixture(t, true)
+			if held {
+				runner, original = heldAggregationExecutionFixture(t)
+			}
+			s := runner.store
+			journal, _, err := s.read(t.Context())
+			require.NoError(t, err)
+			id := uuid.NewString()
+			plan := *original.Plan
+			plan.Issuer = "radius-ca-" + strings.ReplaceAll(id, "-", "")[:16]
+			plan.ServingSecret = "ucp-cert-aggregation-" + strings.ReplaceAll(id, "-", "")[:16]
+			recovery, err := s.beginRecovery(t.Context(), id, original.NewCA, &plan, journal)
+			require.NoError(t, err)
+			runner.observe = func(context.Context, *rest.Config, TLSProofTarget) (PodTLSProof, error) {
+				t.Fatal("aggregation-only recovery must not request component evidence")
+				return PodTLSProof{}, nil
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+			defer cancel()
+			require.NoError(t, runner.run(ctx, recovery.ID, rotationRecover))
+			require.NoError(t, runner.run(ctx, recovery.ID, rotationRecover))
+			_, completed, err := s.read(ctx)
+			require.NoError(t, err)
+			require.True(t, completed.Recovery)
+			require.Equal(t, rotationComplete, completed.Phase)
+			require.Empty(t, completed.Plan.Consumers)
+			require.NoError(t, runner.verifyAggregation(ctx, completed))
+			require.Error(t, runner.run(ctx, original.ID, rotationIssue))
+		})
+	}
+}
+
+func TestRotationAggregationSignerDriftAfterEvidence(t *testing.T) {
+	runner, state := aggregationExecutionFixture(t, true)
+	require.NoError(t, runner.run(t.Context(), state.ID, rotationPublish))
+	observe := runner.observeAggregation
+	changed := false
+	runner.observeAggregation = func(ctx context.Context, config *rest.Config, target TLSProofTarget) (PodAggregationProof, error) {
+		proof, err := observe(ctx, config, target)
+		if !changed && err == nil {
+			secret, err := runner.store.kube.CoreV1().Secrets(runner.store.namespace).Get(ctx, state.Plan.SigningSecret, metav1.GetOptions{})
+			require.NoError(t, err)
+			secret.Data["tls.key"] = []byte("replaced signing material")
+			_, err = runner.store.kube.CoreV1().Secrets(runner.store.namespace).Update(ctx, secret, metav1.UpdateOptions{})
+			require.NoError(t, err)
+			changed = true
+		}
+		return proof, err
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	require.Error(t, runner.run(ctx, state.ID, rotationAdopt))
+	require.True(t, changed)
+	_, current, err := runner.store.read(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, rotationAdopt, current.Phase)
 }
 
 func TestRotationManagedSeparateServingEvidence(t *testing.T) {

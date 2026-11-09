@@ -22,11 +22,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -36,6 +38,7 @@ import (
 	"helm.sh/helm/v4/pkg/engine"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -44,6 +47,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
+	k8stesting "k8s.io/client-go/testing"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -308,17 +313,87 @@ func TestRotationIssuerJournalValidation(t *testing.T) {
 
 func TestRotationIssuerNeverFallsBackToPrivateCA(t *testing.T) {
 	t.Parallel()
-	_, state, fixture := rotationIssuerFixture(t, true, false)
+	runner, state, fixture := rotationIssuerFixture(t, true, false)
 	certificateValues(fixture.values)["caBundle"] = string(state.NewCA)
 	impl := &Impl{newCertificateClient: func(string) (kubernetes.Interface, error) {
 		t.Fatal("external issuer selection must not read a signing Secret")
 		return nil, errors.New("unexpected private CA access")
 	}}
-	_, _, _, _, err := impl.rotationTarget(t.Context(), NewDefaultClusterOptions(), fixture.values, "context")
-	require.ErrorContains(t, err, "integrated public-issuer transaction")
+	kube := runner.store.kube.(*kubefake.Clientset)
+	kube.ClearActions()
+	bundle, issuer, err := impl.rotationIssuerTarget(t.Context(), runner.store, NewDefaultClusterOptions(), fixture.values, "context")
+	require.NoError(t, err)
+	require.Equal(t, strings.TrimSpace(string(state.NewCA)), string(bundle))
+	require.Equal(t, state.Plan.ExternalIssuer, issuer)
+	require.Empty(t, kube.Actions())
 	ca, err := currentRotationComponentCA(t.Context(), &rotationStore{}, fixture.values, rotationState{}, false)
 	require.NoError(t, err)
 	require.Equal(t, state.NewCA, ca)
+}
+
+func TestRotationIssuerTargetPreservesPolicyReferences(t *testing.T) {
+	t.Parallel()
+	for _, cluster := range []bool{false, true} {
+		t.Run(fmt.Sprint(cluster), func(t *testing.T) {
+			t.Parallel()
+			runner, state, fixture := rotationIssuerFixture(t, true, cluster)
+			current := copyValues(fixture.values)
+			certificates := certificateValues(current)
+			certificates["mode"], certificates["caSecret"] = "caSecret", "old-signing-secret"
+			delete(certificates, "issuerRef")
+			setCertificateValues(current, certificates)
+			before := copyValues(current)
+			options := NewDefaultClusterOptions()
+			options.Certificates.CertIssuer = state.Plan.ExternalIssuer.Kind + "/" + state.Plan.Issuer
+			options.Certificates.CABundle = filepath.Join(t.TempDir(), "public.pem")
+			require.NoError(t, os.WriteFile(options.Certificates.CABundle, state.NewCA, 0600))
+			kube := runner.store.kube.(*kubefake.Clientset)
+			kube.ClearActions()
+			bundle, issuer, err := (&Impl{}).rotationIssuerTarget(t.Context(), runner.store, options, current, "context")
+			require.NoError(t, err)
+			require.Equal(t, state.Plan.ExternalIssuer, issuer)
+			require.Equal(t, strings.TrimSpace(string(state.NewCA)), string(bundle))
+			require.Equal(t, before, current)
+			require.Empty(t, kube.Actions())
+			certificates["requestPolicy"] = map[string]any{}
+			setCertificateValues(current, certificates)
+			_, _, err = (&Impl{}).rotationIssuerTarget(t.Context(), runner.store, options, current, "context")
+			require.ErrorContains(t, err, "public policy references")
+		})
+	}
+}
+
+func TestRotationPublicIssuerAggregationRecoveryPlanning(t *testing.T) {
+	t.Parallel()
+	runner, original, _ := rotationIssuerFixture(t, true, true)
+	s, ctx := runner.store, t.Context()
+	storeAggregationExecutionState(t, s, original)
+	kube := s.kube.(*kubefake.Clientset)
+	deployment, err := kube.AppsV1().Deployments(s.namespace).Get(ctx, "ucp", metav1.GetOptions{})
+	require.NoError(t, err)
+	deployment.Spec.ProgressDeadlineSeconds = ptr.To(int32(600))
+	deployment.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{{Name: "metrics", ContainerPort: 9090}}
+	require.NoError(t, kube.Tracker().Update(appsv1.SchemeGroupVersion.WithResource("deployments"), deployment, s.namespace))
+	client := s.dynamic.(*dynamicfake.FakeDynamicClient)
+	kube.ClearActions()
+	client.ClearActions()
+	selection, err := planRotationResources(ctx, s, nil, uuid.NewString(), "", "issuerRef",
+		nil, original.NewCA, nil, &original, original.Plan.ExternalIssuer, rotationAggregationOnly)
+	require.NoError(t, err)
+	require.Equal(t, 2, selection.SchemaVersion)
+	require.Empty(t, selection.Plan.SigningSecret)
+	require.Empty(t, selection.Plan.SigningUID)
+	require.Empty(t, selection.Plan.Consumers)
+	require.Empty(t, selection.Plan.OldComponentCA)
+	require.Equal(t, original.Plan.ExternalIssuer, selection.Plan.ExternalIssuer)
+	require.NoError(t, selection.validate(time.Now()))
+	for _, action := range append(kube.Actions(), client.Actions()...) {
+		require.Equal(t, "get", action.GetVerb())
+		require.NotContains(t, []string{"secrets", "certificates"}, action.GetResource().Resource)
+		if action.GetResource().Resource == "deployments" {
+			require.Equal(t, "ucp", action.(k8stesting.GetAction).GetName())
+		}
+	}
 }
 
 func TestRotationIssuerReferenceIdentity(t *testing.T) {
