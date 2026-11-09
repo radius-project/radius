@@ -14,10 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package mtls loads a Radius component's mTLS certificate, key, and CA bundle from
-// mounted files, reloads them when they change, and builds server and client TLS
-// configs. A verified peer must have exactly one DNS SAN, the canonical
-// "<component>.<namespace>.svc" name of a Radius component, which becomes its
-// identity; the subject common name is ignored. Certificate failures are *Error values carrying an authz error code,
-// such as PeerCertificateInvalid, for logging.
+// Package mtls secures calls between Radius components with TLS server certificates and
+// Kubernetes ServiceAccount tokens. No component presents a client certificate.
+//
+// A receiver (ucp, applications-rp, dynamic-rp) serves TLS with the csi-driver-spiffe
+// certificate mounted in its pod, reloading it when it rotates. It does not request a client
+// certificate; instead it verifies the caller's projected ServiceAccount token with
+// pkg/authz/token and maps it to the caller's canonical "<component>.<namespace>.svc" identity.
+//
+// A caller verifies the receiver's certificate against the Radius CA bundle and requires
+// exactly one URI SAN, the receiver's SPIFFE ID spiffe://<trustDomain>/ns/<namespace>/sa/<receiver>.
+// Only after that succeeds does it send the projected token whose audience is the receiver.
+//
+// The package name predates the switch from client certificates to tokens. Certificate
+// failures are *Error values carrying an authz error code, such as PeerCertificateInvalid,
+// for logging.
 package mtls

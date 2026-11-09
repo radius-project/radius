@@ -87,12 +87,22 @@ type Options struct {
 	// configured kubeconfig or API-server address. It cannot be set through configuration.
 	TargetClusterIsDistinct bool `yaml:"-" json:"-"`
 
-	// CertificateDirectory is the directory that holds the component's mTLS certificate
-	// (tls.crt, tls.key, and ca.crt). It is required when the mode is not off.
+	// CertificateDirectory is the directory that holds the Radius CA bundle (ca.crt) and, for
+	// components that receive internal calls, the server certificate and key (tls.crt and
+	// tls.key) issued by csi-driver-spiffe. It is required when the mode is not off.
 	CertificateDirectory string `yaml:"certificateDirectory,omitempty"`
 
-	// Namespace is the Radius namespace used to check peer certificate identities.
-	// It is required when the mode is not off.
+	// TokenDirectory is the directory under which the component's projected ServiceAccount
+	// tokens are mounted, one per receiver at <TokenDirectory>/<receiver>/token. It is
+	// required for components that call another component when the mode is not off.
+	TokenDirectory string `yaml:"tokenDirectory,omitempty"`
+
+	// TrustDomain is the SPIFFE trust domain of Radius server certificates. Defaults to
+	// "radius.internal" when unset.
+	TrustDomain string `yaml:"trustDomain,omitempty"`
+
+	// Namespace is the Radius namespace. Callers' ServiceAccounts and receivers' SPIFFE IDs
+	// must be in it. It is required when the mode is not off.
 	Namespace string `yaml:"namespace,omitempty"`
 }
 
