@@ -27,6 +27,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v4/pkg/chart/common"
+	chartutil "helm.sh/helm/v4/pkg/chart/common/util"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/engine"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,6 +35,49 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 )
+
+func TestCertificateValuesSchema(t *testing.T) {
+	t.Parallel()
+	chart, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
+	require.NoError(t, err)
+	tests := []struct {
+		name  string
+		rbac  any
+		valid bool
+	}{
+		{name: "null is Off", rbac: nil, valid: true},
+		{name: "false is Off", rbac: false, valid: true},
+		{name: "zero is Off", rbac: int64(0), valid: true},
+		{name: "empty string is Off", rbac: "", valid: true},
+		{name: "object remains supported", rbac: map[string]any{"enabled": true}, valid: true},
+		{name: "true is not an RBAC object", rbac: true},
+		{name: "nonzero number is not an RBAC object", rbac: int64(1)},
+		{name: "nonempty string is not an RBAC object", rbac: "false"},
+		{name: "array is not an RBAC object", rbac: []any{}},
+		{name: "issuer reference must still be an object", rbac: map[string]any{
+			"certificates": map[string]any{"issuerRef": false},
+		}},
+		{name: "issuer name must still be a string", rbac: map[string]any{
+			"certificates": map[string]any{"issuerRef": map[string]any{"name": false}},
+		}},
+		{name: "policy reference must still be typed", rbac: map[string]any{
+			"certificates": map[string]any{"requestPolicy": map[string]any{
+				"certManager": map[string]any{"namespace": false},
+			}},
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := chartutil.ValidateAgainstSchema(chart, map[string]any{"global": map[string]any{"rbac": tt.rbac}})
+			if tt.valid {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}
 
 // These tests run the real chart's REST-backed lookup against a read-only API
 // fixture. They do not execute cert-manager, approver-policy, or admission.
