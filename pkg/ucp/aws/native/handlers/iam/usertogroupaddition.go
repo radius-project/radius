@@ -206,7 +206,6 @@ func (h *UserToGroupAddition) remove(ctx context.Context, region string, group s
 	}
 }
 
-// Create adds the users to the group, one call each, and returns the identifier. A failure after the first call is
 // Create adds the users to the group, one call each, and returns the identifier. A template without GroupName or
 // Users is rejected before any call. A failure after the first call is partly applied, and the identifier is returned
 // with it, so the record keeps the users added; a redeploy adds the rest. A failure of the first call added nothing,
