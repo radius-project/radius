@@ -36,6 +36,7 @@ import (
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/spf13/pflag"
 	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
@@ -43,7 +44,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -516,6 +516,10 @@ func (i *Impl) prepareIssuerCertificates(settings, stored, current map[string]an
 // checkIssuerPolicy renders the actual selected chart with live lookups, but no resource or release writes.
 // The chart, not a second CLI policy evaluator, verifies the operator-managed issuer prerequisites.
 func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) error {
+	return i.renderIssuerPolicy(ctx, options, selected, source, current, kubeContext, installed, nil)
+}
+
+func (i *Impl) renderIssuerPolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool, transaction *rotationState) error {
 	if certificateMode(current) != "issuerRef" {
 		return nil
 	}
@@ -535,6 +539,25 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 		return fmt.Errorf("cannot configure live issuer-policy verification: %w", err)
 	}
 	renderedChart := cloneChart(selected)
+	if transaction != nil {
+		if err := transaction.validate(time.Now()); err != nil {
+			return err
+		}
+		if transaction.Plan == nil || transaction.Plan.ExternalIssuer == nil ||
+			transaction.Namespace != options.Radius.Namespace || transaction.Release != options.Radius.ReleaseName {
+			return fmt.Errorf("live rotation policy verification requires the pinned external issuer transaction")
+		}
+		// Run the chosen chart's verifier, not its workload templates: an active
+		// journal intentionally forbids ordinary Helm workload rendering.
+		helpers := make([]*common.File, 0, len(renderedChart.Templates)+1)
+		for _, template := range renderedChart.Templates {
+			if strings.HasPrefix(template.Name, "templates/_") {
+				helpers = append(helpers, template)
+			}
+		}
+		renderedChart.Templates = append(helpers, &common.File{Name: "templates/rotation-issuer-policy.yaml",
+			Data: []byte(`{{- include "radius.authz.issuerPolicy.validate" . -}}`)})
+	}
 	if installed {
 		history, historyErr := i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
 		if historyErr != nil {
@@ -569,7 +592,7 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 		previous := valuesutil.CoalesceTables(copyValues(baseline.Config), copyValues(baseline.Chart.Values))
 		oldIssuer, oldErr := issuerReference(certificateValues(previous))
 		newIssuer, newErr := issuerReference(certificateValues(current))
-		if oldErr != nil || newErr != nil || certificateMode(previous) != "issuerRef" || oldIssuer != newIssuer {
+		if transaction == nil && (oldErr != nil || newErr != nil || certificateMode(previous) != "issuerRef" || oldIssuer != newIssuer) {
 			return fmt.Errorf("the installed chart selects a different certificate issuer; changing issuers requires coordinated CA migration")
 		}
 		configuration.Releases, err = releaseHistoryStorage(history)
@@ -577,6 +600,9 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 			return fmt.Errorf("cannot copy Radius history for read-only issuer verification: %w", err)
 		}
 		upgrade := newUpgradeClient(configuration, options.Radius.Namespace, false, !options.ResetValues, options.Radius.Timeout, usesServerSideApply(configuration, options.Radius.ReleaseName))
+		if transaction != nil {
+			upgrade.ReuseValues, upgrade.ResetThenReuseValues, upgrade.ResetValues = false, false, true
+		}
 		upgrade.DryRunStrategy = helm.DryRunServer
 		_, err = upgrade.RunWithContext(ctx, options.Radius.ReleaseName, renderedChart, copyValues(current))
 	} else {

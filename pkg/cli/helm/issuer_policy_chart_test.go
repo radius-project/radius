@@ -271,6 +271,9 @@ func newIssuerPolicyFixture(t *testing.T) *issuerPolicyFixture {
 func (f *issuerPolicyFixture) server(t *testing.T) *httptest.Server {
 	t.Helper()
 	resources := map[string]metav1.APIResource{}
+	resources["apiregistration.k8s.io/v1/APIService"] = metav1.APIResource{
+		Name: "apiservices", Kind: "APIService",
+	}
 	for _, obj := range f.objects {
 		plural := strings.ToLower(obj.GetKind()) + "s"
 		switch obj.GetKind() {

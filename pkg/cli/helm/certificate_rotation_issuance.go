@@ -57,6 +57,19 @@ func (s *rotationStore) plannedPhase(ctx context.Context, transaction string, ph
 }
 
 func (s *rotationStore) checkPlannedSigner(ctx context.Context, state rotationState) error {
+	if state.Plan.ExternalIssuer != nil {
+		if _, err := s.externalRotationIssuer(ctx, state.Plan); err != nil {
+			return err
+		}
+		if s.verifyIssuerPolicy == nil {
+			return errors.New("external issuer rotation requires current live chart policy verification")
+		}
+		if err := s.verifyIssuerPolicy(ctx, state); err != nil {
+			return err
+		}
+		_, err := s.externalRotationIssuer(ctx, state.Plan)
+		return err
+	}
 	secret, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, state.Plan.SigningSecret, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("cannot read the planned CA signing Secret: %w", err)
@@ -81,6 +94,9 @@ func (s *rotationStore) ensureRotationIssuer(ctx context.Context, transaction st
 	}
 	if err := s.checkPlannedSigner(ctx, state); err != nil {
 		return err
+	}
+	if state.Plan.ExternalIssuer != nil {
+		return nil
 	}
 	client := s.dynamic.Resource(rotationIssuerResource).Namespace(s.namespace)
 	issuer, err := client.Get(ctx, state.Plan.Issuer, metav1.GetOptions{})
@@ -147,18 +163,16 @@ func (s *rotationStore) switchRotationCertificate(ctx context.Context, transacti
 	if err := checkRotationObjectRevision(certificate, state); err != nil {
 		return err
 	}
-	issuer, _, err := unstructured.NestedString(certificate.Object, "spec", "issuerRef", "name")
+	issuer, _, err := unstructured.NestedMap(certificate.Object, "spec", "issuerRef")
 	secret, _, secretErr := unstructured.NestedString(certificate.Object, "spec", "secretName")
 	if err != nil || secretErr != nil || secret != workload.Name+"-mtls" ||
-		(issuer != workload.OldIssuer && issuer != state.Plan.Issuer) {
+		(!rotationIssuerRefsEqual(issuer, workload.issuerReference()) && !rotationIssuerRefsEqual(issuer, state.Plan.issuerReference())) {
 		return errors.New("component Certificate was modified outside the rotation")
 	}
 	if err := s.checkPlannedSigner(ctx, state); err != nil {
 		return err
 	}
-	if err := unstructured.SetNestedMap(certificate.Object, map[string]any{
-		"name": state.Plan.Issuer, "kind": "Issuer", "group": "cert-manager.io",
-	}, "spec", "issuerRef"); err != nil {
+	if err := unstructured.SetNestedMap(certificate.Object, state.Plan.issuerReference(), "spec", "issuerRef"); err != nil {
 		return err
 	}
 	annotations := certificate.GetAnnotations()
@@ -174,6 +188,9 @@ func (s *rotationStore) switchRotationCertificate(ctx context.Context, transacti
 func (s *rotationStore) ensureAggregationCertificate(ctx context.Context, transaction string) error {
 	state, err := s.plannedPhase(ctx, transaction, rotationIssue)
 	if err != nil {
+		return err
+	}
+	if err := s.checkPlannedSigner(ctx, state); err != nil {
 		return err
 	}
 	client := s.dynamic.Resource(rotationCertificateResource).Namespace(s.namespace)
@@ -201,7 +218,7 @@ func rotationAggregationCertificateSpec(state rotationState, namespace string) m
 		"secretName": state.Plan.ServingSecret, "duration": "24h", "renewBefore": "8h",
 		"privateKey": map[string]any{"algorithm": "ECDSA", "size": int64(256), "rotationPolicy": "Always"},
 		"usages":     []any{"digital signature", "server auth"}, "dnsNames": []any{"ucp." + namespace + ".svc"},
-		"issuerRef": map[string]any{"name": state.Plan.Issuer, "kind": "Issuer", "group": "cert-manager.io"},
+		"issuerRef": state.Plan.issuerReference(),
 	}
 }
 

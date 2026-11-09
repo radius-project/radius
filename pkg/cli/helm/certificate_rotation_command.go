@@ -251,6 +251,9 @@ func (i *Impl) rotationTarget(ctx context.Context, options ClusterOptions, effec
 		secret, _ := settings["caSecret"].(string)
 		return plan, []byte(bundle), secret, mode, nil
 	}
+	if mode != "selfSigned" {
+		return nil, nil, "", "", errors.New("issuerRef rotation requires the integrated public-issuer transaction driver")
+	}
 	client, err := i.certificateClient(kubeContext)
 	if err != nil {
 		return nil, nil, "", "", err
@@ -288,7 +291,7 @@ func currentRotationComponentCA(ctx context.Context, store *rotationStore, value
 	if previous.Phase == rotationComplete || recovery && previous.Plan != nil {
 		return previous.NewCA, nil
 	}
-	if certificateMode(values) == "caSecret" {
+	if slices.Contains([]string{"caSecret", "issuerRef"}, certificateMode(values)) {
 		bundle, ok := certificateValues(values)["caBundle"].(string)
 		if !ok {
 			return nil, errors.New("installed dedicated public trust is missing")
@@ -449,8 +452,12 @@ func planRotationResources(ctx context.Context, store *rotationStore, config *re
 				}
 			}
 		}
-		issuer, _, err := unstructured.NestedString(certificate.Object, "spec", "issuerRef", "name")
-		if err != nil || issuer == "" {
+		ref, _, err := unstructured.NestedMap(certificate.Object, "spec", "issuerRef")
+		if err != nil {
+			return nil, err
+		}
+		issuer, err := issuerReference(map[string]any{"issuerRef": ref})
+		if err != nil {
 			return nil, errors.New("component Certificate issuer is missing")
 		}
 		containerName, portName := name, "metrics"
@@ -481,7 +488,8 @@ func planRotationResources(ctx context.Context, store *rotationStore, config *re
 				return nil, err
 			}
 		}
-		plan.Consumers = append(plan.Consumers, rotationWorkload{Name: name, UID: deployment.UID, CertificateUID: certificate.GetUID(), OldIssuer: issuer, ProofPort: port})
+		plan.Consumers = append(plan.Consumers, rotationWorkload{Name: name, UID: deployment.UID, CertificateUID: certificate.GetUID(),
+			OldIssuer: issuer.Name, OldIssuerGroup: issuer.Group, OldIssuerKind: issuer.Kind, ProofPort: port})
 		targets = append(targets, rotationConsumer{Name: name, DeploymentUID: deployment.UID, TrustSHA256: oldDigest, LeafSHA256: leafDigest, ProofPort: port})
 		if name == "ucp" {
 			plan.UCPMinReadySeconds = deployment.Spec.MinReadySeconds
