@@ -121,16 +121,14 @@ func (h *TrialComponent) Read(ctx context.Context, region string, identifier str
 }
 
 func (h *TrialComponent) properties(ctx context.Context, region string, c *sagemaker.DescribeTrialComponentOutput) (map[string]any, error) {
-	tags := map[string]string{}
+	tags := []types.Tag{}
 	var token *string
 	for {
 		page, err := h.api.ListTags(ctx, &sagemaker.ListTagsInput{ResourceArn: c.TrialComponentArn, NextToken: token}, inRegion(region))
 		if err != nil {
 			return nil, awsapi.NotFound(err, "ResourceNotFound")
 		}
-		for _, t := range page.Tags {
-			tags[aws.ToString(t.Key)] = aws.ToString(t.Value)
-		}
+		tags = append(tags, page.Tags...)
 		if token = page.NextToken; token == nil {
 			break
 		}
@@ -147,7 +145,7 @@ func (h *TrialComponent) properties(ctx context.Context, region string, c *sagem
 		"LineageGroupArn":    c.LineageGroupArn,
 		"CreationTime":       timeString(c.CreationTime),
 		"LastModifiedTime":   timeString(c.LastModifiedTime),
-		"Tags":               awsapi.TagList(tags),
+		"Tags":               awsapi.TagListOf(tags),
 	})
 }
 

@@ -44,9 +44,7 @@ type API interface {
 	UpdateApplication(ctx context.Context, params *kinesisanalyticsv2.UpdateApplicationInput, optFns ...func(*kinesisanalyticsv2.Options)) (*kinesisanalyticsv2.UpdateApplicationOutput, error)
 }
 
-func inRegion(region string) func(*kinesisanalyticsv2.Options) {
-	return func(o *kinesisanalyticsv2.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[kinesisanalyticsv2.Options]
 
 var (
 	_ native.Handler           = (*LoggingOption)(nil)

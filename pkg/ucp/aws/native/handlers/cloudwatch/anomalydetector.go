@@ -51,9 +51,7 @@ type AccountAPI interface {
 	GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
 }
 
-func inRegion(region string) func(*cloudwatch.Options) {
-	return func(o *cloudwatch.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[cloudwatch.Options]
 
 var (
 	_ native.Handler            = (*AnomalyDetector)(nil)

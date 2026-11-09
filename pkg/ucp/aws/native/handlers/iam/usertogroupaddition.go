@@ -41,9 +41,7 @@ type API interface {
 	RemoveUserFromGroup(ctx context.Context, params *iam.RemoveUserFromGroupInput, optFns ...func(*iam.Options)) (*iam.RemoveUserFromGroupOutput, error)
 }
 
-func inRegion(region string) func(*iam.Options) {
-	return func(o *iam.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[iam.Options]
 
 var (
 	_ native.Handler       = (*UserToGroupAddition)(nil)

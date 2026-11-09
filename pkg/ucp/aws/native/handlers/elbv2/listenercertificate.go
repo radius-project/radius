@@ -43,9 +43,7 @@ type API interface {
 	DescribeListenerCertificates(ctx context.Context, params *elasticloadbalancingv2.DescribeListenerCertificatesInput, optFns ...func(*elasticloadbalancingv2.Options)) (*elasticloadbalancingv2.DescribeListenerCertificatesOutput, error)
 }
 
-func inRegion(region string) func(*elasticloadbalancingv2.Options) {
-	return func(o *elasticloadbalancingv2.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[elasticloadbalancingv2.Options]
 
 var (
 	_ native.Handler       = (*ListenerCertificate)(nil)

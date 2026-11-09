@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
 
 // API is the part of the EC2 client the handlers use.
@@ -58,9 +59,7 @@ type API interface {
 	DescribeRouteTables(ctx context.Context, params *awsec2.DescribeRouteTablesInput, optFns ...func(*awsec2.Options)) (*awsec2.DescribeRouteTablesOutput, error)
 }
 
-func inRegion(region string) func(*awsec2.Options) {
-	return func(o *awsec2.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[awsec2.Options]
 
 // filter returns an EC2 filter that matches any of values.
 func filter(name string, values ...string) types.Filter {
