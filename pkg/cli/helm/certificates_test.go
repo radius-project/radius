@@ -708,6 +708,9 @@ func TestPrepareIssuerCertificates(t *testing.T) {
 	}{
 		{name: "fresh explicit values", values: true, edit: func(o *ClusterOptions, v map[string]any) { o.RadiusInstalled = false; o.RadiusReleaseValues = nil }},
 		{name: "stored issuer and trust preserved"},
+		{name: "stored chart-default issuer fields", edit: func(o *ClusterOptions, v map[string]any) {
+			certificateValues(o.RadiusReleaseValues)["issuerRef"] = map[string]any{"name": "external-ca"}
+		}},
 		{name: "same issuer flag reuses stored bundle", edit: func(o *ClusterOptions, v map[string]any) { o.Certificates.CertIssuer = "Issuer/external-ca" }},
 		{name: "same issuer and bundle flags", edit: func(o *ClusterOptions, v map[string]any) {
 			o.Certificates = CertificateOptions{CertIssuer: "Issuer/external-ca", CABundle: path}
@@ -787,6 +790,8 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 		{name: "ClusterIssuer install merged explicit context", operation: "install", clusterIssuer: true, explicitContext: true},
 		{name: "dedicated intermediate without key or root", operation: "install", intermediate: true},
 		{name: "upgrade omitted flags", operation: "upgrade", explicitContext: true},
+		{name: "upgrade with stored chart-default issuer fields", operation: "default issuer upgrade"},
+		{name: "installed chart issuer default cannot switch silently", operation: "changed default issuer upgrade", err: "changing issuers requires coordinated CA migration"},
 		{name: "retry after failed upgrade", operation: "failed upgrade"},
 		{name: "pending upgrade rejected", operation: "pending upgrade", err: "live issuer-policy verification failed"},
 		{name: "reinstall omitted flags", operation: "reinstall"},
@@ -862,6 +867,9 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 				}
 			} else {
 				options.RadiusReleaseValues = copyValues(fixture.values)
+				if scenario.operation == "default issuer upgrade" || scenario.operation == "changed default issuer upgrade" {
+					certificateValues(options.RadiusReleaseValues)["issuerRef"] = map[string]any{"name": "external-ca"}
+				}
 				options.RadiusInstalled = true
 				options.Radius.Reinstall = scenario.operation == "reinstall"
 			}
@@ -875,12 +883,18 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 			client.EXPECT().LoadChart("local-chart").Return(selected, nil)
 			if !install {
 				config := copyValues(options.RadiusReleaseValues)
+				installedChart := selected
+				if scenario.operation == "changed default issuer upgrade" {
+					installedChart = cloneChart(selected)
+					installedChart.Values = copyValues(selected.Values)
+					certificateValues(installedChart.Values)["issuerRef"].(map[string]any)["kind"] = "ClusterIssuer"
+				}
 				if scenario.operation == "concurrent upgrade" {
 					config["changed"] = true
 				}
 				history := []*releasev1.Release{{
 					Name: "radius", Namespace: RadiusSystemNamespace, Version: 1, Config: config,
-					Chart: selected, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+					Chart: installedChart, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
 				}}
 				if scenario.operation == "failed upgrade" || scenario.operation == "pending upgrade" {
 					status := releasecommon.StatusFailed
