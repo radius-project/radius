@@ -71,7 +71,7 @@ func frontendRequestPolicy(t *testing.T, db database.Client, mode authapi.UserAu
 	}))
 	runtime, err := authorization.NewPolicyRuntime(store, nil)
 	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() { done <- runtime.Run(ctx) }()
 	t.Cleanup(func() {
