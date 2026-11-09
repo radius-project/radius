@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "global": {
+      "type": "object",
+      "properties": {
+        "rbac": {
+          "type": ["object", "null"],
+          "properties": {
+            "certificates": {
+              "type": ["object", "null"],
+              "properties": {
+                "issuerRef": {
+                  "type": "object",
+                  "properties": {
+                    "name": {"type": "string", "maxLength": 253},
+                    "kind": {"type": "string"},
+                    "group": {"type": "string"}
+                  }
+                },
+                "requestPolicy": {
+                  "type": "object",
+                  "properties": {
+                    "certManager": {"$ref": "#/definitions/controllerReference"},
+                    "approverPolicy": {"$ref": "#/definitions/controllerReference"},
+                    "webhook": {
+                      "type": "object",
+                      "properties": {
+                        "namespace": {"type": "string"},
+                        "service": {"type": "string"},
+                        "configuration": {"type": "string"}
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "controllerReference": {
+      "type": "object",
+      "properties": {
+        "namespace": {"type": "string"},
+        "deployment": {"type": "string"}
+      }
+    }
+  }
+}

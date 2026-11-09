@@ -13,31 +13,31 @@ invent their own hosting, routing, validation, and async patterns.
 
 ## Quick Reference
 
-| Topic | Start Here |
-|------|------------|
-| Host lifecycle | `pkg/components/hosting/hosting.go` |
-| Shared HTTP server | `pkg/armrpc/frontend/server/server.go` |
-| Namespace/API registration | `pkg/armrpc/builder/builder.go` |
-| Async status | `pkg/armrpc/asyncoperation/statusmanager/statusmanager.go` |
-| Async worker | `pkg/armrpc/asyncoperation/worker/...` |
+| Topic                      | Start Here                                                 |
+|----------------------------|------------------------------------------------------------|
+| Host lifecycle             | `pkg/components/hosting/hosting.go`                        |
+| Shared HTTP server         | `pkg/armrpc/frontend/server/server.go`                     |
+| Namespace/API registration | `pkg/armrpc/builder/builder.go`                            |
+| Async status               | `pkg/armrpc/asyncoperation/statusmanager/statusmanager.go` |
+| Async worker               | `pkg/armrpc/asyncoperation/worker/...`                     |
 
-| Test Focus | Packages |
-|-----------|----------|
-| Shared runtime and builder logic | `./pkg/armrpc/...` |
-| Shared API/async host usage | `./pkg/server/...` |
-| Broad downstream impact check | `./pkg/ucp/...`, `./pkg/corerp/...`, `./pkg/dynamicrp/...` |
+| Test Focus                       | Packages                                                   |
+|----------------------------------|------------------------------------------------------------|
+| Shared runtime and builder logic | `./pkg/armrpc/...`                                         |
+| Shared API/async host usage      | `./pkg/server/...`                                         |
+| Broad downstream impact check    | `./pkg/ucp/...`, `./pkg/corerp/...`, `./pkg/dynamicrp/...` |
 
 ## Main Building Blocks
 
-| Package | Responsibility |
-|--------|----------------|
-| `pkg/armrpc/hostoptions` | turns config files and environment into runtime options |
-| `pkg/components/hosting` | starts and supervises one or more long-running services |
-| `pkg/armrpc/frontend/server` | shared HTTP server creation, middleware, version and health routes |
-| `pkg/armrpc/builder` | namespace-based API and async controller registration |
-| `pkg/armrpc/frontend/controller` | controller contracts for HTTP operations |
-| `pkg/armrpc/asyncoperation/statusmanager` | creates and updates operation status resources and queue messages |
-| `pkg/armrpc/asyncoperation/worker` | dequeues and executes async controllers |
+| Package                                   | Responsibility                                                     |
+|-------------------------------------------|--------------------------------------------------------------------|
+| `pkg/armrpc/hostoptions`                  | turns config files and environment into runtime options            |
+| `pkg/components/hosting`                  | starts and supervises one or more long-running services            |
+| `pkg/armrpc/frontend/server`              | shared HTTP server creation, middleware, version and health routes |
+| `pkg/armrpc/builder`                      | namespace-based API and async controller registration              |
+| `pkg/armrpc/frontend/controller`          | controller contracts for HTTP operations                           |
+| `pkg/armrpc/asyncoperation/statusmanager` | creates and updates operation status resources and queue messages  |
+| `pkg/armrpc/asyncoperation/worker`        | dequeues and executes async controllers                            |
 
 ## End-To-End Shape
 
@@ -133,7 +133,7 @@ from `global.rbac.enabled` and `global.rbac.dryRun`):
   in the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
   and `dynamic-rp` allow only the `ucp` identity.
 
-The certificate, key, and CA bundle are read from `/var/run/radius/mtls` and reloaded by polling the files (every 10 seconds) without a restart. In the default `selfSigned` mode all three files come from the component's `<component>-mtls` Secret. In `caSecret` mode a projected volume takes only the leaf certificate and key from that Secret and `ca.crt` from the chart's public `radius-mtls-ca` ConfigMap, so the receiver trusts the configured dedicated signing CA rather than the organization's root from a leaf's returned chain. The operator-owned signing Secret is referenced only by the namespaced issuer, not mounted into services. See the [certificate-mode contract](../../deploy/Chart/README.md#internal-service-certificate-modes) for validation prerequisites and the currently blocked `issuerRef` mode. New handshakes use the new material, and each request's client certificate is checked against the current CA bundle. Probes and metrics stay on their plain ports.
+The certificate, key, and CA bundle are read from `/var/run/radius/mtls` and reloaded by polling the files (every 10 seconds) without a restart. In the default `selfSigned` mode all three files come from the component's `<component>-mtls` Secret. In `caSecret` and `issuerRef` modes a projected volume takes only the leaf certificate and key from that Secret and `ca.crt` from the chart's public `radius-mtls-ca` ConfigMap, so the receiver trusts the configured dedicated signing CA rather than the organization's root from a leaf's returned chain. The operator-owned signing Secret in `caSecret` mode is referenced only by the namespaced issuer, not mounted into services. `issuerRef` leaves the issuer and its signing key external; the chart verifies live bounded approver-policy/controller/admission/RBAC prerequisites before rendering issuance resources. See the [certificate-mode contract](../../deploy/Chart/README.md#internal-service-certificate-modes) for supported policy specs and administrative trust boundaries. New handshakes use the new material, and each request's client certificate is checked against the current CA bundle. Probes and metrics stay on their plain ports.
 
 Every request also checks the current server certificate's validity. Cached peer verification lasts only until the earliest expiry in the verified chains or a material reload, whichever comes first. On an open connection, expired certificates or removed trust cause `enforce` to return `401 InvalidAuthenticationInfo` and close the connection; `dryRun` logs the failure and continues serving. Renewing the server certificate does not invalidate an otherwise trusted peer on an existing connection.
 

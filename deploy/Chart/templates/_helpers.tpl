@@ -248,7 +248,7 @@ Call with (dict "root" $ "component" "<component>").
 {{- if ne (include "radius.authz.mode" .root) "off" }}
 {{- $certificates := ((.root.Values.global.rbac).certificates) | default dict }}
 - name: mtls
-  {{- if eq (toString $certificates.mode) "caSecret" }}
+  {{- if has (toString $certificates.mode) (list "caSecret" "issuerRef") }}
   projected:
     sources:
       - secret:
