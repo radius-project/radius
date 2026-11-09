@@ -213,6 +213,75 @@ func TestPolicyCacheGateDiagnostics(t *testing.T) {
 	})
 }
 
+type diagnosticBarrierError struct {
+	error
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (e *diagnosticBarrierError) Is(target error) bool {
+	if target == context.Canceled {
+		close(e.entered)
+		<-e.release
+	}
+	return false
+}
+
+func TestPolicyCacheOverlappingRefreshDiagnostics(t *testing.T) {
+	for _, scenario := range []struct {
+		name string
+		err  error
+	}{
+		{name: "recovery"},
+		{name: "new failure", err: errors.New("new refresh failure")},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				oldFailure := &diagnosticBarrierError{
+					error:   errors.New("old refresh failure"),
+					entered: make(chan struct{}),
+					release: make(chan struct{}),
+				}
+				snapshot := testPolicySnapshot(t, 1)
+				secondLoad := make(chan struct{})
+				calls := 0
+				cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
+					calls++
+					if calls == 1 {
+						return nil, oldFailure
+					}
+					close(secondLoad)
+					return snapshot, scenario.err
+				}), nil)
+				require.NoError(t, err)
+
+				firstDone, secondDone := make(chan error, 1), make(chan error, 1)
+				go func() { firstDone <- cache.Refresh(t.Context()) }()
+				// Pause the first refresh while its deferred diagnostic is classified.
+				<-oldFailure.entered
+				go func() { secondDone <- cache.Refresh(t.Context()) }()
+				synctest.Wait()
+				select {
+				case <-secondLoad:
+					t.Error("next refresh loaded before the preceding diagnostic was published")
+				default:
+				}
+				close(oldFailure.release)
+				require.ErrorIs(t, <-firstDone, oldFailure)
+				if scenario.err == nil {
+					require.NoError(t, <-secondDone)
+					require.Nil(t, cache.lastError, "an older failure must not overwrite recovery")
+					require.NoError(t, cache.Ready())
+				} else {
+					require.ErrorIs(t, <-secondDone, scenario.err)
+					require.ErrorIs(t, cache.lastError, scenario.err, "the newer failure must remain visible")
+					require.ErrorIs(t, cache.Ready(), ErrAuthorizationUnavailable)
+				}
+			})
+		})
+	}
+}
+
 func TestPolicyCacheCancelledLoadPreservesDiagnostic(t *testing.T) {
 	failure := errors.New("refresh failed")
 	for _, previous := range []error{nil, failure} {

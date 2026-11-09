@@ -192,7 +192,12 @@ func NewPolicyCache(source PolicySource, clk clock.WithTicker) (*PolicyCache, er
 // Deadline failures, including gate waits, record only the standard context
 // error. Caller cancellation leaves the shared diagnostic unchanged.
 func (c *PolicyCache) Refresh(ctx context.Context) (err error) {
+	acquired := false
 	defer func() {
+		if acquired {
+			// Publish diagnostics before allowing the next refresh to run.
+			defer func() { <-c.gate }()
+		}
 		if errors.Is(err, context.Canceled) {
 			return
 		}
@@ -206,7 +211,7 @@ func (c *PolicyCache) Refresh(ctx context.Context) (err error) {
 	}()
 	select {
 	case c.gate <- struct{}{}:
-		defer func() { <-c.gate }()
+		acquired = true
 	case <-ctx.Done():
 		return ctx.Err()
 	}
