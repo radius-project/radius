@@ -128,6 +128,60 @@ func (i *Impl) checkRotationIssuerPolicy(ctx context.Context, options ClusterOpt
 	return i.renderIssuerPolicy(ctx, options, selected, source, values, kubeContext, true, &state)
 }
 
+func (i *Impl) rotationIssuerTarget(ctx context.Context, store *rotationStore, options ClusterOptions, effective map[string]any, kubeContext string) ([]byte, *rotationExternalIssuer, error) {
+	values := copyValues(effective)
+	selection := options
+	selection.Certificates.RotationPhase = ""
+	selection.RadiusReleaseValues = nil
+	if options.Certificates.Specified() {
+		policy := certificateValues(values)["requestPolicy"]
+		setCertificateValues(values, map[string]any{"requestPolicy": policy})
+	}
+	if _, err := i.prepareCertificates(ctx, selection, nil, values, kubeContext, false); err != nil {
+		return nil, nil, err
+	}
+	settings := certificateValues(values)
+	reference, err := issuerReference(settings)
+	if err != nil || certificateMode(values) != "issuerRef" {
+		return nil, nil, errors.New("rotation target requires an explicit public issuer reference")
+	}
+	bundle, ok := settings["caBundle"].(string)
+	if !ok {
+		return nil, nil, errors.New("rotation target is missing its public CA")
+	}
+	if _, err := validatePublicCA([]byte(bundle), store.now()); err != nil {
+		return nil, nil, err
+	}
+	pinned := &rotationExternalIssuer{Group: reference.Group, Kind: reference.Kind, Name: reference.Name}
+	policy, err := json.Marshal(settings["requestPolicy"])
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := json.Unmarshal(policy, &pinned.RequestPolicy); err != nil {
+		return nil, nil, fmt.Errorf("invalid rotation policy references: %w", err)
+	}
+	resource, namespace := rotationIssuerResource, store.namespace
+	if reference.Kind == "ClusterIssuer" {
+		resource.Resource, namespace = "clusterissuers", ""
+	}
+	issuer, err := store.dynamic.Resource(resource).Namespace(namespace).Get(ctx, reference.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, nil, err
+	}
+	if issuer.GetUID() == "" || issuer.GetResourceVersion() == "" || issuer.GetDeletionTimestamp() != nil {
+		return nil, nil, errors.New("rotation issuer has no stable live identity")
+	}
+	pinned.UID = issuer.GetUID()
+	pinned.SpecSHA256, err = rotationIssuerSpecDigest(issuer)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := pinned.validate(); err != nil {
+		return nil, nil, err
+	}
+	return []byte(bundle), pinned, nil
+}
+
 func (s *rotationStore) externalRotationIssuer(ctx context.Context, plan *rotationPlan) (*unstructured.Unstructured, error) {
 	if plan.ExternalIssuer == nil {
 		return nil, errors.New("rotation has no external issuer identity")

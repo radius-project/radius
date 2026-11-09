@@ -53,6 +53,10 @@ func rotationTLSProjection(name, secret, trust string) corev1.Volume {
 }
 
 func (s *rotationStore) reconcileRotationDeployment(ctx context.Context, transaction string, workload rotationWorkload) error {
+	return s.reconcileRotationDeploymentServing(ctx, transaction, workload, false)
+}
+
+func (s *rotationStore) reconcileRotationDeploymentServing(ctx context.Context, transaction string, workload rotationWorkload, serving bool) error {
 	client := s.kube.AppsV1().Deployments(s.namespace)
 	deployment, err := client.Get(ctx, workload.Name, metav1.GetOptions{})
 	if err != nil {
@@ -113,7 +117,7 @@ func (s *rotationStore) reconcileRotationDeployment(ctx context.Context, transac
 		deployment.Spec.Strategy = appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType,
 			RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: ptr.To(intstr.FromInt32(1)), MaxUnavailable: ptr.To(intstr.FromInt32(0))}}
 	}
-	if workload.Name == "ucp" && state.Phase != rotationAdopt {
+	if workload.Name == "ucp" && (state.Phase != rotationAdopt || serving && state.SchemaVersion == 2) {
 		if err := s.configureAggregationDeployment(ctx, state, deployment); err != nil {
 			return err
 		}
@@ -135,7 +139,7 @@ func (s *rotationStore) reconcileAggregationDeployment(ctx context.Context, tran
 	if err != nil {
 		return err
 	}
-	state, err := s.plannedPhase(ctx, transaction, rotationIssue, rotationRetire)
+	state, err := s.plannedPhase(ctx, transaction, rotationAdopt, rotationIssue, rotationRetire)
 	if err != nil {
 		return err
 	}
@@ -193,7 +197,7 @@ func (s *rotationStore) configureAggregationDeployment(ctx context.Context, stat
 		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: ptr.To(intstr.FromInt32(1)), MaxUnavailable: ptr.To(intstr.FromInt32(0))}}
 	deployment.Spec.MinReadySeconds = state.Plan.UCPMinReadySeconds
 	deployment.Spec.ProgressDeadlineSeconds = ptr.To(state.Plan.UCPProgressDeadlineSeconds)
-	if state.Phase == rotationIssue {
+	if state.Phase == rotationIssue || state.Phase == rotationAdopt && state.SchemaVersion == 2 {
 		// Read routing after the deployment so a queued hold cannot overwrite
 		// a completed release of the retained old backend.
 		service, err := s.kube.CoreV1().Services(s.namespace).Get(ctx, "ucp", metav1.GetOptions{})

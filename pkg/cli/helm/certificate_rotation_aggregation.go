@@ -165,9 +165,12 @@ func (s *rotationStore) setAggregationRoute(ctx context.Context, transaction, ro
 			return nil, err
 		}
 	}
-	state, err := s.plannedPhase(ctx, transaction, rotationIssue)
+	state, err := s.plannedPhase(ctx, transaction, rotationAdopt, rotationIssue)
 	if err != nil {
 		return nil, err
+	}
+	if state.Phase == rotationAdopt && state.SchemaVersion != 2 {
+		return nil, errors.New("candidate routing during adoption requires a scoped rotation journal")
 	}
 	if service.Name != "ucp" || service.Namespace != s.namespace || service.UID != state.Plan.ServiceUID ||
 		!rotationOwned(service, s.namespace, s.release) {

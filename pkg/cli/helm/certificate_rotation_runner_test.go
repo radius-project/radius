@@ -168,7 +168,7 @@ func rotationRunnerFixture(t *testing.T) (*rotationRunner, rotationState) {
 		name, _, err := unstructured.NestedString(object.Object, "spec", "secretName")
 		require.NoError(t, err)
 		component := strings.TrimSuffix(name, "-mtls")
-		if strings.HasPrefix(name, "radius-aggregation-") {
+		if strings.HasPrefix(name, "radius-aggregation-") || strings.HasPrefix(name, "ucp-cert-aggregation-") {
 			component = "ucp"
 		}
 		issuerName, _, err := unstructured.NestedString(object.Object, "spec", "issuerRef", "name")
@@ -441,12 +441,13 @@ func TestRotationRecoveryPlanning(t *testing.T) {
 			dynamic := store.dynamic.(*dynamicfake.FakeDynamicClient)
 			dynamic.ClearActions()
 			id := uuid.NewString()
-			plan, err := planRotationResources(ctx, store, nil, id, original.Plan.SigningSecret,
-				"caSecret", original.Plan.OldComponentCA, original.NewCA, nil, &original)
+			selection, err := planRotationResources(ctx, store, nil, id, original.Plan.SigningSecret,
+				"caSecret", original.Plan.OldComponentCA, original.NewCA, nil, &original, nil, rotationComponentsAndAggregation)
 			if invalidSelector {
 				require.ErrorContains(t, err, "selector changed outside")
 			} else {
 				require.NoError(t, err)
+				plan := selection.Plan
 				require.Len(t, plan.Consumers, 5)
 				require.Equal(t, original.Plan.ServiceSelector, plan.ServiceSelector)
 				require.Equal(t, original.Plan.UCPMinReadySeconds, plan.UCPMinReadySeconds)

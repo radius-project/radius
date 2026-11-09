@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -74,6 +75,17 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 	if mode == authz.ModeOff {
 		return errors.New("CA rotation requires enabled component TLS and process evidence; enabling authorization is a separate upgrade")
 	}
+	provider, found, err := unstructured.NestedString(effective, "global", "rbac", "mtls", "provider")
+	if !found && err == nil {
+		provider = "radius"
+	}
+	if err != nil || provider != "radius" && provider != "external" {
+		return errors.New("rotation requires an explicit managed or external mTLS provider")
+	}
+	scope := rotationComponentsAndAggregation
+	if provider == "external" {
+		scope = rotationAggregationOnly
+	}
 	config, err := configuration.RESTClientGetter.ToRESTConfig()
 	if err != nil {
 		return err
@@ -87,6 +99,11 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 		return err
 	}
 	store := &rotationStore{kube: kube, dynamic: dynamicClient, namespace: options.Radius.Namespace, release: radiusReleaseName, now: time.Now}
+	policyOptions := options
+	policyOptions.RadiusReleaseValues = copyValues(release.Config)
+	store.verifyIssuerPolicy = func(ctx context.Context, state rotationState) error {
+		return i.checkRotationIssuerPolicy(ctx, policyOptions, release.Chart, configuration, effective, kubeContext, state)
+	}
 	ctx, cancel := context.WithTimeout(ctx, effectiveTimeout(options.Radius.Timeout))
 	defer cancel()
 	run := func() error {
@@ -95,6 +112,9 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 		journal, state, readErr := store.readJournal(ctx, recovery)
 		if readErr != nil && !apierrors.IsNotFound(readErr) {
 			return readErr
+		}
+		if state.Plan != nil && state.Phase != rotationComplete && state.Plan.effectiveScope() != scope {
+			return errors.New("mTLS provider scope changed during the active CA transaction")
 		}
 		start := apierrors.IsNotFound(readErr) || state.Phase == rotationComplete && requested == rotationPublish
 		if recovery {
@@ -113,26 +133,40 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 			var importPlan *certificatePlan
 			var target []byte
 			var secret, targetMode string
+			var external *rotationExternalIssuer
 			if recovery && state.Plan != nil && state.Phase != rotationComplete && !options.Certificates.Specified() {
 				target, secret, targetMode = state.NewCA, state.Plan.SigningSecret, state.Plan.TargetMode
+				external = state.Plan.ExternalIssuer
+			} else if options.Certificates.CertIssuer != "" || !options.Certificates.Specified() && certificateMode(effective) == "issuerRef" {
+				target, external, err = i.rotationIssuerTarget(ctx, store, options, effective, kubeContext)
+				targetMode = "issuerRef"
 			} else {
 				importPlan, target, secret, targetMode, err = i.rotationTarget(ctx, options, effective, kubeContext)
 			}
 			if err != nil {
 				return err
 			}
-			oldCA, err := currentRotationComponentCA(ctx, store, effective, state, recovery)
-			if err != nil {
-				return err
+			var oldCA []byte
+			if scope == rotationComponentsAndAggregation {
+				oldCA, err = currentRotationComponentCA(ctx, store, effective, state, recovery)
+				if err != nil {
+					return err
+				}
 			}
 			id := uuid.NewString()
 			var recovering *rotationState
 			if recovery {
 				recovering = &state
 			}
-			plan, err := planRotationResources(ctx, store, config, id, secret, targetMode, oldCA, target, importPlan, recovering)
+			selection, err := planRotationResources(ctx, store, config, id, secret, targetMode, oldCA, target, importPlan, recovering, external, scope)
 			if err != nil {
 				return err
+			}
+			plan := selection.Plan
+			if external != nil {
+				if err := store.checkPlannedSigner(ctx, *selection); err != nil {
+					return err
+				}
 			}
 			if readOnly {
 				return nil
@@ -143,12 +177,14 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 			if err := i.applyCertificatePlan(ctx, importPlan); err != nil {
 				return err
 			}
-			signing, err := kube.CoreV1().Secrets(store.namespace).Get(ctx, secret, metav1.GetOptions{})
-			if err != nil {
-				return err
+			if external == nil {
+				signing, err := kube.CoreV1().Secrets(store.namespace).Get(ctx, secret, metav1.GetOptions{})
+				if err != nil {
+					return err
+				}
+				plan.SigningUID = signing.UID
 			}
-			plan.SigningUID = signing.UID
-			state = rotationState{NewCA: target, Plan: plan}
+			state = *selection
 			if err := store.checkPlannedSigner(ctx, state); err != nil {
 				return err
 			}
@@ -165,13 +201,25 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 			if state.Plan == nil {
 				return errors.New("the public journal has no workload plan; it cannot authorize rotation")
 			}
+			if state.Plan.effectiveScope() != scope {
+				return errors.New("mTLS provider scope changed during the active CA transaction")
+			}
 			if options.Certificates.Specified() {
-				_, target, secret, _, err := i.rotationTarget(ctx, options, effective, kubeContext)
+				var target []byte
+				var secret, targetMode string
+				var external *rotationExternalIssuer
+				if options.Certificates.CertIssuer != "" {
+					target, external, err = i.rotationIssuerTarget(ctx, store, options, effective, kubeContext)
+					targetMode = "issuerRef"
+				} else {
+					_, target, secret, targetMode, err = i.rotationTarget(ctx, options, effective, kubeContext)
+				}
 				if err != nil {
 					return err
 				}
 				digest, _, err := mtls.TrustBundleDigest(target, time.Now())
-				if err != nil || digest != state.Plan.TargetTrustSHA256 || secret != state.Plan.SigningSecret {
+				if err != nil || digest != state.Plan.TargetTrustSHA256 || secret != state.Plan.SigningSecret ||
+					targetMode != state.Plan.TargetMode || !reflect.DeepEqual(external, state.Plan.ExternalIssuer) {
 					return errors.New("target CA differs from the active rotation; resume without changing its target")
 				}
 			}
@@ -208,25 +256,41 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 			return err
 		}
 		if current == nil || current.Chart == nil || current.Chart.Metadata == nil ||
-			current.Chart.Metadata.Annotations["radius.io/ca-rotation-protocol"] != "1" {
+			current.Chart.Metadata.Annotations["radius.io/ca-rotation-protocol"] != "1" ||
+			current.Version != release.Version || !reflect.DeepEqual(current.Config, release.Config) ||
+			!reflect.DeepEqual(current.Chart, release.Chart) || current.Info == nil ||
+			current.Info.Status != release.Info.Status {
 			return errors.New("installed chart changed before final CA settings could be recorded")
 		}
 		values := map[string]any{}
-		certificates := map[string]any{"mode": state.Plan.TargetMode}
+		certificates := map[string]any{"mode": state.Plan.TargetMode, "caSecret": nil, "caBundle": nil, "issuerRef": nil}
 		if state.Plan.TargetMode == "caSecret" {
 			certificates["caSecret"], certificates["caBundle"] = state.Plan.SigningSecret, strings.TrimSpace(string(state.NewCA))
+		} else if state.Plan.ExternalIssuer != nil {
+			certificates["issuerRef"], certificates["caBundle"] = state.Plan.issuerReference(), strings.TrimSpace(string(state.NewCA))
+			policy := map[string]any{}
+			for name, reference := range state.Plan.ExternalIssuer.RequestPolicy {
+				fields := map[string]any{}
+				for key, value := range reference {
+					fields[key] = value
+				}
+				policy[name] = fields
+			}
+			certificates["requestPolicy"] = policy
 		}
 		setCertificateValues(values, certificates)
 		if err := unstructured.SetNestedField(values, state.ID, "global", "rbac", "completedCARotation"); err != nil {
 			return err
 		}
-		if err := unstructured.SetNestedField(values, map[string]any{"enabled": true, "expectedTrustSHA256": state.Plan.TargetTrustSHA256},
-			"global", "rbac", "startupProof"); err != nil {
-			return err
-		}
-		if err := unstructured.SetNestedField(values, map[string]any{"enabled": true, "expectedTrustSHA256": state.Plan.TargetTrustSHA256},
-			"de", "ucpMTLS", "startupProof"); err != nil {
-			return err
+		if state.Plan.effectiveScope() == rotationComponentsAndAggregation {
+			if err := unstructured.SetNestedField(values, map[string]any{"enabled": true, "expectedTrustSHA256": state.Plan.TargetTrustSHA256},
+				"global", "rbac", "startupProof"); err != nil {
+				return err
+			}
+			if err := unstructured.SetNestedField(values, map[string]any{"enabled": true, "expectedTrustSHA256": state.Plan.TargetTrustSHA256},
+				"de", "ucpMTLS", "startupProof"); err != nil {
+				return err
+			}
 		}
 		upgrade := newUpgradeClient(configuration, store.namespace, true, true, options.Radius.Timeout, usesServerSideApply(configuration, radiusReleaseName))
 		if err := store.checkWrite(ctx); err != nil {
@@ -340,23 +404,34 @@ func currentRotationComponentCA(ctx context.Context, store *rotationStore, value
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw}), nil
 }
 
-func planRotationResources(ctx context.Context, store *rotationStore, config *rest.Config, id, secret, mode string, oldCA, target []byte, imported *certificatePlan, recovery *rotationState) (*rotationPlan, error) {
-	oldDigest, roots, err := rotationHistoricalDigest(oldCA)
-	if err != nil || len(roots) != 1 {
-		return nil, errors.New("installed component trust must identify one valid dedicated CA")
+func planRotationResources(ctx context.Context, store *rotationStore, config *rest.Config, id, secret, mode string, oldCA, target []byte, imported *certificatePlan, recovery *rotationState, external *rotationExternalIssuer, scope rotationScope) (*rotationState, error) {
+	var oldDigest string
+	if scope == rotationComponentsAndAggregation {
+		var err error
+		var roots []string
+		oldDigest, roots, err = rotationHistoricalDigest(oldCA)
+		if err != nil || len(roots) != 1 {
+			return nil, errors.New("installed component trust must identify one valid dedicated CA")
+		}
+	} else if scope != rotationAggregationOnly || len(oldCA) != 0 {
+		return nil, errors.New("invalid aggregation-only planning scope")
 	}
 	digest, roots, err := mtls.TrustBundleDigest(target, store.now())
 	if err != nil || len(roots) != 1 {
 		return nil, errors.New("target trust must identify one valid dedicated CA")
 	}
-	plan := &rotationPlan{TargetMode: mode, TargetTrustSHA256: digest, TargetTrustMap: "radius-mtls-ca-" + digest[:32],
+	plan := &rotationPlan{Scope: scope, ExternalIssuer: external, TargetMode: mode, TargetTrustSHA256: digest, TargetTrustMap: "radius-mtls-ca-" + digest[:32],
 		OldComponentCA: oldCA, SigningSecret: secret, Issuer: "radius-ca-" + strings.ReplaceAll(id, "-", "")[:16],
-		ServingSecret: "radius-aggregation-" + strings.ReplaceAll(id, "-", "")[:16]}
-	signing, err := store.kube.CoreV1().Secrets(store.namespace).Get(ctx, secret, metav1.GetOptions{})
-	if err == nil {
-		plan.SigningUID = signing.UID
-	} else if !apierrors.IsNotFound(err) || imported == nil || imported.secret == nil || imported.secret.Name != secret {
-		return nil, fmt.Errorf("cannot inspect target signing Secret: %w", err)
+		ServingSecret: "ucp-cert-aggregation-" + strings.ReplaceAll(id, "-", "")[:16]}
+	if external != nil {
+		plan.Issuer = external.Name
+	} else {
+		signing, err := store.kube.CoreV1().Secrets(store.namespace).Get(ctx, secret, metav1.GetOptions{})
+		if err == nil {
+			plan.SigningUID = signing.UID
+		} else if !apierrors.IsNotFound(err) || imported == nil || imported.secret == nil || imported.secret.Name != secret {
+			return nil, fmt.Errorf("cannot inspect target signing Secret: %w", err)
+		}
 	}
 	api, err := store.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
 	if err != nil {
@@ -418,7 +493,7 @@ func planRotationResources(ctx context.Context, store *rotationStore, config *re
 		// beginRecovery records the complete, bounded predecessor set.
 		if recovery.ID != "" && recovery.Phase != rotationComplete {
 			history := [][]byte{recovery.OldCA, recovery.NewCA, aggregationCA}
-			if recovery.Plan != nil {
+			if recovery.Plan != nil && recovery.Plan.effectiveScope() == rotationComponentsAndAggregation {
 				history = append(history, recovery.Plan.OldComponentCA)
 			}
 			historical, err := rotationHistoricalRoots(history...)
@@ -453,10 +528,40 @@ func planRotationResources(ctx context.Context, store *rotationStore, config *re
 		plan.ServiceSelector = maps.Clone(recovery.Plan.ServiceSelector)
 	}
 	targets := []rotationConsumer{}
-	for _, name := range rotationComponents {
+	names := rotationComponents
+	if scope == rotationAggregationOnly {
+		names = []string{"ucp"}
+	}
+	for _, name := range names {
 		deployment, err := store.kube.AppsV1().Deployments(store.namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
+		}
+		if !rotationOwned(deployment, store.namespace, store.release) || deployment.Spec.Paused {
+			return nil, errors.New("rotation requires an owned, active deployment")
+		}
+		if name == "ucp" {
+			port, err := aggregationProofPort(deployment.Spec.Template.Spec)
+			if err != nil {
+				return nil, err
+			}
+			plan.Aggregation = &rotationAggregationWorkload{DeploymentUID: deployment.UID, ProofPort: port}
+			plan.UCPMinReadySeconds = deployment.Spec.MinReadySeconds
+			if deployment.Spec.ProgressDeadlineSeconds == nil {
+				return nil, errors.New("UCP deployment has no API-defaulted progress deadline")
+			}
+			plan.UCPProgressDeadlineSeconds = *deployment.Spec.ProgressDeadlineSeconds
+			if recovery != nil && recovery.Plan != nil {
+				previous, err := recovery.Plan.aggregationWorkload()
+				if err != nil || previous.DeploymentUID != deployment.UID {
+					return nil, errors.New("aggregation deployment changed before incident recovery")
+				}
+				plan.UCPMinReadySeconds = recovery.Plan.UCPMinReadySeconds
+				plan.UCPProgressDeadlineSeconds = recovery.Plan.UCPProgressDeadlineSeconds
+			}
+		}
+		if scope == rotationAggregationOnly {
+			continue
 		}
 		certificate, err := store.dynamic.Resource(rotationCertificateResource).Namespace(store.namespace).Get(ctx, name+"-cert", metav1.GetOptions{})
 		if err != nil {
@@ -511,41 +616,35 @@ func planRotationResources(ctx context.Context, store *rotationStore, config *re
 		plan.Consumers = append(plan.Consumers, rotationWorkload{Name: name, UID: deployment.UID, CertificateUID: certificate.GetUID(),
 			OldIssuer: issuer.Name, OldIssuerGroup: issuer.Group, OldIssuerKind: issuer.Kind, ProofPort: port})
 		targets = append(targets, rotationConsumer{Name: name, DeploymentUID: deployment.UID, TrustSHA256: oldDigest, LeafSHA256: leafDigest, ProofPort: port})
-		if name == "ucp" {
-			plan.UCPMinReadySeconds = deployment.Spec.MinReadySeconds
-			if deployment.Spec.ProgressDeadlineSeconds == nil {
-				return nil, errors.New("UCP deployment has no API-defaulted progress deadline")
-			}
-			plan.UCPProgressDeadlineSeconds = *deployment.Spec.ProgressDeadlineSeconds
-			if recovery != nil && recovery.Plan != nil {
-				plan.UCPMinReadySeconds = recovery.Plan.UCPMinReadySeconds
-				plan.UCPProgressDeadlineSeconds = recovery.Plan.UCPProgressDeadlineSeconds
-			}
-		}
 	}
 	// A create-only import has no server-assigned UID yet. Validate every other
 	// field before creating it, then bind and revalidate the real UID afterward.
 	validationPlan := *plan
-	if validationPlan.SigningUID == "" {
+	if validationPlan.ExternalIssuer == nil && validationPlan.SigningUID == "" {
 		validationPlan.SigningUID = "pending-create"
 	}
+	selection.SchemaVersion = 2
 	selection.Plan = &validationPlan
 	if err := selection.validate(store.now()); err != nil {
 		return nil, err
 	}
 	if recovery != nil {
-		return plan, nil
+		return &selection, nil
 	}
-	observer := rotationConsumerObserver{kube: store.kube, config: config, namespace: store.namespace, release: store.release, initial: true}
-	if err := observer.verify(ctx, targets); err != nil {
-		return nil, fmt.Errorf("verify compatible process-evidence images before starting rotation: %w", err)
+	if scope == rotationComponentsAndAggregation {
+		observer := rotationConsumerObserver{kube: store.kube, config: config, namespace: store.namespace, release: store.release, initial: true}
+		if err := observer.verify(ctx, targets); err != nil {
+			return nil, fmt.Errorf("verify compatible process-evidence images before starting rotation: %w", err)
+		}
 	}
 	ids, _, err := store.aggregationPods(ctx, rotationState{Plan: plan}, false)
 	if err != nil {
 		return nil, err
 	}
-	if err := observeAggregatedPod(ctx, config, ids); err != nil {
-		return nil, fmt.Errorf("verify the UCP aggregation identity capability before starting rotation: %w", err)
+	if scope == rotationComponentsAndAggregation {
+		if err := observeAggregatedPod(ctx, config, ids); err != nil {
+			return nil, fmt.Errorf("verify the UCP aggregation identity capability before starting rotation: %w", err)
+		}
 	}
-	return plan, nil
+	return &selection, nil
 }

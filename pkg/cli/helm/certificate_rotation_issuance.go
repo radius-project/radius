@@ -88,9 +88,12 @@ func (s *rotationStore) checkPlannedSigner(ctx context.Context, state rotationSt
 }
 
 func (s *rotationStore) ensureRotationIssuer(ctx context.Context, transaction string) error {
-	state, err := s.plannedPhase(ctx, transaction, rotationIssue)
+	state, err := s.plannedPhase(ctx, transaction, rotationAdopt, rotationIssue)
 	if err != nil {
 		return err
+	}
+	if state.Phase == rotationAdopt && state.SchemaVersion != 2 {
+		return errors.New("candidate issuance during adoption requires a scoped rotation journal")
 	}
 	if err := s.checkPlannedSigner(ctx, state); err != nil {
 		return err
@@ -192,9 +195,12 @@ func (s *rotationStore) switchRotationCertificate(ctx context.Context, transacti
 }
 
 func (s *rotationStore) ensureAggregationCertificate(ctx context.Context, transaction string) error {
-	state, err := s.plannedPhase(ctx, transaction, rotationIssue)
+	state, err := s.plannedPhase(ctx, transaction, rotationAdopt, rotationIssue)
 	if err != nil {
 		return err
+	}
+	if state.Phase == rotationAdopt && state.SchemaVersion != 2 {
+		return errors.New("candidate issuance during adoption requires a scoped rotation journal")
 	}
 	if err := s.checkPlannedSigner(ctx, state); err != nil {
 		return err

@@ -53,9 +53,7 @@ func (r *rotationRunner) run(ctx context.Context, transaction string, requested 
 	if state.ID != transaction || state.Plan == nil {
 		return errors.New("rotation transaction or resource plan changed")
 	}
-	if state.Plan.effectiveScope() != rotationComponentsAndAggregation {
-		return errors.New("aggregation-only rotation activation requires the integrated provider and issuer lifecycle")
-	}
+	managed := state.Plan.effectiveScope() == rotationComponentsAndAggregation
 	if err := r.store.checkWrite(ctx); err != nil {
 		return err
 	}
@@ -78,8 +76,10 @@ func (r *rotationRunner) run(ctx context.Context, transaction string, requested 
 	if requested == rotationRetire && state.Phase == rotationReady {
 		// Retirement is never an automatic consequence of successful issuance.
 		// Re-observe the live fleet and aggregation before recording this intent.
-		if err := r.verifyConsumers(ctx, state); err != nil {
-			return err
+		if managed {
+			if err := r.verifyConsumers(ctx, state); err != nil {
+				return err
+			}
 		}
 		if err := r.verifyAggregation(ctx, state); err != nil {
 			return err
@@ -104,7 +104,11 @@ func (r *rotationRunner) run(ctx context.Context, transaction string, requested 
 	var next rotationPhase
 	switch requested {
 	case rotationPublish:
-		if _, _, err := r.store.publishComponentTrust(ctx, rotationComponentBundle(state)); err != nil {
+		bundle := state.NewCA
+		if managed {
+			bundle = rotationComponentBundle(state)
+		}
+		if _, _, err := r.store.publishComponentTrust(ctx, bundle); err != nil {
 			return err
 		}
 		if err := r.store.reconcileTrust(ctx, transaction); err != nil {
@@ -112,13 +116,38 @@ func (r *rotationRunner) run(ctx context.Context, transaction string, requested 
 		}
 		next = rotationAdopt
 	case rotationAdopt:
-		for _, workload := range state.Plan.Consumers {
-			if err := r.store.reconcileRotationDeployment(ctx, transaction, workload); err != nil {
+		started := false
+		if state.SchemaVersion == 2 {
+			started, err = r.aggregationAdoptionStarted(ctx, state)
+			if err != nil {
 				return err
 			}
 		}
-		if err := r.wait(ctx, "component trust adoption", func() error { return r.verifyConsumers(ctx, state) }); err != nil {
-			return err
+		if managed && !started {
+			for _, workload := range state.Plan.Consumers {
+				if err := r.store.reconcileRotationDeployment(ctx, transaction, workload); err != nil {
+					return err
+				}
+			}
+			if err := r.wait(ctx, "component trust adoption", func() error { return r.verifyConsumers(ctx, state) }); err != nil {
+				return err
+			}
+		}
+		if state.SchemaVersion == 2 {
+			if err := r.prepareAggregation(ctx, state); err != nil {
+				return err
+			}
+			if err := r.migrateAggregation(ctx, state); err != nil {
+				return err
+			}
+			if err := r.wait(ctx, "aggregation trust adoption", func() error { return r.verifyAggregation(ctx, state) }); err != nil {
+				return err
+			}
+			if managed {
+				if err := r.wait(ctx, "component trust adoption after aggregation", func() error { return r.verifyConsumers(ctx, state) }); err != nil {
+					return err
+				}
+			}
 		}
 		next = rotationIssue
 	case rotationIssue:
@@ -135,8 +164,10 @@ func (r *rotationRunner) run(ctx context.Context, transaction string, requested 
 		if err := r.migrateAggregation(ctx, state); err != nil {
 			return err
 		}
-		if err := r.wait(ctx, "issued leaf adoption", func() error { return r.verifyConsumers(ctx, state) }); err != nil {
-			return err
+		if managed {
+			if err := r.wait(ctx, "issued leaf adoption", func() error { return r.verifyConsumers(ctx, state) }); err != nil {
+				return err
+			}
 		}
 		if err := r.verifyAggregation(ctx, state); err != nil {
 			return err
@@ -161,7 +192,11 @@ func (r *rotationRunner) run(ctx context.Context, transaction string, requested 
 				return err
 			}
 		}
-		if err := r.wait(ctx, "old component trust retirement", func() error { return r.verifyConsumers(ctx, state) }); err != nil {
+		if managed {
+			if err := r.wait(ctx, "old component trust retirement", func() error { return r.verifyConsumers(ctx, state) }); err != nil {
+				return err
+			}
+		} else if err := r.store.reconcileAggregationDeployment(ctx, transaction); err != nil {
 			return err
 		}
 		if err := r.store.reconcileTrust(ctx, transaction); err != nil {
@@ -171,6 +206,9 @@ func (r *rotationRunner) run(ctx context.Context, transaction string, requested 
 			return err
 		}
 		next = rotationComplete
+	}
+	if err := r.store.checkPlannedSigner(ctx, state); err != nil {
+		return err
 	}
 	if err := r.store.advance(ctx, journal, state, next); err != nil {
 		return err
@@ -191,9 +229,50 @@ func (r *rotationRunner) issueLeaves(ctx context.Context, state rotationState) e
 		return err
 	}
 	return r.wait(ctx, "cert-manager issuance", func() error {
-		if _, err := r.store.rotationConsumerTargets(ctx, state); err != nil {
+		if state.Plan.effectiveScope() == rotationComponentsAndAggregation {
+			if _, err := r.store.rotationConsumerTargets(ctx, state); err != nil {
+				return err
+			}
+		}
+		serving, err := r.store.kube.CoreV1().Secrets(r.store.namespace).Get(ctx, state.Plan.ServingSecret, metav1.GetOptions{})
+		if err != nil {
 			return err
 		}
+		_, err = rotationLeafDigest(serving, state.NewCA, r.store.namespace, "ucp", false, r.store.now())
+		return err
+	})
+}
+
+func (r *rotationRunner) aggregationAdoptionStarted(ctx context.Context, state rotationState) (bool, error) {
+	service, err := r.store.kube.CoreV1().Services(r.store.namespace).Get(ctx, "ucp", metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+	if service.UID != state.Plan.ServiceUID || !rotationOwned(service, r.store.namespace, r.store.release) {
+		return false, errors.New("aggregation adoption Service identity or ownership changed")
+	}
+	if err := checkRotationObjectRevision(service, state); err != nil {
+		return false, err
+	}
+	if service.Annotations[rotationTransaction] != state.ID {
+		return false, nil
+	}
+	switch service.Annotations[rotationRoute] {
+	case "old", "new", "complete":
+		return true, nil
+	default:
+		return false, errors.New("aggregation adoption has an unrecognized recorded route")
+	}
+}
+
+func (r *rotationRunner) prepareAggregation(ctx context.Context, state rotationState) error {
+	if err := r.store.ensureRotationIssuer(ctx, state.ID); err != nil {
+		return err
+	}
+	if err := r.store.ensureAggregationCertificate(ctx, state.ID); err != nil {
+		return err
+	}
+	return r.wait(ctx, "aggregation candidate issuance", func() error {
 		serving, err := r.store.kube.CoreV1().Secrets(r.store.namespace).Get(ctx, state.Plan.ServingSecret, metav1.GetOptions{})
 		if err != nil {
 			return err
@@ -404,7 +483,7 @@ func (r *rotationRunner) migrateAggregation(ctx context.Context, state rotationS
 		}
 		for _, workload := range state.Plan.Consumers {
 			if workload.Name == "ucp" {
-				return r.store.reconcileRotationDeployment(ctx, state.ID, workload)
+				return r.store.reconcileRotationDeploymentServing(ctx, state.ID, workload, true)
 			}
 		}
 		return errors.New("managed aggregation rollout requires its UCP component identity")
