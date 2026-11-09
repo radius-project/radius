@@ -122,7 +122,7 @@ func startPolicyRuntime(t *testing.T, store *PolicyStore) (*PolicyRuntime, func(
 	require.NoError(t, err)
 	require.Equal(t, RuntimeUnavailable, runtime.State().Status)
 	require.ErrorIs(t, runtime.Ready(), ErrAuthorizationUnavailable)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() { done <- runtime.Run(ctx) }()
 	synctest.Wait()
@@ -344,10 +344,11 @@ func TestPolicyRuntimeCancelsLocalRefresh(t *testing.T) {
 			return ctx.Err()
 		})
 		done := make(chan error, 1)
-		go func() { done <- runtime.Refresh(context.Background()) }()
+		go func() { done <- runtime.Refresh(t.Context()) }()
 		synctest.Wait()
 		stop()
 		require.ErrorIs(t, <-done, context.Canceled)
+		require.NoError(t, t.Context().Err(), "runtime shutdown must cancel the refresh independently of its caller")
 	})
 }
 
