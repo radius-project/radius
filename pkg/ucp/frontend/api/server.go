@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -48,7 +47,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	corev1 "k8s.io/api/core/v1"
@@ -58,6 +56,9 @@ import (
 type Service struct {
 	options                    *ucp.Options
 	loadRequestHeaderConfigMap func(context.Context) (*corev1.ConfigMap, error)
+	aggregationSource          *mtls.Source
+	aggregationProof           *mtls.AggregationProof
+	aggregationPodUID          string
 }
 
 // DefaultModules returns a list of default modules that will be registered with the router.
@@ -278,20 +279,14 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if directory := s.options.Config.Server.TLSCertificateDirectory; directory != "" {
-		source, err := mtls.NewSource(directory)
-		if err != nil {
-			return fmt.Errorf("failed to initialize aggregation serving certificate: %w", err)
-		}
-		service.TLSConfig = source.ServingConfig(service.TLSConfig)
-		if os.Getenv("UCP_MTLS_STARTUP_PROOF_ENABLED") == "true" {
-			podUID := os.Getenv("UCP_MTLS_POD_UID")
-			id, err := uuid.Parse(podUID)
-			if err != nil || id == uuid.Nil || id.String() != podUID {
-				return errors.New("aggregation rotation evidence requires a canonical pod UID")
-			}
-			service.Handler = withAggregationPodUID(service.Handler, podUID)
-		}
+	// Capture shared routes before adding aggregation-only identity headers or
+	// TLS policy. Internal component traffic must not attest the API-server route.
+	internal := s.internalServer(service)
+	source, err := s.configureAggregationServing(service)
+	if err != nil {
+		return err
+	}
+	if source != nil {
 		sourceCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		go source.Start(sourceCtx, mtls.DefaultPollInterval)
@@ -309,7 +304,6 @@ func (s *Service) Run(ctx context.Context) error {
 		if s.options.Config.Server.InternalPort == 0 {
 			return errors.New("server.internalPort is required when the authorization mode is not off")
 		}
-		internal := s.internalServer(service)
 		go func() {
 			<-ctx.Done()
 			_ = internal.Shutdown(ctx)

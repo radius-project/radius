@@ -34,6 +34,7 @@ func TestMetricsProofRouting(t *testing.T) {
 			// POST exercises routing without attempting to read TLS material.
 			service.StartupProof = &mtls.StartupProof{}
 		}
+
 		handler, err := service.handler(metrics)
 		require.NoError(t, err)
 		response := httptest.NewRecorder()
@@ -54,5 +55,32 @@ func TestMetricsProofRouting(t *testing.T) {
 		} else {
 			require.NoError(t, err)
 		}
+	}
+
+}
+
+func TestMetricsAggregationProofRouting(t *testing.T) {
+	t.Parallel()
+	for _, component := range []bool{false, true} {
+		service := &Service{Options: &Options{Prometheus: &PrometheusOptions{Path: "/metrics"}},
+			AggregationProof: &mtls.AggregationProof{}}
+		if component {
+			service.StartupProof = &mtls.StartupProof{}
+		}
+		handler, err := service.handler(http.NotFoundHandler())
+		require.NoError(t, err)
+		for _, path := range []string{mtls.AggregationProofPath, mtls.StartupProofPath} {
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(http.MethodPost, path, nil))
+			if path == mtls.AggregationProofPath || component {
+				require.Equal(t, http.StatusMethodNotAllowed, response.Code)
+				require.Equal(t, "no-store", response.Header().Get("Cache-Control"))
+			} else {
+				require.Equal(t, http.StatusNotFound, response.Code)
+			}
+		}
+		service.Options.Prometheus.Path = mtls.AggregationProofPath
+		_, err = service.handler(http.NotFoundHandler())
+		require.ErrorContains(t, err, "conflicts")
 	}
 }

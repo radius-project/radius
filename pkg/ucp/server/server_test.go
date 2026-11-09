@@ -19,6 +19,8 @@ package server
 import (
 	"testing"
 
+	"github.com/radius-project/radius/pkg/authz/mtls"
+	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -42,4 +44,29 @@ func Test_NewServer(t *testing.T) {
 		_, err := NewServer(t.Context(), &ucp.Options{Config: &ucp.Config{}})
 		require.Error(t, err)
 	})
+}
+
+func TestNewServerAggregationProofRequiresManagementListener(t *testing.T) {
+	t.Setenv("UCP_AGGREGATION_STARTUP_PROOF_ENABLED", "true")
+	for _, scenario := range []string{"disabled metrics", "missing prometheus", "dynamic port", "invalid port", "path collision"} {
+		t.Run(scenario, func(t *testing.T) {
+			options := &ucp.Options{Config: &ucp.Config{}}
+			options.Config.Metrics = metricsservice.Options{Enabled: true,
+				Prometheus: &metricsservice.PrometheusOptions{Port: 9090, Path: "/metrics"}}
+			switch scenario {
+			case "disabled metrics":
+				options.Config.Metrics.Enabled = false
+			case "missing prometheus":
+				options.Config.Metrics.Prometheus = nil
+			case "dynamic port":
+				options.Config.Metrics.Prometheus.Port = 0
+			case "invalid port":
+				options.Config.Metrics.Prometheus.Port = 65536
+			case "path collision":
+				options.Config.Metrics.Prometheus.Path = mtls.AggregationProofPath
+			}
+			_, err := NewServer(t.Context(), options)
+			require.ErrorContains(t, err, "aggregation serving proof requires an enabled management listener")
+		})
+	}
 }

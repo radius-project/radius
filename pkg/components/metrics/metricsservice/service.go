@@ -32,8 +32,9 @@ import (
 
 // Service implements the metrics service.
 type Service struct {
-	Options      *Options
-	StartupProof *mtls.StartupProof
+	Options          *Options
+	StartupProof     *mtls.StartupProof
+	AggregationProof *mtls.AggregationProof
 }
 
 // Name returns the name of the metrics service.
@@ -100,10 +101,16 @@ func (s *Service) handler(metrics http.Handler) (http.Handler, error) {
 	if s.StartupProof != nil && s.Options.Prometheus.Path == mtls.StartupProofPath {
 		return nil, fmt.Errorf("metrics path conflicts with the TLS startup proof endpoint")
 	}
+	if s.AggregationProof != nil && s.Options.Prometheus.Path == mtls.AggregationProofPath {
+		return nil, fmt.Errorf("metrics path conflicts with the aggregation serving proof endpoint")
+	}
 	mux := http.NewServeMux()
 	mux.Handle(s.Options.Prometheus.Path, metrics)
 	if s.StartupProof != nil {
 		mux.Handle(mtls.StartupProofPath, s.StartupProof)
+	}
+	if s.AggregationProof != nil {
+		mux.Handle(mtls.AggregationProofPath, s.AggregationProof)
 	}
 	return mux, nil
 }
