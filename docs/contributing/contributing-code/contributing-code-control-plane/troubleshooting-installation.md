@@ -190,3 +190,13 @@ A cert-manager that `rad` did not install is never removed.
     issuers.cert-manager.io clusterissuers.cert-manager.io \
     orders.acme.cert-manager.io challenges.acme.cert-manager.io
   ```
+
+## csi-driver-spiffe
+
+When authorization is enabled, `rad install kubernetes` and `rad upgrade kubernetes` also install Radius's own [csi-driver-spiffe](https://cert-manager.io/docs/usage/csi-driver-spiffe/) after cert-manager. It issues server certificates to Radius components through a CSI volume. `rad` installs a pinned chart (`CSIDriverSPIFFEChartDefaultVersion` in `pkg/cli/helm/csi_driver_spiffe.go`) from `https://charts.jetstack.io` as the Helm release `cert-manager-csi-driver-spiffe` in the Radius namespace, labeled `app.kubernetes.io/managed-by=rad`. It configures the trust domain and CSI driver name from `global.rbac.spiffe` and limits the driver's approver to the `radius-ca-issuer` Issuer. With authorization off, `rad` does not look for or install it.
+
+- **Another csi-driver-spiffe runs on the cluster:** a cluster can run only one, because every instance registers the same kubelet plugin path. `rad` stops before changing the cluster and names the DaemonSet to remove.
+- **A `cert-manager-csi-driver-spiffe` release that `rad` did not install:** `rad` does not change it. Uninstall it, or let `rad` own the installation, and rerun the command.
+- **Warning about cert-manager's default approver:** cert-manager approves CertificateRequests for every issuer unless its default approver is turned off or limited. A future Radius release will require that it not approve requests for the Radius issuer. For now, keep it on; the Radius client certificates still depend on it.
+
+`rad uninstall kubernetes` removes the csi-driver-spiffe release it owns before cert-manager, and lists it in the confirmation prompt. A release that `rad` did not install is never removed.

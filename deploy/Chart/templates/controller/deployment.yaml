@@ -95,6 +95,7 @@ spec:
         - name: config-volume
           mountPath: /etc/config
         {{- with include "radius.authz.mtls.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.tokens.volumeMounts" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -114,6 +115,7 @@ spec:
           configMap:
             name: controller-config
         {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "controller") | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:

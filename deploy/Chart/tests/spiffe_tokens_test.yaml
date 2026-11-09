@@ -1,0 +1,255 @@
+suite: test SPIFFE server certificate and projected ServiceAccount token volumes
+templates:
+  - ucp/deployment.yaml
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - controller/deployment.yaml
+  - global/spiffe-rbac.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: renders no SPIFFE or token volumes and no CertificateRequest Role by default
+    asserts:
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+          any: true
+        template: ucp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-ucp
+          any: true
+        template: controller/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-applications-rp
+          any: true
+        template: ucp/deployment.yaml
+      - hasDocuments:
+          count: 0
+        template: global/spiffe-rbac.yaml
+
+  - it: mounts a SPIFFE server certificate volume in each receiver in dryRun mode
+    set:
+      global.rbac.dryRun: true
+    asserts: &receivers
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+            csi:
+              driver: spiffe.csi.radapp.io
+              readOnly: true
+              volumeAttributes:
+                spiffe.csi.cert-manager.io/fs-group: "65532"
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: spiffe
+            mountPath: /var/run/radius/spiffe
+            readOnly: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+            csi:
+              driver: spiffe.csi.radapp.io
+              readOnly: true
+              volumeAttributes:
+                spiffe.csi.cert-manager.io/fs-group: "65532"
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: spiffe
+            mountPath: /var/run/radius/spiffe
+            readOnly: true
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+            csi:
+              driver: spiffe.csi.radapp.io
+              readOnly: true
+              volumeAttributes:
+                spiffe.csi.cert-manager.io/fs-group: "65532"
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: spiffe
+            mountPath: /var/run/radius/spiffe
+            readOnly: true
+        template: dynamic-rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+          any: true
+        template: controller/deployment.yaml
+
+  - it: mounts a SPIFFE server certificate volume in each receiver in enforce mode
+    set:
+      global.rbac.enabled: true
+    asserts: *receivers
+
+  - it: keeps the existing mTLS Secret volumes alongside the new volumes
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+            secret:
+              secretName: ucp-mtls
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+            secret:
+              secretName: controller-mtls
+        template: controller/deployment.yaml
+
+  - it: uses the configured CSI driver name
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.csiDriverName: spiffe.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+            csi:
+              driver: spiffe.example.com
+              readOnly: true
+              volumeAttributes:
+                spiffe.csi.cert-manager.io/fs-group: "65532"
+        template: ucp/deployment.yaml
+
+  - it: projects one 10-minute token per receiver audience for each caller
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-applications-rp
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: applications-rp
+                    expirationSeconds: 600
+                    path: token
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-dynamic-rp
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: dynamic-rp
+                    expirationSeconds: 600
+                    path: token
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: token-applications-rp
+            mountPath: /var/run/radius/tokens/applications-rp
+            readOnly: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: token-dynamic-rp
+            mountPath: /var/run/radius/tokens/dynamic-rp
+            readOnly: true
+        template: ucp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-ucp
+          any: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content: &ucpToken
+            name: token-ucp
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: ucp
+                    expirationSeconds: 600
+                    path: token
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: &ucpTokenMount
+            name: token-ucp
+            mountPath: /var/run/radius/tokens/ucp
+            readOnly: true
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content: *ucpToken
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: *ucpTokenMount
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content: *ucpToken
+        template: controller/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content: *ucpTokenMount
+        template: controller/deployment.yaml
+
+  - it: lets each receiver's ServiceAccount create CertificateRequests in the release namespace
+    set:
+      global.rbac.dryRun: true
+    template: global/spiffe-rbac.yaml
+    asserts:
+      - hasDocuments:
+          count: 2
+      - documentIndex: 0
+        isKind:
+          of: Role
+      - documentIndex: 0
+        equal:
+          path: metadata.namespace
+          value: radius-system
+      - documentIndex: 0
+        equal:
+          path: rules
+          value:
+            - apiGroups: [cert-manager.io]
+              resources: [certificaterequests]
+              verbs: [create]
+      - documentIndex: 1
+        isKind:
+          of: RoleBinding
+      - documentIndex: 1
+        equal:
+          path: subjects
+          value:
+            - kind: ServiceAccount
+              name: ucp
+              namespace: radius-system
+            - kind: ServiceAccount
+              name: applications-rp
+              namespace: radius-system
+            - kind: ServiceAccount
+              name: dynamic-rp
+              namespace: radius-system
