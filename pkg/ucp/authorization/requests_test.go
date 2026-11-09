@@ -382,8 +382,34 @@ func TestProtectedMutationEncodedTargets(t *testing.T) {
 	} {
 		require.False(t, protectedMutation(http.MethodPut, path), path)
 	}
-	for _, path := range []string{"/providers/Microsoft.Test/widgets/%", "/providers/%zz/widgets/a", "/" + strings.Repeat("%25", 1) + strings.Repeat("25", 9)} {
-		require.True(t, protectedMutation(http.MethodPut, path), path)
+	require.True(t, protectedMutation(http.MethodPut, "/%"+strings.Repeat("25", 10)))
+}
+
+func TestProtectedMutationURLReparsing(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name      string
+		path      string
+		protected bool
+	}{
+		{"query delimiter", "/providers/Radius.Core/roleAssignments?ignored/a", true},
+		{"fragment delimiter", "/providers/Radius.Core/roleDefinitions#ignored/a", true},
+		{"encoded query delimiter", "/providers/Radius.Core/authorizationSettings%3Fignored/a", true},
+		{"encoded fragment delimiter", "/providers/Radius.Core/accessChanges%23ignored/a", true},
+		{"private namespace query", "/providers/System.Authorization?ignored/a", true},
+		{"private namespace fragment", "/providers/sYsTeM.aUtHoRiZaTiOn%23ignored/a", true},
+		{"literal percent", "/providers/Microsoft.Test/widgets/a%", false},
+		{"escaped percent", "/providers/Microsoft.Test/widgets/a%25", false},
+		{"literal invalid escape", "/providers/Microsoft.Test/widgets/a%zz", false},
+		{"escaped invalid escape", "/providers/Microsoft.Test/widgets/a%25zz", false},
+		{"protected with literal percent name", "/providers/Radius.Core/roleAssignments/a%", true},
+		{"protected query with literal percent", "/providers/Radius.Core/roleAssignments?ignored/a%", true},
+		{"ordinary query", "/providers/Microsoft.Test/widgets?ignored/a", false},
+		{"ordinary fragment", "/providers/Microsoft.Test/widgets#ignored/a", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.protected, protectedMutation(http.MethodPut, "/planes/azure/local"+tt.path))
+		})
 	}
 }
 

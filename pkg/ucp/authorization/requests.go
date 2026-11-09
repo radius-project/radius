@@ -104,24 +104,23 @@ func protectedMutation(method, path string) bool {
 }
 
 func protectedTarget(path string) bool {
-	// Azure proxy routing reparses URL.Path, so one decoded spelling is not
-	// sufficient. Inspect every spelling up to a bounded decoding depth; malformed
-	// or still-escaped input at that boundary cannot safely authorize a mutation.
+	// Match Azure proxy reparsing, including query/fragment delimiters, rather
+	// than just unescaping. Inspect successive targets with a bounded depth.
 	for depth := 0; ; depth++ {
 		if protectedPath(path) {
 			return true
 		}
-		if !strings.Contains(path, "%") {
+		target, err := url.Parse(path)
+		if err != nil || target.Path == path {
+			// A parse failure has no further routing target. In particular a
+			// literal percent produced by an earlier parse is not a policy
+			// mutation. Actual invalid requests remain the router's concern.
 			return false
 		}
 		if depth == 8 {
 			return true
 		}
-		decoded, err := url.PathUnescape(path)
-		if err != nil {
-			return true
-		}
-		path = decoded
+		path = target.Path
 	}
 }
 
