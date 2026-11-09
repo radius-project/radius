@@ -89,19 +89,21 @@ var rotationPhases = []rotationPhase{rotationPublish, rotationAdopt, rotationIss
 // rotationPlan contains only public material and resource identities. Signing keys
 // remain in the existing operator-owned or create-only imported Secret.
 type rotationPlan struct {
-	TargetMode                 string             `json:"targetMode"`
-	TargetTrustMap             string             `json:"targetTrustMap"`
-	TargetTrustSHA256          string             `json:"targetTrustSHA256"`
-	OldComponentCA             []byte             `json:"oldComponentCA"`
-	SigningSecret              string             `json:"signingSecret"`
-	SigningUID                 types.UID          `json:"signingUID"`
-	Issuer                     string             `json:"issuer"`
-	ServingSecret              string             `json:"servingSecret"`
-	Consumers                  []rotationWorkload `json:"consumers"`
-	ServiceUID                 types.UID          `json:"serviceUID"`
-	ServiceSelector            map[string]string  `json:"serviceSelector"`
-	UCPMinReadySeconds         int32              `json:"ucpMinReadySeconds"`
-	UCPProgressDeadlineSeconds int32              `json:"ucpProgressDeadlineSeconds"`
+	Scope                      rotationScope                `json:"scope,omitempty"`
+	Aggregation                *rotationAggregationWorkload `json:"aggregation,omitempty"`
+	TargetMode                 string                       `json:"targetMode"`
+	TargetTrustMap             string                       `json:"targetTrustMap"`
+	TargetTrustSHA256          string                       `json:"targetTrustSHA256"`
+	OldComponentCA             []byte                       `json:"oldComponentCA,omitempty"`
+	SigningSecret              string                       `json:"signingSecret"`
+	SigningUID                 types.UID                    `json:"signingUID"`
+	Issuer                     string                       `json:"issuer"`
+	ServingSecret              string                       `json:"servingSecret"`
+	Consumers                  []rotationWorkload           `json:"consumers,omitempty"`
+	ServiceUID                 types.UID                    `json:"serviceUID"`
+	ServiceSelector            map[string]string            `json:"serviceSelector"`
+	UCPMinReadySeconds         int32                        `json:"ucpMinReadySeconds"`
+	UCPProgressDeadlineSeconds int32                        `json:"ucpProgressDeadlineSeconds"`
 }
 
 type rotationWorkload struct {
@@ -114,11 +116,15 @@ type rotationWorkload struct {
 
 func (s rotationState) validate(now time.Time) error {
 	id, err := uuid.Parse(s.ID)
-	if err != nil || id == uuid.Nil || id.String() != s.ID || s.SchemaVersion != 1 ||
+	if err != nil || id == uuid.Nil || id.String() != s.ID || (s.SchemaVersion != 1 && s.SchemaVersion != 2) ||
 		s.Namespace == "" || s.Release == "" || s.APIServiceUID == "" ||
 		s.CreatedAt.IsZero() || s.CreatedAt.After(now) ||
 		!slices.Contains(rotationPhases, s.Phase) {
 		return errors.New("invalid CA rotation journal identity or phase")
+	}
+	if s.SchemaVersion == 1 && s.Plan != nil && (s.Plan.Scope != "" || s.Plan.Aggregation != nil) ||
+		s.SchemaVersion == 2 && (s.Plan == nil || s.Plan.Scope == "" || s.Plan.Aggregation == nil) {
+		return errors.New("CA rotation scope does not match its journal version")
 	}
 	if len(s.PriorRevisions) > 8 || len(s.PriorRevisions) > 0 && (!s.Recovery || s.PreviousRevision == "") {
 		return errors.New("invalid CA incident recovery predecessor history")
@@ -169,14 +175,18 @@ func (s rotationState) validate(now time.Time) error {
 		if err := s.Plan.validate(); err != nil {
 			return err
 		}
-		if err := rotationCheckRootKeys(s.Plan.OldComponentCA, s.NewCA); err != nil {
-			return err
+		if s.Plan.effectiveScope() == rotationComponentsAndAggregation {
+			if err := rotationCheckRootKeys(s.Plan.OldComponentCA, s.NewCA); err != nil {
+				return err
+			}
 		}
 		if s.Plan.TargetTrustSHA256 != newDigest || s.Plan.TargetTrustMap != "radius-mtls-ca-"+newDigest[:32] {
 			return errors.New("rotation plan does not match the target public trust")
 		}
 		suffix := strings.ReplaceAll(s.ID, "-", "")[:16]
-		if s.Plan.Issuer != "radius-ca-"+suffix || s.Plan.ServingSecret != "radius-aggregation-"+suffix {
+		servingName := s.Plan.ServingSecret == "radius-aggregation-"+suffix ||
+			s.SchemaVersion == 2 && s.Plan.ServingSecret == "ucp-cert-aggregation-"+suffix
+		if s.Plan.Issuer != "radius-ca-"+suffix || !servingName {
 			return errors.New("rotation issuer and serving Secret must be scoped to this transaction")
 		}
 	}
@@ -184,11 +194,9 @@ func (s rotationState) validate(now time.Time) error {
 }
 
 func (p rotationPlan) validate() error {
-	_, roots, err := rotationHistoricalDigest(p.OldComponentCA)
-	if err != nil || len(roots) != 1 || !slices.Contains([]string{"selfSigned", "caSecret"}, p.TargetMode) ||
+	if !slices.Contains([]string{"selfSigned", "caSecret"}, p.TargetMode) ||
 		p.SigningSecret == "" || p.SigningUID == "" || p.UCPMinReadySeconds < 0 || p.UCPProgressDeadlineSeconds <= p.UCPMinReadySeconds ||
-		p.Issuer == "" || p.ServingSecret == "" || p.ServiceUID == "" || len(p.ServiceSelector) == 0 ||
-		len(p.Consumers) != len(rotationComponents) {
+		p.Issuer == "" || p.ServingSecret == "" || p.ServiceUID == "" || len(p.ServiceSelector) == 0 {
 		return errors.New("invalid CA rotation resource plan")
 	}
 	if len(validation.IsDNS1123Subdomain(p.SigningSecret)) != 0 ||
@@ -197,6 +205,9 @@ func (p rotationPlan) validate() error {
 	}
 	if _, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: p.ServiceSelector}); err != nil {
 		return errors.New("invalid CA rotation aggregation selector")
+	}
+	if err := p.validateScope(); err != nil {
+		return err
 	}
 	seen := map[string]bool{}
 	for _, consumer := range p.Consumers {
@@ -350,6 +361,9 @@ func (s *rotationStore) beginPlanned(ctx context.Context, id string, target []by
 		SchemaVersion: 1, ID: id, Namespace: s.namespace, Release: s.release,
 		APIServiceUID: api.GetUID(), Phase: rotationPublish, CreatedAt: s.now().UTC(),
 		OldCA: current, NewCA: bytes.Clone(target), Plan: plan,
+	}
+	if plan != nil && plan.Scope != "" {
+		state.SchemaVersion = 2
 	}
 	if err := state.validate(s.now()); err != nil {
 		return rotationState{}, err

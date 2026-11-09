@@ -72,14 +72,15 @@ type Source struct {
 	now       func() time.Time
 	readFile  func(string) ([]byte, error)
 
-	mu             sync.Mutex
-	digest         [sha256.Size]byte
-	current        atomic.Pointer[material]
-	expectedTrust  string
-	proofMode      atomic.Bool
-	invalidations  uint64
-	startupProof   *StartupProof
-	proofNamespace string
+	mu                   sync.Mutex
+	digest               [sha256.Size]byte
+	current              atomic.Pointer[material]
+	expectedTrust        string
+	proofMode            atomic.Bool
+	invalidations        uint64
+	startupProof         *StartupProof
+	proofNamespace       string
+	aggregationNamespace string
 }
 
 // NewSource loads the certificate, key, and CA bundle from dir. It returns an error if
@@ -149,6 +150,11 @@ func (s *Source) Reload() (changed bool, err error) {
 	m.epoch = s.invalidations
 	if s.proofNamespace != "" {
 		if err := s.validateProofIdentity(m, s.proofNamespace); err != nil {
+			return false, err
+		}
+	}
+	if s.aggregationNamespace != "" {
+		if err := s.validateAggregationIdentity(m, s.aggregationNamespace); err != nil {
 			return false, err
 		}
 	}

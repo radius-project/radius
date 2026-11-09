@@ -34,6 +34,15 @@ import (
 )
 
 func TestObserveTLSStartupProof(t *testing.T) {
+	testObserveTLSProof(t, false)
+}
+
+func TestObserveAggregationProof(t *testing.T) {
+	testObserveTLSProof(t, true)
+}
+
+func testObserveTLSProof(t *testing.T, aggregation bool) {
+	t.Helper()
 	t.Parallel()
 	const podUID = "220d6840-2ccf-4121-bdc6-a1f686d2f635"
 	const digest = "6134ae3055977f0d025f1c2ada38ebdcad54514560ee2819b32a4a33e03f3a9f"
@@ -44,10 +53,16 @@ func TestObserveTLSStartupProof(t *testing.T) {
 		PodUID: podUID, BootID: "ac1a87e6-d265-4da5-8e22-56591b425ca0", InitializedAt: now.Add(-time.Minute),
 		TrustBundleSHA256: digest, CASHA256: []string{strings.Repeat("0", 64), strings.Repeat("0", 63) + "1"},
 		LeafSHA256: target.LeafSHA256, NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour)}
+	path := mtls.StartupProofPath
+	if aggregation {
+		target.ContainerName = "ucp"
+		evidence.ProofKind = "aggregation-serving-tls-initialized"
+		path = mtls.AggregationProofPath
+	}
 	body, err := json.Marshal(evidence)
 	require.NoError(t, err)
 	for _, scenario := range []string{"success", "replaced before", "replaced after", "restarted", "terminating",
-		"not running", "missing started time", "proof predates container", "proxy forbidden", "unready", "redirect", "oversize", "duplicate", "missing", "unknown", "null", "trailing", "wrong trust", "wrong leaf"} {
+		"not running", "missing started time", "proof predates container", "proxy forbidden", "unready", "redirect", "oversize", "duplicate", "missing", "unknown", "null", "trailing", "wrong trust", "wrong leaf", "wrong proof kind"} {
 		t.Run(scenario, func(t *testing.T) {
 			t.Parallel()
 			var gets atomic.Int32
@@ -63,11 +78,19 @@ func TestObserveTLSStartupProof(t *testing.T) {
 					return
 				}
 				if strings.Contains(r.URL.Path, "/proxy") {
-					if r.URL.Path != "/api/v1/namespaces/radius-system/pods/http:bicep-de-test:6443/proxy/healthz/ucp-mtls" {
+					if r.URL.Path != "/api/v1/namespaces/radius-system/pods/http:bicep-de-test:6443/proxy"+path {
 						http.Error(w, "wrong target", http.StatusBadRequest)
 						return
 					}
 					switch scenario {
+					case "wrong proof kind":
+						wrong := evidence
+						if aggregation {
+							wrong.ProofKind = "startup-tls-initialized"
+						} else {
+							wrong.ProofKind = "aggregation-serving-tls-initialized"
+						}
+						json.NewEncoder(w).Encode(wrong)
 					case "proxy forbidden":
 						http.Error(w, "denied", http.StatusForbidden)
 					case "unready":
@@ -95,7 +118,7 @@ func TestObserveTLSStartupProof(t *testing.T) {
 				pod := corev1.Pod{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
 					ObjectMeta: metav1.ObjectMeta{Name: target.PodName, Namespace: target.Namespace, UID: types.UID(podUID)},
 					Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{
-						{Name: "de", ContainerID: "containerd://one", State: corev1.ContainerState{
+						{Name: target.ContainerName, ContainerID: "containerd://one", State: corev1.ContainerState{
 							Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(now.Add(-time.Minute))}}},
 					}}}
 				if scenario == "replaced before" || (scenario == "replaced after" && count > 1) {
@@ -129,7 +152,16 @@ func TestObserveTLSStartupProof(t *testing.T) {
 			if scenario == "wrong leaf" {
 				expected.LeafSHA256 = strings.Repeat("3", 64)
 			}
-			proof, err := ObserveTLSStartupProof(t.Context(), &rest.Config{Host: server.URL, BearerToken: "proof-observer"}, expected)
+			config := &rest.Config{Host: server.URL, BearerToken: "proof-observer"}
+			var proof PodTLSProof
+			var err error
+			if aggregation {
+				var serving PodAggregationProof
+				serving, err = ObserveAggregationProof(t.Context(), config, expected)
+				proof = PodTLSProof{Evidence: mtls.StartupEvidence(serving.Evidence), ContainerID: serving.ContainerID, RestartCount: serving.RestartCount}
+			} else {
+				proof, err = ObserveTLSStartupProof(t.Context(), config, expected)
+			}
 			if scenario == "success" {
 				require.NoError(t, err)
 				require.Equal(t, "containerd://one", proof.ContainerID)

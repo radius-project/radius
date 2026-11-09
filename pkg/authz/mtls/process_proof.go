@@ -71,6 +71,9 @@ func configuredStartupProof(options authz.Options) (*StartupProof, error) {
 func (s *Source) bindProofNamespace(namespace string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.aggregationNamespace != "" {
+		return errors.New("component proof cannot reuse an aggregation serving Source")
+	}
 	if s.proofNamespace != "" && s.proofNamespace != namespace {
 		return errors.New("TLS startup proof namespace cannot change within a process")
 	}
