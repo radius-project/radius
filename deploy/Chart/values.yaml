@@ -175,6 +175,9 @@ de:
       memory: "300Mi"
 
 ucp:
+  # Stable issuer for users/groups verified through this cluster's front proxy.
+  # Choose a distinct trust domain when policies distinguish multiple clusters.
+  kubernetesIssuer: kubernetes:local
   image: ucpd
   # Default tag uses Chart AppVersion.
   # tag: latest
