@@ -277,7 +277,12 @@ func TestCertificateOptionsValidate(t *testing.T) {
 		{"missing cert", []string{"--ca-key=key.pem"}, "together"},
 		{"conflict", []string{"--ca-cert=cert.pem", "--ca-key=key.pem", "--ca-secret=operator-ca"}, "mutually exclusive"},
 		{"issuer conflict", []string{"--ca-secret=operator-ca", "--cert-issuer=issuer"}, "mutually exclusive"},
-		{"issuer disabled", []string{"--cert-issuer=issuer"}, "identity- and issuer-scoped"},
+		{"issuer disabled", []string{"--cert-issuer=Issuer/issuer"}, "identity- and issuer-scoped"},
+		{"issuer with public bundle still disabled", []string{"--cert-issuer=ClusterIssuer/issuer", "--ca-bundle=public.pem"}, "identity- and issuer-scoped"},
+		{"bundle without issuer", []string{"--ca-bundle=public.pem"}, "requires --cert-issuer"},
+		{"bundle with CA Secret", []string{"--ca-bundle=public.pem", "--ca-secret=operator-ca"}, "requires --cert-issuer"},
+		{"bare issuer", []string{"--cert-issuer=issuer"}, "must be Issuer/name"},
+		{"empty bundle", []string{"--cert-issuer=Issuer/issuer", "--ca-bundle="}, "must not be empty"},
 		{"empty secret", []string{"--ca-secret="}, "must not be empty"},
 		{"empty issuer", []string{"--cert-issuer="}, "must not be empty"},
 		{"empty files", []string{"--ca-cert=", "--ca-key="}, "must not be empty"},
@@ -295,6 +300,84 @@ func TestCertificateOptionsValidate(t *testing.T) {
 				require.NoError(t, err)
 			} else {
 				require.ErrorContains(t, err, tt.err)
+			}
+		})
+	}
+}
+
+func TestParseCertificateIssuer(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		value string
+		want  certificateIssuerReference
+	}{
+		{value: "Issuer/radius-signing", want: certificateIssuerReference{Group: "cert-manager.io", Kind: "Issuer", Name: "radius-signing"}},
+		{value: "ClusterIssuer/dedicated.example", want: certificateIssuerReference{Group: "cert-manager.io", Kind: "ClusterIssuer", Name: "dedicated.example"}},
+		{value: ""},
+		{value: "radius-signing"},
+		{value: "Issuer/"},
+		{value: "issuer/name"},
+		{value: "Issuer/namespace/name"},
+		{value: "OtherIssuer/name"},
+		{value: "cert-manager.io/Issuer/name"},
+		{value: "Issuer/Invalid"},
+		{value: "Issuer/*"},
+		{value: " Issuer/name"},
+		{value: "Issuer/name "},
+		{value: "Issuer/" + strings.Repeat("a", 254)},
+	} {
+		t.Run(tt.value, func(t *testing.T) {
+			t.Parallel()
+			got, err := parseCertificateIssuer(tt.value)
+			if tt.want.Name == "" {
+				require.ErrorContains(t, err, "must be Issuer/name or ClusterIssuer/name")
+				require.Empty(t, got)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestValidatePublicCA(t *testing.T) {
+	t.Parallel()
+	rootKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	require.NoError(t, err)
+	rootPEM, _, root := testSigningCA(t, rootKey, nil, nil, nil)
+	intermediatePEM, privateKey, intermediate := testSigningCA(t, nil, func(c *x509.Certificate) {
+		c.Subject.CommonName = "dedicated-radius-intermediate"
+	}, root, rootKey)
+	expired, _, _ := testSigningCA(t, nil, func(c *x509.Certificate) { c.NotAfter = time.Now().Add(-time.Minute) }, nil, nil)
+	notCA, _, _ := testSigningCA(t, nil, func(c *x509.Certificate) { c.IsCA = false }, nil, nil)
+	for _, tt := range []struct {
+		name string
+		pem  []byte
+		err  string
+	}{
+		{"dedicated root public certificate", rootPEM, ""},
+		{"dedicated intermediate without key or parent", intermediatePEM, ""},
+		{"surrounding whitespace", append([]byte(" \n"), intermediatePEM...), ""},
+		{"chain prohibited", append(append([]byte{}, intermediatePEM...), rootPEM...), "exactly one dedicated"},
+		{"private key prohibited", privateKey, "only PEM certificates"},
+		{"private key appended", append(append([]byte{}, intermediatePEM...), privateKey...), "only PEM certificates"},
+		{"expired", expired, "not currently valid"},
+		{"not a CA", notCA, "CA basic constraints"},
+		{"empty input", nil, "empty"},
+		{"malformed input", []byte("private-key-sentinel"), "only PEM certificates"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cert, err := validatePublicCA(tt.pem, time.Now())
+			if tt.err != "" {
+				require.ErrorContains(t, err, tt.err)
+				require.NotContains(t, err.Error(), "private-key-sentinel")
+				return
+			}
+			require.NoError(t, err)
+			require.True(t, cert.IsCA)
+			if tt.name != "dedicated root public certificate" {
+				require.Equal(t, intermediate.Raw, cert.Raw)
 			}
 		})
 	}
