@@ -32,6 +32,7 @@ spec:
 {{- $caBundle = $source.bundle | b64enc }}
 {{- else }}
 {{- $ca := genCA "ucp-ca" 3650 }}
+{{- $legacyCA = $ca.Cert }}
 {{- $cn := printf "ucp" }}
 {{- $altName1 := printf "ucp.%s" .Release.Namespace }}
 {{- $altName2 := printf "ucp.%s.svc" .Release.Namespace }}
@@ -53,6 +54,7 @@ data:
   ca.crt: {{ $caBundle }}
 {{- end }}
 ---
+{{- end }}
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:

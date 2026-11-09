@@ -844,6 +844,13 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 			if scenario.edit != nil {
 				scenario.edit(t, fixture)
 			}
+			install := scenario.operation == "install" || scenario.operation == "old chart"
+			if !install {
+				fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
+					"apiVersion": "apiregistration.k8s.io/v1", "kind": "APIService",
+					"metadata": map[string]any{"name": radiusAPIService, "uid": "existing-aggregation", "resourceVersion": "1"},
+				}})
+			}
 			target := fixture.server(t)
 			decoy := k8sutil.NewForbiddenAPIServer(t)
 			kubeContext := useTargetKubeconfig(t, target.URL, decoy.URL, scenario.explicitContext)
@@ -860,7 +867,6 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 			settings["caBundle"] = string(ca)
 			options := NewDefaultClusterOptions()
 			options.Contour.Disabled, options.Radius.ChartPath = true, "local-chart"
-			install := scenario.operation == "install" || scenario.operation == "old chart"
 			if install {
 				bundlePath := filepath.Join(t.TempDir(), "public-ca.pem")
 				require.NoError(t, os.WriteFile(bundlePath, ca, 0600))

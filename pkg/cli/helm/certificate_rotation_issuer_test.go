@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -89,10 +90,20 @@ func rotationIssuerFixture(t *testing.T, aggregationOnly, clusterIssuer bool) (*
 }
 
 func TestCompletedRotationServingChartModes(t *testing.T) {
-	for _, mode := range []string{"off", "dryRun", "enforce"} {
-		t.Run(mode, func(t *testing.T) {
+	for _, scenario := range []struct {
+		mode      string
+		bootstrap bool
+	}{
+		{"off", false}, {"dryRun", false}, {"enforce", false},
+		{"off", true}, {"dryRun", true}, {"enforce", true},
+	} {
+		mode := scenario.mode
+		t.Run(fmt.Sprintf("%s/bootstrap=%t", mode, scenario.bootstrap), func(t *testing.T) {
 			_, state, fixture := rotationIssuerFixture(t, true, false)
 			state.Phase = rotationComplete
+			if scenario.bootstrap {
+				state.SchemaVersion, state.Bootstrap, state.OldCA, state.Plan.OldComponentCA = 3, true, nil, nil
+			}
 			data, err := json.Marshal(state)
 			require.NoError(t, err)
 			fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
@@ -143,7 +154,7 @@ func TestCompletedRotationServingChartModes(t *testing.T) {
 }
 
 func TestCompletedRotationAggregationChart(t *testing.T) {
-	for _, scope := range []string{"legacy", "managed", "aggregation"} {
+	for _, scope := range []string{"legacy", "managed", "aggregation", "bootstrap-managed", "bootstrap-aggregation", "post-bootstrap-rotation"} {
 		for _, scenario := range []string{"complete", "unfinished", "APIService replaced", "trust changed"} {
 			t.Run(scope+"/"+scenario, func(t *testing.T) {
 				runner, state := rotationRunnerFixture(t)
@@ -151,17 +162,39 @@ func TestCompletedRotationAggregationChart(t *testing.T) {
 					workload, err := state.Plan.aggregationWorkload()
 					require.NoError(t, err)
 					state.SchemaVersion, state.Plan.Scope, state.Plan.Aggregation = 2, rotationComponentsAndAggregation, &workload
-					if scope == "aggregation" {
+					if scope == "aggregation" || scope == "bootstrap-aggregation" {
 						state = aggregationOnlyState(t, state)
 					}
 				} else {
 					state.Plan = nil
 				}
 				state.Phase = rotationComplete
+				if strings.HasPrefix(scope, "bootstrap-") {
+					state.SchemaVersion, state.Bootstrap, state.OldCA, state.Plan.OldComponentCA = 3, true, nil, nil
+				}
 				if scenario == "unfinished" {
 					state.Phase = rotationIssue
 				}
 				fixture := newIssuerPolicyFixture(t)
+				if scope == "post-bootstrap-rotation" {
+					store, bootstrap := bootstrapStoreFixture(t)
+					bootstrap.Mode, bootstrap.Phase = "caSecret", bootstrapComplete
+					bootstrap.CA, bootstrap.CAPinnedAt = state.OldCA, store.now().UTC()
+					bootstrap.Signer, bootstrap.SignerUID = "prior-ca", "prior-signer-uid"
+					bootstrap.InstallValuesSHA256, bootstrap.ProofPort = strings.Repeat("c", 64), 9090
+					digest, _, err := mtls.TrustBundleDigest(bootstrap.CA, bootstrap.CAPinnedAt)
+					require.NoError(t, err)
+					bootstrap.TrustSHA256 = digest
+					require.NoError(t, bootstrap.validate(store.now()))
+					raw, err := json.Marshal(bootstrap)
+					require.NoError(t, err)
+					fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
+						"apiVersion": "v1", "kind": "ConfigMap",
+						"metadata": map[string]any{"name": aggregationBootstrapName, "namespace": RadiusSystemNamespace,
+							"uid": "bootstrap-uid", "resourceVersion": "1", "labels": map[string]any{aggregationBootstrapOwner: radiusReleaseName}},
+						"data": map[string]any{rotationJournalKey: string(raw)},
+					}})
+				}
 				api, err := runner.store.dynamic.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
 				require.NoError(t, err)
 				bundle := base64.StdEncoding.EncodeToString(state.NewCA)
@@ -193,6 +226,15 @@ func TestCompletedRotationAggregationChart(t *testing.T) {
 				}
 				selected.Templates = append(helpers, &common.File{Name: "templates/aggregation-state.yaml",
 					Data: []byte(`{{ include "radius.aggregationTrust" . }}`)})
+				if state.Bootstrap || scope == "post-bootstrap-rotation" {
+					shipping, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
+					require.NoError(t, err)
+					for _, file := range shipping.Templates {
+						if file.Name == "templates/ucp/apiservice.yaml" {
+							selected.Templates = append(selected.Templates, file)
+						}
+					}
+				}
 				server := fixture.server(t)
 				renderer := engine.New(&rest.Config{Host: server.URL})
 				rendered, err := renderer.Render(selected, common.Values{"Values": fixture.values,
@@ -205,6 +247,11 @@ func TestCompletedRotationAggregationChart(t *testing.T) {
 				var trust map[string]any
 				require.NoError(t, json.Unmarshal([]byte(rendered["radius/templates/aggregation-state.yaml"]), &trust))
 				require.Equal(t, bundle, trust["caBundle"])
+				if state.Bootstrap || scope == "post-bootstrap-rotation" {
+					require.Equal(t, true, trust["bootstrap"])
+					require.Contains(t, rendered["radius/templates/ucp/apiservice.yaml"], "kind: APIService")
+					require.NotContains(t, rendered["radius/templates/ucp/apiservice.yaml"], "kind: Secret")
+				}
 			})
 		}
 	}

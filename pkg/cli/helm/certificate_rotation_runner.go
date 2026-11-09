@@ -296,6 +296,9 @@ func (r *rotationRunner) verifyConsumers(ctx context.Context, state rotationStat
 }
 
 func (r *rotationRunner) verifyAggregation(ctx context.Context, state rotationState) error {
+	if state.Bootstrap {
+		return r.verifyBootstrapLifecycle(ctx, state)
+	}
 	api, err := r.store.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
 	if err != nil {
 		return err
@@ -319,19 +322,8 @@ func (r *rotationRunner) verifyAggregation(ctx context.Context, state rotationSt
 		!maps.Equal(service.Spec.Selector, state.Plan.ServiceSelector) {
 		return errors.New("aggregation Service has not completed its owned routing transition")
 	}
-	conditions, _, err := unstructured.NestedSlice(api.Object, "status", "conditions")
-	if err != nil {
+	if err := requireAggregationAvailable(api); err != nil {
 		return err
-	}
-	available := false
-	for _, condition := range conditions {
-		value, ok := condition.(map[string]any)
-		if ok && value["type"] == "Available" && value["status"] == "True" {
-			available = true
-		}
-	}
-	if !available {
-		return errors.New("Radius APIService is not available")
 	}
 	var serving rotationInventory
 	if state.SchemaVersion == 2 {
@@ -375,6 +367,20 @@ func (r *rotationRunner) verifyAggregation(ctx context.Context, state rotationSt
 		}
 	}
 	return nil
+}
+
+func requireAggregationAvailable(api *unstructured.Unstructured) error {
+	conditions, _, err := unstructured.NestedSlice(api.Object, "status", "conditions")
+	if err != nil {
+		return err
+	}
+	for _, condition := range conditions {
+		value, ok := condition.(map[string]any)
+		if ok && value["type"] == "Available" && value["status"] == "True" {
+			return nil
+		}
+	}
+	return errors.New("Radius APIService is not available")
 }
 
 func (r *rotationRunner) observeAggregationCandidates(ctx context.Context, state rotationState) (map[types.UID]bool, string, error) {

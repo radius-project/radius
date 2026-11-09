@@ -45,6 +45,13 @@ type aggregationTransitionSnapshot struct {
 }
 
 func (s *rotationStore) aggregationTransitionSnapshot(ctx context.Context) (aggregationTransitionSnapshot, error) {
+	bootstrap, found, err := s.bootstrapIntent(ctx)
+	if err != nil {
+		return aggregationTransitionSnapshot{}, err
+	}
+	if found && bootstrap.Phase != bootstrapComplete {
+		return aggregationTransitionSnapshot{}, errors.New("complete aggregation bootstrap before changing provider")
+	}
 	api, err := s.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
 	if err != nil {
 		return aggregationTransitionSnapshot{}, err

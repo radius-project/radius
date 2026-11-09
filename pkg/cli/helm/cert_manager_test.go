@@ -535,7 +535,7 @@ func Test_ensureCertManager(t *testing.T) {
 	}
 }
 
-func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
+func Test_BootstrapCertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -560,7 +560,7 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	options.Radius.ChartPath = "radius-chart"
 	options.Contour.Disabled = true
 	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-	err := impl.InstallRadius(t.Context(), options, "test-context")
+	err := impl.ensureCertManager(t.Context(), options, "test-context", nil, false)
 	require.ErrorContains(t, err, "v"+CertManagerMinimumVersion)
 }
 
@@ -609,7 +609,11 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							}, newRotationStore: emptyRotationTestStore,
 						}
 						var err error
-						if command == "upgrade" {
+						if command == "install" {
+							// Fresh bootstrap runs this gate after recording creation
+							// intent, before requesting any Radius certificates.
+							err = impl.ensureCertManager(t.Context(), options, kubeContext, nil, false)
+						} else if command == "upgrade" {
 							err = impl.UpgradeRadius(t.Context(), options, kubeContext)
 						} else {
 							err = impl.InstallRadius(t.Context(), options, kubeContext)

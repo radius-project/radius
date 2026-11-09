@@ -119,7 +119,7 @@ func TestRotationShippingWorkloadTrust(t *testing.T) {
 				flags.KubeConfig, flags.Namespace = &kubeconfig, &store.namespace
 				configuration := &helm.Configuration{}
 				require.NoError(t, configuration.Init(flags, store.namespace, helmDriverSecret))
-				names := []string{"_helpers.tpl", "_rotation.tpl", "_tls-proof.tpl", "_aggregation-trust.tpl",
+				names := []string{"_helpers.tpl", "_rotation.tpl", "_bootstrap.tpl", "_tls-proof.tpl", "_aggregation-trust.tpl",
 					"ucp/apiservice.yaml", "ucp/service.yaml", "ucp/deployment.yaml", "rp/deployment.yaml",
 					"controller/deployment.yaml", "dynamic-rp/deployment.yaml", "dynamic-rp/buildkit-config.yaml",
 					"de/deployment.yaml", "global/certificates.yaml"}

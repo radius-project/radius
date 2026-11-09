@@ -43,13 +43,18 @@ func (p rotationPlan) effectiveScope() rotationScope {
 }
 
 func (p rotationPlan) validateScope() error {
+	return p.validateScopeWithBootstrap(false)
+}
+
+func (p rotationPlan) validateScopeWithBootstrap(bootstrap bool) error {
 	if p.Aggregation != nil && (p.Aggregation.DeploymentUID == "" || p.Aggregation.ProofPort == 0) {
 		return errors.New("invalid aggregation serving workload")
 	}
 	switch p.effectiveScope() {
 	case rotationComponentsAndAggregation:
 		_, roots, err := rotationHistoricalDigest(p.OldComponentCA)
-		if err != nil || len(roots) != 1 || len(p.Consumers) != len(rotationComponents) {
+		if len(p.Consumers) != len(rotationComponents) ||
+			!bootstrap && (err != nil || len(roots) != 1) || bootstrap && len(p.OldComponentCA) != 0 {
 			return errors.New("managed rotation requires all five component identities and dedicated trust")
 		}
 		if p.Aggregation != nil {

@@ -4,6 +4,10 @@ in the rendered APIService, this prevents a stale Helm render from overwriting a
 later Radius trust update. The journal is not a Helm-owned resource.
 */}}
 {{- define "radius.aggregationTrust" -}}
+{{- $intent := include "radius.bootstrapState" . | mustFromJson -}}
+{{- if and $intent (eq $intent.phase "preparing") -}}
+{{- fail "Aggregation bootstrap must verify its selected CA leaf before rendering public trust." -}}
+{{- end -}}
 {{- $api := lookup "apiregistration.k8s.io/v1" "APIService" "" "v1alpha3.api.ucp.dev" -}}
 {{- $annotations := dig "metadata" "annotations" (dict) $api -}}
 {{- range $key := list "cert-manager.io/inject-ca-from" "cert-manager.io/inject-ca-from-secret" "cert-manager.io/inject-apiserver-ca" -}}
@@ -30,9 +34,22 @@ later Radius trust update. The journal is not a Helm-owned resource.
 {{- fail "Radius APIService trust differs from its completed rotation journal. Recover the transaction instead of overwriting trust." -}}
 {{- end -}}
 {{- $_ := set $result "caBundle" $state.newCA -}}
+{{- $_ := set $result "bootstrap" (or (default false $state.bootstrap) (and $intent (eq $intent.phase "complete"))) -}}
 {{- $_ := set $result "annotations" (dict "radius.io/trust-owner" .Release.Name "radius.io/trust-journal-uid" $journal.metadata.uid "radius.io/trust-revision" (printf "%s/complete" $state.id)) -}}
 {{- else if or (hasKey $annotations "radius.io/trust-journal-uid") (hasKey $annotations "radius.io/trust-revision") (hasKey $annotations "radius.io/trust-owner") -}}
 {{- fail "Radius APIService has managed trust but its rotation journal is missing. Recover the journal before upgrading." -}}
+{{- else -}}
+{{- $bootstrap := include "radius.bootstrapPresentation" . | mustFromJson -}}
+{{- if $bootstrap -}}
+{{- if and $api (ne (dig "metadata" "annotations" "radius.io/aggregation-bootstrap" "" $api) $bootstrap.id) -}}
+{{- fail "Fresh aggregation bootstrap cannot adopt an existing APIService." -}}
+{{- end -}}
+{{- $_ := set $result "bootstrap" true -}}
+{{- $_ := set $result "caBundle" $bootstrap.newCA -}}
+{{- $_ := set $result "annotations" (dict "radius.io/aggregation-bootstrap" $bootstrap.id) -}}
+{{- else if and (not $api) .Values.global (ne (include "radius.authz.mode" .) "off") -}}
+{{- fail "Fresh enabled Radius requires verified configured-CA bootstrap; use the matching rad install workflow." -}}
+{{- end -}}
 {{- end -}}
 {{- toJson $result -}}
 {{- end -}}

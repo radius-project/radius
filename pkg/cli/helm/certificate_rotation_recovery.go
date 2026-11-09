@@ -246,6 +246,9 @@ func (s *rotationStore) beginRecovery(ctx context.Context, id string, target []b
 }
 
 func checkRecoveryTarget(target []byte, previous rotationState) error {
+	if previous.Bootstrap {
+		return rotationCheckRootKeys(previous.NewCA, target)
+	}
 	if previous.ID != "" && !rotationHistoricalSubset(target, previous.NewCA) {
 		if rotationHistoricalSubset(target, previous.OldCA) ||
 			previous.Plan != nil && previous.Plan.effectiveScope() == rotationComponentsAndAggregation && rotationHistoricalSubset(target, previous.Plan.OldComponentCA) {

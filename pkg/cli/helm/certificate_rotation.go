@@ -70,13 +70,14 @@ const (
 // The orchestration must establish each phase's consumer/serving barriers before advancing.
 type rotationState struct {
 	SchemaVersion    int           `json:"schemaVersion"`
+	Bootstrap        bool          `json:"bootstrap,omitempty"`
 	ID               string        `json:"id"`
 	Namespace        string        `json:"namespace"`
 	Release          string        `json:"release"`
 	APIServiceUID    types.UID     `json:"apiServiceUID"`
 	Phase            rotationPhase `json:"phase"`
 	CreatedAt        time.Time     `json:"createdAt"`
-	OldCA            []byte        `json:"oldCA"`
+	OldCA            []byte        `json:"oldCA,omitempty"`
 	NewCA            []byte        `json:"newCA"`
 	PreviousRevision string        `json:"previousRevision,omitempty"`
 	Plan             *rotationPlan `json:"plan,omitempty"`
@@ -119,15 +120,19 @@ type rotationWorkload struct {
 
 func (s rotationState) validate(now time.Time) error {
 	id, err := uuid.Parse(s.ID)
-	if err != nil || id == uuid.Nil || id.String() != s.ID || (s.SchemaVersion != 1 && s.SchemaVersion != 2) ||
+	if err != nil || id == uuid.Nil || id.String() != s.ID || (s.SchemaVersion != 1 && s.SchemaVersion != 2 && s.SchemaVersion != 3) ||
 		s.Namespace == "" || s.Release == "" || s.APIServiceUID == "" ||
 		s.CreatedAt.IsZero() || s.CreatedAt.After(now) ||
 		!slices.Contains(rotationPhases, s.Phase) {
 		return errors.New("invalid CA rotation journal identity or phase")
 	}
 	if s.SchemaVersion == 1 && s.Plan != nil && (s.Plan.Scope != "" || s.Plan.Aggregation != nil || s.Plan.ExternalIssuer != nil) ||
-		s.SchemaVersion == 2 && (s.Plan == nil || s.Plan.Scope == "" || s.Plan.Aggregation == nil) {
+		s.SchemaVersion >= 2 && (s.Plan == nil || s.Plan.Scope == "" || s.Plan.Aggregation == nil) {
 		return errors.New("CA rotation scope does not match its journal version")
+	}
+	if s.Bootstrap != (s.SchemaVersion == 3) ||
+		s.Bootstrap && (s.Phase != rotationComplete || len(s.OldCA) != 0 || s.PreviousRevision != "" || s.Recovery || len(s.PriorRevisions) != 0) {
+		return errors.New("bootstrap lifecycle records only verified initial completion, without a predecessor CA")
 	}
 	if len(s.PriorRevisions) > 8 || len(s.PriorRevisions) > 0 && (!s.Recovery || s.PreviousRevision == "") {
 		return errors.New("invalid CA incident recovery predecessor history")
@@ -152,7 +157,7 @@ func (s rotationState) validate(now time.Time) error {
 	// Historical trust can expire after retirement. Inspect its certificates
 	// without permitting expired material in the current trust bundle.
 	oldDigest, oldRoots, err := rotationHistoricalDigest(s.OldCA)
-	if err != nil || (!s.Recovery && len(oldRoots) != 1) {
+	if !s.Bootstrap && (err != nil || (!s.Recovery && len(oldRoots) != 1)) {
 		return errors.New("rotation requires exactly one original dedicated or legacy aggregation CA")
 	}
 	newAt := now
@@ -163,8 +168,10 @@ func (s rotationState) validate(now time.Time) error {
 	if err != nil || len(newRoots) != 1 || newDigest == oldDigest {
 		return errors.New("rotation requires exactly one distinct, currently valid target CA")
 	}
-	if err := rotationCheckRootKeys(s.OldCA, s.NewCA); err != nil {
-		return err
+	if !s.Bootstrap {
+		if err := rotationCheckRootKeys(s.OldCA, s.NewCA); err != nil {
+			return err
+		}
 	}
 	if s.Recovery && s.Phase != rotationRetire && s.Phase != rotationComplete {
 		return errors.New("incident recovery must proceed directly toward verified new-only trust")
@@ -175,10 +182,10 @@ func (s rotationState) validate(now time.Time) error {
 		}
 	}
 	if s.Plan != nil {
-		if err := s.Plan.validate(); err != nil {
+		if err := s.Plan.validateWithBootstrap(s.Bootstrap); err != nil {
 			return err
 		}
-		if s.Plan.effectiveScope() == rotationComponentsAndAggregation {
+		if !s.Bootstrap && s.Plan.effectiveScope() == rotationComponentsAndAggregation {
 			if err := rotationCheckRootKeys(s.Plan.OldComponentCA, s.NewCA); err != nil {
 				return err
 			}
@@ -188,7 +195,7 @@ func (s rotationState) validate(now time.Time) error {
 		}
 		suffix := strings.ReplaceAll(s.ID, "-", "")[:16]
 		servingName := s.Plan.ServingSecret == "radius-aggregation-"+suffix ||
-			s.SchemaVersion == 2 && s.Plan.ServingSecret == "ucp-cert-aggregation-"+suffix
+			s.SchemaVersion >= 2 && s.Plan.ServingSecret == "ucp-cert-aggregation-"+suffix
 		if s.Plan.ExternalIssuer != nil {
 			servingName = s.Plan.ServingSecret == "ucp-cert-aggregation-"+suffix
 		}
@@ -200,6 +207,10 @@ func (s rotationState) validate(now time.Time) error {
 }
 
 func (p rotationPlan) validate() error {
+	return p.validateWithBootstrap(false)
+}
+
+func (p rotationPlan) validateWithBootstrap(bootstrap bool) error {
 	if !slices.Contains([]string{"selfSigned", "caSecret", "issuerRef"}, p.TargetMode) ||
 		p.UCPMinReadySeconds < 0 || p.UCPProgressDeadlineSeconds <= p.UCPMinReadySeconds ||
 		p.Issuer == "" || p.ServingSecret == "" || p.ServiceUID == "" || len(p.ServiceSelector) == 0 {
@@ -221,7 +232,7 @@ func (p rotationPlan) validate() error {
 	if _, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: p.ServiceSelector}); err != nil {
 		return errors.New("invalid CA rotation aggregation selector")
 	}
-	if err := p.validateScope(); err != nil {
+	if err := p.validateScopeWithBootstrap(bootstrap); err != nil {
 		return err
 	}
 	seen := map[string]bool{}
@@ -254,13 +265,15 @@ func (s rotationState) revision() string {
 // rotationStore owns only the public journal and APIService trust. It never writes
 // a signing Secret, installs admission policy, or takes control of an injector.
 type rotationStore struct {
-	kube               kubernetes.Interface
-	dynamic            dynamic.Interface
-	namespace          string
-	release            string
-	now                func() time.Time
-	verifyIssuerPolicy func(context.Context, rotationState) error
-	guardWrite         func(context.Context) error
+	kube                        kubernetes.Interface
+	dynamic                     dynamic.Interface
+	namespace                   string
+	release                     string
+	now                         func() time.Time
+	verifyIssuerPolicy          func(context.Context, rotationState) error
+	verifyBootstrapIssuerPolicy func(context.Context, aggregationBootstrapState) error
+	guardWrite                  func(context.Context) error
+	activeBootstrap             string
 }
 
 func (s *rotationStore) read(ctx context.Context) (*corev1.ConfigMap, rotationState, error) {

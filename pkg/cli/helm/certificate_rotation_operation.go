@@ -105,7 +105,17 @@ func (s *rotationStore) checkWrite(ctx context.Context) error {
 	if s.guardWrite == nil {
 		return errors.New("CA writes require the shared identity operation lock and provider journal guard")
 	}
-	return s.guardWrite(ctx)
+	if err := s.guardWrite(ctx); err != nil {
+		return err
+	}
+	bootstrap, found, err := s.bootstrapIntent(ctx)
+	if err != nil {
+		return err
+	}
+	if found && bootstrap.Phase != bootstrapComplete && bootstrap.ID != s.activeBootstrap {
+		return errors.New("finish the aggregation bootstrap before changing CA trust")
+	}
+	return nil
 }
 
 // checkProviderJournal is the CA-side inter-phase guard. The callback must run
