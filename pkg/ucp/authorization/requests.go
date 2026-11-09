@@ -111,10 +111,15 @@ func protectedTarget(path string) bool {
 			return true
 		}
 		target, err := url.Parse(path)
-		if err != nil || target.Path == path {
+		if err != nil {
 			// A parse failure has no further routing target. In particular a
 			// literal percent produced by an earlier parse is not a policy
 			// mutation. Actual invalid requests remain the router's concern.
+			return false
+		}
+		// This is a fixed-point check, not a trust comparison: the identical
+		// target was already checked against the protected namespaces above.
+		if target.Path == path {
 			return false
 		}
 		if depth == 8 {
