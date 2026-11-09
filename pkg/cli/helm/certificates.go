@@ -28,13 +28,17 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/authz"
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/spf13/pflag"
+	helm "helm.sh/helm/v4/pkg/action"
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,7 +60,7 @@ func (o *CertificateOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.CACert, "ca-cert", "", "Path to a dedicated signing CA PEM (requires --ca-key; private material is never stored in Helm)")
 	flags.StringVar(&o.CAKey, "ca-key", "", "Path to the signing CA private key (requires --ca-cert; imports a retained, create-only Kubernetes Secret)")
 	flags.StringVar(&o.CASecret, "ca-secret", "", "Existing operator-owned TLS signing Secret in radius-system; never adopted or overwritten")
-	flags.StringVar(&o.CertIssuer, "cert-issuer", "", "External Issuer/name or ClusterIssuer/name in cert-manager.io (currently rejected until effective request-policy protection can be verified)")
+	flags.StringVar(&o.CertIssuer, "cert-issuer", "", "Existing cert-manager.io Issuer/name or ClusterIssuer/name; requires dedicated public --ca-bundle on fresh install and live request-policy verification")
 	flags.StringVar(&o.CABundle, "ca-bundle", "", "Path to exactly one public dedicated signing CA PEM for --cert-issuer; never a private key or parent chain")
 }
 
@@ -81,7 +85,6 @@ func (o CertificateOptions) Validate() error {
 		if _, err := parseCertificateIssuer(o.CertIssuer); err != nil {
 			return err
 		}
-		return issuerPolicyError()
 	}
 	if o.CASecret != "" {
 		return validateCASecretName(o.CASecret)
@@ -117,10 +120,6 @@ func parseCertificateIssuer(value string) (certificateIssuerReference, error) {
 		return certificateIssuerReference{}, fmt.Errorf("--cert-issuer must be Issuer/name or ClusterIssuer/name with a valid Kubernetes name; group is cert-manager.io")
 	}
 	return certificateIssuerReference{Group: "cert-manager.io", Kind: kind, Name: name}, nil
-}
-
-func issuerPolicyError() error {
-	return fmt.Errorf("external certificate issuers are disabled: verify a running approver-policy controller, disabled default automatic approval, and effective identity- and issuer-scoped request policy; use a dedicated --ca-secret or --ca-cert/--ca-key instead")
 }
 
 func validateCASecretName(name string) error {
@@ -310,10 +309,14 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 	var certPEM, keyPEM []byte
 	var signingCA *x509.Certificate
 	secretName := o.CASecret
-	if o.CACert != "" || secretName != "" {
-		if len(certificateValues(current)) != 0 {
+	if o.Specified() {
+		selection := copyValues(certificateValues(current))
+		delete(selection, "requestPolicy")
+		if len(selection) != 0 {
 			return nil, fmt.Errorf("certificate flags cannot be combined with global.rbac.certificates overrides")
 		}
+	}
+	if o.CACert != "" || secretName != "" {
 		if o.CACert != "" {
 			var err error
 			certPEM, err = os.ReadFile(o.CACert)
@@ -333,12 +336,28 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 		}
 		setCertificateValues(merged, map[string]any{"mode": "caSecret", "caSecret": secretName})
 	}
-	mode := certificateMode(merged)
-	if mode == "issuerRef" {
-		return nil, issuerPolicyError()
+	if o.CertIssuer != "" {
+		issuer, err := parseCertificateIssuer(o.CertIssuer)
+		if err != nil {
+			return nil, err
+		}
+		settings := copyValues(certificateValues(merged))
+		settings["mode"] = "issuerRef"
+		settings["issuerRef"] = map[string]any{"group": issuer.Group, "kind": issuer.Kind, "name": issuer.Name}
+		if o.CABundle != "" {
+			publicPEM, err := os.ReadFile(o.CABundle)
+			if err != nil {
+				return nil, fmt.Errorf("cannot read --ca-bundle file")
+			}
+			settings["caBundle"] = string(publicPEM)
+		} else if !installed {
+			return nil, fmt.Errorf("--cert-issuer requires --ca-bundle for a fresh installation")
+		}
+		setCertificateValues(merged, settings)
 	}
-	if mode != "selfSigned" && mode != "caSecret" {
-		return nil, fmt.Errorf("unsupported certificate mode; use selfSigned or caSecret")
+	mode := certificateMode(merged)
+	if mode != "selfSigned" && mode != "caSecret" && mode != "issuerRef" {
+		return nil, fmt.Errorf("unsupported certificate mode; use selfSigned, caSecret or issuerRef")
 	}
 	if installed && certificateMode(stored) != mode {
 		return nil, fmt.Errorf("certificate mode changes require coordinated CA migration; keep the installed mode")
@@ -346,7 +365,7 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 	settings := certificateValues(merged)
 	if mode == "selfSigned" {
 		if settings["caSecret"] != nil && settings["caSecret"] != "" || settings["caBundle"] != nil && settings["caBundle"] != "" {
-			return nil, fmt.Errorf("CA Secret and bundle require certificate mode caSecret")
+			return nil, fmt.Errorf("CA Secret and bundle require certificate mode caSecret or issuerRef")
 		}
 		return nil, nil
 	}
@@ -356,6 +375,9 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 	}
 	if authzMode == authz.ModeOff {
 		return nil, fmt.Errorf("dedicated CA certificates require global.rbac.dryRun=true or global.rbac.enabled=true")
+	}
+	if mode == "issuerRef" {
+		return nil, i.prepareIssuerCertificates(settings, stored, current, installed)
 	}
 	secretName, ok := settings["caSecret"].(string)
 	if !ok || secretName == "" {
@@ -421,6 +443,127 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 	return plan, nil
 }
 
+func issuerReference(settings map[string]any) (certificateIssuerReference, error) {
+	raw, ok := settings["issuerRef"].(map[string]any)
+	if !ok || raw["group"] != "cert-manager.io" {
+		return certificateIssuerReference{}, fmt.Errorf("issuerRef requires group cert-manager.io and an existing Issuer or ClusterIssuer name")
+	}
+	kind, kindOK := raw["kind"].(string)
+	name, nameOK := raw["name"].(string)
+	if !kindOK || !nameOK {
+		return certificateIssuerReference{}, fmt.Errorf("issuerRef requires string kind and name")
+	}
+	return parseCertificateIssuer(kind + "/" + name)
+}
+
+func (i *Impl) prepareIssuerCertificates(settings, stored, current map[string]any, installed bool) error {
+	if settings["caSecret"] != nil && settings["caSecret"] != "" {
+		return fmt.Errorf("issuerRef must not specify a signing Secret; the private key stays with the external issuer")
+	}
+	issuer, err := issuerReference(settings)
+	if err != nil {
+		return err
+	}
+	bundle, ok := settings["caBundle"].(string)
+	if !ok {
+		return fmt.Errorf("issuerRef requires exactly one public dedicated CA certificate in caBundle")
+	}
+	ca, err := validatePublicCA([]byte(bundle), time.Now())
+	if err != nil {
+		return err
+	}
+	if installed {
+		old := certificateValues(stored)
+		oldIssuer, err := issuerReference(old)
+		if err != nil {
+			return fmt.Errorf("stored issuer reference is invalid; recover its pinned settings before upgrading: %w", err)
+		}
+		if oldIssuer != issuer {
+			return fmt.Errorf("changing the certificate issuer requires coordinated CA migration")
+		}
+		oldBundle, ok := old["caBundle"].(string)
+		if !ok || !sameCACertificate(oldBundle, ca) {
+			return fmt.Errorf("changing or recovering CA trust requires coordinated CA migration; preserve the stored dedicated CA")
+		}
+	}
+	pinned := copyValues(settings)
+	pinned["issuerRef"] = map[string]any{"group": issuer.Group, "kind": issuer.Kind, "name": issuer.Name}
+	pinned["caBundle"] = strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw})))
+	setCertificateValues(current, pinned)
+	if time.Until(ca.NotAfter) <= 30*24*time.Hour {
+		i.logInfo("Warning: dedicated signing CA expires within 30 days. Arrange coordinated CA rotation before it expires.")
+	}
+	return nil
+}
+
+// checkIssuerPolicy renders the actual selected chart with live lookups, but no resource or release writes.
+// The chart, not a second CLI policy evaluator, verifies the operator-managed issuer prerequisites.
+func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) error {
+	if certificateMode(current) != "issuerRef" {
+		return nil
+	}
+	found := false
+	for _, template := range selected.Templates {
+		if template.Name == "templates/_issuer-policy.tpl" &&
+			bytes.Contains(template.Data, []byte(`define "radius.authz.issuerPolicy.validate"`)) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("selected Radius chart has no shared live issuer-policy verifier; use a chart supporting issuerRef")
+	}
+	configuration, err := i.cluster().RenderConfiguration(kubeContext, options.Radius.Namespace)
+	if err != nil {
+		return fmt.Errorf("cannot configure live issuer-policy verification: %w", err)
+	}
+	renderedChart := cloneChart(selected)
+	if installed {
+		history, historyErr := i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
+		if historyErr != nil {
+			return fmt.Errorf("cannot read Radius history for live issuer-policy verification: %w", historyErr)
+		}
+		// Select the same revision as Helm, and reject concurrent changes rather than proving stale settings.
+		latest, deployed := -1, -1
+		for index, revision := range history {
+			if revision == nil {
+				continue
+			}
+			if latest < 0 || revision.Version > history[latest].Version {
+				latest = index
+			}
+			if revisionStatus(revision) == releasecommon.StatusDeployed && (deployed < 0 || revision.Version > history[deployed].Version) {
+				deployed = index
+			}
+		}
+		if latest < 0 {
+			return fmt.Errorf("Radius release history is empty; recover the installed release before issuer-policy verification")
+		}
+		baseline := history[latest]
+		if revisionStatus(baseline) != releasecommon.StatusDeployed && deployed >= 0 {
+			baseline = history[deployed]
+		}
+		if !reflect.DeepEqual(copyValues(baseline.Config), copyValues(options.RadiusReleaseValues)) {
+			return fmt.Errorf("stored Radius settings changed since preflight; retry to validate the current issuer, trust and policy scope")
+		}
+		configuration.Releases, err = releaseHistoryStorage(history)
+		if err != nil {
+			return fmt.Errorf("cannot copy Radius history for read-only issuer verification: %w", err)
+		}
+		upgrade := newUpgradeClient(configuration, options.Radius.Namespace, false, !options.ResetValues, options.Radius.Timeout, usesServerSideApply(configuration, options.Radius.ReleaseName))
+		upgrade.DryRunStrategy = helm.DryRunServer
+		_, err = upgrade.RunWithContext(ctx, options.Radius.ReleaseName, renderedChart, copyValues(current))
+	} else {
+		install := newInstallClient(configuration, options.Radius.ReleaseName, options.Radius.Namespace, false, options.Radius.Timeout)
+		install.DryRunStrategy = helm.DryRunServer
+		_, err = install.RunWithContext(ctx, renderedChart, copyValues(current))
+	}
+	if err != nil {
+		return fmt.Errorf("live issuer-policy verification failed; provision the Radius namespace and supported operator-managed issuer, controllers, admission, policies and RBAC before retrying: %w", err)
+	}
+	return nil
+}
+
 func sameCACertificate(text string, signingCA *x509.Certificate) bool {
 	trimmed := strings.TrimSpace(text)
 	if !strings.HasPrefix(trimmed, "-----BEGIN CERTIFICATE-----") || strings.Count(trimmed, "-----BEGIN ") != 1 {
@@ -456,10 +599,12 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 
 // CheckRadiusCertificates validates the upgrade's certificate settings without creating Secrets.
 func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptions, kubeContext string) error {
-	chart, _, current, err := prepareRadiusChart(ctx, NewHelmAction(i.Helm), options.Radius, kubeContext)
+	chart, configuration, current, err := prepareRadiusChart(ctx, NewHelmAction(i.Helm), options.Radius, kubeContext)
 	if err != nil {
 		return err
 	}
-	_, err = i.prepareCertificates(ctx, options, chart.Values, current, kubeContext, true)
-	return err
+	if _, err := i.prepareCertificates(ctx, options, chart.Values, current, kubeContext, true); err != nil {
+		return err
+	}
+	return i.checkIssuerPolicy(ctx, options, chart, configuration, current, kubeContext, true)
 }

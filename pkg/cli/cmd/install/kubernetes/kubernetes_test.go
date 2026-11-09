@@ -75,14 +75,16 @@ func Test_Validate(t *testing.T) {
 		{Name: "partial CA flags", Input: []string{"--ca-key=key.pem"}, ExpectedValid: false},
 		{Name: "conflicting CA flags", Input: []string{"--ca-cert=cert.pem", "--ca-key=key.pem", "--ca-secret=operator-ca"}, ExpectedValid: false},
 		{Name: "empty CA Secret", Input: []string{"--ca-secret="}, ExpectedValid: false},
-		{Name: "external issuer blocked", Input: []string{"--cert-issuer=issuer"}, ExpectedValid: false},
+		{Name: "issuer kind required", Input: []string{"--cert-issuer=issuer"}, ExpectedValid: false},
+		{Name: "external issuer", Input: []string{"--cert-issuer=Issuer/issuer", "--ca-bundle=public.pem"}, ExpectedValid: true},
+		{Name: "bundle without issuer", Input: []string{"--ca-bundle=public.pem"}, ExpectedValid: false},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
 func Test_Run_CertificateFlags(t *testing.T) {
 	t.Parallel()
-	for _, args := range [][]string{{"--ca-secret=operator-ca"}, {"--ca-cert=ca.pem", "--ca-key=key.pem"}} {
+	for _, args := range [][]string{{"--ca-secret=operator-ca"}, {"--ca-cert=ca.pem", "--ca-key=key.pem"}, {"--cert-issuer=ClusterIssuer/issuer", "--ca-bundle=public.pem"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			t.Parallel()
 			cmd, r := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
