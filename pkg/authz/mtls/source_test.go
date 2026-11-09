@@ -87,7 +87,7 @@ func TestNewSource_Errors(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
 		writeFiles(t, dir, ca.issue(t, certOptions{
-			dnsNames:  componentSANs("ucp"),
+			uris:      spiffeURIs("ucp"),
 			notBefore: time.Now().Add(-2 * time.Hour),
 			notAfter:  time.Now().Add(-time.Hour),
 		}), ca.pem)
@@ -98,7 +98,7 @@ func TestNewSource_Errors(t *testing.T) {
 	t.Run("empty CA bundle", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
-		writeFiles(t, dir, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}), []byte("not a certificate"))
+		writeFiles(t, dir, ca.issue(t, certOptions{uris: spiffeURIs("ucp")}), []byte("not a certificate"))
 		_, err := NewSource(dir)
 		require.Error(t, err)
 	})
@@ -106,7 +106,7 @@ func TestNewSource_Errors(t *testing.T) {
 	t.Run("certificate from another CA", func(t *testing.T) {
 		t.Parallel()
 		dir := t.TempDir()
-		writeFiles(t, dir, newCA(t).issue(t, certOptions{dnsNames: componentSANs("ucp")}), ca.pem)
+		writeFiles(t, dir, newCA(t).issue(t, certOptions{uris: spiffeURIs("ucp")}), ca.pem)
 		_, err := NewSource(dir)
 		require.ErrorContains(t, err, "not issued by the CA bundle")
 	})
@@ -117,14 +117,14 @@ func TestSource_CertificateExpiresAfterLoad(t *testing.T) {
 	src := newTestSource(t, newCA(t), "ucp")
 	src.now = func() time.Time { return time.Now().Add(2 * time.Hour) }
 
-	_, err := src.ClientConfig(testNamespace)
+	_, err := src.load()
 	requireCode(t, err, "CertificateExpired")
 }
 
 func TestSource_Reload(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
-	first := ca.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+	first := ca.issue(t, certOptions{uris: spiffeURIs("ucp")})
 	dir := newKubeletDir(t, first, ca.pem)
 
 	src, err := NewSource(dir.root)
@@ -144,7 +144,7 @@ func TestSource_Reload(t *testing.T) {
 
 	// A rotated certificate and CA are picked up by Start.
 	rotatedCA := newCA(t)
-	second := rotatedCA.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+	second := rotatedCA.issue(t, certOptions{uris: spiffeURIs("ucp")})
 	dir.update(t, second, rotatedCA.pem)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -157,8 +157,7 @@ func TestSource_Reload(t *testing.T) {
 	}, 5*time.Second, 10*time.Millisecond)
 
 	// Handshakes use the reloaded certificate and CA without a new config.
-	client := newTestSource(t, rotatedCA, "controller")
-	result := handshake(t, src.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
+	result := handshake(t, src.ServerConfig(), trustClient(t, rotatedCA.pem, "ucp"))
 	require.NoError(t, result.serverErr)
 	require.NoError(t, result.clientErr)
 	require.Equal(t, second.cert.Raw, result.clientState.PeerCertificates[0].Raw)
@@ -167,14 +166,14 @@ func TestSource_Reload(t *testing.T) {
 func TestSource_ReloadDuringUpdate(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
-	dir := newKubeletDir(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}), ca.pem)
+	dir := newKubeletDir(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")}), ca.pem)
 	src, err := NewSource(dir.root)
 	require.NoError(t, err)
 
 	// Swap the Secret after the first read of the key, so that read sees the old
 	// certificate and key with the new CA bundle.
 	rotatedCA := newCA(t)
-	second := rotatedCA.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+	second := rotatedCA.issue(t, certOptions{uris: spiffeURIs("ucp")})
 	swapped := false
 	src.readFile = func(name string) ([]byte, error) {
 		data, err := os.ReadFile(name)
@@ -200,7 +199,7 @@ func TestSource_ReloadDuringUpdate(t *testing.T) {
 func TestSource_ReloadKeepsChanging(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
-	dir := newKubeletDir(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}), ca.pem)
+	dir := newKubeletDir(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")}), ca.pem)
 	src, err := NewSource(dir.root)
 	require.NoError(t, err)
 	before, err := currentCert(src)
@@ -218,4 +217,54 @@ func TestSource_ReloadKeepsChanging(t *testing.T) {
 	after, err := currentCert(src)
 	require.NoError(t, err)
 	require.Same(t, before, after)
+}
+
+func TestNewTrustSource(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+
+	t.Run("reads only the CA bundle", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, CAFile), ca.pem, 0o600))
+		src, err := NewTrustSource(dir)
+		require.NoError(t, err)
+		m, err := src.load()
+		require.NoError(t, err)
+		require.Nil(t, m.cert)
+		_, err = ca.cert.Verify(x509.VerifyOptions{Roots: m.pool})
+		require.NoError(t, err)
+	})
+
+	t.Run("missing CA bundle", func(t *testing.T) {
+		t.Parallel()
+		_, err := NewTrustSource(t.TempDir())
+		require.ErrorContains(t, err, "failed to read ca.crt")
+	})
+
+	t.Run("empty CA bundle", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, CAFile), []byte("not a certificate"), 0o600))
+		_, err := NewTrustSource(dir)
+		require.ErrorContains(t, err, "no certificates found")
+	})
+
+	t.Run("reloads the CA bundle", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, CAFile), ca.pem, 0o600))
+		src, err := NewTrustSource(dir)
+		require.NoError(t, err)
+
+		rotated := newCA(t)
+		require.NoError(t, os.WriteFile(filepath.Join(dir, CAFile), rotated.pem, 0o600))
+		changed, err := src.Reload()
+		require.NoError(t, err)
+		require.True(t, changed)
+		m, err := src.load()
+		require.NoError(t, err)
+		_, err = rotated.cert.Verify(x509.VerifyOptions{Roots: m.pool})
+		require.NoError(t, err)
+	})
 }

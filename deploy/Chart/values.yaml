@@ -152,6 +152,7 @@ global:
       # Each component gets Certificate "<component>-cert" stored in Secret "<component>-mtls"
       # (tls.crt, tls.key, ca.crt) for ucp, applications-rp, dynamic-rp, controller, and bicep-de.
       # Keys are ECDSA P-256; certificates last 24h and renew 8h before expiry.
+      # Components no longer mount the "<component>-mtls" Secrets; a later release removes them.
       mode: selfSigned
     # SPIFFE server certificates and caller tokens for internal calls. Rendered only when the
     # authorization mode is not off. ucp, applications-rp, and dynamic-rp each get Certificate
@@ -160,7 +161,9 @@ global:
     # spiffe://<trustDomain>/ns/<namespace>/sa/<receiver>. Keys are ECDSA P-256; certificates last
     # 24h, renew 8h before expiry, and get a new key on each renewal. Callers mount 10-minute
     # projected ServiceAccount tokens at /var/run/radius/tokens/<receiver>/token, with the
-    # receiver's name as the audience. Mounted for a later release; components do not read them yet.
+    # receiver's name as the audience. Receivers verify each caller's token offline; callers verify
+    # the receiver's SPIFFE ID before sending a token. The controller mounts only ca.crt from Secret
+    # "radius-ca".
     spiffe:
       # SPIFFE trust domain of the Radius server certificates: lowercase letters, digits, '.', '-'
       # and '_', at most 255 characters. Rendering fails for any other value when the mode is not off.
