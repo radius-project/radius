@@ -78,7 +78,7 @@ func Test_Boundary_ControlPlaneSecretReferenceDenied(t *testing.T) {
 	t.Skip("enabled by E2")
 }
 
-// Expected: with --mtls-provider external, a ServiceAccount token issued for one receiver
+// Expected: with --tls-provider external, a ServiceAccount token issued for one receiver
 // and replayed to another component is rejected with InvalidAuthenticationInfo (401)
 // because the audience does not match.
 func Test_Boundary_ExternalModeTokenReplay(t *testing.T) {
