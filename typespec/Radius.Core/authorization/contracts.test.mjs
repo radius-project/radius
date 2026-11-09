@@ -95,10 +95,15 @@ test("entry points keep authorization out of Applications RP generation", () => 
 
 const scalarPattern = (source, name, maximum) => {
   const declaration = source.match(
-    new RegExp(`((?:^[\\t ]*@[^\\n]*\\n)+)^[\\t ]*scalar ${name} extends string;`, "m")
+    new RegExp(
+      `((?:^[\\t ]*@[^\\n]*\\n)+)^[\\t ]*scalar ${name} extends string;`,
+      "m"
+    )
   );
   assert.ok(declaration, `missing scalar decorators: ${name}`);
-  const pattern = declaration[1].match(/^[\t ]*@pattern\("((?:\\.|[^"\\])*)"\)[\t ]*$/m);
+  const pattern = declaration[1].match(
+    /^[\t ]*@pattern\("((?:\\.|[^"\\])*)"\)[\t ]*$/m
+  );
   assert.ok(pattern, `missing scalar pattern: ${name}`);
   const maxLength = declaration[1].match(/^[\t ]*@maxLength\((\d+)\)[\t ]*$/m);
   assert.ok(maxLength, `missing scalar maxLength: ${name}`);
@@ -107,10 +112,18 @@ const scalarPattern = (source, name, maximum) => {
 };
 
 test("scalar constraints accept decorator order without losing either constraint", () => {
-  const decorators = ['@doc("fixture")', '@pattern("^[a-z]+$")', "@maxLength(8)"];
+  const decorators = [
+    '@doc("fixture")',
+    '@pattern("^[a-z]+$")',
+    "@maxLength(8)"
+  ];
   for (const order of [
-    [0, 1, 2], [0, 2, 1], [1, 0, 2],
-    [1, 2, 0], [2, 0, 1], [2, 1, 0]
+    [0, 1, 2],
+    [0, 2, 1],
+    [1, 0, 2],
+    [1, 2, 0],
+    [2, 0, 1],
+    [2, 1, 0]
   ]) {
     const source = `${order.map((index) => decorators[index]).join("\n")}\nscalar Fixture extends string;`;
     const pattern = scalarPattern(source, "Fixture", 8);
@@ -123,7 +136,12 @@ test("scalar constraints accept decorator order without losing either constraint
     ['@pattern("^[a-z]+$")\n@maxLength(9)', /scalar maxLength/]
   ]) {
     assert.throws(
-      () => scalarPattern(`${source}\nscalar Fixture extends string;`, "Fixture", 8),
+      () =>
+        scalarPattern(
+          `${source}\nscalar Fixture extends string;`,
+          "Fixture",
+          8
+        ),
       expected
     );
   }
