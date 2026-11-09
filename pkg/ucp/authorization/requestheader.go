@@ -172,7 +172,9 @@ func (a *RequestHeaderAuthenticator) Middleware(next http.Handler) http.Handler 
 			}
 			return
 		}
-		r = r.Clone(context.WithValue(r.Context(), identityContextKey{}, identity))
+		// Body consumption populates the original Trailer map; keep it shared.
+		r = r.WithContext(context.WithValue(r.Context(), identityContextKey{}, identity))
+		r.Header = r.Header.Clone()
 		for name := range r.Header {
 			if strings.HasPrefix(strings.ToLower(name), "x-remote-") {
 				delete(r.Header, name)
