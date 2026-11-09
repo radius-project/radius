@@ -32,7 +32,7 @@ import (
 	"time"
 
 	"github.com/radius-project/radius/pkg/authz"
-	"github.com/radius-project/radius/pkg/kubeutil"
+	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/spf13/pflag"
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	corev1 "k8s.io/api/core/v1"
@@ -197,9 +197,7 @@ func (i *Impl) certificateClient(kubeContext string) (kubernetes.Interface, erro
 	if i.newCertificateClient != nil {
 		return i.newCertificateClient(kubeContext)
 	}
-	config, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
-		ContextName: kubeContext, QPS: kubeutil.DefaultCLIQPS, Burst: kubeutil.DefaultCLIBurst,
-	})
+	config, err := clikubernetes.NewCLIClientConfig(kubeContext)
 	if err != nil {
 		return nil, err
 	}
