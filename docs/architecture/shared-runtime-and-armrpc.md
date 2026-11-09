@@ -117,29 +117,47 @@ That means service-specific code usually does not build raw HTTP stacks itself.
 Instead, it supplies a `Configure` callback that registers routes on top of the
 shared server.
 
-### Internal component authorization (mTLS)
+### Internal component authorization
 
 ARM-RPC frontends serve through `mtls.ListenAndServe` in
 [pkg/authz/mtls/serve.go](../../pkg/authz/mtls/serve.go), which applies the
 authorization mode from the `authorization` config section (set by the chart
-from `global.rbac.enabled` and `global.rbac.dryRun`):
+from `global.rbac.enabled` and `global.rbac.dryRun`). Internal calls are
+authenticated with projected Kubernetes ServiceAccount tokens; no component
+presents a client certificate.
 
 - `off` (default): plain HTTP, behavior unchanged.
-- `dryRun`: the same port accepts TLS and plain HTTP. Missing or invalid client
-  certificates and disallowed callers are logged as would-deny
-  (`PeerCertificateInvalid`, `AuthorizationFailed`), and every request is served.
-- `enforce`: a client certificate issued by the Radius CA is required. Failed
-  handshakes are closed and logged as `PeerCertificateInvalid`, and callers not
-  in the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
+- `dryRun`: the same port accepts TLS and plain HTTP. Plain HTTP, missing or
+  invalid tokens, and disallowed callers are logged as would-deny
+  (`InvalidAuthenticationInfo`, `AuthorizationUnavailable`,
+  `AuthorizationFailed`), and every request is served.
+- `enforce`: TLS is required (plain HTTP gets `400`). A missing, invalid, or
+  wrong-audience token gets `401 InvalidAuthenticationInfo`; signing keys that
+  could not be refreshed give `503 AuthorizationUnavailable`; and callers not in
+  the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
   and `dynamic-rp` allow only the `ucp` identity.
 
-The certificate, key, and CA bundle are read from the mounted `<component>-mtls`
-Secret and reloaded by polling the files (every 10 seconds) without a restart.
-New handshakes use the new material, and each request's client certificate is
-checked against the current CA bundle. Probes and metrics stay on their plain
-ports.
+Each receiver presents the csi-driver-spiffe certificate mounted at
+`/var/run/radius/spiffe` (`tls.crt`, `tls.key`, `ca.crt`), whose only SAN is the
+URI `spiffe://<trustDomain>/ns/<namespace>/sa/<service account>`. It requests no
+client certificate. It verifies the `Authorization: Bearer` token offline with
+[pkg/authz/token](../../pkg/authz/token/verifier.go), requiring the receiver's
+name as the audience, maps the ServiceAccount to the caller's
+`<component>.<namespace>.svc` identity, and removes the header before calling the
+handler. Probes and metrics stay on their plain ports.
 
-Every request also checks the current server certificate's validity. Cached peer verification lasts only until the earliest expiry in the verified chains or a material reload, whichever comes first. On an open connection, expired certificates or removed trust cause `enforce` to return `401 InvalidAuthenticationInfo` and close the connection; `dryRun` logs the failure and continues serving. Renewing the server certificate does not invalidate an otherwise trusted peer on an existing connection.
+Callers build transports with `mtls.NewClientTransport` and
+`mtls.NewUpgradeTransport` in [pkg/authz/mtls/client.go](../../pkg/authz/mtls/client.go).
+They verify the server's chain against the mounted `ca.crt` and require exactly
+the receiver's SPIFFE ID instead of matching DNS names. Only after the server is
+verified do they send the token from
+`/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
+The controller, which serves no internal endpoint, mounts only `ca.crt` from the
+`radius-ca` Secret.
+
+Certificate and CA files are reloaded by polling (every 10 seconds) without a
+restart; new handshakes use the new material. Clients close idle connections
+whose verified server chain has expired.
 
 ### Request context and validation
 

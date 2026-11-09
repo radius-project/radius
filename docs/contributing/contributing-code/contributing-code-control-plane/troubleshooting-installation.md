@@ -197,6 +197,6 @@ When authorization is enabled, `rad install kubernetes` and `rad upgrade kuberne
 
 - **Another csi-driver-spiffe runs on the cluster:** a cluster can run only one, because every instance registers the same kubelet plugin path. `rad` stops before changing the cluster and names the DaemonSet to remove.
 - **A `cert-manager-csi-driver-spiffe` release that `rad` did not install:** `rad` does not change it. Uninstall it, or let `rad` own the installation, and rerun the command.
-- **Warning about cert-manager's default approver:** cert-manager approves CertificateRequests for every issuer unless its default approver is turned off or limited. A future Radius release will require that it not approve requests for the Radius issuer. For now, keep it on; the Radius client certificates still depend on it.
+- **Warning about cert-manager's default approver:** cert-manager approves CertificateRequests for every issuer unless its default approver is turned off or limited. A future Radius release will require that it not approve requests for the Radius issuer. For now, keep it on; the `<component>-cert` Certificates the chart still creates depend on it, although components no longer use them.
 
 `rad uninstall kubernetes` removes the csi-driver-spiffe release it owns before cert-manager, and lists it in the confirmation prompt. A release that `rad` did not install is never removed.

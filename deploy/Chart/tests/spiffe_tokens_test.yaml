@@ -5,6 +5,7 @@ templates:
   - dynamic-rp/deployment.yaml
   - controller/deployment.yaml
   - global/spiffe-rbac.yaml
+  - ucp/configmaps.yaml
 release:
   name: radius
   namespace: radius-system
@@ -100,24 +101,32 @@ tests:
       global.rbac.enabled: true
     asserts: *receivers
 
-  - it: keeps the existing mTLS Secret volumes alongside the new volumes
+  - it: does not mount the old mTLS Secrets
     set:
       global.rbac.enabled: true
     asserts:
-      - contains:
+      - notContains:
           path: spec.template.spec.volumes
           content:
             name: mtls
-            secret:
-              secretName: ucp-mtls
+          any: true
         template: ucp/deployment.yaml
-      - contains:
+      - notContains:
           path: spec.template.spec.volumes
           content:
             name: mtls
-            secret:
-              secretName: controller-mtls
+          any: true
         template: controller/deployment.yaml
+
+  - it: configures the trust domain
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: '(?m)^  trustDomain: "example.org"$'
+        template: ucp/configmaps.yaml
 
   - it: uses the configured CSI driver name
     set:

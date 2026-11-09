@@ -17,21 +17,18 @@ limitations under the License.
 package mtls
 
 import (
-	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
-	"net/http"
 	"slices"
 	"time"
 )
 
-// ServerConfig returns a TLS config for a server that requires a client certificate
-// from the current CA bundle whose DNS SANs name a Radius component in namespace.
-// The certificate and CA bundle are read for each handshake, so reloads take effect
+// ServerConfig returns a TLS config for a server that presents the current certificate
+// and does not request a client certificate; callers authenticate with a ServiceAccount
+// token instead. The certificate is read for each handshake, so reloads take effect
 // without a restart.
-func (s *Source) ServerConfig(namespace string) *tls.Config {
-	outer := &tls.Config{MinVersion: tls.VersionTLS12}
+func (s *Source) ServerConfig() *tls.Config {
+	outer := &tls.Config{MinVersion: tls.VersionTLS12, ClientAuth: tls.NoClientCert}
 	outer.GetConfigForClient = func(*tls.ClientHelloInfo) (*tls.Config, error) {
 		m, err := s.load()
 		if err != nil {
@@ -48,73 +45,50 @@ func (s *Source) ServerConfig(namespace string) *tls.Config {
 			MinVersion:   tls.VersionTLS12,
 			NextProtos:   nextProtos,
 			Certificates: []tls.Certificate{*m.cert},
-			ClientAuth:   tls.RequireAndVerifyClientCert,
-			ClientCAs:    m.pool,
-			// Resumed sessions keep the chains verified in the original handshake, so a
-			// client could reconnect after its CA was removed from the bundle.
-			SessionTicketsDisabled: true,
-			VerifyConnection: func(cs tls.ConnectionState) error {
-				_, err := identityFromChains(cs.VerifiedChains, namespace)
-				return err
-			},
+			ClientAuth:   tls.NoClientCert,
 		}, nil
 	}
 	return outer
 }
 
-// ClientConfig returns a TLS config for a client that presents the current certificate
-// and accepts only a server whose certificate is from the current CA bundle and whose
-// only DNS SAN is the server name. The server name must be the canonical
-// "<component>.<namespace>.svc" name of a Radius component, set either in the returned
-// config or by the caller, such as http.Transport from the request URL.
+// clientConfig returns a TLS config for a client that presents no certificate and accepts
+// only a server whose certificate chains to the current CA bundle for server
+// authentication and whose only URI SAN is spiffeID. The server name is used for SNI only;
+// DNS names in the certificate are ignored.
 //
-// The config is bound to the certificate and CA bundle loaded when ClientConfig is called,
-// so the certificate it presents and the CA bundle it verifies against are always from the
-// same version. It does not follow later reloads: call ClientConfig for each new connection,
-// for example from http.Transport.DialTLSContext. Components reload at different times, so
-// rotating the CA requires a CA bundle that trusts both the old and new CA until every
-// component has reloaded.
-func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
-	config, _, err := s.clientConfig(namespace)
-	return config, err
-}
-
-// clientConfig is ClientConfig that also returns the certificate the config presents.
-func (s *Source) clientConfig(namespace string) (*tls.Config, *x509.Certificate, error) {
+// The config is bound to the CA bundle loaded when clientConfig is called. Call it for each
+// new connection, for example from http.Transport.DialTLSContext, so CA reloads take effect.
+// If verified is not nil, it receives the verified chain after a successful check.
+func (s *Source) clientConfig(spiffeID string, verified func([]*x509.Certificate)) (*tls.Config, error) {
 	m, err := s.load()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	return &tls.Config{
 		MinVersion: tls.VersionTLS12,
-		RootCAs:    m.pool,
-		Time:       s.now,
-		GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			return m.cert, nil
-		},
-		// The standard verifier has checked the chain, validity dates, and server name.
+		// The standard verifier matches the server name against DNS SANs, but Radius server
+		// certificates carry only a SPIFFE URI SAN. VerifyConnection checks the chain against
+		// the Radius CA bundle and the SPIFFE ID instead, on every handshake.
+		InsecureSkipVerify: true, //nolint:gosec // The chain and SPIFFE ID are verified in VerifyConnection.
 		VerifyConnection: func(cs tls.ConnectionState) error {
-			// A long-lived config must not keep using an expired certificate, even with a
-			// server that does not request one.
-			if err := s.checkExpiry(m.cert); err != nil {
+			chain, err := verifyServer(m.pool, cs.PeerCertificates, spiffeID, s.now())
+			if err != nil {
 				return err
 			}
-			if _, err := identityFromSAN(cs.ServerName, namespace); err != nil {
-				return peerError(fmt.Sprintf("server name %q is not a canonical Radius component name", cs.ServerName), nil)
+			if verified != nil {
+				verified(chain)
 			}
-			_, err := identityFromChains(cs.VerifiedChains, namespace)
-			return err
+			return nil
 		},
-	}, m.cert.Leaf, nil
+	}, nil
 }
 
-// verifyClient checks a client's certificate chain against pool, the CA bundle of the
-// handshake's snapshot, and returns its identity and the earliest verified-chain expiry.
-// Servers use it during dry-run handshakes and to recheck trust on open connections.
-func (s *Source) verifyClient(pool *x509.CertPool, certs []*x509.Certificate, namespace string) (Identity, time.Time, error) {
+// verifyServer checks a server's certificate chain against pool and its SPIFFE ID, and
+// returns the verified chain. Every certificate in the chain must use an allowed key.
+func verifyServer(pool *x509.CertPool, certs []*x509.Certificate, spiffeID string, now time.Time) ([]*x509.Certificate, error) {
 	if len(certs) == 0 {
-		return Identity{}, time.Time{}, peerError("no client certificate", nil)
+		return nil, peerError("server presented no certificate", nil)
 	}
 
 	intermediates := x509.NewCertPool()
@@ -125,66 +99,30 @@ func (s *Source) verifyClient(pool *x509.CertPool, certs []*x509.Certificate, na
 	chains, err := certs[0].Verify(x509.VerifyOptions{
 		Roots:         pool,
 		Intermediates: intermediates,
-		CurrentTime:   s.now(),
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		CurrentTime:   now,
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	})
 	if err != nil {
-		return Identity{}, time.Time{}, peerError("certificate verification failed", err)
+		return nil, peerError("server certificate verification failed", err)
 	}
-	id, err := identityFromChains(chains, namespace)
-	if err != nil {
-		return Identity{}, time.Time{}, err
-	}
-	expiresAt := certs[0].NotAfter
-	for _, chain := range chains {
-		for _, cert := range chain {
-			if cert.NotAfter.Before(expiresAt) {
-				expiresAt = cert.NotAfter
-			}
-		}
-	}
-	return id, expiresAt, nil
-}
-
-// identityFromChains returns the identity from the first verified chain that passes
-// PeerIdentity, or the first chain's error.
-func identityFromChains(chains [][]*x509.Certificate, namespace string) (Identity, error) {
-	if len(chains) == 0 {
-		return Identity{}, peerError("no verified peer certificate", nil)
+	if err := checkSPIFFEID(certs[0], spiffeID); err != nil {
+		return nil, err
 	}
 
 	var firstErr error
 	for _, chain := range chains {
-		id, err := PeerIdentity(chain, namespace)
-		if err == nil {
-			return id, nil
+		var keyErr error
+		for _, cert := range chain {
+			if keyErr = checkKey(cert); keyErr != nil {
+				break
+			}
+		}
+		if keyErr == nil {
+			return chain, nil
 		}
 		if firstErr == nil {
-			firstErr = err
+			firstErr = keyErr
 		}
 	}
-	return Identity{}, firstErr
-}
-
-type identityKey struct{}
-
-// WithIdentity returns a copy of ctx that carries the caller's identity.
-func WithIdentity(ctx context.Context, id Identity) context.Context {
-	return context.WithValue(ctx, identityKey{}, id)
-}
-
-// IdentityFromContext returns the caller's identity stored by WithIdentity.
-func IdentityFromContext(ctx context.Context) (Identity, bool) {
-	id, ok := ctx.Value(identityKey{}).(Identity)
-	return id, ok
-}
-
-// IdentityFromRequest returns the caller's identity from the request's verified client
-// certificate chains. It requires a server using ServerConfig, so the chains were
-// verified against the Radius CA bundle during the handshake.
-func IdentityFromRequest(r *http.Request, namespace string) (Identity, error) {
-	if r.TLS == nil {
-		return Identity{}, peerError("request did not use TLS", nil)
-	}
-	return identityFromChains(r.TLS.VerifiedChains, namespace)
+	return nil, firstErr
 }

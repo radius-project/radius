@@ -140,7 +140,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", server.Addr))
 	// Only UCP routes requests to dynamic-rp.
-	err = mtls.ListenAndServe(ctx, server, s.options.Config.Authorization, []string{"ucp"})
+	err = mtls.ListenAndServe(ctx, server, s.options.Config.Authorization, mtls.Receiver{Name: "dynamic-rp", AllowedCallers: []string{"ucp"}})
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")

@@ -139,7 +139,6 @@ spec:
         - name: aws-fingerprint-key
           mountPath: /var/secrets/aws-fingerprint
           readOnly: true
-        {{- with include "radius.authz.mtls.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.spiffe.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.tokens.volumeMounts" (dict "root" . "receivers" (list "applications-rp" "dynamic-rp")) | trim }}{{ . | nindent 8 }}{{- end }}
       volumes:
@@ -180,6 +179,5 @@ spec:
             secretName: radius-aws-fingerprint-key
             defaultMode: 0444
             optional: true
-        {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "ucp") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "applications-rp" "dynamic-rp")) | trim }}{{ . | nindent 8 }}{{- end }}

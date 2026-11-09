@@ -18,21 +18,15 @@ package authz
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/tls"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/json"
-	"encoding/pem"
 	"io"
-	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -41,6 +35,7 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/authz/mtls"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/rogue"
 	"github.com/radius-project/radius/test/rogue/rogueclient"
@@ -49,109 +44,160 @@ import (
 const (
 	applicationsRPOperationsPath = "/planes/radius/local/providers/Applications.Core/operations"
 	applicationsRPOperationsURL  = "https://applications-rp.radius-system.svc:5443" + applicationsRPOperationsPath + "?api-version=2023-10-01-preview"
+	dynamicRPURL                 = "https://dynamic-rp.radius-system.svc:8082/"
 	logTimeout                   = time.Minute
 )
 
 func testUnauthenticatedCallToApplicationsRP(t *testing.T) {
-	mode := requireMTLSMode(t)
+	mode := requireInternalAuthMode(t)
 	options := test.NewTestOptions(t)
 	ctx := t.Context()
 
-	// Mount a copy of UCP's certificate so the same pod can show that an allowed caller
-	// succeeds and the failure below is caused by the missing client certificate.
-	ucp, err := options.K8sClient.CoreV1().Secrets(radiusNamespace).Get(ctx, "ucp-mtls", metav1.GetOptions{})
+	client := rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{Namespace: createNamespace(t, options.K8sClient)})
+
+	// Positive control: the same pod succeeds with UCP's token, so the failure below is
+	// caused by the missing token. -k skips server verification; only the receiver is tested.
+	requireAllowed(t, client, bearer(serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp")))
+
+	resp, err := client.Do(ctx, rogue.Request{URL: applicationsRPOperationsURL, Insecure: true})
 	require.NoError(t, err)
-	namespace := createNamespace(t, options.K8sClient)
-	secret := createTLSSecret(t, options.K8sClient, namespace, ucp.Data["tls.crt"], ucp.Data["tls.key"], ucp.Data["ca.crt"])
-	client := rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{Namespace: namespace, TLSSecretName: secret})
-
-	resp, err := client.Do(ctx, rogue.Request{URL: applicationsRPOperationsURL, ClientCert: true, CACert: true})
-	require.NoError(t, err)
-	require.Equalf(t, http.StatusOK, resp.StatusCode, "UCP's certificate was not accepted: %+v", resp)
-
-	// -k skips server verification so that only the missing client certificate is tested.
-	resp, err = client.Do(ctx, rogue.Request{URL: applicationsRPOperationsURL, Insecure: true})
-	require.NoError(t, err)
-	// Enforce rejects the TLS handshake, so Go's TLS error is the reason. dryRun accepts
-	// the connection and logs the missing certificate.
-	reason := "no client certificate"
-	if mode == authz.ModeEnforce {
-		require.Equalf(t, rogueclient.ExitTransport, resp.ExitCode, "expected a TLS rejection: %+v", resp)
-		require.Equal(t, 0, resp.StatusCode)
-		reason = "didn't provide a certificate"
-	} else {
-		require.Equalf(t, http.StatusOK, resp.StatusCode, "dryRun must not reject the request: %+v", resp)
-	}
-
-	requirePeerFailureLogged(t, options.K8sClient, mode, client.Pod().Status.PodIP, reason)
-}
-
-func testDisallowedPeerKey(t *testing.T) {
-	mode := requireMTLSMode(t)
-	options := test.NewTestOptions(t)
-	ctx := t.Context()
-
-	ca, err := options.K8sClient.CoreV1().Secrets(radiusNamespace).Get(ctx, "radius-ca", metav1.GetOptions{})
-	require.NoError(t, err)
-	certPEM, keyPEM := issueRSA1024(t, ca.Data["tls.crt"], ca.Data["tls.key"])
-
-	namespace := createNamespace(t, options.K8sClient)
-	secret := createTLSSecret(t, options.K8sClient, namespace, certPEM, keyPEM, ca.Data["tls.crt"])
-	client := rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{Namespace: namespace, TLSSecretName: secret})
-
-	resp, err := client.Do(ctx, rogue.Request{URL: applicationsRPOperationsURL, ClientCert: true, CACert: true})
-	require.NoError(t, err)
-	if mode == authz.ModeEnforce {
-		require.Equalf(t, rogueclient.ExitTransport, resp.ExitCode, "expected a TLS rejection: %+v", resp)
-		require.Equal(t, 0, resp.StatusCode)
-	} else {
-		require.Equalf(t, http.StatusOK, resp.StatusCode, "dryRun must not reject the request: %+v", resp)
-	}
-
-	requirePeerFailureLogged(t, options.K8sClient, mode, client.Pod().Status.PodIP, "RSA key size 1024")
+	requireRejected(t, mode, resp, http.StatusUnauthorized, v1.CodeInvalidAuthenticationInfo)
+	requireAuthFailureLogged(t, options.K8sClient, mode, client.Pod().Status.PodIP, "missing bearer token")
 }
 
 func testDisallowedCaller(t *testing.T) {
-	mode := requireMTLSMode(t)
+	mode := requireInternalAuthMode(t)
 	options := test.NewTestOptions(t)
 	ctx := t.Context()
 
-	// Positive control: UCP, the only allowed caller, gets the same route.
-	ucp := componentClient(t, options, "ucp-mtls")
-	resp, err := ucp.Do(ctx, rogue.Request{URL: applicationsRPOperationsURL, ClientCert: true, CACert: true})
-	require.NoError(t, err)
-	require.Equalf(t, http.StatusOK, resp.StatusCode, "UCP's certificate was not accepted: %+v", resp)
+	client := rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{Namespace: createNamespace(t, options.K8sClient)})
+	requireAllowed(t, client, bearer(serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp")))
 
-	// dynamic-rp has a valid certificate from the Radius CA, but applications-rp only accepts
+	// dynamic-rp's token has applications-rp's audience, but applications-rp only accepts
 	// calls from UCP, so the caller check is the only reason for rejection.
 	caller := "dynamic-rp." + radiusNamespace + ".svc"
-	client := componentClient(t, options, "dynamic-rp-mtls")
 	logs := newDenialLogs(t, options.K8sClient, mode, caller)
 
-	resp, err = client.Do(ctx, rogue.Request{URL: applicationsRPOperationsURL, ClientCert: true, CACert: true})
+	resp, err := client.Do(ctx, rogue.Request{
+		URL:      applicationsRPOperationsURL,
+		Insecure: true,
+		Headers:  map[string]string{"Authorization": bearer(serviceAccountToken(t, options.K8sClient, "dynamic-rp", "applications-rp"))},
+	})
 	require.NoError(t, err)
-	require.Equalf(t, rogueclient.ExitOK, resp.ExitCode, "expected the mTLS handshake to succeed: %+v", resp)
-	if mode == authz.ModeEnforce {
-		require.Equalf(t, http.StatusForbidden, resp.StatusCode, "expected dynamic-rp to be rejected: %+v", resp)
-		var body v1.ErrorResponse
-		require.NoErrorf(t, json.Unmarshal([]byte(resp.Body), &body), "expected an ARM error body: %+v", resp)
-		require.NotNilf(t, body.Error, "expected an ARM error body: %+v", resp)
-		require.Equal(t, authz.CodeAuthorizationFailed, body.Error.Code)
-	} else {
-		require.Equalf(t, http.StatusOK, resp.StatusCode, "dryRun must not reject the request: %+v", resp)
-	}
-
+	requireRejected(t, mode, resp, http.StatusForbidden, authz.CodeAuthorizationFailed)
 	logs.requireNew(t)
 }
 
-// componentClient starts a rogue pod with a copy of the named Radius component mTLS Secret.
-func componentClient(t *testing.T, options test.TestOptions, secretName string) *rogue.Client {
-	t.Helper()
-	source, err := options.K8sClient.CoreV1().Secrets(radiusNamespace).Get(t.Context(), secretName, metav1.GetOptions{})
+func testTokenReplay(t *testing.T) {
+	mode := requireInternalAuthMode(t)
+	options := test.NewTestOptions(t)
+	ctx := t.Context()
+
+	client := rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{Namespace: createNamespace(t, options.K8sClient)})
+	requireAllowed(t, client, bearer(serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp")))
+
+	// UCP's token for dynamic-rp, replayed to applications-rp. The caller is allowed, so the
+	// audience is the only reason for rejection.
+	resp, err := client.Do(ctx, rogue.Request{
+		URL:      applicationsRPOperationsURL,
+		Insecure: true,
+		Headers:  map[string]string{"Authorization": bearer(serviceAccountToken(t, options.K8sClient, "ucp", "dynamic-rp"))},
+	})
+	require.NoError(t, err)
+	requireRejected(t, mode, resp, http.StatusUnauthorized, v1.CodeInvalidAuthenticationInfo)
+	requireAuthFailureLogged(t, options.K8sClient, mode, client.Pod().Status.PodIP, "token is not valid")
+}
+
+func testWrongServerSPIFFEID(t *testing.T) {
+	requireInternalAuthMode(t)
+	options := test.NewTestOptions(t)
+	ctx := t.Context()
+
+	// The rogue pod uses the Radius client transport with the Radius CA bundle and UCP's
+	// token for applications-rp, like UCP itself.
+	ca, err := options.K8sClient.CoreV1().Secrets(radiusNamespace).Get(ctx, "radius-ca", metav1.GetOptions{})
 	require.NoError(t, err)
 	namespace := createNamespace(t, options.K8sClient)
-	secret := createTLSSecret(t, options.K8sClient, namespace, source.Data["tls.crt"], source.Data["tls.key"], source.Data["ca.crt"])
-	return rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{Namespace: namespace, TLSSecretName: secret})
+	secret, err := options.K8sClient.CoreV1().Secrets(namespace).Create(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "rogue-identity"},
+		Data: map[string][]byte{
+			"ca.crt": ca.Data["ca.crt"],
+			"token":  []byte(serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp")),
+		},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	client := rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{
+		Namespace:     namespace,
+		TLSSecretName: secret.Name,
+		TLSSecretItems: []corev1.KeyToPath{
+			{Key: "ca.crt", Path: "ca.crt"},
+			{Key: "token", Path: "tokens/applications-rp/token"},
+		},
+	})
+
+	request := rogue.Request{Receiver: "applications-rp", ReceiverNamespace: radiusNamespace}
+
+	// Positive control: applications-rp presents the expected SPIFFE ID.
+	request.URL = applicationsRPOperationsURL
+	resp, err := client.Do(ctx, request)
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, resp.StatusCode, "the Radius client was not accepted by applications-rp: %+v", resp)
+
+	// dynamic-rp has a valid server certificate from the Radius CA, but its SPIFFE ID is not
+	// applications-rp's, so the client must fail the handshake before sending the token.
+	request.URL = dynamicRPURL
+	resp, err = client.Do(ctx, request)
+	require.NoError(t, err)
+	require.Equalf(t, rogueclient.ExitTransport, resp.ExitCode, "expected the client to refuse dynamic-rp: %+v", resp)
+	require.Equal(t, 0, resp.StatusCode)
+	require.Contains(t, resp.Stderr, authz.CodePeerCertificateInvalid)
+	require.Contains(t, resp.Stderr, mtls.SPIFFEID(mtls.DefaultTrustDomain, radiusNamespace, "dynamic-rp"))
+}
+
+// serviceAccountToken requests a 10-minute token for a ServiceAccount in the Radius namespace
+// with the given audience, as the kubelet does for the projected token volumes.
+func serviceAccountToken(t *testing.T, client k8s.Interface, account, audience string) string {
+	t.Helper()
+	request, err := client.CoreV1().ServiceAccounts(radiusNamespace).CreateToken(t.Context(), account, &authenticationv1.TokenRequest{
+		Spec: authenticationv1.TokenRequestSpec{
+			Audiences:         []string{audience},
+			ExpirationSeconds: to.Ptr(int64(600)),
+		},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	return request.Status.Token
+}
+
+func bearer(token string) string {
+	return "Bearer " + token
+}
+
+// requireAllowed checks that applications-rp accepts the operations route with authorization.
+func requireAllowed(t *testing.T, client *rogue.Client, authorization string) {
+	t.Helper()
+	resp, err := client.Do(t.Context(), rogue.Request{
+		URL:      applicationsRPOperationsURL,
+		Insecure: true,
+		Headers:  map[string]string{"Authorization": authorization},
+	})
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, resp.StatusCode, "UCP's token was not accepted: %+v", resp)
+}
+
+// requireRejected checks that enforce rejected the request with status and an ARM error
+// code, and that dryRun served it.
+func requireRejected(t *testing.T, mode authz.Mode, resp rogue.Response, status int, code string) {
+	t.Helper()
+	require.Equalf(t, rogueclient.ExitOK, resp.ExitCode, "expected an HTTP response: %+v", resp)
+	if mode != authz.ModeEnforce {
+		require.Equalf(t, http.StatusOK, resp.StatusCode, "dryRun must not reject the request: %+v", resp)
+		return
+	}
+	require.Equalf(t, status, resp.StatusCode, "expected the request to be rejected: %+v", resp)
+	var body v1.ErrorResponse
+	require.NoErrorf(t, json.Unmarshal([]byte(resp.Body), &body), "expected an ARM error body: %+v", resp)
+	require.NotNilf(t, body.Error, "expected an ARM error body: %+v", resp)
+	require.Equal(t, code, body.Error.Code)
 }
 
 // denialLogs finds applications-rp AuthorizationFailed denial (enforce) or would-deny (dryRun)
@@ -239,13 +285,13 @@ func (d *denialLogs) matches(line string) bool {
 		entry[authz.LogFieldTarget] == applicationsRPOperationsPath
 }
 
-// requireMTLSMode returns the installed authorization mode, skipping the test when it is off
-// because servers do not use mTLS then.
-func requireMTLSMode(t *testing.T) authz.Mode {
+// requireInternalAuthMode returns the installed authorization mode, skipping the test when it
+// is off because servers do not authenticate callers then.
+func requireInternalAuthMode(t *testing.T) authz.Mode {
 	t.Helper()
 	mode := expectedInstalledMode(t)
 	if mode == authz.ModeOff {
-		t.Skip("servers use mTLS only when the authorization mode is dryRun or enforce")
+		t.Skip("servers authenticate callers only when the authorization mode is dryRun or enforce")
 	}
 	return mode
 }
@@ -266,53 +312,9 @@ func createNamespace(t *testing.T, client k8s.Interface) string {
 	return ns.Name
 }
 
-func createTLSSecret(t *testing.T, client k8s.Interface, namespace string, cert, key, ca []byte) string {
-	t.Helper()
-	secret, err := client.CoreV1().Secrets(namespace).Create(t.Context(), &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "rogue-tls"},
-		Type:       corev1.SecretTypeTLS,
-		Data:       map[string][]byte{"tls.crt": cert, "tls.key": key, "ca.crt": ca},
-	}, metav1.CreateOptions{})
-	require.NoError(t, err)
-	return secret.Name
-}
-
-// issueRSA1024 signs a client certificate with an RSA-1024 key for the allowed caller ucp,
-// so the key size is the only reason for rejection.
-func issueRSA1024(t *testing.T, caCertPEM, caKeyPEM []byte) ([]byte, []byte) {
-	t.Helper()
-
-	caPair, err := tls.X509KeyPair(caCertPEM, caKeyPEM)
-	require.NoError(t, err)
-	caCert, err := x509.ParseCertificate(caPair.Certificate[0])
-	require.NoError(t, err)
-
-	key, err := rsa.GenerateKey(rand.Reader, 1024) //nolint:gosec // a weak key is generated to test rejection.
-	require.NoError(t, err)
-
-	serial, err := rand.Int(rand.Reader, big.NewInt(1<<62))
-	require.NoError(t, err)
-	template := &x509.Certificate{
-		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: "ucp"},
-		DNSNames:     []string{"ucp." + radiusNamespace + ".svc"},
-		NotBefore:    time.Now().Add(-time.Minute),
-		NotAfter:     time.Now().Add(time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
-	}
-
-	der, err := x509.CreateCertificate(rand.Reader, template, caCert, &key.PublicKey, caPair.PrivateKey)
-	require.NoError(t, err)
-
-	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
-	return certPEM, keyPEM
-}
-
-// requirePeerFailureLogged waits for applications-rp to log a PeerCertificateInvalid denial
-// (enforce) or would-deny (dryRun) for a connection from podIP whose reason contains reason.
-func requirePeerFailureLogged(t *testing.T, client k8s.Interface, mode authz.Mode, podIP, reason string) {
+// requireAuthFailureLogged waits for applications-rp to log an InvalidAuthenticationInfo denial
+// (enforce) or would-deny (dryRun) for a request from podIP whose reason contains reason.
+func requireAuthFailureLogged(t *testing.T, client k8s.Interface, mode authz.Mode, podIP, reason string) {
 	t.Helper()
 	require.NotEmpty(t, podIP)
 
@@ -331,7 +333,7 @@ func requirePeerFailureLogged(t *testing.T, client k8s.Interface, mode authz.Mod
 			logs := podLogs(ctx, t, client, pod.Name, "applications-rp")
 			last = logs
 			for _, line := range strings.Split(logs, "\n") {
-				if peerFailureLine(line, marker, podIP, reason) {
+				if authFailureLine(line, marker, podIP, reason) {
 					return true, nil
 				}
 			}
@@ -339,7 +341,7 @@ func requirePeerFailureLogged(t *testing.T, client k8s.Interface, mode authz.Mod
 		return false, nil
 	})
 	require.NoErrorf(t, err, "applications-rp did not log %s=%s for %s with reason %q; last logs:\n%s",
-		authz.LogFieldCode, authz.CodePeerCertificateInvalid, podIP, reason, tail(last, 20))
+		authz.LogFieldCode, v1.CodeInvalidAuthenticationInfo, podIP, reason, tail(last, 20))
 }
 
 // jsonLogEntry parses the JSON object in a log line, ignoring any prefix before it.
@@ -355,7 +357,7 @@ func jsonLogEntry(line string) (map[string]any, bool) {
 	return entry, true
 }
 
-func peerFailureLine(line, marker, podIP, reason string) bool {
+func authFailureLine(line, marker, podIP, reason string) bool {
 	entry, ok := jsonLogEntry(line)
 	if !ok {
 		return false
@@ -363,7 +365,7 @@ func peerFailureLine(line, marker, podIP, reason string) bool {
 	address, _ := entry[mtls.LogFieldPeerAddress].(string)
 	got, _ := entry[mtls.LogFieldReason].(string)
 	return entry[marker] == true &&
-		entry[authz.LogFieldCode] == authz.CodePeerCertificateInvalid &&
+		entry[authz.LogFieldCode] == v1.CodeInvalidAuthenticationInfo &&
 		strings.HasPrefix(address, podIP+":") &&
 		strings.Contains(got, reason)
 }
