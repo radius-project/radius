@@ -393,13 +393,13 @@ tests:
       - failedTemplate:
           errorMessage: "global.rbac.certificates.caSecret and caBundle require mode=caSecret."
 
-  - it: fails closed for issuerRef until policy preflight is implemented
+  - it: requires an explicit existing issuer reference
     set:
       global.rbac.enabled: true
       global.rbac.certificates.mode: issuerRef
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=issuerRef requires verified certificate request policy protection: a running approver-policy controller, disabled default auto-approval, and an effective identity- and issuer-scoped policy. Install/upgrade preflight enforcement is not available yet; issuerRef remains disabled. Use selfSigned or caSecret."
+          errorMessage: "issuerRef requires issuerRef.group=cert-manager.io, kind=Issuer or ClusterIssuer, and an existing issuer name."
 
   - it: does not accept a boolean assertion of issuer policy protection
     set:
@@ -409,7 +409,7 @@ tests:
       global.rbac.certificates.issuerRef.name: external-ca
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=issuerRef requires verified certificate request policy protection: a running approver-policy controller, disabled default auto-approval, and an effective identity- and issuer-scoped policy. Install/upgrade preflight enforcement is not available yet; issuerRef remains disabled. Use selfSigned or caSecret."
+          errorMessage: "issuerRef prerequisite: the configured existing Issuer/ClusterIssuer is missing; use a live cluster-connected Helm render."
 
   - it: fails for an unknown mode
     set:
@@ -417,7 +417,7 @@ tests:
       global.rbac.certificates.mode: bogus
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"bogus\" is not valid. Use selfSigned or caSecret."
+          errorMessage: "global.rbac.certificates.mode=\"bogus\" is not valid. Use selfSigned, caSecret or issuerRef."
 
   - it: fails for a false mode instead of defaulting
     set:
@@ -425,7 +425,7 @@ tests:
       global.rbac.certificates.mode: false
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"false\" is not valid. Use selfSigned or caSecret."
+          errorMessage: "global.rbac.certificates.mode=\"false\" is not valid. Use selfSigned, caSecret or issuerRef."
 
   - it: fails for a zero mode instead of defaulting
     set:
@@ -433,7 +433,7 @@ tests:
       global.rbac.certificates.mode: 0
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"0\" is not valid. Use selfSigned or caSecret."
+          errorMessage: "global.rbac.certificates.mode=\"0\" is not valid. Use selfSigned, caSecret or issuerRef."
 
   - it: fails for an empty mode instead of defaulting
     set:
@@ -441,7 +441,7 @@ tests:
       global.rbac.certificates.mode: ""
     asserts:
       - failedTemplate:
-          errorMessage: "global.rbac.certificates.mode=\"\" is not valid. Use selfSigned or caSecret."
+          errorMessage: "global.rbac.certificates.mode=\"\" is not valid. Use selfSigned, caSecret or issuerRef."
 
   - it: ignores the certificate mode when authorization is off
     set:
