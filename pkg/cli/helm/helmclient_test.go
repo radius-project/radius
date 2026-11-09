@@ -51,6 +51,7 @@ import (
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestHelmClientImpl_UpgradeImmutableImageDefaults(t *testing.T) {
@@ -632,7 +633,8 @@ func TestHelmClientImpl_RunHelmPull_RepoURLUnsupportedOptions(t *testing.T) {
 }
 
 // Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm runs rad upgrade and rad install --reinstall against real
-// Helm storage and checks that the cert-manager decision matches the authorization mode Helm renders.
+// Helm storage and checks that the cert-manager and csi-driver-spiffe decisions match the authorization mode Helm
+// renders.
 func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 	t.Parallel()
 
@@ -696,6 +698,15 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 					DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, wait, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
 						return helmClient.RunHelmUpgrade(configuration, c, vals, name, namespace, false, reuse, timeout)
 					})
+				spiffeInstalls := 0
+				if tt.want != "off" {
+					expectCSIDriverSPIFFEPull(t, client)
+					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, radManagedByLabels()).
+						DoAndReturn(func(*helm.Configuration, *chart.Chart, map[string]any, string, string, bool, time.Duration, map[string]string) (*releasev1.Release, error) {
+							spiffeInstalls++
+							return &releasev1.Release{}, nil
+						})
+				}
 
 				detectCalls := 0
 				impl := &Impl{
@@ -705,6 +716,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 						kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 						return kubeClient, apiextClient, nil
 					},
+					newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return k8sfake.NewClientset(), nil },
 				}
 
 				state, err := impl.CheckRadiusInstall("test-context")
@@ -727,8 +739,10 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+hex.EncodeToString(sum[:]))
 				if tt.want == "off" {
 					require.Zero(t, detectCalls)
+					require.Zero(t, spiffeInstalls)
 				} else {
 					require.Equal(t, 1, detectCalls)
+					require.Equal(t, 1, spiffeInstalls)
 				}
 			})
 		}
