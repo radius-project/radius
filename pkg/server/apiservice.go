@@ -65,6 +65,7 @@ func (s *APIService) Run(ctx context.Context) error {
 		Location: s.Options.Config.Env.RoleLocation,
 		Address:  address,
 		PathBase: s.Options.Config.Server.PathBase,
+		ReceiverName: "applications-rp",
 		// Only UCP routes requests to applications-rp.
 		AllowedCallers: []string{"ucp"},
 		Configure: func(r chi.Router) error {

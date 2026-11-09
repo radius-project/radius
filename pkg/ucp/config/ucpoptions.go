@@ -58,8 +58,9 @@ type UCPDirectConnectionOptions struct {
 // checks if the endpoint is provided and returns a direct connection, otherwise it returns a Kubernetes connection from
 // the provided config. It returns an error if the endpoint is not provided when the connection kind is direct.
 //
-// When the authorization mode is not off, a direct connection must use https and presents this component's
-// certificate to UCP's internal mTLS endpoint. A Kubernetes connection is unchanged.
+// When the authorization mode is not off, a direct connection must use https, verifies UCP's SPIFFE server
+// certificate, and sends this component's projected ServiceAccount token for the "ucp" audience to UCP's internal
+// endpoint. A Kubernetes connection is unchanged.
 func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config, authorization authz.Options) (sdk.Connection, error) {
 	if option.Kind == UCPConnectionKindDirect {
 		if option.Direct == nil || option.Direct.Endpoint == "" {
@@ -76,7 +77,7 @@ func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config, auth
 		if endpoint.Scheme != "https" {
 			return nil, fmt.Errorf("the property .ucp.direct.endpoint must use https when the authorization mode is %q", authorization.EffectiveMode())
 		}
-		transport, err := mtls.NewClientTransport(authorization)
+		transport, err := mtls.NewClientTransport(authorization, "ucp")
 		if err != nil {
 			return nil, err
 		}

@@ -19,15 +19,23 @@ package rogueclient
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -147,6 +155,72 @@ func Test_Run_TLS(t *testing.T) {
 	}
 }
 
+func Test_Run_RadiusReceiver(t *testing.T) {
+	t.Parallel()
+
+	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	caTemplate := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "radius-ca"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageCertSign,
+	}
+	caDER, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &caKey.PublicKey, caKey)
+	require.NoError(t, err)
+	ca, err := x509.ParseCertificate(caDER)
+	require.NoError(t, err)
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	id, err := url.Parse("spiffe://radius.internal/ns/radius-system/sa/applications-rp")
+	require.NoError(t, err)
+	leafDER, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+		SerialNumber: big.NewInt(2),
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+		URIs:         []*url.URL{id},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}, ca, &key.PublicKey, caKey)
+	require.NoError(t, err)
+
+	var requests atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		_, _ = w.Write([]byte(r.Header.Get("Authorization")))
+	}))
+	server.TLS = &tls.Config{Certificates: []tls.Certificate{{Certificate: [][]byte{leafDER}, PrivateKey: key}}}
+	server.StartTLS()
+	t.Cleanup(server.Close)
+
+	dir := t.TempDir()
+	writePEM(t, dir, "ca.crt", "CERTIFICATE", caDER)
+	for _, receiver := range []string{"applications-rp", "dynamic-rp"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(dir, "tokens", receiver), 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "tokens", receiver, "token"), []byte("token-for-"+receiver), 0o600))
+	}
+
+	request := func(receiver string) (int, string, string) {
+		return run(t, "request", "--radius-receiver", receiver, "--radius-dir", dir, "--radius-namespace", "radius-system", server.URL)
+	}
+
+	code, stdout, stderr := request("applications-rp")
+	require.Equal(t, ExitOK, code, stderr)
+	require.Equal(t, "Bearer token-for-applications-rp"+StatusMarker+"200", stdout)
+
+	// The server's SPIFFE ID is applications-rp's, so a client for dynamic-rp refuses it and
+	// sends no request.
+	code, stdout, stderr = request("dynamic-rp")
+	require.Equal(t, ExitTransport, code)
+	require.Equal(t, StatusMarker+"0", stdout)
+	require.Contains(t, stderr, "PeerCertificateInvalid")
+	require.Equal(t, int32(1), requests.Load())
+}
+
 func Test_Run_UsageErrors(t *testing.T) {
 	t.Parallel()
 
@@ -162,6 +236,9 @@ func Test_Run_UsageErrors(t *testing.T) {
 		{name: "malformed header", args: []string{"request", "-H", "nocolon", "http://x"}, wantErr: "invalid header"},
 		{name: "cert without key", args: []string{"request", "--cert", "/c", "http://x"}, wantErr: "--cert and --key"},
 		{name: "missing CA file", args: []string{"request", "--cacert", "/does/not/exist", "http://x"}, wantErr: "reading CA"},
+		{name: "receiver without directory", args: []string{"request", "--radius-receiver", "ucp", "--radius-namespace", "ns", "https://x"}, wantErr: "--radius-dir"},
+		{name: "receiver with -k", args: []string{"request", "--radius-receiver", "ucp", "--radius-dir", "/d", "--radius-namespace", "ns", "-k", "https://x"}, wantErr: "cannot be combined"},
+		{name: "receiver without CA bundle", args: []string{"request", "--radius-receiver", "ucp", "--radius-dir", "/does/not/exist", "--radius-namespace", "ns", "https://x"}, wantErr: "Radius client transport"},
 	}
 
 	for _, tt := range tests {

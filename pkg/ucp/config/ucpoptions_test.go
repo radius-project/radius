@@ -28,6 +28,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -41,24 +42,29 @@ import (
 	"github.com/radius-project/radius/pkg/authz/mtls"
 )
 
-// writeCertificate writes a self-signed controller certificate, key, and CA to a new directory.
-// It also returns the certificate so a test server can present it. The certificate is valid
-// for 127.0.0.1 so that only the CA decides whether a client trusts that server.
-func writeCertificate(t *testing.T) (string, tls.Certificate) {
+const testToken = "test-token"
+
+// writeCertificate writes a self-signed certificate, key, and CA to a new directory, and a
+// projected token for UCP to a new token directory. The certificate carries the SPIFFE ID
+// of serviceAccount and is valid for 127.0.0.1, so only the CA and SPIFFE ID decide whether
+// a client trusts a server that presents it.
+func writeCertificate(t *testing.T, serviceAccount string) (string, string, tls.Certificate) {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
+	spiffeID, err := url.Parse(mtls.SPIFFEID(mtls.DefaultTrustDomain, "radius-system", serviceAccount))
+	require.NoError(t, err)
 	template := &x509.Certificate{
 		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{CommonName: "controller"},
-		DNSNames:              []string{"controller.radius-system.svc"},
+		Subject:               pkix.Name{CommonName: serviceAccount},
+		URIs:                  []*url.URL{spiffeID},
 		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1)},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(time.Hour),
 		IsCA:                  true,
 		BasicConstraintsValid: true,
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
 	der, err := x509.CreateCertificate(rand.Reader, template, template, key.Public(), key)
 	require.NoError(t, err)
@@ -71,15 +77,20 @@ func writeCertificate(t *testing.T) (string, tls.Certificate) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, mtls.CertFile), certPEM, 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, mtls.KeyFile), keyPEM, 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, mtls.CAFile), certPEM, 0o600))
+
+	tokenDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tokenDir, "ucp"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(tokenDir, "ucp", mtls.TokenFile), []byte(testToken), 0o600))
+
 	cert, err := tls.X509KeyPair(certPEM, keyPEM)
 	require.NoError(t, err)
-	return dir, cert
+	return dir, tokenDir, cert
 }
 
 func Test_NewConnectionFromUCPConfig(t *testing.T) {
-	certDir, _ := writeCertificate(t)
+	certDir, tokenDir, _ := writeCertificate(t, "ucp")
 	on := func(mode authz.Mode) authz.Options {
-		return authz.Options{Mode: mode, CertificateDirectory: certDir, Namespace: "radius-system"}
+		return authz.Options{Mode: mode, CertificateDirectory: certDir, TokenDirectory: tokenDir, Namespace: "radius-system"}
 	}
 	direct := func(endpoint string) *UCPOptions {
 		return &UCPOptions{Kind: UCPConnectionKindDirect, Direct: &UCPDirectConnectionOptions{Endpoint: endpoint}}
@@ -99,7 +110,9 @@ func Test_NewConnectionFromUCPConfig(t *testing.T) {
 		{name: "enforce kubernetes", option: &UCPOptions{Kind: UCPConnectionKindKubernetes}, authorization: on(authz.ModeEnforce), wantEndpoint: "https://kube:6443/apis/api.ucp.dev/v1alpha3"},
 		{name: "enforce direct http", option: direct("http://ucp.radius-system.svc:9444"), authorization: on(authz.ModeEnforce), wantErr: "must use https when the authorization mode is \"enforce\""},
 		{name: "dryRun direct http", option: direct("http://ucp.radius-system.svc:9444"), authorization: on(authz.ModeDryRun), wantErr: "must use https when the authorization mode is \"dryRun\""},
-		{name: "enforce missing certificate directory", option: direct("https://ucp.radius-system.svc:9444"), authorization: authz.Options{Mode: authz.ModeEnforce, Namespace: "radius-system"}, wantErr: "requires certificateDirectory and namespace"},
+		{name: "enforce missing certificate directory", option: direct("https://ucp.radius-system.svc:9444"), authorization: authz.Options{Mode: authz.ModeEnforce, TokenDirectory: tokenDir, Namespace: "radius-system"}, wantErr: "requires certificateDirectory, tokenDirectory, and namespace"},
+		{name: "enforce missing token directory", option: direct("https://ucp.radius-system.svc:9444"), authorization: authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: certDir, Namespace: "radius-system"}, wantErr: "requires certificateDirectory, tokenDirectory, and namespace"},
+		{name: "enforce missing token", option: direct("https://ucp.radius-system.svc:9444"), authorization: authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: certDir, TokenDirectory: t.TempDir(), Namespace: "radius-system"}, wantErr: "failed to read ServiceAccount token"},
 		{name: "direct missing endpoint", option: &UCPOptions{Kind: UCPConnectionKindDirect}, wantErr: ".ucp.direct.endpoint is required"},
 		{name: "invalid kind", option: &UCPOptions{Kind: "other"}, wantErr: "invalid connection kind"},
 	}
@@ -117,27 +130,34 @@ func Test_NewConnectionFromUCPConfig(t *testing.T) {
 }
 
 // Test_NewConnectionFromUCPConfig_Transport checks which transport a direct connection uses
-// by calling a TLS server at 127.0.0.1 whose certificate comes from the Radius CA and is valid
-// for that address. The default transport rejects the unknown CA; the mTLS client trusts the CA
-// but rejects 127.0.0.1 because it is not a Radius component name.
+// by calling a TLS server at 127.0.0.1 whose certificate comes from the Radius CA. The default
+// transport rejects the unknown CA. The authenticated transport sends UCP's token to a server
+// with UCP's SPIFFE ID, and rejects any other SPIFFE ID without sending the token.
 func Test_NewConnectionFromUCPConfig_Transport(t *testing.T) {
-	certDir, cert := writeCertificate(t)
-	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	srv.TLS = &tls.Config{Certificates: []tls.Certificate{cert}}
-	srv.StartTLS()
-	t.Cleanup(srv.Close)
-
 	tests := []struct {
-		mode    authz.Mode
-		wantErr string
+		name           string
+		mode           authz.Mode
+		serviceAccount string
+		wantErr        string
+		wantAuth       string
 	}{
-		{mode: authz.ModeOff, wantErr: "x509: certificate signed by unknown authority"},
-		{mode: authz.ModeDryRun, wantErr: authz.CodePeerCertificateInvalid},
-		{mode: authz.ModeEnforce, wantErr: authz.CodePeerCertificateInvalid},
+		{name: "off", mode: authz.ModeOff, serviceAccount: "ucp", wantErr: "x509: certificate signed by unknown authority"},
+		{name: "dryRun ucp", mode: authz.ModeDryRun, serviceAccount: "ucp", wantAuth: "Bearer " + testToken},
+		{name: "enforce ucp", mode: authz.ModeEnforce, serviceAccount: "ucp", wantAuth: "Bearer " + testToken},
+		{name: "enforce wrong SPIFFE ID", mode: authz.ModeEnforce, serviceAccount: "controller", wantErr: authz.CodePeerCertificateInvalid},
 	}
 	for _, tt := range tests {
-		t.Run(string(tt.mode), func(t *testing.T) {
-			options := authz.Options{Mode: tt.mode, CertificateDirectory: certDir, Namespace: "radius-system"}
+		t.Run(tt.name, func(t *testing.T) {
+			certDir, tokenDir, cert := writeCertificate(t, tt.serviceAccount)
+			var gotAuth []string
+			srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotAuth = append(gotAuth, r.Header.Get("Authorization"))
+			}))
+			srv.TLS = &tls.Config{Certificates: []tls.Certificate{cert}}
+			srv.StartTLS()
+			t.Cleanup(srv.Close)
+
+			options := authz.Options{Mode: tt.mode, CertificateDirectory: certDir, TokenDirectory: tokenDir, Namespace: "radius-system"}
 			conn, err := NewConnectionFromUCPConfig(&UCPOptions{Kind: UCPConnectionKindDirect, Direct: &UCPDirectConnectionOptions{Endpoint: srv.URL}}, nil, options)
 			require.NoError(t, err)
 			require.IsType(t, &otelhttp.Transport{}, conn.Client().Transport)
@@ -146,7 +166,13 @@ func Test_NewConnectionFromUCPConfig_Transport(t *testing.T) {
 			if err == nil {
 				_ = resp.Body.Close()
 			}
-			require.ErrorContains(t, err, tt.wantErr)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Empty(t, gotAuth)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, []string{tt.wantAuth}, gotAuth)
 		})
 	}
 }
