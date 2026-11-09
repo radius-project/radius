@@ -52,10 +52,13 @@ the new chart's defaults (this mirrors 'helm upgrade --reset-values').
 
 Omitted certificate flags preserve the installed signing CA and trust. '--reset-values' cannot
 discard stored certificate settings. '--ca-secret' or '--ca-cert' with '--ca-key' can confirm the
-same dedicated CA, but mode, signing Secret and trust changes require coordinated CA migration.
-External '--cert-issuer' is disabled until effective certificate request policy protection can be
-verified. Certificate validation cannot be bypassed with '--skip-preflight'; '--preflight-only'
-validates certificate settings without creating Secrets.
+same dedicated CA. '--cert-issuer Issuer/name' or 'ClusterIssuer/name' can confirm the stored
+external issuer, optionally with its unchanged public '--ca-bundle'. External issuers require
+live verification of operator-managed controllers, admission, bounded request policies and
+RBAC on every invocation; Radius does not reconfigure those prerequisites.
+Mode, signing Secret, issuer and trust changes require coordinated CA migration.
+Certificate validation cannot be bypassed with '--skip-preflight'; '--preflight-only'
+performs the same live validation without changing resources or Helm history.
 
 When Contour is installed, the upgrade also upgrades it. Contour chart values can be set with
 '--contour-set' and '--contour-set-file'. They take precedence over the values stored on the Contour

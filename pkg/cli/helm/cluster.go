@@ -387,6 +387,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
+	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil); err != nil {
+		return err
+	}
 
 	// Check Contour and csi-driver-spiffe before installing anything, so that a problem leaves the cluster unchanged.
 	var contour *contourPlan
@@ -401,8 +404,10 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
-		return err
+	if certificateMode(radiusValues) != "issuerRef" {
+		if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+			return err
+		}
 	}
 	certManagerRequesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, clusterOptions.Radius.Reinstall)
 	if err != nil {
@@ -611,6 +616,9 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
+	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, true); err != nil {
+		return err
+	}
 
 	// Check the Contour and csi-driver-spiffe upgrades before upgrading anything, so that a problem leaves the
 	// cluster unchanged.
@@ -626,8 +634,10 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
-		return err
+	if certificateMode(radiusValues) != "issuerRef" {
+		if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
+			return err
+		}
 	}
 	certManagerRequesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, true)
 	if err != nil {

@@ -285,9 +285,7 @@ func newIssuerPolicyFixture(t *testing.T) *issuerPolicyFixture {
 	return f
 }
 
-// renderChart uses the same REST-backed Helm engine as a server-connected install or
-// CLI preflight, without installing anything or executing a CertificateRequest.
-func (f *issuerPolicyFixture) renderChart(t *testing.T) (map[string]string, error) {
+func (f *issuerPolicyFixture) server(t *testing.T) *httptest.Server {
 	t.Helper()
 	resources := map[string]metav1.APIResource{}
 	for _, obj := range f.objects {
@@ -315,6 +313,30 @@ func (f *issuerPolicyFixture) renderChart(t *testing.T) (map[string]string, erro
 		w.Header().Set("Content-Type", "application/json")
 		write := func(value any) {
 			require.NoError(t, json.NewEncoder(w).Encode(value))
+		}
+		switch r.URL.Path {
+		case "/version":
+			write(map[string]string{"major": "1", "minor": "35", "gitVersion": "v1.35.0"})
+			return
+		case "/api":
+			write(metav1.APIVersions{Versions: []string{"v1"}})
+			return
+		case "/apis":
+			groups := map[string]metav1.APIGroup{}
+			for key, resource := range resources {
+				apiVersion := strings.TrimSuffix(key, "/"+resource.Kind)
+				group, version, grouped := strings.Cut(apiVersion, "/")
+				if grouped {
+					versionInfo := metav1.GroupVersionForDiscovery{GroupVersion: apiVersion, Version: version}
+					groups[group] = metav1.APIGroup{Name: group, Versions: []metav1.GroupVersionForDiscovery{versionInfo}, PreferredVersion: versionInfo}
+				}
+			}
+			list := metav1.APIGroupList{}
+			for _, group := range groups {
+				list.Groups = append(list.Groups, group)
+			}
+			write(list)
+			return
 		}
 		if r.URL.Path == f.forbiddenPath {
 			w.WriteHeader(http.StatusForbidden)
@@ -371,6 +393,14 @@ func (f *issuerPolicyFixture) renderChart(t *testing.T) (map[string]string, erro
 		write(metav1.Status{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Status"}, Status: "Failure", Reason: metav1.StatusReasonNotFound, Code: 404})
 	}))
 	t.Cleanup(server.Close)
+	return server
+}
+
+// renderChart uses the same REST-backed Helm engine as a server-connected install or
+// CLI preflight, without installing anything or executing a CertificateRequest.
+func (f *issuerPolicyFixture) renderChart(t *testing.T) (map[string]string, error) {
+	t.Helper()
+	server := f.server(t)
 	chart, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
 	require.NoError(t, err)
 	values, err := chartutil.CoalesceValues(chart, f.values)
