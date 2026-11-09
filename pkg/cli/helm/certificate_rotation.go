@@ -91,12 +91,13 @@ var rotationPhases = []rotationPhase{rotationPublish, rotationAdopt, rotationIss
 type rotationPlan struct {
 	Scope                      rotationScope                `json:"scope,omitempty"`
 	Aggregation                *rotationAggregationWorkload `json:"aggregation,omitempty"`
+	ExternalIssuer             *rotationExternalIssuer      `json:"externalIssuer,omitempty"`
 	TargetMode                 string                       `json:"targetMode"`
 	TargetTrustMap             string                       `json:"targetTrustMap"`
 	TargetTrustSHA256          string                       `json:"targetTrustSHA256"`
 	OldComponentCA             []byte                       `json:"oldComponentCA,omitempty"`
-	SigningSecret              string                       `json:"signingSecret"`
-	SigningUID                 types.UID                    `json:"signingUID"`
+	SigningSecret              string                       `json:"signingSecret,omitempty"`
+	SigningUID                 types.UID                    `json:"signingUID,omitempty"`
 	Issuer                     string                       `json:"issuer"`
 	ServingSecret              string                       `json:"servingSecret"`
 	Consumers                  []rotationWorkload           `json:"consumers,omitempty"`
@@ -111,6 +112,8 @@ type rotationWorkload struct {
 	UID            types.UID `json:"uid"`
 	CertificateUID types.UID `json:"certificateUID"`
 	OldIssuer      string    `json:"oldIssuer"`
+	OldIssuerGroup string    `json:"oldIssuerGroup,omitempty"`
+	OldIssuerKind  string    `json:"oldIssuerKind,omitempty"`
 	ProofPort      uint16    `json:"proofPort"`
 }
 
@@ -122,7 +125,7 @@ func (s rotationState) validate(now time.Time) error {
 		!slices.Contains(rotationPhases, s.Phase) {
 		return errors.New("invalid CA rotation journal identity or phase")
 	}
-	if s.SchemaVersion == 1 && s.Plan != nil && (s.Plan.Scope != "" || s.Plan.Aggregation != nil) ||
+	if s.SchemaVersion == 1 && s.Plan != nil && (s.Plan.Scope != "" || s.Plan.Aggregation != nil || s.Plan.ExternalIssuer != nil) ||
 		s.SchemaVersion == 2 && (s.Plan == nil || s.Plan.Scope == "" || s.Plan.Aggregation == nil) {
 		return errors.New("CA rotation scope does not match its journal version")
 	}
@@ -186,7 +189,10 @@ func (s rotationState) validate(now time.Time) error {
 		suffix := strings.ReplaceAll(s.ID, "-", "")[:16]
 		servingName := s.Plan.ServingSecret == "radius-aggregation-"+suffix ||
 			s.SchemaVersion == 2 && s.Plan.ServingSecret == "ucp-cert-aggregation-"+suffix
-		if s.Plan.Issuer != "radius-ca-"+suffix || !servingName {
+		if s.Plan.ExternalIssuer != nil {
+			servingName = s.Plan.ServingSecret == "ucp-cert-aggregation-"+suffix
+		}
+		if (s.Plan.ExternalIssuer == nil && s.Plan.Issuer != "radius-ca-"+suffix) || !servingName {
 			return errors.New("rotation issuer and serving Secret must be scoped to this transaction")
 		}
 	}
@@ -194,13 +200,22 @@ func (s rotationState) validate(now time.Time) error {
 }
 
 func (p rotationPlan) validate() error {
-	if !slices.Contains([]string{"selfSigned", "caSecret"}, p.TargetMode) ||
-		p.SigningSecret == "" || p.SigningUID == "" || p.UCPMinReadySeconds < 0 || p.UCPProgressDeadlineSeconds <= p.UCPMinReadySeconds ||
+	if !slices.Contains([]string{"selfSigned", "caSecret", "issuerRef"}, p.TargetMode) ||
+		p.UCPMinReadySeconds < 0 || p.UCPProgressDeadlineSeconds <= p.UCPMinReadySeconds ||
 		p.Issuer == "" || p.ServingSecret == "" || p.ServiceUID == "" || len(p.ServiceSelector) == 0 {
 		return errors.New("invalid CA rotation resource plan")
 	}
-	if len(validation.IsDNS1123Subdomain(p.SigningSecret)) != 0 ||
-		p.ServiceSelector["app.kubernetes.io/name"] != "ucp" || p.ServiceSelector["pod-template-hash"] != "" {
+	if p.TargetMode == "issuerRef" {
+		if p.ExternalIssuer == nil || p.SigningSecret != "" || p.SigningUID != "" || p.Issuer != p.ExternalIssuer.Name {
+			return errors.New("issuerRef rotation must pin an existing public issuer, not a signing Secret")
+		}
+		if err := p.ExternalIssuer.validate(); err != nil {
+			return err
+		}
+	} else if p.ExternalIssuer != nil || p.SigningUID == "" || p.SigningSecret == "" || len(validation.IsDNS1123Subdomain(p.SigningSecret)) != 0 {
+		return errors.New("local-signer rotation requires the signing Secret identity")
+	}
+	if p.ServiceSelector["app.kubernetes.io/name"] != "ucp" || p.ServiceSelector["pod-template-hash"] != "" {
 		return errors.New("invalid CA rotation signer name or aggregation selector")
 	}
 	if _, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: p.ServiceSelector}); err != nil {
@@ -214,6 +229,10 @@ func (p rotationPlan) validate() error {
 		if !slices.Contains(rotationComponents, consumer.Name) || seen[consumer.Name] ||
 			consumer.UID == "" || consumer.CertificateUID == "" || consumer.OldIssuer == "" || consumer.ProofPort == 0 {
 			return errors.New("invalid or duplicate planned CA rotation workload")
+		}
+		if consumer.OldIssuerGroup != "" && consumer.OldIssuerGroup != "cert-manager.io" ||
+			consumer.OldIssuerKind != "" && !slices.Contains([]string{"Issuer", "ClusterIssuer"}, consumer.OldIssuerKind) {
+			return errors.New("invalid previous component issuer reference")
 		}
 		seen[consumer.Name] = true
 	}
@@ -235,11 +254,12 @@ func (s rotationState) revision() string {
 // rotationStore owns only the public journal and APIService trust. It never writes
 // a signing Secret, installs admission policy, or takes control of an injector.
 type rotationStore struct {
-	kube      kubernetes.Interface
-	dynamic   dynamic.Interface
-	namespace string
-	release   string
-	now       func() time.Time
+	kube               kubernetes.Interface
+	dynamic            dynamic.Interface
+	namespace          string
+	release            string
+	now                func() time.Time
+	verifyIssuerPolicy func(context.Context, rotationState) error
 }
 
 func (s *rotationStore) read(ctx context.Context) (*corev1.ConfigMap, rotationState, error) {

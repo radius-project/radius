@@ -36,6 +36,7 @@ import (
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/spf13/pflag"
 	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
@@ -44,7 +45,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -648,6 +648,9 @@ func (i *Impl) renderCertificatePolicy(ctx context.Context, options ClusterOptio
 			return fmt.Errorf("cannot copy Radius history for read-only issuer verification: %w", err)
 		}
 		upgrade := newUpgradeClient(configuration, options.Radius.Namespace, false, !options.ResetValues, options.Radius.Timeout, usesServerSideApply(configuration, options.Radius.ReleaseName))
+		if transaction != nil {
+			upgrade.ReuseValues, upgrade.ResetThenReuseValues, upgrade.ResetValues = false, false, true
+		}
 		upgrade.DryRunStrategy = helm.DryRunServer
 		_, err = upgrade.RunWithContext(ctx, options.Radius.ReleaseName, renderedChart, copyValues(current))
 	} else {
