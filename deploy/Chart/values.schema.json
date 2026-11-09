@@ -6,7 +6,10 @@
       "type": "object",
       "properties": {
         "rbac": {
-          "type": ["object", "null"],
+          "anyOf": [
+            {"type": ["object", "null"]},
+            {"enum": [false, 0, ""]}
+          ],
           "properties": {
             "certificates": {
               "type": ["object", "null"],
