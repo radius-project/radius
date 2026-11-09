@@ -114,46 +114,105 @@ func (s *rotationStore) reconcileRotationDeployment(ctx context.Context, transac
 			RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: ptr.To(intstr.FromInt32(1)), MaxUnavailable: ptr.To(intstr.FromInt32(0))}}
 	}
 	if workload.Name == "ucp" && state.Phase != rotationAdopt {
-		servingTrust, _, err := s.publishComponentTrust(ctx, state.NewCA)
-		if err != nil {
+		if err := s.configureAggregationDeployment(ctx, state, deployment); err != nil {
 			return err
-		}
-		if err := replaceRotationVolume(&deployment.Spec.Template.Spec, rotationTLSProjection("cert", state.Plan.ServingSecret, servingTrust.Name)); err != nil {
-			return err
-		}
-		deployment.Spec.MinReadySeconds = state.Plan.UCPMinReadySeconds
-		deployment.Spec.ProgressDeadlineSeconds = ptr.To(state.Plan.UCPProgressDeadlineSeconds)
-		if state.Phase == rotationIssue {
-			// Read routing after the deployment: a queued hold cannot overwrite
-			// a release, and a fresh retry derives its intent from live routing.
-			service, err := s.kube.CoreV1().Services(s.namespace).Get(ctx, "ucp", metav1.GetOptions{})
-			if err != nil {
-				return err
-			}
-			if service.UID != state.Plan.ServiceUID || !rotationOwned(service, s.namespace, s.release) ||
-				service.Annotations[rotationTransaction] != transaction {
-				return errors.New("aggregation rollout requires its retained, owned Service route")
-			}
-			switch service.Annotations[rotationRoute] {
-			case "old", "new":
-				// This is an explicit hold, not a timed adoption proof.
-				deployment.Spec.MinReadySeconds = math.MaxInt32 - 1
-				deployment.Spec.ProgressDeadlineSeconds = ptr.To(int32(math.MaxInt32))
-			case "complete":
-			default:
-				return errors.New("aggregation rollout has no recognized routing state")
-			}
 		}
 	}
-	annotations := deployment.Annotations
-	annotations[rotationRevision] = state.revision()
-	deployment.Annotations = annotations
+	deployment.Annotations[rotationRevision] = state.revision()
 	if err := s.checkWrite(ctx); err != nil {
 		return err
 	}
 	_, err = client.Update(ctx, deployment, metav1.UpdateOptions{FieldManager: FieldManager})
 	if err != nil {
 		return fmt.Errorf("cannot update rotation deployment; reread the phase before retrying: %w", err)
+	}
+	return nil
+}
+
+func (s *rotationStore) reconcileAggregationDeployment(ctx context.Context, transaction string) error {
+	client := s.kube.AppsV1().Deployments(s.namespace)
+	deployment, err := client.Get(ctx, "ucp", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	state, err := s.plannedPhase(ctx, transaction, rotationIssue, rotationRetire)
+	if err != nil {
+		return err
+	}
+	if state.Plan.effectiveScope() != rotationAggregationOnly ||
+		deployment.UID != state.Plan.Aggregation.DeploymentUID ||
+		!rotationOwned(deployment, s.namespace, s.release) || deployment.Spec.Paused {
+		return errors.New("aggregation deployment identity, scope, ownership or pause state changed")
+	}
+	if err := checkRotationObjectRevision(deployment, state); err != nil {
+		return err
+	}
+	if err := s.configureAggregationDeployment(ctx, state, deployment); err != nil {
+		return err
+	}
+	deployment.Annotations[rotationRevision] = state.revision()
+	if err := s.checkWrite(ctx); err != nil {
+		return err
+	}
+	_, err = client.Update(ctx, deployment, metav1.UpdateOptions{FieldManager: FieldManager})
+	if err != nil {
+		return fmt.Errorf("cannot update aggregation deployment; reread the phase before retrying: %w", err)
+	}
+	return nil
+}
+
+func (s *rotationStore) configureAggregationDeployment(ctx context.Context, state rotationState, deployment *appsv1.Deployment) error {
+	servingTrust, digest, err := s.publishComponentTrust(ctx, state.NewCA)
+	if err != nil {
+		return err
+	}
+	if err := replaceRotationVolume(&deployment.Spec.Template.Spec, rotationTLSProjection("cert", state.Plan.ServingSecret, servingTrust.Name)); err != nil {
+		return err
+	}
+	if state.SchemaVersion == 2 {
+		port, err := aggregationProofPort(deployment.Spec.Template.Spec)
+		if err != nil || port != state.Plan.Aggregation.ProofPort {
+			return errors.New("aggregation serving proof requires its pinned management listener")
+		}
+		for index := range deployment.Spec.Template.Spec.Containers {
+			container := &deployment.Spec.Template.Spec.Containers[index]
+			if container.Name != "ucp" {
+				continue
+			}
+			setRotationEnv(container, corev1.EnvVar{Name: "UCP_AGGREGATION_STARTUP_PROOF_ENABLED", Value: "true"})
+			setRotationEnv(container, corev1.EnvVar{Name: "UCP_AGGREGATION_EXPECTED_TRUST_SHA256", Value: digest})
+			setRotationEnv(container, corev1.EnvVar{Name: "UCP_AGGREGATION_POD_UID", ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.uid"},
+			}})
+		}
+		if err := rotationAggregationProjection(deployment.Spec.Template.Spec, state.Plan); err != nil {
+			return err
+		}
+	}
+	deployment.Spec.Strategy = appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType,
+		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: ptr.To(intstr.FromInt32(1)), MaxUnavailable: ptr.To(intstr.FromInt32(0))}}
+	deployment.Spec.MinReadySeconds = state.Plan.UCPMinReadySeconds
+	deployment.Spec.ProgressDeadlineSeconds = ptr.To(state.Plan.UCPProgressDeadlineSeconds)
+	if state.Phase == rotationIssue {
+		// Read routing after the deployment so a queued hold cannot overwrite
+		// a completed release of the retained old backend.
+		service, err := s.kube.CoreV1().Services(s.namespace).Get(ctx, "ucp", metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if service.UID != state.Plan.ServiceUID || !rotationOwned(service, s.namespace, s.release) ||
+			service.Annotations[rotationTransaction] != state.ID {
+			return errors.New("aggregation rollout requires its retained, owned Service route")
+		}
+		switch service.Annotations[rotationRoute] {
+		case "old", "new":
+			// This is an explicit hold, not a timed adoption proof.
+			deployment.Spec.MinReadySeconds = math.MaxInt32 - 1
+			deployment.Spec.ProgressDeadlineSeconds = ptr.To(int32(math.MaxInt32))
+		case "complete":
+		default:
+			return errors.New("aggregation rollout has no recognized routing state")
+		}
 	}
 	return nil
 }

@@ -19,6 +19,7 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -58,47 +59,53 @@ func TestRotationHelmTrustOwnership(t *testing.T) {
 			client, err := dynamic.NewForConfig(config)
 			require.NoError(t, err)
 			store := &rotationStore{kube: kube, dynamic: client, namespace: namespace, release: radiusReleaseName, now: time.Now}
-			legacy, err := kube.CoreV1().Secrets(namespace).Get(t.Context(), "ucp-cert", metav1.GetOptions{})
-			require.NoError(t, err)
-
-			// A render constructed before the journal existed cannot overwrite a
-			// completed rotation, including when Helm forces SSA conflicts.
-			next, _, _ := testSigningCA(t, nil, nil, nil, nil)
-			upgrade := newUpgradeClient(configuration, namespace, false, true, time.Minute, ssa)
-			upgrade.PostRenderer = postRenderFunc(func() {
-				state, err := store.begin(t.Context(), uuid.NewString(), next)
-				require.NoError(t, err)
-				require.NoError(t, store.reconcileTrust(t.Context(), state.ID))
-				for _, phase := range rotationPhases[1:] {
-					advanceRotationTest(t, store, phase)
+			require.NoError(t, withIdentityOperation(t.Context(), kube, namespace, func(operation *identityOperation) error {
+				store.guardWrite = func(ctx context.Context) error {
+					return operation.checkProviderJournal(ctx, radiusReleaseName, nil)
 				}
-			})
-			_, err = upgrade.Run(radiusReleaseName, chart, map[string]any{})
-			require.ErrorContains(t, err, "the object has been modified")
-			api, err := client.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
-			require.NoError(t, err)
-			bundle, err := apiServiceBundle(api)
-			require.NoError(t, err)
-			require.Equal(t, next, bundle)
+				legacy, err := kube.CoreV1().Secrets(namespace).Get(t.Context(), "ucp-cert", metav1.GetOptions{})
+				require.NoError(t, err)
 
-			upgrade = newUpgradeClient(configuration, namespace, false, true, time.Minute, ssa)
-			_, err = upgrade.Run(radiusReleaseName, chart, map[string]any{})
-			require.NoError(t, err, "a fresh render preserves the completed public trust")
-			api, err = client.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
-			require.NoError(t, err)
-			bundle, err = apiServiceBundle(api)
-			require.NoError(t, err)
-			require.Equal(t, next, bundle)
-			current, err := kube.CoreV1().Secrets(namespace).Get(t.Context(), "ucp-cert", metav1.GetOptions{})
-			require.NoError(t, err)
-			require.Equal(t, legacy.Data, current.Data, "trust publication must not replace the legacy serving key")
+				// A render constructed before the journal existed cannot overwrite a
+				// completed rotation, including when Helm forces SSA conflicts.
+				next, _, _ := testSigningCA(t, nil, nil, nil, nil)
+				upgrade := newUpgradeClient(configuration, namespace, false, true, time.Minute, ssa)
+				upgrade.PostRenderer = postRenderFunc(func() {
+					state, err := store.begin(t.Context(), uuid.NewString(), next)
+					require.NoError(t, err)
+					require.NoError(t, store.reconcileTrust(t.Context(), state.ID))
+					for _, phase := range rotationPhases[1:] {
+						advanceRotationTest(t, store, phase)
+					}
+				})
+				_, err = upgrade.Run(radiusReleaseName, chart, map[string]any{})
+				require.ErrorContains(t, err, "the object has been modified")
+				api, err := client.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
+				require.NoError(t, err)
+				bundle, err := apiServiceBundle(api)
+				require.NoError(t, err)
+				require.Equal(t, next, bundle)
 
-			third, _, _ := testSigningCA(t, nil, nil, nil, nil)
-			_, err = store.begin(t.Context(), uuid.NewString(), third)
-			require.NoError(t, err)
-			upgrade = newUpgradeClient(configuration, namespace, false, true, time.Minute, ssa)
-			_, err = upgrade.Run(radiusReleaseName, chart, map[string]any{})
-			require.ErrorContains(t, err, "rotation is unfinished")
+				upgrade = newUpgradeClient(configuration, namespace, false, true, time.Minute, ssa)
+				_, err = upgrade.Run(radiusReleaseName, chart, map[string]any{})
+				require.NoError(t, err, "a fresh render preserves the completed public trust")
+				api, err = client.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
+				require.NoError(t, err)
+				bundle, err = apiServiceBundle(api)
+				require.NoError(t, err)
+				require.Equal(t, next, bundle)
+				current, err := kube.CoreV1().Secrets(namespace).Get(t.Context(), "ucp-cert", metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, legacy.Data, current.Data, "trust publication must not replace the legacy serving key")
+
+				third, _, _ := testSigningCA(t, nil, nil, nil, nil)
+				_, err = store.begin(t.Context(), uuid.NewString(), third)
+				require.NoError(t, err)
+				upgrade = newUpgradeClient(configuration, namespace, false, true, time.Minute, ssa)
+				_, err = upgrade.Run(radiusReleaseName, chart, map[string]any{})
+				require.ErrorContains(t, err, "rotation is unfinished")
+				return nil
+			}))
 		})
 	}
 }

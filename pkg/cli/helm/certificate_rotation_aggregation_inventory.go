@@ -94,6 +94,10 @@ func rotationAggregationProjection(spec corev1.PodSpec, plan *rotationPlan) erro
 // aggregationInventory is the final convergence barrier, not a candidate-surge
 // inventory. It inspects only aggregation PKI, without inventing component proof.
 func (s *rotationStore) aggregationInventory(ctx context.Context, state rotationState) (rotationInventory, error) {
+	return s.aggregationServingInventory(ctx, state, false)
+}
+
+func (s *rotationStore) aggregationServingInventory(ctx context.Context, state rotationState, candidate bool) (rotationInventory, error) {
 	inventory := rotationInventory{versions: map[types.UID]string{}}
 	if state.Plan == nil {
 		return inventory, errors.New("aggregation inventory requires a resource plan")
@@ -111,9 +115,11 @@ func (s *rotationStore) aggregationInventory(ctx context.Context, state rotation
 		count = *deployment.Spec.Replicas
 	}
 	if deployment.UID != workload.DeploymentUID || !rotationOwned(deployment, s.namespace, s.release) ||
-		deployment.Spec.Paused || count < 1 || deployment.Status.ObservedGeneration < deployment.Generation ||
-		deployment.Status.Replicas != count || deployment.Status.UpdatedReplicas != count ||
-		deployment.Status.ReadyReplicas != count || deployment.Status.AvailableReplicas != count {
+		deployment.Spec.Paused || count < 1 || deployment.Status.ObservedGeneration < deployment.Generation {
+		return inventory, errors.New("aggregation deployment identity or convergence is not established")
+	}
+	if !candidate && (deployment.Status.Replicas != count || deployment.Status.UpdatedReplicas != count ||
+		deployment.Status.ReadyReplicas != count || deployment.Status.AvailableReplicas != count) {
 		return inventory, errors.New("aggregation deployment identity or convergence is not established")
 	}
 	if err := rotationAggregationProjection(deployment.Spec.Template.Spec, state.Plan); err != nil {
@@ -150,6 +156,7 @@ func (s *rotationStore) aggregationInventory(ctx context.Context, state rotation
 		return inventory, errors.New("aggregation ReplicaSet inventory exceeds its supported bound")
 	}
 	owned := map[types.UID]string{}
+	currentSets := map[types.UID]bool{}
 	for _, set := range sets.Items {
 		owner := metav1.GetControllerOf(&set)
 		if owner == nil || owner.UID != deployment.UID {
@@ -161,8 +168,9 @@ func (s *rotationStore) aggregationInventory(ctx context.Context, state rotation
 		template, current := set.Spec.Template.DeepCopy(), deployment.Spec.Template.DeepCopy()
 		delete(template.Labels, appsv1.DefaultDeploymentUniqueLabelKey)
 		delete(current.Labels, appsv1.DefaultDeploymentUniqueLabelKey)
+		currentSets[set.UID] = set.DeletionTimestamp == nil && apiequality.Semantic.DeepEqual(template, current)
 		if set.Spec.Replicas == nil || *set.Spec.Replicas != 0 || set.Status.Replicas != 0 {
-			if set.DeletionTimestamp != nil || !apiequality.Semantic.DeepEqual(template, current) {
+			if !candidate && !currentSets[set.UID] {
 				return inventory, errors.New("an old aggregation ReplicaSet has not stopped")
 			}
 		}
@@ -187,6 +195,10 @@ func (s *rotationStore) aggregationInventory(ctx context.Context, state rotation
 		if owner.Kind != "ReplicaSet" || owner.APIVersion != "apps/v1" || owner.Name != owned[owner.UID] || pod.UID == "" {
 			return inventory, errors.New("aggregation pod ownership is inconsistent")
 		}
+		inventory.versions[pod.UID] = pod.ResourceVersion
+		if candidate && !currentSets[owner.UID] {
+			continue
+		}
 		if err := rotationAggregationProjection(pod.Spec, state.Plan); err != nil {
 			return inventory, err
 		}
@@ -201,19 +213,62 @@ func (s *rotationStore) aggregationInventory(ctx context.Context, state rotation
 			return inventory, errors.New("aggregation pod is not running and ready")
 		}
 		inventory.targets = append(inventory.targets, target)
-		inventory.versions[pod.UID] = pod.ResourceVersion
 	}
-	if len(inventory.targets) != int(count) {
+	if !candidate && len(inventory.targets) != int(count) ||
+		candidate && (len(inventory.targets) == 0 || len(inventory.targets) > int(count)) {
 		return inventory, errors.New("aggregation pod inventory does not match the converged deployment")
 	}
 	return inventory, nil
 }
 
+func (r *rotationRunner) observeAggregationServingCandidates(ctx context.Context, state rotationState) (map[types.UID]bool, string, error) {
+	before, err := r.store.aggregationServingInventory(ctx, state, true)
+	if err != nil {
+		return nil, "", err
+	}
+	ids, hash, err := r.store.aggregationPods(ctx, state, true)
+	if err != nil {
+		return nil, "", err
+	}
+	observe := r.observeAggregation
+	if observe == nil {
+		observe = ObserveAggregationProof
+	}
+	observed := map[types.UID]bool{}
+	for _, target := range before.targets {
+		proof, err := observe(ctx, r.config, target)
+		if err != nil {
+			return nil, "", err
+		}
+		if err := proof.Evidence.Validate(string(target.PodUID), target.TrustBundleSHA256, target.LeafSHA256, time.Now()); err != nil {
+			return nil, "", err
+		}
+		observed[target.PodUID] = true
+	}
+	if !maps.Equal(ids, observed) {
+		return nil, "", errors.New("aggregation candidate inventory changed before serving evidence observation")
+	}
+	after, err := r.store.aggregationServingInventory(ctx, state, true)
+	if err != nil {
+		return nil, "", err
+	}
+	if !maps.Equal(before.versions, after.versions) {
+		return nil, "", errors.New("aggregation candidate inventory changed during serving evidence observation")
+	}
+	return ids, hash, nil
+}
+
 func (s *rotationStore) verifyAggregationServing(ctx context.Context, config *rest.Config, state rotationState,
 	observe func(context.Context, *rest.Config, TLSProofTarget) (PodAggregationProof, error)) error {
+	_, err := s.aggregationServingEvidence(ctx, config, state, observe)
+	return err
+}
+
+func (s *rotationStore) aggregationServingEvidence(ctx context.Context, config *rest.Config, state rotationState,
+	observe func(context.Context, *rest.Config, TLSProofTarget) (PodAggregationProof, error)) (rotationInventory, error) {
 	before, err := s.aggregationInventory(ctx, state)
 	if err != nil {
-		return err
+		return rotationInventory{}, err
 	}
 	if observe == nil {
 		observe = ObserveAggregationProof
@@ -221,18 +276,18 @@ func (s *rotationStore) verifyAggregationServing(ctx context.Context, config *re
 	for _, target := range before.targets {
 		proof, err := observe(ctx, config, target)
 		if err != nil {
-			return err
+			return rotationInventory{}, err
 		}
 		if err := proof.Evidence.Validate(string(target.PodUID), target.TrustBundleSHA256, target.LeafSHA256, time.Now()); err != nil {
-			return err
+			return rotationInventory{}, err
 		}
 	}
 	after, err := s.aggregationInventory(ctx, state)
 	if err != nil {
-		return err
+		return rotationInventory{}, err
 	}
 	if !maps.Equal(before.versions, after.versions) {
-		return errors.New("aggregation inventory changed during serving evidence observation")
+		return rotationInventory{}, errors.New("aggregation inventory changed during serving evidence observation")
 	}
-	return nil
+	return after, nil
 }

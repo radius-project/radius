@@ -96,6 +96,15 @@ func newPlannedRotationTest(t *testing.T) (*rotationStore, *rest.Config, rotatio
 }
 
 func TestRotationRoutingAndRolloutFences(t *testing.T) {
+	for _, scope := range []rotationScope{rotationComponentsAndAggregation, rotationAggregationOnly} {
+		t.Run(string(scope), func(t *testing.T) {
+			testRotationRoutingAndRolloutFences(t, scope)
+		})
+	}
+}
+
+func testRotationRoutingAndRolloutFences(t *testing.T, scope rotationScope) {
+	t.Helper()
 	store, config, state := newPlannedRotationTest(t)
 	ctx, id, plan := t.Context(), state.ID, state.Plan
 	var ucp rotationWorkload
@@ -104,17 +113,35 @@ func TestRotationRoutingAndRolloutFences(t *testing.T) {
 			ucp = workload
 		}
 	}
-	advanceRotationTest(t, store, rotationAdopt)
-	for _, workload := range plan.Consumers {
-		require.NoError(t, store.reconcileRotationDeployment(ctx, id, workload))
+	if scope == rotationAggregationOnly {
+		state = aggregationOnlyState(t, state)
+		storeAggregationExecutionState(t, store, state)
+		deployment, err := store.kube.AppsV1().Deployments(store.namespace).Get(ctx, "ucp", metav1.GetOptions{})
+		require.NoError(t, err)
+		deployment.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{{Name: "metrics", ContainerPort: 9090}}
+		deployment.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{{Name: "cert", MountPath: "/var/tls/cert", ReadOnly: true}}
+		_, err = store.kube.AppsV1().Deployments(store.namespace).Update(ctx, deployment, metav1.UpdateOptions{})
+		require.NoError(t, err)
 	}
-	controller, err := store.kube.AppsV1().Deployments(store.namespace).Get(ctx, "controller", metav1.GetOptions{})
-	require.NoError(t, err)
-	require.Equal(t, appsv1.RecreateDeploymentStrategyType, controller.Spec.Strategy.Type)
+	reconcile := func(s *rotationStore) error {
+		if scope == rotationAggregationOnly {
+			return s.reconcileAggregationDeployment(ctx, id)
+		}
+		return s.reconcileRotationDeployment(ctx, id, ucp)
+	}
+	advanceRotationTest(t, store, rotationAdopt)
+	if scope == rotationComponentsAndAggregation {
+		for _, workload := range plan.Consumers {
+			require.NoError(t, store.reconcileRotationDeployment(ctx, id, workload))
+		}
+		controller, err := store.kube.AppsV1().Deployments(store.namespace).Get(ctx, "controller", metav1.GetOptions{})
+		require.NoError(t, err)
+		require.Equal(t, appsv1.RecreateDeploymentStrategyType, controller.Spec.Strategy.Type)
+	}
 	advanceRotationTest(t, store, rotationIssue)
-	_, err = store.setAggregationRoute(ctx, id, "old", "old-hash", nil)
+	_, err := store.setAggregationRoute(ctx, id, "old", "old-hash", nil)
 	require.NoError(t, err)
-	require.NoError(t, store.reconcileRotationDeployment(ctx, id, ucp))
+	require.NoError(t, reconcile(store))
 	held, err := store.kube.AppsV1().Deployments(store.namespace).Get(ctx, "ucp", metav1.GetOptions{})
 	require.NoError(t, err)
 	require.Equal(t, int32(math.MaxInt32-1), held.Spec.MinReadySeconds)
@@ -143,7 +170,7 @@ func TestRotationRoutingAndRolloutFences(t *testing.T) {
 	writer := *store
 	writer.kube = delayed
 	result := make(chan error, 1)
-	go func() { result <- writer.reconcileRotationDeployment(ctx, id, ucp) }()
+	go func() { result <- reconcile(&writer) }()
 	select {
 	case <-paused:
 	case <-time.After(10 * time.Second):
@@ -151,14 +178,14 @@ func TestRotationRoutingAndRolloutFences(t *testing.T) {
 	}
 	_, err = store.setAggregationRoute(ctx, id, "complete", "", routed)
 	require.NoError(t, err)
-	require.NoError(t, store.reconcileRotationDeployment(ctx, id, ucp))
+	require.NoError(t, reconcile(store))
 	unblock.Do(func() { close(release) })
 	require.ErrorContains(t, <-result, "the object has been modified")
 	_, err = store.setAggregationRoute(ctx, id, "old", "old-hash", routed)
 	require.ErrorContains(t, err, "the object has been modified", "failed probes cannot restore a route after another runner completes")
 	_, err = store.setAggregationRoute(ctx, id, "old", "old-hash", nil)
 	require.ErrorContains(t, err, "already completed")
-	require.NoError(t, store.reconcileRotationDeployment(ctx, id, ucp), "fresh retries derive release from live routing")
+	require.NoError(t, reconcile(store), "fresh retries derive release from live routing")
 	live, err := store.kube.AppsV1().Deployments(store.namespace).Get(ctx, "ucp", metav1.GetOptions{})
 	require.NoError(t, err)
 	require.Equal(t, int32(0), live.Spec.MinReadySeconds)

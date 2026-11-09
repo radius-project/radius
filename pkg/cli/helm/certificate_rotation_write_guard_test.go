@@ -34,10 +34,13 @@ import (
 func TestRotationEveryWriterChecksOperation(t *testing.T) {
 	t.Parallel()
 	for _, name := range []string{"begin", "recovery begin", "APIService", "phase advance", "trust generation",
-		"issuer", "component Certificate", "aggregation Certificate", "deployment", "route", "recovery route", "runner"} {
+		"issuer", "component Certificate", "aggregation Certificate", "deployment", "aggregation deployment", "route", "recovery route", "runner"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			runner, state := rotationRunnerFixture(t)
+			if name == "aggregation deployment" {
+				runner, state = aggregationExecutionFixture(t, true)
+			}
 			s, ctx := runner.store, t.Context()
 			kube := s.kube.(*kubefake.Clientset)
 			client := s.dynamic.(*dynamicfake.FakeDynamicClient)
@@ -49,6 +52,10 @@ func TestRotationEveryWriterChecksOperation(t *testing.T) {
 			case "deployment":
 				state.Phase = rotationAdopt
 				_, _, err := s.publishComponentTrust(ctx, rotationComponentBundle(state))
+				require.NoError(t, err)
+			case "aggregation deployment":
+				state.Phase = rotationRetire
+				_, _, err := s.publishComponentTrust(ctx, state.NewCA)
 				require.NoError(t, err)
 			case "recovery route":
 				state.Phase, state.Recovery = rotationRetire, true
@@ -90,6 +97,8 @@ func TestRotationEveryWriterChecksOperation(t *testing.T) {
 				err = s.ensureAggregationCertificate(ctx, state.ID)
 			case "deployment":
 				err = s.reconcileRotationDeployment(ctx, state.ID, state.Plan.Consumers[0])
+			case "aggregation deployment":
+				err = s.reconcileAggregationDeployment(ctx, state.ID)
 			case "route":
 				_, err = s.setAggregationRoute(ctx, state.ID, "old", "old-hash", nil)
 			case "recovery route":
