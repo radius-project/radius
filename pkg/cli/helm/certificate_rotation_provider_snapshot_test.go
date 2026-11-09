@@ -17,7 +17,9 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -29,8 +31,73 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 	"k8s.io/utils/ptr"
 )
+
+func TestAggregationTransitionExternalIssuerSnapshot(t *testing.T) {
+	t.Parallel()
+	for _, cluster := range []bool{false, true} {
+		t.Run(map[bool]string{false: "Issuer", true: "ClusterIssuer"}[cluster], func(t *testing.T) {
+			t.Parallel()
+			s, state := completedAggregationFixture(t)
+			ctx, ns := t.Context(), s.namespace
+			_, external, fixture := rotationIssuerFixture(t, true, cluster)
+			state = aggregationOnlyState(t, state)
+			state.Plan.ExternalIssuer, state.Plan.TargetMode, state.Plan.Issuer = external.Plan.ExternalIssuer, "issuerRef", external.Plan.Issuer
+			state.Plan.SigningUID, state.Plan.SigningSecret = "", ""
+			oldServing := state.Plan.ServingSecret
+			state.Plan.ServingSecret = "ucp-cert-aggregation-" + strings.ReplaceAll(state.ID, "-", "")[:16]
+			kube := s.kube.(*kubefake.Clientset)
+			client := s.dynamic.(*dynamicfake.FakeDynamicClient)
+			issuer := fixture.object(state.Plan.ExternalIssuer.Kind, state.Plan.Issuer).DeepCopy()
+			require.NoError(t, client.Tracker().Add(issuer))
+			leaf, err := kube.CoreV1().Secrets(ns).Get(ctx, oldServing, metav1.GetOptions{})
+			require.NoError(t, err)
+			leaf.Name, leaf.UID = state.Plan.ServingSecret, types.UID(uuid.NewString())
+			require.NoError(t, kube.Tracker().Add(leaf))
+			certificate, err := client.Resource(rotationCertificateResource).Namespace(ns).Get(ctx, oldServing, metav1.GetOptions{})
+			require.NoError(t, err)
+			certificate.SetName(state.Plan.ServingSecret)
+			certificate.SetUID(types.UID(uuid.NewString()))
+			certificate.Object["spec"] = rotationAggregationCertificateSpec(state, ns)
+			require.NoError(t, client.Tracker().Add(certificate))
+			deployment, err := kube.AppsV1().Deployments(ns).Get(ctx, "ucp", metav1.GetOptions{})
+			require.NoError(t, err)
+			require.NoError(t, replaceRotationVolume(&deployment.Spec.Template.Spec, rotationTLSProjection("cert", state.Plan.ServingSecret, state.Plan.TargetTrustMap)))
+			require.NoError(t, kube.Tracker().Update(appsv1.SchemeGroupVersion.WithResource("deployments"), deployment, ns))
+			journal, _, err := s.read(ctx)
+			require.NoError(t, err)
+			data, err := json.Marshal(state)
+			require.NoError(t, err)
+			journal.Data[rotationJournalKey] = string(data)
+			require.NoError(t, kube.Tracker().Update(corev1.SchemeGroupVersion.WithResource("configmaps"), journal, ns))
+			s.verifyIssuerPolicy = func(context.Context, rotationState) error {
+				t.Fatal("snapshot identity must not substitute for target policy or readiness verification")
+				return nil
+			}
+			kube.ClearActions()
+			snapshot, err := s.aggregationTransitionSnapshot(ctx)
+			require.NoError(t, err)
+			require.True(t, snapshot.Complete)
+			require.Equal(t, rotationAggregationOnly, snapshot.Scope)
+			require.NoError(t, s.checkAggregationTransitionSnapshot(ctx, snapshot))
+			for _, action := range kube.Actions() {
+				require.Equal(t, "get", action.GetVerb())
+				if action.GetResource().Resource == "secrets" {
+					require.Equal(t, state.Plan.ServingSecret, action.(k8stesting.GetAction).GetName())
+				}
+			}
+			resource := rotationIssuerResource
+			if cluster {
+				resource.Resource = "clusterissuers"
+			}
+			require.NoError(t, unstructured.SetNestedField(issuer.Object, "https://changed.example", "spec", "vault", "server"))
+			require.NoError(t, client.Tracker().Update(resource, issuer, issuer.GetNamespace()))
+			require.ErrorContains(t, s.checkAggregationTransitionSnapshot(ctx, snapshot), "specification changed")
+		})
+	}
+}
 
 func TestAggregationTransitionSnapshot(t *testing.T) {
 	for _, scenario := range []string{"unchanged", "leaf renewal", "APIService replaced", "journal replaced",
