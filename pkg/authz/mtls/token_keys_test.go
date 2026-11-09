@@ -195,6 +195,7 @@ func TestExternalTokenExpiryOnReusedConnection(t *testing.T) {
 }
 
 func TestExternalServerInitializationAndShutdown(t *testing.T) {
+	t.Setenv("RADIUS_INTERNAL_AUTH_POD_UID", "22222222-2222-4222-8222-222222222222")
 	for _, unavailable := range []bool{false, true} {
 		t.Run(map[bool]string{false: "discovery succeeds", true: "discovery unavailable"}[unavailable], func(t *testing.T) {
 			_, key, _ := tokenFixture(t)
@@ -243,6 +244,22 @@ func TestExternalServerInitializationAndShutdown(t *testing.T) {
 				require.Equal(t, 204, response.StatusCode)
 				require.EqualValues(t, 2, calls.Load())
 			}
+			probe := request.Clone(t.Context())
+			probe.URL.Path = InternalIdentityPath
+			probe.URL.RawQuery = "challenge=11111111-1111-4111-8111-111111111111"
+			response, err = client.Do(probe)
+			require.NoError(t, err)
+			if unavailable {
+				require.Equal(t, http.StatusServiceUnavailable, response.StatusCode)
+			} else {
+				require.Equal(t, http.StatusOK, response.StatusCode)
+				var receipt InternalIdentityReceipt
+				require.NoError(t, json.NewDecoder(response.Body).Decode(&receipt))
+				require.Equal(t, "22222222-2222-4222-8222-222222222222", receipt.PodUID)
+				require.Equal(t, "applications-rp", receipt.Component)
+				require.Equal(t, "system:serviceaccount:radius-system:ucp", receipt.Caller)
+			}
+			require.NoError(t, response.Body.Close())
 			require.NoError(t, server.Close())
 			select {
 			case err := <-done:

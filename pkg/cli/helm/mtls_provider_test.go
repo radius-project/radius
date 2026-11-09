@@ -80,8 +80,8 @@ func TestPrepareMTLSProvider(t *testing.T) {
 		{name: "provider transition rejected", installed: true, values: externalProviderValues(), wantErr: "coordinated restart"},
 		{name: "reverse transition rejected", installed: true, stored: externalProviderValues(), flag: "radius", values: map[string]any{}, wantErr: "coordinated restart"},
 		{name: "reset rejected", installed: true, reset: true, stored: externalProviderValues(), values: map[string]any{}, wantErr: "reset-values"},
-		{name: "CA migration rejected", values: externalProviderValues(), mutate: func(v map[string]any) { setCertificateValues(v, map[string]any{"mode": "caSecret"}) }, wantErr: "aggregation CA migration"},
-		{name: "external issuer rejected", values: externalProviderValues(), mutate: func(v map[string]any) { setCertificateValues(v, map[string]any{"mode": "issuerRef"}) }, wantErr: "aggregation CA migration"},
+		{name: "independent CA Secret selection", values: externalProviderValues(), mutate: func(v map[string]any) { setCertificateValues(v, map[string]any{"mode": "caSecret"}) }},
+		{name: "independent external issuer selection", values: externalProviderValues(), mutate: func(v map[string]any) { setCertificateValues(v, map[string]any{"mode": "issuerRef"}) }},
 		{name: "unpaired engine rejected", values: externalProviderValues(), mutate: func(v map[string]any) { delete(v, "de") }, wantErr: "paired token-capable"},
 		{name: "implicit engine tag rejected", values: externalProviderValues(), mutate: func(v map[string]any) { delete(v["de"].(map[string]any), "tag") }, wantErr: "paired token-capable"},
 		{name: "engine opt-in must be boolean", values: externalProviderValues(), mutate: func(v map[string]any) {
@@ -118,23 +118,25 @@ func TestPrepareMTLSProvider(t *testing.T) {
 	}
 }
 
-func TestMTLSProviderDoesNotProvisionCertManager(t *testing.T) {
+func TestMTLSProviderOffDoesNotProvisionCertManager(t *testing.T) {
 	options := NewDefaultClusterOptions()
-	options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.mtls.provider=external"}
+	options.Radius.SetArgs = []string{"global.rbac.enabled=false", "global.rbac.mtls.provider=external"}
 	// No Helm/Kubernetes clients: accessing either would panic.
 	require.NoError(t, (&Impl{}).ensureCertManager(t.Context(), options, "", nil, false))
 }
 
-func TestExternalProviderRejectsRotation(t *testing.T) {
+func TestExternalProviderRejectsRotationWhileOff(t *testing.T) {
 	for _, phase := range []string{"publish", "adopt", "issue", "retire", "recover"} {
 		for _, readOnly := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/preflight=%t", phase, readOnly), func(t *testing.T) {
 				options := NewDefaultClusterOptions()
 				options.Certificates.RotationPhase = phase
+				values := externalProviderValues()
+				rbacSettings(values)["dryRun"] = false
 				client := NewMockHelmClient(gomock.NewController(t))
 				client.EXPECT().RunHelmGet(gomock.Any(), radiusReleaseName).Return(&releasev1.Release{
 					Chart:  &chart.Chart{Metadata: &chart.Metadata{Annotations: map[string]string{"radius.io/ca-rotation-protocol": "1"}}},
-					Config: externalProviderValues(),
+					Config: values,
 					Info:   &releasev1.Info{Status: releasecommon.StatusDeployed},
 				}, nil)
 				impl := &Impl{Helm: client}
@@ -144,7 +146,7 @@ func TestExternalProviderRejectsRotation(t *testing.T) {
 				} else {
 					err = impl.UpgradeRadius(t.Context(), options, "")
 				}
-				require.ErrorContains(t, err, "external-provider aggregation rotation is not supported")
+				require.ErrorContains(t, err, "enabling authorization is a separate upgrade")
 			})
 		}
 	}

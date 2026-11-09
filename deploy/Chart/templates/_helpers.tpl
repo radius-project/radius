@@ -329,3 +329,12 @@ Call with (dict "root" $ "component" "<component>").
 {{- include "radius.authz.mode" . -}}
 {{- if eq (include "radius.authz.provider" .) "external" -}}/external{{- end -}}
 {{- end -}}
+
+{{- define "radius.authz.externalIdentityEnv" -}}
+{{- if and (eq (include "radius.authz.provider" .) "external") (ne (include "radius.authz.mode" .) "off") }}
+- name: RADIUS_INTERNAL_AUTH_POD_UID
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.uid
+{{- end }}
+{{- end -}}

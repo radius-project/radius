@@ -387,7 +387,7 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 	if err != nil {
 		return nil, err
 	}
-	if authzMode == authz.ModeOff {
+	if authzMode == authz.ModeOff && (!installed || o.Specified()) {
 		return nil, fmt.Errorf("dedicated CA certificates require global.rbac.dryRun=true or global.rbac.enabled=true")
 	}
 	if mode == "issuerRef" {

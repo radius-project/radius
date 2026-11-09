@@ -72,25 +72,20 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 	if err != nil {
 		return err
 	}
-	if provider != "radius" {
-		return errors.New("CA rotation requires the radius mTLS provider; external-provider aggregation rotation is not supported")
-	}
 	mode, err := resolveAuthzMode(nil, effective)
 	if err != nil {
 		return err
 	}
 	if mode == authz.ModeOff {
-		return errors.New("CA rotation requires enabled component TLS and process evidence; enabling authorization is a separate upgrade")
-	}
-	provider, found, err := unstructured.NestedString(effective, "global", "rbac", "mtls", "provider")
-	if !found && err == nil {
-		provider = "radius"
-	}
-	if err != nil || provider != "radius" && provider != "external" {
-		return errors.New("rotation requires an explicit managed or external mTLS provider")
+		return errors.New("CA rotation requires enabled authorization and process evidence; enabling authorization is a separate upgrade")
 	}
 	scope := rotationComponentsAndAggregation
 	if provider == "external" {
+		providerOptions := options
+		providerOptions.RadiusReleaseValues = effective
+		if err := i.prepareMTLSProvider(providerOptions, nil, map[string]any{}, true); err != nil {
+			return err
+		}
 		scope = rotationAggregationOnly
 	}
 	config, err := configuration.RESTClientGetter.ToRESTConfig()
@@ -106,6 +101,9 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 		return err
 	}
 	store := &rotationStore{kube: kube, dynamic: dynamicClient, namespace: options.Radius.Namespace, release: radiusReleaseName, now: time.Now}
+	if err := i.checkCompletedProviderJournal(ctx, store); err != nil {
+		return err
+	}
 	policyOptions := options
 	policyOptions.RadiusReleaseValues = copyValues(release.Config)
 	store.verifyIssuerPolicy = func(ctx context.Context, state rotationState) error {
@@ -314,7 +312,7 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 	}
 	return withIdentityOperation(ctx, kube, store.namespace, func(operation *identityOperation) error {
 		store.guardWrite = func(ctx context.Context) error {
-			return operation.checkProviderJournal(ctx, store.release, i.validateCompletedProviderJournal)
+			return operation.checkProviderJournal(ctx, store.release, i.completedProviderJournalValidator(store.namespace, store.release))
 		}
 		if err := store.checkWrite(ctx); err != nil {
 			return err

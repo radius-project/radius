@@ -137,6 +137,7 @@ spec:
         {{- end }}
         {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
         env:
+        {{- with include "radius.authz.externalIdentityEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         - name: ASPNETCORE_ENVIRONMENT
           value: "Production"
         - name: SKIP_ARM

@@ -118,9 +118,6 @@ func (i *Impl) prepareMTLSProvider(options ClusterOptions, defaults, current map
 		return fmt.Errorf("de.externalIdentity.enabled requires global.rbac.mtls.provider=external")
 	}
 	if provider == "external" {
-		if certificateMode(merged) != "selfSigned" || options.Certificates.Specified() {
-			return fmt.Errorf("external provider supports only the existing selfSigned aggregation certificate; caSecret/issuerRef require coordinated aggregation CA migration")
-		}
 		image, _ := de["image"].(string)
 		tag, _ := de["tag"].(string)
 		if mode != authz.ModeOff && (!enabled || image == "" || tag == "") {

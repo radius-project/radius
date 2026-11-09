@@ -73,6 +73,7 @@ func TestBootstrapIssuancePreparation(t *testing.T) {
 				require.NoError(t, unstructured.SetNestedField(values, int64(9090), "global", "prometheus", "port"))
 				if external {
 					require.NoError(t, unstructured.SetNestedField(values, "external", "global", "rbac", "mtls", "provider"))
+					values["de"] = externalProviderValues()["de"]
 				}
 				b := &aggregationBootstrapInstaller{impl: &Impl{
 					newCertificateClient: func(string) (kubernetes.Interface, error) { return s.kube, nil },

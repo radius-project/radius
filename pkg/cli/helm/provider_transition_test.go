@@ -879,3 +879,45 @@ func TestProviderTransitionCompletedJournalAdapter(t *testing.T) {
 	require.Error(t, validateCompletedProviderTransitionJournal(completed, "other", plan.Release))
 	require.Error(t, validateCompletedProviderTransitionJournal(completed, plan.Namespace, "other"))
 }
+
+func TestProviderTransitionSharedCAGuard(t *testing.T) {
+	t.Parallel()
+	s, plan, targets, _ := providerFakeFixture(t, "radius", "external", "enforce")
+	impl := &Impl{}
+	check := func(wantComplete bool) {
+		t.Helper()
+		require.NoError(t, withIdentityOperation(t.Context(), s.kube, plan.Namespace, func(operation *identityOperation) error {
+			err := operation.checkProviderJournal(t.Context(), plan.Release,
+				impl.completedProviderJournalValidator(plan.Namespace, plan.Release))
+			if wantComplete {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+			require.Error(t, s.withLock(t.Context(), plan.Namespace, func(*coordinationv1.Lease) error {
+				t.Fatal("provider transition must not enter an active CA operation")
+				return nil
+			}))
+			return nil
+		}))
+	}
+	check(true)
+	require.NoError(t, s.begin(t.Context(), plan, targets, true))
+	for range 4 {
+		check(false)
+		providerStepConverged(t, s, plan, targets)
+	}
+	check(true)
+	completed, _, err := s.read(t.Context(), plan.Namespace)
+	require.NoError(t, err)
+	called := false
+	impl.validateCompletedProviderJournal = func(*corev1.ConfigMap) error {
+		called = true
+		return nil
+	}
+	require.NoError(t, impl.completedProviderJournalValidator(plan.Namespace, plan.Release)(completed))
+	require.True(t, called)
+	called = false
+	require.Error(t, impl.completedProviderJournalValidator("other", plan.Release)(completed))
+	require.False(t, called, "an optional hook cannot bypass namespace or full-schema validation")
+}

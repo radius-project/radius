@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 
@@ -153,8 +154,11 @@ func (v *tokenVerifier) authorizeToken(mode authz.Mode, allowed []string, next h
 		}
 		decision := authz.Decision{Allowed: code == "", Code: code, Action: r.Method, Target: r.URL.Path}
 		effective := mode
-		if code == v1.CodeAuthorizationUnavailable {
+		if code == v1.CodeAuthorizationUnavailable || r.URL.Path == InternalIdentityPath {
 			effective = authz.ModeEnforce
+		}
+		if r.URL.Path == InternalIdentityPath {
+			w.Header().Set("Cache-Control", "no-store")
 		}
 		if err := authz.Apply(ctx, effective, decision); err != nil {
 			writeDenied(ctx, w, r, err)
@@ -199,6 +203,7 @@ func serveExternalWithConfig(ctx context.Context, srv *http.Server, ln net.Liste
 		handler = http.DefaultServeMux
 	}
 	verifier := &tokenVerifier{keys: keys, namespace: options.Namespace, receiver: options.Component}
+	handler = internalIdentityHandler(handler, options, os.Getenv("RADIUS_INTERNAL_AUTH_POD_UID"), keys.clock.Now)
 	srv.Handler = verifier.authorizeToken(options.EffectiveMode(), allowed, handler)
 	return srv.Serve(ln)
 }

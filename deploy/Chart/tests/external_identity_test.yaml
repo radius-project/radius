@@ -12,6 +12,20 @@ templates:
   - de/deployment.yaml
 release:
   namespace: radius-system
+  upgrade: true
+kubernetesProvider:
+  scheme:
+    "apiregistration.k8s.io/v1/APIService":
+      gvr:
+        group: apiregistration.k8s.io
+        version: v1
+        resource: apiservices
+      namespaced: false
+  objects:
+    - apiVersion: apiregistration.k8s.io/v1
+      kind: APIService
+      metadata:
+        name: v1alpha3.api.ucp.dev
 set:
   global.rbac.enabled: true
   global.rbac.mtls.provider: external
@@ -87,7 +101,7 @@ tests:
   - it: keeps aggregation TLS and uses separate token-authenticated HTTP
     asserts:
       - hasDocuments:
-          count: 0
+          count: 3
         template: global/certificates.yaml
       - hasDocuments:
           count: 2
@@ -199,13 +213,28 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: external provider requires de.externalIdentity.enabled=true and an explicit de.image/de.tag for a paired token-capable engine; the published default image is not supported
-  - it: rejects unsupported aggregation CA mode without falling back
+  - it: supports independent CA Secret aggregation without component Certificates
     set:
       global.rbac.certificates.mode: caSecret
-    template: global/external-identity.yaml
+      global.rbac.certificates.caSecret: operator-ca
+      global.rbac.certificates.caBundle: |
+        -----BEGIN CERTIFICATE-----
+        Y2E=
+        -----END CERTIFICATE-----
+    template: global/certificates.yaml
     asserts:
-      - failedTemplate:
-          errorMessage: external provider supports only the existing selfSigned aggregation certificate; caSecret/issuerRef require coordinated aggregation CA migration
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: ConfigMap
+        documentIndex: 0
+      - isKind:
+          of: Issuer
+        documentIndex: 1
+      - equal:
+          path: spec.ca.secretName
+          value: operator-ca
+        documentIndex: 1
   - it: rejects mixing managed engine TLS with external identity
     set:
       de.ucpMTLS.enabled: true
@@ -213,13 +242,6 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: external provider cannot use de.ucpMTLS.enabled
-  - it: rejects external issuer mode without entering managed rotation
-    set:
-      global.rbac.certificates.mode: issuerRef
-    template: global/external-identity.yaml
-    asserts:
-      - failedTemplate:
-          errorMessage: external provider supports only the existing selfSigned aggregation certificate; caSecret/issuerRef require coordinated aggregation CA migration
   - it: supports dry run without changing its authorization mode
     set:
       global.rbac.enabled: false

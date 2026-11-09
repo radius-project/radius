@@ -171,6 +171,7 @@ spec:
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
+        {{- with include "radius.authz.externalIdentityEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.startupProofEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.database.enabled }}
         - name: POSTGRES_PASSWORD

@@ -135,6 +135,7 @@ func TestBootstrapNativeInstallRequiresRunningEvidence(t *testing.T) {
 	options.Radius.SetArgs = []string{
 		"global.rbac.enabled=true", "global.rbac.mtls.provider=external",
 		"global.prometheus.enabled=true", "global.prometheus.port=9090",
+		"de.externalIdentity.enabled=true", "de.image=local-engine", "de.tag=local-test",
 	}
 	impl := &Impl{
 		Helm: NewHelmClient(),

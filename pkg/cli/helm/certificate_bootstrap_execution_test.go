@@ -90,6 +90,7 @@ func TestBootstrapVerificationResume(t *testing.T) {
 				require.NoError(t, unstructured.SetNestedField(values, int64(9090), "global", "prometheus", "port"))
 				if external {
 					require.NoError(t, unstructured.SetNestedField(values, "external", "global", "rbac", "mtls", "provider"))
+					values["de"] = externalProviderValues()["de"]
 				}
 				settings := map[string]any{"mode": mode}
 				var issuer *rotationExternalIssuer
@@ -265,6 +266,11 @@ func TestBootstrapVerificationResume(t *testing.T) {
 				snapshot, err := s.aggregationTransitionSnapshot(ctx)
 				require.NoError(t, err)
 				require.True(t, snapshot.Complete)
+				_, providerPlan, _, _ := providerFakeFixture(t, "radius", "external", "enforce")
+				providerPlan.Aggregation = snapshot
+				require.NoError(t, (providerTransitionState{
+					Version: 1, Plan: providerPlan, Phase: providerStopping,
+				}).validate(), "provider transitions must accept the completed schema3 snapshot without inventing a predecessor CA")
 				b.values = valuesutil.CoalesceTables(copyValues(installedValues), copyValues(selected.Values))
 				require.NoError(t, b.run(ctx), "exact persisted Helm settings can resume completion")
 			})

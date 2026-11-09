@@ -14,9 +14,6 @@
 {{- if .Values.de.ucpMTLS.enabled }}
 {{- fail "external provider cannot use de.ucpMTLS.enabled" }}
 {{- end }}
-{{- if or (ne .Values.global.rbac.certificates.mode "selfSigned") .Values.global.rbac.certificates.caSecret .Values.global.rbac.certificates.caBundle }}
-{{- fail "external provider supports only the existing selfSigned aggregation certificate; caSecret/issuerRef require coordinated aggregation CA migration" }}
-{{- end }}
 {{- if $active }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

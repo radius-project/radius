@@ -214,7 +214,7 @@ func TestRotationShippingWorkloadTrust(t *testing.T) {
 					render.ReleaseName, render.Namespace = store.release, store.namespace
 					render.DryRunStrategy = helm.DryRunServer
 					_, err := render.RunWithContext(t.Context(), externalChart, externalValues)
-					require.ErrorContains(t, err, "external provider cannot use an existing CA rotation journal")
+					require.ErrorContains(t, err, "Changing the mTLS provider requires a coordinated provider transition")
 				}
 			})
 		}

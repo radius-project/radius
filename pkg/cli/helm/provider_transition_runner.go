@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,44 +39,13 @@ var errProviderTransitionWaiting = errors.New("provider transition is waiting fo
 // withLock never steals an expired lease. A crashed holder requires explicit
 // operator investigation; an elapsed wall clock is not evidence that it stopped.
 func (s *providerTransitionStore) withLock(ctx context.Context, namespace string, run func(*coordinationv1.Lease) error) (err error) {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	holder := uuid.NewString()
-	client := s.kube.CoordinationV1().Leases(namespace)
-	lease, err := client.Create(ctx, &coordinationv1.Lease{
-		ObjectMeta: metav1.ObjectMeta{Name: providerTransitionLock, Namespace: namespace},
-		Spec:       coordinationv1.LeaseSpec{HolderIdentity: &holder},
-	}, metav1.CreateOptions{FieldManager: FieldManager})
-	if err != nil {
-		return fmt.Errorf("cannot acquire identity operation lock; do not steal an existing lease: %w", err)
-	}
-	defer func() {
-		cleanup, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		deleteErr := client.Delete(cleanup, lease.Name, metav1.DeleteOptions{
-			Preconditions: &metav1.Preconditions{UID: &lease.UID, ResourceVersion: &lease.ResourceVersion},
-		})
-		if deleteErr != nil {
-			err = errors.Join(err, fmt.Errorf("cannot release identity operation lock: %w", deleteErr))
-		}
-	}()
-	return run(lease)
+	return withIdentityOperation(ctx, s.kube, namespace, func(operation *identityOperation) error {
+		return run(operation.lease)
+	})
 }
 
 func (s *providerTransitionStore) checkLock(ctx context.Context, lease *coordinationv1.Lease) error {
-	if lease == nil || lease.UID == "" || lease.ResourceVersion == "" || lease.Spec.HolderIdentity == nil {
-		return errors.New("provider transition has no operation lock")
-	}
-	live, err := s.kube.CoordinationV1().Leases(lease.Namespace).Get(ctx, lease.Name, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	if live.UID != lease.UID || live.ResourceVersion != lease.ResourceVersion ||
-		live.DeletionTimestamp != nil || ptr.Deref(live.Spec.HolderIdentity, "") != *lease.Spec.HolderIdentity {
-		return errors.New("identity operation lock changed; stop and investigate before retrying")
-	}
-	return nil
+	return (&identityOperation{kube: s.kube, lease: lease}).check(ctx)
 }
 
 func (s *providerTransitionStore) checkAutoscalers(ctx context.Context, plan providerTransitionPlan) error {

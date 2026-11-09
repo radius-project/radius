@@ -238,6 +238,61 @@ func TestCertificateExpiryWarning(t *testing.T) {
 	}
 }
 
+func TestExternalCertificateOffPreservesInstalledTrust(t *testing.T) {
+	t.Parallel()
+	cert, key, _ := testSigningCA(t, nil, nil, nil, nil)
+	for _, mode := range []string{"caSecret", "issuerRef"} {
+		for _, scenario := range []string{"omitted", "changed trust", "changed signer", "explicit flag", "fresh"} {
+			t.Run(mode+"/"+scenario, func(t *testing.T) {
+				t.Parallel()
+				stored := externalProviderValues()
+				if mode == "caSecret" {
+					setCertificateValues(stored, certificateValues(caReleaseValues("operator-ca", cert)))
+				} else {
+					fixture := newIssuerPolicyFixture(t)
+					settings := certificateValues(fixture.values)
+					settings["caBundle"] = string(cert)
+					setCertificateValues(stored, settings)
+				}
+				options := NewDefaultClusterOptions()
+				options.RadiusReleaseValues = stored
+				current := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": false}}}
+				switch scenario {
+				case "changed trust":
+					setCertificateValues(current, map[string]any{"caBundle": "not the installed trust"})
+				case "changed signer":
+					if mode == "caSecret" {
+						setCertificateValues(current, map[string]any{"caSecret": "different-ca"})
+					} else {
+						setCertificateValues(current, map[string]any{"issuerRef": map[string]any{"name": "different-issuer"}})
+					}
+				case "explicit flag":
+					if mode == "caSecret" {
+						options.Certificates.CASecret = "operator-ca"
+					} else {
+						options.Certificates.CertIssuer = "Issuer/external-ca"
+					}
+				case "fresh":
+					delete(rbacSettings(stored), "mtls")
+					delete(stored, "de")
+				}
+				kube := k8sfake.NewClientset(caTLSSecret("operator-ca", cert, key))
+				impl := &Impl{newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil }}
+				_, err := impl.prepareCertificates(t.Context(), options, nil, current, "", scenario != "fresh")
+				if scenario == "omitted" {
+					require.NoError(t, err)
+					require.Equal(t, mode, certificateMode(current))
+				} else {
+					require.Error(t, err)
+				}
+				for _, action := range kube.Actions() {
+					require.Equal(t, "get", action.GetVerb(), "preparation must not mutate cluster state")
+				}
+			})
+		}
+	}
+}
+
 func TestCertificateSecretValidationErrors(t *testing.T) {
 	t.Parallel()
 	cert, key, _ := testSigningCA(t, nil, nil, nil, nil)
@@ -832,6 +887,7 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 			}
 			if scenario.external {
 				fixture.values["global"].(map[string]any)["rbac"].(map[string]any)["mtls"] = map[string]any{"provider": "external"}
+				fixture.values["de"] = externalProviderValues()["de"]
 				onlyUCP := fixture.objects[:0]
 				for _, object := range fixture.objects {
 					if object.GetKind() != "CertificateRequestPolicy" || object.GetName() == "radius-radius-system-ucp" {
@@ -872,7 +928,8 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 				options.Certificates = CertificateOptions{CertIssuer: settings["issuerRef"].(map[string]any)["kind"].(string) + "/external-ca", CABundle: bundlePath}
 				options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
 				if scenario.external {
-					options.Radius.SetArgs = append(options.Radius.SetArgs, "global.rbac.mtls.provider=external")
+					options.Radius.SetArgs = append(options.Radius.SetArgs, "global.rbac.mtls.provider=external",
+						"de.externalIdentity.enabled=true", "de.image=local-engine", "de.tag=local-test")
 				}
 			} else {
 				options.RadiusReleaseValues = copyValues(fixture.values)

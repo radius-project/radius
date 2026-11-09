@@ -33,6 +33,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -40,10 +41,10 @@ import (
 )
 
 const (
-	providerTransitionJournal = "radius-provider-transition"
-	providerTransitionKey     = "state.json"
-	providerTransitionMarker  = "radius.io/provider-transition"
-	providerTransitionLock    = "radius-identity-operation"
+	providerTransitionJournal = identityProviderJournal
+	providerTransitionKey     = identityProviderStateKey
+	providerTransitionMarker  = identityProviderMarker
+	providerTransitionLock    = identityOperationLeaseName
 )
 
 type providerTransitionPhase string
@@ -56,17 +57,7 @@ const (
 	providerComplete  providerTransitionPhase = "complete"
 )
 
-// These helpers are deliberately not connected to the CLI. Activation requires
-// the CA driver to hold the same operation lock, plus real target-mode evidence.
-type providerAggregationSnapshot struct {
-	APIServiceUID types.UID `json:"apiServiceUID"`
-	JournalUID    types.UID `json:"journalUID"`
-	Revision      string    `json:"revision"`
-	TrustSHA256   string    `json:"trustSHA256"`
-	SignerSHA256  string    `json:"signerSHA256"`
-	Scope         string    `json:"scope"`
-	Complete      bool      `json:"complete"`
-}
+type providerAggregationSnapshot = aggregationTransitionSnapshot
 
 type providerTransitionWorkload struct {
 	Name            string    `json:"name"`
@@ -175,7 +166,7 @@ func (s providerTransitionState) validate() error {
 	if !a.Complete || a.APIServiceUID == "" || a.JournalUID == "" || a.Revision == "" ||
 		!found || phase != "complete" || aggregateErr != nil || aggregateID == uuid.Nil || aggregateID.String() != transaction ||
 		!providerDigestValid(a.TrustSHA256) || !providerDigestValid(a.SignerSHA256) ||
-		!slices.Contains([]string{"componentsAndAggregation", "aggregationOnly"}, a.Scope) {
+		!slices.Contains([]rotationScope{rotationComponentsAndAggregation, rotationAggregationOnly}, a.Scope) {
 		return errors.New("provider transition requires pinned managed aggregation identity")
 	}
 	if len(p.Workloads) != len(rotationComponents) {
@@ -365,6 +356,29 @@ func validateCompletedProviderTransitionJournal(cm *corev1.ConfigMap, namespace,
 		return errors.New("provider transition is unfinished; resume it before changing the CA")
 	}
 	return nil
+}
+
+func (i *Impl) completedProviderJournalValidator(namespace, release string) func(*corev1.ConfigMap) error {
+	return func(cm *corev1.ConfigMap) error {
+		if err := validateCompletedProviderTransitionJournal(cm, namespace, release); err != nil {
+			return err
+		}
+		if i.validateCompletedProviderJournal != nil {
+			return i.validateCompletedProviderJournal(cm)
+		}
+		return nil
+	}
+}
+
+func (i *Impl) checkCompletedProviderJournal(ctx context.Context, store *rotationStore) error {
+	journal, err := store.kube.CoreV1().ConfigMaps(store.namespace).Get(ctx, providerTransitionJournal, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("cannot inspect provider transition journal: %w", err)
+	}
+	return i.completedProviderJournalValidator(store.namespace, store.release)(journal)
 }
 
 func (s *providerTransitionStore) advance(ctx context.Context, lease *coordinationv1.Lease, cm *corev1.ConfigMap, state providerTransitionState, next providerTransitionPhase) error {

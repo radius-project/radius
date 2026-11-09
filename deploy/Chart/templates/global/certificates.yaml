@@ -1,8 +1,5 @@
 {{- $journalPresent := lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation" }}
-{{- if and $journalPresent (eq (include "radius.authz.provider" .) "external") }}
-{{- fail "external provider cannot use an existing CA rotation journal; managed rotation and provider transitions require separate supported workflows" }}
-{{- end }}
-{{- if and (eq (include "radius.authz.provider" .) "radius") (or $journalPresent (ne (include "radius.authz.mode" .) "off")) }}
+{{- if or $journalPresent (ne (include "radius.authz.mode" .) "off") }}
 {{- $objects := dict }}
 {{- $provider := default "radius" ((.Values.global.rbac.mtls | default dict).provider) }}
 {{- if ne $provider "external" }}
@@ -14,6 +11,9 @@
 {{- $caObject := lookup "cert-manager.io/v1" "Certificate" .Release.Namespace "radius-ca" }}
 {{- $trustObject := lookup "v1" "ConfigMap" .Release.Namespace "radius-mtls-ca" }}
 {{- $rotation := include "radius.rotationState" . | mustFromJson }}
+{{- if and $rotation (ne (eq $provider "external") (eq (default "componentsAndAggregation" $rotation.plan.scope) "aggregationOnly")) }}
+{{- fail "Changing the mTLS provider requires a coordinated provider transition." }}
+{{- end }}
 {{- $certificates := ((.Values.global.rbac).certificates) | default dict }}
 {{- $mode := "selfSigned" }}
 {{- if hasKey $certificates "mode" }}

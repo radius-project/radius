@@ -189,7 +189,7 @@ func (b *aggregationBootstrapInstaller) run(ctx context.Context) error {
 	}
 	return withIdentityOperation(ctx, b.store.kube, b.store.namespace, func(operation *identityOperation) error {
 		b.store.guardWrite = func(ctx context.Context) error {
-			if err := operation.checkProviderJournal(ctx, b.store.release, b.impl.validateCompletedProviderJournal); err != nil {
+			if err := operation.checkProviderJournal(ctx, b.store.release, b.impl.completedProviderJournalValidator(b.store.namespace, b.store.release)); err != nil {
 				return err
 			}
 			_, state, err := b.store.readBootstrap(ctx)

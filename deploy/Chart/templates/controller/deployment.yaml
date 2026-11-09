@@ -72,6 +72,7 @@ spec:
         - '--config-file'
         - '/etc/config/controller-config.yaml'
         env:
+        {{- with include "radius.authz.externalIdentityEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.startupProofEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         - name: BICEP
           value: '/usr/local/bin/bicep'
