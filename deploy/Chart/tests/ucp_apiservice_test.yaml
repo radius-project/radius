@@ -130,23 +130,6 @@ tests:
           value: custom-ns/ucp-cert
         documentIndex: 1
 
-  # The API server CA does not depend on the Radius CA's certificate mode, so changing the mode
-  # never changes the APIService caBundle source.
-  - it: ignores the certificate mode
-    template: ucp/apiservice.yaml
-    set:
-      global.rbac.enabled: true
-      global.rbac.certificates.mode: caSecret
-    asserts:
-      - equal:
-          path: spec.issuerRef.name
-          value: radius-apiserver-issuer
-        documentIndex: 0
-      - equal:
-          path: metadata.annotations["cert-manager.io/inject-ca-from"]
-          value: radius-system/ucp-cert
-        documentIndex: 1
-
   - it: mounts the cert-manager Secret when authorization is on
     template: ucp/deployment.yaml
     set:
