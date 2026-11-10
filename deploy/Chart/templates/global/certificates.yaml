@@ -4,6 +4,7 @@
 {{- if hasKey $certificates "mode" }}
 {{- $mode = toString $certificates.mode }}
 {{- end }}
+{{- /* Bring-your-own CA modes are not implemented yet; reject them rather than silently creating a Radius CA. */}}
 {{- if has $mode (list "caSecret" "issuerRef") }}
 {{- fail (printf "global.rbac.certificates.mode=%s is not supported yet. Use selfSigned." $mode) }}
 {{- else if ne $mode "selfSigned" }}
