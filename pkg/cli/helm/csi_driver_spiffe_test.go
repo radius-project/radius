@@ -1096,7 +1096,8 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 					kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 					return kubeClient, apiextClient, nil
 				},
-				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return sarClient(allowed, nil, objects...), nil },
+				newCSIDriverSPIFFEClient:    func(string) (kubernetes.Interface, error) { return sarClient(allowed, nil, objects...), nil },
+				newCertManagerDynamicClient: readyUCPAPIServiceClient,
 			}
 			var err error
 			if tt.toRevision {

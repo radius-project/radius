@@ -419,6 +419,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
+	if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues); err != nil {
+		return err
+	}
 
 	if clusterOptions.Contour.Disabled {
 		return nil
@@ -603,6 +606,9 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
 	}
+	if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, storedValues); err != nil {
+		return err
+	}
 	output.LogInfo("Radius upgrade complete")
 
 	if contour == nil {
@@ -783,6 +789,9 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	if err != nil {
 		return fmt.Errorf("failed to rollback Radius: %w", err)
 	}
+	if err := i.waitForRolledBackUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
+		return err
+	}
 
 	output.LogInfo("Radius rollback completed successfully!")
 	return nil
@@ -839,6 +848,9 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 	err = i.Helm.RunHelmRollback(helmConf, radiusReleaseName, revision, true)
 	if err != nil {
 		return fmt.Errorf("failed to rollback Radius to revision %d: %w", revision, err)
+	}
+	if err := i.waitForRolledBackUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
+		return err
 	}
 
 	output.LogInfo("Radius rollback completed successfully!")

@@ -719,6 +719,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 						controller := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "cert-manager")
 						return sarClient(nil, nil, controller), nil
 					},
+					newCertManagerDynamicClient: readyUCPAPIServiceClient,
 				}
 
 				state, err := impl.CheckRadiusInstall("test-context")
