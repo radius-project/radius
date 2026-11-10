@@ -17,7 +17,9 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"encoding/json"
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -62,59 +64,89 @@ func testObserveTLSProof(t *testing.T, aggregation bool) {
 	body, err := json.Marshal(evidence)
 	require.NoError(t, err)
 	for _, scenario := range []string{"success", "replaced before", "replaced after", "restarted", "terminating",
-		"not running", "missing started time", "proof predates container", "proxy forbidden", "unready", "redirect", "oversize", "duplicate", "missing", "unknown", "null", "trailing", "wrong trust", "wrong leaf", "wrong proof kind"} {
+		"not running", "missing started time", "proof predates container", "pod read forbidden", "pod recheck forbidden", "port-forward forbidden", "unready", "redirect", "oversize", "duplicate", "missing", "unknown", "null", "trailing", "wrong trust", "wrong leaf", "wrong proof kind", "canceled body", "deadline body"} {
 		t.Run(scenario, func(t *testing.T) {
 			t.Parallel()
 			var gets atomic.Int32
 			var redirected atomic.Bool
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			if scenario == "deadline body" {
+				var deadlineCancel context.CancelFunc
+				ctx, deadlineCancel = context.WithTimeout(ctx, 300*time.Millisecond)
+				defer deadlineCancel()
+			}
 			redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				redirected.Store(true)
 				w.Write(body)
 			}))
 			defer redirect.Close()
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				require.Empty(t, r.Header.Get("Authorization"), "never forward Kubernetes credentials to the workload")
+				require.Empty(t, r.Header.Get("Cookie"))
+				require.Empty(t, r.Header.Get("Impersonate-User"))
+				if r.URL.Path != path {
+					http.Error(w, "wrong target", http.StatusBadRequest)
+					return
+				}
+				switch scenario {
+				case "wrong proof kind":
+					wrong := evidence
+					if aggregation {
+						wrong.ProofKind = "startup-tls-initialized"
+					} else {
+						wrong.ProofKind = "aggregation-serving-tls-initialized"
+					}
+					json.NewEncoder(w).Encode(wrong)
+				case "canceled body", "deadline body":
+					w.WriteHeader(http.StatusOK)
+					w.(http.Flusher).Flush()
+					if scenario == "canceled body" {
+						cancel()
+					}
+					<-r.Context().Done()
+				case "unready":
+					http.Error(w, `{"schemaVersion":1,"ready":false}`, http.StatusServiceUnavailable)
+				case "redirect":
+					http.Redirect(w, r, redirect.URL, http.StatusFound)
+				case "oversize":
+					w.Write([]byte(strings.Repeat(" ", 8193)))
+				case "duplicate":
+					w.Write([]byte(strings.Replace(string(body), `"ready":true`, `"ready":false,"ready":true`, 1)))
+				case "missing":
+					w.Write([]byte(strings.Replace(string(body), `,"peerHandshakeVerified":false`, "", 1)))
+				case "unknown":
+					w.Write([]byte(strings.Replace(string(body), `"ready":true`, `"ready":true,"privateKey":"sentinel"`, 1)))
+				case "null":
+					w.Write([]byte(strings.Replace(string(body), `"peerHandshakeVerified":false`, `"peerHandshakeVerified":null`, 1)))
+				case "trailing":
+					w.Write(append(body, []byte("{}")...))
+				default:
+					w.Write(body)
+				}
+			}))
+			defer receiver.Close()
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Header.Get("Authorization") != "Bearer proof-observer" {
 					http.Error(w, "authentication required", http.StatusUnauthorized)
 					return
 				}
-				if strings.Contains(r.URL.Path, "/proxy") {
-					if r.URL.Path != "/api/v1/namespaces/radius-system/pods/http:bicep-de-test:6443/proxy"+path {
-						http.Error(w, "wrong target", http.StatusBadRequest)
+				require.Equal(t, "proof-reader", r.Header.Get("Impersonate-User"))
+				if r.URL.Path == "/api/v1/namespaces/radius-system/pods/bicep-de-test/portforward" {
+					if scenario == "port-forward forbidden" {
+						http.Error(w, "denied private upstream response", http.StatusForbidden)
 						return
 					}
-					switch scenario {
-					case "wrong proof kind":
-						wrong := evidence
-						if aggregation {
-							wrong.ProofKind = "startup-tls-initialized"
-						} else {
-							wrong.ProofKind = "aggregation-serving-tls-initialized"
-						}
-						json.NewEncoder(w).Encode(wrong)
-					case "proxy forbidden":
-						http.Error(w, "denied", http.StatusForbidden)
-					case "unready":
-						http.Error(w, `{"schemaVersion":1,"ready":false}`, http.StatusServiceUnavailable)
-					case "redirect":
-						http.Redirect(w, r, redirect.URL, http.StatusFound)
-					case "oversize":
-						w.Write([]byte(strings.Repeat(" ", 8193)))
-					case "duplicate":
-						w.Write([]byte(strings.Replace(string(body), `"ready":true`, `"ready":false,"ready":true`, 1)))
-					case "missing":
-						w.Write([]byte(strings.Replace(string(body), `,"peerHandshakeVerified":false`, "", 1)))
-					case "unknown":
-						w.Write([]byte(strings.Replace(string(body), `"ready":true`, `"ready":true,"privateKey":"sentinel"`, 1)))
-					case "null":
-						w.Write([]byte(strings.Replace(string(body), `"peerHandshakeVerified":false`, `"peerHandshakeVerified":null`, 1)))
-					case "trailing":
-						w.Write(append(body, []byte("{}")...))
-					default:
-						w.Write(body)
-					}
+					servePodProofForward(t, w, r, receiver.Listener.Addr().String(), target.Port)
 					return
 				}
+				require.Equal(t, "/api/v1/namespaces/radius-system/pods/bicep-de-test", r.URL.Path)
+				require.Equal(t, http.MethodGet, r.Method)
 				count := gets.Add(1)
+				if scenario == "pod read forbidden" || scenario == "pod recheck forbidden" && count > 1 {
+					http.Error(w, "pod read forbidden", http.StatusForbidden)
+					return
+				}
 				pod := corev1.Pod{TypeMeta: metav1.TypeMeta{APIVersion: "v1", Kind: "Pod"},
 					ObjectMeta: metav1.ObjectMeta{Name: target.PodName, Namespace: target.Namespace, UID: types.UID(podUID)},
 					Status: corev1.PodStatus{Phase: corev1.PodRunning, ContainerStatuses: []corev1.ContainerStatus{
@@ -152,15 +184,17 @@ func testObserveTLSProof(t *testing.T, aggregation bool) {
 			if scenario == "wrong leaf" {
 				expected.LeafSHA256 = strings.Repeat("3", 64)
 			}
-			config := &rest.Config{Host: server.URL, BearerToken: "proof-observer"}
+			config := &rest.Config{Host: server.URL, BearerToken: "proof-observer",
+				Impersonate:     rest.ImpersonationConfig{UserName: "proof-reader"},
+				TLSClientConfig: rest.TLSClientConfig{CAData: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})}}
 			var proof PodTLSProof
 			var err error
 			if aggregation {
 				var serving PodAggregationProof
-				serving, err = ObserveAggregationProof(t.Context(), config, expected)
+				serving, err = ObserveAggregationProof(ctx, config, expected)
 				proof = PodTLSProof{Evidence: mtls.StartupEvidence(serving.Evidence), ContainerID: serving.ContainerID, RestartCount: serving.RestartCount}
 			} else {
-				proof, err = ObserveTLSStartupProof(t.Context(), config, expected)
+				proof, err = ObserveTLSStartupProof(ctx, config, expected)
 			}
 			if scenario == "success" {
 				require.NoError(t, err)
@@ -170,9 +204,16 @@ func testObserveTLSProof(t *testing.T, aggregation bool) {
 				require.EqualValues(t, 2, gets.Load())
 			} else {
 				require.Error(t, err)
+				require.NotContains(t, err.Error(), "private upstream response")
 				require.Zero(t, proof)
+				if scenario == "canceled body" {
+					require.ErrorIs(t, err, context.Canceled)
+				}
+				if scenario == "deadline body" {
+					require.ErrorIs(t, err, context.DeadlineExceeded)
+				}
 			}
-			require.False(t, redirected.Load(), "never follow pod proxy redirects")
+			require.False(t, redirected.Load(), "never follow proof endpoint redirects")
 		})
 	}
 }
