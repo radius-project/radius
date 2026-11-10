@@ -128,12 +128,6 @@ jobs:
             if: needs.changes.outputs.only_changed != 'true'
             run: make lint-go
 
-          # Unit tests run on Linux only, so vet for Windows to catch code and
-          # tests that do not compile there.
-          - name: Go vet for Windows
-            if: needs.changes.outputs.only_changed != 'true'
-            run: make lint-go-windows
-
           - name: Helm lint and unit tests
             if: needs.changes.outputs.only_changed != 'true'
             run: |
@@ -168,3 +162,36 @@ jobs:
         run: |
           echo "Generated code is not up to date, run 'make generate' to update generated code."
           exit 1
+
+  # Unit tests run on Linux only, so vet Go code and tests for Windows to catch
+  # code that does not compile there. This is a separate job because running it
+  # beside golangci-lint on one runner made the Lint job about 5 minutes slower.
+  lint-windows:
+    name: Lint (Windows vet)
+    runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.only_changed != 'true'
+    timeout-minutes: 20
+    env:
+      GOPROXY: https://proxy.golang.org
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          # The Lint job shares this cache key. Skip the cache so this job never
+          # saves Windows build output in place of the Linux output Lint needs.
+          cache: false
+
+      - name: Download Go modules
+        uses: ./.github/actions/go-mod-download
+
+      - name: Go vet for Windows
+        run: make lint-go-windows
