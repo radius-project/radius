@@ -60,6 +60,14 @@ Mode, signing Secret, issuer and trust changes require coordinated CA migration.
 Certificate validation cannot be bypassed with '--skip-preflight'; '--preflight-only'
 performs the same live validation without changing resources or Helm history.
 
+For an installed chart and all five component images supporting loaded-trust evidence, use
+'--ca-rotation-phase publish' to select a target CA, then run separate 'adopt', 'issue' and 'retire'
+phases. Omit target flags in publish to migrate legacy aggregation to the installed component CA.
+Issuance stops before retirement; old trust is removed only after an explicit retire request.
+Do not combine rotation with chart, version, values, Contour or authorization changes.
+'--ca-rotation-phase recover' explicitly permits an outage to establish new-only trust after
+expiry or compromise; select a fresh CA with '--ca-secret' or '--ca-cert' and '--ca-key'.
+
 When Contour is installed, the upgrade also upgrades it. Contour chart values can be set with
 '--contour-set' and '--contour-set-file'. They take precedence over the values stored on the Contour
 release and over the values that Radius sets, and --reset-values discards the stored Contour values too.
@@ -207,6 +215,22 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	currentVersion := state.RadiusVersion
+	if r.Certificates.RotationPhase != "" {
+		if r.Chart != "" || r.Version != "" || len(r.Set) != 0 || len(r.SetFile) != 0 ||
+			len(r.ContourSet) != 0 || len(r.ContourSetFile) != 0 || r.ResetValues {
+			return fmt.Errorf("CA rotation cannot be combined with chart, version, values, or Contour changes")
+		}
+		options := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{Certificates: r.Certificates})
+		options.RadiusReleaseValues = state.RadiusValues
+		if r.PreflightOnly {
+			return r.Helm.CheckRadiusCertificates(ctx, options, r.KubeContext)
+		}
+		if err := r.Helm.UpgradeRadius(ctx, options, r.KubeContext); err != nil {
+			return err
+		}
+		r.Output.LogInfo("CA rotation phase %s completed.", r.Certificates.RotationPhase)
+		return nil
+	}
 
 	// Resolve target version
 	targetVersion, err := r.resolveTargetVersion()

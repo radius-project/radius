@@ -26,6 +26,41 @@ import (
 	"time"
 )
 
+// ServingConfig reloads a serving certificate without changing the caller's client-auth
+// policy. Unlike ServerConfig, it does not impose Radius component client identities.
+func (s *Source) ServingConfig(base *tls.Config) *tls.Config {
+	if base == nil {
+		base = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+	outer := base.Clone()
+	outer.GetConfigForClient = func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+		policy := base
+		if base.GetConfigForClient != nil {
+			config, err := base.GetConfigForClient(hello)
+			if err != nil {
+				return nil, err
+			}
+			if config != nil {
+				policy = config
+			}
+		}
+		m, err := s.load()
+		if err != nil {
+			return nil, err
+		}
+		config := policy.Clone()
+		config.Certificates = []tls.Certificate{*m.cert}
+		config.GetCertificate = nil
+		config.GetConfigForClient = nil
+		// net/http adds ALPN to the outer config after it is constructed.
+		if len(config.NextProtos) == 0 {
+			config.NextProtos = slices.Clone(outer.NextProtos)
+		}
+		return config, nil
+	}
+	return outer
+}
+
 // ServerConfig returns a TLS config for a server that requires a client certificate
 // from the current CA bundle whose DNS SANs name a Radius component in namespace.
 // The certificate and CA bundle are read for each handshake, so reloads take effect
@@ -79,8 +114,8 @@ func (s *Source) ClientConfig(namespace string) (*tls.Config, error) {
 	return config, err
 }
 
-// clientConfig is ClientConfig that also returns the certificate the config presents.
-func (s *Source) clientConfig(namespace string) (*tls.Config, *x509.Certificate, error) {
+// clientConfig also returns the exact material captured by the handshake configuration.
+func (s *Source) clientConfig(namespace string) (*tls.Config, *material, error) {
 	m, err := s.load()
 	if err != nil {
 		return nil, nil, err
@@ -97,7 +132,7 @@ func (s *Source) clientConfig(namespace string) (*tls.Config, *x509.Certificate,
 		VerifyConnection: func(cs tls.ConnectionState) error {
 			// A long-lived config must not keep using an expired certificate, even with a
 			// server that does not request one.
-			if err := s.checkExpiry(m.cert); err != nil {
+			if err := s.checkMaterial(m); err != nil {
 				return err
 			}
 			if _, err := identityFromSAN(cs.ServerName, namespace); err != nil {
@@ -106,7 +141,7 @@ func (s *Source) clientConfig(namespace string) (*tls.Config, *x509.Certificate,
 			_, err := identityFromChains(cs.VerifiedChains, namespace)
 			return err
 		},
-	}, m.cert.Leaf, nil
+	}, m, nil
 }
 
 // verifyClient checks a client's certificate chain against pool, the CA bundle of the

@@ -538,7 +538,7 @@ func Test_HelmChartFromContainerRegistry_OCIVersions(t *testing.T) {
 		}
 	}
 	latestRadiusVersion := func(ctx context.Context, client HelmClient) (string, error) {
-		return (&Impl{Helm: client}).GetLatestRadiusVersion(ctx)
+		return (&Impl{Helm: client, newRotationStore: emptyRotationTestStore}).GetLatestRadiusVersion(ctx)
 	}
 	tests := []struct {
 		name        string
@@ -974,7 +974,7 @@ func Test_HelmChartFromContainerRegistry_OCITimeout(t *testing.T) {
 		}
 	}
 	latestRadiusVersion := func(ctx context.Context, client HelmClient) error {
-		_, err := (&Impl{Helm: client}).GetLatestRadiusVersion(ctx)
+		_, err := (&Impl{Helm: client, newRotationStore: emptyRotationTestStore}).GetLatestRadiusVersion(ctx)
 		return err
 	}
 	// A registry that answers only after an hour stands in for one that stopped answering. Unlike a registry that
@@ -1408,13 +1408,13 @@ func Test_HelmChartPull_Cancellation(t *testing.T) {
 			return err
 		}},
 		{"install", func(ctx context.Context, client HelmClient) error {
-			return (&Impl{Helm: client}).InstallRadius(ctx, NewDefaultClusterOptions(), "")
+			return (&Impl{Helm: client, newRotationStore: emptyRotationTestStore}).InstallRadius(ctx, NewDefaultClusterOptions(), "")
 		}},
 		{"upgrade", func(ctx context.Context, client HelmClient) error {
-			return (&Impl{Helm: client}).UpgradeRadius(ctx, NewDefaultClusterOptions(), "")
+			return (&Impl{Helm: client, newRotationStore: emptyRotationTestStore}).UpgradeRadius(ctx, NewDefaultClusterOptions(), "")
 		}},
 		{"latest version", func(ctx context.Context, client HelmClient) error {
-			_, err := (&Impl{Helm: client}).GetLatestRadiusVersion(ctx)
+			_, err := (&Impl{Helm: client, newRotationStore: emptyRotationTestStore}).GetLatestRadiusVersion(ctx)
 			return err
 		}},
 	}

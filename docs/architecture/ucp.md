@@ -23,31 +23,31 @@ creates a logger, builds the server, and hands execution to shared hosting.
 
 ## Quick Reference
 
-| Topic | Start Here |
-|------|------------|
-| Startup | `cmd/ucpd/cmd/root.go` |
-| HTTP/API wiring | `pkg/ucp/frontend/api/server.go` |
-| Top-level routes | `pkg/ucp/frontend/api/routes.go` |
+| Topic            | Start Here                                     |
+|------------------|------------------------------------------------|
+| Startup          | `cmd/ucpd/cmd/root.go`                         |
+| HTTP/API wiring  | `pkg/ucp/frontend/api/server.go`               |
+| Top-level routes | `pkg/ucp/frontend/api/routes.go`               |
 | Proxy/adaptation | `pkg/ucp/frontend/controller`, `pkg/ucp/proxy` |
-| Resource IDs | `pkg/ucp/resources` |
+| Resource IDs     | `pkg/ucp/resources`                            |
 
-| Test Focus | Packages |
-|-----------|----------|
+| Test Focus           | Packages                                        |
+|----------------------|-------------------------------------------------|
 | Unit and route tests | `./pkg/ucp/frontend/...`, `./pkg/ucp/proxy/...` |
-| Integration coverage | `./pkg/ucp/integrationtests/...` |
-| Broad safety check | `./pkg/ucp/...` |
+| Integration coverage | `./pkg/ucp/integrationtests/...`                |
+| Broad safety check   | `./pkg/ucp/...`                                 |
 
 ## Core Packages
 
-| Package | Responsibility |
-|--------|----------------|
-| `pkg/ucp/frontend` | HTTP handlers, route registration, API surface |
-| `pkg/ucp/proxy` | request forwarding and proxy helpers |
-| `pkg/ucp/aws` | AWS-specific adaptation logic |
-| `pkg/ucp/resources` | UCP resource ID parsing and construction |
-| `pkg/ucp/datamodel` | version-agnostic UCP storage model |
-| `pkg/ucp/server` | service startup and hosting integration |
-| `pkg/ucp/config` | runtime configuration types |
+| Package             | Responsibility                                 |
+|---------------------|------------------------------------------------|
+| `pkg/ucp/frontend`  | HTTP handlers, route registration, API surface |
+| `pkg/ucp/proxy`     | request forwarding and proxy helpers           |
+| `pkg/ucp/aws`       | AWS-specific adaptation logic                  |
+| `pkg/ucp/resources` | UCP resource ID parsing and construction       |
+| `pkg/ucp/datamodel` | version-agnostic UCP storage model             |
+| `pkg/ucp/server`    | service startup and hosting integration        |
+| `pkg/ucp/config`    | runtime configuration types                    |
 
 ## How It Works
 
@@ -71,13 +71,33 @@ GET `.../<alias>` reads UCP's record of the alias, then reads AWS by the identif
 ### Internal mTLS endpoint
 
 The Kubernetes APIService endpoint (Service port 443 to container port 9443,
-using the `ucp-cert` certificate) is unchanged by internal authorization. When
+using the `ucp-cert` certificate) remains separate from internal authorization. When
 the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
 on a separate internal port, 9444 (Service port name `internal`, config
 `server.internalPort`), for traffic from other Radius components. That endpoint
 uses `mtls.ListenAndServe` with the mounted `ucp-mtls` certificate, accepts any
 Radius component identity, and reloads certificates without a restart. See
 [Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization-mtls).
+
+The aggregation server also uses a polling TLS Source for its mounted `ucp-cert` certificate, key and CA bundle. New handshakes capture one coherent serving certificate without replacing the aggregation endpoint's separate client-authentication policy. Outside pinned proof mode, invalid updates retain the previous material only while its full verified chain remains valid; pinned proof mode invalidates the serving Source instead. This enables serving-certificate renewal; it does not migrate the legacy CA, update APIService trust, acknowledge aggregator adoption or complete coordinated CA rotation. The old backend must remain available until separately observed aggregation trust can verify the new serving identity.
+
+The selected A10 implementation separates issuance from public trust ownership: cert-manager issues and renews certificates, while Radius updates its own public bundles. It does not configure cainjector for the Radius APIService or disable the shared injector. The [rotation store](../../pkg/cli/helm/certificate_rotation.go) persists public phase intent outside Helm ownership, reads the target before the journal, and conditionally updates the APIService with the target's observed resourceVersion. The [chart guard](../../deploy/Chart/templates/_aggregation-trust.tpl) preserves completed managed trust, rejects unfinished transactions and refuses detected injector ownership. Removing injection annotations alone is not a safe handover.
+
+The [consumer observer](../../pkg/cli/helm/certificate_rotation_consumers.go) checks the identities and convergence of UCP, both resource providers, the controller and deployment engine. It requires immutable public trust, current process evidence from every owned pod, no unaccounted component-Secret consumer, and an unchanged second inventory. It refuses terminating pods and controller surge. This is not an aggregation-transport acknowledgment or proof about a force-deleted process. The [phase driver](../../pkg/cli/helm/certificate_rotation_runner.go) connects these barriers to explicit `publish`, `adopt`, `issue` and `retire` commands; issuance stops at `ready` until the operator explicitly requests retirement.
+
+The [public generation publisher](../../pkg/cli/helm/certificate_rotation_trust.go) creates immutable, content-addressed ConfigMaps for explicitly selected component CAs. Retries reuse matching independently owned generations without replacing their contents. Publishing new-only trust does not mutate or delete the overlap generation still mounted by older pods. Publication alone neither changes pod templates nor establishes adoption; the legacy aggregation root must not be supplied as component trust.
+
+The [aggregation migration](../../pkg/cli/helm/certificate_rotation_aggregation.go) retains old UCP backends while candidates mount the newly issued serving identity. It routes the Service to a candidate, sends an authenticated aggregated API request and checks the returned pod UID. Failed-probe restoration uses the exact observed Service version; completed routing cannot regress. This tests the configured Kubernetes endpoint, not every hidden HA API server. The [recovery path](../../pkg/cli/helm/certificate_rotation_recovery.go) records explicit new-only intent for expiry or compromise, can replace an interrupted target, and requires final consumer and aggregation evidence. It may interrupt availability and never silently falls back to retired trust. See [operator commands and recovery boundaries](../../deploy/Chart/README.md#radius-owned-public-trust).
+
+The [scope model](../../pkg/cli/helm/certificate_rotation_scope.go) also supports version-two journals with an explicit `aggregationOnly` scope and separate UCP serving identity. Version-one journals retain their five-component meaning and resource names. The aggregation-only planner reads the UCP Deployment, Service and selected local signer without requiring component certificates. Its [serving inventory](../../pkg/cli/helm/certificate_rotation_aggregation_inventory.go) requires immutable trust, converged UCP ownership and current evidence from the actual aggregation TLS Source; [aggregation evidence](../../pkg/authz/mtls/aggregation_proof.go) has a distinct proof kind and accepts server-auth-only UCP certificates. It cannot replace component proof, and an empty component inventory never counts as adoption.
+
+UCP startup can opt into this separate serving evidence with `UCP_AGGREGATION_STARTUP_PROOF_ENABLED=true`, `UCP_AGGREGATION_EXPECTED_TRUST_SHA256` and the downward-API `UCP_AGGREGATION_POD_UID`. It requires an existing fixed-port metrics listener, the configured Radius namespace and the actual aggregation TLS directory, but no component certificate or enabled authorization mode. The metrics listener exposes `/healthz/ucp-aggregation-tls` using the same Source installed on the aggregation listener. Application and internal component routes do not expose that proof endpoint. Only aggregation responses receive the pod-identity header; internal routes keep their separate TLS policy and do not inherit that header. The old component-proof-controlled aggregation header remains compatible until chart integration changes its settings.
+
+The [public driver](../../pkg/cli/helm/certificate_rotation_command.go) executes both scopes, including live policy revalidation for a pinned external issuer. The [fresh bootstrap](../../pkg/cli/helm/certificate_bootstrap_install.go) records intent before owned writes, verifies the selected CA's actual aggregation leaf and requires serving-process and aggregated-API evidence before completion; managed scope also requires component evidence. The [provider-transition snapshot adapter](../../pkg/cli/helm/certificate_rotation_provider_snapshot.go) pins completed journal/APIService identity, dedicated trust, live issuer and Certificate configuration, serving projection and resource UIDs while allowing ordinary same-identity leaf renewal. Legacy state without a journal is explicitly incomplete. This adapter does not provide readiness evidence or mutual exclusion.
+
+Bootstrap and CA rotation use the shared [operation guard](../../pkg/cli/helm/certificate_rotation_operation.go), which acquires the `radius-identity-operation` Lease without expiry takeover, checks its UID and resourceVersion before guarded work, and releases only that exact Lease version. While holding it, the CA-side guard rejects unfinished provider journals and requires the provider's full validator before accepting a completed journal. This preserves exclusion between phase invocations, not just concurrent calls. A10 leaves that validator unset, so every existing provider journal remains blocked until the A11 integration supplies its full decoder. The aggregation-only scope does not itself establish external mesh identity or authorize a provider transition.
+
+The [candidate trust-fence tests](../../pkg/cli/helm/certificate_fence_candidate_test.go) and [queued injector regression](../../pkg/cli/helm/certificate_fence_candidate_apiserver_test.go) remain historical experiments, not production admission policy or prerequisites for the selected Radius-owned writer. The [native writer tests](../../pkg/cli/helm/certificate_rotation_apiserver_test.go) cover delayed writes, ambiguous responses, replay and consecutive transactions without an admission policy. The [workload Helm regression](../../pkg/cli/helm/certificate_rotation_chart_apiserver_test.go) checks shipping templates with client-side and forced server-side apply, while [driver tests](../../pkg/cli/helm/certificate_rotation_runner_test.go) model controller progress using real cryptography. These local tests do not replace acceptance with actual cert-manager, compatible Radius/engine images, kubelet projections or HA aggregation.
 
 ## Invariants And Constraints
 

@@ -105,7 +105,7 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 		return fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", mode)
 	}
 
-	source, err := NewSource(options.CertificateDirectory)
+	source, err := listenerSource(options)
 	if err != nil {
 		_ = ln.Close()
 		return fmt.Errorf("failed to load mTLS certificate: %w", err)
@@ -113,7 +113,9 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 
 	sourceCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go source.Start(sourceCtx, pollInterval)
+	if !source.proofMode.Load() {
+		go source.Start(sourceCtx, pollInterval)
+	}
 
 	s := &server{source: source, mode: mode, namespace: options.Namespace, allowedCallers: allowedCallers}
 

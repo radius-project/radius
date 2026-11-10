@@ -19,9 +19,11 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
@@ -67,6 +69,17 @@ func (*Service) Name() string {
 // Run implements the main functionality of the service.
 func (s *Service) Run(ctx context.Context) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	metrics := s.Options.Config.MetricsProvider
+	proof, err := mtls.ProcessStartupProof(s.Options.Config.Authorization,
+		metrics.Enabled && metrics.Prometheus != nil && metrics.Prometheus.Port > 0 &&
+			metrics.Prometheus.Port <= 65535)
+	if err != nil {
+		return err
+	}
+	var extraHandlers map[string]http.Handler
+	if proof != nil {
+		extraHandlers = map[string]http.Handler{mtls.StartupProofPath: proof}
+	}
 
 	metricsAddr := "0" // Setting the address to 0 will disable the metrics server.
 	if s.Options.Config.MetricsProvider.Enabled {
@@ -78,7 +91,8 @@ func (s *Service) Run(ctx context.Context) error {
 		Logger: logger,
 		Scheme: scheme,
 		Metrics: server.Options{
-			BindAddress: metricsAddr,
+			BindAddress:   metricsAddr,
+			ExtraHandlers: extraHandlers,
 		},
 		HealthProbeBindAddress: fmt.Sprintf(":%d", healthProbePort),
 		LeaderElection:         false,

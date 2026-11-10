@@ -37,6 +37,11 @@ tests:
           content:
             name: UCP_MTLS_NAMESPACE
           any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UCP_MTLS_STARTUP_PROOF_ENABLED
+          any: true
 
   - it: preserves legacy engine access in dryRun until a compatible image is selected
     set:
@@ -154,3 +159,64 @@ tests:
           content:
             name: UCP_MTLS_NAMESPACE
             value: radius-test
+
+  - it: passes only the agreed proof settings to an explicitly compatible engine
+    set:
+      global.rbac.enabled: true
+      de.ucpMTLS.enabled: true
+      de.ucpMTLS.startupProof.enabled: true
+      de.ucpMTLS.startupProof.expectedTrustSHA256: "6134ae3055977f0d025f1c2ada38ebdcad54514560ee2819b32a4a33e03f3a9f"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UCP_MTLS_STARTUP_PROOF_ENABLED
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UCP_MTLS_EXPECTED_TRUST_SHA256
+            value: "6134ae3055977f0d025f1c2ada38ebdcad54514560ee2819b32a4a33e03f3a9f"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UCP_MTLS_POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: UCP_MTLS_TRUST_GENERATION
+          any: true
+
+  - it: rejects proof without the mTLS transport
+    set:
+      de.ucpMTLS.startupProof.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: de.ucpMTLS.startupProof.enabled requires de.ucpMTLS.enabled=true and a compatible engine image
+
+  - it: rejects malformed expected public trust
+    set:
+      global.rbac.enabled: true
+      de.ucpMTLS.enabled: true
+      de.ucpMTLS.startupProof.enabled: true
+      de.ucpMTLS.startupProof.expectedTrustSHA256: NOT-A-DIGEST
+    asserts:
+      - failedTemplate:
+          errorMessage: de.ucpMTLS.startupProof.expectedTrustSHA256 must be a lowercase SHA-256 digest of the dedicated CA fingerprint set
+
+  - it: rejects a dormant expected digest
+    set:
+      de.ucpMTLS.startupProof.expectedTrustSHA256: "6134ae3055977f0d025f1c2ada38ebdcad54514560ee2819b32a4a33e03f3a9f"
+    asserts:
+      - failedTemplate:
+          errorMessage: de.ucpMTLS.startupProof.expectedTrustSHA256 requires startupProof.enabled=true
+
+  - it: rejects a nonboolean proof switch
+    set:
+      de.ucpMTLS.startupProof.enabled: "false"
+    asserts:
+      - failedTemplate:
+          errorMessage: de.ucpMTLS.startupProof.enabled must be a boolean

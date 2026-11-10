@@ -1,3 +1,4 @@
+{{- $rotation := include "radius.rotationSnapshot" (dict "root" . "apiVersion" "apps/v1" "kind" "Deployment" "name" "bicep-de") | mustFromJson }}
 {{- $appversion := include "radius.versiontag" . }}
 {{- $image := include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
 {{- $settings := .Values.de.ucpMTLS | default dict }}
@@ -11,11 +12,33 @@
 {{- if and $mtls (eq (include "radius.authz.mode" .) "off") }}
 {{- fail "de.ucpMTLS.enabled requires global.rbac.dryRun=true or global.rbac.enabled=true" }}
 {{- end }}
+{{- $proof := deepCopy ($settings.startupProof | default dict) }}
+{{- if and $rotation.state $proof.enabled }}
+{{- $_ := set $proof "expectedTrustSHA256" $rotation.state.plan.targetTrustSHA256 }}
+{{- end }}
+{{- $proofEnabled := false }}
+{{- if hasKey $proof "enabled" }}
+{{- $proofEnabled = $proof.enabled }}
+{{- end }}
+{{- if not (kindIs "bool" $proofEnabled) }}
+{{- fail "de.ucpMTLS.startupProof.enabled must be a boolean" }}
+{{- end }}
+{{- if $proofEnabled }}
+{{- if not $mtls }}
+{{- fail "de.ucpMTLS.startupProof.enabled requires de.ucpMTLS.enabled=true and a compatible engine image" }}
+{{- end }}
+{{- if or (not (kindIs "string" $proof.expectedTrustSHA256)) (not (regexMatch `^[0-9a-f]{64}$` (toString $proof.expectedTrustSHA256))) }}
+{{- fail "de.ucpMTLS.startupProof.expectedTrustSHA256 must be a lowercase SHA-256 digest of the dedicated CA fingerprint set" }}
+{{- end }}
+{{- else if $proof.expectedTrustSHA256 }}
+{{- fail "de.ucpMTLS.startupProof.expectedTrustSHA256 requires startupProof.enabled=true" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: bicep-de
   namespace: {{ .Release.Namespace }}
+  {{- include "radius.rotationMetadata" $rotation | nindent 2 }}
   labels:
     control-plane: bicep-de
     app.kubernetes.io/name: bicep-de
@@ -126,6 +149,16 @@ spec:
           value: {{ include "radius.authz.mtls.mountPath" . | quote }}
         - name: UCP_MTLS_NAMESPACE
           value: {{ .Release.Namespace | quote }}
+        {{- if $proofEnabled }}
+        - name: UCP_MTLS_STARTUP_PROOF_ENABLED
+          value: "true"
+        - name: UCP_MTLS_EXPECTED_TRUST_SHA256
+          value: {{ $proof.expectedTrustSHA256 | quote }}
+        - name: UCP_MTLS_POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        {{- end }}
         {{- else }}
           value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
         {{- end }}

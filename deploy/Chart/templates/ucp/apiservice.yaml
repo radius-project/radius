@@ -1,4 +1,8 @@
+{{- $trust := include "radius.aggregationTrust" . | mustFromJson }}
+{{- $legacyCA := "" }}
+{{- if not $trust.bootstrap }}
 {{- $ca := genCA "ucp-ca" 3650 }}
+{{- $legacyCA = $ca.Cert }}
 {{- $cn := printf "ucp" }}
 {{- $altName1 := printf "ucp.%s" .Release.Namespace }}
 {{- $altName2 := printf "ucp.%s.svc" .Release.Namespace }}
@@ -18,10 +22,19 @@ data:
   tls.key: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "tls.key" "defaultValue" $cert.Key) }}
   ca.crt: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
 ---
+{{- end }}
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
   name: v1alpha3.api.ucp.dev
+  {{- if $trust.api }}
+  uid: {{ $trust.api.metadata.uid | quote }}
+  resourceVersion: {{ $trust.api.metadata.resourceVersion | quote }}
+  {{- end }}
+  {{- with $trust.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   labels:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
@@ -33,4 +46,8 @@ spec:
     name: ucp
     namespace: {{ .Release.Namespace }}
   version: v1alpha3
-  caBundle: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
+  {{- if $trust.caBundle }}
+  caBundle: {{ $trust.caBundle | quote }}
+  {{- else }}
+  caBundle: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $legacyCA) }}
+  {{- end }}

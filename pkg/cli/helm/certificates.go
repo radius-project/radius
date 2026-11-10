@@ -36,6 +36,7 @@ import (
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/spf13/pflag"
 	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
@@ -48,11 +49,12 @@ import (
 
 // CertificateOptions selects a dedicated signing CA without passing private material through Helm.
 type CertificateOptions struct {
-	CACert     string
-	CAKey      string
-	CASecret   string
-	CertIssuer string
-	CABundle   string
+	CACert        string
+	CAKey         string
+	CASecret      string
+	CertIssuer    string
+	CABundle      string
+	RotationPhase string
 }
 
 // AddFlags registers the certificate options shared by install and upgrade.
@@ -62,10 +64,18 @@ func (o *CertificateOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.CASecret, "ca-secret", "", "Existing operator-owned TLS signing Secret in radius-system; never adopted or overwritten")
 	flags.StringVar(&o.CertIssuer, "cert-issuer", "", "Existing cert-manager.io Issuer/name or ClusterIssuer/name; requires dedicated public --ca-bundle on fresh install and live request-policy verification")
 	flags.StringVar(&o.CABundle, "ca-bundle", "", "Path to exactly one public dedicated signing CA PEM for --cert-issuer; never a private key or parent chain")
+	flags.StringVar(&o.RotationPhase, "ca-rotation-phase", "", "Run publish, adopt, issue, retire, or recover on installed Radius; recover performs an outage-capable new-only CA cutover")
 }
 
 // Validate checks flag combinations before contacting the cluster.
 func (o CertificateOptions) Validate() error {
+	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "adopt" &&
+		o.RotationPhase != "issue" && o.RotationPhase != "retire" && o.RotationPhase != "recover" {
+		return fmt.Errorf("--ca-rotation-phase must be publish, adopt, issue, retire, or recover")
+	}
+	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "recover" && o.Specified() {
+		return fmt.Errorf("select the target CA only in publish or explicit incident recovery; subsequent phases use the persisted rotation")
+	}
 	if (o.CACert == "") != (o.CAKey == "") {
 		return fmt.Errorf("--ca-cert and --ca-key must be supplied together")
 	}
@@ -94,7 +104,7 @@ func (o CertificateOptions) Validate() error {
 
 // ValidateFlags also rejects explicitly empty certificate flags rather than treating them as omitted.
 func (o CertificateOptions) ValidateFlags(flags *pflag.FlagSet) error {
-	for _, name := range []string{"ca-cert", "ca-key", "ca-secret", "cert-issuer", "ca-bundle"} {
+	for _, name := range []string{"ca-cert", "ca-key", "ca-secret", "cert-issuer", "ca-bundle", "ca-rotation-phase"} {
 		flag := flags.Lookup(name)
 		if flag != nil && flag.Changed && flag.Value.String() == "" {
 			return fmt.Errorf("--%s must not be empty", name)
@@ -228,9 +238,10 @@ func parseSigningCertificates(certPEM []byte, now time.Time) ([]*x509.Certificat
 }
 
 type certificatePlan struct {
-	client    kubernetes.Interface
-	namespace string
-	secret    *corev1.Secret
+	client      kubernetes.Interface
+	namespace   string
+	secret      *corev1.Secret
+	beforeWrite func(context.Context) error
 }
 
 func (i *Impl) certificateClient(kubeContext string) (kubernetes.Interface, error) {
@@ -506,6 +517,10 @@ func (i *Impl) prepareIssuerCertificates(settings, stored, current map[string]an
 // checkIssuerPolicy renders the actual selected chart with live lookups, but no resource or release writes.
 // The chart, not a second CLI policy evaluator, verifies the operator-managed issuer prerequisites.
 func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) error {
+	return i.renderIssuerPolicy(ctx, options, selected, source, current, kubeContext, installed, nil)
+}
+
+func (i *Impl) renderIssuerPolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool, transaction *rotationState) error {
 	if certificateMode(current) != "issuerRef" {
 		return nil
 	}
@@ -525,6 +540,36 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 		return fmt.Errorf("cannot configure live issuer-policy verification: %w", err)
 	}
 	renderedChart := cloneChart(selected)
+	if transaction != nil {
+		if err := transaction.validate(time.Now()); err != nil {
+			return err
+		}
+		if transaction.Plan == nil || transaction.Plan.ExternalIssuer == nil ||
+			transaction.Namespace != options.Radius.Namespace || transaction.Release != options.Radius.ReleaseName {
+			return fmt.Errorf("live rotation policy verification requires the pinned external issuer transaction")
+		}
+		// Run the chosen chart's verifier, not its workload templates: an active
+		// journal intentionally forbids ordinary Helm workload rendering.
+		helpers := make([]*common.File, 0, len(renderedChart.Templates)+1)
+		for _, template := range renderedChart.Templates {
+			if strings.HasPrefix(template.Name, "templates/_") {
+				helpers = append(helpers, template)
+			}
+		}
+		renderedChart.Templates = append(helpers, &common.File{Name: "templates/rotation-issuer-policy.yaml",
+			Data: []byte(`{{- include "radius.authz.issuerPolicy.validate" . -}}`)})
+	} else if !installed && selected.Metadata != nil && selected.Metadata.Annotations["radius.io/aggregation-bootstrap-protocol"] == "1" {
+		// Fresh issuance policy is proved before bootstrap can record intent or
+		// request a leaf. Workload rendering is deferred until that leaf exists.
+		helpers := make([]*common.File, 0, len(renderedChart.Templates)+1)
+		for _, template := range renderedChart.Templates {
+			if strings.HasPrefix(template.Name, "templates/_") {
+				helpers = append(helpers, template)
+			}
+		}
+		renderedChart.Templates = append(helpers, &common.File{Name: "templates/bootstrap-issuer-policy.yaml",
+			Data: []byte(`{{- include "radius.authz.issuerPolicy.validate" . -}}`)})
+	}
 	if installed {
 		history, historyErr := i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
 		if historyErr != nil {
@@ -559,7 +604,7 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 		previous := valuesutil.CoalesceTables(copyValues(baseline.Config), copyValues(baseline.Chart.Values))
 		oldIssuer, oldErr := issuerReference(certificateValues(previous))
 		newIssuer, newErr := issuerReference(certificateValues(current))
-		if oldErr != nil || newErr != nil || certificateMode(previous) != "issuerRef" || oldIssuer != newIssuer {
+		if transaction == nil && (oldErr != nil || newErr != nil || certificateMode(previous) != "issuerRef" || oldIssuer != newIssuer) {
 			return fmt.Errorf("the installed chart selects a different certificate issuer; changing issuers requires coordinated CA migration")
 		}
 		configuration.Releases, err = releaseHistoryStorage(history)
@@ -567,6 +612,9 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 			return fmt.Errorf("cannot copy Radius history for read-only issuer verification: %w", err)
 		}
 		upgrade := newUpgradeClient(configuration, options.Radius.Namespace, false, !options.ResetValues, options.Radius.Timeout, usesServerSideApply(configuration, options.Radius.ReleaseName))
+		if transaction != nil {
+			upgrade.ReuseValues, upgrade.ResetThenReuseValues, upgrade.ResetValues = false, false, true
+		}
 		upgrade.DryRunStrategy = helm.DryRunServer
 		_, err = upgrade.RunWithContext(ctx, options.Radius.ReleaseName, renderedChart, copyValues(current))
 	} else {
@@ -596,6 +644,11 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 	}
 	_, err := plan.client.CoreV1().Namespaces().Get(ctx, plan.namespace, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
+		if plan.beforeWrite != nil {
+			if err := plan.beforeWrite(ctx); err != nil {
+				return err
+			}
+		}
 		_, err = plan.client.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: plan.namespace}}, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			err = nil
@@ -603,6 +656,11 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 	}
 	if err != nil {
 		return fmt.Errorf("cannot prepare namespace for imported CA Secret; check namespace permissions")
+	}
+	if plan.beforeWrite != nil {
+		if err := plan.beforeWrite(ctx); err != nil {
+			return err
+		}
 	}
 	_, err = plan.client.CoreV1().Secrets(plan.namespace).Create(ctx, plan.secret, metav1.CreateOptions{})
 	if err != nil {
@@ -615,6 +673,12 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 
 // CheckRadiusCertificates validates the upgrade's certificate settings without creating Secrets.
 func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptions, kubeContext string) error {
+	if options.Certificates.RotationPhase != "" {
+		return i.runCertificateRotation(ctx, options, kubeContext, true)
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, options.Radius.Namespace, "upgrade preflight", nil); err != nil {
+		return err
+	}
 	chart, configuration, current, err := prepareRadiusChart(ctx, NewHelmAction(i.Helm), options.Radius, kubeContext)
 	if err != nil {
 		return err

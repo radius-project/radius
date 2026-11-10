@@ -170,7 +170,7 @@ tests:
         template: rp/configmaps.yaml
       - matchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^metricsProvider:\n(.*\n)*    port: 9092\n(.*\n)*server:\n  host: "0.0.0.0"\n  port: 8082$'
+          pattern: '(?m)^metricsProvider:\n(.*\n)*    port: 9090\n(.*\n)*server:\n  host: "0.0.0.0"\n  port: 8082$'
         template: dynamic-rp/configmaps.yaml
       - contains:
           path: spec.template.spec.containers[0].ports

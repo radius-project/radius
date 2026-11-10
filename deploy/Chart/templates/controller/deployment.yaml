@@ -1,14 +1,20 @@
+{{- $rotation := include "radius.rotationSnapshot" (dict "root" . "apiVersion" "apps/v1" "kind" "Deployment" "name" "controller") | mustFromJson }}
 {{- $appversion := include "radius.versiontag" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: controller
   namespace: "{{ .Release.Namespace }}"
+  {{- include "radius.rotationMetadata" $rotation | nindent 2 }}
   labels:
     control-plane: controller
     app.kubernetes.io/name: controller
     app.kubernetes.io/part-of: radius
 spec:
+  {{- if $rotation.state }}
+  strategy:
+    type: Recreate
+  {{- end }}
   replicas: 1
   selector:
     matchLabels:
@@ -21,6 +27,7 @@ spec:
         app.kubernetes.io/part-of: radius
       annotations:
         checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        checksum/metrics-port: {{ .Values.global.prometheus.port | toString | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
@@ -65,6 +72,7 @@ spec:
         - '--config-file'
         - '/etc/config/controller-config.yaml'
         env:
+        {{- with include "radius.authz.startupProofEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         - name: BICEP
           value: '/usr/local/bin/bicep'
         {{- if .Values.global.rootCA.cert }}

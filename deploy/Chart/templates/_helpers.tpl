@@ -246,9 +246,10 @@ Call with (dict "root" $ "component" "<component>").
 */}}
 {{- define "radius.authz.mtls.volume" -}}
 {{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- $rotation := include "radius.rotationState" .root | mustFromJson }}
 {{- $certificates := ((.root.Values.global.rbac).certificates) | default dict }}
 - name: mtls
-  {{- if has (toString $certificates.mode) (list "caSecret" "issuerRef") }}
+  {{- if or $rotation (has (toString $certificates.mode) (list "caSecret" "issuerRef")) }}
   projected:
     sources:
       - secret:
@@ -260,7 +261,7 @@ Call with (dict "root" $ "component" "<component>").
               path: tls.key
       # Never trust the issuer's full organization chain from the leaf Secret.
       - configMap:
-          name: radius-mtls-ca
+          name: {{ if $rotation }}{{ $rotation.plan.targetTrustMap }}{{ else }}radius-mtls-ca{{ end }}
           items:
             - key: ca.crt
               path: ca.crt

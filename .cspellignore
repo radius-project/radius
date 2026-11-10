@@ -378,6 +378,7 @@ SLSA
 SMIL
 SNI
 SNS
+SPDY
 SQLServer
 SQS
 SRE
@@ -560,6 +561,7 @@ buildctl
 buildkitd
 buildx
 caBundle
+cainjector
 camelCased
 cancelled
 carte

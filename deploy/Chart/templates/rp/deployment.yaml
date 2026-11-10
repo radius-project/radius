@@ -1,3 +1,4 @@
+{{- $rotation := include "radius.rotationSnapshot" (dict "root" . "apiVersion" "apps/v1" "kind" "Deployment" "name" "applications-rp") | mustFromJson }}
 {{- $appversion := include "radius.versiontag" . }}
 {{- $authzConfig := include "radius.authz.mode" . }}
 {{- if ne $authzConfig "off" }}
@@ -15,6 +16,7 @@ metadata:
     app.kubernetes.io/part-of: radius
   name: applications-rp
   namespace: {{ .Release.Namespace }}
+  {{- include "radius.rotationMetadata" $rotation | nindent 2 }}
 spec:
   replicas: 1
   selector:
@@ -31,6 +33,7 @@ spec:
         {{- end }}
       annotations:
         checksum/authz-config: {{ $authzConfig | sha256sum }}
+        checksum/metrics-port: {{ .Values.global.prometheus.port | toString | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
@@ -167,6 +170,7 @@ spec:
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
+        {{- with include "radius.authz.startupProofEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.database.enabled }}
         - name: POSTGRES_PASSWORD
           valueFrom:
