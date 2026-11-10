@@ -131,6 +131,11 @@ func defaultApprovedRadiusIssuers() []string {
 // buildCSIDriverSPIFFEValues configures csi-driver-spiffe to request certificates from the Radius CA issuer and
 // limits its approver to that issuer. The approver only processes requests that carry the csi-driver-spiffe
 // identity annotation, so it neither approves nor denies other requests to the issuer.
+//
+// app.driver.sourceCABundle is deliberately unset. The driver then writes no ca.crt into the CSI volume, and the
+// Radius chart mounts ca.crt from the radius-ca Secret into every component instead. The driver reads the source
+// bundle at startup and fails when it is missing, and rad installs the driver before the Radius chart creates
+// radius-ca, so a source bundle would stop the driver from starting.
 func buildCSIDriverSPIFFEValues(radiusNamespace string, settings spiffeSettings) map[string]any {
 	return map[string]any{
 		"app": map[string]any{
@@ -229,8 +234,8 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 // planCSIDriverSPIFFE. It runs after cert-manager is ready. A nil plan does nothing.
 //
 // It returns the users the cert-manager controllers run as, which the Radius chart's certificate issuance policy
-// allows to request certificates from the Radius bootstrap and API server issuers. It returns none for a nil plan or when
-// it finds no cert-manager controller.
+// allows to request certificates from the Radius bootstrap and API server issuers. It returns none for a nil plan
+// or when it finds no cert-manager controller.
 func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPlan, kubeContext string, upgrade bool) ([]string, error) {
 	if plan == nil {
 		return nil, nil
@@ -474,8 +479,8 @@ func certManagerControllerUsers(ctx context.Context, kubeClient kubernetes.Inter
 }
 
 // checkValidatingAdmissionPolicyServed fails when the cluster does not serve ValidatingAdmissionPolicy. The Radius
-// chart enforces authorization with these policies, including the policy that reserves the Radius bootstrap and API server
-// issuers for cert-manager, and renders none without the API.
+// chart enforces authorization with these policies, including the policy that reserves the Radius bootstrap and API
+// server issuers for cert-manager, and renders none without the API.
 func checkValidatingAdmissionPolicyServed(kubeClient kubernetes.Interface) error {
 	const groupVersion = "admissionregistration.k8s.io/v1"
 	resources, err := kubeClient.Discovery().ServerResourcesForGroupVersion(groupVersion)
