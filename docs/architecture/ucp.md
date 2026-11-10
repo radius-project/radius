@@ -75,7 +75,10 @@ uses the `ucp-cert` certificate. With authorization off, the chart generates it.
 Otherwise cert-manager issues it from the namespaced `radius-apiserver-issuer`,
 whose `radius-apiserver-ca` is injected into the APIService `caBundle` and is
 separate from the `radius-ca` that signs component server certificates, in every
-certificate mode. UCP reloads it without a restart. When
+certificate mode. The Kubernetes API server trusts that CA for UCP, so the
+`radius-certificate-issuance` ValidatingAdmissionPolicy lets only the
+cert-manager controller request certificates from `radius-apiserver-issuer`.
+UCP reloads it without a restart. When
 the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
 on a separate internal port, 9444 (Service port name `internal`, config
 `server.internalPort`), for traffic from other Radius components. That endpoint
