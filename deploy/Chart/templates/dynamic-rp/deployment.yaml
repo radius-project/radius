@@ -14,7 +14,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- include "radius.rotationMetadata" $rotation | nindent 2 }}
 spec:
-  replicas: 1
+  replicas: {{ include "radius.providerReplicas" (dict "root" . "component" "dynamic-rp") }}
   selector:
     matchLabels:
      app.kubernetes.io/name: dynamic-rp
@@ -28,7 +28,7 @@ spec:
         azure.workload.identity/use: "true"
         {{- end }}
       annotations:
-        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        checksum/authz-config: {{ include "radius.authz.rolloutKey" . | sha256sum }}
         checksum/metrics-port: {{ .Values.global.prometheus.port | toString | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
@@ -218,6 +218,7 @@ spec:
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
+        {{- with include "radius.authz.externalIdentityEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.startupProofEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.database.enabled }}
         - name: POSTGRES_PASSWORD
@@ -369,7 +370,7 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: dynamic-rp-config
+            name: {{ include "radius.providerConfigName" (dict "root" . "name" "dynamic-rp-config") }}
         {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "dynamic-rp") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
@@ -394,7 +395,7 @@ spec:
         {{- if .Values.dynamicrp.buildkit.enabled }}
         - name: buildkit-config
           configMap:
-            name: dynamic-rp-buildkit-config
+            name: {{ include "radius.providerConfigName" (dict "root" . "name" "dynamic-rp-buildkit-config") }}
         - name: buildctl-bin
           emptyDir: {}
         - name: buildkit-state

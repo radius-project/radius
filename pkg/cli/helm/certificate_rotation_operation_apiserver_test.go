@@ -47,8 +47,28 @@ import (
 )
 
 func TestIdentityOperationNativeCAEntry(t *testing.T) {
+	for _, provider := range []string{"radius", "external"} {
+		t.Run(provider, func(t *testing.T) {
+			testIdentityOperationNativeCAEntry(t, provider)
+		})
+	}
+}
+
+func testIdentityOperationNativeCAEntry(t *testing.T, provider string) {
+	t.Helper()
 	s, config, state := newPlannedRotationTest(t)
 	ctx := t.Context()
+	if provider == "external" {
+		state = aggregationOnlyState(t, state)
+		state.Plan.ServingSecret = "ucp-cert-aggregation-" + strings.ReplaceAll(state.ID, "-", "")[:16]
+		journal, _, err := s.read(ctx)
+		require.NoError(t, err)
+		data, err := json.Marshal(state)
+		require.NoError(t, err)
+		journal.Data[rotationJournalKey] = string(data)
+		_, err = s.kube.CoreV1().ConfigMaps(s.namespace).Update(ctx, journal, metav1.UpdateOptions{})
+		require.NoError(t, err)
+	}
 	path := filepath.Join(t.TempDir(), "kubeconfig")
 	require.NoError(t, clientcmd.WriteToFile(clientcmdapi.Config{
 		Clusters:  map[string]*clientcmdapi.Cluster{"test": {Server: config.Host, CertificateAuthorityData: config.CAData}},
@@ -60,6 +80,9 @@ func TestIdentityOperationNativeCAEntry(t *testing.T) {
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Annotations: map[string]string{"radius.io/ca-rotation-protocol": "1"}},
 			Values: map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}},
 		Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
+	if provider == "external" {
+		release.Config = externalProviderValues()
+	}
 	client := NewMockHelmClient(gomock.NewController(t))
 	client.EXPECT().RunHelmGet(gomock.Any(), s.release).Return(release, nil).Times(6)
 	impl := &Impl{Helm: client}
@@ -90,7 +113,7 @@ func TestIdentityOperationNativeCAEntry(t *testing.T) {
 		Data: map[string]string{identityProviderStateKey: `{"version":1,"plan":{},"phase":"starting"}`},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
-	require.ErrorContains(t, impl.runCertificateRotation(ctx, options, "test", false), "finish the provider transition")
+	require.ErrorContains(t, impl.runCertificateRotation(ctx, options, "test", false), "invalid provider transition")
 	_, err = leases.Get(ctx, held.Name, metav1.GetOptions{})
 	require.True(t, apierrors.IsNotFound(err))
 	retained, _, err := s.read(ctx)
@@ -242,13 +265,13 @@ func TestIdentityOperationNativeProviderJournalGuard(t *testing.T) {
 	s, _, _, _ := newRotationTestStore(t)
 	ctx, maps := t.Context(), s.kube.CoreV1().ConfigMaps(s.namespace)
 	complete := `{"version":1,"plan":{"testIdentity":"full validation delegated to A11"},"phase":"complete"}`
-	for _, scenario := range []string{"complete", "stopping", "staging", "starting", "verifying", "unknown phase", "unknown version",
+	for _, scenario := range []string{"complete", "stopping", "staging", "starting", "verifying", "recording", "unknown phase", "unknown version",
 		"unknown field", "duplicate phase", "nested duplicate", "null", "trailing", "oversize", "foreign owner", "foreign Helm",
 		"missing validator", "validator refusal", "journal mutation", "lease mutation"} {
 		t.Run(scenario, func(t *testing.T) {
 			raw := complete
 			switch scenario {
-			case "stopping", "staging", "starting", "verifying":
+			case "stopping", "staging", "starting", "verifying", "recording":
 				raw = strings.ReplaceAll(raw, `"complete"`, `"`+scenario+`"`)
 			case "unknown phase":
 				raw = strings.ReplaceAll(raw, `"complete"`, `"done"`)

@@ -1,0 +1,47 @@
+{{- $provider := include "radius.authz.provider" . }}
+{{- $external := .Values.de.externalIdentity.enabled }}
+{{- if not (kindIs "bool" $external) }}
+{{- fail "de.externalIdentity.enabled must be a boolean" }}
+{{- end }}
+{{- if and $external (ne $provider "external") }}
+{{- fail "de.externalIdentity.enabled requires global.rbac.mtls.provider=external" }}
+{{- end }}
+{{- if eq $provider "external" }}
+{{- $active := ne (include "radius.authz.mode" .) "off" }}
+{{- if and $active (or (not $external) (not (kindIs "string" .Values.de.image)) (not .Values.de.image) (not (kindIs "string" .Values.de.tag)) (not .Values.de.tag)) }}
+{{- fail "external provider requires de.externalIdentity.enabled=true and an explicit de.image/de.tag for a paired token-capable engine; the published default image is not supported" }}
+{{- end }}
+{{- if .Values.de.ucpMTLS.enabled }}
+{{- fail "external provider cannot use de.ucpMTLS.enabled" }}
+{{- end }}
+{{- if $active }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: radius-token-discovery-{{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: radius
+rules:
+  - nonResourceURLs:
+      - /.well-known/openid-configuration
+      - /openid/v1/jwks
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: radius-token-discovery-{{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: radius
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: radius-token-discovery-{{ .Release.Namespace }}
+subjects:
+  {{- range $component := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" }}
+  - kind: ServiceAccount
+    name: {{ $component }}
+    namespace: {{ $.Release.Namespace }}
+  {{- end }}
+{{- end }}
+{{- end }}

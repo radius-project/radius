@@ -56,6 +56,9 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 	if err != nil {
 		return fmt.Errorf("cannot check Radius CA rotation before %s: %w", operation, err)
 	}
+	if err := i.checkCompletedProviderJournal(ctx, store); err != nil {
+		return err
+	}
 	bootstrap, found, bootstrapErr := store.bootstrapIntent(ctx)
 	if bootstrapErr != nil {
 		return bootstrapErr

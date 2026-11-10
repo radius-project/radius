@@ -299,6 +299,9 @@ func setCertificateValues(values map[string]any, certificates map[string]any) {
 // prepareCertificates performs all certificate checks without changing the cluster. Only public
 // certificate values are added to current; signing material stays in the returned in-memory plan.
 func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, defaults, current map[string]any, kubeContext string, installed bool) (*certificatePlan, error) {
+	if err := i.prepareMTLSProvider(options, defaults, current, installed); err != nil {
+		return nil, err
+	}
 	o := options.Certificates
 	if err := o.Validate(); err != nil {
 		return nil, err
@@ -384,7 +387,7 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 	if err != nil {
 		return nil, err
 	}
-	if authzMode == authz.ModeOff {
+	if authzMode == authz.ModeOff && (!installed || o.Specified()) {
 		return nil, fmt.Errorf("dedicated CA certificates require global.rbac.dryRun=true or global.rbac.enabled=true")
 	}
 	if mode == "issuerRef" {
@@ -675,6 +678,9 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptions, kubeContext string) error {
 	if options.Certificates.RotationPhase != "" {
 		return i.runCertificateRotation(ctx, options, kubeContext, true)
+	}
+	if handled, err := i.runProviderTransition(ctx, options, kubeContext, true); handled || err != nil {
+		return err
 	}
 	if err := i.guardCertificateRotation(ctx, kubeContext, options.Radius.Namespace, "upgrade preflight", nil); err != nil {
 		return err

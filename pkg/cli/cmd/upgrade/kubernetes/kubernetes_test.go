@@ -157,6 +157,8 @@ func Test_Run_RotationDispatch(t *testing.T) {
 		{name: "no values override", flags: []string{"--set=global.rbac.enabled=true"}, rejected: true},
 		{name: "no chart override", flags: []string{"--chart=elsewhere"}, rejected: true},
 		{name: "no reset", flags: []string{"--reset-values"}, rejected: true},
+		{name: "no external provider change", flags: []string{"--mtls-provider=external"}, rejected: true},
+		{name: "no managed provider selector", flags: []string{"--mtls-provider=radius"}, rejected: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd, r := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
@@ -198,6 +200,7 @@ func TestNewCommand(t *testing.T) {
 
 	mockFactory.EXPECT().GetHelmInterface().Return(mockHelm)
 	mockFactory.EXPECT().GetOutput().Return(mockOutput)
+	mockFactory.EXPECT().GetPrompter().Return(nil)
 
 	cmd, runner := NewCommand(mockFactory)
 

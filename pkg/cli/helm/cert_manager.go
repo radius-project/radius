@@ -213,7 +213,6 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 	if mode == authz.ModeOff {
 		return nil
 	}
-
 	helmAction := NewHelmAction(i.Helm)
 	chartOptions := options.CertManager.ChartOptions
 	ownedRelease, err := helmAction.getRelease(kubeContext, chartOptions.ReleaseName, chartOptions.Namespace)

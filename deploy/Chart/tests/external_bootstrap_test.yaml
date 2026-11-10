@@ -1,0 +1,16 @@
+suite: external aggregation bootstrap guard
+templates:
+  - ucp/apiservice.yaml
+release:
+  namespace: radius-system
+set:
+  global.rbac.enabled: true
+  global.rbac.mtls.provider: external
+  de.externalIdentity.enabled: true
+  de.image: local-engine
+  de.tag: local-test
+tests:
+  - it: refuses legacy CA generation on a fresh enabled external install
+    asserts:
+      - failedTemplate:
+          errorMessage: Fresh enabled Radius requires verified configured-CA bootstrap; use the matching rad install workflow.

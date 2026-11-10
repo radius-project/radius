@@ -30,9 +30,15 @@ var mtlsDownstreams = []string{"applications-rp", "dynamic-rp"}
 // NewDownstreamTransport returns the transport UCP uses to forward requests to resource
 // providers. When the authorization mode is not off, requests to applications-rp and
 // dynamic-rp use https and present UCP's certificate, even when the registered location
-// is an http URL. Other downstreams are unchanged.
+// is an http URL. With the external provider, those providers and the deployment engine
+// instead receive their own projected token over operator-encrypted HTTP.
+// Other downstreams are unchanged.
 func NewDownstreamTransport(config *Config) (http.RoundTripper, error) {
-	transport, err := mtls.NewUpgradeTransport(config.Authorization, http.DefaultTransport, mtlsDownstreams)
+	downstreams := mtlsDownstreams
+	if config.Authorization.EffectiveMTLSProvider() == "external" {
+		downstreams = []string{"applications-rp", "dynamic-rp", "bicep-de"}
+	}
+	transport, err := mtls.NewUpgradeTransport(config.Authorization, http.DefaultTransport, downstreams)
 	if err != nil {
 		return nil, err
 	}

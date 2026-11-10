@@ -87,6 +87,9 @@ type Options struct {
 	// TLSSecretName optionally names a kubernetes.io/tls Secret in Namespace to mount at
 	// TLSMountPath, so requests can present its certificate to act as a component.
 	TLSSecretName string
+
+	// TokenSecretName optionally holds test-only receiver tokens, mounted separately from TLS.
+	TokenSecretName string
 }
 
 // Request is an HTTP request sent from the rogue pod.
@@ -105,6 +108,9 @@ type Request struct {
 
 	// Insecure skips server certificate verification.
 	Insecure bool
+
+	// Token names a file from Options.TokenSecretName, not the credential itself.
+	Token string
 }
 
 // Response is the result of a Request.
@@ -267,6 +273,14 @@ func newPod(options Options) *corev1.Pod {
 		}}
 		container.VolumeMounts = []corev1.VolumeMount{{Name: tlsVolumeName, MountPath: TLSMountPath, ReadOnly: true}}
 	}
+	if options.TokenSecretName != "" {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: "tokens", Secret: &corev1.SecretVolumeSource{SecretName: options.TokenSecretName},
+		})
+		container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+			Name: "tokens", MountPath: "/etc/radius-rogue/tokens", ReadOnly: true,
+		})
+	}
 
 	pod.Spec.Containers = []corev1.Container{container}
 	return pod
@@ -333,6 +347,12 @@ func clientArgs(req Request, hasTLS bool) ([]string, error) {
 	}
 
 	args := []string{clientBinary, "request", "--max-time", clientTimeout, "-X", method}
+	if req.Token != "" {
+		if req.Token != path.Base(req.Token) || req.Token == "." || req.Token == ".." {
+			return nil, errors.New("rogue: Token must be a token file name")
+		}
+		args = append(args, "--token-file", path.Join("/etc/radius-rogue/tokens", req.Token))
+	}
 
 	keys := make([]string, 0, len(req.Headers))
 	for k := range req.Headers {

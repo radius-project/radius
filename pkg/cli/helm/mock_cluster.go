@@ -118,6 +118,45 @@ func (c *MockInterfaceCheckContourUpgradeCall) DoAndReturn(f func(context.Contex
 	return c
 }
 
+// CheckProviderTransition mocks base method.
+func (m *MockInterface) CheckProviderTransition(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckProviderTransition", ctx, clusterOptions, kubeContext)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckProviderTransition indicates an expected call of CheckProviderTransition.
+func (mr *MockInterfaceMockRecorder) CheckProviderTransition(ctx, clusterOptions, kubeContext any) *MockInterfaceCheckProviderTransitionCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckProviderTransition", reflect.TypeOf((*MockInterface)(nil).CheckProviderTransition), ctx, clusterOptions, kubeContext)
+	return &MockInterfaceCheckProviderTransitionCall{Call: call}
+}
+
+// MockInterfaceCheckProviderTransitionCall wrap *gomock.Call
+type MockInterfaceCheckProviderTransitionCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockInterfaceCheckProviderTransitionCall) Return(arg0 bool, arg1 error) *MockInterfaceCheckProviderTransitionCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockInterfaceCheckProviderTransitionCall) Do(f func(context.Context, ClusterOptions, string) (bool, error)) *MockInterfaceCheckProviderTransitionCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockInterfaceCheckProviderTransitionCall) DoAndReturn(f func(context.Context, ClusterOptions, string) (bool, error)) *MockInterfaceCheckProviderTransitionCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // CheckRadiusCertificates mocks base method.
 func (m *MockInterface) CheckRadiusCertificates(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	m.ctrl.T.Helper()

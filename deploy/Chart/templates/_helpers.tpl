@@ -2,6 +2,22 @@
 {{- .Chart.AppVersion -}}
 {{- end -}}
 
+{{/* Provider transitions prepare separate configuration without changing live mounts. */}}
+{{- define "radius.providerConfigName" -}}
+{{- $generation := get (.root.Values.global.rbac | default dict) "providerGeneration" -}}
+{{- if not (kindIs "string" $generation) -}}
+{{- fail "global.rbac.providerGeneration must be a string." -}}
+{{- end -}}
+{{- if $generation -}}
+{{- if not (regexMatch `^[0-9a-f]{32}$` $generation) -}}
+{{- fail "global.rbac.providerGeneration must be an exact lowercase 32-character transaction generation." -}}
+{{- end -}}
+{{- printf "%s-%s" .name $generation -}}
+{{- else -}}
+{{- .name -}}
+{{- end -}}
+{{- end -}}
+
 {{/*
 Reuses the value from an existing secret, otherwise sets its value to a default value.
 
@@ -202,12 +218,27 @@ Renders the authorization config block for a component. Renders nothing when
 the authorization mode is off, so a default install is unchanged.
 */}}
 {{- define "radius.authz.serverConfig" -}}
-{{- $mode := include "radius.authz.mode" . -}}
+{{- $mode := include "radius.authz.mode" .root -}}
+{{- $podSecurityLevel := "" -}}
+{{- if eq .component "applications-rp" -}}
+{{- $podSecurityLevel = include "radius.authz.podSecurityLevel" .root -}}
+{{- end -}}
 {{- if ne $mode "off" }}
 authorization:
   mode: {{ $mode | quote }}
-  certificateDirectory: {{ include "radius.authz.mtls.mountPath" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
+  {{- if eq .component "applications-rp" }}
+  podSecurityLevel: {{ $podSecurityLevel | quote }}
+  controlPlaneNamespace: {{ .root.Release.Namespace | quote }}
+  controlPlaneSecrets: {{ include "radius.authz.controlPlaneSecrets" .root }}
+  {{- end }}
+  {{- if eq (include "radius.authz.provider" .root) "external" }}
+  mtlsProvider: external
+  component: {{ .component | quote }}
+  tokenDirectory: /var/run/radius/tokens
+  {{- else }}
+  certificateDirectory: {{ include "radius.authz.mtls.mountPath" .root | quote }}
+  {{- end }}
+  namespace: {{ .root.Release.Namespace | quote }}
 {{- end }}
 {{- end -}}
 
@@ -221,7 +252,7 @@ through the Kubernetes API server.
 ucp:
   kind: direct
   direct:
-    endpoint: "https://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3"
+    endpoint: "{{ if eq (include "radius.authz.provider" .) "external" }}http{{ else }}https{{ end }}://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3"
 {{- else }}
 ucp:
   kind: kubernetes
@@ -233,9 +264,15 @@ Renders the mTLS volume mount for a component container when the authorization m
 */}}
 {{- define "radius.authz.mtls.volumeMount" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
+{{- if eq (include "radius.authz.provider" .) "external" }}
+- name: component-tokens
+  mountPath: /var/run/radius/tokens
+  readOnly: true
+{{- else }}
 - name: mtls
   mountPath: {{ include "radius.authz.mtls.mountPath" . }}
   readOnly: true
+{{- end }}
 {{- end }}
 {{- end -}}
 
@@ -246,6 +283,21 @@ Call with (dict "root" $ "component" "<component>").
 */}}
 {{- define "radius.authz.mtls.volume" -}}
 {{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- if eq (include "radius.authz.provider" .root) "external" }}
+{{- $receivers := list "ucp" }}
+{{- if eq .component "ucp" }}
+{{- $receivers = list "applications-rp" "dynamic-rp" "bicep-de" }}
+{{- end }}
+- name: component-tokens
+  projected:
+    sources:
+      {{- range $receiver := $receivers }}
+      - serviceAccountToken:
+          audience: {{ printf "%s.%s.svc" $receiver $.root.Release.Namespace | quote }}
+          expirationSeconds: 600
+          path: {{ $receiver }}
+      {{- end }}
+{{- else }}
 {{- $rotation := include "radius.rotationState" .root | mustFromJson }}
 {{- $certificates := ((.root.Values.global.rbac).certificates) | default dict }}
 - name: mtls
@@ -269,5 +321,57 @@ Call with (dict "root" $ "component" "<component>").
   secret:
     secretName: {{ .component }}-mtls
   {{- end }}
+{{- end }}
+{{- end -}}
+{{- end -}}
+
+{{- define "radius.authz.provider" -}}
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- $settings := dict "provider" "radius" -}}
+{{- if hasKey $rbac "mtls" -}}
+{{- $settings = $rbac.mtls -}}
+{{- end -}}
+{{- if not (kindIs "map" $settings) -}}
+{{- fail "global.rbac.mtls must be a mapping" -}}
+{{- end -}}
+{{- $provider := $settings.provider -}}
+{{- if not (has $provider (list "radius" "external")) -}}
+{{- fail "global.rbac.mtls.provider must be radius or external" -}}
+{{- end -}}
+{{- $provider -}}
+{{- end -}}
+
+{{- define "radius.providerReplicas" -}}
+{{- $rbac := .root.Values.global.rbac | default dict -}}
+{{- $counts := dict -}}
+{{- if hasKey $rbac "providerReplicas" -}}{{- $counts = $rbac.providerReplicas -}}{{- end -}}
+{{- if not (kindIs "map" $counts) -}}
+{{- fail "global.rbac.providerReplicas must contain the pinned provider-transition replica inventory." -}}
+{{- end -}}
+{{- if $counts -}}
+{{- if ne (len $counts) 5 -}}
+{{- fail "Provider replica inventory must include exactly all five components." -}}
+{{- end -}}
+{{- range $name := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" -}}
+{{- $count := index $counts $name -}}
+{{- if or (not (hasKey $counts $name)) (not (kindIs "float64" (mustFromJson (toJson $count)))) (lt (int64 $count) 1) (gt (int64 $count) 2147483647) (ne (float64 (int64 $count)) (float64 $count)) (and (eq $name "controller") (ne (int64 $count) 1)) -}}
+{{- fail "Provider replicas require positive integer counts and exactly one controller." -}}
+{{- end -}}
+{{- end -}}
+{{- index $counts .component -}}
+{{- else -}}1{{- end -}}
+{{- end -}}
+
+{{- define "radius.authz.rolloutKey" -}}
+{{- include "radius.authz.mode" . -}}
+{{- if eq (include "radius.authz.provider" .) "external" -}}/external{{- end -}}
+{{- end -}}
+
+{{- define "radius.authz.externalIdentityEnv" -}}
+{{- if and (eq (include "radius.authz.provider" .) "external") (ne (include "radius.authz.mode" .) "off") }}
+- name: RADIUS_INTERNAL_AUTH_POD_UID
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.uid
 {{- end }}
 {{- end -}}

@@ -1,7 +1,11 @@
+{{- $componentDomain := "radius-system" }}
+{{- if and (eq (include "radius.authz.provider" .) "external") (ne (include "radius.authz.mode" .) "off") }}
+{{- $componentDomain = printf "%s.svc" .Release.Namespace }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: ucp-config
+  name: {{ include "radius.providerConfigName" (dict "root" . "name" "ucp-config") }}
   namespace: "{{ .Release.Namespace }}"
   labels:
     app.kubernetes.io/name: ucp
@@ -52,12 +56,12 @@ data:
         - id: "/planes/radius/local"
           properties:
             resourceProviders:
-              Applications.Core: "http://applications-rp.radius-system:5443"
-              Radius.Core: "http://applications-rp.radius-system:5443"
-              Applications.Dapr: "http://applications-rp.radius-system:5443"
-              Applications.Datastores: "http://applications-rp.radius-system:5443"
-              Applications.Messaging: "http://applications-rp.radius-system:5443"
-              Microsoft.Resources: "http://bicep-de.radius-system:6443"
+              Applications.Core: "http://applications-rp.{{ $componentDomain }}:5443"
+              Radius.Core: "http://applications-rp.{{ $componentDomain }}:5443"
+              Applications.Dapr: "http://applications-rp.{{ $componentDomain }}:5443"
+              Applications.Datastores: "http://applications-rp.{{ $componentDomain }}:5443"
+              Applications.Messaging: "http://applications-rp.{{ $componentDomain }}:5443"
+              Microsoft.Resources: "http://bicep-de.{{ $componentDomain }}:6443"
             kind: "UCPNative"
         - id: "/planes/aws/aws"
           properties:
@@ -76,7 +80,7 @@ data:
       kind: kubernetes
     
     routing:
-      defaultDownstreamEndpoint: "http://dynamic-rp.radius-system:8082"
+      defaultDownstreamEndpoint: "http://dynamic-rp.{{ $componentDomain }}:8082"
 
     metricsProvider:
       enabled: true
@@ -95,7 +99,7 @@ data:
       mode: "off"
       namespace: {{ .Release.Namespace | quote }}
     {{- else }}
-    {{- with include "radius.authz.serverConfig" . | trim }}{{ . | nindent 4 }}{{- end }}
+    {{- with include "radius.authz.serverConfig" (dict "root" . "component" "ucp") | trim }}{{ . | nindent 4 }}{{- end }}
     {{- end }}
 
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}

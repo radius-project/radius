@@ -142,6 +142,16 @@ global:
       # Applications.Core containers; only objects with the radapp.io/resource-type label match.
       # TODO(D7): default to the application-template identity once the broker issues it.
       applicationIdentities: []
+    # External authenticates HTTP with projected receiver-bound ServiceAccount tokens.
+    # The operator must encrypt every connection, including storage and queues.
+    # Requires an explicitly selected, paired token-capable deployment-engine image.
+    # Aggregation TLS stays Radius-managed in every certificate mode.
+    mtls:
+      provider: radius
+    # Reserved for the provider transition driver. Omission retains legacy configuration names.
+    providerGeneration: ""
+    # Reserved: preserve the entire fleet's replica counts across a provider change.
+    providerReplicas: {}
     # Public loaded-trust evidence on the existing Go metrics listener.
     # Does not enable CA rotation or change the deployment-engine opt-in.
     startupProof:
@@ -154,7 +164,7 @@ global:
       # selfSigned creates a Radius-only CA (Certificate and Secret "radius-ca").
       # caSecret uses the operator-owned TLS Secret below with the same Radius-only Issuer.
       # issuerRef references an existing issuer after live request-policy validation.
-      # Switching modes or replacing a CA requires coordinated rotation (not implemented here).
+      # Switching modes or replacing a CA requires explicit coordinated rotation.
       # Each component gets Certificate "<component>-cert" stored in Secret "<component>-mtls"
       # (tls.crt, tls.key, ca.crt) for ucp, applications-rp, dynamic-rp, controller, and bicep-de.
       # Keys are ECDSA P-256; certificates last 24h and renew 8h before expiry.
@@ -203,6 +213,10 @@ controller:
 
 de:
   image: deployment-engine
+  externalIdentity:
+    # Opt in only with a verified paired A11 engine supplied via de.image and de.tag.
+    # The default published engine does not implement this contract.
+    enabled: false
   # Default tag uses Chart AppVersion.
   # tag: latest
   # Opt in only with a deployment-engine image supporting UCP_MTLS_* (not yet

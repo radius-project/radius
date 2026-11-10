@@ -1,7 +1,8 @@
 {{- $rotation := include "radius.rotationSnapshot" (dict "root" . "apiVersion" "apps/v1" "kind" "Deployment" "name" "applications-rp") | mustFromJson }}
 {{- $appversion := include "radius.versiontag" . }}
-{{- $authzConfig := include "radius.authz.mode" . }}
-{{- if ne $authzConfig "off" }}
+{{- $authzMode := include "radius.authz.mode" . }}
+{{- $authzConfig := include "radius.authz.rolloutKey" . }}
+{{- if ne $authzMode "off" }}
 {{- $authzConfig = printf "%s:%s:%s:%s" $authzConfig (include "radius.authz.podSecurityLevel" .) .Release.Namespace (include "radius.authz.controlPlaneSecrets" .) }}
 {{- end }}
 {{- if ne .Values.rp.terraform.path "/terraform" }}
@@ -18,7 +19,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   {{- include "radius.rotationMetadata" $rotation | nindent 2 }}
 spec:
-  replicas: 1
+  replicas: {{ include "radius.providerReplicas" (dict "root" . "component" "applications-rp") }}
   selector:
     matchLabels:
      app.kubernetes.io/name: applications-rp
@@ -170,6 +171,7 @@ spec:
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
+        {{- with include "radius.authz.externalIdentityEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.startupProofEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.database.enabled }}
         - name: POSTGRES_PASSWORD
@@ -236,7 +238,7 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: applications-rp-config
+            name: {{ include "radius.providerConfigName" (dict "root" . "name" "applications-rp-config") }}
         {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "applications-rp") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token

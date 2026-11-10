@@ -142,6 +142,7 @@ rad install kubernetes --timeout 15m
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
 	runner.Certificates.AddFlags(cmd.Flags())
+	runner.MTLS.AddFlags(cmd.Flags())
 	cmd.Flags().BoolVar(&runner.Reinstall, "reinstall", false, "Specify to force reinstallation of Radius")
 	cmd.Flags().StringVar(&runner.Chart, "chart", "", "Specify a file path to a helm chart to install Radius from")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -169,6 +170,7 @@ type Runner struct {
 	Set          []string
 	SetFile      []string
 	Certificates helm.CertificateOptions
+	MTLS         helm.MTLSProviderOptions
 
 	// Contour
 	ContourDisabled bool
@@ -201,7 +203,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if cmd != nil {
+		if err := r.MTLS.ValidateFlags(cmd.Flags()); err != nil {
+			return err
+		}
 		return r.Certificates.ValidateFlags(cmd.Flags())
+	}
+	if err := r.MTLS.ValidateFlags(nil); err != nil {
+		return err
 	}
 	return r.Certificates.Validate()
 }
@@ -214,6 +222,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // to the cli version. It then returns any errors that occur during the installation.
 func (r *Runner) Run(ctx context.Context) error {
 	cliOptions := helm.CLIClusterOptions{
+		MTLS:         r.MTLS,
 		Certificates: r.Certificates,
 		Radius: helm.ChartOptions{
 			Reinstall:   r.Reinstall,
@@ -236,8 +245,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	if state.RadiusInstalled && !r.Reinstall {
-		if r.Certificates.Specified() {
-			return fmt.Errorf("Radius is already installed; use --reinstall to validate unchanged certificate settings. Certificate mode or CA changes require coordinated migration")
+		if r.Certificates.Specified() || r.MTLS.Provider != "" {
+			return fmt.Errorf("Radius is already installed; use --reinstall to validate unchanged certificate settings and mTLS provider. Certificate mode, CA or provider changes require coordinated migration")
 		}
 		r.Output.LogInfo("Found existing Radius installation. Use '--reinstall' to force reinstallation.")
 		// An earlier install can stop after Radius and before Contour, or leave a Contour release that is not deployed.

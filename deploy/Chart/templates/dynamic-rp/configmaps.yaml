@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: dynamic-rp-config
+  name: {{ include "radius.providerConfigName" (dict "root" . "name" "dynamic-rp-config") }}
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: dynamic-rp
@@ -57,7 +57,7 @@ data:
       level: "info"
       json: true
 
-    {{- with include "radius.authz.serverConfig" . | trim }}{{ . | nindent 4 }}{{- end }}
+    {{- with include "radius.authz.serverConfig" (dict "root" . "component" "dynamic-rp") | trim }}{{ . | nindent 4 }}{{- end }}
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:
       enabled: true

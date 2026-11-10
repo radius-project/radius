@@ -381,6 +381,15 @@ func Test_ensureCertManager(t *testing.T) {
 			expect: func(*testing.T, *MockHelmClient) {},
 		},
 		{
+			name:    "external aggregation uses supported cert-manager",
+			setArgs: []string{"global.rbac.enabled=true", "global.rbac.mtls.provider=external"},
+			cluster: healthy,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(nil)(m)
+			},
+			wantDetect: true,
+		},
+		{
 			name:    "no cert-manager installs pinned version",
 			setArgs: dryRun,
 			expect: func(t *testing.T, m *MockHelmClient) {

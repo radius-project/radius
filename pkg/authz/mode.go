@@ -88,12 +88,39 @@ type Options struct {
 	TargetClusterIsDistinct bool `yaml:"-" json:"-"`
 
 	// CertificateDirectory is the directory that holds the component's mTLS certificate
-	// (tls.crt, tls.key, and ca.crt). It is required when the mode is not off.
+	// (tls.crt, tls.key, and ca.crt). Required for non-off Radius-managed mTLS.
 	CertificateDirectory string `yaml:"certificateDirectory,omitempty"`
 
-	// Namespace is the Radius namespace used to check peer certificate identities.
+	// Namespace is the Radius namespace used to check component identities.
 	// It is required when the mode is not off.
 	Namespace string `yaml:"namespace,omitempty"`
+
+	// MTLSProvider selects Radius TLS or externally supplied network encryption.
+	MTLSProvider string `yaml:"mtlsProvider,omitempty"`
+
+	// Component is this receiver's canonical component name in external mode.
+	Component string `yaml:"component,omitempty"`
+
+	// TokenDirectory contains one projected token file per receiver in external mode.
+	TokenDirectory string `yaml:"tokenDirectory,omitempty"`
+}
+
+// EffectiveMTLSProvider returns the selected provider, defaulting to Radius.
+func (o Options) EffectiveMTLSProvider() string {
+	if o.MTLSProvider == "" {
+		return "radius"
+	}
+	return o.MTLSProvider
+}
+
+// ValidateProvider rejects unknown providers even when authorization is off.
+func (o Options) ValidateProvider() error {
+	switch o.EffectiveMTLSProvider() {
+	case "radius", "external":
+		return nil
+	default:
+		return fmt.Errorf("invalid mTLS provider: must be radius or external")
+	}
 }
 
 // EffectiveMode returns the configured mode, or ModeOff when it is unset.

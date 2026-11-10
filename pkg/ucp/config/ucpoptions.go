@@ -58,9 +58,12 @@ type UCPDirectConnectionOptions struct {
 // checks if the endpoint is provided and returns a direct connection, otherwise it returns a Kubernetes connection from
 // the provided config. It returns an error if the endpoint is not provided when the connection kind is direct.
 //
-// When the authorization mode is not off, a direct connection must use https and presents this component's
-// certificate to UCP's internal mTLS endpoint. A Kubernetes connection is unchanged.
+// When the authorization mode is not off, a direct connection uses this component's certificate over
+// HTTPS, or a receiver-bound token over HTTP with the external provider. A Kubernetes connection is unchanged.
 func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config, authorization authz.Options) (sdk.Connection, error) {
+	if err := authorization.ValidateProvider(); err != nil {
+		return nil, err
+	}
 	if option.Kind == UCPConnectionKindDirect {
 		if option.Direct == nil || option.Direct.Endpoint == "" {
 			return nil, errors.New("the property .ucp.direct.endpoint is required when using a direct connection")
@@ -73,8 +76,15 @@ func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config, auth
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse endpoint %q: %w", option.Direct.Endpoint, err)
 		}
-		if endpoint.Scheme != "https" {
-			return nil, fmt.Errorf("the property .ucp.direct.endpoint must use https when the authorization mode is %q", authorization.EffectiveMode())
+		scheme := "https"
+		if authorization.EffectiveMTLSProvider() == "external" {
+			scheme = "http"
+			if endpoint.Hostname() != "ucp."+authorization.Namespace+".svc" || endpoint.Port() != "9444" || endpoint.User != nil {
+				return nil, errors.New("external UCP endpoint must use the canonical UCP service name and internal port 9444")
+			}
+		}
+		if endpoint.Scheme != scheme {
+			return nil, fmt.Errorf("the property .ucp.direct.endpoint must use %s when the authorization mode is %q", scheme, authorization.EffectiveMode())
 		}
 		transport, err := mtls.NewClientTransport(authorization)
 		if err != nil {

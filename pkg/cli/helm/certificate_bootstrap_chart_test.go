@@ -81,7 +81,10 @@ func TestBootstrapSelectedChart(t *testing.T) {
 					provider = "external"
 				}
 				require.NoError(t, unstructured.SetNestedField(values, provider, "global", "rbac", "mtls", "provider"))
-				require.NoError(t, unstructured.SetNestedField(values, true, "de", "ucpMTLS", "enabled"))
+				require.NoError(t, unstructured.SetNestedField(values, !external, "de", "ucpMTLS", "enabled"))
+				if external {
+					values["de"] = externalProviderValues()["de"]
+				}
 				require.NoError(t, unstructured.SetNestedField(values, true, "global", "prometheus", "enabled"))
 				require.NoError(t, unstructured.SetNestedField(values, int64(state.ProofPort), "global", "prometheus", "port"))
 				settings := map[string]any{"mode": mode}

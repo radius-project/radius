@@ -66,8 +66,18 @@ func reloadContext() context.Context {
 
 // NewClientTransport returns an HTTP transport that presents this component's certificate
 // and verifies that the server is the Radius component named by the request URL's host.
-// It requires options.CertificateDirectory and options.Namespace.
+// It requires options.CertificateDirectory and options.Namespace. With the external
+// provider, it instead sends the rotating UCP receiver token to UCP's internal HTTP port.
 func NewClientTransport(options authz.Options) (http.RoundTripper, error) {
+	if err := options.ValidateProvider(); err != nil {
+		return nil, err
+	}
+	if options.EffectiveMTLSProvider() == "external" {
+		if options.EffectiveMode() == authz.ModeOff {
+			return http.DefaultTransport, nil
+		}
+		return newTokenTransport(options, []string{"ucp"})
+	}
 	return newClientTransport(options, "")
 }
 
@@ -211,15 +221,25 @@ func (t *clientTransport) closeInvalid(current *material) {
 // to https, and sends all other requests through plain. A component matches by any of its
 // DNS names: <component>, <component>.<namespace>, or <component>.<namespace>.svc. The TLS
 // server name is always the canonical <component>.<namespace>.svc, the only name that
-// component certificates carry.
+// component certificates carry. The external provider retains HTTP and uses a separate
+// rotating projected token for each receiver, never falling back on missing credentials.
 func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, components []string) (http.RoundTripper, error) {
+	if err := options.ValidateProvider(); err != nil {
+		return nil, err
+	}
 	if options.EffectiveMode() == authz.ModeOff {
 		return plain, nil
 	}
 
 	secure := map[string]http.RoundTripper{}
 	for _, c := range components {
-		transport, err := newClientTransport(options, c+"."+options.Namespace+".svc")
+		var transport http.RoundTripper
+		var err error
+		if options.EffectiveMTLSProvider() == "external" {
+			transport, err = newTokenTransport(options, []string{c})
+		} else {
+			transport, err = newClientTransport(options, c+"."+options.Namespace+".svc")
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -228,11 +248,12 @@ func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, compone
 		secure[c+"."+options.Namespace] = transport
 		secure[c+"."+options.Namespace+".svc"] = transport
 	}
-	return &upgradeTransport{plain: plain, secure: secure}, nil
+	return &upgradeTransport{plain: plain, secure: secure, external: options.EffectiveMTLSProvider() == "external"}, nil
 }
 
 type upgradeTransport struct {
-	plain http.RoundTripper
+	plain    http.RoundTripper
+	external bool
 	// secure maps each accepted host name to the mTLS transport for its component.
 	secure map[string]http.RoundTripper
 }
@@ -244,7 +265,7 @@ func (t *upgradeTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		return t.plain.RoundTrip(req)
 	}
 
-	if req.URL.Scheme == "http" {
+	if !t.external && req.URL.Scheme == "http" {
 		req = req.Clone(req.Context())
 		req.URL.Scheme = "https"
 	}

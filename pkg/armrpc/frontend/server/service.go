@@ -24,6 +24,7 @@ import (
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/authentication"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
@@ -96,6 +97,17 @@ func (s *Service) Start(ctx context.Context, opt Options) error {
 	server, err := New(ctx, opt)
 	if err != nil {
 		return err
+	}
+	authorization := s.Options.Config.Authorization
+	if authorization.EffectiveMode() != authz.ModeOff && authorization.EffectiveMTLSProvider() == "external" {
+		if s.Options.UCPConnection == nil {
+			return fmt.Errorf("external identity evidence requires the configured UCP connection")
+		}
+		server.Handler, err = mtls.WithInternalIdentityClient(server.Handler, authorization,
+			s.Options.UCPConnection.Client(), s.Options.UCPConnection.Endpoint())
+		if err != nil {
+			return err
+		}
 	}
 
 	// Handle shutdown based on the context

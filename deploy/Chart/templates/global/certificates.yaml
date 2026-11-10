@@ -11,6 +11,9 @@
 {{- $caObject := lookup "cert-manager.io/v1" "Certificate" .Release.Namespace "radius-ca" }}
 {{- $trustObject := lookup "v1" "ConfigMap" .Release.Namespace "radius-mtls-ca" }}
 {{- $rotation := include "radius.rotationState" . | mustFromJson }}
+{{- if and $rotation (ne (eq $provider "external") (eq (default "componentsAndAggregation" $rotation.plan.scope) "aggregationOnly")) }}
+{{- include "radius.providerScopeHandoff" (dict "root" . "state" $rotation) }}
+{{- end }}
 {{- $certificates := ((.Values.global.rbac).certificates) | default dict }}
 {{- $mode := "selfSigned" }}
 {{- if hasKey $certificates "mode" }}
