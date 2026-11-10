@@ -38,7 +38,7 @@ Only the engine's own `bicep-de-mtls` Secret is mounted, read-only at `/var/run/
 
 The scoped mount does not establish Kubernetes Secret isolation: the engine ServiceAccount retains its existing `cluster-admin` binding for resource provisioning and can therefore read other component Secrets through the Kubernetes API. Restricting that provisioning authority is separate from this transport wiring.
 
-Without the opt-in, the engine mounts no component credentials and keeps the published image's existing `https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3` endpoint, even in DryRun or Enforce. UCP's certificate-less aggregation compatibility path remains open pending the verified engine migration and the separate aggregation-proxy authentication dependencies. A component certificate is not an aggregation-proxy credential. These settings alone do not complete internal authentication or execution authorization.
+Without the opt-in, the engine mounts no component credentials and keeps the published image's existing `https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3` endpoint, even in DryRun or Enforce. UCP verifies aggregation-proxy credentials before trusting forwarded user headers, while its headerless, certificate-less engine compatibility path remains open pending the verified engine migration. A component certificate is not an aggregation-proxy credential. These settings alone do not complete internal authentication or execution authorization.
 
 ## Configuration Options
 
