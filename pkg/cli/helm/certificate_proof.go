@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/radius-project/radius/pkg/authz/mtls"
@@ -57,7 +56,7 @@ type PodTLSProof struct {
 }
 
 // ObserveTLSStartupProof reads bounded public evidence through the authenticated Kubernetes
-// pod proxy. It refuses redirects and verifies pod/container identity before and after the read.
+// exact-pod port-forward. It refuses redirects and verifies pod/container identity before and after the read.
 func ObserveTLSStartupProof(ctx context.Context, config *rest.Config, target TLSProofTarget) (PodTLSProof, error) {
 	return observePodTLSProof(ctx, config, target, mtls.StartupProofPath, func(evidence mtls.StartupEvidence) error {
 		return evidence.Validate(string(target.PodUID), target.TrustBundleSHA256, target.LeafSHA256, time.Now())
@@ -92,23 +91,34 @@ func observePodTLSProof(ctx context.Context, config *rest.Config, target TLSProo
 	if err != nil {
 		return PodTLSProof{}, err
 	}
-	proxyURL := kube.CoreV1().RESTClient().Get().Namespace(target.Namespace).Resource("pods").
-		Name("http:" + target.PodName + ":" + strconv.Itoa(int(target.Port))).
-		SubResource("proxy").Suffix(path).URL()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, proxyURL.String(), nil)
+	origin, stop, err := openPodProofPortForward(ctx, config, target)
+	if err != nil {
+		return PodTLSProof{}, err
+	}
+	defer stop()
+	// Kubernetes authentication belongs only on the API connection, never on a
+	// workload's public proof endpoint. Do not use environment proxies locally.
+	proofTransport := &http.Transport{DisableKeepAlives: true, MaxResponseHeaderBytes: 8192}
+	defer proofTransport.CloseIdleConnections()
+	proofClient := &http.Client{Transport: proofTransport, Timeout: config.Timeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, origin+path, nil)
 	if err != nil {
 		return PodTLSProof{}, errors.New("cannot construct TLS startup proof request")
 	}
-	response, err := client.Do(request)
+	response, err := proofClient.Do(request)
 	if err != nil {
-		return PodTLSProof{}, errors.New("cannot read TLS startup proof through authenticated pod proxy")
+		if ctx.Err() != nil {
+			return PodTLSProof{}, fmt.Errorf("TLS startup proof observation interrupted: %w", ctx.Err())
+		}
+		return PodTLSProof{}, errors.New("cannot read TLS startup proof through authenticated pod port-forward")
 	}
 	defer response.Body.Close()
 	if response.StatusCode >= 300 && response.StatusCode < 400 {
-		return PodTLSProof{}, errors.New("TLS startup proof pod proxy redirects are not permitted")
+		return PodTLSProof{}, errors.New("TLS startup proof endpoint redirects are not permitted")
 	}
 	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
-		return PodTLSProof{}, errors.New("TLS startup proof pod proxy access denied; check pod proxy permissions")
+		return PodTLSProof{}, errors.New("TLS startup proof endpoint access denied")
 	}
 	if response.StatusCode != http.StatusOK {
 		return PodTLSProof{}, fmt.Errorf("TLS startup proof endpoint is unavailable (HTTP %d)", response.StatusCode)
@@ -116,6 +126,9 @@ func observePodTLSProof(ctx context.Context, config *rest.Config, target TLSProo
 	const maxProofBytes = 8192
 	data, err := io.ReadAll(io.LimitReader(response.Body, maxProofBytes+1))
 	if err != nil || len(data) > maxProofBytes {
+		if ctx.Err() != nil {
+			return PodTLSProof{}, fmt.Errorf("TLS startup proof observation interrupted: %w", ctx.Err())
+		}
 		return PodTLSProof{}, errors.New("TLS startup proof is unreadable or exceeds its size limit")
 	}
 	var evidence mtls.StartupEvidence
