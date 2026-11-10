@@ -73,7 +73,8 @@ type ServerOptions struct {
 	// - tls.key: The server's private key.
 	TLSCertificateDirectory string `yaml:"tlsCertificateDirectory,omitempty"`
 
-	// InternalPort is the port UCP serves internal component traffic on with mTLS. It is
+	// InternalPort is the port UCP serves internal component traffic on with its SPIFFE server
+	// certificate and ServiceAccount token authentication. It is
 	// separate from Port, which serves Kubernetes API aggregation traffic. UCP only listens
 	// on it when internal component authorization is on.
 	InternalPort int `yaml:"internalPort,omitempty"`

@@ -151,6 +151,7 @@ global:
       # Each component gets Certificate "<component>-cert" stored in Secret "<component>-mtls"
       # (tls.crt, tls.key, ca.crt) for ucp, applications-rp, dynamic-rp, controller, and bicep-de.
       # Keys are ECDSA P-256; certificates last 24h and renew 8h before expiry.
+      # Components no longer mount the "<component>-mtls" Secrets; a later release removes them.
       mode: selfSigned
     # Server certificates from Radius's own csi-driver-spiffe instance, which rad install/upgrade
     # installs in the release namespace when the authorization mode is not off. ucp,
@@ -158,8 +159,9 @@ global:
     # certificate with one SPIFFE URI SAN, spiffe://<trustDomain>/ns/<namespace>/sa/<service account>,
     # signed by Issuer "radius-ca-issuer". Callers also mount 10-minute projected ServiceAccount
     # tokens at /var/run/radius/tokens/<receiver>/token, with the receiver's name as the audience.
-    # Mounted for a later release; components do not read them yet. Plain Helm users must install
-    # csi-driver-spiffe with the same trust domain and CSI driver name.
+    # Receivers verify each caller's token offline; callers verify the receiver's SPIFFE ID before
+    # sending a token. The controller mounts only ca.crt from Secret "radius-ca". Plain Helm users
+    # must install csi-driver-spiffe with the same trust domain and CSI driver name.
     spiffe:
       # SPIFFE trust domain of the Radius server certificates.
       trustDomain: radius.internal
