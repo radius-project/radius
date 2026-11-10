@@ -412,9 +412,12 @@ func (i *Impl) uninstallCertManager(ctx context.Context, options ClusterOptions,
 	return i.uninstallHelmRelease("cert-manager", chartOptions.ReleaseName, chartOptions.Namespace, kubeContext)
 }
 
-// UninstallCertManager removes cert-manager on its own, with the same ownership and other-workload checks
-// that UninstallRadius applies. It does not touch the Radius or Contour releases.
+// UninstallCertManager removes csi-driver-spiffe and cert-manager on their own, with the same ownership and
+// other-workload checks that UninstallRadius applies. It does not touch the Radius or Contour releases.
 func (i *Impl) UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	if err := i.uninstallCSIDriverSPIFFE(clusterOptions, kubeContext); err != nil {
+		return err
+	}
 	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
 }
 
