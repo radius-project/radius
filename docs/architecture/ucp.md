@@ -73,9 +73,9 @@ GET `.../<alias>` reads UCP's record of the alias, then reads AWS by the identif
 The Kubernetes APIService endpoint (Service port 443 to container port 9443)
 uses the `ucp-cert` certificate. With authorization off, the chart generates it.
 Otherwise cert-manager issues it from the namespaced `radius-apiserver-issuer`,
-whose `radius-apiserver-ca` is injected into the APIService `caBundle` and is
-separate from the `radius-ca` that signs component server certificates, in every
-certificate mode. The Kubernetes API server trusts that CA for UCP, so the
+whose `radius-apiserver-ca` is injected into the APIService `caBundle`. In the
+`selfSigned` certificate mode, the only mode supported today, this CA is
+separate from the `radius-ca` that signs component server certificates. The Kubernetes API server trusts that CA for UCP, so the
 `radius-certificate-issuance` ValidatingAdmissionPolicy lets only the
 cert-manager controller request certificates from `radius-apiserver-issuer`.
 UCP reloads it without a restart. When
