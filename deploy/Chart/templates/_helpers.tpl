@@ -191,7 +191,7 @@ TODO(D7): default to the application-template identity once the broker issues it
 {{- end -}}
 
 {{/*
-Path where a component's mTLS Secret (<component>-mtls) is mounted.
+Path where a component's mTLS certificate, key, and dedicated CA are mounted.
 */}}
 {{- define "radius.authz.mtls.mountPath" -}}
 /var/run/radius/mtls
@@ -240,13 +240,33 @@ Renders the mTLS volume mount for a component container when the authorization m
 {{- end -}}
 
 {{/*
-Renders the mTLS Secret volume for a component when the authorization mode is not off.
+Renders a component's mTLS volume, projecting dedicated public trust in caSecret mode.
+Renders nothing when the authorization mode is off.
 Call with (dict "root" $ "component" "<component>").
 */}}
 {{- define "radius.authz.mtls.volume" -}}
 {{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- $certificates := ((.root.Values.global.rbac).certificates) | default dict }}
 - name: mtls
+  {{- if has (toString $certificates.mode) (list "caSecret" "issuerRef") }}
+  projected:
+    sources:
+      - secret:
+          name: {{ .component }}-mtls
+          items:
+            - key: tls.crt
+              path: tls.crt
+            - key: tls.key
+              path: tls.key
+      # Never trust the issuer's full organization chain from the leaf Secret.
+      - configMap:
+          name: radius-mtls-ca
+          items:
+            - key: ca.crt
+              path: ca.crt
+  {{- else }}
   secret:
     secretName: {{ .component }}-mtls
+  {{- end }}
 {{- end }}
 {{- end -}}

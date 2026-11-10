@@ -34,13 +34,125 @@ With an explicitly selected compatible engine image (`de.image` and `de.tag`), e
 | `UCP_MTLS_NAMESPACE`             | The Helm release namespace                                   |
 | `RADIUSBACKENDURL`               | `https://ucp.<namespace>.svc:9444/apis/api.ucp.dev/v1alpha3` |
 
-Only the engine's own `bicep-de-mtls` Secret is mounted, read-only at `/var/run/radius/mtls`. It supplies `tls.crt`, `tls.key` and `ca.crt`; the mount has no `subPath`, so cert-manager updates can propagate. Its certificate names `bicep-de.<namespace>.svc`. The paired engine must use a coherent certificate/key/CA snapshot for every handshake, verify the canonical UCP hostname and dedicated CA, and fail closed on invalid or missing material even in DryRun. All outbound UCP SDK callbacks, nested deployment requests and operation polling must use that transport without an unauthenticated fallback. `ARM_AUTH_METHOD=UCPCredential` is unchanged; the engine's existing Kubernetes Secret access for Azure credentials is separate from this UCP transport.
+Only the engine's own `bicep-de-mtls` Secret supplies its leaf certificate and key, read-only at `/var/run/radius/mtls`. In `selfSigned` mode it also supplies `ca.crt`; in `caSecret` mode a projected volume supplies `ca.crt` from the public `radius-mtls-ca` ConfigMap instead. The mount has no `subPath`, so updates can propagate. Its certificate names `bicep-de.<namespace>.svc`. The paired engine must use a coherent certificate/key/CA snapshot for every handshake, verify the canonical UCP hostname and dedicated CA, and fail closed on invalid or missing material even in DryRun. All outbound UCP SDK callbacks, nested deployment requests and operation polling must use that transport without an unauthenticated fallback. `ARM_AUTH_METHOD=UCPCredential` is unchanged; the engine's existing Kubernetes Secret access for Azure credentials is separate from this UCP transport.
 
 The scoped mount does not establish Kubernetes Secret isolation: the engine ServiceAccount retains its existing `cluster-admin` binding for resource provisioning and can therefore read other component Secrets through the Kubernetes API. Restricting that provisioning authority is separate from this transport wiring.
 
 Without the opt-in, the engine mounts no component credentials and keeps the published image's existing `https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3` endpoint, even in DryRun or Enforce. UCP verifies aggregation-proxy credentials before trusting forwarded user headers, while its headerless, certificate-less engine compatibility path remains open pending the verified engine migration. A component certificate is not an aggregation-proxy credential. These settings alone do not complete internal authentication or execution authorization.
 
 ## Configuration Options
+
+### Internal service certificate modes
+
+With component authorization off, certificate settings have no effect. In DryRun or Enforce, `global.rbac.certificates.mode=selfSigned` remains the default. It creates the Radius CA, the namespaced `radius-ca-issuer`, and five service Certificates. Service certificates have one canonical DNS SAN, `<component>.<release-namespace>.svc`, an ECDSA P-256 key, client/server usages, a requested 24-hour lifetime and renewal 8 hours before expiry.
+
+For `caSecret`, prepare an operator-owned `kubernetes.io/tls` Secret in the release namespace. Its `tls.crt` must start with the dedicated signing CA certificate, optionally followed by its parent chain; `tls.key` must match that first certificate. The chart neither renders nor adopts that Secret, and does not mount the signing key into any component. The existing namespaced `radius-ca-issuer` references it; no bootstrap issuer or CA Certificate is created.
+
+Set `global.rbac.certificates.caSecret` to that Secret's name and `global.rbac.certificates.caBundle` to **only the public dedicated signing CA certificate**. For a fresh installation, preview the resources without contacting a cluster:
+
+```console
+helm template radius deploy/Chart -n radius-system \
+  --set global.rbac.dryRun=true \
+  --set global.rbac.certificates.mode=caSecret \
+  --set global.rbac.certificates.caSecret=operator-signing-ca \
+  --set-file global.rbac.certificates.caBundle=/path/to/dedicated-ca.pem
+```
+
+`caBundle` accepts exactly one PEM `CERTIFICATE` block, with surrounding whitespace trimmed. Do not supply a private key, the parent chain, or the organization root. The chart checks the PEM shape only: it does not parse X.509, inspect the existing Secret, or verify a matching CA/key. Before installation, verify that the public certificate's DER equals the first certificate in the Secret's `tls.crt`, that it is a currently valid CA with a matching allowed key, and that it is dedicated to Radius. Use a path length constraint of zero and a permitted DNS subtree of `<release-namespace>.svc` where possible. CLI flags and cryptographic install/upgrade validation are pending A9; do not interpret a successful render as that validation.
+
+The public certificate is stored in the chart-owned `radius-mtls-ca` ConfigMap. Each component's projected volume combines only `tls.crt` and `tls.key` from its own leaf Secret with `ca.crt` from this ConfigMap. The leaf Secret's `ca.crt` is deliberately excluded: it may contain a broader organization chain. Receivers therefore trust the configured dedicated CA, not every CA in the leaf's chain. This is separate from `global.rootCA`, which configures outbound system trust.
+
+`issuerRef` references an existing `cert-manager.io` `Issuer` in the release namespace or a `ClusterIssuer`. It issues the same service certificates, but creates no issuer or signing-key Secret and never reads the issuer's private key. Set `certificates.issuerRef.group=cert-manager.io`, `kind=Issuer` or `ClusterIssuer`, `name` to the existing issuer, and `caBundle` to the public dedicated signing CA, with the same single-certificate semantics as `caSecret`. The issuer must return certificates chaining to that dedicated CA. Vault and other backends configured through cert-manager's built-in Issuer types can keep the signing key external; third-party issuer API groups are not supported by this profile.
+
+This layer does not implement mode switching, CA replacement, expiry alerts, or coordinated rotation. Do not change the mode or replace a CA on an existing installation using these values alone: A10 must publish old/new trust, wait for consumers, reissue certificates, and explicitly retire old trust. UCP's aggregated API certificate and APIService `caBundle` on port 9443 remain separately managed and unchanged. Local chart and cryptographic tests do not establish cert-manager issuance or intermediate-CA installation on a live cluster.
+
+#### Issuer policy prerequisites
+
+The chart's [`radius.authz.issuerPolicy.validate`](templates/_issuer-policy.tpl) helper is the shared source of policy checks for direct Helm installation and the A9 CLI preflight. It performs live Kubernetes reads; a plain offline `helm template` cannot establish these prerequisites and fails. A caller-supplied boolean, a policy CRD, or the presence of a policy object is not proof of enforcement. The chart neither installs nor reconfigures shared controllers, policies, webhooks, issuers or their RBAC.
+
+The supported operator-managed profile uses [approver-policy v0.29.0](https://github.com/cert-manager/approver-policy/tree/v0.29.0), API `policy.cert-manager.io/v1alpha1`, and cert-manager v1.20 or newer. Before installing Radius, an operator must configure these prerequisites, accounting for the effect on other certificate users:
+
+- Disable cert-manager's default approval controller using its documented [`disableAutoApproval=true` chart setting](https://cert-manager.io/docs/policy/approval/approver-policy/installation/). The running controller must have exactly one `--controllers=-certificaterequests-approver` or `--controllers=*,-certificaterequests-approver` argument, with no competing controller/config-file flag. Remove its signer-approval RBAC too, as the upstream chart does for this setting.
+- Run the official controller binaries with inspectable version tags, one container per Pod, a separate explicit ServiceAccount for each controller, a completed current Deployment rollout and matching Running/Ready Pods. The bounded profile rejects custom commands, config files, injected containers and unrecognized arguments. It allows the cert-manager `POD_NAMESPACE` downward API environment variable, not arbitrary environment overrides. Image name/version inspection is not image provenance verification; the operator remains responsible for trusted images and infrastructure namespaces.
+- Keep cert-manager's mutating and validating admission webhooks enabled and fail closed. They must cover request creation and status updates in the Radius namespace without object exclusions or match conditions, use `/mutate` and `/validate` on the configured service with a CA bundle, and have Ready official webhook Pods at the endpoint addresses. Namespace selectors are evaluated against the actual existing Radius namespace, including the upstream `cert-manager.io/disable-validation NotIn ["true"]` default; do not disable validation on that namespace. These webhooks bind `CertificateRequest.spec.username` to the actual API requestor and authorize approval writes; disabling them defeats policy/RBAC evidence.
+- Install the exact policies below, wait for each policy and issuer to report `Ready=True` for its current generation, and grant the actual cert-manager controller ServiceAccount policy `use` permission. This is **not** the UCP/component ServiceAccount: cert-manager creates the CertificateRequests on behalf of Certificate objects. Both namespace RoleBindings and ClusterRoleBindings are checked, including group and wildcard permissions. `resourceNames: ["*"]` is a literal RBAC name, not a wildcard grant.
+- Grant the approver-policy ServiceAccount its upstream cluster-wide informer, policy/request status, SubjectAccessReview and selected-signer approval permissions. Namespaced signer names use `issuers.cert-manager.io/<release-namespace>.<issuer-name>`; ClusterIssuers use `clusterissuers.cert-manager.io/<issuer-name>`. The upstream signer-family wildcard is also recognized. Other non-administrative approval subjects, including a residual default approver, are rejected.
+
+The default resource references are:
+
+```yaml
+global:
+  rbac:
+    certificates:
+      mode: issuerRef
+      issuerRef:
+        group: cert-manager.io
+        kind: Issuer
+        name: external-ca
+      requestPolicy:
+        certManager:
+          namespace: cert-manager
+          deployment: cert-manager
+        approverPolicy:
+          namespace: cert-manager
+          deployment: cert-manager-approver-policy
+        webhook:
+          namespace: cert-manager
+          service: cert-manager-webhook
+          configuration: cert-manager-webhook
+```
+
+For `radius-system`, a controller requestor `system:serviceaccount:cert-manager:cert-manager`, and issuer `external-ca`, the UCP policy must have this exact spec. Install equivalent policies named `radius-radius-system-<component>` for `applications-rp`, `dynamic-rp`, `controller` and `bicep-de`, substituting the component in the SAN and request-name prefix. Substitute the release namespace and actual controller requestor consistently. Do not add plugins, other identity fields, wildcard SANs, broader durations or algorithms, or extra CEL rules.
+
+```yaml
+apiVersion: policy.cert-manager.io/v1alpha1
+kind: CertificateRequestPolicy
+metadata:
+  name: radius-radius-system-ucp
+spec:
+  selector:
+    issuerRef:
+      group: cert-manager.io
+      kind: Issuer
+      name: external-ca
+    namespace:
+      matchNames: [radius-system]
+  allowed:
+    dnsNames:
+      values: [ucp.radius-system.svc]
+      required: true
+      validations:
+        - rule: "cr.username == 'system:serviceaccount:cert-manager:cert-manager' && cr.namespace == 'radius-system' && cr.name.startsWith('ucp-cert-')"
+    isCA: false
+    usages: [digital signature, server auth, client auth]
+  constraints:
+    minDuration: 24h
+    maxDuration: 24h
+    privateKey:
+      algorithm: ECDSA
+      minSize: 256
+      maxSize: 256
+```
+
+Bind policy use to that exact ServiceAccount, for example with a ClusterRole whose rule has `apiGroups: ["policy.cert-manager.io"]`, `resources: ["certificaterequestpolicies"]`, `verbs: ["use"]` and the five exact policy names in `resourceNames`, plus a ClusterRoleBinding to `cert-manager/cert-manager`. A namespace RoleBinding to that ClusterRole in `radius-system` is also supported: approver-policy evaluates `use` in the **request namespace**, even though policies are cluster-scoped. The chart does not create these operator-owned resources.
+
+Policy approval is [OR across applicable policies](https://cert-manager.io/docs/policy/approval/approver-policy/): one permissive policy can bypass another restrictive policy. The verifier examines every policy whose issuer selector could match, even if it is not Ready or is not currently bound to this requestor, and rejects noncanonical specs rather than trying to prove arbitrary CEL safe. It also rejects a permissive policy for the selected issuer in another namespace: a certificate containing a Radius SAN is accepted based on the dedicated CA and SAN, not the namespace where it was requested. Exact unrelated issuer selectors can coexist, but a different issuer reference alone does not prove a different CA. The operator must keep the Radius CA dedicated and must not expose another issuer or external signing path capable of minting Radius identities.
+
+The canonical policy envelope contains all five Radius identities. The required subset comes from `radius.authz.certificateComponents`: managed mTLS requires all five; the external-provider integration requires only UCP for aggregation. Unused exact canonical policies may remain installed; they do not create component Certificates. Approver-policy permits subsets of `allowed.usages`, so the UCP policy also permits the server-only aggregation profile. A10's distinct aggregation Certificate names must start with `ucp-cert-aggregation`, making their CertificateRequest names satisfy the same UCP prefix without colliding with component Certificate `ucp-cert`. This helper does not implement the external-provider transport or the aggregation migration; those remain A11/A10 work.
+
+This is an install-time inspection of a bounded RBAC-based configuration, not continuous admission enforcement or proof against a hostile cluster administrator, arbitrary authorization webhooks, or future policy/controller changes. Operators must restrict creation/update of Certificates, CertificateRequests, issuers, policy/RBAC objects and controller configuration to trusted identities. The verifier rejects explicit component certificate/issuer creation or modification grants, including matching User and ServiceAccount-group bindings, but the existing engine `cluster-admin` provisioning binding remains an administrative trust boundary, not isolation. Existing signed certificates or previously approved requests are not revoked by adding a policy. Protect the CA from its creation and use coordinated rotation after any exposure.
+
+After operator preparation, inspect the chart against the selected cluster without installing Radius:
+
+```console
+helm template radius deploy/Chart -n radius-system --dry-run=server \
+  --set global.rbac.dryRun=true \
+  --set global.rbac.certificates.mode=issuerRef \
+  --set global.rbac.certificates.issuerRef.name=external-ca \
+  --set-file global.rbac.certificates.caBundle=/path/to/dedicated-ca.pem
+```
+
+The rendering identity needs get/list access to the existing Radius namespace, referenced issuers, policies, Deployments, Pods, admission configurations, webhook Endpoints, Roles, ClusterRoles and their bindings. Forbidden API reads and missing or unsupported prerequisites fail explicitly before issuance resources are rendered. Run `make test-helm` and `go test ./pkg/cli/helm -run '^TestIssuerPolicyChart$'` for local checks. The latter runs the real REST-backed Helm engine against read-only API fixtures; it does not execute controller/admission code. Live-cluster acceptance must still demonstrate allowed component and aggregation issuance, denial of wrong requestor/SAN/namespace/CA/usages/key/duration requests, and failure when the controller, webhook or approval protection is removed. No live-cluster acceptance is claimed by these local tests.
 
 ### In-Cluster Container Image Builds
 

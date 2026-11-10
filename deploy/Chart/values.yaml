@@ -146,12 +146,44 @@ global:
     # authorization mode is not off, and require cert-manager >=1.20.0.
     # rad install/upgrade manages this prerequisite; plain Helm users must install it first.
     certificates:
-      # Where the Radius CA comes from. Only selfSigned is supported today: cert-manager
-      # creates a Radius-only CA (Certificate and Secret "radius-ca") and Issuer "radius-ca-issuer".
+      # selfSigned creates a Radius-only CA (Certificate and Secret "radius-ca").
+      # caSecret uses the operator-owned TLS Secret below with the same Radius-only Issuer.
+      # issuerRef references an existing issuer after live request-policy validation.
+      # Switching modes or replacing a CA requires coordinated rotation (not implemented here).
       # Each component gets Certificate "<component>-cert" stored in Secret "<component>-mtls"
       # (tls.crt, tls.key, ca.crt) for ucp, applications-rp, dynamic-rp, controller, and bicep-de.
       # Keys are ECDSA P-256; certificates last 24h and renew 8h before expiry.
       mode: selfSigned
+      # caSecret mode only: existing TLS Secret in the release namespace, never managed or
+      # mounted by this chart. tls.crt starts with the signing CA followed by its chain;
+      # tls.key is the matching private key. Do not use a Radius-managed Secret name.
+      caSecret: ""
+      # caSecret/issuerRef: exactly one PUBLIC dedicated signing CA PEM certificate.
+      # For caSecret, match the first certificate in its tls.crt; never include a
+      # private key or parent/root chain. For issuerRef the signing key stays external.
+      # Receivers trust only this dedicated CA via ConfigMap "radius-mtls-ca", not the
+      # leaf Secret's ca.crt. Validate the CA/key/match before installation; chart
+      # rendering checks PEM shape only. A9 CLI validation is not implemented yet.
+      caBundle: ""
+      # issuerRef mode only: operator-owned cert-manager issuer, never adopted.
+      issuerRef:
+        group: cert-manager.io
+        kind: Issuer
+        name: ""
+      # Operator-managed prerequisites. These are resource references, not proof:
+      # live lookup verifies the controller rollout, policy specs and effective RBAC.
+      # Plain offline helm template fails for issuerRef; use a connected server render.
+      requestPolicy:
+        certManager:
+          namespace: cert-manager
+          deployment: cert-manager
+        approverPolicy:
+          namespace: cert-manager
+          deployment: cert-manager-approver-policy
+        webhook:
+          namespace: cert-manager
+          service: cert-manager-webhook
+          configuration: cert-manager-webhook
 
 controller:
   image: controller
