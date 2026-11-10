@@ -737,8 +737,14 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 
 				upgraded, err := helmClient.RunHelmGet(configuration, "radius")
 				require.NoError(t, err)
-				sum := sha256.Sum256([]byte(tt.want))
-				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+hex.EncodeToString(sum[:]))
+				// The off checksum hashes only the mode; other modes also hash the rest of the authorization settings,
+				// so the dryRun value is the one deploy/Chart/tests/config_checksum_test.yaml expects.
+				wantChecksum := map[string]string{"dryRun": "0f8c7a4a6b4c8e25ace89f7c1cc3cce1e2719d395817a105aa707b09eb04db9a"}
+				if tt.want == "off" {
+					sum := sha256.Sum256([]byte(tt.want))
+					wantChecksum["off"] = hex.EncodeToString(sum[:])
+				}
+				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+wantChecksum[tt.want])
 				requesters := nestedValue(upgraded.Config, "global", "rbac", "certManager", "requesters")
 				if tt.want == "off" {
 					require.Zero(t, detectCalls)

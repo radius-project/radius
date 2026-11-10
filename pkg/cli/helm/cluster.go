@@ -433,7 +433,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 }
 
 // setCertManagerRequesters sets the users the Radius chart allows to request certificates from the Radius bootstrap
-// and mTLS issuers. With no users it leaves the chart's value, so the chart default applies.
+// and API server issuers. With no users it leaves the chart's value, so the chart default applies.
 func setCertManagerRequesters(radiusValues map[string]any, requesters []string) {
 	if len(requesters) == 0 {
 		return

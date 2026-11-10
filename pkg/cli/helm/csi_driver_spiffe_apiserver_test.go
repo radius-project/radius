@@ -86,7 +86,7 @@ func TestCheckCertManagerDefaultApprover_APIServer(t *testing.T) {
 		})
 	}
 
-	t.Run("rad-installed approveSignerNames approve the Radius bootstrap and mTLS issuers", func(t *testing.T) {
+	t.Run("rad-installed approveSignerNames approve the Radius bootstrap and API server issuers", func(t *testing.T) {
 		bindApprover(t, client, namespace, "cert-manager", certManagerApproveSignerNames(RadiusSystemNamespace))
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {

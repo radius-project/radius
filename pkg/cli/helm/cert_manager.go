@@ -456,9 +456,9 @@ func buildCertManagerValues(radiusNamespace string) map[string]any {
 }
 
 // certManagerApproveSignerNames returns the signers cert-manager's default approver may approve when rad installs
-// cert-manager: the Radius bootstrap and mTLS issuers, and every ClusterIssuer. The chart turns the list into the
-// resourceNames of the approver's ClusterRole; cert-manager has no --approve-signers flag. The Radius CA issuer is
-// left out so that only Radius's csi-driver-spiffe approver approves its requests. Namespaced Issuers in other
+// cert-manager: the Radius bootstrap and API server issuers, and every ClusterIssuer. The chart turns the list into
+// the resourceNames of the approver's ClusterRole; cert-manager has no --approve-signers flag. The Radius CA issuer
+// is left out so that only Radius's csi-driver-spiffe approver approves its requests. Namespaced Issuers in other
 // namespaces are left out too, because a wildcard would include the Radius CA issuer.
 func certManagerApproveSignerNames(radiusNamespace string) []string {
 	names := make([]string, 0, 3)
