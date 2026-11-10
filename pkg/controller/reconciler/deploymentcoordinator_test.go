@@ -201,6 +201,7 @@ func testCoordinatorAdoptsLegacyDelete(t *testing.T, held bool) {
 	require.NoError(t, r.Client.Delete(t.Context(), child))
 	coordinatorStep(t, r, owner)
 	coordinatorStep(t, r, owner)
+	coordinatorStep(t, r, owner)
 	require.Equal(t, coordinatorDeleteRunning, owner.Status.Coordinator.Phase)
 	require.Equal(t, token, owner.Status.Operation.ResumeToken)
 	coordinatorStep(t, r, owner)
@@ -219,6 +220,46 @@ func testCoordinatorAdoptsLegacyDelete(t *testing.T, held bool) {
 	coordinatorStep(t, r, owner)
 	require.EqualValues(t, 1, sdk.putCalls.Load())
 	require.Equal(t, coordinatorPutRunning, owner.Status.Coordinator.Phase)
+}
+
+func Test_CoordinatorLegacyIdentityEditDuringPoll(t *testing.T) {
+	r, owner, sdk, mock := coordinatorFixture(t)
+	a := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/a"
+	b := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/b"
+	owner.Status.OutputResources = []string{a, b}
+	owner.Status.Coordinator.Outputs = []radappiov1alpha3.DeploymentOutputStatus{{ID: a, State: outputCurrent}, {ID: b, State: outputCurrent}}
+	require.NoError(t, r.Client.Status().Update(t.Context(), owner))
+	poller, err := mock.Delete(t.Context(), a, "version")
+	require.NoError(t, err)
+	token, err := poller.ResumeToken()
+	require.NoError(t, err)
+	child := &radappiov1alpha3.DeploymentResource{
+		ObjectMeta: metav1.ObjectMeta{Name: "legacy", Namespace: owner.Namespace, Finalizers: []string{DeploymentResourceFinalizer},
+			OwnerReferences: []metav1.OwnerReference{{APIVersion: radappiov1alpha3.GroupVersion.String(), Kind: deploymentTemplateKind, Name: owner.Name, UID: owner.UID, Controller: new(true)}}},
+		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: a},
+	}
+	require.NoError(t, r.Client.Create(t.Context(), child))
+	child.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
+	require.NoError(t, r.Client.Status().Update(t.Context(), child))
+	require.NoError(t, r.Client.Delete(t.Context(), child))
+	coordinatorStep(t, r, owner)
+	require.Equal(t, coordinatorIdle, owner.Status.Coordinator.Phase, "persist provenance before adopting the token")
+	require.NoError(t, r.Client.Get(t.Context(), client.ObjectKeyFromObject(child), child))
+	require.Equal(t, a, child.Status.ProvisionedResourceID)
+	coordinatorStep(t, r, owner)
+	require.Equal(t, coordinatorDeleteRunning, owner.Status.Coordinator.Phase)
+	child.Spec.Id = b
+	require.NoError(t, r.Client.Update(t.Context(), child))
+	mock.CompleteOperation(token, nil)
+	coordinatorStep(t, r, owner)
+	require.Nil(t, findOutput(owner, a))
+	require.Equal(t, outputCurrent, findOutput(owner, b).State)
+	require.NoError(t, r.Client.Get(t.Context(), client.ObjectKeyFromObject(child), child))
+	require.Nil(t, child.Status.Operation, "a completed token must not survive a spec edit")
+	coordinatorStep(t, r, owner)
+	require.Equal(t, coordinatorBlocked, owner.Status.Coordinator.Phase)
+	require.NotNil(t, findOutput(owner, b), "A's completion must not discard B's inventory")
+	require.Zero(t, sdk.deleteCalls.Load(), "legacy polling must not dispatch another DELETE")
 }
 
 type coordinatorHTTPTransport func(*http.Request) (*http.Response, error)

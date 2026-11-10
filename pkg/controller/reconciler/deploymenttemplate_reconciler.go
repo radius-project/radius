@@ -163,6 +163,21 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if !eligible {
 			return r.blockCoordinator(ctx, owner, "legacy DELETE is not authorized by its tracker identity")
 		}
+		if child.Status.ProvisionedResourceID == "" {
+			identity, uid := child.Spec.Id, child.UID
+			child.Status.ProvisionedResourceID = identity
+			if err := r.Client.Status().Update(ctx, child); err != nil {
+				return ctrl.Result{}, err
+			}
+			persisted := &radappiov1alpha3.DeploymentResource{}
+			if err := r.reader().Get(ctx, client.ObjectKeyFromObject(child), persisted); err != nil {
+				return ctrl.Result{}, err
+			}
+			if persisted.UID != uid || !sameOutput(persisted.Status.ProvisionedResourceID, identity) || !sameOutput(persisted.Spec.Id, identity) {
+				return r.blockCoordinator(ctx, owner, "legacy DELETE identity was not persisted; verify the tracker and CRD schema before adoption")
+			}
+			return r.again(), nil
+		}
 		if findOutput(owner, child.Spec.Id) == nil {
 			owner.Status.Coordinator.Outputs = append(owner.Status.Coordinator.Outputs, radappiov1alpha3.DeploymentOutputStatus{ID: child.Spec.Id, State: outputPendingDelete})
 		}
@@ -570,7 +585,7 @@ func (r *DeploymentTemplateReconciler) pollDelete(ctx context.Context, owner *ra
 	}
 	if _, err := poller.Result(ctx); err != nil && !clients.Is404Error(err) {
 		// This is a known terminal failure, unlike a dispatch/transport failure.
-		if clearErr := r.clearLegacyToken(ctx, owner); clearErr != nil {
+		if clearErr := r.clearLegacyToken(ctx, owner, radappiov1alpha3.DeploymentResourcePhraseFailed); clearErr != nil {
 			return ctrl.Result{}, clearErr
 		}
 		return r.failCoordinator(ctx, owner, err)
@@ -617,6 +632,10 @@ func (r *DeploymentTemplateReconciler) finishDispatch(ctx context.Context, owner
 func (r *DeploymentTemplateReconciler) completeOutputDelete(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 	state := owner.Status.Coordinator
 	target := state.ResourceID
+	// Token completion is independent of the child's mutable spec identity.
+	if err := r.clearLegacyToken(ctx, owner, radappiov1alpha3.DeploymentResourcePhraseDeleted); err != nil {
+		return ctrl.Result{}, err
+	}
 	// Children are passive, so removing one cannot dispatch another DELETE.
 	children, err := r.ownedTrackers(ctx, owner)
 	if err != nil {
@@ -632,13 +651,6 @@ func (r *DeploymentTemplateReconciler) completeOutputDelete(ctx context.Context,
 				owner.Status.StatusHash = ""
 				return r.saveAndRequeue(ctx, owner)
 			}
-			if operation != nil {
-				children[i].Status.Operation = nil
-				children[i].Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
-				if err := r.Client.Status().Update(ctx, &children[i]); err != nil {
-					return ctrl.Result{}, err
-				}
-			}
 			if err := r.retireTracker(ctx, &children[i]); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -651,7 +663,10 @@ func (r *DeploymentTemplateReconciler) completeOutputDelete(ctx context.Context,
 	return r.saveAndRequeue(ctx, owner)
 }
 
-func (r *DeploymentTemplateReconciler) clearLegacyToken(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) error {
+func (r *DeploymentTemplateReconciler) clearLegacyToken(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, phrase radappiov1alpha3.DeploymentResourcePhrase) error {
+	if owner.Status.Operation == nil {
+		return nil
+	}
 	children, err := r.ownedTrackers(ctx, owner)
 	if err != nil {
 		return err
@@ -660,7 +675,7 @@ func (r *DeploymentTemplateReconciler) clearLegacyToken(ctx context.Context, own
 		child := &children[i]
 		if child.Status.Operation != nil && child.Status.Operation.ResumeToken == owner.Status.Operation.ResumeToken {
 			child.Status.Operation = nil
-			child.Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseFailed
+			child.Status.Phrase = phrase
 			if err := r.Client.Status().Update(ctx, child); err != nil {
 				return err
 			}
