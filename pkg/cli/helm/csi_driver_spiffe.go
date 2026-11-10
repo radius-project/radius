@@ -66,14 +66,12 @@ const (
 	// Radius chart creates it in deploy/Chart/templates/global/certificates.yaml.
 	RadiusCAIssuerName = "radius-ca-issuer"
 
-	// RadiusMTLSIssuerName is the cert-manager Issuer in the Radius namespace that signs the per-component
-	// "<component>-mtls" certificates from the Radius CA. They need cert-manager's default approver, so they use their
-	// own Issuer: the default approver may then approve this issuer and the bootstrap issuer, but never
-	// RadiusCAIssuerName.
-	RadiusMTLSIssuerName = "radius-mtls-issuer"
+	// RadiusAPIServerIssuerName is the cert-manager Issuer in the Radius namespace that signs only UCP's aggregated
+	// API certificate, from its own CA. cert-manager's default approver approves its requests.
+	RadiusAPIServerIssuerName = "radius-apiserver-issuer"
 
-	// RadiusBootstrapIssuerName is the self-signed Issuer in the Radius namespace that issues the Radius CA.
-	// cert-manager's default approver approves its requests.
+	// RadiusBootstrapIssuerName is the self-signed Issuer in the Radius namespace that issues the Radius CA and the
+	// API server CA. cert-manager's default approver approves its requests.
 	RadiusBootstrapIssuerName = "radius-selfsigned-bootstrap"
 
 	// SPIFFETrustDomainDefault and SPIFFECSIDriverNameDefault are the defaults of the Radius chart values
@@ -127,7 +125,7 @@ func issuerSignerName(namespace, name string) string {
 
 // defaultApprovedRadiusIssuers returns the Radius issuers whose requests cert-manager's default approver approves.
 func defaultApprovedRadiusIssuers() []string {
-	return []string{RadiusBootstrapIssuerName, RadiusMTLSIssuerName}
+	return []string{RadiusBootstrapIssuerName, RadiusAPIServerIssuerName}
 }
 
 // buildCSIDriverSPIFFEValues configures csi-driver-spiffe to request certificates from the Radius CA issuer and
@@ -231,7 +229,7 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 // planCSIDriverSPIFFE. It runs after cert-manager is ready. A nil plan does nothing.
 //
 // It returns the users the cert-manager controllers run as, which the Radius chart's certificate issuance policy
-// allows to request certificates from the Radius bootstrap and mTLS issuers. It returns none for a nil plan or when
+// allows to request certificates from the Radius bootstrap and API server issuers. It returns none for a nil plan or when
 // it finds no cert-manager controller.
 func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPlan, kubeContext string, upgrade bool) ([]string, error) {
 	if plan == nil {
@@ -255,7 +253,7 @@ func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPl
 	if missing, err := missingApprovableRadiusSigners(ctx, plan.kubeClient, plan.namespace); err != nil {
 		i.logInfo("Warning: %v", err)
 	} else if len(missing) > 0 {
-		i.logInfo("Warning: cert-manager's default approver cannot approve CertificateRequests for %s. The Radius CA and the component certificates are issued only if another approver approves them.",
+		i.logInfo("Warning: cert-manager's default approver cannot approve CertificateRequests for %s. The Radius CAs and UCP's API server certificate are issued only if another approver approves them.",
 			strings.Join(missing, ", "))
 	}
 
@@ -424,9 +422,9 @@ func checkCertManagerDefaultApprover(ctx context.Context, kubeClient kubernetes.
 	return nil
 }
 
-// missingApprovableRadiusSigners returns the Radius bootstrap and mTLS issuer signers that no enabled cert-manager
-// default approver may approve. With every default approver turned off it returns both; with no cert-manager
-// controller found it returns none, because there is nothing to report on.
+// missingApprovableRadiusSigners returns the Radius bootstrap and API server issuer signers that no enabled
+// cert-manager default approver may approve. With every default approver turned off it returns both; with no
+// cert-manager controller found it returns none, because there is nothing to report on.
 func missingApprovableRadiusSigners(ctx context.Context, kubeClient kubernetes.Interface, radiusNamespace string) ([]string, error) {
 	deployments, err := kubeClient.AppsV1().Deployments(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: certManagerControllerSelector})
 	if err != nil {
@@ -461,7 +459,7 @@ func missingApprovableRadiusSigners(ctx context.Context, kubeClient kubernetes.I
 }
 
 // certManagerControllerUsers returns the sorted users the cert-manager controller deployments run as. The controller
-// creates the CertificateRequests of Certificate resources, such as the Radius CA and the component certificates.
+// creates the CertificateRequests of Certificate resources, such as the Radius CAs and UCP's API server certificate.
 func certManagerControllerUsers(ctx context.Context, kubeClient kubernetes.Interface) ([]string, error) {
 	deployments, err := kubeClient.AppsV1().Deployments(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: certManagerControllerSelector})
 	if err != nil {
@@ -476,7 +474,7 @@ func certManagerControllerUsers(ctx context.Context, kubeClient kubernetes.Inter
 }
 
 // checkValidatingAdmissionPolicyServed fails when the cluster does not serve ValidatingAdmissionPolicy. The Radius
-// chart enforces authorization with these policies, including the policy that reserves the Radius bootstrap and mTLS
+// chart enforces authorization with these policies, including the policy that reserves the Radius bootstrap and API server
 // issuers for cert-manager, and renders none without the API.
 func checkValidatingAdmissionPolicyServed(kubeClient kubernetes.Interface) error {
 	const groupVersion = "admissionregistration.k8s.io/v1"

@@ -95,19 +95,19 @@ func TestCertificateRequestIssuancePolicy_APIServer(t *testing.T) {
 		issuerRef map[string]any
 		wantRule  string
 	}{
-		{name: "component requests a legacy mTLS certificate", user: radiusSA("applications-rp"), issuerRef: issuer(RadiusMTLSIssuerName), wantRule: "reserved-issuer"},
-		{name: "UCP requests from the mTLS issuer", user: radiusSA("ucp"), issuerRef: issuer(RadiusMTLSIssuerName), wantRule: "reserved-issuer"},
+		{name: "component requests UCP's API server certificate", user: radiusSA("applications-rp"), issuerRef: issuer(RadiusAPIServerIssuerName), wantRule: "reserved-issuer"},
+		{name: "UCP requests from the API server issuer", user: radiusSA("ucp"), issuerRef: issuer(RadiusAPIServerIssuerName), wantRule: "reserved-issuer"},
 		{name: "component requests a CA from the bootstrap issuer", user: radiusSA("dynamic-rp"), issuerRef: issuer(RadiusBootstrapIssuerName), wantRule: "reserved-issuer"},
-		{name: "default kind and group still name the mTLS issuer", user: radiusSA("ucp"), issuerRef: map[string]any{"name": RadiusMTLSIssuerName}, wantRule: "reserved-issuer"},
-		{name: "another namespace's service account requests from the mTLS issuer", user: "system:serviceaccount:other:app", issuerRef: issuer(RadiusMTLSIssuerName), wantRule: "reserved-issuer"},
+		{name: "default kind and group still name the API server issuer", user: radiusSA("ucp"), issuerRef: map[string]any{"name": RadiusAPIServerIssuerName}, wantRule: "reserved-issuer"},
+		{name: "another namespace's service account requests from the API server issuer", user: "system:serviceaccount:other:app", issuerRef: issuer(RadiusAPIServerIssuerName), wantRule: "reserved-issuer"},
 		{name: "a user requests from the bootstrap issuer", user: "alice", issuerRef: issuer(RadiusBootstrapIssuerName), wantRule: "reserved-issuer"},
-		{name: "component requests from a ClusterIssuer", user: radiusSA("applications-rp"), issuerRef: map[string]any{"group": "cert-manager.io", "kind": "ClusterIssuer", "name": RadiusMTLSIssuerName}, wantRule: "radius-ca-issuer-only"},
+		{name: "component requests from a ClusterIssuer", user: radiusSA("applications-rp"), issuerRef: map[string]any{"group": "cert-manager.io", "kind": "ClusterIssuer", "name": RadiusAPIServerIssuerName}, wantRule: "radius-ca-issuer-only"},
 		{name: "component requests from another issuer type", user: radiusSA("ucp"), issuerRef: map[string]any{"group": "example.com", "kind": "Issuer", "name": RadiusCAIssuerName}, wantRule: "radius-ca-issuer-only"},
 		{name: "csi-driver-spiffe requests a SPIFFE certificate as the pod's service account", user: radiusSA("ucp"), issuerRef: issuer(RadiusCAIssuerName)},
-		{name: "cert-manager issues a component mTLS certificate", user: certManagerUser, issuerRef: issuer(RadiusMTLSIssuerName)},
-		{name: "cert-manager renews a component mTLS certificate with a new request", user: certManagerUser, issuerRef: issuer(RadiusMTLSIssuerName)},
+		{name: "cert-manager issues UCP's API server certificate", user: certManagerUser, issuerRef: issuer(RadiusAPIServerIssuerName)},
+		{name: "cert-manager renews UCP's API server certificate with a new request", user: certManagerUser, issuerRef: issuer(RadiusAPIServerIssuerName)},
 		{name: "cert-manager issues the Radius CAs", user: certManagerUser, issuerRef: issuer(RadiusBootstrapIssuerName)},
-		{name: "requests in other namespaces are not checked", user: radiusSA("ucp"), namespace: "other", issuerRef: issuer(RadiusMTLSIssuerName)},
+		{name: "requests in other namespaces are not checked", user: radiusSA("ucp"), namespace: "other", issuerRef: issuer(RadiusAPIServerIssuerName)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

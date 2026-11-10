@@ -1,3 +1,36 @@
+{{- $authz := ne (include "radius.authz.mode" .) "off" }}
+{{- $caBundle := "" }}
+{{- if $authz }}
+# cert-manager issues UCP's aggregated API certificate from radius-apiserver-issuer, and its CA
+# injector copies that CA into the APIService caBundle. UCP reloads the certificate when it rotates.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ucp-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+spec:
+  secretName: {{ include "radius.ucp.apiServerSecretName" . }}
+  # 90 days, renewed at two-thirds of its lifetime.
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - server auth
+  # The Kubernetes API server verifies the name of the Service the APIService points to.
+  dnsNames:
+    - ucp.{{ .Release.Namespace }}.svc
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: radius-apiserver-issuer
+{{- else }}
 {{- $ca := genCA "ucp-ca" 3650 }}
 {{- $cn := printf "ucp" }}
 {{- $altName1 := printf "ucp.%s" .Release.Namespace }}
@@ -16,7 +49,9 @@ metadata:
 data:
   tls.crt: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "tls.crt" "defaultValue" $cert.Cert) }}
   tls.key: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "tls.key" "defaultValue" $cert.Key) }}
-  ca.crt: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
+{{- $caBundle = include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
+  ca.crt: {{ $caBundle }}
+{{- end }}
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
@@ -25,6 +60,10 @@ metadata:
   labels:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
+  {{- if $authz }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/ucp-cert
+  {{- end }}
 spec:
   group: api.ucp.dev
   groupPriorityMinimum: 1000
@@ -33,4 +72,6 @@ spec:
     name: ucp
     namespace: {{ .Release.Namespace }}
   version: v1alpha3
-  caBundle: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
+  {{- if not $authz }}
+  caBundle: {{ $caBundle }}
+  {{- end }}

@@ -219,6 +219,26 @@ func (s *Service) createPlane(ctx context.Context, plane ucp.Plane) error {
 	return nil
 }
 
+// listenAndServe serves the API that the Kubernetes API server aggregates. When the authorization mode is not off,
+// cert-manager issues and rotates its certificate, so it is reloaded from the directory without a restart.
+func (s *Service) listenAndServe(ctx context.Context, service *http.Server) error {
+	dir := s.options.Config.Server.TLSCertificateDirectory
+	switch {
+	case dir == "":
+		return service.ListenAndServe()
+	case s.options.Config.Authorization.EffectiveMode() == authz.ModeOff:
+		return service.ListenAndServeTLS(dir+"/"+mtls.CertFile, dir+"/"+mtls.KeyFile)
+	}
+
+	source, err := mtls.NewSource(dir)
+	if err != nil {
+		return fmt.Errorf("failed to load the API server certificate: %w", err)
+	}
+	go source.Start(ctx, mtls.DefaultPollInterval)
+	service.TLSConfig = source.ServerConfig()
+	return service.ListenAndServeTLS("", "")
+}
+
 // Run sets up a server to listen on a given address, and shuts it down when the context is done. It returns an
 // error if the server fails to start or stops unexpectedly.
 func (s *Service) Run(ctx context.Context) error {
@@ -256,11 +276,7 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", s.options.Config.Server.Address()))
-	if s.options.Config.Server.TLSCertificateDirectory == "" {
-		err = service.ListenAndServe()
-	} else {
-		err = service.ListenAndServeTLS(s.options.Config.Server.TLSCertificateDirectory+"/tls.crt", s.options.Config.Server.TLSCertificateDirectory+"/tls.key")
-	}
+	err = s.listenAndServe(ctx, service)
 
 	select {
 	case ierr := <-internalErr:
