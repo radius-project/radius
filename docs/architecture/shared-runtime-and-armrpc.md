@@ -155,8 +155,9 @@ verified do they send the token from
 Every component projects only `ca.crt` from the `radius-ca` Secret (never
 `tls.key`) to `/var/run/radius/ca`, because csi-driver-spiffe writes no `ca.crt`
 without a configured source CA bundle. The `radius-ca` CA signs only these
-SPIFFE server certificates; UCP's aggregated API certificate comes from the
-separate `radius-apiserver-ca`, which Radius components do not trust. The
+SPIFFE server certificates; in the `selfSigned` certificate mode (the only one
+supported today), UCP's aggregated API certificate comes from the separate
+`radius-apiserver-ca`, which Radius components do not trust. The
 Kubernetes API server does trust it for UCP, so the `radius-certificate-issuance`
 ValidatingAdmissionPolicy lets only the cert-manager controller request from
 `radius-apiserver-issuer` and `radius-selfsigned-bootstrap`, and limits Radius

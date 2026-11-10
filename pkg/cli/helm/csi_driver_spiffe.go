@@ -55,7 +55,8 @@ const (
 	RadiusCAIssuerName = "radius-ca-issuer"
 
 	// RadiusAPIServerIssuerName is the cert-manager Issuer in the Radius namespace that signs only UCP's aggregated
-	// API certificate, from its own CA. cert-manager's default approver approves its requests.
+	// API certificate, from its own CA in the selfSigned certificate mode. cert-manager's default approver approves
+	// its requests.
 	RadiusAPIServerIssuerName = "radius-apiserver-issuer"
 
 	// RadiusBootstrapIssuerName is the self-signed Issuer in the Radius namespace that issues the Radius CA and the
