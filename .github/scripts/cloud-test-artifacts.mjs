@@ -54,9 +54,20 @@ export const images = [
 ];
 export const registries = {
   images: "ghcr.io/radius-project/dev",
-  recipes: "ghcr.io/radius-project/dev",
-  types: "crradfunctest1b2s.azurecr.io"
+  recipes: "ghcr.io/radius-project/dev"
 };
+
+// The caller must supply repository configuration, never candidate metadata.
+export function testTypesRegistry(env = process.env) {
+  const registry = env.TEST_BICEP_TYPES_REGISTRY;
+  assert.ok(
+    typeof registry === "string" &&
+      /^[a-z0-9]{5,50}\.azurecr\.io$/.test(registry) &&
+      registry.trim() === registry,
+    "Invalid TEST_BICEP_TYPES_REGISTRY: expected a bare lowercase ACR hostname"
+  );
+  return registry;
+}
 
 export async function tool(args, options = {}) {
   const { stdout } = await promisify(execFile)(args[0], args.slice(1), {
@@ -198,7 +209,8 @@ export async function select({ github, core, context }, env = process.env) {
   core.setOutput("artifact_id", artifact.id);
 }
 
-export function destinations(roots, tag) {
+export function destinations(roots, tag, env = process.env) {
+  const typesRegistry = testTypesRegistry(env);
   assert.match(tag, /^test-func[a-f0-9]{10}-[1-9][0-9]*-[1-9][0-9]*$/);
   assert.ok(
     Array.isArray(roots) && roots.length >= 10 && roots.length <= 137,
@@ -220,7 +232,7 @@ export function destinations(roots, tag) {
       kind,
       name,
       digest: root.digest,
-      reference: `${registries[kind]}/${repositoryPath(kind, name)}:${tag}`
+      reference: `${kind === "types" ? typesRegistry : registries[kind]}/${repositoryPath(kind, name)}:${tag}`
     };
   });
   for (const required of [
@@ -242,6 +254,7 @@ export async function capture(
   env = process.env,
   run = tool
 ) {
+  testTypesRegistry(env);
   const source = sourceIdentity(context, env);
   validateTag(env.REL_VERSION, source, env);
   const directory = workDirectory(core);
@@ -277,7 +290,8 @@ export async function capture(
     }
     destinations(
       (await json(join(layout, "index.json"))).manifests,
-      env.REL_VERSION
+      env.REL_VERSION,
+      env
     );
     await save(join(layout, "source.json"), { source, tag: env.REL_VERSION });
     await run([
@@ -384,6 +398,7 @@ async function downloaded(directory, artifact) {
 
 /** Only bounded metadata is read by tar; ORAS imports the verified graph, never archive paths as code. */
 export async function prepare({ core }, env = process.env, run = tool) {
+  testTypesRegistry(env);
   const directory = workDirectory(core);
   const selected = await json(join(directory, "selected.json"));
   const archive = await downloaded(directory, selected.artifact);
@@ -398,7 +413,7 @@ export async function prepare({ core }, env = process.env, run = tool) {
   validateTag(metadata.tag, selected.source, env);
   const index = JSON.parse(await run(["tar", "-xOf", archive, "index.json"]));
   assert.equal(index.schemaVersion, 2);
-  const targets = destinations(index.manifests, env.REL_VERSION);
+  const targets = destinations(index.manifests, env.REL_VERSION, env);
   let bytes = 0;
   for (const entry of targets) {
     const raw = await run([
@@ -434,13 +449,10 @@ export async function publish(
   env = process.env,
   run = tool
 ) {
+  testTypesRegistry(env);
   assert.deepEqual(
-    [
-      env.CONTAINER_REGISTRY,
-      env.BICEP_RECIPE_REGISTRY,
-      env.TEST_BICEP_TYPES_REGISTRY
-    ],
-    [registries.images, registries.recipes, registries.types],
+    [env.CONTAINER_REGISTRY, env.BICEP_RECIPE_REGISTRY],
+    [registries.images, registries.recipes],
     "Test registry allowlist mismatch"
   );
   const directory = workDirectory(core);
@@ -452,7 +464,7 @@ export async function publish(
     sourceIdentity(context, env, receipt.source.generationAttempt)
   );
   validateTag(receipt.tag, receipt.source, env);
-  const targets = destinations(receipt.roots, receipt.tag).filter(
+  const targets = destinations(receipt.roots, receipt.tag, env).filter(
     (entry) => (entry.kind === "types") === (destination === "acr")
   );
   try {

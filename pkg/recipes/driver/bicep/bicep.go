@@ -284,26 +284,37 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	failures := []error{}
+	deleting := map[string]struct{}{}
 
 	for i := range opts.OutputResources {
 		outputResource := opts.OutputResources[i]
 
-		if outputResource.IsRadiusManaged() && deletingKeyVaultParent(outputResource.ID, opts.OutputResources) {
+		if !outputResource.IsRadiusManaged() {
+			logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", outputResource.ID.String()))
+			continue
+		}
+
+		if deletingKeyVaultParent(outputResource.ID, opts.OutputResources) {
 			// ARM cannot delete secrets. The batch must still wait for the managed vault deletion to succeed.
 			logger.Info("Skipping direct Key Vault secret deletion; the managed parent vault is in the deletion batch", "resourceID", outputResource.ID.String())
 			continue
 		}
 
+		// Explicit recipe outputs and deployment inventory can contain the same resource.
+		// Deduplicate here so saved state and redeploy garbage collection are covered too.
+		key := outputResource.ID.String()
+		if path := azureResourcePath(outputResource.ID); path != "" {
+			key = strings.ToLower(path)
+		}
+		if _, exists := deleting[key]; exists {
+			continue
+		}
+		deleting[key] = struct{}{}
+
 		// Create a goroutine that handles the deletion of one resource
 		wg.Go(func() {
 			id := outputResource.ID.String()
 			logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID, outputResource.LocalID, outputResource.GetResourceType()))
-
-			// If the resource is not managed by Radius, skip the deletion
-			if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
-				logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", id))
-				return
-			}
 
 			var err error
 			attempts := 0

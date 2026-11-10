@@ -192,6 +192,7 @@ func Test_Delete_ARM_VersionFallback(t *testing.T) {
 		older            = "2025-08-01"
 		childID          = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.DBforPostgreSQL/flexibleServers/server/firewallRules/allow-all"
 		roleAssignmentID = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.Authorization/roleAssignments/test-assignment"
+		publicIPID       = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.Network/publicIPAddresses/test-ip"
 	)
 	type failure struct {
 		status int
@@ -258,6 +259,18 @@ func Test_Delete_ARM_VersionFallback(t *testing.T) {
 			want: []string{"GET " + current},
 		},
 		{
+			name: "network resource already absent", id: publicIPID, readFailure: failure{404, "NotFound"},
+			want: []string{"GET " + current},
+		},
+		{
+			name: "generic not found from another provider", readFailure: failure{404, "NotFound"},
+			want: []string{"GET " + current}, wantError: "NotFound",
+		},
+		{
+			name: "network forbidden with not found code", id: publicIPID, readFailure: failure{403, "NotFound"},
+			want: []string{"GET " + current}, wantError: "NotFound",
+		},
+		{
 			name: "role assignment already absent", id: roleAssignmentID,
 			readFailure: failure{404, "RoleAssignmentNotFound"},
 			want:        []string{"GET " + current},
@@ -281,8 +294,16 @@ func Test_Delete_ARM_VersionFallback(t *testing.T) {
 			want: []string{"GET " + current},
 		},
 		{
-			name: "resource removed after read", deleteFailure: failure{404, "NotFound"},
+			name: "resource removed after read", id: publicIPID, deleteFailure: failure{404, "NotFound"},
 			want: []string{"GET " + current, "DELETE " + current},
+		},
+		{
+			name: "unknown delete route", deleteFailure: failure{404, "UnknownRoute"},
+			want: []string{"GET " + current, "DELETE " + current}, wantError: "UnknownRoute",
+		},
+		{
+			name: "ambiguous delete not found", deleteFailure: failure{404, "NotFound"},
+			want: []string{"GET " + current, "DELETE " + current}, wantError: "NotFound",
 		},
 		{
 			name: "delete conflict", deleteFailure: failure{409, "Conflict"},
@@ -436,6 +457,133 @@ func Test_Delete_ARM_TransportFailure(t *testing.T) {
 			if method == http.MethodDelete {
 				expected = append(expected, "DELETE "+ARMAPIVersion)
 			}
+			require.Equal(t, expected, calls)
+		})
+	}
+}
+
+func Test_Delete_ARM_VerifyPollFailure(t *testing.T) {
+	const id = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.Network/networkSecurityGroups/test-nsg"
+	tests := []struct {
+		name       string
+		pollStatus int
+		pollCode   string
+		readStatus int
+		readCode   string
+		transport  bool
+		wantError  string
+		wantRead   bool
+	}{
+		{name: "superseded delete target absent", pollCode: "Canceled", readStatus: 404, readCode: "NotFound", wantRead: true},
+		{name: "direct superseded code target absent", pollCode: "CanceledAndSupersededDueToAnotherOperation", readStatus: 404, readCode: "NotFound", wantRead: true},
+		{name: "direct superseded code target still present", pollCode: "CanceledAndSupersededDueToAnotherOperation", readStatus: 200, wantError: "CanceledAndSupersededDueToAnotherOperation", wantRead: true},
+		{name: "superseded delete target still present", pollCode: "Canceled", readStatus: 200, wantError: "Canceled", wantRead: true},
+		{name: "superseded delete verification forbidden", pollCode: "Canceled", readStatus: 403, readCode: "AuthorizationFailed", wantError: "AuthorizationFailed", wantRead: true},
+		{name: "superseded delete verification unauthorized", pollCode: "Canceled", readStatus: 401, readCode: "AuthenticationFailed", wantError: "AuthenticationFailed", wantRead: true},
+		{name: "superseded delete verification unknown route", pollCode: "Canceled", readStatus: 404, readCode: "UnknownRoute", wantError: "UnknownRoute", wantRead: true},
+		{name: "superseded delete verification transport failure", pollCode: "Canceled", transport: true, wantError: "connection lost", wantRead: true},
+		{name: "superseded delete verification version rejection", pollCode: "Canceled", readStatus: 400, readCode: "InvalidApiVersionParameter", wantError: "InvalidApiVersionParameter", wantRead: true},
+		{name: "missing poll target absent", pollStatus: 404, pollCode: "NotFound", readStatus: 404, readCode: "ResourceNotFound", wantRead: true},
+		{name: "missing poll target still present", pollStatus: 404, pollCode: "NotFound", readStatus: 200, wantError: "NotFound", wantRead: true},
+		{name: "missing poll resource code is not target absence", pollStatus: 404, pollCode: "ResourceNotFound", readStatus: 200, wantError: "ResourceNotFound", wantRead: true},
+		{name: "missing poll verification forbidden", pollStatus: 404, pollCode: "NotFound", readStatus: 403, readCode: "AuthorizationFailed", wantError: "AuthorizationFailed", wantRead: true},
+		{name: "failed operation remains a failure", pollCode: "AuthorizationFailed", wantError: "AuthorizationFailed"},
+		{name: "forbidden poll with canceled code remains a failure", pollStatus: 403, pollCode: "Canceled", wantError: "Canceled"},
+		{name: "unauthorized poll with canceled code remains a failure", pollStatus: 401, pollCode: "Canceled", wantError: "Canceled"},
+		{name: "failed operation routing code does not change version", pollCode: "NoRegisteredProviderFound", wantError: "NoRegisteredProviderFound"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var mu sync.Mutex
+			var calls []string
+			reads := 0
+			mux := http.NewServeMux()
+			mux.HandleFunc("/subscriptions/0000/providers/Microsoft.Network", handleJSONResponse(t, armresources.Provider{
+				ResourceTypes: []*armresources.ProviderResourceType{{
+					ResourceType: new("networkSecurityGroups"),
+					APIVersions:  []*string{new(ARMAPIVersion), new("2025-08-01")},
+				}},
+			}, http.StatusOK))
+			mux.HandleFunc(id, func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				defer mu.Unlock()
+				calls = append(calls, r.Method)
+				require.Equal(t, ARMAPIVersion, r.URL.Query().Get("api-version"))
+				if r.Method == http.MethodDelete {
+					w.Header().Set("Azure-AsyncOperation", "http://"+r.Host+"/operations/delete")
+					w.Header().Set("Retry-After", "0")
+					w.WriteHeader(http.StatusAccepted)
+					return
+				}
+				require.Equal(t, http.MethodGet, r.Method)
+				reads++
+				if reads > 1 && tt.readCode != "" {
+					handleJSONResponse(t, map[string]any{
+						"error": map[string]string{"code": tt.readCode, "message": tt.readCode},
+					}, tt.readStatus)(w, r)
+					return
+				}
+				handleJSONResponse(t, armresources.GenericResource{ID: new(id)}, http.StatusOK)(w, r)
+			})
+			mux.HandleFunc("/operations/delete", func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				defer mu.Unlock()
+				calls = append(calls, "POLL")
+				providerError := map[string]any{"code": tt.pollCode, "message": tt.pollCode}
+				if tt.pollStatus != 0 {
+					handleJSONResponse(t, map[string]any{"error": providerError}, tt.pollStatus)(w, r)
+					return
+				}
+				status := "Failed"
+				if tt.pollCode == "Canceled" {
+					status = "Canceled"
+					providerError["details"] = []map[string]string{{
+						"code":    "CanceledAndSupersededDueToAnotherOperation",
+						"message": "DeleteNetworkSecurityGroupOperation was superseded by another delete.",
+					}}
+				}
+				handleJSONResponse(t, map[string]any{"status": status, "error": providerError}, http.StatusOK)(w, r)
+			})
+			server := httptest.NewServer(mux)
+			defer server.Close()
+			c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+			c.armClientOptions = newClientOptions(server.Client(), server.URL)
+			c.armClientOptions.Retry.MaxRetries = -1
+			transportFailure := errors.New("connection lost")
+			if tt.transport {
+				c.armClientOptions.Transport = armTestTransport(func(r *http.Request) (*http.Response, error) {
+					mu.Lock()
+					fail := r.Method == http.MethodGet && r.URL.Path == id && reads > 0
+					if fail {
+						calls = append(calls, "GET")
+					}
+					mu.Unlock()
+					if fail {
+						return nil, transportFailure
+					}
+					return server.Client().Do(r)
+				})
+			}
+
+			err := c.Delete(t.Context(), id)
+			if tt.wantError == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.wantError)
+				require.ErrorContains(t, err, tt.pollCode)
+				var responseError *azcore.ResponseError
+				require.ErrorAs(t, err, &responseError)
+				if tt.transport {
+					require.ErrorIs(t, err, transportFailure)
+				}
+			}
+			expected := []string{"GET", "DELETE", "POLL"}
+			if tt.wantRead {
+				expected = append(expected, "GET")
+			}
+			mu.Lock()
+			defer mu.Unlock()
 			require.Equal(t, expected, calls)
 		})
 	}
