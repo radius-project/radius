@@ -129,6 +129,9 @@ jobs:
       - name: Test native cloud helper TLS capture
         run: make test-cloud-test-helpers-native
 
+      - name: Test publishing credential isolation
+        run: make test-publishing-isolation
+
       - name: Run make test (unit tests)
         env:
           GOTESTSUM_OPTS: --junitfile ./dist/unit_test/results.xml

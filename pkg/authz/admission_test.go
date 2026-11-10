@@ -75,6 +75,51 @@ func Test_Options_AdmitNamespace(t *testing.T) {
 	}
 }
 
+func Test_Options_AdmitSecretReference(t *testing.T) {
+	secrets := []string{"ucp-cert", "database-secret"}
+	tests := []struct {
+		name          string
+		opts          Options
+		namespace     string
+		secret        string
+		wantRule      string
+		wantDenied    bool
+		wantWouldDeny bool
+	}{
+		{name: "off protected secret", opts: Options{ControlPlaneSecrets: secrets}, namespace: "radius-system", secret: "ucp-cert"},
+		{name: "dryRun protected secret", opts: Options{Mode: ModeDryRun, ControlPlaneSecrets: secrets}, namespace: "radius-system", secret: "ucp-cert", wantRule: RuleControlPlaneSecret, wantWouldDeny: true},
+		{name: "enforce protected secret", opts: Options{Mode: ModeEnforce, ControlPlaneSecrets: secrets}, namespace: "radius-system", secret: "database-secret", wantRule: RuleControlPlaneSecret, wantDenied: true},
+		{name: "enforce other secret in control-plane namespace", opts: Options{Mode: ModeEnforce, ControlPlaneSecrets: secrets}, namespace: "radius-system", secret: "app", wantRule: RuleControlPlaneNamespace, wantDenied: true},
+		{name: "enforce new secret in control-plane namespace", opts: Options{Mode: ModeEnforce}, namespace: "Radius-System", secret: "app", wantRule: RuleControlPlaneNamespace, wantDenied: true},
+		{name: "enforce protected name outside control-plane namespace", opts: Options{Mode: ModeEnforce, ControlPlaneSecrets: secrets}, namespace: "default", secret: "ucp-cert"},
+		{name: "enforce distinct cluster", opts: Options{Mode: ModeEnforce, ControlPlaneSecrets: secrets, TargetClusterIsDistinct: true}, namespace: "radius-system", secret: "ucp-cert"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			core, logs := observer.New(zap.DebugLevel)
+			ctx := logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core)))
+
+			err := tt.opts.AdmitSecretReference(ctx, "Applications.Core/secretStores/write", "/secret", tt.namespace, tt.secret)
+			if tt.wantDenied {
+				denied, ok := errors.AsType[*DeniedError](err)
+				require.True(t, ok, "expected a denial, got %v", err)
+				require.Equal(t, v1.CodeAdmissionPolicyDenied, denied.Code)
+				require.Equal(t, tt.wantRule, denied.Rule)
+				require.Equal(t, 1, logs.FilterField(zap.Bool(LogFieldDenied, true)).FilterField(zap.String(LogFieldRule, tt.wantRule)).Len())
+				return
+			}
+
+			require.NoError(t, err)
+			wouldDeny := logs.FilterField(zap.Bool(LogFieldWouldDeny, true)).FilterField(zap.String(LogFieldRule, tt.wantRule))
+			require.Equal(t, tt.wantWouldDeny, wouldDeny.Len() == 1)
+			if tt.opts.Mode == ModeOff {
+				require.Zero(t, logs.Len())
+			}
+		})
+	}
+}
+
 func Test_Options_IsControlPlaneSecret(t *testing.T) {
 	opts := Options{ControlPlaneSecrets: []string{"ucp-cert", "database-secret"}}
 	tests := []struct {
