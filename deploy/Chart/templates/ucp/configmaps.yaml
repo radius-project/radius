@@ -83,7 +83,7 @@ data:
       serviceName: "ucp"
       prometheus:
         path: "/metrics"
-        port: 9090
+        port: {{ .Values.global.prometheus.port }}
 
     logging:
       level: "info"
