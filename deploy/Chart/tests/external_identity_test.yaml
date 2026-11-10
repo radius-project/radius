@@ -33,6 +33,69 @@ set:
   de.image: local-engine
   de.tag: local-test
 tests:
+  - it: retains admission settings and both UCP rollout boundaries with external identity
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^authorization:\n  mode: "enforce"\n  podSecurityLevel: "baseline"\n  controlPlaneNamespace: "radius-system"\n  controlPlaneSecrets: \["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","root-ca-cert","target-kubeconfig"\]\n  mtlsProvider: external\n  component: "applications-rp"\n  tokenDirectory: /var/run/radius/tokens\n  namespace: "radius-system"$'
+        template: rp/configmaps.yaml
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'certificateDirectory:'
+        template: rp/configmaps.yaml
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: d94bc8951227ac91ba80268c682d8b52dfc1b7abc5ba17ea78a4f9e1a585a025
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 965254db00ef5041c4f54dca431fc0cba6ba3db287941141f1504b30d58f9b9f
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.metadata.annotations["checksum/caller-authentication"]
+          value: 512514d4e251f3ac7c6a13ad371d2929e99c2120d056e705706ea4b7e3f9d243
+        template: ucp/deployment.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'kubernetesCallerAuthentication:\n  kubernetesIssuer: "kubernetes:local"'
+        template: ucp/configmaps.yaml
+  - it: includes restricted admission policy in external dryRun rollout
+    set:
+      global.rbac.enabled: false
+      global.rbac.dryRun: true
+      global.rbac.podSecurityLevel: restricted
+    asserts:
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'mode: "dryRun"\n  podSecurityLevel: "restricted"'
+        template: rp/configmaps.yaml
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 21c5b31d6edda5fe4bbbe64ca9e862acff4813d3f39ed16de0b4fc869a1630a8
+        template: rp/deployment.yaml
+  - it: excludes dormant admission settings from the external Off rollout
+    set:
+      global.rbac.enabled: false
+      global.rbac.podSecurityLevel: restricted
+      global.rootCA.secretName: custom-ca
+      global.targetCluster.secretName: custom-kubeconfig
+    asserts:
+      - notMatchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'authorization:|podSecurityLevel:|controlPlaneSecrets:'
+        template: rp/configmaps.yaml
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: af5948c8f779604d10fbf57ed3b5899f2ec9bd966b5e5f3a494c661fa84dca1a
+        template: rp/deployment.yaml
+  - it: still rejects invalid pod security levels with dormant external identity
+    set:
+      global.rbac.enabled: false
+      global.rbac.podSecurityLevel: privileged
+    template: rp/configmaps.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: 'global.rbac.podSecurityLevel must be "baseline" or "restricted", got "privileged"'
   - it: projects only exact receiver tokens into the caller container
     asserts:
       - contains:
