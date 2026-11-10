@@ -541,6 +541,115 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	require.ErrorContains(t, err, "v"+CertManagerMinimumVersion)
 }
 
+func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
+	t.Parallel()
+
+	for _, status := range []releasecommon.Status{
+		releasecommon.StatusPendingInstall, releasecommon.StatusPendingUpgrade, releasecommon.StatusPendingRollback,
+	} {
+		for _, owned := range []bool{false, true} {
+			for _, command := range []string{"install", "install --reinstall", "upgrade"} {
+				for _, kubeContext := range []string{"prod west", ""} {
+					t.Run(fmt.Sprintf("%s/owned=%t/%s/context=%s", status, owned, command, kubeContext), func(t *testing.T) {
+						t.Parallel()
+						options := NewDefaultClusterOptions()
+						options.Radius.ChartPath = "radius-chart"
+						options.Contour.Disabled = true
+						options.CertManager.ReleaseName = "shared-cert-manager"
+						options.CertManager.Namespace = "security"
+						if command == "install" {
+							options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
+						} else {
+							options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+							options.Radius.Reinstall = command == "install --reinstall"
+						}
+						release := &releasev1.Release{
+							Name: options.CertManager.ReleaseName, Namespace: options.CertManager.Namespace,
+							Version: 3, Info: &releasev1.Info{Status: status},
+							Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}},
+						}
+						if owned {
+							release.Labels = radManagedByLabels()
+						}
+						client := NewMockHelmClient(gomock.NewController(t))
+						client.EXPECT().LoadChart(options.Radius.ChartPath).Return(&chart.Chart{}, nil)
+						client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(release, nil)
+						impl := &Impl{
+							Helm: client,
+							newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+								t.Error("pending release must stop before Kubernetes detection or readiness checks")
+								return nil, nil, errors.New("unexpected Kubernetes detection")
+							},
+						}
+						var err error
+						if command == "upgrade" {
+							err = impl.UpgradeRadius(t.Context(), options, kubeContext)
+						} else {
+							err = impl.InstallRadius(t.Context(), options, kubeContext)
+						}
+						require.Error(t, err)
+						for _, part := range []string{
+							`"shared-cert-manager"`, `"security"`, "revision 3", string(status),
+							"may still be running", "confirm that no Helm operation is active",
+							"Do not uninstall cert-manager or delete its CRDs or Helm release Secrets",
+							"other workloads", "certificates",
+						} {
+							require.ErrorContains(t, err, part)
+						}
+						helmPrefix := "helm"
+						kubectlPrefix := "kubectl"
+						if kubeContext != "" {
+							helmPrefix += ` --kube-context "prod west"`
+							kubectlPrefix += ` --context "prod west"`
+							require.ErrorContains(t, err, `context "prod west"`)
+						} else {
+							require.ErrorContains(t, err, "current kubeconfig context")
+							require.NotContains(t, err.Error(), "--kube-context")
+							require.NotContains(t, err.Error(), "--context")
+						}
+						require.ErrorContains(t, err, helmPrefix+" -n security status shared-cert-manager")
+						require.ErrorContains(t, err, helmPrefix+" -n security history shared-cert-manager")
+						require.ErrorContains(t, err, kubectlPrefix+" -n security get deployments,jobs,pods")
+						require.ErrorContains(t, err, kubectlPrefix+" get certificates,certificaterequests,issuers,clusterissuers,orders.acme.cert-manager.io,challenges.acme.cert-manager.io -A")
+						if status == releasecommon.StatusPendingInstall {
+							require.ErrorContains(t, err, "no successful revision to roll back to")
+							require.NotContains(t, err.Error(), "rollback shared-cert-manager")
+						} else {
+							require.ErrorContains(t, err, helmPrefix+" -n security rollback shared-cert-manager REVISION --wait")
+							require.ErrorContains(t, err, "replace REVISION with a known-good revision from the history")
+						}
+						if !owned {
+							require.ErrorContains(t, err, "not owned by rad")
+							require.ErrorContains(t, err, "installation's operator")
+						}
+						require.Equal(t, status, release.Info.Status)
+						require.Equal(t, 3, release.Version)
+					})
+				}
+			}
+		}
+	}
+}
+
+func Test_ensureCertManager_ReleaseLookupErrorDoesNotRepair(t *testing.T) {
+	t.Parallel()
+	for _, upgrade := range []bool{false, true} {
+		t.Run(fmt.Sprintf("upgrade=%t", upgrade), func(t *testing.T) {
+			t.Parallel()
+			failure := apierrors.NewForbidden(schema.GroupResource{Resource: "secrets"}, "", errors.New("denied"))
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, failure)
+			impl := &Impl{Helm: client}
+			options := NewDefaultClusterOptions()
+			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
+			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, upgrade)
+			require.ErrorIs(t, err, failure)
+			require.ErrorContains(t, err, "failed to run helm get")
+			require.NotContains(t, err.Error(), "rollback")
+		})
+	}
+}
+
 func Test_ensureCertManager_NewerOwnedRelease(t *testing.T) {
 	t.Parallel()
 	for _, upgrade := range []bool{false, true} {

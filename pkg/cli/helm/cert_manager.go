@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 )
@@ -197,7 +198,7 @@ func imageTag(image string) string {
 
 // ensureCertManager makes cert-manager available when Radius authorization is enabled. It installs a pinned
 // version when none exists, upgrades a release rad installed when upgrade is true or when that release is
-// not deployed or its controller is missing, reuses a supported
+// not deployed or its controller is missing, refuses pending Helm operations, reuses a supported
 // installation it did not install, and fails when that installation is older than CertManagerMinimumVersion.
 // With authorization off it returns without contacting the cluster.
 func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, upgrade bool) error {
@@ -215,9 +216,15 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 
 	helmAction := NewHelmAction(i.Helm)
 	chartOptions := options.CertManager.ChartOptions
-	ownedRelease, err := i.radOwnedCertManagerRelease(chartOptions, kubeContext)
+	ownedRelease, err := helmAction.getRelease(kubeContext, chartOptions.ReleaseName, chartOptions.Namespace)
 	if err != nil {
 		return err
+	}
+	if ownedRelease != nil && revisionStatus(ownedRelease).IsPending() {
+		return pendingCertManagerReleaseError(ownedRelease, chartOptions, kubeContext)
+	}
+	if !radOwnsCertManagerRelease(ownedRelease) {
+		ownedRelease = nil
 	}
 
 	newClients := i.newCertManagerClients
@@ -318,12 +325,52 @@ func (i *Impl) radOwnedCertManagerRelease(options ChartOptions, kubeContext stri
 	if err != nil || rel == nil {
 		return nil, err
 	}
-	for k, v := range radManagedByLabels() {
-		if rel.Labels[k] != v {
-			return nil, nil
-		}
+	if !radOwnsCertManagerRelease(rel) {
+		return nil, nil
 	}
 	return rel, nil
+}
+
+func radOwnsCertManagerRelease(rel *releasev1.Release) bool {
+	if rel == nil {
+		return false
+	}
+	for k, v := range radManagedByLabels() {
+		if rel.Labels[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func pendingCertManagerReleaseError(rel *releasev1.Release, options ChartOptions, kubeContext string) error {
+	target := "current kubeconfig context"
+	if kubeContext != "" {
+		target = fmt.Sprintf("context %q", kubeContext)
+	}
+	recovery := "A pending install may have no successful revision to roll back to. Have the installation's operator inspect any partially created resources and plan recovery without removing shared resources."
+	if revisionStatus(rel) != releasecommon.StatusPendingInstall {
+		recovery = fmt.Sprintf("If the operation was interrupted, have the installation's operator review the history and the changes a rollback would make. "+
+			"Only then consider %s; replace REVISION with a known-good revision from the history. A rollback can change or delete shared resources and issuer configuration.",
+			helmCommand(kubeContext, options.Namespace, "rollback "+options.ReleaseName+" REVISION --wait"))
+	}
+	if !radOwnsCertManagerRelease(rel) {
+		recovery += " This release is not owned by rad; coordinate recovery with the installation's operator rather than taking ownership."
+	}
+
+	return clierrors.Message("cert-manager Helm release %q in namespace %q (%s), revision %d is %s. "+
+		"A Helm operation may still be running; wait for it to finish and retry. Pending status alone does not prove that the operation was interrupted. "+
+		"Before recovery, confirm that no Helm operation is active. Inspect the release with %s and %s, and inspect its workloads with %s. "+
+		"Check other workloads' certificates and issuers with %s. %s "+
+		"Back up release history, issuer keys and certificate Secrets before recovery. "+
+		"Do not uninstall cert-manager or delete its CRDs or Helm release Secrets as a shortcut: this can destroy certificates used by other workloads or orphan resources. "+
+		"After the operator resolves the pending state, retry the same rad command. rad has not changed the cert-manager release.",
+		options.ReleaseName, options.Namespace, target, rel.Version, revisionStatus(rel),
+		helmCommand(kubeContext, options.Namespace, "status "+options.ReleaseName),
+		helmCommand(kubeContext, options.Namespace, "history "+options.ReleaseName),
+		kubectlCommand(kubeContext, options.Namespace, "get deployments,jobs,pods"),
+		kubectlCommand(kubeContext, "", "get certificates,certificaterequests,issuers,clusterissuers,orders.acme.cert-manager.io,challenges.acme.cert-manager.io -A"),
+		recovery)
 }
 
 // isRadOwnedCertManager reports whether the cert-manager Helm release exists and carries rad's ownership labels.

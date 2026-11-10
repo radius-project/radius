@@ -154,7 +154,7 @@ Before reusing an installation, `rad` checks that the controller and webhook Dep
 kubectl get secret -n cert-manager -l owner=helm,name=cert-manager --show-labels
 ```
 
-`rad` only upgrades a release it owns, and repairs an owned release that is not `deployed` or whose controller is missing. It never downgrades a release whose chart version is newer than its target pin: a healthy newer installation is reused, and an unhealthy newer installation must be repaired at its current version. Kubernetes API errors are reported rather than silently triggering a repair.
+`rad` only upgrades a release it owns, and repairs an owned release that is not `deployed` or whose controller is missing, except while a Helm operation is pending. It never downgrades a release whose chart version is newer than its target pin: a healthy newer installation is reused, and an unhealthy newer installation must be repaired at its current version. Kubernetes API errors are reported rather than silently triggering a repair.
 
 ### Uninstall
 
@@ -168,6 +168,7 @@ A cert-manager that `rad` did not install is never removed.
 
 ### Recovering from a partial install or uninstall
 
+- **Pending cert-manager Helm release:** install, `--reinstall`, and upgrade stop before changing the configured cert-manager release when its latest revision is `pending-install`, `pending-upgrade`, or `pending-rollback`, whether or not `rad` owns it. The error identifies the release, namespace, revision, state and kubeconfig context, with context-bound `helm status`, `helm history`, and `kubectl` inspection commands. An operation may still be running; pending status alone does not prove it was interrupted. Wait for an active operation to finish. Before recovery, confirm that no Helm operation is active and coordinate with the installation's operator. A pending install may have no successful revision to roll back to, so inspect partially created resources and plan recovery without removing shared resources. For a pending upgrade or rollback, review the history and the resource changes before considering the suggested rollback command; replace `REVISION` with a known-good revision, not the pending one. A rollback can change or delete shared resources and issuer configuration. Back up release history, issuer keys and certificate Secrets first. Do not uninstall cert-manager or delete CRDs or Helm release Secrets as a shortcut: this can destroy other workloads' certificates or orphan resources. `rad` never performs recovery automatically or takes ownership of an operator-managed release. Retry the same `rad` command after the operator resolves the pending state.
 - **cert-manager installed, Radius install failed:** fix the cause and rerun the same `rad install kubernetes` command (add `--reinstall` if a Radius release was left behind). `rad` reuses or repairs the cert-manager it owns. To back out instead, run `rad uninstall kubernetes`.
 - **Uninstall interrupted or cert-manager left behind:** rerun `rad uninstall kubernetes`. If that is not possible, check for other workloads **before** removing the release manually:
 

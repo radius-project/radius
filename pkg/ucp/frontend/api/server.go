@@ -311,9 +311,12 @@ func (s *Service) Run(ctx context.Context) error {
 // routes as the aggregation endpoint on InternalPort, so the Kubernetes API aggregation
 // endpoint and its certificate are unchanged.
 func (s *Service) internalServer(aggregation *http.Server) *http.Server {
+	// Even a certificate trusted by both CAs cannot assert user identity here.
+	// Component TLS authentication remains the responsibility of mtls.Serve.
+	componentBoundary := &authorization.RequestHeaderAuthenticator{}
 	return &http.Server{
 		Addr:        fmt.Sprintf("%s:%d", s.options.Config.Server.Host, s.options.Config.Server.InternalPort),
-		Handler:     aggregation.Handler,
+		Handler:     componentBoundary.Middleware(aggregation.Handler),
 		BaseContext: aggregation.BaseContext,
 	}
 }
