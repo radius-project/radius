@@ -263,7 +263,7 @@ func Test_checkCertManagerDefaultApprover(t *testing.T) {
 			allowed:     map[string]bool{wildcard: true},
 			wantReviews: []string{wildcard},
 			wantErr:     "cert-manager's default approver (system:serviceaccount:security:cert-manager) can approve CertificateRequests for the Radius CA issuer signer " + exact,
-			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cm cert-manager --repo https://charts.jetstack.io --version v1.21.2 --reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-mtls-issuer,clusterissuers.cert-manager.io/*}\"",
+			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cm cert-manager --repo https://charts.jetstack.io --version v1.21.2 --reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-apiserver-issuer,clusterissuers.cert-manager.io/*}\"",
 		},
 		{
 			name: "exact approval without version or release labels",
@@ -272,7 +272,7 @@ func Test_checkCertManagerDefaultApprover(t *testing.T) {
 			})},
 			allowed:     map[string]bool{exact: true},
 			wantReviews: []string{wildcard, exact},
-			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cert-manager cert-manager --repo https://charts.jetstack.io --reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-mtls-issuer,clusterissuers.cert-manager.io/*}\"",
+			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cert-manager cert-manager --repo https://charts.jetstack.io --reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-apiserver-issuer,clusterissuers.cert-manager.io/*}\"",
 		},
 		{
 			name: "disabled approver is not reviewed",
@@ -540,7 +540,7 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 				expectGet(nil)(m)
 			},
 			wantClient: true,
-			wantErr:    "Radius stopped before it installed or upgraded csi-driver-spiffe and Radius because cert-manager's default approver (system:serviceaccount:cert-manager:default) can approve CertificateRequests for the Radius CA issuer signer issuers.cert-manager.io/radius-system.radius-ca-issuer. Only Radius's csi-driver-spiffe approver may approve them. Limit the default approver to other signers, for example with helm --kube-context \"test-context\" -n cert-manager upgrade cert-manager cert-manager --repo https://charts.jetstack.io --version " + CertManagerChartDefaultVersion + " " + "--reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-mtls-issuer,clusterissuers.cert-manager.io/*}\"" + ".",
+			wantErr:    "Radius stopped before it installed or upgraded csi-driver-spiffe and Radius because cert-manager's default approver (system:serviceaccount:cert-manager:default) can approve CertificateRequests for the Radius CA issuer signer issuers.cert-manager.io/radius-system.radius-ca-issuer. Only Radius's csi-driver-spiffe approver may approve them. Limit the default approver to other signers, for example with helm --kube-context \"test-context\" -n cert-manager upgrade cert-manager cert-manager --repo https://charts.jetstack.io --version " + CertManagerChartDefaultVersion + " " + "--reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-apiserver-issuer,clusterissuers.cert-manager.io/*}\"" + ".",
 		},
 		{
 			name:    "default approver conflict on upgrade fails before upgrading",
@@ -574,7 +574,7 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			},
 			allowed: map[string]bool{
 				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
-				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+				issuerSignerName(RadiusSystemNamespace, RadiusAPIServerIssuerName): true,
 			},
 			expect:     expectInstall(wantValues),
 			wantClient: true,
@@ -585,25 +585,25 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			},
 		},
 		{
-			name:    "approver limited to the Radius bootstrap and mTLS issuers installs quietly",
+			name:    "approver limited to the Radius bootstrap and API server issuers installs quietly",
 			setArgs: dryRun,
 			objects: []runtime.Object{approver},
 			allowed: map[string]bool{
 				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
-				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+				issuerSignerName(RadiusSystemNamespace, RadiusAPIServerIssuerName): true,
 			},
 			expect:         expectInstall(wantValues),
 			wantClient:     true,
 			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
 		},
 		{
-			name:           "approver that cannot approve the mTLS issuer is a warning",
+			name:           "approver that cannot approve the API server issuer is a warning",
 			setArgs:        dryRun,
 			objects:        []runtime.Object{approver},
 			allowed:        map[string]bool{issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true},
 			expect:         expectInstall(wantValues),
 			wantClient:     true,
-			wantLog:        "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-mtls-issuer. The Radius CA and the component certificates are issued only if another approver approves them.",
+			wantLog:        "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-apiserver-issuer. The Radius CAs and UCP's API server certificate are issued only if another approver approves them.",
 			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
 		},
 		{
@@ -612,7 +612,7 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			objects:        []runtime.Object{disabledApprover},
 			expect:         expectInstall(wantValues),
 			wantClient:     true,
-			wantLog:        "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap, issuers.cert-manager.io/radius-system.radius-mtls-issuer. The Radius CA and the component certificates are issued only if another approver approves them.",
+			wantLog:        "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap, issuers.cert-manager.io/radius-system.radius-apiserver-issuer. The Radius CAs and UCP's API server certificate are issued only if another approver approves them.",
 			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
 		},
 		{
@@ -993,7 +993,9 @@ func Test_UninstallRadius_KeepsCertManagerWhenCSIDriverSPIFFEIsKept(t *testing.T
 func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 	t.Parallel()
 
-	rbac := func(rbac map[string]any) map[string]any { return map[string]any{"global": map[string]any{"rbac": rbac}} }
+	rbac := func(rbac map[string]any) map[string]any {
+		return map[string]any{"global": map[string]any{"rbac": rbac}}
+	}
 	targetValues := rbac(map[string]any{"enabled": true, "spiffe": map[string]any{"trustDomain": "rollback.example"}})
 	installedValues := buildCSIDriverSPIFFEValues(RadiusSystemNamespace, spiffeSettings{TrustDomain: SPIFFETrustDomainDefault, CSIDriverName: SPIFFECSIDriverNameDefault})
 	wantValues := buildCSIDriverSPIFFEValues(RadiusSystemNamespace, spiffeSettings{TrustDomain: "rollback.example", CSIDriverName: SPIFFECSIDriverNameDefault})
@@ -1008,7 +1010,7 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 	}
 	allowed := map[string]bool{
 		issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
-		issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+		issuerSignerName(RadiusSystemNamespace, RadiusAPIServerIssuerName): true,
 	}
 
 	tests := []struct {

@@ -44,6 +44,8 @@ spec:
     kind: Issuer
     name: radius-selfsigned-bootstrap
 ---
+# Signs only the csi-driver-spiffe server certificates; Radius's csi-driver-spiffe approver is the
+# only approver allowed to approve its requests.
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -55,48 +57,41 @@ spec:
   ca:
     secretName: radius-ca
 ---
-# Signs the "<component>-mtls" certificates below from the same Radius CA. cert-manager's default
-# approver approves this issuer's requests, so they do not need radius-ca-issuer, whose requests
-# only Radius's csi-driver-spiffe approver may approve.
+# UCP's aggregated API certificate has its own CA, independent of global.rbac.certificates.mode.
+# Only the Kubernetes API server trusts it (through the APIService caBundle); no Radius component
+# mounts it. cert-manager's default approver approves its requests; it must not approve requests
+# for radius-ca-issuer, which only Radius's csi-driver-spiffe approver approves.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: radius-apiserver-ca
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  isCA: true
+  commonName: radius-apiserver-ca
+  secretName: radius-apiserver-ca
+  # 1 year, renewed at two-thirds of its lifetime, keeping the key like radius-ca.
+  duration: 8760h
+  renewBefore: 2920h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Never
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: radius-selfsigned-bootstrap
+---
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: radius-mtls-issuer
+  name: radius-apiserver-issuer
   namespace: {{ $ns }}
   labels:
     app.kubernetes.io/part-of: radius
 spec:
   ca:
-    secretName: radius-ca
-{{- range $component := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" }}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: {{ $component }}-cert
-  namespace: {{ $ns }}
-  labels:
-    app.kubernetes.io/name: {{ $component }}
-    app.kubernetes.io/part-of: radius
-spec:
-  secretName: {{ $component }}-mtls
-  # 24 hours, renewed at two-thirds of its lifetime.
-  duration: 24h
-  renewBefore: 8h
-  privateKey:
-    algorithm: ECDSA
-    size: 256
-    rotationPolicy: Always
-  usages:
-    - digital signature
-    - server auth
-    - client auth
-  # One SAN for compatibility with future CA name constraints on <namespace>.svc.
-  dnsNames:
-    - {{ $component }}.{{ $ns }}.svc
-  issuerRef:
-    group: cert-manager.io
-    kind: Issuer
-    name: radius-mtls-issuer
-{{- end }}
+    secretName: radius-apiserver-ca
 {{- end }}
