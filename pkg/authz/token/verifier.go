@@ -163,10 +163,17 @@ func orDefault(d, def time.Duration) time.Duration {
 }
 
 // Run loads the signing keys and refreshes them every RefreshInterval until ctx is done.
+// When a Refresh already loaded the keys, the first refresh waits a full RefreshInterval.
 // After a failed refresh it retries every UnknownKeyInterval.
 func (v *Verifier) Run(ctx context.Context) {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	timer := time.NewTimer(0)
+	v.mu.RLock()
+	first := time.Duration(0)
+	if !v.lastSuccess.IsZero() {
+		first = v.refreshInterval
+	}
+	v.mu.RUnlock()
+	timer := time.NewTimer(first)
 	defer timer.Stop()
 	for {
 		select {

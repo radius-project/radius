@@ -212,8 +212,8 @@ func Test_checkCertManagerDefaultApprover(t *testing.T) {
 			objects:     []runtime.Object{controller(nil)},
 			allowed:     map[string]bool{wildcard: true},
 			wantReviews: []string{wildcard},
-			wantErr:     "cert-manager's default approver (system:serviceaccount:security:cert-manager) can approve CertificateRequests for the Radius issuer signer " + exact,
-			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cm cert-manager --repo https://charts.jetstack.io --version v1.21.2 --reuse-values --set disableAutoApproval=true",
+			wantErr:     "cert-manager's default approver (system:serviceaccount:security:cert-manager) can approve CertificateRequests for the Radius CA issuer signer " + exact,
+			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cm cert-manager --repo https://charts.jetstack.io --version v1.21.2 --reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-apiserver-issuer,clusterissuers.cert-manager.io/*}\"",
 		},
 		{
 			name: "exact approval without version or release labels",
@@ -222,7 +222,7 @@ func Test_checkCertManagerDefaultApprover(t *testing.T) {
 			})},
 			allowed:     map[string]bool{exact: true},
 			wantReviews: []string{wildcard, exact},
-			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cert-manager cert-manager --repo https://charts.jetstack.io --reuse-values --set disableAutoApproval=true",
+			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cert-manager cert-manager --repo https://charts.jetstack.io --reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-apiserver-issuer,clusterissuers.cert-manager.io/*}\"",
 		},
 		{
 			name: "disabled approver is not reviewed",
@@ -361,6 +361,8 @@ func Test_ensureCSIDriverSPIFFE(t *testing.T) {
 		}
 	}
 	approver := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
+	disabledApprover := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
+	disabledApprover.Spec.Template.Spec.Containers[0].Args = []string{"--controllers=*,-certificaterequests-approver"}
 
 	tests := []struct {
 		name       string
@@ -414,13 +416,55 @@ func Test_ensureCSIDriverSPIFFE(t *testing.T) {
 			wantErr:    "another csi-driver-spiffe (DaemonSet cert-manager/csi-driver-spiffe-driver)",
 		},
 		{
-			name:       "default approver conflict is a warning",
-			setArgs:    dryRun,
-			objects:    []runtime.Object{approver},
-			allowed:    map[string]bool{"issuers.cert-manager.io/*": true},
+			name:    "default approver conflict fails before installing",
+			setArgs: dryRun,
+			objects: []runtime.Object{approver},
+			allowed: map[string]bool{"issuers.cert-manager.io/*": true},
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				expectGet(nil)(m)
+			},
+			wantClient: true,
+			wantErr:    "Radius stopped before changing the cluster because cert-manager's default approver (system:serviceaccount:cert-manager:default) can approve CertificateRequests for the Radius CA issuer signer issuers.cert-manager.io/radius-system.radius-ca-issuer. Only Radius's csi-driver-spiffe approver may approve them. Limit the default approver to other signers, for example with helm --kube-context \"test-context\" -n cert-manager upgrade cert-manager cert-manager --repo https://charts.jetstack.io --version " + CertManagerChartDefaultVersion + " " + "--reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-apiserver-issuer,clusterissuers.cert-manager.io/*}\"" + ".",
+		},
+		{
+			name:    "default approver conflict on upgrade fails before upgrading",
+			setArgs: dryRun,
+			upgrade: true,
+			objects: []runtime.Object{approver},
+			allowed: map[string]bool{radiusCAIssuerSignerName(RadiusSystemNamespace): true},
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				expectGet(owned(releasecommon.StatusDeployed, wantValues))(m)
+			},
+			wantClient: true,
+			wantErr:    "Limit the default approver to other signers",
+		},
+		{
+			name:    "approver limited to the Radius bootstrap and API server issuers installs quietly",
+			setArgs: dryRun,
+			objects: []runtime.Object{approver},
+			allowed: map[string]bool{
+				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+				issuerSignerName(RadiusSystemNamespace, RadiusAPIServerIssuerName): true,
+			},
 			expect:     expectInstall(wantValues),
 			wantClient: true,
-			wantLog:    "Warning: cert-manager's default approver (system:serviceaccount:cert-manager:default) can approve CertificateRequests for the Radius issuer signer issuers.cert-manager.io/radius-system.radius-ca-issuer. A future Radius release will require it to be turned off for that issuer; keep it on for now.",
+		},
+		{
+			name:       "approver that cannot approve the API server issuer is a warning",
+			setArgs:    dryRun,
+			objects:    []runtime.Object{approver},
+			allowed:    map[string]bool{issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true},
+			expect:     expectInstall(wantValues),
+			wantClient: true,
+			wantLog:    "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-apiserver-issuer. The Radius CAs and UCP's API server certificate are issued only if another approver approves them.",
+		},
+		{
+			name:    "disabled approver is a warning",
+			setArgs: dryRun,
+			objects:    []runtime.Object{disabledApprover},
+			expect:     expectInstall(wantValues),
+			wantClient: true,
+			wantLog:    "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap, issuers.cert-manager.io/radius-system.radius-apiserver-issuer. The Radius CAs and UCP's API server certificate are issued only if another approver approves them.",
 		},
 		{
 			name:       "unchanged deployed release is reused",

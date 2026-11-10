@@ -152,8 +152,10 @@ They verify the server's chain against the mounted `ca.crt` and require exactly
 the receiver's SPIFFE ID instead of matching DNS names. Only after the server is
 verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
-The controller, which serves no internal endpoint, mounts only `ca.crt` from the
-`radius-ca` Secret.
+The controller, which serves no internal endpoint, projects only `ca.crt` from
+the `radius-ca` Secret (never `tls.key`). The `radius-ca` CA signs only these
+SPIFFE server certificates; UCP's aggregated API certificate comes from the
+separate `radius-apiserver-ca`, which Radius components do not trust.
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Clients close idle connections

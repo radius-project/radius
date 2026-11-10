@@ -53,6 +53,14 @@ const (
 	// Radius chart creates it in deploy/Chart/templates/global/certificates.yaml.
 	RadiusCAIssuerName = "radius-ca-issuer"
 
+	// RadiusAPIServerIssuerName is the cert-manager Issuer in the Radius namespace that signs only UCP's aggregated
+	// API certificate, from its own CA. cert-manager's default approver approves its requests.
+	RadiusAPIServerIssuerName = "radius-apiserver-issuer"
+
+	// RadiusBootstrapIssuerName is the self-signed Issuer in the Radius namespace that issues the Radius CA and the
+	// API server CA. cert-manager's default approver approves its requests.
+	RadiusBootstrapIssuerName = "radius-selfsigned-bootstrap"
+
 	// SPIFFETrustDomainDefault and SPIFFECSIDriverNameDefault are the defaults of the Radius chart values
 	// global.rbac.spiffe.trustDomain and global.rbac.spiffe.csiDriverName. Keep them in sync with
 	// deploy/Chart/values.yaml.
@@ -94,7 +102,12 @@ func resolveSPIFFESettings(stored, current map[string]any) spiffeSettings {
 
 // radiusCAIssuerSignerName is the cert-manager signer name of the Radius CA issuer in radiusNamespace.
 func radiusCAIssuerSignerName(radiusNamespace string) string {
-	return "issuers.cert-manager.io/" + radiusNamespace + "." + RadiusCAIssuerName
+	return issuerSignerName(radiusNamespace, RadiusCAIssuerName)
+}
+
+// issuerSignerName returns the cert-manager signer name of the namespaced Issuer name in namespace.
+func issuerSignerName(namespace, name string) string {
+	return "issuers.cert-manager.io/" + namespace + "." + name
 }
 
 // buildCSIDriverSPIFFEValues configures csi-driver-spiffe to request certificates from the Radius CA issuer and
@@ -180,14 +193,19 @@ func (i *Impl) ensureCSIDriverSPIFFE(ctx context.Context, options ClusterOptions
 		return err
 	}
 
-	// Radius's client certificates still need cert-manager's default approver, so a conflict is only a warning until
-	// components authenticate with ServiceAccount tokens.
+	// Only Radius's csi-driver-spiffe approver may approve requests for the Radius CA issuer. A cert-manager default
+	// approver that can approve them would sign any SPIFFE ID, so rad stops before changing the cluster.
 	var conflict *defaultApproverConflictError
 	if err := checkCertManagerDefaultApprover(ctx, kubeClient, options.Radius.Namespace, kubeContext); errors.As(err, &conflict) {
-		i.logInfo("Warning: cert-manager's default approver (%s) can approve CertificateRequests for the Radius issuer signer %s. A future Radius release will require it to be turned off for that issuer; keep it on for now.",
-			conflict.User, conflict.SignerName)
+		return clierrors.Message("Radius stopped before changing the cluster because %s", conflict.Error())
 	} else if err != nil {
+		return err
+	}
+	if missing, err := missingApprovableRadiusSigners(ctx, kubeClient, options.Radius.Namespace); err != nil {
 		i.logInfo("Warning: %v", err)
+	} else if len(missing) > 0 {
+		i.logInfo("Warning: cert-manager's default approver cannot approve CertificateRequests for %s. The Radius CAs and UCP's API server certificate are issued only if another approver approves them.",
+			strings.Join(missing, ", "))
 	}
 
 	helmAction := NewHelmAction(i.Helm)
@@ -281,36 +299,90 @@ func checkCertManagerDefaultApprover(ctx context.Context, kubeClient kubernetes.
 		if certManagerApproverDisabled(controller) {
 			continue
 		}
-		serviceAccount := controller.Spec.Template.Spec.ServiceAccountName
-		if serviceAccount == "" {
-			serviceAccount = "default"
+		allowed, err := defaultApproverCanApprove(ctx, kubeClient, controller, signerName)
+		if err != nil {
+			return err
 		}
-		user := "system:serviceaccount:" + controller.Namespace + ":" + serviceAccount
-		for _, name := range []string{"issuers.cert-manager.io/*", signerName} {
-			review := &authorizationv1.SubjectAccessReview{Spec: authorizationv1.SubjectAccessReviewSpec{
-				User:   user,
-				Groups: []string{"system:serviceaccounts", "system:serviceaccounts:" + controller.Namespace, "system:authenticated"},
-				ResourceAttributes: &authorizationv1.ResourceAttributes{
-					Group:    "cert-manager.io",
-					Resource: "signers",
-					Verb:     "approve",
-					Name:     name,
-				},
-			}}
-			result, err := kubeClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, review, metav1.CreateOptions{})
-			if err != nil {
-				return fmt.Errorf("could not check cert-manager's default approver: %w", err)
-			}
-			if result.Status.Allowed {
-				return newDefaultApproverConflictError(controller, user, signerName, kubeContext)
-			}
+		if allowed {
+			return newDefaultApproverConflictError(controller, defaultApproverUser(controller), radiusNamespace, kubeContext)
 		}
 	}
 	return nil
 }
 
+// missingApprovableRadiusSigners returns the Radius bootstrap and API server issuer signers that no enabled
+// cert-manager default approver may approve. With every default approver turned off it returns both; with no
+// cert-manager controller found it returns none, because there is nothing to report on.
+func missingApprovableRadiusSigners(ctx context.Context, kubeClient kubernetes.Interface, radiusNamespace string) ([]string, error) {
+	deployments, err := kubeClient.AppsV1().Deployments(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: certManagerControllerSelector})
+	if err != nil {
+		return nil, fmt.Errorf("could not check cert-manager's default approver: failed to list cert-manager deployments: %w", err)
+	}
+	if len(deployments.Items) == 0 {
+		return nil, nil
+	}
+	var missing []string
+	for _, signerName := range []string{issuerSignerName(radiusNamespace, RadiusBootstrapIssuerName), issuerSignerName(radiusNamespace, RadiusAPIServerIssuerName)} {
+		approvable := false
+		for idx := range deployments.Items {
+			controller := &deployments.Items[idx]
+			if certManagerApproverDisabled(controller) {
+				continue
+			}
+			allowed, err := defaultApproverCanApprove(ctx, kubeClient, controller, signerName)
+			if err != nil {
+				return nil, err
+			}
+			if allowed {
+				approvable = true
+				break
+			}
+		}
+		if !approvable {
+			missing = append(missing, signerName)
+		}
+	}
+	return missing, nil
+}
+
+// defaultApproverUser returns the user the cert-manager controller deployment runs as.
+func defaultApproverUser(controller *appsv1.Deployment) string {
+	serviceAccount := controller.Spec.Template.Spec.ServiceAccountName
+	if serviceAccount == "" {
+		serviceAccount = "default"
+	}
+	return "system:serviceaccount:" + controller.Namespace + ":" + serviceAccount
+}
+
+// defaultApproverCanApprove reports whether the cert-manager controller may approve requests for signerName.
+// cert-manager's webhook allows the approval when the approver may approve the signer's wildcard name or its exact
+// name, and RBAC resourceNames do not match wildcards, so both are checked.
+func defaultApproverCanApprove(ctx context.Context, kubeClient kubernetes.Interface, controller *appsv1.Deployment, signerName string) (bool, error) {
+	wildcard := signerName[:strings.Index(signerName, "/")+1] + "*"
+	for _, name := range []string{wildcard, signerName} {
+		review := &authorizationv1.SubjectAccessReview{Spec: authorizationv1.SubjectAccessReviewSpec{
+			User:   defaultApproverUser(controller),
+			Groups: []string{"system:serviceaccounts", "system:serviceaccounts:" + controller.Namespace, "system:authenticated"},
+			ResourceAttributes: &authorizationv1.ResourceAttributes{
+				Group:    "cert-manager.io",
+				Resource: "signers",
+				Verb:     "approve",
+				Name:     name,
+			},
+		}}
+		result, err := kubeClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, review, metav1.CreateOptions{})
+		if err != nil {
+			return false, fmt.Errorf("could not check cert-manager's default approver: %w", err)
+		}
+		if result.Status.Allowed {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // defaultApproverConflictError reports that cert-manager's default approver can approve requests for the Radius
-// issuer. Its message tells the user how to turn the default approver off.
+// issuer. Its message tells the user how to limit the default approver to other signers.
 type defaultApproverConflictError struct {
 	User       string
 	SignerName string
@@ -318,11 +390,11 @@ type defaultApproverConflictError struct {
 }
 
 func (e *defaultApproverConflictError) Error() string {
-	return fmt.Sprintf("cert-manager's default approver (%s) can approve CertificateRequests for the Radius issuer signer %s. Only Radius's csi-driver-spiffe approver should approve them. Turn off cert-manager's default approver, for example with %s, and approve your other issuers' requests with a policy approver such as approver-policy.",
+	return fmt.Sprintf("cert-manager's default approver (%s) can approve CertificateRequests for the Radius CA issuer signer %s. Only Radius's csi-driver-spiffe approver may approve them. Limit the default approver to other signers, for example with %s. Add the signer names of your own namespaced Issuers to that list, or approve their requests with a policy approver such as approver-policy, and then run the command again.",
 		e.User, e.SignerName, e.Command)
 }
 
-func newDefaultApproverConflictError(controller *appsv1.Deployment, user, signerName, kubeContext string) error {
+func newDefaultApproverConflictError(controller *appsv1.Deployment, user, radiusNamespace, kubeContext string) error {
 	release := controller.Labels["app.kubernetes.io/instance"]
 	if release == "" {
 		release = certManagerReleaseName
@@ -332,8 +404,9 @@ func newDefaultApproverConflictError(controller *appsv1.Deployment, user, signer
 	if version != "" {
 		args += " --version " + version
 	}
-	args += " --reuse-values --set disableAutoApproval=true"
-	return &defaultApproverConflictError{User: user, SignerName: signerName, Command: helmCommand(kubeContext, controller.Namespace, args)}
+	signers := strings.Join(certManagerApproveSignerNames(radiusNamespace), ",")
+	args += " --reuse-values --set " + QuoteFlagValue("approveSignerNames={"+signers+"}")
+	return &defaultApproverConflictError{User: user, SignerName: radiusCAIssuerSignerName(radiusNamespace), Command: helmCommand(kubeContext, controller.Namespace, args)}
 }
 
 // CSIDriverSPIFFEInstalledByRad reports whether the default csi-driver-spiffe release exists and rad installed it.

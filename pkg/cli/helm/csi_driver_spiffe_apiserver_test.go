@@ -58,6 +58,7 @@ func TestCheckCertManagerDefaultApprover_APIServer(t *testing.T) {
 		{name: "approves another namespace's issuers", resourceNames: []string{"issuers.cert-manager.io/other.*"}},
 		{name: "chart default approves all issuers", resourceNames: []string{"issuers.cert-manager.io/*", "clusterissuers.cert-manager.io/*"}, wantConflict: true},
 		{name: "approves the Radius issuer by name", resourceNames: []string{signer}, wantConflict: true},
+		{name: "rad-installed approveSignerNames", resourceNames: certManagerApproveSignerNames(RadiusSystemNamespace)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -78,6 +79,28 @@ func TestCheckCertManagerDefaultApprover_APIServer(t *testing.T) {
 			}, 10*time.Second, 100*time.Millisecond)
 		})
 	}
+
+	t.Run("rad-installed approveSignerNames approve the Radius bootstrap and API server issuers", func(t *testing.T) {
+		bindApprover(t, client, namespace, "cert-manager", certManagerApproveSignerNames(RadiusSystemNamespace))
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			missing, err := missingApprovableRadiusSigners(ctx, client, RadiusSystemNamespace)
+			assert.NoError(c, err)
+			assert.Empty(c, missing)
+		}, 10*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("chart default approver conflict is fatal on install", func(t *testing.T) {
+		bindApprover(t, client, namespace, "cert-manager", []string{"issuers.cert-manager.io/*", "clusterissuers.cert-manager.io/*"})
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			err := checkCertManagerDefaultApprover(ctx, client, RadiusSystemNamespace, "test-context")
+			if assert.Error(c, err) {
+				assert.Contains(c, err.Error(), "approveSignerNames={")
+				assert.Contains(c, err.Error(), "--kube-context")
+			}
+		}, 10*time.Second, 100*time.Millisecond)
+	})
 
 	t.Run("disabled default approver is ignored", func(t *testing.T) {
 		bindApprover(t, client, namespace, "cert-manager", []string{"issuers.cert-manager.io/*"})

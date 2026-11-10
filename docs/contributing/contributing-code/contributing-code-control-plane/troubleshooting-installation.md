@@ -131,7 +131,7 @@ Radius authorization depends on [cert-manager](https://cert-manager.io/). `rad i
 
 ### Supported versions
 
-`rad` installs a pinned cert-manager chart (`CertManagerChartDefaultVersion` in `pkg/cli/helm/cert_manager.go`, currently `v1.21.2`) from `https://charts.jetstack.io` as the Helm release `cert-manager` in the `cert-manager` namespace, with CRDs enabled. An existing cert-manager must be at least `CertManagerMinimumVersion` (currently `v1.20.0`). Both constants track the [cert-manager supported releases](https://cert-manager.io/docs/releases/).
+`rad` installs a pinned cert-manager chart (`CertManagerChartDefaultVersion` in `pkg/cli/helm/cert_manager.go`, currently `v1.21.2`) from `https://charts.jetstack.io` as the Helm release `cert-manager` in the `cert-manager` namespace, with CRDs enabled and `approveSignerNames` limited to the Radius bootstrap issuer, the `radius-apiserver-issuer` Issuer, and cluster issuers, so cert-manager's default approver never approves the `radius-ca-issuer` Issuer. Namespaced Issuers in other namespaces then need their own approver. An existing cert-manager must be at least `CertManagerMinimumVersion` (currently `v1.20.0`). Both constants track the [cert-manager supported releases](https://cert-manager.io/docs/releases/).
 
 ### Existing cert-manager installations
 
@@ -154,7 +154,7 @@ Before reusing an installation, `rad` checks that the controller and webhook Dep
 kubectl get secret -n cert-manager -l owner=helm,name=cert-manager --show-labels
 ```
 
-`rad` only upgrades a release it owns, and repairs an owned release that is not `deployed` or whose controller is missing. It never downgrades a release whose chart version is newer than its target pin: a healthy newer installation is reused, and an unhealthy newer installation must be repaired at its current version. Kubernetes API errors are reported rather than silently triggering a repair.
+`rad` only upgrades a release it owns. It also upgrades an owned release whose values do not yet limit `approveSignerNames`, and repairs an owned release that is not `deployed` or whose controller is missing. It never downgrades a release whose chart version is newer than its target pin: a healthy newer installation is reused, and an unhealthy newer installation must be repaired at its current version. Kubernetes API errors are reported rather than silently triggering a repair.
 
 ### Uninstall
 
@@ -197,6 +197,7 @@ When authorization is enabled, `rad install kubernetes` and `rad upgrade kuberne
 
 - **Another csi-driver-spiffe runs on the cluster:** a cluster can run only one, because every instance registers the same kubelet plugin path. `rad` stops before changing the cluster and names the DaemonSet to remove.
 - **A `cert-manager-csi-driver-spiffe` release that `rad` did not install:** `rad` does not change it. Uninstall it, or let `rad` own the installation, and rerun the command.
-- **Warning about cert-manager's default approver:** cert-manager approves CertificateRequests for every issuer unless its default approver is turned off or limited. A future Radius release will require that it not approve requests for the Radius issuer. For now, keep it on; the `<component>-cert` Certificates the chart still creates depend on it, although components no longer use them.
+- **cert-manager's default approver can approve the Radius CA issuer:** only Radius's csi-driver-spiffe approver may approve requests for `radius-ca-issuer`, which signs component server certificates. cert-manager's default approver approves every issuer unless it is limited, so `rad` stops before changing the cluster and prints a `helm upgrade ... --reuse-values --set "approveSignerNames={...}"` command that limits it to the Radius bootstrap issuer, `radius-apiserver-issuer`, and cluster issuers. A cert-manager that `rad` installed is limited automatically.
+- **Warning that cert-manager's default approver cannot approve a Radius signer:** the Radius CAs and UCP's aggregated API certificate come from the `radius-selfsigned-bootstrap` and `radius-apiserver-issuer` Issuers, which rely on cert-manager's default approver. If it is turned off or does not allow them, approve their CertificateRequests another way.
 
 `rad uninstall kubernetes` removes the csi-driver-spiffe release it owns before cert-manager, and lists it in the confirmation prompt. A release that `rad` did not install is never removed.

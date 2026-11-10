@@ -177,7 +177,33 @@ serviceaccount.yaml templates and the Secrets the chart creates.
 {{- end -}}
 
 {{- define "radius.authz.controlPlaneSecrets" -}}
-{{- list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName | uniq | toJson -}}
+{{- list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" "ucp-apiserver-tls" "radius-ca" "radius-apiserver-ca" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName | uniq | toJson -}}
+{{- end -}}
+
+{{/*
+Name of the Secret holding UCP's aggregated API server certificate. When the authorization mode is
+not off, cert-manager issues it from radius-apiserver-issuer into ucp-apiserver-tls; otherwise the
+chart generates the ucp-cert Secret.
+*/}}
+{{- define "radius.ucp.apiServerSecretName" -}}
+{{- if ne (include "radius.authz.mode" .) "off" -}}
+ucp-apiserver-tls
+{{- else -}}
+ucp-cert
+{{- end -}}
+{{- end -}}
+
+{{/*
+Hash of the authorization settings a component reads at startup, for the checksum/authz-config pod
+annotation, so changing any of them rolls the pods.
+*/}}
+{{- define "radius.authz.configChecksum" -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- $config := $mode -}}
+{{- if ne $mode "off" -}}
+{{- $config = list $mode (include "radius.authz.podSecurityLevel" .) (include "radius.authz.identityConfig" .) (include "radius.authz.spiffe.csiDriverName" .) (include "radius.authz.controlPlaneSecrets" .) | join "\n" -}}
+{{- end -}}
+{{- $config | sha256sum -}}
 {{- end -}}
 
 {{/*

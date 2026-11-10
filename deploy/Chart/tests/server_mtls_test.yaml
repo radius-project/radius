@@ -76,7 +76,7 @@ tests:
         template: ucp/configmaps.yaml
       - matchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "\w+"\n  podSecurityLevel: "baseline"\n  controlPlaneNamespace: "radius-system"\n  controlPlaneSecrets: \["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","root-ca-cert","target-kubeconfig"\]\n  certificateDirectory: "/var/run/radius/spiffe"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  podSecurityLevel: "baseline"\n  controlPlaneNamespace: "radius-system"\n  controlPlaneSecrets: \["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","ucp-apiserver-tls","radius-ca","radius-apiserver-ca","root-ca-cert","target-kubeconfig"\]\n  certificateDirectory: "/var/run/radius/spiffe"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
         template: rp/configmaps.yaml
       - matchRegex:
           path: data["radius-self-host.yaml"]
