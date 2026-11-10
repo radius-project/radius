@@ -196,10 +196,10 @@ func testCoordinatorAdoptsLegacyDelete(t *testing.T, held bool) {
 		child.Finalizers = append(child.Finalizers, "example.com/hold")
 	}
 	require.NoError(t, r.Client.Create(t.Context(), child))
+	child.Status.ProvisionedResourceID = id
 	child.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
 	require.NoError(t, r.Client.Status().Update(t.Context(), child))
 	require.NoError(t, r.Client.Delete(t.Context(), child))
-	coordinatorStep(t, r, owner)
 	coordinatorStep(t, r, owner)
 	coordinatorStep(t, r, owner)
 	require.Equal(t, coordinatorDeleteRunning, owner.Status.Coordinator.Phase)
@@ -239,15 +239,13 @@ func Test_CoordinatorLegacyIdentityEditDuringPoll(t *testing.T) {
 		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: a},
 	}
 	require.NoError(t, r.Client.Create(t.Context(), child))
+	child.Status.ProvisionedResourceID = a
 	child.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
 	require.NoError(t, r.Client.Status().Update(t.Context(), child))
 	require.NoError(t, r.Client.Delete(t.Context(), child))
 	coordinatorStep(t, r, owner)
-	require.Equal(t, coordinatorIdle, owner.Status.Coordinator.Phase, "persist provenance before adopting the token")
-	require.NoError(t, r.Client.Get(t.Context(), client.ObjectKeyFromObject(child), child))
-	require.Equal(t, a, child.Status.ProvisionedResourceID)
-	coordinatorStep(t, r, owner)
 	require.Equal(t, coordinatorDeleteRunning, owner.Status.Coordinator.Phase)
+	require.NoError(t, r.Client.Get(t.Context(), client.ObjectKeyFromObject(child), child))
 	child.Spec.Id = b
 	require.NoError(t, r.Client.Update(t.Context(), child))
 	mock.CompleteOperation(token, nil)
@@ -260,6 +258,56 @@ func Test_CoordinatorLegacyIdentityEditDuringPoll(t *testing.T) {
 	require.Equal(t, coordinatorBlocked, owner.Status.Coordinator.Phase)
 	require.NotNil(t, findOutput(owner, b), "A's completion must not discard B's inventory")
 	require.Zero(t, sdk.deleteCalls.Load(), "legacy polling must not dispatch another DELETE")
+}
+
+func Test_CoordinatorBlocksLegacyDeleteWithoutProtectedTarget(t *testing.T) {
+	for _, initialize := range []bool{false, true} {
+		t.Run(fmt.Sprint(initialize), func(t *testing.T) {
+			r, owner, sdk, mock := coordinatorFixture(t)
+			a := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/a"
+			b := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/b"
+			owner.Status.OutputResources = []string{a, b}
+			owner.Status.Coordinator.Outputs = []radappiov1alpha3.DeploymentOutputStatus{{ID: a, State: outputCurrent}, {ID: b, State: outputCurrent}}
+			if initialize {
+				owner.Status.Coordinator = nil
+			}
+			require.NoError(t, r.Client.Status().Update(t.Context(), owner))
+			poller, err := mock.Delete(t.Context(), a, "version")
+			require.NoError(t, err)
+			token, err := poller.ResumeToken()
+			require.NoError(t, err)
+			child := &radappiov1alpha3.DeploymentResource{
+				ObjectMeta: metav1.ObjectMeta{Name: "legacy", Namespace: owner.Namespace, Finalizers: []string{DeploymentResourceFinalizer},
+					OwnerReferences: []metav1.OwnerReference{{APIVersion: radappiov1alpha3.GroupVersion.String(), Kind: deploymentTemplateKind, Name: owner.Name, UID: owner.UID, Controller: new(true)}}},
+				Spec: radappiov1alpha3.DeploymentResourceSpec{Id: a},
+			}
+			require.NoError(t, r.Client.Create(t.Context(), child))
+			child.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
+			require.NoError(t, r.Client.Status().Update(t.Context(), child))
+			// Both IDs are legitimate inventory; membership cannot bind A's token to B.
+			child.Spec.Id = b
+			require.NoError(t, r.Client.Update(t.Context(), child))
+			require.NoError(t, r.Client.Delete(t.Context(), child))
+			mock.CompleteOperation(token, nil)
+			for range 3 {
+				coordinatorStep(t, r, owner)
+			}
+			require.Equal(t, coordinatorBlocked, owner.Status.Coordinator.Phase)
+			require.Contains(t, owner.Status.Coordinator.Message, "no protected target identity")
+			require.Equal(t, outputCurrent, findOutput(owner, b).State)
+			require.Nil(t, owner.Status.Operation, "the ambiguous token must not be adopted")
+			require.NoError(t, r.Client.Get(t.Context(), client.ObjectKeyFromObject(child), child))
+			require.Empty(t, child.Status.ProvisionedResourceID, "never manufacture provenance from the edited spec")
+			require.Equal(t, token, child.Status.Operation.ResumeToken)
+			require.NoError(t, r.Client.Delete(t.Context(), owner))
+			restarted := *r
+			coordinatorStep(t, &restarted, owner)
+			require.NotNil(t, findOutput(owner, b))
+			require.Contains(t, owner.Finalizers, DeploymentTemplateFinalizer)
+			require.Zero(t, sdk.putCalls.Load())
+			require.Zero(t, sdk.deleteCalls.Load())
+		})
+	}
 }
 
 type coordinatorHTTPTransport func(*http.Request) (*http.Response, error)

@@ -164,19 +164,8 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return r.blockCoordinator(ctx, owner, "legacy DELETE is not authorized by its tracker identity")
 		}
 		if child.Status.ProvisionedResourceID == "" {
-			identity, uid := child.Spec.Id, child.UID
-			child.Status.ProvisionedResourceID = identity
-			if err := r.Client.Status().Update(ctx, child); err != nil {
-				return ctrl.Result{}, err
-			}
-			persisted := &radappiov1alpha3.DeploymentResource{}
-			if err := r.reader().Get(ctx, client.ObjectKeyFromObject(child), persisted); err != nil {
-				return ctrl.Result{}, err
-			}
-			if persisted.UID != uid || !sameOutput(persisted.Status.ProvisionedResourceID, identity) || !sameOutput(persisted.Spec.Id, identity) {
-				return r.blockCoordinator(ctx, owner, "legacy DELETE identity was not persisted; verify the tracker and CRD schema before adoption")
-			}
-			return r.again(), nil
+			// Today's editable spec cannot establish an older token's original target.
+			return r.blockCoordinator(ctx, owner, "legacy DELETE has no protected target identity; establish the original request target and outcome before adoption")
 		}
 		if findOutput(owner, child.Spec.Id) == nil {
 			owner.Status.Coordinator.Outputs = append(owner.Status.Coordinator.Outputs, radappiov1alpha3.DeploymentOutputStatus{ID: child.Spec.Id, State: outputPendingDelete})
