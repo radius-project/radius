@@ -517,6 +517,67 @@ func Test_ensureCertManager(t *testing.T) {
 	}
 }
 
+func Test_ensureCertManager_RBACWarning(t *testing.T) {
+	t.Parallel()
+
+	storedDryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+	enabledFile := filepath.Join(t.TempDir(), "enabled")
+	require.NoError(t, os.WriteFile(enabledFile, []byte("true\n"), 0o600))
+
+	for _, tt := range []struct {
+		name        string
+		setArgs     []string
+		setFileArgs []string
+		stored      map[string]any
+		upgrade     bool
+		wantWarning bool
+	}{
+		{name: "off by default"},
+		{name: "explicitly off", setArgs: []string{"global.rbac.enabled=false,global.rbac.dryRun=false"}},
+		{name: "unrelated setting", setArgs: []string{"global.imageTag=edge"}},
+		{name: "dry run", setArgs: []string{"global.rbac.dryRun=true"}, wantWarning: true},
+		{name: "enforce", setArgs: []string{"global.rbac.enabled=true"}, wantWarning: true},
+		{name: "file override", setFileArgs: []string{"global.rbac.enabled=" + enabledFile}, wantWarning: true},
+		{name: "stored on reinstall", stored: storedDryRun, wantWarning: true},
+		{name: "stored on upgrade", stored: storedDryRun, upgrade: true, wantWarning: true},
+		{name: "disable stored dry run", stored: storedDryRun, setArgs: []string{"global.rbac.dryRun=false"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			client := NewMockHelmClient(gomock.NewController(t))
+			stop := errors.New("stop before managing cert-manager")
+			var logs []string
+			if tt.wantWarning {
+				client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).
+					DoAndReturn(func(*helm.Configuration, string) (*releasev1.Release, error) {
+						require.Len(t, logs, 1, "warn before contacting cert-manager")
+						return nil, stop
+					})
+			}
+			impl := &Impl{
+				Helm: client,
+				logger: func(format string, args ...any) {
+					logs = append(logs, fmt.Sprintf(format, args...))
+				},
+			}
+			options := NewDefaultClusterOptions()
+			options.Radius.SetArgs = tt.setArgs
+			options.Radius.SetFileArgs = tt.setFileArgs
+			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.stored, tt.upgrade)
+			if !tt.wantWarning {
+				require.NoError(t, err)
+				require.Empty(t, logs)
+				return
+			}
+			require.ErrorIs(t, err, stop)
+			require.Equal(t, []string{
+				"Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed. Do not rely on it for production access control.",
+			}, logs)
+		})
+	}
+}
+
 func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	t.Parallel()
 

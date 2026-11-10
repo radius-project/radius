@@ -225,6 +225,22 @@ type PolicyStore struct {
 	catalog  *Catalog
 	clock    clock.PassiveClock
 	settings SettingsChangeGuard
+	limits   policyLimits
+}
+
+// policyLimits bounds the number of policy records. It is a store field only so
+// tests can exercise the limit checks without building full-size policies.
+type policyLimits struct {
+	assignments, customRoles int
+}
+
+var defaultPolicyLimits = policyLimits{assignments: 10000, customRoles: 1000}
+
+func (l policyLimits) check(policy Policy) error {
+	if len(policy.CustomRoles) > l.customRoles || len(policy.Assignments) > l.assignments {
+		return fmt.Errorf("PolicyCapacityExceeded: maximum %d custom roles and %d assignments", l.customRoles, l.assignments)
+	}
+	return nil
 }
 
 // NewPolicyStore requires an already initialized anchor. Missing initialization
@@ -236,7 +252,7 @@ func NewPolicyStore(db database.Client, catalog *Catalog, clk clock.PassiveClock
 	if clk == nil {
 		clk = clock.RealClock{}
 	}
-	return &PolicyStore{db: db, catalog: catalog, clock: clk, settings: settings}, nil
+	return &PolicyStore{db: db, catalog: catalog, clock: clk, settings: settings, limits: defaultPolicyLimits}, nil
 }
 
 // InitializationVerifier must verify the trusted startup caller and complete
@@ -272,7 +288,7 @@ func (i *PolicyInitializer) Initialize(ctx context.Context, initial Policy) erro
 	if policy.Generation != 0 {
 		return fmt.Errorf("initial policy must have generation zero")
 	}
-	if err := validateStoredPolicy(policy); err != nil {
+	if err := validateStoredPolicy(policy, i.store.limits); err != nil {
 		return err
 	}
 	for _, definition := range policy.CustomRoles {
@@ -303,9 +319,9 @@ func (i *PolicyInitializer) Initialize(ctx context.Context, initial Policy) erro
 	return i.store.save(ctx, accessVersionID, accessVersion{Root: root}, database.WithCreateOnly())
 }
 
-func validateStoredPolicy(policy Policy) error {
-	if len(policy.CustomRoles) > 1000 || len(policy.Assignments) > 10000 {
-		return fmt.Errorf("PolicyCapacityExceeded: maximum 1000 custom roles and 10000 assignments")
+func validateStoredPolicy(policy Policy, limits policyLimits) error {
+	if err := limits.check(policy); err != nil {
+		return err
 	}
 	if policy.Settings.ID == nil || !strings.EqualFold(*policy.Settings.ID, settingsID) {
 		return fmt.Errorf("settings ID must be %s", settingsID)
@@ -423,7 +439,7 @@ func (s *PolicyStore) immutable(ctx context.Context, id string, value any) error
 }
 
 func (s *PolicyStore) prepare(ctx context.Context, intent string, policy Policy) (string, error) {
-	if err := validateStoredPolicy(policy); err != nil {
+	if err := validateStoredPolicy(policy, s.limits); err != nil {
 		return "", err
 	}
 	type entry struct {
@@ -575,7 +591,7 @@ func (s *PolicyStore) loadRoot(ctx context.Context, id string, generation int64)
 	if settings != 1 {
 		return nil, fmt.Errorf("policy must have exactly one settings record")
 	}
-	if err := validateStoredPolicy(result.policy); err != nil {
+	if err := validateStoredPolicy(result.policy, s.limits); err != nil {
 		return nil, err
 	}
 	if _, err := NewPolicySnapshot(s.catalog, result.policy); err != nil {
@@ -707,7 +723,7 @@ func (s *PolicyStore) Mutate(ctx context.Context, actor PolicyActor, mutation Po
 		if err != nil {
 			return nil, err
 		}
-		next, change, highImpact, err := applyPolicyMutation(ctx, current, actor, input, s.settings)
+		next, change, highImpact, err := applyPolicyMutation(ctx, current, actor, input, s.settings, s.limits)
 		if err != nil {
 			return nil, err
 		}

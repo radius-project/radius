@@ -581,13 +581,15 @@ func TestPolicyStoreSettings(t *testing.T) {
 	require.Equal(t, int64(1), snapshot.Generation(), "server-owned generation cannot turn an identical mode PUT into a change")
 }
 
-func fullCapacityPolicy() Policy {
+// capacityPolicy returns initialPolicy plus roles custom roles and enough
+// assignments to total assignments.
+func capacityPolicy(roles, assignments int) Policy {
 	policy := initialPolicy()
-	for n := range 1000 {
+	for n := range roles {
 		id := fmt.Sprintf("%s/providers/Radius.Core/roleDefinitions/custom-%d", teamA, n)
 		policy.CustomRoles = append(policy.CustomRoles, customRole(id, "Radius.Core/applications/read"))
 	}
-	for n := range 9998 {
+	for n := range assignments - len(policy.Assignments) {
 		a := testAssignment(fmt.Sprintf("reader-%d", n), builtInID("reader"), teamA,
 			testPrincipal(api.PrincipalTypeUser, "kubernetes:cluster-a", fmt.Sprintf("user-%d", n)))
 		a.Properties.CreatedBy = to.Ptr("trusted-startup")
@@ -597,40 +599,75 @@ func fullCapacityPolicy() Policy {
 	return policy
 }
 
+func manifestPageCount(t *testing.T, store *PolicyStore) int {
+	t.Helper()
+	var version accessVersion
+	_, err := store.read(t.Context(), accessVersionID, &version)
+	require.NoError(t, err)
+	var root manifestRoot
+	_, err = store.read(t.Context(), version.Root, &root)
+	require.NoError(t, err)
+	return len(root.Pages)
+}
+
+// TestPolicyStoreManifestCapacity proves a policy at the default record limits
+// fits the storage layout. It only writes the policy: decoding it under -race
+// takes minutes, and smaller tests cover the read path and limit checks.
 func TestPolicyStoreManifestCapacity(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
-		t.Skip("full 10000 assignment and 1000 role capacity exercise")
+		t.Skip("full 10000 assignment and 1000 role layout; omit -short to run")
 	}
-	db := inmemory.NewClient()
-	store := newTestPolicyStore(t, db, false)
-	policy := fullCapacityPolicy()
+	store := newTestPolicyStore(t, inmemory.NewClient(), false)
+	policy := capacityPolicy(defaultPolicyLimits.customRoles, defaultPolicyLimits.assignments)
+	require.NoError(t, defaultPolicyLimits.check(policy))
 	initializer, err := NewPolicyInitializer(store, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
 	require.NoError(t, err)
 	require.NoError(t, initializer.Initialize(t.Context(), policy))
 	var version accessVersion
 	obj, err := store.read(t.Context(), accessVersionID, &version)
 	require.NoError(t, err)
-	raw, err := json.Marshal(obj.Data)
+	anchor, err := json.Marshal(obj.Data)
 	require.NoError(t, err)
-	require.Less(t, len(raw), 1024)
-	var root manifestRoot
-	_, err = store.read(t.Context(), version.Root, &root)
-	require.NoError(t, err)
-	require.Len(t, root.Pages, 86)
-	snapshot, err := store.LoadPolicy(t.Context(), -1)
-	require.NoError(t, err)
-	copy, err := snapshot.Policy()
-	require.NoError(t, err)
-	require.Len(t, copy.Assignments, 10000)
-	require.Len(t, copy.CustomRoles, 1000)
-	_, err = store.Mutate(t.Context(), policyActor(), readerMutation())
+	require.Less(t, len(anchor), 1024)
+	pages := manifestPageCount(t, store)
+	require.Equal(t, 86, pages)
+	require.Equal(t, 174, refreshGets(pages))
+	require.Equal(t, 870*time.Millisecond, refreshDuration(refreshGets(pages)))
+	t.Logf("pages=%d anchorBytes=%d refreshGets=%d", pages, len(anchor), refreshGets(pages))
+}
+
+func TestPolicyStoreRecordLimits(t *testing.T) {
+	t.Parallel()
+	limits := policyLimits{assignments: 3, customRoles: 1}
+	newStore := func(db database.Client) (*PolicyStore, *PolicyInitializer) {
+		store := newTestPolicyStore(t, db, false)
+		store.limits = limits
+		initializer, err := NewPolicyInitializer(store, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
+		require.NoError(t, err)
+		return store, initializer
+	}
+	for _, over := range []Policy{capacityPolicy(2, 3), capacityPolicy(1, 4)} {
+		_, initializer := newStore(inmemory.NewClient())
+		require.ErrorContains(t, initializer.Initialize(t.Context(), over), "PolicyCapacityExceeded")
+	}
+	db := inmemory.NewClient()
+	store, initializer := newStore(db)
+	require.NoError(t, initializer.Initialize(t.Context(), capacityPolicy(1, 3)))
+	_, err := store.Mutate(t.Context(), policyActor(), readerMutation())
 	require.ErrorContains(t, err, "PolicyCapacityExceeded")
 	roleID := teamA + "/providers/Radius.Core/roleDefinitions/over-capacity"
 	_, err = store.Mutate(t.Context(), policyActor(), PolicyMutation{
 		Target: roleID, Role: customRole(roleID, "Radius.Core/applications/read").Properties,
 	})
 	require.ErrorContains(t, err, "PolicyCapacityExceeded")
-	t.Logf("assignments=%d roles=%d pages=%d anchorBytes=%d", len(copy.Assignments), len(copy.CustomRoles), len(root.Pages), len(raw))
+	snapshot, err := store.LoadPolicy(t.Context(), -1)
+	require.NoError(t, err)
+	require.Equal(t, int64(0), snapshot.Generation(), "rejected mutations cannot claim a generation")
+	// Stored policy is revalidated on read.
+	store.limits = policyLimits{assignments: 2, customRoles: 1}
+	_, err = store.LoadPolicy(t.Context(), -1)
+	require.ErrorContains(t, err, "PolicyCapacityExceeded")
 }
 
 func TestPolicyStorePayloadByteBound(t *testing.T) {
