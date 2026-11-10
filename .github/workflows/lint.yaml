@@ -128,6 +128,12 @@ jobs:
             if: needs.changes.outputs.only_changed != 'true'
             run: make lint-go
 
+          # Unit tests run on Linux only, so vet for Windows to catch code and
+          # tests that do not compile there.
+          - name: Go vet for Windows
+            if: needs.changes.outputs.only_changed != 'true'
+            run: make lint-go-windows
+
           - name: Helm lint and unit tests
             if: needs.changes.outputs.only_changed != 'true'
             run: |

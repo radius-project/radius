@@ -1,3 +1,5 @@
+//go:build !windows
+
 /*
 Copyright 2023.
 
@@ -27,16 +29,9 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-// config holds a reference to the rest config for the test environment.
-var config *rest.Config
-
-// scheme holds a reference to the scheme for the test environment.
-var scheme *runtime.Scheme
 
 // TestMain will be called before running any tests in the package.
 //
@@ -87,11 +82,4 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(exitCode) //nolint:forbidigo // this is OK inside the TestMain function.
-}
-
-func SkipWithoutEnvironment(t *testing.T) {
-	if config == nil {
-		t.Skip("Skipping test because envtest could not be started. Running `make test` will run tests with the correct setting.")
-		return
-	}
 }
