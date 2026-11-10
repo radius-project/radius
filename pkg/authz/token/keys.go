@@ -43,6 +43,10 @@ const (
 	// ServiceAccount signing keys.
 	apiServerJWKSPath = "/openid/v1/jwks"
 
+	// jwkSetMediaType is the media type of a JSON Web Key Set (RFC 7517). The Kubernetes API server answers
+	// 406 Not Acceptable to a key set request that accepts only application/json.
+	jwkSetMediaType = "application/jwk-set+json"
+
 	// maxResponseBytes bounds discovery and key set responses.
 	maxResponseBytes = 1 << 20
 
@@ -102,7 +106,7 @@ func (s *OIDCKeySource) Fetch(ctx context.Context) (KeySet, error) {
 	}
 
 	var doc discoveryDocument
-	if err := s.getJSON(ctx, base.JoinPath(discoveryPath).String(), &doc); err != nil {
+	if err := s.getJSON(ctx, base.JoinPath(discoveryPath).String(), "application/json", &doc); err != nil {
 		return KeySet{}, fmt.Errorf("failed to read OIDC discovery document: %w", err)
 	}
 	if doc.Issuer == "" {
@@ -115,7 +119,7 @@ func (s *OIDCKeySource) Fetch(ctx context.Context) (KeySet, error) {
 	}
 
 	var set jsonWebKeySet
-	if err := s.getJSON(ctx, jwksURL, &set); err != nil {
+	if err := s.getJSON(ctx, jwksURL, jwkSetMediaType+", application/json", &set); err != nil {
 		return KeySet{}, fmt.Errorf("failed to read signing keys: %w", err)
 	}
 	keys, err := set.publicKeys()
@@ -139,12 +143,12 @@ func (s *OIDCKeySource) jwksURL(base *url.URL, jwksURI string) (string, error) {
 	return base.JoinPath(apiServerJWKSPath).String(), nil
 }
 
-func (s *OIDCKeySource) getJSON(ctx context.Context, target string, out any) error {
+func (s *OIDCKeySource) getJSON(ctx context.Context, target string, accept string, out any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", accept)
 
 	client := http.Client{}
 	if s.Client != nil {
