@@ -318,7 +318,7 @@ func (i *Impl) cluster() contourClusterReader {
 	return i.contourCluster
 }
 
-// logInfo logs a message of the Contour checks for the user.
+// logInfo logs a message for the user.
 func (i *Impl) logInfo(format string, v ...any) {
 	if i.logger == nil {
 		output.LogInfo(format, v...)

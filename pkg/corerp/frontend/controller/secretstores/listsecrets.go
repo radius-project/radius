@@ -64,7 +64,12 @@ func (l *ListSecrets) Run(ctx context.Context, w http.ResponseWriter, req *http.
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	ksecret, err := getSecretFromOutputResources(resource.Properties.Status.OutputResources, l.Options())
+	ns, name := secretRefFromOutputResources(resource.Properties.Status.OutputResources)
+	if err := admitSecretReference(ctx, l.Options().Authorization, ResourceTypeName+"/listSecrets/action", ns, name); err != nil {
+		return nil, err
+	}
+
+	ksecret, err := getSecretFromOutputResources(ctx, resource.Properties.Status.OutputResources, l.Options())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret from output resource: %w", err)
 	}
