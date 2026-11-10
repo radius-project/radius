@@ -82,8 +82,56 @@ func Test_Validate(t *testing.T) {
 			Input:         []string{"extra-arg"},
 			ExpectedValid: false,
 		},
+		{Name: "CA files", Input: []string{"--ca-cert=cert.pem", "--ca-key=key.pem"}, ExpectedValid: true},
+		{Name: "CA Secret", Input: []string{"--ca-secret=operator-ca"}, ExpectedValid: true},
+		{Name: "partial CA flags", Input: []string{"--ca-cert=cert.pem"}, ExpectedValid: false},
+		{Name: "conflicting CA flags", Input: []string{"--ca-secret=operator-ca", "--cert-issuer=issuer"}, ExpectedValid: false},
+		{Name: "empty CA Secret", Input: []string{"--ca-secret="}, ExpectedValid: false},
+		{Name: "issuer kind required", Input: []string{"--cert-issuer=issuer"}, ExpectedValid: false},
+		{Name: "external issuer", Input: []string{"--cert-issuer=Issuer/issuer", "--ca-bundle=public.pem"}, ExpectedValid: true},
+		{Name: "bundle without issuer", Input: []string{"--ca-bundle=public.pem"}, ExpectedValid: false},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
+func Test_Run_CertificateFlags(t *testing.T) {
+	t.Parallel()
+	for _, preflightOnly := range []bool{false, true} {
+		for _, issuer := range []bool{false, true} {
+			t.Run(fmt.Sprintf("preflightOnly=%t,issuer=%t", preflightOnly, issuer), func(t *testing.T) {
+				t.Parallel()
+				cmd, r := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+				runner := r.(*Runner)
+				args := []string{"--ca-secret=operator-ca", "--version=0.47.0"}
+				if issuer {
+					args = []string{"--cert-issuer=Issuer/external-ca", "--ca-bundle=public.pem", "--version=0.47.0"}
+				}
+				if preflightOnly {
+					args = append(args, "--preflight-only")
+					runner.runChecks = func(context.Context, []preflight.PreflightCheck) error { return nil }
+				} else {
+					args = append(args, "--skip-preflight")
+				}
+				require.NoError(t, cmd.ParseFlags(args))
+				require.NoError(t, runner.Validate(cmd, nil))
+				mock := helm.NewMockInterface(gomock.NewController(t))
+				runner.Helm = mock
+				stored := map[string]any{"global": map[string]any{"rbac": map[string]any{"certificates": map[string]any{"mode": "caSecret"}}}}
+				mock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0", RadiusValues: stored}, nil)
+				check := func(_ context.Context, options helm.ClusterOptions, _ string) error {
+					require.Equal(t, runner.Certificates, options.Certificates)
+					require.Equal(t, stored, options.RadiusReleaseValues)
+					return nil
+				}
+				if preflightOnly {
+					mock.EXPECT().CheckRadiusCertificates(gomock.Any(), gomock.Any(), "").DoAndReturn(check)
+				} else {
+					mock.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "").DoAndReturn(check)
+				}
+				require.NoError(t, runner.Run(t.Context()))
+			})
+		}
+	}
 }
 
 func TestNewCommand(t *testing.T) {
@@ -370,6 +418,9 @@ func Test_Run_PreflightContourCheck(t *testing.T) {
 					return true, nil
 				}).Times(1)
 			var upgraded *helm.ClusterOptions
+			if preflightOnly {
+				mockHelm.EXPECT().CheckRadiusCertificates(gomock.Any(), gomock.Any(), "my-context").Return(nil).Times(1)
+			}
 			if !preflightOnly {
 				mockHelm.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "my-context").
 					DoAndReturn(func(_ context.Context, options helm.ClusterOptions, _ string) error {
