@@ -306,10 +306,12 @@ func Test_NewAwaitController_RequiresCloudControl(t *testing.T) {
 func Test_Register(t *testing.T) {
 	registry := worker.NewControllerRegistry()
 	require.NoError(t, Register(registry, ucp_aws.Clients{CloudControl: awsfake.NewCloudControl()}, ctrl.Options{DatabaseClient: inmemory.NewClient()}))
-	for _, method := range []v1.OperationMethod{v1.OperationPut, v1.OperationDelete} {
-		c, err := registry.Get(v1.OperationType{Type: records.OperationType, Method: method})
-		require.NoError(t, err)
-		require.IsType(t, &AwaitController{}, c)
+	for _, operationType := range []string{records.OperationType, records.NativeOperationType} {
+		for _, method := range []v1.OperationMethod{v1.OperationPut, v1.OperationDelete} {
+			c, err := registry.Get(v1.OperationType{Type: operationType, Method: method})
+			require.NoError(t, err)
+			require.IsType(t, &AwaitController{}, c)
+		}
 	}
 }
 

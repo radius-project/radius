@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	nativehandlers "github.com/radius-project/radius/pkg/ucp/aws/native/handlers"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -79,6 +80,12 @@ func InitializeClients(ctx context.Context, options *ucp.Options) error {
 	}
 	if options.AWSClients.Kafka == nil {
 		options.AWSClients.Kafka = kafka.NewFromConfig(awsConfig)
+	}
+	if options.AWSClients.Native == nil {
+		options.AWSClients.Native, err = nativehandlers.NewRegistry(awsConfig)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

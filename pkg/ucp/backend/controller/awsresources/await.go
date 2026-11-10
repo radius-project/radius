@@ -67,10 +67,12 @@ func NewAwaitController(opts ctrl.Options, clients ucp_aws.Clients, method v1.Op
 // Register registers an AwaitController for PUT and DELETE under the AWS resource operation type.
 func Register(registry *worker.ControllerRegistry, clients ucp_aws.Clients, opts ctrl.Options) error {
 	var err error
-	for _, method := range []v1.OperationMethod{v1.OperationPut, v1.OperationDelete} {
-		err = errors.Join(err, registry.Register(records.OperationType, method, func(opts ctrl.Options) (ctrl.Controller, error) {
-			return NewAwaitController(opts, clients, method)
-		}, opts))
+	for _, operationType := range []string{records.OperationType, records.NativeOperationType} {
+		for _, method := range []v1.OperationMethod{v1.OperationPut, v1.OperationDelete} {
+			err = errors.Join(err, registry.Register(operationType, method, func(opts ctrl.Options) (ctrl.Controller, error) {
+				return NewAwaitController(opts, clients, method)
+			}, opts))
+		}
 	}
 	return err
 }
@@ -123,6 +125,12 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 		logger.Error(err, "Failed to save the record of a running AWS operation", "alias", id.Name())
 	}
 	stop := heartbeat(ctx, store, id, heartbeatInterval)
+	if rec.Properties.Handler == records.HandlerNative {
+		logger.Info("Waiting for the native AWS handler", "alias", id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier, "operation", op)
+		progress, err := c.waitNative(ctx, id, rec.Properties.AWSIdentifier, op)
+		stop()
+		return finishNative(ctx, store, id, request, op, progress, err)
+	}
 	logger.Info("Waiting for AWS Cloud Control", "alias", id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier, "operation", op)
 	status, err := ucp_aws.WaitForRequest(ctx, c.clients.CloudControl, id.FindScope(resources_aws.ScopeRegions), requestToken)
 	stop()
@@ -194,23 +202,18 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 
 // noRecord finishes an operation whose record is gone. A finished delete and a failed create remove the record, so
 // UCP stopped, or failed to save the operation's result, after it removed the record. The operation ID is the Cloud
-// Control request token, so the result is read from Cloud Control again.
+// Control request token, so the result is read from Cloud Control again. Cloud Control has no request for a native
+// operation, so UCP never asks it about one.
 func (c *AwaitController) noRecord(ctx context.Context, id resources.ID, request *ctrl.Request) (ctrl.Result, error) {
 	ucplog.FromContextOrDiscard(ctx).Info("Reading the result of an AWS operation whose record is gone", "alias", id.Name(), "requestToken", request.OperationID.String())
+	if isNative(request) {
+		return c.unknownRequest(id, request, "UCP has no record of the AWS resource %q. Deploy again."), nil
+	}
 	_, err := ucp_aws.WaitForRequest(ctx, c.clients.CloudControl, id.FindScope(resources_aws.ScopeRegions), request.OperationID.String())
 
 	var notFound *cctypes.RequestTokenNotFoundException
 	if errors.As(err, &notFound) {
-		// Cloud Control no longer knows the request. With no record, a delete is done, and a create or update has
-		// nothing to finish.
-		if c.method == v1.OperationDelete {
-			return ctrl.Result{}, nil
-		}
-		return ctrl.NewFailedResult(v1.ErrorDetails{
-			Code:    v1.CodeInternal,
-			Message: fmt.Sprintf("UCP has no record of the AWS resource %q, and AWS Cloud Control no longer has the request. Deploy again.", id.Name()),
-			Target:  request.ResourceID,
-		}), nil
+		return c.unknownRequest(id, request, "UCP has no record of the AWS resource %q, and AWS Cloud Control no longer has the request. Deploy again."), nil
 	}
 
 	var failed *ucp_aws.RequestStatus
@@ -225,8 +228,31 @@ func (c *AwaitController) noRecord(ctx context.Context, id resources.ID, request
 	return ctrl.Result{}, nil
 }
 
-// failureOf returns the error details of a Cloud Control request that failed.
-func failureOf(failed *ucp_aws.RequestStatus, request *ctrl.Request) v1.ErrorDetails {
+// unknownRequest returns the result of an operation whose record is gone and whose request UCP can't read: a delete
+// is done, and a create or update fails with message, which names the alias.
+func (c *AwaitController) unknownRequest(id resources.ID, request *ctrl.Request, message string) ctrl.Result {
+	if c.method == v1.OperationDelete {
+		return ctrl.Result{}
+	}
+	return ctrl.NewFailedResult(v1.ErrorDetails{
+		Code:    v1.CodeInternal,
+		Message: fmt.Sprintf(message, id.Name()),
+		Target:  request.ResourceID,
+	})
+}
+
+// isNative reports whether a native handler serves the operation. The frontend queues those operations under
+// records.NativeOperationType, so this holds after the record is gone, whichever handler the region now uses.
+func isNative(request *ctrl.Request) bool {
+	operationType, ok := v1.ParseOperationType(request.OperationType)
+	return ok && operationType.Type == records.NativeOperationType
+}
+
+// failureOf returns the error details of an operation that failed.
+func failureOf(failed interface {
+	error
+	IsClientError() bool
+}, request *ctrl.Request) v1.ErrorDetails {
 	code := v1.CodeInternal
 	if failed.IsClientError() {
 		code = v1.CodeInvalid

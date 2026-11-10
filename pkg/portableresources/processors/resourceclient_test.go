@@ -714,6 +714,7 @@ func Test_GetAWSPropertiesByIdentifier(t *testing.T) {
 			body := map[string]any{}
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			require.Equal(t, map[string]any{"name": path.Base(AWSResourceID), "properties": map[string]any{}}, body)
+			require.Equal(t, AWSResourceID, r.Header.Get(sdkclients.AWSResourceIDHeader))
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(status)
 			_, _ = w.Write([]byte(response))
