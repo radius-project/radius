@@ -31,7 +31,8 @@ const (
 	// Radius control-plane namespace.
 	RuleControlPlaneNamespace = "control-plane-namespace"
 
-	// RuleControlPlaneSecret rejects workloads that reference a Radius control-plane Secret.
+	// RuleControlPlaneSecret rejects workloads and Applications.Core/secretStores that reference
+	// a Radius control-plane Secret.
 	RuleControlPlaneSecret = "control-plane-secret"
 )
 
@@ -72,5 +73,32 @@ func (o Options) AdmitNamespace(ctx context.Context, action, target, namespace s
 		Action:  action,
 		Target:  target,
 		Rule:    RuleControlPlaneNamespace,
+	})
+}
+
+// AdmitSecretReference applies the control-plane admission rules to a Kubernetes Secret that a
+// request reads or writes directly, such as the Secret an Applications.Core/secretStores resource
+// references. A Secret outside the control-plane namespace is allowed. In the control-plane
+// namespace, one of the configured control-plane Secrets violates control-plane-secret and any
+// other Secret violates control-plane-namespace. It returns nil in off mode, logs a would-deny in
+// dryRun, and returns an AdmissionPolicyDenied *DeniedError in enforce. Only the Secret's
+// namespace and name are evaluated; its data is never read.
+func (o Options) AdmitSecretReference(ctx context.Context, action, target, namespace, name string) error {
+	mode := o.EffectiveMode()
+	if mode == ModeOff {
+		return nil
+	}
+
+	rule := RuleControlPlaneNamespace
+	if o.IsControlPlaneSecret(name) {
+		rule = RuleControlPlaneSecret
+	}
+
+	return Apply(ctx, mode, Decision{
+		Allowed: !o.IsControlPlaneNamespace(namespace),
+		Code:    v1.CodeAdmissionPolicyDenied,
+		Action:  action,
+		Target:  target,
+		Rule:    rule,
 	})
 }

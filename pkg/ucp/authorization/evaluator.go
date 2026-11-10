@@ -61,6 +61,10 @@ type Evaluator struct {
 // always come from this release, never from caller-supplied roleType or names.
 // Write safety, ownership and policy generations belong to the policy store.
 func NewEvaluator(catalog *Catalog, custom []api.RoleDefinitionResource, assignments []api.RoleAssignmentResource) (*Evaluator, error) {
+	return newEvaluator(catalog, custom, assignments, false)
+}
+
+func newEvaluator(catalog *Catalog, custom []api.RoleDefinitionResource, assignments []api.RoleAssignmentResource, persisted bool) (*Evaluator, error) {
 	if catalog == nil {
 		return nil, fmt.Errorf("catalog is required")
 	}
@@ -73,7 +77,7 @@ func NewEvaluator(catalog *Catalog, custom []api.RoleDefinitionResource, assignm
 		roles[compiled.id] = compiled
 	}
 	for _, definition := range custom {
-		compiled, err := compileRole(catalog, definition, false)
+		compiled, err := compilePolicyRole(catalog, definition, false, persisted)
 		if err != nil {
 			return nil, err
 		}
@@ -122,6 +126,10 @@ func NewEvaluator(catalog *Catalog, custom []api.RoleDefinitionResource, assignm
 }
 
 func compileRole(catalog *Catalog, definition api.RoleDefinitionResource, builtin bool) (role, error) {
+	return compilePolicyRole(catalog, definition, builtin, false)
+}
+
+func compilePolicyRole(catalog *Catalog, definition api.RoleDefinitionResource, builtin, persisted bool) (role, error) {
 	if definition.ID == nil || definition.Properties == nil {
 		return role{}, fmt.Errorf("role ID and properties are required")
 	}
@@ -156,12 +164,18 @@ func compileRole(catalog *Catalog, definition api.RoleDefinitionResource, builti
 		}
 		permissions = append(permissions, *permission)
 	}
-	if err := catalog.ValidatePermissions(permissions); err != nil {
-		return role{}, err
+	if !persisted {
+		if err := catalog.ValidatePermissions(permissions); err != nil {
+			return role{}, err
+		}
+	} else if len(permissions) == 0 {
+		return role{}, fmt.Errorf("permissions must not be empty")
 	}
 	result := role{id: id, name: name, builtin: builtin, permissions: map[string]bool{}}
 	for _, permission := range permissions {
-		result.permissions[strings.ToLower(permission)] = true
+		if _, known := catalog.permissions[strings.ToLower(permission)]; known {
+			result.permissions[strings.ToLower(permission)] = true
+		}
 	}
 	for _, allowed := range definition.Properties.AssignableScopes {
 		if allowed == nil {

@@ -35,8 +35,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/authz"
+	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/kubeutil"
 )
 
 var errCertManagerControllerMissing = errors.New("no cert-manager controller is running")
@@ -74,11 +74,7 @@ type certManagerInstallation struct {
 type certManagerClientsFunc func(kubeContext string) (kubernetes.Interface, apiextclient.Interface, error)
 
 func newCertManagerClients(kubeContext string) (kubernetes.Interface, apiextclient.Interface, error) {
-	config, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
-		ContextName: kubeContext,
-		QPS:         kubeutil.DefaultCLIQPS,
-		Burst:       kubeutil.DefaultCLIBurst,
-	})
+	config, err := clikubernetes.NewCLIClientConfig(kubeContext)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -217,6 +213,8 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		return nil
 	}
 
+	i.logInfo("Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed. Do not rely on it for production access control.")
+
 	helmAction := NewHelmAction(i.Helm)
 	chartOptions := options.CertManager.ChartOptions
 	ownedRelease, err := i.radOwnedCertManagerRelease(chartOptions, kubeContext)
@@ -353,11 +351,7 @@ var certManagerResources = []schema.GroupVersionResource{
 }
 
 func newCertManagerDynamicClient(kubeContext string) (dynamic.Interface, error) {
-	config, err := kubeutil.NewClientConfig(&kubeutil.ConfigOptions{
-		ContextName: kubeContext,
-		QPS:         kubeutil.DefaultCLIQPS,
-		Burst:       kubeutil.DefaultCLIBurst,
-	})
+	config, err := clikubernetes.NewCLIClientConfig(kubeContext)
 	if err != nil {
 		return nil, err
 	}
