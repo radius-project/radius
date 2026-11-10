@@ -142,6 +142,15 @@ global:
       # Applications.Core containers; only objects with the radapp.io/resource-type label match.
       # TODO(D7): default to the application-template identity once the broker issues it.
       applicationIdentities: []
+    certManager:
+      # Usernames that may request certificates from Issuers "radius-selfsigned-bootstrap" and
+      # "radius-apiserver-issuer": the cert-manager controller's ServiceAccount. Empty defaults to
+      # ["system:serviceaccount:cert-manager:cert-manager"]; rad install/upgrade sets it to the
+      # cert-manager it installs or reuses. The radius-certificate-issuance ValidatingAdmissionPolicy
+      # denies other requesters, and limits Radius service accounts to Issuer "radius-ca-issuer".
+      # The Kubernetes API server trusts the API server CA for ucp.<namespace>.svc, so only
+      # cert-manager may request from it. The policy needs Kubernetes 1.30 or later.
+      requesters: []
     # CAs and issuers for Radius server certificates. Rendered only when the authorization mode
     # is not off, and require cert-manager >=1.20.0.
     # rad install/upgrade manages this prerequisite; plain Helm users must install it first.
@@ -153,7 +162,9 @@ global:
     #   "radius-apiserver-issuer", in every mode. It signs only UCP's aggregated API certificate
     #   (Certificate "ucp-cert", Secret "ucp-apiserver-tls", SAN ucp.<namespace>.svc, 90 days),
     #   which cert-manager's default approver approves. cert-manager injects this CA into the
-    #   v1alpha3.api.ucp.dev APIService caBundle; no Radius component trusts it.
+    #   v1alpha3.api.ucp.dev APIService caBundle (cert-manager's cainjector must run with APIService
+    #   injection enabled and watch this namespace); no Radius component trusts it. rad
+    #   install/upgrade/rollback waits until the APIService has the CA bundle and is Available.
     # rad install/upgrade configures the cert-manager it installs (approveSignerNames) and fails
     # if an existing cert-manager would auto-approve radius-ca-issuer requests.
     certificates:
@@ -168,8 +179,10 @@ global:
     # signed by Issuer "radius-ca-issuer". Callers also mount 10-minute projected ServiceAccount
     # tokens at /var/run/radius/tokens/<receiver>/token, with the receiver's name as the audience.
     # Receivers verify each caller's token offline; callers verify the receiver's SPIFFE ID before
-    # sending a token. The controller mounts only ca.crt from Secret "radius-ca". Plain Helm users
-    # must install csi-driver-spiffe with the same trust domain and CSI driver name.
+    # sending a token. The Radius CA bundle comes from a separate volume: every component projects
+    # only key ca.crt of Secret "radius-ca" to /var/run/radius/ca (never tls.key), because
+    # csi-driver-spiffe writes no ca.crt without a source CA bundle. Plain Helm users must install
+    # csi-driver-spiffe with the same trust domain and CSI driver name.
     spiffe:
       # SPIFFE trust domain of the Radius server certificates.
       trustDomain: radius.internal

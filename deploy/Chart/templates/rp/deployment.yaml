@@ -222,6 +222,7 @@ spec:
         {{- end }}
         {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
         {{- with include "radius.authz.spiffe.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.caBundle.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.tokens.volumeMounts" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.rp.resources }}
         resources:{{ toYaml .Values.rp.resources | nindent 10 }}
@@ -231,6 +232,7 @@ spec:
           configMap:
             name: applications-rp-config
         {{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.caBundle.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token

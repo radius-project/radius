@@ -67,7 +67,7 @@ func csiDriverSPIFFEDaemonSet(namespace, release string) *appsv1.DaemonSet {
 // sarClient returns a fake client whose SubjectAccessReviews allow the signer names in allowed and records the
 // reviews in reviews.
 func sarClient(allowed map[string]bool, reviews *[]authorizationv1.SubjectAccessReviewSpec, objects ...runtime.Object) *k8sfake.Clientset {
-	client := k8sfake.NewClientset(objects...)
+	client := withValidatingAdmissionPolicyAPI(k8sfake.NewClientset(objects...))
 	client.PrependReactor("create", "subjectaccessreviews", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		review := action.(k8stesting.CreateAction).GetObject().(*authorizationv1.SubjectAccessReview).DeepCopy()
 		if reviews != nil {
@@ -75,6 +75,16 @@ func sarClient(allowed map[string]bool, reviews *[]authorizationv1.SubjectAccess
 		}
 		review.Status.Allowed = allowed[review.Spec.ResourceAttributes.Name]
 		return true, review, nil
+	})
+	return client
+}
+
+// withValidatingAdmissionPolicyAPI makes client's discovery serve ValidatingAdmissionPolicy, as Kubernetes 1.30 and
+// later do.
+func withValidatingAdmissionPolicyAPI(client *k8sfake.Clientset) *k8sfake.Clientset {
+	client.Resources = append(client.Resources, &metav1.APIResourceList{
+		GroupVersion: "admissionregistration.k8s.io/v1",
+		APIResources: []metav1.APIResource{{Name: "validatingadmissionpolicies", Kind: "ValidatingAdmissionPolicy"}},
 	})
 	return client
 }
@@ -373,8 +383,11 @@ func Test_ensureCSIDriverSPIFFE(t *testing.T) {
 		allowed    map[string]bool
 		expect     func(*testing.T, *MockHelmClient)
 		wantClient bool
+		noVAPAPI   bool
 		wantErr    string
 		wantLog    string
+		// wantRequesters are the cert-manager controller users returned for the Radius chart.
+		wantRequesters []string
 	}{
 		{name: "mode off makes no calls", expect: func(*testing.T, *MockHelmClient) {}},
 		{
@@ -439,6 +452,36 @@ func Test_ensureCSIDriverSPIFFE(t *testing.T) {
 			wantErr:    "Limit the default approver to other signers",
 		},
 		{
+			name:     "cluster without ValidatingAdmissionPolicy fails before installing",
+			setArgs:  dryRun,
+			noVAPAPI: true,
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				expectGet(nil)(m)
+			},
+			wantClient: true,
+			wantErr:    "Radius stopped before changing the cluster because the cluster does not serve ValidatingAdmissionPolicy (admissionregistration.k8s.io/v1).",
+		},
+		{
+			name:    "returns each cert-manager controller's user",
+			setArgs: dryRun,
+			objects: []runtime.Object{
+				approver,
+				certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "cert-manager"),
+				certManagerControllerWithServiceAccount(certManagerController("other", CertManagerChartDefaultVersion, ""), "controller"),
+			},
+			allowed: map[string]bool{
+				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+				issuerSignerName(RadiusSystemNamespace, RadiusAPIServerIssuerName): true,
+			},
+			expect:     expectInstall(wantValues),
+			wantClient: true,
+			wantRequesters: []string{
+				"system:serviceaccount:cert-manager:default",
+				"system:serviceaccount:other:controller",
+				"system:serviceaccount:security:cert-manager",
+			},
+		},
+		{
 			name:    "approver limited to the Radius bootstrap and API server issuers installs quietly",
 			setArgs: dryRun,
 			objects: []runtime.Object{approver},
@@ -446,25 +489,28 @@ func Test_ensureCSIDriverSPIFFE(t *testing.T) {
 				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
 				issuerSignerName(RadiusSystemNamespace, RadiusAPIServerIssuerName): true,
 			},
-			expect:     expectInstall(wantValues),
-			wantClient: true,
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
 		},
 		{
-			name:       "approver that cannot approve the API server issuer is a warning",
-			setArgs:    dryRun,
-			objects:    []runtime.Object{approver},
-			allowed:    map[string]bool{issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true},
-			expect:     expectInstall(wantValues),
-			wantClient: true,
-			wantLog:    "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-apiserver-issuer. The Radius CAs and UCP's API server certificate are issued only if another approver approves them.",
+			name:           "approver that cannot approve the API server issuer is a warning",
+			setArgs:        dryRun,
+			objects:        []runtime.Object{approver},
+			allowed:        map[string]bool{issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true},
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantLog:        "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-apiserver-issuer. The Radius CAs and UCP's API server certificate are issued only if another approver approves them.",
+			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
 		},
 		{
-			name:    "disabled approver is a warning",
-			setArgs: dryRun,
-			objects:    []runtime.Object{disabledApprover},
-			expect:     expectInstall(wantValues),
-			wantClient: true,
-			wantLog:    "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap, issuers.cert-manager.io/radius-system.radius-apiserver-issuer. The Radius CAs and UCP's API server certificate are issued only if another approver approves them.",
+			name:           "disabled approver is a warning",
+			setArgs:        dryRun,
+			objects:        []runtime.Object{disabledApprover},
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantLog:        "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap, issuers.cert-manager.io/radius-system.radius-apiserver-issuer. The Radius CAs and UCP's API server certificate are issued only if another approver approves them.",
+			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
 		},
 		{
 			name:       "unchanged deployed release is reused",
@@ -508,19 +554,24 @@ func Test_ensureCSIDriverSPIFFE(t *testing.T) {
 				newCSIDriverSPIFFEClient: func(kubeContext string) (kubernetes.Interface, error) {
 					require.Equal(t, "test-context", kubeContext)
 					clientCalls++
-					return sarClient(tt.allowed, nil, tt.objects...), nil
+					client := sarClient(tt.allowed, nil, tt.objects...)
+					if tt.noVAPAPI {
+						client.Resources = nil
+					}
+					return client, nil
 				},
 				logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 			}
 
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
-			err := impl.ensureCSIDriverSPIFFE(t.Context(), options, "test-context", tt.stored, tt.upgrade)
+			requesters, err := impl.ensureCSIDriverSPIFFE(t.Context(), options, "test-context", tt.stored, tt.upgrade)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
 			}
+			require.Equal(t, tt.wantRequesters, requesters)
 			if tt.wantClient {
 				require.Equal(t, 1, clientCalls)
 			} else {
@@ -545,8 +596,13 @@ func Test_ensureCSIDriverSPIFFE_ClientError(t *testing.T) {
 	}
 	options := NewDefaultClusterOptions()
 	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-	err := impl.ensureCSIDriverSPIFFE(t.Context(), options, "test-context", nil, false)
+	_, err := impl.ensureCSIDriverSPIFFE(t.Context(), options, "test-context", nil, false)
 	require.EqualError(t, err, "failed to create Kubernetes clients: no kubeconfig")
+}
+
+func certManagerControllerWithServiceAccount(controller *appsv1.Deployment, serviceAccount string) *appsv1.Deployment {
+	controller.Spec.Template.Spec.ServiceAccountName = serviceAccount
+	return controller
 }
 
 func Test_uninstallCSIDriverSPIFFE(t *testing.T) {

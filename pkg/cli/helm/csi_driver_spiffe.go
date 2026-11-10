@@ -29,6 +29,7 @@ import (
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -113,6 +114,11 @@ func issuerSignerName(namespace, name string) string {
 // buildCSIDriverSPIFFEValues configures csi-driver-spiffe to request certificates from the Radius CA issuer and
 // limits its approver to that issuer. The approver only processes requests that carry the csi-driver-spiffe
 // identity annotation, so it neither approves nor denies other requests to the issuer.
+//
+// app.driver.sourceCABundle is deliberately unset. The driver then writes no ca.crt into the CSI volume, and the
+// Radius chart mounts ca.crt from the radius-ca Secret into every component instead. The driver reads the source
+// bundle at startup and fails when it is missing, and rad installs the driver before the Radius chart creates
+// radius-ca, so a source bundle would stop the driver from starting.
 func buildCSIDriverSPIFFEValues(radiusNamespace string, settings spiffeSettings) map[string]any {
 	return map[string]any{
 		"app": map[string]any{
@@ -152,17 +158,21 @@ func (i *Impl) getReleaseOwnership(options ChartOptions, kubeContext string) (*r
 // installed when upgrade is true, when the release is not deployed, or when its values no longer match the Radius
 // values. It fails when another csi-driver-spiffe runs on the cluster, because only one can register on each node.
 // With authorization off it returns without contacting the cluster.
-func (i *Impl) ensureCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, upgrade bool) error {
+//
+// It returns the users the cert-manager controllers run as, which the Radius chart's certificate issuance policy
+// allows to request certificates from the Radius bootstrap and API server issuers. It returns none with
+// authorization off or when it finds no cert-manager controller.
+func (i *Impl) ensureCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, upgrade bool) ([]string, error) {
 	currentValues, err := parseUserValuesFromCLI(&options.Radius)
 	if err != nil {
-		return fmt.Errorf("failed to parse Radius values: %w", err)
+		return nil, fmt.Errorf("failed to parse Radius values: %w", err)
 	}
 	mode, err := resolveAuthzMode(storedValues, currentValues)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if mode == authz.ModeOff {
-		return nil
+		return nil, nil
 	}
 
 	chartOptions := options.CSIDriverSPIFFE.ChartOptions
@@ -170,10 +180,10 @@ func (i *Impl) ensureCSIDriverSPIFFE(ctx context.Context, options ClusterOptions
 
 	rel, owned, err := i.getReleaseOwnership(chartOptions, kubeContext)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if rel != nil && !owned {
-		return clierrors.Message("Radius stopped before changing the cluster because Helm release %q in namespace %q was not installed by rad. Radius installs and manages its own csi-driver-spiffe. Remove that release, for example with %s, and then run the command again.",
+		return nil, clierrors.Message("Radius stopped before changing the cluster because Helm release %q in namespace %q was not installed by rad. Radius installs and manages its own csi-driver-spiffe. Remove that release, for example with %s, and then run the command again.",
 			chartOptions.ReleaseName, chartOptions.Namespace, helmCommand(kubeContext, chartOptions.Namespace, "uninstall "+chartOptions.ReleaseName))
 	}
 
@@ -186,20 +196,27 @@ func (i *Impl) ensureCSIDriverSPIFFE(ctx context.Context, options ClusterOptions
 	}
 	kubeClient, err := newClient(kubeContext)
 	if err != nil {
-		return fmt.Errorf("failed to create Kubernetes clients: %w", err)
+		return nil, fmt.Errorf("failed to create Kubernetes clients: %w", err)
 	}
 
 	if err := checkForeignCSIDriverSPIFFE(ctx, kubeClient, chartOptions, kubeContext); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Only Radius's csi-driver-spiffe approver may approve requests for the Radius CA issuer. A cert-manager default
 	// approver that can approve them would sign any SPIFFE ID, so rad stops before changing the cluster.
 	var conflict *defaultApproverConflictError
 	if err := checkCertManagerDefaultApprover(ctx, kubeClient, options.Radius.Namespace, kubeContext); errors.As(err, &conflict) {
-		return clierrors.Message("Radius stopped before changing the cluster because %s", conflict.Error())
+		return nil, clierrors.Message("Radius stopped before changing the cluster because %s", conflict.Error())
 	} else if err != nil {
-		return err
+		return nil, err
+	}
+	if err := checkValidatingAdmissionPolicyServed(kubeClient); err != nil {
+		return nil, err
+	}
+	requesters, err := certManagerControllerUsers(ctx, kubeClient)
+	if err != nil {
+		return nil, err
 	}
 	if missing, err := missingApprovableRadiusSigners(ctx, kubeClient, options.Radius.Namespace); err != nil {
 		i.logInfo("Warning: %v", err)
@@ -213,28 +230,28 @@ func (i *Impl) ensureCSIDriverSPIFFE(ctx context.Context, options ClusterOptions
 		deployed := rel.Info != nil && rel.Info.Status == releasecommon.StatusDeployed
 		if !upgrade && deployed && reflect.DeepEqual(rel.Config, values) {
 			output.LogInfo("Using csi-driver-spiffe installed by rad in namespace %s", chartOptions.Namespace)
-			return nil
+			return requesters, nil
 		}
 		output.LogInfo("Upgrading csi-driver-spiffe...")
 		helmChart, helmConf, err := loadChart(ctx, helmAction, chartOptions, kubeContext)
 		if err != nil {
-			return fmt.Errorf("failed to prepare csi-driver-spiffe Helm chart, err: %w", err)
+			return nil, fmt.Errorf("failed to prepare csi-driver-spiffe Helm chart, err: %w", err)
 		}
 		if _, err := i.Helm.RunHelmUpgrade(helmConf, helmChart, values, chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, false, chartOptions.Timeout); err != nil {
-			return fmt.Errorf("failed to upgrade csi-driver-spiffe, err: %w", err)
+			return nil, fmt.Errorf("failed to upgrade csi-driver-spiffe, err: %w", err)
 		}
-		return nil
+		return requesters, nil
 	}
 
 	output.LogInfo("Installing csi-driver-spiffe %s...", chartOptions.ChartVersion)
 	helmChart, helmConf, err := loadChart(ctx, helmAction, chartOptions, kubeContext)
 	if err != nil {
-		return fmt.Errorf("failed to prepare csi-driver-spiffe Helm chart, err: %w", err)
+		return nil, fmt.Errorf("failed to prepare csi-driver-spiffe Helm chart, err: %w", err)
 	}
 	if _, err := i.Helm.RunHelmInstall(helmConf, helmChart, values, chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, chartOptions.Timeout, radManagedByLabels()); err != nil {
-		return fmt.Errorf("failed to install csi-driver-spiffe, err: %w", err)
+		return nil, fmt.Errorf("failed to install csi-driver-spiffe, err: %w", err)
 	}
-	return nil
+	return requesters, nil
 }
 
 // checkForeignCSIDriverSPIFFE fails when a csi-driver-spiffe that is not Radius's release runs on the cluster.
@@ -343,6 +360,40 @@ func missingApprovableRadiusSigners(ctx context.Context, kubeClient kubernetes.I
 		}
 	}
 	return missing, nil
+}
+
+// certManagerControllerUsers returns the sorted users the cert-manager controller deployments run as. The controller
+// creates the CertificateRequests of Certificate resources, such as the Radius CAs and UCP's API server certificate.
+func certManagerControllerUsers(ctx context.Context, kubeClient kubernetes.Interface) ([]string, error) {
+	deployments, err := kubeClient.AppsV1().Deployments(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: certManagerControllerSelector})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list cert-manager deployments: %w", err)
+	}
+	var users []string
+	for idx := range deployments.Items {
+		users = append(users, defaultApproverUser(&deployments.Items[idx]))
+	}
+	slices.Sort(users)
+	return slices.Compact(users), nil
+}
+
+// checkValidatingAdmissionPolicyServed fails when the cluster does not serve ValidatingAdmissionPolicy. The Radius
+// chart enforces authorization with these policies, including the policy that reserves the Radius bootstrap and API
+// server issuers for cert-manager, and renders none without the API.
+func checkValidatingAdmissionPolicyServed(kubeClient kubernetes.Interface) error {
+	const groupVersion = "admissionregistration.k8s.io/v1"
+	resources, err := kubeClient.Discovery().ServerResourcesForGroupVersion(groupVersion)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("could not check for the ValidatingAdmissionPolicy API: %w", err)
+	}
+	if resources != nil {
+		for _, resource := range resources.APIResources {
+			if resource.Name == "validatingadmissionpolicies" {
+				return nil
+			}
+		}
+	}
+	return clierrors.Message("Radius stopped before changing the cluster because the cluster does not serve ValidatingAdmissionPolicy (%s). Radius authorization uses these policies to restrict Radius workloads and certificate issuance, and needs Kubernetes 1.30 or later. Upgrade the cluster, or install Radius with authorization off.", groupVersion)
 }
 
 // defaultApproverUser returns the user the cert-manager controller deployment runs as.

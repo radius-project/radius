@@ -21,12 +21,14 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -159,19 +161,26 @@ func detectCertManager(ctx context.Context, kubeClient kubernetes.Interface, api
 	return certManagerInstallation{Installed: true, Version: version.String(), Namespace: controller.Namespace}, nil
 }
 
-func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, namespace string) error {
-	for _, component := range []string{"controller", "webhook"} {
-		name := "cert-manager"
-		if component == "webhook" {
-			name = "webhook"
-		}
-		selector := "app.kubernetes.io/name=" + name + ",app.kubernetes.io/component=" + component
+// certManagerComponents maps each cert-manager component Radius needs to its app.kubernetes.io/name label. The
+// cainjector writes the CA of UCP's API server certificate into the Radius APIService, so the Kubernetes API
+// server can reach UCP.
+var certManagerComponents = []struct{ component, name string }{
+	{component: "controller", name: "cert-manager"},
+	{component: "webhook", name: "webhook"},
+	{component: "cainjector", name: "cainjector"},
+}
+
+// checkCertManagerReady fails unless the cert-manager controller, webhook and cainjector in namespace are rolled out
+// and available, and the cainjector can inject the CA of a Certificate in radiusNamespace into an APIService.
+func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, namespace, radiusNamespace string) error {
+	for _, c := range certManagerComponents {
+		selector := "app.kubernetes.io/name=" + c.name + ",app.kubernetes.io/component=" + c.component
 		deployments, err := client.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
 		if err != nil {
-			return fmt.Errorf("failed to check cert-manager %s readiness in namespace %q: %w", component, namespace, err)
+			return fmt.Errorf("failed to check cert-manager %s readiness in namespace %q: %w", c.component, namespace, err)
 		}
 		if len(deployments.Items) != 1 {
-			return fmt.Errorf("cert-manager %s in namespace %q is not ready: expected one Deployment, found %d. Repair cert-manager and retry", component, namespace, len(deployments.Items))
+			return fmt.Errorf("cert-manager %s in namespace %q is not ready: expected one Deployment, found %d. Repair cert-manager and retry", c.component, namespace, len(deployments.Items))
 		}
 		deployment := deployments.Items[0]
 		replicas := int32(1)
@@ -180,10 +189,43 @@ func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, nam
 		}
 		if replicas == 0 || deployment.Status.ObservedGeneration < deployment.Generation ||
 			deployment.Status.UpdatedReplicas < replicas || deployment.Status.AvailableReplicas < replicas {
-			return fmt.Errorf("cert-manager %s Deployment %s/%s is not ready. Wait for its rollout or repair cert-manager and retry", component, namespace, deployment.Name)
+			return fmt.Errorf("cert-manager %s Deployment %s/%s is not ready. Wait for its rollout or repair cert-manager and retry", c.component, namespace, deployment.Name)
+		}
+		if c.component == "cainjector" {
+			if problem := caInjectorProblem(&deployment, radiusNamespace); problem != "" {
+				return fmt.Errorf("cert-manager cainjector Deployment %s/%s %s. Radius needs it to inject the CA of UCP's API server certificate into the Radius APIService. Remove that setting from cert-manager and retry", namespace, deployment.Name, problem)
+			}
 		}
 	}
 	return nil
+}
+
+// caInjectorProblem describes a cainjector argument that stops it from injecting the CA of a Certificate in
+// radiusNamespace into an APIService, or returns "" when there is none.
+func caInjectorProblem(deployment *appsv1.Deployment, radiusNamespace string) string {
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		for idx, arg := range container.Args {
+			if !strings.HasPrefix(arg, "-") {
+				continue
+			}
+			name, value, hasValue := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+			switch name {
+			case "enable-apiservices-injectable", "enable-certificates-data-source":
+				// Boolean flags take their value only after "=".
+				if enabled, err := strconv.ParseBool(value); hasValue && err == nil && !enabled {
+					return "sets " + arg
+				}
+			case "namespace":
+				if !hasValue && idx+1 < len(container.Args) {
+					value = container.Args[idx+1]
+				}
+				if value != "" && value != radiusNamespace {
+					return "is limited to namespace " + strconv.Quote(value) + " by --namespace"
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // imageTag returns the tag of an image reference, ignoring any digest.
@@ -260,7 +302,7 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 				}
 				healthy = err == nil && existing.Installed
 				if healthy {
-					if err := checkCertManagerReady(ctx, kubeClient, existing.Namespace); err != nil {
+					if err := checkCertManagerReady(ctx, kubeClient, existing.Namespace, options.Radius.Namespace); err != nil {
 						return err
 					}
 				}
@@ -301,7 +343,7 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		if semver.MustParse(existing.Version).LessThan(minimum) {
 			return fmt.Errorf("cert-manager v%s in namespace %q is older than the minimum supported version v%s. Upgrade cert-manager to v%s or later and retry; rad does not upgrade a cert-manager it did not install", existing.Version, existing.Namespace, minimum, minimum)
 		}
-		if err := checkCertManagerReady(ctx, kubeClient, existing.Namespace); err != nil {
+		if err := checkCertManagerReady(ctx, kubeClient, existing.Namespace, options.Radius.Namespace); err != nil {
 			return err
 		}
 		output.LogInfo("Using existing cert-manager v%s in namespace %s", existing.Version, existing.Namespace)

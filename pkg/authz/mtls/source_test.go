@@ -219,6 +219,67 @@ func TestSource_ReloadKeepsChanging(t *testing.T) {
 	require.Same(t, before, after)
 }
 
+// TestNewSourceWithCA covers the csi-driver-spiffe volume contract: without a configured
+// source CA bundle the driver writes only tls.crt and tls.key, so the Radius CA bundle comes
+// from a separate directory.
+func TestNewSourceWithCA(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+
+	writeCSIVolume := func(t *testing.T, cert testCert) string {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, CertFile), cert.certPEM, 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, KeyFile), cert.keyPEM, 0o600))
+		return dir
+	}
+	writeCADir := func(t *testing.T, pem []byte) string {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, CAFile), pem, 0o600))
+		return dir
+	}
+
+	t.Run("CSI volume without ca.crt cannot be loaded alone", func(t *testing.T) {
+		t.Parallel()
+		_, err := NewSource(writeCSIVolume(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")})))
+		require.ErrorContains(t, err, "failed to read ca.crt")
+	})
+
+	t.Run("loads the certificate and the separate CA bundle", func(t *testing.T) {
+		t.Parallel()
+		certDir := writeCSIVolume(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")}))
+		src, err := NewSourceWithCA(certDir, writeCADir(t, ca.pem))
+		require.NoError(t, err)
+		m, err := src.load()
+		require.NoError(t, err)
+		require.NotNil(t, m.cert)
+	})
+
+	t.Run("certificate from another CA is rejected", func(t *testing.T) {
+		t.Parallel()
+		certDir := writeCSIVolume(t, newCA(t).issue(t, certOptions{uris: spiffeURIs("ucp")}))
+		_, err := NewSourceWithCA(certDir, writeCADir(t, ca.pem))
+		require.ErrorContains(t, err, "not issued by the CA bundle")
+	})
+
+	t.Run("reloads a renewed CA bundle with the same key", func(t *testing.T) {
+		t.Parallel()
+		leaf := ca.issue(t, certOptions{uris: spiffeURIs("ucp")})
+		certDir := writeCSIVolume(t, leaf)
+		caDir := writeCADir(t, ca.pem)
+		src, err := NewSourceWithCA(certDir, caDir)
+		require.NoError(t, err)
+
+		// cert-manager renews radius-ca with rotationPolicy Never, so the new CA certificate keeps the key.
+		renewed := ca.renew(t)
+		require.NoError(t, os.WriteFile(filepath.Join(caDir, CAFile), renewed.pem, 0o600))
+		changed, err := src.Reload()
+		require.NoError(t, err)
+		require.True(t, changed)
+		_, err = leaf.cert.Verify(x509.VerifyOptions{Roots: src.current.Load().pool, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}})
+		require.NoError(t, err, "certificates issued before the CA renewal must still verify")
+	})
+}
+
 func TestNewTrustSource(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)

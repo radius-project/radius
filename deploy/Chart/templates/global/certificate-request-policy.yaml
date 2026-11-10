@@ -1,0 +1,66 @@
+{{- /*
+Restricts who may request certificates in the release namespace. Radius components need create on
+certificaterequests because csi-driver-spiffe requests their server certificates as the mounting
+pod's ServiceAccount, and cert-manager's default approver approves every request for the bootstrap
+and API server issuers regardless of requester or SANs. Without this policy a component could get a
+ucp.<namespace>.svc certificate that the Kubernetes API server trusts for the UCP APIService.
+Denies in dryRun and enforce: legitimate requests never match a rule.
+*/ -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- if and (ne $mode "off") (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") }}
+{{- $name := "radius-certificate-issuance" }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: radius
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ .Release.Namespace }}
+    # The spec of a CertificateRequest is immutable, so checking CREATE is enough.
+    resourceRules:
+      - apiGroups: ["cert-manager.io"]
+        apiVersions: ["*"]
+        operations: ["CREATE"]
+        resources: ["certificaterequests"]
+  variables:
+    - name: requester
+      expression: "request.userInfo.username"
+    - name: certManager
+      expression: {{ printf "variables.requester in %s" (include "radius.authz.certManagerRequesters" .) | quote }}
+    - name: radiusServiceAccount
+      expression: {{ printf "variables.requester.startsWith('system:serviceaccount:%s:')" .Release.Namespace | quote }}
+    # cert-manager defaults an empty kind to Issuer and an empty group to cert-manager.io.
+    - name: namespacedIssuer
+      expression: >-
+        (!has(object.spec.issuerRef.kind) || object.spec.issuerRef.kind == '' || object.spec.issuerRef.kind == 'Issuer') &&
+        (!has(object.spec.issuerRef.group) || object.spec.issuerRef.group == '' || object.spec.issuerRef.group == 'cert-manager.io')
+    - name: reservedIssuer
+      expression: "variables.namespacedIssuer && object.spec.issuerRef.name in ['radius-selfsigned-bootstrap', 'radius-apiserver-issuer']"
+    - name: radiusCAIssuer
+      expression: "variables.namespacedIssuer && object.spec.issuerRef.name == 'radius-ca-issuer'"
+  validations:
+    - expression: "!variables.reservedIssuer || variables.certManager"
+      reason: Forbidden
+      messageExpression: {{ printf "'CertificateRequestDenied: reserved-issuer: only the cert-manager controller may request certificates from Issuer ' + object.spec.issuerRef.name + ' in namespace %s, not ' + variables.requester" .Release.Namespace | quote }}
+    - expression: "variables.certManager || !variables.radiusServiceAccount || variables.radiusCAIssuer"
+      reason: Forbidden
+      messageExpression: {{ printf "'CertificateRequestDenied: radius-ca-issuer-only: Radius service accounts may request certificates in namespace %s only from Issuer radius-ca-issuer, not ' + variables.requester" .Release.Namespace | quote }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/part-of: radius
+spec:
+  policyName: {{ $name }}
+  validationActions:
+    - Deny
+{{- end }}
