@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -37,7 +39,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/rest"
+	k8stesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -302,7 +307,15 @@ func Test_KubernetesOutputStaleVersion(t *testing.T) {
 			if discoveryFailure {
 				d.err = errors.New("discovery unavailable")
 			}
-			r := &DeploymentResourceReconciler{Client: c, Discovery: d}
+			outputClient := dynamicfake.NewSimpleDynamicClient(s)
+			outputClient.PrependReactor("delete", "widgets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+				obj := &unstructured.Unstructured{}
+				obj.SetGroupVersionKind(action.GetResource().GroupVersion().WithKind("Widget"))
+				obj.SetName(action.(k8stesting.DeleteAction).GetName())
+				obj.SetNamespace(action.GetNamespace())
+				return true, nil, c.Delete(t.Context(), obj)
+			})
+			r := &DeploymentResourceReconciler{Client: c, Discovery: d, KubernetesClient: outputClient}
 			id, err := resources.ParseResource("/planes/kubernetes/local/namespaces/test/providers/example.com/Widget/output")
 			require.NoError(t, err)
 			done, err := r.deleteKubernetesOutput(t.Context(), "test", id)
@@ -321,6 +334,42 @@ func Test_KubernetesOutputStaleVersion(t *testing.T) {
 			require.True(t, done)
 		})
 	}
+}
+
+func Test_KubernetesOutputRefreshedPlural(t *testing.T) {
+	t.Parallel()
+	var paths []string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		require.Equal(t, http.MethodDelete, req.Method)
+		paths = append(paths, req.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		if req.URL.Path == "/apis/example.com/v1/namespaces/test/gadgets/output" {
+			fmt.Fprint(w, `{"kind":"Status","apiVersion":"v1","status":"Success","code":200}`)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, `{"kind":"Status","apiVersion":"v1","status":"Failure","reason":"NotFound","code":404}`)
+	}))
+	defer ts.Close()
+	outputClient, err := dynamic.NewForConfig(&rest.Config{Host: ts.URL})
+	require.NoError(t, err)
+	gv := schema.GroupVersion{Group: "example.com", Version: "v1"}
+	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{gv})
+	mapper.AddSpecific(gv.WithKind("Widget"), gv.WithResource("widgets"), gv.WithResource("widget"), meta.RESTScopeNamespace)
+	c := fake.NewClientBuilder().WithRESTMapper(mapper).Build()
+	d := &partialOutputDiscovery{resources: []*metav1.APIResourceList{{
+		GroupVersion: gv.String(), APIResources: []metav1.APIResource{{Name: "gadgets", Kind: "Widget", Namespaced: true}},
+	}}}
+	r := &DeploymentResourceReconciler{Client: c, Discovery: d, KubernetesClient: outputClient}
+	id, err := resources.ParseResource("/planes/kubernetes/local/namespaces/test/providers/example.com/Widget/output")
+	require.NoError(t, err)
+	done, err := r.deleteKubernetesOutput(t.Context(), "test", id)
+	require.NoError(t, err)
+	require.False(t, done, "accepted DELETE must retain inventory until disappearance is confirmed")
+	require.Equal(t, []string{
+		"/apis/example.com/v1/namespaces/test/widgets/output",
+		"/apis/example.com/v1/namespaces/test/gadgets/output",
+	}, paths)
 }
 
 func Test_DeploymentResource_OutputIdentityStatusSubresource(t *testing.T) {

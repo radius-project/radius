@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,11 +46,12 @@ import (
 // DeploymentResourceReconciler maintains passive inventory projections.
 // Only the owning DeploymentTemplate coordinator may dispatch output operations.
 type DeploymentResourceReconciler struct {
-	APIReader     client.Reader
-	Discovery     discovery.DiscoveryInterface
-	Client        client.Client
-	Scheme        *runtime.Scheme
-	EventRecorder record.EventRecorder
+	APIReader        client.Reader
+	Discovery        discovery.DiscoveryInterface
+	KubernetesClient dynamic.Interface
+	Client           client.Client
+	Scheme           *runtime.Scheme
+	EventRecorder    record.EventRecorder
 }
 
 type outputDeleteUncertainError struct{ error }
@@ -134,7 +136,19 @@ func (r *DeploymentResourceReconciler) deleteKubernetesOutput(ctx context.Contex
 		resource.SetGroupVersionKind(mapping.GroupVersionKind)
 		resource.SetNamespace(namespace)
 		resource.SetName(name)
-		err = r.Client.Delete(ctx, resource, client.PropagationPolicy(metav1.DeletePropagationBackground))
+		if r.KubernetesClient != nil {
+			endpoint := r.KubernetesClient.Resource(mapping.Resource)
+			var target dynamic.ResourceInterface = endpoint
+			if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
+				target = endpoint.Namespace(namespace)
+			}
+			propagation := metav1.DeletePropagationBackground
+			err = target.Delete(ctx, name, metav1.DeleteOptions{PropagationPolicy: &propagation})
+		} else if refreshed {
+			return false, fmt.Errorf("fresh Kubernetes output mapping requires a resource-addressed client")
+		} else {
+			err = r.Client.Delete(ctx, resource, client.PropagationPolicy(metav1.DeletePropagationBackground))
+		}
 		if apierrors.IsNotFound(err) {
 			if !refreshed && r.Discovery != nil {
 				mapping, err = r.freshKubernetesMapping(group, kind)

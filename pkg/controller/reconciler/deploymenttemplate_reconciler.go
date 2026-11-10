@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
@@ -39,6 +40,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -64,6 +66,7 @@ const (
 // DeploymentResource objects are inventory projections, not independent workers.
 type DeploymentTemplateReconciler struct {
 	Discovery                 discovery.DiscoveryInterface
+	KubernetesClient          dynamic.Interface
 	APIReader                 client.Reader
 	Client                    client.Client
 	Scheme                    *k8sruntime.Scheme
@@ -342,7 +345,8 @@ func (r *DeploymentTemplateReconciler) dispatchPut(ctx context.Context, owner *r
 	if err := r.saveCoordinator(ctx, owner); err != nil {
 		return ctrl.Result{}, err
 	}
-	poller, err := r.ResourceDeploymentsClient.CreateOrUpdate(ctx, sdkclients.Deployment{
+	mutationContext := policy.WithRetryOptions(ctx, policy.RetryOptions{MaxRetries: -1})
+	poller, err := r.ResourceDeploymentsClient.CreateOrUpdate(mutationContext, sdkclients.Deployment{
 		Properties: &sdkclients.DeploymentProperties{
 			Template: template, Parameters: convertToARMJSONParameters(owner.Spec.Parameters),
 			ProviderConfig: config, Mode: armdeployments.DeploymentModeIncremental,
@@ -506,13 +510,14 @@ func (r *DeploymentTemplateReconciler) dispatchDelete(ctx context.Context, owner
 		return ctrl.Result{}, err
 	}
 	if id.FindScope(resources_kubernetes.PlaneTypeKubernetes) != "" {
-		deleter := &DeploymentResourceReconciler{Client: r.Client, Discovery: r.Discovery}
+		deleter := &DeploymentResourceReconciler{Client: r.Client, Discovery: r.Discovery, KubernetesClient: r.KubernetesClient}
 		done, deleteErr := deleter.deleteKubernetesOutput(ctx, owner.Namespace, id)
 		return r.finishDispatch(ctx, owner, func(current *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 			return r.recordKubernetesDelete(ctx, current, done, deleteErr)
 		})
 	}
-	poller, err := r.ResourceDeploymentsClient.Delete(ctx, outputID, "2023-10-01-preview")
+	mutationContext := policy.WithRetryOptions(ctx, policy.RetryOptions{MaxRetries: -1})
+	poller, err := r.ResourceDeploymentsClient.Delete(mutationContext, outputID, "2023-10-01-preview")
 	return r.finishDispatch(ctx, owner, func(current *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
 		if err != nil {
 			if clients.Is404Error(err) {
@@ -626,6 +631,13 @@ func (r *DeploymentTemplateReconciler) completeOutputDelete(ctx context.Context,
 				state.Phase, state.ResourceID = coordinatorIdle, ""
 				owner.Status.StatusHash = ""
 				return r.saveAndRequeue(ctx, owner)
+			}
+			if operation != nil {
+				children[i].Status.Operation = nil
+				children[i].Status.Phrase = radappiov1alpha3.DeploymentResourcePhraseDeleted
+				if err := r.Client.Status().Update(ctx, &children[i]); err != nil {
+					return ctrl.Result{}, err
+				}
 			}
 			if err := r.retireTracker(ctx, &children[i]); err != nil {
 				return ctrl.Result{}, err

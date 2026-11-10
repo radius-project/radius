@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -111,9 +112,14 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Kubernetes discovery client: %w", err)
 	}
+	outputClient, err := dynamic.NewForConfig(s.Options.K8sConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create Kubernetes output client: %w", err)
+	}
 	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&reconciler.DeploymentTemplateReconciler{
 		Discovery:                 discoveryClient,
+		KubernetesClient:          outputClient,
 		APIReader:                 mgr.GetAPIReader(),
 		Client:                    mgr.GetClient(),
 		Scheme:                    mgr.GetScheme(),

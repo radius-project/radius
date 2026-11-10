@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -170,6 +171,13 @@ func Test_CoordinatorDispatchRequiresPersistedSchema(t *testing.T) {
 }
 
 func Test_CoordinatorAdoptsLegacyDelete(t *testing.T) {
+	for _, held := range []bool{false, true} {
+		t.Run(fmt.Sprint(held), func(t *testing.T) { testCoordinatorAdoptsLegacyDelete(t, held) })
+	}
+}
+
+func testCoordinatorAdoptsLegacyDelete(t *testing.T, held bool) {
+	t.Helper()
 	r, owner, sdk, mock := coordinatorFixture(t)
 	id := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/output"
 	poller, err := mock.Delete(t.Context(), id, "version")
@@ -183,6 +191,9 @@ func Test_CoordinatorAdoptsLegacyDelete(t *testing.T) {
 	child := &radappiov1alpha3.DeploymentResource{
 		ObjectMeta: metav1.ObjectMeta{Name: "legacy", Namespace: owner.Namespace, Finalizers: []string{DeploymentResourceFinalizer}, OwnerReferences: []metav1.OwnerReference{{APIVersion: radappiov1alpha3.GroupVersion.String(), Kind: deploymentTemplateKind, Name: owner.Name, UID: owner.UID, Controller: new(true)}}},
 		Spec:       radappiov1alpha3.DeploymentResourceSpec{Id: id},
+	}
+	if held {
+		child.Finalizers = append(child.Finalizers, "example.com/hold")
 	}
 	require.NoError(t, r.Client.Create(t.Context(), child))
 	child.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindDelete}
@@ -198,9 +209,59 @@ func Test_CoordinatorAdoptsLegacyDelete(t *testing.T) {
 	mock.CompleteOperation(token, nil)
 	coordinatorStep(t, r, owner)
 	require.Empty(t, owner.Status.Coordinator.Outputs)
-	require.True(t, apierrors.IsNotFound(r.Client.Get(t.Context(), client.ObjectKeyFromObject(child), child)))
+	if held {
+		require.NoError(t, r.Client.Get(t.Context(), client.ObjectKeyFromObject(child), child))
+		require.Nil(t, child.Status.Operation)
+		require.NotContains(t, child.Finalizers, DeploymentResourceFinalizer)
+	} else {
+		require.True(t, apierrors.IsNotFound(r.Client.Get(t.Context(), client.ObjectKeyFromObject(child), child)))
+	}
 	coordinatorStep(t, r, owner)
 	require.EqualValues(t, 1, sdk.putCalls.Load())
+	require.Equal(t, coordinatorPutRunning, owner.Status.Coordinator.Phase)
+}
+
+type coordinatorHTTPTransport func(*http.Request) (*http.Response, error)
+
+func (transport coordinatorHTTPTransport) Do(req *http.Request) (*http.Response, error) {
+	return transport(req)
+}
+
+func Test_CoordinatorSDKDoesNotRetryUncertainMutations(t *testing.T) {
+	for _, method := range []string{http.MethodPut, http.MethodDelete} {
+		t.Run(method, func(t *testing.T) {
+			r, owner, sdk, _ := coordinatorFixture(t)
+			var attempts atomic.Int64
+			options := &arm.ClientOptions{}
+			options.DisableRPRegistration = true
+			options.Transport = coordinatorHTTPTransport(func(req *http.Request) (*http.Response, error) {
+				require.Equal(t, method, req.Method)
+				if attempts.Add(1) == 1 {
+					return nil, errors.New("response lost after server accepted mutation")
+				}
+				return &http.Response{
+					StatusCode: http.StatusConflict, Header: http.Header{"Content-Type": {"application/json"}},
+					Body: io.NopCloser(strings.NewReader(`{"error":{"code":"Conflict","message":"original operation is running"}}`)), Request: req,
+				}, nil
+			})
+			realClient, err := sdkclients.NewResourceDeploymentsClient(&sdkclients.Options{BaseURI: "https://radius.invalid", Cred: &aztoken.AnonymousCredential{}, ARMClientOptions: options})
+			require.NoError(t, err)
+			sdk.ResourceDeploymentsClient = realClient
+			if method == http.MethodPut {
+				owner.Status.StatusHash = ""
+			} else {
+				owner.Status.Coordinator.Outputs = []radappiov1alpha3.DeploymentOutputStatus{{ID: "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/output", State: outputPendingDelete}}
+			}
+			require.NoError(t, r.Client.Status().Update(t.Context(), owner))
+			coordinatorStep(t, r, owner)
+			require.EqualValues(t, 1, attempts.Load(), "the SDK must not mask a lost response with a later 409")
+			require.Equal(t, coordinatorBlocked, owner.Status.Coordinator.Phase)
+			owner.Spec.Template = `{"resources":[]}`
+			require.NoError(t, r.Client.Update(t.Context(), owner))
+			coordinatorStep(t, r, owner)
+			require.EqualValues(t, 1, attempts.Load(), "an uncertain mutation cannot permit replacement work")
+		})
+	}
 }
 
 func Test_CoordinatorInventorySurvivesTrackerDisappearance(t *testing.T) {
