@@ -24,8 +24,6 @@ import (
 	"io"
 	"net/http"
 	"slices"
-	"strconv"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,8 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/portforward"
-	"k8s.io/client-go/transport/spdy"
 	"k8s.io/utils/ptr"
 )
 
@@ -277,62 +273,6 @@ func decodeExternalIdentityEvidence(data []byte, upstream bool) (externalIdentit
 	return evidence, nil
 }
 
-type identityForwardTransport struct {
-	context context.Context
-	base    http.RoundTripper
-}
-
-func (t identityForwardTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	return t.base.RoundTrip(request.WithContext(t.context))
-}
-
 func (o *externalIdentityObserver) portForward(ctx context.Context, target externalIdentityTarget) (string, func(), error) {
-	if o.config == nil {
-		return "", nil, errors.New("external identity observation requires Kubernetes transport")
-	}
-	config := rest.CopyConfig(o.config)
-	config.Timeout = 10 * time.Second
-	transport, upgrader, err := spdy.RoundTripperFor(config)
-	if err != nil {
-		return "", nil, errors.New("cannot initialize external identity pod port-forward")
-	}
-	client, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return "", nil, errors.New("cannot initialize external identity Kubernetes client")
-	}
-	ctx, cancel := context.WithCancel(ctx)
-	url := client.CoreV1().RESTClient().Post().Namespace(target.Namespace).Resource("pods").
-		Name(target.PodName).SubResource("portforward").URL()
-	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: identityForwardTransport{context: ctx, base: transport},
-		Timeout: config.Timeout}, http.MethodPost, url)
-	ready := make(chan struct{})
-	forwarder, err := portforward.NewOnAddresses(dialer, []string{"127.0.0.1"},
-		[]string{"0:" + strconv.Itoa(int(target.Port))}, ctx.Done(), ready, io.Discard, io.Discard)
-	if err != nil {
-		cancel()
-		return "", nil, errors.New("cannot prepare external identity pod port-forward")
-	}
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		// Readiness or completion below carries the result. Never expose upstream
-		// transport errors, which may contain response bodies.
-		_ = forwarder.ForwardPorts()
-	}()
-	stop := sync.OnceFunc(func() { cancel(); <-done })
-	select {
-	case <-ctx.Done():
-		stop()
-		return "", nil, ctx.Err()
-	case <-done:
-		stop()
-		return "", nil, errors.New("external identity pod port-forward failed; check pod port-forward permissions")
-	case <-ready:
-		ports, err := forwarder.GetPorts()
-		if err != nil || len(ports) != 1 || ports[0].Local == 0 {
-			stop()
-			return "", nil, errors.New("external identity pod port-forward has no ready port")
-		}
-		return "http://127.0.0.1:" + strconv.Itoa(int(ports[0].Local)), stop, nil
-	}
+	return openPodProofPortForward(ctx, o.config, target.TLSProofTarget)
 }

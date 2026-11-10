@@ -43,8 +43,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/httpstream"
-	streamspdy "k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	kubetesting "k8s.io/client-go/testing"
@@ -294,65 +292,71 @@ func TestExternalIdentityObserverUCP(t *testing.T) {
 func TestExternalIdentityPodPortForward(t *testing.T) {
 	t.Parallel()
 	target, _ := identityTargetFixture("ucp")
-	for _, scenario := range []string{"success", "denied", "canceled"} {
+	for _, scenario := range []string{"success", "denied", "canceled", "handshake canceled", "handshake deadline", "active canceled"} {
 		t.Run(scenario, func(t *testing.T) {
 			t.Parallel()
+			var received atomic.Bool
 			receiver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				received.Store(true)
 				require.Equal(t, "Bearer receiver-specific", r.Header.Get("Authorization"))
 				_, err := io.WriteString(w, "pod endpoint")
 				require.NoError(t, err)
 			}))
 			defer receiver.Close()
+			timeout := 5 * time.Second
+			if scenario == "handshake deadline" {
+				timeout = 300 * time.Millisecond
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), timeout)
+			defer cancel()
+			closed := make(chan struct{})
 			api := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				defer close(closed)
+				require.Equal(t, http.MethodPost, r.Method)
 				require.Equal(t, "/api/v1/namespaces/radius-system/pods/ucp-one/portforward", r.URL.Path)
 				require.Equal(t, "Bearer observer-api", r.Header.Get("Authorization"))
 				if scenario == "denied" {
 					w.WriteHeader(http.StatusForbidden)
 					return
 				}
-				_, err := httpstream.Handshake(r, w, []string{"portforward.k8s.io"})
-				require.NoError(t, err)
-				connection := streamspdy.NewResponseUpgrader().UpgradeResponse(w, r, func(stream httpstream.Stream, replied <-chan struct{}) error {
-					if stream.Headers().Get(corev1.StreamType) != corev1.StreamTypeData {
-						return nil
-					}
-					go func() {
-						<-replied
-						defer stream.Close()
-						socket, err := net.DialTimeout("tcp", receiver.Listener.Addr().String(), 5*time.Second)
-						if err != nil {
-							t.Error(err)
-							return
-						}
-						defer socket.Close()
-						done := make(chan struct{})
-						go func() {
-							defer close(done)
-							_, _ = io.Copy(socket, stream)
-							socket.Close()
-						}()
-						_, _ = io.Copy(stream, socket)
-						stream.Close()
-						<-done
-					}()
-					return nil
-				})
-				if connection != nil {
-					defer connection.Close()
-					<-connection.CloseChan()
+				if scenario == "handshake canceled" {
+					cancel()
+					<-r.Context().Done()
+					return
 				}
+				if scenario == "handshake deadline" {
+					<-r.Context().Done()
+					return
+				}
+				servePodProofForward(t, w, r, receiver.Listener.Addr().String(), target.Port)
 			}))
 			defer api.Close()
 			observer := externalIdentityObserver{config: &rest.Config{Host: api.URL, BearerToken: "observer-api",
 				TLSClientConfig: rest.TLSClientConfig{CAData: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: api.Certificate().Raw})}}}
-			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-			defer cancel()
 			if scenario == "canceled" {
 				cancel()
 			}
+			started := time.Now()
 			origin, stop, err := observer.portForward(ctx, target)
-			if scenario != "success" {
+			if scenario != "success" && scenario != "active canceled" {
 				require.Error(t, err)
+				require.Empty(t, origin)
+				require.Nil(t, stop)
+				require.False(t, received.Load())
+				if strings.Contains(scenario, "canceled") {
+					require.ErrorIs(t, err, context.Canceled)
+				}
+				if scenario == "handshake deadline" {
+					require.ErrorIs(t, err, context.DeadlineExceeded)
+				}
+				if strings.HasPrefix(scenario, "handshake ") {
+					require.Less(t, time.Since(started), 2*time.Second)
+					select {
+					case <-closed:
+					case <-time.After(time.Second):
+						t.Fatal("canceled API handshake handler did not exit")
+					}
+				}
 				return
 			}
 			require.NoError(t, err)
@@ -366,7 +370,21 @@ func TestExternalIdentityPodPortForward(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, response.Body.Close())
 			require.Equal(t, "pod endpoint", string(data))
+			if scenario == "active canceled" {
+				cancel()
+			}
 			stop()
+			stop()
+			select {
+			case <-closed:
+			case <-time.After(time.Second):
+				t.Fatal("port-forward did not close its API connection")
+			}
+			socket, err := net.DialTimeout("tcp", strings.TrimPrefix(origin, "http://"), time.Second)
+			if socket != nil {
+				require.NoError(t, socket.Close())
+			}
+			require.Error(t, err, "stop must close the local listener")
 		})
 	}
 }
