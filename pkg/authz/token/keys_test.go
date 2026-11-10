@@ -103,6 +103,12 @@ func newAPIServer(t *testing.T, jwksURI func(base string) string, jwks jsonWebKe
 	})
 	mux.HandleFunc(apiServerJWKSPath, func(w http.ResponseWriter, r *http.Request) {
 		jwksHits.Add(1)
+		// Like the Kubernetes API server, serve the key set only to clients that accept its media type.
+		if !strings.Contains(r.Header.Get("Accept"), jwkSetMediaType) {
+			w.WriteHeader(http.StatusNotAcceptable)
+			return
+		}
+		w.Header().Set("Content-Type", jwkSetMediaType)
 		_ = json.NewEncoder(w).Encode(jwks)
 	})
 	srv = httptest.NewTLSServer(mux)
