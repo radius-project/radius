@@ -174,7 +174,9 @@ func Test_Delete_ARM(t *testing.T) {
 				handleDeleteSuccess()(w, r)
 				return
 			}
-			handleNotFound(t)(w, r)
+			handleJSONResponse(t, map[string]any{
+				"error": map[string]string{"code": "ResourceNotFound", "message": "resource is absent"},
+			}, http.StatusNotFound)(w, r)
 		})
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: new("Microsoft.Compute"),
