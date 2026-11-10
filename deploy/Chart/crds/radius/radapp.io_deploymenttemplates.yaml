@@ -93,8 +93,8 @@ spec:
                       type: object
                     type: array
                   phase:
-                    description: Phase is Idle, PutDispatching, PutRunning, DeleteDispatching,
-                      DeleteRunning, RetryWaiting, or Blocked.
+                    description: Phase is Idle, PutDispatching, PutRunning, PutInventoryPending,
+                      DeleteDispatching, DeleteRunning, RetryWaiting, or Blocked.
                     type: string
                   resourceID:
                     description: ResourceID identifies the active delete target or

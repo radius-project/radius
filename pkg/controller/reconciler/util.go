@@ -21,12 +21,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.yaml.in/yaml/v3"
 )
@@ -71,9 +73,21 @@ func generateDeploymentResourceName(resourceId string) (string, error) {
 		return "", err
 	}
 
-	// Kubernetes names are case-sensitive; hash the exact, full output identity.
-	digest := sha256.Sum256([]byte(id.String()))
+	digest := sha256.Sum256([]byte(outputIdentity(id.String())))
 	return "output-" + hex.EncodeToString(digest[:])[:56], nil
+}
+
+// outputIdentity follows Radius storage identity without folding Kubernetes or AWS names.
+func outputIdentity(value string) string {
+	id, err := resources.ParseResource(value)
+	if err == nil && id.FindScope(resources_kubernetes.PlaneTypeKubernetes) == "" && id.FindScope("radius") != "" {
+		return strings.ToLower(id.String())
+	}
+	return value
+}
+
+func sameOutput(left, right string) bool {
+	return outputIdentity(left) == outputIdentity(right)
 }
 
 func convertToARMJSONParameters(parameters map[string]string) map[string]map[string]string {

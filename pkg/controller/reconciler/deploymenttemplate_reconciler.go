@@ -48,15 +48,16 @@ import (
 )
 
 const (
-	coordinatorIdle              = "Idle"
-	coordinatorPutDispatching    = "PutDispatching"
-	coordinatorPutRunning        = "PutRunning"
-	coordinatorDeleteDispatching = "DeleteDispatching"
-	coordinatorDeleteRunning     = "DeleteRunning"
-	coordinatorBlocked           = "Blocked"
-	coordinatorRetryWaiting      = "RetryWaiting"
-	outputCurrent                = "Current"
-	outputPendingDelete          = "PendingDelete"
+	coordinatorIdle                = "Idle"
+	coordinatorPutDispatching      = "PutDispatching"
+	coordinatorPutRunning          = "PutRunning"
+	coordinatorPutInventoryPending = "PutInventoryPending"
+	coordinatorDeleteDispatching   = "DeleteDispatching"
+	coordinatorDeleteRunning       = "DeleteRunning"
+	coordinatorBlocked             = "Blocked"
+	coordinatorRetryWaiting        = "RetryWaiting"
+	outputCurrent                  = "Current"
+	outputPendingDelete            = "PendingDelete"
 )
 
 // DeploymentTemplateReconciler owns all deployment and output deletion requests.
@@ -100,10 +101,10 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		if output.State != outputCurrent && output.State != outputPendingDelete {
 			return r.blockCoordinator(ctx, owner, fmt.Sprintf("unknown output state %q", output.State))
 		}
-		if seen[output.ID] {
+		if seen[outputIdentity(output.ID)] {
 			return r.blockCoordinator(ctx, owner, fmt.Sprintf("duplicate output identity %q", output.ID))
 		}
-		seen[output.ID] = true
+		seen[outputIdentity(output.ID)] = true
 		if _, err := resources.ParseResource(output.ID); err != nil {
 			return r.blockCoordinator(ctx, owner, fmt.Sprintf("invalid inventory identity: %v", err))
 		}
@@ -113,6 +114,8 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		return r.blockCoordinator(ctx, owner, "controller restarted before the dispatched request's outcome was recorded; resolve the outstanding operation before resuming the coordinator")
 	case coordinatorPutRunning:
 		return r.pollPut(ctx, owner)
+	case coordinatorPutInventoryPending:
+		return r.recoverFailedPutInventory(ctx, owner)
 	case coordinatorDeleteRunning:
 		if deadline := owner.Status.Coordinator.RetryAfter; deadline != nil {
 			if remaining := time.Until(deadline.Time); remaining > 0 {
@@ -137,6 +140,11 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	for _, child := range children {
+		if child.Status.ProvisionedResourceID != "" && !sameOutput(child.Status.ProvisionedResourceID, child.Spec.Id) {
+			return r.blockCoordinator(ctx, owner, fmt.Sprintf("tracker %q conflicts with its protected output identity", child.Name))
+		}
+	}
 	for i := range children {
 		child := &children[i]
 		if child.Status.Operation == nil {
@@ -159,7 +167,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 		owner.Status.Operation = child.Status.Operation.DeepCopy()
 		owner.Status.Coordinator.Phase = coordinatorDeleteRunning
 		owner.Status.Coordinator.ResourceID = child.Spec.Id
-		if slices.Contains(owner.Status.OutputResources, child.Spec.Id) {
+		if slices.ContainsFunc(owner.Status.OutputResources, func(id string) bool { return sameOutput(id, child.Spec.Id) }) {
 			owner.Status.StatusHash = ""
 		}
 		return r.saveAndRequeue(ctx, owner)
@@ -185,7 +193,7 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 			changed = true
 		}
 		for _, child := range children {
-			if child.Spec.Id == output.ID && child.DeletionTimestamp != nil &&
+			if sameOutput(child.Spec.Id, output.ID) && child.DeletionTimestamp != nil &&
 				controllerutil.ContainsFinalizer(&child, DeploymentResourceFinalizer) && output.State == outputCurrent {
 				output.State = outputPendingDelete
 				owner.Status.StatusHash = ""
@@ -353,10 +361,7 @@ func (r *DeploymentTemplateReconciler) dispatchPut(ctx context.Context, owner *r
 		if poller.Done() {
 			resp, err := poller.Result(ctx)
 			if err != nil {
-				if inventoryErr := r.retainPartialPutOutputs(current, resp); inventoryErr != nil {
-					return r.blockCoordinator(ctx, current, inventoryErr.Error())
-				}
-				return r.failCoordinator(ctx, current, err)
+				return r.failedPutInventoryPending(ctx, current, err)
 			}
 			return r.completePut(ctx, current, resp)
 		}
@@ -386,12 +391,34 @@ func (r *DeploymentTemplateReconciler) pollPut(ctx context.Context, owner *radap
 	}
 	resp, err := poller.Result(ctx)
 	if err != nil {
-		if inventoryErr := r.retainPartialPutOutputs(owner, resp); inventoryErr != nil {
-			return r.blockCoordinator(ctx, owner, inventoryErr.Error())
-		}
-		return r.failCoordinator(ctx, owner, err)
+		return r.failedPutInventoryPending(ctx, owner, err)
 	}
 	return r.completePut(ctx, owner, resp)
+}
+
+func (r *DeploymentTemplateReconciler) failedPutInventoryPending(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, err error) (ctrl.Result, error) {
+	// Azure pollers return a zero result on failure, not the deployment's partial inventory.
+	owner.Status.Coordinator.Phase = coordinatorPutInventoryPending
+	owner.Status.Coordinator.Message = err.Error()
+	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
+	return r.saveAndRequeue(ctx, owner)
+}
+
+func (r *DeploymentTemplateReconciler) recoverFailedPutInventory(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+	if owner.Status.Coordinator.ResourceID == "" {
+		return r.blockCoordinator(ctx, owner, "failed PUT has no durable deployment ID for inventory recovery")
+	}
+	resp, err := r.ResourceDeploymentsClient.Get(ctx, owner.Status.Coordinator.ResourceID, sdkclients.DeploymentsClientAPIVersion)
+	if err != nil {
+		return r.operationReadFailed(ctx, owner, fmt.Errorf("read failed deployment inventory: %w", err))
+	}
+	if resp.Properties == nil {
+		return r.operationReadFailed(ctx, owner, fmt.Errorf("failed deployment has no inventory properties"))
+	}
+	if err := r.retainPartialPutOutputs(owner, resp); err != nil {
+		return r.blockCoordinator(ctx, owner, err.Error())
+	}
+	return r.failCoordinator(ctx, owner, errors.New(owner.Status.Coordinator.Message))
 }
 
 func (r *DeploymentTemplateReconciler) retainPartialPutOutputs(owner *radappiov1alpha3.DeploymentTemplate, resp sdkclients.ClientCreateOrUpdateResponse) error {
@@ -416,7 +443,7 @@ func (r *DeploymentTemplateReconciler) completePut(ctx context.Context, owner *r
 	var outputs []string
 	if resp.Properties != nil {
 		for _, ref := range resp.Properties.OutputResources {
-			if ref != nil && ref.ID != nil && !slices.Contains(outputs, *ref.ID) {
+			if ref != nil && ref.ID != nil && !slices.ContainsFunc(outputs, func(id string) bool { return sameOutput(id, *ref.ID) }) {
 				if _, err := resources.ParseResource(*ref.ID); err != nil {
 					return r.blockCoordinator(ctx, owner, fmt.Sprintf("invalid completed output: %v", err))
 				}
@@ -591,7 +618,7 @@ func (r *DeploymentTemplateReconciler) completeOutputDelete(ctx context.Context,
 		return ctrl.Result{}, err
 	}
 	for i := range children {
-		if children[i].Spec.Id == target {
+		if sameOutput(children[i].Spec.Id, target) {
 			operation := children[i].Status.Operation
 			if operation != nil && (owner.Status.Operation == nil || operation.ResumeToken != owner.Status.Operation.ResumeToken) {
 				// Another pre-upgrade request for this output still needs to drain.
@@ -605,7 +632,7 @@ func (r *DeploymentTemplateReconciler) completeOutputDelete(ctx context.Context,
 			}
 		}
 	}
-	state.Outputs = slices.DeleteFunc(state.Outputs, func(output radappiov1alpha3.DeploymentOutputStatus) bool { return output.ID == target })
+	state.Outputs = slices.DeleteFunc(state.Outputs, func(output radappiov1alpha3.DeploymentOutputStatus) bool { return sameOutput(output.ID, target) })
 	state.Phase, state.ResourceID, state.Message = coordinatorIdle, "", ""
 	state.RetryAfter = nil
 	owner.Status.Operation = nil
@@ -633,16 +660,16 @@ func (r *DeploymentTemplateReconciler) clearLegacyToken(ctx context.Context, own
 func (r *DeploymentTemplateReconciler) ensureTracker(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, id string, children []radappiov1alpha3.DeploymentResource) error {
 	for i := range children {
 		child := &children[i]
-		if child.Spec.Id != id {
+		if !sameOutput(child.Spec.Id, id) {
 			continue
 		}
 		if child.DeletionTimestamp != nil {
 			return nil
 		}
-		if child.Status.ProvisionedResourceID != "" && child.Status.ProvisionedResourceID != id {
+		if child.Status.ProvisionedResourceID != "" && !sameOutput(child.Status.ProvisionedResourceID, id) {
 			return fmt.Errorf("tracker %q conflicts with recorded output identity", child.Name)
 		}
-		if child.Status.ProvisionedResourceID == id {
+		if sameOutput(child.Status.ProvisionedResourceID, id) {
 			return nil
 		}
 		child.Status.ProvisionedResourceID = id
@@ -703,7 +730,7 @@ func (r *DeploymentTemplateReconciler) trackerEligible(ctx context.Context, chil
 
 func findOutput(owner *radappiov1alpha3.DeploymentTemplate, id string) *radappiov1alpha3.DeploymentOutputStatus {
 	for i := range owner.Status.Coordinator.Outputs {
-		if owner.Status.Coordinator.Outputs[i].ID == id {
+		if sameOutput(owner.Status.Coordinator.Outputs[i].ID, id) {
 			return &owner.Status.Coordinator.Outputs[i]
 		}
 	}
@@ -712,7 +739,7 @@ func findOutput(owner *radappiov1alpha3.DeploymentTemplate, id string) *radappio
 
 func (r *DeploymentTemplateReconciler) hasLeafOutputs(owner *radappiov1alpha3.DeploymentTemplate, except string) bool {
 	for _, output := range owner.Status.Coordinator.Outputs {
-		if output.ID == except {
+		if sameOutput(output.ID, except) {
 			continue
 		}
 		dependency, err := isApplicationOrEnvironment(output.ID)

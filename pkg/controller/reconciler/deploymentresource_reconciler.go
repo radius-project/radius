@@ -213,6 +213,9 @@ func (r *DeploymentResourceReconciler) deleteIsEligible(ctx context.Context, chi
 	if owner.UID != ref.UID {
 		return false, nil
 	}
+	if child.Status.ProvisionedResourceID != "" && !sameOutput(child.Status.ProvisionedResourceID, child.Spec.Id) {
+		return false, nil
+	}
 	id, err := resources.ParseResource(child.Spec.Id)
 	if err != nil {
 		ucplog.FromContextOrDiscard(ctx).Info("Skipping tracker with invalid output identity", "resourceID", child.Spec.Id)

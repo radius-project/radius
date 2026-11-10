@@ -332,6 +332,8 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 	f.deployments.CompleteOperation(first, func(state *sdkclients.OperationState) {
 		state.Err = errors.New("known terminal PUT failure")
 	})
+	f.step()
+	require.Equal(t, coordinatorPutInventoryPending, f.owner().Status.Coordinator.Phase)
 	result := f.step()
 	require.Equal(t, DeleteRetryDelay, result.RequeueAfter)
 	owner := f.owner()

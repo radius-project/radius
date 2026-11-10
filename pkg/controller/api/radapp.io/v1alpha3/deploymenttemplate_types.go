@@ -60,7 +60,7 @@ type DeploymentTemplateStatus struct {
 
 // DeploymentCoordinatorStatus records durable deployment intent and output ownership.
 type DeploymentCoordinatorStatus struct {
-	// Phase is Idle, PutDispatching, PutRunning, DeleteDispatching, DeleteRunning, RetryWaiting, or Blocked.
+	// Phase is Idle, PutDispatching, PutRunning, PutInventoryPending, DeleteDispatching, DeleteRunning, RetryWaiting, or Blocked.
 	Phase string `json:"phase,omitempty"`
 
 	Outputs []DeploymentOutputStatus `json:"outputs,omitempty"`

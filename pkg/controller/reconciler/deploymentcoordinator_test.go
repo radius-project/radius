@@ -19,11 +19,17 @@ package reconciler
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/stretchr/testify/require"
@@ -303,12 +309,129 @@ func Test_CoordinatorRetainsPartialFailedPutInventory(t *testing.T) {
 		state.Err = errors.New("another output failed")
 	})
 	coordinatorStep(t, r, owner)
+	require.Equal(t, coordinatorPutInventoryPending, owner.Status.Coordinator.Phase)
+	coordinatorStep(t, r, owner)
 	require.Equal(t, coordinatorRetryWaiting, owner.Status.Coordinator.Phase)
 	require.NotNil(t, findOutput(owner, id))
 	require.Empty(t, owner.Status.StatusHash, "failed PUTs must not inherit the previous successful hash")
 	before := owner.ResourceVersion
 	coordinatorStep(t, r, owner)
 	require.Equal(t, before, owner.ResourceVersion, "retry waiting must not churn status")
+}
+
+func Test_CoordinatorRejectsEditedTrackerIdentity(t *testing.T) {
+	r, owner, sdk, _ := coordinatorFixture(t)
+	a := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/a"
+	b := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/b"
+	owner.Status.Coordinator.Outputs = []radappiov1alpha3.DeploymentOutputStatus{{ID: a, State: outputCurrent}, {ID: b, State: outputCurrent}}
+	require.NoError(t, r.Client.Status().Update(t.Context(), owner))
+	coordinatorStep(t, r, owner)
+	name, err := generateDeploymentResourceName(a)
+	require.NoError(t, err)
+	child := &radappiov1alpha3.DeploymentResource{}
+	require.NoError(t, r.Client.Get(t.Context(), client.ObjectKey{Namespace: owner.Namespace, Name: name}, child))
+	require.Equal(t, a, child.Status.ProvisionedResourceID)
+	child.Spec.Id = b
+	require.NoError(t, r.Client.Update(t.Context(), child))
+	require.NoError(t, r.Client.Delete(t.Context(), child))
+	coordinatorStep(t, r, owner)
+	require.Equal(t, coordinatorBlocked, owner.Status.Coordinator.Phase)
+	require.Equal(t, outputCurrent, findOutput(owner, b).State)
+	require.Zero(t, sdk.deleteCalls.Load())
+}
+
+func Test_CoordinatorCaseOnlyRadiusRedeployment(t *testing.T) {
+	r, owner, sdk, mock := coordinatorFixture(t)
+	id := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/Web"
+	owner.Status.Coordinator.Outputs = []radappiov1alpha3.DeploymentOutputStatus{{ID: id, State: outputCurrent}}
+	require.NoError(t, r.Client.Status().Update(t.Context(), owner))
+	coordinatorStep(t, r, owner)
+	owner.Spec.Template = `{"resources":[]}`
+	require.NoError(t, r.Client.Update(t.Context(), owner))
+	coordinatorStep(t, r, owner)
+	mock.CompleteOperation(owner.Status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{OutputResources: []*armdeployments.ResourceReference{{ID: new(strings.ToLower(id))}}}}
+	})
+	for range 3 {
+		coordinatorStep(t, r, owner)
+	}
+	require.Len(t, owner.Status.Coordinator.Outputs, 1)
+	require.Equal(t, outputCurrent, findOutput(owner, id).State)
+	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReady, owner.Status.Phrase)
+	require.Zero(t, sdk.deleteCalls.Load())
+	children, err := r.ownedTrackers(t.Context(), owner)
+	require.NoError(t, err)
+	require.Len(t, children, 1)
+	for _, pair := range [][2]string{
+		{id, strings.ToLower(id)},
+		{"/planes/kubernetes/local/namespaces/test/providers/example.io/Widget/Web", "/planes/kubernetes/local/namespaces/test/providers/example.io/Widget/web"},
+	} {
+		left, err := generateDeploymentResourceName(pair[0])
+		require.NoError(t, err)
+		right, err := generateDeploymentResourceName(pair[1])
+		require.NoError(t, err)
+		require.Equal(t, sameOutput(pair[0], pair[1]), left == right)
+	}
+}
+
+func Test_CoordinatorRealSDKFailedPutInventory(t *testing.T) {
+	r, owner, sdk, _ := coordinatorFixture(t)
+	id := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/partial"
+	var gets, puts atomic.Int64
+	var available atomic.Bool
+	var endpoint string
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case req.Method == http.MethodPut:
+			puts.Add(1)
+			w.Header().Set("Azure-AsyncOperation", endpoint+"/operations/1")
+			w.WriteHeader(http.StatusAccepted)
+			fmt.Fprint(w, `{"properties":{"provisioningState":"Running"}}`)
+		case req.URL.Path == "/operations/1":
+			fmt.Fprint(w, `{"status":"Failed","error":{"code":"DeploymentFailed","message":"another output failed"}}`)
+		case req.Method == http.MethodGet:
+			gets.Add(1)
+			if !available.Load() {
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprint(w, `{"error":{"code":"Forbidden","message":"inventory unavailable"}}`)
+				return
+			}
+			fmt.Fprintf(w, `{"properties":{"provisioningState":"Failed","outputResources":[{"id":%q}]}}`, id)
+		default:
+			t.Errorf("unexpected request %s %s", req.Method, req.URL)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer ts.Close()
+	endpoint = ts.URL
+	options := &arm.ClientOptions{}
+	options.Transport = ts.Client()
+	options.DisableRPRegistration = true
+	realClient, err := sdkclients.NewResourceDeploymentsClient(&sdkclients.Options{BaseURI: ts.URL, Cred: &aztoken.AnonymousCredential{}, ARMClientOptions: options})
+	require.NoError(t, err)
+	sdk.ResourceDeploymentsClient = realClient
+	owner.Status.StatusHash = ""
+	require.NoError(t, r.Client.Status().Update(t.Context(), owner))
+	coordinatorStep(t, r, owner)
+	require.Equal(t, coordinatorPutRunning, owner.Status.Coordinator.Phase)
+	token, deploymentID := owner.Status.Operation.ResumeToken, owner.Status.Coordinator.ResourceID
+	coordinatorStep(t, r, owner)
+	require.Equal(t, coordinatorPutInventoryPending, owner.Status.Coordinator.Phase)
+	coordinatorStep(t, r, owner)
+	require.Equal(t, token, owner.Status.Operation.ResumeToken)
+	require.Equal(t, deploymentID, owner.Status.Coordinator.ResourceID)
+	require.Equal(t, coordinatorPutInventoryPending, owner.Status.Coordinator.Phase)
+	require.NoError(t, r.Client.Delete(t.Context(), owner))
+	available.Store(true)
+	restarted := *r
+	coordinatorStep(t, &restarted, owner)
+	require.Equal(t, coordinatorRetryWaiting, owner.Status.Coordinator.Phase)
+	require.NotNil(t, findOutput(owner, id))
+	require.Nil(t, owner.Status.Operation)
+	require.EqualValues(t, 1, puts.Load())
+	require.EqualValues(t, 2, gets.Load())
+	require.Zero(t, sdk.deleteCalls.Load())
 }
 
 func Test_CoordinatorRetryRateWithManager(t *testing.T) {
