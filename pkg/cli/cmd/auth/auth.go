@@ -30,6 +30,7 @@ import (
 // NewCommand creates the read-only auth command group.
 func NewCommand(factory framework.Factory) *cobra.Command {
 	cmd := &cobra.Command{Use: "auth", Short: "Inspect Radius identity and access"}
+	cmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
 	for _, operation := range []string{"whoami", "status"} {
 		child, _ := newCommand(factory, operation)
 		cmd.AddCommand(child)
@@ -65,7 +66,6 @@ func newCommand(factory framework.Factory, operation string) (*cobra.Command, *r
 		cmd.Flags().StringVar(&r.issuer, "issuer", "", "Principal issuer (defaults to the current caller's verified issuer)")
 	}
 	commonflags.AddOutputFlag(cmd)
-	commonflags.AddWorkspaceFlag(cmd)
 	return cmd, r
 }
 

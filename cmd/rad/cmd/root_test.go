@@ -101,7 +101,7 @@ func TestAuthCommandsRegistered(t *testing.T) {
 			require.Equal(t, path[len(path)-1], command.Name())
 			require.NotNil(t, command.RunE)
 			require.NotNil(t, command.Flags().Lookup("output"))
-			require.NotNil(t, command.Flags().Lookup("workspace"))
+			require.NotNil(t, command.InheritedFlags().Lookup("workspace"))
 			if command.Name() == "check" {
 				for _, flag := range []string{"scope", "action", "target", "principal", "issuer"} {
 					require.NotNil(t, command.Flags().Lookup(flag))

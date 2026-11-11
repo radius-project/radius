@@ -53,7 +53,7 @@ func TestInspectionCommandsPreserveKubernetesForbidden(t *testing.T) {
 				section.Items[radcli.TestWorkspaceName] = workspace
 				cli.UpdateWorkspaceSection(config, section)
 				var buffer bytes.Buffer
-				cmd, _ := newCommand(&framework.Impl{
+				cmd, _ := newTestCommand(&framework.Impl{
 					ConfigHolder: &framework.ConfigHolder{Config: config},
 					Output:       &output.OutputWriter{Writer: &buffer},
 				}, test.operation)
