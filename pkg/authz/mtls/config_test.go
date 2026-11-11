@@ -154,6 +154,48 @@ func TestServerConfig_NoClientCertificate(t *testing.T) {
 	require.Empty(t, result.serverState.PeerCertificates)
 }
 
+// TestServerConfigFrom_PreservesClientAuth checks that a base config's client-certificate
+// settings are kept while the certificate comes from the source.
+func TestServerConfigFrom_PreservesClientAuth(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	proxyCA := newCA(t)
+	server := newTestSource(t, ca, "ucp")
+	proxyRoots := x509.NewCertPool()
+	proxyRoots.AddCert(proxyCA.cert)
+	stale := proxyCA.issue(t, certOptions{uris: spiffeURIs("stale")}).tlsCertificate(t)
+	base := &tls.Config{ClientAuth: tls.RequestClientCert, ClientCAs: proxyRoots, MinVersion: tls.VersionTLS10, Certificates: []tls.Certificate{stale}}
+
+	config := server.ServerConfigFrom(base)
+	require.Equal(t, tls.RequestClientCert, config.ClientAuth)
+	require.Equal(t, uint16(tls.VersionTLS12), config.MinVersion)
+	require.Empty(t, config.Certificates)
+	require.Equal(t, uint16(tls.VersionTLS10), base.MinVersion, "base must not be modified")
+	require.Len(t, base.Certificates, 1, "base must not be modified")
+	require.Nil(t, base.GetConfigForClient, "base must not be modified")
+
+	cfg := trustClient(t, ca.pem, "ucp")
+	var acceptable [][]byte
+	clientCert := proxyCA.issue(t, certOptions{uris: spiffeURIs("proxy")}).tlsCertificate(t)
+	cfg.GetClientCertificate = func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		acceptable = info.AcceptableCAs
+		return &clientCert, nil
+	}
+
+	result := handshake(t, config, cfg)
+	require.NoError(t, result.serverErr)
+	require.NoError(t, result.clientErr)
+	require.Equal(t, [][]byte{proxyCA.cert.RawSubject}, acceptable)
+	require.Equal(t, clientCert.Certificate[0], result.serverState.PeerCertificates[0].Raw)
+	require.Empty(t, result.serverState.VerifiedChains)
+}
+
+func TestServerConfigFrom_NilBase(t *testing.T) {
+	t.Parallel()
+	server := newTestSource(t, newCA(t), "ucp")
+	require.Equal(t, tls.NoClientCert, server.ServerConfigFrom(nil).ClientAuth)
+}
+
 func TestServerConfig_OwnCertificateExpired(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
