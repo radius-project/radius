@@ -216,6 +216,40 @@ func Test_NewRegistry_Scoped(t *testing.T) {
 	require.EqualError(t, err, "the native handler for the AWS type AWS::IAM::UserToGroupAddition must have both ReadScoped and DeleteScoped, or neither")
 }
 
+func Test_NewRegistry_Members(t *testing.T) {
+	catalog := schemas.Catalog{Native: map[string]string{"AWS::IAM::UserToGroupAddition": `{}`}}
+	h := nativefake.New("AWS::IAM::UserToGroupAddition", awsfake.NewCloudControl())
+	h.Opts.Members = &native.Members{Parent: "GroupName", List: "Users"}
+
+	_, err := native.NewRegistry(catalog, h.Scoped("Users"))
+	require.NoError(t, err)
+
+	_, err = native.NewRegistry(catalog, h)
+	require.EqualError(t, err, "the native handler for the AWS type AWS::IAM::UserToGroupAddition names members, so it must have ReadScoped, a parent, and a list")
+}
+
+func Test_Members(t *testing.T) {
+	users := &native.Members{Parent: "GroupName", List: "Users", IgnoreCase: true}
+	parent, members := users.Of("", map[string]any{"GroupName": "Admins", "Users": []any{"Ana", "bo", "ANA"}})
+	require.Equal(t, "admins", parent)
+	require.Equal(t, []string{"ana", "bo"}, members, "each member once, in lowercase")
+
+	parent, _ = users.Of("Ops|radius-0123456789ab", map[string]any{"Users": []any{"ana"}})
+	require.Equal(t, "ops", parent, "the identifier names the parent")
+
+	properties := map[string]any{"GroupName": "admins", "Users": []any{"Ana", "bo"}}
+	require.Equal(t, map[string]any{"GroupName": "admins", "Users": []any{"bo"}}, users.Without(properties, map[string]bool{"ana": true}))
+	require.Equal(t, []any{"Ana", "bo"}, properties["Users"], "Without doesn't change its argument")
+
+	certificates := &native.Members{Parent: "ListenerArn", List: "Certificates", Key: "CertificateArn"}
+	listed := map[string]any{"ListenerArn": "arn:l", "Certificates": []any{map[string]any{"CertificateArn": "arn:A"}, map[string]any{"CertificateArn": "arn:b"}}}
+	parent, members = certificates.Of("", listed)
+	require.Equal(t, "arn:l", parent)
+	require.Equal(t, []string{"arn:A", "arn:b"}, members, "ARNs keep their case")
+	require.Equal(t, []any{map[string]any{"CertificateArn": "arn:b"}}, certificates.Without(listed, map[string]bool{"arn:A": true})["Certificates"])
+	require.Equal(t, listed, certificates.Without(listed, map[string]bool{"arn:a": true}))
+}
+
 func Test_GenerateName(t *testing.T) {
 	name := native.GenerateName("token")
 	require.Regexp(t, `^radius-[0-9a-f]{12}$`, name)

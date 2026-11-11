@@ -340,6 +340,10 @@ type Options struct {
 	// is then always a change.
 	RecordedEquivalent func(path string, template any, aws any) bool
 
+	// Members, for a handler that implements ScopedReader and gives each alias its own identifier, names the members
+	// two aliases must not both hold (see Members).
+	Members *Members
+
 	// DisruptiveUpdate is true for a type whose update restarts or interrupts the resource, such as one that must be
 	// stopped to change, so an update UCP doesn't need costs more than a failed deploy. When Equivalent counts AWS's
 	// value as the template's, but UCP can't tell whether AWS added the extra values or an earlier deploy set them,

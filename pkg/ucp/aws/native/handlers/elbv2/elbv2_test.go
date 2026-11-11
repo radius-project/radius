@@ -70,6 +70,7 @@ func Test_Suite_ListenerCertificate(t *testing.T) {
 		IdentifierProperty: "Id",
 		Properties:         properties(listener, certA, certB),
 		Changed:            properties(listener, certB, certC),
+		SharedMember:       &nativetest.SharedMember{Overlapping: properties(listener, certB, certC), Disjoint: properties(listener, certC)},
 		CreateOnlyChange:   properties(listener2, certA, certB),
 		OtherForm:          map[string]any{"Certificates": certificates(certB, certA)},
 		MultiCall:          properties(listener, certB, certC, certD),

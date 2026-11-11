@@ -74,6 +74,7 @@ func (h *UserToGroupAddition) Options() native.Options {
 	return native.Options{
 		List:     native.ListNone,
 		Recovery: native.RecoverByResend,
+		Members:  &native.Members{Parent: "GroupName", List: "Users", IgnoreCase: true},
 	}
 }
 

@@ -63,11 +63,13 @@ func Test_Suite_UserToGroupAddition(t *testing.T) {
 		IdentifierProperty: "Id",
 		Properties:         group("admins", "ana", "bo"),
 		Changed:            group("admins", "bo", "cy"),
-		CreateOnlyChange:   group("readers", "ana", "bo"),
-		OtherForm:          map[string]any{"Users": []any{"bo", "ana"}},
-		MultiCall:          group("admins", "bo", "cy", "di"),
-		Calls:              3,
-		RejectedCalls:      1,
+		// IAM user names ignore case, so BO is bo.
+		SharedMember:     &nativetest.SharedMember{Overlapping: group("admins", "BO", "cy"), Disjoint: group("admins", "cy")},
+		CreateOnlyChange: group("readers", "ana", "bo"),
+		OtherForm:        map[string]any{"Users": []any{"bo", "ana"}},
+		MultiCall:        group("admins", "bo", "cy", "di"),
+		Calls:            3,
+		RejectedCalls:    1,
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &h.(*tracked).api.failer
 		}),

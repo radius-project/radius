@@ -90,6 +90,9 @@ func NewRegistry(catalog schemas.Catalog, handlers ...Handler) (*Registry, error
 			return nil, fmt.Errorf("the native handler for the AWS type %s must have both ReadScoped and DeleteScoped, or neither", name)
 		}
 		opts := h.Options()
+		if opts.Members != nil && (!reads || opts.Members.Parent == "" || opts.Members.List == "") {
+			return nil, fmt.Errorf("the native handler for the AWS type %s names members, so it must have ReadScoped, a parent, and a list", name)
+		}
 		if _, ok := h.(Finder); opts.Recovery == RecoverBySearch && !ok {
 			return nil, fmt.Errorf("the native handler for the AWS type %s finds a lost create by search, but has no Find method", name)
 		}

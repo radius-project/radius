@@ -266,6 +266,7 @@ func Test_Suite_VPNGatewayRoutePropagation(t *testing.T) {
 		IdentifierProperty: "Id",
 		Properties:         propagation("vgw-1", "rtb-1", "rtb-2"),
 		Changed:            propagation("vgw-1", "rtb-2", "rtb-3"),
+		SharedMember:       &nativetest.SharedMember{Overlapping: propagation("vgw-1", "rtb-2", "rtb-3"), Disjoint: propagation("vgw-1", "rtb-3")},
 		CreateOnlyChange:   propagation("vgw-2", "rtb-1", "rtb-2"),
 		MultiCall:          propagation("vgw-1", "rtb-2", "rtb-3", "rtb-4"),
 		Calls:              3,

@@ -76,6 +76,7 @@ func (h *ListenerCertificate) Options() native.Options {
 	return native.Options{
 		List:     native.ListNone,
 		Recovery: native.RecoverByResend,
+		Members:  &native.Members{Parent: "ListenerArn", List: "Certificates", Key: "CertificateArn"},
 	}
 }
 
