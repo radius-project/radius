@@ -30,7 +30,7 @@ import (
 func TestValidateMissingOutputFlag(t *testing.T) {
 	t.Parallel()
 	cmd := &cobra.Command{}
-	commonflags.AddWorkspaceFlag(cmd)
+	cmd.Flags().AddFlagSet(NewCommand(&framework.Impl{}).PersistentFlags())
 	r := &runner{config: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}}
 	require.EqualError(t, r.Validate(cmd, nil), `flag accessed but not defined: output`)
 	require.NotNil(t, r.workspace)
@@ -62,7 +62,7 @@ func TestCheckPrincipalIssuerFailures(t *testing.T) {
 			t.Parallel()
 			writer := &output.MockOutput{}
 			factory := &framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}, Output: writer}
-			cmd, r := newCommand(factory, "check")
+			cmd, r := newTestCommand(factory, "check")
 			client := &testClient{identity: &test.identity, err: test.err}
 			r.connect = func(context.Context, workspaces.Workspace) (inspectionClient, error) { return client, nil }
 			cmd.SetArgs([]string{"--principal", "group:developers", "--action", "Radius.Core/applications/read"})
@@ -224,13 +224,18 @@ func TestInspectionCommandsWithGeneratedHTTPClients(t *testing.T) {
 					workspace := section.Items[radcli.TestWorkspaceName]
 					workspace.Connection["overrides"] = map[string]any{"ucp": server.URL}
 					section.Items[radcli.TestWorkspaceName] = workspace
+					section.Default = "missing-default"
 					cli.UpdateWorkspaceSection(config, section)
 					var buffer bytes.Buffer
-					cmd, _ := newCommand(&framework.Impl{
+					cmd := NewCommand(&framework.Impl{
 						ConfigHolder: &framework.ConfigHolder{Config: config},
 						Output:       &output.OutputWriter{Writer: &buffer},
-					}, commandOperation)
-					args := []string{"--output", format}
+					})
+					args := []string{commandOperation}
+					if isCheck {
+						args = []string{"access", "check"}
+					}
+					args = append(args, "--workspace", radcli.TestWorkspaceName, "--output", format)
 					if isCheck {
 						args = append(args, "--scope", scope, "--principal", "group:developers", "--issuer", "kubernetes:test",
 							"--action", "Radius.Core/applications/read", "--target", scope,
