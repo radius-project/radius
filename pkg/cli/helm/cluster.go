@@ -26,6 +26,7 @@ import (
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
@@ -249,6 +250,7 @@ type Interface interface {
 	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
 	// UninstallRadius uninstalls Radius from the cluster based on the specified Kubernetes context. Will succeed regardless of whether Radius is installed.
+	// It returns a *CSIDriverSPIFFEKeptError when it keeps the csi-driver-spiffe that rad installed.
 	UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
 	// UpgradeRadius upgrades the Radius installation on the cluster, based on the specified Kubernetes context.
@@ -271,7 +273,7 @@ type Interface interface {
 	CSIDriverSPIFFEInstalledByRad(kubeContext string) (bool, error)
 
 	// UninstallCertManager uninstalls csi-driver-spiffe when rad installed it, and cert-manager only when rad
-	// installed it and no other workload uses it.
+	// installed it and no other workload uses it. It returns a *CSIDriverSPIFFEKeptError when it keeps csi-driver-spiffe.
 	UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
 	// RollbackRadius rolls back the Radius installation to the previous revision.
@@ -385,9 +387,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
 		return err
 	}
-	if err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, clusterOptions.Radius.Reinstall); err != nil {
+	certManagerRequesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, clusterOptions.Radius.Reinstall)
+	if err != nil {
 		return err
 	}
+	setCertManagerRequesters(radiusValues, certManagerRequesters)
 
 	// Install Contour before Radius. The Contour checks then see the cluster seconds before Contour is installed
 	// rather than after the wait for Radius, during which a k3s cluster that just started can install the Gateway API
@@ -428,9 +432,23 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	return nil
 }
 
+// setCertManagerRequesters sets the users the Radius chart allows to request certificates from the Radius bootstrap
+// and mTLS issuers. With no users it leaves the chart's value, so the chart default applies.
+func setCertManagerRequesters(radiusValues map[string]any, requesters []string) {
+	if len(requesters) == 0 {
+		return
+	}
+	values := make([]any, 0, len(requesters))
+	for _, requester := range requesters {
+		values = append(values, requester)
+	}
+	setValue(radiusValues, values, "global", "rbac", "certManager", "requesters")
+}
+
 // UninstallRadius uninstalls Radius and its dependencies (Contour, and csi-driver-spiffe and cert-manager if rad
 // installed them) from the cluster using the provided options. It removes csi-driver-spiffe after Radius and only
-// once the Radius Pods that mount its certificate volumes are gone, so the driver can unmount them.
+// once the Radius Pods that mount its certificate volumes are gone, so the driver can unmount them. When it keeps the
+// driver, it returns a *CSIDriverSPIFFEKeptError after removing Radius and Contour.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Uninstall Radius
 	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
@@ -448,8 +466,7 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	}
 
 	// Uninstall csi-driver-spiffe and cert-manager only if rad installed them.
-	kept, err := i.uninstallCSIDriverSPIFFE(ctx, clusterOptions, kubeContext)
-	if err != nil || kept {
+	if err := i.uninstallCSIDriverSPIFFE(ctx, clusterOptions, kubeContext); err != nil {
 		return err
 	}
 	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
@@ -576,9 +593,11 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
 		return err
 	}
-	if err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, true); err != nil {
+	certManagerRequesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, true)
+	if err != nil {
 		return err
 	}
+	setCertManagerRequesters(radiusValues, certManagerRequesters)
 
 	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
 	if err != nil {
@@ -753,6 +772,10 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 		}
 	}
 
+	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, targetRevision); err != nil {
+		return err
+	}
+
 	output.LogInfo("Rolling back Radius from version %s to version %s...", currentChartVersion, targetChartVersion)
 
 	// Perform the rollback
@@ -802,6 +825,10 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 		return fmt.Errorf("revision %d not found in release history", revision)
 	}
 
+	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, revision); err != nil {
+		return err
+	}
+
 	if targetChartVersion != "" {
 		output.LogInfo("Rolling back Radius to revision %d (version %s)...", revision, targetChartVersion)
 	} else {
@@ -816,6 +843,37 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 
 	output.LogInfo("Radius rollback completed successfully!")
 	return nil
+}
+
+// reconcileRollbackDependencies makes cert-manager and csi-driver-spiffe match the Radius values of the target
+// revision before Helm rolls Radius back to it. Helm restores only the Radius release, but the target's authorization
+// settings decide whether the Radius components need the driver, and which trust domain and CSI driver name they use.
+// It runs the same checks, in the same order, as an upgrade: the csi-driver-spiffe checks fail before it changes the
+// cluster. With authorization off in the target, it changes nothing and leaves an installed driver in place, unused.
+func (i *Impl) reconcileRollbackDependencies(ctx context.Context, kubeContext string, history []*releasev1.Release, revision int) error {
+	var targetValues map[string]any
+	for _, release := range history {
+		if release.Version == revision {
+			targetValues = release.Config
+			break
+		}
+	}
+
+	options := NewDefaultClusterOptions()
+	spiffe, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, targetValues)
+	if err != nil {
+		return err
+	}
+	if spiffe == nil {
+		return nil
+	}
+	if err := i.ensureCertManager(ctx, options, kubeContext, targetValues, false); err != nil {
+		return err
+	}
+	// Like an install, this changes cert-manager and the driver only when they are missing, unhealthy, or configured
+	// differently, and keeps their chart versions.
+	_, err = i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, false)
+	return err
 }
 
 // GetRadiusRevisions returns information about all available revisions of the Radius installation.
