@@ -81,7 +81,7 @@ func reloadContext() context.Context {
 
 // NewClientTransport returns an HTTP transport for calls to the Radius component receiver,
 // such as "ucp". It presents no client certificate. It accepts only a server whose
-// certificate chains to the Radius CA bundle in options.CertificateDirectory and carries the
+// certificate chains to the Radius CA bundle in options.EffectiveCADirectory() and carries the
 // receiver's SPIFFE ID, and only then sends the projected ServiceAccount token read from
 // <options.TokenDirectory>/<receiver>/token as "Authorization: Bearer". It replaces any
 // Authorization header on the request and refuses non-https URLs.
@@ -128,7 +128,7 @@ func newClientTransport(options authz.Options, receiver string) (*clientTranspor
 		return nil, errors.New("receiver is required")
 	}
 
-	source, err := sharedTrustSource(options.CertificateDirectory)
+	source, err := sharedTrustSource(options.EffectiveCADirectory())
 	if err != nil {
 		return nil, fmt.Errorf("failed to load CA bundle: %w", err)
 	}

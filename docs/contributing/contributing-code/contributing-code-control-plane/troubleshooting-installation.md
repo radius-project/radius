@@ -131,7 +131,7 @@ Radius authorization depends on [cert-manager](https://cert-manager.io/). `rad i
 
 ### Supported versions
 
-`rad` installs a pinned cert-manager chart (`CertManagerChartDefaultVersion` in `pkg/cli/helm/cert_manager.go`, currently `v1.21.2`) from `https://charts.jetstack.io` as the Helm release `cert-manager` in the `cert-manager` namespace, with CRDs enabled. An existing cert-manager must be at least `CertManagerMinimumVersion` (currently `v1.20.0`). Both constants track the [cert-manager supported releases](https://cert-manager.io/docs/releases/).
+`rad` installs a pinned cert-manager chart (`CertManagerChartDefaultVersion` in `pkg/cli/helm/cert_manager.go`, currently `v1.21.2`) from `https://charts.jetstack.io` as the Helm release `cert-manager` in the `cert-manager` namespace, with CRDs enabled and `approveSignerNames` limited to the Radius bootstrap issuer, the `radius-apiserver-issuer` Issuer, and cluster issuers, so cert-manager's default approver never approves the `radius-ca-issuer` Issuer. Namespaced Issuers in other namespaces then need their own approver. An existing cert-manager must be at least `CertManagerMinimumVersion` (currently `v1.20.0`). Both constants track the [cert-manager supported releases](https://cert-manager.io/docs/releases/).
 
 ### Existing cert-manager installations
 
@@ -154,7 +154,7 @@ Before reusing an installation, `rad` checks that the controller and webhook Dep
 kubectl get secret -n cert-manager -l owner=helm,name=cert-manager --show-labels
 ```
 
-`rad` only upgrades a release it owns, and repairs an owned release that is not `deployed` or whose controller is missing. It never downgrades a release whose chart version is newer than its target pin: a healthy newer installation is reused, and an unhealthy newer installation must be repaired at its current version. Kubernetes API errors are reported rather than silently triggering a repair.
+`rad` only upgrades a release it owns. It also upgrades an owned release whose values do not yet limit `approveSignerNames`, and repairs an owned release that is not `deployed` or whose controller is missing. It never downgrades a release whose chart version is newer than its target pin: a healthy newer installation is reused, and an unhealthy newer installation must be repaired at its current version. Kubernetes API errors are reported rather than silently triggering a repair.
 
 ### Uninstall
 
@@ -197,6 +197,12 @@ When authorization is enabled, `rad install kubernetes` and `rad upgrade kuberne
 
 - **Another csi-driver-spiffe runs on the cluster:** a cluster can run only one, because every instance registers the same kubelet plugin path. `rad` stops before changing the cluster and names the DaemonSet to remove.
 - **A `cert-manager-csi-driver-spiffe` release that `rad` did not install:** `rad` does not change it. Uninstall it, or let `rad` own the installation, and rerun the command.
-- **Warning about cert-manager's default approver:** cert-manager approves CertificateRequests for every issuer unless its default approver is turned off or limited. A future Radius release will require that it not approve requests for the Radius issuer. For now, keep it on; the `<component>-cert` Certificates the chart still creates depend on it, although components no longer use them.
+- **cert-manager's default approver can approve the Radius CA issuer:** only Radius's csi-driver-spiffe approver may approve requests for `radius-ca-issuer`, which signs component server certificates. cert-manager's default approver approves every issuer unless it is limited, so `rad` stops before changing the cluster and prints a `helm upgrade ... --reuse-values --set "approveSignerNames={...}"` command that limits it to the Radius bootstrap issuer, `radius-apiserver-issuer`, and cluster issuers. A cert-manager that `rad` installed is limited automatically.
+- **Warning that cert-manager's default approver cannot approve a Radius signer:** the Radius CAs and UCP's aggregated API certificate come from the `radius-selfsigned-bootstrap` and `radius-apiserver-issuer` Issuers, which rely on cert-manager's default approver. If it is turned off or does not allow them, approve their CertificateRequests another way.
+
+- **cert-manager's cainjector is missing or cannot inject the APIService:** with authorization on, cert-manager's cainjector copies the `radius-apiserver-ca` CA into the `v1alpha3.api.ucp.dev` APIService. `rad` stops before changing the cluster if the cainjector Deployment is missing or not ready, runs with `--enable-apiservices-injectable=false` or `--enable-certificates-data-source=false`, or watches only another namespace with `--namespace`.
+- **The UCP APIService is not usable after install, upgrade, or rollback:** `rad` waits for the APIService to have a CA bundle and report `Available=True`. If it has no CA bundle, the error shows the `ucp-cert` Certificate status and how to find the cainjector logs. If it is not Available, check the ucp pods and run `kubectl get apiservice v1alpha3.api.ucp.dev -o yaml`.
+- **`CertificateRequestDenied` admission errors:** the `radius-certificate-issuance` ValidatingAdmissionPolicy lets only the users in `global.rbac.certManager.requesters` request certificates from `radius-apiserver-issuer` and `radius-selfsigned-bootstrap`, and limits other requesters in the Radius namespace to `radius-ca-issuer`. `rad` sets the requesters to the ServiceAccounts of the cert-manager controllers it finds. If you install the chart with plain Helm or move cert-manager, set `global.rbac.certManager.requesters` to its controller's username, such as `system:serviceaccount:cert-manager:cert-manager`. The policy needs Kubernetes 1.30 or later, and `rad` stops on older clusters.
+- **Components fail to load `/var/run/radius/ca/ca.crt`:** every component reads the Radius CA bundle from the `radius-ca` Secret rather than from the csi-driver-spiffe volume. Check that cert-manager issued Certificate `radius-ca` in the Radius namespace.
 
 `rad uninstall kubernetes` removes the csi-driver-spiffe release it owns before cert-manager, and lists it in the confirmation prompt. A release that `rad` did not install is never removed.

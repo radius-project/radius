@@ -350,6 +350,19 @@ func (i *Impl) logInfo(format string, v ...any) {
 // InstallRadius installs Radius and its dependencies (Contour and, when authorization is enabled, cert-manager and
 // csi-driver-spiffe). It prepares and checks the Radius and Contour charts before it changes the cluster, and then
 // installs cert-manager, csi-driver-spiffe, Contour, Radius, and the Radius Contour Gateway in that order.
+// setCertManagerRequesters sets the users the Radius chart allows to request certificates from the Radius bootstrap
+// and API server issuers. With no users it leaves the chart's value, so the chart default applies.
+func setCertManagerRequesters(radiusValues map[string]any, requesters []string) {
+	if len(requesters) == 0 {
+		return
+	}
+	values := make([]any, 0, len(requesters))
+	for _, requester := range requesters {
+		values = append(values, requester)
+	}
+	setValue(radiusValues, values, "global", "rbac", "certManager", "requesters")
+}
+
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
@@ -376,9 +389,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
 		return err
 	}
-	if err := i.ensureCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+	certManagerRequesters, err := i.ensureCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall)
+	if err != nil {
 		return err
 	}
+	setCertManagerRequesters(radiusValues, certManagerRequesters)
 
 	// Install Contour before Radius. The Contour checks then see the cluster seconds before Contour is installed
 	// rather than after the wait for Radius, during which a k3s cluster that just started can install the Gateway API
@@ -405,6 +420,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
+	}
+	if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues); err != nil {
+		return err
 	}
 
 	if clusterOptions.Contour.Disabled {
@@ -561,13 +579,18 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
 		return err
 	}
-	if err := i.ensureCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
+	certManagerRequesters, err := i.ensureCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, storedValues, true)
+	if err != nil {
 		return err
 	}
+	setCertManagerRequesters(radiusValues, certManagerRequesters)
 
 	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
+	}
+	if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, storedValues); err != nil {
+		return err
 	}
 	output.LogInfo("Radius upgrade complete")
 
@@ -745,6 +768,9 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	if err != nil {
 		return fmt.Errorf("failed to rollback Radius: %w", err)
 	}
+	if err := i.waitForRolledBackUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
+		return err
+	}
 
 	output.LogInfo("Radius rollback completed successfully!")
 	return nil
@@ -797,6 +823,9 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 	err = i.Helm.RunHelmRollback(helmConf, radiusReleaseName, revision, true)
 	if err != nil {
 		return fmt.Errorf("failed to rollback Radius to revision %d: %w", revision, err)
+	}
+	if err := i.waitForRolledBackUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
+		return err
 	}
 
 	output.LogInfo("Radius rollback completed successfully!")

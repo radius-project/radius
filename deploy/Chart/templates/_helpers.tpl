@@ -177,7 +177,33 @@ serviceaccount.yaml templates and the Secrets the chart creates.
 {{- end -}}
 
 {{- define "radius.authz.controlPlaneSecrets" -}}
-{{- list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName | uniq | toJson -}}
+{{- list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" "ucp-apiserver-tls" "radius-ca" "radius-apiserver-ca" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName | uniq | toJson -}}
+{{- end -}}
+
+{{/*
+Name of the Secret holding UCP's aggregated API server certificate. When the authorization mode is
+not off, cert-manager issues it from radius-apiserver-issuer into ucp-apiserver-tls; otherwise the
+chart generates the ucp-cert Secret.
+*/}}
+{{- define "radius.ucp.apiServerSecretName" -}}
+{{- if ne (include "radius.authz.mode" .) "off" -}}
+ucp-apiserver-tls
+{{- else -}}
+ucp-cert
+{{- end -}}
+{{- end -}}
+
+{{/*
+Hash of the authorization settings a component reads at startup, for the checksum/authz-config pod
+annotation, so changing any of them rolls the pods.
+*/}}
+{{- define "radius.authz.configChecksum" -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- $config := $mode -}}
+{{- if ne $mode "off" -}}
+{{- $config = list $mode (include "radius.authz.podSecurityLevel" .) (include "radius.authz.identityConfig" .) (include "radius.authz.spiffe.csiDriverName" .) (include "radius.authz.controlPlaneSecrets" .) | join "\n" -}}
+{{- end -}}
+{{- $config | sha256sum -}}
 {{- end -}}
 
 {{/*
@@ -191,6 +217,16 @@ TODO(D7): default to the application-template identity once the broker issues it
 {{- end -}}
 
 {{/*
+Usernames of the cert-manager controller that may request certificates from the Radius bootstrap and
+API server issuers. Empty defaults to cert-manager's default installation; rad install/upgrade sets
+the ServiceAccount of the cert-manager it installs or reuses.
+*/}}
+{{- define "radius.authz.certManagerRequesters" -}}
+{{- $certManager := (.Values.global.rbac | default dict).certManager | default dict -}}
+{{- $certManager.requesters | default (list "system:serviceaccount:cert-manager:cert-manager") | toJson -}}
+{{- end -}}
+
+{{/*
 SPIFFE trust domain of the Radius server certificates.
 */}}
 {{- define "radius.authz.spiffe.trustDomain" -}}
@@ -200,11 +236,12 @@ SPIFFE trust domain of the Radius server certificates.
 
 {{/*
 Renders the authorization settings shared by every component's config: where the SPIFFE server
-certificate (or, for the controller, only the CA bundle) and the projected ServiceAccount tokens
+certificate, the Radius CA bundle, and the projected ServiceAccount tokens
 are mounted, the trust domain, and the release namespace.
 */}}
 {{- define "radius.authz.identityConfig" -}}
 certificateDirectory: {{ include "radius.authz.spiffe.mountPath" . | quote }}
+caDirectory: {{ include "radius.authz.caBundle.mountPath" . | quote }}
 tokenDirectory: {{ include "radius.authz.tokens.mountPath" . | quote }}
 trustDomain: {{ include "radius.authz.spiffe.trustDomain" . | quote }}
 namespace: {{ .Release.Namespace | quote }}
@@ -241,20 +278,30 @@ ucp:
 {{- end -}}
 
 {{/*
-Renders the Radius CA bundle volume mount for the controller, which calls UCP but serves no
-internal endpoint, so it mounts only ca.crt where receivers mount their SPIFFE volume.
+Path where every component mounts the Radius CA bundle (ca.crt). csi-driver-spiffe writes only
+tls.crt and tls.key because Radius does not configure it with a source CA bundle, which it must read
+at startup, before this chart has created radius-ca.
+*/}}
+{{- define "radius.authz.caBundle.mountPath" -}}
+/var/run/radius/ca
+{{- end -}}
+
+{{/*
+Renders the Radius CA bundle volume mount for a component when the authorization mode is not off.
+Servers chain their SPIFFE certificate to it and clients verify servers against it. Kubelet updates
+the file when cert-manager renews radius-ca, and components reload it.
 */}}
 {{- define "radius.authz.caBundle.volumeMount" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
 - name: radius-ca
-  mountPath: {{ include "radius.authz.spiffe.mountPath" . }}
+  mountPath: {{ include "radius.authz.caBundle.mountPath" . }}
   readOnly: true
 {{- end }}
 {{- end -}}
 
 {{/*
-Renders the Radius CA bundle volume for the controller. Only ca.crt is projected; the CA private
-key in the same Secret is not mounted.
+Renders the Radius CA bundle volume. Only ca.crt is projected; the CA private key in the same
+Secret is not mounted. The Secret is required, so pods wait until cert-manager has issued radius-ca.
 */}}
 {{- define "radius.authz.caBundle.volume" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
@@ -268,7 +315,7 @@ key in the same Secret is not mounted.
 {{- end -}}
 
 {{/*
-Path where a receiver's csi-driver-spiffe server certificate (tls.crt, tls.key, ca.crt) is mounted.
+Path where a receiver's csi-driver-spiffe server certificate (tls.crt, tls.key) is mounted.
 */}}
 {{- define "radius.authz.spiffe.mountPath" -}}
 /var/run/radius/spiffe

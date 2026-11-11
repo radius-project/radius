@@ -138,7 +138,7 @@ presents a client certificate.
   and `dynamic-rp` allow only the `ucp` identity.
 
 Each receiver presents the csi-driver-spiffe certificate mounted at
-`/var/run/radius/spiffe` (`tls.crt`, `tls.key`, `ca.crt`), whose only SAN is the
+`/var/run/radius/spiffe` (`tls.crt`, `tls.key`), whose only SAN is the
 URI `spiffe://<trustDomain>/ns/<namespace>/sa/<service account>`. It requests no
 client certificate. It verifies the `Authorization: Bearer` token offline with
 [pkg/authz/token](../../pkg/authz/token/verifier.go), requiring the receiver's
@@ -148,12 +148,20 @@ handler. Probes and metrics stay on their plain ports.
 
 Callers build transports with `mtls.NewClientTransport` and
 `mtls.NewUpgradeTransport` in [pkg/authz/mtls/client.go](../../pkg/authz/mtls/client.go).
-They verify the server's chain against the mounted `ca.crt` and require exactly
+They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and require exactly
 the receiver's SPIFFE ID instead of matching DNS names. Only after the server is
 verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
-The controller, which serves no internal endpoint, mounts only `ca.crt` from the
-`radius-ca` Secret.
+Every component projects only `ca.crt` from the `radius-ca` Secret (never
+`tls.key`) to `/var/run/radius/ca`, because csi-driver-spiffe writes no `ca.crt`
+without a configured source CA bundle. The `radius-ca` CA signs only these
+SPIFFE server certificates; in the `selfSigned` certificate mode (the only one
+supported today), UCP's aggregated API certificate comes from the separate
+`radius-apiserver-ca`, which Radius components do not trust. The
+Kubernetes API server does trust it for UCP, so the `radius-certificate-issuance`
+ValidatingAdmissionPolicy lets only the cert-manager controller request from
+`radius-apiserver-issuer` and `radius-selfsigned-bootstrap`, and limits Radius
+ServiceAccounts to `radius-ca-issuer`.
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Clients close idle connections

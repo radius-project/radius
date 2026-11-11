@@ -70,8 +70,15 @@ GET `.../<alias>` reads UCP's record of the alias, then reads AWS by the identif
 
 ### Internal endpoint
 
-The Kubernetes APIService endpoint (Service port 443 to container port 9443,
-using the `ucp-cert` certificate) is unchanged by internal authorization. When
+The Kubernetes APIService endpoint (Service port 443 to container port 9443)
+uses the `ucp-cert` certificate. With authorization off, the chart generates it.
+Otherwise cert-manager issues it from the namespaced `radius-apiserver-issuer`,
+whose `radius-apiserver-ca` is injected into the APIService `caBundle`. In the
+`selfSigned` certificate mode, the only mode supported today, this CA is
+separate from the `radius-ca` that signs component server certificates. The Kubernetes API server trusts that CA for UCP, so the
+`radius-certificate-issuance` ValidatingAdmissionPolicy lets only the
+cert-manager controller request certificates from `radius-apiserver-issuer`.
+UCP reloads it without a restart. When
 the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
 on a separate internal port, 9444 (Service port name `internal`, config
 `server.internalPort`), for traffic from other Radius components. That endpoint
