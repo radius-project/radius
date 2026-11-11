@@ -152,3 +152,101 @@ enforce
 off
 {{- end -}}
 {{- end -}}
+
+{{/*
+Returns the Pod Security Admission level (baseline or restricted) from global.rbac.podSecurityLevel.
+An empty value defaults to baseline. Fails rendering for any other value.
+*/}}
+{{- define "radius.authz.podSecurityLevel" -}}
+{{- $rbac := .Values.global.rbac | default dict -}}
+{{- $level := $rbac.podSecurityLevel | default "baseline" -}}
+{{- if not (has $level (list "baseline" "restricted")) -}}
+{{- fail (printf "global.rbac.podSecurityLevel must be \"baseline\" or \"restricted\", got %q" $level) -}}
+{{- end -}}
+{{- $level -}}
+{{- end -}}
+
+{{/*
+Control-plane service accounts and Secrets in the release namespace, as JSON lists that are
+also valid CEL list literals. Used by the admission policy and, for the Secrets, the
+applications-rp configuration (authorization.controlPlaneSecrets); keep in sync with the
+serviceaccount.yaml templates and the Secrets the chart creates.
+*/}}
+{{- define "radius.authz.controlPlaneServiceAccounts" -}}
+{{- list "ucp" "applications-rp" "dynamic-rp" "bicep-de" "controller" "dashboard" "database" "radius-api-readiness" "pre-upgrade" | toJson -}}
+{{- end -}}
+
+{{- define "radius.authz.controlPlaneSecrets" -}}
+{{- list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName | uniq | toJson -}}
+{{- end -}}
+
+{{/*
+Usernames whose requests the admission policy validates, as a JSON list.
+TODO(D7): default to the application-template identity once the broker issues it.
+*/}}
+{{- define "radius.authz.applicationIdentities" -}}
+{{- $admission := (.Values.global.rbac | default dict).admission | default dict -}}
+{{- $identities := $admission.applicationIdentities | default (list (printf "system:serviceaccount:%s:applications-rp" .Release.Namespace)) -}}
+{{- $identities | toJson -}}
+{{- end -}}
+
+{{/*
+Path where a component's mTLS Secret (<component>-mtls) is mounted.
+*/}}
+{{- define "radius.authz.mtls.mountPath" -}}
+/var/run/radius/mtls
+{{- end -}}
+
+{{/*
+Renders the authorization config block for a component. Renders nothing when
+the authorization mode is off, so a default install is unchanged.
+*/}}
+{{- define "radius.authz.serverConfig" -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- if ne $mode "off" }}
+authorization:
+  mode: {{ $mode | quote }}
+  certificateDirectory: {{ include "radius.authz.mtls.mountPath" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the ucp connection block for a component that calls UCP. When the authorization
+mode is not off, the component calls UCP's internal mTLS port directly instead of going
+through the Kubernetes API server.
+*/}}
+{{- define "radius.authz.ucpConnection" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+ucp:
+  kind: direct
+  direct:
+    endpoint: "https://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3"
+{{- else }}
+ucp:
+  kind: kubernetes
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the mTLS volume mount for a component container when the authorization mode is not off.
+*/}}
+{{- define "radius.authz.mtls.volumeMount" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+- name: mtls
+  mountPath: {{ include "radius.authz.mtls.mountPath" . }}
+  readOnly: true
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the mTLS Secret volume for a component when the authorization mode is not off.
+Call with (dict "root" $ "component" "<component>").
+*/}}
+{{- define "radius.authz.mtls.volume" -}}
+{{- if ne (include "radius.authz.mode" .root) "off" }}
+- name: mtls
+  secret:
+    secretName: {{ .component }}-mtls
+{{- end }}
+{{- end -}}

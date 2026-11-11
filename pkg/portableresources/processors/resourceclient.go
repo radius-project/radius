@@ -27,6 +27,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	"github.com/radius-project/radius/pkg/azure/armauth"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
@@ -50,6 +51,9 @@ import (
 	"k8s.io/client-go/rest"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// awsAPIVersion is the API version of UCP's AWS routes, which do not check it.
+const awsAPIVersion = "2023-10-01-preview"
 
 // ResourceClientFactory creates a resource client using the provided Kubernetes configuration.
 type ResourceClientFactory func(kubernetesConfig *rest.Config) ResourceClient
@@ -137,6 +141,51 @@ func (c *resourceClient) GetProperties(ctx context.Context, id string) (map[stri
 	return response.Properties, nil
 }
 
+// GetAWSPropertiesByIdentifier reads an AWS resource with UCP's POST /:get, which reads AWS by the identifier at the end
+// of id. It sends id in the AWS resource ID header, so UCP decodes that segment the way it encoded it, and also as the
+// top-level name, which a UCP that predates the header reads instead.
+func (c *resourceClient) GetAWSPropertiesByIdentifier(ctx context.Context, id string) (map[string]any, error) {
+	parsed, err := resources.ParseResource(id)
+	if err != nil {
+		return nil, err
+	}
+	if !resources_aws.IsAWSResource(parsed) {
+		return nil, fmt.Errorf("resource %q is not an AWS resource", id)
+	}
+
+	client, err := arm.NewClient("github.com/radius-project/radius/pkg/portableresources/processors", "v0.0.1", &aztoken.AnonymousCredential{}, sdk.NewClientOptions(c.connection))
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.Endpoint(), parsed.RootScope(), "providers", parsed.Type(), ":get"))
+	if err == nil {
+		query := req.Raw().URL.Query()
+		query.Set("api-version", awsAPIVersion)
+		req.Raw().URL.RawQuery = query.Encode()
+		req.Raw().Header.Set(sdkclients.AWSResourceIDHeader, parsed.String())
+		err = runtime.MarshalAsJSON(req, map[string]any{"name": parsed.Name(), "properties": map[string]any{}})
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Pipeline().Do(req)
+	if err != nil {
+		return nil, c.wrapError(parsed, err)
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return nil, c.wrapError(parsed, runtime.NewResponseError(resp))
+	}
+	body := struct {
+		Properties map[string]any `json:"properties"`
+	}{}
+	if err := runtime.UnmarshalAsJSON(resp, &body); err != nil {
+		return nil, c.wrapError(parsed, err)
+	}
+	return body.Properties, nil
+}
+
 func (c *resourceClient) wrapError(id resources.ID, err error) error {
 	if err != nil {
 		return &ResourceError{Inner: err, ID: id.String()}
@@ -176,11 +225,8 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 			} else {
 				if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok {
 					statusCode, errorCode = responseError.StatusCode, responseError.ErrorCode
-					if statusCode == http.StatusNotFound {
-						switch errorCode {
-						case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound":
-							existence = "absent"
-						}
+					if isARMResourceAbsent(id, err) {
+						existence = "absent"
 					}
 				}
 			}
@@ -194,12 +240,8 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 			continue
 		}
 		if err != nil {
-			var responseError *azcore.ResponseError
-			if errors.As(err, &responseError) && responseError.StatusCode == http.StatusNotFound {
-				switch responseError.ErrorCode {
-				case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound", "RoleAssignmentNotFound":
-					return nil
-				}
+			if isARMResourceAbsent(id, err) {
+				return nil
 			}
 			return fmt.Errorf("failed to validate API version %q for resource %q: %w", apiVersion, id.String(), err)
 		}
@@ -212,7 +254,7 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 			continue
 		}
 		if err != nil {
-			if clients.Is404Error(err) {
+			if isARMResourceAbsent(id, err) {
 				return nil
 			}
 			return err
@@ -220,8 +262,20 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 
 		_, err = poller.PollUntilDone(ctx, nil)
 		if err != nil {
-			if clients.Is404Error(err) {
-				return nil
+			if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok &&
+				(responseError.StatusCode == http.StatusNotFound ||
+					(responseError.StatusCode == http.StatusOK &&
+						(responseError.ErrorCode == "Canceled" ||
+							responseError.ErrorCode == "CanceledAndSupersededDueToAnotherOperation"))) {
+				// A missing or superseded operation does not prove that its target is gone.
+				// Do not issue another DELETE or change API versions while checking.
+				_, readErr := client.GetByID(ctx, id.String(), apiVersion, nil)
+				if isARMResourceAbsent(id, readErr) {
+					return nil
+				}
+				if readErr != nil {
+					return fmt.Errorf("failed to verify resource %q after delete polling failed: %w", id.String(), errors.Join(readErr, err))
+				}
 			}
 			return err
 		}
@@ -230,6 +284,24 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 	}
 
 	return fmt.Errorf("no API version was accepted for resource %q: %w", id.String(), versionError)
+}
+
+func isARMResourceAbsent(id resources.ID, err error) bool {
+	responseError, ok := errors.AsType[*azcore.ResponseError](err)
+	if !ok || responseError.StatusCode != http.StatusNotFound {
+		return false
+	}
+
+	switch responseError.ErrorCode {
+	case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound", "RoleAssignmentNotFound":
+		return true
+	case "NotFound":
+		// Microsoft.Network returns this code when an individual resource is absent.
+		// Do not extend it to providers where it could mean an unknown route.
+		return strings.EqualFold(id.ProviderNamespace(), "Microsoft.Network")
+	default:
+		return false
+	}
 }
 
 func isARMAPIVersionRejection(err error) bool {

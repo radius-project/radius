@@ -36,6 +36,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 
 	"github.com/radius-project/radius/pkg/aws/arnproperties"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
@@ -283,26 +284,37 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	failures := []error{}
+	deleting := map[string]struct{}{}
 
 	for i := range opts.OutputResources {
 		outputResource := opts.OutputResources[i]
 
-		if outputResource.IsRadiusManaged() && deletingKeyVaultParent(outputResource.ID, opts.OutputResources) {
+		if !outputResource.IsRadiusManaged() {
+			logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", outputResource.ID.String()))
+			continue
+		}
+
+		if deletingKeyVaultParent(outputResource.ID, opts.OutputResources) {
 			// ARM cannot delete secrets. The batch must still wait for the managed vault deletion to succeed.
 			logger.Info("Skipping direct Key Vault secret deletion; the managed parent vault is in the deletion batch", "resourceID", outputResource.ID.String())
 			continue
 		}
 
+		// Explicit recipe outputs and deployment inventory can contain the same resource.
+		// Deduplicate here so saved state and redeploy garbage collection are covered too.
+		key := outputResource.ID.String()
+		if path := azureResourcePath(outputResource.ID); path != "" {
+			key = strings.ToLower(path)
+		}
+		if _, exists := deleting[key]; exists {
+			continue
+		}
+		deleting[key] = struct{}{}
+
 		// Create a goroutine that handles the deletion of one resource
 		wg.Go(func() {
 			id := outputResource.ID.String()
 			logger.V(ucplog.LevelInfo).Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.ID, outputResource.LocalID, outputResource.GetResourceType()))
-
-			// If the resource is not managed by Radius, skip the deletion
-			if outputResource.RadiusManaged == nil || !*outputResource.RadiusManaged {
-				logger.Info(fmt.Sprintf("Skipping deletion of output resource: %q, not managed by Radius", id))
-				return
-			}
 
 			var err error
 			attempts := 0
@@ -717,6 +729,12 @@ func (d *bicepDriver) addAWSProviderResourceIDs(ctx context.Context, output *rec
 		}
 
 		properties, err := resourceClient.GetProperties(ctx, resource)
+		if isAWSNoRecordError(err) {
+			// UCP has no record of a resource the recipe references with existing. Its ID ends in the AWS identifier,
+			// so read it from AWS by that. Any other 404 is for an alias whose resource is gone, and reading by the
+			// alias could read an unrelated resource.
+			properties, err = resourceClient.GetAWSPropertiesByIdentifier(ctx, resource)
+		}
 		if err != nil {
 			logger.Info("Could not read the AWS output resource to find its ARN", "resourceID", resource, "error", err.Error())
 			continue
@@ -726,6 +744,12 @@ func (d *bicepDriver) addAWSProviderResourceIDs(ctx context.Context, output *rec
 			output.SetProviderResourceID(resource, arnproperties.ProviderResourceID(arn))
 		}
 	}
+}
+
+// isAWSNoRecordError reports whether err is UCP's 404 for an AWS resource ID that has no record.
+func isAWSNoRecordError(err error) bool {
+	respErr, ok := clientv2.ExtractResponseError(err)
+	return ok && respErr.StatusCode == http.StatusNotFound && respErr.ErrorCode == clients.AWSResourceNoRecordCode
 }
 
 // arnFromProperties returns the ARN in the given property of an AWS resource, or in its Arn, ARN, or arn property when

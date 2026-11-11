@@ -19,7 +19,6 @@ package awsproxy
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -85,27 +84,6 @@ func getPrimaryIdentifierFromMultiIdentifiers(properties map[string]any, schema 
 
 	resourceID = strings.TrimSuffix(resourceID, "|")
 	return resourceID, nil
-}
-
-func readPropertiesFromBody(req *http.Request) (map[string]any, error) {
-	decoder := json.NewDecoder(req.Body)
-	defer req.Body.Close()
-
-	body := map[string]any{}
-	err := decoder.Decode(&body)
-	if err != nil {
-		return nil, err
-	}
-
-	properties := map[string]any{}
-	obj, ok := body["properties"]
-	if ok {
-		pp, ok := obj.(map[string]any)
-		if ok {
-			properties = pp
-		}
-	}
-	return properties, nil
 }
 
 func computeResourceID(id resources.ID, resourceID string) string {

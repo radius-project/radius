@@ -19,6 +19,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
@@ -80,10 +82,46 @@ func HandleAWSError(ctx context.Context, err error) (armrpc_rest.Response, error
 	return armrpc_rest.NewInternalServerErrorARMResponse(e), nil
 }
 
+// IsClientFault reports whether AWS rejected a request because of the request itself, such as an invalid property or
+// throttling, so AWS did nothing with that request. A transport error or a server fault returns false: AWS may have
+// accepted the request. On a replay with a client token, a client fault says nothing about the original request, which
+// AWS may have accepted.
+func IsClientFault(err error) bool {
+	var apiErr smithy.APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	fault := apiErr.ErrorFault()
+	if fault == smithy.FaultUnknown && apiErr.ErrorCode() == "ValidationException" {
+		fault = smithy.FaultClient
+	}
+	return fault == smithy.FaultClient
+}
+
 // Checks if the given error is an AWS ResourceNotFoundException error. If so, it returns true, otherwise false.
 func IsAWSResourceNotFoundError(err error) bool {
 	target := &types.ResourceNotFoundException{}
 	return errors.As(err, &target)
+}
+
+var conflictingRequestToken = regexp.MustCompile(`RequestToken ([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\b`)
+
+// ConflictingRequestToken returns the request token of the original request when err is the
+// ClientTokenConflictException Cloud Control returns for a create resent with clientToken and a different body.
+// The SDK error has no field for it, so it is read from the message, which reads "ClientToken <client token> is
+// already associated with an existing operation with RequestToken <request token>". The format is not documented,
+// so it returns false unless the message names clientToken and exactly one request token.
+func ConflictingRequestToken(err error, clientToken string) (string, bool) {
+	var conflict *types.ClientTokenConflictException
+	if clientToken == "" || !errors.As(err, &conflict) {
+		return "", false
+	}
+	message := conflict.ErrorMessage()
+	matches := conflictingRequestToken.FindAllStringSubmatch(message, -1)
+	if !strings.Contains(message, clientToken) || len(matches) != 1 {
+		return "", false
+	}
+	return matches[0][1], true
 }
 
 // AWSMissingPropertyError is an error type to be returned when the call to UCP CreateWithPost

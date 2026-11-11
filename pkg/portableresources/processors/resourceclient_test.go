@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path"
+	"strings"
 	"sync"
 	"testing"
 
@@ -172,7 +174,9 @@ func Test_Delete_ARM(t *testing.T) {
 				handleDeleteSuccess()(w, r)
 				return
 			}
-			handleNotFound(t)(w, r)
+			handleJSONResponse(t, map[string]any{
+				"error": map[string]string{"code": "ResourceNotFound", "message": "resource is absent"},
+			}, http.StatusNotFound)(w, r)
 		})
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: new("Microsoft.Compute"),
@@ -698,6 +702,97 @@ func Test_GetProperties(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func Test_GetAWSPropertiesByIdentifier(t *testing.T) {
+	collection := strings.TrimSuffix(AWSResourceID, "/"+path.Base(AWSResourceID))
+
+	serve := func(t *testing.T, status int, response string) sdk.Connection {
+		mux := http.NewServeMux()
+		mux.HandleFunc(collection+"/:get", func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, http.MethodPost, r.Method)
+			require.NotEmpty(t, r.URL.Query().Get("api-version"))
+			body := map[string]any{}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			require.Equal(t, map[string]any{"name": path.Base(AWSResourceID), "properties": map[string]any{}}, body)
+			require.Equal(t, AWSResourceID, r.Header.Get(sdkclients.AWSResourceIDHeader))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(status)
+			_, _ = w.Write([]byte(response))
+		})
+		server := httptest.NewServer(mux)
+		t.Cleanup(server.Close)
+		connection, err := sdk.NewDirectConnection(server.URL)
+		require.NoError(t, err)
+		return connection
+	}
+
+	t.Run("success", func(t *testing.T) {
+		c := NewResourceClient(nil, serve(t, http.StatusOK, `{"id": "x", "properties": {"Arn": "arn:aws:kinesis:us-east-1:0000:stream/test-stream"}}`), nil)
+		properties, err := c.GetAWSPropertiesByIdentifier(t.Context(), AWSResourceID)
+		require.NoError(t, err)
+		require.Equal(t, map[string]any{"Arn": "arn:aws:kinesis:us-east-1:0000:stream/test-stream"}, properties)
+	})
+
+	t.Run("failure - resource not found", func(t *testing.T) {
+		c := NewResourceClient(nil, serve(t, http.StatusNotFound, `{"error": {"code": "NotFound", "message": "not found"}}`), nil)
+		properties, err := c.GetAWSPropertiesByIdentifier(t.Context(), AWSResourceID)
+		require.Nil(t, properties)
+		require.IsType(t, &ResourceError{}, err)
+		require.True(t, clientv2.Is404Error(err))
+	})
+
+	t.Run("failure - response is not JSON", func(t *testing.T) {
+		c := NewResourceClient(nil, serve(t, http.StatusOK, `not json`), nil)
+		properties, err := c.GetAWSPropertiesByIdentifier(t.Context(), AWSResourceID)
+		require.Nil(t, properties)
+		require.IsType(t, &ResourceError{}, err)
+	})
+
+	t.Run("failure - UCP cannot be reached", func(t *testing.T) {
+		server := httptest.NewServer(http.NotFoundHandler())
+		server.Close()
+		connection, err := sdk.NewDirectConnection(server.URL)
+		require.NoError(t, err)
+		c := NewResourceClient(nil, connection, nil)
+		properties, err := c.GetAWSPropertiesByIdentifier(t.Context(), AWSResourceID)
+		require.Nil(t, properties)
+		require.IsType(t, &ResourceError{}, err)
+	})
+
+	t.Run("failure - not an AWS resource", func(t *testing.T) {
+		c := NewResourceClient(nil, nil, nil)
+		properties, err := c.GetAWSPropertiesByIdentifier(t.Context(), "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/containers/c")
+		require.Nil(t, properties)
+		require.ErrorContains(t, err, "is not an AWS resource")
+	})
+
+	t.Run("failure - connection has no endpoint", func(t *testing.T) {
+		c := NewResourceClient(nil, noEndpointConnection{}, nil)
+		properties, err := c.GetAWSPropertiesByIdentifier(t.Context(), AWSResourceID)
+		require.Nil(t, properties)
+		require.ErrorContains(t, err, "missing Azure Resource Manager configuration")
+	})
+
+	t.Run("failure - endpoint is not a valid URL", func(t *testing.T) {
+		c := NewResourceClient(nil, invalidEndpointConnection{}, nil)
+		properties, err := c.GetAWSPropertiesByIdentifier(t.Context(), AWSResourceID)
+		require.Nil(t, properties)
+		require.ErrorContains(t, err, "invalid control character")
+	})
+
+	t.Run("failure - invalid resource ID", func(t *testing.T) {
+		c := NewResourceClient(nil, nil, nil)
+		properties, err := c.GetAWSPropertiesByIdentifier(t.Context(), "invalid")
+		require.Nil(t, properties)
+		require.Error(t, err)
+	})
+}
+
+// invalidEndpointConnection has an endpoint that is not a valid URL.
+type invalidEndpointConnection struct{}
+
+func (invalidEndpointConnection) Client() *http.Client { return http.DefaultClient }
+func (invalidEndpointConnection) Endpoint() string     { return "http://bad\x7fhost" }
 
 func newArmOptions(url string) *armauth.ArmConfig {
 	return &armauth.ArmConfig{

@@ -23,8 +23,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-logr/logr"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/kubernetes"
@@ -35,8 +38,11 @@ import (
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const secretUIDProperty = "secretUID"
 
 func getOrDefaultType(t datamodel.SecretType) (datamodel.SecretType, error) {
 	var err error
@@ -223,14 +229,18 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		}
 	}
 
+	if name == "" {
+		name = newResource.Name
+	}
+
+	if err := admitSecretReference(ctx, options.Authorization, ResourceTypeName+"/write", ns, name); err != nil {
+		return nil, err
+	}
+
 	// Create namespace if not exists.
 	err = kubeutil.PatchNamespace(ctx, options.KubeClient, ns)
 	if err != nil {
 		return nil, err
-	}
-
-	if name == "" {
-		name = newResource.Name
 	}
 
 	newResource.Properties.Resource = toResourceID(ns, name)
@@ -241,6 +251,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 
 	ksecret := &corev1.Secret{}
 	err = options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: name}, ksecret)
+	created := false
 	if apierrors.IsNotFound(err) {
 		// If resource in incoming request references resource, then the resource must exist for a application/environment scoped resource.
 		// For global scoped resource create the kubernetes resource if not exists.
@@ -255,6 +266,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 			Labels:    kubernetes.MakeDescriptiveLabels(app.Name(), name, ResourceTypeName),
 			Data:      map[string][]byte{},
 		}
+		created = true
 	} else if err != nil {
 		return nil, err
 	}
@@ -280,7 +292,7 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		}
 	}
 
-	if ksecret.ResourceVersion == "" {
+	if created {
 		switch newResource.Properties.Type {
 		case datamodel.SecretTypeCert:
 			ksecret.Type = corev1.SecretTypeTLS
@@ -296,6 +308,19 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 		return nil, err
 	}
 
+	ownedUID := ownedSecretUID(old, ns, name)
+	managed := ownedUID != "" && ownedUID == ksecret.UID
+	if created {
+		if ksecret.UID == "" {
+			return nil, fmt.Errorf("created Kubernetes Secret %s/%s has no UID", ns, name)
+		}
+		managed = true
+	}
+	var ownership map[string]string
+	if managed {
+		ownership = map[string]string{secretUIDProperty: string(ksecret.UID)}
+	}
+
 	// In order to get the secret data, we need to get the actual secret location from output resource.
 	newResource.Properties.Status.OutputResources = []rpv1.OutputResource{
 		{
@@ -306,43 +331,100 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 				resources_kubernetes.KindSecret,
 				ns,
 				name),
+			RadiusManaged:        new(managed),
+			AdditionalProperties: ownership,
 		},
 	}
 
 	return nil, nil
 }
 
-// DeleteRadiusSecret deletes the Kubernetes secret associated with the given secret store if it is a
-// Radius managed resource.
+// DeleteRadiusSecret applies admission before deleting a Secret created by this store.
+// Legacy, adopted, and replacement Secrets are retained when ownership cannot be proven.
 func DeleteRadiusSecret(ctx context.Context, oldResource *datamodel.SecretStore, options *controller.Options) (rest.Response, error) {
-	ksecret, err := getSecretFromOutputResources(oldResource.Properties.Status.OutputResources, options)
+	ns, name := secretRefFromOutputResources(oldResource.Properties.Status.OutputResources)
+	if err := admitSecretReference(ctx, options.Authorization, ResourceTypeName+"/delete", ns, name); err != nil {
+		return nil, err
+	}
+
+	uid := ownedSecretUID(oldResource, ns, name)
+	if uid == "" {
+		logr.FromContextOrDiscard(ctx).Info("Retaining referenced Secret without verified ownership", "namespace", ns, "name", name)
+		return nil, nil
+	}
+
+	ksecret, err := getSecretFromOutputResources(ctx, oldResource.Properties.Status.OutputResources, options)
 	if err != nil {
 		return nil, err
 	}
 
-	if ksecret != nil {
-		// Delete only Radius managed resource.
-		if _, ok := ksecret.Labels[kubernetes.LabelRadiusResourceType]; ok {
-			if err := options.KubeClient.Delete(ctx, ksecret); err != nil {
-				return nil, err
-			}
-		}
+	if ksecret == nil {
+		return nil, nil
+	}
+	if ksecret.UID != uid {
+		logr.FromContextOrDiscard(ctx).Info("Retaining replacement Secret", "namespace", ns, "name", name)
+		return nil, nil
+	}
+	if err := options.KubeClient.Delete(ctx, ksecret, runtimeclient.Preconditions{UID: &uid}); err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
 	}
 
 	return nil, nil
 }
 
-func getSecretFromOutputResources(resources []rpv1.OutputResource, options *controller.Options) (*corev1.Secret, error) {
-	name, ns := "", ""
-	for _, resource := range resources {
-		if strings.EqualFold(resource.ID.Type(), "core/Secret") {
-			_, _, ns, name = resources_kubernetes.ToParts(resource.ID)
-			break
-		}
+// admitSecretReference applies the control-plane admission rules to the Kubernetes Secret ns/name
+// that a secret store reads, writes, or deletes. Secret store controllers use the control-plane Kubernetes
+// client even when RADIUS_TARGET_KUBECONFIG names a separate deployment target, so the Secret is
+// always on the control-plane cluster: no target-cluster identity is consulted and a distinct
+// target never exempts the reference. The request's resource ID is read only when the reference
+// is in the control-plane namespace, the only case that can be denied.
+func admitSecretReference(ctx context.Context, opts authz.Options, action, ns, name string) error {
+	opts.TargetClusterIsDistinct = false
+	target := ""
+	if opts.EffectiveMode() != authz.ModeOff && opts.IsControlPlaneNamespace(ns) {
+		target = v1.ARMRequestContextFromContext(ctx).ResourceID.String()
 	}
 
+	return opts.AdmitSecretReference(ctx, action, target, ns, name)
+}
+
+func secretRefFromOutputResources(resources []rpv1.OutputResource) (ns string, name string) {
+	if resource := secretOutputResource(resources); resource != nil {
+		_, _, ns, name = resources_kubernetes.ToParts(resource.ID)
+	}
+
+	return ns, name
+}
+
+func secretOutputResource(outputs []rpv1.OutputResource) *rpv1.OutputResource {
+	for i := range outputs {
+		if strings.EqualFold(outputs[i].ID.Type(), "core/Secret") {
+			return &outputs[i]
+		}
+	}
+	return nil
+}
+
+func ownedSecretUID(store *datamodel.SecretStore, ns, name string) types.UID {
+	if store == nil {
+		return ""
+	}
+	output := secretOutputResource(store.Properties.Status.OutputResources)
+	if output == nil || output.RadiusManaged == nil || !*output.RadiusManaged {
+		return ""
+	}
+	_, _, storedNS, storedName := resources_kubernetes.ToParts(output.ID)
+	if storedNS != ns || storedName != name {
+		return ""
+	}
+	return types.UID(output.AdditionalProperties[secretUIDProperty])
+}
+
+func getSecretFromOutputResources(ctx context.Context, resources []rpv1.OutputResource, options *controller.Options) (*corev1.Secret, error) {
+	ns, name := secretRefFromOutputResources(resources)
+
 	ksecret := &corev1.Secret{}
-	err := options.KubeClient.Get(context.Background(), runtimeclient.ObjectKey{Namespace: ns, Name: name}, ksecret)
+	err := options.KubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: name}, ksecret)
 	if apierrors.IsNotFound(err) {
 		return nil, nil
 	} else if err != nil {

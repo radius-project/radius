@@ -28,10 +28,10 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/backend/controller/awsresources"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourcegroups"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/resourceproviders"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // Service is a service to run AsyncReqeustProcessWorker.
@@ -91,10 +91,21 @@ func (w *Service) Run(ctx context.Context) error {
 		return err
 	}
 
-	transport := otelhttp.NewTransport(http.DefaultTransport)
+	transport, err := ucp.NewDownstreamTransport(w.options.Config)
+	if err != nil {
+		return err
+	}
+
 	err = RegisterControllers(w.Controllers(), w.options.UCP, transport, opts, defaultDownstream)
 	if err != nil {
 		return err
+	}
+
+	// AWS resource operations, which wait for AWS Cloud Control and update the resource records.
+	if w.options.AWSClients.CloudControl != nil {
+		if err := awsresources.Register(w.Controllers(), w.options.AWSClients, opts); err != nil {
+			return err
+		}
 	}
 
 	return w.Start(ctx)

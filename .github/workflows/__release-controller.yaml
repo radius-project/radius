@@ -217,6 +217,20 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # Merging the release PR doesn't guarantee its plan check passed, so
+      # check the frozen pin again before approval and any mutation.
+      - name: Verify bicep-types-aws Radius pin
+        if: steps.plan.outputs.ready == 'true'
+        env:
+          BICEP_TYPES_AWS_COMMIT: >-
+            ${{ steps.plan.outputs.bicep-types-aws-commit }}
+        run: |
+          product_commit="$(yq -r '.source.productCommit' \
+            "${RUNNER_TEMP}/release-plan.yaml")"
+          bash "${GITHUB_WORKSPACE}/.github/scripts/verify-bicep-types-aws-radius-pin.sh" \
+            controller-siblings/bicep-types-aws "${BICEP_TYPES_AWS_COMMIT}" \
+            "${product_commit}"
+
       - name: Preflight every release repository
         if: steps.plan.outputs.ready == 'true'
         env:

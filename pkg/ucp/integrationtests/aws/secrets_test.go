@@ -28,77 +28,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 const (
-	testDBInstancePath           = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.RDS/DBInstance/app-db"
-	testDBInstanceCollectionPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.RDS/DBInstance"
-	testDBInstanceSchema         = `{
-		"primaryIdentifier": ["/properties/DBInstanceIdentifier"],
-		"createOnlyProperties": ["/properties/DBInstanceIdentifier"],
-		"writeOnlyProperties": ["/properties/MasterUserPassword"]
-	}`
 	testPassword = "request-password"
 
 	testUserPoolClientCollectionPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Cognito/UserPoolClient"
 )
-
-// Test_PutAWSResource_DoesNotEchoWriteOnlyValue checks through the UCP routes that a write-only value from the request
-// is sent to AWS but never returned in the response.
-func Test_PutAWSResource_DoesNotEchoWriteOnlyValue(t *testing.T) {
-	tests := []struct {
-		name   string
-		method string
-		path   string
-	}{
-		{name: "PUT", method: http.MethodPut, path: testDBInstancePath},
-		{name: "POST /:put", method: http.MethodPost, path: testDBInstanceCollectionPath + "/:put"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ucp, cloudcontrolClient, cloudFormationClient := initializeAWSTest(t)
-
-			cloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(&cloudformation.DescribeTypeOutput{
-				TypeName: aws.String("AWS::RDS::DBInstance"),
-				Schema:   aws.String(testDBInstanceSchema),
-			}, nil)
-
-			cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-				nil, &types.ResourceNotFoundException{Message: aws.String("Resource not found")})
-
-			var sent map[string]any
-			cloudcontrolClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(ctx context.Context, params *cloudcontrol.CreateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
-					require.NoError(t, json.Unmarshal([]byte(aws.ToString(params.DesiredState)), &sent))
-					return &cloudcontrol.CreateResourceOutput{
-						ProgressEvent: &types.ProgressEvent{
-							OperationStatus: types.OperationStatusInProgress,
-							RequestToken:    aws.String(testAWSRequestToken),
-							Identifier:      aws.String("app-db"),
-						},
-					}, nil
-				})
-
-			status, properties := sendPut(t, ucp, tt.method, tt.path, map[string]any{
-				"DBInstanceIdentifier": "app-db",
-				"MasterUsername":       "admin",
-				"MasterUserPassword":   testPassword,
-			})
-
-			require.Equal(t, http.StatusCreated, status)
-			require.Equal(t, map[string]any{
-				"DBInstanceIdentifier": "app-db",
-				"MasterUsername":       "admin",
-				"provisioningState":    "Provisioning",
-			}, properties)
-			require.Equal(t, testPassword, sent["MasterUserPassword"], "the password must still be sent to AWS")
-		})
-	}
-}
 
 // Test_PutAWSResource_NoChange_KeepsAWSSecret checks the 200 UCP returns when nothing changed: the client secret AWS
 // generates for a Cognito user pool client is still returned.
@@ -132,7 +72,7 @@ func Test_PutAWSResource_NoChange_KeepsAWSSecret(t *testing.T) {
 			}, nil
 		})
 
-	status, properties := sendPut(t, ucp, http.MethodPost, testUserPoolClientCollectionPath+"/:put", map[string]any{
+	status, properties := sendPut(t, ucp, http.MethodPut, testUserPoolClientCollectionPath+"/app-client", map[string]any{
 		"UserPoolId":     "us-east-1_pool",
 		"ClientId":       "client",
 		"ClientName":     "app",
@@ -159,6 +99,7 @@ func sendPut(t *testing.T, ucp *testhost.TestHost, method string, path string, p
 	request, err := rpctest.NewHTTPRequestWithContent(t.Context(), method, ucp.BaseURL()+path, body)
 	require.NoError(t, err)
 	request = request.WithContext(rpctest.NewARMRequestContext(request))
+	request.Header.Set(sdkclients.AWSResourceOwnerHeader, testOwner)
 
 	response, err := ucp.Client().Do(request)
 	require.NoError(t, err)

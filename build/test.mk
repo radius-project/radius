@@ -54,12 +54,32 @@ GOTESTSUM_JSONFILE_DIR ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) $(if $(GOTESTSUM_JSONFILE_DIR),--jsonfile=$(GOTESTSUM_JSONFILE_DIR)/$@.jsonl) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-azure-oidc-login test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check test-authz-kit ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-azure-oidc-login test-cloud-test-helpers test-manage-radius-installation test-purge-old-images test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-capture-release-image-digests test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format test-prepare-release test-release-plan test-release-branch-commits test-release-cutover test-release-oci-artifacts test-release-sboms test-release-controller test-release-publication test-authz-would-deny-check ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... ./test/rogue/... $(GOTEST_OPTS)
 
 .PHONY: test-azure-oidc-login
 test-azure-oidc-login: ## Tests cloud CI token request retries and Azure login
 	@node --test ./.github/scripts/azure-oidc-login_test.mjs
+
+.PHONY: test-authorization-contracts
+test-authorization-contracts: ## Checks generated RBAC contracts, examples, and Applications RP separation.
+	@node --test typespec/Radius.Core/authorization/contracts.test.mjs
+
+test: test-authorization-contracts
+
+.PHONY: test-authorization-bicep
+test-authorization-bicep: ## Packages RBAC types and compiles a resource-group Bicep assignment (requires bicep).
+	@node --test typespec/Radius.Core/authorization/bicep.test.mjs
+
+.PHONY: test-cloud-test-helpers
+test-cloud-test-helpers: install-yq ## Tests cloud helpers and prepared-base dependencies without credentials (requires Node.js; installs pinned yq)
+	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
+		node --test .github/scripts/cloud-test-helpers.test.mjs .github/scripts/cloud-test-bootstrap.test.mjs
+
+.PHONY: test-cloud-test-helpers-native
+test-cloud-test-helpers-native: install-yq install-oras ## Tests TLS capture (requires Node.js, Docker, free localhost port 5000, OpenSSL and curl; installs pinned yq and ORAS)
+	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$(or $(ORAS_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
+		node --test .github/scripts/cloud-test-artifacts.integration.test.mjs
 
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
@@ -109,10 +129,6 @@ test: test-git-http-backend
 test-authz-would-deny-check: ## Tests the authorization gate and workflow-owned log collector
 	@bash ./.github/scripts/authz-would-deny-check_test.sh
 	@python3 ./.github/scripts/run-with-authz-logs_test.py
-
-.PHONY: test-authz-kit
-test-authz-kit: ## Tests the manual authorization test kit in hack/authz (syntax, --help, helpers, workflows)
-	@bash ./hack/authz/kit_test.sh
 
 .PHONY: test-cluster-diagnostics
 test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
@@ -166,6 +182,11 @@ test-release-branch-commits: ## Tests backport provenance and commit validation 
 test-build-summary: ## Tests the build job summary rendering shared by the build workflows
 	@bash ./.github/scripts/build-summary_test.sh
 
+.PHONY: test-publishing-isolation
+test-publishing-isolation: install-yq ## Tests activation workflow boundaries without credentials (requires Node.js and OpenSSL; installs pinned yq)
+	@PATH="$(or $(YQ_INSTALL_DIR),$(HOME)/.local/bin):$$PATH" \
+		node --test .github/scripts/cloud-test-artifacts.test.mjs
+
 .PHONY: test-capture-release-image-digests
 test-capture-release-image-digests: ## Tests production release image digest capture
 	@bash ./.github/scripts/capture-release-image-digests_test.sh
@@ -218,6 +239,12 @@ test-workflow-functional-matrix: ## Tests functional test selection without infr
 	@node --test ./.github/scripts/functional-test-matrix_test.mjs
 
 test: test-workflow-functional-matrix
+
+.PHONY: test-long-running-azure
+test-long-running-azure: ## Tests persistent-cluster readiness and functional test selection without a cluster
+	@bash ./.github/scripts/long-running-azure_test.sh
+
+test: test-long-running-azure
 
 .PHONY: test-dapr-helpers
 test-dapr-helpers: ## Runs Dapr test helper unit tests without a cluster

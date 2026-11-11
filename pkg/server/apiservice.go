@@ -65,6 +65,8 @@ func (s *APIService) Run(ctx context.Context) error {
 		Location: s.Options.Config.Env.RoleLocation,
 		Address:  address,
 		PathBase: s.Options.Config.Server.PathBase,
+		// Only UCP routes requests to applications-rp.
+		AllowedCallers: []string{"ucp"},
 		Configure: func(r chi.Router) error {
 			for _, b := range s.handlerBuilder {
 				opts := apictrl.Options{
@@ -74,6 +76,7 @@ func (s *APIService) Run(ctx context.Context) error {
 					Arm:            s.Options.Arm, // This is a temporary fix to avoid ARM initialization in the test environment.
 					KubeClient:     s.KubeClient,
 					StatusManager:  s.OperationStatusManager,
+					Authorization:  s.Options.Config.Authorization,
 				}
 
 				validator, err := builder.NewOpenAPIValidator(ctx, opts.PathBase, b.Namespace())

@@ -618,6 +618,8 @@ crd
 createdAt
 createdBy
 createdByType
+crradfunctest
+crradfunctestl
 crypto
 cryptographic
 cryptographically
@@ -821,6 +823,7 @@ jsonResponse
 jsondiff
 judgement
 jwt
+keyid
 keyspace
 keyvault
 kube
@@ -1120,6 +1123,7 @@ roleARN
 rollout
 rollouts
 rootca
+rootfs
 roundtrips
 rp
 rpc
@@ -1169,6 +1173,7 @@ sql
 sqlDatabases
 sqldatabases
 sqlite
+squote
 src
 sslPassthrough
 stateStores

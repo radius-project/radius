@@ -29,15 +29,15 @@ For Kubernetes installations, configuration is rendered from `deploy/Chart/templ
 
 The development files combine shared host options with service-specific settings. Use the option types linked below instead of treating this page as a manually duplicated schema:
 
-| YAML section                    | Source of truth                                                                                       | Current values or shape                                                    |
-|---------------------------------|-------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
-| `environment`                   | [`hostoptions.EnvironmentOptions`](../../../../pkg/armrpc/hostoptions/options.go)                     | `name`, `roleLocation`                                                     |
-| `databaseProvider`              | [`databaseprovider.Options`](../../../../pkg/components/database/databaseprovider/options.go)         | Provider is `apiserver`, `inmemory`, or `postgresql`                       |
-| `queueProvider`                 | [`queueprovider.QueueProviderOptions`](../../../../pkg/components/queue/queueprovider/options.go)     | Provider is `apiserver` or `inmemory`; includes a queue `name`             |
-| `secretProvider`                | [`secretprovider.SecretProviderOptions`](../../../../pkg/components/secret/secretprovider/options.go) | Provider is `kubernetes` or `inmemory`                                     |
-| `metricsProvider`               | [`metricsservice.Options`](../../../../pkg/components/metrics/metricsservice/options.go)              | `enabled`, `serviceName`, and nested `prometheus.path` / `prometheus.port` |
-| `server`, `workerServer`, `ucp` | [`pkg/armrpc/hostoptions`](../../../../pkg/armrpc/hostoptions/)                                       | HTTP listener, async worker, and UCP connection settings                   |
-| `authorization`                 | [`authz.Options`](../../../../pkg/authz/mode.go)                                                      | `mode` is `off` (default), `dryRun`, or `enforce`                          |
+| YAML section                    | Source of truth                                                                                       | Current values or shape                                                                                                                                         |
+|---------------------------------|-------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `environment`                   | [`hostoptions.EnvironmentOptions`](../../../../pkg/armrpc/hostoptions/options.go)                     | `name`, `roleLocation`                                                                                                                                          |
+| `databaseProvider`              | [`databaseprovider.Options`](../../../../pkg/components/database/databaseprovider/options.go)         | Provider is `apiserver`, `inmemory`, or `postgresql`                                                                                                            |
+| `queueProvider`                 | [`queueprovider.QueueProviderOptions`](../../../../pkg/components/queue/queueprovider/options.go)     | Provider is `apiserver` or `inmemory`; includes a queue `name`                                                                                                  |
+| `secretProvider`                | [`secretprovider.SecretProviderOptions`](../../../../pkg/components/secret/secretprovider/options.go) | Provider is `kubernetes` or `inmemory`                                                                                                                          |
+| `metricsProvider`               | [`metricsservice.Options`](../../../../pkg/components/metrics/metricsservice/options.go)              | `enabled`, `serviceName`, and nested `prometheus.path` / `prometheus.port`                                                                                      |
+| `server`, `workerServer`, `ucp` | [`pkg/armrpc/hostoptions`](../../../../pkg/armrpc/hostoptions/)                                       | HTTP listener, async worker, and UCP connection settings                                                                                                        |
+| `authorization`                 | [`authz.Options`](../../../../pkg/authz/mode.go)                                                      | `mode` is `off` (default), `dryRun`, or `enforce`; also `podSecurityLevel`, `controlPlaneNamespace`, `controlPlaneSecrets`, `certificateDirectory`, `namespace` |
 
 For example, local services commonly use Kubernetes API server storage and expose Prometheus settings in this shape:
 
@@ -66,7 +66,7 @@ metricsProvider:
     port: 9091
 ```
 
-Use a `direct` UCP connection only for local process debugging:
+For local process debugging with authorization mode `off`, use a `direct` UCP connection to the local HTTP endpoint:
 
 ```yaml
 ucp:
@@ -75,12 +75,44 @@ ucp:
     endpoint: http://localhost:9000/apis/api.ucp.dev/v1alpha3
 ```
 
-Kubernetes deployments use the chart-rendered UCP connection instead of the local endpoint.
+Kubernetes deployments use the chart-rendered UCP connection instead of the local endpoint. When the authorization mode is `off`, the chart renders `kind: kubernetes`. Otherwise it renders a `direct` connection to UCP's internal mTLS port, `https://ucp.<namespace>.svc:9444/apis/api.ucp.dev/v1alpha3`, for Applications RP, Dynamic RP, and the controller.
+
+When the authorization mode is not `off`, a `direct` endpoint must use `https`, and the service presents the certificate from `authorization.certificateDirectory`. Keep the mode `off` for local process debugging over `http`.
 
 The `authorization.mode` setting is read by UCP, Applications RP, Dynamic RP, and the controller, and each logs `authz mode=<mode>` at startup. The chart renders it from `global.rbac.enabled` and `global.rbac.dryRun`: `dryRun=true` renders `dryRun`, `enabled=true` renders `enforce`, and setting both fails rendering. In `off` mode the chart omits the section so older service binaries can still load the config.
 
 > [!NOTE]
-> Services only read and log this setting for now. No authorization checks use it yet, so selecting `enforce` does not block requests.
+> Besides the admission controls below, the mode controls mutual TLS between control-plane components. When the mode is not `off`, the chart mounts each component's `<component>-mtls` Secret at `/var/run/radius/mtls` and renders `certificateDirectory` (that path, holding `tls.crt`, `tls.key`, and `ca.crt`) and `namespace` (the release namespace, used to check peer certificate identities) for UCP, Applications RP, Dynamic RP, and the controller. UCP serves internal traffic on port 9444; its aggregated API on 9443 is unchanged.
+>
+> In `dryRun`, the mTLS listeners accept both TLS and plain HTTP and log requests they would deny. In `enforce`, they require a client certificate issued by the Radius CA. A missing, untrusted, or expired client certificate fails the initial TLS handshake before an HTTP response can be returned. If a previously authenticated connection fails a request-time certificate or trust check, the server returns HTTP 401 `InvalidAuthenticationInfo`. The resource providers accept only UCP's identity and return HTTP 403 `AuthorizationFailed` for any other component. Certificate validity is checked on every request, including on reused connections.
+
+When the mode is not `off`, UCP presents its certificate when it calls Applications RP and Dynamic RP over `https`, and the RPs and the controller present theirs when they call UCP on port 9444. The deployment engine still calls UCP through port 9443 without a client certificate.
+
+Before sending a request, component clients close connections outside the validity period shared by their client certificate and the verified server certificate chains. This can interrupt active HTTP/2 response streams; it is not a timer that closes connections at the exact expiry instant. A successful certificate or CA-bundle reload applies to new client handshakes. Removing a server CA from that bundle does not immediately revoke already-open client connections.
+
+When the mode is not `off`, the chart also renders `podSecurityLevel` (from `global.rbac.podSecurityLevel`, `baseline` by default or `restricted`) and `controlPlaneNamespace` (the release namespace, which is never labeled). `dryRun` adds the `pod-security.kubernetes.io/warn` and `audit` labels; `enforce` also adds `enforce`. Labels that an operator already set on a namespace are never overwritten.
+
+Labeling is additive: changing the mode or level does not rewrite or remove existing labels, including labels Radius previously added. The new setting applies to newly created namespaces and missing label keys when an environment or application is updated. To change the policy on an already labeled namespace, review and update its Pod Security labels explicitly; switching Radius to `off` does not disable existing namespace enforcement.
+
+The chart also installs the `radius-control-plane-isolation` ValidatingAdmissionPolicy when the mode is not `off` and the cluster serves the `admissionregistration.k8s.io/v1` ValidatingAdmissionPolicy API (Kubernetes 1.30+). It checks Deployments and Pods that the identities in `global.rbac.admission.applicationIdentities` (default: the `applications-rp` service account) create with the `radapp.io/resource-type` label, and flags workloads in the control-plane namespace that use a control-plane service account (`control-plane-service-account`), reference a control-plane Secret (`control-plane-secret`), or run there at all (`control-plane-namespace`). `dryRun` binds it with `Warn` and `Audit`; `enforce` with `Deny`, and the message starts with `AdmissionPolicyDenied: <rule>`. The service account and Secret names come from the `radius.authz.controlPlaneServiceAccounts` and `radius.authz.controlPlaneSecrets` chart helpers.
+
+Applications RP applies the same rules itself. It checks an `Applications.Core` or `Radius.Core` environment, or an application `kubernetesNamespace` extension, whose namespace is `controlPlaneNamespace` (rule `control-plane-namespace`), before it creates or labels the namespace. In `enforce`, this namespace check rejects the request immediately with HTTP 403 and `AdmissionPolicyDenied` naming the rule.
+
+Before it applies the output resources of a deployment, Applications RP checks any Kubernetes object in `controlPlaneNamespace`, including a rendered Namespace object with that name: rule `control-plane-secret` when the object is, or its pod spec references, one of `controlPlaneSecrets` (volumes, projected volumes, `envFrom`, `secretKeyRef`, `imagePullSecrets`), otherwise `control-plane-namespace`. The chart renders `controlPlaneSecrets` from the `radius.authz.controlPlaneSecrets` helper. In `enforce`, this deployment output check fails the asynchronous operation before any outputs are applied; it does not return the denial in the original request's response. Follow the `Azure-AsyncOperation` URL until the operation reaches `Failed` with an `AdmissionPolicyDenied` error naming the rule. For both checks, `dryRun` logs a would-deny and allows the request.
+
+Applications RP also checks the Kubernetes Secret used by a legacy `Applications.Core/secretStores` resource:
+
+- **Checked operations:** PUT and PATCH before namespace or Secret writes; `listSecrets` and DELETE before Secret reads or deletion.
+- **Rules:** in `controlPlaneNamespace`, one of `controlPlaneSecrets` violates `control-plane-secret`; any other Secret violates `control-plane-namespace`. Other namespaces are allowed.
+- **Modes:** unset or `off` (the default) skips the check. `dryRun` logs a would-deny. `enforce` returns HTTP 403 `AdmissionPolicyDenied`, including for existing stores.
+- **Secret values:** they never appear in admission errors, logs, or denials. Allowed `listSecrets` responses still return them.
+- **Delete:** `enforce` blocks deletion of stores referencing control-plane Secrets, even if the Secret is missing. For allowed requests in every mode, Radius deletes the backing Secret only when this store recorded its UID at creation and the live UID still matches. A UID precondition protects against replacement during deletion.
+- **Existing/adopted Secrets:** without verified ownership, DELETE removes only the Radius record and retains the Secret, including Secrets with a `radapp.io/resource-type` label. Updates do not claim ownership of an existing Secret. Secrets referenced by older records are retained because those records lack ownership evidence; review retained Secrets before removing them directly. A second store referencing a Secret does not become its owner or prevent its creating store from cleaning it up.
+- **Targets:** `RADIUS_TARGET_KUBECONFIG` never exempts secret stores because they use the control-plane cluster.
+
+These protections apply to the cluster hosting the control plane, not an unrelated same-named namespace on a deployment target. With `RADIUS_TARGET_KUBECONFIG` configured, Radius compares the live `kube-system` namespace UIDs before exempting a protected-name target namespace. Different kubeconfig files or API-server addresses alone do not establish separation. The control-plane and target credentials must allow reading that namespace for these protected-name checks; a failed identity read fails the request explicitly in `dryRun` and `enforce`. Ordinary application namespaces and `off` mode need no identity lookup. A verified distinct target receives normal Pod Security labels even when its namespace has the control-plane namespace's name. Legacy `Applications.Core` environment namespace creation still uses the control-plane cluster and remains protected, regardless of target configuration.
+
+The Applications RP rollout checksum covers its authorization mode and, when active, its effective Pod Security level, control-plane namespace, and protected Secret names, so changing these settings restarts the provider with the updated policy. Settings omitted from the runtime configuration in `off` mode do not affect its checksum.
 
 UCP reads `aws.fingerprintKeyFile`, the file that holds the HMAC key for fingerprints of write-only AWS property values. It defaults to `/var/secrets/aws-fingerprint/key`, where the chart mounts the `radius-aws-fingerprint-key` Secret, so the chart does not render it. Set it when running UCP as a local process with a key file of at least 32 random bytes. When the file is missing or invalid, UCP still starts and logs an error naming the Secret.
 

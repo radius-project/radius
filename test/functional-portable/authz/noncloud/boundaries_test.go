@@ -26,14 +26,25 @@ import "testing"
 // Expected: a pod without a Radius component certificate calling applications-rp directly
 // fails the mTLS handshake (logged as PeerCertificateInvalid) or is rejected with
 // InvalidAuthenticationInfo (401).
+//
+// The test calls applications-rp from a rogue pod rather than through UCP, which presents
+// its own client certificate.
 func Test_Boundary_UnauthenticatedCallToApplicationsRP(t *testing.T) {
-	t.Skip("enabled by A4")
+	testUnauthenticatedCallToApplicationsRP(t)
 }
 
 // Expected: a pod presenting an RSA-1024 (or otherwise disallowed) certificate signed by the
 // Radius CA fails the mTLS handshake, and the receiver logs PeerCertificateInvalid.
 func Test_Boundary_DisallowedPeerKey(t *testing.T) {
-	t.Skip("enabled by A4")
+	testDisallowedPeerKey(t)
+}
+
+// Expected: a pod presenting a valid Radius component certificate for a component that is
+// not an allowed caller of applications-rp (dynamic-rp; only UCP is allowed) completes the
+// mTLS handshake and is rejected with AuthorizationFailed (403), or logged as a would-deny
+// in dryRun.
+func Test_Boundary_DisallowedCaller(t *testing.T) {
+	testDisallowedCaller(t)
 }
 
 // Expected: a request to UCP carrying a forged x-remote-user header, without a verified
@@ -70,12 +81,6 @@ func Test_Boundary_UnassignedDataAccessWrite(t *testing.T) {
 // namespace-limited template identity with AuthorizationFailed (403).
 func Test_Boundary_TemplateClusterRoleDenied(t *testing.T) {
 	t.Skip("enabled by D7")
-}
-
-// Expected: an application workload that references a control-plane Secret is rejected
-// by admission with AdmissionPolicyDenied (403).
-func Test_Boundary_ControlPlaneSecretReferenceDenied(t *testing.T) {
-	t.Skip("enabled by E2")
 }
 
 // Expected: with --mtls-provider external, a ServiceAccount token issued for one receiver
