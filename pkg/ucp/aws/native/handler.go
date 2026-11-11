@@ -54,12 +54,14 @@ type Handler interface {
 	// Options returns how UCP uses the handler.
 	Options() Options
 
-	// Read returns the properties of the resource with the identifier, or ErrNotFound. It never returns write-only
-	// values.
+	// Read returns the properties of the resource with the identifier, or ErrNotFound. Some service APIs return
+	// secrets, so UCP removes the schema's write-only values from what Read and List return before it uses or returns
+	// them.
 	Read(ctx context.Context, region string, identifier string) (map[string]any, error)
 
 	// Create starts creating a resource and returns its identifier. It may return "" when the identifier is known
-	// before the create, because UCP already has it.
+	// before the create, because UCP already has it. Options().Recovery says how a handler makes a create safe to
+	// send again.
 	Create(ctx context.Context, request CreateRequest) (string, error)
 
 	// Update starts updating the resource.
@@ -88,24 +90,60 @@ type IdentifierEncoder interface {
 	Identifier(properties map[string]any) (string, error)
 }
 
+// Finder is implemented by a handler whose Options().Recovery is RecoverBySearch.
+type Finder interface {
+	// Find returns the identifier of the resource a create sent with request made, or "" when AWS has none. It finds
+	// the resource by the tag Create added with request.ClientToken, or by values AWS keeps unique. When it can't tell,
+	// it returns an error, never "".
+	Find(ctx context.Context, request CreateRequest) (string, error)
+}
+
 // CreateRequest is a create to start.
 type CreateRequest struct {
 	Region string
 
-	// Properties are the template's properties, including write-only values.
+	// Properties are the template's properties, including write-only values, and the name UCP generated when the
+	// template leaves out Options().NameProperty. When UCP sends a create again to find a resource before a delete,
+	// the template is not available, so Properties are those of the last create without write-only values.
 	Properties map[string]any
 
 	// ClientToken is a UUID saved on the record before the first create, and the same on every attempt to create
-	// this resource.
+	// this resource. It identifies the operation: UCP generates names from it, and a handler sends it as the API's
+	// idempotency token or tags the create with it. UCP may call Create more than once with the same ClientToken,
+	// including from concurrent requests, and each call must return the same resource without creating a second one.
 	ClientToken string
 }
+
+// Recovery is how UCP finds a create it lost after AWS accepted it, such as when UCP stopped before it saved the
+// result. The next PUT, or a DELETE, finds the resource instead of creating a second one.
+type Recovery int
+
+const (
+	// RecoverByIdentifier means the identifier is known before the create, because the template sets it or UCP
+	// generates it (see Options.NameProperty). UCP saves it on the record before the create and reads AWS by it: if
+	// AWS has the resource, UCP waits for it, and otherwise it sends the create again. A create whose identifier the
+	// template doesn't give fails with 400 before UCP calls AWS.
+	RecoverByIdentifier Recovery = iota
+
+	// RecoverByResend means sending the create again returns the first resource: AWS assigns the identifier and the
+	// API takes an idempotency token, which the handler sets to CreateRequest.ClientToken, or the call is safe to
+	// repeat, such as adding a user to a group. UCP sends the create again, possibly from two requests at once, before
+	// it reserves the record, so Create with the same ClientToken must return the same resource every time.
+	RecoverByResend
+
+	// RecoverBySearch means AWS assigns the identifier and the API takes no idempotency token. The handler tags the
+	// create with CreateRequest.ClientToken, or relies on values AWS keeps unique, and implements Finder. UCP calls
+	// Find, and sends the create again only when AWS has no such resource.
+	RecoverBySearch
+)
 
 // UpdateRequest is an update to start.
 type UpdateRequest struct {
 	Region     string
 	Identifier string
 
-	// Current is what Read returned, and Desired is the template's properties, including write-only values.
+	// Current is what Read returned, without write-only values, and Desired is the template's properties, including
+	// write-only values.
 	Current map[string]any
 	Desired map[string]any
 
@@ -175,6 +213,16 @@ const DefaultTimeout = 2 * time.Hour
 type Options struct {
 	// List is how the type can be listed.
 	List ListSupport
+
+	// Recovery is how UCP finds a create it lost after AWS accepted it.
+	Recovery Recovery
+
+	// NameProperty is the top-level property that names the resource when AWS lets the caller choose the name, or ""
+	// when there is none. When the template leaves it out, UCP generates a name from CreateRequest.ClientToken that
+	// fits the property's rules in the schema (see NameRules), and sends it with the create. The property stays
+	// optional, because the same template must also work where Cloud Control serves the type, and Cloud Control
+	// generates its own name.
+	NameProperty string
 
 	// CreateTimeout, UpdateTimeout, and DeleteTimeout are how long UCP waits for each operation. Zero means
 	// DefaultTimeout.

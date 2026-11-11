@@ -179,14 +179,14 @@ func Test_CreateOrUpdateAWSResource_Secrets(t *testing.T) {
 			wantProperties: map[string]any{"DBInstanceIdentifier": "app-db", "MasterUsername": "admin", "provisioningState": "Provisioning"},
 		},
 		{
-			name:     "no change does not echo write-only value",
+			name:     "no change echoes no write-only value, from the request or from AWS",
 			resource: newRDSDBInstanceTestResource(true),
 			current:  map[string]any{"DBInstanceIdentifier": "app-db", "MasterUserPassword": awsSecret},
 			request:  map[string]any{"DBInstanceIdentifier": "app-db", "MasterUserPassword": requestSecret},
 			lookup:   true,
 
 			wantStatus:     http.StatusOK,
-			wantProperties: map[string]any{"DBInstanceIdentifier": "app-db", "MasterUserPassword": awsSecret, "provisioningState": "Succeeded"},
+			wantProperties: map[string]any{"DBInstanceIdentifier": "app-db", "provisioningState": "Succeeded"},
 		},
 		{
 			name:     "create does not echo secret the schema does not mark",

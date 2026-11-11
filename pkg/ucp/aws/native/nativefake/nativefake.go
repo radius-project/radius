@@ -34,10 +34,15 @@ import (
 )
 
 var _ native.Handler = (*Handler)(nil)
+var _ native.Finder = (*Handler)(nil)
 
 // Handler is a fake native handler. Create and Update change the store at once, a delete removes the resource when it
 // finishes, and Progress reports each operation as running for Waits calls before it finishes, like an AWS service
 // with waiters.
+//
+// Create acts on the client token as Opts.Recovery says: with RecoverByResend, a create sent again with a client token
+// returns the first resource, like an API with an idempotency token; with RecoverBySearch, Create tags the resource
+// with the client token, and Find finds it by that tag.
 type Handler struct {
 	// Name is the type the handler serves.
 	Name string
@@ -69,6 +74,10 @@ type Handler struct {
 	// change something while UCP waits.
 	OnProgress func()
 
+	// ReturnsWriteOnly makes Read and List return write-only values, like a service API that returns secrets, such
+	// as MediaLive's DescribeChannel.
+	ReturnsWriteOnly bool
+
 	// IdentifierOf, when set, computes a new resource's identifier from its properties instead of the store's
 	// identifier property. Encoding returns the handler with IdentifierOf as its identifier encoding.
 	IdentifierOf func(properties map[string]any) (string, error)
@@ -76,17 +85,21 @@ type Handler struct {
 	mu      sync.Mutex
 	calls   []Call
 	running map[string]*operation
+
+	// tags maps a client token to the resource the create sent with it made.
+	tags map[string]string
 }
 
 // Call is a call the handler received.
 type Call struct {
-	// Method is Read, Create, Update, Delete, List, or Progress.
+	// Method is Read, Create, Update, Delete, List, Find, or Progress.
 	Method     string
 	Identifier string
 
-	// Properties are what Create got, and Patch is what Update got.
-	Properties map[string]any
-	Patch      []map[string]any
+	// Properties are what Create or Find got, ClientToken is the client token they got, and Patch is what Update got.
+	Properties  map[string]any
+	ClientToken string
+	Patch       []map[string]any
 }
 
 type operation struct {
@@ -147,26 +160,40 @@ func (h *Handler) start(identifier string, op native.Operation) {
 	h.running[identifier] = &operation{op: op, waits: h.Waits}
 }
 
-// Read returns the resource from the store without its write-only values.
+// Read returns the resource from the store, without its write-only values unless ReturnsWriteOnly is set.
 func (h *Handler) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if err := h.record(Call{Method: "Read", Identifier: identifier}); err != nil {
 		return nil, err
 	}
-	props, ok := h.Store.Read(h.Name, identifier)
+	props, ok := h.read(identifier)
 	if !ok {
 		return nil, native.ErrNotFound
 	}
 	return props, nil
 }
 
-// Create stores the resource and starts its create.
+func (h *Handler) read(identifier string) (map[string]any, bool) {
+	if h.ReturnsWriteOnly {
+		props := h.Store.Resource(h.Name, identifier)
+		return props, props != nil
+	}
+	return h.Store.Read(h.Name, identifier)
+}
+
+// Create stores the resource and starts its create. With RecoverByResend, a client token it has seen returns the
+// resource the first create made, when the store still has it.
 func (h *Handler) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if err := h.record(Call{Method: "Create", Properties: request.Properties}); err != nil {
+	if err := h.record(Call{Method: "Create", Properties: request.Properties, ClientToken: request.ClientToken}); err != nil {
 		return "", err
+	}
+	if first, ok := h.tags[request.ClientToken]; ok && h.Opts.Recovery == native.RecoverByResend {
+		if _, exists := h.Store.Read(h.Name, first); exists {
+			return first, h.lostResponse("Create")
+		}
 	}
 	var identifier string
 	if h.IdentifierOf != nil {
@@ -178,8 +205,31 @@ func (h *Handler) Create(ctx context.Context, request native.CreateRequest) (str
 	} else {
 		identifier = h.Store.Create(h.Name, request.Properties)
 	}
+	if request.ClientToken != "" {
+		if h.tags == nil {
+			h.tags = map[string]string{}
+		}
+		h.tags[request.ClientToken] = identifier
+	}
 	h.start(identifier, native.OperationCreate)
 	return identifier, h.lostResponse("Create")
+}
+
+// Find returns the resource a create with the client token made, found by its tag, or "" when the store has none.
+func (h *Handler) Find(ctx context.Context, request native.CreateRequest) (string, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if err := h.record(Call{Method: "Find", Properties: request.Properties, ClientToken: request.ClientToken}); err != nil {
+		return "", err
+	}
+	identifier, ok := h.tags[request.ClientToken]
+	if !ok {
+		return "", nil
+	}
+	if _, exists := h.Store.Read(h.Name, identifier); !exists {
+		return "", nil
+	}
+	return identifier, nil
 }
 
 // Update applies the patch to the stored resource and starts its update.
@@ -233,7 +283,7 @@ func (h *Handler) List(ctx context.Context, region string) ([]native.Resource, e
 	}
 	out := []native.Resource{}
 	for _, identifier := range h.Store.List(h.Name) {
-		props, _ := h.Store.Read(h.Name, identifier)
+		props, _ := h.read(identifier)
 		out = append(out, native.Resource{Identifier: identifier, Properties: props})
 	}
 	return out, nil

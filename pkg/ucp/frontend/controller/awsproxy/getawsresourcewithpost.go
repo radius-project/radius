@@ -167,6 +167,13 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	if resp, err := addExtraProperties(ctx, p.awsClients.Kafka, serviceCtx.ResourceTypeInAWSFormat(), region, *describeTypeOutput.Schema, resourceProperties); resp != nil || err != nil {
 		return resp, err
 	}
+	// AWS may return write-only values: a native schema can mark more properties write-only than CloudFormation's, and
+	// some service APIs return secrets. Remove them last, so they are also removed from any extra property.
+	writeOnly, err := writeOnlyPaths(*describeTypeOutput.Schema)
+	if err != nil {
+		return nil, err
+	}
+	removePaths(resourceProperties, writeOnly)
 
 	// A type with a native handler gets one escaped segment. Cloud Control types keep the IDs they had before native
 	// handlers, which other parts of Radius already store.
