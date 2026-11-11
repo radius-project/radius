@@ -37,6 +37,8 @@ make test
 
 To compile every test without running them, use `make test-compile`.
 
+Unit tests run on Linux in CI. To check that Go code and tests also compile and pass `go vet` on Windows, run `make lint-go-windows`. It runs `GOOS=windows go vet ./...` for amd64; set `WINDOWS_VET_ARCHS="amd64 arm64"` to add arm64. Files that cannot build on Windows, such as envtest-based tests, use `//go:build !windows`. This check catches compile errors only, not runtime bugs such as using `path` instead of `path/filepath` on OS paths.
+
 ### Integration tests
 
 Integration tests exercise a feature together with its dependencies. In Radius they live alongside the unit tests under `./pkg/...` rather than in a separate tree, and they run as part of `make test`. They use in-memory servers and data stores instead of a deployed control plane, which keeps them fast and self-contained. Examples:
