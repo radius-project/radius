@@ -20,12 +20,12 @@ limitations under the License.
 // how it reads AWS's real responses, without AWS.
 //
 // Set RADIUS_AWS_RECORD=1, with AWS credentials, to call AWS and save the cassette instead. Recording keeps no request
-// or response headers except the few the SDK needs to read a response. In every value it keeps, it replaces the
-// recording identity: the account ID with 123456789012, the user ID with AIDAREPLAY, and the principal name in the
-// identity's ARN (the user name, or the role and session names of an assumed role) with radius-recording. In a binary
-// body, such as CBOR, the user ID and names are replaced with x characters of the same length instead, so the body
-// stays valid. It also replaces each value registered with Scrub, such as a password, with x characters of the same
-// length.
+// or response headers except the few the SDK needs to read a response. In every value it keeps, it replaces the account
+// ID with 123456789012, and each value registered with Scrub, such as a password, with x characters of the same length.
+// It also replaces the recording identity's user ID with AIDAREPLAY, and each name in its ARN (the user name, or the
+// role and session names of an assumed role) with radius-recording. It replaces those only in the string values of a
+// JSON, XML, form, or CBOR body, never in a key or the syntax, and only where the whole name appears, so a short name
+// such as "a" doesn't change other words. A recording fails when it can't replace them, such as in an XML attribute.
 package awsreplay
 
 import (
@@ -48,7 +48,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -228,67 +227,30 @@ func (s *Session) Wait(d time.Duration) {
 	}
 }
 
-// scrub returns b with the recording identity and every scrubbed value replaced. Each identity value is replaced as
-// is, percent-encoded in a form body or path, and escaped in JSON. A scrubbed value is replaced with x characters of
-// the same length in those forms and base64 encoded. In a binary body, every replacement keeps the length, so a body
-// such as CBOR stays valid. All values are replaced in one pass, longest first, so a value that contains another, such
-// as a scrubbed value that contains the account ID, is replaced whole, and no replacement is replaced again.
-func (s *Session) scrub(b []byte, binary bool) []byte {
-	type replacement struct{ old, new string }
-	var rs []replacement
-	add := func(old, new string) {
-		if old == "" {
-			return
-		}
-		if binary && len(new) != len(old) {
-			new = strings.Repeat("x", len(old))
-		}
-		rs = append(rs, replacement{old, new})
-	}
-	// The replacements contain no character that any form escapes, so each form maps to the same replacement.
-	addEscaped := func(v, new string) {
-		for _, form := range escapes(v) {
-			add(form, new)
-		}
-	}
-	if s.identity != nil {
-		addEscaped(aws.ToString(s.identity.Account), Account)
-		addEscaped(aws.ToString(s.identity.UserId), UserID)
-		for _, name := range principalNames(aws.ToString(s.identity.Arn)) {
-			addEscaped(name, Principal)
-		}
+// scrub returns b with the account ID replaced with Account, and every scrubbed value replaced with x characters of
+// the same length in each form a request or response can carry it in: as is, percent-encoded in a form body, escaped
+// in JSON, and base64 encoded. An account ID is always 12 digits, so every replacement keeps the length and the kind
+// of character, and a body such as CBOR stays valid. All values are replaced in one pass, longest first, so a value
+// that contains another, such as a scrubbed value that contains the account ID, is replaced whole.
+func (s *Session) scrub(b []byte) []byte {
+	var pairs []replacement
+	if s.identity != nil && aws.ToString(s.identity.Account) != "" {
+		pairs = append(pairs, replacement{aws.ToString(s.identity.Account), Account})
 	}
 	for _, v := range s.scrubbed {
 		for _, form := range encodings(v) {
-			add(form, strings.Repeat("x", len(form)))
+			pairs = append(pairs, replacement{form, strings.Repeat("x", len(form))})
 		}
 	}
-	if len(rs) == 0 {
+	if len(pairs) == 0 {
 		return b
 	}
-	slices.SortStableFunc(rs, func(a, b replacement) int { return len(b.old) - len(a.old) })
-	pairs := make([]string, 0, 2*len(rs))
-	for _, r := range rs {
-		pairs = append(pairs, r.old, r.new)
+	slices.SortStableFunc(pairs, func(a, b replacement) int { return len(b.old) - len(a.old) })
+	args := make([]string, 0, 2*len(pairs))
+	for _, r := range pairs {
+		args = append(args, r.old, r.new)
 	}
-	return []byte(strings.NewReplacer(pairs...).Replace(string(b)))
-}
-
-// principalNames returns the names in the ARN of a caller identity: the user name of an IAM user, the role and session
-// names of an assumed role, and the name of a federated user. The root user has none.
-func principalNames(identityARN string) []string {
-	parsed, err := arn.Parse(identityARN)
-	if err != nil {
-		return nil
-	}
-	kind, names, ok := strings.Cut(parsed.Resource, "/")
-	if !ok {
-		return nil
-	}
-	if kind == "assumed-role" {
-		return strings.Split(names, "/")
-	}
-	return []string{names[strings.LastIndex(names, "/")+1:]}
+	return []byte(strings.NewReplacer(args...).Replace(string(b)))
 }
 
 // escapes returns v and the forms text can carry it in: percent-encoded in a form body or path, and escaped in JSON.
@@ -311,8 +273,9 @@ func unique(forms []string) []string {
 func (s *Session) save() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	rs := s.identityReplacements()
 	for name, v := range s.cassette.Inputs {
-		s.cassette.Inputs[name] = string(s.scrub([]byte(v), false))
+		s.cassette.Inputs[name] = replaceNames(string(s.scrub([]byte(v))), rs)
 	}
 	b, err := json.MarshalIndent(s.cassette, "", "  ")
 	if err != nil {
@@ -407,9 +370,16 @@ func (r recorder) RoundTrip(req *http.Request) (*http.Response, error) {
 			i.Headers[h] = v
 		}
 	}
-	i.Request = text(s.scrub(request, false))
-	i.Binary = !utf8.Valid(body) || strings.Contains(resp.Header.Get("Content-Type"), "cbor")
-	scrubbed := s.scrub(body, i.Binary)
+	request, err = s.scrubIdentity(s.scrub(request), req.Header.Get("Content-Type"))
+	if err != nil {
+		s.t.Errorf("awsreplay: failed to scrub the request of %s %s: %v", service, op, err)
+	}
+	i.Request = text(request)
+	scrubbed, err := s.scrubIdentity(s.scrub(body), resp.Header.Get("Content-Type"))
+	if err != nil {
+		s.t.Errorf("awsreplay: failed to scrub the response of %s %s: %v", service, op, err)
+	}
+	i.Binary = !utf8.Valid(scrubbed) || strings.Contains(resp.Header.Get("Content-Type"), "cbor")
 	if i.Binary {
 		i.Body = base64.StdEncoding.EncodeToString(scrubbed)
 	} else {

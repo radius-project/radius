@@ -207,36 +207,6 @@ func Test_Record_Identity(t *testing.T) {
 	}
 }
 
-// Test_ScrubIdentityBinary checks that the identity is replaced with values of the same length in a binary body, so a
-// body such as CBOR stays valid.
-func Test_ScrubIdentityBinary(t *testing.T) {
-	s := &Session{identity: &sts.GetCallerIdentityOutput{
-		Account: aws.String("999988887777"),
-		Arn:     aws.String("arn:aws:iam::999988887777:user/alice"),
-		UserId:  aws.String("AIDA5EXAMPLEUSERID123"),
-	}}
-	body := "arn:aws:iam::999988887777:user/alice AIDA5EXAMPLEUSERID123"
-	require.Equal(t, "arn:aws:iam::123456789012:user/xxxxx xxxxxxxxxxxxxxxxxxxxx", string(s.scrub([]byte(body), true)))
-	require.Equal(t, "arn:aws:iam::123456789012:user/radius-recording AIDAREPLAY", string(s.scrub([]byte(body), false)))
-}
-
-func Test_PrincipalNames(t *testing.T) {
-	tests := []struct {
-		arn  string
-		want []string
-	}{
-		{"arn:aws:iam::123456789012:user/alice", []string{"alice"}},
-		{"arn:aws:iam::123456789012:user/team/alice", []string{"alice"}},
-		{"arn:aws:sts::123456789012:assumed-role/Role/session", []string{"Role", "session"}},
-		{"arn:aws:sts::123456789012:federated-user/bob", []string{"bob"}},
-		{"arn:aws:iam::123456789012:root", nil},
-		{"not-an-arn", nil},
-	}
-	for _, tt := range tests {
-		require.Equal(t, tt.want, principalNames(tt.arn), tt.arn)
-	}
-}
-
 // Test_Record_EscapedIdentity records a form request that carries the caller's names, which the SDK percent-encodes,
 // and checks that the cassette keeps neither the names nor the user ID in any form.
 func Test_Record_EscapedIdentity(t *testing.T) {
@@ -321,7 +291,7 @@ func Test_Scrub(t *testing.T) {
 		`{"definition":"` + base64.StdEncoding.EncodeToString([]byte(secret)) + `"}`,
 		"arn:aws:iam::999988887777:role/r",
 	} {
-		scrubbed := s.scrub([]byte(body), false)
+		scrubbed := s.scrub([]byte(body))
 		require.Len(t, scrubbed, len(body), "the length stays the same")
 		require.NotContains(t, text(scrubbed), "w0rd")
 		require.NotContains(t, string(scrubbed), "999988887777")
@@ -336,7 +306,7 @@ func Test_ScrubKeepsJSONValid(t *testing.T) {
 		s.Scrub(secret)
 		body, err := json.Marshal(map[string]string{"Password": secret})
 		require.NoError(t, err)
-		scrubbed := s.scrub(body, false)
+		scrubbed := s.scrub(body)
 		var parsed map[string]string
 		require.NoError(t, json.Unmarshal(scrubbed, &parsed), "%q scrubs to %s", secret, scrubbed)
 		require.NotEqual(t, secret, parsed["Password"])
