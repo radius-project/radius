@@ -24,6 +24,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"net"
 	"net/http"
@@ -133,4 +134,149 @@ func Test_listenAndServe_ServesCertificateFromDirectory(t *testing.T) {
 func Test_listenAndServe_FailsWithoutCertificateWhenAuthorizationIsOn(t *testing.T) {
 	err := newTestService(t.TempDir(), authz.ModeEnforce).listenAndServe(t.Context(), &http.Server{Addr: "127.0.0.1:0", ReadHeaderTimeout: time.Second})
 	require.ErrorContains(t, err, "failed to load the API server certificate")
+}
+
+// newProxyClientCert returns a CA pool and a client certificate it signs, like the Kubernetes
+// API server's front-proxy client certificate.
+func newProxyClientCert(t *testing.T) (*x509.CertPool, *x509.Certificate, tls.Certificate) {
+	t.Helper()
+	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	caTemplate := &x509.Certificate{
+		SerialNumber:          big.NewInt(10),
+		Subject:               pkix.Name{CommonName: "front-proxy-ca"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageCertSign,
+	}
+	caDER, err := x509.CreateCertificate(rand.Reader, caTemplate, caTemplate, &caKey.PublicKey, caKey)
+	require.NoError(t, err)
+	ca, err := x509.ParseCertificate(caDER)
+	require.NoError(t, err)
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	leafDER, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+		SerialNumber: big.NewInt(11),
+		Subject:      pkix.Name{CommonName: "front-proxy-client"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}, ca, &key.PublicKey, caKey)
+	require.NoError(t, err)
+
+	pool := x509.NewCertPool()
+	pool.AddCert(ca)
+	return pool, ca, tls.Certificate{Certificate: [][]byte{leafDER}, PrivateKey: key}
+}
+
+// verifyProxyCertificate applies the request-header verification contract: with
+// RequestClientCert, TLS does not verify the presented certificate, so the application verifies
+// it against the proxy roots and requires the clientAuth usage.
+func verifyProxyCertificate(r *http.Request, roots *x509.CertPool) error {
+	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
+		return errors.New("no client certificate")
+	}
+	intermediates := x509.NewCertPool()
+	for _, cert := range r.TLS.PeerCertificates[1:] {
+		intermediates.AddCert(cert)
+	}
+	_, err := r.TLS.PeerCertificates[0].Verify(x509.VerifyOptions{
+		Roots: roots, Intermediates: intermediates, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	})
+	return err
+}
+
+// Test_listenAndServe_PreservesRequestHeaderClientAuth checks that the rotating certificate does
+// not replace the request-header proxy's client-certificate settings on the aggregated API server.
+func Test_listenAndServe_PreservesRequestHeaderClientAuth(t *testing.T) {
+	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			dir := t.TempDir()
+			leaf := writeServingCert(t, dir)
+			roots, proxyCA, proxyCert := newProxyClientCert(t)
+			_, _, untrustedCert := newProxyClientCert(t)
+
+			addr := "127.0.0.1:" + strconv.Itoa(freePort(t))
+			base := &tls.Config{ClientAuth: tls.RequestClientCert, ClientCAs: roots}
+			server := &http.Server{
+				Addr:              addr,
+				TLSConfig:         base,
+				ReadHeaderTimeout: time.Second,
+				Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					// TLS leaves VerifiedChains empty for RequestClientCert.
+					if len(r.TLS.VerifiedChains) != 0 {
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+					if err := verifyProxyCertificate(r, roots); err != nil {
+						w.WriteHeader(http.StatusUnauthorized)
+						return
+					}
+					w.WriteHeader(http.StatusOK)
+				}),
+			}
+			errs := make(chan error, 1)
+			go func() { errs <- newTestService(dir, mode).listenAndServe(t.Context(), server) }()
+			t.Cleanup(func() {
+				_ = server.Close()
+				require.ErrorIs(t, <-errs, http.ErrServerClosed)
+			})
+
+			// newClient presents cert, if any, and records the CAs the server advertised.
+			newClient := func(cert *tls.Certificate, acceptable *[][]byte) *http.Client {
+				return &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true, //nolint:gosec // The test checks client-certificate negotiation; VerifyConnection checks the served certificate.
+					MinVersion:         tls.VersionTLS12,
+					GetClientCertificate: func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+						*acceptable = info.AcceptableCAs
+						if cert == nil {
+							return &tls.Certificate{}, nil
+						}
+						return cert, nil
+					},
+					VerifyConnection: func(cs tls.ConnectionState) error {
+						if len(cs.PeerCertificates) == 0 || string(cs.PeerCertificates[0].Raw) != string(leaf.Raw) {
+							return errors.New("server did not present the certificate from the directory")
+						}
+						return nil
+					},
+				}}}
+			}
+			status := func(client *http.Client) int {
+				var code int
+				require.Eventually(t, func() bool {
+					resp, err := client.Get("https://" + addr + "/")
+					if err != nil {
+						return false
+					}
+					_ = resp.Body.Close()
+					code = resp.StatusCode
+					return true
+				}, 5*time.Second, 10*time.Millisecond)
+				return code
+			}
+
+			tests := []struct {
+				name string
+				cert *tls.Certificate
+				want int
+			}{
+				{name: "trusted proxy certificate is verified", cert: &proxyCert, want: http.StatusOK},
+				{name: "untrusted certificate is rejected by the application", cert: &untrustedCert, want: http.StatusUnauthorized},
+				{name: "caller without a certificate still connects", want: http.StatusUnauthorized},
+			}
+			for _, tt := range tests {
+				var acceptable [][]byte
+				require.Equal(t, tt.want, status(newClient(tt.cert, &acceptable)), tt.name)
+				// The server requested a client certificate and advertised the proxy CA from ClientCAs.
+				require.Equal(t, [][]byte{proxyCA.RawSubject}, acceptable, tt.name)
+			}
+			require.Equal(t, tls.RequestClientCert, base.ClientAuth)
+			require.Nil(t, base.GetConfigForClient)
+		})
+	}
 }

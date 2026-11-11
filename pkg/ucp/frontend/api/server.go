@@ -235,7 +235,9 @@ func (s *Service) listenAndServe(ctx context.Context, service *http.Server) erro
 		return fmt.Errorf("failed to load the API server certificate: %w", err)
 	}
 	go source.Start(ctx, mtls.DefaultPollInterval)
-	service.TLSConfig = source.ServerConfig()
+	// Keep any client-certificate settings already on the server, such as the request-header
+	// proxy's RequestClientCert and ClientCAs, and take only the rotating certificate from source.
+	service.TLSConfig = source.ServerConfigFrom(service.TLSConfig)
 	return service.ListenAndServeTLS("", "")
 }
 
