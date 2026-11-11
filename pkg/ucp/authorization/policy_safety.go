@@ -149,7 +149,7 @@ func (s *PolicySnapshot) allows(identity Identity, permission, target string) er
 		return err
 	}
 	if !decisions[0].Allowed {
-		return fmt.Errorf("AuthorizationFailed: %s at %s", permission, target)
+		return &policyAccessError{permission: permission, target: target}
 	}
 	return nil
 }

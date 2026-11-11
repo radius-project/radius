@@ -444,7 +444,7 @@ func (s *PolicyStore) prepare(ctx context.Context, intent string, policy Policy)
 	payloadBytes := len(`{"entries":{}}`)
 	flush := func() error {
 		if len(root.Pages) == manifestFanout {
-			return fmt.Errorf("PolicyCapacityExceeded: manifest root fanout")
+			return &policyMutationError{fmt.Errorf("PolicyCapacityExceeded: manifest root fanout")}
 		}
 		index := strconv.Itoa(len(root.Pages))
 		page.Object = policyObjectID + intent + "-object-" + index
@@ -472,7 +472,7 @@ func (s *PolicyStore) prepare(ctx context.Context, intent string, policy Policy)
 		}
 		entryBytes := len(key) + 1 + len(raw)
 		if len(`{"entries":{}}`)+entryBytes > maxPolicyBytes {
-			return "", fmt.Errorf("PolicyCapacityExceeded: policy entry %s exceeds payload byte bound", e.id)
+			return "", &policyMutationError{fmt.Errorf("PolicyCapacityExceeded: policy entry %s exceeds payload byte bound", e.id)}
 		}
 		if len(page.Entries) > 0 && (len(page.Entries) == manifestFanout || payloadBytes+1+entryBytes > maxPolicyBytes) {
 			if err := flush(); err != nil {
@@ -709,13 +709,13 @@ func (s *PolicyStore) Mutate(ctx context.Context, actor PolicyActor, mutation Po
 		}
 		next, change, highImpact, err := applyPolicyMutation(ctx, current, actor, input, s.settings)
 		if err != nil {
-			return nil, err
+			return nil, &policyMutationError{err}
 		}
 		if change == nil {
 			return current, nil
 		}
 		if version.Generation == maxGeneration {
-			return nil, fmt.Errorf("PolicyCapacityExceeded: generation space exhausted")
+			return nil, &policyMutationError{fmt.Errorf("PolicyCapacityExceeded: generation space exhausted")}
 		}
 		next.Generation = version.Generation + 1
 		next.Settings.Properties.Generation = to.Ptr(next.Generation)
@@ -754,7 +754,12 @@ func (s *PolicyStore) Mutate(ctx context.Context, actor PolicyActor, mutation Po
 		}
 		// Do not use the pre-save ETag: Save computes the content ETag itself.
 		// Reading again also lets another instance finish on our behalf.
-		return s.loadPolicy(ctx, -1, budget)
+		if _, err := s.loadPolicy(ctx, -1, budget); err != nil {
+			return nil, err
+		}
+		// A later writer may already have published another generation. Return
+		// this mutation's committed value, not that writer's replacement.
+		return NewPolicySnapshot(s.catalog, next)
 	}
 }
 

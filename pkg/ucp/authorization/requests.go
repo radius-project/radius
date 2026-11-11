@@ -16,9 +16,9 @@ import (
 )
 
 // ObserveRequests records DryRun target decisions without modifying workload
-// requests or responses. Authentication must run first. Reserved policy mutations
-// are rejected even with no runtime: no public safe policy/settings writer is
-// installed in this slice. These guards run before generic routing and proxies.
+// requests or responses. Authentication and explicit management handlers run
+// first. Remaining reserved policy mutations are rejected even with no runtime.
+// These guards run before generic routing and proxies.
 func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

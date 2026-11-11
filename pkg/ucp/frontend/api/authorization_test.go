@@ -269,6 +269,11 @@ func TestServiceDryRunRequests(t *testing.T) {
 			expected := http.StatusServiceUnavailable
 			if subject == "" {
 				expected = http.StatusUnauthorized
+			} else if strings.Contains(target, "/roleAssignments/") || strings.Contains(target, "/roleDefinitions/") {
+				expected = http.StatusForbidden
+				if subject == "alice" {
+					expected = http.StatusBadRequest
+				}
 			}
 			require.Equal(t, expected, code, body)
 		}
@@ -355,26 +360,42 @@ func TestServiceProtectedMutationsEveryMode(t *testing.T) {
 				}
 				for _, subject := range []string{"alice", "bob", ""} {
 					for _, method := range []string{http.MethodPut, http.MethodPatch, http.MethodPost, http.MethodDelete} {
-						for _, target := range []string{
-							"/providers/Radius.Core/authorizationSettings/default",
-							"/planes/radius/local/providers/Radius.Core/roleDefinitions/private-definition-id",
-							"/planes/radius/local/resourcegroups/team-a/providers/Radius.Core/roleAssignments/private-assignment-id",
-							"/planes/azure/local/providers/Radius.Core/roleAssignments/private-assignment-id",
-							"/planes/radius/local/providers/System.Authorization/policyObjects/test",
-							"/planes/radius/local/providers%2FRadius.Core%2FroleAssignments%2Fprivate-assignment-id",
-							"/planes/radius/local/providers/%52adius%2eCore/role%41ssignments%2fprivate-assignment-id",
-							"/planes/radius/local/providers//Radius.Core//roleAssignments/private-assignment-id",
-							"/planes/radius/local/providers/Radius.Core/roleDefinitions/private-definition-id/",
-							"/Planes/radius/local/providers/RADIUS.CORE/ROLEASSIGNMENTS/private-assignment-id",
+						for _, target := range []struct {
+							path    string
+							managed bool
+						}{
+							{"/providers/Radius.Core/authorizationSettings/default", false},
+							{"/planes/radius/local/providers/Radius.Core/roleDefinitions/private-definition-id", true},
+							{"/planes/radius/local/resourcegroups/team-a/providers/Radius.Core/roleAssignments/private-assignment-id", true},
+							{"/planes/azure/local/providers/Radius.Core/roleAssignments/private-assignment-id", true},
+							{"/planes/radius/local/providers/System.Authorization/policyObjects/test", false},
+							{"/planes/radius/local/providers%2FRadius.Core%2FroleAssignments%2Fprivate-assignment-id", true},
+							{"/planes/radius/local/providers/%52adius%2eCore/role%41ssignments%2fprivate-assignment-id", true},
+							{"/planes/radius/local/providers//Radius.Core//roleAssignments/private-assignment-id", false},
+							{"/planes/radius/local/providers/Radius.Core/roleDefinitions/private-definition-id/", false},
+							{"/Planes/radius/local/providers/RADIUS.CORE/ROLEASSIGNMENTS/private-assignment-id", true},
 						} {
 							for _, overrideHeader := range []string{"", "X-HTTP-Method-Override", "X-HTTP-Method", "X-Method-Override", "_method"} {
 								logs.TakeAll()
-								status, body := send(method, target, subject, overrideHeader, http.MethodGet)
+								status, body := send(method, target.path, subject, overrideHeader, http.MethodGet)
 								expected := http.StatusServiceUnavailable
 								if subject == "" {
 									expected = http.StatusUnauthorized
+								} else if active != nil && target.managed {
+									switch {
+									case method == http.MethodPatch || method == http.MethodPost:
+										expected = http.StatusMethodNotAllowed
+									case overrideHeader == "_method":
+										expected = http.StatusBadRequest
+									case subject == "bob":
+										expected = http.StatusForbidden
+									case method == http.MethodDelete:
+										expected = http.StatusNoContent
+									default:
+										expected = http.StatusBadRequest
+									}
 								}
-								require.Equal(t, expected, status, "%s %s: %s", method, target, body)
+								require.Equal(t, expected, status, "%s %s: %s", method, target.path, body)
 								require.Len(t, logs.FilterMessage("User authorization request").All(), 1)
 								require.Zero(t, logs.FilterMessage("Forwarding request to plane").Len())
 								assertPrivateEvents()
@@ -395,6 +416,10 @@ func TestServiceProtectedMutationsEveryMode(t *testing.T) {
 						for _, overrideHeader := range []string{"X-HTTP-Method-Override", "X-HTTP-Method", "X-Method-Override", "_method"} {
 							logs.TakeAll()
 							overriddenStatus, overriddenBody := send(method, target, "alice", overrideHeader, http.MethodPut)
+							if active != nil && overrideHeader == "_method" && method == http.MethodGet {
+								require.Equal(t, http.StatusBadRequest, overriddenStatus, overriddenBody)
+								continue
+							}
 							require.Equal(t, status, overriddenStatus)
 							require.Equal(t, body, overriddenBody)
 							assertPrivateEvents()
@@ -470,7 +495,12 @@ func TestServiceAzureProxyEncodedProtectedMutations(t *testing.T) {
 				for _, typ := range []string{"roleAssignments", "roleDefinitions", "authorizationSettings", "accessChanges"} {
 					for _, dot := range []string{".", "%2e", "%252e", "%25252e"} {
 						path := "/providers/" + strings.ReplaceAll(namespace, ".", dot) + "/" + typ + "/a"
-						require.Equal(t, http.StatusServiceUnavailable, send(path), path)
+						expected := http.StatusServiceUnavailable
+						if mode != "Unconfigured" && strings.EqualFold(namespace, "Radius.Core") &&
+							(typ == "roleAssignments" || typ == "roleDefinitions") && (dot == "." || dot == "%2e") {
+							expected = http.StatusBadRequest
+						}
+						require.Equal(t, expected, send(path), path)
 						require.Zero(t, calls.Load(), "protected request must not dispatch to Azure proxy")
 					}
 				}

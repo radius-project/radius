@@ -131,6 +131,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app = middleware.WithLogger(app)
 	app = authorization.Inspection(s.options.UserAuthorization, s.options.Config.Server.PathBase)(app)
 	app = authorization.ObserveRequests(s.options.UserAuthorization, s.options.Config.Server.PathBase)(app)
+	app = authorization.Management(s.options.UserAuthorization, s.options.Config.Server.PathBase)(app)
 	app = authenticator.Middleware(app)
 
 	app = otelhttp.NewHandler(
