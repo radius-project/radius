@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 
@@ -17,8 +18,16 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/radius-project/radius/test/radcli"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
+
+func newTestCommand(factory framework.Factory, operation string) (*cobra.Command, *runner) {
+	cmd, r := newCommand(factory, operation)
+	// Runner unit tests execute a leaf without Cobra's parent traversal.
+	cmd.Flags().AddFlagSet(NewCommand(factory).PersistentFlags())
+	return cmd, r
+}
 
 type testClient struct {
 	err      error
@@ -65,7 +74,7 @@ func TestInspectionCommands(t *testing.T) {
 					ConfigHolder: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)},
 					Output:       &output.OutputWriter{Writer: &buffer},
 				}
-				cmd, runner := newCommand(factory, operation)
+				cmd, runner := newTestCommand(factory, operation)
 				client := &testClient{}
 				runner.connect = func(context.Context, workspaces.Workspace) (inspectionClient, error) { return client, nil }
 				args := []string{"--output", format}
@@ -108,7 +117,7 @@ func TestCheckPrincipalAndBatchFlags(t *testing.T) {
 	for _, explicitIssuer := range []bool{false, true} {
 		t.Run(map[bool]string{true: "explicit issuer", false: "verified issuer"}[explicitIssuer], func(t *testing.T) {
 			factory := &framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}, Output: &output.MockOutput{}}
-			cmd, runner := newCommand(factory, "check")
+			cmd, runner := newTestCommand(factory, "check")
 			client := &testClient{}
 			runner.connect = func(context.Context, workspaces.Workspace) (inspectionClient, error) { return client, nil }
 			args := []string{"--scope", "/", "--principal", "group:system:authenticated",
@@ -140,7 +149,7 @@ func TestInspectionCommandErrors(t *testing.T) {
 		{"--action", "x", "--output", "invalid"},
 	} {
 		factory := &framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}, Output: &output.MockOutput{}}
-		cmd, runner := newCommand(factory, "check")
+		cmd, runner := newTestCommand(factory, "check")
 		runner.connect = func(context.Context, workspaces.Workspace) (inspectionClient, error) {
 			t.Fatal("invalid command attempted connection")
 			return nil, nil
@@ -151,7 +160,7 @@ func TestInspectionCommandErrors(t *testing.T) {
 	for _, operation := range []string{"whoami", "status", "check"} {
 		for _, connectionFailure := range []bool{false, true} {
 			factory := &framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}, Output: &output.MockOutput{}}
-			cmd, runner := newCommand(factory, operation)
+			cmd, runner := newTestCommand(factory, operation)
 			failure := errors.New("AuthorizationUnavailable")
 			runner.connect = func(context.Context, workspaces.Workspace) (inspectionClient, error) {
 				if connectionFailure {
@@ -181,7 +190,7 @@ func TestInspectionOutputFailure(t *testing.T) {
 			t.Run(operation+"/"+format, func(t *testing.T) {
 				t.Parallel()
 				factory := &framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}, Output: &output.OutputWriter{Writer: failedWriter{}}}
-				cmd, runner := newCommand(factory, operation)
+				cmd, runner := newTestCommand(factory, operation)
 				runner.connect = func(context.Context, workspaces.Workspace) (inspectionClient, error) { return &testClient{}, nil }
 				args := []string{"--output", format}
 				if operation == "check" {
@@ -203,6 +212,30 @@ func TestInspectionCommandTree(t *testing.T) {
 		require.Empty(t, remaining)
 		require.NotNil(t, child.RunE)
 		require.NotNil(t, child.Flags().Lookup("output"))
-		require.NotNil(t, child.Flags().Lookup("workspace"))
+		require.Nil(t, child.LocalNonPersistentFlags().Lookup("workspace"))
+		require.Same(t, cmd.PersistentFlags().Lookup("workspace"), child.InheritedFlags().Lookup("workspace"))
+	}
+}
+
+func TestInspectionWorkspaceHelp(t *testing.T) {
+	t.Parallel()
+	for _, path := range [][]string{{}, {"access"}, {"whoami"}, {"status"}, {"access", "check"}} {
+		for _, flag := range []string{"--workspace", "-w"} {
+			t.Run(fmt.Sprint(path)+"/"+flag, func(t *testing.T) {
+				t.Parallel()
+				cmd := NewCommand(&framework.Impl{})
+				root := &cobra.Command{Use: "rad"}
+				root.AddCommand(cmd)
+				var buffer bytes.Buffer
+				root.SetOut(&buffer)
+				root.SetErr(&buffer)
+				root.SetArgs(append(append([]string{"auth"}, path...), "--help", flag, "demo"))
+				require.NoError(t, root.ExecuteContext(t.Context()))
+				require.Contains(t, buffer.String(), "--workspace")
+				workspace, err := cmd.PersistentFlags().GetString("workspace")
+				require.NoError(t, err)
+				require.Equal(t, "demo", workspace)
+			})
+		}
 	}
 }
