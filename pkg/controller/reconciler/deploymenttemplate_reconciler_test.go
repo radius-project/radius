@@ -331,6 +331,9 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 	first := f.runningPut().Status.Operation.ResumeToken
 	f.deployments.CompleteOperation(first, func(state *sdkclients.OperationState) {
 		state.Err = errors.New("known terminal PUT failure")
+		response := state.Value.(sdkclients.ClientCreateOrUpdateResponse)
+		response.Properties.OutputResources = []*armdeployments.ResourceReference{}
+		state.Value = response
 	})
 	f.step()
 	require.Equal(t, coordinatorPutInventoryPending, f.owner().Status.Coordinator.Phase)

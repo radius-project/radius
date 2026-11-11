@@ -525,8 +525,29 @@ func Test_CoordinatorCaseOnlyRadiusRedeployment(t *testing.T) {
 }
 
 func Test_CoordinatorRealSDKFailedPutInventory(t *testing.T) {
+	for _, tc := range []struct {
+		name, response string
+	}{
+		{name: "forbidden"},
+		{name: "null", response: `{"properties":{"provisioningState":"Failed","outputResources":null}}`},
+		{name: "omitted", response: `{"properties":{"provisioningState":"Failed"}}`},
+		{name: "no-properties", response: `{"properties":null}`},
+		{name: "empty", response: `{"properties":{"provisioningState":"Failed","outputResources":[]}}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testCoordinatorRealSDKFailedPutInventory(t, tc.response, tc.name == "empty")
+		})
+	}
+}
+
+func testCoordinatorRealSDKFailedPutInventory(t *testing.T, failedResponse string, explicitEmpty bool) {
+	t.Helper()
 	r, owner, sdk, _ := coordinatorFixture(t)
 	id := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/partial"
+	partial := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "partial", Namespace: owner.Namespace}}
+	if !explicitEmpty {
+		require.NoError(t, r.Client.Create(t.Context(), partial))
+	}
 	var gets, puts atomic.Int64
 	var available atomic.Bool
 	var endpoint string
@@ -543,6 +564,10 @@ func Test_CoordinatorRealSDKFailedPutInventory(t *testing.T) {
 		case req.Method == http.MethodGet:
 			gets.Add(1)
 			if !available.Load() {
+				if failedResponse != "" {
+					fmt.Fprint(w, failedResponse)
+					return
+				}
 				w.WriteHeader(http.StatusForbidden)
 				fmt.Fprint(w, `{"error":{"code":"Forbidden","message":"inventory unavailable"}}`)
 				return
@@ -569,18 +594,39 @@ func Test_CoordinatorRealSDKFailedPutInventory(t *testing.T) {
 	coordinatorStep(t, r, owner)
 	require.Equal(t, coordinatorPutInventoryPending, owner.Status.Coordinator.Phase)
 	coordinatorStep(t, r, owner)
+	if explicitEmpty {
+		require.Equal(t, coordinatorRetryWaiting, owner.Status.Coordinator.Phase)
+		require.Nil(t, owner.Status.Operation)
+		require.Empty(t, owner.Status.Coordinator.Outputs)
+		return
+	}
+	require.Equal(t, coordinatorPutInventoryPending, owner.Status.Coordinator.Phase)
+	require.NotNil(t, owner.Status.Operation)
 	require.Equal(t, token, owner.Status.Operation.ResumeToken)
 	require.Equal(t, deploymentID, owner.Status.Coordinator.ResourceID)
-	require.Equal(t, coordinatorPutInventoryPending, owner.Status.Coordinator.Phase)
 	require.NoError(t, r.Client.Delete(t.Context(), owner))
-	available.Store(true)
+	require.NoError(t, r.Client.Get(t.Context(), client.ObjectKeyFromObject(owner), owner))
 	restarted := *r
+	version := owner.ResourceVersion
+	for range 3 {
+		result, err := restarted.Reconcile(t.Context(), ctrl.Request{NamespacedName: client.ObjectKeyFromObject(owner)})
+		require.NoError(t, err)
+		require.Equal(t, DeleteRetryDelay, result.RequeueAfter)
+		require.NoError(t, r.Client.Get(t.Context(), client.ObjectKeyFromObject(owner), owner))
+		require.Equal(t, coordinatorPutInventoryPending, owner.Status.Coordinator.Phase)
+		require.Equal(t, token, owner.Status.Operation.ResumeToken)
+		require.Equal(t, deploymentID, owner.Status.Coordinator.ResourceID)
+		require.Equal(t, version, owner.ResourceVersion, "unresolved inventory must not churn status")
+		require.Contains(t, owner.Finalizers, DeploymentTemplateFinalizer)
+		require.NoError(t, r.Client.Get(t.Context(), client.ObjectKeyFromObject(partial), partial))
+	}
+	available.Store(true)
 	coordinatorStep(t, &restarted, owner)
 	require.Equal(t, coordinatorRetryWaiting, owner.Status.Coordinator.Phase)
 	require.NotNil(t, findOutput(owner, id))
 	require.Nil(t, owner.Status.Operation)
 	require.EqualValues(t, 1, puts.Load())
-	require.EqualValues(t, 2, gets.Load())
+	require.EqualValues(t, 5, gets.Load())
 	require.Zero(t, sdk.deleteCalls.Load())
 }
 

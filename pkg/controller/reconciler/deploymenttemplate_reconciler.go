@@ -423,6 +423,9 @@ func (r *DeploymentTemplateReconciler) recoverFailedPutInventory(ctx context.Con
 	if resp.Properties == nil {
 		return r.operationReadFailed(ctx, owner, fmt.Errorf("failed deployment has no inventory properties"))
 	}
+	if resp.Properties.OutputResources == nil {
+		return r.operationReadFailed(ctx, owner, fmt.Errorf("failed deployment output inventory is unavailable; an omitted or null outputResources is not an authoritative empty inventory"))
+	}
 	if err := r.retainPartialPutOutputs(owner, resp); err != nil {
 		return r.blockCoordinator(ctx, owner, err.Error())
 	}
