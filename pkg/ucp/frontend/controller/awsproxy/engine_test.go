@@ -764,8 +764,11 @@ func Test_Update_FailurePaths(t *testing.T) {
 
 		results := h.finish()
 		require.Equal(t, v1.CodeInvalid, results[0].Error.Code)
+		// Cloud Control doesn't roll back a failed update, so AWS may have applied part of it: its values are kept as
+		// possibly applied, and a later deploy that leaves one out clears it.
 		rec = h.record(bktPath)
-		require.Equal(t, previous, rec.Properties.LastApplied)
+		require.Equal(t, map[string]any{"BucketName": "assets", "A": "2"}, rec.Properties.LastApplied)
+		require.Equal(t, []string{"A"}, rec.Properties.UnresolvedPaths)
 		require.Nil(t, rec.Properties.PendingLastApplied)
 		require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
 

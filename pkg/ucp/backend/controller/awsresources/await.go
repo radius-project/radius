@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/worker"
 	"github.com/radius-project/radius/pkg/components/database"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -138,13 +139,15 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	var notFound *cctypes.RequestTokenNotFoundException
 	if errors.As(err, &notFound) {
 		// Cloud Control no longer knows the request, so UCP cannot tell how it ended. Forget it: the next deploy reads
-		// the resource from AWS, or sends a first create again with the record's client token.
+		// the resource from AWS, or sends a first create again with the record's client token. AWS may have applied
+		// it, so its values are kept as possibly applied, and a later deploy that leaves one out clears it.
 		failure := v1.ErrorDetails{
 			Code:    v1.CodeInternal,
 			Message: fmt.Sprintf("AWS Cloud Control no longer has the request for the AWS resource %q. Deploy again.", id.Name()),
 			Target:  request.ResourceID,
 		}
 		if saveErr := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
+			records.Settle(rec, native.OutcomeUnknown)
 			records.Fail(rec, &failure)
 			return false
 		}); errors.Is(saveErr, errSuperseded) {
@@ -168,10 +171,13 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	if failed != nil {
 		failure := failureOf(failed, request)
 		if saveErr := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
-			// A failed create removes the record, so the next deploy starts over.
+			// A failed create removes the record, so the next deploy starts over. A failed update may have applied
+			// part of its values before it failed, as for a native operation whose outcome is unknown, so they are
+			// kept as possibly applied.
 			if op == records.OperationCreate {
 				return true
 			}
+			records.Settle(rec, native.OutcomeUnknown)
 			records.Fail(rec, &failure)
 			return false
 		}); errors.Is(saveErr, errSuperseded) {

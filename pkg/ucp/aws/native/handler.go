@@ -333,6 +333,13 @@ type Options struct {
 	// hold more than the template, such as defaults AWS fills in, never hides a removal.
 	Equivalent func(path string, template any, aws any) bool
 
+	// DisruptiveUpdate is true for a type whose update restarts or interrupts the resource, such as one that must be
+	// stopped to change, so an update UCP doesn't need costs more than a failed deploy. When Equivalent counts AWS's
+	// value as the template's, but UCP can't tell whether AWS added the extra values or an earlier deploy set them,
+	// UCP fails the deploy with 409 and changes nothing, instead of sending the template's value. The default sends
+	// it, because an update AWS can undo is better than a value Radius set and no longer owns left in AWS.
+	DisruptiveUpdate bool
+
 	// CreateTimeout, UpdateTimeout, and DeleteTimeout are how long UCP waits for each operation. Zero means
 	// DefaultTimeout.
 	CreateTimeout time.Duration
