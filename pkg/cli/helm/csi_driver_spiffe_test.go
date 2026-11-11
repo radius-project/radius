@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -33,6 +35,9 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 	appsv1 "k8s.io/api/apps/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
+	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -62,6 +67,41 @@ func csiDriverSPIFFEDaemonSet(namespace, release string) *appsv1.DaemonSet {
 			"app.kubernetes.io/instance": release,
 		},
 	}}
+}
+
+// renamedCSIDriverSPIFFEDaemonSet returns the DaemonSet of a csi-driver-spiffe installed with nameOverride and custom
+// labels, so only its pod template shows what it is. volumes and args form that template.
+func renamedCSIDriverSPIFFEDaemonSet(namespace, name string, volumes []corev1.Volume, args []string) *appsv1.DaemonSet {
+	return &appsv1.DaemonSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   namespace,
+			Labels:      map[string]string{"app.kubernetes.io/name": name, "app.kubernetes.io/instance": "workload-identity"},
+			Annotations: map[string]string{"meta.helm.sh/release-name": "workload-identity", "meta.helm.sh/release-namespace": namespace},
+		},
+		Spec: appsv1.DaemonSetSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{
+			Volumes:    volumes,
+			Containers: []corev1.Container{{Name: "node-driver-registrar", Args: args}},
+		}}},
+	}
+}
+
+func hostPathVolume(path string) []corev1.Volume {
+	return []corev1.Volume{{Name: "plugin-dir", VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: path}}}}
+}
+
+func csiDriver(name string, annotations map[string]string) *storagev1.CSIDriver {
+	return &storagev1.CSIDriver{ObjectMeta: metav1.ObjectMeta{Name: name, Annotations: annotations}}
+}
+
+func spiffePod(namespace, name, driver string) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		Spec: corev1.PodSpec{Volumes: []corev1.Volume{{
+			Name:         "spiffe",
+			VolumeSource: corev1.VolumeSource{CSI: &corev1.CSIVolumeSource{Driver: driver}},
+		}}},
+	}
 }
 
 // sarClient returns a fake client whose SubjectAccessReviews allow the signer names in allowed and records the
@@ -286,25 +326,73 @@ func Test_checkForeignCSIDriverSPIFFE(t *testing.T) {
 	t.Parallel()
 
 	options := NewDefaultClusterOptions().CSIDriverSPIFFE.ChartOptions
+	ownAnnotations := map[string]string{"meta.helm.sh/release-name": csiDriverSPIFFEReleaseName, "meta.helm.sh/release-namespace": RadiusSystemNamespace}
 	tests := []struct {
 		name    string
 		objects []runtime.Object
 		listErr error
+		getErr  error
 		wantErr string
 	}{
 		{name: "none"},
-		{name: "Radius's own release", objects: []runtime.Object{csiDriverSPIFFEDaemonSet(RadiusSystemNamespace, csiDriverSPIFFEReleaseName)}},
+		{name: "Radius's own release", objects: []runtime.Object{
+			csiDriverSPIFFEDaemonSet(RadiusSystemNamespace, csiDriverSPIFFEReleaseName),
+			csiDriver(SPIFFECSIDriverNameDefault, ownAnnotations),
+		}},
+		{
+			name: "Radius's own release found by annotations",
+			objects: []runtime.Object{func() *appsv1.DaemonSet {
+				ds := renamedCSIDriverSPIFFEDaemonSet(RadiusSystemNamespace, "renamed", hostPathVolume(csiDriverSPIFFEPluginDir), nil)
+				ds.Annotations = ownAnnotations
+				return ds
+			}()},
+		},
+		{
+			name:    "cert-manager csi-driver uses another plugin path",
+			objects: []runtime.Object{renamedCSIDriverSPIFFEDaemonSet("cert-manager", "cert-manager-csi-driver", hostPathVolume("/var/lib/kubelet/plugins/cert-manager-csi-driver"), []string{"--kubelet-registration-path=/var/lib/kubelet/plugins/cert-manager-csi-driver/csi.sock"})},
+		},
+		{
+			name:    "plugin path prefix is not a match",
+			objects: []runtime.Object{renamedCSIDriverSPIFFEDaemonSet("other", "other", hostPathVolume(csiDriverSPIFFEPluginDir+"-2"), []string{"--kubelet-registration-path=" + csiDriverSPIFFEPluginDir + "-2/csi.sock"})},
+		},
 		{
 			name:    "another namespace",
 			objects: []runtime.Object{csiDriverSPIFFEDaemonSet("cert-manager", "spiffe")},
-			wantErr: "another csi-driver-spiffe (DaemonSet cert-manager/spiffe-driver) runs on it. Radius installs its own csi-driver-spiffe, limited to the Radius issuer, and a cluster can run only one because each registers the same kubelet plugin path. Remove the other installation, for example with helm --kube-context \"test-context\" -n cert-manager uninstall spiffe, and then run the command again.",
+			wantErr: "another csi-driver-spiffe (DaemonSet cert-manager/spiffe-driver) runs on it. Radius installs its own csi-driver-spiffe, limited to the Radius issuer, and a cluster can run only one because each registers the same kubelet plugin path (/var/lib/kubelet/plugins/cert-manager-csi-driver-spiffe). Remove the other installation, for example with helm --kube-context \"test-context\" -n cert-manager uninstall spiffe, and then run the command again.",
 		},
 		{
 			name:    "another release in the Radius namespace",
 			objects: []runtime.Object{csiDriverSPIFFEDaemonSet(RadiusSystemNamespace, "other")},
 			wantErr: "uninstall other",
 		},
-		{name: "list error", listErr: errors.New("boom"), wantErr: "failed to list csi-driver-spiffe DaemonSets: boom"},
+		{
+			name:    "renamed installation found by its plugin hostPath",
+			objects: []runtime.Object{renamedCSIDriverSPIFFEDaemonSet("identity", "workload-identity-node", hostPathVolume(csiDriverSPIFFEPluginDir+"/"), nil)},
+			wantErr: "another csi-driver-spiffe (DaemonSet identity/workload-identity-node) runs on it.",
+		},
+		{
+			name:    "renamed installation found by its registration path",
+			objects: []runtime.Object{renamedCSIDriverSPIFFEDaemonSet("identity", "workload-identity-node", nil, []string{"--csi-address=/plugin/csi.sock", "--kubelet-registration-path=" + csiDriverSPIFFEPluginDir + "/csi.sock"})},
+			wantErr: "helm --kube-context \"test-context\" -n identity uninstall workload-identity",
+		},
+		{
+			name:    "renamed installation found by a separate registration path argument",
+			objects: []runtime.Object{renamedCSIDriverSPIFFEDaemonSet("identity", "workload-identity-node", nil, []string{"--kubelet-registration-path", csiDriverSPIFFEPluginDir + "/csi.sock"})},
+			wantErr: "DaemonSet identity/workload-identity-node",
+		},
+		{
+			name:    "CSIDriver name taken by another release",
+			objects: []runtime.Object{csiDriver(SPIFFECSIDriverNameDefault, map[string]string{"meta.helm.sh/release-name": "other", "meta.helm.sh/release-namespace": "other"})},
+			wantErr: "CSIDriver \"spiffe.csi.radapp.io\" already exists and Radius's csi-driver-spiffe release did not create it. Remove it, for example with kubectl --context \"test-context\" delete csidriver spiffe.csi.radapp.io, or set global.rbac.spiffe.csiDriverName to another name",
+		},
+		{
+			name:    "CSIDriver without Helm annotations",
+			objects: []runtime.Object{csiDriver(SPIFFECSIDriverNameDefault, nil)},
+			wantErr: "CSIDriver \"spiffe.csi.radapp.io\" already exists",
+		},
+		{name: "unrelated CSIDriver", objects: []runtime.Object{csiDriver("csi.cert-manager.io", nil)}},
+		{name: "list error", listErr: errors.New("boom"), wantErr: "failed to list DaemonSets to find csi-driver-spiffe installations: boom"},
+		{name: "CSIDriver get error", getErr: errors.New("boom"), wantErr: "failed to check CSIDriver spiffe.csi.radapp.io: boom"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -315,7 +403,12 @@ func Test_checkForeignCSIDriverSPIFFE(t *testing.T) {
 					return true, nil, tt.listErr
 				})
 			}
-			err := checkForeignCSIDriverSPIFFE(t.Context(), client, options, "test-context")
+			if tt.getErr != nil {
+				client.PrependReactor("get", "csidrivers", func(k8stesting.Action) (bool, runtime.Object, error) {
+					return true, nil, tt.getErr
+				})
+			}
+			err := checkForeignCSIDriverSPIFFE(t.Context(), client, options, SPIFFECSIDriverNameDefault, "test-context")
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 				return
@@ -325,7 +418,7 @@ func Test_checkForeignCSIDriverSPIFFE(t *testing.T) {
 	}
 }
 
-func Test_ensureCSIDriverSPIFFE(t *testing.T) {
+func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 	t.Parallel()
 
 	dryRun := []string{"global.rbac.dryRun=true"}
@@ -404,6 +497,16 @@ func Test_ensureCSIDriverSPIFFE(t *testing.T) {
 			wantErr: "Helm release \"cert-manager-csi-driver-spiffe\" in namespace \"radius-system\" was not installed by rad. Radius installs and manages its own csi-driver-spiffe. Remove that release, for example with helm --kube-context \"test-context\" -n radius-system uninstall cert-manager-csi-driver-spiffe",
 		},
 		{
+			name:    "renamed foreign installation fails before installing",
+			setArgs: dryRun,
+			objects: []runtime.Object{renamedCSIDriverSPIFFEDaemonSet("identity", "workload-identity-node", hostPathVolume(csiDriverSPIFFEPluginDir), nil)},
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				expectGet(nil)(m)
+			},
+			wantClient: true,
+			wantErr:    "another csi-driver-spiffe (DaemonSet identity/workload-identity-node)",
+		},
+		{
 			name:    "foreign installation fails before installing",
 			setArgs: dryRun,
 			objects: []runtime.Object{csiDriverSPIFFEDaemonSet("cert-manager", "csi-driver-spiffe")},
@@ -471,7 +574,10 @@ func Test_ensureCSIDriverSPIFFE(t *testing.T) {
 
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
-			err := impl.ensureCSIDriverSPIFFE(t.Context(), options, "test-context", tt.stored, tt.upgrade)
+			plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", tt.stored)
+			if err == nil {
+				err = impl.applyCSIDriverSPIFFE(t.Context(), plan, "test-context", tt.upgrade)
+			}
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 			} else {
@@ -491,7 +597,7 @@ func Test_ensureCSIDriverSPIFFE(t *testing.T) {
 	}
 }
 
-func Test_ensureCSIDriverSPIFFE_ClientError(t *testing.T) {
+func Test_planCSIDriverSPIFFE_ClientError(t *testing.T) {
 	t.Parallel()
 	mockHelmClient := NewMockHelmClient(gomock.NewController(t))
 	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
@@ -501,24 +607,53 @@ func Test_ensureCSIDriverSPIFFE_ClientError(t *testing.T) {
 	}
 	options := NewDefaultClusterOptions()
 	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-	err := impl.ensureCSIDriverSPIFFE(t.Context(), options, "test-context", nil, false)
+	plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", nil)
 	require.EqualError(t, err, "failed to create Kubernetes clients: no kubeconfig")
+	require.Nil(t, plan)
 }
 
 func Test_uninstallCSIDriverSPIFFE(t *testing.T) {
 	t.Parallel()
 
+	owned := &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels()}
 	tests := []struct {
 		name          string
 		release       *releasev1.Release
 		getErr        error
+		objects       []runtime.Object
+		clientErr     error
+		listErr       error
 		wantUninstall bool
+		wantKept      bool
 		wantLog       string
 	}{
 		{name: "not installed", getErr: driver.ErrReleaseNotFound},
 		{name: "user-owned is kept", release: &releasev1.Release{Name: csiDriverSPIFFEReleaseName}},
-		{name: "rad-owned is removed", release: &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels()}, wantUninstall: true},
+		{name: "rad-owned is removed", release: owned, wantUninstall: true},
+		{
+			name:          "pods of other drivers do not block",
+			release:       owned,
+			objects:       []runtime.Object{spiffePod("default", "app", "csi.cert-manager.io"), &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "plain", Namespace: "default"}}},
+			wantUninstall: true,
+		},
+		{
+			name:     "pods that still use the driver keep it",
+			release:  owned,
+			objects:  []runtime.Object{spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)},
+			wantKept: true,
+			wantLog:  "Keeping csi-driver-spiffe and cert-manager: 1 Pods still mount volumes from CSI driver spiffe.csi.radapp.io (e.g. radius-system/ucp-0). Rerun the uninstall after they are gone.",
+		},
+		{
+			name: "configured driver name is used",
+			release: &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels(),
+				Config: map[string]any{"app": map[string]any{"name": "spiffe.example.org"}}},
+			objects:  []runtime.Object{spiffePod(RadiusSystemNamespace, "ucp-0", "spiffe.example.org")},
+			wantKept: true,
+			wantLog:  "Keeping csi-driver-spiffe and cert-manager: 1 Pods still mount volumes from CSI driver spiffe.example.org",
+		},
 		{name: "get error keeps the release", getErr: errors.New("boom"), wantLog: "Keeping csi-driver-spiffe: could not check whether rad installed it:"},
+		{name: "client error keeps the release", release: owned, clientErr: errors.New("no kubeconfig"), wantKept: true, wantLog: "Keeping csi-driver-spiffe and cert-manager: could not check for Pods that use csi-driver-spiffe: no kubeconfig"},
+		{name: "list error keeps the release", release: owned, listErr: errors.New("forbidden"), wantKept: true, wantLog: "Keeping csi-driver-spiffe and cert-manager: could not check for Pods that use csi-driver-spiffe: forbidden"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -530,8 +665,28 @@ func Test_uninstallCSIDriverSPIFFE(t *testing.T) {
 					Return(&release.UninstallReleaseResponse{}, nil)
 			}
 			var logs []string
-			impl := &Impl{Helm: mockHelmClient, logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }}
-			require.NoError(t, impl.uninstallCSIDriverSPIFFE(NewDefaultClusterOptions(), "test-context"))
+			impl := &Impl{
+				Helm:   mockHelmClient,
+				logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
+				newCSIDriverSPIFFEClient: func(kubeContext string) (kubernetes.Interface, error) {
+					require.Equal(t, "test-context", kubeContext)
+					if tt.clientErr != nil {
+						return nil, tt.clientErr
+					}
+					client := k8sfake.NewClientset(tt.objects...)
+					if tt.listErr != nil {
+						client.PrependReactor("list", "pods", func(k8stesting.Action) (bool, runtime.Object, error) {
+							return true, nil, tt.listErr
+						})
+					}
+					return client, nil
+				},
+				csiDriverSPIFFEPodWaitTimeout:  50 * time.Millisecond,
+				csiDriverSPIFFEPodPollInterval: 5 * time.Millisecond,
+			}
+			kept, err := impl.uninstallCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "test-context")
+			require.NoError(t, err)
+			require.Equal(t, tt.wantKept, kept)
 			if tt.wantLog == "" {
 				require.Empty(t, logs)
 				return
@@ -540,6 +695,53 @@ func Test_uninstallCSIDriverSPIFFE(t *testing.T) {
 			require.Contains(t, logs[0], tt.wantLog)
 		})
 	}
+}
+
+// The driver must stay until the Radius Pods that mount its volumes are gone, because the kubelet calls it to unmount
+// them. Helm's uninstall of Radius returns before those Pods finish terminating.
+func Test_uninstallCSIDriverSPIFFE_WaitsForPods(t *testing.T) {
+	t.Parallel()
+
+	client := k8sfake.NewClientset(
+		spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault),
+		spiffePod(RadiusSystemNamespace, "controller-0", SPIFFECSIDriverNameDefault),
+	)
+	// Each Pod terminates after a few polls, like Pods that the garbage collector and kubelet remove after Helm returns.
+	var lists atomic.Int32
+	client.PrependReactor("list", "pods", func(k8stesting.Action) (bool, runtime.Object, error) {
+		switch lists.Add(1) {
+		case 3:
+			require.NoError(t, client.Tracker().Delete(corev1.SchemeGroupVersion.WithResource("pods"), RadiusSystemNamespace, "ucp-0"))
+		case 5:
+			require.NoError(t, client.Tracker().Delete(corev1.SchemeGroupVersion.WithResource("pods"), RadiusSystemNamespace, "controller-0"))
+		}
+		return false, nil, nil
+	})
+
+	mockHelmClient := NewMockHelmClient(gomock.NewController(t))
+	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).
+		Return(&releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels()}, nil)
+	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true).
+		DoAndReturn(func(*helm.Configuration, string, string, bool) (*release.UninstallReleaseResponse, error) {
+			pods, err := client.CoreV1().Pods(metav1.NamespaceAll).List(t.Context(), metav1.ListOptions{})
+			require.NoError(t, err)
+			require.Empty(t, pods.Items, "csi-driver-spiffe was removed while Pods still used it")
+			return &release.UninstallReleaseResponse{}, nil
+		})
+
+	var logs []string
+	impl := &Impl{
+		Helm:                           mockHelmClient,
+		logger:                         func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
+		newCSIDriverSPIFFEClient:       func(string) (kubernetes.Interface, error) { return client, nil },
+		csiDriverSPIFFEPodWaitTimeout:  10 * time.Second,
+		csiDriverSPIFFEPodPollInterval: time.Millisecond,
+	}
+	kept, err := impl.uninstallCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "test-context")
+	require.NoError(t, err)
+	require.False(t, kept)
+	require.Empty(t, logs)
+	require.GreaterOrEqual(t, lists.Load(), int32(5))
 }
 
 func Test_CSIDriverSPIFFEInstalledByRad(t *testing.T) {
@@ -573,8 +775,8 @@ func Test_CSIDriverSPIFFEInstalledByRad(t *testing.T) {
 	}
 }
 
-// UninstallRadius removes csi-driver-spiffe after Radius, so the driver can unmount the Radius pods' volumes, and
-// before cert-manager, whose CRDs the driver uses.
+// UninstallRadius removes csi-driver-spiffe after Radius and its Pods, so the driver can unmount the Radius Pods'
+// volumes, and before cert-manager, whose CRDs the driver uses.
 func Test_UninstallRadius_RemovesCSIDriverSPIFFEAfterRadius(t *testing.T) {
 	t.Parallel()
 
@@ -588,7 +790,11 @@ func Test_UninstallRadius_RemovesCSIDriverSPIFFEAfterRadius(t *testing.T) {
 		client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound),
 	)
 
-	impl := &Impl{Helm: client, removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove}
+	impl := &Impl{
+		Helm:                        client,
+		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		newCSIDriverSPIFFEClient:    func(string) (kubernetes.Interface, error) { return k8sfake.NewClientset(), nil },
+	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
 }
 
@@ -603,6 +809,72 @@ func Test_UninstallCertManager_RemovesCSIDriverSPIFFEFirst(t *testing.T) {
 		client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound),
 	)
 
-	impl := &Impl{Helm: client}
+	impl := &Impl{Helm: client, newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return k8sfake.NewClientset(), nil }}
 	require.NoError(t, impl.UninstallCertManager(t.Context(), NewDefaultClusterOptions(), "test-context"))
+}
+
+// A foreign csi-driver-spiffe stops install and upgrade before they touch cert-manager or any release.
+func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
+	t.Parallel()
+
+	for _, command := range []string{"install", "upgrade"} {
+		t.Run(command, func(t *testing.T) {
+			t.Parallel()
+
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{Metadata: &chart.Metadata{Name: "radius", Version: "0.1.0"}}, nil)
+			client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
+
+			impl := &Impl{
+				Helm: client,
+				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+					t.Fatal("cert-manager was checked after the csi-driver-spiffe check failed")
+					return nil, nil, nil
+				},
+				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
+					return k8sfake.NewClientset(renamedCSIDriverSPIFFEDaemonSet("identity", "workload-identity-node", hostPathVolume(csiDriverSPIFFEPluginDir), nil)), nil
+				},
+			}
+			options := NewDefaultClusterOptions()
+			options.Radius.ChartPath = "chart"
+			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
+			options.Contour.Disabled = true
+
+			var err error
+			if command == "install" {
+				err = impl.InstallRadius(t.Context(), options, "test-context")
+			} else {
+				err = impl.UpgradeRadius(t.Context(), options, "test-context")
+			}
+			require.ErrorContains(t, err, "Radius stopped before changing the cluster because another csi-driver-spiffe (DaemonSet identity/workload-identity-node) runs on it.")
+		})
+	}
+}
+
+// When Pods still use csi-driver-spiffe, uninstall keeps it and cert-manager, whose CRDs and controller it needs.
+func Test_UninstallRadius_KeepsCertManagerWhenCSIDriverSPIFFEIsKept(t *testing.T) {
+	t.Parallel()
+
+	client := NewMockHelmClient(gomock.NewController(t))
+	gomock.InOrder(
+		client.EXPECT().RunHelmUninstall(gomock.Any(), radiusReleaseName, RadiusSystemNamespace, true).Return(&release.UninstallReleaseResponse{}, nil),
+		client.EXPECT().RunHelmUninstall(gomock.Any(), contourReleaseName, RadiusSystemNamespace, true).Return(&release.UninstallReleaseResponse{}, nil),
+		client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).
+			Return(&releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels()}, nil),
+	)
+
+	var logs []string
+	impl := &Impl{
+		Helm:                        client,
+		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
+		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
+			return k8sfake.NewClientset(spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)), nil
+		},
+		csiDriverSPIFFEPodWaitTimeout:  20 * time.Millisecond,
+		csiDriverSPIFFEPodPollInterval: 5 * time.Millisecond,
+	}
+	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
+	require.Len(t, logs, 1)
+	require.Contains(t, logs[0], "Keeping csi-driver-spiffe and cert-manager")
 }
