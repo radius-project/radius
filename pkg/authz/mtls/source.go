@@ -61,6 +61,7 @@ type material struct {
 // rather than watching individual files.
 type Source struct {
 	dir       string
+	caDir     string
 	trustOnly bool
 	now       func() time.Time
 	readFile  func(string) ([]byte, error)
@@ -73,29 +74,37 @@ type Source struct {
 // NewSource loads the certificate, key, and CA bundle from dir. It returns an error if
 // any file is missing or invalid, or if the certificate has expired. Servers use it.
 func NewSource(dir string) (*Source, error) {
-	return newSource(dir, false)
+	return newSource(dir, dir, false)
+}
+
+// NewSourceWithCA loads the certificate and key from dir and the CA bundle (ca.crt) from
+// caDir. Radius receivers use it because csi-driver-spiffe writes only tls.crt and tls.key;
+// the Radius CA bundle is mounted separately from the radius-ca Secret.
+func NewSourceWithCA(dir, caDir string) (*Source, error) {
+	return newSource(dir, caDir, false)
 }
 
 // NewTrustSource loads only the CA bundle (ca.crt) from dir. Clients use it to verify
 // servers; they do not present a certificate.
 func NewTrustSource(dir string) (*Source, error) {
-	return newSource(dir, true)
+	return newSource(dir, dir, true)
 }
 
-func newSource(dir string, trustOnly bool) (*Source, error) {
-	s := &Source{dir: dir, trustOnly: trustOnly, now: time.Now, readFile: os.ReadFile}
+func newSource(dir, caDir string, trustOnly bool) (*Source, error) {
+	s := &Source{dir: dir, caDir: caDir, trustOnly: trustOnly, now: time.Now, readFile: os.ReadFile}
 	if _, err := s.Reload(); err != nil {
 		return nil, err
 	}
 	return s, nil
 }
 
-// files returns the names of the files the Source reads, in the order parse expects.
+// files returns the paths of the files the Source reads, in the order parse expects.
 func (s *Source) files() []string {
+	ca := filepath.Join(s.caDir, CAFile)
 	if s.trustOnly {
-		return []string{CAFile}
+		return []string{ca}
 	}
-	return []string{CertFile, KeyFile, CAFile}
+	return []string{filepath.Join(s.dir, CertFile), filepath.Join(s.dir, KeyFile), ca}
 }
 
 // Reload reads the files and, if they changed and are valid, replaces the current
@@ -127,13 +136,13 @@ func (s *Source) Reload() (bool, error) {
 // between individual file reads cannot mix files from two versions.
 func (s *Source) readStable() ([][]byte, [sha256.Size]byte, error) {
 	var prev [sha256.Size]byte
-	names := s.files()
+	paths := s.files()
 	for attempt := range maxReadAttempts {
-		raw := make([][]byte, len(names))
-		for i, name := range names {
-			data, err := s.readFile(filepath.Join(s.dir, name))
+		raw := make([][]byte, len(paths))
+		for i, path := range paths {
+			data, err := s.readFile(path)
 			if err != nil {
-				return nil, prev, fmt.Errorf("failed to read %s: %w", name, err)
+				return nil, prev, fmt.Errorf("failed to read %s: %w", filepath.Base(path), err)
 			}
 			raw[i] = data
 		}
