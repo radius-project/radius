@@ -890,6 +890,39 @@ func Test_Native_EquivalentAfterUnconfirmedUpdate(t *testing.T) {
 	})
 }
 
+// Test_Native_EquivalentAfterFailedCloudControlUpdate checks a type with a native handler where Cloud Control serves
+// it. A Cloud Control update that adds Sharpness fails after AWS applied it, and the template then goes back to its
+// earlier list. Last-applied never had Sharpness, so the deploy sends the template's list, and AWS ends without it.
+func Test_Native_EquivalentAfterFailedCloudControlUpdate(t *testing.T) {
+	without := nativeProperties(1)
+	without["Videos"] = []any{map[string]any{"Name": "hd"}}
+	with := nativeProperties(1)
+	with["Videos"] = []any{map[string]any{"Name": "hd", "Sharpness": 75}}
+
+	h := newNativeHarness(t)
+	h.fake.Opts.Equivalent = func(path string, template any, aws any) bool { return within(template, aws) }
+	h.provisioningTypes[nativeType] = cftypes.ProvisioningTypeFullyMutable
+	h.deploy(nativePath, without)
+
+	h.cc.FailNext = "GeneralServiceException"
+	require.Equal(t, http.StatusCreated, h.put(nativePath, with).status)
+	require.NoError(t, h.cc.Patch(nativeType, "app-native", []map[string]any{{"op": "replace", "path": "/Videos", "value": with["Videos"]}}))
+	require.NotNil(t, h.finish()[0].Error)
+	h.cc.Calls()
+
+	resp := h.put(nativePath, without)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	calls := h.cc.Calls()
+	update := calls[len(calls)-1]
+	require.Equal(t, "UpdateResource", update.Operation)
+	require.Contains(t, update.Document, `"path":"/Videos/0/Sharpness"`)
+	for _, result := range h.finish() {
+		require.Nil(t, result.Error)
+	}
+	require.NotContains(t, asMap(asList(h.cc.Resource(nativeType, "app-native")["Videos"])[0]), "Sharpness")
+	require.Empty(t, h.record(nativePath).Properties.UnresolvedPaths)
+}
+
 // Test_Native_DisruptiveUpdate checks a type whose update restarts the resource. When UCP can't tell whether AWS added
 // a value or an earlier deploy set it, the deploy fails with 409 and changes nothing. Setting the property to the value
 // AWS reports resolves it, and a later removal is then sent.
@@ -994,6 +1027,29 @@ func Test_Native_UnresolvedShapeChange(t *testing.T) {
 			require.Equal(t, tt.want, h.cc.Resource(nativeType, "app-native")["Config"])
 		})
 	}
+}
+
+// Test_Native_FailedCloudControlUpdateOwnership is the independent review's example: a Cloud Control update that
+// adds Mode fails after AWS applied it, and the next template leaves Mode out. The update's values are kept as
+// possibly applied, so the deploy clears Mode.
+func Test_Native_FailedCloudControlUpdateOwnership(t *testing.T) {
+	h := newNativeHarness(t)
+	h.provisioningTypes[nativeType] = cftypes.ProvisioningTypeFullyMutable
+	h.deploy(nativePath, nativeProperties(1))
+
+	with := nativeProperties(1)
+	with["Mode"] = "new"
+	h.cc.FailNext = "GeneralServiceException"
+	require.Equal(t, http.StatusCreated, h.put(nativePath, with).status)
+	require.NoError(t, h.cc.Patch(nativeType, "app-native", []map[string]any{{"op": "add", "path": "/Mode", "value": "new"}}))
+	require.NotNil(t, h.finish()[0].Error)
+	require.Equal(t, "new", h.record(nativePath).Properties.LastApplied["Mode"], "the update may have applied Mode")
+
+	require.Equal(t, http.StatusCreated, h.put(nativePath, nativeProperties(1)).status)
+	for _, result := range h.finish() {
+		require.Nil(t, result.Error)
+	}
+	require.NotContains(t, h.cc.Resource(nativeType, "app-native"), "Mode")
 }
 
 func asMap(v any) map[string]any {
