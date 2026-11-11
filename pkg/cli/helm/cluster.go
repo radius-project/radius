@@ -778,6 +778,9 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 		}
 	}
 
+	if err := checkRollbackCertificateIssuers(history, targetRevision); err != nil {
+		return err
+	}
 	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, targetRevision); err != nil {
 		return err
 	}
@@ -832,6 +835,9 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 
 	if !targetFound {
 		return fmt.Errorf("revision %d not found in release history", revision)
+	}
+	if err := checkRollbackCertificateIssuers(history, revision); err != nil {
+		return err
 	}
 
 	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, revision); err != nil {
