@@ -19,16 +19,17 @@ package controller
 import (
 	"context"
 	"errors"
+	"os"
+	"testing"
+
 	"github.com/stretchr/testify/require"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/yaml"
-	"testing"
 )
 
 func deploymentStatusCRDs(t *testing.T) (*apiextensionsv1.CustomResourceDefinition, *apiextensionsv1.CustomResourceDefinition) {
