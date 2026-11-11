@@ -342,6 +342,69 @@ func Test_KeepPending(t *testing.T) {
 	require.Nil(t, rec.Properties.LastApplied)
 }
 
+// Test_KeepPending_Unresolved checks that the paths a possibly applied update changed stay unresolved until AWS applies
+// a deploy fully, so a list the update replaces whole doesn't lose a field AWS may still have.
+func Test_KeepPending_Unresolved(t *testing.T) {
+	interrupted := func() *datamodel.AWSResource {
+		rec := NewRecord(parse(t, vpcID), "owner")
+		rec.Properties.LastApplied = map[string]any{
+			"Mode":   "old",
+			"Same":   "kept",
+			"Videos": []any{map[string]any{"Name": "hd", "Sharpness": 75.0}},
+			"Nested": map[string]any{"B": "2"},
+		}
+		rec.Properties.PendingLastApplied = map[string]any{
+			"Mode":   "new",
+			"Same":   "kept",
+			"Videos": []any{map[string]any{"Name": "hd"}},
+			"Nested": map[string]any{"B": "2", "C": "3"},
+		}
+		rec.Properties.UnresolvedPaths = []string{"Earlier", "Mode"}
+		return rec
+	}
+
+	rec := interrupted()
+	KeepPending(rec)
+	require.Equal(t, []string{"Earlier", "Mode", "Nested/C", "Videos"}, rec.Properties.UnresolvedPaths, "changed paths are added to earlier ones, sorted, once each")
+
+	for _, outcome := range []native.Outcome{native.OutcomePartial, native.OutcomeUnknown} {
+		rec = interrupted()
+		Settle(rec, outcome)
+		require.Equal(t, []string{"Earlier", "Mode", "Nested/C", "Videos"}, rec.Properties.UnresolvedPaths)
+	}
+
+	rec = interrupted()
+	Settle(rec, native.OutcomeRejected)
+	require.Equal(t, []string{"Earlier", "Mode"}, rec.Properties.UnresolvedPaths, "AWS changed nothing, so nothing new is unresolved, and nothing is resolved")
+
+	rec = interrupted()
+	Settle(rec, native.OutcomeApplied)
+	require.Nil(t, rec.Properties.UnresolvedPaths, "AWS applied everything")
+
+	rec = interrupted()
+	ApplyPending(rec)
+	require.Nil(t, rec.Properties.UnresolvedPaths)
+
+	// A list the update changes into an object is unresolved at both paths, because AWS may still have the list.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.LastApplied = map[string]any{"Config": []any{map[string]any{"Name": "hd", "Sharpness": 75.0}}}
+	rec.Properties.PendingLastApplied = map[string]any{"Config": map[string]any{"Items": []any{"hd"}}}
+	KeepPending(rec)
+	require.Equal(t, []string{"Config", "Config/Items"}, rec.Properties.UnresolvedPaths)
+
+	// A first create has no last-applied properties, so every path it sets is unresolved.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.PendingLastApplied = map[string]any{"Videos": []any{"a"}, "Mode": "new"}
+	KeepPending(rec)
+	require.Equal(t, []string{"Mode", "Videos"}, rec.Properties.UnresolvedPaths)
+
+	// An operation without pending values, such as a delete, resolves nothing.
+	rec = interrupted()
+	rec.Properties.PendingLastApplied = nil
+	ApplyPending(rec)
+	require.Equal(t, []string{"Earlier", "Mode"}, rec.Properties.UnresolvedPaths)
+}
+
 func Test_KeepPending_Fingerprints(t *testing.T) {
 	fingerprints := func(keyID string, digests map[string]string) *datamodel.AWSFingerprints {
 		return &datamodel.AWSFingerprints{KeyID: keyID, Digests: digests}

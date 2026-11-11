@@ -126,17 +126,41 @@ type PatchOptions struct {
 
 	// Equivalent, when set, reports whether AWS's value at path, a key of FlattenProperties, means the same as the
 	// template's, for a value AWS returns in another form that the schema's rules don't cover. Such a value counts as
-	// unchanged. It isn't used for a value that leaves out something the last deploy set at or under its path (see
-	// LastApplied).
+	// unchanged. It is used at a path only when Radius knows it owns nothing there that the template drops (see
+	// LastApplied and Unresolved).
 	Equivalent func(path string, template any, aws any) bool
 
 	// LastApplied is what the last successful deploy set, or nil when UCP has no record of it. Equivalent may count
 	// AWS's value as matching when it holds more than the template, such as defaults AWS fills in inside the items of
-	// a list. Such a value also matches when the template leaves out a field the last deploy set, such as a field
-	// inside a list item, which Removed can't name. So Equivalent isn't used for a template value that leaves out
-	// something LastApplied set at that path, or that has a Removed path under it: the patch sends the template's
-	// value, and AWS clears what it no longer has.
+	// a list, so it can't tell those from a field the last deploy set and the template now leaves out. Removed can't
+	// name such a field either when it is inside a list item. So when LastApplied is set, Equivalent is used at a path
+	// only when the template's value there is exactly LastApplied's: then the template drops nothing Radius owns
+	// there. Otherwise the patch sends the template's value, and AWS clears what it no longer has.
 	LastApplied map[string]any
+
+	// Unresolved are paths whose value in LastApplied isn't confirmed in AWS, because an operation that changed them
+	// failed partway or UCP can't tell how it ended. AWS may still hold values LastApplied no longer has there, so
+	// Equivalent isn't used at a path at, under, or over one of them, and one the template sets nothing at, under, or
+	// over is removed at exactly that path.
+	Unresolved []string
+
+	// FailUncertain makes GeneratePatchWithOptions return an *UncertainError instead of a patch when it can't tell
+	// whether an update is needed at a path: Equivalent counts AWS's value as the template's, but LastApplied doesn't
+	// show that AWS added the values beyond the template's (see Uncertain). Set it for a type whose update restarts
+	// or interrupts the resource, so an update UCP may not need costs more than a deploy that fails. Otherwise the
+	// patch sends the template's value, so a mistake is an update AWS can undo, never a value Radius set left behind.
+	FailUncertain bool
+}
+
+// UncertainError means GeneratePatchWithOptions can't tell whether an update is needed at Paths, and opts.FailUncertain
+// is set. AWS's value there counts as the template's by Equivalent, but holds values LastApplied doesn't show AWS
+// added.
+type UncertainError struct {
+	Paths []string
+}
+
+func (e *UncertainError) Error() string {
+	return fmt.Sprintf("UCP can't tell whether an update is needed at %s", strings.Join(e.Paths, ", "))
 }
 
 // GeneratePatch takes in the current state, desired state and type schema of a resource and returns a JSON patch to update the
@@ -189,25 +213,54 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	flattenedDesiredStateObject := FlattenProperties(desiredStateObject)
 
 	rules := parseSchemaRules(schema)
-	lastApplied := FlattenProperties(opts.LastApplied)
+	owned, err := ownedValues(opts.LastApplied)
+	if err != nil {
+		return nil, err
+	}
 
 	// A value AWS reports in a different form, such as reordered subnets or a fuller engine version, is unchanged:
-	// use AWS's value so the patch leaves it alone.
+	// use AWS's value so the patch leaves it alone. Equivalent is used only where Radius knows what it owns (see
+	// PatchOptions.LastApplied). Elsewhere the template's value is sent, unless the type fails instead.
+	uncertain := []string{}
 	for k, v := range flattenedDesiredStateObject {
 		current, ok := flattenedCurrentStateObject[k]
 		if !ok {
 			continue
 		}
-		if rules.equivalentAt(k, v, current, desiredStateObject) ||
-			(opts.Equivalent != nil && !drops(lastApplied[k], v) && !removedUnder(k, opts.Removed) && opts.Equivalent(k, v, current)) {
+		if rules.equivalentAt(k, v, current, desiredStateObject) {
 			flattenedDesiredStateObject[k] = current
+			continue
+		}
+		if opts.Equivalent == nil {
+			continue
+		}
+		known := ownsSame(owned, k, v) && !overlapsAny(k, opts.Unresolved)
+		if known && opts.Equivalent(k, v, current) {
+			flattenedDesiredStateObject[k] = current
+		} else if !known && opts.FailUncertain && !ownsAll(owned, k, current, opts.Unresolved) && opts.Equivalent(k, v, current) {
+			uncertain = append(uncertain, k)
+		}
+	}
+	if len(uncertain) > 0 {
+		slices.Sort(uncertain)
+		return nil, &UncertainError{Paths: uncertain}
+	}
+
+	// An unresolved path the template no longer sets may hold a value Radius set, such as a list an interrupted update
+	// was changing into an object, so AWS's value at exactly that path is removed. Values AWS has under it aren't:
+	// Radius owned the path's value, not fields AWS has since reported inside it.
+	omitted := map[string]bool{}
+	for _, p := range opts.Unresolved {
+		if !setsAny(flattenedDesiredStateObject, p) {
+			omitted[p] = true
 		}
 	}
 
 	// Add read-only and create-only properties from current state to the desired state
 	for k, v := range flattenedCurrentStateObject {
-		if emptyObjectPaths[k] && hasPathUnder(flattenedDesiredStateObject, k) {
-			// The template sets values inside an object AWS reports as empty; copying {} would overwrite them.
+		if hasPathUnder(flattenedDesiredStateObject, k) {
+			// The template sets values inside k, where AWS has a value of another shape, such as a list the template
+			// changed into an object, or an object AWS reports as empty. Copying AWS's value would overwrite them.
 			continue
 		}
 
@@ -216,7 +269,7 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 		isCreateOnlyProperty := slices.Contains(resourceTypeSchema.CreateOnlyProperties, property)
 		isWriteOnlyProperty := slices.Contains(resourceTypeSchema.WriteOnlyProperties, property)
 
-		if _, exists := flattenedDesiredStateObject[k]; !exists && underAny(k, opts.Removed) &&
+		if _, exists := flattenedDesiredStateObject[k]; !exists && (underAny(k, opts.Removed) || omitted[k]) &&
 			!overlapsAny(k, PropertyPaths(resourceTypeSchema.ReadOnlyProperties)) && !overlapsAny(k, PropertyPaths(resourceTypeSchema.CreateOnlyProperties)) {
 			// Radius set this property in the last deploy and the template no longer sets it: leave it out, so the
 			// patch clears it.
@@ -252,51 +305,47 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	return jsondiff.CompareJSON(currentState, updatedDesiredState)
 }
 
-// drops reports whether template leaves out a value applied sets: a property of an object, an item of a list, or a
-// value. Each item of applied must have its own template item that keeps everything it set, in any order. A value
-// the template changes is not left out.
-func drops(applied any, template any) bool {
-	switch a := applied.(type) {
-	case nil:
-		return false
-	case map[string]any:
-		t, ok := template.(map[string]any)
-		if !ok {
-			return len(a) > 0
-		}
-		for k, v := range a {
-			if drops(v, t[k]) {
-				return true
-			}
-		}
-		return false
-	case []any:
-		t, ok := template.([]any)
-		if !ok {
-			return len(a) > 0
-		}
-		matches := make([][]bool, len(a))
-		for i := range a {
-			matches[i] = make([]bool, len(t))
-			for j := range t {
-				matches[i][j] = !drops(a[i], t[j])
-			}
-		}
-		return !perfectMatching(matches)
-	default:
-		return template == nil
+// ownedValues returns the flattened values of lastApplied, decoded from JSON as the template's are, so they compare
+// equal to the same template values. It returns nil when lastApplied is nil.
+func ownedValues(lastApplied map[string]any) (map[string]any, error) {
+	if lastApplied == nil {
+		return nil, nil
 	}
+	b, err := json.Marshal(lastApplied)
+	if err != nil {
+		return nil, err
+	}
+	// b is a marshaled map, so it always decodes.
+	decoded := map[string]any{}
+	_ = json.Unmarshal(b, &decoded)
+	return FlattenProperties(decoded), nil
 }
 
-// removedUnder reports whether a path in removed is under k, as when the last deploy set k to an object and the
-// template sets it to another kind of value.
-func removedUnder(k string, removed []string) bool {
-	for _, p := range removed {
-		if strings.HasPrefix(p, k+"/") {
+// setsAny reports whether flattened has a key at, under, or over path.
+func setsAny(flattened map[string]any, path string) bool {
+	for k := range flattened {
+		if overlapsAny(k, []string{path}) {
 			return true
 		}
 	}
 	return false
+}
+
+// ownsAll reports whether AWS's value at k is exactly what the last deploy set there, confirmed: Radius set every value
+// AWS has at k, so any value the template leaves out is one Radius set, and an update is needed.
+func ownsAll(owned map[string]any, k string, current any, unresolved []string) bool {
+	applied, ok := owned[k]
+	return ok && !overlapsAny(k, unresolved) && reflect.DeepEqual(applied, current)
+}
+
+// ownsSame reports whether the template's value v at path k drops nothing the last deploy set there: UCP has no
+// record of the last deploy (owned is nil), or its value at k is exactly v.
+func ownsSame(owned map[string]any, k string, v any) bool {
+	if owned == nil {
+		return true
+	}
+	applied, ok := owned[k]
+	return ok && reflect.DeepEqual(applied, v)
 }
 
 // emptyObjects returns the flattened paths of the empty objects in state, which FlattenProperties leaves out.
