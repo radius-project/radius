@@ -28,7 +28,7 @@ With either setting enabled, ucp, applications-rp, and dynamic-rp also mount a c
 Turning authorization on or off, and upgrading from an edge build that authenticated components with client certificates, changes how every component authenticates. Helm rolls ucp, applications-rp, dynamic-rp, and the controller one at a time, so for about the time the rollout takes, calls between an old and a new pod fail TLS verification or authentication and return errors. Radius does not fall back to weaker authentication to avoid this window. Plan these changes for a maintenance window:
 
 1. Pause deployments that call Radius, such as `rad deploy` pipelines.
-1. Run `rad upgrade kubernetes` with the new settings, or `rad rollback kubernetes` to return to an earlier revision. The command waits for the Radius workloads and, when authorization is on, for the `v1alpha3.api.ucp.dev` APIService to have its CA bundle and become Available, and fails with diagnostics if it does not.
+1. Run `rad upgrade kubernetes` with the new settings, or `rad rollback kubernetes` to return to an earlier revision. The command waits for the Radius workloads and, when authorization is on, for the `v1alpha3.api.ucp.dev` APIService to have its CA bundle and become Available, and fails with diagnostics if it does not. `rad rollback kubernetes` refuses a revision whose chart issues component client Certificates from `radius-ca-issuer` or `radius-mtls-issuer`, as earlier charts did, because cert-manager's default approver no longer approves those Issuers.
 1. Retry any deployment that failed during the window.
 
 A plain `helm upgrade --wait` waits only for the workloads; check the APIService with `kubectl get apiservice v1alpha3.api.ucp.dev` before resuming.
