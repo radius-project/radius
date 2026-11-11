@@ -17,9 +17,11 @@ limitations under the License.
 package native
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/aws/schemas"
 )
 
@@ -34,6 +36,14 @@ type Type struct {
 	// HandWritten is true for a type with no CloudFormation type. UCP always serves it with the handler. Otherwise,
 	// UCP serves it with the handler only where Cloud Control can't create it.
 	HandWritten bool
+
+	// NameRules are the rules for the name UCP generates when the template leaves out Options().NameProperty, or nil
+	// when the handler has no name property.
+	NameRules *NameRules
+
+	// WriteOnly are the paths of the schema's write-only properties, relative to the properties object, such as
+	// MasterUserPassword. UCP never stores their values and removes them from every response, with either handler.
+	WriteOnly []string
 }
 
 // Registry holds the types native handlers serve. A nil Registry has none.
@@ -41,8 +51,9 @@ type Registry struct {
 	types map[string]*Type
 }
 
-// NewRegistry returns a Registry of handlers, each with its schema from catalog. A handler with no schema, or two
-// handlers for one type, fail.
+// NewRegistry returns a Registry of handlers, each with its schema from catalog. A handler with no schema, two
+// handlers for one type, a RecoverBySearch handler that isn't a Finder, and a name property the schema doesn't define
+// as a string, or whose rules no generated name fits, fail.
 func NewRegistry(catalog schemas.Catalog, handlers ...Handler) (*Registry, error) {
 	r := &Registry{types: map[string]*Type{}}
 	for _, h := range handlers {
@@ -58,6 +69,22 @@ func NewRegistry(catalog schemas.Catalog, handlers ...Handler) (*Registry, error
 			t.Schema, t.HandWritten = schema, true
 		} else {
 			return nil, fmt.Errorf("the native handler for the AWS type %s has no schema in pkg/aws/schemas", name)
+		}
+		var parsed awsoperations.ResourceTypeSchema
+		if err := json.Unmarshal([]byte(t.Schema), &parsed); err != nil {
+			return nil, fmt.Errorf("the schema of the AWS type %s can't be read: %w", name, err)
+		}
+		t.WriteOnly = awsoperations.PropertyPaths(parsed.WriteOnlyProperties)
+		opts := h.Options()
+		if _, ok := h.(Finder); opts.Recovery == RecoverBySearch && !ok {
+			return nil, fmt.Errorf("the native handler for the AWS type %s finds a lost create by search, but has no Find method", name)
+		}
+		if opts.NameProperty != "" {
+			rules, err := nameRules(t.Schema, opts.NameProperty)
+			if err != nil {
+				return nil, fmt.Errorf("the native handler for the AWS type %s: %w", name, err)
+			}
+			t.NameRules = rules
 		}
 		r.types[key] = t
 	}

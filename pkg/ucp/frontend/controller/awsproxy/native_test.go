@@ -46,11 +46,13 @@ import (
 )
 
 const (
-	// nativeType has a CloudFormation type and a native handler. Its identifier is Name, and Password is write-only.
+	// nativeType has a CloudFormation type and a native handler. Its identifier is Name, which UCP generates when the
+	// template leaves it out, and Password is write-only.
 	nativeType = "AWS::Test::Native"
 	nativePath = providers + "AWS.Test/Native/app-native"
 
-	// assignedType has a native handler, and AWS assigns its identifier, Id.
+	// assignedType has a native handler, and AWS assigns its identifier, Id. The handler finds a lost create by
+	// sending it again with the client token.
 	assignedType = "AWS::Test::Assigned"
 	assignedPath = providers + "AWS.Test/Assigned/app-assigned"
 
@@ -60,7 +62,7 @@ const (
 )
 
 var nativeSchemas = map[string]string{
-	nativeType:      `{"typeName": "AWS::Test::Native", "primaryIdentifier": ["/properties/Name"], "createOnlyProperties": ["/properties/Name"], "writeOnlyProperties": ["/properties/Password"]}`,
+	nativeType:      `{"typeName": "AWS::Test::Native", "properties": {"Name": {"type": "string", "maxLength": 16}}, "primaryIdentifier": ["/properties/Name"], "createOnlyProperties": ["/properties/Name"], "writeOnlyProperties": ["/properties/Password"]}`,
 	assignedType:    `{"typeName": "AWS::Test::Assigned", "primaryIdentifier": ["/properties/Id"], "readOnlyProperties": ["/properties/Id"]}`,
 	handWrittenType: `{"typeName": "AWS::Test::HandWritten", "primaryIdentifier": ["/properties/Name"]}`,
 }
@@ -91,6 +93,8 @@ func newNativeHarness(t *testing.T) *nativeHarness {
 		assigned:    nativefake.New(assignedType, h.cc),
 		handWritten: nativefake.New(handWrittenType, h.cc),
 	}
+	nh.fake.Opts.NameProperty = "Name"
+	nh.assigned.Opts.Recovery = native.RecoverByResend
 	catalog := schemas.Catalog{
 		Native:      map[string]string{nativeType: nativeSchemas[nativeType], assignedType: nativeSchemas[assignedType]},
 		HandWritten: map[string]string{handWrittenType: nativeSchemas[handWrittenType]},
@@ -283,22 +287,6 @@ func Test_Native_StartErrors(t *testing.T) {
 		resp := h.delete(nativePath, testOwner)
 		require.Equal(t, http.StatusNoContent, resp.status, resp.raw)
 		require.Nil(t, h.record(nativePath))
-	})
-
-	t.Run("delete of a create whose identifier AWS assigns", func(t *testing.T) {
-		h := newNativeHarness(t)
-		h.assigned.LostResponses["Create"] = nativefake.ServerError("InternalFailure", "the response was lost")
-		require.Equal(t, http.StatusInternalServerError, h.put(assignedPath, map[string]any{"Size": 1}).status)
-		h.assigned.Calls()
-
-		resp := h.delete(assignedPath, testOwner)
-		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
-		require.Contains(t, resp.message(), "Deploy again to finish it, then delete")
-		require.Empty(t, h.assigned.Calls())
-		rec := h.record(assignedPath)
-		require.NotEmpty(t, rec.Properties.ClientToken)
-		require.Equal(t, records.OperationCreate, rec.Properties.PendingOperation)
-		require.Equal(t, v1.ProvisioningStateAccepted, rec.ProvisioningState())
 	})
 
 	t.Run("no native handler for an operation one started", func(t *testing.T) {

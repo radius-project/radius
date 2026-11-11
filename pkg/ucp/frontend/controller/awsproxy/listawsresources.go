@@ -66,7 +66,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 		return ucpaws.HandleAWSError(ctx, err)
 	}
 	if rt.handler != nil {
-		return listNative(ctx, rt.handler, serviceCtx.ResourceID, region)
+		return listNative(ctx, rt.handler, serviceCtx.ResourceID, region, rt.writeOnly)
 	}
 
 	cloudControlOpts := []func(*cloudcontrol.Options){CloudControlRegionOption(region)}
@@ -91,6 +91,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 				return nil, err
 			}
 		}
+		removePaths(properties, rt.writeOnly)
 
 		item := map[string]any{
 			"id":         serviceCtx.ResourceID.String() + resources.SegmentSeparator + addressSegment(aws.ToString(result.Identifier)),
@@ -107,9 +108,11 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 	return armrpc_rest.NewOKResponse(body), nil
 }
 
-// listNative lists the resources of a type a native handler serves. A type that can't be listed, or can be listed only
-// under a parent resource, gets 400: UCP's list has no way to name the parent.
-func listNative(ctx context.Context, h native.Handler, collectionID resources.ID, region string) (armrpc_rest.Response, error) {
+// listNative lists the resources of a type a native handler serves, without the values at the write-only paths. The
+// properties go through JSON first, as a read's do, so a nested typed map or slice, such as map[string]string, is
+// redacted too. A type that can't be listed, or can be listed only under a parent resource, gets 400: UCP's list has
+// no way to name the parent.
+func listNative(ctx context.Context, h native.Handler, collectionID resources.ID, region string, writeOnly []string) (armrpc_rest.Response, error) {
 	switch h.Options().List {
 	case native.ListNone:
 		return badRequest(fmt.Sprintf("The AWS resource type %s can't be listed.", h.TypeName())), nil
@@ -123,10 +126,11 @@ func listNative(ctx context.Context, h native.Handler, collectionID resources.ID
 	}
 	items := []any{}
 	for _, resource := range listed {
-		properties := resource.Properties
-		if properties == nil {
-			properties = map[string]any{}
+		properties, err := asJSON(resource.Properties)
+		if err != nil {
+			return nil, err
 		}
+		removePaths(properties, writeOnly)
 		items = append(items, map[string]any{
 			"id":         collectionID.String() + resources.SegmentSeparator + addressSegment(resource.Identifier),
 			"name":       resource.Identifier,
