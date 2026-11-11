@@ -479,8 +479,18 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	if err != nil {
 		return nil, err
 	}
-	patch, err := awsoperations.GeneratePatchWithOptions(currentState, desiredState, schema, awsoperations.PatchOptions{Removed: removed, Equivalent: equivalentFor(r), LastApplied: rec.Properties.LastApplied})
-	if err != nil {
+	patch, err := awsoperations.GeneratePatchWithOptions(currentState, desiredState, schema, awsoperations.PatchOptions{
+		Removed:       removed,
+		Equivalent:    equivalentFor(r),
+		LastApplied:   rec.Properties.LastApplied,
+		Unresolved:    rec.Properties.UnresolvedPaths,
+		FailUncertain: r.native != nil && r.native.Handler.Options().DisruptiveUpdate,
+	})
+	var uncertain *awsoperations.UncertainError
+	if errors.As(err, &uncertain) {
+		paths := strings.Join(uncertain.Paths, ", ")
+		return conflict("UCP can't tell whether AWS added the values at %s of the AWS resource %q beyond the template's, or an earlier deploy set them, and an update can restart or interrupt a resource of type %s. UCP changed nothing. To keep AWS's values, set %s to the value AWS reports. After that deploy, UCP can tell what a later template removes.", paths, r.id.Name(), r.typeName, paths), nil
+	} else if err != nil {
 		return nil, err
 	}
 	// AWS never returns write-only values, so the patch sets every one the template sets. Leave out the ones the
@@ -506,8 +516,10 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 
 	if len(patch) == 0 {
 		// Nothing to change in AWS, but the record takes this deploy's properties: a property the template now sets
-		// and later removes is then cleared.
+		// and later removes is then cleared. Equivalent wasn't used at unresolved paths, so AWS has the template's
+		// values there, and they are resolved.
 		rec.Properties.LastApplied = applied.properties
+		rec.Properties.UnresolvedPaths = nil
 		rec.Properties.Fingerprints = applied.fingerprints
 		records.ClearPending(rec)
 		rec.Properties.RequestToken = ""
