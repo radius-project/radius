@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"time"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
@@ -310,6 +311,10 @@ type Impl struct {
 	// newCSIDriverSPIFFEClient returns the client for the csi-driver-spiffe checks. Nil uses the cluster that the
 	// Kubernetes context selects.
 	newCSIDriverSPIFFEClient func(kubeContext string) (kubernetes.Interface, error)
+	// csiDriverSPIFFEPodWaitTimeout and csiDriverSPIFFEPodPollInterval override how long uninstall waits for Pods that
+	// use csi-driver-spiffe. Zero uses the defaults.
+	csiDriverSPIFFEPodWaitTimeout  time.Duration
+	csiDriverSPIFFEPodPollInterval time.Duration
 }
 
 var _ Interface = &Impl{}
@@ -364,7 +369,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	// Check Contour before installing anything, so that a Contour problem leaves the cluster unchanged.
+	// Check Contour and csi-driver-spiffe before installing anything, so that a problem leaves the cluster unchanged.
 	var contour *contourPlan
 	if !clusterOptions.Contour.Disabled {
 		contour, err = i.planContourInstall(ctx, helmAction, clusterOptions.Contour, kubeContext)
@@ -372,11 +377,15 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 			return err
 		}
 	}
+	spiffe, err := i.planCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues)
+	if err != nil {
+		return err
+	}
 
 	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
 		return err
 	}
-	if err := i.ensureCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+	if err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, clusterOptions.Radius.Reinstall); err != nil {
 		return err
 	}
 
@@ -420,8 +429,8 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 }
 
 // UninstallRadius uninstalls Radius and its dependencies (Contour, and csi-driver-spiffe and cert-manager if rad
-// installed them) from the cluster using the provided options. It removes csi-driver-spiffe after Radius, so the
-// driver can unmount the Radius pods' certificate volumes.
+// installed them) from the cluster using the provided options. It removes csi-driver-spiffe after Radius and only
+// once the Radius Pods that mount its certificate volumes are gone, so the driver can unmount them.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Uninstall Radius
 	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
@@ -439,7 +448,8 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	}
 
 	// Uninstall csi-driver-spiffe and cert-manager only if rad installed them.
-	if err := i.uninstallCSIDriverSPIFFE(clusterOptions, kubeContext); err != nil {
+	kept, err := i.uninstallCSIDriverSPIFFE(ctx, clusterOptions, kubeContext)
+	if err != nil || kept {
 		return err
 	}
 	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
@@ -549,7 +559,8 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	// Check the Contour upgrade before upgrading anything, so that a Contour problem leaves the cluster unchanged.
+	// Check the Contour and csi-driver-spiffe upgrades before upgrading anything, so that a problem leaves the
+	// cluster unchanged.
 	var contour *contourPlan
 	if !clusterOptions.Contour.Disabled {
 		contour, err = i.planContourUpgrade(ctx, helmAction, clusterOptions.Contour, kubeContext, reuseValues)
@@ -557,11 +568,15 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 			return err
 		}
 	}
+	spiffe, err := i.planCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, storedValues)
+	if err != nil {
+		return err
+	}
 
 	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
 		return err
 	}
-	if err := i.ensureCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
+	if err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, true); err != nil {
 		return err
 	}
 

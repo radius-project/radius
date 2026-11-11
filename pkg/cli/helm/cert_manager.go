@@ -415,7 +415,8 @@ func (i *Impl) uninstallCertManager(ctx context.Context, options ClusterOptions,
 // UninstallCertManager removes csi-driver-spiffe and cert-manager on their own, with the same ownership and
 // other-workload checks that UninstallRadius applies. It does not touch the Radius or Contour releases.
 func (i *Impl) UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
-	if err := i.uninstallCSIDriverSPIFFE(clusterOptions, kubeContext); err != nil {
+	kept, err := i.uninstallCSIDriverSPIFFE(ctx, clusterOptions, kubeContext)
+	if err != nil || kept {
 		return err
 	}
 	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)

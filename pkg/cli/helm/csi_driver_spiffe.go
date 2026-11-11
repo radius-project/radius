@@ -20,16 +20,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"reflect"
 	"slices"
 	"strings"
+	"time"
 
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	authorizationv1 "k8s.io/api/authorization/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/authz"
@@ -45,9 +50,17 @@ const (
 	csiDriverSPIFFEReleaseName         = "cert-manager-csi-driver-spiffe"
 	CSIDriverSPIFFEChartDefaultVersion = "v0.15.1"
 
-	// csiDriverSPIFFEDaemonSetSelector matches the node DaemonSet of any csi-driver-spiffe installation. Every
-	// installation registers its kubelet plugin at the same fixed host path, so a cluster can run only one.
-	csiDriverSPIFFEDaemonSetSelector = "app.kubernetes.io/name=cert-manager-csi-driver-spiffe"
+	// csiDriverSPIFFEPluginDir is the kubelet plugin directory that every csi-driver-spiffe installation mounts and
+	// registers its socket in. The upstream chart hardcodes it, even with nameOverride, so a cluster can run only one
+	// installation.
+	csiDriverSPIFFEPluginDir = "/var/lib/kubelet/plugins/cert-manager-csi-driver-spiffe"
+	// csiDriverSPIFFEChartName is the upstream chart name, which its default app.kubernetes.io/name label carries.
+	csiDriverSPIFFEChartName = "cert-manager-csi-driver-spiffe"
+
+	// csiDriverSPIFFEPodWaitTimeoutDefault bounds how long uninstall waits for Pods that mount a csi-driver-spiffe
+	// volume to go away before removing the driver.
+	csiDriverSPIFFEPodWaitTimeoutDefault  = 3 * time.Minute
+	csiDriverSPIFFEPodPollIntervalDefault = 2 * time.Second
 
 	// RadiusCAIssuerName is the cert-manager Issuer in the Radius namespace that signs Radius certificates. The
 	// Radius chart creates it in deploy/Chart/templates/global/certificates.yaml.
@@ -134,56 +147,74 @@ func (i *Impl) getReleaseOwnership(options ChartOptions, kubeContext string) (*r
 	return rel, true, nil
 }
 
-// ensureCSIDriverSPIFFE installs or upgrades Radius's csi-driver-spiffe instance when Radius authorization is
-// enabled. It runs after ensureCertManager, because the chart uses cert-manager's CRDs. It upgrades a release rad
-// installed when upgrade is true, when the release is not deployed, or when its values no longer match the Radius
-// values. It fails when another csi-driver-spiffe runs on the cluster, because only one can register on each node.
-// With authorization off it returns without contacting the cluster.
-func (i *Impl) ensureCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, upgrade bool) error {
+// csiDriverSPIFFEPlan is the checked state that applyCSIDriverSPIFFE installs or upgrades from.
+type csiDriverSPIFFEPlan struct {
+	chartOptions ChartOptions
+	values       map[string]any
+	release      *releasev1.Release
+	kubeClient   kubernetes.Interface
+	namespace    string
+}
+
+// planCSIDriverSPIFFE checks, without changing the cluster, that Radius's csi-driver-spiffe instance can be
+// installed or upgraded. It fails when the release exists but rad did not install it, or when another
+// csi-driver-spiffe runs on the cluster, because only one can register on each node. Install and upgrade call it
+// before any dependency changes the cluster. It returns nil, without contacting the cluster, when authorization is
+// off.
+func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any) (*csiDriverSPIFFEPlan, error) {
 	currentValues, err := parseUserValuesFromCLI(&options.Radius)
 	if err != nil {
-		return fmt.Errorf("failed to parse Radius values: %w", err)
+		return nil, fmt.Errorf("failed to parse Radius values: %w", err)
 	}
 	mode, err := resolveAuthzMode(storedValues, currentValues)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if mode == authz.ModeOff {
-		return nil
+		return nil, nil
 	}
 
 	chartOptions := options.CSIDriverSPIFFE.ChartOptions
-	values := buildCSIDriverSPIFFEValues(options.Radius.Namespace, resolveSPIFFESettings(storedValues, currentValues))
+	settings := resolveSPIFFESettings(storedValues, currentValues)
 
 	rel, owned, err := i.getReleaseOwnership(chartOptions, kubeContext)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if rel != nil && !owned {
-		return clierrors.Message("Radius stopped before changing the cluster because Helm release %q in namespace %q was not installed by rad. Radius installs and manages its own csi-driver-spiffe. Remove that release, for example with %s, and then run the command again.",
+		return nil, clierrors.Message("Radius stopped before changing the cluster because Helm release %q in namespace %q was not installed by rad. Radius installs and manages its own csi-driver-spiffe. Remove that release, for example with %s, and then run the command again.",
 			chartOptions.ReleaseName, chartOptions.Namespace, helmCommand(kubeContext, chartOptions.Namespace, "uninstall "+chartOptions.ReleaseName))
 	}
 
-	newClient := i.newCSIDriverSPIFFEClient
-	if newClient == nil {
-		newClient = func(kubeContext string) (kubernetes.Interface, error) {
-			kubeClient, _, err := newCertManagerClients(kubeContext)
-			return kubeClient, err
-		}
-	}
-	kubeClient, err := newClient(kubeContext)
+	kubeClient, err := i.csiDriverSPIFFEClient(kubeContext)
 	if err != nil {
-		return fmt.Errorf("failed to create Kubernetes clients: %w", err)
+		return nil, fmt.Errorf("failed to create Kubernetes clients: %w", err)
+	}
+	if err := checkForeignCSIDriverSPIFFE(ctx, kubeClient, chartOptions, settings.CSIDriverName, kubeContext); err != nil {
+		return nil, err
 	}
 
-	if err := checkForeignCSIDriverSPIFFE(ctx, kubeClient, chartOptions, kubeContext); err != nil {
-		return err
+	return &csiDriverSPIFFEPlan{
+		chartOptions: chartOptions,
+		values:       buildCSIDriverSPIFFEValues(options.Radius.Namespace, settings),
+		release:      rel,
+		kubeClient:   kubeClient,
+		namespace:    options.Radius.Namespace,
+	}, nil
+}
+
+// applyCSIDriverSPIFFE installs or upgrades Radius's csi-driver-spiffe instance from a plan made by
+// planCSIDriverSPIFFE. It runs after cert-manager is ready. A nil plan does nothing.
+func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPlan, kubeContext string, upgrade bool) error {
+	if plan == nil {
+		return nil
 	}
+	chartOptions := plan.chartOptions
 
 	// Radius's client certificates still need cert-manager's default approver, so a conflict is only a warning until
 	// components authenticate with ServiceAccount tokens.
 	var conflict *defaultApproverConflictError
-	if err := checkCertManagerDefaultApprover(ctx, kubeClient, options.Radius.Namespace, kubeContext); errors.As(err, &conflict) {
+	if err := checkCertManagerDefaultApprover(ctx, plan.kubeClient, plan.namespace, kubeContext); errors.As(err, &conflict) {
 		i.logInfo("Warning: cert-manager's default approver (%s) can approve CertificateRequests for the Radius issuer signer %s. A future Radius release will require it to be turned off for that issuer; keep it on for now.",
 			conflict.User, conflict.SignerName)
 	} else if err != nil {
@@ -191,9 +222,9 @@ func (i *Impl) ensureCSIDriverSPIFFE(ctx context.Context, options ClusterOptions
 	}
 
 	helmAction := NewHelmAction(i.Helm)
-	if rel != nil {
+	if rel := plan.release; rel != nil {
 		deployed := rel.Info != nil && rel.Info.Status == releasecommon.StatusDeployed
-		if !upgrade && deployed && reflect.DeepEqual(rel.Config, values) {
+		if !upgrade && deployed && reflect.DeepEqual(rel.Config, plan.values) {
 			output.LogInfo("Using csi-driver-spiffe installed by rad in namespace %s", chartOptions.Namespace)
 			return nil
 		}
@@ -202,7 +233,7 @@ func (i *Impl) ensureCSIDriverSPIFFE(ctx context.Context, options ClusterOptions
 		if err != nil {
 			return fmt.Errorf("failed to prepare csi-driver-spiffe Helm chart, err: %w", err)
 		}
-		if _, err := i.Helm.RunHelmUpgrade(helmConf, helmChart, values, chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, false, chartOptions.Timeout); err != nil {
+		if _, err := i.Helm.RunHelmUpgrade(helmConf, helmChart, plan.values, chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, false, chartOptions.Timeout); err != nil {
 			return fmt.Errorf("failed to upgrade csi-driver-spiffe, err: %w", err)
 		}
 		return nil
@@ -213,33 +244,97 @@ func (i *Impl) ensureCSIDriverSPIFFE(ctx context.Context, options ClusterOptions
 	if err != nil {
 		return fmt.Errorf("failed to prepare csi-driver-spiffe Helm chart, err: %w", err)
 	}
-	if _, err := i.Helm.RunHelmInstall(helmConf, helmChart, values, chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, chartOptions.Timeout, radManagedByLabels()); err != nil {
+	if _, err := i.Helm.RunHelmInstall(helmConf, helmChart, plan.values, chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, chartOptions.Timeout, radManagedByLabels()); err != nil {
 		return fmt.Errorf("failed to install csi-driver-spiffe, err: %w", err)
 	}
 	return nil
 }
 
-// checkForeignCSIDriverSPIFFE fails when a csi-driver-spiffe that is not Radius's release runs on the cluster.
-func checkForeignCSIDriverSPIFFE(ctx context.Context, kubeClient kubernetes.Interface, options ChartOptions, kubeContext string) error {
-	daemonSets, err := kubeClient.AppsV1().DaemonSets(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: csiDriverSPIFFEDaemonSetSelector})
-	if err != nil {
-		return fmt.Errorf("failed to list csi-driver-spiffe DaemonSets: %w", err)
+// csiDriverSPIFFEClient returns the Kubernetes client for the csi-driver-spiffe checks.
+func (i *Impl) csiDriverSPIFFEClient(kubeContext string) (kubernetes.Interface, error) {
+	if i.newCSIDriverSPIFFEClient != nil {
+		return i.newCSIDriverSPIFFEClient(kubeContext)
 	}
-	for _, ds := range daemonSets.Items {
-		if ds.Namespace == options.Namespace && ds.Labels["app.kubernetes.io/instance"] == options.ReleaseName {
-			continue
-		}
-		return clierrors.Message("Radius stopped before changing the cluster because another csi-driver-spiffe (DaemonSet %s/%s) runs on it. Radius installs its own csi-driver-spiffe, limited to the Radius issuer, and a cluster can run only one because each registers the same kubelet plugin path. Remove the other installation, for example with %s, and then run the command again.",
-			ds.Namespace, ds.Name, helmCommand(kubeContext, ds.Namespace, "uninstall "+releaseNameOf(&ds)))
-	}
-	return nil
+	kubeClient, _, err := newCertManagerClients(kubeContext)
+	return kubeClient, err
 }
 
-func releaseNameOf(ds *appsv1.DaemonSet) string {
-	if name := ds.Labels["app.kubernetes.io/instance"]; name != "" {
+// checkForeignCSIDriverSPIFFE fails when a csi-driver-spiffe that is not Radius's release runs on the cluster, or when
+// another installation owns the CSIDriver name Radius's release would register. It recognizes a csi-driver-spiffe
+// DaemonSet by the fixed kubelet plugin directory it mounts or registers, so renamed installations (nameOverride or
+// custom labels) are found too.
+func checkForeignCSIDriverSPIFFE(ctx context.Context, kubeClient kubernetes.Interface, options ChartOptions, csiDriverName string, kubeContext string) error {
+	daemonSets, err := kubeClient.AppsV1().DaemonSets(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list DaemonSets to find csi-driver-spiffe installations: %w", err)
+	}
+	for idx := range daemonSets.Items {
+		ds := &daemonSets.Items[idx]
+		if !isCSIDriverSPIFFEDaemonSet(ds) || isOwnedByRelease(ds.ObjectMeta, options) {
+			continue
+		}
+		return clierrors.Message("Radius stopped before changing the cluster because another csi-driver-spiffe (DaemonSet %s/%s) runs on it. Radius installs its own csi-driver-spiffe, limited to the Radius issuer, and a cluster can run only one because each registers the same kubelet plugin path (%s). Remove the other installation, for example with %s, and then run the command again.",
+			ds.Namespace, ds.Name, csiDriverSPIFFEPluginDir, helmCommand(kubeContext, ds.Namespace, "uninstall "+releaseNameOf(ds.ObjectMeta)))
+	}
+
+	csiDriver, err := kubeClient.StorageV1().CSIDrivers().Get(ctx, csiDriverName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("failed to check CSIDriver %s: %w", csiDriverName, err)
+	}
+	if isOwnedByRelease(csiDriver.ObjectMeta, options) {
+		return nil
+	}
+	return clierrors.Message("Radius stopped before changing the cluster because CSIDriver %q already exists and Radius's csi-driver-spiffe release did not create it. Remove it, for example with %s, or set global.rbac.spiffe.csiDriverName to another name, and then run the command again.",
+		csiDriverName, kubectlCommand(kubeContext, "", "delete csidriver "+csiDriverName))
+}
+
+// isCSIDriverSPIFFEDaemonSet reports whether ds runs a csi-driver-spiffe node plugin: it mounts or registers the
+// fixed csi-driver-spiffe kubelet plugin directory, or carries the upstream chart's name label.
+func isCSIDriverSPIFFEDaemonSet(ds *appsv1.DaemonSet) bool {
+	if ds.Labels["app.kubernetes.io/name"] == csiDriverSPIFFEChartName {
+		return true
+	}
+	spec := ds.Spec.Template.Spec
+	for _, volume := range spec.Volumes {
+		if volume.HostPath != nil && path.Clean(volume.HostPath.Path) == csiDriverSPIFFEPluginDir {
+			return true
+		}
+	}
+	for _, containers := range [][]corev1.Container{spec.InitContainers, spec.Containers} {
+		for _, c := range containers {
+			for idx, arg := range c.Args {
+				value, ok := strings.CutPrefix(arg, "--kubelet-registration-path=")
+				if !ok && arg == "--kubelet-registration-path" && idx+1 < len(c.Args) {
+					value, ok = c.Args[idx+1], true
+				}
+				if ok && path.Dir(path.Clean(value)) == csiDriverSPIFFEPluginDir {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// isOwnedByRelease reports whether Helm release options created the object.
+func isOwnedByRelease(meta metav1.ObjectMeta, options ChartOptions) bool {
+	if meta.Annotations["meta.helm.sh/release-name"] == options.ReleaseName && meta.Annotations["meta.helm.sh/release-namespace"] == options.Namespace {
+		return true
+	}
+	return meta.Namespace == options.Namespace && meta.Labels["app.kubernetes.io/instance"] == options.ReleaseName
+}
+
+func releaseNameOf(meta metav1.ObjectMeta) string {
+	if name := meta.Annotations["meta.helm.sh/release-name"]; name != "" {
 		return name
 	}
-	return csiDriverSPIFFEReleaseName
+	if name := meta.Labels["app.kubernetes.io/instance"]; name != "" {
+		return name
+	}
+	return "<release>"
 }
 
 // certManagerApproverDisabled reports whether the cert-manager controller runs without its default approver, either
@@ -344,15 +439,93 @@ func (i *Impl) CSIDriverSPIFFEInstalledByRad(kubeContext string) (bool, error) {
 
 // uninstallCSIDriverSPIFFE removes csi-driver-spiffe when rad installed it. It keeps the release, without failing,
 // when the ownership check fails, like uninstallCertManager.
-func (i *Impl) uninstallCSIDriverSPIFFE(options ClusterOptions, kubeContext string) error {
+//
+// Helm deletes the Radius Deployments without waiting for their Pods, and the kubelet needs the driver to unmount a
+// terminating Pod's certificate volume. So it first waits for every Pod that mounts a volume from the driver to go
+// away. When some remain, it keeps the driver and reports kept, so that the caller keeps cert-manager, which the
+// driver needs, too.
+func (i *Impl) uninstallCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string) (kept bool, err error) {
 	chartOptions := options.CSIDriverSPIFFE.ChartOptions
-	_, owned, err := i.getReleaseOwnership(chartOptions, kubeContext)
+	rel, owned, err := i.getReleaseOwnership(chartOptions, kubeContext)
 	if err != nil {
 		i.logInfo("Keeping csi-driver-spiffe: could not check whether rad installed it: %v", err)
-		return nil
+		return false, nil
 	}
 	if !owned {
-		return nil
+		return false, nil
 	}
-	return i.uninstallHelmRelease("csi-driver-spiffe", chartOptions.ReleaseName, chartOptions.Namespace, kubeContext)
+
+	kubeClient, err := i.csiDriverSPIFFEClient(kubeContext)
+	if err != nil {
+		i.logInfo("Keeping csi-driver-spiffe and cert-manager: could not check for Pods that use csi-driver-spiffe: %v", err)
+		return true, nil
+	}
+	driverName := csiDriverNameOf(rel)
+	pods, err := i.waitForCSIDriverSPIFFEPods(ctx, kubeClient, driverName)
+	if err != nil {
+		i.logInfo("Keeping csi-driver-spiffe and cert-manager: could not check for Pods that use csi-driver-spiffe: %v", err)
+		return true, nil
+	}
+	if len(pods) > 0 {
+		i.logInfo("Keeping csi-driver-spiffe and cert-manager: %d Pods still mount volumes from CSI driver %s (e.g. %s). Rerun the uninstall after they are gone.",
+			len(pods), driverName, pods[0])
+		return true, nil
+	}
+	return false, i.uninstallHelmRelease("csi-driver-spiffe", chartOptions.ReleaseName, chartOptions.Namespace, kubeContext)
+}
+
+// csiDriverNameOf returns the CSIDriver name that rad configured on a csi-driver-spiffe release.
+func csiDriverNameOf(rel *releasev1.Release) string {
+	if app, ok := rel.Config["app"].(map[string]any); ok {
+		if name, ok := app["name"].(string); ok && name != "" {
+			return name
+		}
+	}
+	return SPIFFECSIDriverNameDefault
+}
+
+// waitForCSIDriverSPIFFEPods waits until no Pod in the cluster mounts a volume from CSI driver driverName, and returns
+// the namespace/name of the Pods that still do when the wait times out.
+func (i *Impl) waitForCSIDriverSPIFFEPods(ctx context.Context, kubeClient kubernetes.Interface, driverName string) ([]string, error) {
+	timeout := i.csiDriverSPIFFEPodWaitTimeout
+	if timeout == 0 {
+		timeout = csiDriverSPIFFEPodWaitTimeoutDefault
+	}
+	interval := i.csiDriverSPIFFEPodPollInterval
+	if interval == 0 {
+		interval = csiDriverSPIFFEPodPollIntervalDefault
+	}
+
+	var remaining []string
+	logged := false
+	err := wait.PollUntilContextTimeout(ctx, interval, timeout, true, func(ctx context.Context) (bool, error) {
+		pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return false, err
+		}
+		remaining = remaining[:0]
+		for idx := range pods.Items {
+			if podUsesCSIDriver(&pods.Items[idx], driverName) {
+				remaining = append(remaining, pods.Items[idx].Namespace+"/"+pods.Items[idx].Name)
+			}
+		}
+		if len(remaining) > 0 && !logged {
+			output.LogInfo("Waiting for %d Pods that use csi-driver-spiffe to terminate...", len(remaining))
+			logged = true
+		}
+		return len(remaining) == 0, nil
+	})
+	if err != nil && len(remaining) > 0 && wait.Interrupted(err) {
+		return remaining, nil
+	}
+	return remaining, err
+}
+
+func podUsesCSIDriver(pod *corev1.Pod, driverName string) bool {
+	for _, volume := range pod.Spec.Volumes {
+		if volume.CSI != nil && volume.CSI.Driver == driverName {
+			return true
+		}
+	}
+	return false
 }
