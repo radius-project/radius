@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -31,6 +32,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	radapp "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	inputparameters "github.com/radius-project/radius/pkg/controller/parameters"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/spf13/cobra"
 	"go.yaml.in/yaml/v3"
@@ -92,13 +95,14 @@ type Runner struct {
 	Deploy            deploy.Interface
 	Output            output.Interface
 
-	FileSystem      filesystem.FileSystem
-	Group           string
-	FilePath        string
-	Parameters      map[string]map[string]any
-	DestinationFile string
-	AzureScope      string
-	AWSScope        string
+	FileSystem          filesystem.FileSystem
+	Group               string
+	FilePath            string
+	Parameters          map[string]map[string]any
+	ParameterReferences map[string]radapp.ParameterReference
+	DestinationFile     string
+	AzureScope          string
+	AWSScope            string
 }
 
 // NewRunner creates a new instance of the `rad bicep generate-kubernetes-manifest` runner.
@@ -163,7 +167,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	parser := bicep.ParameterParser{FileSystem: r.FileSystem}
-	r.Parameters, err = parser.Parse(parameterArgs...)
+	r.Parameters, r.ParameterReferences, err = parser.ParseKubernetesInputs(r.Bicep, parameterArgs...)
 	if err != nil {
 		return err
 	}
@@ -209,7 +213,16 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 
 	params := make(map[string]string)
 	for k, v := range parameters {
-		params[k] = v["value"].(string)
+		value, ok := v["value"].(string)
+		if !ok || len(v) != 1 {
+			return nil, fmt.Errorf("parameter %q must be a literal string or a supported external input", k)
+		}
+		params[k] = value
+	}
+	if len(r.ParameterReferences) != 0 {
+		if err := inputparameters.Validate(string(marshalledTemplate), params, r.ParameterReferences); err != nil {
+			return nil, err
+		}
 	}
 
 	deploymentTemplate := map[string]any{
@@ -225,6 +238,18 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 		},
 	}
 
+	if len(r.ParameterReferences) != 0 {
+		// Encode through JSON so the YAML encoder uses the API's JSON field names.
+		data, err := json.Marshal(r.ParameterReferences)
+		if err != nil {
+			return nil, err
+		}
+		var references map[string]any
+		if err := json.Unmarshal(data, &references); err != nil {
+			return nil, err
+		}
+		deploymentTemplate["spec"].(map[string]any)["parameterReferences"] = references
+	}
 	return deploymentTemplate, nil
 }
 

@@ -20,13 +20,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	radapp "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/test/radcli"
 
@@ -34,6 +37,47 @@ import (
 	"go.uber.org/mock/gomock"
 	"go.yaml.in/yaml/v3"
 )
+
+func TestSecretReferenceManifestRealCompiler(t *testing.T) {
+	binary, err := exec.LookPath("bicep")
+	if err != nil {
+		t.Skip("Bicep is required for the compiler integration check")
+	}
+	t.Setenv("BICEP", binary)
+	directory := t.TempDir()
+	templatePath := filepath.Join(directory, "app.bicep")
+	paramsPath := filepath.Join(directory, "app.bicepparam")
+	require.NoError(t, os.WriteFile(templatePath, []byte("@secure()\nparam password string\nparam application string\n"), 0600))
+	require.NoError(t, os.WriteFile(paramsPath, []byte("using './app.bicep'\nparam application = 'orders'\nparam password = externalInput('radius.secretKeyRef', {name:'credentials', key:'password'})\n"), 0600))
+	compiler := &bicep.Impl{FileSystem: filesystem.NewOSFS(), Output: &output.MockOutput{}}
+	parser := bicep.ParameterParser{FileSystem: filesystem.NewOSFS()}
+	values, references, err := parser.ParseKubernetesInputs(compiler, "@"+paramsPath)
+	require.NoError(t, err)
+	require.Equal(t, radapp.SecretKeyReference{Name: "credentials", Key: "password"}, references["password"].SecretKeyRef)
+	runner := &Runner{
+		Bicep: compiler, FileSystem: filesystem.NewOSFS(), Output: &output.MockOutput{},
+		Group: "default", FilePath: templatePath, Parameters: values, ParameterReferences: references,
+		DestinationFile: filepath.Join(directory, "app.yaml"),
+	}
+	require.NoError(t, runner.Run(t.Context()))
+	manifest, err := os.ReadFile(runner.DestinationFile)
+	require.NoError(t, err)
+	var document map[string]any
+	require.NoError(t, yaml.Unmarshal(manifest, &document))
+	spec := document["spec"].(map[string]any)
+	require.Equal(t, map[string]any{"application": "orders"}, spec["parameters"])
+	require.Equal(t, map[string]any{"password": map[string]any{"secretKeyRef": map[string]any{"name": "credentials", "key": "password"}}}, spec["parameterReferences"])
+	require.NotContains(t, string(manifest), "externalInputs(")
+	require.NotContains(t, string(manifest), "externalInputDefinitions")
+
+	for _, inputs := range [][]string{{"@" + paramsPath, "password=literal"}, {"password=literal", "@" + paramsPath}} {
+		_, _, err := parser.ParseKubernetesInputs(compiler, inputs...)
+		require.ErrorContains(t, err, "SecretInputConflict")
+	}
+	_, _, err = parser.ParseKubernetesInputs(compiler, "@"+paramsPath, "application=updated")
+	require.NoError(t, err)
+	require.False(t, strings.Contains(string(manifest), "resolved-secret-marker"))
+}
 
 func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)

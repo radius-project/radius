@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -28,18 +29,87 @@ import (
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
+	"github.com/radius-project/radius/pkg/cli/output"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
+
+func TestFluxSecretReferencesRealCompiler(t *testing.T) {
+	binary, err := exec.LookPath("bicep")
+	if err != nil {
+		t.Skip("Bicep is required for the compiler integration check")
+	}
+	t.Setenv("BICEP", binary)
+	s := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(s))
+	require.NoError(t, radappiov1alpha3.AddToScheme(s))
+	require.NoError(t, sourcev1.AddToScheme(s))
+	repository := makeGitRepository(types.NamespacedName{Name: "central-source", Namespace: "flux-system"}, "https://example.test/repo")
+	repository.Status.Artifact = &meta.Artifact{URL: "https://example.test/artifact", Digest: "digest", Revision: "revision"}
+	c := fake.NewClientBuilder().WithScheme(s).WithObjects(&repository).
+		WithStatusSubresource(&radappiov1alpha3.DeploymentTemplate{}).
+		WithIndex(&radappiov1alpha3.DeploymentTemplate{}, deploymentTemplateRepositoryField, deploymentTemplateRepositoryIndexer).Build()
+	fetcher := NewMockArchiveFetcher(gomock.NewController(t))
+	fetcher.EXPECT().Fetch(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_, _, directory string) error {
+		files := map[string]string{
+			"radius-gitops-config.yaml": "config:\n  - name: app.bicep\n    params: app.bicepparam\n    namespace: app\n",
+			"app.bicep":                 "@secure()\nparam password string\nparam application string\n",
+			"app.bicepparam":            "using './app.bicep'\nparam application = 'orders'\nparam password = externalInput('radius.secretKeyRef', {name:'credentials', key:'password'})\n",
+		}
+		for name, content := range files {
+			if err := os.WriteFile(filepath.Join(directory, name), []byte(content), 0600); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	flux := &FluxController{
+		Client: c, FileSystem: filesystem.NewOSFS(), ArchiveFetcher: fetcher,
+		Bicep: &bicep.Impl{FileSystem: filesystem.NewOSFS(), Output: &output.MockOutput{}},
+	}
+	// No Secret or reader account exists during compilation and manifest generation.
+	_, err = flux.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(&repository)})
+	require.NoError(t, err)
+	deployment := &radappiov1alpha3.DeploymentTemplate{}
+	require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKey{Name: "app.bicep", Namespace: "app"}, deployment))
+	require.Equal(t, map[string]string{"application": "orders"}, deployment.Spec.Parameters)
+	require.Equal(t, radappiov1alpha3.SecretKeyReference{Name: "credentials", Key: "password"}, deployment.Spec.ParameterReferences["password"].SecretKeyRef)
+	require.NoError(t, c.Create(t.Context(), &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: secretReaderAccount, Namespace: "app"}}))
+	require.NoError(t, c.Create(t.Context(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "credentials", Namespace: "app"},
+		Data:       map[string][]byte{"password": []byte("resolved-secret-marker")},
+	}))
+	submissions := 0
+	controller := &DeploymentTemplateReconciler{
+		Client: c, Scheme: s, Radius: NewMockRadiusClient(), SecretInputs: resolverForTest(c),
+		EventRecorder: record.NewFakeRecorder(10),
+		ResourceDeploymentsClient: &inputDeploymentClient{
+			put: func(_ context.Context, request sdkclients.Deployment, _ string) error {
+				submissions++
+				require.Equal(t, "resolved-secret-marker", request.Properties.Parameters.(map[string]map[string]string)["password"]["value"])
+				return nil
+			},
+		},
+	}
+	_, err = controller.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(deployment)})
+	require.NoError(t, err)
+	require.Equal(t, 1, submissions)
+	require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(deployment), deployment))
+	require.NotContains(t, fmt.Sprintf("%+v", deployment), "resolved-secret-marker")
+}
 
 func Test_FluxController_Basic(t *testing.T) {
 	testGitRepoName := "flux-basic-repo"

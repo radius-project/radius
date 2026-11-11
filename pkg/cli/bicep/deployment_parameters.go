@@ -20,10 +20,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
+	radapp "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	inputparameters "github.com/radius-project/radius/pkg/controller/parameters"
 )
 
 // ParameterParser is used to parse the parameters as part of the `rad deploy` command. See the docs for `rad deploy` for examples
@@ -33,7 +36,61 @@ type ParameterParser struct {
 }
 
 type ParameterFile struct {
-	Parameters clients.DeploymentParameters `json:"parameters"`
+	Parameters               clients.DeploymentParameters `json:"parameters"`
+	ExternalInputDefinitions map[string]json.RawMessage   `json:"externalInputDefinitions,omitempty"`
+}
+
+// ParseKubernetesInputs compiles linked parameter files and preserves references for
+// manifest generation. It never reads Kubernetes Secrets.
+func (pp ParameterParser) ParseKubernetesInputs(compiler Interface, inputs ...string) (clients.DeploymentParameters, map[string]radapp.ParameterReference, error) {
+	output := clients.DeploymentParameters{}
+	references := map[string]radapp.ParameterReference{}
+	for _, input := range inputs {
+		literals := clients.DeploymentParameters{}
+		inputReferences := map[string]radapp.ParameterReference{}
+		if file, ok := strings.CutPrefix(input, "@"); ok {
+			var data []byte
+			var err error
+			if filepath.Ext(file) == ".bicepparam" {
+				data, err = compiler.Call("build-params", file, "--stdout")
+			} else {
+				data, err = pp.FileSystem.ReadFile(file)
+			}
+			if err != nil {
+				return nil, nil, err
+			}
+			document, err := inputparameters.Parse(data)
+			if err != nil {
+				return nil, nil, err
+			}
+			values, refs, err := inputparameters.Translate(document)
+			if err != nil {
+				return nil, nil, err
+			}
+			for name, value := range values {
+				literals[name] = NewParameter(value)
+			}
+			inputReferences = refs
+		} else if err := pp.parseSingle(input, literals); err != nil {
+			return nil, nil, err
+		}
+		for name := range literals {
+			if _, exists := references[name]; exists {
+				return nil, nil, fmt.Errorf("SecretInputConflict: parameter %q cannot override a reference", name)
+			}
+		}
+		for name, reference := range inputReferences {
+			if _, exists := output[name]; exists {
+				return nil, nil, fmt.Errorf("SecretInputConflict: parameter %q already has a literal", name)
+			}
+			if _, exists := references[name]; exists {
+				return nil, nil, fmt.Errorf("SecretInputConflict: parameter %q already has a reference", name)
+			}
+			references[name] = reference
+		}
+		pp.mergeParameters(output, literals)
+	}
+	return output, references, nil
 }
 
 // ParseFileContents takes in a map of strings and any type and returns a DeploymentParameters object and
@@ -130,6 +187,14 @@ func (pp ParameterParser) unmarshalParameters(b []byte, output clients.Deploymen
 		return err
 	}
 
+	if len(data.ExternalInputDefinitions) != 0 {
+		return fmt.Errorf("external inputs require rad bicep generate-kubernetes-manifest and controller-side resolution")
+	}
+	for name, binding := range data.Parameters {
+		if _, exists := binding["expression"]; exists {
+			return fmt.Errorf("parameter %q has an unsupported expression; use rad bicep generate-kubernetes-manifest for Secret references", name)
+		}
+	}
 	pp.mergeParameters(output, data.Parameters)
 	return nil
 }

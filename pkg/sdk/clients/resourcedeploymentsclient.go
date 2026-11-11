@@ -102,6 +102,7 @@ type ProviderConfig struct {
 type ResourceDeploymentsClient interface {
 	CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (Poller[ClientCreateOrUpdateResponse], error)
 	ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[ClientCreateOrUpdateResponse], error)
+	GetDeployment(ctx context.Context, resourceID, apiVersion string) (ClientCreateOrUpdateResponse, error)
 	Delete(ctx context.Context, resourceID, apiVersion string) (Poller[ClientDeleteResponse], error)
 	ContinueDeleteOperation(ctx context.Context, resumeToken string) (Poller[ClientDeleteResponse], error)
 }
@@ -198,6 +199,27 @@ func (client *ResourceDeploymentsClientImpl) createOrUpdateCreateRequest(ctx con
 // ContinueCreateOperation continues a create operation given a resume token.
 func (client *ResourceDeploymentsClientImpl) ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[ClientCreateOrUpdateResponse], error) {
 	return runtime.NewPollerFromResumeToken[ClientCreateOrUpdateResponse](resumeToken, *client.pipeline, nil)
+}
+
+// GetDeployment retrieves a durable deployment for status-only recovery and polling.
+func (client *ResourceDeploymentsClientImpl) GetDeployment(ctx context.Context, resourceID, apiVersion string) (ClientCreateOrUpdateResponse, error) {
+	req, err := runtime.NewRequest(ctx, http.MethodGet, DeploymentEngineURL(client.baseURI, resourceID))
+	if err != nil {
+		return ClientCreateOrUpdateResponse{}, err
+	}
+	query := req.Raw().URL.Query()
+	query.Set("api-version", apiVersion)
+	req.Raw().URL.RawQuery = query.Encode()
+	resp, err := client.pipeline.Do(req)
+	if err != nil {
+		return ClientCreateOrUpdateResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return ClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
+	}
+	var result ClientCreateOrUpdateResponse
+	err = runtime.UnmarshalAsJSON(resp, &result)
+	return result, err
 }
 
 // Delete creates a request to delete a resource and returns a poller to

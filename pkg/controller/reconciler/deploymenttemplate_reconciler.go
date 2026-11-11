@@ -20,14 +20,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand/v2"
+	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"uuid"
 
@@ -35,6 +40,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	inputparameters "github.com/radius-project/radius/pkg/controller/parameters"
 	"github.com/radius-project/radius/pkg/hashutil"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -60,6 +66,12 @@ type DeploymentTemplateReconciler struct {
 
 	// DelayInterval is the amount of time to wait between operations.
 	DelayInterval time.Duration
+
+	// SecretInputs resolves references only at the shared deployment boundary.
+	SecretInputs *SecretInputResolver
+
+	// InputPollInterval bounds rotation latency. Zero uses a 60-second baseline.
+	InputPollInterval time.Duration
 }
 
 // Reconcile is the main reconciliation loop for the DeploymentTemplate resource.
@@ -101,9 +113,18 @@ func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.R
 	//
 	// We do it this way because it guarantees that we only have one operation going at a time.
 
+	if deploymentTemplate.Status.PendingSubmission != "" {
+		// Submission intent is persisted before the PUT. Recover by GET, never by
+		// replaying credentials or starting an overlapping deployment.
+		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{
+			OperationKind: radappiov1alpha3.OperationKindPut,
+			DeploymentID:  deploymentTemplate.Status.PendingSubmission,
+		}
+	}
 	if deploymentTemplate.Status.Operation != nil {
 		result, err := r.reconcileOperation(ctx, &deploymentTemplate)
 		if err != nil {
+			err = safeDeploymentError(&deploymentTemplate, err)
 			logger.Error(err, "Unable to reconcile in-progress operation.")
 			return ctrl.Result{}, err
 		} else if result.IsZero() {
@@ -128,22 +149,27 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
-		poller, err := r.ResourceDeploymentsClient.ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to continue PUT operation: %w", err)
+		resp, done, err := r.pollDeployment(ctx, deploymentTemplate)
+		if err != nil && !done {
+			err = safeDeploymentError(deploymentTemplate, err)
+			if deploymentTemplate.Status.Operation.DeploymentID != "" {
+				deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
+				r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "DeploymentStatusUnavailable", err.Error())
+				if statusErr := r.Client.Status().Update(ctx, deploymentTemplate); statusErr != nil {
+					return ctrl.Result{}, statusErr
+				}
+			}
+			return ctrl.Result{}, err
 		}
-
-		_, err = poller.Poll(ctx)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to poll operation status: %w", err)
-		}
-
-		if !poller.Done() {
+		if !done {
+			deploymentTemplate.Status.PendingSubmission = ""
+			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseUpdating
+			if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
+				return ctrl.Result{}, err
+			}
 			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
-
-		// If we get here, the operation is complete.
-		resp, err := poller.Result(ctx)
+		deploymentTemplate.Status.PendingSubmission = ""
 		if err != nil {
 			// Special case: If deletion is requested and we get a 404 error, treat it as success
 			// This can happen when resources are deleted while an operation is in progress
@@ -158,6 +184,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 			}
 
 			// Operation failed, reset state and schedule delayed retry.
+			err = safeDeploymentError(deploymentTemplate, err)
 			r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
 			logger.Error(err, "Update failed.")
 
@@ -236,6 +263,19 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 
 					// Create the DeploymentResource
 					err = r.Client.Create(ctx, deploymentResource)
+					if apierrors.IsAlreadyExists(err) {
+						existing := &radappiov1alpha3.DeploymentResource{}
+						if getErr := r.Client.Get(ctx, client.ObjectKeyFromObject(deploymentResource), existing); getErr != nil {
+							return ctrl.Result{}, getErr
+						}
+						if !isOwnedBy(*existing, deploymentTemplate) || existing.Spec.Id != outputResourceId {
+							return ctrl.Result{}, fmt.Errorf("output resource conflicts with an existing DeploymentResource")
+						}
+						if existing.DeletionTimestamp != nil {
+							return ctrl.Result{}, fmt.Errorf("waiting for an output DeploymentResource to finish deletion")
+						}
+						err = nil
+					}
 					if err != nil {
 						return ctrl.Result{}, err
 					}
@@ -286,6 +326,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		deploymentTemplate.Status.Operation = nil
 		deploymentTemplate.Status.OutputResources = outputResources
 		deploymentTemplate.Status.StatusHash = hash
+		deploymentTemplate.Status.AppliedInputRevision = deploymentTemplate.Status.AttemptedInputRevision
 		if residualsPresent {
 			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
 		} else {
@@ -343,7 +384,12 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	updatePoller, err := r.startPutOperationIfNeeded(ctx, deploymentTemplate)
 	if err != nil {
 		logger.Error(err, "Unable to create or update resource.")
-		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
+		reason := "ResourceError"
+		if prefix, _, ok := strings.Cut(err.Error(), ":"); ok &&
+			(prefix == "SecretInputUnavailable" || prefix == "SecretInputInvalid" || prefix == "SecretInputConflict") {
+			reason = prefix
+		}
+		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, reason, err.Error())
 
 		if statusErr := r.updateFailedStatus(ctx, deploymentTemplate); statusErr != nil {
 			return ctrl.Result{}, statusErr
@@ -352,14 +398,21 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 		// Return the error to the controller-runtime.
 		// This will cause the controller to requeue the request and retry the operation.
 		return ctrl.Result{}, err
-	} else if updatePoller != nil {
+	} else if updatePoller != nil || deploymentTemplate.Status.PendingSubmission != "" {
 		// We've successfully started an operation. Update the status and requeue.
-		token, err := updatePoller.ResumeToken()
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
+		if deploymentTemplate.Status.PendingSubmission != "" {
+			deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{
+				DeploymentID:  deploymentTemplate.Status.PendingSubmission,
+				OperationKind: radappiov1alpha3.OperationKindPut,
+			}
+			deploymentTemplate.Status.PendingSubmission = ""
+		} else {
+			token, err := updatePoller.ResumeToken()
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
+			}
+			deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindPut}
 		}
-
-		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindPut}
 		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseUpdating
 		err = r.Client.Status().Update(ctx, deploymentTemplate)
 		if err != nil {
@@ -392,6 +445,9 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 	}
 
 	r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
+	if len(deploymentTemplate.Spec.ParameterReferences) != 0 {
+		return ctrl.Result{RequeueAfter: r.inputPollDelay()}, nil
+	}
 	return ctrl.Result{}, nil
 }
 
@@ -470,9 +526,21 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	specParameters := convertToARMJSONParameters(deploymentTemplate.Spec.Parameters)
+	inputRevision := ""
+	if len(deploymentTemplate.Spec.ParameterReferences) != 0 {
+		var err error
+		specParameters, inputRevision, err = r.SecretInputs.Resolve(ctx, deploymentTemplate)
+		if err != nil {
+			return nil, err
+		}
+	} else if deploymentTemplate.Status.AttemptedInputRevision != "" {
+		if err := inputparameters.Validate(deploymentTemplate.Spec.Template, deploymentTemplate.Spec.Parameters, nil); err != nil {
+			return nil, err
+		}
+	}
 
 	// If the resource is already created and is up-to-date, then we don't need to do anything.
-	if isUpToDate(deploymentTemplate) {
+	if isUpToDate(deploymentTemplate) && deploymentTemplate.Status.AppliedInputRevision == inputRevision {
 		logger.Info("Resource is up-to-date.")
 		return nil, nil
 	}
@@ -508,6 +576,15 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 	deploymentName := fmt.Sprintf("deploymenttemplate-%v", uuid.New().String())
 	resourceID := providerConfig.Deployments.Value.Scope + "/providers/" + "Microsoft.Resources/deployments" + "/" + deploymentName
 
+	deploymentTemplate.Status.AttemptedInputRevision = inputRevision
+	if inputRevision != "" {
+		deploymentTemplate.Status.PendingSubmission = resourceID
+		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseUpdating
+		if err := r.Client.Status().Update(ctx, deploymentTemplate); err != nil {
+			deploymentTemplate.Status.PendingSubmission = ""
+			return nil, err
+		}
+	}
 	logger.Info("Starting PUT operation.")
 	poller, err := r.ResourceDeploymentsClient.CreateOrUpdate(ctx,
 		sdkclients.Deployment{
@@ -522,13 +599,56 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 		sdkclients.DeploymentsClientAPIVersion,
 	)
 	if err != nil {
-		return nil, err
+		return nil, safeDeploymentError(deploymentTemplate, err)
 	} else if poller != nil {
 		return poller, nil
 	}
 
 	// Update was synchronous
 	return nil, nil
+}
+
+// pollDeployment avoids serializing SDK resume state for reference-bound attempts.
+// A missing deployment after an uncertain submission stays blocked: a 404 does
+// not establish that the original request cannot still be accepted.
+func (r *DeploymentTemplateReconciler) pollDeployment(ctx context.Context, deployment *radappiov1alpha3.DeploymentTemplate) (sdkclients.ClientCreateOrUpdateResponse, bool, error) {
+	if deployment.Status.Operation.DeploymentID != "" {
+		response, err := r.ResourceDeploymentsClient.GetDeployment(ctx, deployment.Status.Operation.DeploymentID, sdkclients.DeploymentsClientAPIVersion)
+		if err != nil {
+			return response, false, err
+		}
+		if response.Properties == nil || response.Properties.ProvisioningState == nil {
+			return response, false, fmt.Errorf("deployment status is unavailable")
+		}
+		switch strings.ToLower(string(*response.Properties.ProvisioningState)) {
+		case "succeeded":
+			return response, true, nil
+		case "failed", "canceled", "cancelled":
+			return response, true, fmt.Errorf("deployment did not succeed")
+		default:
+			return response, false, nil
+		}
+	}
+	poller, err := r.ResourceDeploymentsClient.ContinueCreateOperation(ctx, deployment.Status.Operation.ResumeToken)
+	if err != nil {
+		return sdkclients.ClientCreateOrUpdateResponse{}, false, err
+	}
+	if _, err := poller.Poll(ctx); err != nil {
+		return sdkclients.ClientCreateOrUpdateResponse{}, false, err
+	}
+	if !poller.Done() {
+		return sdkclients.ClientCreateOrUpdateResponse{}, false, nil
+	}
+	response, err := poller.Result(ctx)
+	return response, true, err
+}
+
+func (r *DeploymentTemplateReconciler) inputPollDelay() time.Duration {
+	interval := r.InputPollInterval
+	if interval <= 0 {
+		interval = time.Minute
+	}
+	return interval + time.Duration(rand.Int64N(max(1, int64(interval/5))))
 }
 
 func (r *DeploymentTemplateReconciler) requeueDelay() time.Duration {
@@ -616,6 +736,9 @@ func computeHash(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (strin
 // upgrading Radius (which changes the hash algorithm) does not flag an otherwise
 // unchanged DeploymentTemplate as out-of-date and trigger an unnecessary deployment.
 func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
+	if deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseFailed {
+		return false
+	}
 	b, err := json.Marshal(deploymentTemplate.Spec)
 	if err != nil {
 		return false
@@ -636,7 +759,12 @@ func (r *DeploymentTemplateReconciler) updateFailedStatus(ctx context.Context, d
 // SetupWithManager sets up the controller with the Manager.
 func (r *DeploymentTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&radappiov1alpha3.DeploymentTemplate{}).
+		For(&radappiov1alpha3.DeploymentTemplate{}, builder.WithPredicates(predicate.Funcs{
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				return e.ObjectOld.GetGeneration() != e.ObjectNew.GetGeneration() ||
+					!e.ObjectOld.GetDeletionTimestamp().Equal(e.ObjectNew.GetDeletionTimestamp())
+			},
+		})).
 		Owns(&radappiov1alpha3.DeploymentResource{}).
 		Complete(r)
 }

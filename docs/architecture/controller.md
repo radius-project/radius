@@ -48,6 +48,93 @@ Some reconcilers call back into Radius APIs using SDK clients configured with
 the current UCP connection. That is the main architectural bridge between the
 controller and the rest of the control plane.
 
+### Secret-backed deployment inputs (draft)
+
+[Shared parameter translation](../../pkg/controller/parameters/parameters.go) converts compiled Bicep external inputs into `DeploymentTemplate.spec.parameterReferences`. Flux and `rad bicep generate-kubernetes-manifest` use this translation without reading Secrets. Argo CD can sync the same generated manifest without installing Flux; there is no separate Argo CD resolver. Existing literal parameters remain unchanged, including their existing visibility in the manifest.
+
+Keep `radius-gitops-config.yaml` selecting the linked parameter file through `params: app.bicepparam`. Use Bicep 0.37.4 or newer (the repository pins 0.46.1). Declare the template input as `@secure()` with no default, then bind it in the parameter file:
+
+```bicep
+using './app.bicep'
+
+param databasePassword = externalInput('radius.secretKeyRef', {
+  name: 'database-credentials'
+  key: 'password'
+})
+```
+
+For CLI generation, run `rad bicep generate-kubernetes-manifest app.bicep -g default -p @app.bicepparam -d app.yaml`, then sync/apply the manifest in the destination namespace. Only direct references to declared secure strings are supported; compositions, unsupported kinds, namespace fields, defaults, literal/reference conflicts, and unused or missing definitions fail explicitly. Provision Secrets separately using SOPS, an external operator, or another existing mechanism; Radius does not decrypt source artifacts.
+
+**Trust boundary:** repository authors and deployment templates must be trusted. Radius automatically processes watched `GitRepository` objects containing `radius-gitops-config.yaml`, so registering or modifying a source is deployment authority. A central source in `flux-system` may deploy to `my-app`; no source/destination namespace equality restriction is imposed. Destination reader RBAC is not source authorization and does not provide hostile multi-tenant isolation. Platform operators must control sources, destination namespaces, service accounts, and RBAC. Deployment authors in a namespace share all Secret access approved for its reader identity, and trusted templates can expose inputs through downstream resources.
+
+The [shared resolver](../../pkg/controller/reconciler/secret_inputs.go) verifies a platform-managed `radius-deployer` service account exists in the destination namespace, then performs uncached, impersonated Secret GETs as that account. The controller never falls back to its own Secret credentials. Each Secret is fetched once per resolution attempt; no Secret informer, list, or watch is used. Missing accounts, denied access, missing Secrets/keys, invalid UTF-8, and constraint failures set `Failed` and retry without changing previously deployed resources. Present empty keys are empty strings, not missing keys; whitespace is preserved.
+
+Operators provision the following namespace-local permissions, changing `radius-system` if the Radius controller is installed elsewhere. These are deliberately not blanket permissions in the Helm controller ClusterRole:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: radius-deployer
+  namespace: my-app
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: radius-secret-inputs
+  namespace: my-app
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["database-credentials"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: radius-secret-inputs
+  namespace: my-app
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: radius-secret-inputs
+subjects:
+  - kind: ServiceAccount
+    name: radius-deployer
+    namespace: my-app
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: radius-reader-impersonation
+  namespace: my-app
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    resourceNames: ["radius-deployer"]
+    verbs: ["get", "impersonate"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: radius-reader-impersonation
+  namespace: my-app
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: radius-reader-impersonation
+subjects:
+  - kind: ServiceAccount
+    name: controller
+    namespace: radius-system
+```
+
+Ready deployments poll inputs on a 60-second baseline with up to 20% jitter. `InputPollInterval` is injectable on the reconciler; a user-facing configuration option is not yet wired. Controller concurrency remains bounded by controller-runtime's default single worker, and lookup errors use its rate-limited retries. Revisions hash the desired spec plus Secret UID/resourceVersion metadata, never resolved Secret bytes. Metadata-only changes can redeploy. `attemptedInputRevision` accompanies an operation; `appliedInputRevision` advances only after successful deployment and output tracking. Inputs changing during an operation are handled after that operation finishes.
+
+Reference-bound PUTs persist a value-free deployment ID in `pendingSubmission` before submission, then track the deployment through GET rather than SDK resume tokens. A lost acknowledgement or status-write failure therefore resumes tracking the same deployment, not a second PUT. If the deployment remains missing or unreadable, submission stays blocked and visibly fails: a 404 cannot prove that a timed-out request will never be accepted. A crash between saving intent and sending the PUT also needs operator recovery. Inspect the recorded deployment ID and engine state before repairing status; do not clear tracking while an operation may still be running. Failed terminal deployments retry fresh authorized inputs even when the spec matches an earlier successful deployment. Deletion waits for tracked operations but does not resolve inputs or modify externally managed Secrets.
+
+**Draft limits and release gates:** at most 64 references, 64 KiB per resolved value, and 256 KiB total resolved inputs are accepted; these conservative proof-of-concept limits have not been scale-qualified. Upgrade CRDs and controller together before using references; do not run mixed controller versions or downgrade with reference-bound objects present. Before downgrade, migrate and converge those objects under the new controller, considering the disclosure risk of inline values. Rotate any credentials previously stored inline; this feature does not erase historical Git, manifests, status, backups, or engine records. Full deployment-engine persistence/diagnostic/provider redaction and memory erasure are not verified. Full SOPS/operator and Argo CD sync scenarios, multi-replica recovery, production load, and a user-facing recovery/configuration workflow remain release gates. This is not a complete security audit or production-readiness claim.
+
 ## Invariants And Constraints
 
 - Reconciler logic should stay idempotent.
@@ -119,7 +206,7 @@ sequenceDiagram
   K8S->>Rec: reconcile DeploymentTemplate
   Rec->>Status: check existing operation state
   alt operation in progress
-    Rec->>Deploy: continue poll with resume token
+    Rec->>Deploy: poll token or reference-bound deployment ID
     Deploy-->>Rec: done or still running
     Rec->>Status: update phase, outputs, operation state
     Rec->>Out: create/delete DeploymentResource objects
@@ -127,7 +214,7 @@ sequenceDiagram
     Rec->>Status: ensure finalizer + observed generation
     Rec->>Deploy: create deployment if desired state changed
     Deploy-->>Rec: poller + resume token
-    Rec->>Status: mark Updating and store token
+    Rec->>Status: store token, or pre-submit intent then deployment ID
   else delete path
     Rec->>Out: delete owned DeploymentResources
     Rec->>Status: remove finalizer when safe

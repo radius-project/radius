@@ -82,24 +82,6 @@ func convertToARMJSONParameters(parameters map[string]string) map[string]map[str
 	return armJSONParameters
 }
 
-func convertFromARMJSONParameters(armJSONParameters map[string]any) map[string]string {
-	parameters := make(map[string]string, len(armJSONParameters))
-	for key, value := range armJSONParameters {
-		if value == nil {
-			continue
-		}
-
-		if valueMap, ok := value.(map[string]any); ok {
-			if value, ok := valueMap["value"]; ok {
-				if valueStr, ok := value.(string); ok {
-					parameters[key] = valueStr
-				}
-			}
-		}
-	}
-	return parameters
-}
-
 // ParseRadiusGitOpsConfig parses the Radius GitOps configuration file at the given path
 // on the local filesystem.
 func ParseRadiusGitOpsConfig(configFilePath string) (*RadiusGitOpsConfig, error) {

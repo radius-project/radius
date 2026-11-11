@@ -49,6 +49,42 @@ spec:
             description: DeploymentTemplateSpec defines the desired state of a DeploymentTemplate
               resource.
             properties:
+              parameterReferences:
+                additionalProperties:
+                  description: ParameterReference identifies a deployment-time input,
+                    never its value.
+                  properties:
+                    secretKeyRef:
+                      description: SecretKeyReference selects a key in a Secret in
+                        the DeploymentTemplate namespace.
+                      properties:
+                        key:
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                        name:
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                        namespace:
+                          description: |-
+                            Namespace is forbidden, including an explicit empty namespace.
+                            It is modeled only so the API server rejects rather than prunes it.
+                          type: string
+                      required:
+                      - key
+                      - name
+                      type: object
+                      x-kubernetes-validations:
+                      - message: Secret references cannot specify a namespace
+                        rule: '!has(self.__namespace__)'
+                  required:
+                  - secretKeyRef
+                  type: object
+                description: ParameterReferences binds secure strings to same-namespace
+                  Secret keys.
+                maxProperties: 64
+                type: object
               parameters:
                 additionalProperties:
                   type: string
@@ -70,6 +106,14 @@ spec:
             description: DeploymentTemplateStatus defines the observed state of a
               DeploymentTemplate resource.
             properties:
+              appliedInputRevision:
+                description: AppliedInputRevision advances only after successful deployment
+                  and output tracking.
+                type: string
+              attemptedInputRevision:
+                description: AttemptedInputRevision identifies the spec and Secret
+                  metadata submitted by the current attempt.
+                type: string
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
                   for this DeploymentTemplate.
@@ -78,6 +122,11 @@ spec:
                 description: Operation tracks the status of an in-progress provisioning
                   operation.
                 properties:
+                  deploymentId:
+                    description: |-
+                      DeploymentID tracks reference-bound PUTs through value-free resource GETs,
+                      including recovery when the submission acknowledgement could not be saved.
+                    type: string
                   operationKind:
                     description: OperationKind describes the type of operation being
                       performed.
@@ -93,6 +142,11 @@ spec:
                 items:
                   type: string
                 type: array
+              pendingSubmission:
+                description: |-
+                  PendingSubmission records a durable submission intent before sending credentials to the engine.
+                  If submission acknowledgement is lost, recovery polls this deployment ID.
+                type: string
               phrase:
                 description: Phrase indicates the current status of the Deployment
                   Template.

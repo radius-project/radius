@@ -104,6 +104,29 @@ func (rdc *MockResourceDeploymentsClient) ContinueCreateOperation(ctx context.Co
 	}, nil
 }
 
+func (rdc *MockResourceDeploymentsClient) GetDeployment(ctx context.Context, resourceID, apiVersion string) (ClientCreateOrUpdateResponse, error) {
+	rdc.lock.Lock()
+	defer rdc.lock.Unlock()
+	for _, state := range rdc.operations {
+		if state.Kind != http.MethodPut || state.ResourceID != resourceID {
+			continue
+		}
+		value := state.Value.(ClientCreateOrUpdateResponse)
+		properties := *value.Properties
+		status := armdeployments.ProvisioningStateRunning
+		if state.Complete {
+			status = armdeployments.ProvisioningStateSucceeded
+			if state.Err != nil {
+				status = armdeployments.ProvisioningStateFailed
+			}
+		}
+		properties.ProvisioningState = &status
+		value.Properties = &properties
+		return value, nil
+	}
+	return ClientCreateOrUpdateResponse{}, &azcore.ResponseError{StatusCode: http.StatusNotFound}
+}
+
 func (rdc *MockResourceDeploymentsClient) Delete(ctx context.Context, resourceID, apiVersion string) (Poller[ClientDeleteResponse], error) {
 	rdc.lock.Lock()
 	defer rdc.lock.Unlock()

@@ -68,6 +68,11 @@ spec:
                 description: Operation tracks the status of an in-progress provisioning
                   operation.
                 properties:
+                  deploymentId:
+                    description: |-
+                      DeploymentID tracks reference-bound PUTs through value-free resource GETs,
+                      including recovery when the submission acknowledgement could not be saved.
+                    type: string
                   operationKind:
                     description: OperationKind describes the type of operation being
                       performed.

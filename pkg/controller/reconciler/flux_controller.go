@@ -14,6 +14,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
+	inputparameters "github.com/radius-project/radius/pkg/controller/parameters"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.yaml.in/yaml/v3"
@@ -34,7 +35,6 @@ import (
 const (
 	deploymentTemplateRepositoryField = "spec.repository"
 	radiusConfigFileName              = "radius-gitops-config.yaml"
-	armJSONParametersKeyName          = "parameters"
 )
 
 // FluxController watches GitRepository objects for revision changes
@@ -243,10 +243,10 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 
 		// If the bicepparams file is specified, run bicep build-params on it
-		var armJSONParameters map[string]any
+		var parameterDocument inputparameters.Document
 		if paramFileName != "" {
 			logger.Info("Running bicep build-params", "name", paramFileName)
-			armJSONParameters, err = r.runBicepBuildParams(ctx, tmpDir, paramFileName)
+			parameterDocument, err = r.runBicepBuildParams(ctx, tmpDir, paramFileName)
 			if err != nil {
 				logger.Error(err, "failed to run bicep build-params")
 				return ctrl.Result{}, err
@@ -275,8 +275,16 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		// Now we should create (or update) each DeploymentTemplate for the bicep files
 		// specified in the git repository.
 		logger.Info("Creating or updating DeploymentTemplate", "name", bicepFile.Name)
-		parameters := convertFromARMJSONParameters(armJSONParameters)
-		err = r.createOrUpdateDeploymentTemplate(ctx, bicepFile.Name, namespace, template, string(marshalledProviderConfig), parameters, repository.Name)
+		parameters, references, err := inputparameters.Translate(parameterDocument)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if len(references) != 0 {
+			if err := inputparameters.Validate(template, parameters, references); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		err = r.createOrUpdateDeploymentTemplate(ctx, bicepFile.Name, namespace, template, string(marshalledProviderConfig), parameters, references, repository.Name)
 		if err != nil {
 			logger.Error(err, "failed to create or update deployment template")
 			return ctrl.Result{}, err
@@ -337,7 +345,7 @@ func (r *FluxController) runBicepBuild(ctx context.Context, filepath, filename s
 	return string(contents), nil
 }
 
-func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, filename string) (map[string]any, error) {
+func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, filename string) (inputparameters.Document, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	bicepParamsFile := path.Join(filepath, filename)
@@ -348,40 +356,22 @@ func (r *FluxController) runBicepBuildParams(ctx context.Context, filepath, file
 	_, err := r.Bicep.Call("build-params", bicepParamsFile, "--outfile", outfile)
 	if err != nil {
 		logger.Error(err, "failed to run bicep build-params")
-		return map[string]any{}, err
+		return inputparameters.Document{}, err
 	}
 
 	// Read the contents of the generated .parameters.json file
 	contents, err := r.FileSystem.ReadFile(outfile)
 	if err != nil {
 		logger.Error(err, "failed to read bicep build-params output")
-		return nil, err
+		return inputparameters.Document{}, err
 	}
 
-	params := make(map[string]any)
-	err = json.Unmarshal(contents, &params)
-	if err != nil {
-		logger.Error(err, "failed to unmarshal bicep build-params output")
-		return nil, err
-	}
-
-	if params[armJSONParametersKeyName] == nil {
-		return nil, fmt.Errorf("parameters field not found in bicep build-params output")
-	}
-
-	if _, ok := params[armJSONParametersKeyName].(map[string]any); !ok {
-		typeGot := fmt.Sprintf("%T", params[armJSONParametersKeyName])
-		return nil, fmt.Errorf("unexpected format for parameters field in bicep build-params output, got %s", typeGot)
-	}
-
-	parameters := params[armJSONParametersKeyName].(map[string]any)
-
-	return parameters, nil
+	return inputparameters.Parse(contents)
 }
 
 // createOrUpdateDeploymentTemplate creates or updates a DeploymentTemplate object in the cluster
 // with the given spec.
-func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string, repository string) error {
+func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, fileName, namespace, template, providerConfig string, parameters map[string]string, references map[string]radappiov1alpha3.ParameterReference, repository string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Try to get the DeploymentTemplate object from the cluster
@@ -399,10 +389,11 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 			Name:      fileName,
 			Namespace: namespace,
 			Spec: radappiov1alpha3.DeploymentTemplateSpec{
-				Template:       template,
-				Parameters:     parameters,
-				ProviderConfig: providerConfig,
-				Repository:     repository,
+				Template:            template,
+				Parameters:          parameters,
+				ParameterReferences: references,
+				ProviderConfig:      providerConfig,
+				Repository:          repository,
 			},
 		}
 		if err := r.Client.Create(ctx, deploymentTemplate); err != nil {
@@ -416,10 +407,11 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 
 	// If the DeploymentTemplate already exists, update it
 	deploymentTemplate.Spec = radappiov1alpha3.DeploymentTemplateSpec{
-		Template:       template,
-		Parameters:     parameters,
-		ProviderConfig: providerConfig,
-		Repository:     repository,
+		Template:            template,
+		Parameters:          parameters,
+		ParameterReferences: references,
+		ProviderConfig:      providerConfig,
+		Repository:          repository,
 	}
 	if err := r.Client.Update(ctx, &deploymentTemplate); err != nil {
 		logger.Error(err, "unable to update deployment template")
