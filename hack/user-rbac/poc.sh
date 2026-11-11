@@ -34,7 +34,8 @@ Environment:
   RBAC_POC_ENGINE_TAG Deployment engine tag (default: latest).
   RBAC_POC_BICEP_IMAGE Bicep sidecar image (accepts a digest reference).
   RBAC_POC_INTERNAL_MODE Internal component authorization: enforce (default),
-                   dryRun, or off. off also turns user RBAC off.
+                   dryRun, or off. off also turns user RBAC off. test needs
+                   enforce: user RBAC Enforce requires internal enforce.
   RADIUS_USER_RBAC_RESUME=true Repeat workload tests on existing kit policy.
 
 State: dist/user-rbac-poc for the default cluster, dist/$RBAC_POC_CLUSTER otherwise.

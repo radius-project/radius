@@ -20,8 +20,10 @@
 # Impersonates a compromised Radius component: requests a ServiceAccount token
 # for the component's ServiceAccount with the receiver as the audience (as the
 # kubelet does for projected token volumes), and runs rogue-client with it as a
-# bearer token. The public Radius CA is copied into the rogue pod to verify the
-# server.
+# bearer token. The token and the public Radius CA are copied into the rogue
+# pod; rogue-client verifies the receiver's SPIFFE ID before sending the token.
+# With -k in the request arguments, the token is sent as a header without
+# verifying the server.
 #
 # Exit codes: 0 HTTP response, 1 transport failure, 2 usage error, 3 the
 # ServiceAccount or the radius-ca Secret does not exist.
@@ -38,9 +40,11 @@ Usage: $(basename "$0") [-n NAMESPACE] [-r RECEIVER] COMPONENT -- REQUEST_ARGS..
 
 Runs /rogue-client request with a 10-minute ServiceAccount token for COMPONENT,
 to act as a compromised component. The token is requested with
-'kubectl create token COMPONENT --audience RECEIVER' in ${AUTHZ_RADIUS_NAMESPACE} and sent
-as 'Authorization: Bearer ...'. The server is verified with the public Radius CA
-from the radius-ca Secret. --cacert and -H are passed before REQUEST_ARGS.
+'kubectl create token COMPONENT --audience RECEIVER' in ${AUTHZ_RADIUS_NAMESPACE}.
+rogue-client reads it from a file and sends it only after verifying the
+server's Radius SPIFFE ID with the public CA from the radius-ca Secret, so
+REQUEST_ARGS must not include --cert, --key, or --cacert. If REQUEST_ARGS
+include -k, the server is not verified and the token is sent as a header.
 Use rogue.sh --help for request flags, output format, and exit codes.
 All flags must precede the URL.
 
@@ -115,7 +119,7 @@ fi
 [[ "${RECEIVER}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] ||
     authz_die "could not infer the receiver from the URL; pass --receiver"
 readonly COMPONENT RECEIVER
-readonly CA_DIR="${AUTHZ_ROGUE_WORKDIR}/radius-ca"
+readonly RADIUS_DIR="${AUTHZ_ROGUE_WORKDIR}/radius"
 
 authz_require_tools kubectl
 
@@ -143,13 +147,37 @@ for attempt in 1 2 3; do
         authz_kubectl exec --stdin "${AUTHZ_ROGUE_POD}" \
             --namespace "${AUTHZ_ROGUE_NAMESPACE}" \
             --container "${AUTHZ_ROGUE_OPENSSL_CONTAINER}" -- \
-            sh -c "${WRITE_CA_SCRIPT}" sh "${CA_DIR}" && break
+            sh -c "${WRITE_CA_SCRIPT}" sh "${RADIUS_DIR}" && break
     ((attempt < 3)) || authz_die "could not copy the Radius CA into the rogue pod"
 done
 
 token="$(authz_kubectl create token "${COMPONENT}" \
     --namespace "${AUTHZ_RADIUS_NAMESPACE}" --audience "${RECEIVER}" --duration 10m)"
 
+insecure=false
+for arg in "${REQUEST_ARGS[@]}"; do
+    [[ "${arg}" != -k ]] || insecure=true
+done
+
 echo "Calling ${RECEIVER} as ${COMPONENT} with a ServiceAccount token" >&2
-authz_rogue_request --cacert "${CA_DIR}/ca.crt" \
-    -H "Authorization: Bearer ${token}" "${REQUEST_ARGS[@]}"
+if [[ "${insecure}" == true ]]; then
+    # -k skips server verification, for example on the aggregation port, which does not
+    # serve a Radius SPIFFE certificate. Send the token directly.
+    authz_rogue_request -H "Authorization: Bearer ${token}" "${REQUEST_ARGS[@]}"
+    exit
+fi
+
+# Like the projected token volume, the token is a file the client reads: the rogue-client
+# Radius transport verifies the receiver's SPIFFE ID before it sends the token.
+# shellcheck disable=SC2016 # Expanded by sh in the pod.
+readonly WRITE_TOKEN_SCRIPT='mkdir -p "$1" && cat >"$1/token.tmp" && grep -q "\..*\." "$1/token.tmp" && mv "$1/token.tmp" "$1/token"'
+for attempt in 1 2 3; do
+    printf '%s' "${token}" |
+        authz_kubectl exec --stdin "${AUTHZ_ROGUE_POD}" \
+            --namespace "${AUTHZ_ROGUE_NAMESPACE}" \
+            --container "${AUTHZ_ROGUE_OPENSSL_CONTAINER}" -- \
+            sh -c "${WRITE_TOKEN_SCRIPT}" sh "${RADIUS_DIR}/tokens/${RECEIVER}" && break
+    ((attempt < 3)) || authz_die "could not copy the token into the rogue pod"
+done
+authz_rogue_request --radius-receiver "${RECEIVER}" --radius-dir "${RADIUS_DIR}" \
+    --radius-namespace "${AUTHZ_RADIUS_NAMESPACE}" "${REQUEST_ARGS[@]}"

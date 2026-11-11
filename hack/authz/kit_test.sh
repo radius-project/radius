@@ -481,13 +481,24 @@ assert_output_contains "Calling applications-rp as ucp with a ServiceAccount tok
 assert_output_not_contains "fake.sa.token"
 assert_calls_contain "create token ucp --namespace radius-system --audience applications-rp --duration 10m"
 assert_calls_contain "--container openssl -- sh -c"
-assert_calls_contain "--container rogue -- /rogue-client request --cacert /work/radius-ca/ca.crt -H Authorization: Bearer fake.sa.token https://applications-rp.radius-system:5443/"
+assert_calls_contain "--container rogue -- /rogue-client request --radius-receiver applications-rp --radius-dir /work/radius --radius-namespace radius-system https://applications-rp.radius-system:5443/"
+assert_calls_contain "sh /work/radius/tokens/applications-rp"
 
 echo "Test: as-component.sh uses an explicit receiver"
 reset_calls
 run_kit as-component.sh --receiver ucp controller -- -X PUT https://10.0.0.1:9444/x
 assert_status 0
 assert_calls_contain "create token controller --namespace radius-system --audience ucp --duration 10m"
+assert_calls_contain "--radius-receiver ucp --radius-dir /work/radius --radius-namespace radius-system -X PUT https://10.0.0.1:9444/x"
+
+echo "Test: as-component.sh sends the token as a header with -k"
+reset_calls
+run_kit as-component.sh ucp -- -k https://ucp.radius-system.svc/x
+assert_status 0
+assert_output_not_contains "fake.sa.token"
+assert_calls_not_contain "--radius-receiver"
+assert_calls_not_contain "/tokens/"
+assert_calls_contain "/rogue-client request -H Authorization: Bearer fake.sa.token -k https://ucp.radius-system.svc/x"
 export MOCK_SECRET_KEYS="absent"
 
 echo "Test: as-component.sh validates its arguments"
