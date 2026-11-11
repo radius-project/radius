@@ -41,6 +41,15 @@ func NewKubernetesRequestHeaderAuthenticator(configMap *corev1.ConfigMap, option
 			return nil, fmt.Errorf("Kubernetes %s must contain only %q", field.key, field.value)
 		}
 	}
+	if _, configured := configMap.Data["requestheader-uid-headers"]; configured {
+		headers, err := requestHeaderNames(configMap.Data, "requestheader-uid-headers")
+		if err != nil {
+			return nil, err
+		}
+		if len(headers) > 1 || len(headers) == 1 && !strings.EqualFold(headers[0], "X-Remote-Uid") {
+			return nil, fmt.Errorf("Kubernetes requestheader-uid-headers must be empty or contain only %q", "X-Remote-Uid")
+		}
+	}
 	names, err := requestHeaderNames(configMap.Data, "requestheader-allowed-names")
 	if err != nil {
 		return nil, err

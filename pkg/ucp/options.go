@@ -19,6 +19,7 @@ package ucp
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
@@ -32,6 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
 	"github.com/radius-project/radius/pkg/validator"
 	"github.com/radius-project/radius/swagger"
+	"k8s.io/client-go/kubernetes"
 	kube_rest "k8s.io/client-go/rest"
 )
 
@@ -78,6 +80,9 @@ type Options struct {
 // NewOptions creates a new Options instance from the given configuration.
 func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 	var err error
+	if config.UserAuthorization.KubernetesSettings && !config.UserAuthorization.Enabled {
+		return nil, fmt.Errorf("Kubernetes settings authorization requires the user authorization runtime")
+	}
 	options := Options{
 		Config: config,
 
@@ -97,7 +102,30 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 		if err != nil {
 			return nil, fmt.Errorf("create user authorization catalog: %w", err)
 		}
-		store, err := authorization.NewPolicyStore(databaseClient, catalog, nil, nil)
+		var settings authorization.SettingsChangeGuard
+		if config.UserAuthorization.KubernetesSettings {
+			issuer := ""
+			if config.CallerAuthentication != nil {
+				issuer = config.CallerAuthentication.KubernetesIssuer
+			}
+			if config.KubernetesCallerAuthentication != nil {
+				issuer = config.KubernetesCallerAuthentication.KubernetesIssuer
+			}
+			kubeConfig, err := kube_rest.InClusterConfig()
+			if err != nil {
+				return nil, fmt.Errorf("configure Kubernetes bootstrap authorization: %w", err)
+			}
+			kubeConfig.Timeout = 10 * time.Second
+			client, err := kubernetes.NewForConfig(kubeConfig)
+			if err != nil {
+				return nil, fmt.Errorf("create Kubernetes bootstrap authorization client: %w", err)
+			}
+			settings, err = authorization.NewKubernetesSettingsGuard(client.AuthorizationV1().SubjectAccessReviews(), issuer, nil)
+			if err != nil {
+				return nil, err
+			}
+		}
+		store, err := authorization.NewPolicyStore(databaseClient, catalog, nil, settings)
 		if err != nil {
 			return nil, fmt.Errorf("create user authorization store: %w", err)
 		}

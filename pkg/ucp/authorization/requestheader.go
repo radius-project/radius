@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"slices"
 	"strings"
@@ -158,6 +159,27 @@ func (a *RequestHeaderAuthenticator) Authenticate(r *http.Request) (Identity, er
 			return Identity{}, err
 		}
 		identity.Groups = append(identity.Groups, group)
+	}
+	uids := headerValues(r.Header, "X-Remote-Uid")
+	if len(uids) > 1 || len(uids) == 1 && strings.TrimSpace(uids[0]) == "" {
+		return Identity{}, fmt.Errorf("request-header authentication requires at most one nonempty UID")
+	}
+	if len(uids) == 1 {
+		identity.KubernetesUID = uids[0]
+	}
+	for name, values := range r.Header {
+		const prefix = "x-remote-extra-"
+		if !strings.HasPrefix(strings.ToLower(name), prefix) {
+			continue
+		}
+		key, err := url.PathUnescape(strings.ToLower(name[len(prefix):]))
+		if err != nil || strings.TrimSpace(key) == "" {
+			return Identity{}, fmt.Errorf("invalid Kubernetes request-header extra key")
+		}
+		if identity.KubernetesExtra == nil {
+			identity.KubernetesExtra = map[string][]string{}
+		}
+		identity.KubernetesExtra[key] = append(identity.KubernetesExtra[key], values...)
 	}
 	return identity, nil
 }

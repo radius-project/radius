@@ -38,6 +38,11 @@ func managementRoute(path string) (managementTarget, bool, error) {
 		kind = "roleAssignments"
 	case "accesschanges":
 		kind = "accessChanges"
+	case "authorizationsettings":
+		if index != 0 || len(parts) != 2 || parts[1] != "default" {
+			return managementTarget{}, false, nil
+		}
+		kind = "authorizationSettings"
 	default:
 		return managementTarget{}, false, nil
 	}
@@ -56,9 +61,9 @@ func managementRoute(path string) (managementTarget, bool, error) {
 	return target, true, validateManagementScope(scope, kind)
 }
 
-// Management serves role, assignment and read-only history APIs before generic routing.
-// Authentication must run first. Other policy mutations remain guarded by
-// ObserveRequests, including settings, history and private store targets.
+// Management serves roles, assignments, settings and read-only history before
+// generic routing. Authentication must run first. Settings writes require the
+// store's separate trusted guard; private and unknown writes remain closed.
 func Management(runtime *PolicyRuntime, pathBase string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +106,10 @@ func Management(runtime *PolicyRuntime, pathBase string) func(http.Handler) http
 				writeAuthorizationUnavailable(w, r)
 				return
 			}
+			if target.kind == "authorizationSettings" && r.Method != http.MethodGet && runtime.store.settings == nil {
+				writeAuthorizationUnavailable(w, r)
+				return
+			}
 			if routeErr != nil {
 				writeManagementError(w, r, &policyMutationError{routeErr})
 				return
@@ -109,7 +118,12 @@ func Management(runtime *PolicyRuntime, pathBase string) func(http.Handler) http
 			if target.name == "" {
 				allow = "GET"
 			}
-			if r.Method != http.MethodGet && (target.name == "" || r.Method != http.MethodPut && r.Method != http.MethodDelete) {
+			if target.kind == "authorizationSettings" {
+				allow = "GET, PUT"
+			}
+			if r.Method != http.MethodGet && (target.name == "" ||
+				r.Method != http.MethodPut && r.Method != http.MethodDelete ||
+				target.kind == "authorizationSettings" && r.Method == http.MethodDelete) {
 				w.Header().Set("Allow", allow)
 				writeInspectionError(w, r, http.StatusMethodNotAllowed, "MethodNotAllowed", "This policy operation allows "+allow+".")
 				return
@@ -146,7 +160,11 @@ func Management(runtime *PolicyRuntime, pathBase string) func(http.Handler) http
 				}
 				// Reject unauthorized requests before interpreting their bodies.
 				// The store repeats this check against current policy on retries.
-				err = runtime.authorizeManagement(identity, target, operation)
+				if target.kind == "authorizationSettings" {
+					err = runtime.authorizeSettings(r.Context(), actor)
+				} else {
+					err = runtime.authorizeManagement(identity, target, operation)
+				}
 				if err == nil {
 					mutation := PolicyMutation{Target: target.id, Delete: r.Method == http.MethodDelete}
 					if !mutation.Delete {
@@ -206,6 +224,27 @@ func managementOptions(query url.Values, target managementTarget, method string)
 
 func decodeManagement(w http.ResponseWriter, r *http.Request, target managementTarget) (PolicyMutation, error) {
 	mutation := PolicyMutation{Target: target.id}
+	if target.kind == "authorizationSettings" {
+		var settings struct {
+			Properties *struct {
+				Mode *api.UserAuthorizationMode `json:"mode"`
+			} `json:"properties"`
+		}
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&settings); err != nil {
+			return mutation, &policyMutationError{err}
+		}
+		var extra any
+		if err := decoder.Decode(&extra); err != io.EOF {
+			return mutation, &policyMutationError{errors.New("expected exactly one JSON request object")}
+		}
+		if settings.Properties == nil || settings.Properties.Mode == nil {
+			return mutation, &policyMutationError{errors.New("properties.mode is required")}
+		}
+		mutation.Settings = &api.AuthorizationSettingsProperties{Mode: settings.Properties.Mode}
+		return mutation, nil
+	}
 	// Generated unmarshallers ignore unknown fields. Plain wire structs keep
 	// server-owned metadata and caller-asserted memberships out of this boundary.
 	var role struct {
@@ -312,9 +351,13 @@ func writeManagementError(w http.ResponseWriter, r *http.Request, err error) {
 		var denied *policyAccessError
 		if errors.As(err, &denied) {
 			identity, _ := IdentityFromContext(r.Context())
+			source := denied.source
+			if source == "" {
+				source = "Radius"
+			}
 			detail := &v1.ErrorDetails{Code: code, Message: rejected.Error(), Target: denied.target,
 				AdditionalInfo: []*v1.ErrorAdditionalInfo{{Type: "RadiusAuthorization", Info: map[string]any{
-					"principal": identity.Principal, "permission": denied.permission, "target": denied.target, "source": "Radius",
+					"principal": identity.Principal, "permission": denied.permission, "target": denied.target, "source": source,
 				}}},
 			}
 			w.Header().Set("Content-Type", "application/json")

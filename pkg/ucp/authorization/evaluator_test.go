@@ -108,15 +108,15 @@ func TestIdentityAndGroups(t *testing.T) {
 		allow    bool
 		fail     bool
 	}{
-		{"verifiedGroup", Identity{testIdentity().Principal, []api.Principal{group}}, true, false},
-		{"groupDirect", Identity{group, nil}, true, false},
+		{"verifiedGroup", Identity{Principal: testIdentity().Principal, Groups: []api.Principal{group}}, true, false},
+		{"groupDirect", Identity{Principal: group}, true, false},
 		{"noGroups", testIdentity(), false, false},
-		{"sameNameDifferentType", Identity{user, nil}, false, false},
-		{"differentIssuer", Identity{testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-b", "developers"), nil}, false, false},
-		{"groupIssuerMismatch", Identity{testPrincipal(api.PrincipalTypeUser, "other", "alice"), []api.Principal{group}}, false, true},
-		{"groupMembershipNotEnumerable", Identity{group, []api.Principal{group}}, false, true},
-		{"anonymous", Identity{testPrincipal(api.PrincipalTypeUser, "kubernetes:cluster-a", "system:anonymous"), nil}, false, true},
-		{"unauthenticatedGroup", Identity{testIdentity().Principal, []api.Principal{testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-a", "system:unauthenticated")}}, false, true},
+		{"sameNameDifferentType", Identity{Principal: user}, false, false},
+		{"differentIssuer", Identity{Principal: testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-b", "developers")}, false, false},
+		{"groupIssuerMismatch", Identity{Principal: testPrincipal(api.PrincipalTypeUser, "other", "alice"), Groups: []api.Principal{group}}, false, true},
+		{"groupMembershipNotEnumerable", Identity{Principal: group, Groups: []api.Principal{group}}, false, true},
+		{"anonymous", Identity{Principal: testPrincipal(api.PrincipalTypeUser, "kubernetes:cluster-a", "system:anonymous")}, false, true},
+		{"unauthenticatedGroup", Identity{Principal: testIdentity().Principal, Groups: []api.Principal{testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-a", "system:unauthenticated")}}, false, true},
 		{"empty", Identity{}, false, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

@@ -16,6 +16,10 @@ import (
 type Identity struct {
 	Principal api.Principal
 	Groups    []api.Principal
+	// KubernetesUID and KubernetesExtra preserve the verified proxy attributes
+	// needed to replay the same identity in a SubjectAccessReview.
+	KubernetesUID   string
+	KubernetesExtra map[string][]string
 }
 
 // Check is one independent permission requirement on a concrete target.

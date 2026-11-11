@@ -18,6 +18,9 @@ import (
 // authorization and the workload mode persisted in authorization settings.
 type RuntimeOptions struct {
 	Enabled bool `yaml:"enabled"`
+	// KubernetesSettings enables the real in-cluster SAR boundary for settings.
+	// It does not initialize policy or enable enforcement rollout.
+	KubernetesSettings bool `yaml:"kubernetesSettings"`
 }
 
 // RuntimeStatus describes policy availability, not workload authorization mode.

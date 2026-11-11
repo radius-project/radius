@@ -95,6 +95,9 @@ func TestKubernetesRequestHeaderInvalidConfiguration(t *testing.T) {
 		{name: "multiple usernames", field: "requestheader-username-headers", value: `["X-Remote-User","X-User"]`, err: "must contain only"},
 		{name: "empty groups", field: "requestheader-group-headers", value: `[]`, err: "must contain only"},
 		{name: "custom extras", field: "requestheader-extra-headers-prefix", value: `["X-Extra-"]`, err: "must contain only"},
+		{name: "custom UID", field: "requestheader-uid-headers", value: `["X-Uid"]`, err: "must be empty or contain only"},
+		{name: "multiple UIDs", field: "requestheader-uid-headers", value: `["X-Remote-Uid","X-Uid"]`, err: "must be empty or contain only"},
+		{name: "null UID config", field: "requestheader-uid-headers", value: `null`, err: "not null"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			configMap := kubernetesRequestHeaderConfigMap(t, proxy.file)
@@ -117,6 +120,7 @@ func TestKubernetesRequestHeaderSnapshot(t *testing.T) {
 	replacement := newProxyPKI(t)
 	configMap := kubernetesRequestHeaderConfigMap(t, proxy.file)
 	configMap.Data["requestheader-username-headers"] = `["x-remote-user"]`
+	configMap.Data["requestheader-uid-headers"] = `["x-remote-uid"]`
 	authenticator, err := NewKubernetesRequestHeaderAuthenticator(configMap, KubernetesRequestHeaderOptions{KubernetesIssuer: "kubernetes:original"})
 	require.NoError(t, err)
 	originalCertificate := proxy.client(t, "front-proxy-client", x509.ExtKeyUsageClientAuth, false)

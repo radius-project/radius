@@ -223,6 +223,14 @@ func TestRequestHeaderIdentityMapping(t *testing.T) {
 			"X-Remote-Group": {"system:serviceaccounts", "system:serviceaccounts:team-a"},
 		}, typ: api.PrincipalTypeWorkload, valid: true},
 		{name: "user without groups", headers: http.Header{"X-Remote-User": {"alice"}}, typ: api.PrincipalTypeUser, valid: true},
+		{name: "UID and escaped extras", headers: http.Header{
+			"X-Remote-User": {"alice"}, "X-Remote-Uid": {"verified-uid"},
+			"X-Remote-Extra-Example.org%2fTenant": {"a", "b"},
+		}, typ: api.PrincipalTypeUser, valid: true},
+		{name: "duplicate UID", headers: http.Header{"X-Remote-User": {"alice"}, "X-Remote-Uid": {"one", "two"}}},
+		{name: "empty UID", headers: http.Header{"X-Remote-User": {"alice"}, "X-Remote-Uid": {""}}},
+		{name: "empty extra key", headers: http.Header{"X-Remote-User": {"alice"}, "X-Remote-Extra-": {"a"}}},
+		{name: "invalid escaped extra key", headers: http.Header{"X-Remote-User": {"alice"}, "X-Remote-Extra-Tenant%": {"a"}}},
 		{name: "missing user", headers: http.Header{"X-Remote-Group": {"admins"}}},
 		{name: "empty user", headers: http.Header{"X-Remote-User": {""}}},
 		{name: "whitespace user", headers: http.Header{"X-Remote-User": {"  "}}},
@@ -254,6 +262,10 @@ func TestRequestHeaderIdentityMapping(t *testing.T) {
 			require.Equal(t, tt.typ, *identity.Principal.Type)
 			require.Equal(t, "kubernetes:test-cluster", *identity.Principal.Issuer)
 			require.Equal(t, tt.headers.Get("X-Remote-User"), *identity.Principal.Subject)
+			if tt.name == "UID and escaped extras" {
+				require.Equal(t, "verified-uid", identity.KubernetesUID)
+				require.Equal(t, map[string][]string{"example.org/tenant": {"a", "b"}}, identity.KubernetesExtra)
+			}
 			require.Len(t, identity.Groups, len(tt.headers.Values("X-Remote-Group")))
 			for i, group := range identity.Groups {
 				require.Equal(t, api.PrincipalTypeGroup, *group.Type)
@@ -315,6 +327,8 @@ func TestRequestHeaderMiddleware(t *testing.T) {
 					identity, ok := IdentityFromContext(received.Context())
 					require.True(t, ok)
 					require.Equal(t, "alice", *identity.Principal.Subject)
+					require.Equal(t, "uid", identity.KubernetesUID)
+					require.Equal(t, map[string][]string{"admin": {"true"}}, identity.KubernetesExtra)
 					require.Equal(t, http.Header{"Content-Type": {"application/json"}}, received.Header)
 					// A consumer must not be able to mutate the authenticator's issuer.
 					*identity.Principal.Issuer = "modified"

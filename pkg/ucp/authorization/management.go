@@ -4,6 +4,7 @@
 package authorization
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -23,6 +24,7 @@ var errManagementNotFound = errors.New("authorization resource not found")
 
 type policyAccessError struct {
 	permission, target string
+	source             string
 }
 
 func (e *policyAccessError) Error() string {
@@ -67,6 +69,11 @@ func managementResource(snapshot *PolicySnapshot, target managementTarget) (any,
 				return roleResource(resource), nil
 			}
 		}
+	} else if target.kind == "authorizationSettings" {
+		resource := policy.Settings
+		resource.Name = to.Ptr("default")
+		resource.Type = to.Ptr("Radius.Core/authorizationSettings")
+		return resource, nil
 	} else {
 		for _, resource := range policy.Assignments {
 			if strings.EqualFold(*resource.ID, target.id) {
@@ -75,6 +82,28 @@ func managementResource(snapshot *PolicySnapshot, target managementTarget) (any,
 		}
 	}
 	return nil, errManagementNotFound
+}
+
+func (r *PolicyRuntime) authorizeSettings(ctx context.Context, actor PolicyActor) error {
+	return r.inspectPolicy(func(snapshot *PolicySnapshot) error {
+		current := snapshot.policy.Settings.Properties
+		if *current.Mode == api.UserAuthorizationModeEnforce {
+			if err := snapshot.allows(actor.Identity, "Radius.Core/authorizationSettings/write", settingsID); err != nil {
+				return &policyMutationError{err}
+			}
+		}
+		if r.store.settings == nil {
+			return ErrAuthorizationUnavailable
+		}
+		// This pre-body check must not predict rollout eligibility. The store
+		// validates the requested transition again against each current version.
+		if guard, ok := r.store.settings.(*KubernetesSettingsGuard); ok && *current.Mode != api.UserAuthorizationModeEnforce {
+			if err := guard.authorize(ctx, actor); err != nil {
+				return &policyMutationError{err}
+			}
+		}
+		return nil
+	})
 }
 
 func (r *PolicyRuntime) readManagement(identity Identity, target managementTarget, descendants bool) (any, error) {

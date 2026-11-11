@@ -36,6 +36,7 @@ userAuthorization:
 				require.Equal(t, authorization.RuntimeNotConfigured, options.UserAuthorization.State().Status)
 				return
 			}
+
 			require.NotNil(t, options.UserAuthorization)
 			state := options.UserAuthorization.State()
 			require.Equal(t, authorization.RuntimeUnavailable, state.Status)
@@ -43,4 +44,9 @@ userAuthorization:
 			require.Empty(t, state.LastKnownMode)
 		})
 	}
+}
+
+func TestNewOptionsKubernetesSettingsRequiresRuntime(t *testing.T) {
+	_, err := NewOptions(t.Context(), &Config{UserAuthorization: authorization.RuntimeOptions{KubernetesSettings: true}})
+	require.ErrorContains(t, err, "requires the user authorization runtime")
 }
