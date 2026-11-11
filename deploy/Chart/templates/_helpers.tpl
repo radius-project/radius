@@ -210,11 +210,12 @@ SPIFFE trust domain of the Radius server certificates.
 
 {{/*
 Renders the authorization settings shared by every component's config: where the SPIFFE server
-certificate (or, for the controller, only the CA bundle) and the projected ServiceAccount tokens
-are mounted, the trust domain, and the release namespace.
+certificate, the Radius CA bundle, and the projected ServiceAccount tokens are mounted, the trust
+domain, and the release namespace.
 */}}
 {{- define "radius.authz.identityConfig" -}}
 certificateDirectory: {{ include "radius.authz.spiffe.mountPath" . | quote }}
+caDirectory: {{ include "radius.authz.caBundle.mountPath" . | quote }}
 tokenDirectory: {{ include "radius.authz.tokens.mountPath" . | quote }}
 trustDomain: {{ include "radius.authz.spiffe.trustDomain" . | quote }}
 namespace: {{ .Release.Namespace | quote }}
@@ -251,20 +252,30 @@ ucp:
 {{- end -}}
 
 {{/*
-Renders the Radius CA bundle volume mount for the controller, which calls UCP but serves no
-internal endpoint, so it mounts only ca.crt where receivers mount their SPIFFE volume.
+Path where every component mounts the Radius CA bundle (ca.crt). csi-driver-spiffe writes only
+tls.crt and tls.key because Radius does not configure it with a source CA bundle, which it must read
+at startup, before this chart has created radius-ca.
+*/}}
+{{- define "radius.authz.caBundle.mountPath" -}}
+/var/run/radius/ca
+{{- end -}}
+
+{{/*
+Renders the Radius CA bundle volume mount for a component when the authorization mode is not off.
+Servers chain their SPIFFE certificate to it and clients verify servers against it. Kubelet updates
+the file when cert-manager renews radius-ca, and components reload it.
 */}}
 {{- define "radius.authz.caBundle.volumeMount" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
 - name: radius-ca
-  mountPath: {{ include "radius.authz.spiffe.mountPath" . }}
+  mountPath: {{ include "radius.authz.caBundle.mountPath" . }}
   readOnly: true
 {{- end }}
 {{- end -}}
 
 {{/*
-Renders the Radius CA bundle volume for the controller. Only ca.crt is projected; the CA private
-key in the same Secret is not mounted.
+Renders the Radius CA bundle volume. Only ca.crt is projected; the CA private key in the same
+Secret is not mounted. The Secret is required, so pods wait until cert-manager has issued radius-ca.
 */}}
 {{- define "radius.authz.caBundle.volume" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
@@ -278,7 +289,7 @@ key in the same Secret is not mounted.
 {{- end -}}
 
 {{/*
-Path where a receiver's csi-driver-spiffe server certificate (tls.crt, tls.key, ca.crt) is mounted.
+Path where a receiver's csi-driver-spiffe server certificate (tls.crt, tls.key) is mounted.
 */}}
 {{- define "radius.authz.spiffe.mountPath" -}}
 /var/run/radius/spiffe
