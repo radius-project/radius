@@ -28,7 +28,27 @@ import (
 // token instead. The certificate is read for each handshake, so reloads take effect
 // without a restart.
 func (s *Source) ServerConfig() *tls.Config {
-	outer := &tls.Config{MinVersion: tls.VersionTLS12, ClientAuth: tls.NoClientCert}
+	return s.ServerConfigFrom(&tls.Config{ClientAuth: tls.NoClientCert})
+}
+
+// ServerConfigFrom returns a TLS config that presents the current certificate and keeps the
+// other settings of base, such as ClientAuth and ClientCAs for a request-header proxy. A nil
+// base requests no client certificate. Any certificates in base are replaced, and the minimum
+// version is at least TLS 1.2. The certificate is read for each handshake, so reloads take
+// effect without a restart.
+func (s *Source) ServerConfigFrom(base *tls.Config) *tls.Config {
+	if base == nil {
+		base = &tls.Config{ClientAuth: tls.NoClientCert}
+	}
+	base = base.Clone()
+	base.Certificates = nil
+	base.GetCertificate = nil
+	base.GetConfigForClient = nil
+	if base.MinVersion < tls.VersionTLS12 {
+		base.MinVersion = tls.VersionTLS12
+	}
+
+	outer := base.Clone()
 	outer.GetConfigForClient = func(*tls.ClientHelloInfo) (*tls.Config, error) {
 		m, err := s.load()
 		if err != nil {
@@ -41,12 +61,10 @@ func (s *Source) ServerConfig() *tls.Config {
 			nextProtos = append(nextProtos, "http/1.1")
 		}
 
-		return &tls.Config{
-			MinVersion:   tls.VersionTLS12,
-			NextProtos:   nextProtos,
-			Certificates: []tls.Certificate{*m.cert},
-			ClientAuth:   tls.NoClientCert,
-		}, nil
+		config := base.Clone()
+		config.NextProtos = nextProtos
+		config.Certificates = []tls.Certificate{*m.cert}
+		return config, nil
 	}
 	return outer
 }
