@@ -26,10 +26,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/release"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -144,4 +150,62 @@ func bindApprover(t *testing.T, client kubernetes.Interface, namespace string, s
 		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: serviceAccount, Namespace: namespace}},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
+}
+
+// TestUninstallCSIDriverSPIFFE_WaitsForTerminatingPods_APIServer checks that uninstall keeps csi-driver-spiffe while a
+// Pod that mounts its volume is terminating. A finalizer stands in for the kubelet, which envtest does not run.
+func TestUninstallCSIDriverSPIFFE_WaitsForTerminatingPods_APIServer(t *testing.T) {
+	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
+		t.Skip("Run make test or set KUBEBUILDER_ASSETS to run the isolated API-server regression.")
+	}
+
+	_, client := startTestAPIServer(t)
+	ctx := t.Context()
+	_, err := client.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: RadiusSystemNamespace}}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	pod := spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)
+	pod.Finalizers = []string{"radapp.io/test-kubelet"}
+	pod.Spec.Containers = []corev1.Container{{Name: "ucp", Image: "ucp"}}
+	_, err = client.CoreV1().Pods(RadiusSystemNamespace).Create(ctx, pod, metav1.CreateOptions{})
+	require.NoError(t, err)
+	require.NoError(t, client.CoreV1().Pods(RadiusSystemNamespace).Delete(ctx, pod.Name, metav1.DeleteOptions{}))
+
+	newImpl := func(t *testing.T, timeout time.Duration, wantUninstall bool) *Impl {
+		mockHelmClient := NewMockHelmClient(gomock.NewController(t))
+		mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).
+			Return(&releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels()}, nil)
+		if wantUninstall {
+			mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true).
+				DoAndReturn(func(*helm.Configuration, string, string, bool) (*release.UninstallReleaseResponse, error) {
+					_, err := client.CoreV1().Pods(RadiusSystemNamespace).Get(ctx, pod.Name, metav1.GetOptions{})
+					require.True(t, apierrors.IsNotFound(err), "csi-driver-spiffe was removed while a Pod still used it: %v", err)
+					return &release.UninstallReleaseResponse{}, nil
+				})
+		}
+		return &Impl{
+			Helm:                           mockHelmClient,
+			logger:                         func(string, ...any) {},
+			newCSIDriverSPIFFEClient:       func(string) (kubernetes.Interface, error) { return client, nil },
+			csiDriverSPIFFEPodWaitTimeout:  timeout,
+			csiDriverSPIFFEPodPollInterval: 50 * time.Millisecond,
+		}
+	}
+
+	t.Run("keeps the driver when the Pod outlasts the wait", func(t *testing.T) {
+		kept, err := newImpl(t, 300*time.Millisecond, false).uninstallCSIDriverSPIFFE(ctx, NewDefaultClusterOptions(), "test-context")
+		require.NoError(t, err)
+		require.True(t, kept)
+	})
+
+	t.Run("removes the driver once the Pod is gone", func(t *testing.T) {
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+			_, err := client.CoreV1().Pods(RadiusSystemNamespace).Patch(ctx, pod.Name, types.JSONPatchType,
+				[]byte(`[{"op":"remove","path":"/metadata/finalizers"}]`), metav1.PatchOptions{})
+			assert.NoError(t, err)
+		}()
+		kept, err := newImpl(t, 30*time.Second, true).uninstallCSIDriverSPIFFE(ctx, NewDefaultClusterOptions(), "test-context")
+		require.NoError(t, err)
+		require.False(t, kept)
+	})
 }
