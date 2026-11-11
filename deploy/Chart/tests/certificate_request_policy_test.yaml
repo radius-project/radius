@@ -1,0 +1,105 @@
+suite: test certificate request issuance policy
+templates:
+  - global/certificate-request-policy.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: renders nothing when authorization is off
+    capabilities: &vap
+      apiVersions:
+        - admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders nothing when the cluster has no ValidatingAdmissionPolicy API
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: denies in dryRun because legitimate requests never match a rule
+    capabilities: *vap
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: spec.validationActions
+          value: [Deny]
+        documentIndex: 1
+
+  - it: matches only CertificateRequest creation in the release namespace
+    capabilities: *vap
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - isKind:
+          of: ValidatingAdmissionPolicy
+        documentIndex: 0
+      - equal:
+          path: spec.failurePolicy
+          value: Fail
+        documentIndex: 0
+      - equal:
+          path: spec.matchConstraints
+          value:
+            namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: radius-system
+            resourceRules:
+              - apiGroups: ["cert-manager.io"]
+                apiVersions: ["*"]
+                operations: ["CREATE"]
+                resources: ["certificaterequests"]
+        documentIndex: 0
+      - equal:
+          path: spec.policyName
+          value: radius-certificate-issuance
+        documentIndex: 1
+      - equal:
+          path: spec.validationActions
+          value: [Deny]
+        documentIndex: 1
+
+  - it: allows the default cert-manager controller and Radius service accounts of the release namespace
+    capabilities: *vap
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - contains:
+          path: spec.variables
+          content:
+            name: certManager
+            expression: 'variables.requester in ["system:serviceaccount:cert-manager:cert-manager"]'
+        documentIndex: 0
+      - contains:
+          path: spec.variables
+          content:
+            name: radiusServiceAccount
+            expression: "variables.requester.startsWith('system:serviceaccount:radius-system:')"
+        documentIndex: 0
+      - contains:
+          path: spec.variables
+          content:
+            name: reservedIssuer
+            expression: "variables.namespacedIssuer && object.spec.issuerRef.name in ['radius-selfsigned-bootstrap', 'radius-mtls-issuer']"
+        documentIndex: 0
+
+  - it: uses the cert-manager requesters rad sets
+    capabilities: *vap
+    set:
+      global.rbac.enabled: true
+      global.rbac.certManager.requesters:
+        - system:serviceaccount:security:cert-manager
+        - system:serviceaccount:security:cert-manager-2
+    asserts:
+      - contains:
+          path: spec.variables
+          content:
+            name: certManager
+            expression: 'variables.requester in ["system:serviceaccount:security:cert-manager","system:serviceaccount:security:cert-manager-2"]'
+        documentIndex: 0
