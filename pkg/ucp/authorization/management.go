@@ -163,6 +163,9 @@ func validateManagementScope(scope, kind string) error {
 	if err := ValidateScope(scope); err != nil {
 		return err
 	}
+	if kind == "accessChanges" && scope != "/" {
+		return fmt.Errorf("ScopeNotAssignable: access history requires installation scope")
+	}
 	if kind == "roleDefinitions" && strings.Contains(scope, "/providers/") {
 		return fmt.Errorf("ScopeNotAssignable: role definitions require installation, plane or resource-group scope")
 	}
