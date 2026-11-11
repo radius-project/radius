@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/prompt"
@@ -167,7 +168,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	err = r.Helm.UninstallRadius(ctx, helm.NewDefaultClusterOptions(), r.KubeContext)
-	if err != nil {
+	var kept *helm.CSIDriverSPIFFEKeptError
+	if errors.As(err, &kept) {
+		if r.Purge {
+			return r.purgeStoppedError(kept, plan)
+		}
+		r.Output.LogInfo("%s: %s. Run `rad uninstall kubernetes` again after the Pods that use it are gone to remove them.", logWarningPrefix, kept.Error())
+	} else if err != nil {
 		return err
 	}
 
@@ -201,6 +208,40 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	r.Output.LogInfo("Radius was uninstalled successfully. Any existing data will be retained for future installations. Local configuration is also retained. Use the `rad workspace` command if updates are needed to your configuration.")
 	return nil
+}
+
+// purgeStoppedError explains that the purge stopped after uninstalling Radius because rad kept csi-driver-spiffe,
+// and how to finish it. Deleting the driver's namespace now would remove the driver before the kubelet unmounts the
+// certificate volumes of the remaining Pods, which leaves them stuck terminating.
+func (r *Runner) purgeStoppedError(kept *helm.CSIDriverSPIFFEKeptError, plan cleanupPlan) error {
+	var why string
+	if len(kept.Pods) > 0 {
+		why = fmt.Sprintf("Pods still mount volumes from it: %s", strings.Join(kept.Pods, ", "))
+	} else {
+		why = kept.Reason
+	}
+	steps := []string{
+		"wait until no Pod mounts a volume from CSI driver " + kept.DriverName,
+		"run `rad uninstall kubernetes` to remove csi-driver-spiffe and cert-manager",
+	}
+	if kept.DriverName == "" {
+		steps[0] = "wait until no Pod mounts a volume from csi-driver-spiffe"
+	}
+	if len(plan.APIServices) > 0 {
+		steps = append(steps, helm.KubectlCommand(r.KubeContext, "", "delete apiservice "+strings.Join(plan.APIServices, " ")+" --ignore-not-found"))
+	}
+	if len(plan.CRDs) > 0 {
+		steps = append(steps, helm.KubectlCommand(r.KubeContext, "", "delete crd "+strings.Join(plan.CRDs, " ")+" --ignore-not-found"))
+	}
+	if len(plan.Namespaces) > 0 {
+		steps = append(steps, helm.KubectlCommand(r.KubeContext, "", "delete namespace "+strings.Join(plan.Namespaces, " ")+" --ignore-not-found"))
+	}
+	for idx := range steps {
+		steps[idx] = fmt.Sprintf("%d. %s", idx+1, steps[idx])
+	}
+	return clierrors.Message("Radius was uninstalled, but rad stopped the purge before deleting namespaces and custom resource definitions "+
+		"because it kept csi-driver-spiffe in namespace %s: %s. Deleting that namespace now would remove the driver before Kubernetes "+
+		"unmounts those Pods' certificate volumes. To finish the purge:\n%s", kept.Namespace, why, strings.Join(steps, "\n"))
 }
 
 // radOwnedDependencies returns the Helm releases of the Radius dependencies that rad installed, in uninstall order.
@@ -251,7 +292,12 @@ func (r *Runner) uninstallDependenciesOnly(ctx context.Context) error {
 	}
 
 	// UninstallCertManager re-checks ownership and keeps cert-manager when other workloads use it.
-	if err := r.Helm.UninstallCertManager(ctx, helm.NewDefaultClusterOptions(), r.KubeContext); err != nil {
+	err = r.Helm.UninstallCertManager(ctx, helm.NewDefaultClusterOptions(), r.KubeContext)
+	var kept *helm.CSIDriverSPIFFEKeptError
+	if errors.As(err, &kept) {
+		r.Output.LogInfo("%s: %s. Run `rad uninstall kubernetes` again after the Pods that use it are gone to remove them.", logWarningPrefix, kept.Error())
+		return nil
+	} else if err != nil {
 		return err
 	}
 	r.Output.LogInfo("Dependency cleanup finished.")

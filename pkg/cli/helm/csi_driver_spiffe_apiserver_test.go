@@ -64,6 +64,7 @@ func TestCheckCertManagerDefaultApprover_APIServer(t *testing.T) {
 		{name: "approves another namespace's issuers", resourceNames: []string{"issuers.cert-manager.io/other.*"}},
 		{name: "chart default approves all issuers", resourceNames: []string{"issuers.cert-manager.io/*", "clusterissuers.cert-manager.io/*"}, wantConflict: true},
 		{name: "approves the Radius issuer by name", resourceNames: []string{signer}, wantConflict: true},
+		{name: "rad-installed approveSignerNames", resourceNames: certManagerApproveSignerNames(RadiusSystemNamespace)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -84,6 +85,28 @@ func TestCheckCertManagerDefaultApprover_APIServer(t *testing.T) {
 			}, 10*time.Second, 100*time.Millisecond)
 		})
 	}
+
+	t.Run("rad-installed approveSignerNames approve the Radius bootstrap and mTLS issuers", func(t *testing.T) {
+		bindApprover(t, client, namespace, "cert-manager", certManagerApproveSignerNames(RadiusSystemNamespace))
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			missing, err := missingApprovableRadiusSigners(ctx, client, RadiusSystemNamespace)
+			assert.NoError(c, err)
+			assert.Empty(c, missing)
+		}, 10*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("chart default approver conflict is fatal on install", func(t *testing.T) {
+		bindApprover(t, client, namespace, "cert-manager", []string{"issuers.cert-manager.io/*", "clusterissuers.cert-manager.io/*"})
+
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			err := checkCertManagerDefaultApprover(ctx, client, RadiusSystemNamespace, "test-context")
+			if assert.Error(c, err) {
+				assert.Contains(c, err.Error(), "approveSignerNames={")
+				assert.Contains(c, err.Error(), "--kube-context")
+			}
+		}, 10*time.Second, 100*time.Millisecond)
+	})
 
 	t.Run("disabled default approver is ignored", func(t *testing.T) {
 		bindApprover(t, client, namespace, "cert-manager", []string{"issuers.cert-manager.io/*"})
@@ -192,9 +215,10 @@ func TestUninstallCSIDriverSPIFFE_WaitsForTerminatingPods_APIServer(t *testing.T
 	}
 
 	t.Run("keeps the driver when the Pod outlasts the wait", func(t *testing.T) {
-		kept, err := newImpl(t, 300*time.Millisecond, false).uninstallCSIDriverSPIFFE(ctx, NewDefaultClusterOptions(), "test-context")
-		require.NoError(t, err)
-		require.True(t, kept)
+		err := newImpl(t, 300*time.Millisecond, false).uninstallCSIDriverSPIFFE(ctx, NewDefaultClusterOptions(), "test-context")
+		var kept *CSIDriverSPIFFEKeptError
+		require.ErrorAs(t, err, &kept)
+		require.Equal(t, []string{RadiusSystemNamespace + "/" + pod.Name}, kept.Pods)
 	})
 
 	t.Run("removes the driver once the Pod is gone", func(t *testing.T) {
@@ -204,8 +228,6 @@ func TestUninstallCSIDriverSPIFFE_WaitsForTerminatingPods_APIServer(t *testing.T
 				[]byte(`[{"op":"remove","path":"/metadata/finalizers"}]`), metav1.PatchOptions{})
 			assert.NoError(t, err)
 		}()
-		kept, err := newImpl(t, 30*time.Second, true).uninstallCSIDriverSPIFFE(ctx, NewDefaultClusterOptions(), "test-context")
-		require.NoError(t, err)
-		require.False(t, kept)
+		require.NoError(t, newImpl(t, 30*time.Second, true).uninstallCSIDriverSPIFFE(ctx, NewDefaultClusterOptions(), "test-context"))
 	})
 }
