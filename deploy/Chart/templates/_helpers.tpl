@@ -191,6 +191,16 @@ TODO(D7): default to the application-template identity once the broker issues it
 {{- end -}}
 
 {{/*
+Usernames of the cert-manager controller that may request certificates from the Radius bootstrap and
+mTLS issuers. Empty defaults to cert-manager's default installation; rad install/upgrade sets the
+ServiceAccount of the cert-manager it installs or reuses.
+*/}}
+{{- define "radius.authz.certManagerRequesters" -}}
+{{- $certManager := (.Values.global.rbac | default dict).certManager | default dict -}}
+{{- $certManager.requesters | default (list "system:serviceaccount:cert-manager:cert-manager") | toJson -}}
+{{- end -}}
+
+{{/*
 Path where a component's mTLS Secret (<component>-mtls) is mounted.
 */}}
 {{- define "radius.authz.mtls.mountPath" -}}
