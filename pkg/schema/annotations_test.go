@@ -584,6 +584,48 @@ func TestGetSensitiveFieldPaths_InvalidResourceID(t *testing.T) {
 // ParseFieldPath tests
 // =============================================================================
 
+func TestSensitiveFieldPaths_LiteralNames(t *testing.T) {
+	for _, field := range []struct {
+		name string
+		path string
+	}{
+		{"api.key", `api\.key`},
+		{"items[*]", `items\[*\]`},
+		{"items[0]", `items\[0\]`},
+		{"open[", `open\[`},
+		{"close]", `close\]`},
+		{`back\slash`, `back\\slash`},
+		{`trailing\`, `trailing\\`},
+		{`mixed\.key[*]`, `mixed\\\.key\[*\]`},
+	} {
+		t.Run(field.name, func(t *testing.T) {
+			resourceSchema := map[string]any{
+				"properties": map[string]any{
+					field.name: map[string]any{
+						"type":                    "string",
+						annotationRadiusSensitive: true,
+					},
+				},
+			}
+			paths := ExtractSensitiveFieldPaths(resourceSchema, "")
+			require.Equal(t, []string{field.path}, paths)
+			require.Equal(t, []FieldPathSegment{
+				{Type: SegmentTypeField, Value: field.name},
+			}, ParseFieldPath(field.path))
+
+			data := map[string]any{
+				field.name: "secret",
+				"api":      map[string]any{"key": "public"},
+				"items":    []any{"public"},
+			}
+			RedactFields(data, paths)
+			require.Nil(t, data[field.name])
+			require.Equal(t, map[string]any{"key": "public"}, data["api"])
+			require.Equal(t, []any{"public"}, data["items"])
+		})
+	}
+}
+
 func TestParseFieldPath(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -658,6 +700,22 @@ func TestParseFieldPath(t *testing.T) {
 				{Type: SegmentTypeWildcard},
 				{Type: SegmentTypeField, Value: "token"},
 			},
+		},
+		{
+			name: "escaped fields with wildcard and index",
+			path: `config\.name[*].items\[0\][1].api\.key`,
+			expected: []FieldPathSegment{
+				{Type: SegmentTypeField, Value: "config.name"},
+				{Type: SegmentTypeWildcard},
+				{Type: SegmentTypeField, Value: "items[0]"},
+				{Type: SegmentTypeIndex, Value: "1"},
+				{Type: SegmentTypeField, Value: "api.key"},
+			},
+		},
+		{
+			name:     "trailing escape",
+			path:     `api\`,
+			expected: nil,
 		},
 		{
 			name:     "empty path",

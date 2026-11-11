@@ -27,6 +27,7 @@ import (
 
 // GetSensitiveFieldPaths fetches the schema for a resource and returns paths to fields marked with x-radius-sensitive.
 // Paths are in dot notation, e.g., "credentials.password" or "config.apiKey".
+// Literal backslashes, dots, and brackets in property names are escaped with a backslash.
 //
 // Parameters:
 //   - ctx: The request context
@@ -77,8 +78,11 @@ func GetSchema(ctx context.Context, ucpClient *v20231001preview.ClientFactory, r
 	return apiVersionResource.APIVersionResource.Properties.Schema, nil
 }
 
+var fieldPathEscaper = strings.NewReplacer(`\`, `\\`, `.`, `\.`, `[`, `\[`, `]`, `\]`)
+
 // ExtractSensitiveFieldPaths recursively walks the schema and returns paths to fields marked with x-radius-sensitive.
-// The prefix parameter builds up the path as we traverse nested objects.
+// Property names escape literal backslashes, dots, and brackets with a backslash.
+// The prefix parameter is an already-escaped path to the parent object.
 // Supports object properties, array items, and additionalProperties (maps).
 // If a field is marked sensitive, its nested properties are not checked since the entire field is considered sensitive.
 func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
@@ -96,11 +100,12 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 		}
 
 		// Build the full path for this field
+		escapedName := fieldPathEscaper.Replace(fieldName)
 		var fullPath string
 		if prefix == "" {
-			fullPath = fieldName
+			fullPath = escapedName
 		} else {
-			fullPath = prefix + "." + fieldName
+			fullPath = prefix + "." + escapedName
 		}
 
 		// Check if this field has the x-radius-sensitive annotation
@@ -195,14 +200,16 @@ func (s FieldPathSegment) IsIndex() bool {
 
 // ParseFieldPath parses a field path string into segments.
 // Supports dot notation, wildcards [*], and array indices [N].
+// A backslash escapes the next character in a property name.
 //
 // Examples:
 //   - "credentials.password" -> [field:credentials, field:password]
 //   - "secrets[*].value" -> [field:secrets, wildcard, field:value]
 //   - "config[*]" -> [field:config, wildcard]
 //   - "items[0].name" -> [field:items, index:0, field:name]
+//   - `config.api\.key` -> [field:config, field:api.key]
 //
-// Returns nil if the path is invalid (e.g., unterminated bracket).
+// Returns nil if the path has an unterminated bracket or a trailing escape.
 func ParseFieldPath(path string) []FieldPathSegment {
 	if path == "" {
 		return nil
@@ -216,6 +223,13 @@ func ParseFieldPath(path string) []FieldPathSegment {
 		ch := path[i]
 
 		switch ch {
+		case '\\':
+			if i+1 == len(path) {
+				return nil
+			}
+			current.WriteByte(path[i+1])
+			i += 2
+
 		case '.':
 			if current.Len() > 0 {
 				segments = append(segments, FieldPathSegment{Type: SegmentTypeField, Value: current.String()})

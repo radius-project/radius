@@ -28,6 +28,86 @@ const (
 	testResourceID = "/planes/radius/local/resourceGroups/test/providers/Test.Resource/testResources/myResource"
 )
 
+func TestSensitiveDataHandler_EncryptDecrypt_LiteralFieldPaths(t *testing.T) {
+	key, err := GenerateKey()
+	require.NoError(t, err)
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+
+	for _, container := range []string{"object", "array", "map"} {
+		t.Run(container, func(t *testing.T) {
+			fields := map[string]any{
+				"api.key":      "secret",
+				"items[*]":     "wildcard-secret",
+				"items[0]":     "index-secret",
+				`back\slash`:   "slash-secret",
+				`trailing\`:    "trailing-secret",
+				`mixed\.key[]`: "mixed-secret",
+				"typed.secret": map[string]any{"count": int64(7)},
+				"api":          map[string]any{"key": "public"},
+				"items":        []any{"public"},
+			}
+			properties := map[string]any{}
+			for name := range fields {
+				if name != "api" && name != "items" {
+					properties[name] = map[string]any{
+						"x-radius-sensitive": true,
+						"type":               "string",
+					}
+				}
+			}
+			properties["typed.secret"] = map[string]any{
+				"x-radius-sensitive": true,
+				"type":               "object",
+				"properties": map[string]any{
+					"count": map[string]any{"type": "integer"},
+				},
+			}
+			fieldSchema := map[string]any{"type": "object", "properties": properties}
+			var value any = fields
+			switch container {
+			case "array":
+				value = []any{fields}
+				fieldSchema = map[string]any{"type": "array", "items": fieldSchema}
+			case "map":
+				value = map[string]any{"entry.with[syntax]": fields}
+				fieldSchema = map[string]any{"type": "object", "additionalProperties": fieldSchema}
+			}
+			resourceSchema := map[string]any{
+				"properties": map[string]any{"config.name": fieldSchema},
+			}
+			data := map[string]any{"config.name": value}
+			paths := schema.ExtractSensitiveFieldPaths(resourceSchema, "")
+			require.Len(t, paths, 7)
+			require.NoError(t, handler.EncryptSensitiveFields(data, paths, testResourceID))
+			for name := range properties {
+				encrypted, ok := fields[name].(map[string]any)
+				require.True(t, ok, "field %q must be encrypted", name)
+				require.NotEmpty(t, encrypted["encrypted"], name)
+				require.NotEmpty(t, encrypted["nonce"], name)
+			}
+			require.Equal(t, map[string]any{"key": "public"}, fields["api"])
+			require.Equal(t, []any{"public"}, fields["items"])
+
+			require.NoError(t, handler.DecryptSensitiveFieldsWithSchema(t.Context(), data, paths, testResourceID, resourceSchema))
+			require.Equal(t, "secret", fields["api.key"])
+			require.Equal(t, "wildcard-secret", fields["items[*]"])
+			require.Equal(t, "index-secret", fields["items[0]"])
+			require.Equal(t, "slash-secret", fields[`back\slash`])
+			require.Equal(t, "trailing-secret", fields[`trailing\`])
+			require.Equal(t, "mixed-secret", fields[`mixed\.key[]`])
+			require.Equal(t, map[string]any{"count": int64(7)}, fields["typed.secret"])
+
+			schema.RedactFields(data, paths)
+			for name := range properties {
+				require.Nil(t, fields[name], name)
+			}
+			require.Equal(t, map[string]any{"key": "public"}, fields["api"])
+			require.Equal(t, []any{"public"}, fields["items"])
+		})
+	}
+}
+
 func TestSensitiveDataHandler_EncryptDecrypt_SimpleField(t *testing.T) {
 	key, err := GenerateKey()
 	require.NoError(t, err)
