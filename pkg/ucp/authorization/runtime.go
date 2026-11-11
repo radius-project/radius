@@ -259,16 +259,18 @@ func (r *PolicyRuntime) Refresh(ctx context.Context) error {
 // The request layer must supply only verified identity and server-derived actor
 // metadata. Settings changes still require the store's trusted settings guard.
 func (r *PolicyRuntime) Mutate(ctx context.Context, actor PolicyActor, mutation PolicyMutation) error {
+	_, err := r.mutate(ctx, actor, mutation)
+	return err
+}
+
+func (r *PolicyRuntime) mutate(ctx context.Context, actor PolicyActor, mutation PolicyMutation) (*PolicySnapshot, error) {
 	if err := r.Ready(); err != nil {
-		return err
+		return nil, err
 	}
 	ctx, cancel, err := r.operationContext(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer cancel()
-	if _, err := r.store.MutateAndRefresh(ctx, r.cache, actor, mutation); err != nil {
-		return err
-	}
-	return nil
+	return r.store.MutateAndRefresh(ctx, r.cache, actor, mutation)
 }
