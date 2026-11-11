@@ -17,10 +17,12 @@ limitations under the License.
 package cloudwatch
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -123,6 +125,8 @@ func anomalyDetectorSuite(t *testing.T, metric map[string]any) {
 		// A detector without AccountId is in the current account, so a template that names that account, or leaves it
 		// out, is the same detector.
 		SameResource: []map[string]any{with(detector, map[string]any{"SingleMetricAnomalyDetector": other})},
+		// The identifier with its keys and dimensions in another order, and with the current account.
+		SameResourceNames: []string{otherOrder(t, identifier, ""), otherOrder(t, identifier, fakeAccount)},
 		// The suite's Cloud Control names a detector of the current account as AWS keeps it, without the account.
 		CloudControlCreate: func(properties map[string]any) (string, map[string]any) {
 			resolved, err := newHandler(newFakeAPI(awsfake.NewCloudControl())).ResolveIdentifier(t.Context(), region, identifierOf(t, properties))
@@ -130,6 +134,22 @@ func anomalyDetectorSuite(t *testing.T, metric map[string]any) {
 			return resolved, properties
 		},
 	})
+}
+
+// otherOrder returns identifier, the identifier of a detector of one metric, with Stat first, its dimensions in reverse
+// order, and account as AccountId when set.
+func otherOrder(t *testing.T, identifier string, account string) string {
+	id, err := parseIdentifier(identifier)
+	require.NoError(t, err)
+	dimensions := slices.Clone(id.Dimensions)
+	slices.Reverse(dimensions)
+	b, err := json.Marshal(dimensions)
+	require.NoError(t, err)
+	out := fmt.Sprintf(`{"Stat":%q,"Dimensions":%s,"MetricName":%q,"Namespace":%q`, id.Stat, b, id.MetricName, id.Namespace)
+	if account != "" {
+		out += fmt.Sprintf(`,"AccountId":%q`, account)
+	}
+	return out + "}"
 }
 
 func Test_Identifier(t *testing.T) {

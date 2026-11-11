@@ -120,7 +120,10 @@ func settingsSuite(t *testing.T, mutation string) nativetest.Suite {
 }
 
 func Test_Suite_DataLakeSettings(t *testing.T) {
-	nativetest.Run(t, settingsSuite(t, ""))
+	s := settingsSuite(t, "")
+	// An account has one set of settings in a region, whatever the name.
+	s.SameResourceNames = []string{"other-settings"}
+	nativetest.Run(t, s)
 }
 
 func Test_Suite_DataLakeSettings_Append(t *testing.T) {

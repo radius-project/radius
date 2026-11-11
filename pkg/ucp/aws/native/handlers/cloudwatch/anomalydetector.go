@@ -135,6 +135,23 @@ func (id identity) isMath() bool {
 	return len(id.MetricDataQueries) > 0
 }
 
+// canonical returns id in the form Identifier gives, such as with its dimensions in order.
+func (id identity) canonical() (identity, error) {
+	b, err := json.Marshal(id)
+	if err != nil {
+		return identity{}, err
+	}
+	detector := map[string]any{}
+	if err := json.Unmarshal(b, &detector); err != nil {
+		return identity{}, err
+	}
+	kind := "SingleMetricAnomalyDetector"
+	if id.isMath() {
+		kind = "MetricMathAnomalyDetector"
+	}
+	return identityOf(map[string]any{kind: detector})
+}
+
 // encode returns the identity as JSON, the identifier.
 func (id identity) encode() (string, error) {
 	b, err := json.Marshal(id)
@@ -540,25 +557,26 @@ func btoi(b bool) int {
 	return 0
 }
 
-// ResolveIdentifier returns identifier without AccountId when that is the current account, the form List and Create
-// return. It asks STS for the current account only when the identifier has an AccountId. A detector of another
-// account keeps its AccountId.
+// ResolveIdentifier returns identifier in the form List and Create return: the form Identifier gives, without AccountId
+// when that is the current account. It asks STS for the current account only when the identifier has an AccountId. A
+// detector of another account keeps its AccountId.
 func (h *AnomalyDetector) ResolveIdentifier(ctx context.Context, region string, identifier string) (string, error) {
 	id, err := parseIdentifier(identifier)
 	if err != nil {
 		return "", err
 	}
-	if id.AccountId == "" {
-		return identifier, nil
-	}
-	current, err := h.currentAccount(ctx, region)()
-	if err != nil {
+	if id, err = id.canonical(); err != nil {
 		return "", err
 	}
-	if id.AccountId != current {
-		return identifier, nil
+	if id.AccountId != "" {
+		current, err := h.currentAccount(ctx, region)()
+		if err != nil {
+			return "", err
+		}
+		if id.AccountId == current {
+			id.AccountId = ""
+		}
 	}
-	id.AccountId = ""
 	return id.encode()
 }
 
