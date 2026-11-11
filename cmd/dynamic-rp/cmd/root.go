@@ -19,9 +19,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/radius-project/radius/pkg/authz/dataaccess"
-	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
-	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"os"
 
 	"github.com/go-logr/logr"
@@ -30,9 +27,13 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/dataaccess"
+	"github.com/radius-project/radius/pkg/authz/rpcheck"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/dynamicrp/server"
+	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -69,6 +70,7 @@ var rootCmd = &cobra.Command{
 
 		authz.LogMode(logger, options.Config.Authorization)
 		authz.SetProcessOptions(options.Config.Authorization)
+		rpcheck.SetSelf("dynamic-rp")
 
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)

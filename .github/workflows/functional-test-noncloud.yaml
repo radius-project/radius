@@ -27,7 +27,7 @@ on:
         required: true
         default: main
       test-profile:
-        description: Full coverage or the reduced PR matrix
+        description: Full coverage or path-gated PR selection (manual runs retain full coverage)
         type: choice
         options: [full, pr]
         default: full
@@ -196,13 +196,17 @@ jobs:
       - name: Select functional test matrix
         id: select-tests
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          AUTHZ_CHANGED: ${{ needs.changes.outputs.authz_changed }}
         with:
           script: |
             const { pathToFileURL } = await import('node:url');
             const { selectNonCloudTests } = await import(pathToFileURL(`${process.env.GITHUB_WORKSPACE}/.workflow-functional-tests/.github/scripts/functional-test-matrix.mjs`).href);
-            const { profile, matrix } = selectNonCloudTests(context);
+            // Non-default authorization mode legs run on PR-profile runs only when authorization-related paths change.
+            const authzChanged = process.env.AUTHZ_CHANGED !== 'false';
+            const { profile, matrix } = selectNonCloudTests({ eventName: context.eventName, payload: context.payload, authzChanged });
             core.setOutput('matrix', matrix);
-            core.info(`Functional test profile: ${profile} (${matrix.include.length} jobs)`);
+            core.info(`Functional test profile: ${profile} (${matrix.include.length} jobs, authorization changes: ${authzChanged})`);
             await core.summary
               .addHeading('Non-cloud functional test selection')
               .addRaw(`Profile: **${profile}** (${matrix.include.length} jobs)\n`)
@@ -715,6 +719,14 @@ jobs:
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
           SSL_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
+      - name: Verify authorization is off by default
+        # Authorization will default to on once all authorization changes land; retain explicit off-mode coverage then.
+        # Every default-mode leg installs the same chart defaults, so one leg proves they still select authz mode=off.
+        if: matrix.name == 'corerp-noncloud' && !matrix.authzDryRun
+        env:
+          AUTHZ_EXPECTED_MODE: "off"
+        run: CGO_ENABLED=1 go test ./test/functional-portable/authz/noncloud -count=1 -v -run '^Test_AuthzMode_LoggedByEveryComponent$'
+
       - name: Run functional tests
         id: functional-tests
         run: |
@@ -752,6 +764,25 @@ jobs:
           # Used by the statestore leg's in-test `rad install` to trust the secure
           # local registry; ignored by other legs.
           RADIUS_REGISTRY_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
+
+      - name: Run authz boundary tests in enforce mode
+        # The authz leg installs dryRun above. Switch the same installation to enforce and rerun
+        # the internal authentication boundary tests, whose enforce branches differ from dryRun.
+        id: authz-enforce-tests
+        if: ${{ !cancelled() && matrix.name == 'authz-noncloud' && steps.functional-tests.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          # Keep rad's field manager and stored image/registry values from the initial install.
+          rad install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}" \
+            --set global.rbac.dryRun=false --set global.rbac.enabled=true
+          kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
+          make test-functional-authz-noncloud GOTEST_OPTS="-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedCaller|TokenReplay|WrongServerSPIFFEID)\$\$'"
+        env:
+          DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
+          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
+          AUTHZ_EXPECTED_MODE: enforce
+          GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results-enforce.xml
 
       - name: Check for authorization would-deny logs
         # Fails the authz dry-run legs if any component logged that an authorization check would

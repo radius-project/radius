@@ -19,11 +19,13 @@ package worker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
@@ -162,6 +164,14 @@ func TestErrorHandling(t *testing.T) {
 		{
 			err:            errors.New("internal error"),
 			expectedArmErr: v1.ErrorDetails{Code: v1.CodeInternal, Message: "internal error"},
+		},
+		{
+			err: fmt.Errorf("deploy: %w", &authz.DeniedError{Code: v1.CodeAdmissionPolicyDenied, Action: "Applications.Core/containers/write", Target: "/c", Rule: authz.RuleControlPlaneSecret}),
+			expectedArmErr: v1.ErrorDetails{
+				Code:    v1.CodeAdmissionPolicyDenied,
+				Message: "Authorization denied for action 'Applications.Core/containers/write' on target '/c' by admission rule 'control-plane-secret'",
+				Target:  "/c",
+			},
 		},
 	}
 

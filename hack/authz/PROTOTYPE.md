@@ -10,10 +10,10 @@ and [Known gaps](#known-gaps).
 
 | Item  | What it does                                                                                                                                                                    |
 |-------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| A1–A5 | cert-manager issues each component a certificate. Every internal server requires a client certificate, and every client presents one.                                           |
+| A1–A5 | Internal calls carry a projected ServiceAccount token (10-minute lifetime, audience = receiver) over TLS. The receiver verifies it and takes the caller's name from it.         |
 | A6    | UCP trusts `X-Remote-User` only on requests that carry the API server's front-proxy certificate.                                                                                |
 | B1–B6 | UCP creates an execution record for each user deploy. Writes from the deployment engine must fall inside the record. Providers check the assigned operation and its input hash. |
-| C1–C3 | The controller uses its own certificate. It may only deploy from a Kubernetes namespace to the resource group mapped to it (`global.rbac.namespaceMappings`).                   |
+| C1–C3 | The controller uses its own token. It may only deploy from a Kubernetes namespace to the resource group mapped to it (`global.rbac.namespaceMappings`).                         |
 | D1–D3 | Applications RP and Dynamic RP save and delete resources through UCP (`/authz/data/save` and `/delete`). UCP checks that the write belongs to an open operation.                |
 | E1    | Environment namespaces get Pod Security `baseline` labels (`enforce` in enforce mode, `warn` and `audit` in dryRun).                                                            |
 | E2    | A ValidatingAdmissionPolicy stops Radius identities from running workloads in the control-plane namespace or with control-plane service accounts or Secrets.                    |
@@ -36,7 +36,7 @@ hack/authz/prototype-up.sh enforce   # or: hack/authz/prototype-up.sh dryRun
 
 This builds `rad` and every image from this checkout for your CPU architecture.
 It creates the kind cluster `radius-authz` and a local registry on
-`localhost:5001`, then installs Radius with cert-manager. It maps the `default`
+`localhost:5001`, then installs Radius with cert-manager and csi-driver-spiffe (server certificates). It maps the `default`
 namespace to the `default` resource group for the controller. The script prints
 each component's logged mode at the end. A full build takes 10–20 minutes.
 
@@ -60,8 +60,8 @@ The scenarios use these helpers in `hack/authz/`:
 
 | Helper                                   | Use                                                                    |
 |------------------------------------------|------------------------------------------------------------------------|
-| `rogue.sh exec -- [flags] URL`           | Call a URL from a pod with no Radius certificate.                      |
-| `as-component.sh NAME -- [flags] URL`    | Call a URL presenting component `NAME`'s certificate.                  |
+| `rogue.sh exec -- [flags] URL`           | Call a URL from a pod with no Radius token.                            |
+| `as-component.sh NAME -- [flags] URL`    | Call a URL with a ServiceAccount token for component `NAME`.           |
 | `records.sh [list\|get\|create\|revoke]` | Show or create execution records (`create` is a prototype test hook).  |
 | `would-deny.sh`                          | Print every would-deny line in dryRun. Exits non-zero if it finds any. |
 
@@ -84,14 +84,14 @@ repository root.
    record list shows active records with submitter `ucp` and `bicep-de`. The
    `proto-env` namespace has `pod-security.kubernetes.io/enforce=baseline`.
 
-2. **A workload with no certificate cannot call a provider.**
+2. **A workload with no token cannot call a provider.**
 
    ```bash
    hack/authz/rogue.sh exec -- -k \
      'https://applications-rp.radius-system.svc:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
    ```
 
-   Expected: `remote error: tls: certificate required`.
+   Expected: `401` with `InvalidAuthenticationInfo`. A plain HTTP call gets `400`.
 
 3. **A forged `X-Remote-User` is rejected.** UCP port 443 is the API server
    aggregation port. Only the API server's front-proxy certificate may set
@@ -197,18 +197,18 @@ scenario succeeds and logs exactly one `authorization check would deny request`
 line with the code below. Scenario 8 gets a Kubernetes warning instead of a log
 line.
 
-| Scenario                     | dryRun result                                                                             | Logged by         | `authzCode`                 |
-|------------------------------|-------------------------------------------------------------------------------------------|-------------------|-----------------------------|
-| 2. No certificate            | `radius-rogue-status:200`                                                                 | `applications-rp` | `PeerCertificateInvalid`    |
-| 3. Forged `X-Remote-User`    | `200` for both calls                                                                      | `ucp` (each call) | `InvalidAuthenticationInfo` |
-| 4. Dev record against prod   | `dev`: `200`, no line. `prod`: `200`                                                      | `ucp`             | `GrantScopeExceeded`        |
-| 5. Tampered body             | `200`                                                                                     | `applications-rp` | `OperationInputMismatch`    |
-| 6. Unassigned write (RP)     | `200`                                                                                     | `applications-rp` | `OperationNotAssigned`      |
-| 6. Unassigned write (UCP)    | `200`                                                                                     | `ucp`             | `OperationNotAssigned`      |
-| 7. Controller, wrong group   | `dt-prod` is `Ready`                                                                      | `ucp`             | `GrantScopeExceeded`        |
-| 7. Controller, unmapped ns   | `team-x/dt-default` is `Ready`                                                            | `ucp`             | `AuthorizationFailed`       |
-| 8. Privileged pod            | `Warning: would violate PodSecurity "baseline:latest"` then `pod/priv created`            | Kubernetes        | none                        |
-| 8. Control-plane deployment  | `Warning: ... AdmissionPolicyDenied: application workloads may not run ...` then created  | Kubernetes        | none                        |
+| Scenario                    | dryRun result                                                                            | Logged by         | `authzCode`                 |
+|-----------------------------|------------------------------------------------------------------------------------------|-------------------|-----------------------------|
+| 2. No token                 | `radius-rogue-status:200`                                                                | `applications-rp` | `InvalidAuthenticationInfo` |
+| 3. Forged `X-Remote-User`   | `200` for both calls                                                                     | `ucp` (each call) | `InvalidAuthenticationInfo` |
+| 4. Dev record against prod  | `dev`: `200`, no line. `prod`: `200`                                                     | `ucp`             | `GrantScopeExceeded`        |
+| 5. Tampered body            | `200`                                                                                    | `applications-rp` | `OperationInputMismatch`    |
+| 6. Unassigned write (RP)    | `200`                                                                                    | `applications-rp` | `OperationNotAssigned`      |
+| 6. Unassigned write (UCP)   | `200`                                                                                    | `ucp`             | `OperationNotAssigned`      |
+| 7. Controller, wrong group  | `dt-prod` is `Ready`                                                                     | `ucp`             | `GrantScopeExceeded`        |
+| 7. Controller, unmapped ns  | `team-x/dt-default` is `Ready`                                                           | `ucp`             | `AuthorizationFailed`       |
+| 8. Privileged pod           | `Warning: would violate PodSecurity "baseline:latest"` then `pod/priv created`           | Kubernetes        | none                        |
+| 8. Control-plane deployment | `Warning: ... AdmissionPolicyDenied: application workloads may not run ...` then created | Kubernetes        | none                        |
 
 `dt-default` in `default` and the dev call in scenario 4 log nothing. In
 dryRun the write really happens, so clean up afterwards:
@@ -231,10 +231,11 @@ Delete the cluster with `kind delete cluster --name "${AUTHZ_CLUSTER_NAME}"`.
 
 These are deliberate and marked `PROTOTYPE` in the code.
 
-- **Deployment engine has no certificate.** The engine cannot present a
-  certificate until A7 lands in the engine repository. UCP lets a request with
-  no certificate on port 443 through when it comes from the engine pod's IP,
-  and logs `authzPrototypeExemption=engine-no-cert`.
+- **Deployment engine sends no token.** The engine (`bicep-de`, an external
+  .NET image) cannot send a ServiceAccount token until it supports the
+  protocol. UCP lets a request with no client certificate and no
+  `X-Remote-*` headers on port 443 through when it comes from the engine pod's
+  IP, and logs `authzPrototypeExemption=engine-no-token`.
 - **Engine writes bind to a record by deployment.** The engine does not send
   record IDs (B7). UCP binds an engine write with no record header to the newest
   active `bicep-de` record whose targets cover the write
@@ -262,5 +263,5 @@ These are deliberate and marked `PROTOTYPE` in the code.
   Postgres databases are not done.
 - The admission policy matches Radius identities only. Pod Security labels are
   set when Radius creates or patches a namespace, not on existing namespaces.
-- Not built: A7–A11 (engine certificate, other certificate modes, external
-  mTLS), B7, D4–D8 (cloud broker, remote targets), E3 and the rollout stack.
+- Not built: A7–A11 (engine token support, other identity modes, external
+  callers), B7, D4–D8 (cloud broker, remote targets), E3 and the rollout stack.

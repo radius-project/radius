@@ -33,6 +33,8 @@ Environment:
   RBAC_POC_ENGINE_IMAGE Deployment engine image (accepts a digest reference).
   RBAC_POC_ENGINE_TAG Deployment engine tag (default: latest).
   RBAC_POC_BICEP_IMAGE Bicep sidecar image (accepts a digest reference).
+  RBAC_POC_INTERNAL_MODE Internal component authorization: enforce (default),
+                   dryRun, or off. off also turns user RBAC off.
   RADIUS_USER_RBAC_RESUME=true Repeat workload tests on existing kit policy.
 
 State: dist/user-rbac-poc for the default cluster, dist/$RBAC_POC_CLUSTER otherwise.
@@ -116,6 +118,13 @@ up() {
             rm "${archive}"
         done
     fi
+    local internal_enabled=true internal_dry_run=false user_rbac=true
+    case "${RBAC_POC_INTERNAL_MODE:-enforce}" in
+        enforce) ;;
+        dryRun) internal_enabled=false internal_dry_run=true ;;
+        off) internal_enabled=false user_rbac=false ;;
+        *) die "RBAC_POC_INTERNAL_MODE must be enforce, dryRun, or off" ;;
+    esac
     local issuer rad
     issuer="kubernetes:$(kubectl --context "${CONTEXT}" get ns kube-system \
         -o jsonpath='{.metadata.uid}')"
@@ -128,7 +137,8 @@ up() {
     local overrides=(
         --set global.imageRegistry=localhost/user-rbac-poc \
         --set "global.imageTag=${tag}" \
-        --set global.rbac.enabled=true --set global.rbac.dryRun=false \
+        --set "global.rbac.enabled=${internal_enabled}" \
+        --set "global.rbac.dryRun=${internal_dry_run}" \
         --set controller.imagePullPolicy=IfNotPresent \
         --set controlPlaneReadiness.imagePullPolicy=IfNotPresent \
         --set global.terraform.enabled=false \
@@ -136,7 +146,7 @@ up() {
         --set "de.image=${RBAC_POC_ENGINE_IMAGE:-ghcr.io/radius-project/deployment-engine}" \
         --set "de.tag=${RBAC_POC_ENGINE_TAG:-latest}" \
         --set dashboard.enabled=false \
-        --set rbac.enabled=true --set "rbac.kubernetesIssuer=${issuer}" \
+        --set "rbac.enabled=${user_rbac}" --set "rbac.kubernetesIssuer=${issuer}" \
         --set rbac.acceptIncompleteHistory=true
     )
     local release
@@ -227,7 +237,8 @@ case "${1:---help}" in
         "${BICEP}" publish-extension "${ROOT}/hack/bicep-types-radius/generated/index.json" \
             --target "${RADIUS_USER_RBAC_BICEP_EXTENSION}" --force
         make -C "${ROOT}" build-rad
-        export RADIUS_USER_RBAC_RAD="${ROOT}/dist/$(go env GOOS)_$(go env GOARCH)/release/rad"
+        RADIUS_USER_RBAC_RAD="${ROOT}/dist/$(go env GOOS)_$(go env GOARCH)/release/rad"
+        export RADIUS_USER_RBAC_RAD
         direct_spoof
         export RADIUS_USER_RBAC_KUBECONFIG="${KUBECONFIG}"
         export RADIUS_USER_RBAC_CONTEXT="${CONTEXT}"

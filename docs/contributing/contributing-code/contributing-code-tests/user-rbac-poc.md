@@ -4,9 +4,9 @@
 
 Test read-only access, environment restrictions, custom roles, revocation, and administrator protection from the [RBAC feature spec](../../../../eng/design-notes/security/2026-09-built-in-rbac-feature-spec.md#key-scenarios).
 
-Both user and internal RBAC are enforced. Internal RBAC originated from prototype snapshot `093010a90`, with selectively integrated review fixes. Use only a disposable local cluster: deployment-engine identity uses pod IP, and component read/shared-store isolation is incomplete.
+Both user and internal RBAC are enforced. Internal component authentication uses the token stack (draft PRs #13725, #13726, #13728, #13729, at `84a4bed8d`): each internal call carries a projected ServiceAccount token whose audience is the receiver, and the receiver takes the caller's component name only from the verified token. Use only a disposable local cluster: the deployment engine cannot send a token yet, so UCP identifies it by pod IP, and component read/shared-store isolation is incomplete.
 
-The prototype includes reviewed component certificate reload and connection-expiry fixes and requires explicit client-authentication usage on the Kubernetes aggregation proxy certificate. Its full user enforcement and broader admission rules remain prototype-specific; the smaller production stacks are not drop-in replacements.
+Servers use csi-driver-spiffe certificates that rotate without restarts. UCP still trusts `X-Remote-*` user headers only after verifying the Kubernetes aggregation (front-proxy) client certificate, which must have explicit client-authentication usage. Its full user enforcement and broader admission rules remain prototype-specific; the smaller production stacks are not drop-in replacements.
 
 The prototype also checks Applications.Core container Secret-store and persistent-volume references, records compound bootstrap grants in settings audit deltas, and stores oversized history in bounded immutable chunks. Chunked history supports both imperative changes and atomic multi-resource Bicep policy deployments, including interrupted publication and receipt-based retries. Existing inline history remains readable.
 

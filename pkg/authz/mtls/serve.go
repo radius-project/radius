@@ -27,18 +27,19 @@ import (
 	"net/http"
 	"slices"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/client-go/rest"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/token"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 const (
-	// LogFieldReason is the log key for why a peer certificate check failed.
+	// LogFieldReason is the log key for why authentication failed.
 	LogFieldReason = "authzReason"
 
 	// LogFieldPeerAddress is the log key for the remote address of the connection.
@@ -55,22 +56,36 @@ const (
 	tlsHandshakeRecord = 0x16
 )
 
+// Receiver describes the component a server runs as.
+type Receiver struct {
+	// Name is the receiving component, such as "ucp". Callers' tokens must have it as their
+	// audience.
+	Name string
+
+	// AllowedCallers are the components that may call this receiver. Empty accepts any
+	// Radius component.
+	AllowedCallers []string
+}
+
 // ListenAndServe serves srv according to the authorization mode in options.
 //
 // In off mode it calls srv.ListenAndServe, so behavior is unchanged.
 //
-// In dryRun mode the listener accepts both plain HTTP and TLS on the same port. TLS
-// connections are asked for a client certificate, which is verified after the handshake.
-// Missing or invalid certificates and callers that are not in allowedCallers are logged
+// Otherwise the server presents the certificate in options.CertificateDirectory, never
+// requests a client certificate, and authenticates each request by its ServiceAccount
+// token, whose audience must be receiver.Name.
+//
+// In dryRun mode the listener accepts both plain HTTP and TLS on the same port. Plain HTTP,
+// missing or invalid tokens, and callers that are not in receiver.AllowedCallers are logged
 // as would-deny, and every request is still served.
 //
-// In enforce mode the listener only accepts TLS with a verified client certificate.
-// Plain HTTP and failed handshakes are closed and logged as denied, and callers that are
-// not in allowedCallers get an AuthorizationFailed response.
+// In enforce mode the listener only accepts TLS. Plain HTTP is closed and logged as denied.
+// A missing or invalid token gets InvalidAuthenticationInfo, a token that cannot be checked
+// because the signing keys are stale gets AuthorizationUnavailable, and a caller that is not
+// in receiver.AllowedCallers gets AuthorizationFailed.
 //
-// An empty allowedCallers accepts any Radius component. ListenAndServe changes srv's
-// Handler and ConnContext when the mode is not off.
-func ListenAndServe(ctx context.Context, srv *http.Server, options authz.Options, allowedCallers []string) error {
+// ListenAndServe changes srv's Handler when the mode is not off.
+func ListenAndServe(ctx context.Context, srv *http.Server, options authz.Options, receiver Receiver) error {
 	mode := options.EffectiveMode()
 	if mode == authz.ModeOff {
 		return srv.ListenAndServe()
@@ -84,199 +99,145 @@ func ListenAndServe(ctx context.Context, srv *http.Server, options authz.Options
 	if err != nil {
 		return err
 	}
-	return Serve(ctx, srv, ln, options, allowedCallers)
+	return Serve(ctx, srv, ln, options, receiver)
 }
 
 // Serve is like ListenAndServe but serves on an existing listener. It closes ln when
 // it returns. In off mode it calls srv.Serve(ln).
-func Serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, allowedCallers []string) error {
-	return serve(ctx, srv, ln, options, allowedCallers, DefaultPollInterval)
+func Serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, receiver Receiver) error {
+	return serve(ctx, srv, ln, options, receiver, serveConfig{pollInterval: DefaultPollInterval})
 }
 
-// serve is Serve with the interval at which the certificate files are polled for changes.
-func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, allowedCallers []string, pollInterval time.Duration) error {
+// serveConfig holds dependencies that tests replace.
+type serveConfig struct {
+	// pollInterval is how often the certificate files are polled for changes.
+	pollInterval time.Duration
+
+	// keys is the source of token signing keys. Nil uses the hosting cluster's OIDC
+	// discovery endpoint with the in-cluster config.
+	keys token.KeySource
+
+	// tokenNow is the verifier's clock. Nil uses time.Now.
+	tokenNow func() time.Time
+}
+
+func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, receiver Receiver, config serveConfig) error {
 	mode := options.EffectiveMode()
 	if mode == authz.ModeOff {
 		return srv.Serve(ln)
 	}
 
-	if options.CertificateDirectory == "" || options.Namespace == "" {
-		_ = ln.Close()
-		return fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", mode)
-	}
-
-	source, err := NewSource(options.CertificateDirectory)
+	verifier, source, err := newServerAuth(options, receiver, config)
 	if err != nil {
 		_ = ln.Close()
-		return fmt.Errorf("failed to load mTLS certificate: %w", err)
+		return err
 	}
 
-	sourceCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go source.Start(sourceCtx, pollInterval)
+	// Load the signing keys before serving so requests right after startup are not answered
+	// with AuthorizationUnavailable. Run keeps retrying if this fails.
+	if err := verifier.Refresh(ctx); err != nil {
+		ucplog.FromContextOrDiscard(ctx).Error(err, "Failed to load ServiceAccount token signing keys; retrying in the background")
+	}
 
-	s := &server{source: source, mode: mode, namespace: options.Namespace, allowedCallers: allowedCallers}
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go source.Start(runCtx, config.pollInterval)
+	go verifier.Run(runCtx)
+
+	s := &server{verifier: verifier, mode: mode, allowedCallers: receiver.AllowedCallers}
 
 	handler := srv.Handler
 	if handler == nil {
 		handler = http.DefaultServeMux
 	}
 	srv.Handler = s.authorizeCaller(handler)
-	next := srv.ConnContext
-	srv.ConnContext = func(ctx context.Context, c net.Conn) context.Context {
-		if next != nil {
-			ctx = next(ctx, c)
-		}
-		return s.connContext(ctx, c)
-	}
 
-	var tlsConfig *tls.Config
-	if mode == authz.ModeEnforce {
-		tlsConfig = source.ServerConfig(options.Namespace)
-	} else {
-		tlsConfig = source.requestClientCertConfig(options.Namespace)
-	}
-
-	return srv.Serve(newListener(ctx, ln, tlsConfig, mode))
+	return srv.Serve(newListener(ctx, ln, source.ServerConfig(), mode))
 }
 
-// requestClientCertConfig returns a server config that asks for, but does not require,
-// a client certificate. Each handshake uses one version of the certificate and CA bundle.
-// The client certificate is checked against that CA bundle, and the result is stored on
-// the connection for connContext; a failed check does not fail the handshake.
-func (s *Source) requestClientCertConfig(namespace string) *tls.Config {
-	return &tls.Config{
-		MinVersion: tls.VersionTLS12,
-		GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
-			m, err := s.load()
-			if err != nil {
-				return nil, err
-			}
-			conn, _ := hello.Conn.(*peekedConn)
-			return &tls.Config{
-				MinVersion:   tls.VersionTLS12,
-				NextProtos:   []string{"http/1.1"},
-				Certificates: []tls.Certificate{*m.cert},
-				ClientAuth:   tls.RequestClientCert,
-				VerifyConnection: func(cs tls.ConnectionState) error {
-					if conn != nil {
-						conn.identity, _, conn.peerErr = s.verifyClient(m.pool, cs.PeerCertificates, namespace)
-						conn.checked = true
-					}
-					return nil
-				},
-			}, nil
-		},
+// newServerAuth loads the server certificate and creates the token verifier.
+func newServerAuth(options authz.Options, receiver Receiver, config serveConfig) (*token.Verifier, *Source, error) {
+	mode := options.EffectiveMode()
+	if options.CertificateDirectory == "" || options.Namespace == "" {
+		return nil, nil, fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", mode)
 	}
+	if receiver.Name == "" {
+		return nil, nil, errors.New("receiver name is required")
+	}
+
+	source, err := NewSourceWithCA(options.CertificateDirectory, options.EffectiveCADirectory())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load server certificate: %w", err)
+	}
+
+	keys := config.keys
+	if keys == nil {
+		// Tokens are issued by the cluster hosting Radius, which may differ from the
+		// deployment target cluster.
+		restConfig, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to load in-cluster config for token verification: %w", err)
+		}
+		oidc, err := token.NewOIDCKeySource(restConfig)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to create token key source: %w", err)
+		}
+		keys = oidc
+	}
+
+	verifier, err := token.New(token.Config{
+		Namespace: options.Namespace,
+		Audience:  receiver.Name,
+		Keys:      keys,
+		Now:       config.tokenNow,
+	})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create token verifier: %w", err)
+	}
+	return verifier, source, nil
 }
 
 type server struct {
-	source         *Source
+	verifier       *token.Verifier
 	mode           authz.Mode
-	namespace      string
 	allowedCallers []string
 }
 
-// connContext adds the verified peer identity to the connection's context. In dryRun
-// mode it also verifies the client certificate and logs a would-deny when it fails.
-func (s *server) connContext(ctx context.Context, c net.Conn) context.Context {
-	tlsConn, ok := c.(*tls.Conn)
-	if !ok {
-		// Plain HTTP was already logged by the listener.
-		return ctx
-	}
-
-	state := tlsConn.ConnectionState()
-	var id Identity
-	var err error
-	if s.mode == authz.ModeEnforce {
-		id, err = identityFromChains(state.VerifiedChains, s.namespace)
-	} else {
-		id, err = peerCheckResult(tlsConn)
-	}
-	if err != nil {
-		logPeerFailure(ctx, s.mode, c.RemoteAddr().String(), err)
-		return ctx
-	}
-	return context.WithValue(WithIdentity(ctx, id), peerTrustKey{}, &peerTrust{})
-}
-
-type peerTrustKey struct{}
-
-// peerTrust caches verification until the material changes or a verified chain expires.
-type peerTrust struct {
-	verified atomic.Pointer[peerVerification]
-}
-
-type peerVerification struct {
-	material  *material
-	expiresAt time.Time
-}
-
-// checkPeerTrust verifies the client certificate of r against the current CA bundle.
-// The handshake verified it against the bundle at the time, but a connection can outlive
-// a reload that removes the client's CA, or either component's certificate expiry.
-func (s *server) checkPeerTrust(r *http.Request) error {
-	if r.TLS == nil {
-		return peerError("request did not use TLS", nil)
-	}
-	trust, _ := r.Context().Value(peerTrustKey{}).(*peerTrust)
-	current, err := s.source.load()
-	if err != nil {
-		return err
-	}
-	if trust != nil {
-		cached := trust.verified.Load()
-		if cached != nil && cached.material == current && !s.source.now().After(cached.expiresAt) {
-			return nil
-		}
-	}
-	_, expiresAt, err := s.source.verifyClient(current.pool, r.TLS.PeerCertificates, s.namespace)
-	if err != nil {
-		return err
-	}
-	if trust != nil {
-		trust.verified.Store(&peerVerification{material: current, expiresAt: expiresAt})
-	}
-	return nil
-}
-
-// authorizeCaller checks that the verified caller is one of the allowed components.
+// authorizeCaller verifies the request's ServiceAccount token and checks that the caller is
+// one of the allowed components. It removes the Authorization header before calling next, so
+// the caller's token is never forwarded, for example when UCP proxies a request.
 func (s *server) authorizeCaller(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		decision := authz.Decision{Allowed: true, Action: r.Method, Target: r.URL.Path}
+		logger := ucplog.FromContextOrDiscard(ctx).WithValues(LogFieldPeerAddress, r.RemoteAddr)
 
-		id, ok := IdentityFromContext(ctx)
-		if ok {
-			if err := s.checkPeerTrust(r); err != nil {
-				logPeerFailure(ctx, s.mode, r.RemoteAddr, err)
-				if s.mode == authz.ModeEnforce {
-					w.Header().Set("Connection", "close")
-					writeDenied(ctx, w, r, &authz.DeniedError{Code: v1.CodeInvalidAuthenticationInfo, Action: decision.Action, Target: decision.Target})
-					return
-				}
-				ok = false
-			}
-		}
-
+		id, err := s.verifier.VerifyRequest(r)
 		switch {
-		case !ok:
-			// The connection failure was already logged. Enforce mode never gets here
-			// because the handshake requires a verified identity.
-			if s.mode == authz.ModeEnforce {
-				decision.Allowed = false
-				decision.Code = v1.CodeInvalidAuthenticationInfo
+		case err != nil:
+			decision.Allowed = false
+			decision.Code = v1.CodeInvalidAuthenticationInfo
+			var tokenErr *token.Error
+			if errors.As(err, &tokenErr) {
+				decision.Code = tokenErr.Code
 			}
+			logger = logger.WithValues(LogFieldReason, err.Error())
 		case len(s.allowedCallers) > 0 && !slices.Contains(s.allowedCallers, id.Component):
 			decision.Allowed = false
 			decision.Code = authz.CodeAuthorizationFailed
-			ctx = logr.NewContext(ctx, ucplog.FromContextOrDiscard(ctx).WithValues(LogFieldCaller, id.String()))
+			logger = logger.WithValues(LogFieldCaller, id.String())
 		}
+		ctx = logr.NewContext(ctx, logger)
 
 		if err := authz.Apply(ctx, s.mode, decision); err != nil {
 			writeDenied(ctx, w, r, err)
 			return
+		}
+
+		r = r.Clone(r.Context())
+		r.Header.Del("Authorization")
+		if decision.Allowed {
+			r = r.WithContext(authz.WithIdentity(r.Context(), id))
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -294,20 +255,11 @@ func writeDenied(ctx context.Context, w http.ResponseWriter, r *http.Request, er
 	http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 }
 
-// logPeerFailure logs a failed peer certificate check with the authorization log fields.
-// Failures that are not an *Error, such as chain verification errors from crypto/tls, are
-// logged as PeerCertificateInvalid.
-func logPeerFailure(ctx context.Context, mode authz.Mode, remote string, err error) {
-	code := authz.CodePeerCertificateInvalid
-	reason := err.Error()
-	var mErr *Error
-	if errors.As(err, &mErr) {
-		code = mErr.Code
-		reason = mErr.Error()
-	}
-
-	logger := ucplog.FromContextOrDiscard(ctx).WithValues(LogFieldReason, reason, LogFieldPeerAddress, remote)
-	_ = authz.Apply(logr.NewContext(ctx, logger), mode, authz.Decision{Code: code})
+// logPlainHTTP logs a plain HTTP connection, which cannot carry a token safely, with the
+// authorization log fields.
+func logPlainHTTP(ctx context.Context, mode authz.Mode, remote string) {
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues(LogFieldReason, "plain HTTP connection", LogFieldPeerAddress, remote)
+	_ = authz.Apply(logr.NewContext(ctx, logger), mode, authz.Decision{Code: v1.CodeInvalidAuthenticationInfo})
 }
 
 // listener classifies each accepted connection as TLS or plain HTTP by its first byte,
@@ -398,7 +350,7 @@ func (l *listener) classify(c net.Conn) (net.Conn, error) {
 	peeked := &peekedConn{Conn: c, r: br}
 
 	if first[0] != tlsHandshakeRecord {
-		logPeerFailure(l.ctx, l.mode, c.RemoteAddr().String(), peerError("no client certificate: plain HTTP connection", nil))
+		logPlainHTTP(l.ctx, l.mode, c.RemoteAddr().String())
 		if l.mode == authz.ModeEnforce {
 			_, _ = io.WriteString(c, "HTTP/1.0 400 Bad Request\r\n\r\nClient sent an HTTP request to an HTTPS server.\n")
 			return nil, errors.New("plain HTTP rejected")
@@ -409,31 +361,19 @@ func (l *listener) classify(c net.Conn) (net.Conn, error) {
 
 	tlsConn := tls.Server(peeked, l.tlsConfig)
 	if err := tlsConn.HandshakeContext(l.ctx); err != nil {
-		logPeerFailure(l.ctx, l.mode, c.RemoteAddr().String(), err)
+		// Clients do not present certificates, so a failed handshake is not an authorization
+		// decision.
+		ucplog.FromContextOrDiscard(l.ctx).V(ucplog.LevelDebug).Info("TLS handshake failed", LogFieldPeerAddress, c.RemoteAddr().String(), "error", err.Error())
 		return nil, err
 	}
 	_ = c.SetDeadline(time.Time{})
 	return tlsConn, nil
 }
 
-// peekedConn replays bytes buffered while classifying the connection. In dryRun mode it
-// also holds the result of the client certificate check made during the handshake.
+// peekedConn replays bytes buffered while classifying the connection.
 type peekedConn struct {
 	net.Conn
 	r *bufio.Reader
-
-	checked  bool
-	identity Identity
-	peerErr  error
-}
-
-// peerCheckResult returns the client certificate check recorded during a dryRun handshake.
-func peerCheckResult(c *tls.Conn) (Identity, error) {
-	conn, ok := c.NetConn().(*peekedConn)
-	if !ok || !conn.checked {
-		return Identity{}, peerError("client certificate was not checked", nil)
-	}
-	return conn.identity, conn.peerErr
 }
 
 func (c *peekedConn) Read(p []byte) (int, error) {

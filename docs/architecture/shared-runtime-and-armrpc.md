@@ -117,6 +117,58 @@ That means service-specific code usually does not build raw HTTP stacks itself.
 Instead, it supplies a `Configure` callback that registers routes on top of the
 shared server.
 
+### Internal component authorization
+
+ARM-RPC frontends serve through `mtls.ListenAndServe` in
+[pkg/authz/mtls/serve.go](../../pkg/authz/mtls/serve.go), which applies the
+authorization mode from the `authorization` config section (set by the chart
+from `global.rbac.enabled` and `global.rbac.dryRun`). Internal calls are
+authenticated with projected Kubernetes ServiceAccount tokens; no component
+presents a client certificate.
+
+- `off` (default): plain HTTP, behavior unchanged.
+- `dryRun`: the same port accepts TLS and plain HTTP. Plain HTTP, missing or
+  invalid tokens, and disallowed callers are logged as would-deny
+  (`InvalidAuthenticationInfo`, `AuthorizationUnavailable`,
+  `AuthorizationFailed`), and every request is served.
+- `enforce`: TLS is required (plain HTTP gets `400`). A missing, invalid, or
+  wrong-audience token gets `401 InvalidAuthenticationInfo`; signing keys that
+  could not be refreshed give `503 AuthorizationUnavailable`; and callers not in
+  the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
+  and `dynamic-rp` allow only the `ucp` identity.
+
+Each receiver presents the csi-driver-spiffe certificate mounted at
+`/var/run/radius/spiffe` (`tls.crt`, `tls.key`), whose only SAN is the
+URI `spiffe://<trustDomain>/ns/<namespace>/sa/<service account>`. It requests no
+client certificate. It verifies the `Authorization: Bearer` token offline with
+[pkg/authz/token](../../pkg/authz/token/verifier.go), requiring the receiver's
+name as the audience, maps the ServiceAccount to the caller's
+`<component>.<namespace>.svc` identity, and removes the header before calling the
+handler. Probes and metrics stay on their plain ports.
+
+Callers build transports with `mtls.NewClientTransport` and
+`mtls.NewUpgradeTransport` in [pkg/authz/mtls/client.go](../../pkg/authz/mtls/client.go).
+They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and require exactly
+the receiver's SPIFFE ID instead of matching DNS names. Only after the server is
+verified do they send the token from
+`/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
+Every component projects only `ca.crt` from the `radius-ca` Secret (never
+`tls.key`) to `/var/run/radius/ca`, because csi-driver-spiffe writes no `ca.crt`
+without a configured source CA bundle. Servers chain their certificate to it and
+clients verify servers against it. The `radius-ca` CA signs only these
+SPIFFE server certificates; in the `selfSigned` certificate mode (the only one
+supported today), UCP's aggregated API certificate comes from the separate
+`radius-apiserver-ca`, which Radius components do not trust. The
+Kubernetes API server does trust it for UCP, so the `radius-certificate-issuance`
+ValidatingAdmissionPolicy lets only the cert-manager controller request from
+`radius-apiserver-issuer` and `radius-selfsigned-bootstrap`, and limits Radius
+ServiceAccounts to `radius-ca-issuer`.
+
+Certificate and CA files are reloaded by polling (every 10 seconds) without a
+restart; new handshakes use the new material. Before each request, a client
+closes every connection whose verified server chain has expired, including
+connections in use, which aborts their in-flight requests.
+
 ### Request context and validation
 
 The server layer applies middleware that creates an ARM-aware request context.

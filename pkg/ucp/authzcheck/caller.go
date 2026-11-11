@@ -30,7 +30,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
-	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -59,8 +58,8 @@ const (
 	// CallerUser is a Kubernetes user forwarded by the verified aggregation proxy.
 	CallerUser CallerKind = "user"
 
-	// CallerComponent is a Radius component with a verified mTLS certificate, or the
-	// deployment engine under the prototype exemption.
+	// CallerComponent is a Radius component named by a verified projected ServiceAccount
+	// token, or the deployment engine under the prototype exemption.
 	CallerComponent CallerKind = "component"
 
 	// CallerAnonymous is a caller that could not be authenticated. It is only seen in
@@ -96,7 +95,8 @@ func CallerFromContext(ctx context.Context) (Caller, bool) {
 	return c, ok
 }
 
-// MarkInternal marks requests served on UCP's internal (mTLS) listener.
+// MarkInternal marks requests served on UCP's internal listener, where the token
+// verifier in pkg/authz/mtls runs before this middleware.
 func MarkInternal(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), internalKey{}, true)))
@@ -143,14 +143,15 @@ type Authenticator struct {
 
 // Middleware resolves the caller and rejects requests that cannot be authenticated:
 //
-//   - On the internal listener the caller is the component named by its mTLS
-//     certificate. X-Remote-* headers are rejected: a component cannot assert a user.
+//   - On the internal listener the caller is the component named by its verified
+//     ServiceAccount token (authz.IdentityFromContext). The name comes only from the
+//     token. X-Remote-* headers are rejected: a component cannot assert a user.
 //   - On the aggregation listener, X-Remote-* headers are trusted only when the
 //     connection presents a client certificate that chains to the cluster's
 //     requestheader CA and has an allowed name (A6).
-//   - PROTOTYPE EXEMPTION: the deployment engine cannot present a certificate yet (A7),
-//     so a request on the aggregation listener with no certificate and no X-Remote-*
-//     headers is treated as bicep-de when it comes from a bicep-de pod IP.
+//   - PROTOTYPE EXEMPTION: the deployment engine cannot send a ServiceAccount token yet,
+//     so a request on the aggregation listener with no client certificate and no
+//     X-Remote-* headers is treated as bicep-de when it comes from a bicep-de pod IP.
 //   - Other unauthenticated requests are allowed only for API discovery.
 func (a *Authenticator) Middleware(next http.Handler) http.Handler {
 	if a.Mode == authz.ModeOff || a.Mode == "" {
@@ -183,7 +184,7 @@ func (a *Authenticator) resolve(ctx context.Context, r *http.Request) (Caller, s
 	hasRemote := hasRemoteHeaders(r.Header)
 
 	if isInternal(ctx) {
-		id, ok := mtls.IdentityFromContext(ctx)
+		id, ok := authz.IdentityFromContext(ctx)
 		if hasRemote {
 			name := ""
 			if ok {
@@ -192,7 +193,7 @@ func (a *Authenticator) resolve(ctx context.Context, r *http.Request) (Caller, s
 			return Caller{Kind: CallerComponent, Name: name}, v1.CodeInvalidAuthenticationInfo
 		}
 		if !ok {
-			// dryRun accepts plain HTTP; the mTLS layer already logged it.
+			// dryRun accepts a missing or invalid token; the token verifier already logged it.
 			return Caller{Kind: CallerAnonymous}, ""
 		}
 		return Caller{Kind: CallerComponent, Name: id.Component}, ""
@@ -224,8 +225,8 @@ func (a *Authenticator) resolve(ctx context.Context, r *http.Request) (Caller, s
 	}
 
 	if a.Engine != nil && a.Engine.IsEngine(ctx, remoteIP(ctx)) {
-		ucplog.FromContextOrDiscard(ctx).V(ucplog.LevelDebug).Info("deployment engine call accepted without a certificate (prototype exemption until A7)",
-			LogFieldPrototypeExemption, "engine-no-cert", "authzPeerAddress", remoteIP(ctx))
+		ucplog.FromContextOrDiscard(ctx).V(ucplog.LevelDebug).Info("deployment engine call accepted without a token (prototype exemption)",
+			LogFieldPrototypeExemption, "engine-no-token", "authzPeerAddress", remoteIP(ctx))
 		return Caller{Kind: CallerComponent, Name: ComponentDeploymentEngine}, ""
 	}
 

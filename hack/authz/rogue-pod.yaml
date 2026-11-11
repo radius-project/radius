@@ -5,7 +5,7 @@
 #
 # lib.sh renders the locally built rogue-client image recorded by up.sh.
 # The shell-free client shares /work with the OpenSSL sidecar, which writes
-# copied component certificates for as-component.sh.
+# the copied Radius CA bundle for as-component.sh.
 apiVersion: v1
 kind: Pod
 metadata:

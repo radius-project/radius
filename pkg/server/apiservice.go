@@ -19,7 +19,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/radius-project/radius/pkg/authz/rpcheck"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -28,6 +27,7 @@ import (
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz/rpcheck"
 )
 
 // APIService is the restful API server for Radius Resource Provider.
@@ -64,9 +64,10 @@ func (s *APIService) Run(ctx context.Context) error {
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	return s.Start(ctx, server.Options{
-		Location: s.Options.Config.Env.RoleLocation,
-		Address:  address,
-		PathBase: s.Options.Config.Server.PathBase,
+		Location:     s.Options.Config.Env.RoleLocation,
+		Address:      address,
+		PathBase:     s.Options.Config.Server.PathBase,
+		ReceiverName: "applications-rp",
 		// Only UCP routes requests to applications-rp.
 		AllowedCallers: []string{"ucp"},
 		Middlewares:    []func(http.Handler) http.Handler{rpcheck.Middleware(databaseClient)},
@@ -79,6 +80,7 @@ func (s *APIService) Run(ctx context.Context) error {
 					Arm:            s.Options.Arm, // This is a temporary fix to avoid ARM initialization in the test environment.
 					KubeClient:     s.KubeClient,
 					StatusManager:  s.OperationStatusManager,
+					Authorization:  s.Options.Config.Authorization,
 				}
 
 				validator, err := builder.NewOpenAPIValidator(ctx, opts.PathBase, b.Namespace())

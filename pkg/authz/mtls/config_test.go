@@ -21,15 +21,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"net"
-	"net/http"
-	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
-
-const ucpServerName = "ucp.radius-system.svc"
 
 type handshakeResult struct {
 	serverState tls.ConnectionState
@@ -85,34 +83,35 @@ func handshake(t *testing.T, server, client *tls.Config) handshakeResult {
 	return handshakeResult{serverState: result.state, clientState: clientState, serverErr: result.err, clientErr: clientErr}
 }
 
-func clientConfig(t *testing.T, src *Source, serverName string) *tls.Config {
+// trustClient returns a client config that trusts caPEM and requires receiver's SPIFFE ID.
+func trustClient(t *testing.T, caPEM []byte, receiver string) *tls.Config {
 	t.Helper()
-	cfg, err := src.ClientConfig(testNamespace)
+	return clientConfig(t, newTrustSource(t, caPEM), receiver)
+}
+
+// newTrustSource returns a trust-only Source for caPEM.
+func newTrustSource(t *testing.T, caPEM []byte) *Source {
+	t.Helper()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, CAFile), caPEM, 0o600))
+	src, err := NewTrustSource(dir)
 	require.NoError(t, err)
-	cfg.ServerName = serverName
+	return src
+}
+
+func clientConfig(t *testing.T, src *Source, receiver string) *tls.Config {
+	t.Helper()
+	cfg, err := src.clientConfig(spiffeID(receiver), nil)
+	require.NoError(t, err)
 	return cfg
 }
 
-// staticClient returns a client config that presents cert and trusts ca, bypassing Source.
-func staticClient(t *testing.T, cert testCert, ca testCA) *tls.Config {
-	t.Helper()
-	pool := x509.NewCertPool()
-	pool.AddCert(ca.cert)
-	return &tls.Config{
-		MinVersion:   tls.VersionTLS12,
-		ServerName:   ucpServerName,
-		RootCAs:      pool,
-		Certificates: []tls.Certificate{cert.tlsCertificate(t)},
-	}
-}
-
-// staticServer returns a server config that presents cert and requests any client certificate.
+// staticServer returns a server config that presents cert.
 func staticServer(t *testing.T, cert testCert) *tls.Config {
 	t.Helper()
 	return &tls.Config{
 		MinVersion:   tls.VersionTLS12,
 		Certificates: []tls.Certificate{cert.tlsCertificate(t)},
-		ClientAuth:   tls.RequireAnyClientCert,
 	}
 }
 
@@ -120,290 +119,178 @@ func TestHandshake_Success(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
 	server := newTestSource(t, ca, "ucp")
-	client := newTestSource(t, ca, "controller")
 
-	result := handshake(t, server.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
+	var verified []*x509.Certificate
+	cfg, err := newTrustSource(t, ca.pem).clientConfig(spiffeID("ucp"), func(chain []*x509.Certificate) { verified = chain })
+	require.NoError(t, err)
+
+	result := handshake(t, server.ServerConfig(), cfg)
 	require.NoError(t, result.serverErr)
 	require.NoError(t, result.clientErr)
-
-	id, err := identityFromChains(result.serverState.VerifiedChains, testNamespace)
-	require.NoError(t, err)
-	require.Equal(t, "controller.radius-system.svc", id.String())
+	require.Len(t, verified, 2)
+	require.Equal(t, ca.cert.Raw, verified[1].Raw)
 }
 
-func TestHandshake_NameConstrainedCA(t *testing.T) {
-	t.Parallel()
-	ca := newConstrainedCA(t, []string{testNamespace + ".svc"})
-	server := newTestSource(t, ca, "ucp")
-	client := newTestSource(t, ca, "bicep-de")
-
-	result := handshake(t, server.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
-	require.NoError(t, result.serverErr)
-	require.NoError(t, result.clientErr)
-
-	id, err := identityFromChains(result.serverState.VerifiedChains, testNamespace)
-	require.NoError(t, err)
-	require.Equal(t, "bicep-de.radius-system.svc", id.String())
-}
-
-func TestServerConfig_RejectsClient(t *testing.T) {
+// TestServerConfig_NoClientCertificate checks that the server never requests a client
+// certificate, so a client that has one does not send it.
+func TestServerConfig_NoClientCertificate(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
 	server := newTestSource(t, ca, "ucp")
+	require.Equal(t, tls.NoClientCert, server.ServerConfig().ClientAuth)
 
-	tests := []struct {
-		name    string
-		wantErr string
-		client  func() *tls.Config
-	}{
-		{name: "wrong CA", wantErr: "unknown authority", client: func() *tls.Config {
-			return staticClient(t, newCA(t).issue(t, certOptions{dnsNames: componentSANs("controller")}), ca)
-		}},
-		{name: "expired", wantErr: "expired", client: func() *tls.Config {
-			return staticClient(t, ca.issue(t, certOptions{
-				dnsNames:  componentSANs("controller"),
-				notBefore: time.Now().Add(-2 * time.Hour),
-				notAfter:  time.Now().Add(-time.Hour),
-			}), ca)
-		}},
-		{name: "SAN outside list", wantErr: "is not a Radius component", client: func() *tls.Config {
-			return staticClient(t, ca.issue(t, certOptions{dnsNames: []string{"other-app.default.svc"}}), ca)
-		}},
-		{name: "RSA-1024", wantErr: "RSA key size 1024", client: func() *tls.Config {
-			return staticClient(t, ca.issue(t, certOptions{dnsNames: componentSANs("controller"), key: rsaKey(t, 1024)}), ca)
-		}},
-		{name: "short name SAN", wantErr: "is not a Radius component", client: func() *tls.Config {
-			return staticClient(t, ca.issue(t, certOptions{dnsNames: []string{"controller"}}), ca)
-		}},
-		{name: "more than one SAN", wantErr: "more than one DNS SAN", client: func() *tls.Config {
-			return staticClient(t, ca.issue(t, certOptions{dnsNames: []string{canonical("controller"), "controller"}}), ca)
-		}},
-		{name: "no client certificate", wantErr: "didn't provide a certificate", client: func() *tls.Config {
-			cfg := staticClient(t, ca.issue(t, certOptions{dnsNames: componentSANs("controller")}), ca)
-			cfg.Certificates = nil
-			return cfg
-		}},
+	cfg := trustClient(t, ca.pem, "ucp")
+	presented := false
+	clientCert := ca.issue(t, certOptions{uris: spiffeURIs("controller")}).tlsCertificate(t)
+	cfg.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		presented = true
+		return &clientCert, nil
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result := handshake(t, server.ServerConfig(testNamespace), tt.client())
-			require.ErrorContains(t, result.serverErr, tt.wantErr)
-		})
+	result := handshake(t, server.ServerConfig(), cfg)
+	require.NoError(t, result.serverErr)
+	require.NoError(t, result.clientErr)
+	require.False(t, presented)
+	require.Empty(t, result.serverState.PeerCertificates)
+}
+
+// TestServerConfigFrom_PreservesClientAuth checks that a base config's client-certificate
+// settings are kept while the certificate comes from the source.
+func TestServerConfigFrom_PreservesClientAuth(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	proxyCA := newCA(t)
+	server := newTestSource(t, ca, "ucp")
+	proxyRoots := x509.NewCertPool()
+	proxyRoots.AddCert(proxyCA.cert)
+	stale := proxyCA.issue(t, certOptions{uris: spiffeURIs("stale")}).tlsCertificate(t)
+	base := &tls.Config{ClientAuth: tls.RequestClientCert, ClientCAs: proxyRoots, MinVersion: tls.VersionTLS10, Certificates: []tls.Certificate{stale}}
+
+	config := server.ServerConfigFrom(base)
+	require.Equal(t, tls.RequestClientCert, config.ClientAuth)
+	require.Equal(t, uint16(tls.VersionTLS12), config.MinVersion)
+	require.Empty(t, config.Certificates)
+	require.Equal(t, uint16(tls.VersionTLS10), base.MinVersion, "base must not be modified")
+	require.Len(t, base.Certificates, 1, "base must not be modified")
+	require.Nil(t, base.GetConfigForClient, "base must not be modified")
+
+	cfg := trustClient(t, ca.pem, "ucp")
+	var acceptable [][]byte
+	clientCert := proxyCA.issue(t, certOptions{uris: spiffeURIs("proxy")}).tlsCertificate(t)
+	cfg.GetClientCertificate = func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+		acceptable = info.AcceptableCAs
+		return &clientCert, nil
 	}
+
+	result := handshake(t, config, cfg)
+	require.NoError(t, result.serverErr)
+	require.NoError(t, result.clientErr)
+	require.Equal(t, [][]byte{proxyCA.cert.RawSubject}, acceptable)
+	require.Equal(t, clientCert.Certificate[0], result.serverState.PeerCertificates[0].Raw)
+	require.Empty(t, result.serverState.VerifiedChains)
+}
+
+func TestServerConfigFrom_NilBase(t *testing.T) {
+	t.Parallel()
+	server := newTestSource(t, newCA(t), "ucp")
+	require.Equal(t, tls.NoClientCert, server.ServerConfigFrom(nil).ClientAuth)
+}
+
+func TestServerConfig_OwnCertificateExpired(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	server := newTestSource(t, ca, "ucp")
+	server.now = func() time.Time { return time.Now().Add(2 * time.Hour) }
+
+	result := handshake(t, server.ServerConfig(), trustClient(t, ca.pem, "ucp"))
+	requireCode(t, result.serverErr, "CertificateExpired")
+	require.Error(t, result.clientErr)
 }
 
 func TestClientConfig_RejectsServer(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
-	client := newTestSource(t, ca, "controller")
 
-	// The standard verifier rejects the chain, dates, and name; VerifyConnection rejects the identity.
 	tests := []struct {
-		name       string
-		server     func() *tls.Config
-		serverName string
-		wantErr    string
-		wantCode   string
+		name    string
+		server  func() testCert
+		wantErr string
 	}{
-		{name: "wrong CA", serverName: ucpServerName, wantErr: "unknown authority", server: func() *tls.Config {
-			return staticServer(t, newCA(t).issue(t, certOptions{dnsNames: componentSANs("ucp")}))
+		{name: "wrong CA", wantErr: "unknown authority", server: func() testCert {
+			return newCA(t).issue(t, certOptions{uris: spiffeURIs("ucp")})
 		}},
-		{name: "hostname mismatch", serverName: canonical("dynamic-rp"), wantErr: "not " + canonical("dynamic-rp"), server: func() *tls.Config {
-			return staticServer(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}))
+		{name: "wrong SPIFFE ID", wantErr: "is not \"" + spiffeID("ucp") + "\"", server: func() testCert {
+			return ca.issue(t, certOptions{uris: spiffeURIs("dynamic-rp")})
 		}},
-		{name: "expired", serverName: ucpServerName, wantErr: "expired", server: func() *tls.Config {
-			return staticServer(t, ca.issue(t, certOptions{
-				dnsNames:  componentSANs("ucp"),
+		{name: "DNS name only", wantErr: "no URI SAN", server: func() testCert {
+			return ca.issue(t, certOptions{dnsNames: []string{"ucp.radius-system.svc"}})
+		}},
+		{name: "two URI SANs", wantErr: "more than one URI SAN", server: func() testCert {
+			return ca.issue(t, certOptions{uris: []string{spiffeID("ucp"), spiffeID("dynamic-rp")}})
+		}},
+		{name: "expired", wantErr: "expired", server: func() testCert {
+			return ca.issue(t, certOptions{
+				uris:      spiffeURIs("ucp"),
 				notBefore: time.Now().Add(-2 * time.Hour),
 				notAfter:  time.Now().Add(-time.Hour),
-			}))
+			})
 		}},
-		{name: "no server name", serverName: "", wantErr: "ServerName", server: func() *tls.Config {
-			return staticServer(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}))
+		{name: "client auth only", wantErr: "incompatible key usage", server: func() testCert {
+			return ca.issue(t, certOptions{uris: spiffeURIs("ucp"), extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}})
 		}},
-		{name: "two components", serverName: ucpServerName, wantCode: "PeerCertificateInvalid", server: func() *tls.Config {
-			return staticServer(t, ca.issue(t, certOptions{dnsNames: []string{ucpServerName, canonical("dynamic-rp")}}))
-		}},
-		{name: "short server name", serverName: "ucp", wantCode: "PeerCertificateInvalid", server: func() *tls.Config {
-			return staticServer(t, ca.issue(t, certOptions{dnsNames: []string{"ucp"}}))
+		{name: "RSA-1024", wantErr: "RSA key size 1024", server: func() testCert {
+			return ca.issue(t, certOptions{uris: spiffeURIs("ucp"), key: rsaKey(t, 1024)})
 		}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			result := handshake(t, tt.server(), clientConfig(t, client, tt.serverName))
-			if tt.wantCode != "" {
-				requireCode(t, result.clientErr, tt.wantCode)
-				return
-			}
+			result := handshake(t, staticServer(t, tt.server()), trustClient(t, ca.pem, "ucp"))
+			requireCode(t, result.clientErr, "PeerCertificateInvalid")
 			require.ErrorContains(t, result.clientErr, tt.wantErr)
 		})
 	}
 }
 
-// TestClientConfig_OwnCertificateExpired checks that a config whose certificate expires
-// after it was created fails closed, even when the server does not request a certificate.
-func TestClientConfig_OwnCertificateExpired(t *testing.T) {
-	t.Parallel()
-	ca := newCA(t)
-	client := newTestSource(t, ca, "controller")
-	cfg := clientConfig(t, client, ucpServerName)
-	client.now = func() time.Time { return time.Now().Add(2 * time.Hour) }
-
-	server := staticServer(t, ca.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: time.Now().Add(3 * time.Hour)}))
-	server.ClientAuth = tls.NoClientCert
-
-	result := handshake(t, server, cfg)
-	requireCode(t, result.clientErr, "CertificateExpired")
-}
-
 func TestClientConfig_NoPeerCertificates(t *testing.T) {
 	t.Parallel()
-	client := newTestSource(t, newCA(t), "controller")
-
-	err := clientConfig(t, client, ucpServerName).VerifyConnection(tls.ConnectionState{ServerName: ucpServerName})
+	err := trustClient(t, newCA(t).pem, "ucp").VerifyConnection(tls.ConnectionState{})
 	requireCode(t, err, "PeerCertificateInvalid")
 }
 
-// TestServerConfig_NoResumption checks that the server never resumes a session, so every
-// connection verifies the client against the current CA bundle, including after a CA is
-// removed from the bundle.
-func TestServerConfig_NoResumption(t *testing.T) {
-	t.Parallel()
-	for _, version := range []uint16{tls.VersionTLS12, tls.VersionTLS13} {
-		t.Run(tls.VersionName(version), func(t *testing.T) {
-			t.Parallel()
-			retiredCA, keptCA := newCA(t), newCA(t)
-			bothCAs := append(append([]byte{}, retiredCA.pem...), keptCA.pem...)
-			serverCert := keptCA.issue(t, certOptions{dnsNames: componentSANs("ucp")})
-			dir := newKubeletDir(t, serverCert, bothCAs)
-			server, err := NewSource(dir.root)
-			require.NoError(t, err)
-
-			clientDir := t.TempDir()
-			writeFiles(t, clientDir, retiredCA.issue(t, certOptions{dnsNames: componentSANs("controller")}), bothCAs)
-			client, err := NewSource(clientDir)
-			require.NoError(t, err)
-			cfg := clientConfig(t, client, ucpServerName)
-			cfg.MaxVersion = version
-			cfg.ClientSessionCache = tls.NewLRUClientSessionCache(1)
-			serverConfig := server.ServerConfig(testNamespace)
-
-			for range 2 {
-				result := handshake(t, serverConfig, cfg)
-				require.NoError(t, result.serverErr)
-				require.NoError(t, result.clientErr)
-				require.False(t, result.serverState.DidResume)
-			}
-
-			dir.update(t, serverCert, keptCA.pem)
-			_, err = server.Reload()
-			require.NoError(t, err)
-
-			result := handshake(t, serverConfig, cfg)
-			require.ErrorContains(t, result.serverErr, "unknown authority")
-		})
-	}
-}
-
-// TestClientConfig_RotationDuringHandshake rotates the client's certificate and CA to a
-// new CA after the handshake starts. The client must still verify the server and present
-// its certificate from the version it started with.
+// TestClientConfig_RotationDuringHandshake rotates the client's CA bundle after the handshake
+// starts. The client must still verify the server against the version it started with.
 func TestClientConfig_RotationDuringHandshake(t *testing.T) {
 	t.Parallel()
 	oldCA := newCA(t)
 	rotatedCA := newCA(t)
-	dir := newKubeletDir(t, oldCA.issue(t, certOptions{dnsNames: componentSANs("controller")}), oldCA.pem)
-	client, err := NewSource(dir.root)
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, CAFile), oldCA.pem, 0o600))
+	client, err := NewTrustSource(dir)
 	require.NoError(t, err)
-	cfg := clientConfig(t, client, ucpServerName)
-	rotate := dir.stage(t, rotatedCA.issue(t, certOptions{dnsNames: componentSANs("controller")}), rotatedCA.pem)
+	cfg := clientConfig(t, client, "ucp")
 
-	pool := x509.NewCertPool()
-	pool.AddCert(oldCA.cert)
-	serverCert := oldCA.issue(t, certOptions{dnsNames: componentSANs("ucp")}).tlsCertificate(t)
+	serverCert := oldCA.issue(t, certOptions{uris: spiffeURIs("ucp")}).tlsCertificate(t)
 	server := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 		// Rotate after the client has started the handshake and before it sees the server certificate.
 		GetConfigForClient: func(*tls.ClientHelloInfo) (*tls.Config, error) {
-			if err := rotate(); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, CAFile), rotatedCA.pem, 0o600); err != nil {
 				return nil, err
 			}
 			if _, err := client.Reload(); err != nil {
 				return nil, err
 			}
-			return &tls.Config{
-				MinVersion:   tls.VersionTLS12,
-				Certificates: []tls.Certificate{serverCert},
-				ClientAuth:   tls.RequireAndVerifyClientCert,
-				ClientCAs:    pool,
-			}, nil
+			return &tls.Config{MinVersion: tls.VersionTLS12, Certificates: []tls.Certificate{serverCert}}, nil
 		},
 	}
 
 	result := handshake(t, server, cfg)
 	require.NoError(t, result.clientErr)
 	require.NoError(t, result.serverErr)
-	id, err := identityFromChains(result.serverState.VerifiedChains, testNamespace)
-	require.NoError(t, err)
-	require.Equal(t, "controller.radius-system.svc", id.String())
 
-	// A new config uses the rotated version.
-	m, err := client.load()
-	require.NoError(t, err)
-	require.Same(t, m.cert, mustClientCert(t, clientConfig(t, client, ucpServerName)))
-}
-
-func mustClientCert(t *testing.T, cfg *tls.Config) *tls.Certificate {
-	t.Helper()
-	cert, err := cfg.GetClientCertificate(nil)
-	require.NoError(t, err)
-	return cert
-}
-
-func TestIdentityFromRequest(t *testing.T) {
-	t.Parallel()
-	ca := newCA(t)
-	server := newTestSource(t, ca, "ucp")
-	client := newTestSource(t, ca, "dynamic-rp")
-
-	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id, err := IdentityFromRequest(r, testNamespace)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
-		}
-		ctx := WithIdentity(r.Context(), id)
-		fromCtx, ok := IdentityFromContext(ctx)
-		if !ok {
-			http.Error(w, "missing identity", http.StatusInternalServerError)
-			return
-		}
-		_, _ = w.Write([]byte(fromCtx.String()))
-	}))
-	srv.TLS = server.ServerConfig(testNamespace)
-	srv.StartTLS()
-	t.Cleanup(srv.Close)
-
-	httpClient := &http.Client{Transport: &http.Transport{TLSClientConfig: clientConfig(t, client, ucpServerName)}}
-	resp, err := httpClient.Get(srv.URL)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	body := make([]byte, 64)
-	n, _ := resp.Body.Read(body)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.Equal(t, "dynamic-rp.radius-system.svc", string(body[:n]))
-}
-
-func TestIdentityFromRequest_NoTLS(t *testing.T) {
-	t.Parallel()
-	_, err := IdentityFromRequest(httptest.NewRequest(http.MethodGet, "/", nil), testNamespace)
-	requireCode(t, err, "PeerCertificateInvalid")
-
-	_, ok := IdentityFromContext(t.Context())
-	require.False(t, ok)
+	// A new config uses the rotated CA bundle and rejects the old server.
+	result = handshake(t, staticServer(t, oldCA.issue(t, certOptions{uris: spiffeURIs("ucp")})), clientConfig(t, client, "ucp"))
+	require.ErrorContains(t, result.clientErr, "unknown authority")
 }

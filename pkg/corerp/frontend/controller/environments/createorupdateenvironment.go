@@ -19,7 +19,6 @@ package environments
 import (
 	"context"
 	"fmt"
-	"github.com/radius-project/radius/pkg/kubeutil"
 	"net/http"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -28,11 +27,9 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-	corev1 "k8s.io/api/core/v1"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
@@ -84,6 +81,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	// existing installs that already have duplicate namespaces across resource groups. Plane-wide
 	// uniqueness is enforced on Radius.Core/environments instead, which is where users migrate to.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
+	if newResource.Properties.Compute.Kind == rpv1.KubernetesComputeKind {
+		if err := e.Options().Authorization.AdmitNamespace(ctx, serviceCtx.ResourceID.Type()+"/write", serviceCtx.ResourceID.String(), namespace); err != nil {
+			return nil, err
+		}
+	}
+
 	result, err := util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.compute.kubernetes.namespace", namespace, e.DatabaseClient())
 	if err != nil {
 		return nil, err
@@ -104,16 +107,16 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 
 	if newResource.Properties.Compute.Kind == rpv1.KubernetesComputeKind {
 		// Create environment namespace if it doesn't exist.
-		err = e.Options().KubeClient.Create(ctx, &corev1.Namespace{Name: namespace})
-		if apierrors.IsAlreadyExists(err) {
-			logger.Info("Using existing namespace", "namespace", namespace)
-		} else if err != nil {
+		created, added, err := kubeutil.CreateNamespace(ctx, e.Options().KubeClient, namespace, e.Options().Authorization)
+		if err != nil {
 			return nil, fmt.Errorf("failed to create namespace for the environment: %w", err)
-		} else {
+		} else if created {
 			logger.Info("Created the namespace", "namespace", namespace)
+		} else {
+			logger.Info("Using existing namespace", "namespace", namespace)
 		}
-		if err := kubeutil.ApplyPodSecurityLabels(ctx, e.Options().KubeClient, namespace); err != nil {
-			return nil, err
+		if len(added) > 0 {
+			logger.Info("Added Pod Security labels to the namespace", "namespace", namespace, "labels", added)
 		}
 	}
 

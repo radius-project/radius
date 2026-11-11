@@ -29,31 +29,38 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
-	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/authz/records"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 var (
-	selfOnce sync.Once
+	selfMu   sync.RWMutex
 	selfName string
-	selfErr  error
 )
 
-// Self returns this component's name from its certificate.
+// SetSelf records this component's name. Resource providers call it once at startup
+// with the name they receive internal calls as, which is also the audience of the
+// ServiceAccount tokens UCP presents to them.
+func SetSelf(name string) {
+	selfMu.Lock()
+	defer selfMu.Unlock()
+	selfName = name
+}
+
+// Self returns the name recorded by SetSelf.
 func Self() (string, error) {
-	selfOnce.Do(func() {
-		id, err := mtls.LocalIdentity(authz.ProcessOptions())
-		selfName, selfErr = id.Component, err
-	})
-	return selfName, selfErr
+	selfMu.RLock()
+	defer selfMu.RUnlock()
+	if selfName == "" {
+		return "", errors.New("rpcheck: component name is not set")
+	}
+	return selfName, nil
 }
 
 // SetSelfForTest overrides the component name returned by Self.
 func SetSelfForTest(name string) {
-	selfOnce.Do(func() {})
-	selfName, selfErr = name, nil
+	SetSelf(name)
 }
 
 // Middleware verifies that each write names an open operation assigned to this

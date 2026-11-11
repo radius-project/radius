@@ -78,6 +78,45 @@ func (c *MockResourceClientDeleteCall) DoAndReturn(f func(context.Context, strin
 	return c
 }
 
+// GetAWSPropertiesByIdentifier mocks base method.
+func (m *MockResourceClient) GetAWSPropertiesByIdentifier(ctx context.Context, id string) (map[string]any, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAWSPropertiesByIdentifier", ctx, id)
+	ret0, _ := ret[0].(map[string]any)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAWSPropertiesByIdentifier indicates an expected call of GetAWSPropertiesByIdentifier.
+func (mr *MockResourceClientMockRecorder) GetAWSPropertiesByIdentifier(ctx, id any) *MockResourceClientGetAWSPropertiesByIdentifierCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAWSPropertiesByIdentifier", reflect.TypeOf((*MockResourceClient)(nil).GetAWSPropertiesByIdentifier), ctx, id)
+	return &MockResourceClientGetAWSPropertiesByIdentifierCall{Call: call}
+}
+
+// MockResourceClientGetAWSPropertiesByIdentifierCall wrap *gomock.Call
+type MockResourceClientGetAWSPropertiesByIdentifierCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockResourceClientGetAWSPropertiesByIdentifierCall) Return(arg0 map[string]any, arg1 error) *MockResourceClientGetAWSPropertiesByIdentifierCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockResourceClientGetAWSPropertiesByIdentifierCall) Do(f func(context.Context, string) (map[string]any, error)) *MockResourceClientGetAWSPropertiesByIdentifierCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockResourceClientGetAWSPropertiesByIdentifierCall) DoAndReturn(f func(context.Context, string) (map[string]any, error)) *MockResourceClientGetAWSPropertiesByIdentifierCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // GetProperties mocks base method.
 func (m *MockResourceClient) GetProperties(ctx context.Context, id string) (map[string]any, error) {
 	m.ctrl.T.Helper()

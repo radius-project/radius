@@ -21,9 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/radius-project/radius/pkg/authz"
-	"github.com/radius-project/radius/pkg/authz/records"
-	"github.com/radius-project/radius/pkg/authz/rpcheck"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -31,6 +28,9 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
+	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/records"
+	"github.com/radius-project/radius/pkg/authz/rpcheck"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/queue"
@@ -370,6 +370,12 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 }
 
 func extractError(err error) v1.ErrorDetails {
+	// An enforced authorization denial reports its code and public message, never the wrapped error.
+	if denied, ok := errors.AsType[*authz.DeniedError](err); ok {
+		if body, convErr := denied.ErrorResponse(); convErr == nil {
+			return *body.Error
+		}
+	}
 	if clientErr, ok := err.(*v1.ErrClientRP); ok {
 		return v1.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}
 	} else {

@@ -17,12 +17,14 @@
 # ------------------------------------------------------------
 
 # ============================================================================
-# Impersonates a compromised Radius component: copies the component's mTLS
-# certificate, key, and CA from its Secret into the rogue pod and runs rogue-client
-# with them.
+# Impersonates a compromised Radius component: requests a ServiceAccount token
+# for the component's ServiceAccount with the receiver as the audience (as the
+# kubelet does for projected token volumes), and runs rogue-client with it as a
+# bearer token. The public Radius CA is copied into the rogue pod to verify the
+# server.
 #
-# Exit codes: 0 HTTP response, 1 transport failure, 2 usage error, 3 the Secret does
-# not exist or is incomplete.
+# Exit codes: 0 HTTP response, 1 transport failure, 2 usage error, 3 the
+# ServiceAccount or the radius-ca Secret does not exist.
 # ============================================================================
 
 set -euo pipefail
@@ -30,16 +32,15 @@ set -euo pipefail
 # shellcheck source=hack/authz/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-readonly SECRET_KEYS=(tls.crt tls.key ca.crt)
-
 usage() {
     cat <<EOF
-Usage: $(basename "$0") [-n NAMESPACE] COMPONENT -- REQUEST_ARGS...
+Usage: $(basename "$0") [-n NAMESPACE] [-r RECEIVER] COMPONENT -- REQUEST_ARGS...
 
-Runs /rogue-client request presenting COMPONENT's mTLS certificate, to act
-as a compromised component. The certificate, key, and CA are copied from the
-Secret "${AUTHZ_COMPONENT_SECRET_FORMAT//%s/COMPONENT}" in ${AUTHZ_RADIUS_NAMESPACE} into the
-pod and passed as --cert, --key, and --cacert before REQUEST_ARGS.
+Runs /rogue-client request with a 10-minute ServiceAccount token for COMPONENT,
+to act as a compromised component. The token is requested with
+'kubectl create token COMPONENT --audience RECEIVER' in ${AUTHZ_RADIUS_NAMESPACE} and sent
+as 'Authorization: Bearer ...'. The server is verified with the public Radius CA
+from the radius-ca Secret. --cacert and -H are passed before REQUEST_ARGS.
 Use rogue.sh --help for request flags, output format, and exit codes.
 All flags must precede the URL.
 
@@ -48,23 +49,20 @@ Components: ${AUTHZ_KNOWN_COMPONENTS[*]}
 Options:
   -n, --namespace NAME  Namespace of the rogue pod (default: ${AUTHZ_ROGUE_NAMESPACE},
                         env: AUTHZ_ROGUE_NAMESPACE).
+  -r, --receiver NAME   Token audience (default: the first DNS label of the URL host).
   -h, --help            Show this help.
 
 Environment:
-  AUTHZ_COMPONENT_SECRET_FORMAT  Secret name format, %s is the component
-                                 (default: ${AUTHZ_COMPONENT_SECRET_FORMAT}).
-  AUTHZ_KUBE_CONTEXT             kubeconfig context (default: ${AUTHZ_KUBE_CONTEXT}).
+  AUTHZ_KUBE_CONTEXT    kubeconfig context (default: ${AUTHZ_KUBE_CONTEXT}).
 
 Example:
   $(basename "$0") dynamic-rp -- \\
     'https://applications-rp.radius-system.svc:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
-
-Component certificates are added in Stack A. Until then this reports which
-Secret is missing and exits 3.
 EOF
 }
 
 COMPONENT=""
+RECEIVER=""
 REQUEST_ARGS=()
 
 while [[ $# -gt 0 ]]; do
@@ -72,6 +70,11 @@ while [[ $# -gt 0 ]]; do
         -n | --namespace)
             [[ $# -ge 2 ]] || authz_die "$1 requires a value"
             AUTHZ_ROGUE_NAMESPACE="$2"
+            shift 2
+            ;;
+        -r | --receiver)
+            [[ $# -ge 2 ]] || authz_die "$1 requires a value"
+            RECEIVER="$2"
             shift 2
             ;;
         -h | --help)
@@ -100,69 +103,53 @@ done
     authz_die "a component is required"
 }
 ((${#REQUEST_ARGS[@]} > 0)) || authz_die "no request arguments given after --"
+[[ "${COMPONENT}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] ||
+    authz_die "invalid component name '${COMPONENT}': expected a name such as ${AUTHZ_KNOWN_COMPONENTS[*]}"
 
-SECRET_NAME="$(authz_component_secret_name "${COMPONENT}")" || exit 2
-readonly SECRET_NAME
-readonly CERT_DIR="${AUTHZ_ROGUE_WORKDIR}/${COMPONENT}"
+if [[ -z "${RECEIVER}" ]]; then
+    url="${REQUEST_ARGS[${#REQUEST_ARGS[@]} - 1]}"
+    host="${url#*://}"
+    host="${host%%[:/?]*}"
+    RECEIVER="${host%%.*}"
+fi
+[[ "${RECEIVER}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] ||
+    authz_die "could not infer the receiver from the URL; pass --receiver"
+readonly COMPONENT RECEIVER
+readonly CA_DIR="${AUTHZ_ROGUE_WORKDIR}/radius-ca"
 
 authz_require_tools kubectl
 
-secret_missing() {
-    cat >&2 <<EOF
-Component certificate Secret not found: ${AUTHZ_RADIUS_NAMESPACE}/${SECRET_NAME}
-$1
-
-as-component.sh expects a Secret named "${SECRET_NAME}" in ${AUTHZ_RADIUS_NAMESPACE} with
-the keys ${SECRET_KEYS[*]}. Per-component mTLS certificates are added in
-Stack A of the internal component authorization design, so this Secret does
-not exist on earlier builds. If Stack A uses different Secret names, set
-AUTHZ_COMPONENT_SECRET_FORMAT (currently "${AUTHZ_COMPONENT_SECRET_FORMAT}", %s is the
-component name).
-EOF
+missing() {
+    echo "$1" >&2
     exit 3
 }
 
-secret="$(authz_kubectl get secret "${SECRET_NAME}" \
+account="$(authz_kubectl get serviceaccount "${COMPONENT}" \
     --namespace "${AUTHZ_RADIUS_NAMESPACE}" --ignore-not-found --output name)"
-if [[ -z "${secret}" ]]; then
-    secret_missing "The Secret does not exist."
-fi
-
-for key in "${SECRET_KEYS[@]}"; do
-    value="$(authz_kubectl get secret "${SECRET_NAME}" \
-        --namespace "${AUTHZ_RADIUS_NAMESPACE}" \
-        --output "jsonpath={.data.${key//./\\.}}")"
-    [[ -n "${value}" ]] || secret_missing "The Secret has no '${key}' key."
-done
+[[ -n "${account}" ]] || missing "ServiceAccount not found: ${AUTHZ_RADIUS_NAMESPACE}/${COMPONENT}"
+ca_secret="$(authz_kubectl get secret radius-ca \
+    --namespace "${AUTHZ_RADIUS_NAMESPACE}" --ignore-not-found --output name)"
+[[ -n "${ca_secret}" ]] ||
+    missing "Secret not found: ${AUTHZ_RADIUS_NAMESPACE}/radius-ca (is internal authorization off?)"
 
 authz_ensure_rogue_pod
 
-# Writes stdin to a temporary file and keeps it only if it is a complete PEM
-# block, because kubectl exec can drop stdin data.
+# Keeps the CA only if it is a complete PEM block, because kubectl exec can drop stdin data.
 # shellcheck disable=SC2016 # Expanded by sh in the pod.
-readonly WRITE_KEY_SCRIPT='umask 077 && mkdir -p "$1" && base64 -d >"$1/$2.tmp" && grep -q -- "-----END" "$1/$2.tmp" && mv "$1/$2.tmp" "$1/$2"'
-
-copy_key() {
-    authz_kubectl get secret "${SECRET_NAME}" \
-        --namespace "${AUTHZ_RADIUS_NAMESPACE}" \
-        --output "jsonpath={.data.${1//./\\.}}" |
+readonly WRITE_CA_SCRIPT='mkdir -p "$1" && base64 -d >"$1/ca.crt.tmp" && grep -q -- "-----END" "$1/ca.crt.tmp" && mv "$1/ca.crt.tmp" "$1/ca.crt"'
+for attempt in 1 2 3; do
+    authz_kubectl get secret radius-ca --namespace "${AUTHZ_RADIUS_NAMESPACE}" \
+        --output 'jsonpath={.data.ca\.crt}' |
         authz_kubectl exec --stdin "${AUTHZ_ROGUE_POD}" \
             --namespace "${AUTHZ_ROGUE_NAMESPACE}" \
             --container "${AUTHZ_ROGUE_OPENSSL_CONTAINER}" -- \
-            sh -c "${WRITE_KEY_SCRIPT}" sh "${CERT_DIR}" "$1"
-}
-
-# The data stays base64-encoded until it is inside the pod, so the private key
-# is never written to the local disk.
-for key in "${SECRET_KEYS[@]}"; do
-    for attempt in 1 2 3; do
-        copy_key "${key}" && break
-        ((attempt < 3)) || authz_die "could not copy ${key} into the rogue pod"
-        echo "Retrying copy of ${key} into the rogue pod" >&2
-    done
+            sh -c "${WRITE_CA_SCRIPT}" sh "${CA_DIR}" && break
+    ((attempt < 3)) || authz_die "could not copy the Radius CA into the rogue pod"
 done
 
-echo "Calling as ${COMPONENT} with ${AUTHZ_RADIUS_NAMESPACE}/${SECRET_NAME}" >&2
-authz_rogue_request --cert "${CERT_DIR}/tls.crt" \
-    --key "${CERT_DIR}/tls.key" \
-    --cacert "${CERT_DIR}/ca.crt" "${REQUEST_ARGS[@]}"
+token="$(authz_kubectl create token "${COMPONENT}" \
+    --namespace "${AUTHZ_RADIUS_NAMESPACE}" --audience "${RECEIVER}" --duration 10m)"
+
+echo "Calling ${RECEIVER} as ${COMPONENT} with a ServiceAccount token" >&2
+authz_rogue_request --cacert "${CA_DIR}/ca.crt" \
+    -H "Authorization: Bearer ${token}" "${REQUEST_ARGS[@]}"

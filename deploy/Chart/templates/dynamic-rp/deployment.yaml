@@ -26,7 +26,7 @@ spec:
         azure.workload.identity/use: "true"
         {{- end }}
       annotations:
-        checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        checksum/authz-config: {{ include "radius.authz.configChecksum" . }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
@@ -254,7 +254,9 @@ spec:
         volumeMounts:
         - name: config-volume
           mountPath: /etc/config
-        {{- with include "radius.authz.mtls.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.spiffe.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.caBundle.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.tokens.volumeMounts" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
           mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
@@ -366,7 +368,9 @@ spec:
         - name: config-volume
           configMap:
             name: dynamic-rp-config
-        {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "dynamic-rp") | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.caBundle.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if eq .Values.global.aws.irsa.enabled true }}
         - name: aws-iam-token
           projected:

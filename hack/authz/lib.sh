@@ -37,11 +37,6 @@ AUTHZ_REGISTRY_NAME="${AUTHZ_REGISTRY_NAME:-radius-authz-registry}"
 AUTHZ_REGISTRY_PORT="${AUTHZ_REGISTRY_PORT:-5001}"
 AUTHZ_ROGUE_NAMESPACE="${AUTHZ_ROGUE_NAMESPACE:-default}"
 
-# Name of the Secret in AUTHZ_RADIUS_NAMESPACE that holds a component's mTLS
-# certificate (tls.crt, tls.key, ca.crt). "%s" is replaced by the component
-# name. Stack A creates these Secrets and sets the final naming here.
-AUTHZ_COMPONENT_SECRET_FORMAT="${AUTHZ_COMPONENT_SECRET_FORMAT:-%s-mtls}"
-
 # Label that up.sh sets on AUTHZ_RADIUS_NAMESPACE to record the installed mode.
 AUTHZ_KIT_MODE_LABEL="authz-kit.radius.dev/mode"
 
@@ -141,21 +136,6 @@ authz_would_deny_mode_args() {
     if [[ "${1:-}" == "dryRun" ]]; then
         echo "--require-dry-run"
     fi
-}
-
-# Prints the name of the Secret expected to hold a component's certificate.
-authz_component_secret_name() {
-    local component="${1:-}"
-    if [[ ! "${component}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
-        echo "error: invalid component name '${component}': expected a name such as ${AUTHZ_KNOWN_COMPONENTS[*]}" >&2
-        return 2
-    fi
-    if [[ "${AUTHZ_COMPONENT_SECRET_FORMAT}" != *%s* ]]; then
-        echo "error: AUTHZ_COMPONENT_SECRET_FORMAT must contain %s, got '${AUTHZ_COMPONENT_SECRET_FORMAT}'" >&2
-        return 2
-    fi
-    # shellcheck disable=SC2059 # The format string is the configurable Secret naming.
-    printf "${AUTHZ_COMPONENT_SECRET_FORMAT}\n" "${component}"
 }
 
 # Creates the rogue pod if it does not exist and waits for it to be ready.

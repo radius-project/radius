@@ -1,15 +1,14 @@
 suite: test authorization config checksum annotations
 templates:
   - ucp/deployment.yaml
-  - rp/deployment.yaml
   - dynamic-rp/deployment.yaml
   - controller/deployment.yaml
 release:
   name: radius
   namespace: radius-system
 tests:
-  # The checksum restarts pods when helm upgrade changes the authorization mode,
-  # because services read the mode only at startup.
+  # The checksum restarts pods when helm upgrade changes the authorization settings,
+  # because services read them only at startup.
   - it: hashes the off mode by default
     asserts:
       - equal:
@@ -30,7 +29,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 04efa603c0a9195b8f56aaa4fcc58a0d49683206b5ab4d65e147c10ccae9bd63
+          value: 0f8c7a4a6b4c8e25ace89f7c1cc3cce1e2719d395817a105aa707b09eb04db9a
 
   - it: hashes the enforce mode
     set:
@@ -38,7 +37,33 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: c1f1005e99318bf634290d9d518d9bf9ba14bf9a46eaa78abfbc9f99647ca2d9
+          value: f7304319abefef0eb7fb6683a459adad35842d54d74214b4545e79c1d3a54f53
+
+  - it: changes the checksum when the trust domain changes
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: acb386946495776c937ece5e4137495e6db709487f8eed7e630d1137c17a266a
+
+  - it: changes the checksum when the CSI driver name changes
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.csiDriverName: spiffe.example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: a50416d2b5d2a647503faadadac3fca894cb24215f8572566728d2602b772fc7
+
+  - it: ignores the trust domain when authorization is off
+    set:
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
 
   - it: annotates the pod template when prometheus and buildkit are disabled
     set:

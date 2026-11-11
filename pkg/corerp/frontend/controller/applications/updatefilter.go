@@ -33,8 +33,6 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 const (
@@ -126,6 +124,18 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is an invalid namespace name: %s. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.", kubeNamespace, msg)), nil
 	}
 
+	namespaceClient, err := kubeutil.DeploymentTargetRuntimeClient(opt.KubeClient)
+	if err != nil {
+		return nil, err
+	}
+	authorization, err := kubeutil.DeploymentTargetAuthorization(ctx, opt.Authorization, opt.KubeClient, namespaceClient, kubeNamespace)
+	if err != nil {
+		return nil, err
+	}
+	if err := authorization.AdmitNamespace(ctx, serviceCtx.ResourceID.Type()+"/write", serviceCtx.ResourceID.String(), kubeNamespace); err != nil {
+		return nil, err
+	}
+
 	if oldResource != nil {
 		c := oldResource.Properties.Status.Compute
 		if c != nil && c.Kind == rpv1.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
@@ -145,21 +155,16 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 	// target cluster — so the namespace exists where recipe/output resources land,
 	// and the control-plane cluster is not populated with per-application namespaces.
 	// TODO: Move it to backend controller - https://github.com/radius-project/radius/issues/4742
-	namespaceClient, err := kubeutil.DeploymentTargetRuntimeClient(opt.KubeClient)
+	created, added, err := kubeutil.CreateNamespace(ctx, namespaceClient, kubeNamespace, authorization)
 	if err != nil {
 		return nil, err
-	}
-
-	err = namespaceClient.Create(ctx, &corev1.Namespace{Name: kubeNamespace})
-	if apierrors.IsAlreadyExists(err) {
-		logger.Info("Using existing namespace", "namespace", kubeNamespace)
-	} else if err != nil {
-		return nil, err
-	} else {
+	} else if created {
 		logger.Info("Created the namespace", "namespace", kubeNamespace)
+	} else {
+		logger.Info("Using existing namespace", "namespace", kubeNamespace)
 	}
-	if err := kubeutil.ApplyPodSecurityLabels(ctx, namespaceClient, kubeNamespace); err != nil {
-		return nil, err
+	if len(added) > 0 {
+		logger.Info("Added Pod Security labels to the namespace", "namespace", kubeNamespace, "labels", added)
 	}
 
 	return nil, nil

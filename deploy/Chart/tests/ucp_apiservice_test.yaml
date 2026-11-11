@@ -1,0 +1,143 @@
+suite: test UCP aggregated API certificate
+templates:
+  - ucp/apiservice.yaml
+  - ucp/deployment.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: generates the ucp-cert Secret and caBundle when authorization is off
+    template: ucp/apiservice.yaml
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: Secret
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: ucp-cert
+        documentIndex: 0
+      - isKind:
+          of: APIService
+        documentIndex: 1
+      - isNotNullOrEmpty:
+          path: spec.caBundle
+        documentIndex: 1
+      - notExists:
+          path: metadata.annotations
+        documentIndex: 1
+
+  - it: mounts the ucp-cert Secret when authorization is off
+    template: ucp/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: cert
+            secret:
+              secretName: ucp-cert
+
+  - it: issues ucp-cert from the API server issuer in dryRun
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - isKind:
+          of: Certificate
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: ucp-cert
+        documentIndex: 0
+      - equal:
+          path: spec.issuerRef
+          value:
+            group: cert-manager.io
+            kind: Issuer
+            name: radius-apiserver-issuer
+        documentIndex: 0
+
+  - it: issues ucp-cert from the API server issuer in enforce
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - isKind:
+          of: Certificate
+        documentIndex: 0
+      - equal:
+          path: metadata.namespace
+          value: radius-system
+        documentIndex: 0
+      - equal:
+          path: spec.secretName
+          value: ucp-apiserver-tls
+        documentIndex: 0
+      - equal:
+          path: spec.dnsNames
+          value: [ucp.radius-system.svc]
+        documentIndex: 0
+      - equal:
+          path: spec.usages
+          value:
+            - digital signature
+            - server auth
+        documentIndex: 0
+      - equal:
+          path: spec.privateKey
+          value:
+            algorithm: ECDSA
+            size: 256
+            rotationPolicy: Always
+        documentIndex: 0
+      - equal:
+          path: spec.issuerRef.name
+          value: radius-apiserver-issuer
+        documentIndex: 0
+
+  - it: injects the API server CA into the APIService instead of a caBundle
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - isKind:
+          of: APIService
+        documentIndex: 1
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+          value: radius-system/ucp-cert
+        documentIndex: 1
+      - notExists:
+          path: spec.caBundle
+        documentIndex: 1
+
+  - it: uses the release namespace for the certificate, SAN, and injection
+    template: ucp/apiservice.yaml
+    release:
+      namespace: custom-ns
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - equal:
+          path: spec.dnsNames
+          value: [ucp.custom-ns.svc]
+        documentIndex: 0
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+          value: custom-ns/ucp-cert
+        documentIndex: 1
+
+  - it: mounts the cert-manager Secret when authorization is on
+    template: ucp/deployment.yaml
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: cert
+            secret:
+              secretName: ucp-apiserver-tls

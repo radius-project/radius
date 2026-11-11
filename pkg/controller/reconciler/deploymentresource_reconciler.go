@@ -19,7 +19,6 @@ package reconciler
 import (
 	"context"
 	"fmt"
-	"github.com/radius-project/radius/pkg/authz/records"
 	"strings"
 	"time"
 
@@ -32,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/go-logr/logr"
+	"github.com/radius-project/radius/pkg/authz/records"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"

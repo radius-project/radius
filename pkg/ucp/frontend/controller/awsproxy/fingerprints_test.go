@@ -967,17 +967,13 @@ func Test_WriteOnly_UpdateOutcomeUnknown(t *testing.T) {
 	}
 }
 
-// Test_WriteOnly_TombstoneHasNoFingerprints checks that a tombstone keeps no fingerprints or pending fingerprints,
-// after a finished delete and after a failed create, and that deploying the alias again starts over: the write-only
-// values are sent with the create and fingerprinted again.
-func Test_WriteOnly_TombstoneHasNoFingerprints(t *testing.T) {
-	requireTombstone := func(t *testing.T, h *harness) {
+// Test_WriteOnly_RemovedRecordStartsOver checks that a finished delete and a failed create remove the record, with its
+// fingerprints, and that deploying the alias again starts over: the write-only values are sent with the create and
+// fingerprinted again.
+func Test_WriteOnly_RemovedRecordStartsOver(t *testing.T) {
+	requireRemoved := func(t *testing.T, h *harness) {
 		t.Helper()
-		rec := h.record(dbPath)
-		require.True(t, records.IsDeleted(rec))
-		require.Nil(t, rec.Properties.Fingerprints)
-		require.Nil(t, rec.Properties.PendingFingerprints)
-		require.NotContains(t, h.rawRecord(dbPath), "fingerprints")
+		require.Nil(t, h.record(dbPath))
 	}
 	requireStartsOver := func(t *testing.T, h *harness) {
 		t.Helper()
@@ -996,7 +992,7 @@ func Test_WriteOnly_TombstoneHasNoFingerprints(t *testing.T) {
 		require.NotNil(t, h.record(dbPath).Properties.Fingerprints)
 		require.Equal(t, http.StatusAccepted, h.delete(dbPath, testOwner).status)
 		h.finish()
-		requireTombstone(t, h)
+		requireRemoved(t, h)
 		requireStartsOver(t, h)
 	})
 
@@ -1006,7 +1002,7 @@ func Test_WriteOnly_TombstoneHasNoFingerprints(t *testing.T) {
 		require.Equal(t, http.StatusCreated, h.put(dbPath, dbProperties(password)).status)
 		require.NotNil(t, h.record(dbPath).Properties.PendingFingerprints)
 		h.finish()
-		requireTombstone(t, h)
+		requireRemoved(t, h)
 		requireStartsOver(t, h)
 	})
 
@@ -1015,7 +1011,7 @@ func Test_WriteOnly_TombstoneHasNoFingerprints(t *testing.T) {
 		h.cc.Errors["CreateResource"] = awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient})
 		require.Equal(t, http.StatusBadRequest, h.put(dbPath, dbProperties(password)).status)
 		delete(h.cc.Errors, "CreateResource")
-		requireTombstone(t, h)
+		requireRemoved(t, h)
 		requireStartsOver(t, h)
 	})
 }

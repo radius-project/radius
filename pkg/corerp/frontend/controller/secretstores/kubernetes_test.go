@@ -436,7 +436,7 @@ func TestUpsertSecret(t *testing.T) {
 
 		opt := &controller.Options{
 			DatabaseClient: sc,
-			KubeClient:     k8sutil.NewFakeKubeClient(nil),
+			KubeClient:     newSecretClient(),
 		}
 
 		_, err := ValidateAndMutateRequest(t.Context(), newResource, nil, opt)
@@ -462,6 +462,8 @@ func TestUpsertSecret(t *testing.T) {
 				resources_kubernetes.KindSecret,
 				"app0-ns",
 				"secret0"),
+			RadiusManaged:        new(true),
+			AdditionalProperties: map[string]string{secretUIDProperty: string(ksecret.UID)},
 		}, newResource.Properties.Status.OutputResources[0])
 	})
 
@@ -482,7 +484,7 @@ func TestUpsertSecret(t *testing.T) {
 
 		opt := &controller.Options{
 			DatabaseClient: sc,
-			KubeClient:     k8sutil.NewFakeKubeClient(nil),
+			KubeClient:     newSecretClient(),
 		}
 
 		_, err := ValidateAndMutateRequest(t.Context(), newResource, nil, opt)
@@ -511,7 +513,7 @@ func TestUpsertSecret(t *testing.T) {
 
 		opt := &controller.Options{
 			DatabaseClient: sc,
-			KubeClient:     k8sutil.NewFakeKubeClient(nil),
+			KubeClient:     newSecretClient(),
 		}
 
 		_, err := ValidateAndMutateRequest(t.Context(), newResource, nil, opt)
@@ -532,7 +534,7 @@ func TestUpsertSecret(t *testing.T) {
 
 		opt := &controller.Options{
 			DatabaseClient: sc,
-			KubeClient:     k8sutil.NewFakeKubeClient(nil),
+			KubeClient:     newSecretClient(),
 		}
 
 		_, err := ValidateAndMutateRequest(t.Context(), newResource, nil, opt)
@@ -558,6 +560,8 @@ func TestUpsertSecret(t *testing.T) {
 				resources_kubernetes.KindSecret,
 				"test-namespace",
 				"secret0"),
+			RadiusManaged:        new(true),
+			AdditionalProperties: map[string]string{secretUIDProperty: string(ksecret.UID)},
 		}, newResource.Properties.Status.OutputResources[0])
 	})
 
@@ -618,7 +622,7 @@ func TestUpsertSecret(t *testing.T) {
 		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileGenericValueEmptyResource)
 
 		opt := &controller.Options{
-			KubeClient: k8sutil.NewFakeKubeClient(nil),
+			KubeClient: newSecretClient(),
 		}
 
 		_, err := UpsertSecret(t.Context(), newResource, oldResource, opt)
@@ -632,10 +636,13 @@ func TestUpsertSecret(t *testing.T) {
 func TestDeleteSecret(t *testing.T) {
 	t.Run("delete secret created by Radius", func(t *testing.T) {
 		res := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
+		res.Properties.Status.OutputResources[0].RadiusManaged = new(true)
+		res.Properties.Status.OutputResources[0].AdditionalProperties = map[string]string{secretUIDProperty: testSecretUID}
 
 		ksecret := &corev1.Secret{
 			Name:      "letsencrypt-prod",
 			Namespace: "default",
+			UID:       testSecretUID,
 			Labels: map[string]string{
 				kubernetes.LabelRadiusResourceType: "test",
 			},
@@ -653,7 +660,7 @@ func TestDeleteSecret(t *testing.T) {
 		require.True(t, apierrors.IsNotFound(err))
 	})
 
-	t.Run("not delete secret unless secret resource has radius label", func(t *testing.T) {
+	t.Run("retain secret without ownership evidence", func(t *testing.T) {
 		res := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 
 		ksecret := &corev1.Secret{

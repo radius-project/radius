@@ -127,8 +127,9 @@ assert_calls_ordered() {
 }
 
 # A kubectl stub. Every call is appended to MOCK_CALLS.
-#   MOCK_SECRET_KEYS     space-separated keys of the component Secret, or
+#   MOCK_SECRET_KEYS     space-separated keys of the Secret, or
 #                        absent/timeout/forbidden/context for read errors.
+#   MOCK_SA_EXISTS       "false" returns no ServiceAccount.
 #   MOCK_CONTEXT_EXISTS  "false" makes "config view --context" fail.
 #   MOCK_POD_EXISTS      "false" returns no pod so the pod is created.
 #   MOCK_KIT_MODE        the namespace's kit mode label, empty for no label,
@@ -169,6 +170,14 @@ case "$1 $2" in
                 fi
             fi
         done
+        ;;
+    "get serviceaccount")
+        if [[ "${MOCK_SA_EXISTS:-true}" == "true" ]]; then
+            printf 'serviceaccount/%s\n' "$3"
+        fi
+        ;;
+    "create token")
+        echo "fake.sa.token"
         ;;
     "get pod")
         if [[ "${MOCK_POD_EXISTS:-true}" == "true" ]]; then
@@ -301,7 +310,7 @@ export MOCK_CALLS="${TEST_ROOT}/kubectl-calls.txt"
 export MOCK_MANIFEST="${TEST_ROOT}/rogue-pod.yaml"
 export MOCK_SECRET_KEYS="absent"
 export MOCK_CONTEXT_EXISTS="true"
-unset AUTHZ_COMPONENT_SECRET_FORMAT AUTHZ_KUBE_CONTEXT AUTHZ_CLUSTER_NAME \
+unset AUTHZ_KUBE_CONTEXT AUTHZ_CLUSTER_NAME \
     AUTHZ_RADIUS_NAMESPACE AUTHZ_ROGUE_NAMESPACE MOCK_KIT_MODE \
     MOCK_KUBECONFIG_PATH RAD AUTHZ_REGISTRY_NAME AUTHZ_REGISTRY_PORT \
     MOCK_INSTALL_STATUS MOCK_ARCHITECTURE MOCK_BUILD_STATUS \
@@ -365,28 +374,6 @@ run_lib authz_install_set_values dryRun "" authz-abc
 assert_status 2
 run_lib authz_install_set_values dryRun localhost:5001 ""
 assert_status 2
-
-echo "Test: component Secret names use the configurable format"
-run_lib authz_component_secret_name dynamic-rp
-assert_status 0
-assert_output "dynamic-rp-mtls"
-STATUS=0
-OUTPUT="$(AUTHZ_COMPONENT_SECRET_FORMAT="radius-%s-cert" bash -c \
-    'source "$1" && authz_component_secret_name ucp' _ "${KIT_DIR}/lib.sh" 2>&1)" || STATUS=$?
-assert_status 0
-assert_output "radius-ucp-cert"
-
-echo "Test: invalid component names and formats are rejected"
-for component in "" Bad_Name -ucp "ucp/../x"; do
-    run_lib authz_component_secret_name "${component}"
-    assert_status 2
-    assert_output_contains "invalid component name"
-done
-STATUS=0
-OUTPUT="$(AUTHZ_COMPONENT_SECRET_FORMAT="fixed-name" bash -c \
-    'source "$1" && authz_component_secret_name ucp' _ "${KIT_DIR}/lib.sh" 2>&1)" || STATUS=$?
-assert_status 2
-assert_output_contains "must contain %s"
 
 echo "Test: up.sh rejects unknown modes before touching the cluster"
 reset_calls
@@ -459,15 +446,20 @@ assert_output_contains "no request arguments"
 run_kit rogue.sh bogus
 assert_status 2
 
-echo "Test: as-component.sh names the missing Secret"
+echo "Test: as-component.sh names the missing ServiceAccount"
 reset_calls
-export MOCK_SECRET_KEYS="absent"
-run_kit as-component.sh dynamic-rp -- http://applications-rp.radius-system:5443/
+MOCK_SA_EXISTS=false MOCK_SECRET_KEYS="ca.crt" run_kit as-component.sh dynamic-rp -- http://applications-rp.radius-system:5443/
 assert_status 3
-assert_output_contains "Component certificate Secret not found: radius-system/dynamic-rp-mtls"
-assert_output_contains "AUTHZ_COMPONENT_SECRET_FORMAT"
-assert_output_contains "Stack A"
+assert_output_contains "ServiceAccount not found: radius-system/dynamic-rp"
+assert_calls_not_contain "create token"
 assert_calls_not_contain " exec "
+
+echo "Test: as-component.sh names the missing radius-ca Secret"
+reset_calls
+MOCK_SECRET_KEYS="absent" run_kit as-component.sh ucp -- http://x
+assert_status 3
+assert_output_contains "Secret not found: radius-system/radius-ca"
+assert_calls_not_contain "create token"
 
 echo "Test: as-component.sh preserves Secret read errors"
 for error in timeout forbidden context; do
@@ -476,38 +468,26 @@ for error in timeout forbidden context; do
     assert_status 1
     assert_output_contains "Error reading Secret: ${error}"
     assert_output_not_contains "Secret not found"
-    assert_output_not_contains "Stack A"
     assert_calls_not_contain "get pod"
     assert_calls_not_contain " exec "
 done
 
-echo "Test: as-component.sh uses AUTHZ_COMPONENT_SECRET_FORMAT"
+echo "Test: as-component.sh sends a token for the receiver inferred from the URL"
 reset_calls
-STATUS=0
-OUTPUT="$(AUTHZ_COMPONENT_SECRET_FORMAT="radius-%s-cert" PATH="${TEST_ROOT}/bin:${PATH}" \
-    bash "${KIT_DIR}/as-component.sh" ucp -- http://x 2>&1)" || STATUS=$?
-assert_status 3
-assert_output_contains "radius-system/radius-ucp-cert"
-
-echo "Test: as-component.sh reports a Secret without a CA"
-reset_calls
-export MOCK_SECRET_KEYS="tls.crt tls.key"
-run_kit as-component.sh ucp -- http://x
-assert_status 3
-assert_output_contains "The Secret has no 'ca.crt' key."
-assert_calls_not_contain " exec "
-
-echo "Test: as-component.sh streams through OpenSSL and puts cert flags before URL"
-reset_calls
-export MOCK_SECRET_KEYS="tls.crt tls.key ca.crt"
+export MOCK_SECRET_KEYS="ca.crt"
 run_kit as-component.sh ucp -- https://applications-rp.radius-system:5443/
 assert_status 0
-assert_output_contains "Calling as ucp with radius-system/ucp-mtls"
-assert_calls_contain "jsonpath={.data.tls\.key}"
-assert_calls_contain "sh /work/ucp tls.key"
+assert_output_contains "Calling applications-rp as ucp with a ServiceAccount token"
+assert_output_not_contains "fake.sa.token"
+assert_calls_contain "create token ucp --namespace radius-system --audience applications-rp --duration 10m"
 assert_calls_contain "--container openssl -- sh -c"
-assert_calls_not_contain "--container rogue -- sh"
-assert_calls_contain "--container rogue -- /rogue-client request --cert /work/ucp/tls.crt --key /work/ucp/tls.key --cacert /work/ucp/ca.crt https://applications-rp.radius-system:5443/"
+assert_calls_contain "--container rogue -- /rogue-client request --cacert /work/radius-ca/ca.crt -H Authorization: Bearer fake.sa.token https://applications-rp.radius-system:5443/"
+
+echo "Test: as-component.sh uses an explicit receiver"
+reset_calls
+run_kit as-component.sh --receiver ucp controller -- -X PUT https://10.0.0.1:9444/x
+assert_status 0
+assert_calls_contain "create token controller --namespace radius-system --audience ucp --duration 10m"
 export MOCK_SECRET_KEYS="absent"
 
 echo "Test: as-component.sh validates its arguments"

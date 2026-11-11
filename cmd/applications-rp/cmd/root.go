@@ -19,9 +19,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/radius-project/radius/pkg/authz/dataaccess"
-	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
-	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
@@ -39,10 +36,14 @@ import (
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
+	"github.com/radius-project/radius/pkg/authz/dataaccess"
+	"github.com/radius-project/radius/pkg/authz/rpcheck"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	corerp_setup "github.com/radius-project/radius/pkg/corerp/setup"
 	daprrp_setup "github.com/radius-project/radius/pkg/daprrp/setup"
 	dsrp_setup "github.com/radius-project/radius/pkg/datastoresrp/setup"
 	msgrp_setup "github.com/radius-project/radius/pkg/messagingrp/setup"
+	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 )
 
 const serviceName = "radius"
@@ -66,6 +67,7 @@ var rootCmd = &cobra.Command{
 
 		authz.LogMode(logger, options.Config.Authorization)
 		authz.SetProcessOptions(options.Config.Authorization)
+		rpcheck.SetSelf("applications-rp")
 		if err := routeWritesThroughUCP(&options.Config.UCP, options.Config.Authorization); err != nil {
 			return err
 		}

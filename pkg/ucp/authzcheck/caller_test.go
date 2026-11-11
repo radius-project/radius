@@ -28,7 +28,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/authz"
-	"github.com/radius-project/radius/pkg/authz/mtls"
 )
 
 type fakeFrontProxy struct{ err error }
@@ -109,7 +108,7 @@ func TestAuthenticator(t *testing.T) {
 				req.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{{}}}
 			}
 			if tc.identity != "" {
-				req = req.WithContext(mtls.WithIdentity(req.Context(), mtls.Identity{Component: tc.identity, Namespace: "radius-system"}))
+				req = req.WithContext(authz.WithIdentity(req.Context(), authz.Identity{Component: tc.identity, Namespace: "radius-system"}))
 			}
 
 			w := httptest.NewRecorder()

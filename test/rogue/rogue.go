@@ -17,7 +17,7 @@ limitations under the License.
 // Package rogue simulates a compromised workload or component inside the cluster for
 // authorization functional tests. It runs a pod from the rogue-client image (built from
 // ./cmd/rogue-client like magpiego and testrp) and calls internal Radius endpoints from it,
-// optionally presenting a TLS certificate from a mounted Secret.
+// optionally with a certificate, CA bundle, or ServiceAccount token from a mounted Secret.
 package rogue
 
 import (
@@ -84,9 +84,13 @@ type Options struct {
 	// Image overrides DefaultImage().
 	Image string
 
-	// TLSSecretName optionally names a kubernetes.io/tls Secret in Namespace to mount at
-	// TLSMountPath, so requests can present its certificate to act as a component.
+	// TLSSecretName optionally names a Secret in Namespace to mount at TLSMountPath, so
+	// requests can use its ca.crt, tls.crt, and tls.key, or its Radius CA bundle and token.
 	TLSSecretName string
+
+	// TLSSecretItems optionally maps Secret keys to paths under TLSMountPath. Empty mounts
+	// every key at its own name.
+	TLSSecretItems []corev1.KeyToPath
 }
 
 // Request is an HTTP request sent from the rogue pod.
@@ -105,6 +109,15 @@ type Request struct {
 
 	// Insecure skips server certificate verification.
 	Insecure bool
+
+	// Receiver sends the request with the Radius component client transport for this
+	// receiver, such as "applications-rp", instead of a plain HTTP client. The transport
+	// verifies the server against ca.crt from the mounted Secret and the receiver's SPIFFE ID,
+	// then sends the token at tokens/<Receiver>/token. ReceiverNamespace is the Radius
+	// namespace in the SPIFFE ID; TrustDomain defaults to the Radius default.
+	Receiver          string
+	ReceiverNamespace string
+	TrustDomain       string
 }
 
 // Response is the result of a Request.
@@ -250,11 +263,9 @@ func newPod(options Options) *corev1.Pod {
 	}
 
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: podNamePrefix,
-			Namespace:    options.Namespace,
-			Labels:       map[string]string{labelKey: labelValue},
-		},
+		GenerateName: podNamePrefix,
+		Namespace:    options.Namespace,
+		Labels:       map[string]string{labelKey: labelValue},
 		Spec: corev1.PodSpec{
 			RestartPolicy:                 corev1.RestartPolicyNever,
 			AutomountServiceAccountToken:  to.Ptr(false),
@@ -264,10 +275,8 @@ func newPod(options Options) *corev1.Pod {
 
 	if options.TLSSecretName != "" {
 		pod.Spec.Volumes = []corev1.Volume{{
-			Name: tlsVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: options.TLSSecretName},
-			},
+			Name:   tlsVolumeName,
+			Secret: &corev1.SecretVolumeSource{SecretName: options.TLSSecretName, Items: options.TLSSecretItems},
 		}}
 		container.VolumeMounts = []corev1.VolumeMount{{Name: tlsVolumeName, MountPath: TLSMountPath, ReadOnly: true}}
 	}
@@ -327,8 +336,14 @@ func clientArgs(req Request, hasTLS bool) ([]string, error) {
 	if req.URL == "" {
 		return nil, errors.New("rogue: URL is required")
 	}
-	if (req.ClientCert || req.CACert) && !hasTLS {
-		return nil, errors.New("rogue: ClientCert and CACert require Options.TLSSecretName")
+	if (req.ClientCert || req.CACert || req.Receiver != "") && !hasTLS {
+		return nil, errors.New("rogue: ClientCert, CACert, and Receiver require Options.TLSSecretName")
+	}
+	if req.Receiver != "" && (req.ClientCert || req.CACert || req.Insecure) {
+		return nil, errors.New("rogue: Receiver cannot be combined with ClientCert, CACert, or Insecure")
+	}
+	if req.Receiver != "" && req.ReceiverNamespace == "" {
+		return nil, errors.New("rogue: Receiver requires ReceiverNamespace")
 	}
 
 	method := req.Method
@@ -358,6 +373,12 @@ func clientArgs(req Request, hasTLS bool) ([]string, error) {
 	}
 	if req.Insecure {
 		args = append(args, "-k")
+	}
+	if req.Receiver != "" {
+		args = append(args, "--radius-receiver", req.Receiver, "--radius-dir", TLSMountPath, "--radius-namespace", req.ReceiverNamespace)
+		if req.TrustDomain != "" {
+			args = append(args, "--radius-trust-domain", req.TrustDomain)
+		}
 	}
 
 	return append(args, req.URL), nil

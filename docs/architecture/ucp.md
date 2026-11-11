@@ -66,7 +66,26 @@ simple proxying.
 
 AWS POST `/:get` reads accept a top-level `name`, which is used as the primary identifier, or, without `name`, the schema's primary identifier or a complete set of `additionalIdentifiers` in the properties. [Read identifier resolution](../../pkg/ucp/frontend/controller/awsproxy/readidentifier.go) sends only the selected secondary identifier set as JSON to Cloud Control `GetResource` and uses the primary identifier returned by AWS for the Radius resource address. It does not construct ARNs or require list permissions for a successful direct read. Only an explicit `UnsupportedActionException` enables paginated `ListResources` fallback, reading candidates whose list properties are incomplete. This compatibility fallback needs list permissions in addition to read permissions and passes request properties as `ResourceModel` for types that require parent scope. No match returns 404; multiple matching resources return 409 and require the caller to supply the primary identifier. Access, validation, and not-found errors from the direct read do not trigger listing. Primary-identifier reads, creates, updates, and deletes do not use this fallback.
 
-GET `.../<alias>` reads UCP's record of the alias, then reads AWS by the identifier in the record. With no record, it reads AWS by the URL's last segment for now, and returns 404 when AWS does not have the resource. That fallback is transitional, until the Deployment Engine deploys AWS resources by alias. Use POST `/:get` with `name` or named properties to read a resource Radius did not create. See [AWS resource records](../ucp/aws.md#resource-records-and-alias-ids).
+GET `.../<alias>` reads UCP's record of the alias, then reads AWS by the identifier in the record. It returns 404 when there is no record. Use POST `/:get` with `name` or named properties to read a resource Radius did not create. See [AWS resource records](../ucp/aws.md#resource-records-and-alias-ids).
+
+### Internal endpoint
+
+The Kubernetes APIService endpoint (Service port 443 to container port 9443)
+uses the `ucp-cert` certificate. With authorization off, the chart generates it.
+Otherwise cert-manager issues it from the namespaced `radius-apiserver-issuer`,
+whose `radius-apiserver-ca` is injected into the APIService `caBundle`. In the
+`selfSigned` certificate mode, the only mode supported today, this CA is
+separate from the `radius-ca` that signs component server certificates. The Kubernetes API server trusts that CA for UCP, so the
+`radius-certificate-issuance` ValidatingAdmissionPolicy lets only the
+cert-manager controller request certificates from `radius-apiserver-issuer`.
+UCP reloads it without a restart. When
+the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
+on a separate internal port, 9444 (Service port name `internal`, config
+`server.internalPort`), for traffic from other Radius components. That endpoint
+uses `mtls.ListenAndServe` with UCP's csi-driver-spiffe certificate, requires a
+ServiceAccount token with audience `ucp`, accepts any Radius component identity,
+and reloads certificates without a restart. See
+[Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization).
 
 ## Invariants And Constraints
 

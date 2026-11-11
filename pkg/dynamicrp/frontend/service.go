@@ -19,13 +19,13 @@ package frontend
 import (
 	"context"
 	"fmt"
-	"github.com/radius-project/radius/pkg/authz/rpcheck"
 	"net"
 	"net/http"
 
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/servicecontext"
 	"github.com/radius-project/radius/pkg/authz/mtls"
+	"github.com/radius-project/radius/pkg/authz/rpcheck"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/crypto/encryption"
 	"github.com/radius-project/radius/pkg/dynamicrp"
@@ -142,7 +142,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	logger.Info(fmt.Sprintf("listening on: '%s'...", server.Addr))
 	// Only UCP routes requests to dynamic-rp.
-	err = mtls.ListenAndServe(ctx, server, s.options.Config.Authorization, []string{"ucp"})
+	err = mtls.ListenAndServe(ctx, server, s.options.Config.Authorization, mtls.Receiver{Name: "dynamic-rp", AllowedCallers: []string{"ucp"}})
 	if err == http.ErrServerClosed {
 		// We expect this, safe to ignore.
 		logger.Info("Server stopped...")

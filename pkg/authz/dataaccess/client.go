@@ -41,7 +41,7 @@ type Client struct {
 	// Endpoint is the UCP base URL, including the path base.
 	Endpoint string
 
-	// HTTP sends requests to UCP. Its transport presents this component's certificate
+	// HTTP sends requests to UCP. Its transport sends this component's ServiceAccount token
 	// and adds the record and operation headers from the request context.
 	HTTP *http.Client
 }

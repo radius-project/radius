@@ -229,8 +229,8 @@ print_next_steps() {
 
 Radius is installed on ${AUTHZ_KUBE_CONTEXT} in authz mode ${MODE}. Next steps:
 
-  # Call applications-rp from a workload with no client certificate.
-  # In enforce mode the TLS handshake fails with "certificate required".
+  # Call applications-rp from a workload with no ServiceAccount token.
+  # In enforce mode it returns 401 InvalidAuthenticationInfo.
   hack/authz/rogue.sh exec -- -k \\
     'https://applications-rp.${AUTHZ_RADIUS_NAMESPACE}:5443/planes/radius/local/providers/Applications.Core/operations?api-version=2023-10-01-preview'
 
