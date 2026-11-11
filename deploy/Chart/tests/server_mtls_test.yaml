@@ -70,17 +70,71 @@ tests:
             name: mtls
           any: true
         template: dynamic-rp/deployment.yaml
+      # csi-driver-spiffe writes no ca.crt, so every server mounts only ca.crt from radius-ca.
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: radius-ca
+            secret:
+              secretName: radius-ca
+              items:
+                - key: ca.crt
+                  path: ca.crt
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: radius-ca
+            mountPath: /var/run/radius/ca
+            readOnly: true
+        template: ucp/deployment.yaml
+      # csi-driver-spiffe writes no ca.crt, so every server mounts only ca.crt from radius-ca.
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: radius-ca
+            secret:
+              secretName: radius-ca
+              items:
+                - key: ca.crt
+                  path: ca.crt
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: radius-ca
+            mountPath: /var/run/radius/ca
+            readOnly: true
+        template: rp/deployment.yaml
+      # csi-driver-spiffe writes no ca.crt, so every server mounts only ca.crt from radius-ca.
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: radius-ca
+            secret:
+              secretName: radius-ca
+              items:
+                - key: ca.crt
+                  path: ca.crt
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: radius-ca
+            mountPath: /var/run/radius/ca
+            readOnly: true
+        template: dynamic-rp/deployment.yaml
       - matchRegex:
           path: data["ucp-config.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/spiffe"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/spiffe"\n  caDirectory: "/var/run/radius/ca"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
         template: ucp/configmaps.yaml
       - matchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "\w+"\n  podSecurityLevel: "baseline"\n  controlPlaneNamespace: "radius-system"\n  controlPlaneSecrets: \["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","root-ca-cert","target-kubeconfig"\]\n  certificateDirectory: "/var/run/radius/spiffe"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  podSecurityLevel: "baseline"\n  controlPlaneNamespace: "radius-system"\n  controlPlaneSecrets: \["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","root-ca-cert","target-kubeconfig"\]\n  certificateDirectory: "/var/run/radius/spiffe"\n  caDirectory: "/var/run/radius/ca"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
         template: rp/configmaps.yaml
       - matchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/spiffe"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/spiffe"\n  caDirectory: "/var/run/radius/ca"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
         template: dynamic-rp/configmaps.yaml
       - matchRegex:
           path: data["ucp-config.yaml"]
