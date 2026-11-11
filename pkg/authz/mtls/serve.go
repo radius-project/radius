@@ -165,7 +165,7 @@ func newServerAuth(options authz.Options, receiver Receiver, config serveConfig)
 		return nil, nil, errors.New("receiver name is required")
 	}
 
-	source, err := NewSource(options.CertificateDirectory)
+	source, err := NewSourceWithCA(options.CertificateDirectory, options.EffectiveCADirectory())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load server certificate: %w", err)
 	}
