@@ -32,6 +32,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
+	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/kubeutil"
@@ -265,6 +267,107 @@ func Test_admitOutputResources_ReportsMostSpecificRule(t *testing.T) {
 		require.Equal(t, 1, wouldDeny.Len())
 		require.Equal(t, 1, wouldDeny.FilterField(zap.String(authz.LogFieldRule, authz.RuleControlPlaneSecret)).Len())
 	})
+}
+
+func httpProxyWith(namespace string, mutate func(*contourv1.HTTPProxySpec)) *contourv1.HTTPProxy {
+	proxy := &contourv1.HTTPProxy{
+		TypeMeta:   metav1.TypeMeta{APIVersion: contourv1.SchemeGroupVersion.String(), Kind: "HTTPProxy"},
+		ObjectMeta: metav1.ObjectMeta{Name: "gateway", Namespace: namespace},
+		Spec:       contourv1.HTTPProxySpec{VirtualHost: &contourv1.VirtualHost{Fqdn: "app.example.com"}},
+	}
+	mutate(&proxy.Spec)
+	return proxy
+}
+
+func tlsSecret(secretName string) func(*contourv1.HTTPProxySpec) {
+	return func(spec *contourv1.HTTPProxySpec) {
+		spec.VirtualHost.TLS = &contourv1.TLS{SecretName: secretName}
+	}
+}
+
+// Test_admitOutputResources_HTTPProxySecretReferences covers gateway outputs that live in the
+// application namespace but name a Secret in another namespace, which Contour resolves.
+func Test_admitOutputResources_HTTPProxySecretReferences(t *testing.T) {
+	id := resources.MustParse("/planes/radius/local/resourceGroups/rg/providers/Applications.Core/gateways/gw")
+	tests := []struct {
+		name  string
+		proxy *contourv1.HTTPProxy
+		rule  string
+	}{
+		{name: "tls control-plane secret", proxy: httpProxyWith("app", tlsSecret("radius-system/ucp-cert")), rule: authz.RuleControlPlaneSecret},
+		{name: "tls other control-plane namespace secret", proxy: httpProxyWith("app", tlsSecret("radius-system/app-cert")), rule: authz.RuleControlPlaneNamespace},
+		{name: "client validation control-plane secret", proxy: httpProxyWith("app", func(spec *contourv1.HTTPProxySpec) {
+			spec.VirtualHost.TLS = &contourv1.TLS{SecretName: "app/cert", ClientValidation: &contourv1.DownstreamValidation{CACertificate: "radius-system/ucp-cert"}}
+		}), rule: authz.RuleControlPlaneSecret},
+		{name: "client CRL control-plane secret", proxy: httpProxyWith("app", func(spec *contourv1.HTTPProxySpec) {
+			spec.VirtualHost.TLS = &contourv1.TLS{SecretName: "app/cert", ClientValidation: &contourv1.DownstreamValidation{CACertificate: "ca", CertificateRevocationList: "radius-system/ucp-cert"}}
+		}), rule: authz.RuleControlPlaneSecret},
+		{name: "upstream validation control-plane secret", proxy: httpProxyWith("app", func(spec *contourv1.HTTPProxySpec) {
+			spec.Routes = []contourv1.Route{{Services: []contourv1.Service{{Name: "web", Port: 443, UpstreamValidation: &contourv1.UpstreamValidation{CACertificate: "radius-system/ucp-cert", SubjectName: "web"}}}}}
+		}), rule: authz.RuleControlPlaneSecret},
+		{name: "tcp proxy upstream validation control-plane secret", proxy: httpProxyWith("app", func(spec *contourv1.HTTPProxySpec) {
+			spec.TCPProxy = &contourv1.TCPProxy{Services: []contourv1.Service{{Name: "web", Port: 443, UpstreamValidation: &contourv1.UpstreamValidation{CACertificate: "radius-system/ucp-cert", SubjectName: "web"}}}}
+		}), rule: authz.RuleControlPlaneSecret},
+		{name: "tls secret in application namespace", proxy: httpProxyWith("app", tlsSecret("app/ucp-cert"))},
+		{name: "tls secret in other namespace", proxy: httpProxyWith("app", tlsSecret("other/cert"))},
+		{name: "unqualified tls secret resolves in proxy namespace", proxy: httpProxyWith("app", tlsSecret("ucp-cert"))},
+		{name: "passthrough", proxy: httpProxyWith("app", func(spec *contourv1.HTTPProxySpec) {
+			spec.VirtualHost.TLS = &contourv1.TLS{Passthrough: true}
+		})},
+		{name: "unqualified tls secret in control-plane namespace", proxy: httpProxyWith("radius-system", tlsSecret("ucp-cert")), rule: authz.RuleControlPlaneSecret},
+	}
+
+	for _, tt := range tests {
+		for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
+			t.Run(tt.name+"/"+string(mode), func(t *testing.T) {
+				opts := authz.Options{Mode: mode, ControlPlaneNamespace: "radius-system", ControlPlaneSecrets: []string{"ucp-cert"}}
+				core, logs := observer.New(zap.DebugLevel)
+				ctx := logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core)))
+
+				err := admitOutputResources(ctx, opts, id, []rpv1.OutputResource{kubeOutputFor(tt.proxy)})
+
+				denies := tt.rule != "" && mode != authz.ModeOff
+				if denies && mode == authz.ModeEnforce {
+					denied, ok := errors.AsType[*authz.DeniedError](err)
+					require.True(t, ok, "expected a denial, got %v", err)
+					require.Equal(t, v1.CodeAdmissionPolicyDenied, denied.Code)
+					require.Equal(t, tt.rule, denied.Rule)
+					require.Equal(t, id.String(), denied.Target)
+					require.Equal(t, "Applications.Core/gateways/write", denied.Action)
+					return
+				}
+				require.NoError(t, err)
+				wouldDeny := logs.FilterField(zap.Bool(authz.LogFieldWouldDeny, true))
+				if denies {
+					require.Equal(t, 1, wouldDeny.FilterField(zap.String(authz.LogFieldRule, tt.rule)).Len())
+				} else {
+					require.Zero(t, logs.Len())
+				}
+			})
+		}
+	}
+}
+
+func Test_deploymentProcessor_admitOutputResources_HTTPProxyTargetCluster(t *testing.T) {
+	t.Setenv(kubeutil.TargetKubeconfigEnvVar, "configured-target")
+	id := resources.MustParse("/planes/radius/local/resourceGroups/rg/providers/Applications.Core/gateways/gw")
+	for _, targetUID := range []types.UID{"control-plane", "external"} {
+		t.Run(string(targetUID), func(t *testing.T) {
+			dp := &deploymentProcessor{
+				controlPlaneClient: k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", UID: "control-plane"}}),
+				k8sClient:          k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system", UID: targetUID}}),
+				authorization:      authz.Options{Mode: authz.ModeEnforce, ControlPlaneSecrets: []string{"ucp-cert"}},
+			}
+			err := dp.admitOutputResources(t.Context(), id, []rpv1.OutputResource{kubeOutputFor(httpProxyWith("app", tlsSecret("radius-system/ucp-cert")))})
+			if targetUID == "external" {
+				require.NoError(t, err)
+				return
+			}
+			denied, ok := errors.AsType[*authz.DeniedError](err)
+			require.True(t, ok, "expected denial, got %v", err)
+			require.Equal(t, authz.RuleControlPlaneSecret, denied.Rule)
+		})
+	}
 }
 
 func kubeOutputFor(obj runtime.Object) rpv1.OutputResource {
