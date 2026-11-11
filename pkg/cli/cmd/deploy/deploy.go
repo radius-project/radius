@@ -270,7 +270,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	parser := bicep.ParameterParser{FileSystem: filesystem.NewOSFS()}
+	parser := bicep.ParameterParser{
+		FileSystem: filesystem.NewOSFS(),
+		Bicep:      r.Bicep,
+	}
 	r.Parameters, err = parser.Parse(parameterArgs...)
 	if err != nil {
 		return err

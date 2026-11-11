@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -251,15 +252,11 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 		if !ok || val == nil {
 			continue
 		}
-		if strVal, ok := val.(string); ok {
-			params[k] = strVal
-			continue
+		strVal, ok := val.(string)
+		if !ok {
+			return nil, fmt.Errorf("parameter %q must have a string value, got %T", k, val)
 		}
-		marshalledVal, err := json.Marshal(val)
-		if err != nil {
-			return nil, err
-		}
-		params[k] = string(marshalledVal)
+		params[k] = strVal
 	}
 
 	metadata := map[string]any{

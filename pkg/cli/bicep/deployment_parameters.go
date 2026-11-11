@@ -135,11 +135,12 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 }
 
 func (pp ParameterParser) buildBicepParams(filePath string) ([]byte, error) {
-	if pp.Bicep != nil {
-		return pp.Bicep.Call("build-params", "--stdout", filePath)
+	bicep := pp.Bicep
+	if bicep == nil {
+		bicep = &Impl{FileSystem: pp.FileSystem}
 	}
 
-	return runBicepRaw("build-params", "--stdout", filePath)
+	return bicep.Call("build-params", "--stdout", filePath)
 }
 
 func (pp ParameterParser) unmarshalParameters(b []byte, output clients.DeploymentParameters) error {

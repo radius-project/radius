@@ -354,7 +354,7 @@ func Test_Run(t *testing.T) {
 		require.NotContains(t, manifest.Spec, "parameters")
 	})
 
-	t.Run("Serializes non-string parameter values without panicking", func(t *testing.T) {
+	t.Run("Rejects non-string parameter values without panicking", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		bicepMock := bicep.NewMockInterface(ctrl)
@@ -373,24 +373,12 @@ func Test_Run(t *testing.T) {
 			Parameters: map[string]map[string]any{
 				"tag":      {"value": "v1.0.0"},
 				"replicas": {"value": 3},
-				"enabled":  {"value": true},
 			},
 			DestinationFile: "-",
 			Group:           "default",
 		}
 
-		require.NoError(t, runner.Run(t.Context()))
-
-		var manifest struct {
-			Spec struct {
-				Parameters map[string]string `yaml:"parameters"`
-			} `yaml:"spec"`
-		}
-		require.NoError(t, yaml.Unmarshal(stdout.Bytes(), &manifest))
-		require.Equal(t, map[string]string{
-			"tag":      "v1.0.0",
-			"replicas": "3",
-			"enabled":  "true",
-		}, manifest.Spec.Parameters)
+		err := runner.Run(t.Context())
+		require.ErrorContains(t, err, `parameter "replicas" must have a string value, got int`)
 	})
 }
