@@ -107,7 +107,7 @@ func spiffePod(namespace, name, driver string) *corev1.Pod {
 // sarClient returns a fake client whose SubjectAccessReviews allow the signer names in allowed and records the
 // reviews in reviews.
 func sarClient(allowed map[string]bool, reviews *[]authorizationv1.SubjectAccessReviewSpec, objects ...runtime.Object) *k8sfake.Clientset {
-	client := k8sfake.NewClientset(objects...)
+	client := withValidatingAdmissionPolicyAPI(k8sfake.NewClientset(objects...))
 	client.PrependReactor("create", "subjectaccessreviews", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		review := action.(k8stesting.CreateAction).GetObject().(*authorizationv1.SubjectAccessReview).DeepCopy()
 		if reviews != nil {
@@ -115,6 +115,16 @@ func sarClient(allowed map[string]bool, reviews *[]authorizationv1.SubjectAccess
 		}
 		review.Status.Allowed = allowed[review.Spec.ResourceAttributes.Name]
 		return true, review, nil
+	})
+	return client
+}
+
+// withValidatingAdmissionPolicyAPI makes client's discovery serve ValidatingAdmissionPolicy, as Kubernetes 1.30 and
+// later do.
+func withValidatingAdmissionPolicyAPI(client *k8sfake.Clientset) *k8sfake.Clientset {
+	client.Resources = append(client.Resources, &metav1.APIResourceList{
+		GroupVersion: "admissionregistration.k8s.io/v1",
+		APIResources: []metav1.APIResource{{Name: "validatingadmissionpolicies", Kind: "ValidatingAdmissionPolicy"}},
 	})
 	return client
 }
@@ -252,8 +262,8 @@ func Test_checkCertManagerDefaultApprover(t *testing.T) {
 			objects:     []runtime.Object{controller(nil)},
 			allowed:     map[string]bool{wildcard: true},
 			wantReviews: []string{wildcard},
-			wantErr:     "cert-manager's default approver (system:serviceaccount:security:cert-manager) can approve CertificateRequests for the Radius issuer signer " + exact,
-			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cm cert-manager --repo https://charts.jetstack.io --version v1.21.2 --reuse-values --set disableAutoApproval=true",
+			wantErr:     "cert-manager's default approver (system:serviceaccount:security:cert-manager) can approve CertificateRequests for the Radius CA issuer signer " + exact,
+			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cm cert-manager --repo https://charts.jetstack.io --version v1.21.2 --reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-mtls-issuer,clusterissuers.cert-manager.io/*}\"",
 		},
 		{
 			name: "exact approval without version or release labels",
@@ -262,7 +272,7 @@ func Test_checkCertManagerDefaultApprover(t *testing.T) {
 			})},
 			allowed:     map[string]bool{exact: true},
 			wantReviews: []string{wildcard, exact},
-			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cert-manager cert-manager --repo https://charts.jetstack.io --reuse-values --set disableAutoApproval=true",
+			wantCommand: "helm --kube-context \"test-context\" -n security upgrade cert-manager cert-manager --repo https://charts.jetstack.io --reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-mtls-issuer,clusterissuers.cert-manager.io/*}\"",
 		},
 		{
 			name: "disabled approver is not reviewed",
@@ -454,6 +464,8 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 		}
 	}
 	approver := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
+	disabledApprover := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
+	disabledApprover.Spec.Template.Spec.Containers[0].Args = []string{"--controllers=*,-certificaterequests-approver"}
 
 	tests := []struct {
 		name       string
@@ -464,8 +476,11 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 		allowed    map[string]bool
 		expect     func(*testing.T, *MockHelmClient)
 		wantClient bool
+		noVAPAPI   bool
 		wantErr    string
 		wantLog    string
+		// wantRequesters are the cert-manager controller users returned for the Radius chart.
+		wantRequesters []string
 	}{
 		{name: "mode off makes no calls", expect: func(*testing.T, *MockHelmClient) {}},
 		{
@@ -517,13 +532,88 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			wantErr:    "another csi-driver-spiffe (DaemonSet cert-manager/csi-driver-spiffe-driver)",
 		},
 		{
-			name:       "default approver conflict is a warning",
-			setArgs:    dryRun,
-			objects:    []runtime.Object{approver},
-			allowed:    map[string]bool{"issuers.cert-manager.io/*": true},
+			name:    "default approver conflict fails before installing",
+			setArgs: dryRun,
+			objects: []runtime.Object{approver},
+			allowed: map[string]bool{"issuers.cert-manager.io/*": true},
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				expectGet(nil)(m)
+			},
+			wantClient: true,
+			wantErr:    "Radius stopped before it installed or upgraded csi-driver-spiffe and Radius because cert-manager's default approver (system:serviceaccount:cert-manager:default) can approve CertificateRequests for the Radius CA issuer signer issuers.cert-manager.io/radius-system.radius-ca-issuer. Only Radius's csi-driver-spiffe approver may approve them. Limit the default approver to other signers, for example with helm --kube-context \"test-context\" -n cert-manager upgrade cert-manager cert-manager --repo https://charts.jetstack.io --version " + CertManagerChartDefaultVersion + " " + "--reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-mtls-issuer,clusterissuers.cert-manager.io/*}\"" + ".",
+		},
+		{
+			name:    "default approver conflict on upgrade fails before upgrading",
+			setArgs: dryRun,
+			upgrade: true,
+			objects: []runtime.Object{approver},
+			allowed: map[string]bool{radiusCAIssuerSignerName(RadiusSystemNamespace): true},
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				expectGet(owned(releasecommon.StatusDeployed, wantValues))(m)
+			},
+			wantClient: true,
+			wantErr:    "Limit the default approver to other signers",
+		},
+		{
+			name:     "cluster without ValidatingAdmissionPolicy fails before installing",
+			setArgs:  dryRun,
+			noVAPAPI: true,
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				expectGet(nil)(m)
+			},
+			wantClient: true,
+			wantErr:    "Radius stopped before changing the cluster because the cluster does not serve ValidatingAdmissionPolicy (admissionregistration.k8s.io/v1).",
+		},
+		{
+			name:    "returns each cert-manager controller's user",
+			setArgs: dryRun,
+			objects: []runtime.Object{
+				approver,
+				certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "cert-manager"),
+				certManagerControllerWithServiceAccount(certManagerController("other", CertManagerChartDefaultVersion, ""), "controller"),
+			},
+			allowed: map[string]bool{
+				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+			},
 			expect:     expectInstall(wantValues),
 			wantClient: true,
-			wantLog:    "Warning: cert-manager's default approver (system:serviceaccount:cert-manager:default) can approve CertificateRequests for the Radius issuer signer issuers.cert-manager.io/radius-system.radius-ca-issuer. A future Radius release will require it to be turned off for that issuer; keep it on for now.",
+			wantRequesters: []string{
+				"system:serviceaccount:cert-manager:default",
+				"system:serviceaccount:other:controller",
+				"system:serviceaccount:security:cert-manager",
+			},
+		},
+		{
+			name:    "approver limited to the Radius bootstrap and mTLS issuers installs quietly",
+			setArgs: dryRun,
+			objects: []runtime.Object{approver},
+			allowed: map[string]bool{
+				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+			},
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
+		},
+		{
+			name:           "approver that cannot approve the mTLS issuer is a warning",
+			setArgs:        dryRun,
+			objects:        []runtime.Object{approver},
+			allowed:        map[string]bool{issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true},
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantLog:        "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-mtls-issuer. The Radius CA and the component certificates are issued only if another approver approves them.",
+			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
+		},
+		{
+			name:           "disabled approver is a warning",
+			setArgs:        dryRun,
+			objects:        []runtime.Object{disabledApprover},
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantLog:        "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap, issuers.cert-manager.io/radius-system.radius-mtls-issuer. The Radius CA and the component certificates are issued only if another approver approves them.",
+			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
 		},
 		{
 			name:       "unchanged deployed release is reused",
@@ -567,22 +657,28 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 				newCSIDriverSPIFFEClient: func(kubeContext string) (kubernetes.Interface, error) {
 					require.Equal(t, "test-context", kubeContext)
 					clientCalls++
-					return sarClient(tt.allowed, nil, tt.objects...), nil
+					client := sarClient(tt.allowed, nil, tt.objects...)
+					if tt.noVAPAPI {
+						client.Resources = nil
+					}
+					return client, nil
 				},
 				logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 			}
 
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
+			var requesters []string
 			plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", tt.stored)
 			if err == nil {
-				err = impl.applyCSIDriverSPIFFE(t.Context(), plan, "test-context", tt.upgrade)
+				requesters, err = impl.applyCSIDriverSPIFFE(t.Context(), plan, "test-context", tt.upgrade)
 			}
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 			} else {
 				require.NoError(t, err)
 			}
+			require.Equal(t, tt.wantRequesters, requesters)
 			if tt.wantClient {
 				require.Equal(t, 1, clientCalls)
 			} else {
@@ -610,6 +706,11 @@ func Test_planCSIDriverSPIFFE_ClientError(t *testing.T) {
 	plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", nil)
 	require.EqualError(t, err, "failed to create Kubernetes clients: no kubeconfig")
 	require.Nil(t, plan)
+}
+
+func certManagerControllerWithServiceAccount(controller *appsv1.Deployment, serviceAccount string) *appsv1.Deployment {
+	controller.Spec.Template.Spec.ServiceAccountName = serviceAccount
+	return controller
 }
 
 func Test_uninstallCSIDriverSPIFFE(t *testing.T) {
@@ -651,7 +752,7 @@ func Test_uninstallCSIDriverSPIFFE(t *testing.T) {
 			wantKept: true,
 			wantLog:  "Keeping csi-driver-spiffe and cert-manager: 1 Pods still mount volumes from CSI driver spiffe.example.org",
 		},
-		{name: "get error keeps the release", getErr: errors.New("boom"), wantLog: "Keeping csi-driver-spiffe: could not check whether rad installed it:"},
+		{name: "get error keeps the release", getErr: errors.New("boom"), wantKept: true, wantLog: "Keeping csi-driver-spiffe and cert-manager: could not check whether rad installed it: failed to run helm get for release cert-manager-csi-driver-spiffe in namespace radius-system (context: test-context): boom"},
 		{name: "client error keeps the release", release: owned, clientErr: errors.New("no kubeconfig"), wantKept: true, wantLog: "Keeping csi-driver-spiffe and cert-manager: could not check for Pods that use csi-driver-spiffe: no kubeconfig"},
 		{name: "list error keeps the release", release: owned, listErr: errors.New("forbidden"), wantKept: true, wantLog: "Keeping csi-driver-spiffe and cert-manager: could not check for Pods that use csi-driver-spiffe: forbidden"},
 	}
@@ -684,9 +785,16 @@ func Test_uninstallCSIDriverSPIFFE(t *testing.T) {
 				csiDriverSPIFFEPodWaitTimeout:  50 * time.Millisecond,
 				csiDriverSPIFFEPodPollInterval: 5 * time.Millisecond,
 			}
-			kept, err := impl.uninstallCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "test-context")
-			require.NoError(t, err)
-			require.Equal(t, tt.wantKept, kept)
+			err := impl.uninstallCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "test-context")
+			if tt.wantKept {
+				var kept *CSIDriverSPIFFEKeptError
+				require.ErrorAs(t, err, &kept)
+				require.Equal(t, RadiusSystemNamespace, kept.Namespace)
+				require.Equal(t, len(tt.objects) > 0, len(kept.Pods) > 0)
+				require.Equal(t, len(tt.objects) == 0, kept.Reason != "")
+			} else {
+				require.NoError(t, err)
+			}
 			if tt.wantLog == "" {
 				require.Empty(t, logs)
 				return
@@ -737,9 +845,7 @@ func Test_uninstallCSIDriverSPIFFE_WaitsForPods(t *testing.T) {
 		csiDriverSPIFFEPodWaitTimeout:  10 * time.Second,
 		csiDriverSPIFFEPodPollInterval: time.Millisecond,
 	}
-	kept, err := impl.uninstallCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "test-context")
-	require.NoError(t, err)
-	require.False(t, kept)
+	require.NoError(t, impl.uninstallCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "test-context"))
 	require.Empty(t, logs)
 	require.GreaterOrEqual(t, lists.Load(), int32(5))
 }
@@ -874,7 +980,133 @@ func Test_UninstallRadius_KeepsCertManagerWhenCSIDriverSPIFFEIsKept(t *testing.T
 		csiDriverSPIFFEPodWaitTimeout:  20 * time.Millisecond,
 		csiDriverSPIFFEPodPollInterval: 5 * time.Millisecond,
 	}
-	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
+	err := impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context")
+	var kept *CSIDriverSPIFFEKeptError
+	require.ErrorAs(t, err, &kept)
+	require.Equal(t, []string{"radius-system/ucp-0"}, kept.Pods)
 	require.Len(t, logs, 1)
 	require.Contains(t, logs[0], "Keeping csi-driver-spiffe and cert-manager")
+}
+
+// Helm rolls back only the Radius release, so rollback first makes csi-driver-spiffe match the target revision's
+// authorization settings, or stops before changing anything when it cannot.
+func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
+	t.Parallel()
+
+	rbac := func(rbac map[string]any) map[string]any { return map[string]any{"global": map[string]any{"rbac": rbac}} }
+	targetValues := rbac(map[string]any{"enabled": true, "spiffe": map[string]any{"trustDomain": "rollback.example"}})
+	installedValues := buildCSIDriverSPIFFEValues(RadiusSystemNamespace, spiffeSettings{TrustDomain: SPIFFETrustDomainDefault, CSIDriverName: SPIFFECSIDriverNameDefault})
+	wantValues := buildCSIDriverSPIFFEValues(RadiusSystemNamespace, spiffeSettings{TrustDomain: "rollback.example", CSIDriverName: SPIFFECSIDriverNameDefault})
+	installed := &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Config: installedValues}
+	certManager := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Config: buildCertManagerValues(RadiusSystemNamespace)}
+	history := func(target map[string]any) []*releasev1.Release {
+		return []*releasev1.Release{
+			{Version: 1, Config: target, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Version: 2, Config: rbac(map[string]any{"enabled": true}), Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+		}
+	}
+	allowed := map[string]bool{
+		issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+		issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+	}
+
+	tests := []struct {
+		name       string
+		toRevision bool
+		target     map[string]any
+		objects    []runtime.Object
+		expect     func(*testing.T, *MockHelmClient)
+		wantErr    string
+	}{
+		{
+			name:   "different trust domain upgrades the driver before rolling back",
+			target: targetValues,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				gomock.InOrder(
+					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
+					m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, false, DefaultInstallTimeout).
+						Return(&releasev1.Release{}, nil),
+					m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil),
+				)
+				expectCSIDriverSPIFFEPull(t, m)
+				m.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil)
+			},
+		},
+		{
+			name:       "rollback to a revision also reconciles the driver",
+			toRevision: true,
+			target:     targetValues,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				gomock.InOrder(
+					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
+					m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, false, DefaultInstallTimeout).
+						Return(&releasev1.Release{}, nil),
+					m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil),
+				)
+				expectCSIDriverSPIFFEPull(t, m)
+				m.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil)
+			},
+		},
+		{
+			name:   "matching driver is kept",
+			target: rbac(map[string]any{"enabled": true}),
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				gomock.InOrder(
+					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
+					m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil),
+				)
+			},
+		},
+		{
+			name:   "authorization off in the target changes nothing else",
+			target: nil,
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil)
+			},
+		},
+		{
+			name:    "foreign driver stops before rolling back",
+			target:  targetValues,
+			objects: []runtime.Object{renamedCSIDriverSPIFFEDaemonSet("identity", "workload-identity-node", hostPathVolume(csiDriverSPIFFEPluginDir), nil)},
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
+			},
+			wantErr: "Radius stopped before changing the cluster because another csi-driver-spiffe (DaemonSet identity/workload-identity-node) runs on it.",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m := NewMockHelmClient(gomock.NewController(t))
+			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history(tt.target), nil)
+			tt.expect(t, m)
+
+			objects := append([]runtime.Object{certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}, tt.objects...)
+			impl := &Impl{
+				Helm:   m,
+				logger: func(string, ...any) {},
+				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+					kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
+					return kubeClient, apiextClient, nil
+				},
+				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return sarClient(allowed, nil, objects...), nil },
+			}
+			var err error
+			if tt.toRevision {
+				err = impl.RollbackRadiusToRevision(t.Context(), "test-context", 1)
+			} else {
+				err = impl.RollbackRadius(t.Context(), "test-context")
+			}
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }

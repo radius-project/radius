@@ -22,14 +22,14 @@ tests:
       global.rbac.dryRun: true
     asserts:
       - hasDocuments:
-          count: 8
+          count: 9
 
   - it: renders the self-signed bootstrap issuer and Radius CA
     set:
       global.rbac.enabled: true
     asserts:
       - hasDocuments:
-          count: 8
+          count: 9
       - isKind:
           of: Issuer
         documentIndex: 0
@@ -82,6 +82,17 @@ tests:
           path: spec.ca.secretName
           value: radius-ca
         documentIndex: 2
+      - isKind:
+          of: Issuer
+        documentIndex: 3
+      - equal:
+          path: metadata.name
+          value: radius-mtls-issuer
+        documentIndex: 3
+      - equal:
+          path: spec.ca.secretName
+          value: radius-ca
+        documentIndex: 3
 
   - it: renders a ucp certificate
     set:
@@ -115,7 +126,7 @@ tests:
           value:
             group: cert-manager.io
             kind: Issuer
-            name: radius-ca-issuer
+            name: radius-mtls-issuer
       - notExists:
           path: spec.commonName
 

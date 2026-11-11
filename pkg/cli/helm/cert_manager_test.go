@@ -338,8 +338,11 @@ func Test_ensureCertManager(t *testing.T) {
 
 	dryRun := []string{"global.rbac.dryRun=true"}
 	storedDryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}}
+	wantValues := buildCertManagerValues(RadiusSystemNamespace)
+	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Config: wantValues}
 	radOwnedFailed := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusFailed}, Chart: radOwned.Chart}
+	// An older rad installed cert-manager with only the CRD values, so its default approver may approve every Issuer.
+	radOwnedUnconfigured := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: radOwned.Chart, Config: map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}}
 	healthy := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}
 	userOwned := &releasev1.Release{Name: certManagerReleaseName}
 
@@ -363,7 +366,6 @@ func Test_ensureCertManager(t *testing.T) {
 			})
 		m.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil)
 	}
-	wantValues := map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}
 
 	tests := []struct {
 		name         string
@@ -451,6 +453,18 @@ func Test_ensureCertManager(t *testing.T) {
 			wantDetect: true,
 		},
 		{
+			name:    "rad-owned release without approveSignerNames is reconfigured on install",
+			setArgs: dryRun,
+			cluster: healthy,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(radOwnedUnconfigured)(m)
+				expectPull(t, m)
+				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
+					Return(&releasev1.Release{}, nil)
+			},
+			wantDetect: true,
+		},
+		{
 			name:    "rad-owned release missing its controller is repaired on install",
 			setArgs: dryRun,
 			cluster: fakeCertManagerCluster{crd: true},
@@ -533,7 +547,9 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 			kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController("cert-manager", "v1.18.0", "")}.clients()
 			return kubeClient, apiextClient, nil
 		},
-		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return k8sfake.NewClientset(), nil },
+		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
+			return withValidatingAdmissionPolicyAPI(k8sfake.NewClientset()), nil
+		},
 	}
 
 	options := NewDefaultClusterOptions()
