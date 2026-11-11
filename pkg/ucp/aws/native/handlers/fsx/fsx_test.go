@@ -153,8 +153,14 @@ func Test_Suite_LustreFileSystem(t *testing.T) {
 		Removable:          "Tags",
 		CreateOnlyChange:   with(properties, map[string]any{"SubnetIds": []any{"subnet-0b2"}}),
 		OtherForm:          map[string]any{"KmsKeyId": "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"},
-		MultiCall:          with(properties, map[string]any{"StorageCapacity": 2400, "Tags": tags("env", "dev")}),
-		Calls:              3,
+		Reference: &nativetest.Reference{
+			Property: "KmsKeyId",
+			Template: "alias/fsx-old",
+			Other:    "alias/fsx-new",
+			Stored:   "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab",
+		},
+		MultiCall: with(properties, map[string]any{"StorageCapacity": 2400, "Tags": tags("env", "dev")}),
+		Calls:     3,
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
@@ -833,8 +839,12 @@ func Test_Equivalent(t *testing.T) {
 	arn := "arn:aws:kms:us-west-2:111122223333:key/1234abcd"
 	require.True(t, equivalent("KmsKeyId", "1234abcd", arn))
 	require.True(t, equivalent("KmsKeyId", arn, arn))
-	require.True(t, equivalent("KmsKeyId", "alias/fsx", arn))
-	require.True(t, equivalent("KmsKeyId", "arn:aws:kms:us-west-2:111122223333:alias/fsx", arn))
+	require.False(t, equivalent("KmsKeyId", "alias/fsx", arn), "an alias needs the record")
+	require.True(t, sameAlias("KmsKeyId", "alias/fsx", arn))
+	require.True(t, sameAlias("KmsKeyId", "arn:aws:kms:us-west-2:111122223333:alias/fsx", arn))
+	require.False(t, sameAlias("KmsKeyId", "1234abcd", arn))
+	require.False(t, sameAlias("Other", "alias/fsx", arn))
+	require.False(t, sameAlias("KmsKeyId", 1, arn))
 	require.False(t, equivalent("KmsKeyId", "5678efgh", arn))
 	require.False(t, equivalent("StorageType", "ssd", "SSD"))
 	require.False(t, equivalent("KmsKeyId", 1, arn))

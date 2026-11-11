@@ -154,9 +154,23 @@ type Suite struct {
 	// handler whose Recovery is native.RecoverBySearch.
 	Duplicates bool
 
+	// Reference, when set, is a create-only property whose template value AWS reports in a form only an outside
+	// lookup could match, such as a KMS alias AWS reports as the key's ARN.
+	Reference *Reference
+
 	// RemovedItemField, when set, is a field inside an array item that a deploy sets and the next one leaves out, for
 	// a type whose Equivalent compares array items only on the values the template sets.
 	RemovedItemField *RemovedItemField
+}
+
+// Reference is a create-only property the template sets as a reference AWS resolves, such as a KMS alias.
+type Reference struct {
+	// Property is the property, Template and Other are two references the template can set, such as two aliases, and
+	// Stored is what AWS reports for either, such as the key ARN.
+	Property string
+	Template any
+	Other    any
+	Stored   any
 }
 
 // RemovedItemField is a field inside an array item, such as an EMR task group's AutoScalingPolicy.
@@ -186,6 +200,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("delete as the metadata says", func(t *testing.T) { s.deleteByMetadata(t) })
 	t.Run("identifier another alias holds in the identity scope", func(t *testing.T) { s.identifierHeld(t) })
 	t.Run("value AWS returns in another form", func(t *testing.T) { s.otherForm(t) })
+	t.Run("create-only reference AWS reports resolved", func(t *testing.T) { s.reference(t) })
 	t.Run("identifier of another product", func(t *testing.T) { s.otherProduct(t) })
 	t.Run("update fails between calls", func(t *testing.T) { s.multiCall(t) })
 	t.Run("delete again after the response is lost", func(t *testing.T) { s.deleteTokenRetry(t) })
@@ -906,6 +921,62 @@ func (s Suite) identifierHeld(t *testing.T) {
 	require.Nil(t, h.recordAt(other))
 }
 
+// reference deploys a create-only reference, such as a KMS alias, that AWS reports in its resolved form. Deploying the
+// same reference again changes nothing, because the record shows the template didn't change it. Changing it gets 400,
+// even though AWS still reports the same resolved value, because UCP can't tell whether the new one resolves to it.
+// Taking the resource over by name with a reference gets 400 too, because there is no record to show it unchanged.
+func (s Suite) reference(t *testing.T) {
+	ref := s.Reference
+	if ref == nil {
+		t.Skip("the type has no create-only reference AWS reports resolved")
+	}
+	resolve := func(h *harness) {
+		require.NoError(t, h.cc.Patch(s.TypeName, h.identifier(), []map[string]any{{"op": "replace", "path": "/" + ref.Property, "value": ref.Stored}}))
+	}
+	template := withValue(s.Properties, ref.Property, ref.Template)
+
+	t.Run("unchanged", func(t *testing.T) {
+		h := s.newHarness(t)
+		h.deploy(template)
+		resolve(h)
+		h.handler.reset()
+		resp := h.put(template)
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"Read"}, h.handler.reset(), "the same reference is no change")
+	})
+
+	t.Run("changed", func(t *testing.T) {
+		h := s.newHarness(t)
+		h.deploy(template)
+		resolve(h)
+		before, applied := h.stored(), h.record().Properties.LastApplied
+		resp := h.put(withValue(s.Properties, ref.Property, ref.Other))
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Contains(t, resp.raw, ref.Property)
+		require.Equal(t, before, h.stored(), "nothing changes in AWS")
+		require.Equal(t, applied, h.record().Properties.LastApplied, "the record keeps the reference AWS has")
+	})
+
+	t.Run("taken over by name", func(t *testing.T) {
+		h := s.newHarness(t)
+		h.deployAt(otherPath(h), template)
+		identifier := h.identifier()
+		resolve(h)
+		id, err := resources.ParseResource(otherPath(h))
+		require.NoError(t, err)
+		store := records.NewStore(h.db)
+		_, etag, err := store.Get(t.Context(), id)
+		require.NoError(t, err)
+		require.NoError(t, store.DeleteIfUnchanged(t.Context(), id, etag), "the resource has no record, as before a take-over")
+		before := h.stored()
+
+		resp := h.putNamed(identifier, template)
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Contains(t, resp.raw, ref.Property)
+		require.Equal(t, before, h.stored(), "nothing changes in AWS")
+	})
+}
+
 // otherForm makes AWS return values of the template in another form, and deploys the template again. The values
 // don't count as changes, so UCP only reads AWS.
 func (s Suite) otherForm(t *testing.T) {
@@ -1470,6 +1541,30 @@ func (h *harness) deploy(properties map[string]any) {
 	require.Contains(h.t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
 	h.finish()
 	h.requireDeployed()
+}
+
+// deployAt deploys properties at the alias path and requires it to succeed, as deploy does at the suite's alias.
+func (h *harness) deployAt(path string, properties map[string]any) {
+	h.t.Helper()
+	resp := h.putAt(path, properties)
+	require.Contains(h.t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
+	h.finish()
+	rec := h.recordAt(path)
+	require.Equal(h.t, v1.ProvisioningStateSucceeded, rec.ProvisioningState())
+	h.lastID = rec.Properties.AWSIdentifier
+}
+
+// otherPath returns the path of the suite's other alias.
+func otherPath(h *harness) string {
+	return h.collection() + "/" + otherAlias
+}
+
+// putNamed sends a PUT that takes over the AWS resource with the identifier, by name, with properties.
+func (h *harness) putNamed(identifier string, properties map[string]any) response {
+	put := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+		return awsproxy.NewCreateOrUpdateAWSResource(opts, clients, func() (*ucp_aws.FingerprintKey, error) { return h.key, nil })
+	}
+	return h.do(put, http.MethodPut, h.path(), owner, map[string]any{"name": identifier, "properties": properties})
 }
 
 func (h *harness) requireDeployed() {

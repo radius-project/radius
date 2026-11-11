@@ -662,12 +662,20 @@ func rejected(r *request) armrpc_rest.Response {
 }
 
 // equivalentFor returns the native handler's rule for values AWS returns in another form, or nil when there is none.
-// It applies with either handler, because both read the same resource.
-func equivalentFor(r *request) func(path string, template any, aws any) bool {
+// It applies with either handler, because both read the same resource. recorded is whether UCP has a record of the
+// last deploy's values: only then does it add the handler's RecordedEquivalent, which GeneratePatchWithOptions then
+// uses only where the last deploy set the template's value.
+func equivalentFor(r *request, recorded bool) func(path string, template any, aws any) bool {
 	if r.native == nil {
 		return nil
 	}
-	return r.native.Handler.Options().Equivalent
+	options := r.native.Handler.Options()
+	if !recorded || options.RecordedEquivalent == nil {
+		return options.Equivalent
+	}
+	return func(path string, template any, aws any) bool {
+		return (options.Equivalent != nil && options.Equivalent(path, template, aws)) || options.RecordedEquivalent(path, template, aws)
+	}
 }
 
 // outcomeOf returns how much of a start call that failed with err AWS applied: the outcome a native handler reports
