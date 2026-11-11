@@ -82,7 +82,8 @@ func checkRecordPatch(typeName string, typeInfo *cloudformation.DescribeTypeOutp
 
 // createOnlyChanged returns the 400 response for a patch that changes a create-only property of a type a native
 // handler serves. Cloud Control rejects such a change itself, but a service API may ignore it, so UCP checks the native
-// schema before it calls the handler.
+// schema before it calls the handler. An operation changes a create-only property when it is at or inside the
+// property, or adds or replaces an object that holds a value for it, such as one that adds the whole object.
 func createOnlyChanged(r *request, schema *typeSchema, patch jsondiff.Patch) armrpc_rest.Response {
 	if r.handler == nil {
 		return nil
@@ -91,7 +92,8 @@ func createOnlyChanged(r *request, schema *typeSchema, patch jsondiff.Patch) arm
 	for _, op := range patch {
 		for _, path := range awsoperations.PropertyPaths(schema.CreateOnlyProperties) {
 			prefix := "/" + path
-			if (op.Path == prefix || strings.HasPrefix(op.Path, prefix+"/")) && !slices.Contains(changed, path) {
+			at := op.Path == prefix || strings.HasPrefix(op.Path, prefix+"/")
+			if (at || setsInside(op, prefix)) && !slices.Contains(changed, path) {
 				changed = append(changed, path)
 			}
 		}
@@ -101,6 +103,29 @@ func createOnlyChanged(r *request, schema *typeSchema, patch jsondiff.Patch) arm
 	}
 	slices.Sort(changed)
 	return badRequest(fmt.Sprintf("These properties of the AWS resource %q can't change after it is created: %s. Set them back, or delete the resource and deploy again.", r.id.Name(), strings.Join(changed, ", ")))
+}
+
+// setsInside reports whether op adds or replaces an object that holds a value at the JSON patch path, which is inside
+// the operation's path.
+func setsInside(op jsondiff.Operation, path string) bool {
+	if op.Type != jsondiff.OperationAdd && op.Type != jsondiff.OperationReplace {
+		return false
+	}
+	rest, ok := strings.CutPrefix(path, op.Path+"/")
+	if !ok {
+		return false
+	}
+	value := op.Value
+	for _, segment := range strings.Split(rest, "/") {
+		m, ok := value.(map[string]any)
+		if !ok {
+			return false
+		}
+		if value, ok = m[segment]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 // immutableChanged returns the 400 response for changes to the top-level properties changed of an existing resource
