@@ -20,12 +20,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"slices"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -35,24 +37,32 @@ import (
 const permissionsType = "AWS::LakeFormation::Permissions"
 
 var (
-	_ native.Handler           = (*Permissions)(nil)
-	_ native.IdentifierEncoder = (*Permissions)(nil)
-	_ native.ScopedReader      = (*Permissions)(nil)
-	_ native.ScopedDeleter     = (*Permissions)(nil)
+	_ native.Handler            = (*Permissions)(nil)
+	_ native.IdentifierEncoder  = (*Permissions)(nil)
+	_ native.ScopedReader       = (*Permissions)(nil)
+	_ native.ScopedDeleter      = (*Permissions)(nil)
+	_ native.IdentifierResolver = (*Permissions)(nil)
 )
 
 // Permissions serves AWS::LakeFormation::Permissions: permissions of a principal (DataLakePrincipal) on a resource
 // (Resource). Others can grant the same principal more permissions on the resource, so the resource is only the
 // permissions in Permissions and PermissionsWithGrantOption, and permissions granted outside Radius stay. Its
-// identifier is the canonical JSON of DataLakePrincipal and Resource. Granting a permission the principal already has
-// changes nothing, so a lost create is sent again.
+// identifier is the JSON of DataLakePrincipal and the canonical form of Resource (see canonicalResource), so every
+// template for the same principal and AWS resource gives one identifier, and two aliases can't hold the same grants.
+// Granting a permission the principal already has changes nothing, so a lost create is sent again.
 type Permissions struct {
-	api API
+	api      API
+	accounts AccountAPI
 }
 
-// NewPermissions returns the handler for Lake Formation permissions.
-func NewPermissions(api API) *Permissions {
-	return &Permissions{api: api}
+// AccountAPI is the part of the STS client the handler uses, to learn the current account.
+type AccountAPI interface {
+	GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
+}
+
+// NewPermissions returns the handler for Lake Formation permissions. It learns the current account with accounts.
+func NewPermissions(api API, accounts AccountAPI) *Permissions {
+	return &Permissions{api: api, accounts: accounts}
 }
 
 // TypeName returns AWS::LakeFormation::Permissions.
@@ -65,18 +75,122 @@ func (h *Permissions) Options() native.Options {
 	return native.Options{List: native.ListNone, Recovery: native.RecoverByIdentifier}
 }
 
-// Identifier returns the JSON of DataLakePrincipal and Resource, with object keys sorted, or "" when either is missing.
+// Identifier returns the JSON of DataLakePrincipal and the canonical form of Resource, with object keys sorted, or ""
+// when either is missing. A CatalogId that names the current account stays until ResolveIdentifier drops it.
 func (h *Permissions) Identifier(properties map[string]any) (string, error) {
 	principal, _ := properties["DataLakePrincipal"].(map[string]any)
 	resource, _ := properties["Resource"].(map[string]any)
 	if len(principal) == 0 || len(resource) == 0 {
 		return "", nil
 	}
-	b, err := json.Marshal(map[string]any{"DataLakePrincipal": principal, "Resource": resource})
+	b, err := json.Marshal(map[string]any{"DataLakePrincipal": principal, "Resource": canonicalResource(resource)})
 	if err != nil {
 		return "", err
 	}
 	return string(b), nil
+}
+
+// canonicalResource returns the one form of a Resource that every form of the same AWS resource gives:
+//
+//   - Glue names, of a database, a table, and columns, in lowercase, because Glue stores them in lowercase.
+//   - A TableWithColumnsResource with a ColumnWildcard that excludes no column as the TableResource of the whole table,
+//     which AWS treats as the same resource.
+//   - ColumnNames and ExcludedColumnNames sorted, without repeats, because they are sets.
+//   - No empty strings or lists, which the request leaves out.
+//
+// It keeps CatalogId, which ResolveIdentifier drops when it names the current account, the account a Resource
+// without one means. Values it doesn't know stay as they are.
+func canonicalResource(r map[string]any) map[string]any {
+	lower := func(m map[string]any, name string) {
+		if s, ok := m[name].(string); ok {
+			m[name] = strings.ToLower(s)
+		}
+	}
+	names := func(list []string) []any {
+		out := []string{}
+		for _, n := range list {
+			out = append(out, strings.ToLower(n))
+		}
+		slices.Sort(out)
+		return anyList(slices.Compact(out))
+	}
+	out := map[string]any{}
+	for kind, value := range r {
+		m, ok := value.(map[string]any)
+		if !ok {
+			out[kind] = value
+			continue
+		}
+		m = maps.Clone(m)
+		dropEmpty(m)
+		switch kind {
+		case "DatabaseResource":
+			lower(m, "Name")
+		case "TableResource":
+			lower(m, "DatabaseName")
+			lower(m, "Name")
+		case "TableWithColumnsResource":
+			lower(m, "DatabaseName")
+			lower(m, "Name")
+			if _, ok := m["ColumnNames"]; ok {
+				m["ColumnNames"] = names(awsapi.Strings(m, "ColumnNames"))
+			}
+			if w, ok := m["ColumnWildcard"].(map[string]any); ok {
+				excluded := awsapi.Strings(w, "ExcludedColumnNames")
+				if len(excluded) == 0 && len(awsapi.Strings(m, "ColumnNames")) == 0 {
+					delete(m, "ColumnWildcard")
+					out["TableResource"] = m
+					continue
+				}
+				m["ColumnWildcard"] = map[string]any{"ExcludedColumnNames": names(excluded)}
+			}
+		}
+		out[kind] = m
+	}
+	return out
+}
+
+// dropEmpty removes from m the empty strings and lists, which sdkResource leaves out of the request.
+func dropEmpty(m map[string]any) {
+	for k, v := range m {
+		if s, ok := v.(string); ok && s == "" {
+			delete(m, k)
+		} else if l, ok := v.([]any); ok && len(l) == 0 {
+			delete(m, k)
+		}
+	}
+}
+
+// ResolveIdentifier returns the canonical form of identifier, the form Create returns: Resource in its canonical form,
+// without a CatalogId that names the current account. It asks STS for the current account only when the identifier
+// has a CatalogId. An identifier that isn't the JSON of a principal and a resource, such as one Cloud Control
+// assigned, stays as it is.
+func (h *Permissions) ResolveIdentifier(ctx context.Context, region string, identifier string) (string, error) {
+	var t target
+	if err := json.Unmarshal([]byte(identifier), &t); err != nil || len(t.Principal) == 0 || len(t.Resource) == 0 {
+		return identifier, nil
+	}
+	resource := canonicalResource(t.Resource)
+	account := ""
+	for _, value := range resource {
+		m, ok := value.(map[string]any)
+		if !ok || awsapi.String(m, "CatalogId") == "" {
+			continue
+		}
+		if account == "" {
+			out, err := h.accounts.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{}, func(o *sts.Options) { o.Region = region })
+			if err != nil {
+				return "", err
+			}
+			if account = aws.ToString(out.Account); account == "" {
+				return "", errors.New("STS returned no account ID for the AWS credentials")
+			}
+		}
+		if awsapi.String(m, "CatalogId") == account {
+			delete(m, "CatalogId")
+		}
+	}
+	return h.Identifier(map[string]any{"DataLakePrincipal": t.Principal, "Resource": resource})
 }
 
 // target is the principal and resource whose permissions the resource is: Principal and Resource in the template's
@@ -378,7 +492,11 @@ func (h *Permissions) ReadScoped(ctx context.Context, region string, identifier 
 	if err != nil {
 		return nil, err
 	}
-	properties := map[string]any{"Id": identifier, "DataLakePrincipal": t.Principal, "Resource": t.Resource}
+	principal, resource, err := h.templateForm(ctx, region, identifier, t, managed)
+	if err != nil {
+		return nil, err
+	}
+	properties := map[string]any{"Id": identifier, "DataLakePrincipal": principal, "Resource": resource}
 	if len(perms) > 0 {
 		properties["Permissions"] = anyList(perms)
 	}
@@ -386,6 +504,29 @@ func (h *Permissions) ReadScoped(ctx context.Context, region string, identifier 
 		properties["PermissionsWithGrantOption"] = anyList(grants)
 	}
 	return properties, nil
+}
+
+// templateForm returns DataLakePrincipal and Resource of the first of managed whose identifier resolves to identifier,
+// in the template's form, so a template that names the resource in another form, which is create-only, reads back as
+// it is. Without one, they are t's, the target the identifier names.
+func (h *Permissions) templateForm(ctx context.Context, region string, identifier string, t target, managed []map[string]any) (map[string]any, map[string]any, error) {
+	for _, m := range managed {
+		id, err := h.Identifier(m)
+		if err != nil || id == "" {
+			continue
+		}
+		if id != identifier {
+			if id, err = h.ResolveIdentifier(ctx, region, id); err != nil {
+				return nil, nil, err
+			}
+		}
+		if id == identifier {
+			principal, _ := m["DataLakePrincipal"].(map[string]any)
+			resource, _ := m["Resource"].(map[string]any)
+			return principal, resource, nil
+		}
+	}
+	return t.Principal, t.Resource, nil
 }
 
 // Create grants the template's permissions.
@@ -404,6 +545,9 @@ func (h *Permissions) Create(ctx context.Context, request native.CreateRequest) 
 	perms, grants := granted(request.Properties)
 	if len(perms) == 0 {
 		return "", rejected("Set Permissions or PermissionsWithGrantOption of the Lake Formation permissions.")
+	}
+	if identifier, err = h.ResolveIdentifier(ctx, request.Region, identifier); err != nil {
+		return "", err
 	}
 	if err := h.grant(ctx, request.Region, t, perms, grants); err != nil {
 		return "", err

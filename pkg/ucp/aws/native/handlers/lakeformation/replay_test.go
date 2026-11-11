@@ -24,6 +24,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
@@ -65,7 +66,8 @@ func Test_Replay_DataLakeSettings(t *testing.T) {
 // AWS's recorded responses.
 func Test_Replay_Permissions(t *testing.T) {
 	s := awsreplay.New(t, "testdata/permissions.json")
-	api := lakeformation.NewFromConfig(s.Config(t.Context()))
+	cfg := s.Config(t.Context())
+	api := lakeformation.NewFromConfig(cfg)
 	database := map[string]any{"DatabaseResource": map[string]any{"Name": s.Input("RADIUS_REC_GLUE_DATABASE")}}
 	properties := map[string]any{
 		"DataLakePrincipal": map[string]any{"DataLakePrincipalIdentifier": s.Input("RADIUS_REC_LAKE_PRINCIPAL_ARN")},
@@ -73,7 +75,7 @@ func Test_Replay_Permissions(t *testing.T) {
 		"Permissions":       list("ALTER"),
 	}
 	nativetest.Lifecycle{
-		Handler:    NewPermissions(api),
+		Handler:    NewPermissions(api, sts.NewFromConfig(cfg)),
 		Session:    s,
 		Properties: properties,
 		Update:     with(properties, map[string]any{"Permissions": list("DESCRIBE")}),
@@ -104,8 +106,9 @@ func Test_Replay_Resource(t *testing.T) {
 // revokes the wildcard grant, and a column grant reads back as the template, so a redeploy changes nothing.
 func Test_Replay_PermissionsNextToWildcard(t *testing.T) {
 	s := awsreplay.New(t, "testdata/permissions-wildcard.json")
-	api := lakeformation.NewFromConfig(s.Config(t.Context()))
-	h := NewPermissions(api)
+	cfg := s.Config(t.Context())
+	api := lakeformation.NewFromConfig(cfg)
+	h := NewPermissions(api, sts.NewFromConfig(cfg))
 	database, table := s.Input("RADIUS_REC_GLUE_DATABASE"), s.Input("RADIUS_REC_GLUE_TABLE")
 	principal := map[string]any{"DataLakePrincipalIdentifier": s.Input("RADIUS_REC_LAKE_PRINCIPAL_ARN")}
 

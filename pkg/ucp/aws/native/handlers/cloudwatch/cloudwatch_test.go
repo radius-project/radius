@@ -122,7 +122,7 @@ func anomalyDetectorSuite(t *testing.T, metric map[string]any) {
 		OtherForm:          map[string]any{"SingleMetricAnomalyDetector": reordered},
 		// A detector without AccountId is in the current account, so a template that names that account, or leaves it
 		// out, is the same detector.
-		SameResource: with(detector, map[string]any{"SingleMetricAnomalyDetector": other}),
+		SameResource: []map[string]any{with(detector, map[string]any{"SingleMetricAnomalyDetector": other})},
 		// The suite's Cloud Control names a detector of the current account as AWS keeps it, without the account.
 		CloudControlCreate: func(properties map[string]any) (string, map[string]any) {
 			resolved, err := newHandler(newFakeAPI(awsfake.NewCloudControl())).ResolveIdentifier(t.Context(), region, identifierOf(t, properties))

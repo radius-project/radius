@@ -63,18 +63,20 @@ const sdkServicePrefix = "github.com/aws/aws-sdk-go-v2/service/"
 // makes. Find runs when a PUT or a DELETE looks for a lost create, and Progress while UCP waits for a create, an
 // update, or a delete.
 var operationsOf = map[string][]string{
-	"Create":          {"create"},
-	"Find":            {"create", "delete"},
-	"Read":            {"read"},
-	"ReadScoped":      {"read"},
-	"Update":          {"update"},
-	"Delete":          {"delete"},
-	"DeleteScoped":    {"delete"},
-	"DeleteToken":     {"delete"},
-	"DeleteWithToken": {"delete"},
-	"Reset":           {"delete"},
-	"List":            {"list"},
-	"Progress":        {"create", "update", "delete"},
+	"Create":     {"create"},
+	"Find":       {"create", "delete"},
+	"Read":       {"read"},
+	"ReadScoped": {"read"},
+	// UCP resolves an identifier on a PUT and on `existing`.
+	"ResolveIdentifier": {"create", "read", "update"},
+	"Update":            {"update"},
+	"Delete":            {"delete"},
+	"DeleteScoped":      {"delete"},
+	"DeleteToken":       {"delete"},
+	"DeleteWithToken":   {"delete"},
+	"Reset":             {"delete"},
+	"List":              {"list"},
+	"Progress":          {"create", "update", "delete"},
 }
 
 // Test_SchemaPermissionsCoverAWSCalls checks that every AWS call a native handler makes is in its schema's handler

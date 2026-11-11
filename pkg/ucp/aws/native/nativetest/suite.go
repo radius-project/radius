@@ -172,9 +172,13 @@ type Suite struct {
 	// range AWS takes. Each deploy gets 400 and leaves no record.
 	Invalid []map[string]any
 
-	// SameResource, when set, is another template for the resource Properties gives, such as one that sets a value
-	// AWS defaults to, like the current account. Two aliases must not both own the resource, whichever deploys first.
-	SameResource map[string]any
+	// SameResource are other templates for the resource Properties gives, such as one that sets a value AWS defaults
+	// to, like the current account. Two aliases must not both own the resource, whichever deploys first.
+	SameResource []map[string]any
+
+	// SameResourceNames are other forms of the identifier of the resource Properties gives, which a PUT can send as
+	// name to take the resource over. Another alias that sends one with Properties gets 409, as with the identifier.
+	SameResourceNames []string
 
 	// ChangedOutside, when set, is a change to the resource in AWS outside Radius that a deploy of its template must
 	// undo, for a type whose Equivalent compares values only on what the template sets.
@@ -213,6 +217,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("template the handler rejects", func(t *testing.T) { s.invalid(t) })
 	t.Run("another template for a resource another alias holds", func(t *testing.T) { s.sameResource(t, false) })
 	t.Run("a template for a resource another alias holds in another form", func(t *testing.T) { s.sameResource(t, true) })
+	t.Run("a take-over by a name for a resource another alias holds", s.sameResourceNames)
 	t.Run("redeploy after a change outside Radius", func(t *testing.T) { s.changedOutside(t, false) })
 	t.Run("take over a resource changed outside Radius", func(t *testing.T) { s.changedOutside(t, true) })
 	t.Run("create-only change", func(t *testing.T) { s.createOnlyChange(t) })
@@ -1051,17 +1056,26 @@ func (s Suite) invalid(t *testing.T) {
 	}
 }
 
-// sameResource deploys Properties under one alias and SameResource under another, or the other way around when
-// reversed. Both templates give the same resource, so the second deploy gets 409 and changes nothing, and deleting
-// the first alias deletes the resource.
+// sameResource deploys Properties under one alias and each of SameResource under another, or the other way around
+// when reversed. Both templates give the same resource, so the second deploy gets 409 and changes nothing, and
+// deleting the first alias deletes the resource.
 func (s Suite) sameResource(t *testing.T, reversed bool) {
-	if s.SameResource == nil {
+	if len(s.SameResource) == 0 {
 		t.Skip("the type has one template form for a resource")
 	}
-	first, second := s.Properties, s.SameResource
-	if reversed {
-		first, second = second, first
+	for i, same := range s.SameResource {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			first, second := s.Properties, same
+			if reversed {
+				first, second = second, first
+			}
+			s.deployBoth(t, first, second)
+		})
 	}
+}
+
+// deployBoth deploys first under one alias and second, a template for the same resource, under another.
+func (s Suite) deployBoth(t *testing.T, first map[string]any, second map[string]any) {
 	h := s.newHarness(t)
 	h.deploy(first)
 	other := strings.TrimSuffix(h.path(), alias) + otherAlias
@@ -1073,6 +1087,28 @@ func (s Suite) sameResource(t *testing.T, reversed bool) {
 
 	h.remove()
 	h.requireRemoved(nil)
+}
+
+// sameResourceNames deploys Properties under one alias, and Properties with each of SameResourceNames under another.
+func (s Suite) sameResourceNames(t *testing.T) {
+	if len(s.SameResourceNames) == 0 {
+		t.Skip("the type has one form of identifier for a resource")
+	}
+	for i, name := range s.SameResourceNames {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			h := s.newHarness(t)
+			h.deploy(s.Properties)
+			other := strings.TrimSuffix(h.path(), alias) + otherAlias
+			resp := h.do(h.putFactory(), http.MethodPut, other, owner, map[string]any{"name": name, "properties": s.Properties})
+			require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+			require.Nil(t, h.recordAt(other))
+			before := h.stored()
+			require.NotNil(t, before, "the first alias's resource stays")
+
+			h.remove()
+			h.requireRemoved(before)
+		})
+	}
 }
 
 // otherForm makes AWS return values of the template in another form, and deploys the template again. The values

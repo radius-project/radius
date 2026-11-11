@@ -142,7 +142,7 @@ func permissionsOf(resource map[string]any, perms []any, grants []any) map[strin
 }
 
 func identifierOf(t *testing.T, properties map[string]any) string {
-	id, err := NewPermissions(nil).Identifier(properties)
+	id, err := NewPermissions(nil, nil).Identifier(properties)
 	require.NoError(t, err)
 	return id
 }
@@ -161,7 +161,7 @@ func permissionsSuite(t *testing.T, resource map[string]any, other map[string]an
 		Metadata: schemaFile(t, "aws-lakeformation-permissions.metadata.json"),
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
 			api := newFakeAPI(store)
-			return fs.add(&trackedPermissions{Permissions: NewPermissions(api), api: api}, api)
+			return fs.add(&trackedPermissions{Permissions: NewPermissions(api, api), api: api}, api)
 		},
 		IdentifierProperty: "Id",
 		Properties:         properties,
@@ -193,8 +193,28 @@ func permissionsSuite(t *testing.T, resource map[string]any, other map[string]an
 }
 
 func Test_Suite_Permissions(t *testing.T) {
-	nativetest.Run(t, permissionsSuite(t, salesDatabase, map[string]any{"DatabaseResource": map[string]any{"Name": "marketing"}},
-		list("ALTER", "DESCRIBE"), list("DESCRIBE"), list("DESCRIBE", "DROP"), list("DESCRIBE", "DROP"), list("DROP"), "CREATE_TABLE"))
+	s := permissionsSuite(t, salesDatabase, map[string]any{"DatabaseResource": map[string]any{"Name": "marketing"}},
+		list("ALTER", "DESCRIBE"), list("DESCRIBE"), list("DESCRIBE", "DROP"), list("DESCRIBE", "DROP"), list("DROP"), "CREATE_TABLE")
+	// The same database: in the current account's catalog, named, and in other case, which Glue ignores.
+	s.SameResource = sameTargets(s.Properties,
+		map[string]any{"DatabaseResource": map[string]any{"CatalogId": account, "Name": "sales"}},
+		map[string]any{"DatabaseResource": map[string]any{"Name": "SALES"}},
+	)
+	// The same database in other forms.
+	s.SameResourceNames = []string{
+		identifierOf(t, with(s.Properties, map[string]any{"Resource": map[string]any{"DatabaseResource": map[string]any{"CatalogId": account, "Name": "sales"}}})),
+		identifierOf(t, with(s.Properties, map[string]any{"Resource": map[string]any{"DatabaseResource": map[string]any{"Name": "SALES"}}})),
+	}
+	nativetest.Run(t, s)
+}
+
+// sameTargets returns properties with each of resources, every one the same Lake Formation resource as properties's.
+func sameTargets(properties map[string]any, resources ...map[string]any) []map[string]any {
+	out := []map[string]any{}
+	for _, r := range resources {
+		out = append(out, with(properties, map[string]any{"Resource": r}))
+	}
+	return out
 }
 
 // Test_Suite_Permissions_Table runs the suite for permissions on a table, which ListPermissions returns in other
@@ -202,8 +222,34 @@ func Test_Suite_Permissions(t *testing.T) {
 func Test_Suite_Permissions_Table(t *testing.T) {
 	orders := map[string]any{"TableResource": map[string]any{"DatabaseName": "sales", "Name": "orders"}}
 	returns := map[string]any{"TableResource": map[string]any{"DatabaseName": "sales", "Name": "returns"}}
-	nativetest.Run(t, permissionsSuite(t, orders, returns,
-		list("SELECT", "ALTER"), list("SELECT"), list("SELECT", "DROP"), list("SELECT", "DROP"), list("DROP"), "INSERT"))
+	s := permissionsSuite(t, orders, returns,
+		list("SELECT", "ALTER"), list("SELECT"), list("SELECT", "DROP"), list("SELECT", "DROP"), list("DROP"), "INSERT")
+	// The same table: as every column of it, in the current account's catalog, and in other case, which Glue ignores.
+	s.SameResource = sameTargets(s.Properties,
+		map[string]any{"TableWithColumnsResource": map[string]any{"DatabaseName": "sales", "Name": "orders", "ColumnWildcard": map[string]any{}}},
+		map[string]any{"TableResource": map[string]any{"CatalogId": account, "DatabaseName": "sales", "Name": "orders"}},
+		map[string]any{"TableResource": map[string]any{"DatabaseName": "Sales", "Name": "ORDERS"}},
+		// Empty values the request leaves out.
+		map[string]any{"TableWithColumnsResource": map[string]any{"CatalogId": "", "DatabaseName": "sales", "Name": "orders", "ColumnNames": list(), "ColumnWildcard": map[string]any{"ExcludedColumnNames": list()}}},
+	)
+	s.SameResourceNames = []string{identifierOf(t, with(s.Properties, map[string]any{"Resource": map[string]any{
+		"TableWithColumnsResource": map[string]any{"DatabaseName": "sales", "Name": "orders", "ColumnWildcard": map[string]any{}},
+	}}))}
+	nativetest.Run(t, s)
+}
+
+// Test_Suite_Permissions_Columns runs the suite for permissions on some columns of a table, which AWS keeps whatever
+// the order or case of the column names.
+func Test_Suite_Permissions_Columns(t *testing.T) {
+	columns := func(names ...string) map[string]any {
+		return map[string]any{"TableWithColumnsResource": map[string]any{"DatabaseName": "sales", "Name": "orders", "ColumnNames": list(names...)}}
+	}
+	s := permissionsSuite(t, columns("id", "total"), columns("id"),
+		list("SELECT"), nil, list("SELECT"), list("SELECT"), nil, "INSERT")
+	s.SameResource = sameTargets(s.Properties, columns("total", "id"), columns("ID", "Total"))
+	// Lake Formation grants only SELECT on columns, so no update both revokes and grants a permission.
+	s.MultiCall, s.RejectedCalls = nil, 0
+	nativetest.Run(t, s)
 }
 
 const (
@@ -251,7 +297,7 @@ func resourceSuite(t *testing.T, dataArn string) {
 func Test_Registry(t *testing.T) {
 	catalog, err := schemas.Load()
 	require.NoError(t, err)
-	registry, err := native.NewRegistry(catalog, NewDataLakeSettings(nil), NewPermissions(nil), NewResource(nil))
+	registry, err := native.NewRegistry(catalog, NewDataLakeSettings(nil), NewPermissions(nil, nil), NewResource(nil))
 	require.NoError(t, err)
 
 	settings := registry.Lookup(settingsType)

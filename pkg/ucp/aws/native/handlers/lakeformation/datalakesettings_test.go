@@ -302,7 +302,7 @@ func Test_Unsupported(t *testing.T) {
 	settings := NewDataLakeSettings(nil)
 	require.NoError(t, settings.Delete(ctx, region, settingsIdentifier))
 	require.NoError(t, settings.DeleteScoped(ctx, region, settingsIdentifier, nil))
-	for _, h := range []native.Handler{settings, NewPermissions(nil), NewResource(nil)} {
+	for _, h := range []native.Handler{settings, NewPermissions(nil, nil), NewResource(nil)} {
 		if h.Options().List == native.ListNone {
 			resources, err := h.List(ctx, region)
 			require.NoError(t, err)
