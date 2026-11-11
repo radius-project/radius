@@ -86,8 +86,9 @@ func (h *ReplicationInstance) Identifier(properties map[string]any) (string, err
 }
 
 // caseInsensitive are the properties DMS returns in another case than the template may set them: names it stores in
-// lowercase, and the maintenance window.
-var caseInsensitive = []string{"ReplicationInstanceIdentifier", "ReplicationSubnetGroupIdentifier", "ResourceIdentifier", "PreferredMaintenanceWindow"}
+// lowercase, and the maintenance window. ResourceIdentifier isn't one: the ARN keeps its case, such as
+// rep:Example-App-ARN1, so another case is another value.
+var caseInsensitive = []string{"ReplicationInstanceIdentifier", "ReplicationSubnetGroupIdentifier", "PreferredMaintenanceWindow"}
 
 // describe returns the replication instance with the identifier, or ErrNotFound. An instance DMS reports as deleted
 // is gone.
