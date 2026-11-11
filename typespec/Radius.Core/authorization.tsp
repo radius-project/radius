@@ -18,17 +18,20 @@ model Principal {
   @visibility(Lifecycle.Read, Lifecycle.Create)
   type: PrincipalType;
 
-  @doc("The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.")
+  @doc("The trusted identity system, including its trust domain, up to 256 characters. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.")
   @minLength(1)
+  @maxLength(256)
   @visibility(Lifecycle.Read, Lifecycle.Create)
   issuer: string;
 
-  @doc("The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.")
+  @doc("The identity within the issuer, up to 512 characters to accommodate Kubernetes service-account names and namespaces. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.")
   @minLength(1)
+  @maxLength(512)
   @visibility(Lifecycle.Read, Lifecycle.Create)
   subject: string;
 
-  @doc("An optional mutable label that is never used to match principals.")
+  @doc("An optional mutable label, up to 128 characters, that is never used to match principals.")
+  @maxLength(128)
   displayName?: string;
 }
 
@@ -39,8 +42,9 @@ enum PrincipalType {
   workload: "workload",
 }
 
-@doc("An installation, plane, resource group, or supported resource ID. Inheritance follows the ID hierarchy, never resource references. Supported resources are Radius.Core environments, recipePacks, applications and Applications.Core environments and applications. UCP validates the scope's topology and supported type using ARM's case-insensitive ID rules; the string constraint only validates path syntax.")
+@doc("An installation, plane, resource group, or supported resource ID, up to 2048 characters including the leading slash. Inheritance follows the ID hierarchy, never resource references. Supported resources are Radius.Core environments, recipePacks, applications and Applications.Core environments and applications. UCP validates the scope's topology and supported type using ARM's case-insensitive ID rules; the string constraint only validates path syntax.")
 @pattern("^(/|/[^/\\s*]+(/[^/\\s*]+)*)$")
+@maxLength(2048)
 scalar AuthorizationScope extends string;
 
 @doc("The installation, a plane, or a resource group. Role definitions cannot be created beneath individual resources.")
@@ -48,10 +52,12 @@ scalar RoleDefinitionScope extends AuthorizationScope;
 
 @doc("A scope ID as a URI path prefix, without the leading slash. Resource properties and IDs always retain their leading slash. Installation operations have separate paths.")
 @pattern("^[^/\\s*]+(/[^/\\s*]+)*$")
+@maxLength(2047)
 scalar AuthorizationScopePath extends string;
 
-@doc("An explicit catalog permission such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.")
+@doc("An explicit catalog permission, up to 256 characters, such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.")
 @pattern("^[^*/\\s]+(/[^*/\\s]+){2,}$")
+@maxLength(256)
 scalar PermissionName extends string;
 
 @doc("An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.")
@@ -328,6 +334,9 @@ model WhoAmIResult {
 
   @doc("Whether the caller has Radius Administrator access.")
   isRadiusAdministrator: boolean;
+
+  @doc("Adoption and recovery warnings derived from the same fresh policy. No assignment identifiers or other principals are disclosed.")
+  warnings?: string[];
 }
 
 @doc("A permission and concrete target to evaluate. A reference never implies access to its target.")
@@ -335,7 +344,8 @@ model AccessCheck {
   @doc("The permission being evaluated.")
   permission: PermissionName;
 
-  @doc("The concrete target resource or scope ID.")
+  @doc("The concrete target resource or scope ID, up to 2048 characters including the leading slash.")
+  @maxLength(2048)
   target: string;
 }
 
@@ -344,8 +354,9 @@ model AccessCheckRequest {
   @doc("The principal to check, or the authenticated caller when omitted.")
   principal?: Principal;
 
-  @doc("The checks to evaluate.")
+  @doc("The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with its own policy generation.")
   @minItems(1)
+  @maxItems(100)
   checks: AccessCheck[];
 }
 

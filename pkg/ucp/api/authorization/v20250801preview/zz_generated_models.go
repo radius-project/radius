@@ -60,14 +60,15 @@ type AccessCheck struct {
 	// REQUIRED; The permission being evaluated.
 	Permission *string
 
-	// REQUIRED; The concrete target resource or scope ID.
+	// REQUIRED; The concrete target resource or scope ID, up to 2048 characters including the leading slash.
 	Target *string
 }
 
 // AccessCheckRequest - Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action.
 // Group membership is resolved from trusted identity context, not caller-provided groups.
 type AccessCheckRequest struct {
-	// REQUIRED; The checks to evaluate.
+	// REQUIRED; The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with
+	// its own policy generation.
 	Checks []*AccessCheck
 
 	// The principal to check, or the authenticated caller when omitted.
@@ -82,7 +83,7 @@ type AccessCheckResult struct {
 	// REQUIRED; The permission being evaluated.
 	Permission *string
 
-	// REQUIRED; The concrete target resource or scope ID.
+	// REQUIRED; The concrete target resource or scope ID, up to 2048 characters including the leading slash.
 	Target *string
 }
 
@@ -253,7 +254,7 @@ type ExplainedAccessCheck struct {
 	// REQUIRED; The permission being evaluated.
 	Permission *string
 
-	// REQUIRED; The concrete target resource or scope ID.
+	// REQUIRED; The concrete target resource or scope ID, up to 2048 characters including the leading slash.
 	Target *string
 
 	// Readable assignments and roles that granted the permission. Absence can mean that grant details are not readable.
@@ -315,17 +316,18 @@ type PolicySnapshot struct {
 // Principal - A stable principal identity. Equality uses type, issuer, and subject, never displayName. Group membership is
 // resolved by UCP, not supplied by an access-check caller.
 type Principal struct {
-	// REQUIRED; The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller
-	// namespace principals use radius-controller.
+	// REQUIRED; The trusted identity system, including its trust domain, up to 256 characters. Kubernetes issuers use kubernetes:<cluster-id>;
+	// controller namespace principals use radius-controller.
 	Issuer *string
 
-	// REQUIRED; The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.
+	// REQUIRED; The identity within the issuer, up to 512 characters to accommodate Kubernetes service-account names and namespaces.
+	// Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.
 	Subject *string
 
 	// REQUIRED; The kind of principal.
 	Type *PrincipalType
 
-	// An optional mutable label that is never used to match principals.
+	// An optional mutable label, up to 128 characters, that is never used to match principals.
 	DisplayName *string
 }
 
@@ -449,4 +451,7 @@ type WhoAmIResult struct {
 
 	// REQUIRED; The authenticated user or workload.
 	Principal *Principal
+
+	// Adoption and recovery warnings derived from the same fresh policy. No assignment identifiers or other principals are disclosed.
+	Warnings []*string
 }
