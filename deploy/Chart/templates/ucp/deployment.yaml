@@ -24,6 +24,7 @@ spec:
         {{- end }}
       annotations:
         checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        checksum/caller-authentication: {{ .Values.ucp.kubernetesIssuer | default "kubernetes:local" | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
