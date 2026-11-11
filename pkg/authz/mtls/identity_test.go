@@ -103,6 +103,20 @@ func newCA(t *testing.T) testCA {
 	return testCA{cert: cert, key: key, pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
 }
 
+// renew returns a new self-signed certificate for the CA's key, as cert-manager issues when it
+// renews a CA Certificate with rotationPolicy Never.
+func (ca testCA) renew(t *testing.T) testCA {
+	t.Helper()
+	template := *ca.cert
+	template.SerialNumber = big.NewInt(2)
+	template.NotAfter = time.Now().Add(2 * time.Hour)
+	der, err := x509.CreateCertificate(rand.Reader, &template, &template, ca.key.Public(), ca.key)
+	require.NoError(t, err)
+	cert, err := x509.ParseCertificate(der)
+	require.NoError(t, err)
+	return testCA{cert: cert, key: ca.key, pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
+}
+
 func (ca testCA) issue(t *testing.T, opts certOptions) testCert {
 	t.Helper()
 	if opts.key == nil {
