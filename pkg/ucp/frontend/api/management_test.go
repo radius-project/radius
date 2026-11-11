@@ -152,6 +152,32 @@ func TestServiceManagementGeneratedClientsEveryMode(t *testing.T) {
 			snapshot, err := store.LoadPolicy(t.Context(), -1)
 			require.NoError(t, err)
 			require.Equal(t, int64(16), snapshot.Generation())
+			history, err := authapi.NewAccessChangesClient(credential, clientOptions("alice"))
+			require.NoError(t, err)
+			historyPage, err := history.NewListPager(nil).NextPage(t.Context())
+			require.NoError(t, err)
+			require.Len(t, historyPage.Value, 16)
+			require.Nil(t, historyPage.NextLink)
+			event, err := history.Get(t.Context(), "2", nil)
+			require.NoError(t, err)
+			require.Equal(t, "Radius.Core/accessChanges", *event.Type)
+			require.Equal(t, "2", *event.Name)
+			require.Equal(t, "alice", *event.Properties.Principal.Subject)
+			require.Equal(t, assignment.RoleAssignmentResource.Properties, event.Properties.PolicyChange.After.RoleAssignment)
+			require.Equal(t, assignment.ID, event.Properties.PolicyChange.Target)
+			filtered, err := history.NewListPager(&authapi.AccessChangesClientListOptions{
+				Scope:     to.Ptr("/planes/radius/local/resourceGroups/team-a"),
+				Since:     event.Properties.Time,
+				Principal: to.Ptr(`{"type":"user","issuer":"kubernetes:test-cluster","subject":"alice"}`),
+			}).NextPage(t.Context())
+			require.NoError(t, err)
+			require.Len(t, filtered.Value, 4)
+			deniedHistory, err := authapi.NewAccessChangesClient(credential, clientOptions("bob"))
+			require.NoError(t, err)
+			_, err = deniedHistory.Get(t.Context(), "2", nil)
+			var historyError *azcore.ResponseError
+			require.ErrorAs(t, err, &historyError)
+			require.Equal(t, http.StatusForbidden, historyError.StatusCode)
 		})
 	}
 }

@@ -36,6 +36,8 @@ func managementRoute(path string) (managementTarget, bool, error) {
 		kind = "roleDefinitions"
 	case "roleassignments":
 		kind = "roleAssignments"
+	case "accesschanges":
+		kind = "accessChanges"
 	default:
 		return managementTarget{}, false, nil
 	}
@@ -54,7 +56,7 @@ func managementRoute(path string) (managementTarget, bool, error) {
 	return target, true, validateManagementScope(scope, kind)
 }
 
-// Management serves only role and assignment APIs before generic routing.
+// Management serves role, assignment and read-only history APIs before generic routing.
 // Authentication must run first. Other policy mutations remain guarded by
 // ObserveRequests, including settings, history and private store targets.
 func Management(runtime *PolicyRuntime, pathBase string) func(http.Handler) http.Handler {
@@ -71,6 +73,14 @@ func Management(runtime *PolicyRuntime, pathBase string) func(http.Handler) http
 			target, matched, routeErr := managementRoute(path)
 			if !matched {
 				next.ServeHTTP(w, r)
+				return
+			}
+			if target.kind == "accessChanges" {
+				if r.Method != http.MethodGet {
+					next.ServeHTTP(w, r)
+					return
+				}
+				serveHistory(w, r, runtime, target, routeErr)
 				return
 			}
 			identity, verified := IdentityFromContext(r.Context())

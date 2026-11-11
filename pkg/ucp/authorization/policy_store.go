@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/components/database"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"k8s.io/utils/clock"
 )
 
@@ -664,7 +665,12 @@ func (s *PolicyStore) finish(ctx context.Context, version accessVersion, etag st
 	if err := s.immutable(ctx, historyID, record); err != nil {
 		return err
 	}
-	return s.save(ctx, accessVersionID, accessVersion{Generation: pending.Generation, Root: pending.Root}, database.WithETag(etag))
+	if err := s.save(ctx, accessVersionID, accessVersion{Generation: pending.Generation, Root: pending.Root}, database.WithETag(etag)); err != nil {
+		return err
+	}
+	ucplog.FromContextOrDiscard(ctx).WithName("radius.audit").Info("User authorization policy change",
+		"generation", pending.Generation, "accessChange", event.Properties)
+	return nil
 }
 
 // LoadPolicy recovers durable pending intent before returning committed data.
@@ -806,6 +812,12 @@ func (s *PolicyStore) AccessChange(ctx context.Context, generation int64) (*api.
 	if generation <= 0 || generation > version.Generation {
 		return nil, &database.ErrNotFound{ID: historyPrefix + strconv.FormatInt(generation, 10)}
 	}
+	return s.committedAccessChange(ctx, generation)
+}
+
+// committedAccessChange requires a generation bounded by an already committed
+// snapshot. Prepared events are addressed only by private immutable object IDs.
+func (s *PolicyStore) committedAccessChange(ctx context.Context, generation int64) (*api.AccessChangeResource, error) {
 	event, _, err := s.readHistory(ctx, historyPrefix+strconv.FormatInt(generation, 10))
 	if err != nil {
 		return nil, err
