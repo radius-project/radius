@@ -154,19 +154,20 @@ type Suite struct {
 	// handler whose Recovery is native.RecoverBySearch.
 	Duplicates bool
 
-	// Reference, when set, is a create-only property whose template value AWS reports in a form only an outside
-	// lookup could match, such as a KMS alias AWS reports as the key's ARN.
-	Reference *Reference
+	// RecordedForm, when set, is a create-only property whose template value AWS reports in a form only a record of
+	// the last deploy shows to match, such as a KMS alias AWS reports as the key's ARN.
+	RecordedForm *RecordedForm
 
 	// RemovedItemField, when set, is a field inside an array item that a deploy sets and the next one leaves out, for
 	// a type whose Equivalent compares array items only on the values the template sets.
 	RemovedItemField *RemovedItemField
 }
 
-// Reference is a create-only property the template sets as a reference AWS resolves, such as a KMS alias.
-type Reference struct {
-	// Property is the property, Template and Other are two references the template can set, such as two aliases, and
-	// Stored is what AWS reports for either, such as the key ARN.
+// RecordedForm is a create-only property AWS reports in another form than the template sets, such as a KMS alias it
+// reports as the key's ARN, or a list it adds values to.
+type RecordedForm struct {
+	// Property is the property, Template and Other are two values the template can set, such as two aliases, and
+	// Stored is what AWS reports for Template, and may report for Other, such as the key ARN.
 	Property string
 	Template any
 	Other    any
@@ -200,7 +201,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("delete as the metadata says", func(t *testing.T) { s.deleteByMetadata(t) })
 	t.Run("identifier another alias holds in the identity scope", func(t *testing.T) { s.identifierHeld(t) })
 	t.Run("value AWS returns in another form", func(t *testing.T) { s.otherForm(t) })
-	t.Run("create-only reference AWS reports resolved", func(t *testing.T) { s.reference(t) })
+	t.Run("create-only value only a record matches", func(t *testing.T) { s.recordedForm(t) })
 	t.Run("identifier of another product", func(t *testing.T) { s.otherProduct(t) })
 	t.Run("update fails between calls", func(t *testing.T) { s.multiCall(t) })
 	t.Run("delete again after the response is lost", func(t *testing.T) { s.deleteTokenRetry(t) })
@@ -921,14 +922,14 @@ func (s Suite) identifierHeld(t *testing.T) {
 	require.Nil(t, h.recordAt(other))
 }
 
-// reference deploys a create-only reference, such as a KMS alias, that AWS reports in its resolved form. Deploying the
-// same reference again changes nothing, because the record shows the template didn't change it. Changing it gets 400,
-// even though AWS still reports the same resolved value, because UCP can't tell whether the new one resolves to it.
-// Taking the resource over by name with a reference gets 400 too, because there is no record to show it unchanged.
-func (s Suite) reference(t *testing.T) {
-	ref := s.Reference
+// recordedForm deploys a create-only value, such as a KMS alias, that AWS reports in another form. Deploying the same
+// value again changes nothing, because the record shows the template didn't change it. Changing it gets 400, even
+// though AWS may report the same form for the new value. Taking the resource over by name gets 400 too, because there
+// is no record to show the value unchanged.
+func (s Suite) recordedForm(t *testing.T) {
+	ref := s.RecordedForm
 	if ref == nil {
-		t.Skip("the type has no create-only reference AWS reports resolved")
+		t.Skip("the type has no create-only value AWS reports in a form only a record matches")
 	}
 	resolve := func(h *harness) {
 		require.NoError(t, h.cc.Patch(s.TypeName, h.identifier(), []map[string]any{{"op": "replace", "path": "/" + ref.Property, "value": ref.Stored}}))
@@ -942,7 +943,7 @@ func (s Suite) reference(t *testing.T) {
 		h.handler.reset()
 		resp := h.put(template)
 		require.Equal(t, http.StatusOK, resp.status, resp.raw)
-		require.Equal(t, []string{"Read"}, h.handler.reset(), "the same reference is no change")
+		require.Equal(t, []string{"Read"}, h.handler.reset(), "the same value is no change")
 	})
 
 	t.Run("changed", func(t *testing.T) {
@@ -954,7 +955,7 @@ func (s Suite) reference(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
 		require.Contains(t, resp.raw, ref.Property)
 		require.Equal(t, before, h.stored(), "nothing changes in AWS")
-		require.Equal(t, applied, h.record().Properties.LastApplied, "the record keeps the reference AWS has")
+		require.Equal(t, applied, h.record().Properties.LastApplied, "the record keeps the value AWS has")
 	})
 
 	t.Run("taken over by name", func(t *testing.T) {

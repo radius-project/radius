@@ -301,10 +301,11 @@ type Options struct {
 	// hold more than the template, such as defaults AWS fills in, never hides a removal.
 	Equivalent func(path string, template any, aws any) bool
 
-	// RecordedEquivalent is Equivalent for a value whose two forms only an outside lookup could match, such as a KMS
-	// alias AWS reports as the key's ARN. UCP uses it only where the last deploy set the template's value, so it never
-	// counts AWS's value as the template's without a record of the last deploy, such as when a PUT takes over a
-	// resource by name. Such a value the template changes is then always a change.
+	// RecordedEquivalent is Equivalent for a rule only a record of the last deploy can justify, such as a KMS alias AWS
+	// reports as the key's ARN, or values AWS adds to a create-only list that could also have been set outside the
+	// template. UCP uses it only where the last deploy set the template's value, so it never counts AWS's value as the
+	// template's without a record, such as when a PUT takes over a resource by name. Such a value the template changes
+	// is then always a change.
 	RecordedEquivalent func(path string, template any, aws any) bool
 
 	// DisruptiveUpdate is true for a type whose update restarts or interrupts the resource, such as one that must be

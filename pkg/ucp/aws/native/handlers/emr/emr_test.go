@@ -170,6 +170,12 @@ func Test_Suite_Cluster(t *testing.T) {
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		RecordedForm: &nativetest.RecordedForm{
+			Property: "Configurations",
+			Template: []any{sparkDefaults(map[string]any{"spark.executor.memory": "4g"})},
+			Other:    []any{sparkDefaults(map[string]any{"spark.executor.memory": "8g"})},
+			Stored:   []any{sparkDefaults(map[string]any{"spark.executor.memory": "4g", "spark.driver.memory": "2g"})},
+		},
 		RemovedItemField: &nativetest.RemovedItemField{
 			Before: with(cluster, map[string]any{"Instances": instances(1, map[string]any{"TaskInstanceGroups": []any{taskGroup(scalingRule)}})}),
 			After:  with(cluster, map[string]any{"Instances": instances(1, map[string]any{"TaskInstanceGroups": []any{taskGroup(nil)}})}),
@@ -178,6 +184,11 @@ func Test_Suite_Cluster(t *testing.T) {
 			},
 		},
 	})
+}
+
+// sparkDefaults is a spark-defaults configuration with properties.
+func sparkDefaults(properties map[string]any) map[string]any {
+	return map[string]any{"Classification": "spark-defaults", "ConfigurationProperties": properties}
 }
 
 // scalingRule is an automatic scaling policy for an instance group.
@@ -704,8 +715,13 @@ func Test_Equivalent(t *testing.T) {
 		{"another log location", "LogUri", "s3://logs/emr/", "s3n://logs/other/", false},
 		{"log location without a scheme", "LogUri", "logs/emr", "logs/emr/", true},
 		{"log location of another type", "LogUri", 1.0, "s3://logs", false},
-		{"applications with versions and Hadoop", "Applications", []any{map[string]any{"Name": "spark"}}, []any{map[string]any{"Name": "Hadoop", "Version": "3.3"}, map[string]any{"Name": "Spark", "Version": "3.5"}}, true},
+		{"applications in another case and order", "Applications", []any{map[string]any{"Name": "spark"}, map[string]any{"Name": "Hadoop"}}, []any{map[string]any{"Name": "Hadoop"}, map[string]any{"Name": "Spark"}}, true},
+		{"applications with versions and Hadoop", "Applications", []any{map[string]any{"Name": "spark"}}, []any{map[string]any{"Name": "Hadoop", "Version": "3.3"}, map[string]any{"Name": "Spark", "Version": "3.5"}}, false},
 		{"a missing application", "Applications", []any{map[string]any{"Name": "Hive"}}, []any{map[string]any{"Name": "Spark"}}, false},
+		{"configurations in another order", "Configurations", []any{sparkDefaults(map[string]any{"a": "1"}), map[string]any{"Classification": "hive-site"}}, []any{map[string]any{"Classification": "hive-site"}, sparkDefaults(map[string]any{"a": "1"})}, true},
+		{"emptied configuration properties", "Configurations", []any{sparkDefaults(map[string]any{})}, []any{sparkDefaults(map[string]any{"spark.executor.memory": "4g"})}, false},
+		{"more configuration properties", "Configurations", []any{sparkDefaults(map[string]any{"a": "1"})}, []any{sparkDefaults(map[string]any{"a": "1", "b": "2"})}, false},
+		{"a placement strategy AWS sets", "PlacementGroupConfigs", []any{map[string]any{"InstanceRole": "MASTER"}}, []any{map[string]any{"InstanceRole": "MASTER", "PlacementStrategy": "SPREAD"}}, false},
 		{"task groups in another order with defaults", "Instances/TaskInstanceGroups",
 			[]any{group(map[string]any{"Name": "b"}), group(map[string]any{"Name": "a"})},
 			[]any{group(map[string]any{"Name": "a", "Market": "ON_DEMAND"}), group(map[string]any{"Name": "b", "Market": "ON_DEMAND"})}, true},
@@ -720,6 +736,25 @@ func Test_Equivalent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.want, equivalent(tt.path, tt.template, tt.aws))
+		})
+	}
+	recorded := []struct {
+		name     string
+		path     string
+		template any
+		aws      any
+		want     bool
+	}{
+		{"applications with versions and Hadoop", "Applications", []any{map[string]any{"Name": "spark"}}, []any{map[string]any{"Name": "Hadoop", "Version": "3.3"}, map[string]any{"Name": "Spark", "Version": "3.5"}}, true},
+		{"a missing application", "Applications", []any{map[string]any{"Name": "Hive"}}, []any{map[string]any{"Name": "Spark"}}, false},
+		{"more configuration properties", "Configurations", []any{sparkDefaults(map[string]any{"a": "1"})}, []any{sparkDefaults(map[string]any{"a": "1", "b": "2"})}, true},
+		{"another configuration property", "Configurations", []any{sparkDefaults(map[string]any{"a": "1"})}, []any{sparkDefaults(map[string]any{"a": "2"})}, false},
+		{"a placement strategy AWS sets", "PlacementGroupConfigs", []any{map[string]any{"InstanceRole": "MASTER"}}, []any{map[string]any{"InstanceRole": "MASTER", "PlacementStrategy": "SPREAD"}}, true},
+		{"another path", "Instances/TaskInstanceGroups", []any{group(nil)}, []any{group(map[string]any{"Market": "ON_DEMAND"})}, false},
+	}
+	for _, tt := range recorded {
+		t.Run("with a record: "+tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, recordedEquivalent(tt.path, tt.template, tt.aws))
 		})
 	}
 	require.Equal(t, "x", lowerNames("x"))

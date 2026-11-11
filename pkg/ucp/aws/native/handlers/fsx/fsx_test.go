@@ -153,7 +153,7 @@ func Test_Suite_LustreFileSystem(t *testing.T) {
 		Removable:          "Tags",
 		CreateOnlyChange:   with(properties, map[string]any{"SubnetIds": []any{"subnet-0b2"}}),
 		OtherForm:          map[string]any{"KmsKeyId": "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"},
-		Reference: &nativetest.Reference{
+		RecordedForm: &nativetest.RecordedForm{
 			Property: "KmsKeyId",
 			Template: "alias/fsx-old",
 			Other:    "alias/fsx-new",
