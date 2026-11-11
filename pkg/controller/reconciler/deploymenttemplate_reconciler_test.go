@@ -18,17 +18,13 @@ package reconciler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"os"
-	"path"
 	"testing"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
@@ -48,11 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
-const (
-	deploymentTemplateTestWaitDuration            = time.Second * 10
-	deploymentTemplateTestWaitInterval            = time.Millisecond * 200
-	deploymentTemplateTestControllerDelayInterval = time.Millisecond * 100
-)
+const deploymentTemplateTestControllerDelayInterval = time.Millisecond * 100
 
 func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.MockResourceDeploymentsClient, k8sclient.Client) {
 	t.Helper()
@@ -951,75 +943,4 @@ func Test_DeploymentTemplateReconciler_SelfContainingNamespaceCleanup(t *testing
 	require.NoError(t, f.client.Get(t.Context(), types.NamespacedName{Name: "test"}, ns))
 	require.NotNil(t, ns.DeletionTimestamp, "template must not wait for its own namespace content deletion")
 	require.Empty(t, f.deployments.DeletedResourceIDs())
-}
-
-func waitForDeploymentTemplateStateUpdating(t *testing.T, client k8sclient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentTemplateStatus {
-	t.Helper()
-	status := &radappiov1alpha3.DeploymentTemplateStatus{}
-	require.EventuallyWithT(t, func(collect *assert.CollectT) {
-		current := &radappiov1alpha3.DeploymentTemplate{}
-		require.NoError(collect, client.Get(t.Context(), name, current))
-		status = &current.Status
-		assert.Equal(collect, current.Generation, status.ObservedGeneration)
-		assert.Equal(collect, radappiov1alpha3.DeploymentTemplatePhraseUpdating, status.Phrase)
-		assert.NotNil(collect, status.Operation)
-		assert.NotEqual(collect, oldOperation, status.Operation)
-	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval)
-	return status
-}
-
-func waitForDeploymentTemplateStateReadyPendingCleanup(t *testing.T, client k8sclient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentTemplateStatus {
-	t.Helper()
-	return waitForDeploymentTemplatePhrase(t, client, name, radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup)
-}
-
-func waitForDeploymentTemplateStateReady(t *testing.T, client k8sclient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentTemplateStatus {
-	t.Helper()
-	return waitForDeploymentTemplatePhrase(t, client, name, radappiov1alpha3.DeploymentTemplatePhraseReady)
-}
-
-func waitForDeploymentTemplatePhrase(t *testing.T, client k8sclient.Client, name types.NamespacedName, phrase radappiov1alpha3.DeploymentTemplatePhrase) *radappiov1alpha3.DeploymentTemplateStatus {
-	t.Helper()
-	status := &radappiov1alpha3.DeploymentTemplateStatus{}
-	require.EventuallyWithT(t, func(collect *assert.CollectT) {
-		current := &radappiov1alpha3.DeploymentTemplate{}
-		require.NoError(collect, client.Get(t.Context(), name, current))
-		status = &current.Status
-		assert.Equal(collect, phrase, status.Phrase)
-		if phrase == radappiov1alpha3.DeploymentTemplatePhraseReady {
-			assert.Nil(collect, status.Operation)
-		}
-	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval)
-	return status
-}
-
-func waitForDeploymentTemplateStateDeleting(t *testing.T, client k8sclient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentTemplateStatus {
-	t.Helper()
-	status := &radappiov1alpha3.DeploymentTemplateStatus{}
-	require.EventuallyWithT(t, func(collect *assert.CollectT) {
-		current := &radappiov1alpha3.DeploymentTemplate{}
-		require.NoError(collect, client.Get(t.Context(), name, current))
-		status = &current.Status
-		assert.NotNil(collect, current.DeletionTimestamp)
-		assert.Contains(collect, current.Finalizers, DeploymentTemplateFinalizer)
-	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval)
-	return status
-}
-
-func waitForDeploymentTemplateStateDeleted(t *testing.T, client k8sclient.Client, name types.NamespacedName) {
-	t.Helper()
-	require.Eventually(t, func() bool {
-		return apierrors.IsNotFound(client.Get(t.Context(), name, &radappiov1alpha3.DeploymentTemplate{}))
-	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval)
-}
-
-func readFileIntoTemplate(t *testing.T, filename string) string {
-	t.Helper()
-	content, err := os.ReadFile(path.Join("testdata", filename))
-	require.NoError(t, err)
-	templateMap := map[string]any{}
-	require.NoError(t, json.Unmarshal(content, &templateMap))
-	template, err := json.MarshalIndent(templateMap, "", "  ")
-	require.NoError(t, err)
-	return string(template)
 }

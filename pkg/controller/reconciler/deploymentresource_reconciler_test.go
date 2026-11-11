@@ -37,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
@@ -49,12 +48,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-)
-
-const (
-	DeploymentResourceTestWaitDuration            = time.Second * 10
-	DeploymentResourceTestWaitInterval            = time.Millisecond * 20
-	DeploymentResourceTestControllerDelayInterval = time.Millisecond * 20
 )
 
 func Test_DeploymentResourceReconciler_Passive(t *testing.T) {
@@ -423,20 +416,4 @@ func Test_DeploymentResource_OutputIdentityStatusSubresource(t *testing.T) {
 	template.Status.Coordinator.Phase = coordinatorDeleteRunning
 	require.NoError(t, caller.Update(ctx, template))
 	require.Equal(t, coordinatorIdle, template.Status.Coordinator.Phase)
-}
-
-func waitForDeploymentResourceStateReady(t *testing.T, c k8sClient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentResourceStatus {
-	t.Helper()
-	child := &radappiov1alpha3.DeploymentResource{}
-	require.Eventually(t, func() bool {
-		return c.Get(t.Context(), name, child) == nil && child.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseReady
-	}, DeploymentResourceTestWaitDuration, DeploymentResourceTestWaitInterval)
-	return &child.Status
-}
-
-func waitForDeploymentResourceDeleted(t *testing.T, c k8sClient.Client, name types.NamespacedName) {
-	t.Helper()
-	require.Eventually(t, func() bool {
-		return apierrors.IsNotFound(c.Get(t.Context(), name, &radappiov1alpha3.DeploymentResource{}))
-	}, DeploymentResourceTestWaitDuration, DeploymentResourceTestWaitInterval)
 }
