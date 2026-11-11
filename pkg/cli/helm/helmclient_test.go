@@ -51,7 +51,6 @@ import (
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
-	k8sfake "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestHelmClientImpl_UpgradeImmutableImageDefaults(t *testing.T) {
@@ -716,7 +715,10 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 						kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 						return kubeClient, apiextClient, nil
 					},
-					newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return k8sfake.NewClientset(), nil },
+					newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
+						controller := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "cert-manager")
+						return sarClient(nil, nil, controller), nil
+					},
 				}
 
 				state, err := impl.CheckRadiusInstall("test-context")
@@ -737,12 +739,16 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				require.NoError(t, err)
 				sum := sha256.Sum256([]byte(tt.want))
 				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+hex.EncodeToString(sum[:]))
+				requesters := nestedValue(upgraded.Config, "global", "rbac", "certManager", "requesters")
 				if tt.want == "off" {
 					require.Zero(t, detectCalls)
 					require.Zero(t, spiffeInstalls)
+					require.Nil(t, requesters)
 				} else {
 					require.Equal(t, 1, detectCalls)
 					require.Equal(t, 1, spiffeInstalls)
+					// The issuance policy allows the detected cert-manager controller, not the chart default.
+					require.Equal(t, []any{"system:serviceaccount:security:cert-manager"}, requesters)
 				}
 			})
 		}

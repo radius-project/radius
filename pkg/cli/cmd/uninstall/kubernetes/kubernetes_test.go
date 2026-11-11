@@ -756,3 +756,131 @@ func Test_Run_RadiusNotInstalled(t *testing.T) {
 		})
 	}
 }
+
+// When rad keeps csi-driver-spiffe because Pods still use it, a purge must not delete radius-system, where the driver
+// runs, or the kubelet cannot unmount those Pods' certificate volumes. A plain uninstall still succeeds with a warning.
+func Test_Run_CSIDriverSPIFFEKept(t *testing.T) {
+	t.Parallel()
+
+	keptErr := &helm.CSIDriverSPIFFEKeptError{
+		Namespace:  helm.RadiusSystemNamespace,
+		DriverName: "spiffe.csi.radapp.io",
+		Pods:       []string{"radius-system/ucp-0"},
+	}
+	tests := []struct {
+		name    string
+		purge   bool
+		err     error
+		wantErr []string
+		wantLog string
+	}{
+		{
+			name:    "uninstall warns and succeeds",
+			err:     keptErr,
+			wantLog: "Radius was uninstalled successfully.",
+		},
+		{
+			name:    "wrapped kept error is recognized",
+			err:     fmt.Errorf("uninstall: %w", keptErr),
+			wantLog: "Radius was uninstalled successfully.",
+		},
+		{
+			name:  "purge stops before deleting namespaces and CRDs",
+			purge: true,
+			err:   keptErr,
+			wantErr: []string{
+				"Radius was uninstalled, but rad stopped the purge before deleting namespaces and custom resource definitions because it kept csi-driver-spiffe in namespace radius-system: Pods still mount volumes from it: radius-system/ucp-0.",
+				"1. wait until no Pod mounts a volume from CSI driver spiffe.csi.radapp.io\n2. run `rad uninstall kubernetes` to remove csi-driver-spiffe and cert-manager\n",
+				`3. kubectl --context "test-context" delete apiservice ` + ucpAPIServiceName + " --ignore-not-found\n",
+				`4. kubectl --context "test-context" delete crd ` + strings.Join(radiusCRDs, " ") + " --ignore-not-found\n",
+				`5. kubectl --context "test-context" delete namespace radius-system testenv-ns --ignore-not-found`,
+			},
+		},
+		{
+			name:  "purge stops when rad could not check for Pods",
+			purge: true,
+			err:   &helm.CSIDriverSPIFFEKeptError{Namespace: helm.RadiusSystemNamespace, Reason: "could not check whether rad installed it: boom"},
+			wantErr: []string{
+				"because it kept csi-driver-spiffe in namespace radius-system: could not check whether rad installed it: boom.",
+				"1. wait until no Pod mounts a volume from csi-driver-spiffe\n",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			helmMock := helm.NewMockInterface(ctrl)
+			k8sMock := kubernetes.NewMockInterface(ctrl)
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			outputMock := &output.MockOutput{}
+			ctx := t.Context()
+
+			runner := &Runner{
+				Helm:        helmMock,
+				Output:      outputMock,
+				Kubernetes:  k8sMock,
+				Connections: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				KubeContext: "test-context",
+				Purge:       tt.purge,
+				AssumeYes:   true,
+			}
+
+			helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{RadiusInstalled: true}, nil)
+			helmMock.EXPECT().CSIDriverSPIFFEInstalledByRad("test-context").Return(true, nil)
+			helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(true, nil)
+			if tt.purge {
+				environment := corerpv20231001.EnvironmentResource{
+					ID:   new("/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/test-env"),
+					Name: new("test-env"),
+					Properties: &corerpv20231001.EnvironmentProperties{
+						Compute: &corerpv20231001.KubernetesCompute{Kind: new("Kubernetes"), Namespace: new("testenv-ns")},
+					},
+				}
+				appManagementClient.EXPECT().ListEnvironmentsAll(ctx).Return([]corerpv20231001.EnvironmentResource{environment}, nil)
+				appManagementClient.EXPECT().DeleteEnvironment(ctx, *environment.ID).Return(true, nil)
+			}
+			// No PerformRadiusCleanup expectation: the strict mock fails the test if the purge deletes anything.
+			helmMock.EXPECT().UninstallRadius(ctx, helm.NewDefaultClusterOptions(), "test-context").Return(tt.err)
+
+			err := runner.Run(ctx)
+			if len(tt.wantErr) > 0 {
+				require.Error(t, err)
+				for _, want := range tt.wantErr {
+					require.Contains(t, err.Error(), want)
+				}
+				return
+			}
+			require.NoError(t, err)
+			require.Contains(t, outputMock.Writes, output.LogOutput{
+				Format: "%s: %s. Run `rad uninstall kubernetes` again after the Pods that use it are gone to remove them.",
+				Params: []any{logWarningPrefix, keptErr.Error()},
+			})
+			last := outputMock.Writes[len(outputMock.Writes)-1].(output.LogOutput)
+			require.True(t, strings.HasPrefix(last.Format, tt.wantLog), last.Format)
+		})
+	}
+}
+
+func Test_Run_RadiusNotInstalled_CSIDriverSPIFFEKept(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	helmMock := helm.NewMockInterface(ctrl)
+	outputMock := &output.MockOutput{}
+	ctx := t.Context()
+	runner := &Runner{Helm: helmMock, Output: outputMock, KubeContext: "test-context", Purge: true, AssumeYes: true}
+
+	keptErr := &helm.CSIDriverSPIFFEKeptError{Namespace: helm.RadiusSystemNamespace, DriverName: "spiffe.csi.radapp.io", Pods: []string{"radius-system/ucp-0"}}
+	helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, nil)
+	helmMock.EXPECT().CSIDriverSPIFFEInstalledByRad("test-context").Return(true, nil)
+	helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(true, nil)
+	helmMock.EXPECT().UninstallCertManager(ctx, helm.NewDefaultClusterOptions(), "test-context").Return(keptErr)
+
+	require.NoError(t, runner.Run(ctx))
+	require.Equal(t, output.LogOutput{
+		Format: "%s: %s. Run `rad uninstall kubernetes` again after the Pods that use it are gone to remove them.",
+		Params: []any{logWarningPrefix, keptErr.Error()},
+	}, outputMock.Writes[len(outputMock.Writes)-1])
+}
