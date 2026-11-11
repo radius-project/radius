@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	authorizationv1 "k8s.io/api/authorization/v1"
@@ -28,9 +27,7 @@ type KubernetesSettingsGuard struct {
 // installation issuer as the authenticating proxy boundary. A nil rollout guard
 // permits only Disabled/DryRun changes, not production enforcement transitions.
 func NewKubernetesSettingsGuard(reviews typedauthorizationv1.SubjectAccessReviewInterface, issuer string, rollout SettingsChangeGuard) (*KubernetesSettingsGuard, error) {
-	if reviews == nil || !strings.HasPrefix(issuer, "kubernetes:") ||
-		strings.TrimSpace(strings.TrimPrefix(issuer, "kubernetes:")) == "" ||
-		strings.ContainsAny(issuer, " \t\r\n") {
+	if reviews == nil || !validKubernetesIssuer(issuer) {
 		return nil, fmt.Errorf("Kubernetes settings require a SAR client and installation-qualified issuer")
 	}
 	return &KubernetesSettingsGuard{reviews: reviews, issuer: issuer, rollout: rollout}, nil

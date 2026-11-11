@@ -80,7 +80,7 @@ type Options struct {
 // NewOptions creates a new Options instance from the given configuration.
 func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 	var err error
-	if config.UserAuthorization.KubernetesSettings && !config.UserAuthorization.Enabled {
+	if (config.UserAuthorization.KubernetesSettings || config.UserAuthorization.Installation != nil) && !config.UserAuthorization.Enabled {
 		return nil, fmt.Errorf("Kubernetes settings authorization requires the user authorization runtime")
 	}
 	options := Options{
@@ -103,14 +103,14 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 			return nil, fmt.Errorf("create user authorization catalog: %w", err)
 		}
 		var settings authorization.SettingsChangeGuard
+		issuer := ""
+		if config.CallerAuthentication != nil {
+			issuer = config.CallerAuthentication.KubernetesIssuer
+		}
+		if config.KubernetesCallerAuthentication != nil {
+			issuer = config.KubernetesCallerAuthentication.KubernetesIssuer
+		}
 		if config.UserAuthorization.KubernetesSettings {
-			issuer := ""
-			if config.CallerAuthentication != nil {
-				issuer = config.CallerAuthentication.KubernetesIssuer
-			}
-			if config.KubernetesCallerAuthentication != nil {
-				issuer = config.KubernetesCallerAuthentication.KubernetesIssuer
-			}
 			kubeConfig, err := kube_rest.InClusterConfig()
 			if err != nil {
 				return nil, fmt.Errorf("configure Kubernetes bootstrap authorization: %w", err)
@@ -128,6 +128,11 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 		store, err := authorization.NewPolicyStore(databaseClient, catalog, nil, settings)
 		if err != nil {
 			return nil, fmt.Errorf("create user authorization store: %w", err)
+		}
+		if config.UserAuthorization.Installation != nil {
+			if err := authorization.InitializeKubernetesInstallation(ctx, store, issuer, *config.UserAuthorization.Installation); err != nil {
+				return nil, fmt.Errorf("initialize user authorization installation: %w", err)
+			}
 		}
 		options.UserAuthorization, err = authorization.NewPolicyRuntime(store, nil)
 		if err != nil {

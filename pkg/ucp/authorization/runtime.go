@@ -21,6 +21,8 @@ type RuntimeOptions struct {
 	// KubernetesSettings enables the real in-cluster SAR boundary for settings.
 	// It does not initialize policy or enable enforcement rollout.
 	KubernetesSettings bool `yaml:"kubernetesSettings"`
+	// Installation is first-publication-only input from trusted Helm configuration.
+	Installation *InstallationOptions `yaml:"installation,omitempty"`
 }
 
 // RuntimeStatus describes policy availability, not workload authorization mode.
