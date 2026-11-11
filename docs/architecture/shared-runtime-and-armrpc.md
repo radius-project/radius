@@ -158,8 +158,9 @@ without a configured source CA bundle. Servers chain their certificate to it and
 clients verify servers against it.
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
-restart; new handshakes use the new material. Clients close idle connections
-whose verified server chain has expired.
+restart; new handshakes use the new material. Before each request, a client
+closes every connection whose verified server chain has expired, including
+connections in use, which aborts their in-flight requests.
 
 ### Request context and validation
 
