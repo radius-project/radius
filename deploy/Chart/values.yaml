@@ -175,8 +175,10 @@ global:
     # signed by Issuer "radius-ca-issuer". Callers also mount 10-minute projected ServiceAccount
     # tokens at /var/run/radius/tokens/<receiver>/token, with the receiver's name as the audience.
     # Receivers verify each caller's token offline; callers verify the receiver's SPIFFE ID before
-    # sending a token. The controller mounts only ca.crt from Secret "radius-ca". Plain Helm users
-    # must install csi-driver-spiffe with the same trust domain and CSI driver name.
+    # sending a token. The Radius CA bundle comes from a separate volume: every component projects
+    # only key ca.crt of Secret "radius-ca" to /var/run/radius/ca (never tls.key), because
+    # csi-driver-spiffe writes no ca.crt without a source CA bundle. Plain Helm users must install
+    # csi-driver-spiffe with the same trust domain and CSI driver name.
     spiffe:
       # SPIFFE trust domain of the Radius server certificates.
       trustDomain: radius.internal

@@ -435,7 +435,12 @@ func TestServe_ConfigErrors(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
 	certDir := t.TempDir()
-	writeFiles(t, certDir, ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")}), ca.pem)
+	leaf := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")})
+	writeFiles(t, certDir, leaf, ca.pem)
+	// csiDir is laid out like a csi-driver-spiffe volume without a source CA bundle: no ca.crt.
+	csiDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(csiDir, CertFile), leaf.certPEM, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(csiDir, KeyFile), leaf.keyPEM, 0o600))
 	receiver := Receiver{Name: "applications-rp"}
 
 	for _, tc := range []struct {
@@ -448,6 +453,9 @@ func TestServe_ConfigErrors(t *testing.T) {
 		{name: "missing namespace", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir}, receiver: receiver, want: "requires certificateDirectory and namespace"},
 		{name: "missing receiver", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, Namespace: testNamespace}, want: "receiver name is required"},
 		{name: "no certificate files", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: t.TempDir(), Namespace: testNamespace}, receiver: receiver, want: "failed to load server certificate"},
+		{name: "CSI volume without CA directory", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: csiDir, Namespace: testNamespace}, receiver: receiver, want: "failed to read ca.crt"},
+		{name: "no CA bundle in CA directory", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, CADirectory: t.TempDir(), Namespace: testNamespace}, receiver: receiver, want: "failed to read ca.crt"},
+		{name: "CA bundle from CA directory", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: csiDir, CADirectory: certDir, Namespace: testNamespace}, receiver: receiver, want: "in-cluster config"},
 		{name: "not in a cluster", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, Namespace: testNamespace}, receiver: receiver, want: "in-cluster config"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

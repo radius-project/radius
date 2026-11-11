@@ -70,12 +70,13 @@ func clientOptions(t *testing.T, caPEM []byte, mode authz.Mode) authz.Options {
 // caller for each Radius receiver.
 func callerOptions(t *testing.T, caPEM []byte, mode authz.Mode, caller string) authz.Options {
 	t.Helper()
-	certDir, tokenDir := t.TempDir(), t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(certDir, CAFile), caPEM, 0o600))
+	// Like the chart, the CA bundle is in its own directory, not in certificateDirectory.
+	certDir, caDir, tokenDir := t.TempDir(), t.TempDir(), t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(caDir, CAFile), caPEM, 0o600))
 	for _, receiver := range []string{"ucp", "applications-rp", "dynamic-rp"} {
 		writeToken(t, tokenDir, receiver, mintToken(t, caller, receiver))
 	}
-	return authz.Options{Mode: mode, CertificateDirectory: certDir, TokenDirectory: tokenDir, Namespace: testNamespace}
+	return authz.Options{Mode: mode, CertificateDirectory: certDir, CADirectory: caDir, TokenDirectory: tokenDir, Namespace: testNamespace}
 }
 
 func TestNewUpgradeTransport_Off(t *testing.T) {
@@ -99,7 +100,8 @@ func TestNewClientTransport_ConfigErrors(t *testing.T) {
 		{name: "missing token directory", modify: func(o *authz.Options) { o.TokenDirectory = "" }, want: "requires certificateDirectory, tokenDirectory, and namespace"},
 		{name: "missing namespace", modify: func(o *authz.Options) { o.Namespace = "" }, want: "requires certificateDirectory, tokenDirectory, and namespace"},
 		{name: "missing receiver", receiver: "-", want: "receiver is required"},
-		{name: "no CA bundle", modify: func(o *authz.Options) { o.CertificateDirectory = t.TempDir() }, want: "failed to load CA bundle"},
+		{name: "no CA bundle", modify: func(o *authz.Options) { o.CertificateDirectory, o.CADirectory = t.TempDir(), "" }, want: "failed to load CA bundle"},
+		{name: "no CA bundle in CA directory", modify: func(o *authz.Options) { o.CADirectory = t.TempDir() }, want: "failed to load CA bundle"},
 		{name: "no token for receiver", receiver: "bicep-de", want: "failed to read ServiceAccount token"},
 		{name: "empty token", modify: func(o *authz.Options) {
 			o.TokenDirectory = t.TempDir()
@@ -394,7 +396,7 @@ func dialTo(t *testing.T, rt http.RoundTripper, host, addr string) {
 func TestClientTransport_RotationMidHandshake(t *testing.T) {
 	oldCA, newCA := newCA(t), newCA(t)
 	options := clientOptions(t, oldCA.pem, authz.ModeEnforce)
-	source, err := sharedTrustSource(options.CertificateDirectory)
+	source, err := sharedTrustSource(options.EffectiveCADirectory())
 	require.NoError(t, err)
 
 	serverCert := oldCA.issue(t, certOptions{uris: spiffeURIs("applications-rp")}).tlsCertificate(t)
@@ -403,7 +405,7 @@ func TestClientTransport_RotationMidHandshake(t *testing.T) {
 		MinVersion: tls.VersionTLS12,
 		GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 			rotate.Do(func() {
-				assert.NoError(t, os.WriteFile(filepath.Join(options.CertificateDirectory, CAFile), newCA.pem, 0o600))
+				assert.NoError(t, os.WriteFile(filepath.Join(options.EffectiveCADirectory(), CAFile), newCA.pem, 0o600))
 				changed, err := source.Reload()
 				assert.NoError(t, err)
 				assert.True(t, changed)
@@ -565,7 +567,7 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 						nextRoot := expiringCA(t, nil, now.Add(4*time.Hour))
 						next := nextRoot.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: now.Add(2 * time.Hour)}).tlsCertificate(t)
 						served.Store(&next)
-						require.NoError(t, os.WriteFile(filepath.Join(options.CertificateDirectory, CAFile), nextRoot.pem, 0o600))
+						require.NoError(t, os.WriteFile(filepath.Join(options.EffectiveCADirectory(), CAFile), nextRoot.pem, 0o600))
 						changed, err := transport.source.Reload()
 						require.NoError(t, err)
 						require.True(t, changed)
