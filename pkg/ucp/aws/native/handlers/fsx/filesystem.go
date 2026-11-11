@@ -96,22 +96,28 @@ func (h *FileSystem) TypeName() string {
 // longer than the default.
 func (h *FileSystem) Options() native.Options {
 	return native.Options{
-		List:          native.ListRegion,
-		Recovery:      native.RecoverByResend,
-		Equivalent:    equivalent,
-		DeleteTimeout: 6 * time.Hour,
+		List:               native.ListRegion,
+		Recovery:           native.RecoverByResend,
+		Equivalent:         equivalent,
+		RecordedEquivalent: sameAlias,
+		DeleteTimeout:      6 * time.Hour,
 	}
 }
 
-// equivalent treats a KMS key ARN FSx returns as the key ID or alias the template sets. FSx returns the key's ARN
-// only, so an alias can't be told from another key, and KmsKeyId can't change after create anyway.
+// equivalent treats a KMS key ARN FSx returns as the key ID or ARN the template sets.
 func equivalent(path string, template any, aws any) bool {
 	t, okT := template.(string)
 	a, okA := aws.(string)
-	if path != "KmsKeyId" || !okT || !okA {
-		return false
-	}
-	return t == a || strings.HasSuffix(a, ":key/"+t) || strings.HasPrefix(t, "alias/") || strings.Contains(t, ":alias/")
+	return path == "KmsKeyId" && okT && okA && (t == a || strings.HasSuffix(a, ":key/"+t))
+}
+
+// sameAlias treats a KMS key ARN FSx returns as the alias the template sets. FSx returns the key's ARN only, so an
+// alias can't be told from another key: UCP uses it only where the last deploy set the same alias (see
+// native.Options.RecordedEquivalent), and KmsKeyId can't change after create.
+func sameAlias(path string, template any, aws any) bool {
+	t, okT := template.(string)
+	_, okA := aws.(string)
+	return path == "KmsKeyId" && okT && okA && (strings.HasPrefix(t, "alias/") || strings.Contains(t, ":alias/"))
 }
 
 // describe returns the file system with the identifier, or ErrNotFound.

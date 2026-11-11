@@ -105,9 +105,10 @@ func (h *Cluster) TypeName() string {
 // make a start take much longer, so UCP waits native.DefaultTimeout.
 func (h *Cluster) Options() native.Options {
 	return native.Options{
-		List:       native.ListRegion,
-		Recovery:   native.RecoverBySearch,
-		Equivalent: equivalent,
+		List:               native.ListRegion,
+		Recovery:           native.RecoverBySearch,
+		Equivalent:         equivalent,
+		RecordedEquivalent: recordedEquivalent,
 	}
 }
 

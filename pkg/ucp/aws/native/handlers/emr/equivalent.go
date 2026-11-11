@@ -24,8 +24,10 @@ import (
 // equivalent treats values EMR returns in another form as the template's:
 //
 //   - LogUri: EMR returns an s3:// location as s3n://, and may add a trailing "/".
-//   - Applications: EMR returns every application it installed, with its version, and may name it in another case.
-//     Each application the template lists must be among them.
+//   - Applications, Configurations, and PlacementGroupConfigs: these create-only lists must hold the same items, in
+//     any order, with application names in any case. EMR may add values to them, such as each application's version
+//     and Hadoop, but without a record of the last deploy UCP can't tell those from values set outside the template,
+//     so only recordedEquivalent allows them.
 //   - Instances/TaskInstanceGroups: as other lists, but EMR changes the count of a group with an automatic scaling
 //     policy, so its count isn't compared.
 //
@@ -33,9 +35,9 @@ import (
 // the count's path and its two values, not the group's policy or ManagedScalingPolicy, so skipping it would also hide
 // a real change of an unscaled group. Such a count AWS changed starts an update that makes no AWS call, because the
 // update leaves the count of a scaled group as it is. #13673 tracks giving Equivalent the whole resource.
-//   - Other lists of objects, such as instance groups, configurations, and placement groups: EMR fills in defaults,
-//     such as an instance group's Market or EBS volumes, and may return the items in another order. Each item the
-//     template lists must match its own item in AWS's list, on the values the template sets.
+//   - Other lists of objects, such as instance groups: EMR fills in defaults, such as an instance group's Market or EBS
+//     volumes, and may return the items in another order. Each item the template lists must match its own item in AWS's
+//     list, on the values the template sets.
 func equivalent(path string, template any, aws any) bool {
 	switch path {
 	case "LogUri":
@@ -43,7 +45,10 @@ func equivalent(path string, template any, aws any) bool {
 		a, okA := aws.(string)
 		return okT && okA && s3Location(t) == s3Location(a)
 	case "Applications":
-		return covers(lowerNames(template), lowerNames(aws), true)
+		t, a := lowerNames(template), lowerNames(aws)
+		return objectList(t) && objectList(a) && covers(t, a, false) && covers(a, t, false)
+	case "Configurations", "PlacementGroupConfigs":
+		return objectList(template) && objectList(aws) && covers(template, aws, false) && covers(aws, template, false)
 	case "Tags":
 		return false
 	case "Instances/TaskInstanceGroups":
@@ -53,6 +58,20 @@ func equivalent(path string, template any, aws any) bool {
 		return false
 	}
 	return covers(template, aws, false)
+}
+
+// recordedEquivalent treats a create-only list EMR added values to as the template's: Applications may hold more
+// applications, and each item of Applications, Configurations, and PlacementGroupConfigs may hold more values than the
+// template sets. UCP uses it only where the last deploy set the template's value (see
+// native.Options.RecordedEquivalent).
+func recordedEquivalent(path string, template any, aws any) bool {
+	switch path {
+	case "Applications":
+		return covers(lowerNames(template), lowerNames(aws), true)
+	case "Configurations", "PlacementGroupConfigs":
+		return objectList(template) && objectList(aws) && covers(template, aws, false)
+	}
+	return false
 }
 
 // s3Location returns an S3 location without its scheme and trailing "/".
