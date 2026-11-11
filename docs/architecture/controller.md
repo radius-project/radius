@@ -90,6 +90,62 @@ Generic templates can provision arbitrary built-in or custom Kubernetes resource
 
 ## Change This Safely
 
+### Recovering A Stalled Template
+
+There is no automatic reset command for `Blocked`. Restarting the controller or editing the template does not unblock it. Recovery is an administrator operation requiring status-subresource access and evidence about the original external request, not just the current existence of an output.
+
+1. Select the affected cluster explicitly. Save the template and its tracker objects in restricted local storage; resume tokens are sensitive operational data. Record the template UID, resource version, coordinator message, target/deployment ID, submitted hash, operation kind/token, complete ledger, and tracker provenance. For example:
+
+   ```bash
+   CONTEXT=your-cluster
+   CONTROL_NAMESPACE=radius-system
+   NAMESPACE=your-application-namespace
+   TEMPLATE=your-template
+   umask 077
+   kubectl --context "$CONTEXT" -n "$NAMESPACE" get deploymenttemplate "$TEMPLATE" -o json > template-before.json
+   kubectl --context "$CONTEXT" -n "$NAMESPACE" get deploymentresources -o json > trackers-before.json
+   ```
+
+2. Pause GitOps and other writers for the affected deployment and controller. Stop every controller instance before any manual status repair, including custom installations; with the standard chart, scale `deployment/controller` in the control-plane namespace to zero and wait for its Pods to exit. This stops reconciliation, not requests already running in UCP or Kubernetes. Keep the saved inventory and finalizers intact.
+3. Establish the request outcome using the deployment/operation APIs and server-side request records for the exact target and operation. Check Kubernetes output identities in their actual namespaces and clusters where applicable. A missing object, an empty token, or membership in the template's inventory does not prove a request was never accepted or cannot complete later. Account for all outputs created before a failed PUT, and preserve the union of existing ledger entries and newly established outputs; do not replace the ledger with only the objects visible in one read.
+4. Choose the recovery path below. If evidence cannot establish the target, outcome, and complete inventory, leave the template stopped in its recovery state and involve a Radius maintainer. There is no supported generic repair for that uncertainty.
+5. After a reviewed repair, restart only the current coordinator version, restore the standard single replica, and keep other writers paused until verification completes. For a saved DELETE token, confirm polling continues without a replacement PUT until deletion finishes. For a PUT, confirm its inventory is committed before trackers appear. For a live template, verify `Ready`, a current spec hash, no outstanding operation or pending cleanup, and matching tracker provenance and external outputs. For a deleting template, verify its recorded outputs are gone before its finalizer/template disappears. Check events and logs for renewed recovery errors before resuming writers.
+
+**Saved token example.** Suppose a `Blocked` template retains a verified Radius DELETE token and its original target remains `PendingDelete`. A maintainer has confirmed from the original request records that the token belongs to that target, and that no other blocking identity/schema issue needs repair. After stopping the controller, take a fresh snapshot and change only the phase to `DeleteRunning`; retain the operation, target, ledger, hash, and finalizers. The following guarded status patch illustrates this narrow case; it is not appropriate for Kubernetes DELETEs, tokenless requests, or unverified legacy tokens. It requires `jq` and a `kubectl` version supporting `--subresource=status`.
+
+```bash
+kubectl --context "$CONTEXT" -n "$NAMESPACE" get deploymenttemplate "$TEMPLATE" -o json > template-recovery.json
+jq -e '
+  .status.coordinator.phase == "Blocked" and
+  .status.operation.operationKind == "DELETE" and
+  ((.status.operation.resumeToken | length) > 0) and
+  (.status.coordinator.resourceID | startswith("/planes/radius/")) and
+  (.status.coordinator.resourceID as $target |
+    any(.status.coordinator.outputs[]; .id == $target and .state == "PendingDelete"))
+' template-recovery.json &&
+jq '[
+  {op:"test", path:"/metadata/uid", value:.metadata.uid},
+  {op:"test", path:"/metadata/resourceVersion", value:.metadata.resourceVersion},
+  {op:"test", path:"/status/coordinator", value:.status.coordinator},
+  {op:"test", path:"/status/operation", value:.status.operation},
+  {op:"replace", path:"/status/coordinator/phase", value:"DeleteRunning"}
+]' template-recovery.json > recovery-patch.json &&
+kubectl --context "$CONTEXT" -n "$NAMESPACE" patch deploymenttemplate "$TEMPLATE" \
+  --subresource=status --type=json --patch-file=recovery-patch.json
+```
+
+The JSON checks protect against concurrent edits; they do not prove token provenance. If a check fails, investigate and repeat the evidence review rather than removing the checks. Read the object back before restarting the controller and verify that only the phase changed. A verified PUT token similarly belongs with `PutRunning`, its original deployment ID, submitted hash, and intact inventory, but requires a separately reviewed repair rather than reusing the DELETE example.
+
+**Interrupted dispatch without a saved token.** Do not change `Blocked` to `Idle` to try the request again. Find the original request using the saved target/deployment ID and server-side records. If its matching resume token can be recovered, use a maintainer-reviewed status repair that binds that token to the original intent. Otherwise, a maintainer must establish terminal completion or definitive nonacceptance and reconcile the complete inventory before planning a repair. This version has no general-purpose tool for that procedure. If an earlier mutation might still complete, resuming new mutations is unsupported.
+
+**Failed PUT with missing inventory.** `PutInventoryPending` is distinct from `Blocked`: it retries the deployment GET automatically while preserving the original token and ID. Repair read permissions/connectivity if those reads fail. If the backend omits or returns null `outputResources`, automatic recovery cannot proceed until it exposes authoritative inventory. Do not insert an empty array, clear the token, or remove the template finalizer just to make deletion finish. Once the backend supplies the complete explicit list, normal reconciliation retains those outputs and proceeds; confirm that transition and subsequent cleanup using the checks above.
+
+### Downgrading The Controller
+
+`Recreate` prevents concurrent controller versions during forward upgrade; it does not migrate coordinator state back to the old model. Older controllers do not understand `status.coordinator.outputs`. Downgrade during any active operation, `Blocked`/`PutInventoryPending` recovery, pending cleanup, template deletion, or incomplete tracker projection is unsupported and can lose cleanup responsibility.
+
+This change provides no in-place downgrade procedure that preserves coordinator-managed workloads. For a planned rollback, use the current controller to drain the managed templates and verify their external outputs, outstanding operations, and tracker objects have been removed before installing an older controller. Deleting templates to drain them is destructive to their workloads, not a zero-downtime rollback. Unresolved recovery prevents a safe drain; do not bypass it by removing finalizers. Pause writers throughout the drain and version change, and do not strip the additive CRD status fields to force compatibility. If workloads must remain, obtain a separately reviewed state-migration procedure from a maintainer rather than using `helm rollback` alone. Runtime downgrade behavior has not been validated by the chart's rollout assertions.
+
 ### Packages That Usually Move Together
 
 - `pkg/controller/service.go` and `pkg/controller/reconciler` when adding or
