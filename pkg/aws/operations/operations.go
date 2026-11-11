@@ -146,7 +146,7 @@ type PatchOptions struct {
 
 	// FailUncertain makes GeneratePatchWithOptions return an *UncertainError instead of a patch when it can't tell
 	// whether an update is needed at a path: Equivalent counts AWS's value as the template's, but LastApplied doesn't
-	// show that AWS added the values beyond the template's (see Uncertain). Set it for a type whose update restarts
+	// show that AWS added the values beyond the template's (see UncertainError). Set it for a type whose update restarts
 	// or interrupts the resource, so an update UCP may not need costs more than a deploy that fails. Otherwise the
 	// patch sends the template's value, so a mistake is an update AWS can undo, never a value Radius set left behind.
 	FailUncertain bool
