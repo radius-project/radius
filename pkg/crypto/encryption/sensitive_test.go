@@ -144,6 +144,51 @@ func TestSensitiveDataHandler_EncryptDecrypt_SimpleField(t *testing.T) {
 	require.Equal(t, "admin", data["username"])
 }
 
+func TestSensitiveDataHandler_EncryptDecrypt_EmptyFieldNames(t *testing.T) {
+	key, err := GenerateKey()
+	require.NoError(t, err)
+	handler, err := NewSensitiveDataHandlerFromKey(key)
+	require.NoError(t, err)
+	for _, container := range []string{"object", "array", "map"} {
+		t.Run(container, func(t *testing.T) {
+			secret := map[string]any{"password": "secret"}
+			empty := map[string]any{"": secret, "password": "public"}
+			fieldSchema := map[string]any{"properties": map[string]any{
+				"": map[string]any{"properties": map[string]any{
+					"password": map[string]any{"type": "string", "x-radius-sensitive": true},
+				}},
+			}}
+			var value any = empty
+			switch container {
+			case "array":
+				value = []any{empty}
+				fieldSchema = map[string]any{"items": fieldSchema}
+			case "map":
+				value = map[string]any{"": empty}
+				fieldSchema = map[string]any{"additionalProperties": fieldSchema}
+			}
+			resourceSchema := map[string]any{"properties": map[string]any{
+				"":       map[string]any{"type": "string", "x-radius-sensitive": true},
+				"config": fieldSchema,
+			}}
+			data := map[string]any{"": "root-secret", "config": value}
+			paths := schema.ExtractSensitiveFieldPaths(resourceSchema, "")
+			require.Len(t, paths, 2)
+			require.NoError(t, handler.EncryptSensitiveFields(data, paths, testResourceID))
+			require.IsType(t, map[string]any{}, data[""])
+			require.IsType(t, map[string]any{}, secret["password"])
+			require.Equal(t, "public", empty["password"])
+			require.NoError(t, handler.DecryptSensitiveFieldsWithSchema(t.Context(), data, paths, testResourceID, resourceSchema))
+			require.Equal(t, "root-secret", data[""])
+			require.Equal(t, "secret", secret["password"])
+			schema.RedactFields(data, paths)
+			require.Nil(t, data[""])
+			require.Nil(t, secret["password"])
+			require.Equal(t, "public", empty["password"])
+		})
+	}
+}
+
 func TestSensitiveDataHandler_DecryptLegacyFieldPaths(t *testing.T) {
 	oldKey, err := GenerateKey()
 	require.NoError(t, err)
@@ -219,6 +264,8 @@ func TestSensitiveDataHandler_DecryptLegacyFieldPaths_Binding(t *testing.T) {
 		{name: "literal dot", field: "api.key", oldPath: "api.key", resourceID: testResourceID},
 		{name: "literal wildcard", field: "items[*]", oldPath: "items[*]", resourceID: testResourceID},
 		{name: "literal index", field: "items[0]", oldPath: "items[0]", resourceID: testResourceID},
+		{name: "empty name versus zero", field: "", oldPath: "0", resourceID: testResourceID},
+		{name: "empty name versus literal marker", field: "", modernField: `\0`},
 		{name: "mixed dot and backslash", field: `api.key\name`, oldPath: `api.key\name`, resourceID: testResourceID},
 		{name: "tampered ciphertext", field: `back\slash`, oldPath: `back\slash`, resourceID: testResourceID, tamper: true},
 		{name: "modern versus legacy backslash", field: `back\\slash`, modernField: `back\slash`},

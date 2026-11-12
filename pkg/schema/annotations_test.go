@@ -589,6 +589,9 @@ func TestSensitiveFieldPaths_LiteralNames(t *testing.T) {
 		name string
 		path string
 	}{
+		{"", `\0`},
+		{"0", `0`},
+		{`\0`, `\\0`},
 		{"api.key", `api\.key`},
 		{"items[*]", `items\[*\]`},
 		{"items[0]", `items\[0\]`},
@@ -632,6 +635,28 @@ func TestParseFieldPath(t *testing.T) {
 		path     string
 		expected []FieldPathSegment
 	}{
+		{
+			name: "empty fields with array traversal",
+			path: `\0.\0[*].\0[0].password`,
+			expected: []FieldPathSegment{
+				{Type: SegmentTypeField, Value: ""},
+				{Type: SegmentTypeField, Value: ""},
+				{Type: SegmentTypeWildcard},
+				{Type: SegmentTypeField, Value: ""},
+				{Type: SegmentTypeIndex, Value: "0"},
+				{Type: SegmentTypeField, Value: "password"},
+			},
+		},
+		{
+			name:     "empty marker after field text",
+			path:     `api\0`,
+			expected: nil,
+		},
+		{
+			name:     "empty marker before field text",
+			path:     `\0api`,
+			expected: nil,
+		},
 		{
 			name:     "simple field",
 			path:     "data",
