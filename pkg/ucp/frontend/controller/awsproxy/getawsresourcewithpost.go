@@ -152,7 +152,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 			if isNotFound(err) {
 				return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(middleware.GetRelativePath(p.Options().PathBase, req.URL.Path), awsResourceIdentifier)), nil
 			} else {
-				return ucpaws.HandleAWSError(ctx, err)
+				return handleError(ctx, serviceCtx.ResourceID, err)
 			}
 		}
 	}

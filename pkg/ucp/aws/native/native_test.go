@@ -65,6 +65,28 @@ func Test_NewRegistry(t *testing.T) {
 	require.ErrorContains(t, err, "the schema of the AWS type AWS::DocDB::DBCluster can't be read")
 }
 
+func Test_NewRegistry_Metadata(t *testing.T) {
+	store := awsfake.NewCloudControl()
+	catalog := schemas.Catalog{
+		HandWritten: map[string]string{"AWS::IAM::AccountPasswordPolicy": `{}`, "AWS::S3::Object": `{}`},
+		Metadata: map[string]schemas.Metadata{
+			"AWS::IAM::AccountPasswordPolicy": {TypeName: "AWS::IAM::AccountPasswordPolicy", IdentityScope: schemas.IdentityScopeAccount, OnDelete: schemas.OnDeleteReset},
+		},
+	}
+	registry, err := native.NewRegistry(catalog, nativefake.New("AWS::IAM::AccountPasswordPolicy", store), nativefake.New("AWS::S3::Object", store))
+	require.NoError(t, err)
+	require.Equal(t, catalog.Metadata["AWS::IAM::AccountPasswordPolicy"], registry.Lookup("AWS::IAM::AccountPasswordPolicy").Metadata)
+	require.Equal(t, schemas.Metadata{TypeName: "AWS::S3::Object", IdentityScope: schemas.IdentityScopeRegion, OnDelete: schemas.OnDeleteDelete}, registry.Lookup("AWS::S3::Object").Metadata, "a type with no metadata gets the defaults")
+
+	_, err = native.NewRegistry(catalog, noReset{nativefake.New("AWS::IAM::AccountPasswordPolicy", store)})
+	require.EqualError(t, err, "the AWS type AWS::IAM::AccountPasswordPolicy resets on delete, but its native handler has no Reset method")
+}
+
+// noReset is a handler without a Reset method.
+type noReset struct {
+	native.Handler
+}
+
 // noFind is a handler without a Find method.
 type noFind struct {
 	native.Handler
@@ -164,4 +186,10 @@ func Test_Failure(t *testing.T) {
 	failure := &native.Failure{Message: "bad value", ClientError: true}
 	require.Equal(t, "bad value", failure.Error())
 	require.True(t, failure.IsClientError())
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "a failure that doesn't say keeps the pending values")
+}
+
+func Test_OtherProductError(t *testing.T) {
+	err := &native.OtherProductError{Identifier: "app-docdb", Product: "aurora-postgresql"}
+	require.Equal(t, `the AWS identifier "app-docdb" belongs to another product (aurora-postgresql)`, err.Error())
 }

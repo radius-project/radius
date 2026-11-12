@@ -26,6 +26,7 @@ package native
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/wI2L/jsondiff"
@@ -45,6 +46,24 @@ const (
 // identifier.
 var ErrNotFound = errors.New("the AWS resource does not exist")
 
+// OtherProductError is returned, or wrapped, by a handler whose service API also serves other products, when the
+// identifier names a resource of another product, such as an Aurora cluster for a DocumentDB handler. The handler
+// checks the product before every Read, Update, Delete, Reset, Progress, and Find, and leaves other products out of
+// List. UCP fails a PUT, GET, or `existing` with 409, naming the identifier, and changes nothing. A DELETE treats it as
+// ErrNotFound: the resource the alias managed is gone, so UCP removes only the record and never touches the other
+// product's resource.
+type OtherProductError struct {
+	// Identifier is the identifier the request used, and Product is the product AWS reports for it, such as
+	// aurora-postgresql.
+	Identifier string
+	Product    string
+}
+
+// Error returns a message that names the identifier and the product.
+func (e *OtherProductError) Error() string {
+	return fmt.Sprintf("the AWS identifier %q belongs to another product (%s)", e.Identifier, e.Product)
+}
+
 // Handler serves one AWS resource type through the service's own API. Properties use the names in the type's schema,
 // in CloudFormation format. region is the AWS region of the request.
 type Handler interface {
@@ -61,7 +80,8 @@ type Handler interface {
 
 	// Create starts creating a resource and returns its identifier. It may return "" when the identifier is known
 	// before the create, because UCP already has it. Options().Recovery says how a handler makes a create safe to
-	// send again.
+	// send again. A create that fails after AWS made the resource, such as a create that makes several calls, returns
+	// a *Failure with the identifier when it knows it, so UCP saves it on the record.
 	Create(ctx context.Context, request CreateRequest) (string, error)
 
 	// Update starts updating the resource.
@@ -88,6 +108,15 @@ type IdentifierEncoder interface {
 	// the last segment of a resource ID. For a type that has a CloudFormation type, it must be the identifier Cloud
 	// Control accepts, because Cloud Control serves the type in some regions.
 	Identifier(properties map[string]any) (string, error)
+}
+
+// Resetter is implemented by a handler whose type's metadata sets onDelete to reset, such as an account setting. On
+// DELETE, UCP calls Reset instead of Delete, then waits with Progress for OperationDelete, which reports Done when the
+// setting is back to AWS's default, or ErrNotFound when the setting then reads as absent. UCP removes the record.
+type Resetter interface {
+	// Reset starts setting the resource with the identifier back to AWS's default. It returns ErrNotFound when AWS has
+	// no such resource.
+	Reset(ctx context.Context, region string, identifier string) error
 }
 
 // Finder is implemented by a handler whose Options().Recovery is RecoverBySearch.
@@ -173,13 +202,37 @@ type Progress struct {
 	Waiting string
 }
 
-// Failure is why an operation failed.
+// Outcome is how much of a failed operation AWS applied. UCP sets the record's pending values by it:
+//
+//   - OutcomeRejected: AWS changed nothing. The pending values are dropped, so the previous last-applied values stay.
+//   - OutcomePartial: AWS applied some of the operation, such as an operation that makes several calls failing after
+//     the first. The pending values are kept as possibly applied, so a later deploy that removes one clears it. The
+//     next deploy reads AWS and makes only the calls still needed.
+//   - OutcomeUnknown: UCP stopped before it saw the result, or AWS's answer doesn't say. The same as OutcomePartial.
+//   - OutcomeApplied: AWS applied all of it, but the operation still failed, such as a call after the last change.
+//     The pending values become last-applied.
+type Outcome int
+
+const (
+	OutcomeUnknown Outcome = iota
+	OutcomeRejected
+	OutcomePartial
+	OutcomeApplied
+)
+
+// Failure is why an operation failed. A handler returns it from Progress, or as the error of a start call (Create,
+// Update, Delete, or Reset) to say how much of the operation AWS applied. A start call that returns another error is
+// OutcomeRejected when AWS rejected the call as a client fault, and OutcomeUnknown otherwise.
 type Failure struct {
 	// Message is shown to the user. It names properties, never their values, because values can hold secrets.
 	Message string
 
 	// ClientError is true when the request caused the failure, such as an invalid property value, rather than AWS.
 	ClientError bool
+
+	// Outcome is how much of the operation AWS applied. The zero value, OutcomeUnknown, keeps the pending values as
+	// possibly applied.
+	Outcome Outcome
 }
 
 // Error returns the message.
@@ -223,6 +276,22 @@ type Options struct {
 	// optional, because the same template must also work where Cloud Control serves the type, and Cloud Control
 	// generates its own name.
 	NameProperty string
+
+	// Equivalent, when set, reports whether a value AWS returns means the same as the template's, for values AWS
+	// returns in another form that the schema's propertyTransform can't express, such as an engine version 5.0 that
+	// comes back as 5.0.0. Such values don't count as changes. path is the property's path relative to the properties
+	// object, with "/" between segments, such as EngineVersion or Config/Version. UCP uses the schema's
+	// propertyTransform first, so prefer it where it can express the rule. UCP doesn't call Equivalent for a value that
+	// leaves out something the last deploy set, such as a field inside a list item, so a rule that lets AWS's value
+	// hold more than the template, such as defaults AWS fills in, never hides a removal.
+	Equivalent func(path string, template any, aws any) bool
+
+	// DisruptiveUpdate is true for a type whose update restarts or interrupts the resource, such as one that must be
+	// stopped to change, so an update UCP doesn't need costs more than a failed deploy. When Equivalent counts AWS's
+	// value as the template's, but UCP can't tell whether AWS added the extra values or an earlier deploy set them,
+	// UCP fails the deploy with 409 and changes nothing, instead of sending the template's value. The default sends
+	// it, because an update AWS can undo is better than a value Radius set and no longer owns left in AWS.
+	DisruptiveUpdate bool
 
 	// CreateTimeout, UpdateTimeout, and DeleteTimeout are how long UCP waits for each operation. Zero means
 	// DefaultTimeout.

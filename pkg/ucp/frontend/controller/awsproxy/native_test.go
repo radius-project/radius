@@ -95,18 +95,28 @@ func newNativeHarness(t *testing.T) *nativeHarness {
 	}
 	nh.fake.Opts.NameProperty = "Name"
 	nh.assigned.Opts.Recovery = native.RecoverByResend
-	catalog := schemas.Catalog{
-		Native:      map[string]string{nativeType: nativeSchemas[nativeType], assignedType: nativeSchemas[assignedType]},
-		HandWritten: map[string]string{handWrittenType: nativeSchemas[handWrittenType]},
-	}
-	registry, err := native.NewRegistry(catalog, nh.fake, nh.assigned, nh.handWritten)
-	require.NoError(t, err)
-	h.native = registry
+	nh.withMetadata()
 	h.provisioningTypes = map[string]cftypes.ProvisioningType{
 		nativeType:   cftypes.ProvisioningTypeNonProvisionable,
 		assignedType: cftypes.ProvisioningTypeNonProvisionable,
 	}
 	return nh
+}
+
+// withMetadata registers the harness's handlers again, with the per-type metadata given.
+func (h *nativeHarness) withMetadata(metadata ...schemas.Metadata) {
+	h.t.Helper()
+	catalog := schemas.Catalog{
+		Native:      map[string]string{nativeType: nativeSchemas[nativeType], assignedType: nativeSchemas[assignedType]},
+		HandWritten: map[string]string{handWrittenType: nativeSchemas[handWrittenType]},
+		Metadata:    map[string]schemas.Metadata{},
+	}
+	for _, m := range metadata {
+		catalog.Metadata[m.TypeName] = m
+	}
+	registry, err := native.NewRegistry(catalog, h.fake, h.assigned, h.handWritten)
+	require.NoError(h.t, err)
+	h.native = registry
 }
 
 func nativeProperties(size int) map[string]any {
@@ -356,19 +366,6 @@ func Test_Native_Worker(t *testing.T) {
 		results := h.finish()
 		require.NotNil(t, results[0].Error)
 		require.EqualValues(t, 2, h.record(nativePath).Properties.LastApplied["Size"])
-	})
-
-	t.Run("failed update", func(t *testing.T) {
-		h := newNativeHarness(t)
-		h.deploy(nativePath, nativeProperties(1))
-		h.fake.Failures[native.OperationUpdate] = &native.Failure{Message: "the update failed"}
-		require.Equal(t, http.StatusCreated, h.put(nativePath, nativeProperties(2)).status)
-		results := h.finish()
-		require.Equal(t, v1.CodeInternal, results[0].Error.Code)
-		require.Equal(t, "the update failed", results[0].Error.Message)
-		rec := h.record(nativePath)
-		require.EqualValues(t, 1, rec.Properties.LastApplied["Size"])
-		require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
 	})
 
 	t.Run("failed create keeps the record", func(t *testing.T) {

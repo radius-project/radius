@@ -38,12 +38,14 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
+	"github.com/radius-project/radius/pkg/aws/schemas"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -166,6 +168,15 @@ func operationTimeout(r *request, op string) time.Duration {
 // isNotFound reports whether err means AWS has no such resource, from either handler.
 func isNotFound(err error) bool {
 	return ucp_aws.IsAWSResourceNotFoundError(err) || errors.Is(err, native.ErrNotFound)
+}
+
+// isGoneForDelete reports whether err means a DELETE has nothing of its type to delete: AWS has no such resource, or
+// the identifier now names a resource of another product (native.OtherProductError), so the resource the alias
+// managed is gone. The DELETE removes only the record and never touches the other product's resource. A PUT or GET
+// still fails with 409 for another product.
+func isGoneForDelete(err error) bool {
+	var other *native.OtherProductError
+	return isNotFound(err) || errors.As(err, &other)
 }
 
 // identifierFor returns the identifier the properties give for a type: the native handler's encoding when t has one,
@@ -310,7 +321,8 @@ func (e *engine) startCreate(ctx context.Context, r *request, rec *datamodel.AWS
 	if r.handler != nil {
 		identifier, err := r.handler.Create(ctx, native.CreateRequest{Region: r.region, Properties: properties, ClientToken: rec.Properties.ClientToken})
 		if err != nil {
-			return "", "", err
+			// A create that failed partway can return the identifier of the resource it left.
+			return identifier, "", err
 		}
 		return identifier, uuid.New().String(), nil
 	}
@@ -330,10 +342,18 @@ func (e *engine) startCreate(ctx context.Context, r *request, rec *datamodel.AWS
 	return aws.ToString(response.ProgressEvent.Identifier), aws.ToString(response.ProgressEvent.RequestToken), nil
 }
 
-// startDeleteCall starts a delete and returns the token the worker polls.
+// startDeleteCall starts a delete and returns the token the worker polls. For a type whose onDelete metadata is reset,
+// the native handler resets the resource instead (native.Resetter). Where Cloud Control serves such a type, Cloud
+// Control deletes it as CloudFormation defines.
 func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier string) (string, error) {
 	if r.handler != nil {
-		if err := r.handler.Delete(ctx, r.region, identifier); err != nil {
+		var err error
+		if resetter, ok := r.handler.(native.Resetter); ok && onDelete(r) == schemas.OnDeleteReset {
+			err = resetter.Reset(ctx, r.region, identifier)
+		} else {
+			err = r.handler.Delete(ctx, r.region, identifier)
+		}
+		if err != nil {
 			return "", err
 		}
 		return uuid.New().String(), nil
@@ -390,7 +410,7 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 			return e.create(ctx, r, rec, etag, "", properties, deploy, typeInfo, parsed, secrets)
 		}
 		// A search by values AWS keeps unique can find a resource another alias manages.
-		if resp, err := e.checkIdentifier(ctx, r.id, identifier); resp != nil || err != nil {
+		if resp, err := e.checkIdentifier(ctx, r, identifier); resp != nil || err != nil {
 			return resp, err
 		}
 		rec.Properties.AWSIdentifier = identifier
@@ -400,7 +420,7 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 	case errors.Is(err, native.ErrNotFound):
 		return e.create(ctx, r, rec, etag, "", properties, deploy, typeInfo, parsed, secrets)
 	case err != nil:
-		return ucp_aws.HandleAWSError(ctx, err)
+		return handleError(ctx, r.id, err)
 	case !progress.Done:
 		rec.Properties.PendingFingerprints = nil
 		if _, err := e.track(ctx, r, rec, etag, v1.OperationPut, records.OperationCreate, uuid.New().String()); err != nil {
@@ -408,7 +428,7 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 		}
 		return conflict("A create of the AWS resource %q is still running in AWS. Deploy again when it finishes.", r.id.Name()), nil
 	case progress.Failure != nil:
-		return failureResponse(r, progress.Failure), nil
+		return failureResponse(r.id, progress.Failure), nil
 	}
 
 	ucplog.FromContextOrDiscard(ctx).Info("Found the AWS resource of an interrupted create", "alias", r.id.Name(), "awsIdentifier", identifier)
@@ -418,7 +438,7 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 	rec.Properties.ClientToken = ""
 	current, err := e.readResource(ctx, r, identifier)
 	if err != nil {
-		return ucp_aws.HandleAWSError(ctx, err)
+		return handleError(ctx, r.id, err)
 	}
 	if current == nil {
 		// Deleted outside Radius since the create: create it again.
@@ -454,7 +474,7 @@ func (e *engine) findCreate(ctx context.Context, r *request, rec *datamodel.AWSR
 //
 // Then, by what AWS shows:
 //
-//   - no such resource: nothing exists, so only the record is removed.
+//   - no such resource, or a resource of another product: nothing of the type exists, so only the record is removed.
 //   - still creating: UCP waits for it, as for any create, and returns 409. The caller deletes again when it finishes.
 //   - created, or failed with a resource left: the record gets the identifier, the pending values count as applied,
 //     as for an interrupted update, and the delete continues.
@@ -488,7 +508,10 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 		} else {
 			identifier, err = e.findCreate(ctx, r, rec, pending)
 		}
-		if err != nil {
+		var other *native.OtherProductError
+		if errors.As(err, &other) {
+			return removed()
+		} else if err != nil {
 			rec.Properties.AWSIdentifier = e.identifierToKeep(ctx, r, identifier)
 			return keep(err)
 		}
@@ -497,7 +520,7 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 		}
 		// A search by values AWS keeps unique can find a resource another alias manages, which this DELETE must not
 		// delete.
-		held, err := e.checkIdentifier(ctx, r.id, identifier)
+		held, err := e.checkIdentifier(ctx, r, identifier)
 		if held != nil || err != nil {
 			keepCreate()
 			return "", held, err
@@ -506,7 +529,7 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 
 	progress, err := r.handler.Progress(ctx, r.region, identifier, native.OperationCreate)
 	switch {
-	case errors.Is(err, native.ErrNotFound):
+	case isGoneForDelete(err):
 		return removed()
 	case err != nil:
 		return keep(err)
@@ -542,7 +565,7 @@ func (e *engine) identifierToKeep(ctx context.Context, r *request, identifier st
 	if identifier == "" {
 		return ""
 	}
-	held, err := e.checkIdentifier(ctx, r.id, identifier)
+	held, err := e.checkIdentifier(ctx, r, identifier)
 	if err != nil {
 		ucplog.FromContextOrDiscard(ctx).Error(err, "Failed to check the identifier a failed create returned", "alias", r.id.Name(), "awsIdentifier", identifier)
 	}
@@ -569,24 +592,79 @@ func (e *engine) resendCreate(ctx context.Context, r *request, rec *datamodel.AW
 
 // identifierError returns the response for an error computing the identifier from a template's properties, including
 // a generated name, or finding a lost create. A handler reports a property value it can't use as a client
-// native.Failure, which gets 400 with its message, as AWS's own rejection would.
+// native.Failure, which gets 400 with its message, as AWS's own rejection would, and an identifier of another product
+// gets 409 (see handleError).
 func identifierError(ctx context.Context, r *request, err error) (armrpc_rest.Response, error) {
-	var failure *native.Failure
-	if errors.As(err, &failure) {
-		return failureResponse(r, failure), nil
-	}
-	return ucp_aws.HandleAWSError(ctx, err)
+	return handleError(ctx, r.id, err)
 }
 
-// failureResponse returns the response for an operation AWS finished with failure.
-func failureResponse(r *request, failure interface {
+// failureResponse returns the response for an operation on the resource id that AWS finished with failure.
+func failureResponse(id resources.ID, failure interface {
 	error
 	IsClientError() bool
 }) armrpc_rest.Response {
-	details := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInternal, Message: failure.Error(), Target: r.id.String()}}
+	details := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInternal, Message: failure.Error(), Target: id.String()}}
 	if failure.IsClientError() {
 		details.Error.Code = v1.CodeInvalid
 		return armrpc_rest.NewBadRequestARMResponse(details)
 	}
 	return armrpc_rest.NewInternalServerErrorARMResponse(details)
+}
+
+// onDelete returns what deleting a resource of r's type does, from its metadata.
+func onDelete(r *request) schemas.OnDelete {
+	if r.native == nil {
+		return schemas.OnDeleteDelete
+	}
+	return r.native.Metadata.OnDelete
+}
+
+// findsCreateByResend reports whether the handler that serves r finds a lost create, whose identifier AWS assigns, by
+// sending the create again: Cloud Control (see recoverCreate), and a native handler whose Recovery is RecoverByResend.
+func findsCreateByResend(r *request) bool {
+	return r.handler == nil || r.handler.Options().Recovery == native.RecoverByResend
+}
+
+// rejected returns the 400 for a DELETE of a type whose onDelete metadata is reject.
+func rejected(r *request) armrpc_rest.Response {
+	return badRequest(fmt.Sprintf("Radius can't delete the AWS resource %q, because AWS doesn't let it delete a resource of type %s. Nothing was changed.", r.id.Name(), r.typeName))
+}
+
+// equivalentFor returns the native handler's rule for values AWS returns in another form, or nil when there is none.
+// It applies with either handler, because both read the same resource.
+func equivalentFor(r *request) func(path string, template any, aws any) bool {
+	if r.native == nil {
+		return nil
+	}
+	return r.native.Handler.Options().Equivalent
+}
+
+// outcomeOf returns how much of a start call that failed with err AWS applied: the outcome a native handler reports
+// with a *native.Failure, OutcomeRejected for a client fault, such as an invalid property, and for a resource of
+// another product, which the handler refuses before it changes anything, and OutcomeUnknown otherwise, because a
+// transport or server error does not show that AWS changed nothing.
+func outcomeOf(err error) native.Outcome {
+	var failure *native.Failure
+	if errors.As(err, &failure) {
+		return failure.Outcome
+	}
+	var other *native.OtherProductError
+	if errors.As(err, &other) || ucp_aws.IsClientFault(err) {
+		return native.OutcomeRejected
+	}
+	return native.OutcomeUnknown
+}
+
+// handleError returns the response for an error from AWS or a native handler of the resource id: 409 for an
+// identifier of another product, the failure a native handler reports, and otherwise as ucp_aws.HandleAWSError does.
+func handleError(ctx context.Context, id resources.ID, err error) (armrpc_rest.Response, error) {
+	var other *native.OtherProductError
+	if errors.As(err, &other) {
+		return conflict("The AWS identifier %q belongs to another product (%s), not to the AWS type %s, so UCP changed nothing. Use an identifier of that type.", other.Identifier, other.Product, resources_aws.ToAWSResourceType(id)), nil
+	}
+	var failure *native.Failure
+	if errors.As(err, &failure) {
+		return failureResponse(id, failure), nil
+	}
+	return ucp_aws.HandleAWSError(ctx, err)
 }
