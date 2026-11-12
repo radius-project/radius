@@ -248,28 +248,12 @@ flowchart LR
 
 ### Architecture Diagram
 
-Argo CD keeps the `DeploymentTemplate` in sync with Git, and Radius keeps the real resources in sync with the `DeploymentTemplate`. Green boxes are new.
+Argo CD keeps the `DeploymentTemplate` in sync with Git, and Radius keeps the real resources in sync with the `DeploymentTemplate`.
 
 1. The Radius plugin compiles the Bicep in Git into a `DeploymentTemplate`, the desired state.
 2. Argo CD compares it with the one in the cluster and applies it when they differ.
 3. The Radius controller sees the change and calls the Radius API to deploy the containers, Recipes and cloud resources.
 4. The controller writes the result into the template's status, which Argo CD shows as health.
-
-```mermaid
-flowchart LR
-    classDef new fill:#d4f7d4,stroke:#2a7a2a
-    Git[(Git: app.bicep,<br/>parameters)] --> RS[argocd-repo-server]
-    RS --> CMP["Radius CMP sidecar<br/>(new)"]:::new
-    CMP -->|DeploymentTemplate YAML| AC[argocd-application-controller]
-    Lua["Radius Lua health checks<br/>(new)"]:::new -.-> AC
-    AC -->|apply, prune| DT[DeploymentTemplate]
-    DT --> DTC[DeploymentTemplate controller]
-    DTC --> DR[DeploymentResource objects]
-    DTC --> API[Radius API]
-    API --> Res[Containers, Recipes,<br/>cloud resources]
-```
-
-The same architecture as an Excalidraw drawing:
 
 ![Argo CD plugin architecture](2026-10-argocd-functional-spec/plugin-approach-architecture.svg)
 
