@@ -19,6 +19,7 @@ package bicep
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -38,12 +39,38 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
+type bicepDownloadTransport func(*http.Request) (*http.Response, error)
+
+func (transport bicepDownloadTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	return transport(request)
+}
+
 func TestSecretReferenceManifestRealCompiler(t *testing.T) {
 	binary, err := exec.LookPath("bicep")
 	if err != nil {
 		t.Skip("Bicep is required for the compiler integration check")
 	}
-	t.Setenv("BICEP", binary)
+	// Model a fresh installation without touching the user's compiler or making
+	// network requests. The existing binary supplies the download response.
+	t.Setenv("BICEP", "")
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("USERPROFILE", os.Getenv("HOME"))
+	originalHTTPClient := http.DefaultClient
+	t.Cleanup(func() { http.DefaultClient = originalHTTPClient })
+	downloads := 0
+	http.DefaultClient = &http.Client{Transport: bicepDownloadTransport(func(request *http.Request) (*http.Response, error) {
+		require.Equal(t, "github.com", request.URL.Host)
+		require.True(t, strings.HasPrefix(request.URL.Path, "/Azure/bicep/releases/download/"))
+		downloads++
+		file, err := os.Open(binary)
+		if err != nil {
+			return nil, err
+		}
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Body: file, Request: request}, nil
+	})}
+	installed, err := bicep.IsBicepInstalled()
+	require.NoError(t, err)
+	require.False(t, installed)
 	directory := t.TempDir()
 	templatePath := filepath.Join(directory, "app.bicep")
 	paramsPath := filepath.Join(directory, "app.bicepparam")
@@ -53,6 +80,7 @@ func TestSecretReferenceManifestRealCompiler(t *testing.T) {
 	parser := bicep.ParameterParser{FileSystem: filesystem.NewOSFS()}
 	values, references, err := parser.ParseKubernetesInputs(compiler, "@"+paramsPath)
 	require.NoError(t, err)
+	require.Equal(t, 1, downloads)
 	require.Equal(t, radapp.SecretKeyReference{Name: "credentials", Key: "password"}, references["password"].SecretKeyRef)
 	runner := &Runner{
 		Bicep: compiler, FileSystem: filesystem.NewOSFS(), Output: &output.MockOutput{},
@@ -77,6 +105,7 @@ func TestSecretReferenceManifestRealCompiler(t *testing.T) {
 	_, _, err = parser.ParseKubernetesInputs(compiler, "@"+paramsPath, "application=updated")
 	require.NoError(t, err)
 	require.False(t, strings.Contains(string(manifest), "resolved-secret-marker"))
+	require.Equal(t, 1, downloads, "template and parameter compilation reuse the initialized compiler")
 }
 
 func Test_CommandValidation(t *testing.T) {
