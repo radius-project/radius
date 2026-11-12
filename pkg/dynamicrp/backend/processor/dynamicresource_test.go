@@ -37,6 +37,57 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestProcessSecretOutputEncoding(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   any
+		want    string
+		wantErr bool
+	}{
+		{name: "object", value: map[string]any{"host": "db.local", "port": float64(5432)}, want: `{"host":"db.local","port":5432}`},
+		{name: "array", value: []any{"quoted \"text\"", true, float64(3)}, want: `["quoted \"text\"",true,3]`},
+		{name: "single field with delimiters", value: map[string]any{"x": "a y:b"}, want: `{"x":"a y:b"}`},
+		{name: "two fields", value: map[string]any{"x": "a", "y": "b"}, want: `{"x":"a","y":"b"}`},
+		{name: "number", value: float64(1234), want: "1234"},
+		{name: "boolean", value: true, want: "true"},
+		{name: "unsupported value", value: func() {}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			cf, err := testUCPClientFactoryWithSecrets("connection")
+			require.NoError(t, err)
+			mat := &fakeMaterializer{result: secret.Result{Name: "managed-secret"}}
+			p := DynamicProcessor{SecretMaterializer: mat}
+			resource := &datamodel.DynamicResource{
+				ID:                "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+				Type:              "Applications.Test/testRecipeResources",
+				UpdatedAPIVersion: "2024-01-01",
+				Properties:        map[string]any{"environment": "env"},
+			}
+			options := processors.Options{
+				RecipeOutput: &recipes.RecipeOutput{Secrets: map[string]any{
+					"connection": tt.value,
+					"token":      "{\"keep\":\"as-is\"}\n",
+					"absent":     nil,
+				}},
+				UcpClient: cf,
+			}
+			err = p.Process(t.Context(), resource, options)
+			if tt.wantErr {
+				require.ErrorContains(t, err, `failed to encode recipe secret "connection"`)
+				require.False(t, mat.called, "encoding errors must not materialize partial data")
+				return
+			}
+			require.NoError(t, err)
+			require.True(t, mat.called)
+			require.Equal(t, "{\"keep\":\"as-is\"}\n", mat.request.Data["token"])
+			require.NotContains(t, mat.request.Data, "absent")
+			require.JSONEq(t, tt.want, mat.request.Data["connection"])
+		})
+	}
+}
+
 func Test_Process(t *testing.T) {
 	processor := DynamicProcessor{}
 	clientFactory, err := testUCPClientFactory()

@@ -41,6 +41,19 @@ func Test_NewRegistry(t *testing.T) {
 	}
 }
 
+// Test_EveryNativeSchemaHasAHandler checks that every type with a native schema has a handler, so no schema is left
+// without one.
+func Test_EveryNativeSchemaHasAHandler(t *testing.T) {
+	registry, err := NewRegistry(aws.Config{})
+	require.NoError(t, err)
+	catalog, err := schemas.Load()
+	require.NoError(t, err)
+	require.NotEmpty(t, catalog.Native)
+	for typeName := range catalog.Native {
+		require.NotNil(t, registry.Lookup(typeName), typeName)
+	}
+}
+
 // Test_HandWrittenSchemas checks the hand-written schemas built into Radius. Each has a handler, so bicep-types-aws
 // never publishes a type UCP can't serve, and none has the name of a legacy or deprecated CloudFormation type, which
 // UCP rejects before it picks a handler. pkg/aws/schemas already fails to load a type with a schema in both native/

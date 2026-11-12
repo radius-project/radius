@@ -18,6 +18,7 @@ package processor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -79,10 +80,14 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 			continue
 		}
 		// Secret values originating from a direct module's outputs may not be strings
-		// (e.g. numeric or boolean Terraform outputs). Stringify defensively to avoid a panic.
+		// (e.g. numeric, boolean, or object Terraform outputs). Preserve their structure as JSON.
 		strValue, ok := value.(string)
 		if !ok {
-			strValue = fmt.Sprintf("%v", value)
+			encoded, err := json.Marshal(value)
+			if err != nil {
+				return fmt.Errorf("failed to encode recipe secret %q: %w", key, err)
+			}
+			strValue = string(encoded)
 		}
 		validator.AddOptionalSecretField(key, &strValue)
 	}
