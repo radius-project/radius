@@ -135,7 +135,7 @@ Run the focused checks without registry credentials:
 
 ```bash
 make install-yq
-node --test .github/scripts/bicep-types.test.mjs .github/scripts/monitor-remote-workflow_test.mjs
+PATH="${YQ_INSTALL_DIR:-$HOME/.local/bin}:$PATH" node --test .github/scripts/bicep-types.test.mjs .github/scripts/monitor-remote-workflow_test.mjs
 actionlint .github/workflows/build-main.yaml .github/workflows/__publish-bicep-types.yaml
 ```
 
