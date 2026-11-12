@@ -81,6 +81,11 @@ spec:
                 description: Phrase indicates the current status of the Deployment
                   Resource.
                 type: string
+              provisionedResourceID:
+                description: |-
+                  ProvisionedResourceID records the output identity confirmed by the template controller.
+                  Only the status subresource may write this field; metadata and spec are not provenance.
+                type: string
             type: object
         type: object
     served: true

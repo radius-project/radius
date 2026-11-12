@@ -18,1098 +18,929 @@ package reconciler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"os"
-	"path"
 	"testing"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
-	"github.com/radius-project/radius/pkg/to"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	crconfig "sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
-const (
-	deploymentTemplateTestWaitDuration            = time.Second * 10
-	deploymentTemplateTestWaitInterval            = time.Millisecond * 200
-	deploymentTemplateTestControllerDelayInterval = time.Millisecond * 100
-)
+const deploymentTemplateTestControllerDelayInterval = time.Millisecond * 100
 
 func SetupDeploymentTemplateTest(t *testing.T) (*mockRadiusClient, *sdkclients.MockResourceDeploymentsClient, k8sclient.Client) {
+	t.Helper()
 	SkipWithoutEnvironment(t)
-
-	// Shut down the manager when the test exits.
 	ctx, cancel := context.WithCancel(t.Context())
-
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
 		Controller: crconfig.Controller{
 			SkipNameValidation: new(true),
 		},
-
-		// Suppress metrics in tests to avoid conflicts.
-		Metrics: server.Options{
-			BindAddress: "0",
-		},
+		Metrics: server.Options{BindAddress: "0"},
 	})
 	require.NoError(t, err)
-
-	mockRadiusClient := NewMockRadiusClient()
-	mockResourceDeploymentsClient := sdkclients.NewMockResourceDeploymentsClient()
-
-	// Set up DeploymentTemplateReconciler.
-	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
+	radius := NewMockRadiusClient()
+	deployments := sdkclients.NewMockResourceDeploymentsClient()
+	//nolint:staticcheck // SA1019: migration to the new events API requires significant refactoring.
 	err = (&DeploymentTemplateReconciler{
-		Client:                    mgr.GetClient(),
-		Scheme:                    mgr.GetScheme(),
-		EventRecorder:             mgr.GetEventRecorderFor("deploymenttemplate-controller"),
-		Radius:                    mockRadiusClient,
-		ResourceDeploymentsClient: mockResourceDeploymentsClient,
-		DelayInterval:             deploymentTemplateTestControllerDelayInterval,
+		APIReader: mgr.GetAPIReader(), Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
+		EventRecorder: mgr.GetEventRecorderFor("deploymenttemplate-controller"),
+		Radius:        radius, ResourceDeploymentsClient: deployments,
+		DelayInterval: deploymentTemplateTestControllerDelayInterval,
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
-
-	// Set up DeploymentResourceReconciler.
-	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
+	//nolint:staticcheck // SA1019: migration to the new events API requires significant refactoring.
 	err = (&DeploymentResourceReconciler{
-		Client:                    mgr.GetClient(),
-		Scheme:                    mgr.GetScheme(),
-		EventRecorder:             mgr.GetEventRecorderFor("deploymentresource-controller"),
-		Radius:                    mockRadiusClient,
-		ResourceDeploymentsClient: mockResourceDeploymentsClient,
-		DelayInterval:             DeploymentResourceTestControllerDelayInterval,
-		DeleteRetryInterval:       DeploymentResourceTestControllerDelayInterval,
+		APIReader: mgr.GetAPIReader(), Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
+		EventRecorder: mgr.GetEventRecorderFor("deploymentresource-controller"),
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
-
 	startManager(t, mgr, ctx, cancel)
-
-	return mockRadiusClient, mockResourceDeploymentsClient, mgr.GetClient()
+	return radius, deployments, mgr.GetClient()
 }
 
 func Test_DeploymentTemplateReconciler_ComputeHash(t *testing.T) {
-	testcases := []struct {
-		name               string
-		deploymentTemplate *radappiov1alpha3.DeploymentTemplate
-		expected           string
+	for _, tc := range []struct {
+		name string
+		spec radappiov1alpha3.DeploymentTemplateSpec
+		hash string
 	}{
-		{
-			name: "empty",
-			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
-				Spec: radappiov1alpha3.DeploymentTemplateSpec{},
-			},
-			expected: "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-		},
+		{name: "empty", hash: "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"},
 		{
 			name: "simple",
-			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
-				Spec: radappiov1alpha3.DeploymentTemplateSpec{
-					Template:       "{}",
-					Parameters:     map[string]string{},
-					ProviderConfig: "{}",
-				},
-			},
-			expected: "950829dab3e33b280e2ef52a7484c51d19a51498a74aab1d7f4d2781d6e65953",
+			spec: radappiov1alpha3.DeploymentTemplateSpec{Template: "{}", Parameters: map[string]string{}, ProviderConfig: "{}"},
+			hash: "950829dab3e33b280e2ef52a7484c51d19a51498a74aab1d7f4d2781d6e65953",
 		},
 		{
 			name: "complex",
-			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
-				Spec: radappiov1alpha3.DeploymentTemplateSpec{
-					Template:       `{"resources":[{"type":"Microsoft.Resources/deployments","apiVersion":"2020-06-01","name":"test-deploymenttemplate-basic","properties":{"mode":"Incremental","template":{},"parameters":{}}}]}`,
-					Parameters:     map[string]string{"param1": "value1", "param2": "value2"},
-					ProviderConfig: `{"AWS":{"type":"aws","value":{"scope":"scope"}}}`,
-				},
+			spec: radappiov1alpha3.DeploymentTemplateSpec{
+				Template:       `{"resources":[{"type":"Microsoft.Resources/deployments","apiVersion":"2020-06-01","name":"test-deploymenttemplate-basic","properties":{"mode":"Incremental","template":{},"parameters":{}}}]}`,
+				Parameters:     map[string]string{"param1": "value1", "param2": "value2"},
+				ProviderConfig: `{"AWS":{"type":"aws","value":{"scope":"scope"}}}`,
 			},
-			expected: "ff16a7bcb2db8d7c1280eb761b376939dfc3856a74cfd77b986a1c0f25abf5dd",
+			hash: "ff16a7bcb2db8d7c1280eb761b376939dfc3856a74cfd77b986a1c0f25abf5dd",
 		},
-	}
-
-	for _, tc := range testcases {
+	} {
 		t.Run(tc.name, func(t *testing.T) {
-			hash, err := computeHash(tc.deploymentTemplate)
+			owner := &radappiov1alpha3.DeploymentTemplate{Spec: tc.spec}
+			hash, err := computeHash(owner)
 			require.NoError(t, err)
-			require.Equal(t, tc.expected, hash)
+			require.Equal(t, tc.hash, hash)
+			owner.Status.StatusHash = hash
+			require.True(t, isUpToDate(owner))
+			owner.Status.StatusHash = "incorrecthash"
+			require.False(t, isUpToDate(owner))
 		})
 	}
 }
 
 func Test_DeploymentTemplateReconciler_IsUpToDate(t *testing.T) {
-	testcases := []struct {
-		name               string
-		deploymentTemplate *radappiov1alpha3.DeploymentTemplate
-		expected           bool
-	}{
-		{
-			name: "up-to-date",
-			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
-				Spec: radappiov1alpha3.DeploymentTemplateSpec{
-					Template:       "{}",
-					Parameters:     map[string]string{},
-					ProviderConfig: "{}",
-				},
-				Status: radappiov1alpha3.DeploymentTemplateStatus{
-					StatusHash: "950829dab3e33b280e2ef52a7484c51d19a51498a74aab1d7f4d2781d6e65953",
-				},
-			},
-			expected: true,
-		},
-		{
-			// Verifies the SHA-1 -> SHA-256 migration is non-breaking: a StatusHash written
-			// by an older version of Radius (legacy SHA-1 of the "simple" spec) is still
-			// considered up-to-date, so upgrading does not trigger an unnecessary deployment.
-			name: "legacy-hash-up-to-date",
-			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
-				Spec: radappiov1alpha3.DeploymentTemplateSpec{
-					Template:       "{}",
-					Parameters:     map[string]string{},
-					ProviderConfig: "{}",
-				},
-				Status: radappiov1alpha3.DeploymentTemplateStatus{
-					StatusHash: "47ee899e74561942ee36a02ffd80be955e251583",
-				},
-			},
-			expected: true,
-		},
-		{
-			name: "not-up-to-date",
-			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
-				Spec: radappiov1alpha3.DeploymentTemplateSpec{
-					Template:       "{}",
-					Parameters:     map[string]string{},
-					ProviderConfig: "{}",
-				},
-				Status: radappiov1alpha3.DeploymentTemplateStatus{
-					StatusHash: "incorrecthash",
-				},
-			},
-			expected: false,
-		},
-		{
-			name: "complex-up-to-date",
-			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
-				Spec: radappiov1alpha3.DeploymentTemplateSpec{
-					Template:       `{"resources":[{"type":"Microsoft.Resources/deployments","apiVersion":"2020-06-01","name":"test-deploymenttemplate-basic","properties":{"mode":"Incremental","template":{},"parameters":{}}}]}`,
-					Parameters:     map[string]string{"param1": "value1", "param2": "value2"},
-					ProviderConfig: `{"AWS":{"type":"aws","value":{"scope":"scope"}}}`,
-				},
-				Status: radappiov1alpha3.DeploymentTemplateStatus{
-					StatusHash: "ff16a7bcb2db8d7c1280eb761b376939dfc3856a74cfd77b986a1c0f25abf5dd",
-				},
-			},
-			expected: true,
-		},
-		{
-			name: "complex-not-up-to-date",
-			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
-				Spec: radappiov1alpha3.DeploymentTemplateSpec{
-					Template:       `{"resources":[{"type":"Microsoft.Resources/deployments","apiVersion":"2020-06-01","name":"test-deploymenttemplate-basic","properties":{"mode":"Incremental","template":{},"parameters":{}}}]}`,
-					Parameters:     map[string]string{"param1": "value1", "param2": "value2"},
-					ProviderConfig: `{"AWS":{"type":"aws","value":{"scope":"scope"}}}`,
-				},
-				Status: radappiov1alpha3.DeploymentTemplateStatus{
-					StatusHash: "incorrecthash",
-				},
-			},
-			expected: false,
+	owner := &radappiov1alpha3.DeploymentTemplate{
+		Spec: radappiov1alpha3.DeploymentTemplateSpec{Template: "{}", Parameters: map[string]string{}, ProviderConfig: "{}"},
+		Status: radappiov1alpha3.DeploymentTemplateStatus{
+			StatusHash: "47ee899e74561942ee36a02ffd80be955e251583",
 		},
 	}
-
-	for _, tc := range testcases {
-		t.Run(tc.name, func(t *testing.T) {
-			isUpToDate := isUpToDate(tc.deploymentTemplate)
-			require.Equal(t, tc.expected, isUpToDate)
-		})
-	}
+	require.True(t, isUpToDate(owner), "legacy SHA-1 hashes must not cause an unnecessary PUT after upgrade")
 }
 
 func Test_ParseDeploymentScopeFromProviderConfig(t *testing.T) {
 	t.Parallel()
-
-	testCases := []struct {
-		name           string
-		providerConfig string
-		wantScope      string
-		wantErr        bool
+	for _, tc := range []struct {
+		name   string
+		config any
+		scope  string
 	}{
-		{
-			name:           "valid: provider with scope",
-			providerConfig: `{"deployments":{"type":"deployments","value":{"scope":"deploymentsscope"}}}`,
-			wantScope:      "deploymentsscope",
-			wantErr:        false,
-		},
-		{
-			name:           "invalid: deployments scope not present",
-			providerConfig: `{"radius":{"type":"radius","value":{"scope":"deploymentsscope"}}}`,
-			wantErr:        true,
-		},
-	}
-
-	for _, tc := range testCases {
+		{name: "string", config: `{"deployments":{"type":"deployments","value":{"scope":"deploymentsscope"}}}`, scope: "deploymentsscope"},
+		{name: "bytes", config: []byte(`{"deployments":{"value":{"scope":"deploymentsscope"}}}`), scope: "deploymentsscope"},
+		{name: "missing deployments", config: `{"radius":{"value":{"scope":"deploymentsscope"}}}`},
+		{name: "empty scope", config: `{"deployments":{"value":{"scope":""}}}`},
+		{name: "invalid JSON", config: "{"},
+		{name: "invalid type", config: 42},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			scope, err := ParseDeploymentScopeFromProviderConfig(tc.providerConfig)
-			if tc.wantErr {
+			scope, err := ParseDeploymentScopeFromProviderConfig(tc.config)
+			if tc.scope == "" {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, tc.wantScope, scope)
+			require.Equal(t, tc.scope, scope)
 		})
 	}
 }
 
-func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
-	// This test tests the basic functionality of the DeploymentTemplate controller.
-	// It creates a DeploymentTemplate (with an empty template field),
-	// waits for it to be ready, and then deletes it.
-	//
-	// This is the same structure as all of the following tests.
+type templateReconcileFixture struct {
+	t           *testing.T
+	client      k8sclient.WithWatch
+	reader      k8sclient.Reader
+	scheme      *runtime.Scheme
+	deployments *sdkclients.MockResourceDeploymentsClient
+	key         types.NamespacedName
+}
 
-	ctx := t.Context()
-
-	// Set up the test.
-	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-	testNamespace := "deploymenttemplate-basic"
-	testName := "test-deploymenttemplate-basic"
-	template := "{}"
-	parameters := map[string]string{}
-	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
+func newTemplateReconcileFixture(t *testing.T) *templateReconcileFixture {
+	t.Helper()
+	s := runtime.NewScheme()
+	require.NoError(t, radappiov1alpha3.AddToScheme(s))
+	require.NoError(t, corev1.AddToScheme(s))
+	require.NoError(t, rbacv1.AddToScheme(s))
+	mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{corev1.SchemeGroupVersion, rbacv1.SchemeGroupVersion})
+	mapper.Add(corev1.SchemeGroupVersion.WithKind("ConfigMap"), meta.RESTScopeNamespace)
+	mapper.Add(corev1.SchemeGroupVersion.WithKind("Namespace"), meta.RESTScopeRoot)
+	mapper.Add(rbacv1.SchemeGroupVersion.WithKind("ClusterRole"), meta.RESTScopeRoot)
+	key := types.NamespacedName{Namespace: "test", Name: "inventory"}
+	providerConfig, err := sdkclients.NewDefaultProviderConfig(key.Namespace).String()
 	require.NoError(t, err)
-
-	// Create k8s namespace for the test.
-	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
-	require.NoError(t, err)
-
-	// Create the DeploymentTemplate resource.
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
-	err = k8sClient.Create(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// Wait for the DeploymentTemplate to enter the Updating state.
-	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	// Complete the operation.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
-
-	// DeploymentTemplate should be Ready after the operation completes.
-	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-
-	// Verify that the DeploymentTemplate desired state contains the expected properties.
-	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
-		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-			Template:       template,
-			Parameters:     parameters,
-			ProviderConfig: providerConfig,
-		},
+	owner := makeDeploymentTemplate(key, "{}", providerConfig, nil)
+	owner.UID = "owner"
+	owner.Generation = 1
+	c := fake.NewClientBuilder().WithScheme(s).WithRESTMapper(mapper).
+		WithStatusSubresource(&radappiov1alpha3.DeploymentTemplate{}, &radappiov1alpha3.DeploymentResource{}).
+		WithObjects(owner, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: key.Namespace}}).Build()
+	return &templateReconcileFixture{
+		t: t, client: c, reader: c, scheme: s,
+		deployments: sdkclients.NewMockResourceDeploymentsClient(), key: key,
 	}
-	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
-	require.NoError(t, err)
-	require.Equal(t, expectedStatusHash, status.StatusHash)
+}
 
-	// Trigger deletion of the DeploymentTemplate.
-	err = k8sClient.Delete(ctx, deploymentTemplate)
-	require.NoError(t, err)
+func (f *templateReconcileFixture) owner() *radappiov1alpha3.DeploymentTemplate {
+	f.t.Helper()
+	owner := &radappiov1alpha3.DeploymentTemplate{}
+	require.NoError(f.t, f.client.Get(f.t.Context(), f.key, owner))
+	return owner
+}
 
-	// Wait for the DeploymentTemplate to be deleted.
-	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
+func (f *templateReconcileFixture) step() ctrl.Result {
+	f.t.Helper()
+	owner := f.owner()
+	if state := owner.Status.Coordinator; state != nil && state.Phase == coordinatorDeleteRunning && state.RetryAfter != nil {
+		// Advance Kubernetes polling without bypassing terminal-failure backoff.
+		past := metav1.NewTime(time.Now().Add(-time.Minute))
+		state.RetryAfter = &past
+		require.NoError(f.t, f.client.Status().Update(f.t.Context(), owner))
+	}
+	// Recreate the reconciler so only persisted lifecycle state can drive progress.
+	r := &DeploymentTemplateReconciler{
+		Client: f.client, APIReader: f.reader, Scheme: f.scheme,
+		Radius: NewMockRadiusClient(), ResourceDeploymentsClient: f.deployments,
+		EventRecorder: record.NewFakeRecorder(100),
+	}
+	result, err := r.Reconcile(f.t.Context(), ctrl.Request{NamespacedName: f.key})
+	require.NoError(f.t, err)
+	return result
+}
+
+func (f *templateReconcileFixture) until(predicate func(*radappiov1alpha3.DeploymentTemplate) bool) *radappiov1alpha3.DeploymentTemplate {
+	f.t.Helper()
+	for range 30 {
+		if owner := f.owner(); predicate(owner) {
+			return owner
+		}
+		f.step()
+	}
+	f.t.Fatalf("template did not reach expected state: status=%+v coordinator=%+v", f.owner().Status, f.owner().Status.Coordinator)
+	return nil
+}
+
+func (f *templateReconcileFixture) runningPut() *radappiov1alpha3.DeploymentTemplate {
+	f.t.Helper()
+	return f.until(func(owner *radappiov1alpha3.DeploymentTemplate) bool {
+		return owner.Status.Coordinator != nil && owner.Status.Coordinator.Phase == coordinatorPutRunning && owner.Status.Operation != nil
+	})
+}
+
+func (f *templateReconcileFixture) ready() *radappiov1alpha3.DeploymentTemplate {
+	f.t.Helper()
+	return f.until(func(owner *radappiov1alpha3.DeploymentTemplate) bool {
+		return owner.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady && owner.Status.Operation == nil
+	})
+}
+
+func (f *templateReconcileFixture) completePut(ids ...string) {
+	f.t.Helper()
+	owner := f.owner()
+	require.NotNil(f.t, owner.Status.Operation)
+	require.EqualValues(f.t, radappiov1alpha3.OperationKindPut, owner.Status.Operation.OperationKind)
+	f.deployments.CompleteOperation(owner.Status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
+		var refs []*armdeployments.ResourceReference
+		for _, id := range ids {
+			refs = append(refs, &armdeployments.ResourceReference{ID: new(id)})
+		}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{OutputResources: refs}}
+	})
+	f.step()
+}
+
+func (f *templateReconcileFixture) changeTemplate(template string) {
+	f.t.Helper()
+	owner := f.owner()
+	owner.Spec.Template = template
+	owner.Generation++
+	require.NoError(f.t, f.client.Update(f.t.Context(), owner))
+}
+
+func (f *templateReconcileFixture) expireRetry() {
+	f.t.Helper()
+	owner := f.owner()
+	require.Equal(f.t, coordinatorRetryWaiting, owner.Status.Coordinator.Phase)
+	require.NotNil(f.t, owner.Status.Coordinator.RetryAfter)
+	require.Positive(f.t, f.step().RequeueAfter)
+	require.Equal(f.t, coordinatorRetryWaiting, f.owner().Status.Coordinator.Phase, "retry deadline must survive immediate events")
+	owner = f.owner()
+	past := metav1.NewTime(time.Now().Add(-time.Minute))
+	owner.Status.Coordinator.RetryAfter = &past
+	require.NoError(f.t, f.client.Status().Update(f.t.Context(), owner))
+}
+
+func (f *templateReconcileFixture) tracker(id string) *radappiov1alpha3.DeploymentResource {
+	f.t.Helper()
+	children := &radappiov1alpha3.DeploymentResourceList{}
+	require.NoError(f.t, f.client.List(f.t.Context(), children, k8sclient.InNamespace(f.key.Namespace)))
+	for i := range children.Items {
+		if children.Items[i].Spec.Id == id && isOwnedBy(children.Items[i], f.owner()) {
+			return &children.Items[i]
+		}
+	}
+	f.t.Fatalf("no owned tracker for %s", id)
+	return nil
+}
+
+func (f *templateReconcileFixture) drainDeletion() {
+	f.t.Helper()
+	for range 60 {
+		owner := &radappiov1alpha3.DeploymentTemplate{}
+		err := f.client.Get(f.t.Context(), f.key, owner)
+		if apierrors.IsNotFound(err) {
+			return
+		}
+		require.NoError(f.t, err)
+		if owner.Status.Operation != nil {
+			require.EqualValues(f.t, radappiov1alpha3.OperationKindDelete, owner.Status.Operation.OperationKind)
+			f.deployments.CompleteOperation(owner.Status.Operation.ResumeToken, nil)
+		}
+		f.step()
+	}
+	f.t.Fatal("template finalizer did not drain")
+}
+
+func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	f.runningPut()
+	require.Contains(t, f.owner().Finalizers, DeploymentTemplateFinalizer)
+	f.completePut()
+	owner := f.ready()
+	require.True(t, isUpToDate(owner))
+	require.Empty(t, owner.Status.Coordinator.Outputs)
+	require.NoError(t, f.client.Delete(t.Context(), owner))
+	f.drainDeletion()
 }
 
 func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
-	// This test tests our ability to recover from failed operations inside Radius.
-	//
-	// We use the mock client to simulate the failure of update and delete operations
-	// and verify that the controller will (eventually) retry these operations.
-
-	ctx := t.Context()
-
-	// Set up the test.
-	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-	testNamespace := "deploymenttemplate-failurerecovery"
-	testName := "test-deploymenttemplate-failurerecovery"
-	template := "{}"
-	parameters := map[string]string{}
-	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
-	require.NoError(t, err)
-
-	// Create k8s namespace for the test.
-	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
-	require.NoError(t, err)
-
-	// Create the DeploymentTemplate resource.
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
-	err = k8sClient.Create(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// Wait for the DeploymentTemplate to enter the Updating state.
-	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	// Complete the operation, but make it fail.
-	operation := status.Operation
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
-		state.Err = errors.New("failure")
-
-		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
-		require.True(t, ok, "failed to find resource")
-
-		resource.Properties.ProvisioningState = to.Ptr(armdeployments.ProvisioningStateFailed)
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	first := f.runningPut().Status.Operation.ResumeToken
+	f.deployments.CompleteOperation(first, func(state *sdkclients.OperationState) {
+		state.Err = errors.New("known terminal PUT failure")
+		response := state.Value.(sdkclients.ClientCreateOrUpdateResponse)
+		response.Properties.OutputResources = []*armdeployments.ResourceReference{}
+		state.Value = response
 	})
-
-	// DeploymentTemplate should (eventually) start a new provisioning operation
-	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, operation)
-
-	// Complete the operation, successfully this time.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
-	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-
-	// Verify that the DeploymentTemplate desired state contains the expected properties.
-	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
-		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-			Template:       template,
-			Parameters:     parameters,
-			ProviderConfig: providerConfig,
-		},
-	}
-	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
-	require.NoError(t, err)
-	require.Equal(t, expectedStatusHash, status.StatusHash)
-
-	// Trigger deletion of the DeploymentTemplate.
-	err = k8sClient.Delete(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// Wait for the DeploymentTemplate to be deleted.
-	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
+	f.step()
+	require.Equal(t, coordinatorPutInventoryPending, f.owner().Status.Coordinator.Phase)
+	result := f.step()
+	require.Equal(t, DeleteRetryDelay, result.RequeueAfter)
+	owner := f.owner()
+	require.Equal(t, coordinatorRetryWaiting, owner.Status.Coordinator.Phase)
+	require.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseFailed, owner.Status.Phrase)
+	require.Nil(t, owner.Status.Operation)
+	require.False(t, isUpToDate(owner))
+	f.expireRetry()
+	second := f.runningPut().Status.Operation.ResumeToken
+	require.NotEqual(t, first, second)
+	f.completePut()
+	require.True(t, isUpToDate(f.ready()))
 }
 
 func Test_DeploymentTemplateReconciler_SpecChangedDuringOperation(t *testing.T) {
-	ctx := t.Context()
-	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-	namespacedName := types.NamespacedName{Namespace: "deploymenttemplate-spec-change", Name: "test-deploymenttemplate"}
-	providerConfig, err := sdkclients.NewDefaultProviderConfig(namespacedName.Namespace).String()
-	require.NoError(t, err)
-	require.NoError(t, k8sClient.Create(ctx, &corev1.Namespace{Name: namespacedName.Namespace}))
-
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, "{}", providerConfig, nil)
-	require.NoError(t, k8sClient.Create(ctx, deploymentTemplate))
-	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	// Change the spec while the first operation runs.
-	require.NoError(t, k8sClient.Get(ctx, namespacedName, deploymentTemplate))
-	deploymentTemplate.Spec.Template = `{"resources":[]}`
-	require.NoError(t, k8sClient.Update(ctx, deploymentTemplate))
-	updatedHash, err := computeHash(deploymentTemplate)
-	require.NoError(t, err)
-
-	// The first operation's success must start a second one for the changed spec.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
-	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, status.Operation)
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
-	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-	require.Equal(t, updatedHash, status.StatusHash)
-
-	require.NoError(t, k8sClient.Delete(ctx, deploymentTemplate))
-	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
-}
-
-func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
-	// This test tests the ability to handle deployments of
-	// resources created by the DeploymentTemplate.
-
-	ctx := t.Context()
-
-	// Set up the test.
-	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-	testNamespace := "deploymenttemplate-withresources"
-	testName := "test-deploymenttemplate-withresources"
-	template := readFileIntoTemplate(t, "deploymenttemplate-withresources.json")
-	parameters := map[string]string{}
-	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
-	require.NoError(t, err)
-
-	// Create k8s namespace for the test.
-	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
-	require.NoError(t, err)
-
-	// Create the DeploymentTemplate resource.
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
-	err = k8sClient.Create(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// Wait for the DeploymentTemplate to enter the Updating state.
-	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	// Complete the operation.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
-		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
-		require.True(t, ok, "failed to find resource")
-
-		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
-			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env")},
-		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
-	})
-
-	// DeploymentTemplate should be ready after the operation completes.
-	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-
-	// The dependencies (DeploymentResource resources) should be created.
-	dependencyName := types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-withresources-env"}
-	dependencyStatus := waitForDeploymentResourceStateReady(t, k8sClient, dependencyName)
-	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env", dependencyStatus.Id)
-
-	// Verify that the DeploymentTemplate desired state contains the expected properties.
-	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
-		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-			Template:       template,
-			Parameters:     parameters,
-			ProviderConfig: providerConfig,
-		},
-	}
-	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
-	require.NoError(t, err)
-	require.Equal(t, expectedStatusHash, status.StatusHash)
-
-	// Trigger deletion of the DeploymentTemplate.
-	err = k8sClient.Delete(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// The DeploymentTemplate should be in the deleting state.
-	waitForDeploymentTemplateStateDeleting(t, k8sClient, namespacedName)
-
-	// Get the status of the dependency (DeploymentResource resource).
-	dependencyStatus = waitForDeploymentResourceStateDeleting(t, k8sClient, dependencyName, nil)
-
-	// Complete the delete operation on the DeploymentResource.
-	mockDeploymentClient.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
-
-	// Wait for the DeploymentTemplate to be deleted.
-	waitForDeploymentResourceDeleted(t, k8sClient, dependencyName)
-	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
-}
-
-func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
-	// This test tests our ability to update a DeploymentTemplate.
-	// We create a DeploymentTemplate, update it, and verify that the Radius resource is updated accordingly.
-
-	ctx := t.Context()
-
-	// Set up the test.
-	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-	testNamespace := "deploymenttemplate-update"
-	testName := "test-deploymenttemplate-update"
-	template := readFileIntoTemplate(t, "deploymenttemplate-update-1.json")
-	parameters := map[string]string{}
-	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
-	require.NoError(t, err)
-
-	// Create k8s namespace for the test.
-	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
-	require.NoError(t, err)
-
-	// Create the DeploymentTemplate resource.
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
-	err = k8sClient.Create(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// Wait for the DeploymentTemplate to enter the Updating state.
-	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	// Complete the operation.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
-		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
-		require.True(t, ok, "failed to find resource")
-
-		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
-			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
-		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
-	})
-
-	// DeploymentTemplate should be ready after the operation completes.
-	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-
-	// The dependencies (DeploymentResource resources) should be created.
-	dependencyName := types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-update-env"}
-	dependencyStatus := waitForDeploymentResourceStateReady(t, k8sClient, dependencyName)
-	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env", dependencyStatus.Id)
-
-	// Verify that the DeploymentTemplate desired state contains the expected properties.
-	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
-		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-			Template:       template,
-			Parameters:     parameters,
-			ProviderConfig: providerConfig,
-		},
-	}
-	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
-	require.NoError(t, err)
-	require.Equal(t, expectedStatusHash, status.StatusHash)
-
-	// Now, we will re-deploy the DeploymentTemplate with a new template.
-
-	// Get the DeploymentTemplate resource.
-	newDeploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
-	err = k8sClient.Get(ctx, namespacedName, &newDeploymentTemplate)
-	require.NoError(t, err)
-
-	// Update the template field on the DeploymentTemplate.
-	template = readFileIntoTemplate(t, "deploymenttemplate-update-2.json")
-	newDeploymentTemplate.Spec.Template = string(template)
-
-	// Update the DeploymentTemplate resource.
-	err = k8sClient.Update(ctx, &newDeploymentTemplate)
-	require.NoError(t, err)
-
-	// Now, the DeploymentTemplate should re-enter the Updating state.
-	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	// Complete the operation again.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
-		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
-		require.True(t, ok, "failed to find resource")
-
-		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
-			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
-		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
-	})
-
-	// DeploymentTemplate should be Ready again after the operation completes.
-	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-
-	// The dependencies (DeploymentResource resources) should also be Ready.
-	dependencyName = types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-update-env"}
-	dependencyStatus = waitForDeploymentResourceStateReady(t, k8sClient, dependencyName)
-	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env", dependencyStatus.Id)
-
-	// Verify that the DeploymentTemplate contains the expected properties.
-	expectedDeploymentTemplateSpec = &radappiov1alpha3.DeploymentTemplate{
-		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-			Template:       template,
-			Parameters:     parameters,
-			ProviderConfig: providerConfig,
-		},
-	}
-	expectedStatusHash, err = computeHash(expectedDeploymentTemplateSpec)
-	require.NoError(t, err)
-	require.Equal(t, expectedStatusHash, status.StatusHash)
-
-	// Trigger deletion of the DeploymentTemplate.
-	err = k8sClient.Delete(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// The DeploymentTemplate should be in the deleting state.
-	waitForDeploymentTemplateStateDeleting(t, k8sClient, namespacedName)
-
-	// Get the status of the dependency (DeploymentResource resource).
-	dependencyStatus = waitForDeploymentResourceStateDeleting(t, k8sClient, dependencyName, nil)
-
-	// Complete the delete operation on the DeploymentResource.
-	mockDeploymentClient.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
-
-	// Wait for the DeploymentTemplate to be deleted.
-	waitForDeploymentResourceDeleted(t, k8sClient, dependencyName)
-	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	first := f.runningPut()
+	submittedHash := first.Status.Coordinator.SubmittedHash
+	f.changeTemplate(`{"resources":[]}`)
+	f.step()
+	require.Equal(t, first.Status.Operation, f.owner().Status.Operation, "a changed spec must not overlap the running PUT")
+	f.completePut()
+	require.Equal(t, submittedHash, f.owner().Status.StatusHash)
+	second := f.runningPut()
+	require.NotEqual(t, first.Status.Operation.ResumeToken, second.Status.Operation.ResumeToken)
+	require.NotEqual(t, submittedHash, second.Status.Coordinator.SubmittedHash)
+	f.completePut()
+	require.True(t, isUpToDate(f.ready()))
 }
 
 func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
-	// This test tests the ability to perform diff detection on
-	// the OutputResources field of the DeploymentTemplate.
-	// We create a DeploymentTemplate with some resources,
-	// update the DeploymentTemplate to remove some resources,
-	// and verify that the diff is correct.
-
-	ctx := t.Context()
-
-	// Set up the test.
-	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-	testNamespace := "deploymenttemplate-outputresources"
-	testName := "test-deploymenttemplate-outputresources"
-	template := readFileIntoTemplate(t, "deploymenttemplate-outputresources-1.json")
-	parameters := map[string]string{}
-	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
-	require.NoError(t, err)
-
-	// Create k8s namespace for the test.
-	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
-	require.NoError(t, err)
-
-	// Create the DeploymentTemplate resource.
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
-	err = k8sClient.Create(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// Wait for the DeploymentTemplate to enter the Updating state.
-	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	// Complete the operation.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
-		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
-		require.True(t, ok, "failed to find resource")
-
-		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
-			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment")},
-			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
-			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/containers/deploymenttemplate-outputresources-container")},
+	t.Parallel()
+	for _, keepContainer := range []bool{false, true} {
+		name := "nil outputs"
+		if keepContainer {
+			name = "retired dependency"
 		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
-	})
-
-	// DeploymentTemplate should be ready after the operation completes.
-	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-
-	// The dependencies (DeploymentResource resources) should be created.
-	dependencies := []struct {
-		resourceID     string
-		namespacedName types.NamespacedName
-	}{
-		{
-			resourceID:     "/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment",
-			namespacedName: types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-environment"},
-		},
-		{
-			resourceID:     "/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application",
-			namespacedName: types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-application"},
-		},
-		{
-			resourceID:     "/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/containers/deploymenttemplate-outputresources-container",
-			namespacedName: types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-container"},
-		},
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := newTemplateReconcileFixture(t)
+			envID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/environment"
+			appID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/applications/application"
+			containerID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/container"
+			f.runningPut()
+			f.completePut(envID, appID, containerID, containerID)
+			owner := f.owner()
+			require.Len(t, owner.Status.Coordinator.Outputs, 3, "duplicate outputs must be deduplicated durably")
+			children := &radappiov1alpha3.DeploymentResourceList{}
+			require.NoError(t, f.client.List(t.Context(), children))
+			require.Empty(t, children.Items, "inventory must be committed before tracker projection")
+			f.ready()
+			for _, id := range []string{envID, appID, containerID} {
+				child := f.tracker(id)
+				expectedName, err := generateDeploymentResourceName(id)
+				require.NoError(t, err)
+				require.Equal(t, expectedName, child.Name)
+				require.Equal(t, id, child.Status.ProvisionedResourceID)
+				require.Contains(t, child.Finalizers, DeploymentResourceFinalizer)
+			}
+			f.changeTemplate(`{"resources":[]}`)
+			f.runningPut()
+			if keepContainer {
+				f.completePut(containerID)
+				for range 5 {
+					f.step()
+				}
+				owner = f.owner()
+				require.Equal(t, outputPendingDelete, findOutput(owner, envID).State)
+				require.Nil(t, owner.Status.Operation)
+				require.Empty(t, f.deployments.DeletedResourceIDs(), "dependencies must outlive current leaf outputs")
+				require.NoError(t, f.client.Delete(t.Context(), owner))
+				f.drainDeletion()
+			} else {
+				f.completePut()
+				for range 20 {
+					owner = f.owner()
+					if owner.Status.Operation != nil {
+						require.NotEqual(t, containerID, owner.Status.Coordinator.ResourceID, "leaf DELETE must complete before dependencies")
+						f.deployments.CompleteOperation(owner.Status.Operation.ResumeToken, nil)
+					}
+					if owner.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady {
+						break
+					}
+					// The first pending DELETE is the leaf, even though dependencies are listed first.
+					if len(f.deployments.DeletedResourceIDs()) == 0 {
+						f.step()
+						owner = f.owner()
+						require.Equal(t, containerID, owner.Status.Coordinator.ResourceID)
+						f.deployments.CompleteOperation(owner.Status.Operation.ResumeToken, nil)
+					}
+					f.step()
+				}
+				require.Empty(t, f.ready().Status.Coordinator.Outputs)
+			}
+			deleted := f.deployments.DeletedResourceIDs()
+			require.Len(t, deleted, 3)
+			require.ElementsMatch(t, []string{containerID, envID, appID}, deleted)
+		})
 	}
-	for _, dependency := range dependencies {
-		dependencyStatus := waitForDeploymentResourceStateReady(t, k8sClient, dependency.namespacedName)
-		require.Equal(t, dependency.resourceID, dependencyStatus.Id)
-	}
-
-	// Verify that the DeploymentTemplate desired state contains the expected properties.
-	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
-		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-			Template:       template,
-			Parameters:     parameters,
-			ProviderConfig: providerConfig,
-		},
-	}
-	expectedStatusHash, err := computeHash(expectedDeploymentTemplateSpec)
-	require.NoError(t, err)
-	require.Equal(t, expectedStatusHash, status.StatusHash)
-
-	// Now, we will re-deploy the DeploymentTemplate with a new template.
-	// This template has the container resource removed.
-
-	// Get the DeploymentTemplate resource.
-	newDeploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
-	err = k8sClient.Get(ctx, namespacedName, &newDeploymentTemplate)
-	require.NoError(t, err)
-
-	// Update the template field on the DeploymentTemplate.
-	template = readFileIntoTemplate(t, "deploymenttemplate-outputresources-2.json")
-	newDeploymentTemplate.Spec.Template = string(template)
-
-	// Update the DeploymentTemplate resource.
-	err = k8sClient.Update(ctx, &newDeploymentTemplate)
-	require.NoError(t, err)
-
-	// Now, the DeploymentTemplate should re-enter the Updating state.
-	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	// Complete the operation again, with a different set of output resources.
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
-		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
-		require.True(t, ok, "failed to find resource")
-
-		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
-			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment")},
-			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
-		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
-	})
-
-	// Complete the delete operation on the container resource.
-	dependencyName := types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-container"}
-	dependencyStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, dependencyName, nil)
-	mockDeploymentClient.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
-
-	// DeploymentTemplate should be Ready again after the operation completes.
-	status = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-
-	// The dependencies (DeploymentResource resources) should be in the Ready state.
-	dependencies = []struct {
-		resourceID     string
-		namespacedName types.NamespacedName
-	}{
-		{
-			resourceID:     "/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment",
-			namespacedName: types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-environment"},
-		},
-		{
-			resourceID:     "/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application",
-			namespacedName: types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-application"},
-		},
-	}
-	for _, dependency := range dependencies {
-		dependencyStatus := waitForDeploymentResourceStateReady(t, k8sClient, dependency.namespacedName)
-		require.Equal(t, dependency.resourceID, dependencyStatus.Id)
-	}
-
-	// Assert that the container resource has been deleted.
-	dependencyName = types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-outputresources-container"}
-	waitForDeploymentResourceDeleted(t, k8sClient, dependencyName)
-
-	// Check the cluster for the container resource, it should not exist.
-	err = k8sClient.Get(ctx, dependencyName, &radappiov1alpha3.DeploymentResource{})
-	require.True(t, apierrors.IsNotFound(err), "expected DeploymentResource to be deleted")
-
-	// Verify that the DeploymentTemplate contains the expected properties.
-	expectedDeploymentTemplateSpec = &radappiov1alpha3.DeploymentTemplate{
-		Spec: radappiov1alpha3.DeploymentTemplateSpec{
-			Template:       template,
-			Parameters:     map[string]string{},
-			ProviderConfig: providerConfig,
-		},
-	}
-	expectedStatusHash, err = computeHash(expectedDeploymentTemplateSpec)
-	require.NoError(t, err)
-	require.Equal(t, expectedStatusHash, status.StatusHash)
-
-	// Trigger deletion of the DeploymentTemplate.
-	err = k8sClient.Delete(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// The DeploymentTemplate should be in the deleting state.
-	waitForDeploymentTemplateStateDeleting(t, k8sClient, namespacedName)
-
-	// Wait for all of the dependencies (DeploymentResource resources) to be deleted.
-	for _, dependency := range dependencies {
-		dependencyStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, dependency.namespacedName, nil)
-		mockDeploymentClient.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
-		waitForDeploymentResourceDeleted(t, k8sClient, dependency.namespacedName)
-	}
-
-	// Wait for the DeploymentTemplate to be deleted.
-	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
 }
 
-func Test_DeploymentTemplateReconciler_ReadyPendingCleanup(t *testing.T) {
-	// After an update removes an output resource, the DT must transition to
-	// ReadyPendingCleanup (not Ready) while the removed DR is still draining,
-	// and only to Ready once the residual is gone.
-
-	ctx := t.Context()
-
-	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-	testNamespace := "deploymenttemplate-readypendingcleanup"
-	testName := "test-deploymenttemplate-readypendingcleanup"
-	template := readFileIntoTemplate(t, "deploymenttemplate-outputresources-1.json")
-	parameters := map[string]string{}
-	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
-	require.NoError(t, err)
-
-	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
-	require.NoError(t, err)
-
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
-	err = k8sClient.Create(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// First deployment: env + app + container.
-	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	envID := "/planes/radius/local/resourceGroups/deploymenttemplate-readypendingcleanup/providers/Applications.Core/environments/deploymenttemplate-readypendingcleanup-environment"
-	appID := "/planes/radius/local/resourceGroups/deploymenttemplate-readypendingcleanup/providers/Applications.Core/applications/deploymenttemplate-readypendingcleanup-application"
-	containerID := "/planes/radius/local/resourceGroups/deploymenttemplate-readypendingcleanup/providers/Applications.Core/containers/deploymenttemplate-readypendingcleanup-container"
-
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
-		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
-		require.True(t, ok, "failed to find resource")
-
-		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
-			{ID: new(envID)},
-			{ID: new(appID)},
-			{ID: new(containerID)},
+func Test_DeploymentTemplateReconciler_KubernetesOutputCleanup(t *testing.T) {
+	t.Parallel()
+	for _, removeOutput := range []bool{false, true} {
+		name := "delete-template"
+		if removeOutput {
+			name = "remove-output"
 		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := newTemplateReconcileFixture(t)
+			output := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+				Name: "output", Namespace: f.key.Namespace, Finalizers: []string{"example.com/hold"},
+			}}
+			require.NoError(t, f.client.Create(t.Context(), output))
+			id := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/output"
+			f.runningPut()
+			f.completePut(id)
+			f.ready()
+			child := f.tracker(id)
+			if removeOutput {
+				f.changeTemplate(`{"resources":[]}`)
+				f.runningPut()
+				f.completePut()
+			} else {
+				require.NoError(t, f.client.Delete(t.Context(), f.owner()))
+			}
+			owner := f.until(func(owner *radappiov1alpha3.DeploymentTemplate) bool {
+				return owner.Status.Coordinator.Phase == coordinatorDeleteRunning
+			})
+			require.Contains(t, owner.Finalizers, DeploymentTemplateFinalizer)
+			require.Equal(t, id, owner.Status.Coordinator.ResourceID)
+			require.Nil(t, owner.Status.Operation, "Kubernetes deletion must not create a UCP token")
+			require.NoError(t, f.client.Get(t.Context(), k8sclient.ObjectKeyFromObject(output), output))
+			require.NotNil(t, output.DeletionTimestamp)
+			for range 3 {
+				f.step()
+				require.NotNil(t, findOutput(f.owner(), id), "external finalizers must retain authoritative inventory")
+			}
+			require.NoError(t, f.client.Get(t.Context(), k8sclient.ObjectKeyFromObject(output), output))
+			output.Finalizers = nil
+			require.NoError(t, f.client.Update(t.Context(), output))
+			if removeOutput {
+				require.Empty(t, f.ready().Status.Coordinator.Outputs)
+			} else {
+				f.drainDeletion()
+			}
+			require.True(t, apierrors.IsNotFound(f.client.Get(t.Context(), k8sclient.ObjectKeyFromObject(child), child)))
+			require.Empty(t, f.deployments.DeletedResourceIDs())
+		})
+	}
+}
+
+func Test_DeploymentTemplateReconciler_RemoveAndReaddOutput(t *testing.T) {
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	id := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/output"
+	output := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{
+		Name: "output", Namespace: f.key.Namespace, Finalizers: []string{"example.com/hold"},
+	}}
+	require.NoError(t, f.client.Create(t.Context(), output))
+	f.runningPut()
+	f.completePut(id)
+	f.ready()
+	f.changeTemplate(`{"resources":[]}`)
+	f.runningPut()
+	f.completePut()
+	f.until(func(owner *radappiov1alpha3.DeploymentTemplate) bool {
+		return owner.Status.Coordinator.Phase == coordinatorDeleteRunning
 	})
+	f.changeTemplate("{}")
+	for range 3 {
+		f.step()
+		owner := f.owner()
+		require.Equal(t, coordinatorDeleteRunning, owner.Status.Coordinator.Phase)
+		require.Nil(t, owner.Status.Operation)
+		require.NotEqual(t, radappiov1alpha3.DeploymentTemplatePhraseReady, owner.Status.Phrase)
+	}
+	require.NoError(t, f.client.Get(t.Context(), k8sclient.ObjectKeyFromObject(output), output))
+	output.Finalizers = nil
+	require.NoError(t, f.client.Update(t.Context(), output))
+	f.runningPut()
+	recreated := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "output", Namespace: f.key.Namespace}}
+	require.NoError(t, f.client.Create(t.Context(), recreated))
+	f.completePut(id)
+	f.ready()
+	for range 3 {
+		f.step()
+	}
+	require.NoError(t, f.client.Get(t.Context(), k8sclient.ObjectKeyFromObject(recreated), recreated))
+	require.Nil(t, recreated.DeletionTimestamp, "old cleanup must not delete a reintroduced output")
+	require.Equal(t, id, f.tracker(id).Status.ProvisionedResourceID)
+}
 
-	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
+func Test_DeploymentTemplateReconciler_CompletedPutWithTerminatingTracker(t *testing.T) {
+	t.Parallel()
+	for _, deleteDuringPut := range []bool{false, true} {
+		t.Run(map[bool]string{false: "repair output", true: "delete template"}[deleteDuringPut], func(t *testing.T) {
+			t.Parallel()
+			f := newTemplateReconcileFixture(t)
+			firstID := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/first"
+			secondID := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/second"
+			for _, name := range []string{"first", "second"} {
+				require.NoError(t, f.client.Create(t.Context(), &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: f.key.Namespace}}))
+			}
+			f.runningPut()
+			f.completePut(firstID)
+			f.ready()
+			f.changeTemplate(`{"resources":[]}`)
+			f.runningPut()
+			child := f.tracker(firstID)
+			require.NoError(t, f.client.Delete(t.Context(), child))
+			if deleteDuringPut {
+				require.NoError(t, f.client.Delete(t.Context(), f.owner()))
+			}
+			f.completePut(firstID, secondID)
+			require.ElementsMatch(t, []string{firstID, secondID}, f.owner().Status.OutputResources)
+			require.Nil(t, f.owner().Status.Operation, "completed inventory must not depend on tracker retirement")
+			if deleteDuringPut {
+				f.drainDeletion()
+				require.True(t, apierrors.IsNotFound(f.client.Get(t.Context(), types.NamespacedName{Namespace: "test", Name: "second"}, &corev1.ConfigMap{})))
+			} else {
+				f.runningPut()
+				require.Empty(t, f.owner().Status.StatusHash, "deleting a current output must force a repair PUT")
+				f.completePut(firstID, secondID)
+				require.True(t, isUpToDate(f.ready()))
+			}
+		})
+	}
+}
 
-	containerDR := types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-readypendingcleanup-container"}
-	_ = waitForDeploymentResourceStateReady(t, k8sClient, containerDR)
-
-	// Re-deploy with the container removed.
-	newDeploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
-	err = k8sClient.Get(ctx, namespacedName, &newDeploymentTemplate)
-	require.NoError(t, err)
-	newDeploymentTemplate.Spec.Template = readFileIntoTemplate(t, "deploymenttemplate-outputresources-2.json")
-	err = k8sClient.Update(ctx, &newDeploymentTemplate)
-	require.NoError(t, err)
-
-	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
-		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
-		require.True(t, ok, "failed to find resource")
-
-		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
-			{ID: new(envID)},
-			{ID: new(appID)},
-		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
+func Test_DeploymentTemplateReconciler_ExistingTrackerAtQuota(t *testing.T) {
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	id := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/output"
+	f.runningPut()
+	child := makeDeploymentResource(types.NamespacedName{Namespace: "test", Name: "legacy-output"}, id)
+	child.Finalizers = []string{DeploymentResourceFinalizer}
+	require.NoError(t, controllerutil.SetControllerReference(f.owner(), child, f.scheme))
+	require.NoError(t, f.client.Create(t.Context(), child))
+	creates := 0
+	f.client = interceptor.NewClient(f.client, interceptor.Funcs{
+		Create: func(ctx context.Context, c k8sclient.WithWatch, obj k8sclient.Object, opts ...k8sclient.CreateOption) error {
+			if _, ok := obj.(*radappiov1alpha3.DeploymentResource); ok {
+				creates++
+				return apierrors.NewForbidden(schema.GroupResource{Group: "radapp.io", Resource: "deploymentresources"}, obj.GetName(), errors.New("quota exceeded"))
+			}
+			return c.Create(ctx, obj, opts...)
+		},
 	})
+	f.completePut(id)
+	f.ready()
+	require.Zero(t, creates, "legacy tracker identity must be adopted without duplicate POST at quota")
+	require.Equal(t, child.Name, f.tracker(id).Name)
+	require.Equal(t, id, f.tracker(id).Status.ProvisionedResourceID)
+}
 
-	// The container DR's delete operation is still pending in the mock, so
-	// the DT should report ReadyPendingCleanup, not Ready.
-	_ = waitForDeploymentTemplateStateReadyPendingCleanup(t, k8sClient, namespacedName)
-
-	// Drain the container DR; the Owns watch should then wake the DT and
-	// flip it to Ready.
-	containerStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, containerDR, nil)
-	mockDeploymentClient.CompleteOperation(containerStatus.Operation.ResumeToken, nil)
-	waitForDeploymentResourceDeleted(t, k8sClient, containerDR)
-
-	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-
-	// Cleanup.
-	err = k8sClient.Delete(ctx, deploymentTemplate)
+func Test_DeploymentTemplateReconciler_RejectsNonControllerTracker(t *testing.T) {
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	id := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/output"
+	name, err := generateDeploymentResourceName(id)
 	require.NoError(t, err)
+	child := makeDeploymentResource(types.NamespacedName{Namespace: "test", Name: name}, id)
+	require.NoError(t, controllerutil.SetControllerReference(f.owner(), child, f.scheme))
+	child.OwnerReferences[0].Controller = new(false)
+	child.Finalizers = []string{DeploymentResourceFinalizer}
+	require.NoError(t, f.client.Create(t.Context(), child))
+	f.runningPut()
+	f.completePut(id)
+	r := &DeploymentTemplateReconciler{Client: f.client, APIReader: f.reader, Scheme: f.scheme}
+	_, err = r.Reconcile(t.Context(), ctrl.Request{NamespacedName: f.key})
+	require.ErrorContains(t, err, "does not match")
+	require.NoError(t, f.client.Get(t.Context(), k8sclient.ObjectKeyFromObject(child), child))
+	require.Empty(t, child.Status.ProvisionedResourceID)
+	require.Nil(t, child.DeletionTimestamp)
+	require.NotNil(t, findOutput(f.owner(), id), "a projection conflict must not discard completed inventory")
+}
 
-	waitForDeploymentTemplateStateDeleting(t, k8sClient, namespacedName)
-	for _, dependency := range []types.NamespacedName{
-		{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-readypendingcleanup-environment"},
-		{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-readypendingcleanup-application"},
+func Test_DeploymentTemplateReconciler_DeleteInventoryBypassesCache(t *testing.T) {
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	id := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/output"
+	f.runningPut()
+	f.completePut(id)
+	f.ready()
+	child := f.tracker(id)
+	underlying := f.client
+	f.client = interceptor.NewClient(underlying, interceptor.Funcs{
+		List: func(ctx context.Context, c k8sclient.WithWatch, list k8sclient.ObjectList, opts ...k8sclient.ListOption) error {
+			if children, ok := list.(*radappiov1alpha3.DeploymentResourceList); ok {
+				children.Items = nil
+				return nil
+			}
+			return c.List(ctx, list, opts...)
+		},
+	})
+	require.NoError(t, underlying.Delete(t.Context(), f.owner()))
+	f.drainDeletion()
+	require.True(t, apierrors.IsNotFound(underlying.Get(t.Context(), k8sclient.ObjectKeyFromObject(child), child)), "uncached inventory must retire the real tracker before finalizing")
+}
+
+func Test_DeploymentTemplateReconciler_DisappearingCompletedOutputTracker(t *testing.T) {
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	id := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/output"
+	f.runningPut()
+	f.completePut(id)
+	f.ready()
+	child := f.tracker(id)
+	child.Finalizers = nil
+	require.NoError(t, f.client.Update(t.Context(), child))
+	require.NoError(t, f.client.Delete(t.Context(), child))
+	for range 3 {
+		f.step()
+	}
+	require.Equal(t, id, f.tracker(id).Status.ProvisionedResourceID)
+	require.Nil(t, f.owner().Status.Operation, "a missing projection must not redeploy an intact output")
+	require.Empty(t, f.deployments.DeletedResourceIDs())
+	require.True(t, isUpToDate(f.owner()))
+}
+
+func Test_DeploymentTemplateReconciler_NamespaceTerminatesDuringPut(t *testing.T) {
+	t.Parallel()
+	for _, templateFirst := range []bool{false, true} {
+		t.Run(map[bool]string{false: "namespace first", true: "template first"}[templateFirst], func(t *testing.T) {
+			t.Parallel()
+			f := newTemplateReconcileFixture(t)
+			oldID := "/planes/kubernetes/local/namespaces/target/providers/core/ConfigMap/old"
+			cmID := "/planes/kubernetes/local/namespaces/target/providers/core/ConfigMap/output"
+			roleID := "/planes/kubernetes/local/providers/rbac.authorization.k8s.io/ClusterRole/output"
+			envID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/environment"
+			redisID := "/planes/radius/local/resourceGroups/test/providers/Applications.Datastores/redisCaches/redis"
+			for _, name := range []string{"old", "output"} {
+				require.NoError(t, f.client.Create(t.Context(), &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "target"}}))
+			}
+			require.NoError(t, f.client.Create(t.Context(), &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "output"}}))
+			f.runningPut()
+			f.completePut(oldID, envID)
+			f.ready()
+			f.changeTemplate(`{"resources":[]}`)
+			f.runningPut()
+			ns := &corev1.Namespace{}
+			require.NoError(t, f.client.Get(t.Context(), types.NamespacedName{Name: f.key.Namespace}, ns))
+			ns.Finalizers = []string{"example.com/hold"}
+			require.NoError(t, f.client.Update(t.Context(), ns))
+			require.NoError(t, f.client.Delete(t.Context(), ns))
+			if templateFirst {
+				require.NoError(t, f.client.Delete(t.Context(), f.owner()))
+			}
+			childCreates := 0
+			f.client = interceptor.NewClient(f.client, interceptor.Funcs{
+				Create: func(ctx context.Context, c k8sclient.WithWatch, obj k8sclient.Object, opts ...k8sclient.CreateOption) error {
+					if _, ok := obj.(*radappiov1alpha3.DeploymentResource); ok {
+						childCreates++
+						return apierrors.NewForbidden(schema.GroupResource{Resource: "deploymentresources"}, obj.GetName(), errors.New("namespace is terminating"))
+					}
+					return c.Create(ctx, obj, opts...)
+				},
+			})
+			f.completePut(envID, redisID, cmID, roleID)
+			require.Len(t, f.owner().Status.Coordinator.Outputs, 5, "retired and newly completed outputs must survive namespace termination")
+			for range 60 {
+				owner := &radappiov1alpha3.DeploymentTemplate{}
+				err := f.client.Get(t.Context(), f.key, owner)
+				if apierrors.IsNotFound(err) {
+					break
+				}
+				require.NoError(t, err)
+				if owner.Status.Operation != nil {
+					require.EqualValues(t, radappiov1alpha3.OperationKindDelete, owner.Status.Operation.OperationKind)
+					if owner.Status.Coordinator.ResourceID == envID {
+						require.Nil(t, findOutput(owner, redisID), "tracked environment must outlive untracked Redis")
+						require.Nil(t, findOutput(owner, cmID))
+						require.Nil(t, findOutput(owner, roleID))
+					}
+					f.deployments.CompleteOperation(owner.Status.Operation.ResumeToken, nil)
+				}
+				f.step()
+			}
+			require.True(t, apierrors.IsNotFound(f.client.Get(t.Context(), f.key, &radappiov1alpha3.DeploymentTemplate{})))
+			require.Zero(t, childCreates, "cleanup must not need new trackers in a terminating namespace")
+			require.ElementsMatch(t, []string{redisID, envID}, f.deployments.DeletedResourceIDs())
+			for _, name := range []string{"old", "output"} {
+				require.True(t, apierrors.IsNotFound(f.client.Get(t.Context(), types.NamespacedName{Namespace: "target", Name: name}, &corev1.ConfigMap{})))
+			}
+			require.True(t, apierrors.IsNotFound(f.client.Get(t.Context(), types.NamespacedName{Name: "output"}, &rbacv1.ClusterRole{})))
+		})
+	}
+}
+
+func Test_DeploymentTemplateReconciler_UntrackedOutputCleanupFailuresAndScope(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		id   string
+		fail bool
+	}{
+		{name: "known terminal Radius failure", id: "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/output", fail: true},
+		{name: "Radius outside scope", id: "/planes/radius/local/resourceGroups/other/providers/Applications.Core/containers/output"},
+		{name: "remote Kubernetes cluster", id: "/planes/kubernetes/remote/namespaces/test/providers/core/ConfigMap/output"},
 	} {
-		dependencyStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, dependency, nil)
-		mockDeploymentClient.CompleteOperation(dependencyStatus.Operation.ResumeToken, nil)
-		waitForDeploymentResourceDeleted(t, k8sClient, dependency)
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := newTemplateReconcileFixture(t)
+			f.runningPut()
+			f.completePut(tc.id)
+			require.NoError(t, f.client.Delete(t.Context(), f.owner()))
+			if tc.fail {
+				owner := f.until(func(owner *radappiov1alpha3.DeploymentTemplate) bool {
+					return owner.Status.Coordinator.Phase == coordinatorDeleteRunning
+				})
+				first := owner.Status.Operation.ResumeToken
+				f.deployments.CompleteOperation(first, func(state *sdkclients.OperationState) {
+					state.Err = errors.New("known terminal DELETE failure")
+				})
+				require.Equal(t, DeleteRetryDelay, f.step().RequeueAfter)
+				owner = f.owner()
+				require.Equal(t, coordinatorRetryWaiting, owner.Status.Coordinator.Phase)
+				require.NotNil(t, findOutput(owner, tc.id))
+				require.Nil(t, owner.Status.Operation)
+				require.Contains(t, owner.Finalizers, DeploymentTemplateFinalizer)
+				f.expireRetry()
+				owner = f.until(func(owner *radappiov1alpha3.DeploymentTemplate) bool {
+					return owner.Status.Operation != nil
+				})
+				require.NotEqual(t, first, owner.Status.Operation.ResumeToken)
+			}
+			f.drainDeletion()
+			if !tc.fail {
+				require.Empty(t, f.deployments.DeletedResourceIDs(), "out-of-scope inventory must only be forgotten")
+			}
+		})
 	}
-	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
 }
 
-func Test_DeploymentTemplateReconciler_NilOutputResourcesTriggersCleanup(t *testing.T) {
-	// Regression for the case where a redeploy returns nil OutputResources for
-	// a DT that previously tracked some. The diff/delete logic must still run
-	// (treating nil as empty), otherwise residual DRs are never deleted and
-	// hasResidualDeploymentResources holds the DT in ReadyPendingCleanup
-	// indefinitely.
-
-	ctx := t.Context()
-
-	_, mockDeploymentClient, k8sClient := SetupDeploymentTemplateTest(t)
-	testNamespace := "deploymenttemplate-niloutputs"
-	testName := "test-deploymenttemplate-niloutputs"
-	template := readFileIntoTemplate(t, "deploymenttemplate-outputresources-1.json")
-	parameters := map[string]string{}
-	providerConfig, err := sdkclients.NewDefaultProviderConfig(testNamespace).String()
-	require.NoError(t, err)
-
-	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
-	require.NoError(t, err)
-
-	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
-	err = k8sClient.Create(ctx, deploymentTemplate)
-	require.NoError(t, err)
-
-	// First deployment: env + app + container.
-	status := waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-
-	envID := "/planes/radius/local/resourceGroups/deploymenttemplate-niloutputs/providers/Applications.Core/environments/deploymenttemplate-niloutputs-environment"
-	appID := "/planes/radius/local/resourceGroups/deploymenttemplate-niloutputs/providers/Applications.Core/applications/deploymenttemplate-niloutputs-application"
-	containerID := "/planes/radius/local/resourceGroups/deploymenttemplate-niloutputs/providers/Applications.Core/containers/deploymenttemplate-niloutputs-container"
-
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, func(state *sdkclients.OperationState) {
-		resource, ok := mockDeploymentClient.GetResource(state.ResourceID)
-		require.True(t, ok, "failed to find resource")
-
-		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
-			{ID: new(envID)},
-			{ID: new(appID)},
-			{ID: new(containerID)},
-		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
-	})
-
-	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-
-	dependencies := []types.NamespacedName{
-		// Order matters: container is the dependent of env/app via
-		// checkForDeploymentResourceDependencies, so it must drain first.
-		{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-niloutputs-container"},
-		{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-niloutputs-application"},
-		{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-niloutputs-environment"},
+func Test_DeploymentTemplateReconciler_KubernetesCleanupFailure(t *testing.T) {
+	t.Parallel()
+	for _, forbidden := range []bool{false, true} {
+		t.Run(map[bool]string{false: "uncertain outcome", true: "authorization failure"}[forbidden], func(t *testing.T) {
+			t.Parallel()
+			f := newTemplateReconcileFixture(t)
+			id := "/planes/kubernetes/local/namespaces/test/providers/core/ConfigMap/output"
+			output := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "output", Namespace: "test"}}
+			require.NoError(t, f.client.Create(t.Context(), output))
+			f.runningPut()
+			f.completePut(id)
+			require.NoError(t, f.client.Delete(t.Context(), f.owner()))
+			deletes := 0
+			deny := true
+			f.client = interceptor.NewClient(f.client, interceptor.Funcs{
+				Delete: func(ctx context.Context, c k8sclient.WithWatch, obj k8sclient.Object, opts ...k8sclient.DeleteOption) error {
+					if obj.GetObjectKind().GroupVersionKind().Kind == "ConfigMap" {
+						deletes++
+						if deny {
+							if forbidden {
+								return apierrors.NewForbidden(schema.GroupResource{Resource: "configmaps"}, obj.GetName(), errors.New("denied"))
+							}
+							return errors.New("connection lost after sending DELETE")
+						}
+					}
+					return c.Delete(ctx, obj, opts...)
+				},
+			})
+			owner := f.until(func(owner *radappiov1alpha3.DeploymentTemplate) bool {
+				return owner.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseFailed
+			})
+			require.NotNil(t, findOutput(owner, id))
+			require.Contains(t, owner.Finalizers, DeploymentTemplateFinalizer)
+			require.Nil(t, owner.Status.Operation)
+			require.NoError(t, f.client.Get(t.Context(), k8sclient.ObjectKeyFromObject(output), output))
+			if forbidden {
+				require.Equal(t, coordinatorRetryWaiting, owner.Status.Coordinator.Phase)
+				f.expireRetry()
+				deny = false
+				f.drainDeletion()
+			} else {
+				require.Equal(t, coordinatorBlocked, owner.Status.Coordinator.Phase)
+				deny = false
+				for range 4 {
+					f.step()
+				}
+				require.Equal(t, 1, deletes, "an ambiguous DELETE must never be replayed automatically")
+				require.NotNil(t, findOutput(f.owner(), id))
+			}
+			require.Empty(t, f.deployments.DeletedResourceIDs())
+		})
 	}
-	for _, dep := range dependencies {
-		_ = waitForDeploymentResourceStateReady(t, k8sClient, dep)
+}
+
+func Test_DeploymentTemplateReconciler_AdoptsLegacyPut(t *testing.T) {
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	first := f.runningPut()
+	token := first.Status.Operation.ResumeToken
+	first.Status.Coordinator = nil
+	require.NoError(t, f.client.Status().Update(t.Context(), first))
+	f.step()
+	owner := f.owner()
+	require.Equal(t, coordinatorPutRunning, owner.Status.Coordinator.Phase)
+	require.Equal(t, token, owner.Status.Operation.ResumeToken)
+	require.Empty(t, owner.Status.Coordinator.SubmittedHash, "legacy operations have no trustworthy submitted hash")
+	f.completePut()
+	require.Empty(t, f.owner().Status.StatusHash)
+	next := f.runningPut()
+	require.NotEqual(t, token, next.Status.Operation.ResumeToken, "unknown legacy spec must be repaired once, not accepted as current")
+	f.completePut()
+	f.ready()
+	for range 4 {
+		f.step()
+		require.Nil(t, f.owner().Status.Operation, "the repair PUT must not loop")
+		require.True(t, isUpToDate(f.owner()))
 	}
+}
 
-	// Re-deploy. We complete the operation WITHOUT setting OutputResources so
-	// the response surfaces Properties != nil but Properties.OutputResources == nil
-	// — the case the bug guards against.
-	newDeploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
-	err = k8sClient.Get(ctx, namespacedName, &newDeploymentTemplate)
-	require.NoError(t, err)
-	newDeploymentTemplate.Spec.Template = readFileIntoTemplate(t, "deploymenttemplate-outputresources-2.json")
-	err = k8sClient.Update(ctx, &newDeploymentTemplate)
-	require.NoError(t, err)
-
-	status = waitForDeploymentTemplateStateUpdating(t, k8sClient, namespacedName, nil)
-	mockDeploymentClient.CompleteOperation(status.Operation.ResumeToken, nil)
-
-	// All three DRs from the first generation must now be enqueued for delete.
-	// Drain them so the residual check can converge.
-	for _, dep := range dependencies {
-		depStatus := waitForDeploymentResourceStateDeleting(t, k8sClient, dep, nil)
-		mockDeploymentClient.CompleteOperation(depStatus.Operation.ResumeToken, nil)
-		waitForDeploymentResourceDeleted(t, k8sClient, dep)
+func Test_DeploymentTemplateReconciler_UpdateUnblocksDependencyCleanup(t *testing.T) {
+	t.Parallel()
+	for _, readdEnvironment := range []bool{false, true} {
+		t.Run(map[bool]string{false: "remove leaf", true: "reintroduce dependency"}[readdEnvironment], func(t *testing.T) {
+			t.Parallel()
+			f := newTemplateReconcileFixture(t)
+			envID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/environment"
+			containerID := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/container"
+			f.runningPut()
+			f.completePut(envID, containerID)
+			f.ready()
+			f.changeTemplate(`{"resources":[]}`)
+			f.runningPut()
+			f.completePut(containerID)
+			for range 4 {
+				f.step()
+			}
+			owner := f.owner()
+			require.Equal(t, outputPendingDelete, findOutput(owner, envID).State)
+			require.Nil(t, owner.Status.Operation)
+			require.Empty(t, f.deployments.DeletedResourceIDs())
+			f.changeTemplate(`{"resources":{}}`)
+			f.runningPut()
+			if readdEnvironment {
+				f.completePut(envID, containerID)
+				f.ready()
+				for range 5 {
+					f.step()
+					require.Nil(t, f.owner().Status.Operation, "reintroduced dependency must not start a PUT loop")
+					require.True(t, isUpToDate(f.owner()))
+					require.Equal(t, outputCurrent, findOutput(f.owner(), envID).State)
+				}
+				require.Empty(t, f.deployments.DeletedResourceIDs())
+				require.NoError(t, f.client.Delete(t.Context(), f.owner()))
+				f.drainDeletion()
+			} else {
+				f.completePut()
+				for range 20 {
+					owner = f.owner()
+					if owner.Status.Operation != nil {
+						if owner.Status.Coordinator.ResourceID == envID {
+							require.Nil(t, findOutput(owner, containerID), "leaf cleanup must complete before dependency deletion")
+						}
+						f.deployments.CompleteOperation(owner.Status.Operation.ResumeToken, nil)
+					}
+					if owner.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReady {
+						break
+					}
+					f.step()
+				}
+				require.Empty(t, f.ready().Status.Coordinator.Outputs)
+			}
+			require.ElementsMatch(t, []string{containerID, envID}, f.deployments.DeletedResourceIDs())
+		})
 	}
-
-	// DT must transition to Ready, not stick in ReadyPendingCleanup.
-	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
-
-	// Cleanup.
-	err = k8sClient.Delete(ctx, deploymentTemplate)
-	require.NoError(t, err)
-	waitForDeploymentTemplateStateDeleted(t, k8sClient, namespacedName)
 }
 
-func waitForDeploymentTemplateStateUpdating(t *testing.T, client k8sclient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentTemplateStatus {
-	ctx := t.Context()
-
-	logger := t
-	status := &radappiov1alpha3.DeploymentTemplateStatus{}
-	require.EventuallyWithT(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching DeploymentTemplate: %+v", name)
-		current := &radappiov1alpha3.DeploymentTemplate{
-			Status: radappiov1alpha3.DeploymentTemplateStatus{
-				Phrase: radappiov1alpha3.DeploymentTemplatePhrase(radappiov1alpha3.DeploymentResourcePhraseDeleting),
-			},
-		}
-		err := client.Get(ctx, name, current)
-		require.NoError(t, err)
-
-		status = &current.Status
-		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-		if assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseUpdating, current.Status.Phrase) {
-			assert.NotEmpty(t, current.Status.Operation)
-			assert.NotEqual(t, oldOperation, current.Status.Operation)
-		}
-
-	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "failed to enter updating state")
-
-	return status
+func Test_DeploymentTemplateReconciler_DependencyCleanupBarrier(t *testing.T) {
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	id := "/planes/radius/local/resourceGroups/test/providers/Applications.Core/containers/container"
+	f.runningPut()
+	f.completePut(id)
+	f.ready()
+	f.changeTemplate(`{"resources":[]}`)
+	f.runningPut()
+	f.completePut()
+	first := f.until(func(owner *radappiov1alpha3.DeploymentTemplate) bool {
+		return owner.Status.Coordinator.Phase == coordinatorDeleteRunning
+	}).Status.Operation
+	f.changeTemplate(`{"resources":{}}`)
+	for range 4 {
+		f.step()
+		require.Equal(t, first, f.owner().Status.Operation, "spec updates must never overlap an outstanding DELETE")
+		require.Equal(t, coordinatorDeleteRunning, f.owner().Status.Coordinator.Phase)
+	}
+	f.deployments.CompleteOperation(first.ResumeToken, nil)
+	second := f.runningPut().Status.Operation
+	require.EqualValues(t, radappiov1alpha3.OperationKindPut, second.OperationKind)
+	require.NotEqual(t, first.ResumeToken, second.ResumeToken)
 }
 
-func waitForDeploymentTemplateStateReadyPendingCleanup(t *testing.T, client k8sclient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentTemplateStatus {
-	ctx := t.Context()
-
-	logger := t
-	status := &radappiov1alpha3.DeploymentTemplateStatus{}
-	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching DeploymentTemplate: %+v", name)
-		current := &radappiov1alpha3.DeploymentTemplate{}
-		err := client.Get(ctx, name, current)
-		require.NoError(t, err)
-
-		status = &current.Status
-		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-		if assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup, current.Status.Phrase) {
-			assert.Empty(t, current.Status.Operation)
-		}
-	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "failed to enter ready-pending-cleanup state")
-
-	return status
-}
-
-func waitForDeploymentTemplateStateReady(t *testing.T, client k8sclient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentTemplateStatus {
-	ctx := t.Context()
-
-	logger := t
-	status := &radappiov1alpha3.DeploymentTemplateStatus{}
-	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching DeploymentTemplate: %+v", name)
-		current := &radappiov1alpha3.DeploymentTemplate{}
-		err := client.Get(ctx, name, current)
-		require.NoError(t, err)
-
-		status = &current.Status
-		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-		if assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseReady, current.Status.Phrase) {
-			assert.Empty(t, current.Status.Operation)
-		}
-	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "failed to enter ready state")
-
-	return status
-}
-
-func waitForDeploymentTemplateStateDeleting(t *testing.T, client k8sclient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentTemplateStatus {
-	ctx := t.Context()
-
-	logger := t
-	status := &radappiov1alpha3.DeploymentTemplateStatus{}
-	require.EventuallyWithTf(t, func(t *assert.CollectT) {
-		logger.Logf("Fetching DeploymentTemplate: %+v", name)
-		current := &radappiov1alpha3.DeploymentTemplate{}
-		err := client.Get(ctx, name, current)
-		assert.NoError(t, err)
-
-		status = &current.Status
-		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
-		assert.Equal(t, status.ObservedGeneration, current.Generation, "Status is not updated")
-
-		assert.Equal(t, radappiov1alpha3.DeploymentTemplatePhraseDeleting, current.Status.Phrase)
-	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "failed to enter deleting state")
-
-	return status
-}
-
-func waitForDeploymentTemplateStateDeleted(t *testing.T, client k8sclient.Client, name types.NamespacedName) {
-	ctx := t.Context()
-
-	logger := t
-	require.Eventuallyf(t, func() bool {
-		logger.Logf("Fetching DeploymentTemplate: %+v", name)
-		current := &radappiov1alpha3.DeploymentTemplate{}
-		err := client.Get(ctx, name, current)
-		if apierrors.IsNotFound(err) {
-			return true
-		}
-
-		logger.Logf("DeploymentTemplate.Status: %+v", current.Status)
-		return false
-
-	}, deploymentTemplateTestWaitDuration, deploymentTemplateTestWaitInterval, "DeploymentTemplate still exists")
-}
-
-func readFileIntoTemplate(t *testing.T, filename string) string {
-	fileContent, err := os.ReadFile(path.Join("testdata", filename))
-	require.NoError(t, err)
-	templateMap := map[string]any{}
-	err = json.Unmarshal(fileContent, &templateMap)
-	require.NoError(t, err)
-	template, err := json.MarshalIndent(templateMap, "", "  ")
-	require.NoError(t, err)
-	return string(template)
+func Test_DeploymentTemplateReconciler_SelfContainingNamespaceCleanup(t *testing.T) {
+	t.Parallel()
+	f := newTemplateReconcileFixture(t)
+	ns := &corev1.Namespace{}
+	require.NoError(t, f.client.Get(t.Context(), types.NamespacedName{Name: "test"}, ns))
+	ns.Finalizers = []string{"example.com/hold"}
+	require.NoError(t, f.client.Update(t.Context(), ns))
+	f.runningPut()
+	id := "/planes/kubernetes/local/providers/core/Namespace/test"
+	f.completePut(id)
+	f.ready()
+	require.NoError(t, f.client.Delete(t.Context(), f.owner()))
+	f.drainDeletion()
+	require.NoError(t, f.client.Get(t.Context(), types.NamespacedName{Name: "test"}, ns))
+	require.NotNil(t, ns.DeletionTimestamp, "template must not wait for its own namespace content deletion")
+	require.Empty(t, f.deployments.DeletedResourceIDs())
 }
