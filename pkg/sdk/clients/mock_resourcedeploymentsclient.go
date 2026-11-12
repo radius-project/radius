@@ -61,6 +61,18 @@ func (rdc *MockResourceDeploymentsClient) CompleteOperation(operationID string, 
 	}
 
 	state.Complete = true
+	if value, ok := state.Value.(ClientCreateOrUpdateResponse); ok {
+		rdc.resourceDeployments[state.ResourceID] = &value
+	}
+}
+
+func (rdc *MockResourceDeploymentsClient) Get(ctx context.Context, resourceID, apiVersion string) (ClientCreateOrUpdateResponse, error) {
+	rdc.lock.Lock()
+	defer rdc.lock.Unlock()
+	if value, ok := rdc.resourceDeployments[resourceID]; ok {
+		return *value, nil
+	}
+	return ClientCreateOrUpdateResponse{}, &azcore.ResponseError{StatusCode: http.StatusNotFound}
 }
 
 func (rdc *MockResourceDeploymentsClient) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (Poller[ClientCreateOrUpdateResponse], error) {

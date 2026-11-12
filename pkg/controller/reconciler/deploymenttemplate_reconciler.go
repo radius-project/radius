@@ -19,621 +19,889 @@ package reconciler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	"uuid"
-
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
-	"github.com/go-logr/logr"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/hashutil"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"uuid"
 )
 
-// DeploymentTemplateReconciler reconciles a DeploymentTemplate object.
+const (
+	coordinatorIdle                = "Idle"
+	coordinatorPutDispatching      = "PutDispatching"
+	coordinatorPutRunning          = "PutRunning"
+	coordinatorPutInventoryPending = "PutInventoryPending"
+	coordinatorDeleteDispatching   = "DeleteDispatching"
+	coordinatorDeleteRunning       = "DeleteRunning"
+	coordinatorBlocked             = "Blocked"
+	coordinatorRetryWaiting        = "RetryWaiting"
+	outputCurrent                  = "Current"
+	outputPendingDelete            = "PendingDelete"
+)
+
+// DeploymentTemplateReconciler owns all deployment and output deletion requests.
+// DeploymentResource objects are inventory projections, not independent workers.
 type DeploymentTemplateReconciler struct {
-	// Client is the Kubernetes client.
-	Client client.Client
-
-	// Scheme is the Kubernetes scheme.
-	Scheme *k8sruntime.Scheme
-
-	// EventRecorder is the Kubernetes event recorder.
-	EventRecorder record.EventRecorder
-
-	// Radius is the Radius client.
-	Radius RadiusClient
-
-	// ResourceDeploymentsClient is the client for managing deployments.
+	Discovery                 discovery.DiscoveryInterface
+	KubernetesClient          dynamic.Interface
+	APIReader                 client.Reader
+	Client                    client.Client
+	Scheme                    *k8sruntime.Scheme
+	EventRecorder             record.EventRecorder
+	Radius                    RadiusClient
 	ResourceDeploymentsClient sdkclients.ResourceDeploymentsClient
-
-	// DelayInterval is the amount of time to wait between operations.
-	DelayInterval time.Duration
+	DelayInterval             time.Duration
+	DeleteRetryInterval       time.Duration
 }
 
-// Reconcile is the main reconciliation loop for the DeploymentTemplate resource.
+// Reconcile advances one durable lifecycle transition for the template.
 func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := ucplog.FromContextOrDiscard(ctx).WithValues("kind", "DeploymentTemplate", "name", req.Name, "namespace", req.Namespace)
-	ctx = logr.NewContext(ctx, logger)
-
-	deploymentTemplate := radappiov1alpha3.DeploymentTemplate{}
-	err := r.Client.Get(ctx, req.NamespacedName, &deploymentTemplate)
-	if apierrors.IsNotFound(err) {
-		// This can happen due to a data-race if the Deployment Template is created and then deleted before we can
-		// reconcile it. There's nothing to do here.
-		logger.Info("DeploymentTemplate is being deleted.")
-		return ctrl.Result{}, nil
-	} else if err != nil {
-		logger.Error(err, "Unable to fetch resource.")
-		return ctrl.Result{}, err
+	owner := &radappiov1alpha3.DeploymentTemplate{}
+	if err := r.reader().Get(ctx, req.NamespacedName, owner); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-
-	// Our algorithm is as follows:
-	//
-	// 1. Check if there is an in-progress operation. If so, check its status:
-	// 	1. If the operation is still in progress, then queue another reconcile operation and continue processing.
-	// 	2. If the operation completed successfully:
-	// 			1. Diff the resources in the `properties.outputResources` field returned by the Radius API with the resources in the `status.outputResources` field on the `DeploymentTemplate` resource.
-	// 			2. Depending on the diff, create or delete `DeploymentResource` resources on the cluster. In the case of create, add the `DeploymentTemplate` as the owner of the `DeploymentResource` and set the `radapp.io/deployment-resource-finalizer` finalizer on the `DeploymentResource`.
-	// 			3. Update the `status.phrase` for the `DeploymentTemplate` to `Ready`.
-	// 			4. Continue processing.
-	// 	3. If the operation failed, then update the `status.phrase` as `Failed` and continue processing.
-	// 2. If the `DeploymentTemplate` is being deleted, then process deletion:
-	// 	1. Since the `DeploymentResources` are owned by the `DeploymentTemplate`, the `DeploymentResource` resources will be deleted first. Once they are deleted, the `DeploymentTemplate` resource will be deleted.
-	// 	2. Once the dependent resources are deleted, remove the `radapp.io/deployment-template-finalizer` finalizer from the `DeploymentTemplate`.
-	// 3. If the `DeploymentTemplate` is not being deleted then process this as a create or update:
-	// 	1. Add the `radapp.io/deployment-template-finalizer` finalizer onto the `DeploymentTemplate` resource.
-	// 	2. Check if the desired state of the `DeploymentTemplate` resource matches the observed state. If it does, then the resource is up-to-date and we can continue processing.
-	// 	3. Otherwise, queue a PUT operation against the Radius API to deploy the ARM JSON in the `spec.template` field with the parameters in the `spec.parameters` field.
-	// 	4. Set the `status.phrase` for the `DeploymentTemplate` to `Updating` and the `status.operation` to the operation returned by the Radius API.
-	// 	5. Continue processing.
-	//
-	// We do it this way because it guarantees that we only have one operation going at a time.
-
-	if deploymentTemplate.Status.Operation != nil {
-		result, err := r.reconcileOperation(ctx, &deploymentTemplate)
-		if err != nil {
-			logger.Error(err, "Unable to reconcile in-progress operation.")
-			return ctrl.Result{}, err
-		} else if result.IsZero() {
-			// If reconcileOperation completes successfully, then it will return a "zero" result,
-			// this means the operation has completed and we should continue processing.
-			logger.Info("Operation completed successfully.")
-		} else {
-			logger.Info("Requeueing to continue operation.")
-			return result, nil
-		}
-	}
-
-	if deploymentTemplate.ObjectMeta.DeletionTimestamp != nil {
-		return r.reconcileDelete(ctx, &deploymentTemplate)
-	}
-
-	return r.reconcileUpdate(ctx, &deploymentTemplate)
-}
-
-// reconcileOperation reconciles a DeploymentTemplate that has an operation in progress.
-func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
-	if deploymentTemplate.Status.Operation.OperationKind == radappiov1alpha3.OperationKindPut {
-		poller, err := r.ResourceDeploymentsClient.ContinueCreateOperation(ctx, deploymentTemplate.Status.Operation.ResumeToken)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to continue PUT operation: %w", err)
-		}
-
-		_, err = poller.Poll(ctx)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to poll operation status: %w", err)
-		}
-
-		if !poller.Done() {
-			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
-		}
-
-		// If we get here, the operation is complete.
-		resp, err := poller.Result(ctx)
-		if err != nil {
-			// Special case: If deletion is requested and we get a 404 error, treat it as success
-			// This can happen when resources are deleted while an operation is in progress
-			if deploymentTemplate.ObjectMeta.DeletionTimestamp != nil && clients.Is404Error(err) {
-				logger.Info("Operation returned 404 during deletion, treating as success.")
-				deploymentTemplate.Status.Operation = nil
-				err := r.Client.Status().Update(ctx, deploymentTemplate)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-				return ctrl.Result{}, nil
-			}
-
-			// Operation failed, reset state and schedule delayed retry.
-			r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
-			logger.Error(err, "Update failed.")
-
-			if err := r.updateFailedStatus(ctx, deploymentTemplate); err != nil {
-				return ctrl.Result{}, err
-			}
-
-			return ctrl.Result{}, nil
-		}
-
-		// If deletion is requested, skip creating output resources
-		if deploymentTemplate.ObjectMeta.DeletionTimestamp != nil {
-			logger.Info("Skipping output resource creation due to pending deletion.")
-			deploymentTemplate.Status.Operation = nil
-			err := r.Client.Status().Update(ctx, deploymentTemplate)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
-
-		logger.Info("Creating output resources.")
-
-		// Get outputResources from the response. A nil OutputResources field is
-		// treated as an empty set so we still run the diff-delete logic below;
-		// otherwise a deployment whose response omits OutputResources would
-		// leave previously-tracked DRs dangling and stick the DT in
-		// ReadyPendingCleanup forever.
-		outputResources := make([]string, 0)
-		if resp.Properties != nil && resp.Properties.OutputResources != nil {
-			for _, resource := range resp.Properties.OutputResources {
-				if resource.ID != nil {
-					outputResources = append(outputResources, *resource.ID)
-				}
-			}
-		}
-
-		// Compare outputResources with existing DeploymentResources
-		// if is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
-		// if is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
-		// if is present in both, do nothing
-
-		existingOutputResources := make(map[string]bool)
-		for _, resource := range deploymentTemplate.Status.OutputResources {
-			existingOutputResources[resource] = true
-		}
-
-		newOutputResources := make(map[string]bool)
-		for _, resource := range outputResources {
-			newOutputResources[resource] = true
-		}
-
-		for _, outputResourceId := range outputResources {
-			if _, ok := existingOutputResources[outputResourceId]; !ok {
-				// Resource is not present in deploymentTemplate.Status.OutputResources but is in outputResources, create it
-
-				logger.Info("Creating DeploymentResource.", "resourceId", outputResourceId)
-				resourceName, err := generateDeploymentResourceName(outputResourceId)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-
-				deploymentResource := &radappiov1alpha3.DeploymentResource{
-					Name:      resourceName,
-					Namespace: deploymentTemplate.Namespace,
-					Spec: radappiov1alpha3.DeploymentResourceSpec{
-						Id: outputResourceId,
-					},
-				}
-
-				if controllerutil.AddFinalizer(deploymentResource, DeploymentResourceFinalizer) {
-					// Add the DeploymentTemplate as the owner of the DeploymentResource
-					if err := controllerutil.SetControllerReference(deploymentTemplate, deploymentResource, r.Scheme); err != nil {
-						return ctrl.Result{}, err
-					}
-
-					// Create the DeploymentResource
-					err = r.Client.Create(ctx, deploymentResource)
-					if err != nil {
-						return ctrl.Result{}, err
-					}
-				}
-			}
-		}
-
-		for _, resource := range deploymentTemplate.Status.OutputResources {
-			if _, ok := newOutputResources[resource]; !ok {
-				// Resource is present in deploymentTemplate.Status.OutputResources but not in outputResources, delete it
-
-				logger.Info("Deleting resource.", "resourceId", resource)
-				resourceName, err := generateDeploymentResourceName(resource)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-
-				err = r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
-					Name:      resourceName,
-					Namespace: deploymentTemplate.Namespace,
-				})
-				if client.IgnoreNotFound(err) != nil {
-					return ctrl.Result{}, err
-				}
-			}
-		}
-
-		// ObservedGeneration is the generation this operation submitted. If the spec changed since,
-		// leave the hash empty so the next reconcile deploys the current spec.
-		var hash string
-		if deploymentTemplate.Generation == deploymentTemplate.Status.ObservedGeneration {
-			hash, err = computeHash(deploymentTemplate)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-
-		// If any owned DR has a Spec.Id not in the new outputResources set, it
-		// is a residual from the diff-delete above whose UCP cascade is still
-		// in flight. Hold Phrase at ReadyPendingCleanup until those drain so
-		// Ready reflects the true steady state.
-		residualsPresent, err := r.hasResidualDeploymentResources(ctx, deploymentTemplate, outputResources)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		// If we get here, the operation was a success. Update the status and continue.
-		deploymentTemplate.Status.Operation = nil
-		deploymentTemplate.Status.OutputResources = outputResources
-		deploymentTemplate.Status.StatusHash = hash
-		if residualsPresent {
-			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
-		} else {
-			deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
-		}
-
-		err = r.Client.Status().Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		if residualsPresent {
-			// Requeue as a backstop; the Owns(&DeploymentResource{}) watch also
-			// wakes us up when DRs are removed.
-			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
-		}
-
+	if owner.DeletionTimestamp != nil && !controllerutil.ContainsFinalizer(owner, DeploymentTemplateFinalizer) {
 		return ctrl.Result{}, nil
 	}
-
-	// If we get here, this was an unknown operation kind. This is a bug in our code, or someone
-	// tampered with the status of the object. Just reset the state and move on.
-	errorMessage := fmt.Errorf("unknown operation kind: %s", deploymentTemplate.Status.Operation.OperationKind)
-	logger.Error(errorMessage, "Unknown operation kind.")
-
-	deploymentTemplate.Status.Operation = nil
-	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-	err := r.Client.Status().Update(ctx, deploymentTemplate)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	return ctrl.Result{}, nil
-}
-
-func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
-	logger.Info("Reconciling resource.")
-
-	// Ensure that our finalizer is present before we start any operations.
-	if controllerutil.AddFinalizer(deploymentTemplate, DeploymentTemplateFinalizer) {
-		err := r.Client.Update(ctx, deploymentTemplate)
-		if err != nil {
+	if controllerutil.AddFinalizer(owner, DeploymentTemplateFinalizer) {
+		if err := r.Client.Update(ctx, owner); err != nil {
 			return ctrl.Result{}, err
 		}
+		return r.again(), nil
 	}
-
-	// Since we're going to reconcile, update the observed generation.
-	//
-	// We don't want to do this if we're in the middle of an operation, because we haven't
-	// fully processed any status changes until the async operation completes.
-	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
-
-	updatePoller, err := r.startPutOperationIfNeeded(ctx, deploymentTemplate)
-	if err != nil {
-		logger.Error(err, "Unable to create or update resource.")
-		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeWarning, "ResourceError", err.Error())
-
-		if statusErr := r.updateFailedStatus(ctx, deploymentTemplate); statusErr != nil {
-			return ctrl.Result{}, statusErr
-		}
-
-		// Return the error to the controller-runtime.
-		// This will cause the controller to requeue the request and retry the operation.
-		return ctrl.Result{}, err
-	} else if updatePoller != nil {
-		// We've successfully started an operation. Update the status and requeue.
-		token, err := updatePoller.ResumeToken()
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to get operation token: %w", err)
-		}
-
-		deploymentTemplate.Status.Operation = &radappiov1alpha3.ResourceOperation{ResumeToken: token, OperationKind: radappiov1alpha3.OperationKindPut}
-		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseUpdating
-		err = r.Client.Status().Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-
-		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
+	if owner.Status.Coordinator == nil {
+		return r.initializeCoordinator(ctx, owner)
 	}
-
-	// If we get here then it means we can process the result of the operation.
-	logger.Info("Resource is in desired state.")
-
-	// If we're still in ReadyPendingCleanup from a prior reconcile, re-evaluate
-	// residuals (woken by the Owns watch) and only transition to Ready once
-	// they've drained.
-	if deploymentTemplate.Status.Phrase == radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup {
-		residualsPresent, err := r.hasResidualDeploymentResources(ctx, deploymentTemplate, deploymentTemplate.Status.OutputResources)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if residualsPresent {
-			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
-		}
-	}
-
-	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReady
-	err = r.Client.Status().Update(ctx, deploymentTemplate)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
-	return ctrl.Result{}, nil
-}
-
-func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
-	logger.Info("Resource is being deleted.")
-
-	// Since we're going to reconcile, update the observed generation.
-	//
-	// We don't want to do this if we're in the middle of an operation, because we haven't
-	// fully processed any status changes until the async operation completes.
-	deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
-	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
-	err := r.Client.Status().Update(ctx, deploymentTemplate)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// List all DeploymentResource objects in the same namespace
-	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
-	err = r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace))
-	if err != nil {
+	if owner.Status.Coordinator.Phase == coordinatorBlocked {
+		// Do not replay an ambiguous DELETE against a subsequently recreated output.
 		return ctrl.Result{}, nil
 	}
-
-	// Filter the list to include only those owned by the current DeploymentTemplate
-	var ownedResources []radappiov1alpha3.DeploymentResource
-	for _, resource := range deploymentResourceList.Items {
-		if isOwnedBy(resource, deploymentTemplate) {
-			ownedResources = append(ownedResources, resource)
+	seen := map[string]bool{}
+	for _, output := range owner.Status.Coordinator.Outputs {
+		if output.State != outputCurrent && output.State != outputPendingDelete {
+			return r.blockCoordinator(ctx, owner, fmt.Sprintf("unknown output state %q", output.State))
+		}
+		if seen[outputIdentity(output.ID)] {
+			return r.blockCoordinator(ctx, owner, fmt.Sprintf("duplicate output identity %q", output.ID))
+		}
+		seen[outputIdentity(output.ID)] = true
+		if _, err := resources.ParseResource(output.ID); err != nil {
+			return r.blockCoordinator(ctx, owner, fmt.Sprintf("invalid inventory identity: %v", err))
 		}
 	}
-
-	// If there are still owned DeploymentResources, we need to trigger deletion and wait for them
-	// to be deleted before we can delete the DeploymentTemplate.
-	if len(ownedResources) > 0 {
-		logger.Info("Owned resources still exist, waiting for deletion.")
-
-		// Trigger deletion of owned resources
-		for _, resource := range ownedResources {
-			err := r.Client.Delete(ctx, &resource)
-			if err != nil && !apierrors.IsNotFound(err) {
-				logger.Error(err, "Failed to delete owned resource, continuing with other resources", "resourceName", resource.Name)
+	switch owner.Status.Coordinator.Phase {
+	case coordinatorPutDispatching, coordinatorDeleteDispatching:
+		return r.blockCoordinator(ctx, owner, "controller restarted before the dispatched request's outcome was recorded; resolve the outstanding operation before resuming the coordinator")
+	case coordinatorPutRunning:
+		return r.pollPut(ctx, owner)
+	case coordinatorPutInventoryPending:
+		return r.recoverFailedPutInventory(ctx, owner)
+	case coordinatorDeleteRunning:
+		if deadline := owner.Status.Coordinator.RetryAfter; deadline != nil {
+			if remaining := time.Until(deadline.Time); remaining > 0 {
+				return ctrl.Result{RequeueAfter: remaining}, nil
 			}
 		}
-
-		return ctrl.Result{}, fmt.Errorf("Requeuing to wait for owned resources to be deleted, %d remaining", len(ownedResources))
-	}
-
-	logger.Info("Resource is deleted.")
-
-	// At this point we've cleaned up everything. We can remove the finalizer which will allow
-	// deletion of the DeploymentTemplate.
-	if controllerutil.RemoveFinalizer(deploymentTemplate, DeploymentTemplateFinalizer) {
-		deploymentTemplate.Status.ObservedGeneration = deploymentTemplate.Generation
-		deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleted
-		err = r.Client.Update(ctx, deploymentTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
+		return r.pollDelete(ctx, owner)
+	case coordinatorRetryWaiting:
+		if owner.Status.Coordinator.RetryAfter == nil {
+			return r.blockCoordinator(ctx, owner, "retry state has no deadline")
 		}
-
-		r.EventRecorder.Event(deploymentTemplate, corev1.EventTypeNormal, "Reconciled", "Successfully reconciled resource.")
-		return ctrl.Result{}, nil
-	}
-
-	logger.Info("Finalizer was not removed, requeueing.")
-	err = r.Client.Status().Update(ctx, deploymentTemplate)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	return ctrl.Result{}, nil
-}
-
-func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (sdkclients.Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
-	logger := ucplog.FromContextOrDiscard(ctx)
-
-	specParameters := convertToARMJSONParameters(deploymentTemplate.Spec.Parameters)
-
-	// If the resource is already created and is up-to-date, then we don't need to do anything.
-	if isUpToDate(deploymentTemplate) {
-		logger.Info("Resource is up-to-date.")
-		return nil, nil
-	}
-
-	logger.Info("Desired state has changed, starting PUT operation.")
-
-	var template any
-	err := json.Unmarshal([]byte(deploymentTemplate.Spec.Template), &template)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal template: %w", err)
-	}
-
-	providerConfig := sdkclients.ProviderConfig{}
-	err = json.Unmarshal([]byte(deploymentTemplate.Spec.ProviderConfig), &providerConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal providerConfig: %w", err)
-	}
-	if providerConfig.Deployments == nil {
-		return nil, fmt.Errorf("providerConfig.Deployments is nil")
-	}
-	if providerConfig.Deployments.Value.Scope == "" {
-		return nil, fmt.Errorf("providerConfig.Deployments.Value.Scope is empty")
-	}
-
-	// Create the Radius resource group corresponding the providerConfig.Deployments.Value.Scope
-	// if it does not exist. This is necessary because the resource group is required for the
-	// deployment operation.
-	err = createResourceGroupIfNotExists(ctx, r.Radius, providerConfig.Deployments.Value.Scope)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create resource group: %w", err)
-	}
-
-	deploymentName := fmt.Sprintf("deploymenttemplate-%v", uuid.New().String())
-	resourceID := providerConfig.Deployments.Value.Scope + "/providers/" + "Microsoft.Resources/deployments" + "/" + deploymentName
-
-	logger.Info("Starting PUT operation.")
-	poller, err := r.ResourceDeploymentsClient.CreateOrUpdate(ctx,
-		sdkclients.Deployment{
-			Properties: &sdkclients.DeploymentProperties{
-				Template:       template,
-				Parameters:     specParameters,
-				ProviderConfig: providerConfig,
-				Mode:           armdeployments.DeploymentModeIncremental,
-			},
-		},
-		resourceID,
-		sdkclients.DeploymentsClientAPIVersion,
-	)
-	if err != nil {
-		return nil, err
-	} else if poller != nil {
-		return poller, nil
-	}
-
-	// Update was synchronous
-	return nil, nil
-}
-
-func (r *DeploymentTemplateReconciler) requeueDelay() time.Duration {
-	delay := r.DelayInterval
-	if delay == 0 {
-		delay = PollingDelay
-	}
-
-	return delay
-}
-
-func ParseDeploymentScopeFromProviderConfig(providerConfig any) (string, error) {
-	var data []byte
-	switch v := providerConfig.(type) {
-	case string:
-		data = []byte(v)
-	case []byte:
-		data = v
+		if remaining := time.Until(owner.Status.Coordinator.RetryAfter.Time); remaining > 0 {
+			return ctrl.Result{RequeueAfter: remaining}, nil
+		}
+		owner.Status.Coordinator.Phase = coordinatorIdle
+		owner.Status.Coordinator.RetryAfter = nil
+	case coordinatorIdle:
 	default:
-		return "", fmt.Errorf("providerConfig must be a string or []byte, got %T", providerConfig)
+		return r.blockCoordinator(ctx, owner, fmt.Sprintf("unknown coordinator phase %q", owner.Status.Coordinator.Phase))
 	}
-
-	config := sdkclients.ProviderConfig{}
-	err := json.Unmarshal([]byte(data), &config)
+	children, err := r.ownedTrackers(ctx, owner)
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal providerConfig: %w", err)
+		return ctrl.Result{}, err
+	}
+	for _, child := range children {
+		if child.Status.ProvisionedResourceID != "" && !sameOutput(child.Status.ProvisionedResourceID, child.Spec.Id) {
+			return r.blockCoordinator(ctx, owner, fmt.Sprintf("tracker %q conflicts with its protected output identity", child.Name))
+		}
+	}
+	for i := range children {
+		child := &children[i]
+		if child.Status.Operation == nil {
+			continue
+		}
+		if child.Status.Operation.OperationKind != radappiov1alpha3.OperationKindDelete {
+			return r.blockCoordinator(ctx, owner, "legacy tracker has an unknown operation kind")
+		}
+		eligible, err := r.trackerEligible(ctx, child)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if !eligible {
+			return r.blockCoordinator(ctx, owner, "legacy DELETE is not authorized by its tracker identity")
+		}
+		if child.Status.ProvisionedResourceID == "" {
+			// Today's editable spec cannot establish an older token's original target.
+			return r.blockCoordinator(ctx, owner, "legacy DELETE has no protected target identity; establish the original request target and outcome before adoption")
+		}
+		if findOutput(owner, child.Spec.Id) == nil {
+			owner.Status.Coordinator.Outputs = append(owner.Status.Coordinator.Outputs, radappiov1alpha3.DeploymentOutputStatus{ID: child.Spec.Id, State: outputPendingDelete})
+		}
+		findOutput(owner, child.Spec.Id).State = outputPendingDelete
+		owner.Status.Operation = child.Status.Operation.DeepCopy()
+		owner.Status.Coordinator.Phase = coordinatorDeleteRunning
+		owner.Status.Coordinator.ResourceID = child.Spec.Id
+		if slices.ContainsFunc(owner.Status.OutputResources, func(id string) bool { return sameOutput(id, child.Spec.Id) }) {
+			owner.Status.StatusHash = ""
+		}
+		return r.saveAndRequeue(ctx, owner)
+	}
+	if owner.DeletionTimestamp == nil {
+		namespace := &corev1.Namespace{}
+		if err := r.reader().Get(ctx, client.ObjectKey{Name: owner.Namespace}, namespace); err != nil {
+			return ctrl.Result{}, err
+		}
+		if namespace.DeletionTimestamp != nil {
+			if err := r.Client.Delete(ctx, owner); client.IgnoreNotFound(err) != nil {
+				return ctrl.Result{}, err
+			}
+			return r.again(), nil
+		}
 	}
 
-	if config.Deployments == nil {
-		return "", fmt.Errorf("providerConfig.Deployments is nil")
+	changed := false
+	for i := range owner.Status.Coordinator.Outputs {
+		output := &owner.Status.Coordinator.Outputs[i]
+		if owner.DeletionTimestamp != nil && output.State != outputPendingDelete {
+			output.State = outputPendingDelete
+			changed = true
+		}
+		for _, child := range children {
+			if sameOutput(child.Spec.Id, output.ID) && child.DeletionTimestamp != nil &&
+				controllerutil.ContainsFinalizer(&child, DeploymentResourceFinalizer) && output.State == outputCurrent {
+				output.State = outputPendingDelete
+				owner.Status.StatusHash = ""
+				changed = true
+			}
+		}
+	}
+	if changed {
+		return r.saveAndRequeue(ctx, owner)
 	}
 
-	return config.Deployments.Value.Scope, nil
+	// Complete safe tracker-only retirement before planning further work.
+	for i := range children {
+		child := &children[i]
+		output := findOutput(owner, child.Spec.Id)
+		if (output == nil && child.DeletionTimestamp == nil) ||
+			(child.DeletionTimestamp != nil && controllerutil.ContainsFinalizer(child, DeploymentResourceFinalizer)) {
+			if err := r.retireTracker(ctx, child); err != nil {
+				return ctrl.Result{}, err
+			}
+			return r.again(), nil
+		}
+	}
+	for _, output := range owner.Status.Coordinator.Outputs {
+		if output.State != outputPendingDelete {
+			continue
+		}
+		dependency, err := isApplicationOrEnvironment(output.ID)
+		if err != nil {
+			return r.blockCoordinator(ctx, owner, err.Error())
+		}
+		if dependency && r.hasLeafOutputs(owner, output.ID) {
+			continue
+		}
+		return r.dispatchDelete(ctx, owner, output.ID)
+	}
+	if owner.DeletionTimestamp != nil {
+		if len(owner.Status.Coordinator.Outputs) != 0 {
+			return r.again(), nil
+		}
+		if controllerutil.RemoveFinalizer(owner, DeploymentTemplateFinalizer) {
+			return ctrl.Result{}, r.Client.Update(ctx, owner)
+		}
+		return ctrl.Result{}, nil
+	}
+	if !isUpToDate(owner) {
+		return r.dispatchPut(ctx, owner)
+	}
+	for _, output := range owner.Status.Coordinator.Outputs {
+		if output.State == outputCurrent {
+			if err := r.ensureTracker(ctx, owner, output.ID, children); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	}
+	phrase := radappiov1alpha3.DeploymentTemplatePhraseReady
+	for _, output := range owner.Status.Coordinator.Outputs {
+		if output.State == outputPendingDelete {
+			phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
+		}
+	}
+	if owner.Status.Phrase != phrase {
+		owner.Status.Phrase = phrase
+		return r.saveAndRequeue(ctx, owner)
+	}
+	return ctrl.Result{}, nil
 }
 
-func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1alpha3.DeploymentTemplate) bool {
-	for _, ownerRef := range resource.OwnerReferences {
-		if ownerRef.Kind == "DeploymentTemplate" && ownerRef.Name == owner.Name && ownerRef.UID == owner.UID {
+func (r *DeploymentTemplateReconciler) initializeCoordinator(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+	owner.Status.Coordinator = &radappiov1alpha3.DeploymentCoordinatorStatus{Phase: coordinatorIdle}
+	for _, id := range owner.Status.OutputResources {
+		if findOutput(owner, id) == nil {
+			owner.Status.Coordinator.Outputs = append(owner.Status.Coordinator.Outputs, radappiov1alpha3.DeploymentOutputStatus{ID: id, State: outputCurrent})
+		}
+	}
+	children, err := r.ownedTrackers(ctx, owner)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	for _, child := range children {
+		eligible, err := r.trackerEligible(ctx, &child)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if !eligible {
+			r.EventRecorder.Event(owner, corev1.EventTypeNormal, EventDeploymentResourceDeleteSkipped, fmt.Sprintf("Tracker %q does not authorize deletion of %q", child.Name, child.Spec.Id))
+			continue
+		}
+		if findOutput(owner, child.Spec.Id) == nil {
+			owner.Status.Coordinator.Outputs = append(owner.Status.Coordinator.Outputs, radappiov1alpha3.DeploymentOutputStatus{ID: child.Spec.Id, State: outputPendingDelete})
+		}
+		// Known tokens remain on passive children until the coordinator adopts them.
+		if child.Status.Operation == nil && child.DeletionTimestamp != nil &&
+			(child.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseDeleting || child.Status.Phrase == radappiov1alpha3.DeploymentResourcePhraseFailed) {
+			return r.blockCoordinator(ctx, owner, "legacy tracker may have dispatched DELETE without a saved token; resolve its outcome before adoption")
+		}
+	}
+	if owner.Status.Operation != nil && owner.Status.Coordinator.Phase == coordinatorIdle {
+		switch owner.Status.Operation.OperationKind {
+		case radappiov1alpha3.OperationKindPut:
+			owner.Status.Coordinator.Phase = coordinatorPutRunning
+			// A legacy operation did not persist its submitted hash. Force a fresh PUT.
+		case radappiov1alpha3.OperationKindDelete:
+			if len(owner.Status.OutputResources) == 0 {
+				return r.blockCoordinator(ctx, owner, "legacy inventory DELETE has no recorded target")
+			}
+			owner.Status.Coordinator.Phase = coordinatorDeleteRunning
+			owner.Status.Coordinator.ResourceID = owner.Status.OutputResources[0]
+			findOutput(owner, owner.Status.Coordinator.ResourceID).State = outputPendingDelete
+		default:
+			return r.blockCoordinator(ctx, owner, "unknown legacy operation kind")
+		}
+	}
+	return r.saveAndRequeue(ctx, owner)
+}
+
+func (r *DeploymentTemplateReconciler) dispatchPut(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+	var template any
+	if err := json.Unmarshal([]byte(owner.Spec.Template), &template); err != nil {
+		return r.failCoordinator(ctx, owner, fmt.Errorf("invalid template: %w", err))
+	}
+	config := sdkclients.ProviderConfig{}
+	if err := json.Unmarshal([]byte(owner.Spec.ProviderConfig), &config); err != nil {
+		return r.failCoordinator(ctx, owner, fmt.Errorf("invalid provider config: %w", err))
+	}
+	scope, err := ParseDeploymentScopeFromProviderConfig(owner.Spec.ProviderConfig)
+	if err != nil {
+		return r.failCoordinator(ctx, owner, err)
+	}
+	if err := createResourceGroupIfNotExists(ctx, r.Radius, scope); err != nil {
+		return r.failCoordinator(ctx, owner, err)
+	}
+	hash, err := computeHash(owner)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	state := owner.Status.Coordinator
+	state.Phase = coordinatorPutDispatching
+	state.SubmittedHash = hash
+	state.RetryAfter = nil
+	state.ResourceID = scope + "/providers/Microsoft.Resources/deployments/deploymenttemplate-" + uuid.New().String()
+	state.Message = ""
+	owner.Status.ObservedGeneration = owner.Generation
+	owner.Status.StatusHash = ""
+	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseUpdating
+	if err := r.saveCoordinator(ctx, owner); err != nil {
+		return ctrl.Result{}, err
+	}
+	mutationContext := policy.WithRetryOptions(ctx, policy.RetryOptions{MaxRetries: -1})
+	poller, err := r.ResourceDeploymentsClient.CreateOrUpdate(mutationContext, sdkclients.Deployment{
+		Properties: &sdkclients.DeploymentProperties{
+			Template: template, Parameters: convertToARMJSONParameters(owner.Spec.Parameters),
+			ProviderConfig: config, Mode: armdeployments.DeploymentModeIncremental,
+		},
+	}, state.ResourceID, sdkclients.DeploymentsClientAPIVersion)
+	return r.finishDispatch(ctx, owner, func(current *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+		if err != nil {
+			if requestRejected(err) {
+				return r.failCoordinator(ctx, current, err)
+			}
+			return r.blockCoordinator(ctx, current, fmt.Sprintf("PUT outcome is uncertain: %v", err))
+		}
+		if poller == nil {
+			return r.blockCoordinator(ctx, current, "PUT returned no output inventory or operation token")
+		}
+		if poller.Done() {
+			resp, err := poller.Result(ctx)
+			if err != nil {
+				return r.failedPutInventoryPending(ctx, current, err)
+			}
+			return r.completePut(ctx, current, resp)
+		}
+		token, err := poller.ResumeToken()
+		if err != nil {
+			return r.blockCoordinator(ctx, current, fmt.Sprintf("PUT resume token unavailable: %v", err))
+		}
+		current.Status.Operation = &radappiov1alpha3.ResourceOperation{OperationKind: radappiov1alpha3.OperationKindPut, ResumeToken: token}
+		current.Status.Coordinator.Phase = coordinatorPutRunning
+		return r.saveAndRequeue(ctx, current)
+	})
+}
+
+func (r *DeploymentTemplateReconciler) pollPut(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+	if owner.Status.Operation == nil || owner.Status.Operation.OperationKind != radappiov1alpha3.OperationKindPut {
+		return r.blockCoordinator(ctx, owner, "running PUT has no matching operation")
+	}
+	poller, err := r.ResourceDeploymentsClient.ContinueCreateOperation(ctx, owner.Status.Operation.ResumeToken)
+	if err != nil {
+		return r.operationReadFailed(ctx, owner, err)
+	}
+	if _, err := poller.Poll(ctx); err != nil {
+		return r.operationReadFailed(ctx, owner, err)
+	}
+	if !poller.Done() {
+		return r.again(), nil
+	}
+	resp, err := poller.Result(ctx)
+	if err != nil {
+		return r.failedPutInventoryPending(ctx, owner, err)
+	}
+	return r.completePut(ctx, owner, resp)
+}
+
+func (r *DeploymentTemplateReconciler) failedPutInventoryPending(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, err error) (ctrl.Result, error) {
+	// Azure pollers return a zero result on failure, not the deployment's partial inventory.
+	owner.Status.Coordinator.Phase = coordinatorPutInventoryPending
+	owner.Status.Coordinator.Message = err.Error()
+	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
+	return r.saveAndRequeue(ctx, owner)
+}
+
+func (r *DeploymentTemplateReconciler) recoverFailedPutInventory(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+	if owner.Status.Coordinator.ResourceID == "" {
+		return r.blockCoordinator(ctx, owner, "failed PUT has no durable deployment ID for inventory recovery")
+	}
+	resp, err := r.ResourceDeploymentsClient.Get(ctx, owner.Status.Coordinator.ResourceID, sdkclients.DeploymentsClientAPIVersion)
+	if err != nil {
+		return r.operationReadFailed(ctx, owner, fmt.Errorf("read failed deployment inventory: %w", err))
+	}
+	if resp.Properties == nil {
+		return r.operationReadFailed(ctx, owner, fmt.Errorf("failed deployment has no inventory properties"))
+	}
+	if resp.Properties.OutputResources == nil {
+		return r.operationReadFailed(ctx, owner, fmt.Errorf("failed deployment output inventory is unavailable; an omitted or null outputResources is not an authoritative empty inventory"))
+	}
+	if err := r.retainPartialPutOutputs(owner, resp); err != nil {
+		return r.blockCoordinator(ctx, owner, err.Error())
+	}
+	return r.failCoordinator(ctx, owner, errors.New(owner.Status.Coordinator.Message))
+}
+
+func (r *DeploymentTemplateReconciler) retainPartialPutOutputs(owner *radappiov1alpha3.DeploymentTemplate, resp sdkclients.ClientCreateOrUpdateResponse) error {
+	if resp.Properties == nil {
+		return nil
+	}
+	for _, ref := range resp.Properties.OutputResources {
+		if ref == nil || ref.ID == nil {
+			continue
+		}
+		if _, err := resources.ParseResource(*ref.ID); err != nil {
+			return fmt.Errorf("invalid partial deployment output: %w", err)
+		}
+		if findOutput(owner, *ref.ID) == nil {
+			owner.Status.Coordinator.Outputs = append(owner.Status.Coordinator.Outputs, radappiov1alpha3.DeploymentOutputStatus{ID: *ref.ID, State: outputCurrent})
+		}
+	}
+	return nil
+}
+
+func (r *DeploymentTemplateReconciler) completePut(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, resp sdkclients.ClientCreateOrUpdateResponse) (ctrl.Result, error) {
+	var outputs []string
+	if resp.Properties != nil {
+		for _, ref := range resp.Properties.OutputResources {
+			if ref != nil && ref.ID != nil && !slices.ContainsFunc(outputs, func(id string) bool { return sameOutput(id, *ref.ID) }) {
+				if _, err := resources.ParseResource(*ref.ID); err != nil {
+					return r.blockCoordinator(ctx, owner, fmt.Sprintf("invalid completed output: %v", err))
+				}
+				outputs = append(outputs, *ref.ID)
+			}
+		}
+	}
+	state := owner.Status.Coordinator
+	for i := range state.Outputs {
+		state.Outputs[i].State = outputPendingDelete
+	}
+	for _, id := range outputs {
+		if output := findOutput(owner, id); output != nil {
+			output.State = outputCurrent
+		} else {
+			state.Outputs = append(state.Outputs, radappiov1alpha3.DeploymentOutputStatus{ID: id, State: outputCurrent})
+		}
+	}
+	// Commit inventory before projecting any children. Tracker disappearance cannot erase it.
+	owner.Status.OutputResources = outputs
+	owner.Status.StatusHash = state.SubmittedHash
+	owner.Status.Operation = nil
+	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
+	state.Phase, state.ResourceID, state.Message = coordinatorIdle, "", ""
+	state.RetryAfter = nil
+	return r.saveAndRequeue(ctx, owner)
+}
+
+func (r *DeploymentTemplateReconciler) dispatchDelete(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, outputID string) (ctrl.Result, error) {
+	id, err := resources.ParseResource(outputID)
+	if err != nil {
+		return r.blockCoordinator(ctx, owner, err.Error())
+	}
+	if plane := id.FindScope(resources_kubernetes.PlaneTypeKubernetes); plane != "" {
+		if !strings.EqualFold(plane, resources_kubernetes.PlaneNameTODO) {
+			return r.skipOutput(ctx, owner, outputID)
+		}
+	} else {
+		scope, err := ParseDeploymentScopeFromProviderConfig(owner.Spec.ProviderConfig)
+		if err != nil {
+			return r.failCoordinator(ctx, owner, err)
+		}
+		within, err := resourceWithinScope(outputID, scope)
+		if err != nil {
+			return r.failCoordinator(ctx, owner, err)
+		}
+		if !within {
+			return r.skipOutput(ctx, owner, outputID)
+		}
+	}
+	state := owner.Status.Coordinator
+	state.Phase, state.ResourceID, state.Message = coordinatorDeleteDispatching, outputID, ""
+	state.RetryAfter = nil
+	if owner.DeletionTimestamp != nil {
+		owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseDeleting
+	} else {
+		owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseReadyPendingCleanup
+	}
+	if err := r.saveCoordinator(ctx, owner); err != nil {
+		return ctrl.Result{}, err
+	}
+	if id.FindScope(resources_kubernetes.PlaneTypeKubernetes) != "" {
+		deleter := &DeploymentResourceReconciler{Client: r.Client, Discovery: r.Discovery, KubernetesClient: r.KubernetesClient}
+		done, deleteErr := deleter.deleteKubernetesOutput(ctx, owner.Namespace, id)
+		return r.finishDispatch(ctx, owner, func(current *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+			return r.recordKubernetesDelete(ctx, current, done, deleteErr)
+		})
+	}
+	mutationContext := policy.WithRetryOptions(ctx, policy.RetryOptions{MaxRetries: -1})
+	poller, err := r.ResourceDeploymentsClient.Delete(mutationContext, outputID, "2023-10-01-preview")
+	return r.finishDispatch(ctx, owner, func(current *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+		if err != nil {
+			if clients.Is404Error(err) {
+				return r.completeOutputDelete(ctx, current)
+			}
+			if requestRejected(err) {
+				return r.failCoordinator(ctx, current, err)
+			}
+			return r.blockCoordinator(ctx, current, fmt.Sprintf("DELETE outcome for %q is uncertain: %v", outputID, err))
+		}
+		if poller == nil {
+			return r.completeOutputDelete(ctx, current)
+		}
+		if poller.Done() {
+			if _, err := poller.Result(ctx); err != nil && !clients.Is404Error(err) {
+				return r.failCoordinator(ctx, current, err)
+			}
+			return r.completeOutputDelete(ctx, current)
+		}
+		token, err := poller.ResumeToken()
+		if err != nil {
+			return r.blockCoordinator(ctx, current, fmt.Sprintf("DELETE resume token unavailable: %v", err))
+		}
+		current.Status.Operation = &radappiov1alpha3.ResourceOperation{OperationKind: radappiov1alpha3.OperationKindDelete, ResumeToken: token}
+		current.Status.Coordinator.Phase = coordinatorDeleteRunning
+		return r.saveAndRequeue(ctx, current)
+	})
+}
+
+func (r *DeploymentTemplateReconciler) pollDelete(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+	id, err := resources.ParseResource(owner.Status.Coordinator.ResourceID)
+	if err != nil {
+		return r.blockCoordinator(ctx, owner, err.Error())
+	}
+	if id.FindScope(resources_kubernetes.PlaneTypeKubernetes) != "" {
+		return r.dispatchDelete(ctx, owner, id.String())
+	}
+	if owner.Status.Operation == nil || owner.Status.Operation.OperationKind != radappiov1alpha3.OperationKindDelete {
+		return r.blockCoordinator(ctx, owner, "running DELETE has no matching operation")
+	}
+	poller, err := r.ResourceDeploymentsClient.ContinueDeleteOperation(ctx, owner.Status.Operation.ResumeToken)
+	if err != nil {
+		return r.operationReadFailed(ctx, owner, err)
+	}
+	if _, err := poller.Poll(ctx); err != nil {
+		return r.operationReadFailed(ctx, owner, err)
+	}
+	if !poller.Done() {
+		return r.again(), nil
+	}
+	if _, err := poller.Result(ctx); err != nil && !clients.Is404Error(err) {
+		// This is a known terminal failure, unlike a dispatch/transport failure.
+		if clearErr := r.clearLegacyToken(ctx, owner, radappiov1alpha3.DeploymentResourcePhraseFailed); clearErr != nil {
+			return ctrl.Result{}, clearErr
+		}
+		return r.failCoordinator(ctx, owner, err)
+	}
+	return r.completeOutputDelete(ctx, owner)
+}
+
+func (r *DeploymentTemplateReconciler) recordKubernetesDelete(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, done bool, err error) (ctrl.Result, error) {
+	if err != nil {
+		var uncertain outputDeleteUncertainError
+		if errors.As(err, &uncertain) {
+			return r.blockCoordinator(ctx, owner, err.Error())
+		}
+		return r.failCoordinator(ctx, owner, err)
+	}
+	if done {
+		return r.completeOutputDelete(ctx, owner)
+	}
+	owner.Status.Coordinator.Phase = coordinatorDeleteRunning
+	owner.Status.Coordinator.RetryAfter = coordinatorDeadline(r.requeueDelay())
+	return r.saveAndRequeue(ctx, owner)
+}
+
+// finishDispatch attaches a response to the same persisted intent, even if spec
+// edits changed resourceVersion while the HTTP request was outstanding.
+func (r *DeploymentTemplateReconciler) finishDispatch(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, finish func(*radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error)) (ctrl.Result, error) {
+	intent := owner.Status.Coordinator.DeepCopy()
+	var result ctrl.Result
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		current := &radappiov1alpha3.DeploymentTemplate{}
+		if err := r.reader().Get(ctx, client.ObjectKeyFromObject(owner), current); err != nil {
+			return err
+		}
+		if current.UID != owner.UID || !apiequality.Semantic.DeepEqual(current.Status.Coordinator, intent) {
+			return fmt.Errorf("coordinator changed while request was outstanding; refusing to overwrite its recovery state")
+		}
+		var err error
+		result, err = finish(current)
+		return err
+	})
+	return result, err
+}
+
+func (r *DeploymentTemplateReconciler) completeOutputDelete(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+	state := owner.Status.Coordinator
+	target := state.ResourceID
+	// Token completion is independent of the child's mutable spec identity.
+	if err := r.clearLegacyToken(ctx, owner, radappiov1alpha3.DeploymentResourcePhraseDeleted); err != nil {
+		return ctrl.Result{}, err
+	}
+	// Children are passive, so removing one cannot dispatch another DELETE.
+	children, err := r.ownedTrackers(ctx, owner)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	for i := range children {
+		if sameOutput(children[i].Spec.Id, target) {
+			operation := children[i].Status.Operation
+			if operation != nil && (owner.Status.Operation == nil || operation.ResumeToken != owner.Status.Operation.ResumeToken) {
+				// Another pre-upgrade request for this output still needs to drain.
+				owner.Status.Operation = nil
+				state.Phase, state.ResourceID = coordinatorIdle, ""
+				owner.Status.StatusHash = ""
+				return r.saveAndRequeue(ctx, owner)
+			}
+			if err := r.retireTracker(ctx, &children[i]); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	}
+	state.Outputs = slices.DeleteFunc(state.Outputs, func(output radappiov1alpha3.DeploymentOutputStatus) bool { return sameOutput(output.ID, target) })
+	state.Phase, state.ResourceID, state.Message = coordinatorIdle, "", ""
+	state.RetryAfter = nil
+	owner.Status.Operation = nil
+	return r.saveAndRequeue(ctx, owner)
+}
+
+func (r *DeploymentTemplateReconciler) clearLegacyToken(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, phrase radappiov1alpha3.DeploymentResourcePhrase) error {
+	if owner.Status.Operation == nil {
+		return nil
+	}
+	children, err := r.ownedTrackers(ctx, owner)
+	if err != nil {
+		return err
+	}
+	for i := range children {
+		child := &children[i]
+		if child.Status.Operation != nil && child.Status.Operation.ResumeToken == owner.Status.Operation.ResumeToken {
+			child.Status.Operation = nil
+			child.Status.Phrase = phrase
+			if err := r.Client.Status().Update(ctx, child); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *DeploymentTemplateReconciler) ensureTracker(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, id string, children []radappiov1alpha3.DeploymentResource) error {
+	for i := range children {
+		child := &children[i]
+		if !sameOutput(child.Spec.Id, id) {
+			continue
+		}
+		if child.DeletionTimestamp != nil {
+			return nil
+		}
+		if child.Status.ProvisionedResourceID != "" && !sameOutput(child.Status.ProvisionedResourceID, id) {
+			return fmt.Errorf("tracker %q conflicts with recorded output identity", child.Name)
+		}
+		if sameOutput(child.Status.ProvisionedResourceID, id) {
+			return nil
+		}
+		child.Status.ProvisionedResourceID = id
+		return r.Client.Status().Update(ctx, child)
+	}
+	name, err := generateDeploymentResourceName(id)
+	if err != nil {
+		return err
+	}
+	child := &radappiov1alpha3.DeploymentResource{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: owner.Namespace, Finalizers: []string{DeploymentResourceFinalizer}},
+		Spec:       radappiov1alpha3.DeploymentResourceSpec{Id: id},
+	}
+	if err := controllerutil.SetControllerReference(owner, child, r.Scheme); err != nil {
+		return err
+	}
+	// GET first: duplicate POST can fail quota admission before AlreadyExists.
+	existing := &radappiov1alpha3.DeploymentResource{}
+	if err := r.reader().Get(ctx, client.ObjectKeyFromObject(child), existing); err == nil {
+		return fmt.Errorf("tracker %q exists but does not match this template output", name)
+	} else if !apierrors.IsNotFound(err) {
+		return err
+	}
+	if err := r.Client.Create(ctx, child); err != nil {
+		return err
+	}
+	child.Status.ProvisionedResourceID = id
+	return r.Client.Status().Update(ctx, child)
+}
+
+func (r *DeploymentTemplateReconciler) retireTracker(ctx context.Context, child *radappiov1alpha3.DeploymentResource) error {
+	if child.DeletionTimestamp == nil {
+		if err := r.Client.Delete(ctx, child); client.IgnoreNotFound(err) != nil {
+			return err
+		}
+		if err := r.reader().Get(ctx, client.ObjectKeyFromObject(child), child); err != nil {
+			return client.IgnoreNotFound(err)
+		}
+	}
+	if controllerutil.RemoveFinalizer(child, DeploymentResourceFinalizer) {
+		return r.Client.Update(ctx, child)
+	}
+	return nil
+}
+
+func (r *DeploymentTemplateReconciler) ownedTrackers(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) ([]radappiov1alpha3.DeploymentResource, error) {
+	list := &radappiov1alpha3.DeploymentResourceList{}
+	if err := r.reader().List(ctx, list, client.InNamespace(owner.Namespace)); err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(list.Items, func(child radappiov1alpha3.DeploymentResource) bool { return !isOwnedBy(child, owner) }), nil
+}
+
+func (r *DeploymentTemplateReconciler) trackerEligible(ctx context.Context, child *radappiov1alpha3.DeploymentResource) (bool, error) {
+	checker := &DeploymentResourceReconciler{Client: r.Client, APIReader: r.reader()}
+	return checker.deleteIsEligible(ctx, child, metav1.GetControllerOf(child))
+}
+
+func findOutput(owner *radappiov1alpha3.DeploymentTemplate, id string) *radappiov1alpha3.DeploymentOutputStatus {
+	for i := range owner.Status.Coordinator.Outputs {
+		if sameOutput(owner.Status.Coordinator.Outputs[i].ID, id) {
+			return &owner.Status.Coordinator.Outputs[i]
+		}
+	}
+	return nil
+}
+
+func (r *DeploymentTemplateReconciler) hasLeafOutputs(owner *radappiov1alpha3.DeploymentTemplate, except string) bool {
+	for _, output := range owner.Status.Coordinator.Outputs {
+		if sameOutput(output.ID, except) {
+			continue
+		}
+		dependency, err := isApplicationOrEnvironment(output.ID)
+		if err != nil || !dependency {
 			return true
 		}
 	}
 	return false
 }
 
-// hasResidualDeploymentResources reports whether any DeploymentResource owned
-// by this DeploymentTemplate has a Spec.Id that is not in currentOutputResources
-// (i.e., a residual from a prior diff whose deletion is still draining).
-func (r *DeploymentTemplateReconciler) hasResidualDeploymentResources(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate, currentOutputResources []string) (bool, error) {
-	desired := make(map[string]struct{}, len(currentOutputResources))
-	for _, id := range currentOutputResources {
-		desired[id] = struct{}{}
+func (r *DeploymentTemplateReconciler) saveCoordinator(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) error {
+	if len(owner.Status.Coordinator.Outputs) == 0 {
+		owner.Status.Coordinator.Outputs = nil
 	}
-
-	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
-	if err := r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace)); err != nil {
-		return false, err
+	expected := owner.DeepCopy().Status
+	if err := r.Client.Status().Update(ctx, owner); err != nil {
+		return err
 	}
-
-	for _, dr := range deploymentResourceList.Items {
-		if !isOwnedBy(dr, deploymentTemplate) {
-			continue
-		}
-		if _, ok := desired[dr.Spec.Id]; !ok {
-			return true, nil
-		}
+	persisted := &radappiov1alpha3.DeploymentTemplate{}
+	if err := r.reader().Get(ctx, client.ObjectKeyFromObject(owner), persisted); err != nil {
+		return err
 	}
-	return false, nil
+	if !apiequality.Semantic.DeepEqual(expected.Coordinator, persisted.Status.Coordinator) || !apiequality.Semantic.DeepEqual(expected.Operation, persisted.Status.Operation) {
+		return fmt.Errorf("template lifecycle state was not persisted; verify the installed CRD schema before dispatching operations")
+	}
+	return nil
 }
 
-// computeHash computes a hash of the DeploymentTemplate's spec (desired state)
-// to save in the status (observed state).
-func computeHash(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (string, error) {
-	b, err := json.Marshal(deploymentTemplate.Spec)
+func (r *DeploymentTemplateReconciler) saveAndRequeue(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate) (ctrl.Result, error) {
+	if err := r.saveCoordinator(ctx, owner); err != nil {
+		return ctrl.Result{}, err
+	}
+	return r.again(), nil
+}
+
+func (r *DeploymentTemplateReconciler) blockCoordinator(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, message string) (ctrl.Result, error) {
+	owner.Status.Coordinator.Phase = coordinatorBlocked
+	owner.Status.Coordinator.Message = message
+	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
+	r.EventRecorder.Event(owner, corev1.EventTypeWarning, "OperationOutcomeUnknown", message)
+	ucplog.FromContextOrDiscard(ctx).Error(fmt.Errorf("%s", message), "Template lifecycle requires operator recovery")
+	return ctrl.Result{}, r.saveCoordinator(ctx, owner)
+}
+
+func (r *DeploymentTemplateReconciler) failCoordinator(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, err error) (ctrl.Result, error) {
+	owner.Status.Coordinator.Phase = coordinatorRetryWaiting
+	owner.Status.Coordinator.RetryAfter = coordinatorDeadline(r.deleteRetryDelay())
+	owner.Status.Coordinator.Message = err.Error()
+	owner.Status.Operation = nil
+	owner.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
+	r.EventRecorder.Event(owner, corev1.EventTypeWarning, "ResourceError", err.Error())
+	if saveErr := r.saveCoordinator(ctx, owner); saveErr != nil {
+		return ctrl.Result{}, saveErr
+	}
+	return ctrl.Result{RequeueAfter: r.deleteRetryDelay()}, nil
+}
+
+func coordinatorDeadline(delay time.Duration) *metav1.Time {
+	// metav1.Time is serialized at second precision. Round up, never shorten a retry.
+	return &metav1.Time{Time: time.Now().Add(delay).UTC().Truncate(time.Second).Add(time.Second)}
+}
+
+func (r *DeploymentTemplateReconciler) operationReadFailed(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, err error) (ctrl.Result, error) {
+	r.EventRecorder.Event(owner, corev1.EventTypeWarning, "ResourceError", err.Error())
+	// Preserve the token and phase; a polling failure is not a terminal operation failure.
+	return ctrl.Result{RequeueAfter: r.deleteRetryDelay()}, nil
+}
+
+func (r *DeploymentTemplateReconciler) skipOutput(ctx context.Context, owner *radappiov1alpha3.DeploymentTemplate, id string) (ctrl.Result, error) {
+	r.EventRecorder.Event(owner, corev1.EventTypeNormal, EventDeploymentResourceDeleteSkipped, fmt.Sprintf("Skipping out-of-scope output %q", id))
+	owner.Status.Coordinator.ResourceID = id
+	return r.completeOutputDelete(ctx, owner)
+}
+
+func (r *DeploymentTemplateReconciler) reader() client.Reader {
+	if r.APIReader != nil {
+		return r.APIReader
+	}
+	return r.Client
+}
+
+func (r *DeploymentTemplateReconciler) requeueDelay() time.Duration {
+	if r.DelayInterval != 0 {
+		return r.DelayInterval
+	}
+	return PollingDelay
+}
+
+func (r *DeploymentTemplateReconciler) deleteRetryDelay() time.Duration {
+	if r.DeleteRetryInterval != 0 {
+		return r.DeleteRetryInterval
+	}
+	return DeleteRetryDelay
+}
+
+func (r *DeploymentTemplateReconciler) again() ctrl.Result {
+	return ctrl.Result{RequeueAfter: r.requeueDelay()}
+}
+
+// ParseDeploymentScopeFromProviderConfig extracts the required deployment scope.
+func ParseDeploymentScopeFromProviderConfig(providerConfig any) (string, error) {
+	var data []byte
+	switch value := providerConfig.(type) {
+	case string:
+		data = []byte(value)
+	case []byte:
+		data = value
+	default:
+		return "", fmt.Errorf("providerConfig must be a string or []byte, got %T", providerConfig)
+	}
+	config := sdkclients.ProviderConfig{}
+	if err := json.Unmarshal(data, &config); err != nil {
+		return "", fmt.Errorf("failed to unmarshal providerConfig: %w", err)
+	}
+	if config.Deployments == nil || config.Deployments.Value.Scope == "" {
+		return "", fmt.Errorf("providerConfig.Deployments.Value.Scope is required")
+	}
+	return config.Deployments.Value.Scope, nil
+}
+
+func isOwnedBy(resource radappiov1alpha3.DeploymentResource, owner *radappiov1alpha3.DeploymentTemplate) bool {
+	ref := metav1.GetControllerOf(&resource)
+	return ref != nil && ref.APIVersion == radappiov1alpha3.GroupVersion.String() &&
+		ref.Kind == deploymentTemplateKind && ref.Name == owner.Name && ref.UID == owner.UID
+}
+
+func computeHash(owner *radappiov1alpha3.DeploymentTemplate) (string, error) {
+	data, err := json.Marshal(owner.Spec)
 	if err != nil {
 		return "", err
 	}
-
-	return hashutil.Hex(b), nil
+	return hashutil.Hex(data), nil
 }
 
-// isUpToDate returns true if the desired state of the DeploymentTemplate
-// matches the observed state.
-//
-// It accepts both the current SHA-256 hash and the legacy SHA-1 hash so that
-// upgrading Radius (which changes the hash algorithm) does not flag an otherwise
-// unchanged DeploymentTemplate as out-of-date and trigger an unnecessary deployment.
-func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
-	b, err := json.Marshal(deploymentTemplate.Spec)
+func isUpToDate(owner *radappiov1alpha3.DeploymentTemplate) bool {
+	data, err := json.Marshal(owner.Spec)
 	if err != nil {
 		return false
 	}
-
-	stored := deploymentTemplate.Status.StatusHash
-	return stored == hashutil.Hex(b) || stored == hashutil.LegacyHex(b)
+	return owner.Status.StatusHash == hashutil.Hex(data) || owner.Status.StatusHash == hashutil.LegacyHex(data)
 }
 
-// updateFailedStatus updates the deployment template status to failed state and clears the operation.
-// This helper reduces duplication when handling operation failures.
-func (r *DeploymentTemplateReconciler) updateFailedStatus(ctx context.Context, deploymentTemplate *radappiov1alpha3.DeploymentTemplate) error {
-	deploymentTemplate.Status.Operation = nil
-	deploymentTemplate.Status.Phrase = radappiov1alpha3.DeploymentTemplatePhraseFailed
-	return r.Client.Status().Update(ctx, deploymentTemplate)
-}
-
-// SetupWithManager sets up the controller with the Manager.
+// SetupWithManager registers the coordinator and watches its passive inventory.
 func (r *DeploymentTemplateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&radappiov1alpha3.DeploymentTemplate{}).

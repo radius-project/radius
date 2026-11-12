@@ -244,6 +244,267 @@ test("merge-group setup keeps candidate and trusted-base revisions distinct", as
   await assert.rejects(setup(args), /protected main/);
 });
 
+function prSetupFixture({ stacked = true, baseRef = "main" } = {}) {
+  const repository = { full_name: "radius-project/radius" };
+  const pr = {
+    number: 123,
+    state: "open",
+    head: { repo: repository, ref: "candidate", sha: "b".repeat(40) },
+    base: {
+      repo: repository,
+      ref: stacked ? "previous-layer" : baseRef,
+      sha: "c".repeat(40)
+    },
+    ...(stacked && {
+      stack: {
+        number: 456,
+        position: 4,
+        size: 4,
+        base: { ref: baseRef, sha: "d".repeat(40) }
+      }
+    })
+  };
+  const outputs = {};
+  const branches = [];
+  const pulls = [];
+  const fixture = {
+    live: structuredClone(pr),
+    outputs,
+    branches,
+    pulls,
+    args: {
+      context: {
+        ...context,
+        ref: `refs/heads/${baseRef}`,
+        payload: { repository, pull_request: pr }
+      },
+      github: {
+        rest: {
+          repos: {
+            getBranch: async ({ branch }) => {
+              branches.push(branch);
+              return {
+                data: {
+                  protected: branch === "main" || branch === baseRef,
+                  commit: { sha: context.sha }
+                }
+              };
+            }
+          },
+          pulls: {
+            get: async (request) => {
+              pulls.push(request);
+              return { data: fixture.live };
+            }
+          }
+        }
+      },
+      core: {
+        setOutput: (name, value) => {
+          outputs[name] = value;
+        }
+      }
+    }
+  };
+  return fixture;
+}
+
+test("native stacks protect the ultimate controller but retain the layer diff and candidate SHAs", async () => {
+  for (const baseRef of ["main", "features/platform", "release/0.61"]) {
+    for (const position of [4, 2, 1]) {
+      const fixture = prSetupFixture({ baseRef });
+      const pr = fixture.args.context.payload.pull_request;
+      pr.stack.position = position;
+      if (position === 1) pr.base.ref = baseRef;
+      fixture.live = structuredClone(pr);
+      await setup(fixture.args);
+      assert.deepEqual(fixture.branches, ["main", baseRef]);
+      assert.deepEqual(fixture.pulls, [
+        { owner: "radius-project", repo: "radius", pull_number: 123 }
+      ]);
+      assert.equal(fixture.outputs.CHECKOUT_REPO, pr.head.repo.full_name);
+      assert.equal(fixture.outputs.CHECKOUT_REF, pr.head.sha);
+      assert.equal(fixture.outputs.BASE_SHA, pr.base.sha);
+      assert.notEqual(fixture.outputs.BASE_SHA, pr.stack.base.sha);
+      assert.equal(fixture.outputs.TRUSTED_SHA, context.sha);
+      assert.equal(fixture.outputs.PR_NUMBER, "123");
+    }
+  }
+});
+
+test("ordinary same-repo and fork PRs retain protected direct-base behavior", async () => {
+  for (const baseRef of ["main", "features/platform", "release/0.61"]) {
+    for (const headRepo of ["radius-project/radius", "fork/radius"]) {
+      const fixture = prSetupFixture({ stacked: false, baseRef });
+      const pr = fixture.args.context.payload.pull_request;
+      pr.head.repo = { full_name: headRepo };
+      pr.stack = null;
+      await setup(fixture.args);
+      assert.equal(fixture.outputs.CHECKOUT_REPO, headRepo);
+      assert.equal(fixture.outputs.CHECKOUT_REF, pr.head.sha);
+      assert.equal(fixture.outputs.BASE_SHA, pr.base.sha);
+      assert.deepEqual(fixture.pulls, []);
+      assert.deepEqual(fixture.branches, ["main", baseRef]);
+    }
+  }
+});
+
+test("invalid native stack claims fail closed before emitting any outputs", async (t) => {
+  const mutations = {
+    "no stack on an intermediate base": (pr) => delete pr.stack,
+    "non-object stack": (pr) => {
+      pr.stack = false;
+    },
+    "missing stack base": (pr) => delete pr.stack.base,
+    "invalid stack base SHA": (pr) => {
+      pr.stack.base.sha = "not-a-sha";
+    },
+    "non-string stack base SHA": (pr) => {
+      pr.stack.base.sha = ["d".repeat(40)];
+    },
+    "non-string stack base ref": (pr) => {
+      pr.stack.base.ref = ["main"];
+    },
+    "unlisted ultimate base": (pr) => {
+      pr.stack.base.ref = "candidate";
+    },
+    "missing stack number": (pr) => delete pr.stack.number,
+    "non-integer stack number": (pr) => {
+      pr.stack.number = "456";
+    },
+    "invalid stack number": (pr) => {
+      pr.stack.number = 0;
+    },
+    "invalid stack size": (pr) => {
+      pr.stack.size = -1;
+    },
+    "unsafe stack size": (pr) => {
+      pr.stack.size = Number.MAX_SAFE_INTEGER + 1;
+    },
+    "invalid stack position": (pr) => {
+      pr.stack.position = 0;
+    },
+    "fractional stack position": (pr) => {
+      pr.stack.position = 1.5;
+    },
+    "out-of-range position": (pr) => {
+      pr.stack.position = 5;
+    },
+    "cross-fork stack": (pr) => {
+      pr.head.repo = { full_name: "fork/radius" };
+    },
+    "foreign base repository": (pr) => {
+      pr.base.repo = { full_name: "fork/radius" };
+    },
+    "invalid PR number": (pr) => {
+      pr.number = -1;
+    },
+    "invalid diff base": (pr) => {
+      pr.base.sha = "";
+    },
+    "invalid candidate": (pr) => {
+      pr.head.sha = "";
+    }
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    await t.test(name, async () => {
+      const fixture = prSetupFixture();
+      mutate(fixture.args.context.payload.pull_request);
+      fixture.live = structuredClone(fixture.args.context.payload.pull_request);
+      await assert.rejects(setup(fixture.args));
+      assert.deepEqual(fixture.outputs, {});
+    });
+  }
+});
+
+test("native stack verification rejects stale or spoofed event metadata and API failures", async (t) => {
+  const mutations = {
+    "stack removed": (pr) => delete pr.stack,
+    "stack replaced": (pr) => {
+      pr.stack.number++;
+    },
+    "stack reordered": (pr) => {
+      pr.stack.position--;
+    },
+    "stack resized": (pr) => {
+      pr.stack.size++;
+    },
+    "stack retargeted": (pr) => {
+      pr.stack.base.ref = "release/0.61";
+    },
+    "stack base changed": (pr) => {
+      pr.stack.base.sha = "e".repeat(40);
+    },
+    "PR replaced": (pr) => {
+      pr.number++;
+    },
+    "PR closed": (pr) => {
+      pr.state = "closed";
+    },
+    "PR retargeted": (pr) => {
+      pr.base.ref = "another-layer";
+    },
+    "PR base changed": (pr) => {
+      pr.base.sha = "e".repeat(40);
+    },
+    "base repository changed": (pr) => {
+      pr.base.repo.full_name = "fork/radius";
+    },
+    "head repository changed": (pr) => {
+      pr.head.repo.full_name = "fork/radius";
+    },
+    "head branch changed": (pr) => {
+      pr.head.ref = "another-candidate";
+    },
+    "head commit changed": (pr) => {
+      pr.head.sha = "e".repeat(40);
+    }
+  };
+  for (const [name, mutate] of Object.entries(mutations)) {
+    await t.test(name, async () => {
+      const fixture = prSetupFixture();
+      mutate(fixture.live);
+      await assert.rejects(setup(fixture.args), /stack.*changed|stack.*match/i);
+      assert.deepEqual(fixture.outputs, {});
+    });
+  }
+  for (const status of [403, 404, 500]) {
+    await t.test(`API ${status}`, async () => {
+      const fixture = prSetupFixture();
+      const error = Object.assign(new Error(`GitHub API ${status}`), {
+        status
+      });
+      fixture.args.github.rest.pulls.get = async () => {
+        throw error;
+      };
+      await assert.rejects(setup(fixture.args), (actual) => actual === error);
+      assert.deepEqual(fixture.outputs, {});
+    });
+  }
+});
+
+test("PR controllers still require the matching ref and protected main and ultimate base", async () => {
+  for (const stacked of [true, false]) {
+    for (const ref of ["refs/heads/previous-layer", "refs/heads/candidate"]) {
+      const fixture = prSetupFixture({ stacked });
+      fixture.args.context.ref = ref;
+      await assert.rejects(setup(fixture.args), /Unexpected PR base/);
+      assert.deepEqual(fixture.outputs, {});
+    }
+    for (const unprotected of ["main", "release/0.61"]) {
+      const fixture = prSetupFixture({ stacked, baseRef: "release/0.61" });
+      fixture.args.github.rest.repos.getBranch = async ({ branch }) => ({
+        data: {
+          protected: branch !== unprotected,
+          commit: { sha: context.sha }
+        }
+      });
+      await assert.rejects(setup(fixture.args), /protected/);
+      assert.deepEqual(fixture.outputs, {});
+    }
+  }
+});
+
 test("producer tags bind the unique ID, run and producing attempt", () => {
   assert.equal(bundle.producerTag(env.UNIQUE_ID, source), env.REL_VERSION);
   assert.equal(

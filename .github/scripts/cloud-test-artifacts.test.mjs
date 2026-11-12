@@ -331,6 +331,53 @@ test("approved tests share Test ACR write access while GHCR publication stays is
   assert.doesNotMatch(JSON.stringify(uploader), /BICEPTYPES_CLIENT_ID/);
 });
 
+test("native stacks do not broaden triggers or bypass contributor authorization", () => {
+  assert.deepEqual(workflow.on.pull_request_target.branches, [
+    "main",
+    "features/*",
+    "release/*"
+  ]);
+  assert.match(
+    cloud["check-trust"].if,
+    /github\.event_name == 'pull_request_target'/
+  );
+  assert.match(cloud.setup.if, /needs\.authorize\.result == 'success'/);
+  assert.deepEqual(cloud.setup.needs, ["authorize"]);
+  assert.deepEqual(cloud.setup.permissions, {
+    contents: "read",
+    "pull-requests": "read"
+  });
+  const script = step(cloud.authorize, "Evaluate trust and approval").run;
+  for (const [trust, external, approval, allowed] of [
+    ["success", "false", "skipped", true],
+    ["success", "true", "success", true],
+    ["success", "true", "skipped", false],
+    ["success", "true", "failure", false],
+    ["success", "true", "cancelled", false],
+    ["success", "false", "success", false],
+    ["failure", "false", "skipped", false],
+    ["skipped", "false", "skipped", false],
+    ["success", "", "skipped", false]
+  ]) {
+    const result = spawnSync("bash", ["-c", script], {
+      env: {
+        ...process.env,
+        GITHUB_EVENT_NAME: "pull_request_target",
+        CHECK_TRUST_RESULT: trust,
+        IS_EXTERNAL: external,
+        APPROVAL_GATE_RESULT: approval
+      },
+      encoding: "utf8"
+    });
+    assert.ifError(result.error);
+    assert.equal(
+      result.status,
+      allowed ? 0 : 1,
+      `${trust}/${external}/${approval}`
+    );
+  }
+});
+
 test("upload jobs use repository registry settings without candidate overrides", () => {
   const settings = {
     FUNCTIONAL_TEST_CONTAINER_REGISTRY: "ghcr.io/radius-project/dev",
