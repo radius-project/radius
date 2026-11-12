@@ -104,7 +104,7 @@ func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string
 		return nil, RadiusExtensionPin{}, fmt.Errorf("the provided file %q must be a .json or .bicep file", displayPath)
 	}
 
-	if err := i.ensureInstalled(); err != nil {
+	if err := i.ensureBicepInstalled(); err != nil {
 		return nil, RadiusExtensionPin{}, err
 	}
 
@@ -438,31 +438,32 @@ func findBicepConfig(fs filesystem.FileSystem, startDir string) string {
 	}
 }
 
-// Call runs `bicep` with the given arguments.
-func (i *Impl) Call(args ...string) ([]byte, error) {
-	if len(args) > 0 && args[0] == "build-params" {
-		if err := i.ensureInstalled(); err != nil {
-			return nil, err
-		}
-	}
-	return runBicepRaw(args...)
-}
-
-func (i *Impl) ensureInstalled() error {
+func (i *Impl) ensureBicepInstalled() error {
 	ok, err := IsBicepInstalled()
 	if err != nil {
 		return fmt.Errorf("failed to find bicep: %w", err)
 	}
-	if ok {
-		return nil
+
+	if !ok {
+		if i.Output != nil {
+			i.Output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
+		}
+		err = DownloadBicep()
+		if err != nil {
+			return fmt.Errorf("failed to download bicep: %w", err)
+		}
 	}
-	if i.Output != nil {
-		i.Output.LogInfo("Downloading Bicep for channel %s...", version.Channel())
-	}
-	if err := DownloadBicep(); err != nil {
-		return fmt.Errorf("failed to download bicep: %w", err)
-	}
+
 	return nil
+}
+
+// Call runs `bicep` with the given arguments, downloading Bicep first if it is not installed.
+func (i *Impl) Call(args ...string) ([]byte, error) {
+	if err := i.ensureBicepInstalled(); err != nil {
+		return nil, err
+	}
+
+	return runBicepRaw(args...)
 }
 
 // ConvertToMapStringInterface takes in a map of strings to maps of strings to any type and returns a map of strings to any

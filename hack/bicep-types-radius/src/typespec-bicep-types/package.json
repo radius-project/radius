@@ -49,6 +49,6 @@
     "@typespec/openapi": "^1.17.0",
     "@typespec/versioning": "^0.87.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.4"
+    "vitest": "^5.1.0"
   }
 }

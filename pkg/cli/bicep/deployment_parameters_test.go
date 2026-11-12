@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_Parameters_Invalid(t *testing.T) {
@@ -124,9 +125,85 @@ func TestDeploymentParametersRejectUnresolvedExternalInputs(t *testing.T) {
 	for _, contents := range []string{
 		`{"parameters":{"password":{"expression":"[externalInputs('opaque')]"}}}`,
 		`{"parameters":{},"externalInputDefinitions":{"opaque":{"kind":"radius.secretKeyRef","config":{"name":"credentials","key":"password"}}}}`,
+		`{"parametersJson":"{\"parameters\":{\"password\":{\"expression\":\"[externalInputs('opaque')]\"}}}"}`,
+		`{"parametersJson":"{\"parameters\":{},\"externalInputDefinitions\":{\"opaque\":{\"kind\":\"radius.secretKeyRef\",\"config\":{\"name\":\"credentials\",\"key\":\"password\"}}}}"}`,
 	} {
 		require.NoError(t, parser.FileSystem.WriteFile("parameters.json", []byte(contents), 0600))
 		_, err := parser.Parse("@parameters.json")
 		require.ErrorContains(t, err, "generate-kubernetes-manifest")
+	}
+}
+
+func Test_ParseParameters_BicepParam(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		filePath    string
+		inputs      []string
+		bicepOutput []byte
+		bicepErr    error
+		expected    clients.DeploymentParameters
+		expectErr   bool
+	}{
+		{
+			name:        "bicepparam with build-params stdout envelope",
+			filePath:    "app.bicepparam",
+			inputs:      []string{"@app.bicepparam", "tag=v2"},
+			bicepOutput: []byte(`{"parametersJson":"{\"parameters\":{\"env\":{\"value\":\"prod\"},\"tag\":{\"value\":\"v1\"}}}","templateJson":null}`),
+			expected: clients.DeploymentParameters{
+				"env": {"value": "prod"},
+				"tag": {"value": "v2"},
+			},
+		},
+		{
+			name:        "bicepparam with direct ARM parameters JSON",
+			filePath:    "app.bicepparam",
+			inputs:      []string{"@app.bicepparam"},
+			bicepOutput: []byte(`{"parameters":{"foo":{"value":"bar"}}}`),
+			expected: clients.DeploymentParameters{
+				"foo": {"value": "bar"},
+			},
+		},
+		{
+			name:        "bicepparam with malformed parametersJson envelope",
+			filePath:    "bad.bicepparam",
+			inputs:      []string{"@bad.bicepparam"},
+			bicepOutput: []byte(`{"parametersJson":"{invalid"}`),
+			expectErr:   true,
+		},
+		{
+			name:      "bicepparam build-params error",
+			filePath:  "bad.bicepparam",
+			inputs:    []string{"@bad.bicepparam"},
+			bicepErr:  os.ErrNotExist,
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			bicepMock := NewMockInterface(ctrl)
+			bicepMock.EXPECT().
+				Call("build-params", "--stdout", tt.filePath).
+				Return(tt.bicepOutput, tt.bicepErr).
+				Times(1)
+
+			parser := ParameterParser{
+				FileSystem: filesystem.NewMemMapFileSystem(),
+				Bicep:      bicepMock,
+			}
+
+			parameters, err := parser.Parse(tt.inputs...)
+			if tt.expectErr {
+				require.Error(t, err)
+				require.Nil(t, parameters)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, parameters)
+		})
 	}
 }

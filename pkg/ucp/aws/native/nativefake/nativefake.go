@@ -21,6 +21,7 @@ package nativefake
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -29,12 +30,14 @@ import (
 
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 )
 
 var _ native.Handler = (*Handler)(nil)
 var _ native.Finder = (*Handler)(nil)
+var _ native.Resetter = (*Handler)(nil)
 
 // Handler is a fake native handler. Create and Update change the store at once, a delete removes the resource when it
 // finishes, and Progress reports each operation as running for Waits calls before it finishes, like an AWS service
@@ -43,6 +46,9 @@ var _ native.Finder = (*Handler)(nil)
 // Create acts on the client token as Opts.Recovery says: with RecoverByResend, a create sent again with a client token
 // returns the first resource, like an API with an idempotency token; with RecoverBySearch, Create tags the resource
 // with the client token, and Find finds it by that tag.
+//
+// Update makes one AWS call for each operation of the patch, so it can fail partway (see FailOn). When Product is set,
+// the store also holds resources of other products, like a service API that serves several products.
 type Handler struct {
 	// Name is the type the handler serves.
 	Name string
@@ -64,7 +70,8 @@ type Handler struct {
 	Errors map[string]error
 
 	// LostResponses maps a method name to an error the handler returns once after the call takes effect, as when AWS
-	// applies a request and the response is lost on the way back.
+	// applies a request and the response is lost on the way back. A lost Create returns no identifier, unless the
+	// error is a *native.Failure.
 	LostResponses map[string]error
 
 	// Failures maps an operation to the failure Progress reports once the operation finishes.
@@ -82,9 +89,23 @@ type Handler struct {
 	// identifier property. Encoding returns the handler with IdentifierOf as its identifier encoding.
 	IdentifierOf func(properties map[string]any) (string, error)
 
+	// ResetTo is what Reset sets the resource to, like a setting back at AWS's default. nil makes Reset remove the
+	// resource, like a setting that then reads as absent.
+	ResetTo map[string]any
+
+	// ProductProperty and Product, when set, make a resource whose ProductProperty isn't Product belong to another
+	// product: Read, Update, Delete, Reset, Progress, and Find return a native.OtherProductError for it, and List
+	// leaves it out.
+	ProductProperty string
+	Product         string
+
 	mu      sync.Mutex
 	calls   []Call
 	running map[string]*operation
+
+	// failOn is the call of the next Update that fails, and failWith the error it fails with.
+	failOn   int
+	failWith error
 
 	// tags maps a client token to the resource the create sent with it made.
 	tags map[string]string
@@ -92,7 +113,7 @@ type Handler struct {
 
 // Call is a call the handler received.
 type Call struct {
-	// Method is Read, Create, Update, Delete, List, Find, or Progress.
+	// Method is Read, Create, Update, Delete, Reset, List, Find, or Progress.
 	Method     string
 	Identifier string
 
@@ -105,6 +126,9 @@ type Call struct {
 type operation struct {
 	op    native.Operation
 	waits int
+
+	// reset is true for a delete that is a reset, which keeps the resource when it finishes.
+	reset bool
 }
 
 // New returns a Handler for typeName that keeps its resources in store.
@@ -153,11 +177,34 @@ func (h *Handler) lostResponse(method string) error {
 	return err
 }
 
-func (h *Handler) start(identifier string, op native.Operation) {
+func (h *Handler) start(identifier string, op native.Operation) *operation {
 	if h.running == nil {
 		h.running = map[string]*operation{}
 	}
-	h.running[identifier] = &operation{op: op, waits: h.Waits}
+	running := &operation{op: op, waits: h.Waits}
+	h.running[identifier] = running
+	return running
+}
+
+// FailOn makes the next Update fail with err at its call-th AWS call, counting from 0, after the calls before it took
+// effect. A failure at the first call returns err. A later one returns a native.Failure with native.OutcomePartial,
+// and one at a call after the last, native.OutcomeApplied.
+func (h *Handler) FailOn(call int, err error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.failOn, h.failWith = call, err
+}
+
+// otherProduct returns a native.OtherProductError when the stored resource belongs to another product.
+func (h *Handler) otherProduct(identifier string) error {
+	if h.ProductProperty == "" {
+		return nil
+	}
+	props := h.Store.Resource(h.Name, identifier)
+	if props == nil || props[h.ProductProperty] == h.Product {
+		return nil
+	}
+	return &native.OtherProductError{Identifier: identifier, Product: fmt.Sprint(props[h.ProductProperty])}
 }
 
 // Read returns the resource from the store, without its write-only values unless ReturnsWriteOnly is set.
@@ -165,6 +212,9 @@ func (h *Handler) Read(ctx context.Context, region string, identifier string) (m
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if err := h.record(Call{Method: "Read", Identifier: identifier}); err != nil {
+		return nil, err
+	}
+	if err := h.otherProduct(identifier); err != nil {
 		return nil, err
 	}
 	props, ok := h.read(identifier)
@@ -192,7 +242,7 @@ func (h *Handler) Create(ctx context.Context, request native.CreateRequest) (str
 	}
 	if first, ok := h.tags[request.ClientToken]; ok && h.Opts.Recovery == native.RecoverByResend {
 		if _, exists := h.Store.Read(h.Name, first); exists {
-			return first, h.lostResponse("Create")
+			return created(first, h.lostResponse("Create"))
 		}
 	}
 	var identifier string
@@ -212,7 +262,17 @@ func (h *Handler) Create(ctx context.Context, request native.CreateRequest) (str
 		h.tags[request.ClientToken] = identifier
 	}
 	h.start(identifier, native.OperationCreate)
-	return identifier, h.lostResponse("Create")
+	return created(identifier, h.lostResponse("Create"))
+}
+
+// created returns the result of a create: the identifier, or no identifier when the response was lost. A
+// *native.Failure is what the handler returns knowing the create made the resource, so it keeps the identifier.
+func created(identifier string, lost error) (string, error) {
+	var failure *native.Failure
+	if lost != nil && !errors.As(lost, &failure) {
+		return "", lost
+	}
+	return identifier, lost
 }
 
 // Find returns the resource a create with the client token made, found by its tag, or "" when the store has none.
@@ -225,6 +285,9 @@ func (h *Handler) Find(ctx context.Context, request native.CreateRequest) (strin
 	identifier, ok := h.tags[request.ClientToken]
 	if !ok {
 		return "", nil
+	}
+	if err := h.otherProduct(identifier); err != nil {
+		return "", err
 	}
 	if _, exists := h.Store.Read(h.Name, identifier); !exists {
 		return "", nil
@@ -247,17 +310,42 @@ func (h *Handler) Update(ctx context.Context, request native.UpdateRequest) erro
 	if err := h.record(Call{Method: "Update", Identifier: request.Identifier, Patch: patch}); err != nil {
 		return err
 	}
+	if err := h.otherProduct(request.Identifier); err != nil {
+		return err
+	}
 	for _, op := range patch {
 		name, _, _ := strings.Cut(strings.TrimPrefix(fmt.Sprint(op["path"]), "/"), "/")
 		if slices.Contains(h.CreateOnly, name) {
 			return ClientError("InvalidParameterCombination", fmt.Sprintf("%s can't be changed after create", name))
 		}
 	}
-	if err := h.Store.Patch(h.Name, request.Identifier, patch); err != nil {
-		return native.ErrNotFound
+	failOn, failWith := h.failOn, h.failWith
+	h.failWith = nil
+	for i, op := range patch {
+		if failWith != nil && i == failOn {
+			return h.failedCall(i, len(patch), failWith)
+		}
+		if err := h.Store.Patch(h.Name, request.Identifier, []map[string]any{op}); err != nil {
+			return native.ErrNotFound
+		}
+	}
+	if failWith != nil {
+		return h.failedCall(failOn, len(patch), failWith)
 	}
 	h.start(request.Identifier, native.OperationUpdate)
 	return h.lostResponse("Update")
+}
+
+// failedCall returns the error of an update whose call-th of total calls failed with err.
+func (h *Handler) failedCall(call int, total int, err error) error {
+	switch {
+	case call == 0:
+		return err
+	case call < total:
+		return &native.Failure{Message: fmt.Sprintf("call %d of %d failed: %s", call+1, total, err), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomePartial}
+	default:
+		return &native.Failure{Message: fmt.Sprintf("every change was made, then a call failed: %s", err), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeApplied}
+	}
 }
 
 // Delete starts deleting the resource.
@@ -267,11 +355,36 @@ func (h *Handler) Delete(ctx context.Context, region string, identifier string) 
 	if err := h.record(Call{Method: "Delete", Identifier: identifier}); err != nil {
 		return err
 	}
+	if err := h.otherProduct(identifier); err != nil {
+		return err
+	}
 	if _, ok := h.Store.Read(h.Name, identifier); !ok {
 		return native.ErrNotFound
 	}
 	h.start(identifier, native.OperationDelete)
 	return h.lostResponse("Delete")
+}
+
+// Reset sets the resource to ResetTo, or removes it when ResetTo is nil, and starts a delete that keeps it.
+func (h *Handler) Reset(ctx context.Context, region string, identifier string) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if err := h.record(Call{Method: "Reset", Identifier: identifier}); err != nil {
+		return err
+	}
+	if err := h.otherProduct(identifier); err != nil {
+		return err
+	}
+	if _, ok := h.Store.Read(h.Name, identifier); !ok {
+		return native.ErrNotFound
+	}
+	if h.ResetTo == nil {
+		h.Store.Remove(h.Name, identifier)
+		return nil
+	}
+	h.Store.Put(h.Name, identifier, h.ResetTo)
+	h.start(identifier, native.OperationDelete).reset = true
+	return h.lostResponse("Reset")
 }
 
 // List returns every resource of the type in the store.
@@ -283,6 +396,9 @@ func (h *Handler) List(ctx context.Context, region string) ([]native.Resource, e
 	}
 	out := []native.Resource{}
 	for _, identifier := range h.Store.List(h.Name) {
+		if h.otherProduct(identifier) != nil {
+			continue
+		}
 		props, _ := h.read(identifier)
 		out = append(out, native.Resource{Identifier: identifier, Properties: props})
 	}
@@ -304,6 +420,9 @@ func (h *Handler) Progress(ctx context.Context, region string, identifier string
 	if _, ok := h.Store.Read(h.Name, identifier); !ok {
 		return native.Progress{}, native.ErrNotFound
 	}
+	if err := h.otherProduct(identifier); err != nil {
+		return native.Progress{}, err
+	}
 	running := h.running[identifier]
 	if running == nil || running.op != op {
 		return native.Progress{Done: true}, nil
@@ -316,7 +435,7 @@ func (h *Handler) Progress(ctx context.Context, region string, identifier string
 	if failure := h.Failures[op]; failure != nil {
 		return native.Progress{Done: true, Failure: failure}, nil
 	}
-	if op == native.OperationDelete {
+	if op == native.OperationDelete && !running.reset {
 		h.Store.Remove(h.Name, identifier)
 	}
 	return native.Progress{Done: true}, nil

@@ -21,6 +21,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -41,6 +43,7 @@ import (
 
 const (
 	resourceGroupRequiredMessage = "Radius resource group is required. Please provide a value for the --group (-g) flag."
+	sourceRevisionAnnotation     = "radapp.io/source-revision"
 )
 
 // NewCommand creates a command for the `rad bicep generate-kubernetes-manifest` command.
@@ -56,7 +59,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
 	
-	- A file containing multiple parameters using the ARM JSON parameter format (see below)
+	- A file containing multiple parameters using the ARM JSON parameter format (see below) or a Bicep parameters (.bicepparam) file
 	- A file containing a single value in JSON format
 	- A key-value-pair passed in the command line
 	
@@ -78,11 +81,13 @@ rad bicep generate-kubernetes-manifest app.bicep --parameters @app.bicepparam --
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddParameterFlag(cmd)
 
-	cmd.Flags().StringP("destination-file", "d", "", "Path of the generated DeploymentTemplate yaml file created by running this command.")
+	cmd.Flags().StringP("destination-file", "d", "", "Path of the generated DeploymentTemplate yaml file created by running this command, or '-' to write to stdout.")
 	_ = cmd.MarkFlagFilename("destination-file", ".yaml", ".yml")
 
 	cmd.Flags().String("azure-scope", "", "Scope for Azure deployment.")
 	cmd.Flags().String("aws-scope", "", "Scope for AWS deployment.")
+	cmd.Flags().String("name", "", "Name of the generated DeploymentTemplate resource. Defaults to the template file name.")
+	cmd.Flags().String("source-revision", "", "Source revision to record in the radapp.io/source-revision annotation.")
 
 	return cmd, runner
 }
@@ -94,6 +99,7 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 	Deploy            deploy.Interface
 	Output            output.Interface
+	Stdout            io.Writer
 
 	FileSystem          filesystem.FileSystem
 	Group               string
@@ -103,6 +109,8 @@ type Runner struct {
 	DestinationFile     string
 	AzureScope          string
 	AWSScope            string
+	Name                string
+	SourceRevision      string
 }
 
 // NewRunner creates a new instance of the `rad bicep generate-kubernetes-manifest` runner.
@@ -153,8 +161,29 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.DestinationFile = strings.TrimSuffix(templateFileName, filepath.Ext(templateFileName)) + ".yaml"
 	}
 
-	if filepath.Ext(r.DestinationFile) != ".yaml" && filepath.Ext(r.DestinationFile) != ".yml" {
+	if r.DestinationFile != "-" && filepath.Ext(r.DestinationFile) != ".yaml" && filepath.Ext(r.DestinationFile) != ".yml" {
 		return clierrors.Message("Destination file must have a .yaml or .yml extension")
+	}
+
+	if r.Stdout == nil {
+		r.Stdout = cmd.OutOrStdout()
+	}
+
+	if r.DestinationFile == "-" {
+		if ow, ok := r.Output.(*output.OutputWriter); ok && ow.LogWriter == nil {
+			ow.LogWriter = cmd.ErrOrStderr()
+			output.SetLogWriter(ow.LogWriter)
+		}
+	}
+
+	r.Name, err = cmd.Flags().GetString("name")
+	if err != nil {
+		return err
+	}
+
+	r.SourceRevision, err = cmd.Flags().GetString("source-revision")
+	if err != nil {
+		return err
 	}
 
 	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
@@ -182,9 +211,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// The template name is written into the generated manifest, so derive it from the template file
-	// name only to keep credentials in a remote URL out of the generated output.
-	deploymentTemplate, err := r.generateDeploymentTemplate(bicep.TemplateFileName(r.FilePath), template, r.Parameters)
+	name := r.Name
+	if name == "" {
+		// The template name is written into the generated manifest, so derive it from the template file
+		// name only to keep credentials in a remote URL out of the generated output.
+		name = bicep.TemplateFileName(r.FilePath)
+	}
+
+	deploymentTemplate, err := r.generateDeploymentTemplate(name, template, r.Parameters)
 	if err != nil {
 		return err
 	}
@@ -194,7 +228,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	r.Output.LogInfo("DeploymentTemplate file created at %s", r.DestinationFile)
+	if r.DestinationFile != "-" {
+		r.Output.LogInfo("DeploymentTemplate file created at %s", r.DestinationFile)
+	}
 
 	return nil
 }
@@ -213,11 +249,18 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 
 	params := make(map[string]string)
 	for k, v := range parameters {
-		value, ok := v["value"].(string)
-		if !ok || len(v) != 1 {
+		if _, expression := v["expression"]; expression || len(v) > 1 {
 			return nil, fmt.Errorf("parameter %q must be a literal string or a supported external input", k)
 		}
-		params[k] = value
+		value, ok := v["value"]
+		if !ok || value == nil {
+			continue
+		}
+		stringValue, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("parameter %q must have a string value, got %T", k, value)
+		}
+		params[k] = stringValue
 	}
 	if len(r.ParameterReferences) != 0 {
 		if err := inputparameters.Validate(string(marshalledTemplate), params, r.ParameterReferences); err != nil {
@@ -225,17 +268,28 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 		}
 	}
 
+	metadata := map[string]any{
+		"name": fileName,
+	}
+	if r.SourceRevision != "" {
+		metadata["annotations"] = map[string]string{
+			sourceRevisionAnnotation: r.SourceRevision,
+		}
+	}
+
+	spec := map[string]any{
+		"template":       string(marshalledTemplate),
+		"providerConfig": providerConfig,
+	}
+	if len(params) > 0 {
+		spec["parameters"] = params
+	}
+
 	deploymentTemplate := map[string]any{
 		"kind":       "DeploymentTemplate",
 		"apiVersion": "radapp.io/v1alpha3",
-		"metadata": map[string]any{
-			"name": fileName,
-		},
-		"spec": map[string]any{
-			"template":       string(marshalledTemplate),
-			"parameters":     params,
-			"providerConfig": providerConfig,
-		},
+		"metadata":   metadata,
+		"spec":       spec,
 	}
 
 	if len(r.ParameterReferences) != 0 {
@@ -253,7 +307,8 @@ func (r *Runner) generateDeploymentTemplate(fileName string, template map[string
 	return deploymentTemplate, nil
 }
 
-// createDeploymentTemplateYAMLFile creates a DeploymentTemplate YAML file with the given content.
+// createDeploymentTemplateYAMLFile creates a DeploymentTemplate YAML file with the given content,
+// or writes it to stdout when DestinationFile is "-".
 func (r *Runner) createDeploymentTemplateYAMLFile(deploymentTemplate map[string]any) error {
 	var buf bytes.Buffer
 	encoder := yaml.NewEncoder(&buf)
@@ -262,6 +317,15 @@ func (r *Runner) createDeploymentTemplateYAMLFile(deploymentTemplate map[string]
 
 	err := encoder.Encode(deploymentTemplate)
 	if err != nil {
+		return err
+	}
+
+	if r.DestinationFile == "-" {
+		out := r.Stdout
+		if out == nil {
+			out = os.Stdout
+		}
+		_, err = out.Write(buf.Bytes())
 		return err
 	}
 

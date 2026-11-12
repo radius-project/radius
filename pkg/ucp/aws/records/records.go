@@ -23,13 +23,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
+	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
 )
 
 // OperationType is the async operation type of AWS resource operations. The frontend queues PUT and DELETE operations
@@ -134,10 +140,16 @@ func (s *Store) Touch(ctx context.Context, id resources.ID) error {
 	return err
 }
 
-// FindByIdentifier returns the resource ID of another alias whose record has the AWS identifier, in the same account,
-// region, and type as id, or "" when there is none. UCP calls it before it takes over a resource, or creates one
-// whose identifier the properties give, so two aliases never manage the same AWS resource.
-func (s *Store) FindByIdentifier(ctx context.Context, id resources.ID, identifier string) (string, error) {
+// FindByIdentifier returns the resource ID of another alias whose record has the AWS identifier, for the same type
+// as id, in the type's identity scope, or "" when there is none. UCP calls it before it takes over a resource, or
+// creates one whose identifier the properties give, so two aliases never manage the same AWS resource.
+//
+// With schemas.IdentityScopeAccount, the search covers every region of id's account, so an alias in another region
+// that sets the same account-wide setting is found. Otherwise it covers id's account and region.
+//
+// The search and the save that follows it are separate steps, so two aliases that take over the same identifier at
+// the same moment can both succeed.
+func (s *Store) FindByIdentifier(ctx context.Context, id resources.ID, identifier string, scope schemas.IdentityScope) (string, error) {
 	if identifier == "" {
 		return "", nil
 	}
@@ -145,6 +157,9 @@ func (s *Store) FindByIdentifier(ctx context.Context, id resources.ID, identifie
 		RootScope:    id.RootScope(),
 		ResourceType: id.Type(),
 		Filters:      []database.QueryFilter{{Field: "properties.awsIdentifier", Value: identifier}},
+	}
+	if scope == schemas.IdentityScopeAccount {
+		query.RootScope, query.ScopeRecursive = accountScope(id), true
 	}
 	token := ""
 	for {
@@ -166,6 +181,18 @@ func (s *Store) FindByIdentifier(ctx context.Context, id resources.ID, identifie
 		}
 		token = result.PaginationToken
 	}
+}
+
+// accountScope returns the account scope of an AWS resource ID, such as /planes/aws/aws/accounts/1234, or its root
+// scope when it has no account.
+func accountScope(id resources.ID) string {
+	scopes := id.ScopeSegments()
+	for i, scope := range scopes {
+		if strings.EqualFold(scope.Type, resources_aws.ScopeAccounts) {
+			return resources.MakeUCPID(scopes[:i+1], nil, nil)
+		}
+	}
+	return id.RootScope()
 }
 
 // NewRecord returns an empty record for the resource id.
@@ -255,6 +282,10 @@ func ClearPending(rec *datamodel.AWSResource) {
 // KeepPending treats the values of an interrupted update as applied: the update may have reached AWS, so Radius owns
 // the pending properties, and a later deploy that omits one clears it. The pending values are then dropped.
 //
+// A path whose pending value differs from the last-applied one is added to UnresolvedPaths, because AWS may hold
+// either value or a mix. That matters for a list, which the pending value replaces whole: a field inside a list item
+// that the update was removing would otherwise no longer be owned, though AWS may still have it.
+//
 // Whether AWS has a write-only value the update sent cannot be known, so its fingerprint is not kept as applied, and
 // the previous one is dropped too. The next deploy sends that value again. Fingerprints that the update did not change
 // stay.
@@ -263,6 +294,7 @@ func KeepPending(rec *datamodel.AWSResource) {
 		if rec.Properties.LastApplied == nil {
 			rec.Properties.LastApplied = map[string]any{}
 		}
+		markUnresolved(rec)
 		merge(rec.Properties.LastApplied, rec.Properties.PendingLastApplied)
 	}
 	previous, pending := rec.Properties.Fingerprints, rec.Properties.PendingFingerprints
@@ -274,6 +306,24 @@ func KeepPending(rec *datamodel.AWSResource) {
 		}
 	}
 	ClearPending(rec)
+}
+
+// markUnresolved adds to UnresolvedPaths every path whose pending value differs from the last-applied one, from
+// either side, because AWS may hold either value or a mix: the operation in progress failed partway, or UCP can't tell
+// how it ended. A path only one side has counts too, such as a list the pending values change into an object.
+func markUnresolved(rec *datamodel.AWSResource) {
+	paths := rec.Properties.UnresolvedPaths
+	applied := awsoperations.FlattenProperties(rec.Properties.LastApplied)
+	pending := awsoperations.FlattenProperties(rec.Properties.PendingLastApplied)
+	for _, values := range []map[string]any{applied, pending} {
+		for path := range values {
+			if !reflect.DeepEqual(applied[path], pending[path]) {
+				paths = append(paths, path)
+			}
+		}
+	}
+	slices.Sort(paths)
+	rec.Properties.UnresolvedPaths = slices.Compact(paths)
 }
 
 // merge copies src into dst. When both hold an object under the same key, the objects are merged.
@@ -294,14 +344,35 @@ func merge(dst map[string]any, src map[string]any) {
 // marks the first create as finished. The request token moves to LastRequestToken, so a redelivered operation reports
 // success.
 func ApplyPending(rec *datamodel.AWSResource) {
-	if rec.Properties.PendingLastApplied != nil {
-		rec.Properties.LastApplied = rec.Properties.PendingLastApplied
-		rec.Properties.Fingerprints = rec.Properties.PendingFingerprints
-	}
-	ClearPending(rec)
+	applyPendingValues(rec)
 	rec.Properties.ClientToken = ""
 	finish(rec, nil)
 	rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
+}
+
+// applyPendingValues makes the pending last-applied properties and fingerprints the last-applied ones, and drops the
+// pending values. AWS applied all of them, so no path is unresolved any more.
+func applyPendingValues(rec *datamodel.AWSResource) {
+	if rec.Properties.PendingLastApplied != nil {
+		rec.Properties.LastApplied = rec.Properties.PendingLastApplied
+		rec.Properties.Fingerprints = rec.Properties.PendingFingerprints
+		rec.Properties.UnresolvedPaths = nil
+	}
+	ClearPending(rec)
+}
+
+// Settle sets the record's values after a failed operation by how much of it AWS applied: OutcomeRejected drops the
+// pending values (ClearPending), OutcomeApplied makes them last-applied, and OutcomePartial and OutcomeUnknown keep
+// them as possibly applied (KeepPending). It leaves the operation's state to the caller.
+func Settle(rec *datamodel.AWSResource, outcome native.Outcome) {
+	switch outcome {
+	case native.OutcomeRejected:
+		ClearPending(rec)
+	case native.OutcomeApplied:
+		applyPendingValues(rec)
+	default:
+		KeepPending(rec)
+	}
 }
 
 // Fail finishes a failed update or delete: the pending values are dropped, so the previous last-applied properties

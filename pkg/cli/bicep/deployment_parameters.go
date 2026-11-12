@@ -33,10 +33,12 @@ import (
 // of what we need to support here.
 type ParameterParser struct {
 	FileSystem filesystem.FileSystem
+	Bicep      Interface
 }
 
 type ParameterFile struct {
 	Parameters               clients.DeploymentParameters `json:"parameters"`
+	ParametersJSON           string                       `json:"parametersJson"`
 	ExternalInputDefinitions map[string]json.RawMessage   `json:"externalInputDefinitions,omitempty"`
 }
 
@@ -51,8 +53,10 @@ func (pp ParameterParser) ParseKubernetesInputs(compiler Interface, inputs ...st
 		if file, ok := strings.CutPrefix(input, "@"); ok {
 			var data []byte
 			var err error
-			if filepath.Ext(file) == ".bicepparam" {
-				data, err = compiler.Call("build-params", file, "--stdout")
+			if strings.EqualFold(filepath.Ext(file), ".bicepparam") {
+				parser := pp
+				parser.Bicep = compiler
+				data, err = parser.buildBicepParams(file)
 			} else {
 				data, err = pp.FileSystem.ReadFile(file)
 			}
@@ -138,6 +142,15 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 	if after, ok := strings.CutPrefix(input, "@"); ok {
 		// input is a file that declares multiple parameters
 		filePath := after
+		if strings.EqualFold(filepath.Ext(filePath), ".bicepparam") {
+			b, err := pp.buildBicepParams(filePath)
+			if err != nil {
+				return err
+			}
+
+			return pp.unmarshalParameters(b, output)
+		}
+
 		b, err := pp.FileSystem.ReadFile(filePath)
 		if err != nil {
 			return err
@@ -179,12 +192,31 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 	return nil
 }
 
-func (pp ParameterParser) unmarshalParameters(b []byte, output clients.DeploymentParameters) error {
+func (pp ParameterParser) buildBicepParams(filePath string) ([]byte, error) {
+	bicep := pp.Bicep
+	if bicep == nil {
+		bicep = &Impl{FileSystem: pp.FileSystem}
+	}
 
+	return bicep.Call("build-params", "--stdout", filePath)
+}
+
+func (pp ParameterParser) unmarshalParameters(b []byte, output clients.DeploymentParameters) error {
 	data := ParameterFile{}
 	err := json.Unmarshal(b, &data)
 	if err != nil {
 		return err
+	}
+
+	if data.Parameters == nil && data.ParametersJSON != "" {
+		inner := ParameterFile{}
+		if err := json.Unmarshal([]byte(data.ParametersJSON), &inner); err != nil {
+			return err
+		}
+		data.Parameters = inner.Parameters
+		if len(inner.ExternalInputDefinitions) != 0 {
+			data.ExternalInputDefinitions = inner.ExternalInputDefinitions
+		}
 	}
 
 	if len(data.ExternalInputDefinitions) != 0 {
