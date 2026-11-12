@@ -344,7 +344,6 @@ The options are equal for the other feature-spec requirements, because removals,
 
 - Radius owns a sidecar image for its lifetime: build, CVE scanning and patches, and a release with a matched compiler per Radius version (D2, D5, [Radius CMP sidecar](#radius-cmp-sidecar-new-phase-1)).
 - The sidecar compiler downloads Bicep extension types, such as `br:biceptypes.azurecr.io/radius:<version>`, from an OCI registry. On hardened clusters the admin opens outbound HTTPS from Argo CD's namespace or mirrors the extensions.
-- `argocd-repo-server` reads every repository Argo CD renders, so a flaw in the sidecar exposes more than Radius apps. This needs security sign-off.
 - For the CI fallback, Radius provides a reference CI workflow template (that runs `rad bicep generate-kubernetes-manifest`, stamps the `radapp.io/source-revision` annotation, and commits the generated `DeploymentTemplate` YAML) which users add to each app repository.
 - Everything after compilation — Lua health checks, the `DeploymentResource` child tree, status conditions, typed/secure parameters, and the application graph UI extension — works identically for both the plugin and the CI fallback because both apply the same `DeploymentTemplate` custom resource.
 
