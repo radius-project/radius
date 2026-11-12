@@ -536,6 +536,31 @@ test_bicep_evidence_boundary() {
     assert_not_contains "${ROOT}/.github/scripts/collect-release-bicep.mjs" \
         'automation/release-state-' \
         "Bicep persistence must not alter Deployment Engine state"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "aws-publication") |
+        [.with."github-token", .env.AWS_DISPATCH_TOKEN,
+          .env.BICEP_STATE_TOKEN]' \
+        "[\"\${{ steps.aws-read.outputs.token }}\",\"\${{ steps.release-token.outputs.token }}\",\"\${{ steps.bicep-state-token.outputs.token }}\"]" \
+        "AWS reads, dispatch and Radius marker use separate scoped clients"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.id == "release-token") |
+        [.with.repositories | contains("bicep-types-aws")]' \
+        '[true]' \
+        "existing sibling token must include the AWS dispatch repository"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps |
+        map(select(.env.INPUT_OPERATION != null) |
+          .env.INPUT_OPERATION)' \
+        '["read","select","authenticate","snapshot","persist"]' \
+        "raw source/controller binding must precede evidence persistence"
+    assert_json "${CONTROLLER}" \
+        '.jobs."reconcile-siblings".steps[] |
+        select(.env.INPUT_OPERATION == "snapshot") |
+        .with."github-token"' \
+        "\"\${{ steps.aws-read.outputs.token }}\"" \
+        "original generation validation must retain read-only AWS authority"
 }
 
 main() {

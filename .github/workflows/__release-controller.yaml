@@ -787,7 +787,18 @@ jobs:
           permission-contents: read
           permission-metadata: read
 
-      - name: Select source-bound AWS publishing evidence
+      - name: Create Radius evidence persistence token
+        if: needs.validate.outputs.ghcr-bicep == 'true' && steps.aws-evidence.outputs.exists == 'false'
+        id: bicep-state-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: radius-project
+          repositories: radius
+          permission-contents: write
+
+      - name: Request or discover trusted-main AWS publishing evidence
         if: needs.validate.outputs.ghcr-bicep == 'true' && steps.aws-evidence.outputs.exists == 'false'
         id: aws-publication
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -796,11 +807,17 @@ jobs:
           INPUT_PLAN_FILE: ${{ runner.temp }}/bicep-plan.json
           INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
           INPUT_DIRECTORY: ${{ runner.temp }}/bicep-evidence
+          AWS_DISPATCH_TOKEN: ${{ steps.release-token.outputs.token }}
+          BICEP_STATE_TOKEN: ${{ steps.bicep-state-token.outputs.token }}
         with:
           github-token: ${{ steps.aws-read.outputs.token }}
           script: |
             const {default: collect} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/collect-release-bicep.mjs`)
-            await collect({github, core})
+            await collect({
+              github, core,
+              stateGithub: getOctokit(process.env.BICEP_STATE_TOKEN),
+              dispatchGithub: getOctokit(process.env.AWS_DISPATCH_TOKEN)
+            })
 
       - name: Download authenticated AWS record artifact
         if: needs.validate.outputs.ghcr-bicep == 'true' && steps.aws-evidence.outputs.exists == 'false'
@@ -840,16 +857,19 @@ jobs:
           skip-decompress: true
           digest-mismatch: error
 
-      - name: Create Radius evidence persistence token
+      - name: Bind raw AWS source to its original trusted controller
         if: needs.validate.outputs.ghcr-bicep == 'true' && steps.aws-evidence.outputs.exists == 'false'
-        id: bicep-state-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OPERATION: snapshot
+          INPUT_PLAN_FILE: ${{ runner.temp }}/bicep-plan.json
+          INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-evidence
         with:
-          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
-          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
-          owner: radius-project
-          repositories: radius
-          permission-contents: write
+          github-token: ${{ steps.aws-read.outputs.token }}
+          script: |
+            const {default: collect} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/collect-release-bicep.mjs`)
+            await collect({github, core})
 
       - name: Persist immutable Bicep evidence before Radius tag
         if: needs.validate.outputs.ghcr-bicep == 'true' && steps.aws-evidence.outputs.exists == 'false'
