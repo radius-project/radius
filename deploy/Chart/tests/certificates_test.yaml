@@ -114,6 +114,11 @@ tests:
             rotationPolicy: Never
         documentIndex: 3
       - equal:
+          path: spec.secretTemplate.annotations
+          value:
+            cert-manager.io/allow-direct-injection: "true"
+        documentIndex: 3
+      - equal:
           path: spec.issuerRef
           value:
             group: cert-manager.io

@@ -1,9 +1,10 @@
 {{- $authz := ne (include "radius.authz.mode" .) "off" }}
 {{- $caBundle := "" }}
+{{- $caSource := "radius-apiserver-ca" }}
 {{- if $authz }}
 # cert-manager issues UCP's aggregated API certificate from radius-apiserver-issuer. UCP reloads the
-# certificate when it rotates. The APIService trusts the CA certificates in Secret
-# radius-apiserver-trust, never the ca.crt of this certificate's Secret.
+# certificate when it rotates. The APIService trusts ca.crt of Secret radius-apiserver-ca, the
+# self-signed CA, never the ca.crt of this certificate's Secret.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -32,12 +33,19 @@ spec:
     kind: Issuer
     name: radius-apiserver-issuer
 {{- /*
-rad writes Secret radius-apiserver-trust after cert-manager issues radius-apiserver-ca, so the chart
-cannot render it. Rendering its current ca.crt keeps the caBundle Helm applies equal to the one
-cert-manager's cainjector injects.
+cert-manager's cainjector copies ca.crt of the Secret named by inject-ca-from-secret into the caBundle,
+so the API server follows each renewal of radius-apiserver-ca. While UCP moves from an earlier CA such
+as ucp-ca, rad keeps Secret radius-apiserver-trust with both CAs and the APIService trusts it instead;
+rad deletes it once UCP serves a certificate from radius-apiserver-ca. Rendering the current ca.crt keeps
+the caBundle Helm applies equal to the one cainjector injects.
 */}}
 {{- $trust := lookup "v1" "Secret" .Release.Namespace "radius-apiserver-trust" }}
+{{- if $trust }}
+{{- $caSource = "radius-apiserver-trust" }}
 {{- $caBundle = dig "data" "ca.crt" "" $trust }}
+{{- else }}
+{{- $caBundle = dig "data" "ca.crt" "" (lookup "v1" "Secret" .Release.Namespace "radius-apiserver-ca") }}
+{{- end }}
 {{- else }}
 {{- $ca := genCA "ucp-ca" 3650 }}
 {{- $cn := printf "ucp" }}
@@ -70,7 +78,7 @@ metadata:
     app.kubernetes.io/part-of: radius
   {{- if $authz }}
   annotations:
-    cert-manager.io/inject-ca-from-secret: {{ .Release.Namespace }}/radius-apiserver-trust
+    cert-manager.io/inject-ca-from-secret: {{ .Release.Namespace }}/{{ $caSource }}
   {{- end }}
 spec:
   group: api.ucp.dev
