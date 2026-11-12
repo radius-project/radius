@@ -227,14 +227,14 @@ func (v *Verifier) refreshForUnknownKey(ctx context.Context) {
 }
 
 // current returns the cached keys, or an AuthorizationUnavailable error if they have
-// never loaded or are older than MaxKeyAge.
+// never loaded or are at least MaxKeyAge old.
 func (v *Verifier) current() (KeySet, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	if v.lastSuccess.IsZero() {
 		return KeySet{}, unavailable("signing keys have not been loaded", nil)
 	}
-	if v.now().Sub(v.lastSuccess) > v.maxKeyAge {
+	if v.now().Sub(v.lastSuccess) >= v.maxKeyAge {
 		return KeySet{}, unavailable("signing keys could not be refreshed", nil)
 	}
 	return v.keys, nil
