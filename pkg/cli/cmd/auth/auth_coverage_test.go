@@ -115,7 +115,7 @@ func TestConnectInvalidWorkspace(t *testing.T) {
 }
 
 func TestConnectUnhealthyEndpoint(t *testing.T) {
-	t.Parallel()
+	// Server-backed tests run serially because httptest.Server.Close drains http.DefaultTransport.
 	for _, test := range []struct {
 		status  int
 		message string
@@ -124,7 +124,6 @@ func TestConnectUnhealthyEndpoint(t *testing.T) {
 		{status: http.StatusForbidden, message: "Status Code: 403"},
 	} {
 		t.Run(http.StatusText(test.status), func(t *testing.T) {
-			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method != http.MethodGet || r.URL.Path != "/apis/api.ucp.dev/v1alpha3" {
 					t.Errorf("unexpected health request: %s %s", r.Method, r.URL.Path)
@@ -151,6 +150,8 @@ type inspectionHTTPRequest struct {
 	err         error
 }
 
+// Callers and their ancestors must run serially: server.Close drains the shared
+// http.DefaultTransport used by workspace connections, including sibling servers.
 func inspectionHTTPServer(t *testing.T, status int, response any) (*httptest.Server, <-chan inspectionHTTPRequest) {
 	t.Helper()
 	requests := make(chan inspectionHTTPRequest, 4)
@@ -191,12 +192,10 @@ func requireInspectionRequest(t *testing.T, requests <-chan inspectionHTTPReques
 }
 
 func TestInspectionCommandsWithGeneratedHTTPClients(t *testing.T) {
-	t.Parallel()
 	for _, mode := range api.PossibleUserAuthorizationModeValues() {
 		for _, format := range []string{"json", "table"} {
 			for _, operation := range []string{"whoami", "status", "installation check", "scoped check"} {
 				t.Run(fmt.Sprintf("%s/%s/%s", operation, mode, format), func(t *testing.T) {
-					t.Parallel()
 					identity, err := (&testClient{}).whoAmI(t.Context())
 					require.NoError(t, err)
 					identity.Mode = &mode
@@ -297,10 +296,8 @@ func TestInspectionCommandsWithGeneratedHTTPClients(t *testing.T) {
 }
 
 func TestGeneratedHTTPClientErrors(t *testing.T) {
-	t.Parallel()
 	for _, operation := range []string{"whoami", "installation check", "scoped check"} {
 		t.Run(operation, func(t *testing.T) {
-			t.Parallel()
 			server, requests := inspectionHTTPServer(t, http.StatusForbidden, map[string]any{
 				"error": map[string]string{"code": "AuthorizationFailed", "message": "inspection permission denied"},
 			})
@@ -340,7 +337,6 @@ func TestGeneratedHTTPClientErrors(t *testing.T) {
 }
 
 func TestGeneratedWhoAmIMalformedResponse(t *testing.T) {
-	t.Parallel()
 	for _, test := range []struct {
 		name     string
 		response any
@@ -350,7 +346,6 @@ func TestGeneratedWhoAmIMalformedResponse(t *testing.T) {
 		{name: "identity must be an object", response: []string{"alice"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
 			server, requests := inspectionHTTPServer(t, http.StatusOK, test.response)
 			client, err := connect(t.Context(), workspaces.Workspace{Connection: map[string]any{
 				"kind": "kubernetes", "overrides": map[string]any{"ucp": server.URL},
