@@ -219,13 +219,12 @@ Argo CD Application "orders-dev"     Sync: Synced   Health: Degraded
 Argo CD only applies Kubernetes YAML, so something must compile the user's Bicep and parameters into a `DeploymentTemplate`. The existing `DeploymentTemplate` controller then deploys it, as it does for Flux. There are three places the compiling can happen:
 
 - **In Argo CD, through a plugin (proposed).** Argo CD's rendering hook (CMP) runs a Radius sidecar that compiles the Bicep. Argo CD applies and prunes the `DeploymentTemplate`, and Radius health checks (Lua) report its status. This is the source integration the feature spec proposes.
-- **In CI (fallback).** A CI pipeline in each app repository runs `rad bicep generate-kubernetes-manifest` on every change and commits the generated `DeploymentTemplate` YAML. Argo CD applies that YAML with no plugin. It works today apart from the [CLI fixes](#cli-design), and the feature spec keeps it for organizations that do not allow plugins. It is not the default because it costs both personas:
+- **In CI (fallback).** A CI pipeline in each app repository runs `rad bicep generate-kubernetes-manifest` on every change and commits the generated `DeploymentTemplate` YAML. Argo CD applies that YAML with no plugin. It works today apart from the [CLI fixes](#cli-design), and the feature spec keeps it for organizations that do not allow plugins. Radius provides a reference CI workflow template (showing how to compile Bicep, stamp the `radapp.io/source-revision` annotation, and commit the generated YAML) that users copy into each app repository. It is not the default because it costs both personas:
   - Developers get generated YAML they never edit committed next to their Bicep, and wait for the bot's commit before Argo CD can sync.
-  - The platform team adds a workflow file, permissions and a bot with push rights to every app repository, and updates the pinned `rad` version in each one on every Radius release.
-  - Radius documents this path but does not supply the per-repository workflows; see [D1](#d1-who-compiles-bicep-for-argo-cd).
+  - The platform team adds the workflow file, permissions and a bot with push rights to every app repository, and updates the pinned `rad` version in each one on every Radius release; see [D1](#d1-who-compiles-bicep-for-argo-cd).
 - **In the Radius controller (alternative considered).** Argo CD applies the Bicep source (a ConfigMap) and a Radius source resource, and Radius compiles them, as it does with Flux. It needs no Radius code inside Argo CD, but Argo CD health and compile-error feedback are indirect. See [Alternatives considered](#alternatives-considered).
 
-The rest of this design details the plugin. The health checks, status conditions and typed parameters serve both the plugin and the CI fallback, because both end with Argo CD applying the same `DeploymentTemplate`.
+The rest of this design details the plugin. Because both the plugin and the CI fallback apply the exact same `DeploymentTemplate` custom resource, everything after compilation — Lua health checks, the `DeploymentResource` child tree, status conditions, typed and secure parameters, and the application graph UI extension — works identically for both paths.
 
 A point-by-point comparison with the Flux integration is in [Appendix: integration points compared with Flux](#integration-points-compared-with-flux).
 
@@ -346,8 +345,8 @@ The options are equal for the other feature-spec requirements, because removals,
 - Radius owns a sidecar image for its lifetime: build, CVE scanning and patches, and a release with a matched compiler per Radius version (D2, D5, [Radius CMP sidecar](#radius-cmp-sidecar-new-phase-1)).
 - The sidecar compiler downloads Bicep extension types, such as `br:biceptypes.azurecr.io/radius:<version>`, from an OCI registry. On hardened clusters the admin opens outbound HTTPS from Argo CD's namespace or mirrors the extensions.
 - `argocd-repo-server` reads every repository Argo CD renders, so a flaw in the sidecar exposes more than Radius apps. This needs security sign-off.
-- Radius documents the CI fallback, including how to stamp the revision annotation, but does not supply per-repository workflows.
-- The health checks, status conditions and typed parameters serve both the plugin and the CI fallback.
+- For the CI fallback, Radius provides a reference CI workflow template (that runs `rad bicep generate-kubernetes-manifest`, stamps the `radapp.io/source-revision` annotation, and commits the generated `DeploymentTemplate` YAML) which users add to each app repository.
+- Everything after compilation — Lua health checks, the `DeploymentResource` child tree, status conditions, typed/secure parameters, and the application graph UI extension — works identically for both the plugin and the CI fallback because both apply the same `DeploymentTemplate` custom resource.
 
 **How we'll know it's right:** a plugin prototype completes the feature spec's success scenarios (connect, navigate, diagnose, recover, scoped access) on its representative application: a Kubernetes workload, an external dependency and a failed Recipe, without cluster-admin. The prototype also covers the cases the feature spec asks to test: a failure before any resource is created, partial provisioning, delayed cleanup, the Radius controller being unavailable, and a workload that fails after provisioning. Separately, at least one Argo CD admin confirms they would install the sidecar.
 
@@ -629,7 +628,7 @@ A read-only "Radius" tab behind an Argo CD proxy extension that shows the applic
 
 #### Documentation and validation (Phase 1)
 
-Validate installing Radius with Argo CD (see scenario 1) and the plugin end to end. Document the CI fallback as a supported path for organizations that do not allow plugins, including the revision annotation; Radius does not supply per-repository workflows. Document the order of the environment and application Applications, and the v1 limit of one Radius application per namespace.
+Validate installing Radius with Argo CD (see scenario 1) and the plugin end to end. Document the CI fallback as a supported path for organizations that do not allow plugins, and provide a reference CI workflow template (including the revision annotation) that users can copy into their app repositories. Document the order of the environment and application Applications, and the v1 limit of one Radius application per namespace.
 
 #### UCP
 
