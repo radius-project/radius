@@ -31,6 +31,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -64,10 +65,16 @@ var signingKey = func() *ecdsa.PrivateKey {
 	return k
 }()
 
-// staticKeys is a token.KeySource that returns signingKey's public key.
-type staticKeys struct{}
+// staticKeys is a token.KeySource that returns signingKey's public key until it is made
+// unavailable.
+type staticKeys struct {
+	unavailable atomic.Bool
+}
 
-func (staticKeys) Fetch(context.Context) (token.KeySet, error) {
+func (k *staticKeys) Fetch(context.Context) (token.KeySet, error) {
+	if k.unavailable.Load() {
+		return token.KeySet{}, errors.New("signing keys are unavailable")
+	}
 	return token.KeySet{Issuer: testIssuer, Keys: map[string]crypto.PublicKey{testKeyID: &signingKey.PublicKey}}, nil
 }
 
@@ -122,6 +129,7 @@ type testServer struct {
 	dir   string
 	logs  *observer.ObservedLogs
 	clock *testClock
+	keys  *staticKeys
 	// seen receives the Authorization header and identity of each request the handler served.
 	seen chan seenRequest
 }
@@ -165,7 +173,8 @@ func startServerWithHandler(t *testing.T, ca testCA, mode authz.Mode, handler ht
 	}
 	options := authz.Options{Mode: mode, CertificateDirectory: dir, Namespace: testNamespace}
 	clock := &testClock{now: time.Now()}
-	config := serveConfig{pollInterval: testPollInterval, keys: staticKeys{}, tokenNow: clock.Now}
+	keys := &staticKeys{}
+	config := serveConfig{pollInterval: testPollInterval, keys: keys, tokenNow: clock.Now}
 	receiver := Receiver{Name: "applications-rp", AllowedCallers: []string{"ucp"}}
 
 	done := make(chan error, 1)
@@ -176,7 +185,7 @@ func startServerWithHandler(t *testing.T, ca testCA, mode authz.Mode, handler ht
 		require.ErrorIs(t, <-done, http.ErrServerClosed)
 	})
 
-	return testServer{url: ln.Addr().String(), dir: dir, logs: logs, clock: clock}
+	return testServer{url: ln.Addr().String(), dir: dir, logs: logs, clock: clock, keys: keys}
 }
 
 // client returns an HTTP client that verifies the applications-rp certificate from ca and
@@ -330,6 +339,7 @@ func TestServe_StaleSigningKeys(t *testing.T) {
 	require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, tok))
 	<-srv.seen
 
+	srv.keys.unavailable.Store(true)
 	srv.clock.Advance(token.DefaultMaxKeyAge + time.Minute)
 	require.Equal(t, http.StatusServiceUnavailable, send(t, c, "https://"+srv.url, tok))
 	requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
@@ -476,4 +486,107 @@ func writeToken(t *testing.T, dir, receiver, tok string) {
 	t.Helper()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, receiver), 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, receiver, TokenFile), []byte(tok+"\n"), 0o600))
+}
+
+// TestServe_StaleSigningKeysFailClosed checks that once the signing keys are MaxKeyAge old,
+// every request is rejected with AuthorizationUnavailable in every enforcing mode, whatever
+// credentials it carries, and never reaches the handler.
+func TestServe_StaleSigningKeysFailClosed(t *testing.T) {
+	t.Parallel()
+	credentials := map[string]string{
+		"valid token": "Bearer " + mintToken(t, "ucp", "applications-rp"),
+		"no token":    "",
+		"basic":       "Basic dXNlcjpwYXNz",
+	}
+	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			ca := newCA(t)
+			srv := startServer(t, ca, mode)
+			c := client(t, ca)
+
+			// Load the keys, then stop every later refresh from succeeding.
+			require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, credentials["valid token"]))
+			<-srv.seen
+			srv.keys.unavailable.Store(true)
+			srv.clock.Advance(token.DefaultMaxKeyAge)
+
+			for name, authorization := range credentials {
+				t.Run(name, func(t *testing.T) {
+					require.Equal(t, http.StatusServiceUnavailable, send(t, c, "https://"+srv.url, authorization))
+					requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
+				})
+			}
+			require.Empty(t, srv.seen, "requests must not reach the handler while the signing keys are stale")
+		})
+	}
+}
+
+// TestServe_RequestTrailers sends a chunked request with a trailer through the client and
+// upgrade transports and checks that the trailer, which the caller sets after it writes the
+// body, reaches a handler that reads the body.
+func TestServe_RequestTrailers(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		for _, transport := range []string{"client", "upgrade"} {
+			t.Run(string(mode)+"/"+transport, func(t *testing.T) {
+				t.Parallel()
+				ca := newCA(t)
+				type received struct {
+					body     string
+					trailer  string
+					identity string
+				}
+				got := make(chan received, 1)
+				srv := startServerWithHandler(t, ca, mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					body, err := io.ReadAll(r.Body)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusBadRequest)
+						return
+					}
+					id, _ := authz.IdentityFromContext(r.Context())
+					got <- received{body: string(body), trailer: r.Trailer.Get("X-Checksum"), identity: id.String()}
+					w.WriteHeader(http.StatusOK)
+				}))
+
+				options := callerOptions(t, ca.pem, mode, "ucp")
+				var rt http.RoundTripper
+				url := "https://applications-rp.radius-system.svc:5443/"
+				if transport == "client" {
+					secure, err := newClientTransport(options, "applications-rp")
+					require.NoError(t, err)
+					secure.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+						return (&net.Dialer{}).DialContext(ctx, network, srv.url)
+					}
+					t.Cleanup(secure.CloseIdleConnections)
+					rt = secure
+				} else {
+					var err error
+					rt, err = NewUpgradeTransport(options, http.DefaultTransport, []string{"applications-rp"})
+					require.NoError(t, err)
+					dialTo(t, rt, "applications-rp.radius-system.svc", srv.url)
+					url = "http://applications-rp.radius-system.svc:5443/"
+				}
+
+				pr, pw := io.Pipe()
+				req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, url, pr)
+				require.NoError(t, err)
+				req.ContentLength = -1
+				req.Trailer = http.Header{"X-Checksum": nil}
+				go func() {
+					_, _ = pw.Write([]byte("streamed body"))
+					// The caller sets the trailer value only after it has written the body.
+					req.Trailer.Set("X-Checksum", "abc123")
+					_ = pw.Close()
+				}()
+
+				resp, err := (&http.Client{Transport: rt, Timeout: 10 * time.Second}).Do(req)
+				require.NoError(t, err)
+				_ = resp.Body.Close()
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				require.Equal(t, received{body: "streamed body", trailer: "abc123", identity: "ucp.radius-system.svc"}, <-got)
+				require.Empty(t, req.Header.Get("Authorization"), "the transport must not modify the caller's request")
+			})
+		}
+	}
 }
