@@ -365,7 +365,7 @@ sequenceDiagram
 
 ##### D3: How the health checks are delivered
 
-**Context:** Argo CD has no built-in health for Radius CRDs and treats them as Healthy once applied. Health checks are Lua scripts loaded from Argo CD's built-in `resource_customizations` directory or from the `argocd-cm` ConfigMap. The same checks serve the plugin and the CI fallback.
+**Context:** Argo CD has no built-in health for Radius CRDs and treats them as Healthy once applied. Health checks are Lua scripts loaded from Argo CD's built-in [`resource_customizations/`](https://github.com/argoproj/argo-cd/tree/master/resource_customizations) directory (where projects like Crossplane, Cert-Manager, and Flux check in their Lua scripts so Argo CD ships with them out of the box) or from the `argocd-cm` ConfigMap. The same checks serve the plugin and the CI fallback.
 
 **Options:**
 
@@ -375,11 +375,34 @@ sequenceDiagram
 | Admin applies an `argocd-cm` snippet             | Works on any Argo CD version.                                        | Manual step.                                                                                             |
 | Radius patches `argocd-cm` during install        | Automatic.                                                           | Same drift and ownership problems as having `rad install` patch the Argo CD install.                     |
 
-**Proposed Option:** contribute upstream, and publish the `argocd-cm` snippet for older versions.
+**Proposed Option:** contribute upstream to `argoproj/argo-cd`, and publish an `argocd-cm` ConfigMap snippet (containing the exact same `health.lua` scripts) for current and older Argo CD versions.
+
+**How upstream contribution works:** open a pull request to `argoproj/argo-cd` adding `DeploymentTemplate` and `DeploymentResource` under `resource_customizations/radapp.io/`:
+
+```text
+resource_customizations/
+└── radapp.io/
+    ├── DeploymentTemplate/
+    │   ├── health.lua            # Lua script for DeploymentTemplate
+    │   ├── health_test.yaml      # Test expectations (Healthy, Progressing, Degraded)
+    │   └── testdata/             # Sample DeploymentTemplate YAML files for each state
+    │       ├── updating.yaml
+    │       ├── ready.yaml
+    │       └── failed.yaml
+    └── DeploymentResource/
+        ├── health.lua            # Lua script for DeploymentResource
+        ├── health_test.yaml      # Test expectations
+        └── testdata/             # Sample DeploymentResource YAML files
+            ├── ready.yaml
+            ├── deploying.yaml
+            └── failed.yaml
+```
+
+Argo CD's built-in test runner (`go test ./util/lua/...`) automatically discovers every folder under `resource_customizations/`, runs `health.lua` against each YAML file in `testdata/`, and verifies the output against `health_test.yaml`. Once merged, every future Argo CD release bundles the Radius health checks directly into the binary with zero `argocd-cm` setup.
 
 **Consequences:** Radius maintains the scripts in Argo CD's repository as well as the snippet until the oldest supported Argo CD version includes them.
 
-**How we'll know it's right:** upstream accepts the scripts, and their test fixtures cover every phrase in [Health mapping](#health-mapping).
+**How we'll know it's right:** upstream accepts the scripts (`go test ./util/lua/...` passes), and their test fixtures cover every phrase in [Health mapping](#health-mapping).
 
 **Outcome:** <!-- Fill in after review. -->
 
