@@ -4,18 +4,6 @@
 - **Status**: Draft
 - **Feature spec**: [Radius support for Argo CD](https://github.com/radius-project/radius/pull/13284), called "the feature spec" below
 - **Issue**: N/A
-- **Authoring notes**: Drafted with AI help (GitHub Copilot) and restructured to the decision-first template. Verified by hand: the Phase 1 prototype on branch `nithyatsu-argocd-prototype` (plugin, Lua health checks, display labels, deploying annotation, template naming, `Radius.Core` skip, delete API-version fix) on a kind cluster with Argo CD; the code paths linked below. Not verified by running: the non-string parameter failures (read from code), Bicep output stability across compiler versions, and the effort estimates.
-
-## Review guide
-
-- **What this is:** a high-level design for the feature spec. It proposes a Radius Argo CD plugin that compiles Bicep. Generated manifests committed by CI are the fallback where plugins are not allowed.
-- **What to approve:** decisions D1–D9 below. D1 is the main choice; the rest follow from it.
-- **Sign-offs needed:**
-  - Controller owners: D4 and D6 change the `DeploymentTemplate` CRD and controller, which Flux also uses, so Flux users see the new fields too. D9 also changes Flux unless the opt-in option is chosen.
-  - Security: the plugin runs repository content inside Argo CD. See [Security](#security).
-- **Not up for decision yet:** the [Open Questions](#open-questions-phase-1--core-functionality).
-- **Phasing:** the work ships in two [delivery phases](#delivery-phases) (Phase 1: Core functionality; Phase 2: Rest of the capabilities). Phase 1 needs no CRD changes.
-- **Alternative:** a Radius controller approach was also designed and is kept under [Alternatives considered](#alternatives-considered).
 
 ## Decisions for review
 
