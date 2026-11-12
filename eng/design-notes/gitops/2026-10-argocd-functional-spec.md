@@ -230,22 +230,6 @@ The rest of this design details the plugin. Everything after compilation (sideca
 
 A point-by-point comparison with the Flux integration is in [Appendix: integration points compared with Flux](#integration-points-compared-with-flux).
 
-**Where Radius hooks in, side by side.** Green boxes are Radius code.
-
-```mermaid
-flowchart LR
-    classDef radius fill:#d4f7d4,stroke:#2a7a2a
-    subgraph Flux["Flux today"]
-        direction LR
-        F1["source-controller<br/>fetch Git"] --> F2["Radius: read config,<br/>compile, apply, prune"]:::radius --> F5["Radius DeploymentTemplate<br/>controller"]:::radius
-    end
-    subgraph Plugin["Argo CD plugin"]
-        direction LR
-        A1["repo-server<br/>fetch Git"] --> A2["Radius CMP:<br/>compile only"]:::radius --> A3["application-controller<br/>apply, prune"] --> A5["Radius DeploymentTemplate<br/>controller"]:::radius
-        A4["Radius Lua:<br/>health"]:::radius -.-> A3
-    end
-```
-
 ### Architecture Diagram
 
 Argo CD keeps the `DeploymentTemplate` in sync with Git, and Radius keeps the real resources in sync with the `DeploymentTemplate`.
