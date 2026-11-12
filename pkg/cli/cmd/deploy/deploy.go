@@ -80,7 +80,7 @@ the Radius documentation for information about describing your application and r
 
 You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
 
-- A file containing multiple parameters using the ARM JSON parameter format (see below)
+- A file containing multiple parameters using the ARM JSON parameter format (see below) or a Bicep parameters (.bicepparam) file
 - A file containing a single value in JSON format
 - A key-value-pair passed in the command line
 
@@ -270,7 +270,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	parser := bicep.ParameterParser{FileSystem: filesystem.NewOSFS()}
+	parser := bicep.ParameterParser{
+		FileSystem: filesystem.NewOSFS(),
+		Bicep:      r.Bicep,
+	}
 	r.Parameters, err = parser.Parse(parameterArgs...)
 	if err != nil {
 		return err
