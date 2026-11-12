@@ -55,7 +55,7 @@ jobs:
     steps:
       - name: Validate Conventional Commit title
         id: validate
-        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        uses: amannn/action-semantic-pull-request@2252a14e810aa9b85c2d560bd7070c802206ecf6 # v6.1.2
         with:
           # A "[WIP]" title leaves the check pending instead of failing, which
           # blocks merge without nagging an unfinished pull request.

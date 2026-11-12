@@ -108,6 +108,45 @@ Run `bash .github/scripts/validate-release-plan_test.sh --snapshots-only` to exe
 
 After a filter change merges, refresh an existing generated release PR through Prepare Release rather than rerunning an old workflow attempt. PR workflows need the updated revision, and cloud tests use the trusted base revision. A plan whose product source is `HEAD` must be regenerated when `main` advances; the release-plan validator deliberately rejects the stale source pin.
 
+### Main Bicep publishing
+
+**Merging the main workflow is the publishing cutover.** `build-main.yaml` publishes Radius types through `__publish-bicep-types.yaml`, with no fallback to external regeneration. It retains the upstream snapshot/edge job graph, main queue and Helm gate. Release workflows, release tag policy, shared `publish-bicep` environment usage and approvals, and consumers remain unchanged.
+
+The new publisher accepts protected canonical main pushes and manual main runs. Successful `only_changed=true` detection permits a skip; failed/missing detection, unexpected skips, and publication failures fail Build Summary. These main-only requirements do not add a precondition to release-tag publishing.
+
+Read-only generation captures a native Bicep OCI tar once, using pinned tools, isolated `ociEnabled=true` configuration, and a local registry without credentials. A fresh trusted uploader validates source/run/artifact identity, native digest verification and the Bicep provider contract, then uses ORAS without executing downloaded code. Standard source/revision annotations retain provenance.
+
+One serialized job publishes `ghcr.io/radius-project/bicep-types-radius:edge` with `GITHUB_TOKEN`, then requests an exact-digest copy to `biceptypes.azurecr.io/radius:latest` from the existing private `azure-octo/radius-publisher`. Production ACR writes remain in that private repository; Radius uses no production Azure credentials or OIDC login. After correlated remote success, Radius anonymously reads and hashes both destination manifests before reporting publication success. GHCR stable `latest`, full-version/RC tags, AWS publishing and existing ACR reads are outside this main-only change.
+
+The `bicep-types-radius-<run-id>.tar` snapshot and per-attempt receipts have 30-day retention. Current-main retries reuse the snapshot without rebuilding. Copy requests use the original generation run/attempt and artifact ID/digest, with a stable identifier bound to the source SHA and final OCI digest. The source validates the raw snapshot; the receiver checks public run/artifact metadata and manifest provenance without downloading that snapshot. Metadata alone does not independently bind the archive bytes to the published digest. The shared monitor reuses active work but reconciles mutable aliases again rather than trusting an old successful run. A stale first attempt skips before mutation; a superseded retry fails closed because previous writes may be partial. Failed or uncertain dispatches retain the GHCR digest and available remote run identity without reporting a completed mirror. Inspect both destinations and receipts before recovery from current main; missing/expired snapshots require a new approved run.
+
+#### Before merging the publisher
+
+1. Retain the upstream read-only snapshot architecture, downstream manual-writer restrictions and cloud credential isolation. Restrict elevated workflow definitions and production authority to trusted code, including maintained PR base branches; repository package grants are not per-workflow ACLs.
+2. Allow the source repository's `GITHUB_TOKEN` to create the canonical package; the trusted uploader requests `packages: write`. No PAT is needed.
+3. Deploy the companion copy-mode receiver in `azure-octo/radius-publisher` before merging this cutover. It must accept the existing `bicep-types` event with `mode: copy`, validate the fixed source/destination and digest, and name runs `bicep-types / <release_identifier>`. Only the trusted publishing job uses the existing `RADIUS_PUBLISHER_BOT_CLIENT_ID` and `RADIUS_PUBLISHER_BOT_PRIVATE_KEY` from its protected `publish-bicep` environment. Request an installation token for `azure-octo/radius-publisher` only, with Contents write, Actions read and implicit Metadata read. Contents write also permits repository code changes, not just dispatch; keep the key isolated from candidate code and protect private publisher refs without App bypass. Never send tokens or Azure credentials in the payload. No new Radius production Azure trust or cross-repository artifact-download secret is required.
+4. Drain the old external development generation requests before cutover, without retiring the private workflow: the exact-digest copy, legacy release-tag and explicit Test publishing paths must coexist. The private receiver must serialize compatible writers and reject stale requests against current canonical main, GHCR edge and generation run order. Source-side queues cannot stop remote work surviving a timeout. Preserve the existing release environment behavior; this change performs no live setup or workflow disabling.
+
+#### After the first upload
+
+The first GHCR upload may create a private package. Radius uploads, verifies and persists its digest before checking public visibility and anonymous digest access. Private/internal visibility, lookup failure or failed anonymous access leaves an honest `pending-mirror` receipt with the GHCR digest; no private copy is requested. A package admin must use **Packages -> bicep-types-radius -> Package settings -> Change visibility -> Public**, then rerun using the original snapshot. There is no pre-existing-public-package requirement. Visibility is never changed automatically, and publication succeeds only after the private copy and anonymous digest verification finish.
+
+Run the focused checks without registry credentials:
+
+```bash
+node --test .github/scripts/bicep-types.test.mjs .github/scripts/monitor-remote-workflow_test.mjs
+actionlint .github/workflows/build-main.yaml .github/workflows/__publish-bicep-types.yaml
+```
+
+For the actual main-publisher capture-to-prepare roundtrip, have Docker running and Node.js, curl and tar available, then run:
+
+```bash
+make install-bicep install-oras install-yq
+PATH="$HOME/.local/bin:$PATH" make test-bicep-types-native
+```
+
+The test checks the tool versions against `build/tools.yaml` and uses the committed generated Radius types without regenerating or copying them. It runs the real `capture()` and `prepare()` with native Bicep and ORAS against an owned plaintext registry on a random loopback port. An OCI-disabled control uses the same absolute index path; successful capture exercises the publisher's isolated scratch configuration. It checks the raw archive, native manifest/config/layer digests and bytes, source-only annotation stamping, and original-generation evidence across preparation retries. The owned container, volume and temporary files are removed afterward. No credentials, external registry publishing or global trust changes are used. Ubuntu unit CI installs the tools in a preceding step and runs this target separately from the cloud TLS capture test.
+
 ## Verification
 
 - The workflow you changed runs green on your pull request (open it as a draft first if you want to iterate).
