@@ -77,7 +77,8 @@ type Receiver struct {
 //
 // In dryRun mode the listener accepts both plain HTTP and TLS on the same port. Plain HTTP,
 // missing or invalid tokens, and callers that are not in receiver.AllowedCallers are logged
-// as would-deny, and every request is still served.
+// as would-deny, and the request is still served. While the signing keys are stale, every
+// request is rejected with AuthorizationUnavailable, as in enforce mode.
 //
 // In enforce mode the listener only accepts TLS. Plain HTTP is closed and logged as denied.
 // A missing or invalid token gets InvalidAuthenticationInfo, a token that cannot be checked
@@ -229,12 +230,21 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 		}
 		ctx = logr.NewContext(ctx, logger)
 
-		if err := authz.Apply(ctx, s.mode, decision); err != nil {
+		// Without fresh signing keys no token can be checked, so every request is rejected
+		// until a refresh succeeds, even in dryRun.
+		mode := s.mode
+		if decision.Code == v1.CodeAuthorizationUnavailable {
+			mode = authz.ModeEnforce
+		}
+		if err := authz.Apply(ctx, mode, decision); err != nil {
 			writeDenied(ctx, w, r, err)
 			return
 		}
 
-		r = r.Clone(r.Context())
+		// A shallow copy shares r.Trailer, which the server fills in only after the handler
+		// reads the body; Clone would copy it before then. Only the header map is replaced.
+		r = r.WithContext(r.Context())
+		r.Header = r.Header.Clone()
 		r.Header.Del("Authorization")
 		if decision.Allowed {
 			r = r.WithContext(authz.WithIdentity(r.Context(), id))
