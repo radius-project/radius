@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -317,6 +318,9 @@ func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
 	}
 }
 
+// noStageManifest renders a chart without radius-apiserver-ca, so staging only records the live CAs.
+func noStageManifest(context.Context) (string, bool, error) { return "", true, nil }
+
 func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	shortenUCPAPIServiceWait(t)
 	ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
@@ -329,12 +333,13 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	impl := trustImpl(kubeClient, dynamicClient)
 
 	// Off does not touch the cluster.
-	require.NoError(t, impl.seedUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff))
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, noStageManifest))
 	_, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	require.Error(t, err)
 
-	// rad seeds the trust Secret from the live caBundle before Helm renders the APIService from it.
-	require.NoError(t, impl.seedUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeEnforce))
+	// rad seeds the trust Secret from the live caBundle before Helm renders the APIService from it. This chart has no
+	// radius-apiserver-ca Certificate to stage; Test_UpgradeRadius_StagesUCPAPIServerCABeforeHelm covers staging.
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeEnforce, noStageManifest))
 	require.Equal(t, []string{"ucp-ca"}, trustedSubjects(t, kubeClient))
 
 	// Helm installs the new CA and starts rolling UCP; the rollout has not finished, so both CAs stay trusted.
@@ -363,7 +368,7 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	requireNoTrustSecret(t, kubeClient)
 
 	// The next upgrade does not seed the trust Secret again.
-	require.NoError(t, impl.seedUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeEnforce))
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeEnforce, noStageManifest))
 	requireNoTrustSecret(t, kubeClient)
 }
 
