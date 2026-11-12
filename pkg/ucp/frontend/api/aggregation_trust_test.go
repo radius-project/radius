@@ -70,8 +70,8 @@ func TestAggregationEndpoint_HeaderlessCompatibility(t *testing.T) {
 			aggregation, err := service.Initialize(t.Context())
 			require.NoError(t, err)
 
-			// Until A7 migrates the deployment engine, the aggregation listener
-			// must still serve headerless requests without a client certificate.
+			// Headerless aggregation requests remain unidentified. This does not
+			// bypass the token policy on the separate internal listener.
 			server := httptest.NewUnstartedServer(aggregation.Handler)
 			server.TLS = aggregation.TLSConfig
 			server.StartTLS()
@@ -129,6 +129,9 @@ func TestInternalServer_RejectsForwardedIdentity(t *testing.T) {
 			} {
 				t.Run(tt.name, func(t *testing.T) {
 					request := httptest.NewRequest(http.MethodGet, config.Server.PathBase+"/planes/identity/local", nil)
+					request = request.WithContext(authz.WithIdentity(request.Context(), authz.Identity{
+						Component: "ucp", Namespace: "radius-system",
+					}))
 					// Even a proxy-trusted peer must not establish user identity on
 					// the component endpoint, which has a different trust boundary.
 					request.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{leaf}}
@@ -182,7 +185,7 @@ func TestInternalServer_DoesNotInheritAggregationTLSPolicy(t *testing.T) {
 
 	internal := service.internalServer(aggregation)
 	require.Equal(t, "127.0.0.1:9444", internal.Addr)
-	// Component trust is supplied by mtls.ListenAndServe, not by the proxy CA.
+	// Internal server TLS and token verification are supplied by mtls.ListenAndServe.
 	require.Nil(t, internal.TLSConfig)
 	require.Same(t, proxyTLS, aggregation.TLSConfig)
 	require.Equal(t, tls.RequestClientCert, aggregation.TLSConfig.ClientAuth)

@@ -87,13 +87,36 @@ type Options struct {
 	// configured kubeconfig or API-server address. It cannot be set through configuration.
 	TargetClusterIsDistinct bool `yaml:"-" json:"-"`
 
-	// CertificateDirectory is the directory that holds the component's mTLS certificate
-	// (tls.crt, tls.key, and ca.crt). It is required when the mode is not off.
+	// CertificateDirectory is the directory that holds, for components that receive internal
+	// calls, the server certificate and key (tls.crt and tls.key) issued by csi-driver-spiffe.
+	// It also holds the Radius CA bundle (ca.crt) when CADirectory is unset. It is required
+	// when the mode is not off.
 	CertificateDirectory string `yaml:"certificateDirectory,omitempty"`
 
-	// Namespace is the Radius namespace used to check peer certificate identities.
-	// It is required when the mode is not off.
+	// CADirectory is the directory that holds the Radius CA bundle (ca.crt) that servers chain
+	// to and clients verify servers against. Defaults to CertificateDirectory when unset.
+	CADirectory string `yaml:"caDirectory,omitempty"`
+
+	// TokenDirectory is the directory under which the component's projected ServiceAccount
+	// tokens are mounted, one per receiver at <TokenDirectory>/<receiver>/token. It is
+	// required for components that call another component when the mode is not off.
+	TokenDirectory string `yaml:"tokenDirectory,omitempty"`
+
+	// TrustDomain is the SPIFFE trust domain of Radius server certificates. Defaults to
+	// "radius.internal" when unset.
+	TrustDomain string `yaml:"trustDomain,omitempty"`
+
+	// Namespace is the Radius namespace. Callers' ServiceAccounts and receivers' SPIFFE IDs
+	// must be in it. It is required when the mode is not off.
 	Namespace string `yaml:"namespace,omitempty"`
+}
+
+// EffectiveCADirectory returns CADirectory, or CertificateDirectory when it is unset.
+func (o Options) EffectiveCADirectory() string {
+	if o.CADirectory == "" {
+		return o.CertificateDirectory
+	}
+	return o.CADirectory
 }
 
 // EffectiveMode returns the configured mode, or ModeOff when it is unset.

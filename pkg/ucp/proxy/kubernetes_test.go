@@ -22,7 +22,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/radius-project/radius/pkg/authz/mtls"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,12 +32,12 @@ func TestARMProxy_ComponentIdentityDoesNotPreserveForwardedUserHeaders(t *testin
 	downstream, err := url.Parse("https://applications-rp.radius-system.svc")
 	require.NoError(t, err)
 
-	for _, component := range mtls.Components {
+	for _, component := range authz.Components {
 		t.Run(component, func(t *testing.T) {
 			t.Parallel()
-			identity := mtls.Identity{Component: component, Namespace: "radius-system"}
+			identity := authz.Identity{Component: component, Namespace: "radius-system"}
 			request := httptest.NewRequest(http.MethodGet, "/planes/radius/local/resourceGroups/test", nil)
-			request = request.WithContext(mtls.WithIdentity(t.Context(), identity))
+			request = request.WithContext(authz.WithIdentity(t.Context(), identity))
 			request.Header.Set("X-Remote-User", "cluster-admin")
 			request.Header.Add("X-Remote-Group", "system:masters")
 			request.Header.Set("X-Remote-Extra-Scope", "all")
@@ -59,7 +59,7 @@ func TestARMProxy_ComponentIdentityDoesNotPreserveForwardedUserHeaders(t *testin
 			require.Empty(t, forwarded.Values("X-Remote-Group"))
 			require.Empty(t, forwarded.Values("X-Remote-Extra-Scope"))
 			require.Equal(t, "correlation", forwarded.Get("X-Ms-Correlation-Request-Id"))
-			got, ok := mtls.IdentityFromContext(request.Context())
+			got, ok := authz.IdentityFromContext(request.Context())
 			require.True(t, ok)
 			require.Equal(t, identity, got)
 		})

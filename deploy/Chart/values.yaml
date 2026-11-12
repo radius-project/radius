@@ -107,7 +107,7 @@ global:
   #   enabled=true                -> enforce (denials will be rejected)
   # Setting both enabled=true and dryRun=true fails installation: the dry run is a
   # preflight check for an installation that is not yet enforcing.
-  # Non-off modes issue component certificates and require cert-manager >=1.20.0.
+  # Non-off modes issue server certificates and require cert-manager >=1.20.0.
   # Pod Security Admission labels also apply to environment and application namespaces:
   #   off     -> no labels (default)
   #   dryRun  -> pod-security.kubernetes.io/warn and /audit (violations warned, not rejected)
@@ -120,18 +120,18 @@ global:
   # rejected with AdmissionPolicyDenied (enforce). Not rendered when the mode is off.
   # Applications RP also rejects environments and applications in that namespace, and output
   # resources there that reference a control-plane Secret (dryRun: logged; enforce: rejected).
-  # In dryRun and enforce, ucp, applications-rp, dynamic-rp, and controller mount their
-  # "<component>-mtls" Secret. UCP presents its certificate to the resource providers;
-  # the resource providers and controller call UCP over mTLS on internal port 9444.
-  # UCP port 9443 is not protected yet (planned for A6). Probes and metrics stay plain.
+  # In dryRun and enforce, callers send a projected ServiceAccount token to the receiver over TLS;
+  # the resource providers and controller call UCP on internal port 9444. UCP's aggregated API
+  # port 9443 serves Certificate "ucp-cert" from its own CA (see certificates). Probes and
+  # metrics stay plain.
   # Example: rad install kubernetes --set global.rbac.dryRun=true
   rbac:
-    # Enforce internal component authorization: require a client certificate from the Radius CA
-    # and reject unauthorized callers. Internal UCP-to-resource-provider calls use client mTLS.
+    # Enforce internal component authorization: require a valid ServiceAccount token from an
+    # allowed caller and reject unauthorized callers.
     # Also enforce Pod Security labels on environment and application namespaces.
     enabled: false
     # Log what authorization checks would deny without rejecting requests. Servers accept both
-    # TLS and plain HTTP, and need the mounted certificate files.
+    # TLS and plain HTTP, and need the mounted server certificate files.
     # Also warn/audit Pod Security violations on environment and application namespaces.
     dryRun: false
     # Pod Security Standards level for the labels: "baseline" or "restricted".
@@ -142,16 +142,60 @@ global:
       # Applications.Core containers; only objects with the radapp.io/resource-type label match.
       # TODO(D7): default to the application-template identity once the broker issues it.
       applicationIdentities: []
-    # Service certificates for mTLS between Radius components. Rendered only when the
-    # authorization mode is not off, and require cert-manager >=1.20.0.
+    certManager:
+      # Usernames that may request certificates from Issuers "radius-selfsigned-bootstrap" and
+      # "radius-apiserver-issuer": the cert-manager controller's ServiceAccount. Empty defaults to
+      # ["system:serviceaccount:cert-manager:cert-manager"]; rad install/upgrade sets it to the
+      # cert-manager it installs or reuses. The radius-certificate-issuance ValidatingAdmissionPolicy
+      # denies other requesters, and limits Radius service accounts to Issuer "radius-ca-issuer".
+      # The Kubernetes API server trusts the API server CA for ucp.<namespace>.svc, so only
+      # cert-manager may request from it. The policy needs Kubernetes 1.30 or later.
+      requesters: []
+    # CAs and issuers for Radius server certificates. Rendered only when the authorization mode
+    # is not off, and require cert-manager >=1.20.0.
     # rad install/upgrade manages this prerequisite; plain Helm users must install it first.
+    # In selfSigned mode, the only mode supported today, two separate Radius-owned CAs are created
+    # in the release namespace:
+    # - Radius CA: signs only the csi-driver-spiffe server certificates. Its requests are approved
+    #   only by Radius's csi-driver-spiffe approver; cert-manager's default approver must not
+    #   approve signer "issuers.cert-manager.io/<namespace>.radius-ca-issuer".
+    # - API server CA: Certificate and Secret "radius-apiserver-ca" and Issuer
+    #   "radius-apiserver-issuer". It signs only UCP's aggregated API certificate
+    #   (Certificate "ucp-cert", Secret "ucp-apiserver-tls", SAN ucp.<namespace>.svc, 24 hours,
+    #   renewed at 16 hours), which cert-manager's default approver approves. cert-manager's
+    #   cainjector copies ca.crt of Secret "radius-apiserver-ca", the self-signed CA certificate,
+    #   into the v1alpha3.api.ucp.dev APIService caBundle and follows each renewal of the CA (the
+    #   cainjector must run with APIService injection enabled and watch this namespace); no Radius
+    #   component trusts it. While UCP moves from an earlier CA, such as the Helm-generated ucp-ca,
+    #   rad install/upgrade/rollback keeps both trusted through Secret "radius-apiserver-trust",
+    #   then deletes that Secret, points the APIService at "radius-apiserver-ca", and waits until
+    #   the APIService is Available.
+    # rad install/upgrade configures the cert-manager it installs (approveSignerNames) and fails
+    # if an existing cert-manager would auto-approve radius-ca-issuer requests.
     certificates:
       # Where the Radius CA comes from. Only selfSigned is supported today: cert-manager
-      # creates a Radius-only CA (Certificate and Secret "radius-ca") and Issuer "radius-ca-issuer".
-      # Each component gets Certificate "<component>-cert" stored in Secret "<component>-mtls"
-      # (tls.crt, tls.key, ca.crt) for ucp, applications-rp, dynamic-rp, controller, and bicep-de.
-      # Keys are ECDSA P-256; certificates last 24h and renew 8h before expiry.
+      # creates Radius-owned CAs as described above, with ECDSA P-256 keys. caSecret and issuerRef
+      # (bring your own CA or issuer) are rejected until they are implemented; when they are, the
+      # operator's CA or issuer is used where applicable, including for UCP's aggregated API
+      # certificate, and must support the required DNS and SPIFFE URI identities. Request
+      # restrictions still apply to whichever issuer is used.
       mode: selfSigned
+    # Server certificates from Radius's own csi-driver-spiffe instance, which rad install/upgrade
+    # installs in the release namespace when the authorization mode is not off. ucp,
+    # applications-rp, and dynamic-rp mount a CSI volume at /var/run/radius/spiffe holding a
+    # certificate with one SPIFFE URI SAN, spiffe://<trustDomain>/ns/<namespace>/sa/<service account>,
+    # signed by Issuer "radius-ca-issuer". Callers also mount 10-minute projected ServiceAccount
+    # tokens at /var/run/radius/tokens/<receiver>/token, with the receiver's name as the audience.
+    # Receivers verify each caller's token offline; callers verify the receiver's SPIFFE ID before
+    # sending a token. The Radius CA bundle comes from a separate volume: every component projects
+    # only key ca.crt of Secret "radius-ca" to /var/run/radius/ca (never tls.key), because
+    # csi-driver-spiffe writes no ca.crt without a source CA bundle. Plain Helm users must install
+    # csi-driver-spiffe with the same trust domain and CSI driver name.
+    spiffe:
+      # SPIFFE trust domain of the Radius server certificates.
+      trustDomain: radius.internal
+      # Name of the CSIDriver the Radius csi-driver-spiffe instance registers.
+      csiDriverName: spiffe.csi.radapp.io
 
 controller:
   image: controller

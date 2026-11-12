@@ -18,7 +18,12 @@ limitations under the License.
 //
 //	rogue-client idle
 //	rogue-client request [-X method] [-H 'Name: value']... [--data body]
-//	    [--cert file --key file] [--cacert file] [-k] [--max-time 30s] URL
+//	    [--cert file --key file] [--cacert file] [-k] [--max-time 30s]
+//	    [--radius-receiver name --radius-dir dir --radius-namespace ns [--radius-trust-domain td]] URL
+//
+// --radius-receiver sends the request with the Radius component client transport: it verifies
+// the server against <dir>/ca.crt and the receiver's SPIFFE ID, and only then sends the token in
+// <dir>/tokens/<receiver>/token.
 //
 // request writes the response body to stdout followed by StatusMarker and the HTTP
 // status code, or StatusMarker and 0 when no HTTP response was received.
@@ -34,8 +39,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 )
 
 const (
@@ -91,6 +100,11 @@ type requestOptions struct {
 	insecure bool
 	timeout  time.Duration
 	url      string
+
+	receiver    string
+	radiusDir   string
+	namespace   string
+	trustDomain string
 }
 
 func request(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -133,6 +147,10 @@ func parseRequest(args []string, stderr io.Writer) (requestOptions, error) {
 	fs.StringVar(&opts.caCert, "cacert", "", "CA certificate PEM file used to verify the server")
 	fs.BoolVar(&opts.insecure, "k", false, "skip server certificate verification")
 	fs.DurationVar(&opts.timeout, "max-time", 30*time.Second, "request timeout")
+	fs.StringVar(&opts.receiver, "radius-receiver", "", "send with the Radius client transport for this receiver")
+	fs.StringVar(&opts.radiusDir, "radius-dir", "", "directory holding ca.crt and tokens/<receiver>/token")
+	fs.StringVar(&opts.namespace, "radius-namespace", "", "Radius namespace in the receiver's SPIFFE ID")
+	fs.StringVar(&opts.trustDomain, "radius-trust-domain", "", "SPIFFE trust domain of the receiver")
 	if err := fs.Parse(args); err != nil {
 		return opts, err
 	}
@@ -142,6 +160,14 @@ func parseRequest(args []string, stderr io.Writer) (requestOptions, error) {
 	opts.url = fs.Arg(0)
 	if (opts.cert == "") != (opts.key == "") {
 		return opts, errors.New("--cert and --key must be set together")
+	}
+	if opts.receiver != "" {
+		if opts.radiusDir == "" || opts.namespace == "" {
+			return opts, errors.New("--radius-receiver requires --radius-dir and --radius-namespace")
+		}
+		if opts.cert != "" || opts.caCert != "" || opts.insecure {
+			return opts, errors.New("--radius-receiver cannot be combined with --cert, --cacert, or -k")
+		}
 	}
 	return opts, nil
 }
@@ -161,6 +187,20 @@ func buildRequest(ctx context.Context, opts requestOptions) (*http.Request, *htt
 			return nil, nil, fmt.Errorf("invalid header %q, expected 'Name: value'", h)
 		}
 		req.Header.Add(strings.TrimSpace(name), strings.TrimSpace(value))
+	}
+
+	if opts.receiver != "" {
+		transport, err := mtls.NewClientTransport(authz.Options{
+			Mode:                 authz.ModeEnforce,
+			CertificateDirectory: opts.radiusDir,
+			TokenDirectory:       filepath.Join(opts.radiusDir, "tokens"),
+			TrustDomain:          opts.trustDomain,
+			Namespace:            opts.namespace,
+		}, opts.receiver)
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating Radius client transport: %w", err)
+		}
+		return req, &http.Client{Transport: transport, Timeout: opts.timeout}, nil
 	}
 
 	tlsConfig := &tls.Config{InsecureSkipVerify: opts.insecure} //nolint:gosec // -k deliberately skips verification for negative tests.

@@ -31,6 +31,12 @@ func QuoteFlagValue(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
 }
 
+// KubectlCommand returns a kubectl command for the cluster that kubeContext selects, like kubectlCommand, for
+// commands that rad suggests outside this package.
+func KubectlCommand(kubeContext string, namespace string, arguments string) string {
+	return kubectlCommand(kubeContext, namespace, arguments)
+}
+
 // kubectlCommand returns a kubectl command for the cluster that kubeContext selects. It omits the namespace flag when
 // namespace is empty, for example for cluster-scoped resources.
 func kubectlCommand(kubeContext string, namespace string, arguments string) string {
