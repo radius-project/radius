@@ -899,6 +899,7 @@ func Test_UninstallRadius_RemovesCSIDriverSPIFFEAfterRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		newUCPAPIServerTrustClient:  uninstallTrustClient,
 		newCSIDriverSPIFFEClient:    func(string) (kubernetes.Interface, error) { return k8sfake.NewClientset(), nil },
 	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
@@ -973,6 +974,7 @@ func Test_UninstallRadius_KeepsCertManagerWhenCSIDriverSPIFFEIsKept(t *testing.T
 	impl := &Impl{
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		newUCPAPIServerTrustClient:  uninstallTrustClient,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
 			return k8sfake.NewClientset(spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)), nil
@@ -1098,6 +1100,7 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 				},
 				newCSIDriverSPIFFEClient:    func(string) (kubernetes.Interface, error) { return sarClient(allowed, nil, objects...), nil },
 				newCertManagerDynamicClient: readyUCPAPIServiceClient,
+				newUCPAPIServerTrustClient:  issuedUCPAPIServerTrustClient,
 			}
 			var err error
 			if tt.toRevision {

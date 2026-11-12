@@ -158,8 +158,10 @@ without a configured source CA bundle. Servers chain their certificate to it and
 clients verify servers against it. The `radius-ca` CA signs only these
 SPIFFE server certificates; in the `selfSigned` certificate mode (the only one
 supported today), UCP's aggregated API certificate comes from the separate
-`radius-apiserver-ca`, which Radius components do not trust. The
-Kubernetes API server does trust it for UCP, so the `radius-certificate-issuance`
+`radius-apiserver-ca`, which Radius components do not trust. `rad` gives
+only that CA to the Kubernetes API server, through the `radius-apiserver-trust`
+Secret that cert-manager's cainjector copies into the APIService `caBundle`.
+The API server does trust it for UCP, so the `radius-certificate-issuance`
 ValidatingAdmissionPolicy lets only the cert-manager controller request from
 `radius-apiserver-issuer` and `radius-selfsigned-bootstrap`, and limits Radius
 ServiceAccounts to `radius-ca-issuer`.

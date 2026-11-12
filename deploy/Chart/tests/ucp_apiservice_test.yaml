@@ -5,6 +5,13 @@ templates:
 release:
   name: radius
   namespace: radius-system
+kubernetesProvider:
+  scheme:
+    "v1/Secret":
+      gvr:
+        version: v1
+        resource: secrets
+      namespaced: true
 tests:
   - it: generates the ucp-cert Secret and caBundle when authorization is off
     template: ucp/apiservice.yaml
@@ -97,8 +104,16 @@ tests:
           path: spec.issuerRef.name
           value: radius-apiserver-issuer
         documentIndex: 0
+      - equal:
+          path: spec.duration
+          value: 24h
+        documentIndex: 0
+      - equal:
+          path: spec.renewBefore
+          value: 8h
+        documentIndex: 0
 
-  - it: injects the API server CA into the APIService instead of a caBundle
+  - it: injects the CA bundle from the trust Secret, never from ucp-cert, on a fresh install
     template: ucp/apiservice.yaml
     set:
       global.rbac.enabled: true
@@ -107,9 +122,56 @@ tests:
           of: APIService
         documentIndex: 1
       - equal:
-          path: metadata.annotations["cert-manager.io/inject-ca-from"]
-          value: radius-system/ucp-cert
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: radius-system/radius-apiserver-trust
         documentIndex: 1
+      - notExists:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+        documentIndex: 1
+      - notExists:
+          path: spec.caBundle
+        documentIndex: 1
+
+  - it: renders the caBundle from the trust Secret rad maintains
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-trust
+            namespace: radius-system
+          data:
+            ca.crt: dHJ1c3QtY2E=
+    asserts:
+      - equal:
+          path: spec.caBundle
+          value: dHJ1c3QtY2E=
+        documentIndex: 1
+
+  - it: does not copy the ca.crt of UCP's certificate Secrets into the caBundle
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: ucp-apiserver-tls
+            namespace: radius-system
+          data:
+            ca.crt: b3JnLXJvb3Q=
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: ucp-cert
+            namespace: radius-system
+          data:
+            ca.crt: dWNwLWNh
+    asserts:
       - notExists:
           path: spec.caBundle
         documentIndex: 1
@@ -126,8 +188,8 @@ tests:
           value: [ucp.custom-ns.svc]
         documentIndex: 0
       - equal:
-          path: metadata.annotations["cert-manager.io/inject-ca-from"]
-          value: custom-ns/ucp-cert
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: custom-ns/radius-apiserver-trust
         documentIndex: 1
 
   - it: mounts the cert-manager Secret when authorization is on
