@@ -25,6 +25,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/stretchr/testify/require"
@@ -37,6 +38,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
+	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
@@ -779,4 +781,283 @@ func Test_Native_IdentifierErrors_OtherProduct(t *testing.T) {
 	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
 	require.Equal(t, message, resp.message())
 	require.Empty(t, h.fake.Calls())
+}
+
+// Test_Native_EquivalentAfterPartialUpdate is the review's example: an update that changes Mode and removes
+// Sharpness from a list item fails after the Mode call, partly applied. AWS still has Sharpness, so the retry with the
+// same template sends the removal, and the deploy after that only reads.
+func Test_Native_EquivalentAfterPartialUpdate(t *testing.T) {
+	before := nativeProperties(1)
+	before["Mode"] = "old"
+	before["Videos"] = []any{map[string]any{"Name": "hd", "Sharpness": 75}}
+	after := nativeProperties(1)
+	after["Mode"] = "new"
+	after["Videos"] = []any{map[string]any{"Name": "hd"}}
+
+	h := newNativeHarness(t)
+	h.fake.Opts.Equivalent = func(path string, template any, aws any) bool { return within(template, aws) }
+	h.deploy(nativePath, before)
+	h.fake.Calls()
+
+	// The update makes one call per change: Mode, then Sharpness. The second fails, partly applied.
+	h.fake.FailOn(1, nativefake.ClientError("ValidationException", "Sharpness can't be cleared now"))
+	resp := h.put(nativePath, after)
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	stored := h.cc.Resource(nativeType, "app-native")
+	require.Equal(t, "new", stored["Mode"])
+	require.EqualValues(t, 75, asMap(asList(stored["Videos"])[0])["Sharpness"], "AWS still has Sharpness")
+	h.fake.Calls()
+
+	resp = h.put(nativePath, after)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	calls := h.fake.Calls()
+	require.Equal(t, []string{"Read", "Update"}, methods(calls))
+	require.Contains(t, calls[1].Patch, map[string]any{"op": "remove", "path": "/Videos/0/Sharpness"}, "the retry sends the removal")
+	for _, result := range h.finish() {
+		require.Nil(t, result.Error)
+	}
+	require.NotContains(t, asMap(asList(h.cc.Resource(nativeType, "app-native")["Videos"])[0]), "Sharpness")
+
+	resp = h.put(nativePath, after)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()), "once the removal succeeded, the deploy changes nothing")
+}
+
+// Test_Native_EquivalentAfterUnconfirmedUpdate checks the other ways an update's values are kept as possibly applied:
+// the worker finds the update partly applied, or a request resumes an update UCP reserved but never tracked. In both,
+// AWS still has Sharpness, so the next deploy with the same template sends the removal, and the one after only reads.
+func Test_Native_EquivalentAfterUnconfirmedUpdate(t *testing.T) {
+	before := nativeProperties(1)
+	before["Videos"] = []any{map[string]any{"Name": "hd", "Sharpness": 75}}
+	after := nativeProperties(1)
+	after["Videos"] = []any{map[string]any{"Name": "hd"}}
+	sharpness := []map[string]any{{"op": "replace", "path": "/Videos", "value": []any{map[string]any{"Name": "hd", "Sharpness": 75}}}}
+
+	interruptions := map[string]func(h *nativeHarness){
+		"the worker finds it partly applied": func(h *nativeHarness) {
+			h.fake.Failures[native.OperationUpdate] = &native.Failure{Message: "the second call failed", Outcome: native.OutcomePartial}
+			require.Equal(t, http.StatusCreated, h.put(nativePath, after).status)
+			require.NoError(t, h.cc.Patch(nativeType, "app-native", sharpness))
+			require.NotNil(t, h.finish()[0].Error)
+			delete(h.fake.Failures, native.OperationUpdate)
+		},
+		"a request resumes it": func(h *nativeHarness) {
+			h.saveRecord(nativePath, func(rec *datamodel.AWSResource) {
+				rec.Properties.PendingLastApplied = map[string]any{"Name": "app-native", "Size": 1, "Videos": []any{map[string]any{"Name": "hd"}}}
+				rec.Properties.PendingOperation = records.OperationUpdate
+				rec.SetProvisioningState(v1.ProvisioningStateUpdating)
+			})
+			records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+			t.Cleanup(func() { records.Now = time.Now })
+		},
+	}
+	for name, interrupt := range interruptions {
+		t.Run(name, func(t *testing.T) {
+			h := newNativeHarness(t)
+			h.fake.Opts.Equivalent = func(path string, template any, aws any) bool { return within(template, aws) }
+			h.deploy(nativePath, before)
+			interrupt(h)
+			h.fake.Calls()
+
+			resp := h.put(nativePath, after)
+			records.Now = time.Now
+			require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+			calls := h.fake.Calls()
+			require.Equal(t, []string{"Read", "Update"}, methods(calls))
+			require.Contains(t, calls[1].Patch, map[string]any{"op": "remove", "path": "/Videos/0/Sharpness"})
+			for _, result := range h.finish() {
+				require.Nil(t, result.Error)
+			}
+			require.Empty(t, h.record(nativePath).Properties.UnresolvedPaths, "the update succeeded")
+
+			resp = h.put(nativePath, after)
+			require.Equal(t, http.StatusOK, resp.status, resp.raw)
+			require.Equal(t, []string{"Read"}, methods(h.fake.Calls()))
+		})
+	}
+
+	t.Run("a deploy with nothing to change resolves the paths", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.fake.Opts.Equivalent = func(path string, template any, aws any) bool { return within(template, aws) }
+		h.deploy(nativePath, before)
+		h.saveRecord(nativePath, func(rec *datamodel.AWSResource) { rec.Properties.UnresolvedPaths = []string{"Videos"} })
+		h.fake.Calls()
+
+		resp := h.put(nativePath, before)
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"Read"}, methods(h.fake.Calls()), "AWS already has the template's value")
+		require.Empty(t, h.record(nativePath).Properties.UnresolvedPaths)
+	})
+}
+
+// Test_Native_EquivalentAfterFailedCloudControlUpdate checks a type with a native handler where Cloud Control serves
+// it. A Cloud Control update that adds Sharpness fails after AWS applied it, and the template then goes back to its
+// earlier list. Last-applied never had Sharpness, so the deploy sends the template's list, and AWS ends without it.
+func Test_Native_EquivalentAfterFailedCloudControlUpdate(t *testing.T) {
+	without := nativeProperties(1)
+	without["Videos"] = []any{map[string]any{"Name": "hd"}}
+	with := nativeProperties(1)
+	with["Videos"] = []any{map[string]any{"Name": "hd", "Sharpness": 75}}
+
+	h := newNativeHarness(t)
+	h.fake.Opts.Equivalent = func(path string, template any, aws any) bool { return within(template, aws) }
+	h.provisioningTypes[nativeType] = cftypes.ProvisioningTypeFullyMutable
+	h.deploy(nativePath, without)
+
+	h.cc.FailNext = "GeneralServiceException"
+	require.Equal(t, http.StatusCreated, h.put(nativePath, with).status)
+	require.NoError(t, h.cc.Patch(nativeType, "app-native", []map[string]any{{"op": "replace", "path": "/Videos", "value": with["Videos"]}}))
+	require.NotNil(t, h.finish()[0].Error)
+	h.cc.Calls()
+
+	resp := h.put(nativePath, without)
+	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+	calls := h.cc.Calls()
+	update := calls[len(calls)-1]
+	require.Equal(t, "UpdateResource", update.Operation)
+	require.Contains(t, update.Document, `"path":"/Videos/0/Sharpness"`)
+	for _, result := range h.finish() {
+		require.Nil(t, result.Error)
+	}
+	require.NotContains(t, asMap(asList(h.cc.Resource(nativeType, "app-native")["Videos"])[0]), "Sharpness")
+	require.Empty(t, h.record(nativePath).Properties.UnresolvedPaths)
+}
+
+// Test_Native_DisruptiveUpdate checks a type whose update restarts the resource. When UCP can't tell whether AWS added
+// a value or an earlier deploy set it, the deploy fails with 409 and changes nothing. Setting the property to the value
+// AWS reports resolves it, and a later removal is then sent.
+func Test_Native_DisruptiveUpdate(t *testing.T) {
+	video := func(item map[string]any) map[string]any {
+		properties := nativeProperties(1)
+		properties["Videos"] = []any{item}
+		return properties
+	}
+	newHarness := func(t *testing.T) *nativeHarness {
+		h := newNativeHarness(t)
+		h.fake.Opts.Equivalent = func(path string, template any, aws any) bool { return within(template, aws) }
+		h.fake.Opts.DisruptiveUpdate = true
+		h.deploy(nativePath, video(map[string]any{"Name": "hd", "Sharpness": 75}))
+		return h
+	}
+	codec := []map[string]any{{"op": "add", "path": "/Videos/0/Codec", "value": "h264"}}
+
+	t.Run("uncertain fails", func(t *testing.T) {
+		h := newHarness(t)
+		require.NoError(t, h.cc.Patch(nativeType, "app-native", codec))
+		before := h.record(nativePath)
+		h.fake.Calls()
+
+		resp := h.put(nativePath, video(map[string]any{"Name": "hd"}))
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Equal(t, `UCP can't tell whether AWS added the values at Videos of the AWS resource "app-native" beyond the template's, or an earlier deploy set them, and an update can restart or interrupt a resource of type AWS::Test::Native. UCP changed nothing. To keep AWS's values, set Videos to the value AWS reports. After that deploy, UCP can tell what a later template removes.`, resp.message())
+		require.Equal(t, []string{"Read"}, methods(h.fake.Calls()))
+		require.Equal(t, before.Properties.LastApplied, h.record(nativePath).Properties.LastApplied)
+
+		// The remedy: the template takes AWS's value, which changes nothing in AWS.
+		resp = h.put(nativePath, video(map[string]any{"Name": "hd", "Sharpness": 75, "Codec": "h264"}))
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"Read"}, methods(h.fake.Calls()))
+
+		// Radius now owns everything AWS has there, so the removal is certain and sent.
+		resp = h.put(nativePath, video(map[string]any{"Name": "hd", "Codec": "h264"}))
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		calls := h.fake.Calls()
+		require.Equal(t, []string{"Read", "Update"}, methods(calls))
+		require.Equal(t, []map[string]any{{"op": "remove", "path": "/Videos/0/Sharpness"}}, calls[1].Patch)
+		for _, result := range h.finish() {
+			require.Nil(t, result.Error)
+		}
+	})
+
+	t.Run("AWS has exactly what the last deploy set, so the removal is sent", func(t *testing.T) {
+		h := newHarness(t)
+		h.fake.Calls()
+		resp := h.put(nativePath, video(map[string]any{"Name": "hd"}))
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		require.Equal(t, []string{"Read", "Update"}, methods(h.fake.Calls()))
+	})
+
+	t.Run("a type that doesn't declare it sends", func(t *testing.T) {
+		h := newHarness(t)
+		h.fake.Opts.DisruptiveUpdate = false
+		require.NoError(t, h.cc.Patch(nativeType, "app-native", codec))
+		h.fake.Calls()
+		resp := h.put(nativePath, video(map[string]any{"Name": "hd"}))
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		require.Equal(t, []string{"Read", "Update"}, methods(h.fake.Calls()))
+	})
+}
+
+// Test_Native_UnresolvedShapeChange is the independent review's example: an interrupted update that changes a list
+// into an object is resumed. A retry with the same template replaces AWS's old list, and one that leaves the property
+// out removes it.
+func Test_Native_UnresolvedShapeChange(t *testing.T) {
+	before := nativeProperties(1)
+	before["Config"] = []any{map[string]any{"Name": "hd", "Sharpness": 75}}
+	after := nativeProperties(1)
+	after["Config"] = map[string]any{"Items": []any{map[string]any{"Name": "hd"}}}
+
+	tests := []struct {
+		name  string
+		retry map[string]any
+		want  any
+	}{
+		{"the retry sets the object", after, map[string]any{"Items": []any{map[string]any{"Name": "hd"}}}},
+		{"the retry leaves it out", nativeProperties(1), nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newNativeHarness(t)
+			h.deploy(nativePath, before)
+			h.saveRecord(nativePath, func(rec *datamodel.AWSResource) {
+				rec.Properties.PendingLastApplied = map[string]any{"Name": "app-native", "Size": 1, "Config": map[string]any{"Items": []any{map[string]any{"Name": "hd"}}}}
+				rec.Properties.PendingOperation = records.OperationUpdate
+				rec.SetProvisioningState(v1.ProvisioningStateUpdating)
+			})
+			records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+			t.Cleanup(func() { records.Now = time.Now })
+
+			resp := h.put(nativePath, tt.retry)
+			records.Now = time.Now
+			require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+			require.Equal(t, []string{"Config", "Config/Items"}, h.record(nativePath).Properties.UnresolvedPaths)
+			for _, result := range h.finish() {
+				require.Nil(t, result.Error)
+			}
+			require.Equal(t, tt.want, h.cc.Resource(nativeType, "app-native")["Config"])
+		})
+	}
+}
+
+// Test_Native_FailedCloudControlUpdateOwnership is the independent review's example: a Cloud Control update that
+// adds Mode fails after AWS applied it, and the next template leaves Mode out. The update's values are kept as
+// possibly applied, so the deploy clears Mode.
+func Test_Native_FailedCloudControlUpdateOwnership(t *testing.T) {
+	h := newNativeHarness(t)
+	h.provisioningTypes[nativeType] = cftypes.ProvisioningTypeFullyMutable
+	h.deploy(nativePath, nativeProperties(1))
+
+	with := nativeProperties(1)
+	with["Mode"] = "new"
+	h.cc.FailNext = "GeneralServiceException"
+	require.Equal(t, http.StatusCreated, h.put(nativePath, with).status)
+	require.NoError(t, h.cc.Patch(nativeType, "app-native", []map[string]any{{"op": "add", "path": "/Mode", "value": "new"}}))
+	require.NotNil(t, h.finish()[0].Error)
+	require.Equal(t, "new", h.record(nativePath).Properties.LastApplied["Mode"], "the update may have applied Mode")
+
+	require.Equal(t, http.StatusCreated, h.put(nativePath, nativeProperties(1)).status)
+	for _, result := range h.finish() {
+		require.Nil(t, result.Error)
+	}
+	require.NotContains(t, h.cc.Resource(nativeType, "app-native"), "Mode")
+}
+
+func asMap(v any) map[string]any {
+	m, _ := v.(map[string]any)
+	return m
+}
+
+func asList(v any) []any {
+	l, _ := v.([]any)
+	return l
 }
