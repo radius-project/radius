@@ -18,7 +18,6 @@ package helm
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -39,29 +38,37 @@ const (
 	// ucpAPIServiceName is the APIService through which the Kubernetes API server reaches UCP.
 	ucpAPIServiceName = "v1alpha3.api.ucp.dev"
 
-	// ucpAPIServerCertificateName is the cert-manager Certificate of UCP's API server, whose CA cert-manager's
-	// cainjector writes into the APIService when Radius authorization is on.
+	// ucpAPIServerCertificateName is the cert-manager Certificate of UCP's API server when Radius authorization is
+	// on.
 	ucpAPIServerCertificateName = "ucp-cert"
 )
 
 var (
-	apiServicesResource  = schema.GroupVersionResource{Group: "apiregistration.k8s.io", Version: "v1", Resource: "apiservices"}
-	certificatesResource = schema.GroupVersionResource{Group: "cert-manager.io", Version: "v1", Resource: "certificates"}
+	apiServicesResource = schema.GroupVersionResource{Group: "apiregistration.k8s.io", Version: "v1", Resource: "apiservices"}
 
 	// ucpAPIServiceTimeout and ucpAPIServicePollInterval bound the wait for the UCP APIService. Tests shorten them.
 	ucpAPIServiceTimeout      = 5 * time.Minute
 	ucpAPIServicePollInterval = 2 * time.Second
 )
 
-// waitForUCPAPIService waits, when Radius authorization is on, until the UCP APIService has a CA bundle and the
-// Kubernetes API server reports it Available. Helm waits only for workloads, and with authorization on the
-// APIService trusts UCP only after cert-manager issues UCP's API server certificate and its cainjector copies the CA
-// into the APIService. With authorization off, the chart sets the CA bundle itself and this returns at once.
+// waitForUCPAPIService, when Radius authorization is on, reconciles the CAs the Kubernetes API server trusts for UCP
+// and waits until the UCP APIService has a CA bundle and the API server reports it Available. Helm waits only for
+// workloads, and with authorization on the APIService trusts UCP only after cert-manager issues
+// radius-apiserver-ca and rad writes it to Secret radius-apiserver-trust. With authorization off, the chart sets
+// the CA bundle itself and this returns at once.
 func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode) error {
 	if mode == authz.ModeOff {
 		return nil
 	}
+	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace); err != nil {
+		return err
+	}
+	return i.waitForAvailableUCPAPIService(ctx, kubeContext, radiusNamespace)
+}
 
+// waitForAvailableUCPAPIService waits until the UCP APIService has a CA bundle and the API server reports it
+// Available.
+func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string) error {
 	newClient := i.newCertManagerDynamicClient
 	if newClient == nil {
 		newClient = newCertManagerDynamicClient
@@ -88,36 +95,64 @@ func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusName
 	}
 
 	return fmt.Errorf("APIService %s is not usable after %s: %s. %s", ucpAPIServiceName, ucpAPIServiceTimeout, problem,
-		ucpAPIServiceDiagnostics(ctx, client, kubeContext, radiusNamespace, problem == ucpAPIServiceNoCABundle))
+		ucpAPIServiceDiagnostics(kubeContext, radiusNamespace, problem == ucpAPIServiceNoCABundle))
 }
 
 // waitForInstalledUCPAPIService waits for the UCP APIService after rad installs or upgrades Radius with the values of
 // options merged over storedValues.
 func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any) error {
-	currentValues, err := parseUserValuesFromCLI(&options.Radius)
-	if err != nil {
-		return fmt.Errorf("failed to parse Radius values: %w", err)
-	}
-	mode, err := resolveAuthzMode(storedValues, currentValues)
+	mode, err := installedAuthzMode(options, storedValues)
 	if err != nil {
 		return err
 	}
 	return i.waitForUCPAPIService(ctx, kubeContext, options.Radius.Namespace, mode)
 }
 
+// seedInstalledUCPAPIServerTrust seeds the UCP API server trust before rad installs or upgrades Radius with the
+// values of options merged over storedValues.
+func (i *Impl) seedInstalledUCPAPIServerTrust(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any) error {
+	mode, err := installedAuthzMode(options, storedValues)
+	if err != nil {
+		return err
+	}
+	return i.seedUCPAPIServerTrust(ctx, kubeContext, options.Radius.Namespace, mode)
+}
+
+func installedAuthzMode(options ClusterOptions, storedValues map[string]any) (authz.Mode, error) {
+	currentValues, err := parseUserValuesFromCLI(&options.Radius)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse Radius values: %w", err)
+	}
+	return resolveAuthzMode(storedValues, currentValues)
+}
+
 // waitForRolledBackUCPAPIService waits for the UCP APIService after rad rolls Radius back to revision of history.
 func (i *Impl) waitForRolledBackUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
+	mode, found, err := rolledBackAuthzMode(history, revision)
+	if err != nil || !found {
+		return err
+	}
+	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode)
+}
+
+// seedRolledBackUCPAPIServerTrust seeds the UCP API server trust before rad rolls Radius back to revision of history.
+func (i *Impl) seedRolledBackUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
+	mode, found, err := rolledBackAuthzMode(history, revision)
+	if err != nil || !found {
+		return err
+	}
+	return i.seedUCPAPIServerTrust(ctx, kubeContext, radiusNamespace, mode)
+}
+
+func rolledBackAuthzMode(history []*releasev1.Release, revision int) (authz.Mode, bool, error) {
 	for _, rel := range history {
 		if rel == nil || rel.Version != revision {
 			continue
 		}
 		mode, err := resolveAuthzMode(rel.Config, nil)
-		if err != nil {
-			return err
-		}
-		return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode)
+		return mode, err == nil, err
 	}
-	return nil
+	return "", false, nil
 }
 
 const ucpAPIServiceNoCABundle = "it has no CA bundle"
@@ -147,29 +182,15 @@ func ucpAPIServiceProblem(ctx context.Context, client dynamic.Interface) (string
 }
 
 // ucpAPIServiceDiagnostics tells the user where to look when the UCP APIService does not become usable.
-func ucpAPIServiceDiagnostics(ctx context.Context, client dynamic.Interface, kubeContext, radiusNamespace string, noCABundle bool) string {
+func ucpAPIServiceDiagnostics(kubeContext, radiusNamespace string, noCABundle bool) string {
 	if !noCABundle {
 		return fmt.Sprintf("Check that the ucp pods are ready and that the API server can reach Service ucp in namespace %s, for example with %s",
 			radiusNamespace, kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml"))
 	}
 
-	certificate := "Certificate " + radiusNamespace + "/" + ucpAPIServerCertificateName
-	ready := "its status is unknown"
-	if object, err := client.Resource(certificatesResource).Namespace(radiusNamespace).Get(ctx, ucpAPIServerCertificateName, metav1.GetOptions{}); err == nil {
-		if c, found := condition(object, "Ready"); found {
-			ready = fmt.Sprintf("it is Ready=%s (%s: %s)", c.status, c.reason, c.message)
-		} else {
-			ready = "it has no Ready condition"
-		}
-	} else if apierrors.IsNotFound(err) {
-		ready = "it does not exist"
-	} else if !errors.Is(err, context.Canceled) {
-		ready = "it could not be read: " + err.Error()
-	}
-
-	return fmt.Sprintf("cert-manager's cainjector copies the CA of %s into the APIService once the certificate is issued, and %s. Check the certificate with %s, and find the cainjector to check its logs with %s",
-		certificate, ready,
-		kubectlCommand(kubeContext, radiusNamespace, "describe certificate "+ucpAPIServerCertificateName),
+	return fmt.Sprintf("rad writes the CA certificates the API server trusts for UCP to ca.crt of Secret %s/%s, and cert-manager's cainjector copies them into the APIService. Check the Secret with %s, and find the cainjector to check its logs with %s",
+		radiusNamespace, ucpAPIServerTrustSecretName,
+		kubectlCommand(kubeContext, radiusNamespace, "get secret "+ucpAPIServerTrustSecretName+" -o yaml"),
 		kubectlCommand(kubeContext, "", "get pods -A -l app.kubernetes.io/component=cainjector"))
 }
 

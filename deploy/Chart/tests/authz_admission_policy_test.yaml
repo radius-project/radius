@@ -100,7 +100,7 @@ tests:
           path: spec.variables
           content:
             name: controlPlaneSecrets
-            expression: '["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","ucp-apiserver-tls","radius-ca","radius-apiserver-ca","my-root-ca","target-kubeconfig"]'
+            expression: '["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","ucp-apiserver-tls","radius-ca","radius-apiserver-ca","radius-apiserver-trust","my-root-ca","target-kubeconfig"]'
         documentIndex: 0
 
   - it: safely quotes an identity containing an apostrophe, double quote, and backslash

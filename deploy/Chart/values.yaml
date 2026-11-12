@@ -161,11 +161,14 @@ global:
     #   approve signer "issuers.cert-manager.io/<namespace>.radius-ca-issuer".
     # - API server CA: Certificate and Secret "radius-apiserver-ca" and Issuer
     #   "radius-apiserver-issuer". It signs only UCP's aggregated API certificate
-    #   (Certificate "ucp-cert", Secret "ucp-apiserver-tls", SAN ucp.<namespace>.svc, 90 days),
-    #   which cert-manager's default approver approves. cert-manager injects this CA into the
-    #   v1alpha3.api.ucp.dev APIService caBundle (cert-manager's cainjector must run with APIService
-    #   injection enabled and watch this namespace); no Radius component trusts it. rad
-    #   install/upgrade/rollback waits until the APIService has the CA bundle and is Available.
+    #   (Certificate "ucp-cert", Secret "ucp-apiserver-tls", SAN ucp.<namespace>.svc, 24 hours,
+    #   renewed at 16 hours), which cert-manager's default approver approves. rad writes this CA,
+    #   and only CA certificates, to Secret "radius-apiserver-trust", which cert-manager's cainjector
+    #   copies into the v1alpha3.api.ucp.dev APIService caBundle (the cainjector must run with
+    #   APIService injection enabled and watch this namespace); no Radius component trusts it. rad
+    #   install/upgrade/rollback keeps any earlier CA, such as the Helm-generated ucp-ca, trusted
+    #   until UCP serves a certificate from this CA, then removes it and waits until the
+    #   APIService is Available.
     # rad install/upgrade configures the cert-manager it installs (approveSignerNames) and fails
     # if an existing cert-manager would auto-approve radius-ca-issuer requests.
     certificates:

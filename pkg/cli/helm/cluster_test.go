@@ -112,6 +112,7 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                        mockHelmClient,
 		removeDefaultContourGateway: gatewayCalls.remove,
+		newUCPAPIServerTrustClient:  uninstallTrustClient,
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -154,6 +155,7 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 	impl := &Impl{
 		Helm:                        mockHelmClient,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		newUCPAPIServerTrustClient:  uninstallTrustClient,
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"

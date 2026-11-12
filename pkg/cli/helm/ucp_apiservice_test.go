@@ -51,21 +51,9 @@ func ucpAPIService(caBundle string, available string, reason string) *unstructur
 	return object
 }
 
-func ucpCertificate(ready string) *unstructured.Unstructured {
-	return &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "cert-manager.io/v1",
-		"kind":       "Certificate",
-		"metadata":   map[string]any{"name": ucpAPIServerCertificateName, "namespace": RadiusSystemNamespace},
-		"status": map[string]any{"conditions": []any{
-			map[string]any{"type": "Ready", "status": ready, "reason": "Issued", "message": "issued"},
-		}},
-	}}
-}
-
 func ucpAPIServiceDynamicClient(objects ...runtime.Object) dynamic.Interface {
 	return dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), map[schema.GroupVersionResource]string{
-		apiServicesResource:  "APIServiceList",
-		certificatesResource: "CertificateList",
+		apiServicesResource: "APIServiceList",
 	}, objects...)
 }
 
@@ -79,49 +67,39 @@ func Test_waitForUCPAPIService(t *testing.T) {
 	ucpAPIServiceTimeout, ucpAPIServicePollInterval = 50*time.Millisecond, 10*time.Millisecond
 	t.Cleanup(func() { ucpAPIServiceTimeout, ucpAPIServicePollInterval = timeout, interval })
 
+	// With authorization off the chart sets the CA bundle, so rad does not read the cluster.
+	off := &Impl{newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return nil, errors.New("no cluster") }}
+	require.NoError(t, off.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff))
+
 	tests := []struct {
-		name      string
-		mode      authz.Mode
-		objects   []runtime.Object
-		clientErr error
-		wantErr   []string
+		name    string
+		objects []runtime.Object
+		wantErr []string
 	}{
-		{name: "off does not read the cluster", mode: authz.ModeOff, clientErr: errors.New("no cluster")},
-		{name: "ready", mode: authz.ModeEnforce, objects: []runtime.Object{ucpAPIService("Y2E=", "True", "Passed")}},
-		{name: "dry run ready", mode: authz.ModeDryRun, objects: []runtime.Object{ucpAPIService("Y2E=", "True", "Passed")}},
+		{name: "ready", objects: []runtime.Object{ucpAPIService("Y2E=", "True", "Passed")}},
 		{
 			name:    "missing",
-			mode:    authz.ModeEnforce,
 			wantErr: []string{"it does not exist", "kubectl --context \"test-context\" get apiservice v1alpha3.api.ucp.dev -o yaml"},
 		},
 		{
-			// cert-manager's controller and webhook are healthy and the certificate is issued, but nothing injects
-			// the CA, for example because the cainjector is down.
-			name:    "certificate issued but no CA injected",
-			mode:    authz.ModeEnforce,
-			objects: []runtime.Object{ucpAPIService("", "False", "FailedDiscoveryCheck"), ucpCertificate("True")},
+			// The controller and webhook are healthy, but nothing injects the CA, for example because the cainjector
+			// is down.
+			name:    "no CA injected",
+			objects: []runtime.Object{ucpAPIService("", "False", "FailedDiscoveryCheck")},
 			wantErr: []string{
 				"it has no CA bundle",
-				"Certificate radius-system/ucp-cert", "it is Ready=True (Issued: issued)",
-				"kubectl --context \"test-context\" -n radius-system describe certificate ucp-cert",
+				"ca.crt of Secret radius-system/radius-apiserver-trust",
+				"kubectl --context \"test-context\" -n radius-system get secret radius-apiserver-trust -o yaml",
 				"kubectl --context \"test-context\" get pods -A -l app.kubernetes.io/component=cainjector",
 			},
 		},
 		{
-			name:    "no CA injected and no certificate",
-			mode:    authz.ModeEnforce,
-			objects: []runtime.Object{ucpAPIService("", "", "")},
-			wantErr: []string{"it has no CA bundle", "Certificate radius-system/ucp-cert", "it does not exist"},
-		},
-		{
 			name:    "not available",
-			mode:    authz.ModeEnforce,
 			objects: []runtime.Object{ucpAPIService("Y2E=", "False", "FailedDiscoveryCheck")},
 			wantErr: []string{"it is not Available (FailedDiscoveryCheck: test message)", "ucp pods are ready"},
 		},
 		{
 			name:    "no conditions",
-			mode:    authz.ModeEnforce,
 			objects: []runtime.Object{ucpAPIService("Y2E=", "", "")},
 			wantErr: []string{"has not reported whether it is Available"},
 		},
@@ -130,13 +108,10 @@ func Test_waitForUCPAPIService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			impl := &Impl{newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
-				if tt.clientErr != nil {
-					return nil, tt.clientErr
-				}
 				return ucpAPIServiceDynamicClient(tt.objects...), nil
 			}}
 
-			err := impl.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, tt.mode)
+			err := impl.waitForAvailableUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace)
 			if len(tt.wantErr) == 0 {
 				require.NoError(t, err)
 				return
@@ -158,13 +133,16 @@ func Test_waitForRolledBackUCPAPIService(t *testing.T) {
 		{Version: 1, Config: map[string]any{}},
 		{Version: 2, Config: map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}},
 	}
-	impl := &Impl{newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
-		return ucpAPIServiceDynamicClient(ucpAPIService("", "", "")), nil
-	}}
+	impl := &Impl{
+		newUCPAPIServerTrustClient: uninstallTrustClient,
+		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
+			return ucpAPIServiceDynamicClient(ucpAPIService("", "", "")), nil
+		},
+	}
 
 	// Rolling back to a revision with authorization off does not wait.
 	require.NoError(t, impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 1))
-	// Rolling back to a revision with authorization on waits for the CA bundle.
+	// Rolling back to a revision with authorization on waits for the API server CA.
 	err := impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 2)
-	require.ErrorContains(t, err, "it has no CA bundle")
+	require.ErrorContains(t, err, "Secret radius-system/radius-apiserver-ca is not usable")
 }
