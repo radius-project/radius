@@ -35,15 +35,15 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/cli/output"
 )
 
 const (
 	// ucpAPIServerTrustSecretName is the Secret whose ca.crt holds the CA certificates the Kubernetes API server
 	// trusts for UCP while UCP moves from an earlier CA, such as the Helm-generated ucp-ca, to radius-apiserver-ca.
-	// rad creates it before Helm changes the APIService and deletes it once every UCP pod serves a certificate from
-	// radius-apiserver-ca; Helm would revert the overlap if the chart owned it.
+	// Before the Helm call that turns authorization on, rad stages radius-apiserver-ca and writes both CAs into it, so
+	// the API server trusts the new CA before Helm reissues ucp-cert. rad deletes it once every UCP pod serves a
+	// certificate from radius-apiserver-ca; Helm would revert the overlap if the chart owned it.
 	ucpAPIServerTrustSecretName = "radius-apiserver-trust"
 
 	// ucpAPIServerCASecretName is the Secret of the CA that issues UCP's aggregated API certificate. Outside the
@@ -67,50 +67,8 @@ const (
 	ucpAPIServerCASettleChecks = 3
 )
 
-// seedUCPAPIServerTrust adds the CA certificates of the live UCP APIService caBundle to the trust Secret before
-// Helm changes the APIService. When Radius moves from the Helm-generated ucp-ca to cert-manager, the chart then
-// renders the APIService with a caBundle that still trusts the running UCP pods, so the API server never loses UCP
-// while they roll. It does nothing when authorization will be off, the APIService does not exist, or the APIService
-// already trusts radius-apiserver-ca through cainjector.
-func (i *Impl) seedUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode) error {
-	if mode == authz.ModeOff {
-		return nil
-	}
-	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
-	if err != nil {
-		return err
-	}
-
-	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
-	}
-	if apiService.GetAnnotations()[injectCAFromSecretAnnotation] == ucpAPIServerCASource(radiusNamespace) {
-		return nil
-	}
-	encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
-	bundle, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
-	}
-	live := caCertificates(bundle)
-	if len(live) == 0 {
-		return nil
-	}
-
-	trusted, _, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
-	if err != nil {
-		return err
-	}
-	_, err = writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, unionCertificates(trusted, live))
-	return err
-}
-
 // reconcileUCPAPIServerTrust makes the Kubernetes API server trust radius-apiserver-ca for UCP through
-// cert-manager's cainjector. If rad seeded the trust Secret with an earlier CA, such as ucp-ca, it first trusts both
+// cert-manager's cainjector. If rad staged the trust Secret with an earlier CA, such as ucp-ca, it first trusts both
 // CAs and waits until every UCP pod serves a certificate from radius-apiserver-ca; if UCP does not move in time it
 // returns an error and leaves both CAs trusted. It then points the APIService at Secret radius-apiserver-ca and
 // deletes the trust Secret, which removes the earlier CA.

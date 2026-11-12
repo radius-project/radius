@@ -108,14 +108,14 @@ func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options Cluste
 	return i.waitForUCPAPIService(ctx, kubeContext, options.Radius.Namespace, mode)
 }
 
-// seedInstalledUCPAPIServerTrust seeds the UCP API server trust before rad installs or upgrades Radius with the
-// values of options merged over storedValues.
-func (i *Impl) seedInstalledUCPAPIServerTrust(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any) error {
+// stageInstalledUCPAPIServerCA stages radius-apiserver-ca before rad installs or upgrades Radius with the values of
+// options merged over storedValues. render returns the manifest that Helm applies.
+func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, render renderRadiusManifest) error {
 	mode, err := installedAuthzMode(options, storedValues)
 	if err != nil {
 		return err
 	}
-	return i.seedUCPAPIServerTrust(ctx, kubeContext, options.Radius.Namespace, mode)
+	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, mode, render)
 }
 
 func installedAuthzMode(options ClusterOptions, storedValues map[string]any) (authz.Mode, error) {
@@ -135,13 +135,14 @@ func (i *Impl) waitForRolledBackUCPAPIService(ctx context.Context, kubeContext, 
 	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode)
 }
 
-// seedRolledBackUCPAPIServerTrust seeds the UCP API server trust before rad rolls Radius back to revision of history.
-func (i *Impl) seedRolledBackUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
+// stageRolledBackUCPAPIServerCA stages radius-apiserver-ca from the manifest of revision of history before rad rolls
+// Radius back to it.
+func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
 	mode, found, err := rolledBackAuthzMode(history, revision)
 	if err != nil || !found {
 		return err
 	}
-	return i.seedUCPAPIServerTrust(ctx, kubeContext, radiusNamespace, mode)
+	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, mode, renderRadiusRollback(history, revision))
 }
 
 func rolledBackAuthzMode(history []*releasev1.Release, revision int) (authz.Mode, bool, error) {

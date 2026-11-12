@@ -418,7 +418,8 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	// Install Radius
-	if err := i.seedInstalledUCPAPIServerTrust(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues); err != nil {
+	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
 		return err
 	}
 	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
@@ -612,7 +613,8 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 	setCertManagerRequesters(radiusValues, certManagerRequesters)
 
-	if err := i.seedInstalledUCPAPIServerTrust(ctx, clusterOptions, kubeContext, storedValues); err != nil {
+	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, storedValues, render); err != nil {
 		return err
 	}
 	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
@@ -797,7 +799,7 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, targetRevision); err != nil {
 		return err
 	}
-	if err := i.seedRolledBackUCPAPIServerTrust(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
 		return err
 	}
 
@@ -859,7 +861,7 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, revision); err != nil {
 		return err
 	}
-	if err := i.seedRolledBackUCPAPIServerTrust(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
 		return err
 	}
 
