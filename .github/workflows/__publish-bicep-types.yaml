@@ -9,6 +9,11 @@ on:
         description: The successful change detector's explicit output.
         required: true
         type: string
+    secrets:
+      RADIUS_PUBLISHER_BOT_CLIENT_ID:
+        required: true
+      RADIUS_PUBLISHER_BOT_PRIVATE_KEY:
+        required: true
     outputs:
       status:
         value: ${{ jobs.publish.outputs.status }}
