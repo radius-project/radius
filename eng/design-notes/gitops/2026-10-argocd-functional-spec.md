@@ -7,6 +7,8 @@
 
 ## Decisions for review
 
+See [Architecture Diagram](#architecture-diagram) for the high-level flow.
+
 | #  | Decision                                                                                                            | Options considered                                                                                                                        | Recommendation                                                                                                                                   | Risk if wrong                                                                                 | Status |
 |----|---------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|--------|
 | D1 | [Who compiles Bicep for Argo CD?](#d1-who-compiles-bicep-for-argo-cd)                                               | Argo CD plugin / CI / Radius controller                                                                                                   | Argo CD plugin, as the feature spec proposes; generated manifests from CI as the fallback where plugins are not allowed                          | Radius maintains a sidecar inside Argo CD, and admins who cannot install it fall back to CI   | Open   |
