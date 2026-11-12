@@ -77,8 +77,11 @@ as a 24-hour certificate renewed after 16 hours. cert-manager's cainjector
 copies `ca.crt` of the `radius-apiserver-ca` Secret, the self-signed CA
 certificate, into the APIService `caBundle` and follows each renewal of that CA
 without `rad` running; the API server never trusts the `ca.crt` of UCP's
-certificate Secret. On upgrade from the Helm-generated `ucp-ca`, `rad` trusts
-both CAs through the `radius-apiserver-trust` Secret until every UCP pod serves
+certificate Secret. On upgrade or rollback from the Helm-generated `ucp-ca`,
+`rad` applies `radius-apiserver-ca` and its Issuers with Helm ownership metadata
+before the Helm call, waits for cert-manager to issue the CA, and trusts both
+CAs through the `radius-apiserver-trust` Secret before Helm reissues UCP's
+certificate. It keeps both trusted until every UCP pod serves
 a certificate from `radius-apiserver-ca`, and then points the APIService at
 `radius-apiserver-ca` and deletes that Secret. In the
 `selfSigned` certificate mode, the only mode supported today, this CA is
