@@ -471,7 +471,7 @@ func (r *DeploymentTemplateReconciler) reconcileDelete(ctx context.Context, depl
 	deploymentResourceList := &radappiov1alpha3.DeploymentResourceList{}
 	err = r.Client.List(ctx, deploymentResourceList, client.InNamespace(deploymentTemplate.Namespace))
 	if err != nil {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 
 	// Filter the list to include only those owned by the current DeploymentTemplate

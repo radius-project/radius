@@ -410,3 +410,37 @@ func TestSecretRotationDuringOperationAndDeletion(t *testing.T) {
 	require.NoError(t, err)
 	require.Error(t, c.Get(t.Context(), request.NamespacedName, &radapp.DeploymentTemplate{}))
 }
+
+type failingDeploymentResourceListClient struct {
+	client.Client
+	fail bool
+}
+
+func (c *failingDeploymentResourceListClient) List(ctx context.Context, list client.ObjectList, options ...client.ListOption) error {
+	if _, ok := list.(*radapp.DeploymentResourceList); ok && c.fail {
+		return errors.New("injected DeploymentResource list failure")
+	}
+	return c.Client.List(ctx, list, options...)
+}
+
+func TestDeploymentTemplateDeletionRetriesListFailure(t *testing.T) {
+	deployment := referenceDeployment(t)
+	deployment.Spec.ParameterReferences = nil
+	deployment.Finalizers = []string{DeploymentTemplateFinalizer}
+	base := secretTestClient(t, deployment)
+	require.NoError(t, base.Delete(t.Context(), deployment))
+	c := &failingDeploymentResourceListClient{Client: base, fail: true}
+	r := &DeploymentTemplateReconciler{
+		Client: c, EventRecorder: record.NewFakeRecorder(10),
+	}
+	request := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(deployment)}
+	_, err := r.Reconcile(t.Context(), request)
+	require.ErrorContains(t, err, "injected DeploymentResource list failure")
+	stored := &radapp.DeploymentTemplate{}
+	require.NoError(t, base.Get(t.Context(), request.NamespacedName, stored))
+	require.Contains(t, stored.Finalizers, DeploymentTemplateFinalizer)
+	c.fail = false
+	_, err = r.Reconcile(t.Context(), request)
+	require.NoError(t, err)
+	require.Error(t, base.Get(t.Context(), request.NamespacedName, stored))
+}
