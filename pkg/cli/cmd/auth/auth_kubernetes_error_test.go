@@ -22,7 +22,6 @@ import (
 )
 
 func TestInspectionCommandsPreserveKubernetesForbidden(t *testing.T) {
-	t.Parallel()
 	for _, test := range []struct {
 		name      string
 		operation string
@@ -39,7 +38,6 @@ func TestInspectionCommandsPreserveKubernetesForbidden(t *testing.T) {
 	} {
 		for _, format := range []string{"json", "table"} {
 			t.Run(test.name+"/"+format, func(t *testing.T) {
-				t.Parallel()
 				message := `User "unbound-caller" cannot ` + test.method + ` path "` + test.path + `": forbidden`
 				server, requests := inspectionHTTPServer(t, http.StatusForbidden, metav1.Status{
 					TypeMeta: metav1.TypeMeta{Kind: "Status", APIVersion: "v1"},
