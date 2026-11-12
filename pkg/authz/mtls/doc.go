@@ -23,7 +23,8 @@ limitations under the License.
 // pkg/authz/token and maps it to the caller's canonical "<component>.<namespace>.svc" identity.
 //
 // A caller verifies the receiver's certificate against the Radius CA bundle and requires
-// exactly one URI SAN, the receiver's SPIFFE ID spiffe://<trustDomain>/ns/<namespace>/sa/<receiver>.
+// exactly one SAN, a URI SAN with the receiver's SPIFFE ID
+// spiffe://<trustDomain>/ns/<namespace>/sa/<receiver>.
 // Only after that succeeds does it send the projected token whose audience is the receiver.
 //
 // The package name predates the switch from client certificates to tokens. Certificate
