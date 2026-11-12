@@ -169,6 +169,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if r.DestinationFile == "-" {
 		if ow, ok := r.Output.(*output.OutputWriter); ok && ow.LogWriter == nil {
 			ow.LogWriter = cmd.ErrOrStderr()
+			output.SetLogWriter(ow.LogWriter)
 		}
 	}
 

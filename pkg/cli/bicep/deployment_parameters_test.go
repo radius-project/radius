@@ -121,62 +121,75 @@ func Test_ParseParameters_File(t *testing.T) {
 }
 
 func Test_ParseParameters_BicepParam(t *testing.T) {
-	t.Run("bicepparam with build-params stdout envelope", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		bicepMock := NewMockInterface(ctrl)
-		bicepMock.EXPECT().
-			Call("build-params", "--stdout", "app.bicepparam").
-			Return([]byte(`{"parametersJson":"{\"parameters\":{\"env\":{\"value\":\"prod\"},\"tag\":{\"value\":\"v1\"}}}","templateJson":null}`), nil).
-			Times(1)
+	t.Parallel()
 
-		parser := ParameterParser{
-			FileSystem: filesystem.NewMemMapFileSystem(),
-			Bicep:      bicepMock,
-		}
+	tests := []struct {
+		name        string
+		filePath    string
+		inputs      []string
+		bicepOutput []byte
+		bicepErr    error
+		expected    clients.DeploymentParameters
+		expectErr   bool
+	}{
+		{
+			name:        "bicepparam with build-params stdout envelope",
+			filePath:    "app.bicepparam",
+			inputs:      []string{"@app.bicepparam", "tag=v2"},
+			bicepOutput: []byte(`{"parametersJson":"{\"parameters\":{\"env\":{\"value\":\"prod\"},\"tag\":{\"value\":\"v1\"}}}","templateJson":null}`),
+			expected: clients.DeploymentParameters{
+				"env": {"value": "prod"},
+				"tag": {"value": "v2"},
+			},
+		},
+		{
+			name:        "bicepparam with direct ARM parameters JSON",
+			filePath:    "app.bicepparam",
+			inputs:      []string{"@app.bicepparam"},
+			bicepOutput: []byte(`{"parameters":{"foo":{"value":"bar"}}}`),
+			expected: clients.DeploymentParameters{
+				"foo": {"value": "bar"},
+			},
+		},
+		{
+			name:        "bicepparam with malformed parametersJson envelope",
+			filePath:    "bad.bicepparam",
+			inputs:      []string{"@bad.bicepparam"},
+			bicepOutput: []byte(`{"parametersJson":"{invalid"}`),
+			expectErr:   true,
+		},
+		{
+			name:      "bicepparam build-params error",
+			filePath:  "bad.bicepparam",
+			inputs:    []string{"@bad.bicepparam"},
+			bicepErr:  os.ErrNotExist,
+			expectErr: true,
+		},
+	}
 
-		parameters, err := parser.Parse("@app.bicepparam", "tag=v2")
-		require.NoError(t, err)
-		require.Equal(t, clients.DeploymentParameters{
-			"env": {"value": "prod"},
-			"tag": {"value": "v2"},
-		}, parameters)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			bicepMock := NewMockInterface(ctrl)
+			bicepMock.EXPECT().
+				Call("build-params", "--stdout", tt.filePath).
+				Return(tt.bicepOutput, tt.bicepErr).
+				Times(1)
 
-	t.Run("bicepparam with direct ARM parameters JSON", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		bicepMock := NewMockInterface(ctrl)
-		bicepMock.EXPECT().
-			Call("build-params", "--stdout", "app.bicepparam").
-			Return([]byte(`{"parameters":{"foo":{"value":"bar"}}}`), nil).
-			Times(1)
+			parser := ParameterParser{
+				FileSystem: filesystem.NewMemMapFileSystem(),
+				Bicep:      bicepMock,
+			}
 
-		parser := ParameterParser{
-			FileSystem: filesystem.NewMemMapFileSystem(),
-			Bicep:      bicepMock,
-		}
-
-		parameters, err := parser.Parse("@app.bicepparam")
-		require.NoError(t, err)
-		require.Equal(t, clients.DeploymentParameters{
-			"foo": {"value": "bar"},
-		}, parameters)
-	})
-
-	t.Run("bicepparam build-params error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		bicepMock := NewMockInterface(ctrl)
-		bicepMock.EXPECT().
-			Call("build-params", "--stdout", "bad.bicepparam").
-			Return(nil, os.ErrNotExist).
-			Times(1)
-
-		parser := ParameterParser{
-			FileSystem: filesystem.NewMemMapFileSystem(),
-			Bicep:      bicepMock,
-		}
-
-		parameters, err := parser.Parse("@bad.bicepparam")
-		require.Error(t, err)
-		require.Nil(t, parameters)
-	})
+			parameters, err := parser.Parse(tt.inputs...)
+			if tt.expectErr {
+				require.Error(t, err)
+				require.Nil(t, parameters)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, parameters)
+		})
+	}
 }

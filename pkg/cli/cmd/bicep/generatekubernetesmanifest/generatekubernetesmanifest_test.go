@@ -18,6 +18,7 @@ package bicep
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -278,7 +279,8 @@ func Test_Run(t *testing.T) {
 		}, providerConfig.AWS)
 	})
 
-	t.Run("Omits spec.parameters when parameters map is empty", func(t *testing.T) {
+	t.Run("Omits spec.parameters when parameters map is empty or only contains nil values", func(t *testing.T) {
+		t.Parallel()
 		ctrl := gomock.NewController(t)
 
 		bicepMock := bicep.NewMockInterface(ctrl)
@@ -294,6 +296,10 @@ func Test_Run(t *testing.T) {
 			FileSystem:      filesystem.NewMemMapFileSystem(),
 			DestinationFile: "app.yaml",
 			Group:           "default",
+			Parameters: map[string]map[string]any{
+				"optional": {"value": nil},
+				"unbound":  {},
+			},
 		}
 
 		require.NoError(t, runner.Run(t.Context()))
@@ -310,6 +316,7 @@ func Test_Run(t *testing.T) {
 	})
 
 	t.Run("Writes manifest to stdout without log message when destination-file is -", func(t *testing.T) {
+		t.Parallel()
 		ctrl := gomock.NewController(t)
 
 		bicepMock := bicep.NewMockInterface(ctrl)
@@ -354,7 +361,51 @@ func Test_Run(t *testing.T) {
 		require.NotContains(t, manifest.Spec, "parameters")
 	})
 
+	t.Run("Routes OutputWriter status logs to stderr when destination-file is -", func(t *testing.T) {
+		t.Cleanup(func() {
+			output.SetLogWriter(nil)
+		})
+
+		ctrl := gomock.NewController(t)
+		var stdout, stderr bytes.Buffer
+		ow := &output.OutputWriter{Writer: &stdout}
+
+		bicepMock := bicep.NewMockInterface(ctrl)
+		bicepMock.EXPECT().
+			PrepareTemplate(gomock.Any(), "app.bicep").
+			DoAndReturn(func(_ context.Context, _ string) (map[string]any, bicep.RadiusExtensionPin, error) {
+				step := ow.BeginStep("Building app.bicep...")
+				ow.CompleteStep(step)
+				return map[string]any{"resources": map[string]any{}}, bicep.RadiusExtensionPin{}, nil
+			}).
+			Times(1)
+
+		f := &framework.Impl{
+			Bicep:  bicepMock,
+			Output: ow,
+		}
+		cmd, r := NewCommand(f)
+		runner := r.(*Runner)
+		runner.FileSystem = filesystem.NewMemMapFileSystem()
+
+		cmd.SetOut(&stdout)
+		cmd.SetErr(&stderr)
+		cmd.SetArgs([]string{"app.bicep", "-g", "default", "-d", "-"})
+		require.NoError(t, cmd.ParseFlags([]string{"app.bicep", "-g", "default", "-d", "-"}))
+		require.NoError(t, runner.Validate(cmd, []string{"app.bicep"}))
+		require.NoError(t, runner.Run(t.Context()))
+
+		require.Contains(t, stderr.String(), "Building app.bicep...")
+		require.NotContains(t, stdout.String(), "Building app.bicep...")
+		require.NotContains(t, stdout.String(), "DeploymentTemplate file created")
+
+		var manifest map[string]any
+		require.NoError(t, yaml.Unmarshal(stdout.Bytes(), &manifest))
+		require.Equal(t, "DeploymentTemplate", manifest["kind"])
+	})
+
 	t.Run("Rejects non-string parameter values without panicking", func(t *testing.T) {
+		t.Parallel()
 		ctrl := gomock.NewController(t)
 
 		bicepMock := bicep.NewMockInterface(ctrl)
