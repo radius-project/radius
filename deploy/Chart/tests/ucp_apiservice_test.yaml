@@ -113,7 +113,7 @@ tests:
           value: 8h
         documentIndex: 0
 
-  - it: injects the CA bundle from the trust Secret, never from ucp-cert, on a fresh install
+  - it: injects the CA bundle from radius-apiserver-ca, never from ucp-cert, on a fresh install
     template: ucp/apiservice.yaml
     set:
       global.rbac.enabled: true
@@ -123,7 +123,7 @@ tests:
         documentIndex: 1
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
-          value: radius-system/radius-apiserver-trust
+          value: radius-system/radius-apiserver-ca
         documentIndex: 1
       - notExists:
           path: metadata.annotations["cert-manager.io/inject-ca-from"]
@@ -132,7 +132,32 @@ tests:
           path: spec.caBundle
         documentIndex: 1
 
-  - it: renders the caBundle from the trust Secret rad maintains
+  - it: renders the caBundle from radius-apiserver-ca once cert-manager issued it
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+          data:
+            ca.crt: YXBpc2VydmVyLWNh
+            tls.crt: YXBpc2VydmVyLWNh
+            tls.key: a2V5
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: radius-system/radius-apiserver-ca
+        documentIndex: 1
+      - equal:
+          path: spec.caBundle
+          value: YXBpc2VydmVyLWNh
+        documentIndex: 1
+
+  - it: injects and renders the caBundle from the trust Secret during the upgrade overlap
     template: ucp/apiservice.yaml
     set:
       global.rbac.enabled: true
@@ -145,7 +170,18 @@ tests:
             namespace: radius-system
           data:
             ca.crt: dHJ1c3QtY2E=
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+          data:
+            ca.crt: YXBpc2VydmVyLWNh
     asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: radius-system/radius-apiserver-trust
+        documentIndex: 1
       - equal:
           path: spec.caBundle
           value: dHJ1c3QtY2E=
@@ -189,7 +225,7 @@ tests:
         documentIndex: 0
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
-          value: custom-ns/radius-apiserver-trust
+          value: custom-ns/radius-apiserver-ca
         documentIndex: 1
 
   - it: mounts the cert-manager Secret when authorization is on

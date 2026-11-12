@@ -702,7 +702,7 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 				return
 			}
 			require.ErrorContains(t, err, "cert-manager cainjector Deployment security/cert-manager-cainjector "+tt.wantErr)
-			require.ErrorContains(t, err, "inject the CA certificates in Secret radius-system/radius-apiserver-trust into the Radius APIService")
+			require.ErrorContains(t, err, "inject the CA certificate in Secret radius-system/radius-apiserver-ca into the Radius APIService")
 		})
 	}
 }
