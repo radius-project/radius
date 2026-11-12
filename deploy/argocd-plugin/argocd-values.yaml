@@ -1,0 +1,54 @@
+configs:
+  params:
+    server.insecure: true
+  cm:
+    # Show Radius type and status as chips on DeploymentResource tiles.
+    resource.customLabels: radapp.io/resource-type,radapp.io/phrase
+    resource.customizations.health.radapp.io_DeploymentTemplate: |
+      hs = {}
+      local st = obj.status
+      local n = 0
+      if st ~= nil and st.outputResources ~= nil then n = #st.outputResources end
+      if st == nil or st.observedGeneration == nil or st.observedGeneration < obj.metadata.generation then
+        hs.status = "Progressing"; hs.message = "Waiting for Radius to pick up this revision"
+      elseif st.phrase == "Ready" then
+        hs.status = "Healthy"; hs.message = "Ready: " .. n .. " outputs tracked (generation " .. st.observedGeneration .. ")"
+      elseif st.phrase == "ReadyPendingCleanup" then
+        hs.status = "Progressing"; hs.message = "Finishing the change: new outputs are ready, cleanup of removed resources has not finished"
+      elseif st.phrase == "Updating" then
+        hs.status = "Progressing"; hs.message = "Deploying: Radius is applying this revision"
+      elseif st.phrase == "Failed" then
+        hs.status = "Degraded"; hs.message = "Failed: Radius could not deploy this revision"
+      else
+        hs.status = "Progressing"; hs.message = "Radius is " .. tostring(st.phrase)
+      end
+      return hs
+    resource.customizations.health.radapp.io_DeploymentResource: |
+      hs = {}
+      local st = obj.status
+      if st == nil or st.phrase == nil then
+        hs.status = "Progressing"; hs.message = "Waiting for Radius"
+      elseif st.phrase == "Deleting" or st.phrase == "Deleted" then
+        hs.status = "Progressing"; hs.message = "Cleanup in progress: removed from the desired template"
+      elseif st.phrase == "Ready" and obj.metadata.annotations ~= nil and obj.metadata.annotations["radapp.io/deploying-generation"] ~= nil then
+        hs.status = "Progressing"; hs.message = "Deploying: Radius is applying template generation " .. obj.metadata.annotations["radapp.io/deploying-generation"]
+      elseif st.phrase == "Ready" then
+        hs.status = "Healthy"; hs.message = "Output tracked (provisioned; not runtime health)"
+      elseif st.phrase == "Failed" then
+        hs.status = "Degraded"; hs.message = "Radius operation failed"
+      else
+        hs.status = "Progressing"; hs.message = "Radius is " .. tostring(st.phrase)
+      end
+      return hs
+repoServer:
+  extraContainers:
+    - name: radius-bicep
+      image: ghcr.io/nithyatsu/radius-cmp:0.61.1-proto.3
+      command: [/var/run/argocd/argocd-cmp-server]
+      securityContext: {runAsNonRoot: true, runAsUser: 999}
+      volumeMounts:
+        - {mountPath: /var/run/argocd, name: var-files}
+        - {mountPath: /home/argocd/cmp-server/plugins, name: plugins}
+        - {mountPath: /tmp, name: cmp-tmp}
+  volumes:
+    - {name: cmp-tmp, emptyDir: {}}
