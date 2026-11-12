@@ -539,16 +539,18 @@ func TestVerify_FailsClosedWhenKeysAreStale(t *testing.T) {
 	require.NoError(t, v.Refresh(t.Context()))
 
 	source.set(defaultKeys(), errors.New("API server unavailable"))
-	for range 2 {
+	for range 3 {
 		clock.Advance(DefaultRefreshInterval)
 		require.Error(t, v.Refresh(t.Context()))
 	}
+	require.Equal(t, DefaultMaxKeyAge, clock.Now().Sub(start))
 
-	clock.Advance(DefaultRefreshInterval - time.Nanosecond)
-	// Immediately before the freshness boundary, the last good keys still work.
+	// Just under MaxKeyAge since the last success: still accepted.
+	clock.Advance(-time.Nanosecond)
 	_, err := v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", clock.Now())))
 	require.NoError(t, err)
 
+	// Exactly MaxKeyAge since the last success: stale.
 	clock.Advance(time.Nanosecond)
 	_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", clock.Now())))
 	requireCode(t, err, v1.CodeAuthorizationUnavailable)
@@ -563,6 +565,48 @@ func TestVerify_FailsClosedWhenKeysAreStale(t *testing.T) {
 	require.NoError(t, v.Refresh(t.Context()))
 	_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", clock.Now())))
 	require.NoError(t, err)
+}
+
+func TestVerify_StaleKeysRejectEveryRequest(t *testing.T) {
+	tests := []struct {
+		name          string
+		authorization string
+	}{
+		{name: "valid token"},
+		{name: "no Authorization header", authorization: "-"},
+		{name: "Basic credentials", authorization: "Basic dXNlcjpwYXNz"},
+		{name: "malformed bearer", authorization: "Bearer"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clock := &fakeClock{now: start}
+			source := newFakeSource(defaultKeys())
+			v := newTestVerifier(t, source, clock)
+			require.NoError(t, v.Refresh(t.Context()))
+			source.set(defaultKeys(), errors.New("API server unavailable"))
+			clock.Advance(DefaultMaxKeyAge)
+
+			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+			switch tt.authorization {
+			case "":
+				r.Header.Set("Authorization", "Bearer "+sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", clock.Now())))
+			case "-":
+			default:
+				r.Header.Set("Authorization", tt.authorization)
+			}
+			_, err := v.VerifyRequest(r)
+			requireCode(t, err, v1.CodeAuthorizationUnavailable)
+		})
+	}
+
+	t.Run("empty token", func(t *testing.T) {
+		clock := &fakeClock{now: start}
+		v := newTestVerifier(t, newFakeSource(defaultKeys()), clock)
+		require.NoError(t, v.Refresh(t.Context()))
+		clock.Advance(DefaultMaxKeyAge)
+		_, err := v.Verify(t.Context(), "")
+		requireCode(t, err, v1.CodeAuthorizationUnavailable)
+	})
 }
 
 func TestRefresh_KeepsKeysOnFailure(t *testing.T) {

@@ -13,31 +13,31 @@ invent their own hosting, routing, validation, and async patterns.
 
 ## Quick Reference
 
-| Topic | Start Here |
-|------|------------|
-| Host lifecycle | `pkg/components/hosting/hosting.go` |
-| Shared HTTP server | `pkg/armrpc/frontend/server/server.go` |
-| Namespace/API registration | `pkg/armrpc/builder/builder.go` |
-| Async status | `pkg/armrpc/asyncoperation/statusmanager/statusmanager.go` |
-| Async worker | `pkg/armrpc/asyncoperation/worker/...` |
+| Topic                      | Start Here                                                 |
+|----------------------------|------------------------------------------------------------|
+| Host lifecycle             | `pkg/components/hosting/hosting.go`                        |
+| Shared HTTP server         | `pkg/armrpc/frontend/server/server.go`                     |
+| Namespace/API registration | `pkg/armrpc/builder/builder.go`                            |
+| Async status               | `pkg/armrpc/asyncoperation/statusmanager/statusmanager.go` |
+| Async worker               | `pkg/armrpc/asyncoperation/worker/...`                     |
 
-| Test Focus | Packages |
-|-----------|----------|
-| Shared runtime and builder logic | `./pkg/armrpc/...` |
-| Shared API/async host usage | `./pkg/server/...` |
-| Broad downstream impact check | `./pkg/ucp/...`, `./pkg/corerp/...`, `./pkg/dynamicrp/...` |
+| Test Focus                       | Packages                                                   |
+|----------------------------------|------------------------------------------------------------|
+| Shared runtime and builder logic | `./pkg/armrpc/...`                                         |
+| Shared API/async host usage      | `./pkg/server/...`                                         |
+| Broad downstream impact check    | `./pkg/ucp/...`, `./pkg/corerp/...`, `./pkg/dynamicrp/...` |
 
 ## Main Building Blocks
 
-| Package | Responsibility |
-|--------|----------------|
-| `pkg/armrpc/hostoptions` | turns config files and environment into runtime options |
-| `pkg/components/hosting` | starts and supervises one or more long-running services |
-| `pkg/armrpc/frontend/server` | shared HTTP server creation, middleware, version and health routes |
-| `pkg/armrpc/builder` | namespace-based API and async controller registration |
-| `pkg/armrpc/frontend/controller` | controller contracts for HTTP operations |
-| `pkg/armrpc/asyncoperation/statusmanager` | creates and updates operation status resources and queue messages |
-| `pkg/armrpc/asyncoperation/worker` | dequeues and executes async controllers |
+| Package                                   | Responsibility                                                     |
+|-------------------------------------------|--------------------------------------------------------------------|
+| `pkg/armrpc/hostoptions`                  | turns config files and environment into runtime options            |
+| `pkg/components/hosting`                  | starts and supervises one or more long-running services            |
+| `pkg/armrpc/frontend/server`              | shared HTTP server creation, middleware, version and health routes |
+| `pkg/armrpc/builder`                      | namespace-based API and async controller registration              |
+| `pkg/armrpc/frontend/controller`          | controller contracts for HTTP operations                           |
+| `pkg/armrpc/asyncoperation/statusmanager` | creates and updates operation status resources and queue messages  |
+| `pkg/armrpc/asyncoperation/worker`        | dequeues and executes async controllers                            |
 
 ## End-To-End Shape
 
@@ -129,8 +129,9 @@ presents a client certificate.
 - `off` (default): plain HTTP, behavior unchanged.
 - `dryRun`: the same port accepts TLS and plain HTTP. Plain HTTP, missing or
   invalid tokens, and disallowed callers are logged as would-deny
-  (`InvalidAuthenticationInfo`, `AuthorizationUnavailable`,
-  `AuthorizationFailed`), and every request is served.
+  (`InvalidAuthenticationInfo`, `AuthorizationFailed`), and the request is
+  served. Signing keys that could not be refreshed are the exception: every
+  request gets `503 AuthorizationUnavailable`, as in `enforce`.
 - `enforce`: TLS is required (plain HTTP gets `400`). A missing, invalid, or
   wrong-audience token gets `401 InvalidAuthenticationInfo`; signing keys that
   could not be refreshed give `503 AuthorizationUnavailable`; and callers not in
@@ -149,8 +150,9 @@ handler. Probes and metrics stay on their plain ports.
 Callers build transports with `mtls.NewClientTransport` and
 `mtls.NewUpgradeTransport` in [pkg/authz/mtls/client.go](../../pkg/authz/mtls/client.go).
 They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and require exactly
-the receiver's SPIFFE ID instead of matching DNS names. Only after the server is
-verified do they send the token from
+one SAN, a URI SAN with the receiver's SPIFFE ID, instead of matching DNS
+names; a certificate with any DNS, IP, email, or other SAN is rejected. Only
+after the server is verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
 Every component projects only `ca.crt` from the `radius-ca` Secret (never
 `tls.key`) to `/var/run/radius/ca`, because csi-driver-spiffe writes no `ca.crt`

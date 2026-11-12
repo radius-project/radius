@@ -21,6 +21,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/asn1"
 	"fmt"
 	"net/url"
 
@@ -34,7 +35,13 @@ const (
 
 	// minRSABits is the smallest RSA key accepted from a peer.
 	minRSABits = 2048
+
+	// sanTagURI is the GeneralName tag of uniformResourceIdentifier (RFC 5280, section 4.2.1.6).
+	sanTagURI = 6
 )
+
+// oidSubjectAltName is the subjectAltName extension (RFC 5280, section 4.2.1.6).
+var oidSubjectAltName = asn1.ObjectIdentifier{2, 5, 29, 17}
 
 // Error is a certificate failure with an authorization error code. Callers log Code;
 // Reason is a short description that never contains key material.
@@ -72,8 +79,9 @@ func SPIFFEID(trustDomain, namespace, serviceAccount string) string {
 	return (&url.URL{Scheme: "spiffe", Host: trustDomain, Path: "/ns/" + namespace + "/sa/" + serviceAccount}).String()
 }
 
-// checkSPIFFEID checks that leaf has exactly one URI SAN, no other SANs, and the expected identity.
-// The subject common name is not an identity source.
+// checkSPIFFEID checks that leaf's subject alternative names are exactly one URI SAN and that
+// it is expected. Any other SAN, such as a DNS name, IP address, or email address, is rejected.
+// The subject common name is ignored.
 func checkSPIFFEID(leaf *x509.Certificate, expected string) error {
 	switch len(leaf.URIs) {
 	case 0:
@@ -82,11 +90,31 @@ func checkSPIFFEID(leaf *x509.Certificate, expected string) error {
 	default:
 		return peerError("server certificate has more than one URI SAN", nil)
 	}
-	if len(leaf.DNSNames) != 0 || len(leaf.IPAddresses) != 0 || len(leaf.EmailAddresses) != 0 {
-		return peerError("server certificate has a non-URI SAN", nil)
+	if err := checkOnlyURISANs(leaf); err != nil {
+		return err
 	}
 	if got := leaf.URIs[0].String(); got != expected {
 		return peerError(fmt.Sprintf("server certificate SPIFFE ID %q is not %q", got, expected), nil)
+	}
+	return nil
+}
+
+// checkOnlyURISANs reads the raw subjectAltName extension so that SAN types crypto/x509 does
+// not decode, such as otherName and directoryName, are rejected too.
+func checkOnlyURISANs(leaf *x509.Certificate) error {
+	for _, ext := range leaf.Extensions {
+		if !ext.Id.Equal(oidSubjectAltName) {
+			continue
+		}
+		var names []asn1.RawValue
+		if rest, err := asn1.Unmarshal(ext.Value, &names); err != nil || len(rest) != 0 {
+			return peerError("server certificate has a malformed subjectAltName extension", err)
+		}
+		for _, name := range names {
+			if name.Class != asn1.ClassContextSpecific || name.Tag != sanTagURI {
+				return peerError("server certificate has a SAN other than a URI", nil)
+			}
+		}
 	}
 	return nil
 }

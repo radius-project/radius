@@ -234,7 +234,7 @@ func (v *Verifier) refreshForUnknownKey(ctx context.Context) {
 }
 
 // current returns the cached keys, or an AuthorizationUnavailable error if they have
-// never loaded or have reached MaxKeyAge.
+// never loaded or are at least MaxKeyAge old.
 func (v *Verifier) current() (KeySet, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
@@ -247,7 +247,8 @@ func (v *Verifier) current() (KeySet, error) {
 	return v.keys, nil
 }
 
-// VerifyRequest verifies the bearer token in r's Authorization header.
+// VerifyRequest verifies the bearer token in r's Authorization header. If the signing keys
+// are not fresh, it returns AuthorizationUnavailable before it reads the header.
 func (v *Verifier) VerifyRequest(r *http.Request) (authz.Identity, error) {
 	if _, err := v.current(); err != nil {
 		return authz.Identity{}, err
@@ -264,6 +265,9 @@ func (v *Verifier) VerifyRequest(r *http.Request) (authz.Identity, error) {
 // values: AuthorizationUnavailable if the signing keys are not fresh, otherwise
 // InvalidAuthenticationInfo.
 func (v *Verifier) Verify(ctx context.Context, token string) (authz.Identity, error) {
+	if _, err := v.current(); err != nil {
+		return authz.Identity{}, err
+	}
 	if token == "" {
 		return authz.Identity{}, invalid("missing bearer token", nil)
 	}

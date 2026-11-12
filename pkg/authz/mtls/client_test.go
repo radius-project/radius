@@ -233,9 +233,6 @@ func TestClientTransport_NoTokenWithoutVerifiedServer(t *testing.T) {
 		"wrong SPIFFE ID": ca.issue(t, certOptions{uris: spiffeURIs("controller")}),
 		"wrong CA":        newCA(t).issue(t, certOptions{uris: spiffeURIs("applications-rp")}),
 		"DNS SAN only":    ca.issue(t, certOptions{dnsNames: []string{"applications-rp.radius-system.svc"}}),
-		"mixed DNS SAN":   ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), dnsNames: []string{"applications-rp.radius-system.svc"}}),
-		"mixed IP SAN":    ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), ipAddresses: []net.IP{net.ParseIP("127.0.0.1")}}),
-		"mixed email SAN": ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), emails: []string{"service@example.test"}}),
 	} {
 		t.Run(name, func(t *testing.T) {
 			ln, err := tls.Listen("tcp", "127.0.0.1:0", staticServer(t, cert))

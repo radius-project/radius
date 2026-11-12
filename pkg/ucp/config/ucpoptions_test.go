@@ -25,7 +25,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -46,8 +45,8 @@ const testToken = "test-token"
 
 // writeCertificate writes a self-signed certificate, key, and CA to a new directory, and a
 // projected token for UCP to a new token directory. The certificate carries the SPIFFE ID
-// of serviceAccount and is valid for 127.0.0.1, so only the CA and SPIFFE ID decide whether
-// a client trusts a server that presents it.
+// of serviceAccount as its only SAN, as csi-driver-spiffe issues it, so only the CA and SPIFFE
+// ID decide whether a client trusts a server that presents it.
 func writeCertificate(t *testing.T, serviceAccount string) (string, string, tls.Certificate) {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -58,7 +57,6 @@ func writeCertificate(t *testing.T, serviceAccount string) (string, string, tls.
 		SerialNumber:          big.NewInt(1),
 		Subject:               pkix.Name{CommonName: serviceAccount},
 		URIs:                  []*url.URL{spiffeID},
-		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1)},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(time.Hour),
 		IsCA:                  true,
