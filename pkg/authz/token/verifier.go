@@ -240,8 +240,12 @@ func (v *Verifier) current() (KeySet, error) {
 	return v.keys, nil
 }
 
-// VerifyRequest verifies the bearer token in r's Authorization header.
+// VerifyRequest verifies the bearer token in r's Authorization header. If the signing keys
+// are not fresh, it returns AuthorizationUnavailable before it reads the header.
 func (v *Verifier) VerifyRequest(r *http.Request) (mtls.Identity, error) {
+	if _, err := v.current(); err != nil {
+		return mtls.Identity{}, err
+	}
 	token, err := BearerToken(r)
 	if err != nil {
 		return mtls.Identity{}, err
@@ -254,6 +258,9 @@ func (v *Verifier) VerifyRequest(r *http.Request) (mtls.Identity, error) {
 // values: AuthorizationUnavailable if the signing keys are not fresh, otherwise
 // InvalidAuthenticationInfo.
 func (v *Verifier) Verify(ctx context.Context, token string) (mtls.Identity, error) {
+	if _, err := v.current(); err != nil {
+		return mtls.Identity{}, err
+	}
 	if token == "" {
 		return mtls.Identity{}, invalid("missing bearer token", nil)
 	}
