@@ -17,6 +17,8 @@ import {
 export const awsWorkflow = ".github/workflows/publish-release-bicep.yaml";
 export const awsCaptureJob = "Capture versioned AWS Bicep types";
 export const evidencePath = ".github/release-state/bicep-extensions.json";
+export const requestPath = ".github/release-state/aws-bicep-request.json";
+export const awsEvent = "aws-bicep-release";
 const aws = { owner: "radius-project", repo: "bicep-types-aws" };
 const radius = { owner: "radius-project", repo: "radius" };
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
@@ -54,15 +56,39 @@ export async function observeExtension(record, run = tool) {
   return observed;
 }
 
-function validateRun(run, plan, expected, attempt) {
+async function validateAncestry(github, commit, main) {
+  assert.match(commit, /^[a-f0-9]{40}$/);
+  const { data: comparison } = await github.rest.repos.compareCommits({
+    ...aws,
+    base: commit,
+    head: main,
+    request: request()
+  });
+  assert.ok(
+    ["identical", "ahead"].includes(comparison.status),
+    "AWS source or controller is not an ancestor of main"
+  );
+}
+
+async function mainCommit(github) {
+  const { data } = await github.rest.repos.getCommit({
+    ...aws,
+    ref: "refs/heads/main",
+    request: request()
+  });
+  assert.match(data.sha, /^[a-f0-9]{40}$/);
+  return data.sha;
+}
+
+async function validateRun(github, run, expected, attempt, main) {
   assert.ok(positive(run.id) && positive(attempt));
   assert.equal(run.run_attempt, attempt);
   assert.equal(run.repository.full_name, expected.source.repository);
   assert.equal(run.head_repository.full_name, expected.source.repository);
-  assert.equal(run.head_sha, expected.source.commit);
-  assert.equal(run.head_branch, plan.version);
+  assert.equal(run.head_branch, "main");
   assert.equal(run.path, awsWorkflow);
-  assert.ok(["push", "workflow_dispatch"].includes(run.event));
+  assert.equal(run.event, "repository_dispatch");
+  await validateAncestry(github, run.head_sha, main);
 }
 
 function validateArtifact(artifact, run, name, maxSize) {
@@ -85,6 +111,7 @@ export async function selectAwsPublication(
   plan,
   sourceSha,
   {
+    dispatch,
     now = Date.now,
     sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
   } = {}
@@ -100,20 +127,32 @@ export async function selectAwsPublication(
     expected.source.commit,
     "AWS tag differs from frozen source"
   );
+  const main = await mainCommit(github);
+  await validateAncestry(github, expected.source.commit, main);
   const deadline = now() + 600_000;
+  let firstDiscovery = true;
   while (true) {
-    const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
-      ...aws,
-      workflow_id: awsWorkflow.split("/").at(-1),
-      head_sha: expected.source.commit,
-      per_page: 100,
-      request: request()
-    });
+    const runs = await github.paginate(
+      github.rest.actions.listWorkflowRuns,
+      {
+        ...aws,
+        workflow_id: awsWorkflow.split("/").at(-1),
+        event: "repository_dispatch",
+        per_page: 100,
+        request: request()
+      },
+      (response) => {
+        assert.ok(now() < deadline, "AWS discovery budget exhausted");
+        return response.data;
+      }
+    );
     const matching = runs.filter(
       (run) =>
-        run.head_branch === plan.version &&
-        ["push", "workflow_dispatch"].includes(run.event)
+        run.display_title ===
+        `Publish AWS ${plan.version} at ${expected.source.commit}`
     );
+    for (const run of matching)
+      await validateRun(github, run, expected, run.run_attempt, main);
     const successful = matching.filter(
       (run) => run.status === "completed" && run.conclusion === "success"
     );
@@ -123,7 +162,6 @@ export async function selectAwsPublication(
     );
     if (successful.length) {
       const run = successful[0];
-      validateRun(run, plan, expected, run.run_attempt);
       const artifacts = await github.paginate(
         github.rest.actions.listWorkflowRunArtifacts,
         {
@@ -171,11 +209,19 @@ export async function selectAwsPublication(
     }
     if (matching.length && matching.every((run) => run.status === "completed"))
       throw new Error(
-        "AWS publishing failed; resume the source-owned producer"
+        "AWS publishing failed; recover the original capture in the source-owned producer"
       );
+    if (firstDiscovery && matching.length === 0 && dispatch) {
+      assert.ok(
+        now() < deadline,
+        "AWS discovery budget exhausted before dispatch"
+      );
+      await dispatch();
+    }
+    firstDiscovery = false;
     assert.ok(
       now() < deadline,
-      "AWS publication evidence not ready; resume the controller after A1 succeeds"
+      "AWS publication evidence not ready; dispatch acceptance may be unknown. Inspect AWS runs and reconcile manually; never clear the request marker to retry"
     );
     await sleep(10_000);
   }
@@ -198,7 +244,19 @@ export async function authenticateAwsGeneration(
     request: request()
   });
   assert.equal(run.id, generation.runId, "AWS generation run ID mismatch");
-  validateRun(run, plan, expected, generation.runAttempt);
+  const main = await mainCommit(github);
+  await validateRun(github, run, expected, generation.runAttempt, main);
+  await validateAncestry(github, expected.source.commit, main);
+  const { data: tag } = await github.rest.repos.getCommit({
+    ...aws,
+    ref: `refs/tags/${plan.version}`,
+    request: request()
+  });
+  assert.equal(
+    tag.sha,
+    expected.source.commit,
+    "AWS tag differs from frozen source"
+  );
   const { data: artifact } = await github.rest.actions.getArtifact({
     ...aws,
     artifact_id: generation.artifactId,
@@ -235,6 +293,50 @@ export async function authenticateAwsGeneration(
       created <= Date.parse(captures[0].completed_at),
     "AWS snapshot capture attempt mismatch"
   );
+  return run;
+}
+
+export async function authenticateAwsSnapshot(
+  github,
+  plan,
+  sourceSha,
+  record,
+  file,
+  run = tool
+) {
+  const stat = await lstat(file);
+  assert.ok(stat.isFile() && stat.size <= 64 * 1024 * 1024);
+  assert.equal(
+    hash(await readFile(file)),
+    record.generation.artifactDigest,
+    "Downloaded AWS snapshot digest differs from original generation"
+  );
+  const generation = await authenticateAwsGeneration(
+    github,
+    plan,
+    sourceSha,
+    record
+  );
+  const metadata = JSON.parse(await run(["tar", "-xOf", file, "source.json"]));
+  assert.deepEqual(Object.keys(metadata).sort(), ["manifestDigest", "source"]);
+  assert.match(metadata.manifestDigest, digestPattern);
+  assert.deepEqual(
+    metadata.source,
+    {
+      repository: record.source.repository,
+      ref: `refs/tags/${plan.version}`,
+      commit: record.source.commit,
+      workflow: awsWorkflow,
+      runId: record.generation.runId,
+      generationAttempt: record.generation.runAttempt,
+      controller: {
+        repository: record.source.repository,
+        ref: "refs/heads/main",
+        commit: generation.head_sha
+      }
+    },
+    "AWS snapshot source/controller differs from the original generation"
+  );
 }
 
 export function validateAwsEvidence(plan, sourceSha, evidence) {
@@ -263,6 +365,12 @@ export function validateAwsEvidence(plan, sourceSha, evidence) {
 export async function readAwsEvidence(github, plan, sourceSha) {
   plannedBicepExtensions(plan, sourceSha);
   const branch = `automation/bicep-release-state-${plan.version.slice(1)}`;
+  const evidence = await readState(github, sourceSha, branch, evidencePath);
+  if (evidence) validateAwsEvidence(plan, sourceSha, evidence);
+  return evidence;
+}
+
+async function readState(github, sourceSha, branch, path) {
   let ref;
   try {
     ({ data: ref } = await github.rest.git.getRef({
@@ -289,21 +397,101 @@ export async function readAwsEvidence(github, plan, sourceSha) {
     1,
     "Bicep evidence commit changed unexpected files"
   );
-  assert.equal(commit.files[0].filename, evidencePath);
+  assert.equal(commit.files[0].filename, path);
   assert.equal(commit.files[0].status, "added");
   const { data: file } = await github.rest.repos.getContent({
     ...radius,
-    path: evidencePath,
+    path,
     ref: ref.object.sha,
     request: request()
   });
   assert.equal(file.type, "file");
   assert.equal(file.encoding, "base64");
-  const evidence = JSON.parse(
-    Buffer.from(file.content, "base64").toString("utf8")
+  return JSON.parse(Buffer.from(file.content, "base64").toString("utf8"));
+}
+
+export async function requestAwsPublication(
+  stateGithub,
+  dispatchGithub,
+  plan,
+  sourceSha
+) {
+  const expected = plannedBicepExtensions(plan, sourceSha)[0];
+  const branch = `automation/aws-bicep-request-${plan.version.slice(1)}`;
+  const marker = {
+    schemaVersion: 1,
+    releaseSourceCommit: sourceSha,
+    repository: expected.source.repository,
+    eventType: awsEvent,
+    clientPayload: {
+      version: plan.version,
+      sourceCommit: expected.source.commit
+    }
+  };
+  const read = () => readState(stateGithub, sourceSha, branch, requestPath);
+  const existing = await read();
+  if (existing) {
+    assert.deepEqual(existing, marker, "Immutable AWS request conflicts");
+    return;
+  }
+  const { data: source } = await stateGithub.rest.git.getCommit({
+    ...radius,
+    commit_sha: sourceSha,
+    request: request()
+  });
+  const { data: tree } = await stateGithub.rest.git.createTree({
+    ...radius,
+    base_tree: source.tree.sha,
+    tree: [
+      {
+        path: requestPath,
+        mode: "100644",
+        type: "blob",
+        content: JSON.stringify(marker, null, 2) + "\n"
+      }
+    ],
+    request: request()
+  });
+  const { data: commit } = await stateGithub.rest.git.createCommit({
+    ...radius,
+    message: `chore(release): record AWS Bicep request for ${plan.version}`,
+    tree: tree.sha,
+    parents: [sourceSha],
+    request: request()
+  });
+  try {
+    await stateGithub.rest.git.createRef({
+      ...radius,
+      ref: `refs/heads/${branch}`,
+      sha: commit.sha,
+      request: { ...request(), retries: 0 }
+    });
+  } catch (error) {
+    if (error.status === 401 || error.status === 403) throw error;
+    const recovered = await read();
+    if (!recovered) throw error;
+    assert.deepEqual(recovered, marker, "Concurrent AWS request conflicts");
+    // Only the confirmed create winner may dispatch, even if this write landed.
+    return;
+  }
+  assert.deepEqual(
+    await read(),
+    marker,
+    "AWS request persistence readback failed"
   );
-  validateAwsEvidence(plan, sourceSha, evidence);
-  return evidence;
+  try {
+    await dispatchGithub.rest.repos.createDispatchEvent({
+      ...aws,
+      event_type: awsEvent,
+      client_payload: marker.clientPayload,
+      request: { ...request(), retries: 0 }
+    });
+  } catch (error) {
+    throw new Error(
+      `AWS dispatch did not return success; acceptance may be unknown. Retain ${branch} and reconcile AWS runs before manual recovery: ${error.message}`,
+      { cause: error }
+    );
+  }
 }
 
 export async function persistAwsEvidence(github, plan, sourceSha, evidence) {
@@ -357,7 +545,12 @@ export async function persistAwsEvidence(github, plan, sourceSha, evidence) {
   );
 }
 
-export default async function collect({ github, core }) {
+export default async function collect({
+  github,
+  core,
+  stateGithub,
+  dispatchGithub
+}) {
   const directory = core.getInput("directory", { required: true });
   const plan = await load(core.getInput("plan_file", { required: true }));
   const sourceSha = core.getInput("source_sha", { required: true });
@@ -375,7 +568,14 @@ export default async function collect({ github, core }) {
       await save(join(directory, "aws-evidence.json"), evidence);
     }
   } else if (operation === "select") {
-    const publishing = await selectAwsPublication(github, plan, sourceSha);
+    assert.ok(
+      stateGithub && dispatchGithub,
+      "AWS dispatch requires separate state and sibling clients"
+    );
+    const publishing = await selectAwsPublication(github, plan, sourceSha, {
+      dispatch: () =>
+        requestAwsPublication(stateGithub, dispatchGithub, plan, sourceSha)
+    });
     await save(join(directory, "publishing.json"), publishing);
     core.setOutput("run_id", publishing.runId);
     core.setOutput("artifact_id", publishing.artifactId);
@@ -401,19 +601,22 @@ export default async function collect({ github, core }) {
     await save(join(directory, "aws-evidence.json"), evidence);
     core.setOutput("generation_run_id", artifact.generation.runId);
     core.setOutput("generation_artifact_id", artifact.generation.artifactId);
-  } else if (operation === "persist") {
+  } else if (operation === "snapshot") {
     const evidence = await load(join(directory, "aws-evidence.json"));
     validateAwsEvidence(plan, sourceSha, evidence);
     const files = await readdir(join(directory, "snapshot"));
     assert.equal(files.length, 1, "Expected one raw AWS snapshot");
     const file = join(directory, "snapshot", files[0]);
-    const stat = await lstat(file);
-    assert.ok(stat.isFile() && stat.size <= 64 * 1024 * 1024);
-    assert.equal(
-      hash(await readFile(file)),
-      evidence.artifact.generation.artifactDigest,
-      "Downloaded AWS snapshot digest differs from original generation"
+    await authenticateAwsSnapshot(
+      github,
+      plan,
+      sourceSha,
+      evidence.artifact,
+      file
     );
+  } else if (operation === "persist") {
+    const evidence = await load(join(directory, "aws-evidence.json"));
+    validateAwsEvidence(plan, sourceSha, evidence);
     await observeExtension(evidence.artifact);
     await persistAwsEvidence(github, plan, sourceSha, evidence);
   } else {
