@@ -29,8 +29,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.14
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.9
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.82.4
+	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.75.6
+	github.com/aws/aws-sdk-go-v2/service/dax v1.38.12
+	github.com/aws/aws-sdk-go-v2/service/docdb v1.58.1
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.344.0
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.67.3
+	github.com/aws/aws-sdk-go-v2/service/emr v1.71.0
+	github.com/aws/aws-sdk-go-v2/service/fsx v1.74.9
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.65.9
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.7
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.7

@@ -119,6 +119,21 @@ type Resetter interface {
 	Reset(ctx context.Context, region string, identifier string) error
 }
 
+// DeletePreparer is implemented by a handler whose delete must send the same value on every attempt, so a retried
+// delete never takes a second copy of the data, such as the name of a DocumentDB cluster's final snapshot or the
+// idempotency token of an FSx delete. Before the first delete call, UCP calls DeleteToken and saves the value on the
+// record, then calls DeleteWithToken instead of Delete with that value on every attempt. A create or update clears the
+// value, and so does a delete whose Progress reports that it failed, so the next delete gets a new one. A DeleteWithToken
+// call that returns an error, a timeout, or an error while waiting keeps it, because the delete may still be running.
+type DeletePreparer interface {
+	// DeleteToken returns the value to send with every attempt to delete the resource with the identifier. UCP calls
+	// it once per delete, so it may use the current time.
+	DeleteToken(ctx context.Context, region string, identifier string) (string, error)
+
+	// DeleteWithToken starts deleting the resource with the identifier, as Delete does, sending token.
+	DeleteWithToken(ctx context.Context, region string, identifier string, token string) error
+}
+
 // Finder is implemented by a handler whose Options().Recovery is RecoverBySearch.
 type Finder interface {
 	// Find returns the identifier of the resource a create sent with request made, or "" when AWS has none. It finds
@@ -285,6 +300,13 @@ type Options struct {
 	// leaves out something the last deploy set, such as a field inside a list item, so a rule that lets AWS's value
 	// hold more than the template, such as defaults AWS fills in, never hides a removal.
 	Equivalent func(path string, template any, aws any) bool
+
+	// RecordedEquivalent is Equivalent for a rule only a record of the last deploy can justify, such as a KMS alias AWS
+	// reports as the key's ARN, or values AWS adds to a create-only list that could also have been set outside the
+	// template. UCP uses it only where the last deploy set the template's value, so it never counts AWS's value as the
+	// template's without a record, such as when a PUT takes over a resource by name. Such a value the template changes
+	// is then always a change.
+	RecordedEquivalent func(path string, template any, aws any) bool
 
 	// DisruptiveUpdate is true for a type whose update restarts or interrupts the resource, such as one that must be
 	// stopped to change, so an update UCP doesn't need costs more than a failed deploy. When Equivalent counts AWS's
