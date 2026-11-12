@@ -29,11 +29,35 @@ type DeploymentTemplateSpec struct {
 	// Parameters is the ARM JSON parameters for the template.
 	Parameters map[string]string `json:"parameters,omitempty"`
 
+	// ParameterReferences binds secure strings to same-namespace Secret keys.
+	// +kubebuilder:validation:MaxProperties=64
+	ParameterReferences map[string]ParameterReference `json:"parameterReferences,omitempty"`
+
 	// ProviderConfig specifies the scopes for resources.
 	ProviderConfig string `json:"providerConfig,omitempty"`
 
 	// Repository is the git repository that the Bicep manifests are stored in.
 	Repository string `json:"repository,omitempty"`
+}
+
+// ParameterReference identifies a deployment-time input, never its value.
+type ParameterReference struct {
+	SecretKeyRef SecretKeyReference `json:"secretKeyRef"`
+}
+
+// SecretKeyReference selects a key in a Secret in the DeploymentTemplate namespace.
+// +kubebuilder:validation:XValidation:rule="!has(self.__namespace__)",message="Secret references cannot specify a namespace"
+type SecretKeyReference struct {
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
+	Name string `json:"name"`
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
+	Key string `json:"key"`
+
+	// Namespace is forbidden, including an explicit empty namespace.
+	// It is modeled only so the API server rejects rather than prunes it.
+	Namespace *string `json:"namespace,omitempty"`
 }
 
 // DeploymentTemplateStatus defines the observed state of a DeploymentTemplate resource.
@@ -44,6 +68,16 @@ type DeploymentTemplateStatus struct {
 
 	// StatusHash is a hash of the DeploymentTemplate's state (template, parameters, and provider config).
 	StatusHash string `json:"statusHash,omitempty"`
+
+	// AttemptedInputRevision identifies the spec and Secret metadata submitted by the current attempt.
+	AttemptedInputRevision string `json:"attemptedInputRevision,omitempty"`
+
+	// AppliedInputRevision advances only after successful deployment and output tracking.
+	AppliedInputRevision string `json:"appliedInputRevision,omitempty"`
+
+	// PendingSubmission records a durable submission intent before sending credentials to the engine.
+	// If submission acknowledgement is lost, recovery polls this deployment ID.
+	PendingSubmission string `json:"pendingSubmission,omitempty"`
 
 	// OutputResources is a list of the resourceIDs that were created by the template on the last deployment.
 	OutputResources []string `json:"outputResources,omitempty"`

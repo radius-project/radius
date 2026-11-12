@@ -33,6 +33,8 @@ import (
 	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+var secretInputTestEnvironment *envtest.Environment
+
 // TestMain will be called before running any tests in the package.
 //
 // We're using this to ensure that one (and only one) copy of env-test is booted up.
@@ -71,6 +73,7 @@ func TestMain(m *testing.M) {
 	_ = apiextensionsv1.AddToScheme(s)
 
 	config = cfg
+	secretInputTestEnvironment = env
 	scheme = s
 
 	exitCode := m.Run()

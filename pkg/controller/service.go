@@ -97,6 +97,10 @@ func (s *Service) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create resource deployments client: %w", err)
 	}
+	secretInputs, err := reconciler.NewSecretInputResolver(s.Options.K8sConfig)
+	if err != nil {
+		return fmt.Errorf("failed to create authorized Secret input reader: %w", err)
+	}
 	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
 	err = (&reconciler.DeploymentTemplateReconciler{
 		Client:                    mgr.GetClient(),
@@ -104,6 +108,7 @@ func (s *Service) Run(ctx context.Context) error {
 		EventRecorder:             mgr.GetEventRecorderFor("deploymenttemplate-controller"),
 		Radius:                    reconciler.NewRadiusClient(s.Options.UCPConnection),
 		ResourceDeploymentsClient: resourceDeploymentsClient,
+		SecretInputs:              secretInputs,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "DeploymentTemplate", err)
