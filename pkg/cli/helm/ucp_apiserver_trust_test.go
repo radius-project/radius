@@ -33,11 +33,16 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	clienttesting "k8s.io/client-go/testing"
 )
 
 type testCA struct {
@@ -103,6 +108,14 @@ func tlsSecret(name string, crt, caCrt []byte) *corev1.Secret {
 	}
 }
 
+// apiServerCASecret is radius-apiserver-ca as cert-manager issues it from the chart's Certificate: a self-signed CA
+// whose ca.crt is the CA certificate itself, annotated by secretTemplate so cainjector may copy it.
+func apiServerCASecret(ca testCA) *corev1.Secret {
+	secret := tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem)
+	secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
+	return secret
+}
+
 func ucpDeployment(rolledOut bool) *appsv1.Deployment {
 	replicas := int32(1)
 	deployment := &appsv1.Deployment{
@@ -135,7 +148,9 @@ var issuedUCPAPIServerCA = sync.OnceValue(func() []byte { return mustTestCA("rad
 // issuedUCPAPIServerTrustClient returns a client for a fresh install where cert-manager has issued
 // radius-apiserver-ca.
 func issuedUCPAPIServerTrustClient(string) (kubernetes.Interface, error) {
-	return kubefake.NewSimpleClientset(tlsSecret(ucpAPIServerCASecretName, issuedUCPAPIServerCA(), issuedUCPAPIServerCA())), nil
+	secret := tlsSecret(ucpAPIServerCASecretName, issuedUCPAPIServerCA(), issuedUCPAPIServerCA())
+	secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
+	return kubefake.NewSimpleClientset(secret), nil
 }
 
 func shortenUCPAPIServiceWait(t *testing.T) {
@@ -185,30 +200,121 @@ func apiServiceCABundle(t *testing.T, client dynamic.Interface) []string {
 	return pemSubjects(t, bundle)
 }
 
+// apiServiceCASource returns the Secret cainjector copies into the UCP APIService.
+func apiServiceCASource(t *testing.T, client dynamic.Interface) string {
+	t.Helper()
+	apiService, err := client.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	return apiService.GetAnnotations()[injectCAFromSecretAnnotation]
+}
+
+func requireNoTrustSecret(t *testing.T, client kubernetes.Interface) {
+	t.Helper()
+	_, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	require.True(t, apierrors.IsNotFound(err), "Secret %s must not exist outside the upgrade overlap, got %v", ucpAPIServerTrustSecretName, err)
+}
+
 func Test_reconcileUCPAPIServerTrust_FreshInstall(t *testing.T) {
 	shortenUCPAPIServiceWait(t)
 	apiServerCA, orgRoot := newTestCA(t, "radius-apiserver-ca"), newTestCA(t, "org-root")
 	// ucp-apiserver-tls carries an organization root in ca.crt; the API server must not trust it.
 	kubeClient := kubefake.NewSimpleClientset(
-		tlsSecret(ucpAPIServerCASecretName, apiServerCA.pem, apiServerCA.pem),
+		apiServerCASecret(apiServerCA),
 		tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, apiServerCA), orgRoot.pem),
 	)
 	dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
 
 	require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
-	require.Equal(t, []string{"radius-apiserver-ca"}, trustedSubjects(t, kubeClient))
+	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
+	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+	requireNoTrustSecret(t, kubeClient)
+}
+
+// A rollback can restore an APIService rendered during the upgrade overlap, after rad deleted the trust Secret.
+func Test_reconcileUCPAPIServerTrust_RestoredOverlapAPIService(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
+	stale := ucpAPIService(base64.StdEncoding.EncodeToString(append(append([]byte{}, ucpCA.pem...), apiServerCA.pem...)), "True", "Passed")
+	stale.SetAnnotations(map[string]string{injectCAFromSecretAnnotation: "radius-system/" + ucpAPIServerTrustSecretName})
+	kubeClient := kubefake.NewSimpleClientset(apiServerCASecret(apiServerCA))
+	dynamicClient := ucpAPIServiceDynamicClient(stale)
+
+	require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
+	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+	requireNoTrustSecret(t, kubeClient)
+}
+
+// cainjector applies the caBundle it merged from a cached APIService, so a reconcile that read the APIService during
+// the upgrade overlap can write ucp-ca back after rad switched it to radius-apiserver-ca.
+func Test_reconcileUCPAPIServerTrust_CorrectsStaleCAInjectorWrite(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
+	kubeClient := kubefake.NewSimpleClientset(apiServerCASecret(apiServerCA))
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), map[schema.GroupVersionResource]string{
+		apiServicesResource: "APIServiceList",
+	}, ucpAPIService("", "", ""))
+	staleWrites := 0
+	dynamicClient.PrependReactor("get", "apiservices", func(clienttesting.Action) (bool, runtime.Object, error) {
+		current, err := dynamicClient.Tracker().Get(apiServicesResource, "", ucpAPIServiceName)
+		require.NoError(t, err)
+		apiService := current.(*unstructured.Unstructured)
+		if staleWrites > 0 || apiService.GetAnnotations()[injectCAFromSecretAnnotation] != ucpAPIServerCASource(RadiusSystemNamespace) {
+			return false, nil, nil
+		}
+		staleWrites++
+		stale := apiService.DeepCopy()
+		require.NoError(t, unstructured.SetNestedField(stale.Object, base64.StdEncoding.EncodeToString(append(append([]byte{}, ucpCA.pem...), apiServerCA.pem...)), "spec", "caBundle"))
+		require.NoError(t, dynamicClient.Tracker().Update(apiServicesResource, stale, ""))
+		return false, nil, nil
+	})
+
+	require.NoError(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+	require.Equal(t, 1, staleWrites)
 	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
 }
 
-func Test_reconcileUCPAPIServerTrust_RejectsNonCA(t *testing.T) {
-	shortenUCPAPIServiceWait(t)
-	ca := newTestCA(t, "radius-apiserver-ca")
-	kubeClient := kubefake.NewSimpleClientset(tlsSecret(ucpAPIServerCASecretName, issueUCPCertificate(t, ca), nil))
+func Test_extraCertificates(t *testing.T) {
+	ca, other := newTestCA(t, "radius-apiserver-ca"), newTestCA(t, "other-ca")
+	expired := newTestCA(t, "expired-ca")
+	template := *expired.cert
+	template.NotBefore, template.NotAfter = time.Now().Add(-2*time.Hour), time.Now().Add(-time.Hour)
+	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &expired.key.PublicKey, expired.key)
+	require.NoError(t, err)
+	expiredPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 
-	err := trustImpl(kubeClient, ucpAPIServiceDynamicClient()).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
-	require.ErrorContains(t, err, "its tls.crt is not a CA certificate")
-	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
-	require.Error(t, err, "rad must not write the trust Secret without a CA")
+	require.Equal(t, 0, extraCertificates(ca.pem, ca.pem))
+	require.Equal(t, 0, extraCertificates(append(append([]byte{}, ca.pem...), expiredPEM...), ca.pem))
+	require.Equal(t, 1, extraCertificates(append(append([]byte{}, ca.pem...), other.pem...), ca.pem))
+}
+
+func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
+	ca, other := newTestCA(t, "radius-apiserver-ca"), newTestCA(t, "other-ca")
+	leaf := issueUCPCertificate(t, ca)
+	tests := []struct {
+		name   string
+		secret *corev1.Secret
+		want   string
+	}{
+		{name: "tls.crt is a leaf", secret: tlsSecret(ucpAPIServerCASecretName, leaf, ca.pem), want: "its tls.crt is not a CA certificate"},
+		{name: "ca.crt holds a leaf", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, append(append([]byte{}, ca.pem...), leaf...)), want: "its ca.crt does not hold only CA certificates"},
+		{name: "ca.crt is another CA", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, other.pem), want: "its ca.crt does not hold the CA certificate in tls.crt"},
+		{name: "cainjector may not copy ca.crt", secret: tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem), want: "cert-manager.io/allow-direct-injection"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shortenUCPAPIServiceWait(t)
+			if tt.want != "cert-manager.io/allow-direct-injection" {
+				tt.secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
+			}
+			kubeClient := kubefake.NewSimpleClientset(tt.secret)
+			dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
+
+			err := trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
+			require.ErrorContains(t, err, tt.want)
+			require.Empty(t, apiServiceCASource(t, dynamicClient), "rad must not point the APIService at an unusable CA")
+		})
+	}
 }
 
 func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
@@ -232,7 +338,7 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	require.Equal(t, []string{"ucp-ca"}, trustedSubjects(t, kubeClient))
 
 	// Helm installs the new CA and starts rolling UCP; the rollout has not finished, so both CAs stay trusted.
-	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), tlsSecret(ucpAPIServerCASecretName, apiServerCA.pem, apiServerCA.pem), metav1.CreateOptions{})
+	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), apiServerCASecret(apiServerCA), metav1.CreateOptions{})
 	require.NoError(t, err)
 	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, apiServerCA), apiServerCA.pem), metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -245,13 +351,20 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system rollout status deployment/ucp`)
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, trustedSubjects(t, kubeClient))
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+	require.Empty(t, apiServiceCASource(t, dynamicClient), "the chart, not rad, points the APIService at the trust Secret during the overlap")
 
-	// Once every UCP pod serves the new certificate, rad removes ucp-ca explicitly.
+	// Once every UCP pod serves the new certificate, rad removes ucp-ca explicitly: it points the APIService at
+	// radius-apiserver-ca, which cainjector follows from then on, and deletes the trust Secret.
 	_, err = kubeClient.AppsV1().Deployments(RadiusSystemNamespace).UpdateStatus(t.Context(), ucpDeployment(true), metav1.UpdateOptions{})
 	require.NoError(t, err)
 	require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
-	require.Equal(t, []string{"radius-apiserver-ca"}, trustedSubjects(t, kubeClient))
+	require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
 	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+	requireNoTrustSecret(t, kubeClient)
+
+	// The next upgrade does not seed the trust Secret again.
+	require.NoError(t, impl.seedUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeEnforce))
+	requireNoTrustSecret(t, kubeClient)
 }
 
 func Test_reconcileUCPAPIServerTrust_ServingCertificateFromOtherCA(t *testing.T) {
@@ -262,7 +375,7 @@ func Test_reconcileUCPAPIServerTrust_ServingCertificateFromOtherCA(t *testing.T)
 			ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace},
 			Data:       map[string][]byte{caCertificateKey: ucpCA.pem},
 		},
-		tlsSecret(ucpAPIServerCASecretName, apiServerCA.pem, apiServerCA.pem),
+		apiServerCASecret(apiServerCA),
 		tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, ucpCA), ucpCA.pem),
 		ucpDeployment(true),
 	)
@@ -271,6 +384,7 @@ func Test_reconcileUCPAPIServerTrust_ServingCertificateFromOtherCA(t *testing.T)
 	err := trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
 	require.ErrorContains(t, err, "is not issued by radius-apiserver-ca")
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, trustedSubjects(t, kubeClient))
+	require.Empty(t, apiServiceCASource(t, dynamicClient))
 }
 
 func Test_deleteUCPAPIServerTrust(t *testing.T) {

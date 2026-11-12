@@ -163,8 +163,8 @@ func detectCertManager(ctx context.Context, kubeClient kubernetes.Interface, api
 }
 
 // certManagerComponents maps each cert-manager component Radius needs to its app.kubernetes.io/name label. The
-// cainjector copies the CA certificates in Secret radius-apiserver-trust into the Radius APIService, so the
-// Kubernetes API server can reach UCP.
+// cainjector copies ca.crt of Secret radius-apiserver-ca into the Radius APIService, and follows its renewals, so
+// the Kubernetes API server can reach UCP.
 var certManagerComponents = []struct{ component, name string }{
 	{component: "controller", name: "cert-manager"},
 	{component: "webhook", name: "webhook"},
@@ -194,7 +194,7 @@ func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, nam
 		}
 		if c.component == "cainjector" {
 			if problem := caInjectorProblem(&deployment, radiusNamespace); problem != "" {
-				return fmt.Errorf("cert-manager cainjector Deployment %s/%s %s. Radius needs it to inject the CA certificates in Secret %s/%s into the Radius APIService. Remove that setting from cert-manager and retry", namespace, deployment.Name, problem, radiusNamespace, ucpAPIServerTrustSecretName)
+				return fmt.Errorf("cert-manager cainjector Deployment %s/%s %s. Radius needs it to inject the CA certificate in Secret %s/%s into the Radius APIService. Remove that setting from cert-manager and retry", namespace, deployment.Name, problem, radiusNamespace, ucpAPIServerCASecretName)
 			}
 		}
 	}

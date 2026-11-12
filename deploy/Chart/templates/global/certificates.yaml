@@ -73,6 +73,10 @@ spec:
   isCA: true
   commonName: radius-apiserver-ca
   secretName: radius-apiserver-ca
+  # Lets cert-manager's cainjector copy ca.crt, this self-signed CA certificate, into UCP's APIService.
+  secretTemplate:
+    annotations:
+      cert-manager.io/allow-direct-injection: "true"
   # 1 year, renewed at two-thirds of its lifetime, keeping the key like radius-ca.
   duration: 8760h
   renewBefore: 2920h

@@ -88,8 +88,8 @@ func Test_waitForUCPAPIService(t *testing.T) {
 			objects: []runtime.Object{ucpAPIService("", "False", "FailedDiscoveryCheck")},
 			wantErr: []string{
 				"it has no CA bundle",
-				"ca.crt of Secret radius-system/radius-apiserver-trust",
-				"kubectl --context \"test-context\" -n radius-system get secret radius-apiserver-trust -o yaml",
+				"ca.crt of Secret radius-system/radius-apiserver-ca",
+				"kubectl --context \"test-context\" -n radius-system get secret radius-apiserver-ca -o yaml",
 				"kubectl --context \"test-context\" get pods -A -l app.kubernetes.io/component=cainjector",
 			},
 		},

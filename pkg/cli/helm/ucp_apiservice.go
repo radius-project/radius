@@ -54,7 +54,7 @@ var (
 // waitForUCPAPIService, when Radius authorization is on, reconciles the CAs the Kubernetes API server trusts for UCP
 // and waits until the UCP APIService has a CA bundle and the API server reports it Available. Helm waits only for
 // workloads, and with authorization on the APIService trusts UCP only after cert-manager issues
-// radius-apiserver-ca and rad writes it to Secret radius-apiserver-trust. With authorization off, the chart sets
+// radius-apiserver-ca and its cainjector copies the CA into the APIService. With authorization off, the chart sets
 // the CA bundle itself and this returns at once.
 func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode) error {
 	if mode == authz.ModeOff {
@@ -188,9 +188,9 @@ func ucpAPIServiceDiagnostics(kubeContext, radiusNamespace string, noCABundle bo
 			radiusNamespace, kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml"))
 	}
 
-	return fmt.Sprintf("rad writes the CA certificates the API server trusts for UCP to ca.crt of Secret %s/%s, and cert-manager's cainjector copies them into the APIService. Check the Secret with %s, and find the cainjector to check its logs with %s",
-		radiusNamespace, ucpAPIServerTrustSecretName,
-		kubectlCommand(kubeContext, radiusNamespace, "get secret "+ucpAPIServerTrustSecretName+" -o yaml"),
+	return fmt.Sprintf("cert-manager's cainjector copies ca.crt of Secret %s/%s into the APIService. Check the Secret with %s, and find the cainjector to check its logs with %s",
+		radiusNamespace, ucpAPIServerCASecretName,
+		kubectlCommand(kubeContext, radiusNamespace, "get secret "+ucpAPIServerCASecretName+" -o yaml"),
 		kubectlCommand(kubeContext, "", "get pods -A -l app.kubernetes.io/component=cainjector"))
 }
 
