@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/schema"
 )
@@ -115,6 +116,7 @@ func (h *SensitiveDataHandler) EncryptSensitiveFields(data map[string]any, sensi
 //
 // The resourceID must match what was provided during encryption for successful decryption.
 // The context is used to fetch versioned keys from the key provider when needed.
+// Legacy paths are accepted only when they address the same field under the old path syntax.
 //
 // Note: This method does not use schema information for type restoration. Numbers in decrypted
 // objects will be returned as float64 (standard Go JSON behavior). For accurate type restoration,
@@ -123,8 +125,7 @@ func (h *SensitiveDataHandler) EncryptSensitiveFields(data map[string]any, sensi
 // Returns an error if any field decryption fails. In case of error, partial decryption may have occurred.
 func (h *SensitiveDataHandler) DecryptSensitiveFields(ctx context.Context, data map[string]any, sensitiveFieldPaths []string, resourceID string) error {
 	for _, path := range sensitiveFieldPaths {
-		ad := buildAssociatedData(resourceID, path)
-		if err := h.decryptFieldAtPath(ctx, data, path, nil, ad); err != nil {
+		if err := h.decryptFieldAtPath(ctx, data, path, nil, resourceID); err != nil {
 			// Skip fields that are not found - they may not exist in this resource instance
 			if errors.Is(err, ErrFieldNotFound) {
 				continue
@@ -143,14 +144,14 @@ func (h *SensitiveDataHandler) DecryptSensitiveFields(ctx context.Context, data 
 // The context is used to fetch versioned keys from the key provider when needed.
 // The schema is used to restore the correct types for fields within encrypted objects (e.g., integers
 // that would otherwise be decoded as float64).
+// Legacy paths are accepted only when they address the same field under the old path syntax.
 //
 // Returns an error if any field decryption fails. In case of error, partial decryption may have occurred.
 func (h *SensitiveDataHandler) DecryptSensitiveFieldsWithSchema(ctx context.Context, data map[string]any, sensitiveFieldPaths []string, resourceID string, schema map[string]any) error {
 	for _, path := range sensitiveFieldPaths {
 		// Get the schema for this specific field path
 		fieldSchema := getSchemaForPath(schema, path)
-		ad := buildAssociatedData(resourceID, path)
-		if err := h.decryptFieldAtPath(ctx, data, path, fieldSchema, ad); err != nil {
+		if err := h.decryptFieldAtPath(ctx, data, path, fieldSchema, resourceID); err != nil {
 			// Skip fields that are not found - they may not exist in this resource instance
 			if errors.Is(err, ErrFieldNotFound) {
 				continue
@@ -200,9 +201,11 @@ func (h *SensitiveDataHandler) encryptFieldAtPath(data map[string]any, path stri
 
 // decryptFieldAtPath decrypts the value at the given field path in the data.
 // If fieldSchema is provided, it will be used for type restoration.
-func (h *SensitiveDataHandler) decryptFieldAtPath(ctx context.Context, data map[string]any, path string, fieldSchema map[string]any, associatedData []byte) error {
+func (h *SensitiveDataHandler) decryptFieldAtPath(ctx context.Context, data map[string]any, path string, fieldSchema map[string]any, resourceID string) error {
+	associatedData := buildAssociatedData(resourceID, path)
+	legacyAD := buildLegacyAssociatedData(resourceID, path)
 	processor := func(value any) (any, error) {
-		return h.decryptValue(ctx, value, fieldSchema, associatedData)
+		return h.decryptValue(ctx, value, fieldSchema, associatedData, legacyAD)
 	}
 	return h.processFieldAtPath(data, path, processor)
 }
@@ -390,7 +393,7 @@ func (h *SensitiveDataHandler) encryptValue(value any, associatedData []byte) (a
 
 // decryptValue decrypts a single value, restoring the original type using schema information if provided.
 // If a keyProvider is available and the encrypted data contains a version, it will fetch the appropriate key.
-func (h *SensitiveDataHandler) decryptValue(ctx context.Context, value any, fieldSchema map[string]any, associatedData []byte) (any, error) {
+func (h *SensitiveDataHandler) decryptValue(ctx context.Context, value any, fieldSchema map[string]any, associatedData, legacyAD []byte) (any, error) {
 	if value == nil {
 		return nil, nil
 	}
@@ -423,6 +426,9 @@ func (h *SensitiveDataHandler) decryptValue(ctx context.Context, value any, fiel
 	}
 
 	decrypted, err := encryptor.Decrypt(encryptedJSON, associatedData)
+	if errors.Is(err, ErrAssociatedDataMismatch) && len(legacyAD) > 0 {
+		decrypted, err = encryptor.Decrypt(encryptedJSON, legacyAD)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -459,9 +465,33 @@ func buildAssociatedData(resourceID, fieldPath string) []byte {
 	if resourceID == "" && fieldPath == "" {
 		return nil
 	}
+	if strings.ContainsRune(fieldPath, '\\') {
+		// Separate new escaped paths from legacy raw names so the fallback cannot
+		// accept new ciphertext from a different field with a colliding path string.
+		return []byte("\x00radius-field-path-v1:" + resourceID + ":" + fieldPath)
+	}
 	// Combine resource ID and field path with a separator
 	// Format: "resourceID:fieldPath"
 	return []byte(resourceID + ":" + fieldPath)
+}
+
+// buildLegacyAssociatedData only accepts escapes for characters the old parser
+// treated literally. Dots and opening brackets would change the field being addressed.
+func buildLegacyAssociatedData(resourceID, fieldPath string) []byte {
+	if !strings.ContainsRune(fieldPath, '\\') {
+		return nil
+	}
+	var legacy strings.Builder
+	for i := 0; i < len(fieldPath); i++ {
+		if fieldPath[i] == '\\' {
+			i++
+			if i == len(fieldPath) || (fieldPath[i] != '\\' && fieldPath[i] != ']') {
+				return nil
+			}
+		}
+		legacy.WriteByte(fieldPath[i])
+	}
+	return []byte(resourceID + ":" + legacy.String())
 }
 
 // getSchemaType returns the type from a schema, or empty string if not specified.
