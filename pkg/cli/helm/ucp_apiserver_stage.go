@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/base64"
@@ -73,7 +74,7 @@ type renderRadiusManifest func(ctx context.Context) (manifest string, ok bool, e
 // earlier CAs after Helm once UCP serves the new certificate.
 //
 // It does nothing when authorization will be off, the APIService does not exist, as on a fresh install, or the
-// APIService already trusts radius-apiserver-ca through cainjector. When manifest has no radius-apiserver-ca
+// APIService caBundle already holds only the key of radius-apiserver-ca. When manifest has no radius-apiserver-ca
 // Certificate, as in charts before it, it only records the CAs of the live caBundle in the trust Secret. If cert-manager
 // does not issue the CA in time, it returns an error before Helm changes anything; running the command again resumes.
 func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace, releaseName string, mode authz.Mode, render renderRadiusManifest) error {
@@ -92,9 +93,6 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if err != nil {
 		return fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
 	}
-	if apiService.GetAnnotations()[injectCAFromSecretAnnotation] == ucpAPIServerCASource(radiusNamespace) {
-		return nil
-	}
 	encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 	bundle, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
@@ -102,6 +100,15 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	}
 	live := caCertificates(bundle)
 	if len(live) == 0 {
+		return nil
+	}
+	// Decide from what the API server trusts, not from the inject-ca-from-secret annotation: Helm's switch to
+	// authorization off keeps the annotation rad set, while UCP serves a ucp-ca certificate again.
+	current, _, _, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
+	if err != nil {
+		return err
+	}
+	if current != nil && onlyKey(live, current) {
 		return nil
 	}
 
@@ -176,6 +183,17 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		return err
 	}
 	return nil
+}
+
+// onlyKey reports whether every CA in certs uses the key of ca, as when the caBundle holds only radius-apiserver-ca,
+// including copies that cert-manager reissued with the same key.
+func onlyKey(certs []*x509.Certificate, ca *x509.Certificate) bool {
+	for _, cert := range certs {
+		if !bytes.Equal(cert.RawSubjectPublicKeyInfo, ca.RawSubjectPublicKeyInfo) {
+			return false
+		}
+	}
+	return true
 }
 
 type stagedObject struct {
