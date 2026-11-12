@@ -99,6 +99,9 @@ jobs:
     uses: ./.github/workflows/__publish-bicep-types.yaml
     with:
       only_changed: ${{ needs.changes.outputs.only_changed }}
+    secrets:
+      RADIUS_PUBLISHER_BOT_CLIENT_ID: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+      RADIUS_PUBLISHER_BOT_PRIVATE_KEY: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
     permissions:
       contents: read
       actions: read
