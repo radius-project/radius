@@ -523,12 +523,15 @@ func TestVerify_FailsClosedWhenKeysAreStale(t *testing.T) {
 		clock.Advance(DefaultRefreshInterval)
 		require.Error(t, v.Refresh(t.Context()))
 	}
+	require.Equal(t, DefaultMaxKeyAge, clock.Now().Sub(start))
 
-	// Exactly 15 minutes since the last success: still accepted.
+	// Just under MaxKeyAge since the last success: still accepted.
+	clock.Advance(-time.Nanosecond)
 	_, err := v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", clock.Now())))
 	require.NoError(t, err)
 
-	clock.Advance(time.Second)
+	// Exactly MaxKeyAge since the last success: stale.
+	clock.Advance(time.Nanosecond)
 	_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", clock.Now())))
 	requireCode(t, err, v1.CodeAuthorizationUnavailable)
 	require.Equal(t, http.StatusServiceUnavailable, authz.StatusForCode(err.(*Error).Code))
