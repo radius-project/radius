@@ -248,11 +248,15 @@ Argo CD keeps the `DeploymentTemplate` in sync with Git, and Radius keeps the re
 ```mermaid
 sequenceDiagram
     participant Git
-    participant RS as argocd-repo-server
-    participant CMP as Radius CMP
-    participant AC as application-controller
-    participant DTC as DeploymentTemplate controller
-    participant API as Radius API
+    box rgb(219, 234, 254) Argo CD
+        participant AC as application-controller
+        participant RS as argocd-repo-server
+    end
+    box rgb(212, 247, 212) Radius
+        participant CMP as Radius CMP
+        participant DTC as DeploymentTemplate controller
+        participant API as Radius API
+    end
     AC->>RS: render Application at commit
     RS->>Git: fetch revision
     RS->>CMP: generate (PARAM_* and ARGOCD_APP_REVISION env)
