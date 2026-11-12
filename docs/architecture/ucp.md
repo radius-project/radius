@@ -68,16 +68,34 @@ AWS POST `/:get` reads accept a top-level `name`, which is used as the primary i
 
 GET `.../<alias>` reads UCP's record of the alias, then reads AWS by the identifier in the record. It returns 404 when there is no record. Use POST `/:get` with `name` or named properties to read a resource Radius did not create. See [AWS resource records](../ucp/aws.md#resource-records-and-alias-ids).
 
-### Internal mTLS endpoint
+### Internal endpoint
 
-The Kubernetes APIService endpoint (Service port 443 to container port 9443,
-using the `ucp-cert` certificate) is unchanged by internal authorization. When
+The Kubernetes APIService endpoint (Service port 443 to container port 9443)
+uses the `ucp-cert` certificate. With authorization off, the chart generates it.
+Otherwise cert-manager issues it from the namespaced `radius-apiserver-issuer`
+as a 24-hour certificate renewed after 16 hours. cert-manager's cainjector
+copies `ca.crt` of the `radius-apiserver-ca` Secret, the self-signed CA
+certificate, into the APIService `caBundle` and follows each renewal of that CA
+without `rad` running; the API server never trusts the `ca.crt` of UCP's
+certificate Secret. On upgrade or rollback from the Helm-generated `ucp-ca`,
+`rad` applies `radius-apiserver-ca` and its Issuers with Helm ownership metadata
+before the Helm call, waits for cert-manager to issue the CA, and trusts both
+CAs through the `radius-apiserver-trust` Secret before Helm reissues UCP's
+certificate. It keeps both trusted until every UCP pod serves
+a certificate from `radius-apiserver-ca`, and then points the APIService at
+`radius-apiserver-ca` and deletes that Secret. In the
+`selfSigned` certificate mode, the only mode supported today, this CA is
+separate from the `radius-ca` that signs component server certificates. The Kubernetes API server trusts that CA for UCP, so the
+`radius-certificate-issuance` ValidatingAdmissionPolicy lets only the
+cert-manager controller request certificates from `radius-apiserver-issuer`.
+UCP reloads it without a restart. When
 the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
 on a separate internal port, 9444 (Service port name `internal`, config
 `server.internalPort`), for traffic from other Radius components. That endpoint
-uses `mtls.ListenAndServe` with the mounted `ucp-mtls` certificate, accepts any
-Radius component identity, and reloads certificates without a restart. See
-[Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization-mtls).
+uses `mtls.ListenAndServe` with UCP's csi-driver-spiffe certificate, requires a
+ServiceAccount token with audience `ucp`, accepts any Radius component identity,
+and reloads certificates without a restart. See
+[Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization).
 
 ## Invariants And Constraints
 

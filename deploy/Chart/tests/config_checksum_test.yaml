@@ -7,8 +7,8 @@ release:
   name: radius
   namespace: radius-system
 tests:
-  # The checksum restarts pods when helm upgrade changes the authorization mode,
-  # because services read the mode only at startup.
+  # The checksum restarts pods when helm upgrade changes the authorization settings,
+  # because services read them only at startup.
   - it: hashes the off mode by default
     asserts:
       - equal:
@@ -29,7 +29,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 04efa603c0a9195b8f56aaa4fcc58a0d49683206b5ab4d65e147c10ccae9bd63
+          value: 02a34436a937996011e86fc809c87973b61aed4b53132adc3ade230dcbf5568a
 
   - it: hashes the enforce mode
     set:
@@ -37,7 +37,33 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: c1f1005e99318bf634290d9d518d9bf9ba14bf9a46eaa78abfbc9f99647ca2d9
+          value: f32a75024b850219eeba205e23b2a06eb37358c760a96fdb6af28550834af115
+
+  - it: changes the checksum when the trust domain changes
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: fdce8307a373dbc3a1087e6a8938abaceecf90fd26a9b6f720946d9f7cd351ff
+
+  - it: changes the checksum when the CSI driver name changes
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.csiDriverName: spiffe.example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 391983fba120037f0bebcb5c4dd866f19dc0ad8e2f145b93dbb4ad76ade42279
+
+  - it: ignores the trust domain when authorization is off
+    set:
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
 
   - it: annotates the pod template when prometheus and buildkit are disabled
     set:

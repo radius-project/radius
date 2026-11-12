@@ -241,7 +241,7 @@ bash "${WORK_DIR}/enforce.sh" >"${WORK_DIR}/enforce.log" 2>&1 || {
 cat >"${WORK_DIR}/enforce-expected" <<'EXPECTED'
 rad-enforce
 kubectl rollout status deployment/applications-rp -n radius-system --timeout=5m
-make test-functional-authz-noncloud GOTEST_OPTS=-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedPeerKey|DisallowedCaller)$$'
+make test-functional-authz-noncloud GOTEST_OPTS=-run '^Test_Boundary_(UnauthenticatedCallToApplicationsRP|DisallowedCaller|TokenReplay|WrongServerSPIFFEID)$$'
 EXPECTED
 diff -u "${WORK_DIR}/enforce-expected" "${MOCK_CALLS}"
 

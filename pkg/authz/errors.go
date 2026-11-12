@@ -30,10 +30,11 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
-// Log-only codes for mTLS handshake failures. A failed handshake has no HTTP response,
+// Log-only codes for TLS certificate failures. A failed handshake has no HTTP response,
 // so these codes are used only in logs and metrics and have no HTTP status.
 const (
-	// CodePeerCertificateInvalid is logged when a peer's certificate fails verification.
+	// CodePeerCertificateInvalid is reported when a client rejects a server's certificate,
+	// for example because it does not carry the expected SPIFFE ID.
 	CodePeerCertificateInvalid = "PeerCertificateInvalid"
 
 	// CodeCertificateExpired is logged when a component's own certificate has expired.

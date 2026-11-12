@@ -26,14 +26,19 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"math/big"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/radius-project/radius/pkg/authz"
 )
 
 const testNamespace = "radius-system"
@@ -59,11 +64,16 @@ func (c testCert) tlsCertificate(t *testing.T) tls.Certificate {
 }
 
 type certOptions struct {
-	dnsNames  []string
-	cn        string
-	key       crypto.Signer
-	notBefore time.Time
-	notAfter  time.Time
+	uris        []string
+	dnsNames    []string
+	ipAddresses []net.IP
+	emails      []string
+	// rawSAN replaces the subjectAltName extension built from the fields above.
+	rawSAN      []byte
+	key         crypto.Signer
+	notBefore   time.Time
+	notAfter    time.Time
+	extKeyUsage []x509.ExtKeyUsage
 }
 
 func ecKey(t *testing.T, curve elliptic.Curve) crypto.Signer {
@@ -82,29 +92,35 @@ func rsaKey(t *testing.T, bits int) crypto.Signer {
 
 func newCA(t *testing.T) testCA {
 	t.Helper()
-	return newConstrainedCA(t, nil)
-}
-
-// newConstrainedCA returns a CA whose certificate permits only the given DNS subtrees.
-func newConstrainedCA(t *testing.T, permittedDNS []string) testCA {
-	t.Helper()
 	key := ecKey(t, elliptic.P256())
 	template := &x509.Certificate{
-		PermittedDNSDomainsCritical: len(permittedDNS) > 0,
-		PermittedDNSDomains:         permittedDNS,
-		SerialNumber:                big.NewInt(1),
-		Subject:                     pkix.Name{CommonName: "radius-ca"},
-		NotBefore:                   time.Now().Add(-time.Hour),
-		NotAfter:                    time.Now().Add(time.Hour),
-		IsCA:                        true,
-		BasicConstraintsValid:       true,
-		KeyUsage:                    x509.KeyUsageCertSign,
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "radius-ca"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(time.Hour),
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageCertSign,
 	}
 	der, err := x509.CreateCertificate(rand.Reader, template, template, key.Public(), key)
 	require.NoError(t, err)
 	cert, err := x509.ParseCertificate(der)
 	require.NoError(t, err)
 	return testCA{cert: cert, key: key, pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
+}
+
+// renew returns a new self-signed certificate for the CA's key, as cert-manager issues when it
+// renews a CA Certificate with rotationPolicy Never.
+func (ca testCA) renew(t *testing.T) testCA {
+	t.Helper()
+	template := *ca.cert
+	template.SerialNumber = big.NewInt(2)
+	template.NotAfter = time.Now().Add(2 * time.Hour)
+	der, err := x509.CreateCertificate(rand.Reader, &template, &template, ca.key.Public(), ca.key)
+	require.NoError(t, err)
+	cert, err := x509.ParseCertificate(der)
+	require.NoError(t, err)
+	return testCA{cert: cert, key: ca.key, pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
 }
 
 func (ca testCA) issue(t *testing.T, opts certOptions) testCert {
@@ -118,17 +134,32 @@ func (ca testCA) issue(t *testing.T, opts certOptions) testCert {
 	if opts.notAfter.IsZero() {
 		opts.notAfter = time.Now().Add(time.Hour)
 	}
+	if opts.extKeyUsage == nil {
+		// csi-driver-spiffe requests both usages.
+		opts.extKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
+	}
+	var uris []*url.URL
+	for _, u := range opts.uris {
+		parsed, err := url.Parse(u)
+		require.NoError(t, err)
+		uris = append(uris, parsed)
+	}
 
 	serial, err := rand.Int(rand.Reader, big.NewInt(1<<62))
 	require.NoError(t, err)
 	template := &x509.Certificate{
-		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: opts.cn},
-		DNSNames:     opts.dnsNames,
-		NotBefore:    opts.notBefore,
-		NotAfter:     opts.notAfter,
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		SerialNumber:   serial,
+		URIs:           uris,
+		DNSNames:       opts.dnsNames,
+		IPAddresses:    opts.ipAddresses,
+		EmailAddresses: opts.emails,
+		NotBefore:      opts.notBefore,
+		NotAfter:       opts.notAfter,
+		KeyUsage:       x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:    opts.extKeyUsage,
+	}
+	if opts.rawSAN != nil {
+		template.ExtraExtensions = []pkix.Extension{{Id: asn1.ObjectIdentifier{2, 5, 29, 17}, Value: opts.rawSAN}}
 	}
 	der, err := x509.CreateCertificate(rand.Reader, template, ca.cert, opts.key.Public(), ca.key)
 	require.NoError(t, err)
@@ -144,14 +175,14 @@ func (ca testCA) issue(t *testing.T, opts certOptions) testCert {
 	}
 }
 
-// canonical returns the canonical name of component in the test namespace.
-func canonical(component string) string {
-	return component + "." + testNamespace + ".svc"
+// spiffeID returns the SPIFFE ID csi-driver-spiffe issues to component in the test namespace.
+func spiffeID(component string) string {
+	return SPIFFEID(DefaultTrustDomain, testNamespace, component)
 }
 
-// componentSANs returns the DNS SANs the Helm chart issues for component.
-func componentSANs(component string) []string {
-	return []string{canonical(component)}
+// spiffeURIs returns the URI SANs csi-driver-spiffe issues to component.
+func spiffeURIs(component string) []string {
+	return []string{spiffeID(component)}
 }
 
 func writeFiles(t *testing.T, dir string, cert testCert, caPEM []byte) {
@@ -165,7 +196,7 @@ func writeFiles(t *testing.T, dir string, cert testCert, caPEM []byte) {
 func newTestSource(t *testing.T, ca testCA, component string) *Source {
 	t.Helper()
 	dir := t.TempDir()
-	writeFiles(t, dir, ca.issue(t, certOptions{dnsNames: componentSANs(component)}), ca.pem)
+	writeFiles(t, dir, ca.issue(t, certOptions{uris: spiffeURIs(component)}), ca.pem)
 	src, err := NewSource(dir)
 	require.NoError(t, err)
 	return src
@@ -179,83 +210,108 @@ func requireCode(t *testing.T, err error, code string) {
 	require.Equal(t, code, certErr.Code)
 }
 
-func TestPeerIdentity(t *testing.T) {
+func TestSPIFFEID(t *testing.T) {
+	t.Parallel()
+	require.Equal(t, "spiffe://radius.internal/ns/radius-system/sa/applications-rp", SPIFFEID("radius.internal", "radius-system", "applications-rp"))
+	require.Equal(t, "spiffe://example.org/ns/custom/sa/ucp", SPIFFEID("example.org", "custom", "ucp"))
+}
+
+func TestCheckSPIFFEID(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
-
 	tests := []struct {
-		name     string
-		opts     certOptions
-		expected string
+		name string
+		opts certOptions
+		want string
 	}{
-		{name: "canonical SAN", opts: certOptions{dnsNames: componentSANs("applications-rp")}, expected: "applications-rp.radius-system.svc"},
-		{name: "CN ignored", opts: certOptions{cn: "dynamic-rp", dnsNames: componentSANs("ucp")}, expected: "ucp.radius-system.svc"},
-		{name: "RSA-2048 accepted", opts: certOptions{dnsNames: componentSANs("ucp"), key: rsaKey(t, 2048)}, expected: "ucp.radius-system.svc"},
-		{name: "P-384 accepted", opts: certOptions{dnsNames: componentSANs("ucp"), key: ecKey(t, elliptic.P384())}, expected: "ucp.radius-system.svc"},
-		{name: "no SAN", opts: certOptions{cn: canonical("ucp")}},
-		{name: "two components", opts: certOptions{dnsNames: []string{canonical("ucp"), canonical("dynamic-rp")}}},
-		{name: "two SANs for one component", opts: certOptions{dnsNames: []string{canonical("ucp"), "ucp"}}},
-		{name: "short name", opts: certOptions{dnsNames: []string{"ucp"}}},
-		{name: "namespace-qualified name", opts: certOptions{dnsNames: []string{"ucp." + testNamespace}}},
-		{name: "SAN outside list", opts: certOptions{dnsNames: []string{canonical("evil")}}},
-		{name: "wrong namespace", opts: certOptions{dnsNames: []string{"ucp.other.svc"}}},
-		{name: "extra DNS labels", opts: certOptions{dnsNames: []string{canonical("ucp") + ".cluster.local"}}},
-		{name: "RSA-1024 rejected", opts: certOptions{dnsNames: componentSANs("ucp"), key: rsaKey(t, 1024)}},
-		{name: "P-224 rejected", opts: certOptions{dnsNames: componentSANs("ucp"), key: ecKey(t, elliptic.P224())}},
+		{name: "matching", opts: certOptions{uris: spiffeURIs("ucp")}},
+		{name: "extra DNS SAN", opts: certOptions{uris: spiffeURIs("ucp"), dnsNames: []string{"ucp.radius-system.svc"}}, want: "SAN other than"},
+		{name: "extra IP SAN", opts: certOptions{uris: spiffeURIs("ucp"), ipAddresses: []net.IP{net.ParseIP("10.0.0.1")}}, want: "SAN other than"},
+		{name: "extra email SAN", opts: certOptions{uris: spiffeURIs("ucp"), emails: []string{"ucp@radius.internal"}}, want: "SAN other than"},
+		{name: "extra otherName SAN", opts: certOptions{uris: spiffeURIs("ucp"), rawSAN: uriAndOtherNameSAN(t, spiffeID("ucp"))}, want: "SAN other than"},
+		{name: "no URI SAN", opts: certOptions{dnsNames: []string{"ucp.radius-system.svc"}}, want: "no URI SAN"},
+		{name: "other component", opts: certOptions{uris: spiffeURIs("dynamic-rp")}, want: "is not"},
+		{name: "other namespace", opts: certOptions{uris: []string{SPIFFEID(DefaultTrustDomain, "other", "ucp")}}, want: "is not"},
+		{name: "other trust domain", opts: certOptions{uris: []string{SPIFFEID("example.org", testNamespace, "ucp")}}, want: "is not"},
+		{name: "two URI SANs", opts: certOptions{uris: []string{spiffeID("ucp"), spiffeID("dynamic-rp")}}, want: "more than one URI SAN"},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			cert := ca.issue(t, tt.opts)
-			id, err := PeerIdentity([]*x509.Certificate{cert.cert, ca.cert}, testNamespace)
-			if tt.expected == "" {
-				requireCode(t, err, "PeerCertificateInvalid")
+			err := checkSPIFFEID(ca.issue(t, tt.opts).cert, spiffeID("ucp"))
+			if tt.want == "" {
+				require.NoError(t, err)
 				return
 			}
-			require.NoError(t, err)
-			require.Equal(t, tt.expected, id.String())
+			requireCode(t, err, authz.CodePeerCertificateInvalid)
+			require.ErrorContains(t, err, tt.want)
 		})
 	}
 }
 
-func TestPeerIdentity_Ed25519Rejected(t *testing.T) {
-	t.Parallel()
-	ca := newCA(t)
-	_, key, err := ed25519.GenerateKey(rand.Reader)
+// uriAndOtherNameSAN encodes a subjectAltName with a URI and an otherName, a SAN type that
+// crypto/x509 does not decode into a Certificate field.
+func uriAndOtherNameSAN(t *testing.T, uri string) []byte {
+	t.Helper()
+	value, err := asn1.MarshalWithParams("ucp", "utf8,explicit,tag:0")
 	require.NoError(t, err)
-
-	cert := ca.issue(t, certOptions{dnsNames: componentSANs("ucp"), key: key})
-	_, err = PeerIdentity([]*x509.Certificate{cert.cert}, testNamespace)
-	requireCode(t, err, "PeerCertificateInvalid")
-}
-
-func TestPeerIdentity_NoCertificate(t *testing.T) {
-	t.Parallel()
-	_, err := PeerIdentity(nil, testNamespace)
-	requireCode(t, err, "PeerCertificateInvalid")
-}
-
-func TestPeerIdentity_NameConstrainedCA(t *testing.T) {
-	t.Parallel()
-	ca := newConstrainedCA(t, []string{testNamespace + ".svc"})
-	cert := ca.issue(t, certOptions{dnsNames: componentSANs("applications-rp")})
-
-	roots := x509.NewCertPool()
-	roots.AddCert(ca.cert)
-	chains, err := cert.cert.Verify(x509.VerifyOptions{
-		Roots:     roots,
-		DNSName:   canonical("applications-rp"),
-		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+	otherName, err := asn1.Marshal(struct {
+		ID    asn1.ObjectIdentifier
+		Value asn1.RawValue
+	}{ID: asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 99999, 1}, Value: asn1.RawValue{FullBytes: value}})
+	require.NoError(t, err)
+	var seq asn1.RawValue
+	_, err = asn1.Unmarshal(otherName, &seq)
+	require.NoError(t, err)
+	san, err := asn1.Marshal([]asn1.RawValue{
+		{Class: asn1.ClassContextSpecific, Tag: 6, Bytes: []byte(uri)},
+		{Class: asn1.ClassContextSpecific, Tag: 0, IsCompound: true, Bytes: seq.Bytes},
 	})
 	require.NoError(t, err)
+	return san
+}
 
-	id, err := identityFromChains(chains, testNamespace)
-	require.NoError(t, err)
-	require.Equal(t, "applications-rp.radius-system.svc", id.String())
+func TestCheckKey(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	tests := []struct {
+		name string
+		key  crypto.Signer
+		want string
+	}{
+		{name: "P-256", key: ecKey(t, elliptic.P256())},
+		{name: "P-384", key: ecKey(t, elliptic.P384())},
+		{name: "RSA-2048", key: rsaKey(t, 2048)},
+		{name: "P-224", key: ecKey(t, elliptic.P224()), want: "ECDSA curve P-224"},
+		{name: "RSA-1024", key: rsaKey(t, 1024), want: "RSA key size 1024"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := checkKey(ca.issue(t, certOptions{uris: spiffeURIs("ucp"), key: tt.key}).cert)
+			if tt.want == "" {
+				require.NoError(t, err)
+				return
+			}
+			requireCode(t, err, authz.CodePeerCertificateInvalid)
+			require.ErrorContains(t, err, tt.want)
+		})
+	}
 
-	// A short name falls outside the permitted subtree and fails chain verification.
-	short := ca.issue(t, certOptions{dnsNames: []string{canonical("applications-rp"), "applications-rp"}})
-	_, err = short.cert.Verify(x509.VerifyOptions{Roots: roots, KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}})
-	require.Error(t, err)
+	t.Run("Ed25519", func(t *testing.T) {
+		t.Parallel()
+		_, key, err := ed25519.GenerateKey(rand.Reader)
+		require.NoError(t, err)
+		err = checkKey(ca.issue(t, certOptions{uris: spiffeURIs("ucp"), key: key}).cert)
+		requireCode(t, err, authz.CodePeerCertificateInvalid)
+		require.ErrorContains(t, err, "ed25519")
+	})
+}
+
+func TestError(t *testing.T) {
+	t.Parallel()
+	inner := peerError("inner", nil)
+	err := peerError("outer", inner)
+	require.Equal(t, "PeerCertificateInvalid: outer: PeerCertificateInvalid: inner", err.Error())
+	require.ErrorIs(t, err, inner)
 }
