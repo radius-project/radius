@@ -678,7 +678,10 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 		{name: "injection explicitly enabled", args: []string{"--enable-apiservices-injectable=true", "--enable-certificates-data-source"}},
 		{name: "limited to the Radius namespace", args: []string{"--namespace", RadiusSystemNamespace}},
 		{name: "APIService injection disabled", args: []string{"--enable-apiservices-injectable=false"}, wantErr: "sets --enable-apiservices-injectable=false"},
-		{name: "Certificate data source disabled", args: []string{"--enable-certificates-data-source=0"}, wantErr: "sets --enable-certificates-data-source=0"},
+		// Radius injects from a Secret, not a Certificate.
+		{name: "Certificate data source disabled", args: []string{"--enable-certificates-data-source=false"}},
+		{name: "ignores other namespaces", args: []string{"--ignore-namespaces=kube-system,security"}},
+		{name: "ignores the Radius namespace", args: []string{"--ignore-namespaces", "kube-system," + RadiusSystemNamespace}, wantErr: `ignores namespace "radius-system" by --ignore-namespaces`},
 		{name: "limited to another namespace", args: []string{"--namespace=security"}, wantErr: `is limited to namespace "security" by --namespace`},
 		{name: "limited to another namespace with a separate value", args: []string{"--namespace", "security"}, wantErr: `is limited to namespace "security" by --namespace`},
 	}
@@ -699,7 +702,7 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 				return
 			}
 			require.ErrorContains(t, err, "cert-manager cainjector Deployment security/cert-manager-cainjector "+tt.wantErr)
-			require.ErrorContains(t, err, "inject the CA of UCP's API server certificate into the Radius APIService")
+			require.ErrorContains(t, err, "inject the CA certificates in Secret radius-system/radius-apiserver-trust into the Radius APIService")
 		})
 	}
 }
@@ -868,6 +871,7 @@ func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testin
 	impl := &Impl{
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		newUCPAPIServerTrustClient:  uninstallTrustClient,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))

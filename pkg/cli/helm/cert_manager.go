@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -162,8 +163,8 @@ func detectCertManager(ctx context.Context, kubeClient kubernetes.Interface, api
 }
 
 // certManagerComponents maps each cert-manager component Radius needs to its app.kubernetes.io/name label. The
-// cainjector writes the CA of UCP's API server certificate into the Radius APIService, so the Kubernetes API
-// server can reach UCP.
+// cainjector copies the CA certificates in Secret radius-apiserver-trust into the Radius APIService, so the
+// Kubernetes API server can reach UCP.
 var certManagerComponents = []struct{ component, name string }{
 	{component: "controller", name: "cert-manager"},
 	{component: "webhook", name: "webhook"},
@@ -171,7 +172,7 @@ var certManagerComponents = []struct{ component, name string }{
 }
 
 // checkCertManagerReady fails unless the cert-manager controller, webhook and cainjector in namespace are rolled out
-// and available, and the cainjector can inject the CA of a Certificate in radiusNamespace into an APIService.
+// and available, and the cainjector can inject the CA certificates of a Secret in radiusNamespace into an APIService.
 func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, namespace, radiusNamespace string) error {
 	for _, c := range certManagerComponents {
 		selector := "app.kubernetes.io/name=" + c.name + ",app.kubernetes.io/component=" + c.component
@@ -193,14 +194,14 @@ func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, nam
 		}
 		if c.component == "cainjector" {
 			if problem := caInjectorProblem(&deployment, radiusNamespace); problem != "" {
-				return fmt.Errorf("cert-manager cainjector Deployment %s/%s %s. Radius needs it to inject the CA of UCP's API server certificate into the Radius APIService. Remove that setting from cert-manager and retry", namespace, deployment.Name, problem)
+				return fmt.Errorf("cert-manager cainjector Deployment %s/%s %s. Radius needs it to inject the CA certificates in Secret %s/%s into the Radius APIService. Remove that setting from cert-manager and retry", namespace, deployment.Name, problem, radiusNamespace, ucpAPIServerTrustSecretName)
 			}
 		}
 	}
 	return nil
 }
 
-// caInjectorProblem describes a cainjector argument that stops it from injecting the CA of a Certificate in
+// caInjectorProblem describes a cainjector argument that stops it from injecting the CA certificates of a Secret in
 // radiusNamespace into an APIService, or returns "" when there is none.
 func caInjectorProblem(deployment *appsv1.Deployment, radiusNamespace string) string {
 	for _, container := range deployment.Spec.Template.Spec.Containers {
@@ -210,7 +211,7 @@ func caInjectorProblem(deployment *appsv1.Deployment, radiusNamespace string) st
 			}
 			name, value, hasValue := strings.Cut(strings.TrimLeft(arg, "-"), "=")
 			switch name {
-			case "enable-apiservices-injectable", "enable-certificates-data-source":
+			case "enable-apiservices-injectable":
 				// Boolean flags take their value only after "=".
 				if enabled, err := strconv.ParseBool(value); hasValue && err == nil && !enabled {
 					return "sets " + arg
@@ -221,6 +222,13 @@ func caInjectorProblem(deployment *appsv1.Deployment, radiusNamespace string) st
 				}
 				if value != "" && value != radiusNamespace {
 					return "is limited to namespace " + strconv.Quote(value) + " by --namespace"
+				}
+			case "ignore-namespaces":
+				if !hasValue && idx+1 < len(container.Args) {
+					value = container.Args[idx+1]
+				}
+				if slices.Contains(strings.Split(value, ","), radiusNamespace) {
+					return "ignores namespace " + strconv.Quote(radiusNamespace) + " by --ignore-namespaces"
 				}
 			}
 		}
