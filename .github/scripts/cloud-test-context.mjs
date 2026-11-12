@@ -34,24 +34,68 @@ export async function setup({ github, context, core }) {
   if (event === "pull_request_target") {
     const pr = context.payload.pull_request;
     requireValue(
+      Number.isSafeInteger(pr?.number) && pr.number > 0,
+      "Invalid PR number"
+    );
+    const stack = pr.stack;
+    const controllerRef = stack == null ? pr.base?.ref : stack.base?.ref;
+    requireValue(
       pr?.base?.repo?.full_name === repository &&
-        /^(main|features\/.+|release\/.+)$/.test(pr.base.ref) &&
-        context.ref === `refs/heads/${pr.base.ref}`,
+        typeof controllerRef === "string" &&
+        /^(main|features\/.+|release\/.+)$/.test(controllerRef) &&
+        context.ref === `refs/heads/${controllerRef}`,
       "Unexpected PR base"
     );
+    if (stack != null) {
+      requireValue(
+        Number.isSafeInteger(stack.number) &&
+          stack.number > 0 &&
+          Number.isSafeInteger(stack.size) &&
+          stack.size > 0 &&
+          Number.isSafeInteger(stack.position) &&
+          stack.position > 0 &&
+          stack.position <= stack.size &&
+          typeof stack.base?.sha === "string" &&
+          shaPattern.test(stack.base?.sha) &&
+          pr.head?.repo?.full_name === repository &&
+          typeof pr.head.ref === "string" &&
+          pr.head.ref.length > 0 &&
+          typeof pr.base.ref === "string" &&
+          pr.base.ref.length > 0,
+        "Invalid native PR stack"
+      );
+      // Only GitHub's native stack membership can substitute the controller base.
+      // Verify the event snapshot; never replace the approved candidate with live head.
+      const { data: live } = await github.rest.pulls.get({
+        ...repo,
+        pull_number: pr.number
+      });
+      requireValue(
+        live?.number === pr.number &&
+          live.state === "open" &&
+          live.head?.repo?.full_name === pr.head.repo.full_name &&
+          live.head?.ref === pr.head.ref &&
+          live.head?.sha === pr.head.sha &&
+          live.base?.repo?.full_name === repository &&
+          live.base?.ref === pr.base.ref &&
+          live.base?.sha === pr.base.sha &&
+          live.stack?.number === stack.number &&
+          live.stack?.position === stack.position &&
+          live.stack?.size === stack.size &&
+          live.stack?.base?.ref === stack.base.ref &&
+          live.stack?.base?.sha === stack.base.sha,
+        "Native PR stack changed or does not match the event; start a fresh run"
+      );
+    }
     const { data: base } = await github.rest.repos.getBranch({
       ...repo,
-      branch: pr.base.ref
+      branch: controllerRef
     });
     requireValue(base.protected, "The PR controller branch must be protected");
     sourceRepository = pr.head?.repo?.full_name;
     sourceSHA = pr.head?.sha;
     baseSHA = pr.base.sha;
     requireValue(shaPattern.test(baseSHA), "Invalid PR base SHA");
-    requireValue(
-      Number.isSafeInteger(pr.number) && pr.number > 0,
-      "Invalid PR number"
-    );
     prNumber = String(pr.number);
   } else if (event === "merge_group") {
     const group = context.payload.merge_group;
