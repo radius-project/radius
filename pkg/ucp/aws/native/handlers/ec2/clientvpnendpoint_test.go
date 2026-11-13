@@ -36,7 +36,7 @@ func Test_ClientVpnEndpoint_CreateWithPolicy(t *testing.T) {
 	id, err := h.Create(t.Context(), request)
 	require.NoError(t, err)
 	require.Equal(t, []string{"CreateClientVpnEndpoint", "ModifyClientVpnEndpointAuthorizationPolicy"}, api.calls)
-	require.Equal(t, id, api.tokens[clientVpnEndpointType+"/"+request.ClientToken], "the create sends the record's client token")
+	require.Equal(t, id, api.tokens[testRegion+"/"+request.ClientToken].made, "the create sends the record's client token")
 
 	again, err := h.Create(t.Context(), request)
 	require.NoError(t, err)

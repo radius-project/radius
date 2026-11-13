@@ -79,6 +79,7 @@ func Test_Suite_ListenerCertificate(t *testing.T) {
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &h.(*tracked).api.failer
 		}),
+		API: listenerCertificateAPI,
 		Outside: func(store *awsfake.CloudControl, props map[string]any) func() bool {
 			listenerArn := props["ListenerArn"].(string)
 			current := store.Resource(outsideType, listenerArn)

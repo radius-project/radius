@@ -78,28 +78,35 @@ func requireRejected(t *testing.T, err error, message string) {
 }
 
 // Test_Permissions_Resources grants, reads, and revokes permissions on each kind of resource, next to permissions on
-// the same table granted outside Radius.
+// the same table granted outside Radius. Each resource gets permissions its kind takes. AWS takes no grant option with
+// SELECT on some columns, and doesn't let a principal hold ALTER on a table next to SELECT on some of its columns, so
+// those get no grant option and no outside grant.
 func Test_Permissions_Resources(t *testing.T) {
 	table := map[string]any{"TableResource": map[string]any{"DatabaseName": "sales", "Name": "orders"}}
 	tests := []struct {
 		name     string
 		resource map[string]any
+		perms    []any
+		grants   []any
+		outside  bool
 	}{
-		{"database in a catalog", map[string]any{"DatabaseResource": map[string]any{"CatalogId": account, "Name": "sales"}}},
-		{"table", table},
-		{"every table", map[string]any{"TableResource": map[string]any{"DatabaseName": "sales", "TableWildcard": map[string]any{}}}},
-		{"columns", map[string]any{"TableWithColumnsResource": map[string]any{"DatabaseName": "sales", "Name": "orders", "ColumnNames": list("id", "total")}}},
+		{"database in a catalog", map[string]any{"DatabaseResource": map[string]any{"CatalogId": account, "Name": "sales"}}, list("ALTER"), list("ALTER"), true},
+		{"table", table, list("SELECT"), list("SELECT"), true},
+		{"every table", map[string]any{"TableResource": map[string]any{"DatabaseName": "sales", "TableWildcard": map[string]any{}}}, list("SELECT"), list("SELECT"), true},
+		{"columns", map[string]any{"TableWithColumnsResource": map[string]any{"DatabaseName": "sales", "Name": "orders", "ColumnNames": list("id", "total")}}, list("SELECT"), nil, false},
 		{"every column but some", map[string]any{"TableWithColumnsResource": map[string]any{
 			"DatabaseName": "sales", "Name": "orders", "ColumnWildcard": map[string]any{"ExcludedColumnNames": list("card")},
-		}}},
-		{"data location", map[string]any{"DataLocationResource": map[string]any{"S3Resource": "arn:aws:s3:::radius-lake/data"}}},
+		}}, list("SELECT"), nil, false},
+		{"data location", map[string]any{"DataLocationResource": map[string]any{"S3Resource": "arn:aws:s3:::radius-lake/data"}}, list("DATA_LOCATION_ACCESS"), list("DATA_LOCATION_ACCESS"), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := t.Context()
 			h, _, store := newPermissions()
-			grantOutside(t, store, table, "ALTER")
-			properties := permissionsOf(tt.resource, list("SELECT"), list("SELECT"))
+			if tt.outside {
+				grantOutside(t, store, table, "ALTER")
+			}
+			properties := permissionsOf(tt.resource, tt.perms, tt.grants)
 			id, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: properties})
 			require.NoError(t, err)
 			resolved, err := h.ResolveIdentifier(ctx, region, identifierOf(t, properties))
@@ -108,8 +115,8 @@ func Test_Permissions_Resources(t *testing.T) {
 
 			got, err := h.ReadScoped(ctx, region, id, []map[string]any{properties})
 			require.NoError(t, err)
-			require.Equal(t, list("SELECT"), got["Permissions"])
-			require.Equal(t, list("SELECT"), got["PermissionsWithGrantOption"])
+			require.Equal(t, properties["Permissions"], got["Permissions"])
+			require.Equal(t, properties["PermissionsWithGrantOption"], got["PermissionsWithGrantOption"])
 			require.Equal(t, tt.resource, got["Resource"])
 			require.Equal(t, id, got["Id"])
 
