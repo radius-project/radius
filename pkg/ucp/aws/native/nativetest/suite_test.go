@@ -19,6 +19,8 @@ package nativetest
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -99,8 +101,15 @@ func settingSuite(onDelete schemas.OnDelete, scope schemas.IdentityScope, resetT
 		HandWritten: true,
 		Schema: `{
 			"typeName": "AWS::Test::Setting",
+			"properties": {"Id": {"type": "string"}, "MinimumLength": {"type": "integer"}, "RequireSymbols": {"type": "boolean"}},
 			"primaryIdentifier": ["/properties/Id"],
-			"createOnlyProperties": ["/properties/Id"]
+			"createOnlyProperties": ["/properties/Id"],
+			"handlers": {
+				"create": {"permissions": ["test:PutSetting"]},
+				"read": {"permissions": ["test:GetSetting"]},
+				"update": {"permissions": ["test:PutSetting"]},
+				"delete": {"permissions": ["test:DeleteSetting"]}
+			}
 		}`,
 		Metadata: fmt.Sprintf(`{"typeName": %q, "identityScope": %q, "onDelete": %q}`, typeName, scope, onDelete),
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
@@ -183,9 +192,16 @@ func Test_Suite_Search(t *testing.T) {
 	Run(t, assignedSuite("AWS::Test::Permission", native.RecoverBySearch))
 }
 
-// Test_Suite_HandWrittenType runs the suite for a fake handler of a type with no CloudFormation type, whose
-// identifier values contain "|" and "/", so it has its own identifier encoding.
+// Test_Suite_HandWrittenType runs the suite for a fake handler of a test-only type with no CloudFormation type. Its
+// schema and metadata are files in testdata/handwritten, laid out as in pkg/aws/schemas/handwritten, so they load
+// with the same rules. Its identifier values contain "|" and "/", so it has its own identifier encoding.
 func Test_Suite_HandWrittenType(t *testing.T) {
+	const typeName = "AWS::Test::Object"
+	read := func(name string) string {
+		data, err := os.ReadFile(filepath.Join("testdata", "handwritten", name))
+		require.NoError(t, err)
+		return string(data)
+	}
 	identifierOf := func(properties map[string]any) (string, error) {
 		bucket, _ := properties["Bucket"].(string)
 		key, _ := properties["Key"].(string)
@@ -197,22 +213,17 @@ func Test_Suite_HandWrittenType(t *testing.T) {
 	}
 	properties := map[string]any{"Bucket": "app-assets", "Key": "config/../a|b.json", "ContentType": "application/json", "Body": "e30="}
 	identifier, err := identifierOf(properties)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	Run(t, Suite{
-		TypeName:    "AWS::Test::Object",
+		TypeName:    typeName,
 		HandWritten: true,
-		Schema: `{
-			"typeName": "AWS::Test::Object",
-			"primaryIdentifier": ["/properties/Bucket", "/properties/Key"],
-			"createOnlyProperties": ["/properties/Bucket", "/properties/Key"],
-			"writeOnlyProperties": ["/properties/Body"]
-		}`,
+		Schema:      read("aws-test-object.json"),
+		Metadata:    read("aws-test-object.metadata.json"),
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			h := nativefake.New("AWS::Test::Object", store)
+			h := nativefake.New(typeName, store)
 			h.IdentifierOf = identifierOf
 			h.CreateOnly = []string{"Bucket", "Key"}
+			h.Opts.List = native.ListRegion
 			return h.Encoding()
 		},
 		WriteOnly:        []string{"Body"},
@@ -221,7 +232,7 @@ func Test_Suite_HandWrittenType(t *testing.T) {
 		Changed:          map[string]any{"Bucket": "app-assets", "Key": "config/../a|b.json", "ContentType": "text/plain", "Body": "e30="},
 		ChangedWriteOnly: map[string]any{"Bucket": "app-assets", "Key": "config/../a|b.json", "ContentType": "application/json", "Body": "eyJhIjoxfQ=="},
 		Removable:        "ContentType",
-		CreateOnlyChange: nil,
+		CreateOnlyChange: map[string]any{"Bucket": "app-assets", "Key": "config/other.json", "ContentType": "application/json", "Body": "e30="},
 	})
 }
 
@@ -397,10 +408,21 @@ func keyedSuite(typeName string, handWritten bool) Suite {
 		HandWritten: handWritten,
 		Schema: `{
 			"typeName": "` + typeName + `",
-			"properties": {"Key": {"type": "string", "minLength": 1, "maxLength": 1024}},
+			"properties": {
+				"Bucket": {"type": "string"},
+				"Key": {"type": "string", "minLength": 1, "maxLength": 1024},
+				"ContentType": {"type": "string"},
+				"Body": {"type": "string"}
+			},
 			"primaryIdentifier": ["/properties/Bucket", "/properties/Key"],
 			"createOnlyProperties": ["/properties/Bucket", "/properties/Key"],
-			"writeOnlyProperties": ["/properties/Body"]
+			"writeOnlyProperties": ["/properties/Body"],
+			"handlers": {
+				"create": {"permissions": ["test:PutObject"]},
+				"read": {"permissions": ["test:GetObject"]},
+				"update": {"permissions": ["test:PutObject"]},
+				"delete": {"permissions": ["test:DeleteObject"]}
+			}
 		}`,
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
 			h := nativefake.New(typeName, store)

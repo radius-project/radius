@@ -57,8 +57,8 @@ type Registry struct {
 
 // NewRegistry returns a Registry of handlers, each with its schema and metadata from catalog. A handler with no
 // schema, two handlers for one type, a RecoverBySearch handler that isn't a Finder, a type whose onDelete is reset
-// with a handler that isn't a Resetter, and a name property the schema doesn't define as a string, or whose rules no
-// generated name fits, fail.
+// with a handler that isn't a Resetter, a name property the schema doesn't define as a string, or whose rules no
+// generated name fits, and a hand-written schema whose list handler doesn't match whether the handler lists, fail.
 func NewRegistry(catalog schemas.Catalog, handlers ...Handler) (*Registry, error) {
 	r := &Registry{types: map[string]*Type{}}
 	for _, h := range handlers {
@@ -81,6 +81,11 @@ func NewRegistry(catalog schemas.Catalog, handlers ...Handler) (*Registry, error
 		}
 		t.WriteOnly = awsoperations.PropertyPaths(parsed.WriteOnlyProperties)
 		t.Metadata = catalog.MetadataOf(name)
+		if t.HandWritten {
+			if err := checkListHandler(t.Schema, h.Options().List); err != nil {
+				return nil, fmt.Errorf("the native handler for the AWS type %s: %w", name, err)
+			}
+		}
 		if _, ok := h.(Resetter); t.Metadata.OnDelete == schemas.OnDeleteReset && !ok {
 			return nil, fmt.Errorf("the AWS type %s resets on delete, but its native handler has no Reset method", name)
 		}
@@ -124,4 +129,23 @@ func lookup(schemas map[string]string, typeName string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// checkListHandler checks that a hand-written schema lists the permissions of a list exactly when its handler can list.
+// The schema is the only source of a hand-written type's permissions, so it must match what the handler does.
+func checkListHandler(schema string, list ListSupport) error {
+	var declared struct {
+		Handlers map[string]json.RawMessage `json:"handlers"`
+	}
+	if err := json.Unmarshal([]byte(schema), &declared); err != nil {
+		return fmt.Errorf("its schema can't be read: %w", err)
+	}
+	_, inSchema := declared.Handlers["list"]
+	switch {
+	case list == ListNone && inSchema:
+		return fmt.Errorf("it can't list, but its schema has a list handler. Remove it from the schema")
+	case list != ListNone && !inSchema:
+		return fmt.Errorf("it can list, but its schema has no list handler. Add one with the AWS permissions a list needs")
+	}
+	return nil
 }

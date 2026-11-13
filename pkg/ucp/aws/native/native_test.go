@@ -83,6 +83,53 @@ func Test_NewRegistry_Metadata(t *testing.T) {
 	require.EqualError(t, err, "the AWS type AWS::IAM::AccountPasswordPolicy resets on delete, but its native handler has no Reset method")
 }
 
+func Test_NewRegistry_ListHandler(t *testing.T) {
+	store := awsfake.NewCloudControl()
+	register := func(schema string, list native.ListSupport, handWritten bool) error {
+		h := nativefake.New("AWS::S3::Object", store)
+		h.Opts.List = list
+		catalog := schemas.Catalog{Native: map[string]string{"AWS::S3::Object": schema}}
+		if handWritten {
+			catalog = schemas.Catalog{HandWritten: map[string]string{"AWS::S3::Object": schema}}
+		}
+		_, err := native.NewRegistry(catalog, h)
+		return err
+	}
+	withList := `{"handlers": {"list": {"permissions": ["s3:ListBucket"]}}}`
+
+	tests := []struct {
+		name        string
+		schema      string
+		list        native.ListSupport
+		handWritten bool
+		wantErr     string
+	}{
+		{name: "lists by region with a list handler", schema: withList, list: native.ListRegion, handWritten: true},
+		{name: "lists under a parent with a list handler", schema: withList, list: native.ListParent, handWritten: true},
+		{name: "can't list with no list handler", schema: `{"handlers": {}}`, list: native.ListNone, handWritten: true},
+		{
+			name: "can list with no list handler", schema: `{}`, list: native.ListRegion, handWritten: true,
+			wantErr: "the native handler for the AWS type AWS::S3::Object: it can list, but its schema has no list handler. Add one with the AWS permissions a list needs",
+		},
+		{
+			name: "can't list with a list handler", schema: withList, list: native.ListNone, handWritten: true,
+			wantErr: "the native handler for the AWS type AWS::S3::Object: it can't list, but its schema has a list handler. Remove it from the schema",
+		},
+		{name: "handlers that aren't an object", schema: `{"handlers": []}`, handWritten: true, wantErr: "its schema can't be read"},
+		{name: "a native schema is AWS's, so it isn't checked", schema: withList, list: native.ListNone},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := register(tt.schema, tt.list, tt.handWritten)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
 // noReset is a handler without a Reset method.
 type noReset struct {
 	native.Handler
