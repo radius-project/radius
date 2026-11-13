@@ -1,8 +1,8 @@
 {{- /*
 Restricts who may request certificates in the release namespace. Radius components need create on
 certificaterequests because csi-driver-spiffe requests their server certificates as the mounting
-pod's ServiceAccount, and cert-manager's default approver approves every request for the bootstrap
-and API server issuers regardless of requester or SANs. Without this policy a component could get a
+pod's ServiceAccount. The selfSigned/caSecret bootstrap and aggregation signers may use the default
+approver; shared issuerRef requires request-aware approvers. Without this policy a component could get a
 CA certificate, or a ucp.<namespace>.svc certificate that the Kubernetes API server trusts for the
 UCP APIService.
 Denies in dryRun and enforce: legitimate requests never match a rule.
@@ -10,6 +10,12 @@ Denies in dryRun and enforce: legitimate requests never match a rule.
 {{- $mode := include "radius.authz.mode" . -}}
 {{- if and (ne $mode "off") (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") }}
 {{- $name := "radius-certificate-issuance" }}
+{{- $internal := include "radius.authz.certificates.issuer" (dict "root" . "plane" "internal") | fromJson }}
+{{- $aggregation := include "radius.authz.certificates.issuer" (dict "root" . "plane" "aggregation") | fromJson }}
+{{- $receivers := list }}
+{{- range include "radius.authz.certificates.receivers" . | fromJsonArray }}
+{{- $receivers = append $receivers (printf "system:serviceaccount:%s:%s" $.Release.Namespace .) }}
+{{- end }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -42,16 +48,26 @@ spec:
         (!has(object.spec.issuerRef.kind) || object.spec.issuerRef.kind == '' || object.spec.issuerRef.kind == 'Issuer') &&
         (!has(object.spec.issuerRef.group) || object.spec.issuerRef.group == '' || object.spec.issuerRef.group == 'cert-manager.io')
     - name: reservedIssuer
-      expression: "variables.namespacedIssuer && object.spec.issuerRef.name in ['radius-selfsigned-bootstrap', 'radius-apiserver-issuer']"
+      expression: {{ printf "variables.namespacedIssuer && object.spec.issuerRef.name == 'radius-selfsigned-bootstrap' || (%s && !(%s))" (include "radius.authz.certificates.issuerMatch" $aggregation) (include "radius.authz.certificates.issuerMatch" $internal) | quote }}
     - name: radiusCAIssuer
-      expression: "variables.namespacedIssuer && object.spec.issuerRef.name == 'radius-ca-issuer'"
+      expression: {{ include "radius.authz.certificates.issuerMatch" $internal | quote }}
+    - name: aggregationIssuer
+      expression: {{ include "radius.authz.certificates.issuerMatch" $aggregation | quote }}
+    - name: receiver
+      expression: {{ printf "variables.requester in %s" (toJson $receivers) | quote }}
   validations:
     - expression: "!variables.reservedIssuer || variables.certManager"
       reason: Forbidden
       messageExpression: {{ printf "'CertificateRequestDenied: reserved-issuer: only the cert-manager controller may request certificates from Issuer ' + object.spec.issuerRef.name + ' in namespace %s, not ' + variables.requester" .Release.Namespace | quote }}
     - expression: "variables.certManager || !variables.radiusServiceAccount || variables.radiusCAIssuer"
       reason: Forbidden
-      messageExpression: {{ printf "'CertificateRequestDenied: radius-ca-issuer-only: Radius service accounts may request certificates in namespace %s only from Issuer radius-ca-issuer, not ' + variables.requester" .Release.Namespace | quote }}
+      messageExpression: {{ printf "'CertificateRequestDenied: radius-ca-issuer-only: Radius service accounts may request certificates in namespace %s only from the selected internal issuer, not ' + variables.requester" .Release.Namespace | quote }}
+    - expression: "!variables.radiusCAIssuer || variables.receiver || (variables.certManager && variables.aggregationIssuer)"
+      reason: Forbidden
+      messageExpression: "'CertificateRequestDenied: receiver-only: the selected internal issuer accepts only active receivers, not ' + variables.requester"
+    - expression: "!(variables.radiusCAIssuer || variables.aggregationIssuer) || !has(object.spec.isCA) || !object.spec.isCA"
+      reason: Forbidden
+      messageExpression: "'CertificateRequestDenied: leaf-only: selected issuers cannot issue CA requests for ' + variables.requester"
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

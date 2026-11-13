@@ -284,9 +284,18 @@ func Test_extraCertificates(t *testing.T) {
 	require.NoError(t, err)
 	expiredPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
 
-	require.Equal(t, 0, extraCertificates(ca.pem, ca.pem))
-	require.Equal(t, 0, extraCertificates(append(append([]byte{}, ca.pem...), expiredPEM...), ca.pem))
-	require.Equal(t, 1, extraCertificates(append(append([]byte{}, ca.pem...), other.pem...), ca.pem))
+	for _, tt := range []struct {
+		bundle []byte
+		extra  int
+	}{
+		{ca.pem, 0},
+		{append(append([]byte{}, ca.pem...), expiredPEM...), 0},
+		{append(append([]byte{}, ca.pem...), other.pem...), 1},
+	} {
+		count, err := extraCertificates(tt.bundle, ca.pem)
+		require.NoError(t, err)
+		require.Equal(t, tt.extra, count)
+	}
 }
 
 func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {

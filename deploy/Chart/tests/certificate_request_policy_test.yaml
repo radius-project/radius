@@ -85,8 +85,8 @@ tests:
       - contains:
           path: spec.variables
           content:
-            name: reservedIssuer
-            expression: "variables.namespacedIssuer && object.spec.issuerRef.name in ['radius-selfsigned-bootstrap', 'radius-apiserver-issuer']"
+            name: receiver
+            expression: 'variables.requester in ["system:serviceaccount:radius-system:ucp","system:serviceaccount:radius-system:applications-rp","system:serviceaccount:radius-system:dynamic-rp"]'
         documentIndex: 0
 
   - it: uses the cert-manager requesters rad sets

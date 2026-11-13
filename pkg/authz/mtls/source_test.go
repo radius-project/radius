@@ -134,6 +134,7 @@ func TestSource_DedicatedIntermediateCA(t *testing.T) {
 			KeyUsage:                    x509.KeyUsageCertSign,
 			PermittedDNSDomainsCritical: true,
 			PermittedDNSDomains:         []string{testNamespace + ".svc"},
+			PermittedURIDomains:         []string{DefaultTrustDomain},
 		}
 		der, err := x509.CreateCertificate(rand.Reader, template, parent.cert, key.Public(), parent.key)
 		require.NoError(t, err)
@@ -146,7 +147,7 @@ func TestSource_DedicatedIntermediateCA(t *testing.T) {
 
 	newSource := func(t *testing.T, ca testCA, component string, trust []byte) *Source {
 		t.Helper()
-		cert := ca.issue(t, certOptions{dnsNames: componentSANs(component)})
+		cert := ca.issue(t, certOptions{uris: spiffeURIs(component)})
 		// cert-manager may return the organization chain in tls.crt. Only the
 		// separately projected dedicated CA is a trust anchor, not that chain.
 		cert.certPEM = append(cert.certPEM, ca.pem...)
@@ -158,13 +159,24 @@ func TestSource_DedicatedIntermediateCA(t *testing.T) {
 		return src
 	}
 	server := newSource(t, dedicated, "ucp", dedicated.pem)
-	client := newSource(t, dedicated, "controller", dedicated.pem)
-	result := handshake(t, server.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
+	caDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(caDir, CAFile), dedicated.pem, 0o600))
+	client, err := NewTrustSource(caDir)
+	require.NoError(t, err)
+	var verified []*x509.Certificate
+	config, err := client.clientConfig(spiffeID("ucp"), func(chain []*x509.Certificate) { verified = chain })
+	require.NoError(t, err)
+	result := handshake(t, server.ServerConfig(), config)
 	require.NoError(t, result.serverErr)
 	require.NoError(t, result.clientErr)
-	require.Len(t, result.clientState.VerifiedChains, 1)
-	require.Equal(t, dedicated.cert.Raw, result.clientState.VerifiedChains[0][1].Raw)
-	require.Len(t, result.clientState.VerifiedChains[0], 2)
+	require.Len(t, verified, 2)
+	require.Equal(t, dedicated.cert.Raw, verified[1].Raw)
+	require.Empty(t, result.serverState.PeerCertificates, "callers never present a component client certificate")
+	dnsLeaf := dedicated.issue(t, certOptions{dnsNames: []string{"ucp." + testNamespace + ".svc"}})
+	roots := x509.NewCertPool()
+	roots.AddCert(dedicated.cert)
+	_, err = dnsLeaf.cert.Verify(x509.VerifyOptions{Roots: roots, DNSName: "ucp." + testNamespace + ".svc"})
+	require.NoError(t, err, "the same provided intermediate supports the distinct aggregation DNS profile")
 
 	for _, tt := range []struct {
 		name string
@@ -175,14 +187,9 @@ func TestSource_DedicatedIntermediateCA(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			// Even a canonical Radius SAN is insufficient under another CA
-			// from the same organization.
-			otherClient := newSource(t, tt.ca, "controller", root.pem)
-			result := handshake(t, server.ServerConfig(testNamespace), clientConfig(t, otherClient, ucpServerName))
-			require.ErrorContains(t, result.serverErr, "unknown authority")
-
+			// A canonical URI under a sibling or organization root is not trusted.
 			otherServer := newSource(t, tt.ca, "ucp", root.pem)
-			result = handshake(t, otherServer.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
+			result := handshake(t, otherServer.ServerConfig(), clientConfig(t, client, "ucp"))
 			require.ErrorContains(t, result.clientErr, "unknown authority")
 		})
 	}
@@ -196,10 +203,19 @@ func TestSource_DedicatedIntermediateCA(t *testing.T) {
 		require.ErrorContains(t, err, "not issued by the CA bundle")
 	})
 
+	t.Run("URI constraint rejects another trust domain", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		cert := dedicated.issue(t, certOptions{uris: []string{"spiffe://other.example/ns/" + testNamespace + "/sa/ucp"}})
+		writeFiles(t, dir, cert, dedicated.pem)
+		_, err := NewSource(dir)
+		require.ErrorContains(t, err, "not issued by the CA bundle")
+	})
+
 	t.Run("path length zero rejects a subordinate CA", func(t *testing.T) {
 		t.Parallel()
 		subordinate := newIntermediate(t, dedicated, "subordinate-ca")
-		cert := subordinate.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+		cert := subordinate.issue(t, certOptions{uris: spiffeURIs("ucp")})
 		cert.certPEM = append(cert.certPEM, subordinate.pem...)
 		dir := t.TempDir()
 		writeFiles(t, dir, cert, dedicated.pem)

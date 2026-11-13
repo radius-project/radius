@@ -27,6 +27,7 @@
                   "properties": {
                     "certManager": {"$ref": "#/definitions/controllerReference"},
                     "approverPolicy": {"$ref": "#/definitions/controllerReference"},
+                    "spiffe": {"$ref": "#/definitions/controllerReference"},
                     "webhook": {
                       "type": "object",
                       "properties": {

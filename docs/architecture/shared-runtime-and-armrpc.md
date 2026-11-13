@@ -156,20 +156,9 @@ one SAN, a URI SAN with the receiver's SPIFFE ID, instead of matching DNS
 names; a certificate with any DNS, IP, email, or other SAN is rejected. Only
 after the server is verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
-Every component projects only `ca.crt` from the `radius-ca` Secret (never
-`tls.key`) to `/var/run/radius/ca`, because csi-driver-spiffe writes no `ca.crt`
-without a configured source CA bundle. Servers chain their certificate to it and
-clients verify servers against it. The `radius-ca` CA signs only these
-SPIFFE server certificates; in the `selfSigned` certificate mode (the only one
-supported today), UCP's aggregated API certificate comes from the separate
-`radius-apiserver-ca`, which Radius components do not trust. Only the
-Kubernetes API server trusts that CA: cert-manager's cainjector copies `ca.crt`
-of the `radius-apiserver-ca` Secret into the APIService `caBundle` and follows
-its renewals.
-The API server does trust it for UCP, so the `radius-certificate-issuance`
-ValidatingAdmissionPolicy lets only the cert-manager controller request from
-`radius-apiserver-issuer` and `radius-selfsigned-bootstrap`, and limits Radius
-ServiceAccounts to `radius-ca-issuer`.
+Internal public trust is mounted separately at `/var/run/radius/ca`, never with a CA signing key. BYO uses ConfigMap `radius-mtls-ca`; only selfSigned bootstrap projects `radius-ca/ca.crt` until an independent source is staged. In selfSigned mode aggregation retains a separate CA. In caSecret mode distinct internal and aggregation Issuers share the operator's signing Secret; issuerRef selects the existing issuer for both request profiles. UCP's ordinary DNS Certificate and internal own-Pod SPIFFE CSI requests have separate approval restrictions, even under the same CA. Runtime callers never present component client certificates; pinned CSI's client-auth EKU is not caller authorization.
+
+The APIService's permanent public source is Secret `radius-apiserver-trust`, with the direct-injection annotation, not a leaf Secret or organization root. The chart guards existing sources and rotation journals against unvalidated overwrite. A new selfSigned CA needs a second connected render or lifecycle pre-staging before this source exists. CLI crypto/profile validation and journal-aware lifecycle/convergence remain paired integrations; cainjector merging alone does not establish exact retirement of old anchors. See the [certificate-mode contract](../../deploy/Chart/README.md#internal-service-certificate-modes).
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Before each request, a client

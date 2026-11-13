@@ -98,7 +98,10 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if err != nil {
 		return fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
 	}
-	live := caCertificates(bundle)
+	live, err := caCertificates(bundle)
+	if err != nil {
+		return fmt.Errorf("invalid APIService %s caBundle: %w", ucpAPIServiceName, err)
+	}
 	if len(live) == 0 {
 		return nil
 	}
@@ -171,9 +174,13 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 		bundle, err := base64.StdEncoding.DecodeString(encoded)
 		if err != nil {
-			return false, nil
+			return false, fmt.Errorf("failed to decode APIService %s caBundle: %w", ucpAPIServiceName, err)
 		}
-		return containsCertificates(caCertificates(bundle), trusted), nil
+		cas, err := caCertificates(bundle)
+		if err != nil {
+			return false, fmt.Errorf("invalid APIService %s caBundle: %w", ucpAPIServiceName, err)
+		}
+		return containsCertificates(cas, trusted), nil
 	})
 	if err != nil {
 		if wait.Interrupted(err) {

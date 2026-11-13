@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"encoding/base64"
 	"errors"
 	"testing"
 	"time"
@@ -59,7 +60,7 @@ func ucpAPIServiceDynamicClient(objects ...runtime.Object) dynamic.Interface {
 
 // readyUCPAPIServiceClient returns a client for a cluster whose UCP APIService has a CA bundle and is Available.
 func readyUCPAPIServiceClient(string) (dynamic.Interface, error) {
-	return ucpAPIServiceDynamicClient(ucpAPIService("Y2E=", "True", "Passed")), nil
+	return ucpAPIServiceDynamicClient(ucpAPIService(base64.StdEncoding.EncodeToString(issuedUCPAPIServerCA()), "True", "Passed")), nil
 }
 
 func Test_waitForUCPAPIService(t *testing.T) {

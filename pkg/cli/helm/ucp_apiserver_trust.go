@@ -192,9 +192,15 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kubeClient ku
 			return false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
 		}
 		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
-		bundle, decodeErr := base64.StdEncoding.DecodeString(encoded)
-		extra := extraCertificates(bundle, caBundle)
-		if decodeErr == nil && extra == 0 && apiService.GetAnnotations()[injectCAFromSecretAnnotation] == ucpAPIServerCASource(radiusNamespace) {
+		bundle, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			return false, fmt.Errorf("failed to decode APIService %s caBundle: %w", ucpAPIServiceName, err)
+		}
+		extra, parseErr := extraCertificates(bundle, caBundle)
+		if parseErr != nil {
+			return false, fmt.Errorf("invalid APIService trust bundle: %w", parseErr)
+		}
+		if extra == 0 && apiService.GetAnnotations()[injectCAFromSecretAnnotation] == ucpAPIServerCASource(radiusNamespace) {
 			clean++
 			return clean >= ucpAPIServerCASettleChecks, nil
 		}
@@ -210,33 +216,27 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kubeClient ku
 }
 
 // extraCertificates counts the unexpired certificates in bundle that allowed does not hold.
-func extraCertificates(bundle, allowed []byte) int {
+func extraCertificates(bundle, allowed []byte) (int, error) {
+	anchors, err := parseCertificateBundlePEM(allowed)
+	if err != nil {
+		return 0, fmt.Errorf("invalid allowed bundle: %w", err)
+	}
+	certs, err := parseCertificateBundlePEM(bundle)
+	if err != nil {
+		return 0, err
+	}
 	known := map[string]bool{}
-	for _, cert := range parseCertificates(allowed) {
+	for _, cert := range anchors {
 		known[string(cert.Raw)] = true
 	}
 	now := time.Now()
 	extra := 0
-	for _, cert := range parseCertificates(bundle) {
+	for _, cert := range certs {
 		if !known[string(cert.Raw)] && !now.After(cert.NotAfter) {
 			extra++
 		}
 	}
-	return extra
-}
-
-func parseCertificates(bundle []byte) []*x509.Certificate {
-	var certs []*x509.Certificate
-	for {
-		var block *pem.Block
-		block, bundle = pem.Decode(bundle)
-		if block == nil {
-			return certs
-		}
-		if cert, err := x509.ParseCertificate(block.Bytes); block.Type == "CERTIFICATE" && err == nil {
-			certs = append(certs, cert)
-		}
-	}
+	return extra, nil
 }
 
 // deleteUCPAPIServerTrust deletes a trust Secret left by an interrupted upgrade, after Helm uninstalls Radius.
@@ -302,9 +302,14 @@ func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radius
 		return nil, nil, "its tls.crt is not a CA certificate", nil
 	}
 	bundle := secret.Data[caCertificateKey]
-	cas := caCertificates(bundle)
-	if len(cas) == 0 || len(cas) != countCertificates(bundle) {
-		return nil, nil, "its ca.crt does not hold only CA certificates", nil
+	cas, err := parseCertificateBundlePEM(bundle)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("invalid Secret %s/%s ca.crt: %w", radiusNamespace, ucpAPIServerCASecretName, err)
+	}
+	for _, ca := range cas {
+		if !ca.BasicConstraintsValid || !ca.IsCA {
+			return nil, nil, "its ca.crt does not hold only CA certificates", nil
+		}
 	}
 	if len(unionCertificates(cas, []*x509.Certificate{cert})) != len(cas) {
 		return nil, nil, "its ca.crt does not hold the CA certificate in tls.crt", nil
@@ -373,7 +378,11 @@ func readUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, rad
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
 	}
-	return caCertificates(secret.Data[caCertificateKey]), true, nil
+	cas, err := caCertificates(secret.Data[caCertificateKey])
+	if err != nil {
+		return nil, true, fmt.Errorf("invalid Secret %s/%s ca.crt: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
+	}
+	return cas, true, nil
 }
 
 // writeUCPAPIServerTrust stores the CA certificates in ca.crt of the trust Secret, which holds no other data. It
@@ -430,50 +439,27 @@ func applyUCPAPIServerTrust(ctx context.Context, kubeClient kubernetes.Interface
 }
 
 // caCertificates returns the CA certificates in a PEM bundle and drops anything else, such as leaf certificates.
-func caCertificates(bundle []byte) []*x509.Certificate {
+func caCertificates(bundle []byte) ([]*x509.Certificate, error) {
+	certs, err := parseCertificateBundlePEM(bundle)
+	if err != nil {
+		return nil, err
+	}
 	var cas []*x509.Certificate
-	for {
-		var block *pem.Block
-		block, bundle = pem.Decode(bundle)
-		if block == nil {
-			return cas
-		}
-		if block.Type != "CERTIFICATE" {
-			continue
-		}
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil || !cert.BasicConstraintsValid || !cert.IsCA {
+	for _, cert := range certs {
+		if !cert.BasicConstraintsValid || !cert.IsCA {
 			continue
 		}
 		cas = unionCertificates(cas, []*x509.Certificate{cert})
 	}
-}
-
-func countCertificates(bundle []byte) int {
-	count := 0
-	for {
-		var block *pem.Block
-		block, bundle = pem.Decode(bundle)
-		if block == nil {
-			return count
-		}
-		if block.Type == "CERTIFICATE" {
-			count++
-		}
-	}
+	return cas, nil
 }
 
 func firstCertificate(bundle []byte) (*x509.Certificate, error) {
-	for {
-		var block *pem.Block
-		block, bundle = pem.Decode(bundle)
-		if block == nil {
-			return nil, fmt.Errorf("no PEM certificate")
-		}
-		if block.Type == "CERTIFICATE" {
-			return x509.ParseCertificate(block.Bytes)
-		}
+	certs, err := parseCertificateBundlePEM(bundle)
+	if err != nil {
+		return nil, err
 	}
+	return certs[0], nil
 }
 
 // unionCertificates returns certs followed by the certificates of more that are not in certs.

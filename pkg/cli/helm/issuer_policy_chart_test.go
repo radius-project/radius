@@ -131,12 +131,25 @@ func (f *issuerPolicyFixture) useClusterIssuer(t *testing.T) {
 	issuer.SetNamespace("")
 	certs := f.values["global"].(map[string]any)["rbac"].(map[string]any)["certificates"].(map[string]any)
 	certs["issuerRef"].(map[string]any)["kind"] = "ClusterIssuer"
+	for _, kind := range []string{"Deployment", "Pod"} {
+		name := "cert-manager-csi-driver-spiffe-approver"
+		if kind == "Pod" {
+			name += "-pod"
+		}
+		args := f.container(kind, name)["args"].([]any)
+		for i, arg := range args {
+			if arg == "--issuer-kind=Issuer" {
+				args[i] = "--issuer-kind=ClusterIssuer"
+			}
+		}
+	}
 	for _, obj := range f.objects {
 		if obj.GetKind() == "CertificateRequestPolicy" {
 			require.NoError(t, unstructured.SetNestedField(obj.Object, "ClusterIssuer", "spec", "selector", "issuerRef", "kind"))
 		}
 	}
 	f.object("ClusterRole", "approver").Object["rules"].([]any)[0].(map[string]any)["resourceNames"] = []any{"clusterissuers.cert-manager.io/external-ca"}
+	f.object("ClusterRole", "spiffe-approver").Object["rules"].([]any)[0].(map[string]any)["resourceNames"] = []any{"clusterissuers.cert-manager.io/external-ca"}
 }
 
 func newIssuerPolicyFixture(t *testing.T) *issuerPolicyFixture {
@@ -172,10 +185,11 @@ func newIssuerPolicyFixture(t *testing.T) *issuerPolicyFixture {
 		"requestPolicy": map[string]any{
 			"certManager":    map[string]any{"namespace": "cert-manager", "deployment": "cert-manager"},
 			"approverPolicy": map[string]any{"namespace": "cert-manager", "deployment": "cert-manager-approver-policy"},
+			"spiffe":         map[string]any{"namespace": "cert-manager", "deployment": "cert-manager-csi-driver-spiffe-approver"},
 			"webhook":        map[string]any{"namespace": "cert-manager", "service": "cert-manager-webhook", "configuration": "cert-manager-webhook"},
 		},
 	}
-	f.values = map[string]any{"global": map[string]any{"rbac": map[string]any{
+	f.values = map[string]any{"de": map[string]any{"internalAuth": map[string]any{"enabled": false}}, "global": map[string]any{"rbac": map[string]any{
 		"enabled": true, "certificates": certificates,
 	}}}
 	for _, c := range []struct {
@@ -184,6 +198,10 @@ func newIssuerPolicyFixture(t *testing.T) *issuerPolicyFixture {
 	}{
 		{"cert-manager", "quay.io/jetstack/cert-manager-controller:v1.21.2", []any{"--controllers=-certificaterequests-approver"}},
 		{"cert-manager-approver-policy", "quay.io/jetstack/cert-manager-approver-policy:v0.29.0", []any{"--webhook-port=10250"}},
+		{"cert-manager-csi-driver-spiffe-approver", "quay.io/jetstack/cert-manager-csi-driver-spiffe-approver:v0.15.1", []any{
+			"--issuer-name=external-ca", "--issuer-kind=Issuer", "--issuer-group=cert-manager.io",
+			"--trust-domain=radius.internal", "--csi-driver-name=spiffe.csi.radapp.io", "--certificate-request-duration=24h",
+		}},
 	} {
 		containers := []any{map[string]any{"name": c.name, "image": c.image, "args": c.args}}
 		podSpec := map[string]any{"serviceAccountName": c.name, "containers": containers}
@@ -227,7 +245,7 @@ func newIssuerPolicyFixture(t *testing.T) *issuerPolicyFixture {
 		}}
 	}
 	names := []any{}
-	for _, component := range []string{"ucp", "applications-rp", "dynamic-rp", "controller", "bicep-de"} {
+	for _, component := range []string{"ucp"} {
 		name := "radius-radius-system-" + component
 		names = append(names, name)
 		ready(add("policy.cert-manager.io/v1alpha1", "CertificateRequestPolicy", "", name, map[string]any{
@@ -236,7 +254,7 @@ func newIssuerPolicyFixture(t *testing.T) *issuerPolicyFixture {
 				"dnsNames": map[string]any{"values": []any{component + ".radius-system.svc"}, "required": true,
 					"validations": []any{map[string]any{"rule": fmt.Sprintf(
 						"cr.username == 'system:serviceaccount:cert-manager:cert-manager' && cr.namespace == 'radius-system' && cr.name.startsWith('%s-cert-')", component)}}},
-				"isCA": false, "usages": []any{"digital signature", "server auth", "client auth"},
+				"isCA": false, "usages": []any{"digital signature", "server auth"},
 			},
 			"constraints": map[string]any{"minDuration": "24h", "maxDuration": "24h",
 				"privateKey": map[string]any{"algorithm": "ECDSA", "minSize": int64(256), "maxSize": int64(256)}},
@@ -263,12 +281,25 @@ func newIssuerPolicyFixture(t *testing.T) *issuerPolicyFixture {
 		b.Object["roleRef"] = map[string]any{"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": name}
 		b.Object["subjects"] = []any{map[string]any{"kind": "ServiceAccount", "name": sa, "namespace": "cert-manager"}}
 	}
+	spiffeRole := approvalRole.DeepCopy()
+	spiffeRole.SetName("spiffe-approver")
+	spiffeRole.Object["rules"] = runtime.DeepCopyJSONValue(approvalRole.Object["rules"].([]any)[:3])
+	spiffeBinding := f.object("ClusterRoleBinding", "approver").DeepCopy()
+	spiffeBinding.SetName("spiffe-approver")
+	spiffeBinding.Object["roleRef"].(map[string]any)["name"] = "spiffe-approver"
+	spiffeBinding.Object["subjects"] = []any{map[string]any{"kind": "ServiceAccount", "name": "cert-manager-csi-driver-spiffe-approver", "namespace": "cert-manager"}}
+	f.objects = append(f.objects, spiffeRole, spiffeBinding)
 	return f
 }
 
 // render uses the same REST-backed Helm engine as a server-connected install or
 // CLI preflight, without installing anything or executing a CertificateRequest.
 func (f *issuerPolicyFixture) render(t *testing.T) (string, error) {
+	rendered, err := f.renderChart(t)
+	return rendered["radius/templates/global/certificates.yaml"] + rendered["radius/templates/ucp/apiservice.yaml"], err
+}
+
+func (f *issuerPolicyFixture) renderChart(t *testing.T) (map[string]string, error) {
 	t.Helper()
 	resources := map[string]metav1.APIResource{}
 	for _, obj := range f.objects {
@@ -354,18 +385,15 @@ func (f *issuerPolicyFixture) render(t *testing.T) (string, error) {
 	t.Cleanup(server.Close)
 	chart, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
 	require.NoError(t, err)
-	templates := chart.Templates[:0]
-	for _, file := range chart.Templates {
-		if strings.HasSuffix(file.Name, ".tpl") || file.Name == "templates/global/certificates.yaml" {
-			templates = append(templates, file)
-		}
-	}
-	chart.Templates = templates
+	values, err := chartutil.CoalesceValues(chart, f.values)
+	require.NoError(t, err)
 	eng := engine.New(&rest.Config{Host: server.URL})
-	rendered, err := eng.Render(chart, common.Values{
-		"Values": f.values, "Release": map[string]any{"Name": "radius", "Namespace": "radius-system"},
+	caps := common.DefaultCapabilities.Copy()
+	caps.APIVersions = append(caps.APIVersions, "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy")
+	return eng.Render(chart, common.Values{
+		"Values": values, "Capabilities": caps,
+		"Release": map[string]any{"Name": "radius", "Namespace": "radius-system", "Service": "Helm"},
 	})
-	return rendered["radius/templates/global/certificates.yaml"], err
 }
 
 func TestIssuerPolicyChart(t *testing.T) {
@@ -377,6 +405,22 @@ func TestIssuerPolicyChart(t *testing.T) {
 		noComponents bool
 	}{
 		{name: "supported namespaced issuer"},
+		{name: "SPIFFE approver widens DNS approval", change: func(t *testing.T, f *issuerPolicyFixture) {
+			c := f.container("Deployment", "cert-manager-csi-driver-spiffe-approver")
+			c["args"] = append(c["args"].([]any), "--auto-approve-non-spiffe=true")
+		}, err: "non-SPIFFE auto-approval"},
+		{name: "SPIFFE uses controller instead of Pod identity", change: func(t *testing.T, f *issuerPolicyFixture) {
+			c := f.container("Deployment", "cert-manager-csi-driver-spiffe-approver")
+			c["args"] = append(c["args"].([]any), "--use-own-service-account=true")
+		}, err: "own-ServiceAccount issuance"},
+		{name: "SPIFFE runtime issuer override", change: func(t *testing.T, f *issuerPolicyFixture) {
+			c := f.container("Deployment", "cert-manager-csi-driver-spiffe-approver")
+			c["args"] = append(c["args"].([]any), "--runtime-issuance-config-map-name=unverified")
+		}, err: "runtime issuance overrides"},
+		{name: "Pod granted aggregation policy use", change: func(t *testing.T, f *issuerPolicyFixture) {
+			b := f.object("ClusterRoleBinding", "radius-policy-use")
+			b.Object["subjects"] = append(b.Object["subjects"].([]any), map[string]any{"kind": "ServiceAccount", "namespace": "radius-system", "name": "ucp"})
+		}, err: "grants Radius policy use"},
 		{name: "issuer API group unsupported", change: func(t *testing.T, f *issuerPolicyFixture) {
 			f.values["global"].(map[string]any)["rbac"].(map[string]any)["certificates"].(map[string]any)["issuerRef"].(map[string]any)["group"] = "external.example"
 		}, err: "issuerRef.group=cert-manager.io"},
@@ -399,14 +443,11 @@ func TestIssuerPolicyChart(t *testing.T) {
 			b.SetKind("RoleBinding")
 			b.SetNamespace("radius-system")
 		}},
-		{name: "external inventory tolerates dormant bounded component policies", noComponents: true, change: func(t *testing.T, f *issuerPolicyFixture) {
-			f.values["global"].(map[string]any)["rbac"].(map[string]any)["mtls"] = map[string]any{"provider": "external"}
-		}},
-		{name: "external inventory requires only UCP policy", noComponents: true, change: func(t *testing.T, f *issuerPolicyFixture) {
-			f.values["global"].(map[string]any)["rbac"].(map[string]any)["mtls"] = map[string]any{"provider": "external"}
+		{name: "external inventory requires only DNS approval", noComponents: true, change: func(t *testing.T, f *issuerPolicyFixture) {
+			f.values["global"].(map[string]any)["rbac"].(map[string]any)["tls"] = map[string]any{"provider": "external"}
 			var objects []*unstructured.Unstructured
 			for _, obj := range f.objects {
-				if obj.GetKind() != "CertificateRequestPolicy" || obj.GetName() == "radius-radius-system-ucp" {
+				if !strings.HasPrefix(obj.GetName(), "cert-manager-csi-driver-spiffe-approver") && obj.GetName() != "spiffe-approver" {
 					objects = append(objects, obj)
 				}
 			}
@@ -438,9 +479,15 @@ func TestIssuerPolicyChart(t *testing.T) {
 		{name: "stale issuer", change: func(t *testing.T, f *issuerPolicyFixture) {
 			f.object("Issuer", "external-ca").SetGeneration(2)
 		}, err: "must be Ready at its current generation"},
-		{name: "default approver running", change: func(t *testing.T, f *issuerPolicyFixture) {
-			f.container("Deployment", "cert-manager")["args"] = []any{"--v=2"}
-		}, err: "default auto-approval must be explicitly disabled"},
+		{name: "default approver running without selected signer permission", change: func(t *testing.T, f *issuerPolicyFixture) {
+			for _, kind := range []string{"Deployment", "Pod"} {
+				name := "cert-manager"
+				if kind == "Pod" {
+					name += "-pod"
+				}
+				f.container(kind, name)["args"] = []any{"--v=2"}
+			}
+		}},
 		{name: "duplicate controller flag", change: func(t *testing.T, f *issuerPolicyFixture) {
 			f.container("Deployment", "cert-manager")["args"] = []any{"--controllers=-certificaterequests-approver", "--controllers=*"}
 		}, err: "without duplicate controller flags"},
@@ -533,7 +580,7 @@ func TestIssuerPolicyChart(t *testing.T) {
 			f.object("ClusterRoleBinding", "radius-policy-use").Object["subjects"] = []any{map[string]any{"kind": "Group", "name": "system:authenticated"}}
 		}, err: "grants Radius policy use to a subject other than"},
 		{name: "missing one policy-use resourceName", change: func(t *testing.T, f *issuerPolicyFixture) {
-			f.object("ClusterRole", "radius-policy-use").Object["rules"].([]any)[0].(map[string]any)["resourceNames"] = []any{"radius-radius-system-ucp"}
+			f.object("ClusterRole", "radius-policy-use").Object["rules"].([]any)[0].(map[string]any)["resourceNames"] = []any{"other-policy"}
 		}, err: "lacks policy use"},
 		{name: "RBAC resourceNames star is literal not wildcard", change: func(t *testing.T, f *issuerPolicyFixture) {
 			f.object("ClusterRole", "radius-policy-use").Object["rules"].([]any)[0].(map[string]any)["resourceNames"] = []any{"*"}
@@ -601,17 +648,17 @@ func TestIssuerPolicyChart(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			count := 5
+			require.Equal(t, 1, strings.Count(rendered, "kind: Certificate\n"), "only aggregation uses an ordinary Certificate")
+			require.Contains(t, rendered, "name: external-ca")
 			if tt.noComponents {
-				count = 0
+				require.NotContains(t, rendered, "name: radius-mtls-ca")
+			} else {
+				require.Contains(t, rendered, "name: radius-mtls-ca")
 			}
-			require.Equal(t, count, strings.Count(rendered, "kind: Certificate\n"))
-			if !tt.noComponents {
-				require.Contains(t, rendered, "name: external-ca")
-			}
-			require.Contains(t, rendered, "name: radius-mtls-ca")
 			require.NotContains(t, rendered, "\nkind: Issuer\n")
-			require.NotContains(t, rendered, "kind: Secret\n")
+			require.Contains(t, rendered, "kind: Secret\n")
+			require.Contains(t, rendered, "name: radius-apiserver-trust")
+			require.NotContains(t, rendered, "tls.key:")
 			require.NotContains(t, rendered, "radius-ca-issuer")
 		})
 	}
