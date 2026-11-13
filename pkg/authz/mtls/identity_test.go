@@ -26,8 +26,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"math/big"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -64,6 +66,10 @@ func (c testCert) tlsCertificate(t *testing.T) tls.Certificate {
 type certOptions struct {
 	uris        []string
 	dnsNames    []string
+	ipAddresses []net.IP
+	emails      []string
+	// rawSAN replaces the subjectAltName extension built from the fields above.
+	rawSAN      []byte
 	key         crypto.Signer
 	notBefore   time.Time
 	notAfter    time.Time
@@ -142,13 +148,18 @@ func (ca testCA) issue(t *testing.T, opts certOptions) testCert {
 	serial, err := rand.Int(rand.Reader, big.NewInt(1<<62))
 	require.NoError(t, err)
 	template := &x509.Certificate{
-		SerialNumber: serial,
-		URIs:         uris,
-		DNSNames:     opts.dnsNames,
-		NotBefore:    opts.notBefore,
-		NotAfter:     opts.notAfter,
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  opts.extKeyUsage,
+		SerialNumber:   serial,
+		URIs:           uris,
+		DNSNames:       opts.dnsNames,
+		IPAddresses:    opts.ipAddresses,
+		EmailAddresses: opts.emails,
+		NotBefore:      opts.notBefore,
+		NotAfter:       opts.notAfter,
+		KeyUsage:       x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:    opts.extKeyUsage,
+	}
+	if opts.rawSAN != nil {
+		template.ExtraExtensions = []pkix.Extension{{Id: asn1.ObjectIdentifier{2, 5, 29, 17}, Value: opts.rawSAN}}
 	}
 	der, err := x509.CreateCertificate(rand.Reader, template, ca.cert, opts.key.Public(), ca.key)
 	require.NoError(t, err)
@@ -214,7 +225,10 @@ func TestCheckSPIFFEID(t *testing.T) {
 		want string
 	}{
 		{name: "matching", opts: certOptions{uris: spiffeURIs("ucp")}},
-		{name: "DNS SANs ignored", opts: certOptions{uris: spiffeURIs("ucp"), dnsNames: []string{"attacker.example.com"}}},
+		{name: "extra DNS SAN", opts: certOptions{uris: spiffeURIs("ucp"), dnsNames: []string{"ucp.radius-system.svc"}}, want: "SAN other than"},
+		{name: "extra IP SAN", opts: certOptions{uris: spiffeURIs("ucp"), ipAddresses: []net.IP{net.ParseIP("10.0.0.1")}}, want: "SAN other than"},
+		{name: "extra email SAN", opts: certOptions{uris: spiffeURIs("ucp"), emails: []string{"ucp@radius.internal"}}, want: "SAN other than"},
+		{name: "extra otherName SAN", opts: certOptions{uris: spiffeURIs("ucp"), rawSAN: uriAndOtherNameSAN(t, spiffeID("ucp"))}, want: "SAN other than"},
 		{name: "no URI SAN", opts: certOptions{dnsNames: []string{"ucp.radius-system.svc"}}, want: "no URI SAN"},
 		{name: "other component", opts: certOptions{uris: spiffeURIs("dynamic-rp")}, want: "is not"},
 		{name: "other namespace", opts: certOptions{uris: []string{SPIFFEID(DefaultTrustDomain, "other", "ucp")}}, want: "is not"},
@@ -233,6 +247,28 @@ func TestCheckSPIFFEID(t *testing.T) {
 			require.ErrorContains(t, err, tt.want)
 		})
 	}
+}
+
+// uriAndOtherNameSAN encodes a subjectAltName with a URI and an otherName, a SAN type that
+// crypto/x509 does not decode into a Certificate field.
+func uriAndOtherNameSAN(t *testing.T, uri string) []byte {
+	t.Helper()
+	value, err := asn1.MarshalWithParams("ucp", "utf8,explicit,tag:0")
+	require.NoError(t, err)
+	otherName, err := asn1.Marshal(struct {
+		ID    asn1.ObjectIdentifier
+		Value asn1.RawValue
+	}{ID: asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 99999, 1}, Value: asn1.RawValue{FullBytes: value}})
+	require.NoError(t, err)
+	var seq asn1.RawValue
+	_, err = asn1.Unmarshal(otherName, &seq)
+	require.NoError(t, err)
+	san, err := asn1.Marshal([]asn1.RawValue{
+		{Class: asn1.ClassContextSpecific, Tag: 6, Bytes: []byte(uri)},
+		{Class: asn1.ClassContextSpecific, Tag: 0, IsCompound: true, Bytes: seq.Bytes},
+	})
+	require.NoError(t, err)
+	return san
 }
 
 func TestCheckKey(t *testing.T) {

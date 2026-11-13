@@ -71,8 +71,8 @@ func (s *Source) ServerConfigFrom(base *tls.Config) *tls.Config {
 
 // clientConfig returns a TLS config for a client that presents no certificate and accepts
 // only a server whose certificate chains to the current CA bundle for server
-// authentication and whose only URI SAN is spiffeID. The server name is used for SNI only;
-// DNS names in the certificate are ignored.
+// authentication and whose only SAN is the URI SAN spiffeID. The server name is used for SNI
+// only; a certificate with any other SAN, such as a DNS name, is rejected.
 //
 // The config is bound to the CA bundle loaded when clientConfig is called. Call it for each
 // new connection, for example from http.Transport.DialTLSContext, so CA reloads take effect.

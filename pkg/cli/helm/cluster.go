@@ -313,6 +313,9 @@ type Impl struct {
 	// newCSIDriverSPIFFEClient returns the client for the csi-driver-spiffe checks. Nil uses the cluster that the
 	// Kubernetes context selects.
 	newCSIDriverSPIFFEClient func(kubeContext string) (kubernetes.Interface, error)
+	// newUCPAPIServerTrustClient returns the client that reads and writes the UCP API server trust Secret. Nil uses
+	// the cluster that the Kubernetes context selects.
+	newUCPAPIServerTrustClient func(kubeContext string) (kubernetes.Interface, error)
 	// csiDriverSPIFFEPodWaitTimeout and csiDriverSPIFFEPodPollInterval override how long uninstall waits for Pods that
 	// use csi-driver-spiffe. Zero uses the defaults.
 	csiDriverSPIFFEPodWaitTimeout  time.Duration
@@ -415,6 +418,10 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	// Install Radius
+	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
+		return err
+	}
 	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
@@ -455,6 +462,10 @@ func setCertManagerRequesters(radiusValues map[string]any, requesters []string) 
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
 	// Uninstall Radius
 	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
+		return err
+	}
+	// rad creates the UCP API server trust Secret outside the Helm release.
+	if err := i.deleteUCPAPIServerTrust(ctx, kubeContext, clusterOptions.Radius.Namespace); err != nil {
 		return err
 	}
 
@@ -602,6 +613,10 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 	setCertManagerRequesters(radiusValues, certManagerRequesters)
 
+	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, storedValues, render); err != nil {
+		return err
+	}
 	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
@@ -784,6 +799,9 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, targetRevision); err != nil {
 		return err
 	}
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
+		return err
+	}
 
 	output.LogInfo("Rolling back Radius from version %s to version %s...", currentChartVersion, targetChartVersion)
 
@@ -841,6 +859,9 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 	}
 
 	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, revision); err != nil {
+		return err
+	}
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
 		return err
 	}
 

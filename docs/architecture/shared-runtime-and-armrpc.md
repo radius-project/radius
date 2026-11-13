@@ -129,8 +129,9 @@ presents a client certificate.
 - `off` (default): plain HTTP, behavior unchanged.
 - `dryRun`: the same port accepts TLS and plain HTTP. Plain HTTP, missing or
   invalid tokens, and disallowed callers are logged as would-deny
-  (`InvalidAuthenticationInfo`, `AuthorizationUnavailable`,
-  `AuthorizationFailed`), and every request is served.
+  (`InvalidAuthenticationInfo`, `AuthorizationFailed`), and the request is
+  served. Signing keys that could not be refreshed are the exception: every
+  request gets `503 AuthorizationUnavailable`, as in `enforce`.
 - `enforce`: TLS is required (plain HTTP gets `400`). A missing, invalid, or
   wrong-audience token gets `401 InvalidAuthenticationInfo`; signing keys that
   could not be refreshed give `503 AuthorizationUnavailable`; and callers not in
@@ -149,8 +150,9 @@ handler. Probes and metrics stay on their plain ports.
 Callers build transports with `mtls.NewClientTransport` and
 `mtls.NewUpgradeTransport` in [pkg/authz/mtls/client.go](../../pkg/authz/mtls/client.go).
 They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and require exactly
-the receiver's SPIFFE ID instead of matching DNS names. Only after the server is
-verified do they send the token from
+one SAN, a URI SAN with the receiver's SPIFFE ID, instead of matching DNS
+names; a certificate with any DNS, IP, email, or other SAN is rejected. Only
+after the server is verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
 Every component projects only `ca.crt` from the `radius-ca` Secret (never
 `tls.key`) to `/var/run/radius/ca`, because csi-driver-spiffe writes no `ca.crt`
@@ -158,8 +160,11 @@ without a configured source CA bundle. Servers chain their certificate to it and
 clients verify servers against it. The `radius-ca` CA signs only these
 SPIFFE server certificates; in the `selfSigned` certificate mode (the only one
 supported today), UCP's aggregated API certificate comes from the separate
-`radius-apiserver-ca`, which Radius components do not trust. The
-Kubernetes API server does trust it for UCP, so the `radius-certificate-issuance`
+`radius-apiserver-ca`, which Radius components do not trust. Only the
+Kubernetes API server trusts that CA: cert-manager's cainjector copies `ca.crt`
+of the `radius-apiserver-ca` Secret into the APIService `caBundle` and follows
+its renewals.
+The API server does trust it for UCP, so the `radius-certificate-issuance`
 ValidatingAdmissionPolicy lets only the cert-manager controller request from
 `radius-apiserver-issuer` and `radius-selfsigned-bootstrap`, and limits Radius
 ServiceAccounts to `radius-ca-issuer`.
