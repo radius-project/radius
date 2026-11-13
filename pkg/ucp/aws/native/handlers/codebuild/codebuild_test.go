@@ -386,6 +386,13 @@ func Test_Update(t *testing.T) {
 		require.NotContains(t, stored, "ResourceAccessRole")
 	})
 
+	t.Run("a visibility in lowercase is not a change", func(t *testing.T) {
+		applied := with(base, map[string]any{"Visibility": "public_read"})
+		h, api := deployed(t, applied)
+		require.NoError(t, deploy(t, h, applied, applied))
+		require.Equal(t, []string{"BatchGetProjects"}, api.takeCalls())
+	})
+
 	t.Run("a webhook turned off is deleted, and a redeploy only reads", func(t *testing.T) {
 		applied := with(base, map[string]any{"Triggers": triggers("PUSH")})
 		off := with(base, map[string]any{"Triggers": map[string]any{"Webhook": false}})

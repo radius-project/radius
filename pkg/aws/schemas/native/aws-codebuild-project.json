@@ -669,6 +669,7 @@
     "/properties/LogsConfig/S3Logs/Status": "$uppercase(Status)",
     "/properties/FileSystemLocations/*/Type": "$uppercase(Type)",
     "/properties/Triggers/BuildType": "$uppercase(BuildType)",
+    "/properties/Visibility": "$uppercase(Visibility)",
     "/properties/EncryptionKey": "$join([\"arn:.*[:]\", EncryptionKey])"
   }
 }
