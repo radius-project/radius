@@ -17,11 +17,16 @@ limitations under the License.
 package mtls
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -31,14 +36,25 @@ import (
 	"github.com/radius-project/radius/pkg/authz"
 )
 
+const (
+	// TokenFile is the file name of a projected ServiceAccount token under
+	// <tokenDirectory>/<receiver>/.
+	TokenFile = "token"
+
+	// tokenMaxAge is how long a cached token is used before it is read again, even if the
+	// file looks unchanged.
+	tokenMaxAge = time.Minute
+)
+
 var (
 	sharedMu      sync.Mutex
 	sharedSources = map[string]*Source{}
 )
 
-// sharedSource returns the process-wide Source for dir, creating it on first use. Clients
-// live for the whole process, so the Source reloads the directory until the process exits.
-func sharedSource(dir string) (*Source, error) {
+// sharedTrustSource returns the process-wide trust-only Source for dir, creating it on first
+// use. Clients live for the whole process, so the Source reloads the directory until the
+// process exits.
+func sharedTrustSource(dir string) (*Source, error) {
 	sharedMu.Lock()
 	defer sharedMu.Unlock()
 
@@ -46,7 +62,7 @@ func sharedSource(dir string) (*Source, error) {
 		return s, nil
 	}
 
-	s, err := NewSource(dir)
+	s, err := NewTrustSource(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -63,24 +79,27 @@ func reloadContext() context.Context {
 	return logr.NewContext(context.Background(), runtimelog.Log)
 }
 
-// NewClientTransport returns an HTTP transport that presents this component's certificate
-// and verifies that the server is the Radius component named by the request URL's host.
-// It requires options.CertificateDirectory and options.Namespace.
-func NewClientTransport(options authz.Options) (http.RoundTripper, error) {
-	return newClientTransport(options, "")
+// NewClientTransport returns an HTTP transport for calls to the Radius component receiver,
+// such as "ucp". It presents no client certificate. It accepts only a server whose
+// certificate chains to the Radius CA bundle in options.EffectiveCADirectory() and carries the
+// receiver's SPIFFE ID, and only then sends the projected ServiceAccount token read from
+// <options.TokenDirectory>/<receiver>/token as "Authorization: Bearer". It replaces any
+// Authorization header on the request and refuses non-https URLs.
+func NewClientTransport(options authz.Options, receiver string) (http.RoundTripper, error) {
+	return newClientTransport(options, receiver)
 }
 
-// clientTransport stops reusing connections outside the validity of the presented client
-// certificate or any certificate in the server's verified chains.
+// clientTransport attaches the receiver's token and stops reusing connections outside the
+// validity of any certificate in the server's verified chain.
 //
 // The embedded Transport is a template. Requests use current, a clone that is replaced when
 // one of its connections expires. Replaced pools are retired; a later request forgets a
 // retired pool once it has no unexpired tracked connections.
 type clientTransport struct {
 	*http.Transport
-	source     *Source
-	namespace  string
-	serverName string
+	source   *Source
+	token    *tokenFile
+	spiffeID string
 
 	mu      sync.Mutex
 	current *http.Transport
@@ -109,30 +128,40 @@ func (c *trackedConn) Close() error {
 	return c.Conn.Close()
 }
 
-// newClientTransport is NewClientTransport with an optional TLS server name that replaces
-// the request URL's host.
-//
-// Each connection reads the certificate and CA bundle once, so the certificate it presents
-// and the CA bundle it verifies the server against always come from the same version.
-func newClientTransport(options authz.Options, serverName string) (*clientTransport, error) {
-	if options.CertificateDirectory == "" || options.Namespace == "" {
-		return nil, fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", options.EffectiveMode())
+func newClientTransport(options authz.Options, receiver string) (*clientTransport, error) {
+	mode := options.EffectiveMode()
+	if options.CertificateDirectory == "" || options.TokenDirectory == "" || options.Namespace == "" {
+		return nil, fmt.Errorf("authorization mode %q requires certificateDirectory, tokenDirectory, and namespace", mode)
+	}
+	if receiver == "" {
+		return nil, errors.New("receiver is required")
 	}
 
-	source, err := sharedSource(options.CertificateDirectory)
+	source, err := sharedTrustSource(options.EffectiveCADirectory())
 	if err != nil {
-		return nil, fmt.Errorf("failed to load mTLS certificate: %w", err)
+		return nil, fmt.Errorf("failed to load CA bundle: %w", err)
 	}
+
+	token := newTokenFile(filepath.Join(options.TokenDirectory, receiver, TokenFile))
+	if _, err := token.Token(); err != nil {
+		return nil, err
+	}
+
+	trustDomain := options.TrustDomain
+	if trustDomain == "" {
+		trustDomain = DefaultTrustDomain
+	}
+	spiffeID := SPIFFEID(trustDomain, options.Namespace, receiver)
 
 	t := &clientTransport{
-		Transport:  http.DefaultTransport.(*http.Transport).Clone(),
-		source:     source,
-		namespace:  options.Namespace,
-		serverName: serverName,
-		retired:    map[*http.Transport]struct{}{},
-		conns:      map[*trackedConn]connectionValidity{},
+		Transport: http.DefaultTransport.(*http.Transport).Clone(),
+		source:    source,
+		token:     token,
+		spiffeID:  spiffeID,
+		retired:   map[*http.Transport]struct{}{},
+		conns:     map[*trackedConn]connectionValidity{},
 	}
-	// A proxy would tunnel the TLS connection without the client certificate, and
+	// A proxy would see the token's destination and could hold the connection open, and
 	// internal calls never go through a proxy.
 	t.Proxy = nil
 	t.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -151,16 +180,14 @@ func (t *clientTransport) newPool() *http.Transport {
 }
 
 func (t *clientTransport) dialTLS(ctx context.Context, network, addr string, pool *http.Transport) (net.Conn, error) {
-	name := t.serverName
-	if name == "" {
-		name = hostname(addr)
-	}
-
-	config, leaf, err := t.source.clientConfig(t.namespace)
+	var validity connectionValidity
+	config, err := t.source.clientConfig(t.spiffeID, func(chain []*x509.Certificate) {
+		validity = chainValidity(chain)
+	})
 	if err != nil {
 		return nil, err
 	}
-	config.ServerName = name
+	config.ServerName = hostname(addr)
 	config.NextProtos = []string{"h2", "http/1.1"}
 
 	raw, err := t.DialContext(ctx, network, addr)
@@ -177,17 +204,6 @@ func (t *clientTransport) dialTLS(ctx context.Context, network, addr string, poo
 		return nil, err
 	}
 
-	validity := connectionValidity{notBefore: leaf.NotBefore, notAfter: leaf.NotAfter}
-	for _, chain := range conn.ConnectionState().VerifiedChains {
-		for _, cert := range chain {
-			if cert.NotBefore.After(validity.notBefore) {
-				validity.notBefore = cert.NotBefore
-			}
-			if cert.NotAfter.Before(validity.notAfter) {
-				validity.notAfter = cert.NotAfter
-			}
-		}
-	}
 	t.mu.Lock()
 	t.conns[tracked] = validity
 	// A request that started before its pool was retired can still dial on it.
@@ -198,10 +214,40 @@ func (t *clientTransport) dialTLS(ctx context.Context, network, addr string, poo
 	return conn, nil
 }
 
-// RoundTrip closes connections whose client certificate or verified server chain is no
-// longer valid, forcing a fresh handshake with current material.
+// chainValidity returns the period in which every certificate in chain is valid.
+func chainValidity(chain []*x509.Certificate) connectionValidity {
+	var v connectionValidity
+	for i, cert := range chain {
+		if i == 0 || cert.NotBefore.After(v.notBefore) {
+			v.notBefore = cert.NotBefore
+		}
+		if i == 0 || cert.NotAfter.Before(v.notAfter) {
+			v.notAfter = cert.NotAfter
+		}
+	}
+	return v
+}
+
+// RoundTrip sends req with the receiver's token. The token is written only to connections
+// whose server passed verification in dialTLS, so it is never sent to a server that failed
+// verification. Connections whose verified server chain is no longer valid are closed first,
+// and the request uses a fresh pool, forcing a new handshake with the current CA bundle.
 func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	return t.transportForRequest().RoundTrip(req)
+	if req.URL.Scheme != "https" {
+		return nil, fmt.Errorf("refusing to send a ServiceAccount token over %q; the URL must use https", req.URL.Scheme)
+	}
+	token, err := t.token.Token()
+	if err != nil {
+		return nil, err
+	}
+	pool := t.transportForRequest()
+
+	// A shallow copy shares req.Trailer and req.Body, so trailers the caller sets while the
+	// body streams are still sent. Only the header map is replaced.
+	req = req.WithContext(req.Context())
+	req.Header = req.Header.Clone()
+	req.Header.Set("Authorization", "Bearer "+token)
+	return pool.RoundTrip(req)
 }
 
 // CloseIdleConnections closes idle connections in the current and retired connection pools.
@@ -285,12 +331,60 @@ func (t *clientTransport) retiredInUseLocked(now time.Time) []*http.Transport {
 	return retired
 }
 
+// tokenFile caches a projected ServiceAccount token. The kubelet rotates the token by
+// replacing the file, so Token reads it again when its modification time or size changes,
+// or when the cached copy is older than tokenMaxAge.
+type tokenFile struct {
+	path     string
+	now      func() time.Time
+	stat     func(string) (os.FileInfo, error)
+	readFile func(string) ([]byte, error)
+
+	mu       sync.Mutex
+	token    string
+	modTime  time.Time
+	size     int64
+	loadedAt time.Time
+}
+
+func newTokenFile(path string) *tokenFile {
+	return &tokenFile{path: path, now: time.Now, stat: os.Stat, readFile: os.ReadFile}
+}
+
+// Token returns the current token.
+func (f *tokenFile) Token() (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	info, err := f.stat(f.path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read ServiceAccount token: %w", err)
+	}
+	now := f.now()
+	if f.token != "" && info.ModTime().Equal(f.modTime) && info.Size() == f.size && now.Sub(f.loadedAt) < tokenMaxAge {
+		return f.token, nil
+	}
+
+	data, err := f.readFile(f.path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read ServiceAccount token: %w", err)
+	}
+	token := string(bytes.TrimSpace(data))
+	if token == "" {
+		return "", fmt.Errorf("ServiceAccount token file %s is empty", f.path)
+	}
+
+	f.token = token
+	f.modTime = info.ModTime()
+	f.size = info.Size()
+	f.loadedAt = now
+	return token, nil
+}
+
 // NewUpgradeTransport returns plain when the authorization mode is off. Otherwise it returns
-// a transport that sends requests for the given components over mTLS, changing an http URL
-// to https, and sends all other requests through plain. A component matches by any of its
-// DNS names: <component>, <component>.<namespace>, or <component>.<namespace>.svc. The TLS
-// server name is always the canonical <component>.<namespace>.svc, the only name that
-// component certificates carry.
+// a transport that sends requests for the given components with NewClientTransport, changing
+// an http URL to https, and sends all other requests through plain. A component matches by any
+// of its DNS names: <component>, <component>.<namespace>, or <component>.<namespace>.svc.
 func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, components []string) (http.RoundTripper, error) {
 	if options.EffectiveMode() == authz.ModeOff {
 		return plain, nil
@@ -298,7 +392,7 @@ func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, compone
 
 	secure := map[string]http.RoundTripper{}
 	for _, c := range components {
-		transport, err := newClientTransport(options, c+"."+options.Namespace+".svc")
+		transport, err := newClientTransport(options, c)
 		if err != nil {
 			return nil, err
 		}
@@ -312,7 +406,7 @@ func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, compone
 
 type upgradeTransport struct {
 	plain http.RoundTripper
-	// secure maps each accepted host name to the mTLS transport for its component.
+	// secure maps each accepted host name to the transport for its component.
 	secure map[string]http.RoundTripper
 }
 
@@ -324,8 +418,11 @@ func (t *upgradeTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 
 	if req.URL.Scheme == "http" {
-		req = req.Clone(req.Context())
-		req.URL.Scheme = "https"
+		// A shallow copy keeps the caller's live req.Trailer; only the URL is replaced.
+		u := *req.URL
+		u.Scheme = "https"
+		req = req.WithContext(req.Context())
+		req.URL = &u
 	}
 	return secure.RoundTrip(req)
 }

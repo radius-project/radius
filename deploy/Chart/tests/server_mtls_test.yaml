@@ -1,4 +1,4 @@
-suite: test server mTLS mounts and ports
+suite: test server authorization config and ports
 templates:
   - ucp/deployment.yaml
   - ucp/service.yaml
@@ -11,7 +11,7 @@ release:
   name: radius
   namespace: radius-system
 tests:
-  - it: does not mount mTLS certificates or open the UCP internal port by default
+  - it: does not configure authorization or open the UCP internal port by default
     asserts:
       - notContains:
           path: spec.template.spec.volumes
@@ -46,63 +46,95 @@ tests:
           pattern: internalPort
         template: ucp/configmaps.yaml
 
-  - it: mounts each server's mTLS Secret and configures it in dryRun mode
+  - it: configures each server's SPIFFE certificate and tokens in dryRun mode
     set:
       global.rbac.dryRun: true
-    asserts: &mounted
-      - contains:
+    asserts: &configured
+      # Servers present the csi-driver-spiffe certificate and no longer mount a client
+      # certificate Secret.
+      - notContains:
           path: spec.template.spec.volumes
           content:
             name: mtls
+          any: true
+        template: ucp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+          any: true
+        template: rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+          any: true
+        template: dynamic-rp/deployment.yaml
+      # csi-driver-spiffe writes no ca.crt, so every server mounts only ca.crt from radius-ca.
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: radius-ca
             secret:
-              secretName: ucp-mtls
+              secretName: radius-ca
+              items:
+                - key: ca.crt
+                  path: ca.crt
         template: ucp/deployment.yaml
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
-            name: mtls
-            mountPath: /var/run/radius/mtls
+            name: radius-ca
+            mountPath: /var/run/radius/ca
             readOnly: true
         template: ucp/deployment.yaml
+      # csi-driver-spiffe writes no ca.crt, so every server mounts only ca.crt from radius-ca.
       - contains:
           path: spec.template.spec.volumes
           content:
-            name: mtls
+            name: radius-ca
             secret:
-              secretName: applications-rp-mtls
+              secretName: radius-ca
+              items:
+                - key: ca.crt
+                  path: ca.crt
         template: rp/deployment.yaml
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
-            name: mtls
-            mountPath: /var/run/radius/mtls
+            name: radius-ca
+            mountPath: /var/run/radius/ca
             readOnly: true
         template: rp/deployment.yaml
+      # csi-driver-spiffe writes no ca.crt, so every server mounts only ca.crt from radius-ca.
       - contains:
           path: spec.template.spec.volumes
           content:
-            name: mtls
+            name: radius-ca
             secret:
-              secretName: dynamic-rp-mtls
+              secretName: radius-ca
+              items:
+                - key: ca.crt
+                  path: ca.crt
         template: dynamic-rp/deployment.yaml
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
-            name: mtls
-            mountPath: /var/run/radius/mtls
+            name: radius-ca
+            mountPath: /var/run/radius/ca
             readOnly: true
         template: dynamic-rp/deployment.yaml
       - matchRegex:
           path: data["ucp-config.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/mtls"\n  namespace: "radius-system"$'
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/spiffe"\n  caDirectory: "/var/run/radius/ca"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
         template: ucp/configmaps.yaml
       - matchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "\w+"\n  podSecurityLevel: "baseline"\n  controlPlaneNamespace: "radius-system"\n  controlPlaneSecrets: \["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","root-ca-cert","target-kubeconfig"\]\n  certificateDirectory: "/var/run/radius/mtls"\n  namespace: "radius-system"$'
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  podSecurityLevel: "baseline"\n  controlPlaneNamespace: "radius-system"\n  controlPlaneSecrets: \["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","ucp-apiserver-tls","radius-ca","radius-apiserver-ca","radius-apiserver-trust","root-ca-cert","target-kubeconfig"\]\n  certificateDirectory: "/var/run/radius/spiffe"\n  caDirectory: "/var/run/radius/ca"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
         template: rp/configmaps.yaml
       - matchRegex:
           path: data["radius-self-host.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/mtls"\n  namespace: "radius-system"$'
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/spiffe"\n  caDirectory: "/var/run/radius/ca"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
         template: dynamic-rp/configmaps.yaml
       - matchRegex:
           path: data["ucp-config.yaml"]
@@ -133,14 +165,14 @@ tests:
             targetPort: 9443
         template: ucp/service.yaml
 
-  - it: mounts each server's mTLS Secret and configures it in enforce mode
+  - it: configures each server's SPIFFE certificate and tokens in enforce mode
     set:
       global.rbac.enabled: true
-    asserts: *mounted
+    asserts: *configured
 
-  # Kubelet and Prometheus cannot present client certificates, so probes and metrics
-  # must not use the ports that require mTLS in enforce mode.
-  - it: keeps probes and metrics off the mTLS ports in enforce mode
+  # Kubelet and Prometheus cannot present ServiceAccount tokens for Radius audiences, so probes
+  # and metrics must not use the ports that require tokens in enforce mode.
+  - it: keeps probes and metrics off the token-authenticated ports in enforce mode
     set:
       global.rbac.enabled: true
       global.prometheus.enabled: true

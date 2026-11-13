@@ -27,6 +27,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/rpcheck"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/server"
@@ -62,6 +63,9 @@ var rootCmd = &cobra.Command{
 		defer flush()
 
 		authz.LogMode(logger, options.Config.Authorization)
+		authz.SetProcessOptions(options.Config.Authorization)
+		// UCP's async worker claims operations as "ucp"; its own tracked-resource work needs no record.
+		rpcheck.SetSelf("ucp")
 
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)

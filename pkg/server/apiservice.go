@@ -19,6 +19,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
@@ -26,6 +27,7 @@ import (
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/server"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
+	"github.com/radius-project/radius/pkg/authz/rpcheck"
 )
 
 // APIService is the restful API server for Radius Resource Provider.
@@ -62,11 +64,13 @@ func (s *APIService) Run(ctx context.Context) error {
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	return s.Start(ctx, server.Options{
-		Location: s.Options.Config.Env.RoleLocation,
-		Address:  address,
-		PathBase: s.Options.Config.Server.PathBase,
+		Location:     s.Options.Config.Env.RoleLocation,
+		Address:      address,
+		PathBase:     s.Options.Config.Server.PathBase,
+		ReceiverName: "applications-rp",
 		// Only UCP routes requests to applications-rp.
 		AllowedCallers: []string{"ucp"},
+		Middlewares:    []func(http.Handler) http.Handler{rpcheck.Middleware(databaseClient)},
 		Configure: func(r chi.Router) error {
 			for _, b := range s.handlerBuilder {
 				opts := apictrl.Options{

@@ -1,3 +1,52 @@
+{{- $authz := ne (include "radius.authz.mode" .) "off" }}
+{{- $caBundle := "" }}
+{{- $caSource := "radius-apiserver-ca" }}
+{{- if $authz }}
+# cert-manager issues UCP's aggregated API certificate from radius-apiserver-issuer. UCP reloads the
+# certificate when it rotates. The APIService trusts ca.crt of Secret radius-apiserver-ca, the
+# self-signed CA, never the ca.crt of this certificate's Secret.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ucp-cert
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: ucp
+    app.kubernetes.io/part-of: radius
+spec:
+  secretName: {{ include "radius.ucp.apiServerSecretName" . }}
+  # 24 hours, renewed at two-thirds of its lifetime.
+  duration: 24h
+  renewBefore: 8h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - server auth
+  # The Kubernetes API server verifies the name of the Service the APIService points to.
+  dnsNames:
+    - ucp.{{ .Release.Namespace }}.svc
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: radius-apiserver-issuer
+{{- /*
+cert-manager's cainjector copies ca.crt of the Secret named by inject-ca-from-secret into the caBundle,
+so the API server follows each renewal of radius-apiserver-ca. While UCP moves from an earlier CA such
+as ucp-ca, rad issues radius-apiserver-ca before this release reissues ucp-cert and keeps Secret
+radius-apiserver-trust with both CAs, and the APIService trusts it instead; rad deletes it once UCP serves a certificate from radius-apiserver-ca. Rendering the current ca.crt keeps
+the caBundle Helm applies equal to the one cainjector injects.
+*/}}
+{{- $trust := lookup "v1" "Secret" .Release.Namespace "radius-apiserver-trust" }}
+{{- if $trust }}
+{{- $caSource = "radius-apiserver-trust" }}
+{{- $caBundle = dig "data" "ca.crt" "" $trust }}
+{{- else }}
+{{- $caBundle = dig "data" "ca.crt" "" (lookup "v1" "Secret" .Release.Namespace "radius-apiserver-ca") }}
+{{- end }}
+{{- else }}
 {{- $ca := genCA "ucp-ca" 3650 }}
 {{- $cn := printf "ucp" }}
 {{- $altName1 := printf "ucp.%s" .Release.Namespace }}
@@ -16,7 +65,9 @@ metadata:
 data:
   tls.crt: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "tls.crt" "defaultValue" $cert.Cert) }}
   tls.key: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "tls.key" "defaultValue" $cert.Key) }}
-  ca.crt: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
+{{- $caBundle = include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
+  ca.crt: {{ $caBundle }}
+{{- end }}
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
@@ -25,6 +76,10 @@ metadata:
   labels:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
+  {{- if $authz }}
+  annotations:
+    cert-manager.io/inject-ca-from-secret: {{ .Release.Namespace }}/{{ $caSource }}
+  {{- end }}
 spec:
   group: api.ucp.dev
   groupPriorityMinimum: 1000
@@ -33,4 +88,6 @@ spec:
     name: ucp
     namespace: {{ .Release.Namespace }}
   version: v1alpha3
-  caBundle: {{ include "secrets.lookup" (dict "secret" "ucp-cert" "namespace" .Release.Namespace "key" "ca.crt" "defaultValue" $ca.Cert) }}
+  {{- if $caBundle }}
+  caBundle: {{ $caBundle }}
+  {{- end }}

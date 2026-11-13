@@ -188,6 +188,10 @@ test("Bicep merges resource-group resources and excludes installation-only and r
   assert.equal(resource("roleAssignments").readableScopes, 0);
   assert.equal(resource("roleAssignments").writableScopes, 0);
   const body = (name) => resolve(resource(name).body);
+  for (const name of ["roleDefinitions", "roleAssignments"]) {
+    assert.ok(body(name).properties.scope, name);
+  }
+  assert.equal(body("roleAssignments").properties.name.flags & 8, 0);
   const properties = (name) =>
     resolve(body(name).properties.properties.type).properties;
   for (const key of ["scope", "managedBy", "createdBy"]) {

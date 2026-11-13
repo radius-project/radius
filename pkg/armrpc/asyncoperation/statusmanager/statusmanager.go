@@ -25,6 +25,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/authz/records"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/queue"
@@ -191,6 +192,8 @@ func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *v1.ARMR
 		ClientObjectID:   sCtx.ClientObjectID,
 		OperationTimeout: &operationTimeout,
 	}
+	ids := records.IDsFromContext(ctx)
+	msg.AuthzRecordID, msg.AuthzOperationID = ids.RecordID, ids.OperationID
 
 	return aom.queue.Enqueue(ctx, queue.NewMessage(msg))
 }

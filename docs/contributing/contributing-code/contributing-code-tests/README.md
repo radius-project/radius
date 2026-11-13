@@ -37,6 +37,8 @@ make test
 
 To compile every test without running them, use `make test-compile`.
 
+For the opt-in user-facing RBAC prototype, see [Testing the user RBAC prototype](./user-rbac-poc.md). It builds this checkout into a dedicated kind cluster and exercises authenticated real API requests; it is not part of the default functional suite.
+
 Unit tests run on Linux in CI. To check that Go code and tests also compile and pass `go vet` on Windows, run `make lint-go-windows`. It runs `GOOS=windows go vet ./...` for amd64; set `WINDOWS_VET_ARCHS="amd64 arm64"` to add arm64. Files that cannot build on Windows, such as envtest-based tests, use `//go:build !windows`. This check catches compile errors only, not runtime bugs such as using `path` instead of `path/filepath` on OS paths.
 
 ### Integration tests

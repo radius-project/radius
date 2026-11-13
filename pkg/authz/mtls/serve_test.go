@@ -18,26 +18,26 @@ package mtls
 
 import (
 	"context"
+	"crypto"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"io"
 	"net"
 	"net/http"
-	"net/http/httptrace"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -45,40 +45,121 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/token"
 )
 
-const appsRPServerName = "applications-rp.radius-system.svc"
+const (
+	// testPollInterval is how often test servers reload their certificate files.
+	testPollInterval = 20 * time.Millisecond
 
-// testPollInterval is how often test servers reload their certificate files.
-const testPollInterval = 20 * time.Millisecond
+	testIssuer = "https://kubernetes.default.svc.cluster.local"
+	testKeyID  = "test-key"
+)
 
-type testServer struct {
-	url  string
-	dir  string
-	logs *observer.ObservedLogs
+// signingKey signs the test ServiceAccount tokens.
+var signingKey = func() *ecdsa.PrivateKey {
+	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	return k
+}()
+
+// staticKeys is a token.KeySource that returns signingKey's public key until it is made
+// unavailable.
+type staticKeys struct {
+	unavailable atomic.Bool
 }
 
-// startServer serves an OK handler as applications-rp in mode, allowing only ucp to call it.
+func (k *staticKeys) Fetch(context.Context) (token.KeySet, error) {
+	if k.unavailable.Load() {
+		return token.KeySet{}, errors.New("signing keys are unavailable")
+	}
+	return token.KeySet{Issuer: testIssuer, Keys: map[string]crypto.PublicKey{testKeyID: &signingKey.PublicKey}}, nil
+}
+
+// testClock is a settable clock.
+type testClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func (c *testClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.now
+}
+
+func (c *testClock) Advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
+// mintToken returns a projected ServiceAccount token for account with audience, as the
+// kubelet issues it.
+func mintToken(t *testing.T, account, audience string) string {
+	t.Helper()
+	return mintTokenWithKey(t, account, audience, signingKey)
+}
+
+func mintTokenWithKey(t *testing.T, account, audience string, key *ecdsa.PrivateKey) string {
+	t.Helper()
+	now := time.Now()
+	tok := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
+		"iss": testIssuer,
+		"aud": []string{audience},
+		"sub": "system:serviceaccount:" + testNamespace + ":" + account,
+		"iat": now.Unix(),
+		"nbf": now.Unix(),
+		"exp": now.Add(time.Hour).Unix(),
+		"kubernetes.io": map[string]any{
+			"namespace":      testNamespace,
+			"serviceaccount": map[string]any{"name": account, "uid": "1234"},
+		},
+	})
+	tok.Header["kid"] = testKeyID
+	signed, err := tok.SignedString(key)
+	require.NoError(t, err)
+	return signed
+}
+
+type testServer struct {
+	url   string
+	dir   string
+	logs  *observer.ObservedLogs
+	clock *testClock
+	keys  *staticKeys
+	// seen receives the Authorization header and identity of each request the handler served.
+	seen chan seenRequest
+}
+
+type seenRequest struct {
+	authorization string
+	identity      authz.Identity
+	hasIdentity   bool
+}
+
+// startServer serves applications-rp in mode, allowing only ucp to call it, and records each
+// request the handler sees.
 func startServer(t *testing.T, ca testCA, mode authz.Mode) testServer {
 	t.Helper()
-	return startServerWithHandler(t, ca, mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	seen := make(chan seenRequest, 16)
+	srv := startServerWithHandler(t, ca, mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, ok := authz.IdentityFromContext(r.Context())
+		seen <- seenRequest{authorization: r.Header.Get("Authorization"), identity: id, hasIdentity: ok}
 		w.WriteHeader(http.StatusOK)
 	}))
+	srv.seen = seen
+	return srv
 }
 
 // startServerWithHandler is startServer with a custom handler; nil uses http.DefaultServeMux.
 func startServerWithHandler(t *testing.T, ca testCA, mode authz.Mode, handler http.Handler) testServer {
 	t.Helper()
-	return startServerWithBundle(t, ca, ca.pem, mode, handler)
-}
-
-// startServerWithBundle is startServerWithHandler with a server certificate from ca and
-// the CA bundle caPEM.
-func startServerWithBundle(t *testing.T, ca testCA, caPEM []byte, mode authz.Mode, handler http.Handler) testServer {
-	t.Helper()
 
 	dir := t.TempDir()
-	writeFiles(t, dir, ca.issue(t, certOptions{dnsNames: componentSANs("applications-rp")}), caPEM)
+	writeFiles(t, dir, ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")}), ca.pem)
 
 	core, logs := observer.New(zapcore.InfoLevel)
 	ctx, cancel := context.WithCancel(logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core))))
@@ -91,38 +172,44 @@ func startServerWithBundle(t *testing.T, ca testCA, caPEM []byte, mode authz.Mod
 		BaseContext: func(net.Listener) context.Context { return ctx },
 	}
 	options := authz.Options{Mode: mode, CertificateDirectory: dir, Namespace: testNamespace}
+	clock := &testClock{now: time.Now()}
+	keys := &staticKeys{}
+	config := serveConfig{pollInterval: testPollInterval, keys: keys, tokenNow: clock.Now}
+	receiver := Receiver{Name: "applications-rp", AllowedCallers: []string{"ucp"}}
 
 	done := make(chan error, 1)
-	go func() { done <- serve(ctx, srv, ln, options, []string{"ucp"}, testPollInterval) }()
+	go func() { done <- serve(ctx, srv, ln, options, receiver, config) }()
 	t.Cleanup(func() {
 		cancel()
 		_ = srv.Close()
 		require.ErrorIs(t, <-done, http.ErrServerClosed)
 	})
 
-	return testServer{url: ln.Addr().String(), dir: dir, logs: logs}
+	return testServer{url: ln.Addr().String(), dir: dir, logs: logs, clock: clock, keys: keys}
 }
 
-// client returns an HTTP client that trusts ca and presents cert, if set.
-func client(t *testing.T, ca testCA, cert *testCert) *http.Client {
+// client returns an HTTP client that verifies the applications-rp certificate from ca and
+// presents no client certificate.
+func client(t *testing.T, ca testCA) *http.Client {
 	t.Helper()
-	pool := x509.NewCertPool()
-	pool.AddCert(ca.cert)
-	cfg := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: appsRPServerName, RootCAs: pool}
-	if cert != nil {
-		cfg.Certificates = []tls.Certificate{cert.tlsCertificate(t)}
-	}
-	return &http.Client{Transport: &http.Transport{TLSClientConfig: cfg}, Timeout: 10 * time.Second}
+	transport := &http.Transport{TLSClientConfig: trustClient(t, ca.pem, "applications-rp")}
+	t.Cleanup(transport.CloseIdleConnections)
+	return &http.Client{Transport: transport, Timeout: 10 * time.Second}
 }
 
-func get(c *http.Client, url string) (int, error) {
-	resp, err := c.Get(url)
-	if err != nil {
-		return 0, err
+// send sends GET url with authorization, if set, and returns the status code.
+func send(t *testing.T, c *http.Client, url, authorization string) int {
+	t.Helper()
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, nil)
+	require.NoError(t, err)
+	if authorization != "" {
+		req.Header.Set("Authorization", authorization)
 	}
+	resp, err := c.Do(req)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, resp.Body)
-	return resp.StatusCode, nil
+	return resp.StatusCode
 }
 
 // requireLogged waits for a log entry with the mode's denial field, code, and a reason
@@ -149,31 +236,46 @@ func requireLogged(t *testing.T, logs *observer.ObservedLogs, mode authz.Mode, c
 	}, 5*time.Second, 10*time.Millisecond, "no %s log with code %s containing %q: %v", field, code, want, logs.All())
 }
 
-type peerCase struct {
-	name string
-	// cert is the client certificate; nil presents none. plain sends HTTP instead of TLS.
-	cert  *testCert
-	plain bool
-	code  string
-	want  string
+type requestCase struct {
+	name          string
+	authorization string
+	// status is the enforce-mode response.
+	status int
+	code   string
+	want   string
 }
 
-func peerCases(t *testing.T, ca testCA) (allowed testCert, cases []peerCase) {
+func requestCases(t *testing.T) []requestCase {
 	t.Helper()
-	otherCA := newCA(t)
-	ucp := ca.issue(t, certOptions{dnsNames: componentSANs("ucp")})
-	wrongCA := otherCA.issue(t, certOptions{dnsNames: componentSANs("ucp")})
-	expired := ca.issue(t, certOptions{dnsNames: componentSANs("ucp"), notBefore: time.Now().Add(-2 * time.Hour), notAfter: time.Now().Add(-time.Hour)})
-	rsa1024 := ca.issue(t, certOptions{dnsNames: componentSANs("dynamic-rp"), key: rsaKey(t, 1024)})
-	dynamicRP := ca.issue(t, certOptions{dnsNames: componentSANs("dynamic-rp"), key: ecKey(t, elliptic.P384())})
+	otherKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	return []requestCase{
+		{name: "no token", status: http.StatusUnauthorized, code: v1.CodeInvalidAuthenticationInfo, want: "missing bearer token"},
+		{name: "not a bearer token", authorization: "Basic dXNlcjpwYXNz", status: http.StatusUnauthorized, code: v1.CodeInvalidAuthenticationInfo, want: "not a bearer token"},
+		{name: "wrong audience", authorization: "Bearer " + mintToken(t, "ucp", "dynamic-rp"), status: http.StatusUnauthorized, code: v1.CodeInvalidAuthenticationInfo, want: "token is not valid"},
+		{name: "unknown signing key", authorization: "Bearer " + mintTokenWithKey(t, "ucp", "applications-rp", otherKey), status: http.StatusUnauthorized, code: v1.CodeInvalidAuthenticationInfo, want: "token is not valid"},
+		{name: "not a Radius ServiceAccount", authorization: "Bearer " + mintToken(t, "default", "applications-rp"), status: http.StatusUnauthorized, code: v1.CodeInvalidAuthenticationInfo, want: "default"},
+		{name: "caller not allowed", authorization: "Bearer " + mintToken(t, "controller", "applications-rp"), status: http.StatusForbidden, code: authz.CodeAuthorizationFailed, want: "controller.radius-system.svc"},
+	}
+}
 
-	return ucp, []peerCase{
-		{name: "plain HTTP", plain: true, code: authz.CodePeerCertificateInvalid, want: "plain HTTP"},
-		{name: "no client certificate", code: authz.CodePeerCertificateInvalid, want: "certificate"},
-		{name: "wrong CA", cert: &wrongCA, code: authz.CodePeerCertificateInvalid, want: "unknown authority"},
-		{name: "expired", cert: &expired, code: authz.CodePeerCertificateInvalid, want: "expired"},
-		{name: "RSA-1024", cert: &rsa1024, code: authz.CodePeerCertificateInvalid, want: "RSA key size 1024"},
-		{name: "caller not allowed", cert: &dynamicRP, code: authz.CodeAuthorizationFailed, want: "dynamic-rp.radius-system.svc"},
+func TestServe_ValidToken(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			ca := newCA(t)
+			srv := startServer(t, ca, mode)
+
+			status := send(t, client(t, ca), "https://"+srv.url, "Bearer "+mintToken(t, "ucp", "applications-rp"))
+			require.Equal(t, http.StatusOK, status)
+
+			seen := <-srv.seen
+			require.True(t, seen.hasIdentity)
+			require.Equal(t, "ucp.radius-system.svc", seen.identity.String())
+			require.Empty(t, seen.authorization, "the token must not reach the handler")
+			require.Empty(t, srv.logs.All())
+		})
 	}
 }
 
@@ -181,265 +283,120 @@ func TestServe_Enforce(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
 	srv := startServer(t, ca, authz.ModeEnforce)
-	ucp, cases := peerCases(t, ca)
+	c := client(t, ca)
 
-	status, err := get(client(t, ca, &ucp), "https://"+srv.url)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, status)
-
-	for _, tc := range cases {
+	for _, tc := range requestCases(t) {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.plain {
-				status, err := get(http.DefaultClient, "http://"+srv.url)
-				require.NoError(t, err)
-				require.Equal(t, http.StatusBadRequest, status)
-			} else {
-				status, err := get(client(t, ca, tc.cert), "https://"+srv.url)
-				if tc.code == authz.CodeAuthorizationFailed {
-					require.NoError(t, err)
-					require.Equal(t, http.StatusForbidden, status)
-				} else {
-					require.Error(t, err)
-				}
-			}
+			require.Equal(t, tc.status, send(t, c, "https://"+srv.url, tc.authorization))
 			requireLogged(t, srv.logs, authz.ModeEnforce, tc.code, tc.want)
 		})
 	}
+
+	t.Run("plain HTTP", func(t *testing.T) {
+		require.Equal(t, http.StatusBadRequest, send(t, http.DefaultClient, "http://"+srv.url, "Bearer "+mintToken(t, "ucp", "applications-rp")))
+		requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeInvalidAuthenticationInfo, "plain HTTP")
+	})
+
+	require.Empty(t, srv.seen, "denied requests must not reach the handler")
 }
 
 func TestServe_DryRun(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
 	srv := startServer(t, ca, authz.ModeDryRun)
-	ucp, cases := peerCases(t, ca)
+	c := client(t, ca)
 
-	status, err := get(client(t, ca, &ucp), "https://"+srv.url)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, status)
-
-	for _, tc := range cases {
+	for _, tc := range requestCases(t) {
 		t.Run(tc.name, func(t *testing.T) {
-			url := "https://" + srv.url
-			c := client(t, ca, tc.cert)
-			if tc.plain {
-				url = "http://" + srv.url
-				c = http.DefaultClient
-			}
-			status, err := get(c, url)
-			require.NoError(t, err)
-			require.Equal(t, http.StatusOK, status)
+			require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, tc.authorization))
+			seen := <-srv.seen
+			require.Empty(t, seen.authorization, "the token must not reach the handler")
+			require.False(t, seen.hasIdentity, "a request that would be denied has no identity")
 			requireLogged(t, srv.logs, authz.ModeDryRun, tc.code, tc.want)
 		})
 	}
+
+	t.Run("plain HTTP", func(t *testing.T) {
+		require.Equal(t, http.StatusOK, send(t, http.DefaultClient, "http://"+srv.url, ""))
+		<-srv.seen
+		requireLogged(t, srv.logs, authz.ModeDryRun, v1.CodeInvalidAuthenticationInfo, "plain HTTP")
+	})
 
 	for _, entry := range srv.logs.All() {
 		require.NotContains(t, entry.ContextMap(), authz.LogFieldDenied)
 	}
 }
 
-func TestServe_RemovedCAOnOpenConnection(t *testing.T) {
+// TestServe_StaleSigningKeys checks that a server whose signing keys could not be refreshed
+// fails closed with AuthorizationUnavailable instead of trusting old keys.
+func TestServe_StaleSigningKeys(t *testing.T) {
 	t.Parallel()
-
-	for _, tc := range []struct {
-		mode authz.Mode
-		want int
-	}{
-		{mode: authz.ModeEnforce, want: http.StatusUnauthorized},
-		{mode: authz.ModeDryRun, want: http.StatusOK},
-	} {
-		t.Run(string(tc.mode), func(t *testing.T) {
-			t.Parallel()
-			serverCA, clientCA := newCA(t), newCA(t)
-			bundle := append(slices.Clone(serverCA.pem), clientCA.pem...)
-			srv := startServerWithBundle(t, serverCA, bundle, tc.mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-			ucp := clientCA.issue(t, certOptions{dnsNames: componentSANs("ucp")})
-
-			c := client(t, serverCA, &ucp)
-			c.Transport.(*http.Transport).MaxConnsPerHost = 1
-			url := "https://" + srv.url
-
-			send := func() (int, bool) {
-				t.Helper()
-				var reused bool
-				trace := &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused }}
-				req, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), trace), http.MethodGet, url, nil)
-				require.NoError(t, err)
-				resp, err := c.Do(req)
-				require.NoError(t, err)
-				defer resp.Body.Close()
-				_, _ = io.Copy(io.Discard, resp.Body)
-				return resp.StatusCode, reused
-			}
-
-			status, _ := send()
-			require.Equal(t, http.StatusOK, status)
-
-			// Remove the client's CA from the server's bundle and wait for the reload.
-			require.NoError(t, os.WriteFile(filepath.Join(srv.dir, CAFile), serverCA.pem, 0o600))
-			require.Eventually(t, func() bool {
-				for _, entry := range srv.logs.All() {
-					if entry.Message == "Reloaded mTLS certificate" {
-						return true
-					}
-				}
-				return false
-			}, 5*time.Second, 10*time.Millisecond)
-
-			status, reused := send()
-			require.True(t, reused, "request should reuse the open connection")
-			require.Equal(t, tc.want, status)
-			requireLogged(t, srv.logs, tc.mode, authz.CodePeerCertificateInvalid, "unknown authority")
-		})
-	}
-}
-
-// startServerWithSource uses an injected Source so tests can advance its clock and
-// explicitly reload material without racing the file poller.
-func startServerWithSource(t *testing.T, src *Source, mode authz.Mode) testServer {
-	t.Helper()
-	core, logs := observer.New(zapcore.InfoLevel)
-	ctx := logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core)))
-	s := &server{source: src, mode: mode, namespace: testNamespace, allowedCallers: []string{"ucp"}}
-	srv := &http.Server{
-		Handler:     s.authorizeCaller(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})),
-		ConnContext: s.connContext,
-		BaseContext: func(net.Listener) context.Context { return ctx },
-	}
-	cfg := src.ServerConfig(testNamespace)
-	if mode == authz.ModeDryRun {
-		cfg = src.requestClientCertConfig(testNamespace)
-	}
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	done := make(chan error, 1)
-	go func() { done <- srv.Serve(newListener(ctx, ln, cfg, mode)) }()
-	t.Cleanup(func() {
-		_ = srv.Close()
-		require.ErrorIs(t, <-done, http.ErrServerClosed)
-	})
-	return testServer{url: ln.Addr().String(), dir: src.dir, logs: logs}
-}
-
-func expiringCA(t *testing.T, parent *testCA, notAfter time.Time) testCA {
-	t.Helper()
 	ca := newCA(t)
-	template := *ca.cert
-	template.NotAfter = notAfter
-	if parent == nil {
-		parent = &ca
-	}
-	der, err := x509.CreateCertificate(rand.Reader, &template, parent.cert, ca.key.Public(), parent.key)
-	require.NoError(t, err)
-	ca.cert, err = x509.ParseCertificate(der)
-	require.NoError(t, err)
-	ca.pem = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
-	return ca
+	srv := startServer(t, ca, authz.ModeEnforce)
+	c := client(t, ca)
+	tok := "Bearer " + mintToken(t, "ucp", "applications-rp")
+
+	require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, tok))
+	<-srv.seen
+
+	srv.keys.unavailable.Store(true)
+	srv.clock.Advance(token.DefaultMaxKeyAge + time.Minute)
+	require.Equal(t, http.StatusServiceUnavailable, send(t, c, "https://"+srv.url, tok))
+	requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
 }
 
-func TestServe_CertificateExpiryOnOpenConnection(t *testing.T) {
+// TestServe_IgnoresClientCertificate checks that a client certificate does not authenticate
+// a request.
+func TestServe_IgnoresClientCertificate(t *testing.T) {
 	t.Parallel()
-	for _, mode := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
-		for _, kind := range []string{"peer leaf", "peer intermediate", "peer root", "local server", "renewed server"} {
-			t.Run(string(mode)+"/"+kind, func(t *testing.T) {
-				t.Parallel()
-				now := time.Now().UTC().Truncate(time.Second)
-				expires := now.Add(10 * time.Minute)
-				serverCA := expiringCA(t, nil, now.Add(4*time.Hour))
-				clientCA := expiringCA(t, nil, now.Add(4*time.Hour))
-				if kind == "peer root" {
-					clientCA = expiringCA(t, nil, expires)
-				}
-				issuer := clientCA
-				if kind == "peer intermediate" {
-					issuer = expiringCA(t, &clientCA, expires)
-				}
-				clientExpiry, serverExpiry := now.Add(2*time.Hour), now.Add(2*time.Hour)
-				if kind == "peer leaf" {
-					clientExpiry = expires
-				}
-				if kind == "local server" || kind == "renewed server" {
-					serverExpiry = expires
-				}
-				ucp := issuer.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: clientExpiry})
-				if kind == "peer intermediate" {
-					ucp.certPEM = append(ucp.certPEM, issuer.pem...)
-				}
-				dir := t.TempDir()
-				bundle := append(slices.Clone(serverCA.pem), clientCA.pem...)
-				writeFiles(t, dir, serverCA.issue(t, certOptions{dnsNames: componentSANs("applications-rp"), notAfter: serverExpiry}), bundle)
-				src, err := NewSource(dir)
-				require.NoError(t, err)
-				var elapsed atomic.Int64
-				src.now = func() time.Time { return now.Add(time.Duration(elapsed.Load())) }
-				srv := startServerWithSource(t, src, mode)
-				c := client(t, serverCA, &ucp)
-				transport := c.Transport.(*http.Transport)
-				transport.MaxConnsPerHost = 1
-				t.Cleanup(transport.CloseIdleConnections)
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeEnforce)
 
-				send := func() (int, bool, bool) {
-					t.Helper()
-					var reused bool
-					trace := &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused }}
-					req, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), trace), http.MethodGet, "https://"+srv.url, nil)
-					require.NoError(t, err)
-					resp, err := c.Do(req)
-					require.NoError(t, err)
-					defer resp.Body.Close()
-					_, err = io.Copy(io.Discard, resp.Body)
-					require.NoError(t, err)
-					return resp.StatusCode, reused, resp.Close
-				}
-				status, reused, _ := send()
-				require.Equal(t, http.StatusOK, status)
-				require.False(t, reused)
+	cfg := trustClient(t, ca.pem, "applications-rp")
+	cfg.Certificates = []tls.Certificate{ca.issue(t, certOptions{uris: spiffeURIs("ucp"), dnsNames: []string{"ucp.radius-system.svc"}}).tlsCertificate(t)}
+	transport := &http.Transport{TLSClientConfig: cfg}
+	t.Cleanup(transport.CloseIdleConnections)
 
-				// Populate the cache, then check the inclusive X.509 validity boundary.
-				elapsed.Store(int64(expires.Sub(now)))
-				status, reused, _ = send()
-				require.True(t, reused)
-				require.Equal(t, http.StatusOK, status)
+	require.Equal(t, http.StatusUnauthorized, send(t, &http.Client{Transport: transport}, "https://"+srv.url, ""))
+}
 
-				if kind == "renewed server" {
-					writeFiles(t, dir, serverCA.issue(t, certOptions{dnsNames: componentSANs("applications-rp"), notAfter: now.Add(2 * time.Hour)}), bundle)
-					changed, err := src.Reload()
-					require.NoError(t, err)
-					require.True(t, changed)
-				}
-				elapsed.Add(1)
-				status, reused, closed := send()
-				require.True(t, reused, "expiry must be checked on the existing connection")
-				wantStatus := http.StatusOK
-				if kind != "renewed server" && mode == authz.ModeEnforce {
-					wantStatus = http.StatusUnauthorized
-				}
-				require.Equal(t, wantStatus, status)
-				if wantStatus == http.StatusUnauthorized {
-					require.True(t, closed)
-				}
-				if kind == "renewed server" {
-					require.Empty(t, srv.logs.All())
-				} else if kind == "local server" {
-					requireLogged(t, srv.logs, mode, authz.CodeCertificateExpired, "own certificate")
-				} else {
-					requireLogged(t, srv.logs, mode, authz.CodePeerCertificateInvalid, "expired")
-				}
-			})
+// TestServe_ReloadsServerCertificate rotates the server certificate and CA and checks that new
+// connections get the new certificate.
+func TestServe_ReloadsServerCertificate(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeEnforce)
+	tok := "Bearer " + mintToken(t, "ucp", "applications-rp")
+	require.Equal(t, http.StatusOK, send(t, client(t, ca), "https://"+srv.url, tok))
+	<-srv.seen
+
+	rotated := newCA(t)
+	writeFiles(t, srv.dir, rotated.issue(t, certOptions{uris: spiffeURIs("applications-rp")}), rotated.pem)
+	require.Eventually(t, func() bool {
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://"+srv.url, nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", tok)
+		transport := &http.Transport{TLSClientConfig: trustClient(t, rotated.pem, "applications-rp")}
+		defer transport.CloseIdleConnections()
+		resp, err := (&http.Client{Transport: transport}).Do(req)
+		if err != nil {
+			return false
 		}
-	}
+		defer resp.Body.Close()
+		return resp.StatusCode == http.StatusOK
+	}, 5*time.Second, 20*time.Millisecond)
 }
 
 func TestServe_Off(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
 	srv := startServer(t, ca, authz.ModeOff)
-	ucp := ca.issue(t, certOptions{dnsNames: componentSANs("ucp")})
 
-	status, err := get(http.DefaultClient, "http://"+srv.url)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, status)
+	require.Equal(t, http.StatusOK, send(t, http.DefaultClient, "http://"+srv.url, ""))
+	seen := <-srv.seen
+	require.False(t, seen.hasIdentity)
 
-	_, err = get(client(t, ca, &ucp), "https://"+srv.url)
+	_, err := client(t, ca).Get("https://" + srv.url)
 	require.Error(t, err)
 	require.Empty(t, srv.logs.All())
 }
@@ -456,10 +413,7 @@ func TestServe_NilHandlerUsesDefaultServeMux(t *testing.T) {
 		t.Run(string(mode), func(t *testing.T) {
 			ca := newCA(t)
 			srv := startServerWithHandler(t, ca, mode, nil)
-			ucp := ca.issue(t, certOptions{dnsNames: componentSANs("ucp")})
-
-			status, err := get(client(t, ca, &ucp), "https://"+srv.url+path)
-			require.NoError(t, err)
+			status := send(t, client(t, ca), "https://"+srv.url+path, "Bearer "+mintToken(t, "ucp", "applications-rp"))
 			require.Equal(t, http.StatusTeapot, status)
 		})
 	}
@@ -469,9 +423,11 @@ func TestServe_EnforceDeniedResponse(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
 	srv := startServer(t, ca, authz.ModeEnforce)
-	controller := ca.issue(t, certOptions{dnsNames: componentSANs("controller")})
 
-	resp, err := client(t, ca, &controller).Get("https://" + srv.url + "/apis/test")
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://"+srv.url+"/apis/test", nil)
+	require.NoError(t, err)
+	req.Header.Set("Authorization", "Bearer "+mintToken(t, "controller", "applications-rp"))
+	resp, err := client(t, ca).Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
@@ -483,21 +439,36 @@ func TestServe_EnforceDeniedResponse(t *testing.T) {
 
 func TestServe_ConfigErrors(t *testing.T) {
 	t.Parallel()
+	ca := newCA(t)
+	certDir := t.TempDir()
+	leaf := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")})
+	writeFiles(t, certDir, leaf, ca.pem)
+	// csiDir is laid out like a csi-driver-spiffe volume without a source CA bundle: no ca.crt.
+	csiDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(csiDir, CertFile), leaf.certPEM, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(csiDir, KeyFile), leaf.keyPEM, 0o600))
+	receiver := Receiver{Name: "applications-rp"}
 
 	for _, tc := range []struct {
-		name    string
-		options authz.Options
-		want    string
+		name     string
+		options  authz.Options
+		receiver Receiver
+		want     string
 	}{
-		{name: "missing directory", options: authz.Options{Mode: authz.ModeEnforce, Namespace: testNamespace}, want: "requires certificateDirectory"},
-		{name: "missing namespace", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: t.TempDir()}, want: "requires certificateDirectory and namespace"},
-		{name: "no certificate files", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: t.TempDir(), Namespace: testNamespace}, want: "failed to load mTLS certificate"},
+		{name: "missing directory", options: authz.Options{Mode: authz.ModeEnforce, Namespace: testNamespace}, receiver: receiver, want: "requires certificateDirectory"},
+		{name: "missing namespace", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir}, receiver: receiver, want: "requires certificateDirectory and namespace"},
+		{name: "missing receiver", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, Namespace: testNamespace}, want: "receiver name is required"},
+		{name: "no certificate files", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: t.TempDir(), Namespace: testNamespace}, receiver: receiver, want: "failed to load server certificate"},
+		{name: "CSI volume without CA directory", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: csiDir, Namespace: testNamespace}, receiver: receiver, want: "failed to read ca.crt"},
+		{name: "no CA bundle in CA directory", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, CADirectory: t.TempDir(), Namespace: testNamespace}, receiver: receiver, want: "failed to read ca.crt"},
+		{name: "CA bundle from CA directory", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: csiDir, CADirectory: certDir, Namespace: testNamespace}, receiver: receiver, want: "in-cluster config"},
+		{name: "not in a cluster", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, Namespace: testNamespace}, receiver: receiver, want: "in-cluster config"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ln, err := net.Listen("tcp", "127.0.0.1:0")
 			require.NoError(t, err)
-			err = Serve(t.Context(), &http.Server{}, ln, tc.options, nil)
+			err = Serve(t.Context(), &http.Server{}, ln, tc.options, tc.receiver)
 			require.ErrorContains(t, err, tc.want)
 
 			_, err = ln.Accept()
@@ -506,30 +477,112 @@ func TestServe_ConfigErrors(t *testing.T) {
 	}
 }
 
-func TestRequestClientCertConfig_UsesOneSnapshot(t *testing.T) {
+// writeToken writes tok as the projected token for receiver under dir.
+func writeToken(t *testing.T, dir, receiver, tok string) {
+	t.Helper()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, receiver), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, receiver, TokenFile), []byte(tok+"\n"), 0o600))
+}
+
+// TestServe_StaleSigningKeysFailClosed checks that once the signing keys are MaxKeyAge old,
+// every request is rejected with AuthorizationUnavailable in every enforcing mode, whatever
+// credentials it carries, and never reaches the handler.
+func TestServe_StaleSigningKeysFailClosed(t *testing.T) {
 	t.Parallel()
-	ca := newCA(t)
-	dir := t.TempDir()
-	writeFiles(t, dir, ca.issue(t, certOptions{dnsNames: componentSANs("applications-rp")}), ca.pem)
-	src, err := NewSource(dir)
-	require.NoError(t, err)
+	credentials := map[string]string{
+		"valid token": "Bearer " + mintToken(t, "ucp", "applications-rp"),
+		"no token":    "",
+		"basic":       "Basic dXNlcjpwYXNz",
+	}
+	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			ca := newCA(t)
+			srv := startServer(t, ca, mode)
+			c := client(t, ca)
 
-	conn := &peekedConn{}
-	cfg, err := src.requestClientCertConfig(testNamespace).GetConfigForClient(&tls.ClientHelloInfo{Conn: conn})
-	require.NoError(t, err)
+			// Load the keys, then stop every later refresh from succeeding.
+			require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, credentials["valid token"]))
+			<-srv.seen
+			srv.keys.unavailable.Store(true)
+			srv.clock.Advance(token.DefaultMaxKeyAge)
 
-	// Rotate to a new CA after the handshake picked its material. The client is still
-	// checked against the CA bundle that matches the certificate the server presented.
-	rotated := newCA(t)
-	rotatedDir := t.TempDir()
-	writeFiles(t, rotatedDir, rotated.issue(t, certOptions{dnsNames: componentSANs("applications-rp")}), rotated.pem)
-	next, err := NewSource(rotatedDir)
-	require.NoError(t, err)
-	src.current.Store(next.current.Load())
+			for name, authorization := range credentials {
+				t.Run(name, func(t *testing.T) {
+					require.Equal(t, http.StatusServiceUnavailable, send(t, c, "https://"+srv.url, authorization))
+					requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
+				})
+			}
+			require.Empty(t, srv.seen, "requests must not reach the handler while the signing keys are stale")
+		})
+	}
+}
 
-	ucp := ca.issue(t, certOptions{dnsNames: componentSANs("ucp")})
-	require.NoError(t, cfg.VerifyConnection(tls.ConnectionState{PeerCertificates: []*x509.Certificate{ucp.cert}}))
-	require.True(t, conn.checked)
-	require.NoError(t, conn.peerErr)
-	require.Equal(t, "ucp", conn.identity.Component)
+// TestServe_RequestTrailers sends a chunked request with a trailer through the client and
+// upgrade transports and checks that the trailer, which the caller sets after it writes the
+// body, reaches a handler that reads the body.
+func TestServe_RequestTrailers(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		for _, transport := range []string{"client", "upgrade"} {
+			t.Run(string(mode)+"/"+transport, func(t *testing.T) {
+				t.Parallel()
+				ca := newCA(t)
+				type received struct {
+					body     string
+					trailer  string
+					identity string
+				}
+				got := make(chan received, 1)
+				srv := startServerWithHandler(t, ca, mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					body, err := io.ReadAll(r.Body)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusBadRequest)
+						return
+					}
+					id, _ := authz.IdentityFromContext(r.Context())
+					got <- received{body: string(body), trailer: r.Trailer.Get("X-Checksum"), identity: id.String()}
+					w.WriteHeader(http.StatusOK)
+				}))
+
+				options := callerOptions(t, ca.pem, mode, "ucp")
+				var rt http.RoundTripper
+				url := "https://applications-rp.radius-system.svc:5443/"
+				if transport == "client" {
+					secure, err := newClientTransport(options, "applications-rp")
+					require.NoError(t, err)
+					secure.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+						return (&net.Dialer{}).DialContext(ctx, network, srv.url)
+					}
+					t.Cleanup(secure.CloseIdleConnections)
+					rt = secure
+				} else {
+					var err error
+					rt, err = NewUpgradeTransport(options, http.DefaultTransport, []string{"applications-rp"})
+					require.NoError(t, err)
+					dialTo(t, rt, "applications-rp.radius-system.svc", srv.url)
+					url = "http://applications-rp.radius-system.svc:5443/"
+				}
+
+				pr, pw := io.Pipe()
+				req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, url, pr)
+				require.NoError(t, err)
+				req.ContentLength = -1
+				req.Trailer = http.Header{"X-Checksum": nil}
+				go func() {
+					_, _ = pw.Write([]byte("streamed body"))
+					// The caller sets the trailer value only after it has written the body.
+					req.Trailer.Set("X-Checksum", "abc123")
+					_ = pw.Close()
+				}()
+
+				resp, err := (&http.Client{Transport: rt, Timeout: 10 * time.Second}).Do(req)
+				require.NoError(t, err)
+				_ = resp.Body.Close()
+				require.Equal(t, http.StatusOK, resp.StatusCode)
+				require.Equal(t, received{body: "streamed body", trailer: "abc123", identity: "ucp.radius-system.svc"}, <-got)
+				require.Empty(t, req.Header.Get("Authorization"), "the transport must not modify the caller's request")
+			})
+		}
+	}
 }

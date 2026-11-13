@@ -27,6 +27,9 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/records"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/hashutil"
@@ -79,6 +82,7 @@ type DeploymentTemplateReconciler struct {
 
 // Reconcile advances one durable lifecycle transition for the template.
 func (r *DeploymentTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	ctx = records.WithSourceNamespace(ctx, req.Namespace)
 	owner := &radappiov1alpha3.DeploymentTemplate{}
 	if err := r.reader().Get(ctx, req.NamespacedName, owner); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -328,6 +332,10 @@ func (r *DeploymentTemplateReconciler) dispatchPut(ctx context.Context, owner *r
 	}
 	scope, err := ParseDeploymentScopeFromProviderConfig(owner.Spec.ProviderConfig)
 	if err != nil {
+		return r.failCoordinator(ctx, owner, err)
+	}
+	// C3: the controller may only deploy to the resource group mapped to this namespace.
+	if err := checkNamespaceMapping(ctx, owner.Namespace, scope); err != nil {
 		return r.failCoordinator(ctx, owner, err)
 	}
 	if err := createResourceGroupIfNotExists(ctx, r.Radius, scope); err != nil {
@@ -856,6 +864,25 @@ func (r *DeploymentTemplateReconciler) deleteRetryDelay() time.Duration {
 
 func (r *DeploymentTemplateReconciler) again() ctrl.Result {
 	return ctrl.Result{RequeueAfter: r.requeueDelay()}
+}
+
+// checkNamespaceMapping checks that scope is inside the resource group mapped to namespace.
+func checkNamespaceMapping(ctx context.Context, namespace, scope string) error {
+	// UCP checks the same mapping on the deployment write and logs the dryRun
+	// decision, so the local check only fails fast in enforce mode.
+	mode := authz.ProcessMode()
+	if mode != authz.ModeEnforce {
+		return nil
+	}
+	decision := authz.Decision{Allowed: true, Action: "Microsoft.Resources/deployments/write", Target: scope}
+	mapping, ok := authz.ProcessOptions().MappingFor(namespace)
+	switch {
+	case !ok:
+		decision.Allowed, decision.Code = false, v1.CodeAuthorizationFailed
+	case !records.ScopeCovers(mapping.ResourceGroup, scope):
+		decision.Allowed, decision.Code = false, v1.CodeGrantScopeExceeded
+	}
+	return authz.Apply(ctx, mode, decision)
 }
 
 // ParseDeploymentScopeFromProviderConfig extracts the required deployment scope.

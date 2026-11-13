@@ -197,6 +197,7 @@ generate-bicep-types-emitter: generate-pnpm-installed
 generate-bicep-types-core: generate-tsp-installed generate-bicep-types-emitter ## Generate Bicep extensibility types from TypeSpec.
 	@echo "$(ARROW) Generating Bicep extensibility types from TypeSpec..."
 	node $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/compile-projects.js --typespec-dir typespec --out-dir $(BICEP_TYPES_GENERATED_DIR)
+	go run ./pkg/ucp/authorization/internal/bicepgen --types $(BICEP_TYPES_OUTPUT_BASE)/radius.core/2025-08-01-preview/types.json
 
 .PHONY: generate-yq-installed
 generate-yq-installed:

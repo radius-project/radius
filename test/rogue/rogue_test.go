@@ -77,6 +77,46 @@ func Test_ClientArgs(t *testing.T) {
 			want: with("-X", "GET", "-k", "https://x"),
 		},
 		{
+			name:   "Radius client transport for a receiver",
+			req:    Request{URL: "https://applications-rp.radius-system.svc:5443/", Receiver: "applications-rp", ReceiverNamespace: "radius-system"},
+			hasTLS: true,
+			want: with(
+				"-X", "GET",
+				"--radius-receiver", "applications-rp",
+				"--radius-dir", TLSMountPath,
+				"--radius-namespace", "radius-system",
+				"https://applications-rp.radius-system.svc:5443/"),
+		},
+		{
+			name:   "Radius client transport with a trust domain",
+			req:    Request{URL: "https://x", Receiver: "ucp", ReceiverNamespace: "ns", TrustDomain: "example.org"},
+			hasTLS: true,
+			want: with(
+				"-X", "GET",
+				"--radius-receiver", "ucp",
+				"--radius-dir", TLSMountPath,
+				"--radius-namespace", "ns",
+				"--radius-trust-domain", "example.org",
+				"https://x"),
+		},
+		{
+			name:    "receiver requires a TLS secret",
+			req:     Request{URL: "https://x", Receiver: "ucp", ReceiverNamespace: "ns"},
+			wantErr: "TLSSecretName",
+		},
+		{
+			name:    "receiver requires a namespace",
+			req:     Request{URL: "https://x", Receiver: "ucp"},
+			hasTLS:  true,
+			wantErr: "ReceiverNamespace",
+		},
+		{
+			name:    "receiver cannot skip verification",
+			req:     Request{URL: "https://x", Receiver: "ucp", ReceiverNamespace: "ns", Insecure: true},
+			hasTLS:  true,
+			wantErr: "cannot be combined",
+		},
+		{
 			name:    "URL is required",
 			req:     Request{},
 			wantErr: "URL is required",
@@ -224,6 +264,15 @@ func Test_NewPod(t *testing.T) {
 		require.Equal(t, TLSMountPath, container.VolumeMounts[0].MountPath)
 		require.True(t, container.VolumeMounts[0].ReadOnly)
 		require.Equal(t, pod.Spec.Volumes[0].Name, container.VolumeMounts[0].Name)
+		require.Empty(t, pod.Spec.Volumes[0].Secret.Items)
+	})
+
+	t.Run("TLS secret items", func(t *testing.T) {
+		t.Parallel()
+
+		items := []corev1.KeyToPath{{Key: "token", Path: "tokens/ucp/token"}}
+		pod := newPod(Options{Namespace: "ns", TLSSecretName: "identity", TLSSecretItems: items})
+		require.Equal(t, items, pod.Spec.Volumes[0].Secret.Items)
 	})
 }
 

@@ -49,10 +49,12 @@ type accessVersion struct {
 }
 
 type pendingPolicy struct {
-	Generation int64  `json:"generation"`
-	Intent     string `json:"intent"`
-	Root       string `json:"root"`
-	Event      string `json:"event"`
+	Generation int64    `json:"generation"`
+	Intent     string   `json:"intent"`
+	Root       string   `json:"root"`
+	Event      string   `json:"event"`
+	Events     []string `json:"events,omitempty"`
+	Receipt    string   `json:"receipt,omitempty"`
 }
 
 type manifestRoot struct {
@@ -175,10 +177,15 @@ func (s *PolicyStore) readHistory(ctx context.Context, id string) (*api.AccessCh
 			return nil, nil, fmt.Errorf("invalid access history chunk count")
 		}
 		prefix := strings.TrimSuffix(manifest.Chunks[0], "-chunk-0")
-		intent := strings.TrimSuffix(strings.TrimPrefix(prefix, policyObjectID), "-event")
+		intent, suffix, found := strings.Cut(strings.TrimPrefix(prefix, policyObjectID), "-event")
 		parsed, err := uuid.Parse(intent)
-		if err != nil || parsed.String() != intent ||
-			prefix != policyObjectID+intent+"-event" ||
+		validSuffix := suffix == ""
+		if strings.HasPrefix(suffix, "-") {
+			index, err := strconv.Atoi(strings.TrimPrefix(suffix, "-"))
+			validSuffix = err == nil && index >= 0 && index < 100 && suffix == "-"+strconv.Itoa(index)
+		}
+		if !found || !validSuffix || err != nil || parsed.String() != intent ||
+			prefix != policyObjectID+intent+"-event"+suffix ||
 			(strings.HasPrefix(id, policyObjectID) && prefix != id) {
 			return nil, nil, fmt.Errorf("invalid access history chunk prefix")
 		}
@@ -641,10 +648,19 @@ func (s *PolicyStore) stableVersion(ctx context.Context, budget *policyRetryBudg
 
 func (s *PolicyStore) finish(ctx context.Context, version accessVersion, etag string) error {
 	pending := version.Pending
-	if pending == nil || pending.Generation != version.Generation+1 || pending.Generation > maxGeneration ||
-		!strings.HasPrefix(pending.Root, policyObjectID+pending.Intent+"-") ||
-		pending.Event != policyObjectID+pending.Intent+"-event" {
+	if pending == nil || pending.Generation > maxGeneration ||
+		!strings.HasPrefix(pending.Root, policyObjectID+pending.Intent+"-") {
 		return fmt.Errorf("invalid pending policy intent")
+	}
+	events := pending.Events
+	if pending.Event != "" {
+		if len(events) != 0 || pending.Event != policyObjectID+pending.Intent+"-event" {
+			return fmt.Errorf("invalid pending policy history")
+		}
+		events = []string{pending.Event}
+	}
+	if len(events) == 0 || len(events) > 100 || pending.Generation != version.Generation+int64(len(events)) {
+		return fmt.Errorf("invalid pending policy generations")
 	}
 	if _, err := uuid.Parse(pending.Intent); err != nil {
 		return fmt.Errorf("invalid pending policy intent UUID: %w", err)
@@ -652,17 +668,38 @@ func (s *PolicyStore) finish(ctx context.Context, version accessVersion, etag st
 	if _, err := s.loadRoot(ctx, pending.Root, pending.Generation); err != nil {
 		return err
 	}
-	event, record, err := s.readHistory(ctx, pending.Event)
-	if err != nil {
-		return err
+	for index, reference := range events {
+		if pending.Event == "" && reference != policyObjectID+pending.Intent+"-event-"+strconv.Itoa(index) {
+			return fmt.Errorf("invalid pending policy event reference")
+		}
+		event, record, err := s.readHistory(ctx, reference)
+		if err != nil {
+			return err
+		}
+		generation := version.Generation + int64(index) + 1
+		historyID := historyPrefix + strconv.FormatInt(generation, 10)
+		if event.Properties == nil || event.Properties.Generation == nil || *event.Properties.Generation != generation ||
+			event.ID == nil || *event.ID != historyID {
+			return fmt.Errorf("invalid pending access history")
+		}
+		if err := s.immutable(ctx, historyID, record); err != nil {
+			return err
+		}
 	}
-	historyID := historyPrefix + strconv.FormatInt(pending.Generation, 10)
-	if event.Properties == nil || event.Properties.Generation == nil || *event.Properties.Generation != pending.Generation ||
-		event.ID == nil || *event.ID != historyID {
-		return fmt.Errorf("invalid pending access history")
-	}
-	if err := s.immutable(ctx, historyID, record); err != nil {
-		return err
+	if pending.Receipt != "" {
+		if pending.Receipt != policyObjectID+pending.Intent+"-receipt" {
+			return fmt.Errorf("invalid pending deployment receipt")
+		}
+		var receipt deploymentReceipt
+		if _, err := s.read(ctx, pending.Receipt, &receipt); err != nil {
+			return err
+		}
+		if receipt.Generation != pending.Generation || receipt.Key != deploymentReceiptID(receipt.ExecutionID) {
+			return fmt.Errorf("invalid deployment receipt")
+		}
+		if err := s.immutable(ctx, receipt.Key, receipt); err != nil {
+			return err
+		}
 	}
 	return s.save(ctx, accessVersionID, accessVersion{Generation: pending.Generation, Root: pending.Root}, database.WithETag(etag))
 }

@@ -63,6 +63,7 @@ var rootCmd = &cobra.Command{
 		logger.Info("Loaded options", "configfile", configFilePath)
 
 		authz.LogMode(logger, options.Config.Authorization)
+		authz.SetProcessOptions(options.Config.Authorization)
 
 		services := []hosting.Service{
 			&controller.Service{Options: options},

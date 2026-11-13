@@ -64,6 +64,15 @@ data:
 
     identity:
       authMethod: UCPCredential
+    {{- if .Values.rbac.enabled }}
+    {{- if eq (include "radius.authz.mode" .) "off" }}
+    {{- fail "rbac.enabled requires internal authorization (global.rbac)" }}
+    {{- end }}
+    userAuthorization:
+      enabled: true
+      kubernetesIssuer: {{ required "rbac.kubernetesIssuer must identify this cluster" .Values.rbac.kubernetesIssuer | quote }}
+      acceptIncompleteHistory: {{ .Values.rbac.acceptIncompleteHistory }}
+    {{- end }}
     {{- with dig "workerServer" "dequeueInterval" "" .Values.ucp }}
 
     workerServer:

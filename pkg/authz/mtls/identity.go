@@ -21,33 +21,27 @@ import (
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/asn1"
 	"fmt"
-	"slices"
-	"strings"
+	"net/url"
 
 	"github.com/radius-project/radius/pkg/authz"
 )
 
-// Components lists the Radius components that may hold an mTLS identity. The names
-// match the Kubernetes Service names and the Certificates issued by the Helm chart.
-var Components = []string{"ucp", "applications-rp", "dynamic-rp", "controller", "bicep-de"}
+const (
+	// DefaultTrustDomain is the SPIFFE trust domain of Radius server certificates when
+	// authz.Options.TrustDomain is unset. It matches the chart value global.rbac.spiffe.trustDomain.
+	DefaultTrustDomain = "radius.internal"
 
-// minRSABits is the smallest RSA key accepted from a peer.
-const minRSABits = 2048
+	// minRSABits is the smallest RSA key accepted from a peer.
+	minRSABits = 2048
 
-// Identity is a verified Radius component identity.
-type Identity struct {
-	// Component is the component name, such as "applications-rp".
-	Component string
+	// sanTagURI is the GeneralName tag of uniformResourceIdentifier (RFC 5280, section 4.2.1.6).
+	sanTagURI = 6
+)
 
-	// Namespace is the Radius namespace.
-	Namespace string
-}
-
-// String returns the canonical identity, "<component>.<namespace>.svc".
-func (i Identity) String() string {
-	return i.Component + "." + i.Namespace + ".svc"
-}
+// oidSubjectAltName is the subjectAltName extension (RFC 5280, section 4.2.1.6).
+var oidSubjectAltName = asn1.ObjectIdentifier{2, 5, 29, 17}
 
 // Error is a certificate failure with an authorization error code. Callers log Code;
 // Reason is a short description that never contains key material.
@@ -79,40 +73,50 @@ func peerError(reason string, err error) *Error {
 	return &Error{Code: authz.CodePeerCertificateInvalid, Reason: reason, Err: err}
 }
 
-// PeerIdentity maps a verified peer chain to a Radius component identity. chain[0]
-// must be the peer's leaf certificate. Every certificate in the chain must use an
-// allowed key, and the leaf must have exactly one DNS SAN, the canonical
-// "<component>.<namespace>.svc" name of a known component. The subject common name
-// is ignored.
-func PeerIdentity(chain []*x509.Certificate, namespace string) (Identity, error) {
-	if len(chain) == 0 {
-		return Identity{}, peerError("no peer certificate", nil)
-	}
-	for _, cert := range chain {
-		if err := checkKey(cert); err != nil {
-			return Identity{}, err
-		}
-	}
-
-	sans := chain[0].DNSNames
-	switch len(sans) {
-	case 0:
-		return Identity{}, peerError("certificate has no DNS SAN", nil)
-	case 1:
-		return identityFromSAN(sans[0], namespace)
-	default:
-		return Identity{}, peerError("certificate has more than one DNS SAN", nil)
-	}
+// SPIFFEID returns the SPIFFE ID that csi-driver-spiffe puts in the server certificate of
+// the pod running as serviceAccount in namespace: spiffe://<trustDomain>/ns/<namespace>/sa/<serviceAccount>.
+func SPIFFEID(trustDomain, namespace, serviceAccount string) string {
+	return (&url.URL{Scheme: "spiffe", Host: trustDomain, Path: "/ns/" + namespace + "/sa/" + serviceAccount}).String()
 }
 
-// identityFromSAN returns the identity named by san, which must be
-// "<component>.<namespace>.svc" for a known component.
-func identityFromSAN(san, namespace string) (Identity, error) {
-	component, ok := strings.CutSuffix(strings.ToLower(san), "."+namespace+".svc")
-	if !ok || !slices.Contains(Components, component) {
-		return Identity{}, peerError(fmt.Sprintf("DNS SAN %q is not a Radius component in namespace %q", san, namespace), nil)
+// checkSPIFFEID checks that leaf's subject alternative names are exactly one URI SAN and that
+// it is expected. Any other SAN, such as a DNS name, IP address, or email address, is rejected.
+// The subject common name is ignored.
+func checkSPIFFEID(leaf *x509.Certificate, expected string) error {
+	switch len(leaf.URIs) {
+	case 0:
+		return peerError("server certificate has no URI SAN", nil)
+	case 1:
+	default:
+		return peerError("server certificate has more than one URI SAN", nil)
 	}
-	return Identity{Component: component, Namespace: namespace}, nil
+	if err := checkOnlyURISANs(leaf); err != nil {
+		return err
+	}
+	if got := leaf.URIs[0].String(); got != expected {
+		return peerError(fmt.Sprintf("server certificate SPIFFE ID %q is not %q", got, expected), nil)
+	}
+	return nil
+}
+
+// checkOnlyURISANs reads the raw subjectAltName extension so that SAN types crypto/x509 does
+// not decode, such as otherName and directoryName, are rejected too.
+func checkOnlyURISANs(leaf *x509.Certificate) error {
+	for _, ext := range leaf.Extensions {
+		if !ext.Id.Equal(oidSubjectAltName) {
+			continue
+		}
+		var names []asn1.RawValue
+		if rest, err := asn1.Unmarshal(ext.Value, &names); err != nil || len(rest) != 0 {
+			return peerError("server certificate has a malformed subjectAltName extension", err)
+		}
+		for _, name := range names {
+			if name.Class != asn1.ClassContextSpecific || name.Tag != sanTagURI {
+				return peerError("server certificate has a SAN other than a URI", nil)
+			}
+		}
+	}
+	return nil
 }
 
 // checkKey allows only ECDSA P-256 or P-384 and RSA keys of at least 2048 bits.

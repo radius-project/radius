@@ -18,15 +18,19 @@ package mtls
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httptrace"
+	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -55,12 +59,24 @@ func (r *recordingTransport) RoundTrip(req *http.Request) (*http.Response, error
 	return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody, Request: req}, nil
 }
 
-// componentOptions returns options for mode with a certificate for component from ca.
-func componentOptions(t *testing.T, ca testCA, component string, mode authz.Mode) authz.Options {
+// clientOptions returns options for mode that trust caPEM and hold a token for each Radius
+// receiver, minted for ucp.
+func clientOptions(t *testing.T, caPEM []byte, mode authz.Mode) authz.Options {
 	t.Helper()
-	dir := t.TempDir()
-	writeFiles(t, dir, ca.issue(t, certOptions{dnsNames: componentSANs(component)}), ca.pem)
-	return authz.Options{Mode: mode, CertificateDirectory: dir, Namespace: testNamespace}
+	return callerOptions(t, caPEM, mode, "ucp")
+}
+
+// callerOptions returns options for mode that trust caPEM and hold a token minted for
+// caller for each Radius receiver.
+func callerOptions(t *testing.T, caPEM []byte, mode authz.Mode, caller string) authz.Options {
+	t.Helper()
+	// Like the chart, the CA bundle is in its own directory, not in certificateDirectory.
+	certDir, caDir, tokenDir := t.TempDir(), t.TempDir(), t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(caDir, CAFile), caPEM, 0o600))
+	for _, receiver := range []string{"ucp", "applications-rp", "dynamic-rp"} {
+		writeToken(t, tokenDir, receiver, mintToken(t, caller, receiver))
+	}
+	return authz.Options{Mode: mode, CertificateDirectory: certDir, CADirectory: caDir, TokenDirectory: tokenDir, Namespace: testNamespace}
 }
 
 func TestNewUpgradeTransport_Off(t *testing.T) {
@@ -72,25 +88,45 @@ func TestNewUpgradeTransport_Off(t *testing.T) {
 
 func TestNewClientTransport_ConfigErrors(t *testing.T) {
 	ca := newCA(t)
-	valid := componentOptions(t, ca, "ucp", authz.ModeEnforce)
+	valid := clientOptions(t, ca.pem, authz.ModeEnforce)
 
 	tests := []struct {
-		name   string
-		modify func(o *authz.Options)
-		want   string
+		name     string
+		modify   func(o *authz.Options)
+		receiver string
+		want     string
 	}{
-		{name: "missing directory", modify: func(o *authz.Options) { o.CertificateDirectory = "" }, want: "requires certificateDirectory and namespace"},
-		{name: "missing namespace", modify: func(o *authz.Options) { o.Namespace = "" }, want: "requires certificateDirectory and namespace"},
-		{name: "unreadable directory", modify: func(o *authz.Options) { o.CertificateDirectory = t.TempDir() }, want: "failed to load mTLS certificate"},
+		{name: "missing certificate directory", modify: func(o *authz.Options) { o.CertificateDirectory = "" }, want: "requires certificateDirectory, tokenDirectory, and namespace"},
+		{name: "missing token directory", modify: func(o *authz.Options) { o.TokenDirectory = "" }, want: "requires certificateDirectory, tokenDirectory, and namespace"},
+		{name: "missing namespace", modify: func(o *authz.Options) { o.Namespace = "" }, want: "requires certificateDirectory, tokenDirectory, and namespace"},
+		{name: "missing receiver", receiver: "-", want: "receiver is required"},
+		{name: "no CA bundle", modify: func(o *authz.Options) { o.CertificateDirectory, o.CADirectory = t.TempDir(), "" }, want: "failed to load CA bundle"},
+		{name: "no CA bundle in CA directory", modify: func(o *authz.Options) { o.CADirectory = t.TempDir() }, want: "failed to load CA bundle"},
+		{name: "no token for receiver", receiver: "bicep-de", want: "failed to read ServiceAccount token"},
+		{name: "empty token", modify: func(o *authz.Options) {
+			o.TokenDirectory = t.TempDir()
+			writeToken(t, o.TokenDirectory, "ucp", "")
+		}, want: "is empty"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			options := valid
-			tt.modify(&options)
-			_, err := NewUpgradeTransport(options, &recordingTransport{}, []string{"applications-rp"})
+			if tt.modify != nil {
+				tt.modify(&options)
+			}
+			receiver := "ucp"
+			if tt.receiver == "-" {
+				receiver = ""
+			} else if tt.receiver != "" {
+				receiver = tt.receiver
+			}
+			_, err := NewClientTransport(options, receiver)
 			require.ErrorContains(t, err, tt.want)
 		})
 	}
+
+	_, err := NewUpgradeTransport(valid, &recordingTransport{}, []string{"bicep-de"})
+	require.ErrorContains(t, err, "failed to read ServiceAccount token")
 }
 
 func TestUpgradeTransport_Routing(t *testing.T) {
@@ -98,7 +134,7 @@ func TestUpgradeTransport_Routing(t *testing.T) {
 	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
 		t.Run(string(mode), func(t *testing.T) {
 			plain, secure := &recordingTransport{}, &recordingTransport{}
-			rt, err := NewUpgradeTransport(componentOptions(t, ca, "ucp", mode), plain, []string{"applications-rp", "dynamic-rp"})
+			rt, err := NewUpgradeTransport(clientOptions(t, ca.pem, mode), plain, []string{"applications-rp", "dynamic-rp"})
 			require.NoError(t, err)
 			for host := range rt.(*upgradeTransport).secure {
 				rt.(*upgradeTransport).secure[host] = secure
@@ -135,83 +171,216 @@ func TestUpgradeTransport_Routing(t *testing.T) {
 	}
 }
 
-// TestUpgradeTransport_PresentsCertificate sends a plain http URL through the upgrade
-// transport to an enforcing applications-rp that only allows ucp.
-func TestUpgradeTransport_PresentsCertificate(t *testing.T) {
+// TestUpgradeTransport_SendsToken sends a plain http URL through the upgrade transport to an
+// enforcing applications-rp that only allows ucp.
+func TestUpgradeTransport_SendsToken(t *testing.T) {
 	ca := newCA(t)
 	srv := startServer(t, ca, authz.ModeEnforce)
 
 	tests := []struct {
-		component string
-		want      int
+		caller string
+		want   int
 	}{
-		{component: "ucp", want: http.StatusOK},
-		{component: "controller", want: http.StatusForbidden},
+		{caller: "ucp", want: http.StatusOK},
+		{caller: "controller", want: http.StatusForbidden},
 	}
 	for _, tt := range tests {
-		t.Run(tt.component, func(t *testing.T) {
-			rt, err := NewUpgradeTransport(componentOptions(t, ca, tt.component, authz.ModeEnforce), http.DefaultTransport, []string{"applications-rp"})
+		t.Run(tt.caller, func(t *testing.T) {
+			rt, err := NewUpgradeTransport(callerOptions(t, ca.pem, authz.ModeEnforce, tt.caller), http.DefaultTransport, []string{"applications-rp"})
 			require.NoError(t, err)
-			dialTo(t, rt, appsRPServerName, srv.url)
+			dialTo(t, rt, "applications-rp.radius-system.svc", srv.url)
 
-			status, err := get(&http.Client{Transport: rt}, "http://"+appsRPServerName+":5443/")
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://applications-rp.radius-system.svc:5443/", nil)
 			require.NoError(t, err)
-			require.Equal(t, tt.want, status)
+			// A caller-supplied Authorization header is replaced.
+			req.Header.Set("Authorization", "Bearer "+mintToken(t, "ucp", "applications-rp")+"x")
+			resp, err := (&http.Client{Transport: rt}).Do(req)
+			require.NoError(t, err)
+			_ = resp.Body.Close()
+			require.Equal(t, tt.want, resp.StatusCode)
+			if tt.want == http.StatusOK {
+				require.Equal(t, "ucp.radius-system.svc", (<-srv.seen).identity.String())
+			}
 		})
 	}
 }
 
+// TestUpgradeTransport_RejectsWrongServer sends a request for dynamic-rp to applications-rp.
+// The client must reject the server's SPIFFE ID during the handshake and send no token.
 func TestUpgradeTransport_RejectsWrongServer(t *testing.T) {
 	ca := newCA(t)
-	srv := startServer(t, ca, authz.ModeEnforce)
+	srv := startServer(t, ca, authz.ModeDryRun)
 
-	rt, err := NewUpgradeTransport(componentOptions(t, ca, "ucp", authz.ModeEnforce), http.DefaultTransport, []string{"dynamic-rp"})
+	rt, err := NewUpgradeTransport(clientOptions(t, ca.pem, authz.ModeEnforce), http.DefaultTransport, []string{"dynamic-rp"})
 	require.NoError(t, err)
-	dialTo(t, rt, "dynamic-rp."+testNamespace+".svc", srv.url)
+	dialTo(t, rt, "dynamic-rp.radius-system.svc", srv.url)
 
-	// The server is applications-rp, so a request for dynamic-rp must fail verification.
-	_, err = get(&http.Client{Transport: rt}, "http://dynamic-rp."+testNamespace+".svc:8082/")
-	require.ErrorContains(t, err, "not dynamic-rp."+testNamespace+".svc")
+	_, err = (&http.Client{Transport: rt}).Get("http://dynamic-rp.radius-system.svc:8082/")
+	requireCode(t, err, authz.CodePeerCertificateInvalid)
+	require.ErrorContains(t, err, "is not \""+spiffeID("dynamic-rp")+"\"")
+	// In dryRun the server would serve and log a request without a token, so an empty log
+	// and no served request show that the client sent nothing.
+	require.Empty(t, srv.seen)
+	require.Empty(t, srv.logs.All())
 }
 
-// TestUpgradeTransport_CanonicalServerName checks that every accepted host form sends the
-// canonical <component>.<namespace>.svc as the TLS server name.
-func TestUpgradeTransport_CanonicalServerName(t *testing.T) {
+// TestClientTransport_NoTokenWithoutVerifiedServer checks that a token is never written to a
+// connection whose server failed verification, using a raw TLS listener that records every
+// byte the client sends after the handshake.
+func TestClientTransport_NoTokenWithoutVerifiedServer(t *testing.T) {
 	ca := newCA(t)
-	serverNames := make(chan string, 1)
-	ln, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{
-		MinVersion: tls.VersionTLS12,
-		GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-			serverNames <- hello.ServerName
-			return nil, errors.New("stop after the client hello")
-		},
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = ln.Close() })
-	go func() {
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				return
-			}
-			_ = conn.(*tls.Conn).Handshake()
-			_ = conn.Close()
-		}
-	}()
+	for name, cert := range map[string]testCert{
+		"wrong SPIFFE ID": ca.issue(t, certOptions{uris: spiffeURIs("controller")}),
+		"wrong CA":        newCA(t).issue(t, certOptions{uris: spiffeURIs("applications-rp")}),
+		"DNS SAN only":    ca.issue(t, certOptions{dnsNames: []string{"applications-rp.radius-system.svc"}}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			ln, err := tls.Listen("tcp", "127.0.0.1:0", staticServer(t, cert))
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = ln.Close() })
+			received := make(chan []byte, 1)
+			go func() {
+				conn, err := ln.Accept()
+				if err != nil {
+					return
+				}
+				defer conn.Close()
+				_ = conn.SetDeadline(time.Now().Add(5 * time.Second))
+				data, _ := io.ReadAll(conn)
+				received <- data
+			}()
 
-	rt, err := NewUpgradeTransport(componentOptions(t, ca, "ucp", authz.ModeEnforce), &recordingTransport{}, []string{"applications-rp"})
-	require.NoError(t, err)
-	dialTo(t, rt, appsRPServerName, ln.Addr().String())
+			options := clientOptions(t, ca.pem, authz.ModeEnforce)
+			transport, err := newClientTransport(options, "applications-rp")
+			require.NoError(t, err)
+			t.Cleanup(transport.CloseIdleConnections)
 
-	for _, host := range []string{"applications-rp", "applications-rp." + testNamespace, appsRPServerName} {
-		t.Run(host, func(t *testing.T) {
-			_, _ = get(&http.Client{Transport: rt}, "http://"+host+":5443/")
-			require.Equal(t, appsRPServerName, <-serverNames)
+			_, err = (&http.Client{Transport: transport}).Get("https://" + ln.Addr().String())
+			requireCode(t, err, authz.CodePeerCertificateInvalid)
+			require.Empty(t, <-received)
 		})
 	}
 }
 
-// dialTo sends every connection of the mTLS transport for host to addr.
+func TestClientTransport_RefusesPlainHTTP(t *testing.T) {
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeDryRun)
+	transport, err := newClientTransport(clientOptions(t, ca.pem, authz.ModeEnforce), "applications-rp")
+	require.NoError(t, err)
+
+	_, err = (&http.Client{Transport: transport}).Get("http://" + srv.url)
+	require.ErrorContains(t, err, "must use https")
+	require.Empty(t, srv.seen)
+}
+
+// TestClientTransport_TokenRotation replaces the projected token, as the kubelet does, and
+// checks that the next request sends the new token.
+func TestClientTransport_TokenRotation(t *testing.T) {
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeEnforce)
+	options := callerOptions(t, ca.pem, authz.ModeEnforce, "controller")
+	transport, err := newClientTransport(options, "applications-rp")
+	require.NoError(t, err)
+	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, srv.url)
+	}
+	t.Cleanup(transport.CloseIdleConnections)
+	c := &http.Client{Transport: transport}
+	url := "https://applications-rp.radius-system.svc:5443/"
+
+	require.Equal(t, http.StatusForbidden, send(t, c, url, ""))
+
+	path := filepath.Join(options.TokenDirectory, "applications-rp", TokenFile)
+	writeToken(t, options.TokenDirectory, "applications-rp", mintToken(t, "ucp", "applications-rp"))
+	// Make the change visible even on file systems with coarse timestamps.
+	later := time.Now().Add(time.Minute)
+	require.NoError(t, os.Chtimes(path, later, later))
+
+	require.Equal(t, http.StatusOK, send(t, c, url, ""))
+	require.Equal(t, "ucp.radius-system.svc", (<-srv.seen).identity.String())
+}
+
+type fakeFileInfo struct {
+	fs.FileInfo
+	modTime time.Time
+	size    int64
+}
+
+func (f fakeFileInfo) ModTime() time.Time { return f.modTime }
+func (f fakeFileInfo) Size() int64        { return f.size }
+
+func TestTokenFile(t *testing.T) {
+	now := time.Now()
+	info := fakeFileInfo{modTime: now, size: 6}
+	content := "first\n"
+	var reads, statErrs int
+	var statErr, readErr error
+	f := newTokenFile("token")
+	f.now = func() time.Time { return now }
+	f.stat = func(string) (os.FileInfo, error) {
+		if statErr != nil {
+			statErrs++
+			return nil, statErr
+		}
+		return info, nil
+	}
+	f.readFile = func(string) ([]byte, error) {
+		reads++
+		return []byte(content), readErr
+	}
+
+	tok, err := f.Token()
+	require.NoError(t, err)
+	require.Equal(t, "first", tok)
+	require.Equal(t, 1, reads)
+
+	// Unchanged files are served from the cache.
+	tok, err = f.Token()
+	require.NoError(t, err)
+	require.Equal(t, "first", tok)
+	require.Equal(t, 1, reads)
+
+	// A new modification time is read.
+	content = "second"
+	info.modTime = now.Add(time.Second)
+	tok, err = f.Token()
+	require.NoError(t, err)
+	require.Equal(t, "second", tok)
+	require.Equal(t, 2, reads)
+
+	// A new size is read.
+	content = "third!"
+	info.size = 7
+	tok, err = f.Token()
+	require.NoError(t, err)
+	require.Equal(t, "third!", tok)
+	require.Equal(t, 3, reads)
+
+	// An unchanged file is read again after tokenMaxAge.
+	content = "fourth"
+	now = now.Add(tokenMaxAge)
+	tok, err = f.Token()
+	require.NoError(t, err)
+	require.Equal(t, "fourth", tok)
+	require.Equal(t, 4, reads)
+
+	// A missing or empty file is an error, not the cached token.
+	statErr = fs.ErrNotExist
+	_, err = f.Token()
+	require.ErrorIs(t, err, fs.ErrNotExist)
+	require.Equal(t, 1, statErrs)
+	statErr = nil
+	content = " \n"
+	info.size = 2
+	_, err = f.Token()
+	require.ErrorContains(t, err, "is empty")
+	readErr = errors.New("read failed")
+	info.size = 3
+	_, err = f.Token()
+	require.ErrorContains(t, err, "read failed")
+}
+
+// dialTo sends every connection of the transport for host to addr.
 func dialTo(t *testing.T, rt http.RoundTripper, host, addr string) {
 	t.Helper()
 	secure := rt.(*upgradeTransport).secure[host].(*clientTransport)
@@ -221,29 +390,22 @@ func dialTo(t *testing.T, rt http.RoundTripper, host, addr string) {
 	t.Cleanup(secure.CloseIdleConnections)
 }
 
-// TestClientTransport_RotationMidHandshake rotates the client's certificate and CA bundle
-// to a new CA while the server is handling the client hello. The connection must finish
-// with the material it started with, and the next connection must use the new material.
+// TestClientTransport_RotationMidHandshake rotates the client's CA bundle to a new CA while
+// the server is handling the client hello. The connection must finish with the bundle it
+// started with, and the next connection must use the new bundle.
 func TestClientTransport_RotationMidHandshake(t *testing.T) {
 	oldCA, newCA := newCA(t), newCA(t)
-	options := componentOptions(t, oldCA, "ucp", authz.ModeEnforce)
-	oldClient, err := tls.LoadX509KeyPair(filepath.Join(options.CertificateDirectory, CertFile), filepath.Join(options.CertificateDirectory, KeyFile))
-	require.NoError(t, err)
-	source, err := sharedSource(options.CertificateDirectory)
+	options := clientOptions(t, oldCA.pem, authz.ModeEnforce)
+	source, err := sharedTrustSource(options.EffectiveCADirectory())
 	require.NoError(t, err)
 
-	serverCert := oldCA.issue(t, certOptions{dnsNames: componentSANs("applications-rp")}).tlsCertificate(t)
-	clientCAs := x509.NewCertPool()
-	clientCAs.AddCert(oldCA.cert)
-
+	serverCert := oldCA.issue(t, certOptions{uris: spiffeURIs("applications-rp")}).tlsCertificate(t)
 	var rotate sync.Once
 	ln, err := tls.Listen("tcp", "127.0.0.1:0", &tls.Config{
 		MinVersion: tls.VersionTLS12,
-		ClientAuth: tls.RequireAndVerifyClientCert,
-		ClientCAs:  clientCAs,
 		GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 			rotate.Do(func() {
-				writeFiles(t, options.CertificateDirectory, newCA.issue(t, certOptions{dnsNames: componentSANs("ucp")}), newCA.pem)
+				assert.NoError(t, os.WriteFile(filepath.Join(options.EffectiveCADirectory(), CAFile), newCA.pem, 0o600))
 				changed, err := source.Reload()
 				assert.NoError(t, err)
 				assert.True(t, changed)
@@ -253,17 +415,14 @@ func TestClientTransport_RotationMidHandshake(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	presented := make(chan []byte, 1)
 	srv := &http.Server{
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			presented <- r.TLS.PeerCertificates[0].Raw
-		}),
+		Handler:           http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() { _ = srv.Serve(ln) }()
 	t.Cleanup(func() { _ = srv.Close() })
 
-	transport, err := newClientTransport(options, "")
+	transport, err := newClientTransport(options, "applications-rp")
 	require.NoError(t, err)
 	require.Nil(t, transport.Proxy)
 	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
@@ -272,77 +431,28 @@ func TestClientTransport_RotationMidHandshake(t *testing.T) {
 	t.Cleanup(transport.CloseIdleConnections)
 	client := &http.Client{Transport: transport}
 
-	status, err := get(client, "https://"+appsRPServerName+":5443/")
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, status)
-	require.Equal(t, oldClient.Certificate[0], <-presented)
+	require.Equal(t, http.StatusOK, send(t, client, "https://applications-rp.radius-system.svc:5443/", ""))
 
-	// A new connection uses the rotated material, which does not trust the old server.
+	// A new connection uses the rotated bundle, which does not trust the old server.
 	transport.CloseIdleConnections()
-	_, err = get(client, "https://"+appsRPServerName+":5443/")
+	_, err = client.Get("https://applications-rp.radius-system.svc:5443/")
 	require.ErrorContains(t, err, "unknown authority")
 }
 
-// TestClientTransport_CertificateExpiresOnOpenConnection keeps a connection open while the
-// client's certificate expires. The next request must not reuse it: it fails with
-// CertificateExpired, or presents the renewed certificate on a new connection.
-func TestClientTransport_CertificateExpiresOnOpenConnection(t *testing.T) {
+func expiringCA(t *testing.T, parent *testCA, notAfter time.Time) testCA {
+	t.Helper()
 	ca := newCA(t)
-	for _, renewed := range []bool{false, true} {
-		t.Run(fmt.Sprintf("renewed=%t", renewed), func(t *testing.T) {
-			presented := make(chan []byte, 1)
-			srv := startServerWithHandler(t, ca, authz.ModeEnforce, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				presented <- r.TLS.PeerCertificates[0].Raw
-			}))
-
-			dir := t.TempDir()
-			first := ca.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: time.Now().Add(10 * time.Minute)})
-			writeFiles(t, dir, first, ca.pem)
-			options := authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: dir, Namespace: testNamespace}
-			source, err := sharedSource(dir)
-			require.NoError(t, err)
-
-			transport, err := newClientTransport(options, "")
-			require.NoError(t, err)
-			transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
-				return (&net.Dialer{}).DialContext(ctx, network, srv.url)
-			}
-			t.Cleanup(transport.CloseIdleConnections)
-			client := &http.Client{Transport: transport}
-			url := "https://" + appsRPServerName + ":5443/"
-
-			status, err := get(client, url)
-			require.NoError(t, err)
-			require.Equal(t, http.StatusOK, status)
-			require.Equal(t, first.tlsCertificate(t).Certificate[0], <-presented)
-			require.Equal(t, 1, transport.openConns())
-
-			// Reload holds mu while it reads the clock, so changing the clock under mu does
-			// not race with the shared Source's reload loop.
-			source.mu.Lock()
-			source.now = func() time.Time { return time.Now().Add(30 * time.Minute) }
-			source.mu.Unlock()
-
-			if !renewed {
-				_, err = get(client, url)
-				requireCode(t, err, "CertificateExpired")
-				require.Zero(t, transport.openConns())
-				return
-			}
-
-			second := ca.issue(t, certOptions{dnsNames: componentSANs("ucp")})
-			writeFiles(t, dir, second, ca.pem)
-			changed, err := source.Reload()
-			require.NoError(t, err)
-			require.True(t, changed)
-
-			status, err = get(client, url)
-			require.NoError(t, err)
-			require.Equal(t, http.StatusOK, status)
-			require.Equal(t, second.tlsCertificate(t).Certificate[0], <-presented)
-			require.Equal(t, 1, transport.openConns())
-		})
+	template := *ca.cert
+	template.NotAfter = notAfter
+	if parent == nil {
+		parent = &ca
 	}
+	der, err := x509.CreateCertificate(rand.Reader, &template, parent.cert, ca.key.Public(), parent.key)
+	require.NoError(t, err)
+	ca.cert, err = x509.ParseCertificate(der)
+	require.NoError(t, err)
+	ca.pem = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	return ca
 }
 
 // delayedReadErrorConn keeps HTTP/2's read loop from removing a closed connection
@@ -379,7 +489,7 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 					if kind == "leaf" {
 						leafExpiry = expires
 					}
-					first := issuer.issue(t, certOptions{dnsNames: componentSANs("applications-rp"), notAfter: leafExpiry}).tlsCertificate(t)
+					first := issuer.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: leafExpiry}).tlsCertificate(t)
 					if kind == "intermediate" {
 						first.Certificate = append(first.Certificate, issuer.cert.Raw)
 					}
@@ -406,30 +516,31 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 					srv.StartTLS()
 					t.Cleanup(srv.Close)
 
-					dir := t.TempDir()
-					writeFiles(t, dir, root.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: now.Add(2 * time.Hour)}), root.pem)
-					transport, err := newClientTransport(authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: dir, Namespace: testNamespace}, appsRPServerName)
+					options := clientOptions(t, root.pem, authz.ModeEnforce)
+					transport, err := newClientTransport(options, "applications-rp")
 					require.NoError(t, err)
 					t.Cleanup(transport.CloseIdleConnections)
+					// httptest serves its own certificate to clients that send no SNI, so use a
+					// host name and dial the test server.
 					releaseReadError := make(chan struct{})
 					var releaseOnce sync.Once
 					release := func() { releaseOnce.Do(func() { close(releaseReadError) }) }
 					defer release()
-					dial := transport.DialContext
 					var dials atomic.Int32
-					transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-						conn, err := dial(ctx, network, addr)
+					transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+						conn, err := (&net.Dialer{}).DialContext(ctx, network, srv.Listener.Addr().String())
 						if err == nil && http2 && dials.Add(1) == 1 {
 							return &delayedReadErrorConn{Conn: conn, release: releaseReadError}, nil
 						}
 						return conn, err
 					}
+					baseURL := "https://applications-rp.radius-system.svc:5443"
 					client := &http.Client{Transport: transport, Timeout: 10 * time.Second}
 					request := func() (bool, error) {
 						var reused bool
 						req, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), &httptrace.ClientTrace{
 							GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused },
-						}), http.MethodGet, srv.URL, nil)
+						}), http.MethodGet, baseURL, nil)
 						require.NoError(t, err)
 						response, err := client.Do(req)
 						if err != nil {
@@ -458,7 +569,7 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 						var streamReused bool
 						req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
 							GotConn: func(info httptrace.GotConnInfo) { streamReused = info.Reused },
-						}), http.MethodGet, srv.URL+"/stream", nil)
+						}), http.MethodGet, baseURL+"/stream", nil)
 						require.NoError(t, err)
 						stream, err = client.Do(req)
 						require.NoError(t, err)
@@ -478,9 +589,9 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 					transport.source.mu.Unlock()
 					if renewed {
 						nextRoot := expiringCA(t, nil, now.Add(4*time.Hour))
-						next := nextRoot.issue(t, certOptions{dnsNames: componentSANs("applications-rp"), notAfter: now.Add(2 * time.Hour)}).tlsCertificate(t)
+						next := nextRoot.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: now.Add(2 * time.Hour)}).tlsCertificate(t)
 						served.Store(&next)
-						writeFiles(t, dir, nextRoot.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: now.Add(2 * time.Hour)}), nextRoot.pem)
+						require.NoError(t, os.WriteFile(filepath.Join(options.EffectiveCADirectory(), CAFile), nextRoot.pem, 0o600))
 						changed, err := transport.source.Reload()
 						require.NoError(t, err)
 						require.True(t, changed)
@@ -533,7 +644,7 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 			now := time.Now().UTC().Truncate(time.Second)
 			root := expiringCA(t, nil, now.Add(5*time.Hour))
 			issue := func(notAfter time.Time) *tls.Certificate {
-				cert := root.issue(t, certOptions{dnsNames: componentSANs("applications-rp"), notAfter: notAfter}).tlsCertificate(t)
+				cert := root.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: notAfter}).tlsCertificate(t)
 				return &cert
 			}
 			start := func(cert *atomic.Pointer[tls.Certificate], handler http.HandlerFunc) *httptest.Server {
@@ -567,11 +678,16 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 				}
 			})
 
-			dir := t.TempDir()
-			writeFiles(t, dir, root.issue(t, certOptions{dnsNames: componentSANs("ucp"), notAfter: now.Add(4 * time.Hour)}), root.pem)
-			transport, err := newClientTransport(authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: dir, Namespace: testNamespace}, appsRPServerName)
+			transport, err := newClientTransport(clientOptions(t, root.pem, authz.ModeEnforce), "applications-rp")
 			require.NoError(t, err)
 			t.Cleanup(transport.CloseIdleConnections)
+			// httptest serves its own certificate to clients that send no SNI, so each server
+			// gets a host name that is dialed to its listener.
+			addrs := map[string]string{"a.test": srvA.Listener.Addr().String(), "b.test": srvB.Listener.Addr().String()}
+			transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, network, addrs[hostname(addr)])
+			}
+			urlA, urlB := "https://a.test:443", "https://b.test:443"
 			client := &http.Client{Transport: transport, Timeout: 10 * time.Second}
 			setNow := func(at time.Time) {
 				transport.source.mu.Lock()
@@ -579,12 +695,12 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 				transport.source.mu.Unlock()
 			}
 
-			status, err := get(client, srvA.URL)
+			status, err := get(client, urlA)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, status)
 			pending := make(chan error, 1)
 			go func() {
-				_, err := get(client, srvB.URL)
+				_, err := get(client, urlB)
 				pending <- err
 			}()
 			select {
@@ -598,7 +714,7 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 			// A's connection expires while B's request is in flight, which retires their pool.
 			setNow(now.Add(30 * time.Minute))
 			certA.Store(issue(now.Add(4 * time.Hour)))
-			status, err = get(client, srvA.URL)
+			status, err = get(client, urlA)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, status)
 			current := transport.pool()
@@ -610,7 +726,7 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 				close(unblock)
 				require.NoError(t, <-pending)
 			}
-			status, err = get(client, srvA.URL)
+			status, err = get(client, urlA)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusOK, status)
 			if expireB {
@@ -619,11 +735,21 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 			require.Same(t, current, transport.pool(), "a connection in a retired pool must not replace the current pool")
 			require.Equal(t, 1, transport.openConns())
 
-			_, err = get(client, srvA.URL)
+			_, err = get(client, urlA)
 			require.NoError(t, err)
 			require.Zero(t, transport.retiredPools())
 		})
 	}
+}
+
+func get(c *http.Client, url string) (int, error) {
+	resp, err := c.Get(url)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	_, err = io.Copy(io.Discard, resp.Body)
+	return resp.StatusCode, err
 }
 
 func (t *clientTransport) pool() *http.Transport {

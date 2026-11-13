@@ -36,10 +36,14 @@ import (
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
+	"github.com/radius-project/radius/pkg/authz/dataaccess"
+	"github.com/radius-project/radius/pkg/authz/rpcheck"
+	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	corerp_setup "github.com/radius-project/radius/pkg/corerp/setup"
 	daprrp_setup "github.com/radius-project/radius/pkg/daprrp/setup"
 	dsrp_setup "github.com/radius-project/radius/pkg/datastoresrp/setup"
 	msgrp_setup "github.com/radius-project/radius/pkg/messagingrp/setup"
+	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 )
 
 const serviceName = "radius"
@@ -62,6 +66,11 @@ var rootCmd = &cobra.Command{
 		defer flush()
 
 		authz.LogMode(logger, options.Config.Authorization)
+		authz.SetProcessOptions(options.Config.Authorization)
+		rpcheck.SetSelf("applications-rp")
+		if err := routeWritesThroughUCP(&options.Config.UCP, options.Config.Authorization); err != nil {
+			return err
+		}
 
 		// Must set the logger before using controller-runtime.
 		runtimelog.SetLogger(logger)
@@ -128,4 +137,18 @@ func builders(options hostoptions.HostOptions) ([]builder.Builder, error) {
 		dsrp_setup.SetupNamespace(config).GenerateBuilder(),
 		// Add resource provider builders...
 	}, nil
+}
+
+// routeWritesThroughUCP sends this process's database writes through UCP's
+// data-access endpoint when internal authorization is on (D2, D3).
+func routeWritesThroughUCP(ucp *ucpconfig.UCPOptions, options authz.Options) error {
+	if options.EffectiveMode() == authz.ModeOff || ucp.Kind != ucpconfig.UCPConnectionKindDirect {
+		return nil
+	}
+	conn, err := ucpconfig.NewConnectionFromUCPConfig(ucp, nil, options)
+	if err != nil {
+		return err
+	}
+	databaseprovider.SetProcessWrapper(dataaccess.Wrapper(conn))
+	return nil
 }

@@ -35,6 +35,9 @@ func runPolicyBackend(t *testing.T, newClient func(*testing.T) database.Client) 
 		runPolicyStoreMutationDelayedRecovery(t, newClient(t), largeHistoryMutation())
 	})
 	t.Run("role_races", func(t *testing.T) { runPolicyRoleRaces(t, newClient) })
+	t.Run("deployment", func(t *testing.T) { runDeploymentPolicyContract(t, newClient(t)) })
+	t.Run("deployment_crashes", func(t *testing.T) { runDeploymentPolicyCrashRecovery(t, newClient) })
+	t.Run("deployment_chunked_history_crashes", func(t *testing.T) { runDeploymentPolicyChunkedHistoryRecovery(t, newClient) })
 }
 
 func TestPolicyStoreAPIServer(t *testing.T) {

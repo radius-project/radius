@@ -88,7 +88,11 @@ func (c fakeCertManagerCluster) clients() (kubernetes.Interface, apiextclient.In
 		webhook.Name = "cert-manager-webhook"
 		webhook.Labels["app.kubernetes.io/name"] = "webhook"
 		webhook.Labels["app.kubernetes.io/component"] = "webhook"
-		kubeObjects = append(kubeObjects, webhook)
+		cainjector := certManagerController(c.controller.Namespace, "", "")
+		cainjector.Name = "cert-manager-cainjector"
+		cainjector.Labels["app.kubernetes.io/name"] = "cainjector"
+		cainjector.Labels["app.kubernetes.io/component"] = "cainjector"
+		kubeObjects = append(kubeObjects, webhook, cainjector)
 	}
 	apiextObjects := []runtime.Object{}
 	if c.crd {
@@ -338,8 +342,11 @@ func Test_ensureCertManager(t *testing.T) {
 
 	dryRun := []string{"global.rbac.dryRun=true"}
 	storedDryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}}
+	wantValues := buildCertManagerValues(RadiusSystemNamespace)
+	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Config: wantValues}
 	radOwnedFailed := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusFailed}, Chart: radOwned.Chart}
+	// An older rad installed cert-manager with only the CRD values, so its default approver may approve every Issuer.
+	radOwnedUnconfigured := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: radOwned.Chart, Config: map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}}
 	healthy := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}
 	userOwned := &releasev1.Release{Name: certManagerReleaseName}
 
@@ -363,7 +370,6 @@ func Test_ensureCertManager(t *testing.T) {
 			})
 		m.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil)
 	}
-	wantValues := map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}
 
 	tests := []struct {
 		name         string
@@ -447,6 +453,18 @@ func Test_ensureCertManager(t *testing.T) {
 			cluster: healthy,
 			expect: func(t *testing.T, m *MockHelmClient) {
 				expectGet(radOwned)(m)
+			},
+			wantDetect: true,
+		},
+		{
+			name:    "rad-owned release without approveSignerNames is reconfigured on install",
+			setArgs: dryRun,
+			cluster: healthy,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(radOwnedUnconfigured)(m)
+				expectPull(t, m)
+				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
+					Return(&releasev1.Release{}, nil)
 			},
 			wantDetect: true,
 		},
@@ -583,6 +601,8 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	mockHelmClient := NewMockHelmClient(ctrl)
+	// csi-driver-spiffe is checked, without changing the cluster, before cert-manager.
+	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
 	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(&chart.Chart{}, nil)
 
@@ -591,6 +611,9 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 		newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 			kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController("cert-manager", "v1.18.0", "")}.clients()
 			return kubeClient, apiextClient, nil
+		},
+		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
+			return withValidatingAdmissionPolicyAPI(k8sfake.NewClientset()), nil
 		},
 	}
 
@@ -666,14 +689,14 @@ func Test_ensureCertManager_DetectionFailureDoesNotRepair(t *testing.T) {
 
 func Test_checkCertManagerReady(t *testing.T) {
 	t.Parallel()
-	for _, component := range []string{"controller", "webhook"} {
+	for _, component := range []string{"controller", "webhook", "cainjector"} {
 		for _, failure := range []string{"missing", "scaled down", "unavailable", "stale rollout", "old replicas", "forbidden"} {
 			t.Run(component+"/"+failure, func(t *testing.T) {
 				t.Parallel()
 				k, _ := (fakeCertManagerCluster{controller: certManagerController("security", "v1.21.2", "")}).clients()
 				name := "cert-manager"
-				if component == "webhook" {
-					name += "-webhook"
+				if component != "controller" {
+					name += "-" + component
 				}
 				deployments := k.AppsV1().Deployments("security")
 				deployment, err := deployments.Get(t.Context(), name, metav1.GetOptions{})
@@ -699,9 +722,49 @@ func Test_checkCertManagerReady(t *testing.T) {
 					_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
 					require.NoError(t, err)
 				}
-				require.Error(t, checkCertManagerReady(t.Context(), k, "security"))
+				require.Error(t, checkCertManagerReady(t.Context(), k, "security", RadiusSystemNamespace))
 			})
 		}
+	}
+}
+
+func Test_checkCertManagerReady_CAInjector(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{name: "chart defaults", args: []string{"--v=2", "--leader-election-namespace=kube-system"}},
+		{name: "injection explicitly enabled", args: []string{"--enable-apiservices-injectable=true", "--enable-certificates-data-source"}},
+		{name: "limited to the Radius namespace", args: []string{"--namespace", RadiusSystemNamespace}},
+		{name: "APIService injection disabled", args: []string{"--enable-apiservices-injectable=false"}, wantErr: "sets --enable-apiservices-injectable=false"},
+		// Radius injects from a Secret, not a Certificate.
+		{name: "Certificate data source disabled", args: []string{"--enable-certificates-data-source=false"}},
+		{name: "ignores other namespaces", args: []string{"--ignore-namespaces=kube-system,security"}},
+		{name: "ignores the Radius namespace", args: []string{"--ignore-namespaces", "kube-system," + RadiusSystemNamespace}, wantErr: `ignores namespace "radius-system" by --ignore-namespaces`},
+		{name: "limited to another namespace", args: []string{"--namespace=security"}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "limited to another namespace with a separate value", args: []string{"--namespace", "security"}, wantErr: `is limited to namespace "security" by --namespace`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			k, _ := (fakeCertManagerCluster{controller: certManagerController("security", "v1.21.2", "")}).clients()
+			deployments := k.AppsV1().Deployments("security")
+			deployment, err := deployments.Get(t.Context(), "cert-manager-cainjector", metav1.GetOptions{})
+			require.NoError(t, err)
+			deployment.Spec.Template.Spec.Containers[0].Args = tt.args
+			_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
+			require.NoError(t, err)
+
+			err = checkCertManagerReady(t.Context(), k, "security", RadiusSystemNamespace)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, "cert-manager cainjector Deployment security/cert-manager-cainjector "+tt.wantErr)
+			require.ErrorContains(t, err, "inject the CA certificate in Secret radius-system/radius-apiserver-ca into the Radius APIService")
+		})
 	}
 }
 
@@ -826,6 +889,7 @@ func Test_UninstallCertManager(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			mockHelmClient := NewMockHelmClient(ctrl)
+			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(tt.release, tt.getErr)
 			if tt.wantUninstall {
 				mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), certManagerReleaseName, CertManagerNamespace, true).
@@ -862,11 +926,13 @@ func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testin
 	for _, name := range []string{radiusReleaseName, contourReleaseName} {
 		client.EXPECT().RunHelmUninstall(gomock.Any(), name, RadiusSystemNamespace, true).Return(&release.UninstallReleaseResponse{}, nil)
 	}
+	client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 	client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, errors.New("release storage unavailable"))
 	var logs []string
 	impl := &Impl{
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		newUCPAPIServerTrustClient:  uninstallTrustClient,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))

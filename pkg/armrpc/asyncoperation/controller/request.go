@@ -56,6 +56,11 @@ type Request struct {
 
 	// OperationTimeout represents the timeout duration of async operation.
 	OperationTimeout *time.Duration `json:"asyncOperationTimeout"`
+
+	// AuthzRecordID and AuthzOperationID are the execution record and authorization
+	// operation UCP assigned to this request, when authorization is on.
+	AuthzRecordID    string `json:"authzRecordID,omitempty"`
+	AuthzOperationID string `json:"authzOperationID,omitempty"`
 }
 
 // Timeout gets the operation timeout and returns the default timeout unless it specifies.

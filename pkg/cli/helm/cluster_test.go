@@ -112,6 +112,7 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 	impl := &Impl{
 		Helm:                        mockHelmClient,
 		removeDefaultContourGateway: gatewayCalls.remove,
+		newUCPAPIServerTrustClient:  uninstallTrustClient,
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -132,11 +133,13 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 			Times(1)
 	}
 
-	// cert-manager is removed only when rad installed it; here it is not installed.
-	mockHelmClient.EXPECT().
-		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), certManagerReleaseName).
-		Return(nil, driver.ErrReleaseNotFound).
-		Times(1)
+	// csi-driver-spiffe and cert-manager are removed only when rad installed them; here they are not installed.
+	for _, name := range []string{csiDriverSPIFFEReleaseName, certManagerReleaseName} {
+		mockHelmClient.EXPECT().
+			RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), name).
+			Return(nil, driver.ErrReleaseNotFound).
+			Times(1)
+	}
 
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
@@ -152,6 +155,7 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 	impl := &Impl{
 		Helm:                        mockHelmClient,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		newUCPAPIServerTrustClient:  uninstallTrustClient,
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -175,11 +179,13 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 			Times(1)
 	}
 
-	// cert-manager is removed only when rad installed it; here it is not installed.
-	mockHelmClient.EXPECT().
-		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), certManagerReleaseName).
-		Return(nil, driver.ErrReleaseNotFound).
-		Times(1)
+	// csi-driver-spiffe and cert-manager are removed only when rad installed them; here they are not installed.
+	for _, name := range []string{csiDriverSPIFFEReleaseName, certManagerReleaseName} {
+		mockHelmClient.EXPECT().
+			RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), name).
+			Return(nil, driver.ErrReleaseNotFound).
+			Times(1)
+	}
 
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err) // ErrReleaseNotFound should be swallowed

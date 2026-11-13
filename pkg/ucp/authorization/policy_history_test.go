@@ -34,6 +34,33 @@ func TestPolicyStoreChunkedHistoryDelayedRecovery(t *testing.T) {
 	runPolicyStoreMutationDelayedRecovery(t, inmemory.NewClient(), largeHistoryMutation())
 }
 
+func TestPolicyStoreChunkedHistoryEventReferences(t *testing.T) {
+	for _, suffix := range []string{"", "-0", "-99", "-01", "--1", "-100", "-1junk", "junk", "-0-event"} {
+		t.Run("event"+suffix, func(t *testing.T) {
+			t.Parallel()
+			store := newTestPolicyStore(t, inmemory.NewClient(), true)
+			_, err := store.Mutate(t.Context(), policyActor(), largeHistoryMutation())
+			require.NoError(t, err)
+			event, err := store.AccessChange(t.Context(), 1)
+			require.NoError(t, err)
+			id := policyObjectID + uuid.NewString() + "-event" + suffix
+			require.NoError(t, store.prepareHistory(t.Context(), id, *event))
+			actual, record, err := store.readHistory(t.Context(), id)
+			if suffix != "" && suffix != "-0" && suffix != "-99" {
+				require.ErrorContains(t, err, "invalid access history chunk prefix")
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, event, actual)
+			_, err = store.Mutate(t.Context(), policyActor(), readerMutation())
+			require.NoError(t, err)
+			require.NoError(t, store.save(t.Context(), historyPrefix+"2", record))
+			_, err = store.AccessChange(t.Context(), 2)
+			require.ErrorContains(t, err, "access history generation mismatch")
+		})
+	}
+}
+
 func TestPolicyStoreChunkedHistoryIntegrity(t *testing.T) {
 	for _, stage := range []string{"pending", "published"} {
 		for _, scenario := range []string{"missing chunk", "duplicate", "foreign prefix", "invalid intent", "out of order", "empty", "oversize", "short chunk", "invalid JSON", "valid JSON corruption", "wrong generation", "too many", "wrong size", "wrong digest"} {
