@@ -44,6 +44,7 @@ var nativeGapTypes = []string{
 	"AWS::ElasticLoadBalancingV2::ListenerCertificate",
 	"AWS::FSx::FileSystem",
 	"AWS::IAM::AccessKey",
+	"AWS::IAM::UserToGroupAddition",
 	"AWS::KinesisAnalyticsV2::ApplicationCloudWatchLoggingOption",
 	"AWS::KinesisAnalyticsV2::ApplicationOutput",
 	"AWS::KinesisAnalyticsV2::ApplicationReferenceDataSource",
@@ -116,7 +117,7 @@ func requireClassified(t *testing.T) {
 		counts[classes[0]]++
 	}
 	require.Equal(t, len(ReadOnlyTypes()), counts["read-only"])
-	require.Equal(t, 7, counts["legacy"])
+	require.Equal(t, 6, counts["legacy"])
 	require.Equal(t, 89, counts["deprecated"])
 	require.Equal(t, len(nativeGapTypes), counts["native gap"])
 }
@@ -140,7 +141,7 @@ func Test_UnsupportedTypesCannotBeUsedThroughCloudControl(t *testing.T) {
 			}
 		}
 	})
-	require.Len(t, unsupported, 96)
+	require.Len(t, unsupported, 95)
 	for _, typeName := range unsupported {
 		handlers, ok := snapshot[typeName]
 		require.True(t, ok, "%s is not NON_PROVISIONABLE", typeName)

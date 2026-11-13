@@ -1,0 +1,40 @@
+{
+  "typeName": "AWS::IAM::UserToGroupAddition",
+  "description": "Resource Type definition for AWS::IAM::UserToGroupAddition",
+  "additionalProperties": false,
+  "properties": {
+    "Id": {
+      "type": "string",
+      "description": "GroupName and a name Radius generates, joined with \"|\". The resource is the users in Users, so other members of the group stay as they are."
+    },
+    "GroupName": {
+      "type": "string"
+    },
+    "Users": {
+      "type": "array",
+      "uniqueItems": false,
+      "insertionOrder": false,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["GroupName", "Users"],
+  "createOnlyProperties": ["/properties/GroupName"],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": ["iam:AddUserToGroup"]
+    },
+    "read": {
+      "permissions": ["iam:GetGroup"]
+    },
+    "update": {
+      "permissions": ["iam:AddUserToGroup", "iam:RemoveUserFromGroup"]
+    },
+    "delete": {
+      "permissions": ["iam:GetGroup", "iam:RemoveUserFromGroup"]
+    }
+  }
+}

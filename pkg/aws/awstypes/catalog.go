@@ -43,7 +43,6 @@ var legacyTypes = map[string]string{
 	"AWS::AmazonMQ::ConfigurationAssociation": "the Configuration property of AWS::AmazonMQ::Broker",
 	"AWS::Elasticsearch::Domain":              "AWS::OpenSearchService::Domain",
 	"AWS::IAM::Policy":                        "AWS::IAM::ManagedPolicy, or AWS::IAM::RolePolicy, AWS::IAM::UserPolicy, or AWS::IAM::GroupPolicy for an inline policy",
-	"AWS::IAM::UserToGroupAddition":           "the Groups property of AWS::IAM::User",
 	"AWS::Route53::RecordSetGroup":            "AWS::Route53::RecordSet",
 	"AWS::SNS::TopicPolicy":                   "AWS::SNS::TopicInlinePolicy",
 	"AWS::SQS::QueuePolicy":                   "AWS::SQS::QueueInlinePolicy",

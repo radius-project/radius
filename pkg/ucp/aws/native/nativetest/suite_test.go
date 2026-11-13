@@ -17,9 +17,11 @@ limitations under the License.
 package nativetest
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -251,6 +253,96 @@ func Test_Suite_DeleteToken(t *testing.T) {
 	t.Run("one copy for a retried delete", func(t *testing.T) {
 		suite.deleteTokenRetry(t)
 		require.Equal(t, 1, handler.Copies())
+	})
+}
+
+// Test_Suite_Scoped runs the suite for a type whose resource is some members of a parent, like users a template adds
+// to an IAM group. Members added outside Radius stay through a take-over, an update, and a delete, and an update that
+// fails while it removes members keeps every member it may still have to remove.
+func Test_Suite_Scoped(t *testing.T) {
+	scopedSuite(t, func(h *nativefake.Handler) native.Handler { return h.Scoped("Users") })
+}
+
+// scopedTokens is a handler whose resource is some members of a parent and that also sends a delete token, which a
+// delete of the members must not use in place of DeleteScoped.
+type scopedTokens struct {
+	scopedHandler
+	tokens native.DeletePreparer
+}
+
+type scopedHandler interface {
+	native.Handler
+	native.ScopedReader
+	native.ScopedDeleter
+}
+
+func (s scopedTokens) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
+	return s.tokens.DeleteToken(ctx, region, identifier)
+}
+
+// FailOn fails a call of the scoped handler, as nativefake.Handler.FailOn does.
+func (s scopedTokens) FailOn(call int, err error) {
+	s.scopedHandler.(interface{ FailOn(int, error) }).FailOn(call, err)
+}
+
+func (s scopedTokens) DeleteWithToken(ctx context.Context, region string, identifier string, token string) error {
+	return s.tokens.DeleteWithToken(ctx, region, identifier, token)
+}
+
+// Test_Suite_ScopedWithDeleteToken runs the suite for a type whose resource is some members of a parent and whose
+// handler also sends a delete token. Every delete removes only the members the alias manages.
+func Test_Suite_ScopedWithDeleteToken(t *testing.T) {
+	scopedSuite(t, func(h *nativefake.Handler) native.Handler {
+		return scopedTokens{scopedHandler: h.Scoped("Users").(scopedHandler), tokens: h.DeleteTokens().(native.DeletePreparer)}
+	})
+}
+
+func scopedSuite(t *testing.T, wrap func(h *nativefake.Handler) native.Handler) {
+	const typeName = "AWS::Test::Membership"
+	group := func(users ...string) map[string]any {
+		list := []any{}
+		for _, u := range users {
+			list = append(list, u)
+		}
+		return map[string]any{"Group": "admins", "Users": list}
+	}
+	Run(t, Suite{
+		TypeName: typeName,
+		Schema: `{
+			"typeName": "AWS::Test::Membership",
+			"primaryIdentifier": ["/properties/Group"],
+			"createOnlyProperties": ["/properties/Group"]
+		}`,
+		NewHandler: func(store *awsfake.CloudControl) native.Handler {
+			h := nativefake.New(typeName, store)
+			h.Opts.Recovery = native.RecoverByResend
+			h.CreateOnly = []string{"Group"}
+			return wrap(h)
+		},
+		IdentifierProperty: "Group",
+		Properties:         group("ana", "bo"),
+		Identifier:         "admins",
+		Changed:            group("bo", "cy"),
+		CreateOnlyChange:   map[string]any{"Group": "readers", "Users": []any{"ana", "bo"}},
+		MultiCall:          group("bo", "cy", "di"),
+		Calls:              3,
+		RejectedCalls:      1,
+		FailCall: func(handler native.Handler, call int, err error) {
+			handler.(interface{ FailOn(int, error) }).FailOn(call, err)
+		},
+		Outside: func(store *awsfake.CloudControl, properties map[string]any) func() bool {
+			id := fmt.Sprint(properties["Group"])
+			current := store.Resource(typeName, id)
+			if current == nil {
+				current = map[string]any{"Group": id, "Users": []any{}}
+			}
+			current["Users"] = append(current["Users"].([]any), "outsider")
+			store.Put(typeName, id, current)
+			return func() bool {
+				props := store.Resource(typeName, id)
+				return props != nil && slices.Contains(props["Users"].([]any), any("outsider"))
+			}
+		},
 	})
 }
 
