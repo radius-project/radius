@@ -1,0 +1,137 @@
+suite: test shared external token transport wiring
+templates:
+  - ucp/deployment.yaml
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - controller/deployment.yaml
+  - controller/configmaps.yaml
+  - rp/configmaps.yaml
+  - dynamic-rp/configmaps.yaml
+  - ucp/apiservice.yaml
+  - global/spiffe-rbac.yaml
+release:
+  name: radius
+  namespace: radius-test
+tests:
+  - it: omits component CSI and CA from every external caller and receiver
+    templates:
+      - ucp/deployment.yaml
+      - rp/deployment.yaml
+      - dynamic-rp/deployment.yaml
+      - controller/deployment.yaml
+    set:
+      global.rbac.enabled: true
+      global.rbac.tls.provider: external
+    asserts: &noTLS
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: spiffe
+          any: true
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: radius-ca
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: token-ucp
+            mountPath: /var/run/radius/tokens/ucp
+            readOnly: true
+        template: controller/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: cert
+            secret:
+              secretName: ucp-apiserver-tls
+        template: ucp/deployment.yaml
+
+  - it: omits component TLS but retains receiver tokens in external dryRun
+    templates:
+      - ucp/deployment.yaml
+      - rp/deployment.yaml
+      - dynamic-rp/deployment.yaml
+      - controller/deployment.yaml
+    set:
+      global.rbac.dryRun: true
+      global.rbac.tls.provider: external
+    asserts: *noTLS
+
+  - it: preserves independent aggregation TLS without granting component CSI permissions
+    set:
+      global.rbac.enabled: true
+      global.rbac.tls.provider: external
+    asserts: &aggregationTLS
+      - hasDocuments:
+          count: 0
+        template: global/spiffe-rbac.yaml
+      - isKind:
+          of: Certificate
+        template: ucp/apiservice.yaml
+        documentIndex: 0
+      - equal:
+          path: spec.secretName
+          value: ucp-apiserver-tls
+        template: ucp/apiservice.yaml
+        documentIndex: 0
+      - equal:
+          path: spec.issuerRef.name
+          value: radius-apiserver-issuer
+        template: ucp/apiservice.yaml
+        documentIndex: 0
+      - equal:
+          path: spec.dnsNames
+          value: [ucp.radius-test.svc]
+        template: ucp/apiservice.yaml
+        documentIndex: 0
+      - isKind:
+          of: APIService
+        template: ucp/apiservice.yaml
+        documentIndex: 1
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: radius-test/radius-apiserver-ca
+        template: ucp/apiservice.yaml
+        documentIndex: 1
+
+  - it: also retains aggregation TLS in external dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rbac.tls.provider: external
+    asserts: *aggregationTLS
+
+  - it: configures every UCP client with the external HTTP endpoint and provider
+    templates:
+      - controller/configmaps.yaml
+      - rp/configmaps.yaml
+      - dynamic-rp/configmaps.yaml
+    set:
+      global.rbac.enabled: true
+      global.rbac.tls.provider: external
+    asserts:
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: 'endpoint: "http://ucp.radius-test.svc:9444/apis/api.ucp.dev/v1alpha3"'
+        template: controller/configmaps.yaml
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: 'tlsProvider: "external"'
+        template: controller/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'endpoint: "http://ucp.radius-test.svc:9444/apis/api.ucp.dev/v1alpha3"'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'tlsProvider: "external"'
+        template: rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'endpoint: "http://ucp.radius-test.svc:9444/apis/api.ucp.dev/v1alpha3"'
+        template: dynamic-rp/configmaps.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: 'tlsProvider: "external"'
+        template: dynamic-rp/configmaps.yaml

@@ -61,7 +61,7 @@ tests:
         template: controller/deployment.yaml
       - matchRegex:
           path: data["controller-config.yaml"]
-          pattern: '(?m)^authorization:\n  mode: "\w+"\n  certificateDirectory: "/var/run/radius/spiffe"\n  caDirectory: "/var/run/radius/ca"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
+          pattern: '(?m)^authorization:\n  mode: "\w+"\n  tlsProvider: "radius"\n  certificateDirectory: "/var/run/radius/spiffe"\n  caDirectory: "/var/run/radius/ca"\n  tokenDirectory: "/var/run/radius/tokens"\n  trustDomain: "radius.internal"\n  namespace: "radius-system"$'
         template: controller/configmaps.yaml
       - matchRegex:
           path: data["controller-config.yaml"]

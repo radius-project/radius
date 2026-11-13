@@ -17,8 +17,10 @@ limitations under the License.
 package ucp
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/authz/mtls"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
@@ -33,7 +35,14 @@ var authenticatedDownstreams = []string{"applications-rp", "dynamic-rp"}
 // projected ServiceAccount token for that provider, even when the registered location is
 // an http URL. Other downstreams are unchanged.
 func NewDownstreamTransport(config *Config) (http.RoundTripper, error) {
-	transport, err := mtls.NewUpgradeTransport(config.Authorization, http.DefaultTransport, authenticatedDownstreams)
+	components := append([]string(nil), authenticatedDownstreams...)
+	if config.Routing.AuthenticateDeploymentEngine {
+		if config.Authorization.EffectiveMode() == authz.ModeOff {
+			return nil, errors.New("routing.authenticateDeploymentEngine requires a non-off authorization mode")
+		}
+		components = append(components, "bicep-de")
+	}
+	transport, err := mtls.NewUpgradeTransport(config.Authorization, http.DefaultTransport, components)
 	if err != nil {
 		return nil, err
 	}

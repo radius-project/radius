@@ -74,7 +74,17 @@ func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config, auth
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse endpoint %q: %w", option.Direct.Endpoint, err)
 		}
-		if endpoint.Scheme != "https" {
+		if err := authorization.ValidateTLSProvider(); err != nil {
+			return nil, err
+		}
+		scheme := "https"
+		if authorization.EffectiveTLSProvider() == authz.TLSProviderExternal {
+			scheme = "http"
+		}
+		if endpoint.Scheme != scheme {
+			if scheme == "http" {
+				return nil, errors.New("the property .ucp.direct.endpoint must use http with the external TLS provider")
+			}
 			return nil, fmt.Errorf("the property .ucp.direct.endpoint must use https when the authorization mode is %q", authorization.EffectiveMode())
 		}
 		transport, err := mtls.NewClientTransport(authorization, "ucp")
