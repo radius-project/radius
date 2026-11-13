@@ -20,8 +20,6 @@ package helm
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -29,17 +27,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -47,7 +43,7 @@ import (
 )
 
 func TestIdentityOperationNativeCAEntry(t *testing.T) {
-	s, config, state := newPlannedRotationTest(t)
+	s, config, _ := newPlannedRotationTest(t)
 	ctx := t.Context()
 	path := filepath.Join(t.TempDir(), "kubeconfig")
 	require.NoError(t, clientcmd.WriteToFile(clientcmdapi.Config{
@@ -56,12 +52,14 @@ func TestIdentityOperationNativeCAEntry(t *testing.T) {
 		Contexts:  map[string]*clientcmdapi.Context{"test": {Cluster: "test", AuthInfo: "test"}}, CurrentContext: "test",
 	}, path))
 	t.Setenv("KUBECONFIG", path)
+	selected, err := loader.Load("../../../deploy/Chart")
+	require.NoError(t, err)
 	release := &releasev1.Release{Name: s.release, Namespace: s.namespace,
-		Chart: &chart.Chart{Metadata: &chart.Metadata{Annotations: map[string]string{"radius.io/ca-rotation-protocol": "1"}},
-			Values: map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}},
-		Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
+		Chart:  selected,
+		Config: map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}},
+		Info:   &releasev1.Info{Status: releasecommon.StatusDeployed}}
 	client := NewMockHelmClient(gomock.NewController(t))
-	client.EXPECT().RunHelmGet(gomock.Any(), s.release).Return(release, nil).Times(6)
+	client.EXPECT().RunHelmGet(gomock.Any(), s.release).Return(release, nil).Times(2)
 	impl := &Impl{Helm: client}
 	options := NewDefaultClusterOptions()
 	options.Certificates.RotationPhase = string(rotationPublish)
@@ -71,62 +69,17 @@ func TestIdentityOperationNativeCAEntry(t *testing.T) {
 		Spec:       coordinationv1.LeaseSpec{HolderIdentity: ptr.To("another-invocation")},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
-	require.ErrorContains(t, impl.runCertificateRotation(ctx, options, "test", false), "cannot acquire identity operation")
-	require.ErrorContains(t, impl.runCertificateRotation(ctx, options, "test", true), "planned CA signing Secret")
-	unchanged, err := leases.Get(ctx, held.Name, metav1.GetOptions{})
-	require.NoError(t, err)
-	require.Equal(t, held, unchanged, "read-only preflight must not acquire or release a Lease")
-	require.NoError(t, leases.Delete(ctx, held.Name, metav1.DeleteOptions{}))
-	// The fixture deliberately has no signer: a handled phase failure must
-	// release the lease without changing the persistent transaction.
 	journal, _, err := s.read(ctx)
 	require.NoError(t, err)
-	require.ErrorContains(t, impl.runCertificateRotation(ctx, options, "test", false), "planned CA signing Secret")
-	_, err = leases.Get(ctx, held.Name, metav1.GetOptions{})
-	require.True(t, apierrors.IsNotFound(err))
-	_, err = s.kube.CoreV1().ConfigMaps(s.namespace).Create(ctx, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: identityProviderJournal, Namespace: s.namespace,
-			Labels: map[string]string{identityProviderMarker: s.release}},
-		Data: map[string]string{identityProviderStateKey: `{"version":1,"plan":{},"phase":"starting"}`},
-	}, metav1.CreateOptions{})
+	for _, readOnly := range []bool{false, true} {
+		require.ErrorContains(t, impl.runCertificateRotation(ctx, options, "test", readOnly), "legacy or unsupported CA journal")
+	}
+	unchanged, err := leases.Get(ctx, held.Name, metav1.GetOptions{})
 	require.NoError(t, err)
-	require.ErrorContains(t, impl.runCertificateRotation(ctx, options, "test", false), "finish the provider transition")
-	_, err = leases.Get(ctx, held.Name, metav1.GetOptions{})
-	require.True(t, apierrors.IsNotFound(err))
+	require.Equal(t, held, unchanged, "unsupported recovery must not acquire or release a Lease")
 	retained, _, err := s.read(ctx)
 	require.NoError(t, err)
 	require.Equal(t, journal, retained)
-	require.NoError(t, s.kube.CoreV1().ConfigMaps(s.namespace).Delete(ctx, identityProviderJournal, metav1.DeleteOptions{}))
-	target, key, _ := testSigningCA(t, nil, nil, nil, nil)
-	signing, err := s.kube.CoreV1().Secrets(s.namespace).Create(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: state.Plan.SigningSecret, Namespace: s.namespace},
-		Type:       corev1.SecretTypeTLS, Data: map[string][]byte{"tls.crt": target, "tls.key": key},
-	}, metav1.CreateOptions{})
-	require.NoError(t, err)
-	digest, _, err := mtls.TrustBundleDigest(target, time.Now())
-	require.NoError(t, err)
-	state.NewCA, state.Plan.SigningUID = target, signing.UID
-	state.Plan.TargetTrustSHA256, state.Plan.TargetTrustMap = digest, "radius-mtls-ca-"+digest[:32]
-	data, err := json.Marshal(state)
-	require.NoError(t, err)
-	retained.Data[rotationJournalKey] = string(data)
-	_, err = s.kube.CoreV1().ConfigMaps(s.namespace).Update(ctx, retained, metav1.UpdateOptions{})
-	require.NoError(t, err)
-	api, err := s.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
-	require.NoError(t, err)
-	require.NoError(t, unstructured.SetNestedField(api.Object, base64.StdEncoding.EncodeToString(state.OldCA), "spec", "caBundle"))
-	_, err = s.dynamic.Resource(apiServiceResource).Update(ctx, api, metav1.UpdateOptions{})
-	require.NoError(t, err)
-	require.NoError(t, impl.runCertificateRotation(ctx, options, "test", false))
-	published, phase, err := s.read(ctx)
-	require.NoError(t, err)
-	require.Equal(t, rotationAdopt, phase.Phase)
-	require.NoError(t, impl.runCertificateRotation(ctx, options, "test", true))
-	afterPreflight, _, err := s.read(ctx)
-	require.NoError(t, err)
-	require.Equal(t, published, afterPreflight)
-	_, err = leases.Get(ctx, held.Name, metav1.GetOptions{})
-	require.True(t, apierrors.IsNotFound(err))
 }
 
 func TestIdentityOperationNativeCAWriterIntegration(t *testing.T) {

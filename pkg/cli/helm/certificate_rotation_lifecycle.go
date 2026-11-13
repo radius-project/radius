@@ -88,10 +88,8 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 		api.GetAnnotations()[rotationJournalUID] != string(journal.UID)) {
 		return errors.New("completed CA rotation belongs to a missing or replaced APIService; do not adopt it into a new installation")
 	}
-	for name, plane := range state.Planes {
-		if err := store.checkLifecycleProjection(ctx, journal, state, name, plane); err != nil {
-			return err
-		}
+	if err := store.checkCertificateLifecycleRecovery(ctx, journal); err != nil {
+		return err
 	}
 	if operation == "rollback" {
 		return errors.New("rollback is disabled after managed CA rotation: deploy a guarded forward upgrade that preserves current trust instead")

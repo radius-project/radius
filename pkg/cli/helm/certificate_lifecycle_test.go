@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,20 +40,35 @@ func lifecycleFixture(t *testing.T) (certificateLifecycle, *corev1.ConfigMap) {
 		CreatedAt: time.Now().Add(-time.Minute), APIServiceUID: types.UID(uuid.NewString()),
 		Planes: map[string]certificateLifecyclePlane{}}
 	for _, name := range []string{"internal", "aggregation"} {
-		old, _, _ := testSigningCA(t, nil, nil, nil, nil)
+		old, _, oldCertificate := testSigningCA(t, nil, nil, nil, nil)
 		next, _, nextCertificate := testSigningCA(t, nil, nil, nil, nil)
 		bundle := append(bytes.Clone(old), next...)
 		kind, source := "ConfigMap", "radius-mtls-ca"
 		if name == "aggregation" {
 			kind, source = "Secret", "radius-apiserver-trust"
 		}
-		state.Planes[name] = certificateLifecyclePlane{Affected: true, OldCA: old, NewCA: next,
+		plane := certificateLifecyclePlane{Affected: true, OldCA: old, NewCA: next,
 			Issuer: certificateIssuerReference{Group: "cert-manager.io", Kind: "Issuer", Name: "target-" + name},
 			Signer: &certificateObjectPin{Name: "target-" + name, UID: types.UID(uuid.NewString()),
 				ResourceVersion: "1", SHA256: fmt.Sprintf("%x", sha256.Sum256(nextCertificate.Raw))},
 			Source: certificateTrustProjection{Kind: kind, Bundle: bundle,
 				certificateObjectPin: certificateObjectPin{Name: source, UID: types.UID(uuid.NewString()),
 					ResourceVersion: "2", SHA256: fmt.Sprintf("%x", sha256.Sum256(bundle))}}}
+		plane.TargetIssuer = certificateIssuerSnapshot{Reference: plane.Issuer, Namespace: state.Namespace,
+			UID: types.UID(uuid.NewString()), ResourceVersion: "1", SpecSHA256: strings.Repeat("a", 64),
+			SigningSecret: plane.Signer.Name}
+		previousSource := plane.Source
+		previousSource.Bundle, previousSource.ResourceVersion = old, "1"
+		previousSource.SHA256 = fmt.Sprintf("%x", sha256.Sum256(old))
+		plane.Previous = &certificatePlaneSnapshot{Mode: "selfSigned",
+			Issuer: certificateIssuerSnapshot{
+				Reference: certificateIssuerReference{Group: "cert-manager.io", Kind: "Issuer", Name: "old-" + name},
+				Namespace: state.Namespace, UID: types.UID(uuid.NewString()), ResourceVersion: "1",
+				SpecSHA256: strings.Repeat("b", 64), SigningSecret: "old-" + name},
+			Signer: &certificateObjectPin{Name: "old-" + name, UID: types.UID(uuid.NewString()),
+				ResourceVersion: "1", SHA256: fmt.Sprintf("%x", sha256.Sum256(oldCertificate.Raw))},
+			Source: previousSource}
+		state.Planes[name] = plane
 	}
 	journal := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rotationJournalName,
 		Namespace: RadiusSystemNamespace, UID: types.UID(uuid.NewString()), ResourceVersion: "3",
@@ -71,6 +87,8 @@ func TestCertificateLifecycleIndependentPlanes(t *testing.T) {
 	require.NoError(t, err)
 	aggregate.Signer.SHA256 = fmt.Sprintf("%x", sha256.Sum256(anchors[0].Raw))
 	aggregate.Source.SHA256 = fmt.Sprintf("%x", sha256.Sum256(aggregate.OldCA))
+	aggregate.Issuer, aggregate.TargetIssuer = aggregate.Previous.Issuer.Reference, aggregate.Previous.Issuer
+	aggregate.Signer = aggregate.Previous.Signer
 	state.Planes["aggregation"] = aggregate
 	state.APIServiceUID = ""
 	require.NoError(t, state.validate(time.Now()), "internal-only rotation does not require or alter APIService identity")

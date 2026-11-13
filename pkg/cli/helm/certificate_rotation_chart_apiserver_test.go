@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -89,9 +90,15 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 		t.Skip("Set KUBEBUILDER_ASSETS for isolated lifecycle projection tests.")
 	}
 	kubeconfig, kube := startTestAPIServer(t)
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	require.NoError(t, err)
+	client, err := dynamic.NewForConfig(config)
+	require.NoError(t, err)
+	store := &rotationStore{kube: kube, dynamic: client, namespace: RadiusSystemNamespace, release: radiusReleaseName, now: time.Now}
+	installRotationTestCRDs(t, store)
 	state, journal := lifecycleFixture(t)
 	state.Phase = rotationComplete
-	_, err := kube.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{
+	_, err = kube.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{Name: state.Namespace},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -105,6 +112,14 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 		if name == "aggregation" {
 			plane.Issuer.Name = RadiusAPIServerIssuerName
 		}
+		_, err = client.Resource(rotationIssuerResource).Namespace(state.Namespace).Create(t.Context(), &unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "cert-manager.io/v1", "kind": "Issuer",
+			"metadata": map[string]any{"name": plane.Issuer.Name, "namespace": state.Namespace},
+			"spec":     map[string]any{"ca": map[string]any{"secretName": plane.Signer.Name}},
+		}}, metav1.CreateOptions{})
+		require.NoError(t, err)
+		plane.TargetIssuer, err = store.snapshotCertificateIssuer(t.Context(), plane.Issuer)
+		require.NoError(t, err)
 		metadata := metav1.ObjectMeta{Name: plane.Source.Name, Namespace: state.Namespace,
 			Labels: map[string]string{helmManagedByLabel: helmManagedByValue},
 			Annotations: map[string]string{helmReleaseNameAnnotation: state.Release, helmReleaseNamespaceAnnotation: state.Namespace,
@@ -123,6 +138,7 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 			require.NoError(t, createErr)
 			plane.Source.UID, plane.Source.ResourceVersion = source.UID, source.ResourceVersion
 		}
+		plane.Previous.Source.UID = plane.Source.UID
 		state.Planes[name] = plane
 	}
 	require.NoError(t, state.validate(time.Now()))
@@ -134,8 +150,6 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 		require.NoError(t, err)
 	}
 	writeJournal(state)
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	require.NoError(t, err)
 	selected, err := loader.Load("../../../deploy/Chart")
 	require.NoError(t, err)
 	templates := selected.Templates[:0]
@@ -166,6 +180,11 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 				source, err = kube.CoreV1().Secrets(state.Namespace).Update(t.Context(), source, metav1.UpdateOptions{})
 				require.NoError(t, err)
 				require.NotEqual(t, state.Planes["aggregation"].Source.ResourceVersion, source.ResourceVersion)
+				issuer, readErr := client.Resource(rotationIssuerResource).Namespace(state.Namespace).Get(t.Context(), RadiusAPIServerIssuerName, metav1.GetOptions{})
+				require.NoError(t, readErr)
+				issuer.SetAnnotations(map[string]string{"unrelated": "metadata"})
+				_, err = client.Resource(rotationIssuerResource).Namespace(state.Namespace).Update(t.Context(), issuer, metav1.UpdateOptions{})
+				require.NoError(t, err)
 			}
 			snapshot, renderErr := render()
 			require.NoError(t, renderErr)
@@ -176,7 +195,7 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 			require.Equal(t, source.ResourceVersion, snapshot["aggregation"]["resourceVersion"])
 		})
 	}
-	for _, scenario := range []string{"legacy", "active", "replaced", "changed content", "staged issuer", "retained overlap"} {
+	for _, scenario := range []string{"legacy", "active", "replaced", "changed content", "staged issuer", "issuer replaced", "issuer configuration", "retained overlap"} {
 		t.Run(scenario, func(t *testing.T) {
 			bad := state
 			bad.Planes = make(map[string]certificateLifecyclePlane, len(state.Planes))
@@ -195,6 +214,11 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 				plane.Source.SHA256 = strings.Repeat("0", 64)
 			case "staged issuer":
 				plane.Issuer.Name = "distinct-staged-issuer"
+				plane.TargetIssuer.Reference = plane.Issuer
+			case "issuer replaced":
+				plane.TargetIssuer.UID = "replaced"
+			case "issuer configuration":
+				plane.TargetIssuer.SpecSHA256 = strings.Repeat("0", 64)
 			case "retained overlap":
 				plane.NewCA = append(append([]byte{}, plane.OldCA...), plane.NewCA...)
 			}

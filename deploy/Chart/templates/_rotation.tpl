@@ -77,6 +77,34 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
 {{- if or (ne $issuer.group "cert-manager.io") (not (has $issuer.kind (list "Issuer" "ClusterIssuer"))) (empty $issuer.name) -}}
 {{- fail "CA lifecycle issuer reference is invalid." -}}
 {{- end -}}
+{{- $before := $record.previous | default dict -}}
+{{- $target := $record.targetIssuer | default dict -}}
+{{- if or (empty $before) (empty $target.uid) (empty $target.resourceVersion)
+  (ne (toJson $target.reference) (toJson $record.issuer))
+  (ne $before.source.kind $pin.kind) (ne $before.source.name $pin.name) (ne $before.source.uid $pin.uid)
+  (empty $before.source.resourceVersion) (empty $before.source.bundle)
+  (ne (sha256sum (b64dec $before.source.bundle)) $before.source.sha256)
+  (not (has $before.mode (list "selfSigned" "caSecret" "issuerRef"))) -}}
+{{- fail "CA lifecycle requires complete previous and target configuration snapshots." -}}
+{{- end -}}
+{{- if and $record.affected (eq $state.mode "issuerRef") (eq (toJson $before.issuer.reference) (toJson $target.reference)) -}}
+{{- fail "IssuerRef replacement requires a distinct staged issuer, not same-name out-of-band replacement." -}}
+{{- end -}}
+{{- $issuerNamespace := $.Release.Namespace -}}
+{{- if eq $issuer.kind "ClusterIssuer" -}}{{- $issuerNamespace = "" -}}{{- end -}}
+{{- $liveIssuer := lookup "cert-manager.io/v1" $issuer.kind $issuerNamespace $issuer.name -}}
+{{- if or (not $liveIssuer) (ne $target.namespace $issuerNamespace)
+  (ne (dig "metadata" "uid" "" $liveIssuer) $target.uid)
+  (empty (dig "metadata" "resourceVersion" "" $liveIssuer))
+  (dig "metadata" "deletionTimestamp" "" $liveIssuer)
+  (empty $liveIssuer.spec) (ne (sha256sum (toJson $liveIssuer.spec)) $target.specSHA256) -}}
+{{- fail "CA lifecycle target issuer identity or configuration changed." -}}
+{{- end -}}
+{{- if and (ne $state.mode "issuerRef")
+  (or (empty $record.signer) (ne $target.signingSecret $record.signer.name)
+      (ne (dig "spec" "ca" "secretName" "" $liveIssuer) $record.signer.name)) -}}
+{{- fail "CA lifecycle target issuer no longer selects its pinned signing Secret." -}}
+{{- end -}}
 {{- $expected := dict "group" "cert-manager.io" "kind" "Issuer" "name" "radius-ca-issuer" -}}
 {{- if eq $plane "aggregation" -}}{{- $_ := set $expected "name" "radius-apiserver-issuer" -}}{{- end -}}
 {{- if eq $state.mode "issuerRef" -}}{{- $expected = $.Values.global.rbac.certificates.issuerRef -}}{{- end -}}

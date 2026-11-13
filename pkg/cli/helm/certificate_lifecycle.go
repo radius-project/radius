@@ -31,7 +31,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/authz/mtls"
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -57,12 +59,14 @@ type certificateLifecycle struct {
 }
 
 type certificateLifecyclePlane struct {
-	Affected bool                       `json:"affected"`
-	OldCA    []byte                     `json:"oldCA"`
-	NewCA    []byte                     `json:"newCA"`
-	Issuer   certificateIssuerReference `json:"issuer"`
-	Signer   *certificateObjectPin      `json:"signer,omitempty"`
-	Source   certificateTrustProjection `json:"source"`
+	Affected     bool                       `json:"affected"`
+	OldCA        []byte                     `json:"oldCA"`
+	NewCA        []byte                     `json:"newCA"`
+	Issuer       certificateIssuerReference `json:"issuer"`
+	Signer       *certificateObjectPin      `json:"signer,omitempty"`
+	Source       certificateTrustProjection `json:"source"`
+	Previous     *certificatePlaneSnapshot  `json:"previous"`
+	TargetIssuer certificateIssuerSnapshot  `json:"targetIssuer"`
 }
 
 type certificateObjectPin struct {
@@ -163,6 +167,9 @@ func (state certificateLifecycle) validate(now time.Time) error {
 			return errors.New("aggregation change requires a pinned APIService")
 		}
 		if err := plane.validate(name, state.Phase, now); err != nil {
+			return err
+		}
+		if err := plane.validateSnapshots(state.Namespace, state.Mode); err != nil {
 			return err
 		}
 		if state.Mode == "issuerRef" && plane.Signer != nil ||
@@ -325,6 +332,30 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 		return errors.New("--rotate-ca only replaces Radius-owned selfSigned CAs; select a distinct staged BYO signer instead")
 	}
 	if _, err := certificateRotationPlanes(target.Provider, ""); err != nil {
+		return err
+	}
+	store, err := i.rotationStoreForContext(kubeContext, options.Radius.Namespace)
+	if err != nil {
+		return err
+	}
+	journal, err := store.kube.CoreV1().ConfigMaps(store.namespace).Get(ctx, rotationJournalName, metav1.GetOptions{})
+	if err == nil {
+		if err := store.checkCertificateLifecycleRecovery(ctx, journal); err != nil {
+			return err
+		}
+	} else if apierrors.IsNotFound(err) {
+		baselineValues, err := valuesutil.CoalesceValues(release.Chart, copyValues(release.Config))
+		if err != nil {
+			return err
+		}
+		baseline, err := certificateProfilePlan(release.Chart, baselineValues, store.namespace)
+		if err != nil {
+			return err
+		}
+		if _, err := store.snapshotCertificateInstallation(ctx, baseline); err != nil {
+			return fmt.Errorf("cannot snapshot the installed certificate configuration: %w", err)
+		}
+	} else {
 		return err
 	}
 	// No Lease, imported Secret, journal or source write is permitted before a
