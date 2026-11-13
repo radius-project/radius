@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -66,6 +67,7 @@ type fakeAPI struct {
 	actions   map[string][]types.AdministrativeAction
 	creates   map[string]request
 	deletes   map[string]request // by token
+	updates   map[string]request // by token
 	backups   []backup
 
 	// tokens maps a file system to the value of its operation tag, which the store leaves out, as Read does.
@@ -106,6 +108,7 @@ func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
 		actions:       map[string][]types.AdministrativeAction{},
 		creates:       map[string]request{},
 		deletes:       map[string]request{},
+		updates:       map[string]request{},
 		tokens:        map[string]string{},
 		undo:          map[string]map[string]any{},
 		options:       map[string]string{},
@@ -371,16 +374,42 @@ func copyProps(props map[string]any) map[string]any {
 	return out
 }
 
+// tokenPattern is the rule for an idempotency token of UpdateFileSystem: 1 to 63 letters, digits, and _.- characters.
+var tokenPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,63}$`)
+
+// UpdateFileSystem applies an update. A token FSx has seen with the same parameters is the same request: FSx returns
+// the first response and changes nothing again. With other parameters, it fails. The SDK fills in a new token when
+// the call leaves it out, so an update without one is always a new request.
 func (f *fakeAPI) UpdateFileSystem(ctx context.Context, in *fsx.UpdateFileSystemInput, _ ...func(*fsx.Options)) (*fsx.UpdateFileSystemOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	id := aws.ToString(in.FileSystemId)
+	token := aws.ToString(in.ClientRequestToken)
+	if in.ClientRequestToken != nil && !tokenPattern.MatchString(token) {
+		f.calls = append(f.calls, "UpdateFileSystem")
+		return nil, fault("BadRequest", "ClientRequestToken must be 1 to 63 letters, digits, and _.- characters.")
+	}
+	b, err := json.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	if r, ok := f.updates[token]; ok && token != "" {
+		f.calls = append(f.calls, "UpdateFileSystem")
+		if r.params != string(b) {
+			return nil, fault("IncompatibleParameterError", "The request has the same client request token as a previous request, with other parameters.")
+		}
+		return &fsx.UpdateFileSystemOutput{}, nil
+	}
 	values, err := awsapi.EncodeObject(in)
 	if err != nil {
 		return nil, err
 	}
 	delete(values, "FileSystemId")
+	delete(values, "ClientRequestToken")
 	return &fsx.UpdateFileSystemOutput{}, f.change("UpdateFileSystem", id, func(props map[string]any) {
+		if token != "" {
+			f.updates[token] = request{fileSystem: id, params: string(b)}
+		}
 		if f.failUpdate != "" {
 			f.undo[id] = copyProps(props)
 		}

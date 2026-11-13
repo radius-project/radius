@@ -124,10 +124,12 @@ type Call struct {
 	Method     string
 	Identifier string
 
-	// Properties are what Create or Find got, ClientToken is the client token they got, and Patch is what Update got.
+	// Properties are what Create or Find got, ClientToken is the client token they got, and Patch and Token are what
+	// Update got.
 	Properties  map[string]any
 	ClientToken string
 	Patch       []map[string]any
+	Token       string
 }
 
 type operation struct {
@@ -314,7 +316,7 @@ func (h *Handler) Update(ctx context.Context, request native.UpdateRequest) erro
 	if err := json.Unmarshal(b, &patch); err != nil {
 		return err
 	}
-	if err := h.record(Call{Method: "Update", Identifier: request.Identifier, Patch: patch}); err != nil {
+	if err := h.record(Call{Method: "Update", Identifier: request.Identifier, Patch: patch, Token: request.Token}); err != nil {
 		return err
 	}
 	if err := h.otherProduct(request.Identifier); err != nil {

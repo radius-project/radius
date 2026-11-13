@@ -238,6 +238,13 @@ type UpdateRequest struct {
 	// out write-only values whose fingerprint shows they are unchanged, and clears properties the template no longer
 	// sets. A handler applies Patch, and reads Desired only for context.
 	Patch jsondiff.Patch
+
+	// Token is a UUID saved on the record before the first call of this update, and the same on every attempt to
+	// send it: a request that resumes an update UCP reserved but never tracked, or the next deploy after an update
+	// call whose outcome UCP can't tell, sends it again. It is also the operation ID. A handler sends it as the API's
+	// idempotency token, so a resent update isn't applied twice. A new update, including one after this update
+	// finished or AWS rejected it, gets a new token.
+	Token string
 }
 
 // Resource is a resource List returns.

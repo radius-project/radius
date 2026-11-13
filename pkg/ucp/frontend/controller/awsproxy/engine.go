@@ -340,6 +340,9 @@ func (e *engine) reserve(ctx context.Context, r *request, rec *datamodel.AWSReso
 	if op != records.OperationDelete {
 		rec.Properties.DeleteToken = ""
 	}
+	if op != records.OperationUpdate {
+		records.ClearUpdateToken(rec)
+	}
 	rec.SetProvisioningState(records.StateOf(op))
 	etag, err := e.store.Save(ctx, rec, etag)
 	if err != nil {
@@ -652,6 +655,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 		rec.Properties.UnresolvedPaths = nil
 		rec.Properties.Fingerprints = applied.fingerprints
 		records.ClearPending(rec)
+		records.ClearUpdateToken(rec)
 		rec.Properties.RequestToken = ""
 		rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
 		if _, err := e.store.Save(ctx, rec, etag); err != nil {
@@ -664,6 +668,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	// Reserve the record with the values this deploy applies before calling AWS. The worker makes them last-applied
 	// when AWS succeeds.
 	prior := rec.ProvisioningState()
+	prepareUpdate(rec, r, updateIntent(applied))
 	rec.Properties.PendingLastApplied = applied.properties
 	rec.Properties.PendingFingerprints = applied.fingerprints
 	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationUpdate)
@@ -672,14 +677,18 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}
 
 	logger.Info("Updating AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier, "handler", handlerName(r))
-	requestToken, err := e.startUpdate(ctx, r, identifier, currentProperties, properties, patch)
+	requestToken, err := e.startUpdate(ctx, r, rec, identifier, currentProperties, properties, patch)
 	if err != nil {
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			// When AWS rejected the update, it changed nothing, and the previous last-applied properties stay. A
 			// transport or server error, or a native update that failed partway, does not show that AWS changed
 			// nothing, so Radius owns the pending properties, as when an interrupted update is recovered, and a later
-			// deploy that omits one clears it.
-			records.Settle(rec, outcomeOf(err))
+			// deploy that omits one clears it. That deploy sends the update token again, in case AWS has this update.
+			outcome := outcomeOf(err)
+			records.Settle(rec, outcome)
+			if outcome == native.OutcomeRejected {
+				records.ClearUpdateToken(rec)
+			}
 			rec.SetProvisioningState(prior)
 		})
 		return handleError(ctx, r.id, err)

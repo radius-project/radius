@@ -18,6 +18,8 @@ package awsproxy
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -314,15 +316,47 @@ func readNative(ctx context.Context, h native.Handler, region string, identifier
 	}, nil
 }
 
-// startUpdate starts an update and returns the token the worker polls: Cloud Control's request token, or an operation
-// ID UCP makes for a native handler.
-func (e *engine) startUpdate(ctx context.Context, r *request, identifier string, current map[string]any, desired map[string]any, patch jsondiff.Patch) (string, error) {
+// prepareUpdate saves on rec, in memory, the update token a native update sends on every attempt, before the
+// reservation saves it. A record that still has a token has an update that may have reached AWS. When this deploy
+// applies the same values, intent, it is the same update, so its token is kept, and the update is sent again with it.
+// Otherwise it is a new update, with a new token, so a token never covers two different updates.
+func prepareUpdate(rec *datamodel.AWSResource, r *request, intent string) {
+	if r.handler == nil {
+		// Cloud Control serves this update, so a native update's token no longer names the latest update.
+		records.ClearUpdateToken(rec)
+		return
+	}
+	if rec.Properties.UpdateToken != "" && rec.Properties.UpdateIntent == intent {
+		return
+	}
+	rec.Properties.UpdateToken = uuid.New().String()
+	rec.Properties.UpdateIntent = intent
+}
+
+// updateIntent returns a hash of the values an update applies: the last-applied properties, without write-only
+// values, and the fingerprints of the write-only ones.
+func updateIntent(a applied) string {
+	digests := map[string]string{}
+	if a.fingerprints != nil {
+		digests = a.fingerprints.Digests
+	}
+	b, _ := json.Marshal(map[string]any{"properties": a.properties, "fingerprints": digests})
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+// startUpdate starts an update and returns the token the worker polls: Cloud Control's request token, or for a native
+// handler the record's update token, which is the operation ID.
+func (e *engine) startUpdate(ctx context.Context, r *request, rec *datamodel.AWSResource, identifier string, current map[string]any, desired map[string]any, patch jsondiff.Patch) (string, error) {
 	if r.handler != nil {
-		err := r.handler.Update(ctx, native.UpdateRequest{Region: r.region, Identifier: identifier, Current: current, Desired: desired, Patch: patch})
+		err := r.handler.Update(ctx, native.UpdateRequest{
+			Region: r.region, Identifier: identifier, Current: current, Desired: desired, Patch: patch,
+			Token: rec.Properties.UpdateToken,
+		})
 		if err != nil {
 			return "", err
 		}
-		return uuid.New().String(), nil
+		return rec.Properties.UpdateToken, nil
 	}
 
 	marshaled, err := json.Marshal(&patch)

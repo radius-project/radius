@@ -413,7 +413,7 @@ func Settle(rec *datamodel.AWSResource, outcome native.Outcome) {
 
 // Fail finishes a failed update or delete: the pending values are dropped, so the previous last-applied properties
 // and fingerprints stay. The request token moves to LastRequestToken with failure, so a redelivered operation reports
-// the same error.
+// the same error. The update token is cleared, so the next update is a new one, even when this one timed out.
 func Fail(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	ClearPending(rec)
 	finish(rec, failure)
@@ -424,6 +424,13 @@ func finish(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	rec.Properties.LastRequestToken = rec.Properties.RequestToken
 	rec.Properties.LastRequestError = failure
 	rec.Properties.RequestToken = ""
+	ClearUpdateToken(rec)
+}
+
+// ClearUpdateToken clears the update token, so the next update is a new one.
+func ClearUpdateToken(rec *datamodel.AWSResource) {
+	rec.Properties.UpdateToken = ""
+	rec.Properties.UpdateIntent = ""
 }
 
 // AliasOf returns the alias, the last segment, of a record's resource ID.

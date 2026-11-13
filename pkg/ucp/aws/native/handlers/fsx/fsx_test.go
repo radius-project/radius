@@ -18,6 +18,7 @@ package fsx
 
 import (
 	"encoding/json"
+	"errors"
 	"maps"
 	"os"
 	"slices"
@@ -29,6 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/fsx"
 	"github.com/aws/aws-sdk-go-v2/service/fsx/types"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -296,7 +298,7 @@ func update(t *testing.T, h *FileSystem, id string, base map[string]any, desired
 	removed := awsoperations.RemovedPaths(jsonValue(t, base), desired)
 	patch, err := awsoperations.GeneratePatchWithOptions(a, b, []byte(schema(t)), awsoperations.PatchOptions{Removed: removed, Equivalent: equivalent})
 	require.NoError(t, err)
-	return h.Update(t.Context(), native.UpdateRequest{Region: testRegion, Identifier: id, Current: current, Desired: desired, Patch: patch})
+	return h.Update(t.Context(), native.UpdateRequest{Region: testRegion, Identifier: id, Current: current, Desired: desired, Patch: patch, Token: uuid.New().String()})
 }
 
 // requireDeleted reads the progress of a delete until FSx no longer has the file system.
@@ -692,6 +694,8 @@ func Test_Update(t *testing.T) {
 			}
 			require.Len(t, recorder.inputs, 1)
 			tt.want.FileSystemId = aws.String(id)
+			tt.want.ClientRequestToken = recorder.inputs[0].ClientRequestToken
+			require.NotEmpty(t, aws.ToString(tt.want.ClientRequestToken), "the update sends its token")
 			require.Equal(t, tt.want, recorder.inputs[0])
 			require.True(t, finish(t, h, id, native.OperationUpdate).Done)
 		})
@@ -953,4 +957,90 @@ func Test_ReservedTags(t *testing.T) {
 		require.NoError(t, h.Delete(t.Context(), testRegion, id))
 		require.Nil(t, api.deleteOptions[id], "the delete sends no options the template didn't set as Options")
 	})
+}
+
+// Test_UpdateToken checks that an update sent again with the same token and input is the same request to FSx, so FSx
+// applies it once, and that the token FSx gets fits its rules and reveals nothing of the input.
+func Test_UpdateToken(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	recorder := &updates{fakeAPI: api}
+	h := NewFileSystem(recorder)
+	base := lustre("1:05:00")
+	id := create(t, h, base)
+	desired := jsonValue(t, with(base, map[string]any{"StorageCapacity": 2400}))
+	current, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+	patch, err := jsondiff.Compare(current, desired)
+	require.NoError(t, err)
+	request := native.UpdateRequest{Region: testRegion, Identifier: id, Current: current, Desired: desired, Patch: patch, Token: uuid.New().String()}
+
+	require.NoError(t, h.Update(t.Context(), request))
+	require.NoError(t, h.Update(t.Context(), request), "a resent update")
+	require.Len(t, recorder.inputs, 2)
+	token := aws.ToString(recorder.inputs[0].ClientRequestToken)
+	require.Equal(t, token, aws.ToString(recorder.inputs[1].ClientRequestToken))
+	require.Regexp(t, tokenPattern, token)
+	require.Len(t, api.actions[id], 2, "one update and its storage optimization, not two updates")
+
+	other := request
+	other.Desired = jsonValue(t, with(base, map[string]any{"StorageCapacity": 3600}))
+	other.Patch, err = jsondiff.Compare(current, other.Desired)
+	require.NoError(t, err)
+	require.NoError(t, h.Update(t.Context(), other), "other values with the same update token are a new FSx request")
+	require.NotEqual(t, token, aws.ToString(recorder.inputs[2].ClientRequestToken))
+
+	again := request
+	again.Token = uuid.New().String()
+	require.NoError(t, h.Update(t.Context(), again))
+	require.NotEqual(t, token, aws.ToString(recorder.inputs[3].ClientRequestToken), "a new update gets a new token")
+
+	none := request
+	none.Token = ""
+	require.NoError(t, h.Update(t.Context(), none))
+	require.Nil(t, recorder.inputs[4].ClientRequestToken, "without a token, the SDK makes one")
+}
+
+func Test_Fake_UpdateTokenRules(t *testing.T) {
+	ctx := t.Context()
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewFileSystem(api)
+	id := create(t, h, lustre("1:05:00"))
+	code := func(err error) string {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr.ErrorCode()
+		}
+		return ""
+	}
+	for _, token := range []string{"", strings.Repeat("a", 64), "has space"} {
+		_, err := api.UpdateFileSystem(ctx, &fsx.UpdateFileSystemInput{FileSystemId: aws.String(id), ClientRequestToken: aws.String(token), StorageCapacity: aws.Int32(2400)})
+		require.Equal(t, "BadRequest", code(err), token)
+	}
+	token := aws.String(strings.Repeat("a", 63))
+	_, err := api.UpdateFileSystem(ctx, &fsx.UpdateFileSystemInput{FileSystemId: aws.String(id), ClientRequestToken: token, StorageCapacity: aws.Int32(2400)})
+	require.NoError(t, err)
+	_, err = api.UpdateFileSystem(ctx, &fsx.UpdateFileSystemInput{FileSystemId: aws.String(id), ClientRequestToken: token, StorageCapacity: aws.Int32(3600)})
+	require.Equal(t, "IncompatibleParameterError", code(err))
+}
+
+// Test_UpdateToken_LeavesOutPasswords checks that the token FSx gets doesn't depend on a password, so it can't be used
+// to test guesses of one, and still depends on every other value.
+func Test_UpdateToken_LeavesOutPasswords(t *testing.T) {
+	input := func(admin string, directory string, throughput int32) *fsx.UpdateFileSystemInput {
+		return &fsx.UpdateFileSystemInput{
+			FileSystemId:       aws.String("fs-1"),
+			OntapConfiguration: &types.UpdateFileSystemOntapConfiguration{FsxAdminPassword: aws.String(admin), ThroughputCapacity: aws.Int32(throughput)},
+			WindowsConfiguration: &types.UpdateFileSystemWindowsConfiguration{
+				SelfManagedActiveDirectoryConfiguration: &types.SelfManagedActiveDirectoryConfigurationUpdates{UserName: aws.String("admin"), Password: aws.String(directory)},
+			},
+		}
+	}
+	token := "1b6f8f3e-7c2a-4d2e-9a51-0c6a7d1e2f3a"
+	first := aws.ToString(updateToken(token, input("secret-1", "secret-2", 128)))
+	require.Equal(t, first, aws.ToString(updateToken(token, input("other-1", "other-2", 128))), "the passwords aren't in the token")
+	require.NotEqual(t, first, aws.ToString(updateToken(token, input("secret-1", "secret-2", 256))))
+	require.NotEqual(t, first, aws.ToString(updateToken("other-token", input("secret-1", "secret-2", 128))))
+	original := input("secret-1", "secret-2", 128)
+	updateToken(token, original)
+	require.Equal(t, "secret-1", aws.ToString(original.OntapConfiguration.FsxAdminPassword), "the call still sends the password")
 }

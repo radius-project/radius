@@ -21,6 +21,10 @@ package fsx
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -403,8 +407,9 @@ var updatable = map[string][]string{
 	},
 }
 
-// Update makes the patch's changes with one UpdateFileSystem call, then adds and removes tags. A property the
-// template no longer sets keeps AWS's value, because FSx has no call to clear it.
+// Update makes the patch's changes with one UpdateFileSystem call, sending the update's token as FSx's idempotency
+// token, so a resent update isn't applied twice. Then it adds and removes tags. A property the template no longer
+// sets keeps AWS's value, because FSx has no call to clear it.
 func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) error {
 	if err := awsapi.ReservedTags(request.Desired, reservedTags...); err != nil {
 		return err
@@ -436,6 +441,7 @@ func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) e
 			return err
 		}
 		input.FileSystemId = aws.String(request.Identifier)
+		input.ClientRequestToken = updateToken(request.Token, input)
 		calls = append([]func() error{func() error {
 			_, err := h.api.UpdateFileSystem(ctx, input, opt)
 			return err
@@ -450,6 +456,28 @@ func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) e
 		}}, calls...)
 	}
 	return awsapi.Calls(calls...)
+}
+
+// updateToken returns the idempotency token of an UpdateFileSystem call: the first 32 hex characters of an
+// HMAC-SHA-256 of the call's input without its passwords, keyed by the update's token. A resent update with the same
+// input sends the same token, so FSx doesn't apply it twice. One whose input changed, such as after AWS applied part of
+// the update, sends a new token, because FSx rejects a token it has seen with other parameters. UCP returns the
+// update's token as the operation ID, so the passwords stay out of the HMAC: with them in, anyone who has the operation
+// ID and sees the call's token, such as in CloudTrail, could test guesses of a password. A resend that changes only a
+// password therefore sends the same token, and FSx rejects it, which clears the update's token for the next deploy. It
+// returns nil without a token, and then the SDK makes a new token for each call.
+func updateToken(token string, input *fsx.UpdateFileSystemInput) *string {
+	if token == "" {
+		return nil
+	}
+	values, _ := awsapi.EncodeObject(input)
+	delete(asMap(values["OntapConfiguration"]), "FsxAdminPassword")
+	delete(asMap(asMap(values["WindowsConfiguration"])["SelfManagedActiveDirectoryConfiguration"]), "Password")
+	// The values are strings, numbers, booleans, and lists and maps of them, which always marshal.
+	b, _ := json.Marshal(values)
+	mac := hmac.New(sha256.New, []byte(token))
+	mac.Write(b)
+	return aws.String(hex.EncodeToString(mac.Sum(nil))[:32])
 }
 
 // reservedTags are the tag keys the handler keeps its own state in, which a template can't set.
