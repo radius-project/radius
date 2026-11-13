@@ -155,6 +155,17 @@ type ScopedDeleter interface {
 	DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error
 }
 
+// RecordReader is implemented by a handler that can't read some properties while the resource is in some states, such
+// as the tags of a DAX cluster, which DAX returns only while the cluster is available. UCP calls ReadRecorded instead
+// of Read, with the properties its record shows the resource has: the last-applied properties, when no operation left
+// values unconfirmed. recorded is nil when UCP has no record of the resource, such as for `existing` and a take-over,
+// or its values aren't confirmed. The handler takes the properties it can't read from recorded, and leaves them out
+// when recorded is nil, so an update that would change them can fail clearly instead.
+type RecordReader interface {
+	// ReadRecorded returns the properties of the resource with the identifier, as Read does.
+	ReadRecorded(ctx context.Context, region string, identifier string, recorded map[string]any) (map[string]any, error)
+}
+
 // IdentifierResolver is implemented by a handler whose identifier has more than one form for one resource, such as one
 // that names a default value, like the current account, or leaves it out. UCP resolves every identifier it takes from
 // a template or a name to the handler's one form, before it looks up the alias that holds it, reserves it, or saves

@@ -287,12 +287,15 @@ func identifierRequired(r *request, schema string) (armrpc_rest.Response, error)
 
 // readNative reads a resource through the native handler. It returns the result in Cloud Control's shape, so the
 // rest of the engine treats both handlers the same, and nil when AWS has no such resource. A handler that reads only
-// the members it manages (native.ScopedReader) gets managed.
-func readNative(ctx context.Context, h native.Handler, region string, identifier string, managed []map[string]any) (*cloudcontrol.GetResourceOutput, error) {
+// the members it manages (native.ScopedReader) gets managed, and one that can't read some properties in some states
+// (native.RecordReader) gets recorded.
+func readNative(ctx context.Context, h native.Handler, region string, identifier string, managed []map[string]any, recorded map[string]any) (*cloudcontrol.GetResourceOutput, error) {
 	var properties map[string]any
 	var err error
 	if scoped, ok := h.(native.ScopedReader); ok {
 		properties, err = scoped.ReadScoped(ctx, region, identifier, managed)
+	} else if reader, ok := h.(native.RecordReader); ok {
+		properties, err = reader.ReadRecorded(ctx, region, identifier, recorded)
 	} else {
 		properties, err = h.Read(ctx, region, identifier)
 	}

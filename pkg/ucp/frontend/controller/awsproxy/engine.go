@@ -81,6 +81,19 @@ type request struct {
 	// manages gets (native.ScopedReader). put, get, and startDelete set them from the record. They are nil when UCP
 	// has no record.
 	managed []map[string]any
+
+	// recorded are the properties the record shows the resource has, which a native handler that can't read some
+	// properties in some states gets (native.RecordReader). put, get, and startDelete set them (see recordedValues).
+	recorded map[string]any
+}
+
+// recordedValues returns the record's last-applied properties when no operation left values unconfirmed, and nil
+// otherwise, or when UCP has no record of the last deploy.
+func recordedValues(rec *datamodel.AWSResource) map[string]any {
+	if rec.Properties.PendingLastApplied != nil || len(rec.Properties.UnresolvedPaths) > 0 {
+		return nil
+	}
+	return rec.Properties.LastApplied
 }
 
 // managedValues returns the property sets the alias may have applied: the record's last-applied and possibly applied
@@ -378,7 +391,7 @@ func (e *engine) readResource(ctx context.Context, r *request, identifier string
 	var out *cloudcontrol.GetResourceOutput
 	var err error
 	if r.handler != nil {
-		out, err = readNative(ctx, r.handler, r.region, identifier, r.managed)
+		out, err = readNative(ctx, r.handler, r.region, identifier, r.managed, r.recorded)
 	} else {
 		out, err = e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			TypeName:   aws.String(r.typeName),
@@ -503,6 +516,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if r.managed, resp, err = e.ownManaged(ctx, r, rec, target, properties); resp != nil || err != nil {
 		return resp, err
 	}
+	r.recorded = recordedValues(rec)
 	identifier := rec.Properties.AWSIdentifier
 	var current *cloudcontrol.GetResourceOutput
 	applied := applied{properties: withoutSecrets(properties, secrets), fingerprints: fingerprints}
@@ -960,6 +974,7 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		return refused, err
 	}
 	r.managed = managed
+	r.recorded = recordedValues(rec)
 	switch onDelete(r) {
 	case schemas.OnDeleteNothing:
 		logger.Info("Removing the record of an AWS resource without changing it in AWS", "alias", r.id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier)
@@ -1175,6 +1190,7 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if r.managed, resp, err = e.ownManaged(ctx, r, rec, rec.Properties.AWSIdentifier, nil); resp != nil || err != nil {
 		return resp, err
 	}
+	r.recorded = recordedValues(rec)
 
 	current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)
 	if err != nil {

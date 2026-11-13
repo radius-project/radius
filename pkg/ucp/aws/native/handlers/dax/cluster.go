@@ -58,6 +58,7 @@ var inRegion = awsapi.InRegion[dax.Options]
 var (
 	_ native.Handler           = (*Cluster)(nil)
 	_ native.IdentifierEncoder = (*Cluster)(nil)
+	_ native.RecordReader      = (*Cluster)(nil)
 )
 
 // clusterStates are the states a cluster's create and update wait for. DAX reports no failed state.
@@ -110,21 +111,37 @@ func (h *Cluster) describe(ctx context.Context, region string, name string) (*ty
 	return &out.Clusters[0], nil
 }
 
-// Read returns the cluster's properties.
+// Read returns the cluster's properties, without Tags while the cluster isn't available.
 func (h *Cluster) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
+	return h.ReadRecorded(ctx, region, identifier, nil)
+}
+
+// ReadRecorded returns the cluster's properties. DAX returns a cluster's tags only while it is available, so in any
+// other state, such as modifying during maintenance, Tags are recorded's, the tags the last deploy applied, and are
+// left out when recorded is nil.
+func (h *Cluster) ReadRecorded(ctx context.Context, region string, identifier string, recorded map[string]any) (map[string]any, error) {
 	cluster, err := h.describe(ctx, region, identifier)
 	if err != nil {
 		return nil, err
 	}
-	return h.properties(ctx, region, cluster)
+	return h.properties(ctx, region, cluster, recorded)
 }
 
-// properties returns the cluster's properties. AvailabilityZones is write-only: DAX reports the zone of each node,
-// which changes as nodes are removed or replaced, not the list the template sent.
-func (h *Cluster) properties(ctx context.Context, region string, c *types.Cluster) (map[string]any, error) {
-	tags, err := h.tags(ctx, region, c.ClusterArn)
-	if err != nil {
-		return nil, err
+// available reports whether DAX takes calls that need the cluster available, such as ListTags and TagResource.
+func available(c *types.Cluster) bool {
+	return strings.EqualFold(aws.ToString(c.Status), "available")
+}
+
+// properties returns the cluster's properties, with Tags as ReadRecorded describes. AvailabilityZones is write-only:
+// DAX reports the zone of each node, which changes as nodes are removed or replaced, not the list the template sent.
+func (h *Cluster) properties(ctx context.Context, region string, c *types.Cluster, recorded map[string]any) (map[string]any, error) {
+	tags := recorded["Tags"]
+	if available(c) {
+		listed, err := h.tags(ctx, region, c.ClusterArn)
+		if err != nil {
+			return nil, err
+		}
+		tags = listed
 	}
 	groups := []string{}
 	for _, g := range c.SecurityGroups {
@@ -255,6 +272,13 @@ func (h *Cluster) Update(ctx context.Context, request native.UpdateRequest) erro
 	}
 	calls := []func() error{}
 	if slices.Contains(changed, "Tags") {
+		if !available(cluster) {
+			return &native.Failure{
+				Message:     fmt.Sprintf("DAX changes a cluster's tags only while it is available, and this cluster is %s. Deploy again once it is available.", aws.ToString(cluster.Status)),
+				ClientError: true,
+				Outcome:     native.OutcomeRejected,
+			}
+		}
 		calls = append(calls, h.tagCalls(ctx, cluster.ClusterArn, request, opt)...)
 	}
 	for _, call := range []func() error{update, replication} {
@@ -431,7 +455,8 @@ func (h *Cluster) Delete(ctx context.Context, region string, identifier string) 
 	return awsapi.NotFound(err, "ClusterNotFoundFault")
 }
 
-// List returns every DAX cluster in the region.
+// List returns every DAX cluster in the region, without Tags for a cluster that isn't available. UCP's list has no
+// record to take them from.
 func (h *Cluster) List(ctx context.Context, region string) ([]native.Resource, error) {
 	out := []native.Resource{}
 	var next *string
@@ -442,7 +467,7 @@ func (h *Cluster) List(ctx context.Context, region string) ([]native.Resource, e
 		}
 		for i := range page.Clusters {
 			c := &page.Clusters[i]
-			properties, err := h.properties(ctx, region, c)
+			properties, err := h.properties(ctx, region, c, nil)
 			if err != nil {
 				return nil, err
 			}
