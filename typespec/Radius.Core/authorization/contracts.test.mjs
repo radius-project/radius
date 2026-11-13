@@ -93,16 +93,63 @@ test("entry points keep authorization out of Applications RP generation", () => 
   assert.doesNotMatch(config, /pkg\/corerp/);
 });
 
+const scalarPattern = (source, name, maximum) => {
+  const declaration = source.match(
+    new RegExp(
+      `((?:^[\\t ]*@[^\\n]*\\n)+)^[\\t ]*scalar ${name} extends string;`,
+      "m"
+    )
+  );
+  assert.ok(declaration, `missing scalar decorators: ${name}`);
+  const pattern = declaration[1].match(
+    /^[\t ]*@pattern\("((?:\\.|[^"\\])*)"\)[\t ]*$/m
+  );
+  assert.ok(pattern, `missing scalar pattern: ${name}`);
+  const maxLength = declaration[1].match(/^[\t ]*@maxLength\((\d+)\)[\t ]*$/m);
+  assert.ok(maxLength, `missing scalar maxLength: ${name}`);
+  assert.equal(Number(maxLength[1]), maximum, `scalar maxLength: ${name}`);
+  return new RegExp(JSON.parse(`"${pattern[1]}"`));
+};
+
+test("scalar constraints accept decorator order without losing either constraint", () => {
+  const decorators = [
+    '@doc("fixture")',
+    '@pattern("^[a-z]+$")',
+    "@maxLength(8)"
+  ];
+  for (const order of [
+    [0, 1, 2],
+    [0, 2, 1],
+    [1, 0, 2],
+    [1, 2, 0],
+    [2, 0, 1],
+    [2, 1, 0]
+  ]) {
+    const source = `${order.map((index) => decorators[index]).join("\n")}\nscalar Fixture extends string;`;
+    const pattern = scalarPattern(source, "Fixture", 8);
+    assert.ok(pattern.test("abc"));
+    assert.equal(pattern.test("ABC"), false);
+  }
+  for (const [source, expected] of [
+    ["@maxLength(8)", /missing scalar pattern/],
+    ['@pattern("^[a-z]+$")', /missing scalar maxLength/],
+    ['@pattern("^[a-z]+$")\n@maxLength(9)', /scalar maxLength/]
+  ]) {
+    assert.throws(
+      () =>
+        scalarPattern(
+          `${source}\nscalar Fixture extends string;`,
+          "Fixture",
+          8
+        ),
+      expected
+    );
+  }
+});
+
 test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   const source = read(new URL("../authorization.tsp", import.meta.url));
-  const scalarPattern = (name) => {
-    const match = source.match(
-      new RegExp(`@pattern\\("([^"]+)"\\)\\s*scalar ${name} extends string`)
-    );
-    assert.ok(match, `missing scalar constraint: ${name}`);
-    return new RegExp(JSON.parse(`"${match[1]}"`));
-  };
-  const scope = scalarPattern("AuthorizationScope");
+  const scope = scalarPattern(source, "AuthorizationScope", 2048);
   const plane = "/planes/radius/local";
   const group = `${plane}/resourceGroups/team-a`;
   for (const value of [
@@ -134,7 +181,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   ]) {
     assert.equal(scope.test(value), false, value);
   }
-  const permission = scalarPattern("PermissionName");
+  const permission = scalarPattern(source, "PermissionName", 256);
   for (const value of [
     "Radius.Core/applications/read",
     "Radius.Core/environments/use/action",
@@ -151,7 +198,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   ]) {
     assert.equal(permission.test(value), false, value);
   }
-  const path = scalarPattern("AuthorizationScopePath");
+  const path = scalarPattern(source, "AuthorizationScopePath", 2047);
   assert.ok(path.test(group.slice(1)));
   assert.equal(path.test(group), false);
   assert.equal(path.test(`${group.slice(1)}/`), false);
