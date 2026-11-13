@@ -20,13 +20,17 @@ limitations under the License.
 // how it reads AWS's real responses, without AWS.
 //
 // Set RADIUS_AWS_RECORD=1, with AWS credentials, to call AWS and save the cassette instead. Recording keeps no request
-// or response headers except the few the SDK needs to read a response, replaces the account ID with 123456789012 in
-// every value it keeps, and replaces each value registered with Scrub, such as a password, with x characters of the
-// same length.
+// or response headers except the few the SDK needs to read a response. In every value it keeps, it replaces the account
+// ID with 123456789012, and each value registered with Scrub, such as a password, with x characters of the same length.
+// It also replaces the recording identity's user ID with AIDAREPLAY, and each name in its ARN (the user name, or the
+// role and session names of an assumed role) with radius-recording. It replaces those only in the string values of a
+// JSON, XML, form, or CBOR body, never in a key or the syntax, and only where the whole name appears, so a short name
+// such as "a" doesn't change other words. A recording fails when it can't replace them, such as in an XML attribute.
 package awsreplay
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -54,8 +58,11 @@ const (
 	// RecordEnv turns recording on when set to 1.
 	RecordEnv = "RADIUS_AWS_RECORD"
 
-	// Account is the account ID cassettes use in place of the one that recorded them.
-	Account = "123456789012"
+	// Account, UserID, and Principal are the account ID, user ID, and principal name cassettes use in place of the
+	// identity that recorded them.
+	Account   = "123456789012"
+	UserID    = "AIDAREPLAY"
+	Principal = "radius-recording"
 
 	// Region is the region every cassette is recorded and replayed in.
 	Region = "us-west-2"
@@ -108,7 +115,7 @@ type Session struct {
 	mu       sync.Mutex
 	cassette Cassette
 	next     int
-	account  string
+	identity *sts.GetCallerIdentityOutput
 	scrubbed []string
 }
 
@@ -175,7 +182,7 @@ func (s *Session) Config(ctx context.Context) aws.Config {
 	if err != nil {
 		s.t.Fatalf("failed to read the AWS account to record in: %v", err)
 	}
-	s.account = aws.ToString(identity.Account)
+	s.identity = identity
 	cfg.HTTPClient = &http.Client{Transport: recorder{s: s, next: http.DefaultTransport}}
 	return cfg
 }
@@ -220,43 +227,55 @@ func (s *Session) Wait(d time.Duration) {
 	}
 }
 
-// scrub returns b with the account ID and every scrubbed value replaced by values of the same length, so a binary
-// body, such as CBOR, stays valid. A scrubbed value is also replaced in the forms a request or response can carry it
-// in: percent-encoded in a form body, escaped in JSON, and base64 encoded.
+// scrub returns b with the account ID replaced with Account, and every scrubbed value replaced with x characters of
+// the same length in each form a request or response can carry it in: as is, percent-encoded in a form body, escaped
+// in JSON, and base64 encoded. An account ID is always 12 digits, so every replacement keeps the length and the kind
+// of character, and a body such as CBOR stays valid. All values are replaced in one pass, longest first, so a value
+// that contains another, such as a scrubbed value that contains the account ID, is replaced whole.
 func (s *Session) scrub(b []byte) []byte {
-	out := b
-	if s.account != "" {
-		out = bytes.ReplaceAll(out, []byte(s.account), []byte(Account))
+	var pairs []replacement
+	if s.identity != nil && aws.ToString(s.identity.Account) != "" {
+		pairs = append(pairs, replacement{aws.ToString(s.identity.Account), Account})
 	}
 	for _, v := range s.scrubbed {
 		for _, form := range encodings(v) {
-			out = bytes.ReplaceAll(out, []byte(form), bytes.Repeat([]byte("x"), len(form)))
+			pairs = append(pairs, replacement{form, strings.Repeat("x", len(form))})
 		}
 	}
-	return out
+	if len(pairs) == 0 {
+		return b
+	}
+	slices.SortStableFunc(pairs, func(a, b replacement) int { return len(b.old) - len(a.old) })
+	args := make([]string, 0, 2*len(pairs))
+	for _, r := range pairs {
+		args = append(args, r.old, r.new)
+	}
+	return []byte(strings.NewReplacer(args...).Replace(string(b)))
 }
 
-// encodings returns v and the other forms it can appear in, longest first, so a form that contains another is
-// replaced whole.
-func encodings(v string) []string {
+// escapes returns v and the forms text can carry it in: percent-encoded in a form body or path, and escaped in JSON.
+func escapes(v string) []string {
 	escaped, _ := json.Marshal(v)
-	forms := []string{
-		v,
-		url.QueryEscape(v),
-		url.PathEscape(v),
-		string(escaped[1 : len(escaped)-1]),
-		base64.StdEncoding.EncodeToString([]byte(v)),
-		base64.RawStdEncoding.EncodeToString([]byte(v)),
-	}
-	slices.SortFunc(forms, func(a, b string) int { return len(b) - len(a) })
+	return unique([]string{v, url.QueryEscape(v), url.PathEscape(v), string(escaped[1 : len(escaped)-1])})
+}
+
+// encodings returns the forms of escapes and v base64 encoded.
+func encodings(v string) []string {
+	return unique(append(escapes(v), base64.StdEncoding.EncodeToString([]byte(v)), base64.RawStdEncoding.EncodeToString([]byte(v))))
+}
+
+// unique returns forms without duplicates, longest first.
+func unique(forms []string) []string {
+	slices.SortFunc(forms, func(a, b string) int { return cmp.Or(len(b)-len(a), strings.Compare(a, b)) })
 	return slices.Compact(forms)
 }
 
 func (s *Session) save() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	rs := s.identityReplacements()
 	for name, v := range s.cassette.Inputs {
-		s.cassette.Inputs[name] = string(s.scrub([]byte(v)))
+		s.cassette.Inputs[name] = replaceNames(string(s.scrub([]byte(v))), rs)
 	}
 	b, err := json.MarshalIndent(s.cassette, "", "  ")
 	if err != nil {
@@ -351,12 +370,20 @@ func (r recorder) RoundTrip(req *http.Request) (*http.Response, error) {
 			i.Headers[h] = v
 		}
 	}
-	i.Request = text(s.scrub(request))
-	scrubbed := s.scrub(body)
-	if utf8.Valid(scrubbed) && !strings.Contains(resp.Header.Get("Content-Type"), "cbor") {
-		i.Body = string(scrubbed)
+	request, err = s.scrubIdentity(s.scrub(request), req.Header.Get("Content-Type"))
+	if err != nil {
+		s.t.Errorf("awsreplay: failed to scrub the request of %s %s: %v", service, op, err)
+	}
+	i.Request = text(request)
+	scrubbed, err := s.scrubIdentity(s.scrub(body), resp.Header.Get("Content-Type"))
+	if err != nil {
+		s.t.Errorf("awsreplay: failed to scrub the response of %s %s: %v", service, op, err)
+	}
+	i.Binary = !utf8.Valid(scrubbed) || strings.Contains(resp.Header.Get("Content-Type"), "cbor")
+	if i.Binary {
+		i.Body = base64.StdEncoding.EncodeToString(scrubbed)
 	} else {
-		i.Body, i.Binary = base64.StdEncoding.EncodeToString(scrubbed), true
+		i.Body = string(scrubbed)
 	}
 	s.cassette.Interactions = append(s.cassette.Interactions, i)
 	return resp, nil

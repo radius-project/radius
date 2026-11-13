@@ -32,6 +32,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/aws-sdk-go-v2/service/sts/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -101,7 +102,7 @@ func Test_Record(t *testing.T) {
 	defer server.Close()
 
 	file := filepath.Join(t.TempDir(), "recorded", "cassette.json")
-	s := &Session{t: t, file: file, recording: true, account: account, cassette: Cassette{Source: SourceRecorded, Inputs: map[string]string{}}}
+	s := &Session{t: t, file: file, recording: true, identity: &sts.GetCallerIdentityOutput{Account: aws.String(account)}, cassette: Cassette{Source: SourceRecorded, Inputs: map[string]string{}}}
 	t.Setenv("ROLE", "arn:aws:iam::"+account+":role/r")
 	require.Equal(t, "arn:aws:iam::"+account+":role/r", s.Input("ROLE"), "a recording sends the real value")
 	s.Scrub("p@ssw0rd", "")
@@ -138,6 +139,116 @@ func Test_Record(t *testing.T) {
 	require.False(t, i.Binary)
 }
 
+// Test_Record_Identity records the caller identity from a fake AWS, and checks that the cassette keeps the fixed
+// account ID, user ID, and principal name in place of the identity that recorded it.
+func Test_Record_Identity(t *testing.T) {
+	const account = "999988887777"
+	tests := []struct {
+		name   string
+		arn    string
+		userID string
+		names  []string
+		want   string
+	}{
+		{
+			name:   "user",
+			arn:    "arn:aws:iam::" + account + ":user/team/alice",
+			userID: "AIDA5EXAMPLEUSERID123",
+			names:  []string{"alice"},
+			want:   "arn:aws:iam::123456789012:user/team/radius-recording",
+		},
+		{
+			name:   "assumed role",
+			arn:    "arn:aws:sts::" + account + ":assumed-role/RecorderRole/alice@example.com",
+			userID: "AROA5EXAMPLEROLEID123:alice@example.com",
+			names:  []string{"RecorderRole", "alice@example.com"},
+			want:   "arn:aws:sts::123456789012:assumed-role/radius-recording/radius-recording",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response := strings.NewReplacer("arn:aws:iam::123456789012:user/recorder", tt.arn, "AIDAEXAMPLE", tt.userID, "123456789012", account).Replace(identityResponse)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = io.ReadAll(r.Body)
+				w.Header().Set("Content-Type", "text/xml")
+				_, _ = w.Write([]byte(response))
+			}))
+			defer server.Close()
+
+			identity := &sts.GetCallerIdentityOutput{Account: aws.String(account), Arn: aws.String(tt.arn), UserId: aws.String(tt.userID)}
+			file := filepath.Join(t.TempDir(), "cassette.json")
+			s := &Session{t: t, file: file, recording: true, identity: identity, cassette: Cassette{Source: SourceRecorded, Inputs: map[string]string{}}}
+			cfg := aws.Config{
+				Region:       Region,
+				Credentials:  credentials.NewStaticCredentialsProvider("AKIA", "secret", ""),
+				BaseEndpoint: aws.String(server.URL),
+				HTTPClient:   &http.Client{Transport: recorder{s: s, next: http.DefaultTransport}},
+			}
+			out, err := sts.NewFromConfig(cfg).GetCallerIdentity(t.Context(), &sts.GetCallerIdentityInput{})
+			require.NoError(t, err)
+			require.Equal(t, tt.arn, aws.ToString(out.Arn), "the test sees AWS's real response")
+			require.NoError(t, s.save())
+
+			b, err := os.ReadFile(file)
+			require.NoError(t, err)
+			saved := string(b)
+			require.NotContains(t, saved, tt.userID)
+			for _, name := range tt.names {
+				require.NotContains(t, saved, name)
+			}
+
+			var c Cassette
+			require.NoError(t, json.Unmarshal(b, &c))
+			require.Len(t, c.Interactions, 1)
+			require.Contains(t, c.Interactions[0].Body, "<Arn>"+tt.want+"</Arn>")
+			require.Contains(t, c.Interactions[0].Body, "<UserId>AIDAREPLAY</UserId>")
+			require.Contains(t, c.Interactions[0].Body, "<Account>123456789012</Account>")
+		})
+	}
+}
+
+// Test_Record_EscapedIdentity records a form request that carries the caller's names, which the SDK percent-encodes,
+// and checks that the cassette keeps neither the names nor the user ID in any form.
+func Test_Record_EscapedIdentity(t *testing.T) {
+	const account = "999988887777"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "text/xml")
+		_, _ = w.Write([]byte(`<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/"><AssumeRoleResult></AssumeRoleResult></AssumeRoleResponse>`))
+	}))
+	defer server.Close()
+
+	identity := &sts.GetCallerIdentityOutput{
+		Account: aws.String(account),
+		Arn:     aws.String("arn:aws:sts::" + account + ":assumed-role/Recorder+Role/alice@example.com"),
+		UserId:  aws.String("AROA5EXAMPLEROLEID123:alice@example.com"),
+	}
+	file := filepath.Join(t.TempDir(), "cassette.json")
+	s := &Session{t: t, file: file, recording: true, identity: identity, cassette: Cassette{Source: SourceRecorded, Inputs: map[string]string{}}}
+	cfg := aws.Config{
+		Region:       Region,
+		Credentials:  credentials.NewStaticCredentialsProvider("AKIA", "secret", ""),
+		BaseEndpoint: aws.String(server.URL),
+		HTTPClient:   &http.Client{Transport: recorder{s: s, next: http.DefaultTransport}},
+	}
+	_, err := sts.NewFromConfig(cfg).AssumeRole(t.Context(), &sts.AssumeRoleInput{
+		RoleArn:         aws.String("arn:aws:iam::" + account + ":role/Recorder+Role"),
+		RoleSessionName: aws.String("alice@example.com"),
+		PolicyArns:      []types.PolicyDescriptorType{{Arn: aws.String("AROA5EXAMPLEROLEID123:alice@example.com")}},
+	})
+	require.NoError(t, err)
+	require.NoError(t, s.save())
+
+	b, err := os.ReadFile(file)
+	require.NoError(t, err)
+	saved := string(b)
+	for _, v := range []string{"alice", "Recorder", "AROA5EXAMPLEROLEID123"} {
+		require.NotContains(t, saved, v)
+	}
+	require.Contains(t, saved, "RoleSessionName=radius-recording")
+	require.Contains(t, saved, "role%2Fradius-recording")
+}
+
 func Test_Text(t *testing.T) {
 	require.Equal(t, "", text([]byte{0xff, 0xfe}))
 	require.Equal(t, `{"a":1}`, text([]byte(`{"a":1}`)))
@@ -168,7 +279,7 @@ func Test_New_Recording(t *testing.T) {
 
 // Test_Scrub checks that a scrubbed value is removed in every form a body can carry it in.
 func Test_Scrub(t *testing.T) {
-	s := &Session{account: "999988887777"}
+	s := &Session{identity: &sts.GetCallerIdentityOutput{Account: aws.String("999988887777")}}
 	secret := `p@ss "w0rd"+&$!/`
 	s.Scrub(secret)
 	escaped, err := json.Marshal(secret)
