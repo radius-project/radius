@@ -17,6 +17,7 @@ limitations under the License.
 package fsx
 
 import (
+	"context"
 	"encoding/json"
 	"maps"
 	"os"
@@ -489,6 +490,20 @@ func Test_Create(t *testing.T) {
 		api.errs["DescribeFileSystems"] = fault("ThrottlingException", "slow down")
 		_, err = h.Create(t.Context(), request)
 		require.ErrorContains(t, err, "slow down")
+	})
+
+	t.Run("an ONTAP template with both agreeing throughput values, as a read gives them", func(t *testing.T) {
+		api := &createInputs{fakeAPI: newFakeAPI(awsfake.NewCloudControl())}
+		h := NewFileSystem(api)
+		both := with(ontap, map[string]any{"OntapConfiguration": map[string]any{
+			"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 256, "ThroughputCapacityPerHAPair": 256, "HAPairs": 1, "FsxAdminPassword": "Fsx-admin-one",
+		}})
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, both), ClientToken: "token-both"})
+		require.NoError(t, err)
+		// FSx takes ThroughputCapacity or ThroughputCapacityPerHAPair on create, not both.
+		require.Len(t, api.inputs, 1)
+		require.Nil(t, api.inputs[0].OntapConfiguration.ThroughputCapacity)
+		require.Equal(t, int32(256), aws.ToInt32(api.inputs[0].OntapConfiguration.ThroughputCapacityPerHAPair))
 	})
 
 	t.Run("restore from a backup", func(t *testing.T) {
@@ -992,4 +1007,15 @@ func Test_OneThroughput(t *testing.T) {
 			require.Equal(t, tt.want, out)
 		})
 	}
+}
+
+// createInputs is the fake FSx API, recording the input of each CreateFileSystem call.
+type createInputs struct {
+	*fakeAPI
+	inputs []*fsx.CreateFileSystemInput
+}
+
+func (c *createInputs) CreateFileSystem(ctx context.Context, in *fsx.CreateFileSystemInput, opts ...func(*fsx.Options)) (*fsx.CreateFileSystemOutput, error) {
+	c.inputs = append(c.inputs, in)
+	return c.fakeAPI.CreateFileSystem(ctx, in, opts...)
 }
