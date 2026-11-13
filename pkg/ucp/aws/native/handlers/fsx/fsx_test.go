@@ -512,6 +512,20 @@ func Test_Create(t *testing.T) {
 		require.ErrorContains(t, err, "slow down")
 	})
 
+	t.Run("an ONTAP template with both agreeing throughput values, as a read gives them", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewFileSystem(api)
+		both := with(ontap, map[string]any{"OntapConfiguration": map[string]any{
+			"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 256, "ThroughputCapacityPerHAPair": 256, "HAPairs": 1, "FsxAdminPassword": "Fsx-admin-one",
+		}})
+		id, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, both), ClientToken: "token-both"})
+		require.NoError(t, err, "FSx takes one of the two on create, so the handler sends only ThroughputCapacityPerHAPair")
+		fs, ok := api.fileSystem(id)
+		require.True(t, ok)
+		require.Equal(t, int32(256), aws.ToInt32(fs.OntapConfiguration.ThroughputCapacity))
+		require.Equal(t, int32(256), aws.ToInt32(fs.OntapConfiguration.ThroughputCapacityPerHAPair))
+	})
+
 	t.Run("restore from a backup", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)

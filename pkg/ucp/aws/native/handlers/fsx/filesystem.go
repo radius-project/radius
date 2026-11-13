@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -294,7 +295,7 @@ func (h *FileSystem) Create(ctx context.Context, request native.CreateRequest) (
 		}
 	} else {
 		input := &fsx.CreateFileSystemInput{}
-		if err := awsapi.Decode(awsapi.Without(p, "Tags"), input); err != nil {
+		if err := awsapi.Decode(createProperties(p), input); err != nil {
 			return "", err
 		}
 		input.ClientRequestToken, input.Tags = token, tags
@@ -523,6 +524,19 @@ func configChanges(name string, request native.UpdateRequest) map[string]any {
 	}
 	if name == "OntapConfiguration" {
 		oneThroughput(out, current, desired)
+	}
+	return out
+}
+
+// createProperties returns the properties a create sends, which are the template's without Tags. An ONTAP template
+// that sets both ThroughputCapacity and an agreeing ThroughputCapacityPerHAPair, as one copied from a read does, sends
+// only the latter.
+func createProperties(properties map[string]any) map[string]any {
+	out := awsapi.Without(properties, "Tags")
+	if ontap, ok := out["OntapConfiguration"].(map[string]any); ok {
+		ontap = maps.Clone(ontap)
+		oneThroughput(ontap, nil, ontap)
+		out["OntapConfiguration"] = ontap
 	}
 	return out
 }
