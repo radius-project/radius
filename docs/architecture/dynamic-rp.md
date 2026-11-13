@@ -159,7 +159,7 @@ sequenceDiagram
   API->>Route: match generic route
   Route->>DefaultAsync: default async handler
   opt PUT request
-    DefaultAsync->>DefaultAsync: apply defaults and validate plaintext properties
+    DefaultAsync->>DefaultAsync: apply defaults, keep stored status, and validate plaintext properties
     break Schema-invalid PUT
       DefaultAsync-->>API: 400 InvalidRequestContent
       API-->>UCP: synchronous error (resource unchanged)
@@ -180,7 +180,9 @@ handoff. The frontend builds generic routes and default async handlers, then the
 backend worker resolves the operation through a default controller factory
 instead of a resource-specific registration table.
 
-PUT update filters run in the order **defaults, plaintext schema validation, encryption**, before the shared controller saves the resource or queues an operation. A schema-invalid create returns HTTP 400 with `InvalidRequestContent` and leaves no resource. A rejected update leaves the existing properties, provisioning state, metadata, and ETag unchanged. Valid PUTs and DELETEs retain their asynchronous behavior; the backend also retains validation of stored, encrypted resource data.
+PUT update filters run in the order **defaults, status, plaintext schema validation, encryption**, before the shared controller saves the resource or queues an operation. A schema-invalid create returns HTTP 400 with `InvalidRequestContent` and leaves no resource. A rejected update leaves the existing properties, provisioning state, metadata, and ETag unchanged. Valid PUTs and DELETEs retain their asynchronous behavior; the backend also retains validation of stored, encrypted resource data.
+
+Radius owns `properties.status`. The status filter drops any `status` in the request and, on an update, copies the stored one into the new resource. The backend reads the previous deployment's `outputResources` from that status. A Bicep recipe deletes the output resources it no longer returns, and a failed redeploy keeps them tracked, so a later delete still removes them. An update that changes the environment or application of a resource with output resources is rejected with HTTP 400. Schema validation ignores `status`, because resource type schemas cannot declare it.
 
 Plaintext validation enforces the declared constraints on sensitive fields before encryption can replace their values with encrypted objects. Redacted values returned by GET are not instructions to retain old secrets: supplied null values follow the schema's nullability rules. Validation errors identify schema-declared top-level fields without exposing submitted sensitive values or nested object keys. This ordering prevents new invalid writes; it does not repair invalid properties persisted by earlier versions.
 
