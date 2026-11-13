@@ -50,7 +50,7 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
 {{- if not $source -}}{{- fail "CA lifecycle public source is missing." -}}{{- end -}}
 {{- $annotations := $source.metadata.annotations | default dict -}}
 {{- $revision := printf "%s/complete" $state.id -}}
-{{- if or (ne $source.metadata.uid $pin.uid) (ne $source.metadata.resourceVersion $pin.resourceVersion)
+{{- if or (ne $source.metadata.uid $pin.uid) (empty $source.metadata.resourceVersion)
   (dig "metadata" "deletionTimestamp" "" $source) (dig "metadata" "ownerReferences" (list) $source)
   (ne (dig "metadata" "labels" "app.kubernetes.io/managed-by" "" $source) "Helm")
   (ne (index $annotations "meta.helm.sh/release-name") $.Release.Name)
@@ -84,7 +84,7 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
 {{- fail "The selected chart cannot preserve this staged issuer; keep the lifecycle blocked rather than silently reverting issuance." -}}
 {{- end -}}
 {{- $_ := set $result $plane (dict "kind" $kind "name" $name "key" "ca.crt" "bundle" $bundle
-  "uid" $pin.uid "resourceVersion" $pin.resourceVersion "contentDigest" (sha256sum $bundle)
+  "uid" $pin.uid "resourceVersion" $source.metadata.resourceVersion "contentDigest" (sha256sum $bundle)
   "issuer" $issuer "issuerDigest" (sha256sum (toJson $issuer))
   "digest" (sha256sum (printf "%s\n%s" $bundle (toJson $issuer)))
   "journalUID" $journal.metadata.uid "revision" $revision) -}}

@@ -20,12 +20,7 @@ package helm
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/x509"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -36,83 +31,23 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
-	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
-type bootstrapIssuanceClient struct {
-	dynamic.Interface
-	kube      kubernetes.Interface
-	cert, key []byte
-}
-
-func (c *bootstrapIssuanceClient) Resource(resource schema.GroupVersionResource) dynamic.NamespaceableResourceInterface {
-	delegate := c.Interface.Resource(resource)
-	if resource == rotationCertificateResource {
-		return bootstrapIssuanceResource{NamespaceableResourceInterface: delegate, client: c}
-	}
-	return delegate
-}
-
-type bootstrapIssuanceResource struct {
-	dynamic.NamespaceableResourceInterface
-	client *bootstrapIssuanceClient
-}
-
-func (r bootstrapIssuanceResource) Namespace(namespace string) dynamic.ResourceInterface {
-	return bootstrapIssuanceWriter{ResourceInterface: r.NamespaceableResourceInterface.Namespace(namespace), client: r.client, namespace: namespace}
-}
-
-type bootstrapIssuanceWriter struct {
-	dynamic.ResourceInterface
-	client    *bootstrapIssuanceClient
-	namespace string
-}
-
-func (r bootstrapIssuanceWriter) Create(ctx context.Context, object *unstructured.Unstructured, options metav1.CreateOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	created, err := r.ResourceInterface.Create(ctx, object, options, subresources...)
-	if err != nil {
-		return nil, err
-	}
-	name, _, err := unstructured.NestedString(created.Object, "spec", "secretName")
-	if err != nil {
-		return nil, err
-	}
-	_, err = r.client.kube.CoreV1().Secrets(r.namespace).Create(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: r.namespace},
-		Type:       corev1.SecretTypeTLS, Data: map[string][]byte{"tls.crt": r.client.cert, "tls.key": r.client.key},
-	}, metav1.CreateOptions{})
-	return created, err
-}
-
-func TestBootstrapNativeInstallRequiresRunningEvidence(t *testing.T) {
+func TestBootstrapNativeInstallBlocksBeforeMutation(t *testing.T) {
 	s, config, _, _ := newRotationTestStore(t)
 	ctx := t.Context()
 	require.NoError(t, s.dynamic.Resource(apiServiceResource).Delete(ctx, radiusAPIService, metav1.DeleteOptions{}))
 	installRotationTestCRDs(t, s)
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	ca, private, _ := testSigningCA(t, nil, nil, nil, nil)
+	operator, err := s.kube.CoreV1().Secrets(s.namespace).Create(ctx, caTLSSecret("operator-ca", ca, private), metav1.CreateOptions{})
 	require.NoError(t, err)
-	ca, private, root := testSigningCA(t, key, nil, nil, nil)
-	leaf, leafKey, _ := testSigningCA(t, nil, func(cert *x509.Certificate) {
-		cert.IsCA, cert.KeyUsage = false, x509.KeyUsageDigitalSignature
-		cert.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
-		cert.DNSNames = []string{"ucp." + s.namespace + ".svc"}
-		cert.NotAfter = time.Now().Add(24 * time.Hour)
-	}, root, key)
-	_, err = s.kube.CoreV1().Secrets(s.namespace).Create(ctx, caTLSSecret("operator-ca", ca, private), metav1.CreateOptions{})
-	require.NoError(t, err)
-	// Cert-manager availability and issuance are simulated. The public install
-	// path, Helm resources, ownership, UIDs, resource versions and incomplete
-	// evidence barrier use the native API server.
-	s.dynamic = &bootstrapIssuanceClient{Interface: s.dynamic, kube: s.kube, cert: leaf, key: leafKey}
 	selected, err := loader.Load("../../../deploy/Chart")
 	require.NoError(t, err)
 	selected.Templates = slices.DeleteFunc(selected.Templates, func(file *common.File) bool {
@@ -133,7 +68,7 @@ func TestBootstrapNativeInstallRequiresRunningEvidence(t *testing.T) {
 	options.Radius.Wait, options.Radius.Timeout = false, time.Minute
 	options.Radius.ChartPath, options.Contour.Disabled, options.Certificates.CASecret = archive, true, "operator-ca"
 	options.Radius.SetArgs = []string{
-		"global.rbac.enabled=true", "global.rbac.mtls.provider=external",
+		"global.rbac.enabled=true", "global.rbac.tls.provider=external",
 		"global.prometheus.enabled=true", "global.prometheus.port=9090",
 	}
 	impl := &Impl{
@@ -144,25 +79,30 @@ func TestBootstrapNativeInstallRequiresRunningEvidence(t *testing.T) {
 		newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 			kube, extensions := (fakeCertManagerCluster{crd: true,
 				controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}).clients()
+			require.NoError(t, kube.AppsV1().Deployments(CertManagerNamespace).Delete(ctx, "cert-manager-cainjector", metav1.DeleteOptions{}))
+			deployment, replicaSet, pod := injectorFixture("cert-manager-cainjector")
+			_, err := kube.AppsV1().Deployments(deployment.Namespace).Create(ctx, deployment, metav1.CreateOptions{})
+			require.NoError(t, err)
+			_, err = kube.AppsV1().ReplicaSets(replicaSet.Namespace).Create(ctx, replicaSet, metav1.CreateOptions{})
+			require.NoError(t, err)
+			_, err = kube.CoreV1().Pods(pod.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+			require.NoError(t, err)
 			return kube, extensions, nil
 		},
 	}
-	runContext, cancel := context.WithCancel(ctx)
-	defer cancel()
-	impl.logger = func(format string, arguments ...any) {
-		if strings.Contains(fmt.Sprintf(format, arguments...), "fresh aggregation and component evidence") {
-			cancel()
-		}
-	}
-	require.ErrorContains(t, impl.InstallRadius(runContext, options, "test"), "interrupted")
-	_, pending, err := s.readBootstrap(ctx)
+	require.ErrorIs(t, impl.InstallRadius(ctx, options, "test"), errCertificateObserverUnavailable)
+	secrets, err := s.kube.CoreV1().Secrets(s.namespace).List(ctx, metav1.ListOptions{})
 	require.NoError(t, err)
-	require.Equal(t, bootstrapVerifying, pending.Phase, "Secret creation and Helm success cannot complete bootstrap")
-	require.NotEmpty(t, pending.Resources[bootstrapResourceKey(apiServiceResource, radiusAPIService)].UID)
-	_, err = s.kube.CoreV1().Secrets(s.namespace).Get(ctx, "ucp-cert", metav1.GetOptions{})
-	require.True(t, apierrors.IsNotFound(err), "fresh enabled install must not create legacy aggregation material")
-	_, _, err = s.read(ctx)
-	require.True(t, apierrors.IsNotFound(err), "no completed lifecycle without process and API evidence")
+	require.Len(t, secrets.Items, 1)
+	require.Equal(t, *operator, secrets.Items[0])
+	journals, err := s.kube.CoreV1().ConfigMaps(s.namespace).List(ctx, metav1.ListOptions{})
+	require.NoError(t, err)
+	require.Empty(t, journals.Items)
+	leases, err := s.kube.CoordinationV1().Leases(s.namespace).List(ctx, metav1.ListOptions{})
+	require.NoError(t, err)
+	require.Empty(t, leases.Items)
+	_, err = s.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
+	require.True(t, apierrors.IsNotFound(err))
 }
 
 func TestBootstrapNativeCreationAndFences(t *testing.T) {
@@ -183,7 +123,7 @@ func TestBootstrapNativeCreationAndFences(t *testing.T) {
 		}), "lease")
 		require.ErrorContains(t, (&Impl{newRotationStore: func(string, string) (*rotationStore, error) {
 			return s, nil
-		}}).guardCertificateRotation(ctx, "", s.namespace, "upgrade", nil), "unfinished")
+		}}).guardCertificateRotation(ctx, "", s.namespace, "upgrade", nil), "legacy aggregation bootstrap")
 		_, err = s.aggregationTransitionSnapshot(ctx)
 		require.ErrorContains(t, err, "bootstrap")
 		desired := &unstructured.Unstructured{Object: map[string]any{

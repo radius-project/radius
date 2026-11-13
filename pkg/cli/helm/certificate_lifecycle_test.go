@@ -29,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
 func lifecycleFixture(t *testing.T) (certificateLifecycle, *corev1.ConfigMap) {
@@ -106,8 +107,8 @@ func TestCertificateLifecycleRejectsLegacyAndUnobservedPins(t *testing.T) {
 			s.Planes["internal"] = p
 		},
 		func(s *certificateLifecycle) {
-			s.Consumers = []certificateConsumerPin{{WorkloadUID: "w", PodUID: "p", PodName: "controller",
-				ServiceAccount: "controller", TrustOnly: true, Driver: "invented-client-leaf"}}
+			s.Consumers = []certificateConsumerPin{{WorkloadUID: "w", WorkloadGeneration: 1, PodUID: "p", PodName: "controller",
+				ServiceAccount: "controller", ServiceAccountUID: "sa", TrustOnly: true, Driver: "invented-client-leaf"}}
 		},
 	} {
 		copy := state
@@ -153,6 +154,38 @@ func TestCertificateLifecycleHistoricalAnchorPins(t *testing.T) {
 	require.ErrorContains(t, plane.validate("internal", rotationComplete, time.Now()), "public DER pin differs")
 }
 
+func TestLifecycleConsumerPinsRequireObservedIdentities(t *testing.T) {
+	t.Parallel()
+	for _, scenario := range []string{"trust only", "CSI receiver", "missing SA UID", "missing generation", "missing driver UID"} {
+		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
+			state, _ := lifecycleFixture(t)
+			consumer := certificateConsumerPin{WorkloadUID: "workload", WorkloadGeneration: 1,
+				PodName: "ucp-pod", PodUID: "pod", ServiceAccount: "ucp", ServiceAccountUID: "account", TrustOnly: true}
+			switch scenario {
+			case "CSI receiver", "missing driver UID":
+				consumer.TrustOnly = false
+				consumer.Driver, consumer.DriverUID = SPIFFECSIDriverNameDefault, "driver"
+				consumer.ServerSPIFFEID = "spiffe://radius.internal/ns/radius-system/sa/ucp"
+				if scenario == "missing driver UID" {
+					consumer.DriverUID = ""
+				}
+			case "missing SA UID":
+				consumer.ServiceAccountUID = ""
+			case "missing generation":
+				consumer.WorkloadGeneration = 0
+			}
+			state.Consumers = []certificateConsumerPin{consumer}
+			err := state.validate(time.Now())
+			if scenario == "trust only" || scenario == "CSI receiver" {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+}
+
 func TestCertificateRotationPlaneSelection(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -178,4 +211,43 @@ func TestCertificateRotationPlaneSelection(t *testing.T) {
 	aggregation, err := ObserveAggregationProof(t.Context(), nil, TLSProofTarget{})
 	require.ErrorIs(t, err, errCertificateObserverUnavailable)
 	require.Zero(t, aggregation)
+}
+
+func TestLifecycleProjectionRevisionAndIdentity(t *testing.T) {
+	t.Parallel()
+	for _, phase := range []rotationPhase{rotationPublish, rotationComplete} {
+		for _, scenario := range []string{"unchanged", "metadata update", "replacement", "changed bundle", "foreign journal"} {
+			t.Run(string(phase)+"/"+scenario, func(t *testing.T) {
+				t.Parallel()
+				state, journal := lifecycleFixture(t)
+				state.Phase = phase
+				plane := state.Planes["aggregation"]
+				if phase == rotationComplete {
+					plane.Source.Bundle = plane.NewCA
+				}
+				source := permanentPublicTrustSecret(plane.Source.Bundle)
+				source.UID, source.ResourceVersion = plane.Source.UID, plane.Source.ResourceVersion
+				source.Annotations[rotationJournalUID] = string(journal.UID)
+				source.Annotations[rotationRevision] = state.ID + "/" + string(phase)
+				switch scenario {
+				case "metadata update":
+					source.ResourceVersion = "later-version"
+					source.Annotations["unrelated"] = "unchanged-trust"
+				case "replacement":
+					source.UID = "replacement"
+				case "changed bundle":
+					source.Data[caCertificateKey] = plane.OldCA
+				case "foreign journal":
+					source.Annotations[rotationJournalUID] = "foreign"
+				}
+				store := &rotationStore{kube: kubefake.NewClientset(source)}
+				err := store.checkLifecycleProjection(t.Context(), journal, state, "aggregation", plane)
+				if scenario == "unchanged" || scenario == "metadata update" && phase == rotationComplete {
+					require.NoError(t, err)
+				} else {
+					require.Error(t, err)
+				}
+			})
+		}
+	}
 }

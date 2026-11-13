@@ -18,6 +18,7 @@ package helm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -127,6 +128,40 @@ func TestAggregationStageCanceledBeforeReadsOrRender(t *testing.T) {
 				return "", false, nil
 			})
 		require.ErrorIs(t, err, context.Canceled)
+	}
+}
+
+func TestRenderedAggregationTrustSkipsNonSecrets(t *testing.T) {
+	t.Parallel()
+	ca, _, _ := testSigningCA(t, nil, nil, nil, nil)
+	source := permanentPublicTrustSecret(ca)
+	source.Kind, source.APIVersion = "Secret", "v1"
+	data, err := json.Marshal(source)
+	require.NoError(t, err)
+	manifest := "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: config\ndata:\n  config.yaml: not base64!\n---\n" + string(data)
+	bundle, err := renderedAggregationTrust(manifest, RadiusSystemNamespace)
+	require.NoError(t, err)
+	require.Equal(t, ca, bundle)
+	_, err = renderedAggregationTrust(manifest+"\n---\n"+string(data), RadiusSystemNamespace)
+	require.ErrorContains(t, err, "ambiguous")
+}
+
+func TestSettleAggregationRetainsExactPermanentSource(t *testing.T) {
+	t.Parallel()
+	ca, _, _ := testSigningCA(t, nil, nil, nil, nil)
+	source, api := permanentPublicTrustSecret(ca), permanentTrustAPIService(ca)
+	kube := kubefake.NewClientset(source)
+	client := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), api)
+	require.NoError(t, settleUCPAPIServerCA(t.Context(), "", kube, client, RadiusSystemNamespace))
+	live, err := kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), source.Name, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, source, live)
+	observed, err := client.Resource(apiServicesResource).Get(t.Context(), api.GetName(), metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, api, observed)
+	require.GreaterOrEqual(t, len(client.Actions()), ucpAPIServerCASettleChecks)
+	for _, action := range append(kube.Actions(), client.Actions()...) {
+		require.Equal(t, "get", action.GetVerb(), "convergence must not rewrite or delete permanent trust")
 	}
 }
 

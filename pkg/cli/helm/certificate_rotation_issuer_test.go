@@ -50,7 +50,6 @@ import (
 	"k8s.io/client-go/rest"
 	k8stesting "k8s.io/client-go/testing"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/yaml"
 )
 
 func rotationIssuerFixture(t *testing.T, aggregationOnly, clusterIssuer bool) (*rotationRunner, rotationState, *issuerPolicyFixture) {
@@ -68,6 +67,16 @@ func rotationIssuerFixture(t *testing.T, aggregationOnly, clusterIssuer bool) (*
 		fixture.useClusterIssuer(t)
 		kind = "ClusterIssuer"
 	}
+	if aggregationOnly {
+		require.NoError(t, unstructured.SetNestedField(fixture.values, "external", "global", "rbac", "tls", "provider"))
+		objects := fixture.objects[:0]
+		for _, object := range fixture.objects {
+			if !strings.HasPrefix(object.GetName(), "cert-manager-csi-driver-spiffe-approver") && object.GetName() != "spiffe-approver" {
+				objects = append(objects, object)
+			}
+		}
+		fixture.objects = objects
+	}
 	issuer := fixture.object(kind, "external-ca")
 	issuer.SetUID("external-issuer-uid")
 	issuer.SetResourceVersion("1")
@@ -81,6 +90,7 @@ func rotationIssuerFixture(t *testing.T, aggregationOnly, clusterIssuer bool) (*
 		RequestPolicy: map[string]map[string]string{
 			"certManager":    {"namespace": "cert-manager", "deployment": "cert-manager"},
 			"approverPolicy": {"namespace": "cert-manager", "deployment": "cert-manager-approver-policy"},
+			"spiffe":         {"namespace": "cert-manager", "deployment": "cert-manager-csi-driver-spiffe-approver"},
 			"webhook":        {"namespace": "cert-manager", "service": "cert-manager-webhook", "configuration": "cert-manager-webhook"},
 		},
 	}
@@ -89,7 +99,7 @@ func rotationIssuerFixture(t *testing.T, aggregationOnly, clusterIssuer bool) (*
 	return runner, state, fixture
 }
 
-func TestCompletedRotationServingChartModes(t *testing.T) {
+func TestLegacyRotationRejectedInEveryChartMode(t *testing.T) {
 	for _, scenario := range []struct {
 		mode      string
 		bootstrap bool
@@ -116,7 +126,7 @@ func TestCompletedRotationServingChartModes(t *testing.T) {
 			require.NoError(t, err)
 			files := []*common.File{}
 			for _, file := range selected.Templates {
-				if strings.HasSuffix(file.Name, ".tpl") || file.Name == "templates/ucp/configmaps.yaml" || file.Name == "templates/ucp/deployment.yaml" {
+				if strings.HasSuffix(file.Name, ".tpl") || file.Name == "templates/ucp/configmaps.yaml" || file.Name == "templates/ucp/deployment.yaml" || file.Name == "templates/global/certificates.yaml" {
 					files = append(files, file)
 				}
 			}
@@ -132,28 +142,20 @@ func TestCompletedRotationServingChartModes(t *testing.T) {
 				return renderer.Render(selected, common.Values{"Values": values, "Chart": selected.Metadata,
 					"Release": map[string]any{"Name": radiusReleaseName, "Namespace": RadiusSystemNamespace}})
 			}
-			rendered, err := render()
-			require.NoError(t, err)
-			require.Contains(t, rendered["radius/templates/ucp/deployment.yaml"], "UCP_AGGREGATION_STARTUP_PROOF_ENABLED")
-			require.Contains(t, rendered["radius/templates/ucp/deployment.yaml"], state.Plan.TargetTrustSHA256)
-			var config corev1.ConfigMap
-			require.NoError(t, yaml.Unmarshal([]byte(rendered["radius/templates/ucp/configmaps.yaml"]), &config))
-			var settings map[string]any
-			require.NoError(t, yaml.Unmarshal([]byte(config.Data["ucp-config.yaml"]), &settings))
-			require.Equal(t, mode, settings["authorization"].(map[string]any)["mode"])
-			require.Equal(t, RadiusSystemNamespace, settings["authorization"].(map[string]any)["namespace"])
+			_, err = render()
+			require.ErrorContains(t, err, "Legacy or foreign CA journal")
 			require.NoError(t, unstructured.SetNestedField(values, false, "global", "prometheus", "enabled"))
 			_, err = render()
-			require.ErrorContains(t, err, "pinned metrics listener")
+			require.ErrorContains(t, err, "Legacy or foreign CA journal")
 			require.NoError(t, unstructured.SetNestedField(values, true, "global", "prometheus", "enabled"))
 			require.NoError(t, unstructured.SetNestedField(values, int64(state.Plan.Aggregation.ProofPort)+1, "global", "prometheus", "port"))
 			_, err = render()
-			require.ErrorContains(t, err, "pinned metrics listener")
+			require.ErrorContains(t, err, "Legacy or foreign CA journal")
 		})
 	}
 }
 
-func TestCompletedRotationAggregationChart(t *testing.T) {
+func TestLegacyAggregationRotationChartRejected(t *testing.T) {
 	for _, scope := range []string{"legacy", "managed", "aggregation", "bootstrap-managed", "bootstrap-aggregation", "post-bootstrap-rotation"} {
 		for _, scenario := range []string{"complete", "unfinished", "APIService replaced", "trust changed"} {
 			t.Run(scope+"/"+scenario, func(t *testing.T) {
@@ -225,7 +227,7 @@ func TestCompletedRotationAggregationChart(t *testing.T) {
 					}
 				}
 				selected.Templates = append(helpers, &common.File{Name: "templates/aggregation-state.yaml",
-					Data: []byte(`{{ include "radius.aggregationTrust" . }}`)})
+					Data: []byte(`{{ include "radius.lifecycleSnapshot" . }}`)})
 				if state.Bootstrap || scope == "post-bootstrap-rotation" {
 					shipping, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
 					require.NoError(t, err)
@@ -237,27 +239,15 @@ func TestCompletedRotationAggregationChart(t *testing.T) {
 				}
 				server := fixture.server(t)
 				renderer := engine.New(&rest.Config{Host: server.URL})
-				rendered, err := renderer.Render(selected, common.Values{"Values": fixture.values,
+				_, err = renderer.Render(selected, common.Values{"Values": fixture.values,
 					"Release": map[string]any{"Name": radiusReleaseName, "Namespace": RadiusSystemNamespace}})
-				if scenario != "complete" {
-					require.Error(t, err)
-					return
-				}
-				require.NoError(t, err)
-				var trust map[string]any
-				require.NoError(t, json.Unmarshal([]byte(rendered["radius/templates/aggregation-state.yaml"]), &trust))
-				require.Equal(t, bundle, trust["caBundle"])
-				if state.Bootstrap || scope == "post-bootstrap-rotation" {
-					require.Equal(t, true, trust["bootstrap"])
-					require.Contains(t, rendered["radius/templates/ucp/apiservice.yaml"], "kind: APIService")
-					require.NotContains(t, rendered["radius/templates/ucp/apiservice.yaml"], "kind: Secret")
-				}
+				require.ErrorContains(t, err, "Legacy")
 			})
 		}
 	}
 }
 
-func TestCompletedIssuerRotationChart(t *testing.T) {
+func TestLegacyIssuerRotationChartRejected(t *testing.T) {
 	for _, aggregationOnly := range []bool{false, true} {
 		for _, clusterIssuer := range []bool{false, true} {
 			for _, scenario := range []string{"complete", "unfinished", "unknown version", "legacy with scope", "wrong scope", "missing serving identity", "private signing reference", "changed public trust", "replaced issuer", "changed issuer specification"} {
@@ -268,7 +258,7 @@ func TestCompletedIssuerRotationChart(t *testing.T) {
 					certificates["caBundle"] = strings.TrimSpace(string(state.NewCA))
 					setCertificateValues(fixture.values, certificates)
 					if aggregationOnly {
-						require.NoError(t, unstructured.SetNestedField(fixture.values, "external", "global", "rbac", "mtls", "provider"))
+						require.NoError(t, unstructured.SetNestedField(fixture.values, "external", "global", "rbac", "tls", "provider"))
 						fixture.forbiddenPath = "/apis/cert-manager.io/v1/namespaces/radius-system/certificates/applications-rp-cert"
 					}
 					switch scenario {
@@ -301,18 +291,8 @@ func TestCompletedIssuerRotationChart(t *testing.T) {
 							"uid": "journal-uid", "resourceVersion": "1", "labels": map[string]any{rotationOwner: radiusReleaseName}},
 						"data": map[string]any{rotationJournalKey: string(data)},
 					}})
-					rendered, err := fixture.render(t)
-					if scenario != "complete" {
-						require.Error(t, err)
-						return
-					}
-					require.NoError(t, err)
-					if aggregationOnly {
-						require.NotContains(t, rendered, "kind: Certificate")
-					} else {
-						require.Equal(t, 5, strings.Count(rendered, "kind: Certificate"))
-						require.Equal(t, 5, strings.Count(rendered, "kind: "+state.Plan.ExternalIssuer.Kind+"\n"))
-					}
+					_, err = fixture.render(t)
+					require.ErrorContains(t, err, "Legacy or foreign CA journal")
 				})
 			}
 		}

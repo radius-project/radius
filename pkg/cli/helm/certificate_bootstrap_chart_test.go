@@ -19,7 +19,6 @@ package helm
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/authz/mtls"
@@ -48,7 +47,7 @@ func TestBootstrapNamespaceIntentBlocksDirectHelm(t *testing.T) {
 	require.ErrorContains(t, err, "bootstrap intent without its journal")
 }
 
-func TestBootstrapSelectedChart(t *testing.T) {
+func TestLegacyBootstrapJournalRejectedBySelectedChart(t *testing.T) {
 	for _, mode := range []string{"selfSigned", "caSecret", "issuerRef"} {
 		for _, external := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/external=%t", mode, external), func(t *testing.T) {
@@ -80,8 +79,7 @@ func TestBootstrapSelectedChart(t *testing.T) {
 				if external {
 					provider = "external"
 				}
-				require.NoError(t, unstructured.SetNestedField(values, provider, "global", "rbac", "mtls", "provider"))
-				require.NoError(t, unstructured.SetNestedField(values, true, "de", "ucpMTLS", "enabled"))
+				require.NoError(t, unstructured.SetNestedField(values, provider, "global", "rbac", "tls", "provider"))
 				require.NoError(t, unstructured.SetNestedField(values, true, "global", "prometheus", "enabled"))
 				require.NoError(t, unstructured.SetNestedField(values, int64(state.ProofPort), "global", "prometheus", "port"))
 				settings := map[string]any{"mode": mode}
@@ -93,9 +91,6 @@ func TestBootstrapSelectedChart(t *testing.T) {
 				}
 				setCertificateValues(values, settings)
 				values, err = valuesutil.CoalesceValues(selected, values)
-				require.NoError(t, err)
-				installer := &aggregationBootstrapInstaller{chart: selected, values: values}
-				values, err = installer.installValues(state)
 				require.NoError(t, err)
 				state.InstallValuesSHA256, err = bootstrapValuesDigest(values)
 				require.NoError(t, err)
@@ -120,22 +115,15 @@ func TestBootstrapSelectedChart(t *testing.T) {
 						"Capabilities": common.DefaultCapabilities,
 						"Release":      map[string]any{"Name": s.release, "Namespace": s.namespace, "Service": "Helm", "IsInstall": true}})
 				}
-				rendered, err := render()
-				require.NoError(t, err)
-				require.NotContains(t, rendered["radius/templates/ucp/apiservice.yaml"], "kind: Secret")
-				require.NotContains(t, rendered["radius/templates/ucp/apiservice.yaml"], "ucp-ca")
-				require.Contains(t, rendered["radius/templates/ucp/apiservice.yaml"], aggregationBootstrapOwner)
-				require.Contains(t, rendered["radius/templates/ucp/deployment.yaml"], "UCP_AGGREGATION_STARTUP_PROOF_ENABLED")
-				require.Contains(t, rendered["radius/templates/ucp/deployment.yaml"], "ucp-cert-aggregation-"+strings.ReplaceAll(state.ID, "-", "")[:16])
-				certificates := rendered["radius/templates/global/certificates.yaml"]
-				require.Equal(t, !external, strings.Contains(certificates, "name: ucp-cert\n"))
+				_, err = render()
+				require.ErrorContains(t, err, "Legacy aggregation bootstrap journal")
 				unstructured.RemoveNestedField(values, "global", "rbac", bootstrapInvocationValue)
 				_, err = render()
-				require.ErrorContains(t, err, "matching leased Radius install")
+				require.ErrorContains(t, err, "Legacy aggregation bootstrap journal")
 				require.NoError(t, unstructured.SetNestedField(values, "lease-uid", "global", "rbac", bootstrapInvocationValue))
 				require.NoError(t, unstructured.SetNestedField(values, "different-image", "ucp", "image"))
 				_, err = render()
-				require.ErrorContains(t, err, "install settings")
+				require.ErrorContains(t, err, "Legacy aggregation bootstrap journal")
 			})
 		}
 	}

@@ -39,16 +39,11 @@ import (
 )
 
 const (
-	// ucpAPIServerTrustSecretName is the Secret whose ca.crt holds the CA certificates the Kubernetes API server
-	// trusts for UCP while UCP moves from an earlier CA, such as the Helm-generated ucp-ca, to radius-apiserver-ca.
-	// Before the Helm call that turns authorization on, rad stages radius-apiserver-ca and writes both CAs into it, so
-	// the API server trusts the new CA before Helm reissues ucp-cert. rad deletes it once every UCP pod serves a
-	// certificate from radius-apiserver-ca; Helm would revert the overlap if the chart owned it.
+	// ucpAPIServerTrustSecretName is the permanent public-only injection source.
+	// Ordinary reconciliation must not delete it or discover trust from a signer.
 	ucpAPIServerTrustSecretName = "radius-apiserver-trust"
 
-	// ucpAPIServerCASecretName is the Secret of the CA that issues UCP's aggregated API certificate. Outside the
-	// upgrade overlap, cert-manager's cainjector copies its ca.crt, the self-signed CA certificate, into the
-	// APIService caBundle, so the API server follows each renewal of the CA without rad running.
+	// ucpAPIServerCASecretName is the signing Secret, not an APIService injection source.
 	ucpAPIServerCASecretName = "radius-apiserver-ca"
 
 	// injectCAFromSecretAnnotation names the Secret whose ca.crt cert-manager's cainjector copies into the APIService.

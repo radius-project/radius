@@ -540,10 +540,7 @@ func Test_BootstrapCertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	mockHelmClient := NewMockHelmClient(ctrl)
-	// csi-driver-spiffe is checked, without changing the cluster, before cert-manager.
-	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
-	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(certificateTestChart(t), nil)
 
 	impl := &Impl{
 		Helm: mockHelmClient,
@@ -595,10 +592,6 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							release.Labels = radManagedByLabels()
 						}
 						client := NewMockHelmClient(gomock.NewController(t))
-						if command != "install" {
-							client.EXPECT().LoadChart(options.Radius.ChartPath).Return(certificateTestChart(t), nil)
-							client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
-						}
 						client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(release, nil)
 						impl := &Impl{
 							Helm: client,
@@ -610,16 +603,9 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 								return nil, nil, errors.New("unexpected Kubernetes detection")
 							}, newRotationStore: emptyRotationTestStore,
 						}
-						var err error
-						if command == "install" {
-							// Exercise the prerequisite independently of the blocked
-							// fresh token/CSI bootstrap.
-							err = impl.ensureCertManager(t.Context(), options, kubeContext, nil, false)
-						} else if command == "upgrade" {
-							err = impl.UpgradeRadius(t.Context(), options, kubeContext)
-						} else {
-							err = impl.InstallRadius(t.Context(), options, kubeContext)
-						}
+						// Exercise dependency gating independently of the earlier
+						// public-source/observer barrier in command entrypoints.
+						err := impl.ensureCertManager(t.Context(), options, kubeContext, options.RadiusReleaseValues, command != "install")
 						require.Error(t, err)
 						for _, part := range []string{
 							`"shared-cert-manager"`, `"security"`, "revision 3", string(status),

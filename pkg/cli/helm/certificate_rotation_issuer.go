@@ -50,13 +50,17 @@ func (i rotationExternalIssuer) validate() error {
 		return errors.New("rotation requires the pinned external issuer specification digest")
 	}
 	if i.Group != "cert-manager.io" || !slices.Contains([]string{"Issuer", "ClusterIssuer"}, i.Kind) ||
-		i.UID == "" || i.Name == "" || len(validation.IsDNS1123Subdomain(i.Name)) != 0 || len(i.RequestPolicy) != 3 {
+		i.UID == "" || i.Name == "" || len(validation.IsDNS1123Subdomain(i.Name)) != 0 || len(i.RequestPolicy) < 3 || len(i.RequestPolicy) > 4 {
 		return errors.New("rotation requires an explicit existing cert-manager issuer and public policy references")
 	}
-	for role, fields := range map[string][]string{
+	roles := map[string][]string{
 		"certManager": {"namespace", "deployment"}, "approverPolicy": {"namespace", "deployment"},
 		"webhook": {"namespace", "service", "configuration"},
-	} {
+	}
+	if len(i.RequestPolicy) == 4 {
+		roles["spiffe"] = []string{"namespace", "deployment"}
+	}
+	for role, fields := range roles {
 		ref := i.RequestPolicy[role]
 		if len(ref) != len(fields) {
 			return fmt.Errorf("rotation requires exact public %s prerequisite references", role)
@@ -122,7 +126,7 @@ func (i *Impl) checkRotationIssuerPolicy(ctx context.Context, options ClusterOpt
 	if state.Plan.effectiveScope() == rotationAggregationOnly {
 		provider = "external"
 	}
-	if err := unstructured.SetNestedField(values, provider, "global", "rbac", "mtls", "provider"); err != nil {
+	if err := unstructured.SetNestedField(values, provider, "global", "rbac", "tls", "provider"); err != nil {
 		return err
 	}
 	if err := state.validate(time.Now()); err != nil {
@@ -142,12 +146,11 @@ func (i *Impl) rotationIssuerTarget(ctx context.Context, store *rotationStore, o
 	values := copyValues(effective)
 	selection := options
 	selection.Certificates.RotationPhase = ""
-	selection.RadiusReleaseValues = nil
 	if options.Certificates.Specified() {
 		policy := certificateValues(values)["requestPolicy"]
 		setCertificateValues(values, map[string]any{"requestPolicy": policy})
 	}
-	if _, err := i.prepareCertificates(ctx, selection, nil, values, kubeContext, false); err != nil {
+	if _, err := i.prepareCertificateSelection(ctx, selection, nil, values, kubeContext); err != nil {
 		return nil, nil, err
 	}
 	settings := certificateValues(values)

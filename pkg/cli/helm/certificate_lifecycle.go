@@ -81,14 +81,16 @@ type certificateTrustProjection struct {
 // certificateConsumerPin records Kubernetes observations, never a synthetic
 // Certificate UID or a shared leaf digest for pod-local CSI certificates.
 type certificateConsumerPin struct {
-	WorkloadUID    types.UID `json:"workloadUID"`
-	PodName        string    `json:"podName"`
-	PodUID         types.UID `json:"podUID"`
-	ServiceAccount string    `json:"serviceAccount"`
-	Driver         string    `json:"driver,omitempty"`
-	DriverUID      types.UID `json:"driverUID,omitempty"`
-	ServerSPIFFEID string    `json:"serverSpiffeID,omitempty"`
-	TrustOnly      bool      `json:"trustOnly"`
+	WorkloadUID        types.UID `json:"workloadUID"`
+	WorkloadGeneration int64     `json:"workloadGeneration"`
+	PodName            string    `json:"podName"`
+	PodUID             types.UID `json:"podUID"`
+	ServiceAccount     string    `json:"serviceAccount"`
+	ServiceAccountUID  types.UID `json:"serviceAccountUID"`
+	Driver             string    `json:"driver,omitempty"`
+	DriverUID          types.UID `json:"driverUID,omitempty"`
+	ServerSPIFFEID     string    `json:"serverSpiffeID,omitempty"`
+	TrustOnly          bool      `json:"trustOnly"`
 }
 
 func decodeCertificateLifecycle(journal *corev1.ConfigMap, namespace, release string, now time.Time) (certificateLifecycle, error) {
@@ -173,7 +175,8 @@ func (state certificateLifecycle) validate(now time.Time) error {
 	}
 	seen := map[types.UID]bool{}
 	for _, consumer := range state.Consumers {
-		if state.Provider != "radius" || consumer.WorkloadUID == "" || consumer.PodUID == "" ||
+		if state.Provider != "radius" || consumer.WorkloadUID == "" || consumer.WorkloadGeneration <= 0 ||
+			consumer.ServiceAccountUID == "" || consumer.PodUID == "" ||
 			seen[consumer.PodUID] || len(validation.IsDNS1123Subdomain(consumer.PodName)) != 0 ||
 			len(validation.IsDNS1123Subdomain(consumer.ServiceAccount)) != 0 {
 			return errors.New("invalid or duplicate CSI consumer identity")
@@ -329,10 +332,6 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 	return errCertificateObserverUnavailable
 }
 
-func samePublicProjection(source certificateTrustProjection, uid types.UID, version string, bundle []byte) bool {
-	return source.UID == uid && source.ResourceVersion == version && bytes.Equal(source.Bundle, bundle)
-}
-
 func (s *rotationStore) checkLifecycleProjection(ctx context.Context, journal *corev1.ConfigMap, state certificateLifecycle, name string, plane certificateLifecyclePlane) error {
 	var metadata metav1.Object
 	var bundle []byte
@@ -363,8 +362,14 @@ func (s *rotationStore) checkLifecycleProjection(ctx context.Context, journal *c
 		annotations[helmReleaseNamespaceAnnotation] != state.Namespace ||
 		annotations[rotationJournalUID] != string(journal.UID) ||
 		annotations[rotationRevision] != state.ID+"/"+string(state.Phase) ||
-		!samePublicProjection(plane.Source, metadata.GetUID(), metadata.GetResourceVersion(), bundle) {
+		metadata.GetResourceVersion() == "" || plane.Source.UID != metadata.GetUID() ||
+		!bytes.Equal(plane.Source.Bundle, bundle) {
 		return errors.New("public trust source differs from the owned journal snapshot")
+	}
+	// Completed snapshots survive unrelated metadata updates. Active transitions
+	// still require their exact observed revision before any conditional write.
+	if state.Phase != rotationComplete && plane.Source.ResourceVersion != metadata.GetResourceVersion() {
+		return errors.New("public trust source revision changed during the active lifecycle")
 	}
 	return nil
 }

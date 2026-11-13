@@ -19,93 +19,71 @@ limitations under the License.
 package helm
 
 import (
-	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/clientcmd"
-	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"path/filepath"
 )
 
-func TestRotationHelmTrustOwnership(t *testing.T) {
+func TestLegacyRotationHelmPreservesRecoveryJournal(t *testing.T) {
 	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
 		t.Skip("Set KUBEBUILDER_ASSETS for isolated CA rotation Helm tests.")
 	}
-	runtimelog.SetLogger(logr.Discard())
 	for _, ssa := range []bool{false, true} {
 		t.Run(fmt.Sprintf("serverSideApply=%t", ssa), func(t *testing.T) {
-			kubeconfig, kube := startTestAPIServer(t)
-			namespace := RadiusSystemNamespace
+			store, config, _ := newPlannedRotationTest(t)
+			namespace := store.namespace
+			kubeconfig := filepath.Join(t.TempDir(), "kubeconfig")
+			require.NoError(t, clientcmd.WriteToFile(clientcmdapi.Config{
+				Clusters:  map[string]*clientcmdapi.Cluster{"test": {Server: config.Host, CertificateAuthorityData: config.CAData}},
+				AuthInfos: map[string]*clientcmdapi.AuthInfo{"test": {ClientCertificateData: config.CertData, ClientKeyData: config.KeyData}},
+				Contexts:  map[string]*clientcmdapi.Context{"test": {Cluster: "test", AuthInfo: "test"}}, CurrentContext: "test",
+			}, kubeconfig))
 			flags := genericclioptions.NewConfigFlags(false)
 			flags.KubeConfig, flags.Namespace = &kubeconfig, &namespace
 			configuration := &helm.Configuration{}
 			require.NoError(t, configuration.Init(flags, namespace, helmDriverSecret))
-			_, chart := shippingTemplatesChart(t, "_helpers.tpl", "_rotation.tpl", "_bootstrap.tpl", "_aggregation-trust.tpl", "ucp/apiservice.yaml")
-			install := newInstallClient(configuration, radiusReleaseName, namespace, false, time.Minute)
-			install.ServerSideApply = ssa
-			_, err := install.Run(chart, map[string]any{})
+			selected, err := loader.Load("../../../deploy/Chart")
 			require.NoError(t, err)
-			config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-			require.NoError(t, err)
-			client, err := dynamic.NewForConfig(config)
-			require.NoError(t, err)
-			store := &rotationStore{kube: kube, dynamic: client, namespace: namespace, release: radiusReleaseName, now: time.Now}
-			require.NoError(t, withIdentityOperation(t.Context(), kube, namespace, func(operation *identityOperation) error {
-				store.guardWrite = func(ctx context.Context) error {
-					return operation.checkProviderJournal(ctx, radiusReleaseName, nil)
+			templates := selected.Templates[:0]
+			for _, file := range selected.Templates {
+				if strings.HasSuffix(file.Name, ".tpl") || file.Name == "templates/global/certificates.yaml" {
+					templates = append(templates, file)
 				}
-				legacy, err := kube.CoreV1().Secrets(namespace).Get(t.Context(), "ucp-cert", metav1.GetOptions{})
-				require.NoError(t, err)
-
-				// A render constructed before the journal existed cannot overwrite a
-				// completed rotation, including when Helm forces SSA conflicts.
-				next, _, _ := testSigningCA(t, nil, nil, nil, nil)
-				upgrade := newUpgradeClient(configuration, namespace, false, true, time.Minute, ssa)
-				upgrade.PostRenderer = postRenderFunc(func() {
-					state, err := store.begin(t.Context(), uuid.NewString(), next)
-					require.NoError(t, err)
-					require.NoError(t, store.reconcileTrust(t.Context(), state.ID))
+			}
+			selected.Templates = templates
+			for _, complete := range []bool{false, true} {
+				if complete {
 					for _, phase := range rotationPhases[1:] {
 						advanceRotationTest(t, store, phase)
 					}
-				})
-				_, err = upgrade.Run(radiusReleaseName, chart, map[string]any{})
-				require.ErrorContains(t, err, "the object has been modified")
-				api, err := client.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
+				}
+				journal, _, err := store.read(t.Context())
 				require.NoError(t, err)
-				bundle, err := apiServiceBundle(api)
+				before, err := store.dynamic.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
 				require.NoError(t, err)
-				require.Equal(t, next, bundle)
-
-				upgrade = newUpgradeClient(configuration, namespace, false, true, time.Minute, ssa)
-				_, err = upgrade.Run(radiusReleaseName, chart, map[string]any{})
-				require.NoError(t, err, "a fresh render preserves the completed public trust")
-				api, err = client.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
+				install := newInstallClient(configuration, radiusReleaseName, namespace, false, time.Minute)
+				install.ServerSideApply = ssa
+				_, err = install.Run(selected, map[string]any{})
+				require.ErrorContains(t, err, "Legacy or foreign CA journal")
+				after, err := store.dynamic.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
 				require.NoError(t, err)
-				bundle, err = apiServiceBundle(api)
+				require.Equal(t, before.Object["spec"], after.Object["spec"])
+				require.Equal(t, before.GetAnnotations(), after.GetAnnotations())
+				retained, _, err := store.read(t.Context())
 				require.NoError(t, err)
-				require.Equal(t, next, bundle)
-				current, err := kube.CoreV1().Secrets(namespace).Get(t.Context(), "ucp-cert", metav1.GetOptions{})
-				require.NoError(t, err)
-				require.Equal(t, legacy.Data, current.Data, "trust publication must not replace the legacy serving key")
-
-				third, _, _ := testSigningCA(t, nil, nil, nil, nil)
-				_, err = store.begin(t.Context(), uuid.NewString(), third)
-				require.NoError(t, err)
-				upgrade = newUpgradeClient(configuration, namespace, false, true, time.Minute, ssa)
-				_, err = upgrade.Run(radiusReleaseName, chart, map[string]any{})
-				require.ErrorContains(t, err, "rotation is unfinished")
-				return nil
-			}))
+				require.Equal(t, journal, retained)
+			}
 		})
 	}
 }

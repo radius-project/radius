@@ -698,17 +698,10 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 					})
 				client.EXPECT().LoadChart(gomock.Any()).AnyTimes().
 					DoAndReturn(func(string) (*chart.Chart, error) { return loadChart(t), nil })
-				client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), true, gomock.Any()).
-					DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, wait, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
-						return helmClient.RunHelmUpgrade(configuration, c, vals, name, namespace, false, reuse, timeout)
-					})
-				spiffeInstalls := 0
-				if tt.want != "off" {
-					expectCSIDriverSPIFFEPull(t, client)
-					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, radManagedByLabels()).
-						DoAndReturn(func(*helm.Configuration, *chart.Chart, map[string]any, string, string, bool, time.Duration, map[string]string) (*releasev1.Release, error) {
-							spiffeInstalls++
-							return &releasev1.Release{}, nil
+				if tt.want == "off" {
+					client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), true, gomock.Any()).
+						DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, wait, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
+							return helmClient.RunHelmUpgrade(configuration, c, vals, name, namespace, false, reuse, timeout)
 						})
 				}
 
@@ -716,6 +709,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				impl := &Impl{
 					Helm:             client,
 					newRotationStore: emptyRotationTestStore,
+					contourCluster:   &fakeContourCluster{},
 					newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 						detectCalls++
 						kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
@@ -737,12 +731,26 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				options.Contour.Disabled = true
 				options.RadiusReleaseValues = state.RadiusValues
 				if command == "upgrade" {
-					require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
+					err = impl.UpgradeRadius(t.Context(), options, "test-context")
 				} else {
 					options.Radius.Reinstall = true
-					require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
+					err = impl.InstallRadius(t.Context(), options, "test-context")
 				}
-
+				if tt.want != "off" {
+					// The deployed active baseline must not be replaced by a failed
+					// Off revision to bypass the missing-public-source barrier.
+					require.ErrorIs(t, err, errCertificateObserverUnavailable)
+					require.Zero(t, detectCalls)
+					history, historyErr := helmClient.RunHelmHistory(configuration, "radius")
+					require.NoError(t, historyErr)
+					revisions := 1
+					if tt.failed != nil {
+						revisions++
+					}
+					require.Len(t, history, revisions)
+					return
+				}
+				require.NoError(t, err)
 				upgraded, err := helmClient.RunHelmGet(configuration, "radius")
 				require.NoError(t, err)
 				// The off checksum hashes only the mode; other modes also hash the rest of the authorization settings,
@@ -754,16 +762,8 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				}
 				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+wantChecksum[tt.want])
 				requesters := nestedValue(upgraded.Config, "global", "rbac", "certManager", "requesters")
-				if tt.want == "off" {
-					require.Zero(t, detectCalls)
-					require.Zero(t, spiffeInstalls)
-					require.Nil(t, requesters)
-				} else {
-					require.Equal(t, 1, detectCalls)
-					require.Equal(t, 1, spiffeInstalls)
-					// The issuance policy allows the detected cert-manager controller, not the chart default.
-					require.Equal(t, []any{"system:serviceaccount:security:cert-manager"}, requesters)
-				}
+				require.Zero(t, detectCalls)
+				require.Nil(t, requesters)
 			})
 		}
 	}

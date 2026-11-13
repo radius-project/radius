@@ -214,7 +214,7 @@ func TestBootstrapNamespaceIntentRecovery(t *testing.T) {
 	retry.IntentSHA256 = strings.Repeat("c", 64)
 	_, err = b.ensureNamespace(t.Context(), retry)
 	require.ErrorContains(t, err, "different bootstrap intent")
-	require.ErrorContains(t, impl.guardCertificateRotation(t.Context(), "", s.namespace, "uninstall", nil), "unfinished")
+	require.ErrorContains(t, impl.guardCertificateRotation(t.Context(), "", s.namespace, "uninstall", nil), "legacy aggregation bootstrap")
 	_, err = impl.prepareAggregationBootstrap(t.Context(), NewDefaultClusterOptions(), &chart.Chart{}, nil,
 		map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": false, "dryRun": false}}}, "", nil)
 	require.ErrorContains(t, err, "cannot be bypassed")

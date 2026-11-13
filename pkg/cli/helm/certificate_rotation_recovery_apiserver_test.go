@@ -103,17 +103,17 @@ func TestRotationLifecycleGuards(t *testing.T) {
 		{"preflight", func(ctx context.Context) error { return impl.CheckRadiusCertificates(ctx, options, "") }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			require.ErrorContains(t, tt.run(t.Context()), "unfinished", "the nil Helm client must never be reached")
+			require.ErrorContains(t, tt.run(t.Context()), "legacy or unsupported CA journal", "the nil Helm client must never be reached")
 		})
 	}
 	for _, phase := range rotationPhases[1:] {
 		advanceRotationTest(t, store, phase)
 	}
-	require.ErrorContains(t, impl.RollbackRadius(t.Context(), ""), "rollback is disabled")
+	require.ErrorContains(t, impl.RollbackRadius(t.Context(), ""), "legacy or unsupported CA journal")
 	require.ErrorContains(t, impl.guardCertificateRotation(t.Context(), "", store.namespace, "upgrade",
-		&chart.Chart{Metadata: &chart.Metadata{}}), "lacks the managed")
-	require.NoError(t, impl.guardCertificateRotation(t.Context(), "", store.namespace, "upgrade",
-		&chart.Chart{Metadata: &chart.Metadata{Annotations: map[string]string{"radius.io/ca-rotation-protocol": "1"}}}))
+		&chart.Chart{Metadata: &chart.Metadata{}}), "legacy or unsupported CA journal")
+	require.ErrorContains(t, impl.guardCertificateRotation(t.Context(), "", store.namespace, "upgrade",
+		&chart.Chart{Metadata: &chart.Metadata{Annotations: map[string]string{"radius.io/ca-rotation-protocol": "1"}}}), "legacy or unsupported CA journal")
 	require.NoError(t, store.kube.CoreV1().ConfigMaps(store.namespace).Delete(t.Context(), rotationJournalName, metav1.DeleteOptions{}))
 	require.ErrorContains(t, impl.guardCertificateRotation(t.Context(), "", store.namespace, "uninstall", nil), "missing its public journal")
 }

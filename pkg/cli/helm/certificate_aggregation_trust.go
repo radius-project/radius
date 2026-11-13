@@ -208,16 +208,24 @@ func renderedAggregationTrust(manifest, namespace string) ([]byte, error) {
 	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
 	var bundle []byte
 	for {
-		var object corev1.Secret
-		err := decoder.Decode(&object)
+		var raw json.RawMessage
+		err := decoder.Decode(&raw)
 		if errors.Is(err, io.EOF) {
 			return bundle, nil
 		}
 		if err != nil {
 			return nil, err
 		}
-		if object.Kind != "Secret" || object.Name != ucpAPIServerTrustSecretName {
+		var metadata metav1.PartialObjectMetadata
+		if err := json.Unmarshal(raw, &metadata); err != nil {
+			return nil, err
+		}
+		if metadata.Kind != "Secret" || metadata.Name != ucpAPIServerTrustSecretName {
 			continue
+		}
+		var object corev1.Secret
+		if err := json.Unmarshal(raw, &object); err != nil {
+			return nil, err
 		}
 		if bundle != nil || object.Namespace != namespace || len(object.Data) != 1 || len(object.StringData) != 0 ||
 			object.Type != corev1.SecretTypeOpaque || object.Annotations[allowDirectInjectionAnnotation] != "true" {

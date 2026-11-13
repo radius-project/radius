@@ -143,7 +143,7 @@ func Test_waitForRolledBackUCPAPIService(t *testing.T) {
 
 	// Rolling back to a revision with authorization off does not wait.
 	require.NoError(t, impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 1))
-	// Rolling back to a revision with authorization on waits for the API server CA.
+	// Authorization-on rollback cannot discover trust from a signing Secret.
 	err := impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 2)
-	require.ErrorContains(t, err, "Secret radius-system/radius-apiserver-ca is not usable")
+	require.ErrorContains(t, err, "cannot read permanent aggregation trust")
 }
