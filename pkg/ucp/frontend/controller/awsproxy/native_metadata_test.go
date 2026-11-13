@@ -749,14 +749,13 @@ func Test_Native_EquivalentRemovedItemField(t *testing.T) {
 
 	resp = h.put(nativePath, withoutSharpness)
 	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
-	require.Equal(t, []string{"Read", "Update"}, methods(h.fake.Calls()), "the update sends the template's list")
+	require.Equal(t, []string{"Read", "Update"}, methods(h.fake.Calls()), "the update removes the field")
 	for _, result := range h.finish() {
 		require.Nil(t, result.Error)
 	}
-	require.Equal(t, []any{map[string]any{"Name": "hd"}}, h.cc.Resource(nativeType, "app-native")["VideoDescriptions"], "AWS no longer has the field")
+	require.Equal(t, []any{map[string]any{"Name": "hd", "Codec": "h264"}}, h.cc.Resource(nativeType, "app-native")["VideoDescriptions"], "AWS no longer has the field, and keeps its default")
 
-	// AWS fills in its default again, and the next unchanged deploy changes nothing.
-	require.NoError(t, h.cc.Patch(nativeType, "app-native", []map[string]any{{"op": "add", "path": "/VideoDescriptions/0/Codec", "value": "h264"}}))
+	// The next unchanged deploy changes nothing.
 	resp = h.put(nativePath, withoutSharpness)
 	require.Equal(t, http.StatusOK, resp.status, resp.raw)
 	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()))

@@ -156,12 +156,12 @@ func Test_GeneratePatchWithOptions_EquivalentOwnership(t *testing.T) {
 		want        []string
 	}{
 		{
-			name:        "a field removed inside a list item is cleared",
+			name:        "a field removed inside a list item is cleared, and AWS's default stays",
 			equivalent:  within,
 			lastApplied: map[string]any{"Videos": list(item("Name", "hd", "Sharpness", 75.0))},
 			current:     map[string]any{"Videos": list(item("Name", "hd", "Sharpness", 75.0, "Codec", "h264"))},
 			desired:     map[string]any{"Videos": list(item("Name", "hd"))},
-			want:        []string{"remove /Videos/0/Sharpness", "remove /Videos/0/Codec"},
+			want:        []string{"remove /Videos/0/Sharpness"},
 		},
 		{
 			name:        "an unchanged deploy keeps AWS's defaults",
@@ -341,11 +341,11 @@ func Test_GeneratePatchWithOptions_FailUncertain(t *testing.T) {
 			wantErr:       []string{"Videos"},
 		},
 		{
-			name:        "by default, the template's value is sent instead",
+			name:        "by default, the removal is sent, and AWS's default stays",
 			lastApplied: map[string]any{"Videos": []any{item("Name", "hd", "Sharpness", 75.0)}},
 			current:     map[string]any{"Videos": []any{item("Name", "hd", "Sharpness", 75.0, "Codec", "h264")}},
 			desired:     map[string]any{"Videos": []any{item("Name", "hd")}},
-			want:        []string{"remove /Videos/0/Sharpness", "remove /Videos/0/Codec"},
+			want:        []string{"remove /Videos/0/Sharpness"},
 		},
 		{
 			name:          "an unresolved path the template didn't change fails",
