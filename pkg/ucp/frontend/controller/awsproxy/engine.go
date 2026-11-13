@@ -1236,7 +1236,7 @@ func identifierFromProperties(properties map[string]any, schema string) (string,
 // withoutSecrets returns a copy of properties without write-only and other secret values, which are never stored.
 func withoutSecrets(properties map[string]any, secrets []string) map[string]any {
 	out, _ := deepCopy(properties).(map[string]any)
-	removePaths(out, secrets)
+	awsoperations.RemovePaths(out, secrets)
 	return out
 }
 

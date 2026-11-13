@@ -208,6 +208,46 @@ func Test_GeneratePatchWithOptions_ListItemFields(t *testing.T) {
 			want:        []string{"replace /Rules/0"},
 		},
 		{
+			name:        "an unchanged list with write-only fields keeps AWS's default in another item",
+			schema:      []byte(`{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Secret"]}`),
+			lastApplied: map[string]any{"Users": list(item("Name", "a", "Role", "admin"), item("Name", "b"))},
+			current:     map[string]any{"Users": list(item("Name", "a", "Role", "admin"), item("Name", "b", "Role", "reader"))},
+			desired:     map[string]any{"Users": list(item("Name", "a", "Role", "admin", "Secret", "s"), item("Name", "b", "Secret", "s"))},
+			want:        []string{"add /Users/0/Secret", "add /Users/1/Secret"},
+		},
+		{
+			name:        "a list where only a write-only value changed keeps AWS's default",
+			schema:      []byte(`{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Secret"]}`),
+			lastApplied: map[string]any{"Users": list(item("Name", "a", "Role", "admin"), item("Name", "b"))},
+			current:     map[string]any{"Users": list(item("Name", "a", "Role", "admin"), item("Name", "b", "Role", "reader"))},
+			desired:     map[string]any{"Users": list(item("Name", "a", "Role", "admin", "Secret", "new"), item("Name", "b", "Secret", "s"))},
+			want:        []string{"add /Users/0/Secret", "add /Users/1/Secret"},
+		},
+		{
+			name:        "a write-only field inside a map in a list item",
+			schema:      []byte(`{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Auth/Token"]}`),
+			lastApplied: map[string]any{"Users": list(item("Name", "a", "Role", "admin", "Auth", item("Mode", "t")), item("Name", "b", "Auth", item("Mode", "t")))},
+			current:     map[string]any{"Users": list(item("Name", "a", "Role", "admin", "Auth", item("Mode", "t")), item("Name", "b", "Role", "reader", "Auth", item("Mode", "t")))},
+			desired:     map[string]any{"Users": list(item("Name", "a", "Role", "admin", "Auth", item("Mode", "t", "Token", "s")), item("Name", "b", "Auth", item("Mode", "t", "Token", "s")))},
+			want:        []string{"add /Users/0/Auth/Token", "add /Users/1/Auth/Token"},
+		},
+		{
+			name:        "a write-only field in a nested list",
+			schema:      []byte(`{"properties": {}, "writeOnlyProperties": ["/properties/Groups/*/Users/*/Secret"]}`),
+			lastApplied: map[string]any{"Groups": list(item("Users", list(item("Name", "a", "Role", "admin"), item("Name", "b"))))},
+			current:     map[string]any{"Groups": list(item("Users", list(item("Name", "a", "Role", "admin"), item("Name", "b", "Role", "reader"))))},
+			desired:     map[string]any{"Groups": list(item("Users", list(item("Name", "a", "Role", "admin", "Secret", "s"), item("Name", "b", "Secret", "s"))))},
+			want:        []string{"add /Groups/0/Users/0/Secret", "add /Groups/0/Users/1/Secret"},
+		},
+		{
+			name:        "a field the last deploy set is still removed from a list with write-only fields",
+			schema:      []byte(`{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Secret"]}`),
+			lastApplied: map[string]any{"Users": list(item("Name", "a", "Role", "admin"), item("Name", "b"))},
+			current:     map[string]any{"Users": list(item("Name", "a", "Role", "admin"), item("Name", "b", "Role", "reader"))},
+			desired:     map[string]any{"Users": list(item("Name", "a", "Secret", "s"), item("Name", "b", "Secret", "s"))},
+			want:        []string{"remove /Users/0/Role", "remove /Users/1/Role", "add /Users/0/Secret", "add /Users/1/Secret"},
+		},
+		{
 			name:        "a write-only field AWS never returns is kept for the fingerprints to decide",
 			schema:      writeOnly,
 			lastApplied: map[string]any{"Users": list(item("Name", "a"))},
@@ -318,4 +358,23 @@ func Test_FillAt_SlashInKeyAbove(t *testing.T) {
 	fields := listFields{awsOwned: func([]string) bool { return true }}
 	_, ok := parseSchemaRules([]byte(`{}`)).fillAt("Map/a/b", list, []any{map[string]any{"Name": "a", "Codec": "h264"}}, root, fields)
 	require.False(t, ok)
+}
+
+func Test_RemovePaths(t *testing.T) {
+	t.Parallel()
+
+	properties := map[string]any{
+		"Password": "p",
+		"Auth":     map[string]any{"Token": "t", "Mode": "m"},
+		"Users":    []any{map[string]any{"Name": "a", "Secret": "s"}, "not an object"},
+		"Keys":     []any{"k1", "k2"},
+		"Name":     "n",
+	}
+	RemovePaths(properties, []string{"Password", "Auth/Token", "Users/*/Secret", "Keys/*", "Missing/Child", ""})
+	require.Equal(t, map[string]any{
+		"Auth":  map[string]any{"Mode": "m"},
+		"Users": []any{map[string]any{"Name": "a"}, "not an object"},
+		"Name":  "n",
+	}, properties)
+	require.NotPanics(t, func() { RemovePaths(nil, []string{"A"}) })
 }

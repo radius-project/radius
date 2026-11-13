@@ -228,6 +228,15 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	for _, p := range PropertyPaths(resourceTypeSchema.WriteOnlyProperties) {
 		writeOnly = append(writeOnly, strings.Split(p, "/"))
 	}
+	// LastApplied never holds write-only values, so the template is compared with it without them, as UCP stores it.
+	var stored map[string]any
+	if applied != nil {
+		withoutWriteOnly := map[string]any{}
+		// desiredState decoded above, so it decodes again.
+		_ = json.Unmarshal(desiredState, &withoutWriteOnly)
+		RemovePaths(withoutWriteOnly, PropertyPaths(resourceTypeSchema.WriteOnlyProperties))
+		stored = FlattenProperties(withoutWriteOnly)
+	}
 
 	// A value AWS reports in a different form, such as reordered subnets or a fuller engine version, is unchanged:
 	// use AWS's value so the patch leaves it alone. Equivalent is used only where Radius knows what it owns (see
@@ -261,9 +270,12 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 		if !isList || !resolved || applied == nil {
 			continue
 		}
+		// The last deploy set nothing the template drops from this list when its values, without write-only ones,
+		// are the last deploy's.
+		unchanged := ownsSame(owned, k, stored[k])
 		fields := listFields{
 			writeOnly: writeOnly,
-			awsOwned:  func(path []string) bool { return known || !setsAt(applied, path) },
+			awsOwned:  func(path []string) bool { return unchanged || !setsAt(applied, path) },
 		}
 		if filled, ok := rules.fillAt(k, list, current, desiredStateObject, fields); ok {
 			flattenedDesiredStateObject[k] = filled
@@ -514,4 +526,42 @@ func ParsePropertyName(propertyIdentifier string) (string, error) {
 		return after, nil
 	}
 	return "", fmt.Errorf("property identifier %s is not in the format /properties/<propertyName>", propertyIdentifier)
+}
+
+// RemovePaths removes the properties at paths from properties in place, as UCP leaves write-only and secret values
+// out of a record and a response. Paths are relative to the properties object, with "/" between segments. A "*"
+// segment matches every array item.
+func RemovePaths(properties map[string]any, paths []string) {
+	for _, p := range paths {
+		removePath(properties, strings.Split(p, "/"))
+	}
+}
+
+func removePath(obj map[string]any, segments []string) {
+	if obj == nil || len(segments) == 0 {
+		return
+	}
+	if len(segments) == 1 {
+		delete(obj, segments[0])
+		return
+	}
+
+	value := obj[segments[0]]
+	if segments[1] == "*" {
+		if len(segments) == 2 {
+			delete(obj, segments[0])
+			return
+		}
+		items, _ := value.([]any)
+		for _, item := range items {
+			if m, ok := item.(map[string]any); ok {
+				removePath(m, segments[2:])
+			}
+		}
+		return
+	}
+
+	if m, ok := value.(map[string]any); ok {
+		removePath(m, segments[1:])
+	}
 }

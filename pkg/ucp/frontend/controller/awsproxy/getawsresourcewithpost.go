@@ -24,6 +24,7 @@ import (
 
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/middleware"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
@@ -176,7 +177,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	if err != nil {
 		return nil, err
 	}
-	removePaths(resourceProperties, writeOnly)
+	awsoperations.RemovePaths(resourceProperties, writeOnly)
 
 	// A type with a native handler gets one escaped segment. Cloud Control types keep the IDs they had before native
 	// handlers, which other parts of Radius already store.

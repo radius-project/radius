@@ -23,6 +23,7 @@ import (
 
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	ucpaws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/servicecontext"
@@ -91,7 +92,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 				return nil, err
 			}
 		}
-		removePaths(properties, rt.writeOnly)
+		awsoperations.RemovePaths(properties, rt.writeOnly)
 
 		item := map[string]any{
 			"id":         serviceCtx.ResourceID.String() + resources.SegmentSeparator + addressSegment(aws.ToString(result.Identifier)),
@@ -130,7 +131,7 @@ func listNative(ctx context.Context, h native.Handler, collectionID resources.ID
 		if err != nil {
 			return nil, err
 		}
-		removePaths(properties, writeOnly)
+		awsoperations.RemovePaths(properties, writeOnly)
 		items = append(items, map[string]any{
 			"id":         collectionID.String() + resources.SegmentSeparator + addressSegment(resource.Identifier),
 			"name":       resource.Identifier,
