@@ -18,8 +18,11 @@ package servicecatalog
 
 import (
 	"context"
+	"regexp"
+	"slices"
 	"strconv"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/servicecatalog"
@@ -57,6 +60,26 @@ func fault(code string) error {
 	return &smithy.GenericAPIError{Code: code, Message: code, Fault: smithy.FaultClient}
 }
 
+// portfolioIDPattern is the pattern of portfolio IDs, which are 1 to 100 characters.
+var portfolioIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_\-]{1,100}$`)
+
+// shareType returns the share type a call names, or IMPORTED, the type AWS uses when a call names none.
+func shareType(t types.PortfolioShareType) types.PortfolioShareType {
+	if t == "" {
+		return types.PortfolioShareTypeImported
+	}
+	return t
+}
+
+// validInput returns InvalidParametersException, as AWS does, when a call's language or share type is outside the
+// limits AWS's API reference gives for them: a language of at most 100 characters, and one of the share types.
+func validInput(language *string, t types.PortfolioShareType) error {
+	if utf8.RuneCountInString(aws.ToString(language)) > 100 || !slices.Contains(t.Values(), shareType(t)) {
+		return fault("InvalidParametersException")
+	}
+	return nil
+}
+
 func (f *fakeAPI) change(apply func() error) error {
 	if err := f.failer.Before(); err != nil {
 		return err
@@ -74,8 +97,14 @@ func (f *fakeAPI) AcceptPortfolioShare(ctx context.Context, in *servicecatalog.A
 		return nil, err
 	}
 	id := aws.ToString(in.PortfolioId)
+	if err := validInput(in.AcceptLanguage, in.PortfolioShareType); err != nil {
+		return nil, err
+	}
+	if !portfolioIDPattern.MatchString(id) {
+		return nil, fault("InvalidParametersException")
+	}
 	return &servicecatalog.AcceptPortfolioShareOutput{}, f.change(func() error {
-		if id == notShared || in.PortfolioShareType != types.PortfolioShareTypeImported {
+		if id == notShared || shareType(in.PortfolioShareType) != types.PortfolioShareTypeImported {
 			return fault("ResourceNotFoundException")
 		}
 		if f.store.Resource(acceptedPortfolioShareType, id) != nil {
@@ -98,7 +127,7 @@ func (f *fakeAPI) RejectPortfolioShare(ctx context.Context, in *servicecatalog.R
 	}
 	id := aws.ToString(in.PortfolioId)
 	return &servicecatalog.RejectPortfolioShareOutput{}, f.change(func() error {
-		if f.store.Resource(acceptedPortfolioShareType, id) == nil || in.PortfolioShareType != types.PortfolioShareTypeImported {
+		if f.store.Resource(acceptedPortfolioShareType, id) == nil || shareType(in.PortfolioShareType) != types.PortfolioShareTypeImported {
 			return fault("ResourceNotFoundException")
 		}
 		f.rejecting[id] = true
@@ -113,8 +142,14 @@ func (f *fakeAPI) ListAcceptedPortfolioShares(ctx context.Context, in *serviceca
 	if err := f.errs["ListAcceptedPortfolioShares"]; err != nil {
 		return nil, err
 	}
+	if err := validInput(in.AcceptLanguage, in.PortfolioShareType); err != nil {
+		return nil, err
+	}
+	if in.PageSize < 0 || in.PageSize > 100 || utf8.RuneCountInString(aws.ToString(in.PageToken)) > 2024 {
+		return nil, fault("InvalidParametersException")
+	}
 	out := &servicecatalog.ListAcceptedPortfolioSharesOutput{}
-	if in.PortfolioShareType != types.PortfolioShareTypeImported {
+	if shareType(in.PortfolioShareType) != types.PortfolioShareTypeImported {
 		return out, nil
 	}
 	ids := f.store.List(acceptedPortfolioShareType)

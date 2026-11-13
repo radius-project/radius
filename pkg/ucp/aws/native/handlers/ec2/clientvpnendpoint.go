@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -42,8 +43,9 @@ var endpointStates = awsapi.States{Done: []string{string(types.ClientVpnEndpoint
 
 // ClientVpnEndpoint serves AWS::EC2::ClientVpnEndpoint. Its identifier, Id, is the endpoint ID, such as
 // cvpn-endpoint-0123456789abcdef0, which AWS assigns. CreateClientVpnEndpoint takes the record's client token as its
-// idempotency token, so a create sent again returns the first endpoint. The authorization policy, AuthorizationPolicy,
-// is set with its own calls. Tags are create-only, set through TagSpecifications.
+// idempotency token, so a create sent again returns the first endpoint, and the call that sets the authorization
+// policy, AuthorizationPolicy, takes a token made from it. The policy is set with its own calls. Tags are create-only,
+// set through TagSpecifications.
 type ClientVpnEndpoint struct {
 	api API
 }
@@ -199,6 +201,13 @@ func (h *ClientVpnEndpoint) setPolicy(ctx context.Context, region string, identi
 	return err
 }
 
+// policyToken returns the idempotency token of the call that sets the authorization policy of the endpoint a create
+// with the client token makes. EC2 rejects a token that another request used, so it differs from the create's token,
+// and a create sent again sends the same one.
+func policyToken(clientToken string) *string {
+	return aws.String(clientToken + "-policy")
+}
+
 // Create creates the endpoint, then sets its authorization policy when the template has one. A create that fails
 // after the endpoint exists returns the endpoint ID with the failure, so UCP saves it.
 func (h *ClientVpnEndpoint) Create(ctx context.Context, request native.CreateRequest) (string, error) {
@@ -217,7 +226,7 @@ func (h *ClientVpnEndpoint) Create(ctx context.Context, request native.CreateReq
 	}}
 	if policy, ok := request.Properties["AuthorizationPolicy"]; ok {
 		calls = append(calls, func() error {
-			return h.setPolicy(ctx, request.Region, identifier, policy, input.ClientToken)
+			return h.setPolicy(ctx, request.Region, identifier, policy, policyToken(request.ClientToken))
 		})
 	}
 	if err := awsapi.Calls(calls...); err != nil {
@@ -254,6 +263,13 @@ var endpointDefaults = map[string]any{
 	"VpnPort":                       443,
 }
 
+// policyDefaults are the values a property of the authorization policy goes back to when the template removes it:
+// AWS's default for ShadowMode, and no description.
+var policyDefaults = map[string]any{
+	"Description": "",
+	"ShadowMode":  string(types.ClientVpnAuthorizationPolicyShadowModeDisabled),
+}
+
 // Update makes the patch's changes with ModifyClientVpnEndpoint, then sets or deletes the authorization policy.
 func (h *ClientVpnEndpoint) Update(ctx context.Context, request native.UpdateRequest) error {
 	changed := awsapi.Changed(request)
@@ -288,6 +304,12 @@ func (h *ClientVpnEndpoint) Update(ctx context.Context, request native.UpdateReq
 	}
 	if slices.Contains(changed, "AuthorizationPolicy") {
 		if policy, ok := request.Desired["AuthorizationPolicy"]; ok {
+			// AWS keeps the value of a policy property the call leaves out, so a removed one goes back to its default.
+			if m, ok := policy.(map[string]any); ok {
+				values := maps.Clone(policyDefaults)
+				maps.Copy(values, m)
+				policy = values
+			}
 			calls = append(calls, func() error {
 				return h.setPolicy(ctx, request.Region, request.Identifier, policy, nil)
 			})

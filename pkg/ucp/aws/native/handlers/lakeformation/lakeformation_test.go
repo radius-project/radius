@@ -116,6 +116,7 @@ func settingsSuite(t *testing.T, mutation string) nativetest.Suite {
 		Changed:            with(settings, map[string]any{"Admins": admins(adminA, adminB), "AllowFullTableExternalDataAccess": true}),
 		Removable:          "ReadOnlyAdmins",
 		OtherForm:          map[string]any{"TrustedResourceOwners": list("444455556666", "111122223333")},
+		API:                dataLakeSettingsAPI,
 	}
 }
 
@@ -179,6 +180,7 @@ func permissionsSuite(t *testing.T, resource map[string]any, other map[string]an
 		FailCall: nativetest.FailCall(2, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: permissionsAPI,
 		Outside: func(store *awsfake.CloudControl, properties map[string]any) func() bool {
 			id := identifierOf(t, properties)
 			entry := store.Resource(outsideType, id)
@@ -293,6 +295,7 @@ func resourceSuite(t *testing.T, dataArn string) {
 		FailCall: nativetest.FailCall(2, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: resourceAPI,
 	})
 }
 

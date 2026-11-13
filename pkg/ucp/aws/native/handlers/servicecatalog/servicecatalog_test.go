@@ -52,6 +52,7 @@ func Test_Suite_AcceptedPortfolioShare(t *testing.T) {
 		// Every property is create-only, so a deploy of the same template is the only update.
 		Changed:          share,
 		CreateOnlyChange: map[string]any{"PortfolioId": "port-def456", "AcceptLanguage": "zh"},
+		API:              acceptedPortfolioShareAPI,
 	})
 }
 

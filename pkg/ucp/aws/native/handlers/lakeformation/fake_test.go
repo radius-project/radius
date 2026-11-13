@@ -21,9 +21,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation"
@@ -76,6 +79,253 @@ func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
 
 func clientError(code string) error {
 	return nativefake.ClientError(code, code)
+}
+
+const (
+	// invalidInputCode is the error Lake Formation's calls list for input that isn't valid.
+	invalidInputCode = "InvalidInputException"
+
+	// validationCode is the error Lake Formation's Common Errors page gives for input that doesn't meet a documented
+	// constraint, such as a length, a range, or a list of valid values.
+	validationCode = "ValidationError"
+
+	// maxPrincipals is the most principals a list of the data lake settings takes.
+	maxPrincipals = 30
+
+	// maxParameterLength is the most characters a value of the data lake settings' Parameters has.
+	maxParameterLength = 512000
+)
+
+var (
+	// permissionValues are the valid values of Permissions and PermissionsWithGrantOption.
+	permissionValues = []string{
+		"ALL", "SELECT", "ALTER", "DROP", "DELETE", "INSERT", "DESCRIBE", "CREATE_DATABASE", "CREATE_TABLE",
+		"DATA_LOCATION_ACCESS", "CREATE_LF_TAG", "ASSOCIATE", "GRANT_WITH_LF_TAG_EXPRESSION", "CREATE_LF_TAG_EXPRESSION",
+		"CREATE_CATALOG", "SUPER_USER",
+	}
+
+	// kindPermissions are the permissions each kind of resource takes, from Lake Formation's permissions reference. A
+	// table with columns takes only SELECT.
+	kindPermissions = map[string][]string{
+		"Database":         {"ALL", "ALTER", "CREATE_TABLE", "DESCRIBE", "DROP"},
+		"Table":            {"ALL", "ALTER", "DELETE", "DESCRIBE", "DROP", "INSERT", "SELECT"},
+		"TableWithColumns": {"SELECT"},
+		"DataLocation":     {"DATA_LOCATION_ACCESS"},
+	}
+
+	// partialSelectConflicts are the permissions on a table a principal can't hold next to SELECT on some of its
+	// columns.
+	partialSelectConflicts = []string{"ALTER", "DROP", "DELETE", "INSERT", "DESCRIBE"}
+
+	// rolePattern is the pattern of RoleArn in RegisterResource and UpdateResource.
+	rolePattern = regexp.MustCompile(`^arn:aws:iam::[0-9]*:role/.*$`)
+)
+
+// validLength returns ValidationError when a value isn't 1 to 255 characters, the limit of Lake Formation's names
+// and IDs.
+func validLength(values ...string) error {
+	for _, s := range values {
+		if n := utf8.RuneCountInString(s); n < 1 || n > 255 {
+			return clientError(validationCode)
+		}
+	}
+	return nil
+}
+
+// validPrincipals returns ValidationError when a principal's identifier isn't 1 to 255 characters.
+func validPrincipals(principals ...*types.DataLakePrincipal) error {
+	for _, p := range principals {
+		if p != nil {
+			if err := validLength(aws.ToString(p.DataLakePrincipalIdentifier)); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// validSettings returns the error PutDataLakeSettings returns for settings AWS rejects.
+func validSettings(s *types.DataLakeSettings) error {
+	lists := [][]types.DataLakePrincipal{s.DataLakeAdmins, s.ReadOnlyAdmins, s.ExternalDataFilteringAllowList}
+	for _, list := range lists {
+		if len(list) > maxPrincipals {
+			return clientError(validationCode)
+		}
+		for i := range list {
+			if err := validPrincipals(&list[i]); err != nil {
+				return err
+			}
+		}
+	}
+	if err := validLength(append(slices.Clone(s.AuthorizedSessionTagValueList), s.TrustedResourceOwners...)...); err != nil {
+		return err
+	}
+	for k, v := range s.Parameters {
+		if validLength(k) != nil || utf8.RuneCountInString(v) > maxParameterLength {
+			return clientError(validationCode)
+		}
+	}
+	for _, defaults := range [][]types.PrincipalPermissions{s.CreateDatabaseDefaultPermissions, s.CreateTableDefaultPermissions} {
+		// The only values AWS takes are none, or ALL for IAM_ALLOWED_PRINCIPALS.
+		if len(defaults) == 0 {
+			continue
+		}
+		d := defaults[0]
+		if len(defaults) > 1 || d.Principal == nil || aws.ToString(d.Principal.DataLakePrincipalIdentifier) != iamAllowedPrincipals || !slices.Equal(names(d.Permissions), []string{"ALL"}) {
+			return clientError(invalidInputCode)
+		}
+	}
+	if v, ok := s.Parameters["CROSS_ACCOUNT_VERSION"]; ok && !slices.Contains([]string{"1", "2", "3", "4", "5"}, v) {
+		return clientError(invalidInputCode)
+	}
+	if v, ok := s.Parameters["SET_SOURCE_IDENTITY"]; ok && v != "TRUE" && v != "FALSE" {
+		return clientError(invalidInputCode)
+	}
+	return nil
+}
+
+// kind returns the kind of resource r names, or "" for none.
+func kind(r *types.Resource) string {
+	switch {
+	case r.Database != nil:
+		return "Database"
+	case r.Table != nil:
+		return "Table"
+	case r.TableWithColumns != nil:
+		return "TableWithColumns"
+	case r.DataLocation != nil:
+		return "DataLocation"
+	}
+	return ""
+}
+
+// filtered reports whether r is a table with column filtering: some of its columns, or every column but some.
+func filtered(r *types.Resource) bool {
+	t := r.TableWithColumns
+	return t != nil && (len(t.ColumnNames) > 0 || (t.ColumnWildcard != nil && len(t.ColumnWildcard.ExcludedColumnNames) > 0))
+}
+
+// validResource returns the error a grant, revoke, or list returns for a resource AWS rejects.
+func validResource(r *types.Resource) error {
+	catalog := func(id *string) error {
+		if id != nil {
+			return validLength(*id)
+		}
+		return nil
+	}
+	switch {
+	case r.Database != nil:
+		if err := catalog(r.Database.CatalogId); err != nil {
+			return err
+		}
+		return validLength(aws.ToString(r.Database.Name))
+	case r.Table != nil:
+		if err := catalog(r.Table.CatalogId); err != nil {
+			return err
+		}
+		if err := validLength(aws.ToString(r.Table.DatabaseName)); err != nil {
+			return err
+		}
+		if r.Table.Name != nil {
+			if err := validLength(*r.Table.Name); err != nil {
+				return err
+			}
+		} else if r.Table.TableWildcard == nil {
+			return clientError(invalidInputCode)
+		}
+	case r.TableWithColumns != nil:
+		t := r.TableWithColumns
+		if err := catalog(t.CatalogId); err != nil {
+			return err
+		}
+		columns := slices.Clone(t.ColumnNames)
+		if t.ColumnWildcard != nil {
+			columns = append(columns, t.ColumnWildcard.ExcludedColumnNames...)
+		}
+		if err := validLength(append([]string{aws.ToString(t.DatabaseName), aws.ToString(t.Name)}, columns...)...); err != nil {
+			return err
+		}
+		if len(t.ColumnNames) == 0 && t.ColumnWildcard == nil {
+			return clientError(invalidInputCode)
+		}
+	case r.DataLocation != nil:
+		return catalog(r.DataLocation.CatalogId)
+	}
+	return nil
+}
+
+// validPermissions returns the error a grant or revoke returns for permissions AWS rejects on resource: a value that
+// isn't valid, or a permission the kind of resource doesn't take.
+func validPermissions(resource *types.Resource, lists ...[]types.Permission) error {
+	for _, list := range lists {
+		for _, p := range names(list) {
+			if !slices.Contains(permissionValues, p) {
+				return clientError(validationCode)
+			}
+		}
+	}
+	allowed := kindPermissions[kind(resource)]
+	for _, list := range lists {
+		if len(minus(names(list), allowed)) > 0 {
+			return clientError(invalidInputCode)
+		}
+	}
+	return nil
+}
+
+// tableOf returns the database and table name of a grant on a table or its columns.
+func tableOf(r *types.Resource) (string, string) {
+	switch {
+	case r.Table != nil:
+		return aws.ToString(r.Table.DatabaseName), aws.ToString(r.Table.Name)
+	case r.TableWithColumns != nil:
+		return aws.ToString(r.TableWithColumns.DatabaseName), aws.ToString(r.TableWithColumns.Name)
+	}
+	return "", ""
+}
+
+// catalogOf returns the catalog of r, which is the caller's account when r sets no CatalogId.
+func catalogOf(r *types.Resource) string {
+	var id *string
+	switch {
+	case r.Database != nil:
+		id = r.Database.CatalogId
+	case r.Table != nil:
+		id = r.Table.CatalogId
+	case r.TableWithColumns != nil:
+		id = r.TableWithColumns.CatalogId
+	case r.DataLocation != nil:
+		id = r.DataLocation.CatalogId
+	}
+	if id == nil {
+		return account
+	}
+	return *id
+}
+
+// partialSelectConflict reports whether granting perms on resource to principal mixes SELECT on some columns of a
+// table with ALTER, DROP, DELETE, INSERT, or DESCRIBE on the table, which AWS doesn't let a principal hold together.
+func (f *fakeAPI) partialSelectConflict(principal string, resource *types.Resource, perms []string) bool {
+	if resource.Table == nil && !filtered(resource) {
+		return false
+	}
+	db, name := tableOf(resource)
+	for _, e := range f.entries() {
+		held := e.resource()
+		if e.principal() != principal || held == nil {
+			continue
+		}
+		if heldDB, heldName := tableOf(held); catalogOf(held) != catalogOf(resource) || !strings.EqualFold(db, heldDB) || !strings.EqualFold(name, heldName) {
+			continue
+		}
+		if filtered(resource) && held.Table != nil && len(only(awsapi.Strings(e.props, "Permissions"), partialSelectConflicts)) > 0 {
+			return true
+		}
+		if resource.Table != nil && filtered(held) && len(only(perms, partialSelectConflicts)) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // GetCallerIdentity returns the fake's account, as STS does.
@@ -150,7 +400,10 @@ func (f *fakeAPI) PutDataLakeSettings(ctx context.Context, in *lakeformation.Put
 	defer f.mu.Unlock()
 	return &lakeformation.PutDataLakeSettingsOutput{}, f.change("PutDataLakeSettings", func() error {
 		if in.DataLakeSettings == nil {
-			return clientError("InvalidInputException")
+			return clientError(invalidInputCode)
+		}
+		if err := validSettings(in.DataLakeSettings); err != nil {
+			return err
 		}
 		props, err := awsapi.EncodeObject(in.DataLakeSettings)
 		if err != nil {
@@ -277,7 +530,7 @@ func wholeTable(r *types.Resource) (string, string, bool) {
 // canonical returns the key AWS stores the grant on r under.
 func canonical(r *types.Resource) string {
 	if db, name, ok := wholeTable(r); ok {
-		return "table|" + db + "|" + name
+		return "table|" + catalogOf(r) + "|" + db + "|" + name
 	}
 	out := normalized(cfnResource(r))
 	if m, ok := out.(map[string]any); ok {
@@ -314,7 +567,24 @@ func (f *fakeAPI) GrantPermissions(ctx context.Context, in *lakeformation.GrantP
 	return &lakeformation.GrantPermissionsOutput{}, f.change("GrantPermissions", func() error {
 		perms, grants := names(in.Permissions), names(in.PermissionsWithGrantOption)
 		if in.Principal == nil || in.Resource == nil || len(perms) == 0 || len(minus(grants, perms)) > 0 {
-			return clientError("InvalidInputException")
+			return clientError(invalidInputCode)
+		}
+		if err := validPrincipals(in.Principal); err != nil {
+			return err
+		}
+		if err := validResource(in.Resource); err != nil {
+			return err
+		}
+		if err := validPermissions(in.Resource, in.Permissions, in.PermissionsWithGrantOption); err != nil {
+			return err
+		}
+		// AWS doesn't take a grant option with SELECT on some columns, nor SELECT on some columns of a table next to
+		// other permissions on the table.
+		if filtered(in.Resource) && len(grants) > 0 {
+			return clientError(invalidInputCode)
+		}
+		if f.partialSelectConflict(aws.ToString(in.Principal.DataLakePrincipalIdentifier), in.Resource, perms) {
+			return clientError(invalidInputCode)
 		}
 		if f.current == "" {
 			return errors.New("the test set no current entry")
@@ -338,7 +608,16 @@ func (f *fakeAPI) RevokePermissions(ctx context.Context, in *lakeformation.Revok
 	defer f.mu.Unlock()
 	return &lakeformation.RevokePermissionsOutput{}, f.change("RevokePermissions", func() error {
 		if in.Principal == nil || in.Resource == nil || in.Permissions == nil {
-			return clientError("InvalidInputException")
+			return clientError(invalidInputCode)
+		}
+		if err := validPrincipals(in.Principal); err != nil {
+			return err
+		}
+		if err := validResource(in.Resource); err != nil {
+			return err
+		}
+		if err := validPermissions(in.Resource, in.Permissions, in.PermissionsWithGrantOption); err != nil {
+			return err
 		}
 		perms, grants := names(in.Permissions), names(in.PermissionsWithGrantOption)
 		for _, e := range f.entries() {
@@ -364,7 +643,7 @@ func listed(query *types.Resource, resource *types.Resource) bool {
 		case resource.TableWithColumns != nil:
 			db, name = aws.ToString(resource.TableWithColumns.DatabaseName), aws.ToString(resource.TableWithColumns.Name)
 		}
-		return db == qdb && name == qname
+		return catalogOf(query) == catalogOf(resource) && db == qdb && name == qname
 	}
 	return canonical(query) == canonical(resource)
 }
@@ -457,8 +736,17 @@ func (f *fakeAPI) ListPermissions(ctx context.Context, in *lakeformation.ListPer
 	if err := f.call("ListPermissions"); err != nil {
 		return nil, err
 	}
+	if in.MaxResults != nil && (*in.MaxResults < 1 || *in.MaxResults > 1000) {
+		return nil, clientError(validationCode)
+	}
+	if err := validPrincipals(in.Principal); err != nil {
+		return nil, err
+	}
 	if in.Resource == nil || in.Resource.TableWithColumns != nil {
-		return nil, clientError("InvalidInputException")
+		return nil, clientError(invalidInputCode)
+	}
+	if err := validResource(in.Resource); err != nil {
+		return nil, err
 	}
 	found := []types.PrincipalResourcePermissions{}
 	qdb, qname, tableQuery := wholeTable(in.Resource)
@@ -500,7 +788,10 @@ func (f *fakeAPI) RegisterResource(ctx context.Context, in *lakeformation.Regist
 	return &lakeformation.RegisterResourceOutput{}, f.change("RegisterResource", func() error {
 		arn := aws.ToString(in.ResourceArn)
 		if arn == "" || (!aws.ToBool(in.UseServiceLinkedRole) && in.RoleArn == nil) {
-			return clientError("InvalidInputException")
+			return clientError(invalidInputCode)
+		}
+		if in.RoleArn != nil && !rolePattern.MatchString(*in.RoleArn) {
+			return clientError(validationCode)
 		}
 		if f.store.Resource(resourceType, arn) != nil {
 			return clientError("AlreadyExistsException")
@@ -568,11 +859,14 @@ func (f *fakeAPI) UpdateResource(ctx context.Context, in *lakeformation.UpdateRe
 			return clientError(notFoundCode)
 		}
 		if in.RoleArn == nil {
-			return clientError("InvalidInputException")
+			return clientError(invalidInputCode)
+		}
+		if !rolePattern.MatchString(*in.RoleArn) {
+			return clientError(validationCode)
 		}
 		// AWS doesn't let UpdateResource edit a location registered with the service-linked role.
 		if props["UseServiceLinkedRole"] == true || isServiceLinkedRole(fmt.Sprint(props["RoleArn"])) {
-			return clientError("InvalidInputException")
+			return clientError(invalidInputCode)
 		}
 		props["RoleArn"] = *in.RoleArn
 		if in.HybridAccessEnabled != nil {
@@ -604,6 +898,9 @@ func (f *fakeAPI) ListResources(ctx context.Context, in *lakeformation.ListResou
 	defer f.mu.Unlock()
 	if err := f.call("ListResources"); err != nil {
 		return nil, err
+	}
+	if in.MaxResults != nil && (*in.MaxResults < 1 || *in.MaxResults > 1000) {
+		return nil, clientError(validationCode)
 	}
 	arns := f.store.List(resourceType)
 	if len(arns) == 0 {
