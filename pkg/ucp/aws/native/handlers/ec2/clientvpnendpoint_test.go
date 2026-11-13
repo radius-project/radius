@@ -17,8 +17,11 @@ limitations under the License.
 package ec2
 
 import (
+	"context"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/stretchr/testify/require"
 
@@ -61,6 +64,43 @@ func Test_ClientVpnEndpoint_CreateWithPolicy(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, testPolicy, props["AuthorizationPolicy"])
 	require.Equal(t, id, props["Id"])
+}
+
+// policyTokens is the fake EC2 API, recording the client token of each create and each policy call.
+type policyTokens struct {
+	*fakeAPI
+	creates  []string
+	policies []string
+}
+
+func (p *policyTokens) CreateClientVpnEndpoint(ctx context.Context, in *awsec2.CreateClientVpnEndpointInput, opts ...func(*awsec2.Options)) (*awsec2.CreateClientVpnEndpointOutput, error) {
+	p.creates = append(p.creates, aws.ToString(in.ClientToken))
+	return p.fakeAPI.CreateClientVpnEndpoint(ctx, in, opts...)
+}
+
+func (p *policyTokens) ModifyClientVpnEndpointAuthorizationPolicy(ctx context.Context, in *awsec2.ModifyClientVpnEndpointAuthorizationPolicyInput, opts ...func(*awsec2.Options)) (*awsec2.ModifyClientVpnEndpointAuthorizationPolicyOutput, error) {
+	p.policies = append(p.policies, aws.ToString(in.ClientToken))
+	return p.fakeAPI.ModifyClientVpnEndpointAuthorizationPolicy(ctx, in, opts...)
+}
+
+func Test_ClientVpnEndpoint_CreateWithPolicyToken(t *testing.T) {
+	api := &policyTokens{fakeAPI: newFakeAPI(awsfake.NewCloudControl())}
+	h := NewClientVpnEndpoint(api)
+	request := createRequest(with(endpointProperties(), map[string]any{"AuthorizationPolicy": testPolicy}))
+
+	// EC2 fails a client token reused with other parameters, so the policy call can't take the create's token.
+	id, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, []string{request.ClientToken}, api.creates)
+	require.Len(t, api.policies, 1)
+	require.NotEmpty(t, api.policies[0], "the policy call sends a token")
+	require.NotEqual(t, request.ClientToken, api.policies[0])
+
+	again, err := h.Create(t.Context(), request)
+	require.NoError(t, err, "a create sent again sends the same tokens")
+	require.Equal(t, id, again)
+	require.Equal(t, []string{request.ClientToken, request.ClientToken}, api.creates)
+	require.Equal(t, []string{api.policies[0], api.policies[0]}, api.policies)
 }
 
 func Test_ClientVpnEndpoint_CreateFails(t *testing.T) {
