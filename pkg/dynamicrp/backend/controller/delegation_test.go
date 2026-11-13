@@ -350,6 +350,11 @@ func TestDelegationNativeCompletionRecoveryUsesOriginalIdentityAndInputs(t *test
 		return original(options)
 	}
 	f.request.OperationID = uuid.New()
+	object, target, err := readDynamicResource(t.Context(), f.store, delegationTargetID)
+	require.NoError(t, err)
+	target.SetProvisioningState(v1.ProvisioningStateUpdating)
+	object.Data = target
+	require.NoError(t, f.store.Save(t.Context(), object, database.WithETag(object.ETag)))
 	result, err = f.runtime.put(t.Context(), f.request, f.target, "")
 	require.NoError(t, err)
 	require.Equal(t, v1.ProvisioningStateSucceeded, result.ProvisioningState())
@@ -536,4 +541,30 @@ func TestDelegationSourceDeletionAfterTargetGoneHasNoNativeWork(t *testing.T) {
 	require.Zero(t, f.engine.deletes.Load())
 	_, err = f.store.Get(t.Context(), delegationSourceID)
 	require.Error(t, err)
+}
+
+func TestDelegationMemberPreparationFailureReleasesClaim(t *testing.T) {
+	t.Parallel()
+	f := newDelegationFixture(t)
+	loader := configloader.NewMockConfigurationLoader(gomock.NewController(t))
+	loader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, metadata *recipes.ResourceMetadata) (*recipes.EnvironmentDefinition, error) {
+		if metadata.ResourceID == delegationTargetID {
+			return &recipes.EnvironmentDefinition{Driver: "bicep", AcceptsDelegationFrom: []string{"Test.Compute/routes"}}, nil
+		}
+		return nil, fmt.Errorf("member registration unavailable")
+	}).AnyTimes()
+	f.runtime.loader = loader
+	_, err := f.runtime.put(t.Context(), f.request, f.target, "")
+	require.ErrorContains(t, err, "member registration unavailable")
+	_, target, err := readDynamicResource(t.Context(), f.store, delegationTargetID)
+	require.NoError(t, err)
+	require.Empty(t, target.DelegationOperationID)
+	require.False(t, target.DelegationExecutionStarted)
+	require.NotNil(t, target.DesiredState)
+	_, member, err := readDynamicResource(t.Context(), f.store, delegationSourceID)
+	require.NoError(t, err)
+	require.Equal(t, delegationTargetID, member.DelegationTargetID)
+	require.NotNil(t, member.DesiredState)
+	require.Equal(t, v1.ProvisioningStateFailed, member.ProvisioningState())
+	require.Zero(t, f.engine.calls.Load())
 }

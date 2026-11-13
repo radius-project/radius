@@ -17,15 +17,18 @@ limitations under the License.
 package frontend
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
 
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -216,4 +219,60 @@ func TestFailedSourceRetryKeepsOriginalProtectedAdmission(t *testing.T) {
 	response, err = makeDelegationUpdateFilter()(createTestContext(t), other, nil, &controller.Options{DatabaseClient: store})
 	require.NoError(t, err)
 	require.NotNil(t, response)
+}
+
+type failingDelegationSourceStore struct {
+	database.Client
+	sourceID string
+}
+
+func (s failingDelegationSourceStore) Save(ctx context.Context, object *database.Object, options ...database.SaveOptions) error {
+	if object.ID == s.sourceID {
+		return &database.ErrConcurrency{}
+	}
+	return s.Client.Save(ctx, object, options...)
+}
+
+func TestDelegationAdmissionFailureReleasesTargetClaim(t *testing.T) {
+	t.Parallel()
+	for _, failure := range []string{"source save", "queue"} {
+		t.Run(failure, func(t *testing.T) {
+			t.Parallel()
+			ctx := createTestContext(t)
+			sourceID := v1.ARMRequestContextFromContext(ctx).ResourceID.String()
+			store := inmemory.NewClient()
+			target := &datamodel.DynamicResource{DesiredState: &datamodel.DesiredState{Revision: "target-input"}}
+			target.ID = sourceID + "-target"
+			require.NoError(t, store.Save(ctx, &database.Object{ID: target.ID, Data: target}))
+			var databaseClient database.Client = store
+			status := sm.NewMockStatusManager(gomock.NewController(t))
+			if failure == "source save" {
+				databaseClient = failingDelegationSourceStore{Client: store, sourceID: sourceID}
+			} else {
+				status.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).Return(&database.ErrConcurrency{})
+			}
+			options := controller.Options{DatabaseClient: databaseClient, StatusManager: status}
+			resourceOptions := controller.ResourceOptions[datamodel.DynamicResource]{
+				RequestConverter: func([]byte, string) (*datamodel.DynamicResource, error) {
+					return &datamodel.DynamicResource{
+						Properties: map[string]any{}, DesiredState: &datamodel.DesiredState{Revision: "source-input"},
+						DelegationTargetID: target.ID,
+					}, nil
+				},
+				UpdateFilters: []controller.UpdateFilter[datamodel.DynamicResource]{makeDelegationUpdateFilter()},
+			}
+			operation, err := newDelegationAdmissionController(options, resourceOptions, false)
+			require.NoError(t, err)
+			request := httptest.NewRequest(http.MethodPut, "/", strings.NewReader("{}"))
+			request.Header.Set("Content-Type", "application/json")
+			_, err = operation.Run(ctx, httptest.NewRecorder(), request)
+			require.ErrorIs(t, err, &database.ErrConcurrency{})
+			object, err := store.Get(ctx, target.ID)
+			require.NoError(t, err)
+			var current datamodel.DynamicResource
+			require.NoError(t, object.As(&current))
+			require.Empty(t, current.DelegationOperationID)
+			require.Equal(t, "target-input", current.DesiredState.Revision)
+		})
+	}
 }

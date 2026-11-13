@@ -167,11 +167,34 @@ func TestDelegationPlannerReadsRecipePackCreatedInDeployment(t *testing.T) {
 			},
 		},
 	}
-	loader := configloader.NewMockConfigurationLoader(gomock.NewController(t))
-	planned, err := NewDelegationPlanner(loader, ucp, nil)(t.Context(), clients.DeploymentOptions{
+	for _, reference := range []string{"[reference('pack').id]", "[reference('pack').name]", "pack"} {
+		t.Run(reference, func(t *testing.T) {
+			env := template["resources"].(map[string]any)["env"].(map[string]any)
+			env["properties"].(map[string]any)["properties"].(map[string]any)["recipePacks"] = []any{reference}
+			loader := configloader.NewMockConfigurationLoader(gomock.NewController(t))
+			planned, err := NewDelegationPlanner(loader, ucp, nil)(t.Context(), clients.DeploymentOptions{
+				Template:  template,
+				Providers: &clients.Providers{Radius: &clients.RadiusProvider{EnvironmentID: "workspace-environment"}},
+			}, "/planes/radius/local/resourceGroups/test")
+			require.NoError(t, err)
+			require.Equal(t, template, planned, "new environments and ordinary recipe packs must remain engine-evaluated")
+		})
+	}
+}
+
+func TestDelegationPlannerDoesNotResolveRecipesForExistingResources(t *testing.T) {
+	t.Parallel()
+	template := map[string]any{
+		"imports": map[string]any{"radius": map[string]any{"provider": "Radius"}},
+		"resources": map[string]any{"database": map[string]any{
+			"import": "radius", "type": "Test.Resources/postgres@2025-01-01-preview",
+			"existing": true, "properties": map[string]any{"name": "existing-postgres"},
+		}},
+	}
+	planned, err := NewDelegationPlanner(nil, nil, nil)(t.Context(), clients.DeploymentOptions{
 		Template:  template,
 		Providers: &clients.Providers{Radius: &clients.RadiusProvider{EnvironmentID: "workspace-environment"}},
 	}, "/planes/radius/local/resourceGroups/test")
 	require.NoError(t, err)
-	require.Equal(t, template, planned, "new environments and ordinary recipe packs must remain engine-evaluated")
+	require.Equal(t, template, planned)
 }

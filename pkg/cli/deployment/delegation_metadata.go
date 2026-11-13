@@ -46,6 +46,9 @@ func NewDelegationPlanner(loader configloader.ConfigurationLoader, ucp *v2023100
 			imports, _ := template["imports"].(map[string]any)
 			for symbol, raw := range declarations {
 				declaration, _ := raw.(map[string]any)
+				if declaration["existing"] == true {
+					continue
+				}
 				if child := delegationModuleTemplate(declaration); child != nil {
 					childParameters := clients.DeploymentParameters{}
 					moduleProperties, _ := declaration["properties"].(map[string]any)
@@ -89,8 +92,27 @@ func NewDelegationPlanner(loader configloader.ConfigurationLoader, ucp *v2023100
 				body, _ := declaration["properties"].(map[string]any)
 				properties, _ := body["properties"].(map[string]any)
 				resourceEnvironment := environment
-				if value, ok := deploymentMetadataString(properties["environment"], template, parameters); ok {
-					resourceEnvironment = value
+				if value, present := properties["environment"]; present {
+					var resolved bool
+					resourceEnvironment, resolved = deploymentMetadataString(value, template, parameters)
+					if !resolved {
+						text, _ := value.(string)
+						match := symbolicIDReference.FindStringSubmatch(text)
+						if len(match) != 2 {
+							return fmt.Errorf("cannot resolve deployment environment for %q", resourceType)
+						}
+						env, _ := declarations[match[1]].(map[string]any)
+						envType, _, _ := strings.Cut(fmt.Sprint(env["type"]), "@")
+						envBody, _ := env["properties"].(map[string]any)
+						envName, ok := deploymentMetadataString(envBody["name"], template, parameters)
+						if !ok || (envType != "Radius.Core/environments" && envType != "Applications.Core/environments") {
+							return fmt.Errorf("cannot resolve deployment environment for %q", resourceType)
+						}
+						resourceEnvironment = scope + "/providers/" + envType + "/" + envName
+					}
+				}
+				if strings.Contains(strings.ToLower(resourceEnvironment), "/providers/applications.core/environments/") {
+					continue
 				}
 				metadata := recipes.ResourceMetadata{
 					ResourceID:    scope + "/providers/" + resourceType + "/deployment-planning",
@@ -175,6 +197,25 @@ func deploymentDeclaredRecipe(ctx context.Context, template map[string]any, envi
 		var registrations map[string]any
 		reference, _ := value.(string)
 		packMatch := symbolicIDReference.FindStringSubmatch(reference)
+		if strings.HasSuffix(reference, ".name]") {
+			packMatch = symbolicIDReference.FindStringSubmatch(strings.TrimSuffix(reference, ".name]") + ".id]")
+		}
+		if len(packMatch) != 2 {
+			if name, ok := deploymentMetadataString(reference, template, parameters); ok && !strings.Contains(name, "/") {
+				for symbol, raw := range declarations {
+					pack, _ := raw.(map[string]any)
+					if pack["type"] != "Radius.Core/recipePacks@2025-08-01-preview" {
+						continue
+					}
+					body, _ := pack["properties"].(map[string]any)
+					declaredName, _ := deploymentMetadataString(body["name"], template, parameters)
+					if declaredName == name {
+						packMatch = []string{"", symbol}
+						break
+					}
+				}
+			}
+		}
 		if len(packMatch) == 2 {
 			pack, _ := declarations[packMatch[1]].(map[string]any)
 			if pack["existing"] != true {
@@ -230,6 +271,9 @@ func deploymentDeclaredRecipe(ctx context.Context, template map[string]any, envi
 		id, ok := deploymentMetadataString(reference, template, parameters)
 		if !ok {
 			return nil, true, fmt.Errorf("cannot resolve declared environment recipe pack")
+		}
+		if !strings.Contains(id, "/") {
+			id = scope + "/providers/Radius.Core/recipePacks/" + id
 		}
 		pack, err := configloader.FetchRecipePack(ctx, id, armOptions)
 		if err != nil {

@@ -168,7 +168,8 @@ func (r *delegationRuntime) target(ctx context.Context, request *ctrl.Request, s
 			return nil, nil, err
 		}
 	}
-	if target.DelegationExecutionStarted && target.DelegationResult == nil && target.ProvisioningState() != v1.ProvisioningStateFailed {
+	if target.DelegationExecutionStarted && target.DelegationResult == nil &&
+		target.DelegationFailedOperationID != target.DelegationOperationID && target.ProvisioningState() != v1.ProvisioningStateFailed {
 		return nil, nil, fmt.Errorf("the original delegation worker has no terminal failure; automatic replay is unsafe while it may still publish")
 	}
 	if target.DesiredState == nil || target.DelegationTargetID != "" {
@@ -289,11 +290,28 @@ func (r *delegationRuntime) persistSuppliedMembers(ctx context.Context, target *
 	return nil
 }
 
-func (r *delegationRuntime) put(ctx context.Context, request *ctrl.Request, source *datamodel.DynamicResource, exclude string) (ctrl.Result, error) {
+func (r *delegationRuntime) put(ctx context.Context, request *ctrl.Request, source *datamodel.DynamicResource, exclude string) (result ctrl.Result, err error) {
 	object, target, err := r.target(ctx, request, source)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	preparing := !target.DelegationExecutionStarted
+	claimedExecution := false
+	var members []delegationMember
+	operationID := target.DelegationOperationID
+	defer func() {
+		if err == nil || !preparing {
+			return
+		}
+		_, current, cleanupErr := readDynamicResource(ctx, r.opts.DatabaseClient, target.ID)
+		if cleanupErr == nil && current.DelegationOperationID == operationID &&
+			(!current.DelegationExecutionStarted || claimedExecution) {
+			cleanupErr = r.recordFailure(ctx, target.ID, members, nil, false, operationID)
+		}
+		if cleanupErr != nil {
+			err = errors.Join(err, fmt.Errorf("failed to release delegation preparation claim: %w", cleanupErr))
+		}
+	}()
 	// A failed-source retry observes the admitted native operation, not the new HTTP operation.
 	originalRequest := *request
 	originalRequest.OperationID, err = uuid.Parse(target.DelegationOperationID)
@@ -329,13 +347,19 @@ func (r *delegationRuntime) put(ctx context.Context, request *ctrl.Request, sour
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	if target.DelegatingDesiredStates != nil {
+		for _, supplied := range *target.DelegatingDesiredStates {
+			members = append(members, delegationMember{resource: supplied})
+		}
+	}
 	if err := r.persistSuppliedMembers(ctx, target); err != nil {
 		return ctrl.Result{}, err
 	}
-	members, err := r.loadMembers(ctx, target, own, definition, handler, exclude)
+	loadedMembers, err := r.loadMembers(ctx, target, own, definition, handler, exclude)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	members = loadedMembers
 	for i := range members {
 		member := &members[i]
 		member.resource.SetProvisioningState(v1.ProvisioningStateUpdating)
@@ -353,6 +377,7 @@ func (r *delegationRuntime) put(ctx context.Context, request *ctrl.Request, sour
 	if err := r.opts.DatabaseClient.Save(ctx, object, database.WithETag(object.ETag)); err != nil {
 		return ctrl.Result{}, err
 	}
+	claimedExecution = true
 
 	wrapper := &delegationEngine{Engine: r.engine, members: members, executionID: target.DelegationOperationID, recoverExecution: recoverExecution}
 	if target.DelegationResult != nil {
@@ -408,9 +433,10 @@ func (r *delegationRuntime) put(ctx context.Context, request *ctrl.Request, sour
 	}
 	targetRequest := *request
 	targetRequest.ResourceID, targetRequest.APIVersion = target.ID, target.UpdatedAPIVersion
+	preparing = false
 	result, runErr := controller.Run(ctx, &targetRequest)
 	if runErr != nil || result.ProvisioningState() != v1.ProvisioningStateSucceeded {
-		if err := r.recordFailure(ctx, target.ID, members, wrapper.output, wrapper.executed && !wrapper.preNativeFailure); err != nil {
+		if err := r.recordFailure(ctx, target.ID, members, wrapper.output, wrapper.executed && !wrapper.preNativeFailure, request.OperationID.String()); err != nil {
 			return ctrl.Result{}, err
 		}
 		if runErr != nil {
@@ -423,7 +449,7 @@ func (r *delegationRuntime) put(ctx context.Context, request *ctrl.Request, sour
 	}
 	executionTargetID := target.ID
 	publicationFailure := func(cause error) (ctrl.Result, error) {
-		if err := r.recordFailure(ctx, executionTargetID, members, wrapper.output, true); err != nil {
+		if err := r.recordFailure(ctx, executionTargetID, members, wrapper.output, true, request.OperationID.String()); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.NewFailedResult(v1.ErrorDetails{Code: v1.CodeInvalidRequestContent, Message: cause.Error()}), nil
@@ -464,6 +490,7 @@ func (r *delegationRuntime) put(ctx context.Context, request *ctrl.Request, sour
 	target.Status()["delegatedResources"] = logical
 	target.DelegatingDesiredStates = nil
 	target.DelegationOperationID, target.DelegationExecutionStarted = "", false
+	target.DelegationFailedOperationID = ""
 	target.DelegationResult = nil
 	target.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	object.Data = target
@@ -603,12 +630,14 @@ func validateProjection(ctx context.Context, member delegationMember, values map
 	return nil
 }
 
-func (r *delegationRuntime) recordFailure(ctx context.Context, targetID string, members []delegationMember, output *recipes.RecipeOutput, executed bool) error {
+func (r *delegationRuntime) recordFailure(ctx context.Context, targetID string, members []delegationMember, output *recipes.RecipeOutput, executed bool, operationID string) error {
 	object, target, err := readDynamicResource(ctx, r.opts.DatabaseClient, targetID)
 	if err != nil {
 		return err
 	}
-	operationID := target.DelegationOperationID
+	if target.DelegationOperationID != operationID {
+		return fmt.Errorf("the target operation changed before failure publication")
+	}
 	if output != nil {
 		inventory, err := processors.GetOutputResourcesFromRecipe(output)
 		if err != nil {
@@ -621,6 +650,7 @@ func (r *delegationRuntime) recordFailure(ctx context.Context, targetID string, 
 
 	}
 	target.SetProvisioningState(v1.ProvisioningStateFailed)
+	target.DelegationFailedOperationID = operationID
 	delete(target.Status(), "delegatedResources")
 	object.Data = target
 	if err := r.opts.DatabaseClient.Save(ctx, object, database.WithETag(object.ETag)); err != nil {
@@ -628,6 +658,9 @@ func (r *delegationRuntime) recordFailure(ctx context.Context, targetID string, 
 	}
 	for _, member := range members {
 		object, current, err := readDynamicResource(ctx, r.opts.DatabaseClient, member.resource.ID)
+		if errors.Is(err, &database.ErrNotFound{}) {
+			continue
+		}
 		if err != nil {
 			return err
 		}
@@ -648,6 +681,7 @@ func (r *delegationRuntime) recordFailure(ctx context.Context, targetID string, 
 		}
 		// A returned result is recoverable inventory, not a successful logical projection.
 		target.DelegationOperationID, target.DelegationExecutionStarted = "", false
+		target.DelegationFailedOperationID = ""
 		target.DelegationResult = nil
 		object.Data = target
 		return r.opts.DatabaseClient.Save(ctx, object, database.WithETag(object.ETag))

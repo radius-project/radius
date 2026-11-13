@@ -56,7 +56,8 @@ type DynamicResource struct {
 	// DelegationOperationID serializes target and bound member arrivals using target ETags.
 	DelegationOperationID string `json:"delegationOperationId,omitempty"`
 	// DelegationExecutionStarted prevents replay after an ambiguous native execution.
-	DelegationExecutionStarted bool `json:"delegationExecutionStarted,omitempty"`
+	DelegationExecutionStarted  bool   `json:"delegationExecutionStarted,omitempty"`
+	DelegationFailedOperationID string `json:"delegationFailedOperationId,omitempty"`
 	// DelegationResult protects returned native results until all logical outputs are published.
 	DelegationResult map[string]any `json:"delegationResult,omitempty"`
 	// DelegationResourceTypes retains query coverage when a target registration changes consent.

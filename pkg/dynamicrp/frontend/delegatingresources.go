@@ -20,11 +20,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	sm "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
+	"github.com/radius-project/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/crypto/encryption"
@@ -142,6 +145,7 @@ func makeDelegationUpdateFilter() controller.UpdateFilter[datamodel.DynamicResou
 			old.DesiredState != nil && old.DesiredState.Revision == old.DelegationOperationID {
 			// Recovery uses the original protected inputs and operation identity.
 			*resource = *old
+			resource.DelegationFailedOperationID = old.DelegationOperationID
 			return nil, nil
 		}
 		if delegationBusy(old) || (old != nil && old.DelegationDeleting) {
@@ -152,7 +156,9 @@ func makeDelegationUpdateFilter() controller.UpdateFilter[datamodel.DynamicResou
 		}
 		resource.DelegationOperationID = v1.ARMRequestContextFromContext(ctx).OperationID.String()
 		resource.DelegationExecutionStarted = false
+		resource.DelegationFailedOperationID = ""
 		resource.DelegationResult = nil
+		trackDelegationClaim(ctx, resource.ID)
 		return nil, nil
 	}
 }
@@ -174,6 +180,7 @@ func makeDelegationDeleteFilter() controller.DeleteFilter[datamodel.DynamicResou
 		}
 		resource.DelegationOperationID = v1.ARMRequestContextFromContext(ctx).OperationID.String()
 		resource.DelegationDeleting = true
+		trackDelegationClaim(ctx, resource.ID)
 		return nil, nil
 	}
 }
@@ -200,6 +207,11 @@ func claimDelegationTarget(ctx context.Context, source *datamodel.DynamicResourc
 			if previous.DesiredState != nil && previous.DesiredState.Revision == target.DelegationOperationID &&
 				strings.EqualFold(previous.DelegationTargetID, target.ID) {
 				*source = previous
+				target.DelegationFailedOperationID = target.DelegationOperationID
+				object.Data = &target
+				if err := options.DatabaseClient.Save(ctx, object, database.WithETag(object.ETag)); err != nil {
+					return nil, err
+				}
 				return nil, nil
 			}
 		}
@@ -207,6 +219,7 @@ func claimDelegationTarget(ctx context.Context, source *datamodel.DynamicResourc
 	}
 	target.DelegationOperationID = v1.ARMRequestContextFromContext(ctx).OperationID.String()
 	target.DelegationExecutionStarted = false
+	target.DelegationFailedOperationID = ""
 	target.DelegationResult = nil
 	if !slices.ContainsFunc(target.DelegationResourceTypes, func(value string) bool { return strings.EqualFold(value, source.Type) }) {
 		target.DelegationResourceTypes = append(target.DelegationResourceTypes, source.Type)
@@ -218,5 +231,70 @@ func claimDelegationTarget(ctx context.Context, source *datamodel.DynamicResourc
 		}
 		return nil, err
 	}
+	trackDelegationClaim(ctx, target.ID)
 	return nil, nil
+}
+
+type delegationClaimKey struct{}
+
+func trackDelegationClaim(ctx context.Context, id string) {
+	if claimed, ok := ctx.Value(delegationClaimKey{}).(*string); ok {
+		*claimed = id
+	}
+}
+
+type delegationQueueTracker struct {
+	sm.StatusManager
+	queued bool
+}
+
+func (s *delegationQueueTracker) QueueAsyncOperation(ctx context.Context, request *v1.ARMRequestContext, options sm.QueueOperationOptions) error {
+	err := s.StatusManager.QueueAsyncOperation(ctx, request, options)
+	s.queued = err == nil
+	return err
+}
+
+type delegationAdmissionController struct {
+	controller.Controller
+	store database.Client
+	queue *delegationQueueTracker
+}
+
+func newDelegationAdmissionController(options controller.Options, resourceOptions controller.ResourceOptions[datamodel.DynamicResource], deleting bool) (controller.Controller, error) {
+	queue := &delegationQueueTracker{StatusManager: options.StatusManager}
+	options.StatusManager = queue
+	var inner controller.Controller
+	var err error
+	if deleting {
+		inner, err = defaultoperation.NewDefaultAsyncDelete(options, resourceOptions)
+	} else {
+		inner, err = defaultoperation.NewDefaultAsyncPut(options, resourceOptions)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &delegationAdmissionController{Controller: inner, store: options.DatabaseClient, queue: queue}, nil
+}
+
+func (c *delegationAdmissionController) Run(ctx context.Context, w http.ResponseWriter, request *http.Request) (rest.Response, error) {
+	claimed := ""
+	ctx = context.WithValue(ctx, delegationClaimKey{}, &claimed)
+	response, err := c.Controller.Run(ctx, w, request)
+	if err != nil && !c.queue.queued && claimed != "" {
+		object, cleanupErr := c.store.Get(ctx, claimed)
+		if cleanupErr == nil {
+			var target datamodel.DynamicResource
+			cleanupErr = object.As(&target)
+			if cleanupErr == nil && target.DelegationOperationID == v1.ARMRequestContextFromContext(ctx).OperationID.String() && !target.DelegationExecutionStarted {
+				target.DelegationOperationID = ""
+				target.DelegationDeleting = false
+				object.Data = &target
+				cleanupErr = c.store.Save(ctx, object, database.WithETag(object.ETag))
+			}
+		}
+		if cleanupErr != nil {
+			err = errors.Join(err, fmt.Errorf("failed to release delegation admission claim: %w", cleanupErr))
+		}
+	}
+	return response, err
 }

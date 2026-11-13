@@ -20,10 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/schema"
 )
 
 type delegationModuleInput struct {
@@ -111,6 +113,23 @@ func planDelegationModules(template map[string]any, scope, path string, definiti
 				childDefinitions = maps.Clone(childDefinitions)
 				delete(childDefinitions, path+moduleSymbol+"/"+source)
 				continue
+			}
+			if paths := schema.ExtractSensitiveFieldPaths(schemas[path+moduleSymbol+"/"+source], ""); len(paths) > 0 {
+				properties, ok := body["properties"].(map[string]any)
+				if !ok {
+					return nil, false, fmt.Errorf("cross-module delegate %q cannot transport expression-valued sensitive inputs", source)
+				}
+				redacted, err := cloneDelegationObject(properties)
+				if err != nil {
+					return nil, false, err
+				}
+				schema.RedactFields(redacted, paths)
+				if !reflect.DeepEqual(properties, redacted) {
+					return nil, false, fmt.Errorf("cross-module delegate %q cannot transport sensitive inputs through deployment outputs", source)
+				}
+			}
+			if delegationUsesSecureParameter(body, child, arguments, template, map[string]bool{}) {
+				return nil, false, fmt.Errorf("cross-module delegate %q cannot transport secure parameter values through deployment outputs", source)
 			}
 			sourceType, _, _ := strings.Cut(fmt.Sprint(declaration["type"]), "@")
 			targetDefinition := definitions[path+target]
@@ -546,4 +565,65 @@ func pruneDelegationInputParameters(template, moduleProperties map[string]any) {
 			delete(variables, key)
 		}
 	}
+}
+
+func delegationUsesSecureParameter(value any, template, arguments, parent map[string]any, visited map[string]bool) bool {
+	switch value := value.(type) {
+	case map[string]any:
+		for _, child := range value {
+			if delegationUsesSecureParameter(child, template, arguments, parent, visited) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range value {
+			if delegationUsesSecureParameter(child, template, arguments, parent, visited) {
+				return true
+			}
+		}
+	case string:
+		if !strings.HasPrefix(value, "[") || !strings.HasSuffix(value, "]") {
+			return false
+		}
+		sensitive := false
+		rewriteARM(value[1:len(value)-1], func(call string) string {
+			for _, function := range []string{"parameters", "variables"} {
+				names := delegationARMArguments(strings.ToLower(call), function)
+				if len(names) != 1 || !strings.HasPrefix(names[0], "'") || armQuotedEnd(names[0], 0) != len(names[0]) {
+					continue
+				}
+				name := strings.ReplaceAll(names[0][1:len(names[0])-1], "''", "'")
+				key := function + ":" + name
+				if visited[key] {
+					continue
+				}
+				visited[key] = true
+				definitions, _ := template[function].(map[string]any)
+				lookup := func(values map[string]any) any {
+					for key, value := range values {
+						if strings.EqualFold(key, name) {
+							return value
+						}
+					}
+					return nil
+				}
+				if function == "variables" {
+					sensitive = sensitive || delegationUsesSecureParameter(lookup(definitions), template, arguments, parent, visited)
+					continue
+				}
+				definition, _ := lookup(definitions).(map[string]any)
+				kind, _ := definition["type"].(string)
+				sensitive = sensitive || strings.EqualFold(kind, "secureString") || strings.EqualFold(kind, "secureObject")
+				argument, _ := lookup(arguments).(map[string]any)
+				if argument != nil {
+					sensitive = sensitive || delegationUsesSecureParameter(argument["value"], parent, nil, nil, map[string]bool{})
+				} else {
+					sensitive = sensitive || delegationUsesSecureParameter(definition["defaultValue"], template, arguments, parent, visited)
+				}
+			}
+			return call
+		})
+		return sensitive
+	}
+	return false
 }

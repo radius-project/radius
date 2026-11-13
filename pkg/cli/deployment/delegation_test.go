@@ -455,3 +455,35 @@ func TestPlanDelegatedResourcesDoesNotChangeOrdinaryTemplate(t *testing.T) {
 	require.Equal(t, template, planned)
 	require.NotContains(t, planned, "variables")
 }
+
+func TestPlanDelegationRejectsSensitiveCrossModuleOutputs(t *testing.T) {
+	t.Parallel()
+	for _, source := range []string{"schema", "secure child parameter", "secure parent parameter"} {
+		t.Run(source, func(t *testing.T) {
+			t.Parallel()
+			template, definitions, schemas := delegationModuleFixture(t)
+			module := template["resources"].(map[string]any)["child"].(map[string]any)
+			moduleProperties := module["properties"].(map[string]any)
+			child := moduleProperties["template"].(map[string]any)
+			route := child["resources"].(map[string]any)["route"].(map[string]any)
+			properties := route["properties"].(map[string]any)["properties"].(map[string]any)
+			if source == "schema" {
+				schemas["child/route"]["properties"].(map[string]any)["password"] = map[string]any{"type": "string", "x-radius-sensitive": true}
+				properties["password"] = "private-value"
+			} else {
+				properties["password"] = "[variables('privateValue')]"
+				child["variables"].(map[string]any)["privateValue"] = "[parameters('password')]"
+				kind := "secureString"
+				if source == "secure parent parameter" {
+					kind = "string"
+					template["parameters"].(map[string]any)["parentPassword"] = map[string]any{"type": "secureString"}
+					moduleProperties["parameters"].(map[string]any)["password"] = map[string]any{"value": "[parameters('parentPassword')]"}
+				}
+				child["parameters"].(map[string]any)["password"] = map[string]any{"type": kind}
+			}
+			_, err := PlanDelegatedResources(template, "/planes/radius/local/resourceGroups/rg", definitions, schemas)
+			require.ErrorContains(t, err, "cannot transport")
+			require.NotContains(t, route, "existing")
+		})
+	}
+}

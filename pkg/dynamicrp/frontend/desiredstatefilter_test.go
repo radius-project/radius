@@ -72,7 +72,11 @@ func TestDesiredStateAdmissionPreservesSensitiveInputs(t *testing.T) {
 			})
 			require.NoError(t, err)
 			loader := configloader.NewMockConfigurationLoader(gomock.NewController(t))
-			loader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Return(definition, nil)
+			calls := 1
+			if definition.Driver == "delegated" {
+				calls++
+			}
+			loader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Return(definition, nil).Times(calls)
 			store := database.NewMockClient(gomock.NewController(t))
 			if definition.Driver == "delegated" {
 				target := &datamodel.DynamicResource{Properties: map[string]any{"environment": environment}}
@@ -92,6 +96,13 @@ func TestDesiredStateAdmissionPreservesSensitiveInputs(t *testing.T) {
 				"password": "private-input", "image": "saved-image",
 			}}
 			old := &datamodel.DynamicResource{DelegationTargetID: targetID}
+			if definition.Driver == "delegated" {
+				previous := &datamodel.DynamicResource{Properties: map[string]any{"status": map[string]any{"outputResources": []any{"owned-platform-resource"}}}}
+				response, err := makeDesiredStateFilter(loader, client, handler)(ctx, resource, previous, &controller.Options{DatabaseClient: store})
+				require.NoError(t, err)
+				require.NotNil(t, response, "an existing provisioning resource cannot acquire a new delegation binding")
+				require.Equal(t, []any{"owned-platform-resource"}, previous.Status()["outputResources"])
+			}
 			response, err := makeDesiredStateFilter(loader, client, handler)(ctx, resource, old, &controller.Options{DatabaseClient: store})
 			require.NoError(t, err)
 			require.Nil(t, response)
@@ -119,4 +130,17 @@ func TestDesiredStateAdmissionLeavesLegacyResourcesUnchanged(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, response)
 	require.Nil(t, resource.DesiredState)
+}
+
+func TestDesiredStateAdmissionRejectsLeavingDelegationEnvironment(t *testing.T) {
+	t.Parallel()
+	for _, environment := range []string{"", "/planes/radius/local/resourceGroups/rg/providers/Applications.Core/environments/env"} {
+		resource := &datamodel.DynamicResource{Properties: map[string]any{"environment": environment}}
+		old := &datamodel.DynamicResource{DesiredState: &datamodel.DesiredState{Revision: "saved"}, DelegationTargetID: "saved-target"}
+		response, err := makeDesiredStateFilter(nil, nil, nil)(createTestContext(t), resource, old, nil)
+		require.NoError(t, err)
+		require.NotNil(t, response)
+		require.Equal(t, "saved-target", old.DelegationTargetID)
+		require.Equal(t, "saved", old.DesiredState.Revision)
+	}
 }

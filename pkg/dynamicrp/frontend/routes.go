@@ -107,11 +107,11 @@ func (s *Service) registerRoutes(
 				}))
 			r.Put("/{resourceName}", dynamicOperationHandler(v1.OperationPut, controllerOptions,
 				func(opts controller.Options) (controller.Controller, error) {
-					return defaultoperation.NewDefaultAsyncPut(opts, resourceOptions)
+					return newDelegationAdmissionController(opts, resourceOptions, false)
 				}))
 			r.Delete("/{resourceName}", dynamicOperationHandler(v1.OperationDelete, controllerOptions,
 				func(opts controller.Options) (controller.Controller, error) {
-					return defaultoperation.NewDefaultAsyncDelete(opts, resourceOptions)
+					return newDelegationAdmissionController(opts, resourceOptions, true)
 				}))
 		})
 	})

@@ -42,6 +42,9 @@ func makeDesiredStateFilter(
 ) controller.UpdateFilter[datamodel.DynamicResource] {
 	return func(ctx context.Context, resource, old *datamodel.DynamicResource, options *controller.Options) (rest.Response, error) {
 		if resource == nil || resource.ResourceMetadata().EnvironmentID() == "" {
+			if old != nil && (old.DesiredState != nil || old.DelegationTargetID != "") {
+				return rest.NewBadRequestResponse("delete a delegation participant before removing its recipe environment"), nil
+			}
 			if resource != nil && resource.DelegatingResources != nil {
 				return rest.NewBadRequestResponse("delegatingResources requires a recipe environment"), nil
 			}
@@ -52,6 +55,9 @@ func makeDesiredStateFilter(
 			return nil, fmt.Errorf("failed to resolve desired-state environment: %w", err)
 		}
 		if !strings.EqualFold(environment.Type(), "Radius.Core/environments") {
+			if old != nil && (old.DesiredState != nil || old.DelegationTargetID != "") {
+				return rest.NewBadRequestResponse("delete a delegation participant before changing its recipe environment"), nil
+			}
 			if resource.DelegatingResources != nil {
 				return rest.NewBadRequestResponse("delegatingResources requires a Radius.Core recipe environment"), nil
 			}
@@ -112,6 +118,9 @@ func makeDesiredStateFilter(
 			}
 		}
 		if definition.Driver == "delegated" {
+			if old != nil && old.DelegationTargetID == "" {
+				return rest.NewBadRequestResponse("an existing nondelegating resource cannot become a delegate"), nil
+			}
 			targetID, err := datamodel.SelectDelegationTarget(resource.Properties, sourceSchema, definition.DelegatesTo)
 			if err != nil {
 				return rest.NewBadRequestResponse(err.Error()), nil
