@@ -224,7 +224,10 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	if applied != nil {
 		owned = FlattenProperties(applied)
 	}
-	writeOnly := PropertyPaths(resourceTypeSchema.WriteOnlyProperties)
+	writeOnly := [][]string{}
+	for _, p := range PropertyPaths(resourceTypeSchema.WriteOnlyProperties) {
+		writeOnly = append(writeOnly, strings.Split(p, "/"))
+	}
 
 	// A value AWS reports in a different form, such as reordered subnets or a fuller engine version, is unchanged:
 	// use AWS's value so the patch leaves it alone. Equivalent is used only where Radius knows what it owns (see
@@ -260,7 +263,7 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 		}
 		fields := listFields{
 			writeOnly: writeOnly,
-			awsOwned:  func(path string) bool { return known || !setsAt(applied, strings.Split(path, "/")) },
+			awsOwned:  func(path []string) bool { return known || !setsAt(applied, path) },
 		}
 		if filled, ok := rules.fillAt(k, list, current, desiredStateObject, fields); ok {
 			flattenedDesiredStateObject[k] = filled
@@ -346,13 +349,13 @@ func decodedLastApplied(lastApplied map[string]any) (map[string]any, error) {
 	return decoded, nil
 }
 
-// setsAt reports whether obj has a value at the path given by segments, where "*" stands for every item of a list.
+// setsAt reports whether obj has a value at the path given by segments. A "*" segment stands for every item of a list,
+// and for the key "*" of an object.
 func setsAt(obj any, segments []string) bool {
 	if len(segments) == 0 {
 		return obj != nil
 	}
-	if segments[0] == "*" {
-		list, _ := obj.([]any)
+	if list, ok := obj.([]any); ok && segments[0] == "*" {
 		for _, item := range list {
 			if setsAt(item, segments[1:]) {
 				return true

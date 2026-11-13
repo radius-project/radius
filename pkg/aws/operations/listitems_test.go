@@ -215,6 +215,60 @@ func Test_GeneratePatchWithOptions_ListItemFields(t *testing.T) {
 			desired:     map[string]any{"Users": list(item("Name", "a", "Password", "secret"))},
 			want:        []string{"add /Users/0/Password"},
 		},
+		{
+			name:        "an object of only write-only fields AWS never returns is kept for the fingerprints to decide",
+			schema:      []byte(`{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Auth/Password"]}`),
+			lastApplied: map[string]any{"Users": list(item("Name", "a", "Auth", item()))},
+			current:     map[string]any{"Users": list(item("Name", "a", "Role", "reader"))},
+			desired:     map[string]any{"Users": list(item("Name", "a", "Auth", item("Password", "secret")))},
+			want:        []string{"add /Users/0/Auth"},
+		},
+		{
+			name:        "an object with a field AWS should return is sent",
+			schema:      []byte(`{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Auth/Password"]}`),
+			lastApplied: map[string]any{"Users": list(item("Name", "a"))},
+			current:     map[string]any{"Users": list(item("Name", "a", "Role", "reader"))},
+			desired:     map[string]any{"Users": list(item("Name", "a", "Auth", item("Password", "secret", "Mode", "x")))},
+			want:        []string{"remove /Users/0/Role", "add /Users/0/Auth"},
+		},
+		{
+			name:        "a list of only write-only fields AWS never returns is kept for the fingerprints to decide",
+			schema:      []byte(`{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Keys/*/Secret"]}`),
+			lastApplied: map[string]any{"Users": list(item("Name", "a"))},
+			current:     map[string]any{"Users": list(item("Name", "a", "Role", "reader"))},
+			desired:     map[string]any{"Users": list(item("Name", "a", "Keys", list(item("Secret", "s"))))},
+			want:        []string{"add /Users/0/Keys"},
+		},
+		{
+			name:        "a list with a field AWS should return is sent",
+			schema:      []byte(`{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Keys/*/Secret"]}`),
+			lastApplied: map[string]any{"Users": list(item("Name", "a"))},
+			current:     map[string]any{"Users": list(item("Name", "a", "Role", "reader"))},
+			desired:     map[string]any{"Users": list(item("Name", "a", "Keys", list(item("Id", "k1"))))},
+			want:        []string{"remove /Users/0/Role", "add /Users/0/Keys"},
+		},
+		{
+			name:        "an empty object AWS doesn't have is sent",
+			schema:      []byte(`{"properties": {}, "writeOnlyProperties": ["/properties/Users/*/Auth/Password"]}`),
+			lastApplied: map[string]any{"Users": list(item("Name", "a"))},
+			current:     map[string]any{"Users": list(item("Name", "a", "Role", "reader"))},
+			desired:     map[string]any{"Users": list(item("Name", "a", "Auth", item()))},
+			want:        []string{"remove /Users/0/Role", "add /Users/0/Auth"},
+		},
+		{
+			name:        "a removed key with a slash in its name is removed",
+			lastApplied: map[string]any{"Statements": list(item("Condition", item("aws:PrincipalTag/team", "a", "aws:RequestedRegion", "us-west-2")))},
+			current:     map[string]any{"Statements": list(item("Condition", item("aws:PrincipalTag/team", "a", "aws:RequestedRegion", "us-west-2")))},
+			desired:     map[string]any{"Statements": list(item("Condition", item("aws:RequestedRegion", "us-west-2")))},
+			want:        []string{"remove /Statements/0/Condition/aws:PrincipalTag~1team"},
+		},
+		{
+			name:        "a key named * is not every item of a list",
+			lastApplied: map[string]any{"Rules": list(item("Match", item("*", "a")))},
+			current:     map[string]any{"Rules": list(item("Match", item("*", "a")))},
+			desired:     map[string]any{"Rules": list(item("Match", item()))},
+			want:        []string{"remove /Rules/0/Match/*"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -252,4 +306,16 @@ func orEmpty(s []string) []string {
 		return []string{}
 	}
 	return s
+}
+
+// Test_FillAt_SlashInKeyAbove checks a list under a map key that holds a "/". Its flattened path doesn't lead back to
+// the list, so fillAt doesn't match, and the template's list is sent.
+func Test_FillAt_SlashInKeyAbove(t *testing.T) {
+	t.Parallel()
+
+	list := []any{map[string]any{"Name": "a"}}
+	root := map[string]any{"Map": map[string]any{"a/b": list}}
+	fields := listFields{awsOwned: func([]string) bool { return true }}
+	_, ok := parseSchemaRules([]byte(`{}`)).fillAt("Map/a/b", list, []any{map[string]any{"Name": "a", "Codec": "h264"}}, root, fields)
+	require.False(t, ok)
 }

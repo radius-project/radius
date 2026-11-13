@@ -183,15 +183,43 @@ func (r *schemaRules) equivalent(segments []string, desired any, current any, pa
 	}
 }
 
-// listFields says which fields inside list items fillAt can take from AWS.
+// listFields says which fields inside list items fillAt can take from AWS. Paths are segments, with "*" for the items
+// of a list, so a map key that holds a "/", such as aws:PrincipalTag/team, stays one segment.
 type listFields struct {
 	// writeOnly are the schema's write-only paths, relative to the properties object, such as Users/*/Password. AWS
 	// never returns them, so the template's value is kept, and the fingerprints decide whether to send it.
-	writeOnly []string
+	writeOnly [][]string
 
-	// awsOwned reports whether a field AWS has inside a list item and the template doesn't set, at a path with "*" for
-	// the items of a list, such as VpcConfigs/*/SecurityGroups, is AWS's, so it stays. Otherwise the patch removes it.
-	awsOwned func(path string) bool
+	// awsOwned reports whether a field AWS has inside a list item and the template doesn't set, such as
+	// VpcConfigs/*/SecurityGroups, is AWS's, so it stays. Otherwise the patch removes it.
+	awsOwned func(path []string) bool
+}
+
+// onlyWriteOnly reports whether v, at path, holds only values at write-only paths, such as an Auth object that holds
+// only a write-only Password. AWS never returns such a value.
+func (f listFields) onlyWriteOnly(path []string, v any) bool {
+	for _, w := range f.writeOnly {
+		if len(path) >= len(w) && slices.Equal(path[:len(w)], w) {
+			return true
+		}
+	}
+	switch t := v.(type) {
+	case map[string]any:
+		for k, child := range t {
+			if !f.onlyWriteOnly(append(slices.Clone(path), k), child) {
+				return false
+			}
+		}
+		return len(t) > 0
+	case []any:
+		for _, item := range t {
+			if !f.onlyWriteOnly(append(slices.Clone(path), "*"), item) {
+				return false
+			}
+		}
+		return len(t) > 0
+	}
+	return false
 }
 
 // fillAt returns the template's value of the list at path with the fields AWS filled in inside its items, such as a
@@ -200,6 +228,10 @@ type listFields struct {
 // desiredRoot is the template's whole properties object, which property transforms read.
 func (r *schemaRules) fillAt(path string, desired []any, current any, desiredRoot map[string]any, fields listFields) (any, bool) {
 	segments := strings.Split(path, "/")
+	// A map key that holds a "/" splits into more segments than it is, so the path doesn't lead back to the list.
+	if _, ok := valueAt(desiredRoot, segments); !ok {
+		return nil, false
+	}
 	parent, _ := valueAt(desiredRoot, segments[:len(segments)-1])
 	parentMap, _ := parent.(map[string]any)
 	return r.fill(segments, desired, current, parentMap, desiredRoot, fields)
@@ -258,14 +290,14 @@ func (r *schemaRules) fill(segments []string, desired any, current any, parent m
 					return nil, false
 				}
 			case v == nil:
-			case underAny(strings.Join(field, "/"), fields.writeOnly):
+			case fields.onlyWriteOnly(field, v):
 				out[k] = v
 			default:
 				return nil, false
 			}
 		}
 		for k, cv := range c {
-			if _, set := d[k]; !set && fields.awsOwned(strings.Join(append(slices.Clone(segments), k), "/")) {
+			if _, set := d[k]; !set && fields.awsOwned(append(slices.Clone(segments), k)) {
 				out[k] = cv
 			}
 		}
