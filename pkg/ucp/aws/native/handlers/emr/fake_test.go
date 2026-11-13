@@ -19,9 +19,12 @@ package emr
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/emr"
@@ -36,7 +39,8 @@ import (
 // fakeAPI is an in-memory EMR API. It keeps clusters in an awsfake store in the type's property format, so the
 // suite's Cloud Control sees the same resources, and builds EMR's responses from them. A new cluster is STARTING for
 // one read, a terminated one is TERMINATING for one read and then TERMINATED, and a resized instance group is
-// RESIZING for one list. ListClusters returns one cluster per page, and ListInstanceGroups two groups per page.
+// RESIZING for one list. ListClusters returns one cluster per page, and ListInstanceGroups and ListInstanceFleets two
+// groups or fleets per page.
 type fakeAPI struct {
 	store  *awsfake.CloudControl
 	failer nativetest.Failer
@@ -104,10 +108,306 @@ func cfnNames(v any, parent string) any {
 	return v
 }
 
+// Limits and defaults EMR's API reference and Management Guide give, which the fake enforces and applies.
+const (
+	maxID              = 256
+	maxJobFlowID       = 10280
+	maxName            = 256
+	maxAdditionalInfo  = 10280
+	maxSteps           = 256
+	maxStepConcurrency = 256
+	maxTerminate       = 10
+	maxTagKey          = 128
+	maxTagValue        = 256
+	minIdleTimeout     = 60
+	maxIdleTimeout     = 604800
+	defaultIdleTimeout = 3600
+	maxTypeConfigs     = 5
+	maxStrategyConfigs = 30
+	minVolumeSize      = 1
+	maxVolumeSize      = 1024
+	minThroughput      = 125
+	maxThroughput      = 1000
+)
+
+// volumeTypes are the EBS volume types EMR supports.
+var volumeTypes = []string{"gp3", "gp2", "io1", "st1", "sc1", "standard"}
+
+// chars returns the length of s in characters, as EMR counts its length limits.
+func chars(s string) int {
+	return utf8.RuneCountInString(s)
+}
+
+// invalid returns ValidationError, the error EMR's Common Errors page gives for input that doesn't meet the required
+// format or constraints.
+func invalid(format string, args ...any) error {
+	return fault("ValidationError", fmt.Sprintf(format, args...))
+}
+
+// validID returns ValidationError when a ClusterId or InstanceGroupId is longer than EMR allows.
+func validID(name string, id string) error {
+	if chars(id) > maxID {
+		return invalid("%s must be at most %d characters", name, maxID)
+	}
+	return nil
+}
+
+// validJobFlowIDs returns ValidationError when JobFlowIds is empty or an ID is longer than EMR allows.
+func validJobFlowIDs(ids []string) error {
+	if len(ids) == 0 {
+		return invalid("JobFlowIds is required")
+	}
+	for _, id := range ids {
+		if chars(id) > maxJobFlowID {
+			return invalid("a job flow ID must be at most %d characters", maxJobFlowID)
+		}
+	}
+	return nil
+}
+
+// validTags returns ValidationError for a tag without a key, or with a key or value longer than EMR allows.
+func validTags(tags []types.Tag) error {
+	for _, t := range tags {
+		key := aws.ToString(t.Key)
+		if key == "" || chars(key) > maxTagKey || chars(aws.ToString(t.Value)) > maxTagValue {
+			return invalid("a tag needs a key of up to %d characters and a value of up to %d characters", maxTagKey, maxTagValue)
+		}
+	}
+	return nil
+}
+
+// validIdleTimeout returns ValidationError for an auto-termination idle timeout outside 60 seconds to seven days.
+func validIdleTimeout(p *types.AutoTerminationPolicy) error {
+	if p == nil || p.IdleTimeout == nil {
+		return nil
+	}
+	if t := *p.IdleTimeout; t < minIdleTimeout || t > maxIdleTimeout {
+		return invalid("IdleTimeout must be %d to %d seconds", minIdleTimeout, maxIdleTimeout)
+	}
+	return nil
+}
+
+// withIdleTimeout returns a copy of p with the idle timeout EMR uses when the policy sets none.
+func withIdleTimeout(p *types.AutoTerminationPolicy) *types.AutoTerminationPolicy {
+	if p == nil {
+		return nil
+	}
+	out := *p
+	if out.IdleTimeout == nil {
+		out.IdleTimeout = aws.Int64(defaultIdleTimeout)
+	}
+	return &out
+}
+
+// validScaling returns ValidationError for a managed scaling policy whose compute limits leave out a required value,
+// or whose utilization performance index is outside 1 to 100.
+func validScaling(p *types.ManagedScalingPolicy) error {
+	if p == nil {
+		return nil
+	}
+	if l := p.ComputeLimits; l != nil && (l.MaximumCapacityUnits == nil || l.MinimumCapacityUnits == nil || l.UnitType == "") {
+		return invalid("ComputeLimits requires MaximumCapacityUnits, MinimumCapacityUnits, and UnitType")
+	}
+	if i := p.UtilizationPerformanceIndex; i != nil && (*i < 1 || *i > 100) {
+		return invalid("UtilizationPerformanceIndex must be 1 to 100")
+	}
+	return nil
+}
+
+// withScalingDefaults returns a copy of p with the On-Demand and core limits EMR uses when the policy sets none: both
+// default to MaximumCapacityUnits.
+func withScalingDefaults(p *types.ManagedScalingPolicy) *types.ManagedScalingPolicy {
+	if p == nil || p.ComputeLimits == nil {
+		return p
+	}
+	out := *p
+	limits := *p.ComputeLimits
+	if limits.MaximumOnDemandCapacityUnits == nil {
+		limits.MaximumOnDemandCapacityUnits = limits.MaximumCapacityUnits
+	}
+	if limits.MaximumCoreCapacityUnits == nil {
+		limits.MaximumCoreCapacityUnits = limits.MaximumCapacityUnits
+	}
+	out.ComputeLimits = &limits
+	return &out
+}
+
+// validEbs returns ValidationError for an EBS volume without a size or type, with a size outside 1 to 1024 GiB, of a
+// type EMR doesn't support, or with a throughput outside 125 to 1000 MiB/s or on a volume that isn't gp3.
+func validEbs(ebs *types.EbsConfiguration) error {
+	if ebs == nil {
+		return nil
+	}
+	for _, c := range ebs.EbsBlockDeviceConfigs {
+		v := c.VolumeSpecification
+		if v == nil || v.SizeInGB == nil || v.VolumeType == nil {
+			return invalid("a volume specification requires SizeInGB and VolumeType")
+		}
+		if size := *v.SizeInGB; size < minVolumeSize || size > maxVolumeSize {
+			return invalid("SizeInGB must be %d to %d", minVolumeSize, maxVolumeSize)
+		}
+		if !slices.Contains(volumeTypes, *v.VolumeType) {
+			return invalid("VolumeType must be one of %v", volumeTypes)
+		}
+		if t := v.Throughput; t != nil && (*t < minThroughput || *t > maxThroughput || *v.VolumeType != "gp3") {
+			return invalid("Throughput must be %d to %d, and only for gp3 volumes", minThroughput, maxThroughput)
+		}
+	}
+	return nil
+}
+
+// validGroup returns ValidationError for an instance group without a count, role, or instance type.
+func validGroup(g types.InstanceGroupConfig) error {
+	if g.InstanceCount == nil || g.InstanceRole == "" || g.InstanceType == nil {
+		return invalid("an instance group requires InstanceCount, InstanceRole, and InstanceType")
+	}
+	if n := chars(*g.InstanceType); n < 1 || n > maxID {
+		return invalid("InstanceType must be 1 to %d characters", maxID)
+	}
+	return validEbs(g.EbsConfiguration)
+}
+
+// validFleet returns ValidationError for an instance fleet that breaks the rules of InstanceFleetConfig and
+// InstanceTypeConfig: its target capacities, the number of instance type configurations, and their weighted capacity.
+func validFleet(fl types.InstanceFleetConfig) error {
+	if fl.InstanceFleetType == "" {
+		return invalid("an instance fleet requires InstanceFleetType")
+	}
+	onDemand, spot := fl.TargetOnDemandCapacity, fl.TargetSpotCapacity
+	if aws.ToInt32(onDemand) < 0 || aws.ToInt32(spot) < 0 {
+		return invalid("target capacities must be at least 0")
+	}
+	if aws.ToInt32(onDemand) == 0 && aws.ToInt32(spot) == 0 {
+		return invalid("at least one of TargetSpotCapacity and TargetOnDemandCapacity must be greater than 0")
+	}
+	master := fl.InstanceFleetType == types.InstanceFleetTypeMaster
+	if master && (onDemand != nil && spot != nil || aws.ToInt32(onDemand)+aws.ToInt32(spot) != 1) {
+		return invalid("a master instance fleet sets one of TargetSpotCapacity and TargetOnDemandCapacity, to 1")
+	}
+	limit := maxTypeConfigs
+	if s := fl.LaunchSpecifications; s != nil && (s.OnDemandSpecification != nil && s.OnDemandSpecification.AllocationStrategy != "" ||
+		s.SpotSpecification != nil && s.SpotSpecification.AllocationStrategy != "") {
+		limit = maxStrategyConfigs
+	}
+	if len(fl.InstanceTypeConfigs) > limit {
+		return invalid("an instance fleet has at most %d instance type configurations", limit)
+	}
+	for _, c := range fl.InstanceTypeConfigs {
+		if n := chars(aws.ToString(c.InstanceType)); n < 1 || n > maxID {
+			return invalid("InstanceType must be 1 to %d characters", maxID)
+		}
+		if w := c.WeightedCapacity; w != nil && (master && *w != 1 || *w < 1) {
+			return invalid("WeightedCapacity is 1 for a master instance fleet, and at least 1 for others")
+		}
+		if err := validEbs(c.EbsConfiguration); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validInstances returns ValidationError for instances that don't set instance groups or instance fleets, set both, or
+// set only one of the EMR-managed security groups.
+func validInstances(in *types.JobFlowInstancesConfig) error {
+	if in == nil {
+		return invalid("Instances is required")
+	}
+	uniform := in.MasterInstanceType != nil && in.SlaveInstanceType != nil && in.InstanceCount != nil
+	switch {
+	case len(in.InstanceGroups) > 0 && len(in.InstanceFleets) > 0:
+		return invalid("Instances can't set both InstanceGroups and InstanceFleets")
+	case len(in.InstanceGroups) == 0 && len(in.InstanceFleets) == 0 && !uniform:
+		return invalid("Instances must set InstanceGroups or InstanceFleets")
+	case (in.EmrManagedMasterSecurityGroup == nil) != (in.EmrManagedSlaveSecurityGroup == nil):
+		return invalid("EmrManagedMasterSecurityGroup and EmrManagedSlaveSecurityGroup must be set together")
+	}
+	for _, g := range in.InstanceGroups {
+		if err := validGroup(g); err != nil {
+			return err
+		}
+	}
+	for _, fl := range in.InstanceFleets {
+		if err := validFleet(fl); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validRunJobFlow returns ValidationError for a RunJobFlow request EMR rejects.
+func validRunJobFlow(in *emr.RunJobFlowInput) error {
+	name := aws.ToString(in.Name)
+	switch {
+	case in.Name == nil:
+		return invalid("Name is required")
+	case chars(name) > maxName:
+		return invalid("Name must be at most %d characters", maxName)
+	case strings.ContainsAny(name, "<>$|`"):
+		return invalid("Name can't contain <, >, $, |, or `")
+	case chars(aws.ToString(in.AdditionalInfo)) > maxAdditionalInfo:
+		return invalid("AdditionalInfo must be at most %d characters", maxAdditionalInfo)
+	case len(in.Steps) > maxSteps:
+		return invalid("a job flow has at most %d steps", maxSteps)
+	case aws.ToInt32(in.StepConcurrencyLevel) > maxStepConcurrency:
+		return invalid("StepConcurrencyLevel must be at most %d", maxStepConcurrency)
+	}
+	return firstError(validInstances(in.Instances), validIdleTimeout(in.AutoTerminationPolicy), validScaling(in.ManagedScalingPolicy), validTags(in.Tags))
+}
+
+// withRunDefaults returns a copy of in with the values EMR uses for parameters RunJobFlow leaves out.
+func withRunDefaults(in *emr.RunJobFlowInput) (*emr.RunJobFlowInput, error) {
+	encoded, err := awsapi.EncodeObject(in)
+	if err != nil {
+		return nil, err
+	}
+	out := &emr.RunJobFlowInput{}
+	if err := awsapi.Decode(encoded, out); err != nil {
+		return nil, err
+	}
+	if out.StepConcurrencyLevel == nil {
+		out.StepConcurrencyLevel = aws.Int32(1)
+	}
+	if out.VisibleToAllUsers == nil {
+		out.VisibleToAllUsers = aws.Bool(true)
+	}
+	inst := out.Instances
+	if inst.KeepJobFlowAliveWhenNoSteps == nil {
+		inst.KeepJobFlowAliveWhenNoSteps = aws.Bool(false)
+	}
+	if inst.TerminationProtected == nil {
+		inst.TerminationProtected = aws.Bool(false)
+	}
+	if inst.UnhealthyNodeReplacement == nil {
+		inst.UnhealthyNodeReplacement = aws.Bool(true)
+	}
+	for i := range inst.InstanceFleets {
+		for j := range inst.InstanceFleets[i].InstanceTypeConfigs {
+			c := &inst.InstanceFleets[i].InstanceTypeConfigs[j]
+			if c.WeightedCapacity == nil {
+				c.WeightedCapacity = aws.Int32(1)
+			}
+			if c.BidPrice == nil && c.BidPriceAsPercentageOfOnDemandPrice == nil {
+				c.BidPriceAsPercentageOfOnDemandPrice = aws.Float64(100)
+			}
+		}
+	}
+	// The copy loses an empty policy, which still takes EMR's defaults.
+	out.AutoTerminationPolicy = withIdleTimeout(in.AutoTerminationPolicy)
+	out.ManagedScalingPolicy = withScalingDefaults(in.ManagedScalingPolicy)
+	return out, nil
+}
+
 func (f *fakeAPI) RunJobFlow(ctx context.Context, in *emr.RunJobFlowInput, _ ...func(*emr.Options)) (*emr.RunJobFlowOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.call("RunJobFlow"); err != nil {
+		return nil, err
+	}
+	if err := validRunJobFlow(in); err != nil {
+		return nil, err
+	}
+	in, err := withRunDefaults(in)
+	if err != nil {
 		return nil, err
 	}
 	encoded, err := awsapi.EncodeObject(in)
@@ -237,6 +537,9 @@ func (f *fakeAPI) DescribeCluster(ctx context.Context, in *emr.DescribeClusterIn
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.call("DescribeCluster"); err != nil {
+		return nil, err
+	}
+	if err := validID("ClusterId", aws.ToString(in.ClusterId)); err != nil {
 		return nil, err
 	}
 	return f.describe(aws.ToString(in.ClusterId))
@@ -383,6 +686,9 @@ func (f *fakeAPI) ListInstanceGroups(ctx context.Context, in *emr.ListInstanceGr
 		return nil, err
 	}
 	id := aws.ToString(in.ClusterId)
+	if err := validID("ClusterId", id); err != nil {
+		return nil, err
+	}
 	groups := f.groupList(id)
 	out := page(groups, in.Marker, 2, func(page []types.InstanceGroup, marker *string) *emr.ListInstanceGroupsOutput {
 		return &emr.ListInstanceGroupsOutput{InstanceGroups: page, Marker: marker}
@@ -400,6 +706,9 @@ func (f *fakeAPI) ListInstanceFleets(ctx context.Context, in *emr.ListInstanceFl
 		return nil, err
 	}
 	id := aws.ToString(in.ClusterId)
+	if err := validID("ClusterId", id); err != nil {
+		return nil, err
+	}
 	inst := asMap(f.store.Resource(clusterType, id)["Instances"])
 	type entry struct {
 		role  types.InstanceFleetType
@@ -415,9 +724,8 @@ func (f *fakeAPI) ListInstanceFleets(ctx context.Context, in *emr.ListInstanceFl
 	state := types.InstanceFleetStateRunning
 	if f.resizing[id] {
 		state = types.InstanceFleetStateResizing
-		delete(f.resizing, id)
 	}
-	out := &emr.ListInstanceFleetsOutput{}
+	fleets := []types.InstanceFleet{}
 	for i, e := range entries {
 		cfg := types.InstanceFleetConfig{}
 		if err := decode(asMap(e.value), &cfg); err != nil {
@@ -449,7 +757,13 @@ func (f *fakeAPI) ListInstanceFleets(ctx context.Context, in *emr.ListInstanceFl
 			}
 			fl.InstanceTypeSpecifications = append(fl.InstanceTypeSpecifications, spec)
 		}
-		out.InstanceFleets = append(out.InstanceFleets, fl)
+		fleets = append(fleets, fl)
+	}
+	out := page(fleets, in.Marker, 2, func(page []types.InstanceFleet, marker *string) *emr.ListInstanceFleetsOutput {
+		return &emr.ListInstanceFleetsOutput{InstanceFleets: page, Marker: marker}
+	})
+	if out.Marker == nil {
+		delete(f.resizing, id)
 	}
 	return out, nil
 }
@@ -458,6 +772,9 @@ func (f *fakeAPI) GetManagedScalingPolicy(ctx context.Context, in *emr.GetManage
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.call("GetManagedScalingPolicy"); err != nil {
+		return nil, err
+	}
+	if err := validID("ClusterId", aws.ToString(in.ClusterId)); err != nil {
 		return nil, err
 	}
 	out := &emr.GetManagedScalingPolicyOutput{}
@@ -476,6 +793,9 @@ func (f *fakeAPI) GetAutoTerminationPolicy(ctx context.Context, in *emr.GetAutoT
 	if err := f.call("GetAutoTerminationPolicy"); err != nil {
 		return nil, err
 	}
+	if err := validID("ClusterId", aws.ToString(in.ClusterId)); err != nil {
+		return nil, err
+	}
 	out := &emr.GetAutoTerminationPolicyOutput{}
 	if p, ok := f.store.Resource(clusterType, aws.ToString(in.ClusterId))["AutoTerminationPolicy"]; ok {
 		out.AutoTerminationPolicy = &types.AutoTerminationPolicy{}
@@ -486,10 +806,31 @@ func (f *fakeAPI) GetAutoTerminationPolicy(ctx context.Context, in *emr.GetAutoT
 	return out, nil
 }
 
-// change applies a change to the stored cluster, as a call that changes AWS.
-func (f *fakeAPI) change(name string, id string, apply func(props map[string]any)) error {
+// current returns the state of the cluster without moving it on.
+func (f *fakeAPI) current(id string) types.ClusterState {
+	if _, ok := f.ended[id]; ok {
+		return types.ClusterStateTerminated
+	}
+	if s, ok := f.state[id]; ok {
+		return s
+	}
+	return types.ClusterStateWaiting
+}
+
+// running are the states of a cluster that runs, which EMR's Management Guide requires for a resize.
+var running = []types.ClusterState{types.ClusterStateRunning, types.ClusterStateWaiting}
+
+// change applies a change to the stored cluster, as a call that changes AWS. It rejects the call when check returns
+// an error for the request, or when allowed is set and the cluster's state isn't in it.
+func (f *fakeAPI) change(name string, id string, check error, allowed []types.ClusterState, apply func(props map[string]any)) error {
 	if err := f.call(name); err != nil {
 		return err
+	}
+	if check != nil {
+		return check
+	}
+	if s := f.current(id); allowed != nil && !slices.Contains(allowed, s) {
+		return fault("ValidationException", fmt.Sprintf("%s isn't allowed on a cluster that is %s.", name, s))
 	}
 	if err := f.failer.Before(); err != nil {
 		return err
@@ -519,9 +860,16 @@ func set(props map[string]any, name string, value any) {
 func (f *fakeAPI) ModifyCluster(ctx context.Context, in *emr.ModifyClusterInput, _ ...func(*emr.Options)) (*emr.ModifyClusterOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.ModifyClusterOutput{StepConcurrencyLevel: in.StepConcurrencyLevel}, f.change("ModifyCluster", aws.ToString(in.ClusterId), func(props map[string]any) {
+	var check error
+	if l := in.StepConcurrencyLevel; l != nil && (*l < 1 || *l > maxStepConcurrency) {
+		check = invalid("StepConcurrencyLevel must be 1 to %d", maxStepConcurrency)
+	}
+	if err := f.change("ModifyCluster", aws.ToString(in.ClusterId), check, nil, func(props map[string]any) {
 		set(props, "StepConcurrencyLevel", in.StepConcurrencyLevel)
-	})
+	}); err != nil {
+		return nil, err
+	}
+	return &emr.ModifyClusterOutput{StepConcurrencyLevel: in.StepConcurrencyLevel}, nil
 }
 
 // instanceGroup returns the group with the ID instanceGroups gives it, in the cluster's Instances.
@@ -539,7 +887,8 @@ func instanceGroup(inst map[string]any, groupID string) map[string]any {
 func (f *fakeAPI) RemoveAutoScalingPolicy(ctx context.Context, in *emr.RemoveAutoScalingPolicyInput, _ ...func(*emr.Options)) (*emr.RemoveAutoScalingPolicyOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.RemoveAutoScalingPolicyOutput{}, f.change("RemoveAutoScalingPolicy", aws.ToString(in.ClusterId), func(props map[string]any) {
+	check := firstError(validID("ClusterId", aws.ToString(in.ClusterId)), validID("InstanceGroupId", aws.ToString(in.InstanceGroupId)))
+	return &emr.RemoveAutoScalingPolicyOutput{}, f.change("RemoveAutoScalingPolicy", aws.ToString(in.ClusterId), check, nil, func(props map[string]any) {
 		delete(instanceGroup(asMap(props["Instances"]), aws.ToString(in.InstanceGroupId)), "AutoScalingPolicy")
 	})
 }
@@ -548,7 +897,12 @@ func (f *fakeAPI) ModifyInstanceGroups(ctx context.Context, in *emr.ModifyInstan
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	id := aws.ToString(in.ClusterId)
-	return &emr.ModifyInstanceGroupsOutput{}, f.change("ModifyInstanceGroups", id, func(props map[string]any) {
+	checks := []error{validID("ClusterId", id)}
+	for _, m := range in.InstanceGroups {
+		checks = append(checks, required("InstanceGroupId", m.InstanceGroupId), validID("InstanceGroupId", aws.ToString(m.InstanceGroupId)))
+	}
+	check := firstError(checks...)
+	return &emr.ModifyInstanceGroupsOutput{}, f.change("ModifyInstanceGroups", id, check, running, func(props map[string]any) {
 		inst := asMap(props["Instances"])
 		for _, m := range in.InstanceGroups {
 			instanceGroup(inst, aws.ToString(m.InstanceGroupId))["InstanceCount"] = float64(aws.ToInt32(m.InstanceCount))
@@ -557,10 +911,37 @@ func (f *fakeAPI) ModifyInstanceGroups(ctx context.Context, in *emr.ModifyInstan
 	})
 }
 
+// firstError returns the first of errs that isn't nil, or nil.
+func firstError(errs ...error) error {
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// jobFlow returns the first of ids, or "" when there is none.
+func jobFlow(ids []string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	return ids[0]
+}
+
+// required returns ValidationError, as EMR does, when a required parameter is missing.
+func required(name string, v any) error {
+	if reflect.ValueOf(v).IsNil() {
+		return invalid("%s is required", name)
+	}
+	return nil
+}
+
 func (f *fakeAPI) SetVisibleToAllUsers(ctx context.Context, in *emr.SetVisibleToAllUsersInput, _ ...func(*emr.Options)) (*emr.SetVisibleToAllUsersOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.SetVisibleToAllUsersOutput{}, f.change("SetVisibleToAllUsers", in.JobFlowIds[0], func(props map[string]any) {
+	check := firstError(validJobFlowIDs(in.JobFlowIds), required("VisibleToAllUsers", in.VisibleToAllUsers))
+	return &emr.SetVisibleToAllUsersOutput{}, f.change("SetVisibleToAllUsers", jobFlow(in.JobFlowIds), check, nil, func(props map[string]any) {
 		props["VisibleToAllUsers"] = aws.ToBool(in.VisibleToAllUsers)
 	})
 }
@@ -568,7 +949,8 @@ func (f *fakeAPI) SetVisibleToAllUsers(ctx context.Context, in *emr.SetVisibleTo
 func (f *fakeAPI) SetTerminationProtection(ctx context.Context, in *emr.SetTerminationProtectionInput, _ ...func(*emr.Options)) (*emr.SetTerminationProtectionOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.SetTerminationProtectionOutput{}, f.change("SetTerminationProtection", in.JobFlowIds[0], func(props map[string]any) {
+	check := firstError(validJobFlowIDs(in.JobFlowIds), required("TerminationProtected", in.TerminationProtected))
+	return &emr.SetTerminationProtectionOutput{}, f.change("SetTerminationProtection", jobFlow(in.JobFlowIds), check, nil, func(props map[string]any) {
 		asMap(props["Instances"])["TerminationProtected"] = aws.ToBool(in.TerminationProtected)
 	})
 }
@@ -576,7 +958,8 @@ func (f *fakeAPI) SetTerminationProtection(ctx context.Context, in *emr.SetTermi
 func (f *fakeAPI) SetUnhealthyNodeReplacement(ctx context.Context, in *emr.SetUnhealthyNodeReplacementInput, _ ...func(*emr.Options)) (*emr.SetUnhealthyNodeReplacementOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.SetUnhealthyNodeReplacementOutput{}, f.change("SetUnhealthyNodeReplacement", in.JobFlowIds[0], func(props map[string]any) {
+	check := firstError(validJobFlowIDs(in.JobFlowIds), required("UnhealthyNodeReplacement", in.UnhealthyNodeReplacement))
+	return &emr.SetUnhealthyNodeReplacementOutput{}, f.change("SetUnhealthyNodeReplacement", jobFlow(in.JobFlowIds), check, nil, func(props map[string]any) {
 		asMap(props["Instances"])["UnhealthyNodeReplacement"] = aws.ToBool(in.UnhealthyNodeReplacement)
 	})
 }
@@ -584,15 +967,16 @@ func (f *fakeAPI) SetUnhealthyNodeReplacement(ctx context.Context, in *emr.SetUn
 func (f *fakeAPI) PutManagedScalingPolicy(ctx context.Context, in *emr.PutManagedScalingPolicyInput, _ ...func(*emr.Options)) (*emr.PutManagedScalingPolicyOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.PutManagedScalingPolicyOutput{}, f.change("PutManagedScalingPolicy", aws.ToString(in.ClusterId), func(props map[string]any) {
-		set(props, "ManagedScalingPolicy", in.ManagedScalingPolicy)
+	check := firstError(validID("ClusterId", aws.ToString(in.ClusterId)), required("ManagedScalingPolicy", in.ManagedScalingPolicy), validScaling(in.ManagedScalingPolicy))
+	return &emr.PutManagedScalingPolicyOutput{}, f.change("PutManagedScalingPolicy", aws.ToString(in.ClusterId), check, nil, func(props map[string]any) {
+		set(props, "ManagedScalingPolicy", withScalingDefaults(in.ManagedScalingPolicy))
 	})
 }
 
 func (f *fakeAPI) RemoveManagedScalingPolicy(ctx context.Context, in *emr.RemoveManagedScalingPolicyInput, _ ...func(*emr.Options)) (*emr.RemoveManagedScalingPolicyOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.RemoveManagedScalingPolicyOutput{}, f.change("RemoveManagedScalingPolicy", aws.ToString(in.ClusterId), func(props map[string]any) {
+	return &emr.RemoveManagedScalingPolicyOutput{}, f.change("RemoveManagedScalingPolicy", aws.ToString(in.ClusterId), validID("ClusterId", aws.ToString(in.ClusterId)), nil, func(props map[string]any) {
 		delete(props, "ManagedScalingPolicy")
 	})
 }
@@ -600,23 +984,35 @@ func (f *fakeAPI) RemoveManagedScalingPolicy(ctx context.Context, in *emr.Remove
 func (f *fakeAPI) PutAutoTerminationPolicy(ctx context.Context, in *emr.PutAutoTerminationPolicyInput, _ ...func(*emr.Options)) (*emr.PutAutoTerminationPolicyOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.PutAutoTerminationPolicyOutput{}, f.change("PutAutoTerminationPolicy", aws.ToString(in.ClusterId), func(props map[string]any) {
-		set(props, "AutoTerminationPolicy", in.AutoTerminationPolicy)
+	check := firstError(validID("ClusterId", aws.ToString(in.ClusterId)), validIdleTimeout(in.AutoTerminationPolicy))
+	return &emr.PutAutoTerminationPolicyOutput{}, f.change("PutAutoTerminationPolicy", aws.ToString(in.ClusterId), check, nil, func(props map[string]any) {
+		set(props, "AutoTerminationPolicy", withIdleTimeout(in.AutoTerminationPolicy))
 	})
 }
 
 func (f *fakeAPI) RemoveAutoTerminationPolicy(ctx context.Context, in *emr.RemoveAutoTerminationPolicyInput, _ ...func(*emr.Options)) (*emr.RemoveAutoTerminationPolicyOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.RemoveAutoTerminationPolicyOutput{}, f.change("RemoveAutoTerminationPolicy", aws.ToString(in.ClusterId), func(props map[string]any) {
+	return &emr.RemoveAutoTerminationPolicyOutput{}, f.change("RemoveAutoTerminationPolicy", aws.ToString(in.ClusterId), validID("ClusterId", aws.ToString(in.ClusterId)), nil, func(props map[string]any) {
 		delete(props, "AutoTerminationPolicy")
 	})
+}
+
+// taggable are the states of a cluster whose tags can change: EMR's Management Guide says a terminated cluster's tags
+// can't.
+var taggable = []types.ClusterState{
+	types.ClusterStateStarting, types.ClusterStateBootstrapping, types.ClusterStateRunning, types.ClusterStateWaiting,
+	types.ClusterStateTerminating,
 }
 
 func (f *fakeAPI) AddTags(ctx context.Context, in *emr.AddTagsInput, _ ...func(*emr.Options)) (*emr.AddTagsOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.AddTagsOutput{}, f.change("AddTags", aws.ToString(in.ResourceId), func(props map[string]any) {
+	check := validTags(in.Tags)
+	if len(in.Tags) == 0 {
+		check = invalid("Tags is required")
+	}
+	return &emr.AddTagsOutput{}, f.change("AddTags", aws.ToString(in.ResourceId), check, taggable, func(props map[string]any) {
 		tags := map[string]string{}
 		for _, t := range awsapi.Tags(props) {
 			tags[t.Key] = t.Value
@@ -631,7 +1027,11 @@ func (f *fakeAPI) AddTags(ctx context.Context, in *emr.AddTagsInput, _ ...func(*
 func (f *fakeAPI) RemoveTags(ctx context.Context, in *emr.RemoveTagsInput, _ ...func(*emr.Options)) (*emr.RemoveTagsOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &emr.RemoveTagsOutput{}, f.change("RemoveTags", aws.ToString(in.ResourceId), func(props map[string]any) {
+	var check error
+	if len(in.TagKeys) == 0 {
+		check = invalid("TagKeys is required")
+	}
+	return &emr.RemoveTagsOutput{}, f.change("RemoveTags", aws.ToString(in.ResourceId), check, taggable, func(props map[string]any) {
 		tags := map[string]string{}
 		for _, t := range awsapi.Tags(props) {
 			if !slices.Contains(in.TagKeys, t.Key) {
@@ -651,6 +1051,12 @@ func (f *fakeAPI) TerminateJobFlows(ctx context.Context, in *emr.TerminateJobFlo
 	defer f.mu.Unlock()
 	if err := f.call("TerminateJobFlows"); err != nil {
 		return nil, err
+	}
+	if err := validJobFlowIDs(in.JobFlowIds); err != nil {
+		return nil, err
+	}
+	if len(in.JobFlowIds) > maxTerminate {
+		return nil, invalid("TerminateJobFlows shuts down at most %d clusters", maxTerminate)
 	}
 	for _, id := range in.JobFlowIds {
 		props := f.store.Resource(clusterType, id)

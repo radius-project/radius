@@ -55,7 +55,9 @@ type request struct {
 // suite's Cloud Control sees the same resources, and builds FSx's responses from them. A new file system is CREATING
 // for one read. After an update, an administrative action is IN_PROGRESS for one read. A deleted file system is
 // DELETING for two reads and then gone, or, when failBackup is set, back to AVAILABLE because its final backup failed.
-// DescribeFileSystems returns one file system per page.
+// DescribeFileSystems returns one file system per page. The fake checks each call's input as FSx's API reference
+// documents (see validate_test.go and api_test.go), and fills in the defaults FSx documents for what a create leaves
+// out. Its calls all happen within 6 hours of each other.
 type fakeAPI struct {
 	store  *awsfake.CloudControl
 	failer nativetest.Failer
@@ -92,6 +94,17 @@ type fakeAPI struct {
 	failUpdate string
 	undo       map[string]map[string]any
 
+	// sources maps a backup ID to the properties of the file system it is a backup of, which a restore starts from.
+	sources map[string]map[string]any
+
+	// increased holds the file systems whose storage capacity increased. changing maps a file system to the
+	// properties its running FILE_SYSTEM_UPDATE action changes.
+	increased map[string]bool
+	changing  map[string][]string
+
+	// tasks holds the Lustre file systems with a data repository task that is PENDING or EXECUTING.
+	tasks map[string]bool
+
 	// errs maps a method name to an error the call returns instead of acting.
 	errs  map[string]error
 	calls []string
@@ -113,8 +126,21 @@ func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
 		associations:  map[string]int{},
 		failures:      map[string]string{},
 		deleting:      map[string]int{},
+		sources:       map[string]map[string]any{},
+		increased:     map[string]bool{},
+		changing:      map[string][]string{},
+		tasks:         map[string]bool{},
 		errs:          map[string]error{},
 	}
+}
+
+// addBackup makes a backup with the ID of a file system with the properties, for a restore to start from.
+func (f *fakeAPI) addBackup(id string, properties map[string]any) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	props := copyProps(properties)
+	applyDefaults(props)
+	f.sources[id] = props
 }
 
 func fault(code string, message string) error {
@@ -140,25 +166,47 @@ func (f *fakeAPI) backupsOf(id string) int {
 }
 
 // create stores a file system from the input of a create, or returns the file system the token already made. A token
-// sent again with other parameters fails, as FSx does.
-func (f *fakeAPI) create(token string, input any, tags []types.Tag) (*types.FileSystem, error) {
+// sent again with other parameters fails, as FSx does. The fake checks the token, then whether FSx has seen it, and
+// then the other parameters with validate. A restore passes the properties of the backed-up file system as base,
+// which the input's values override.
+func (f *fakeAPI) create(token *string, input any, tags []types.Tag, validate func() error, base map[string]any) (*types.FileSystem, error) {
+	if err := validToken(token); err != nil {
+		return nil, err
+	}
 	b, err := json.Marshal(input)
 	if err != nil {
 		return nil, err
 	}
-	if r, ok := f.creates[token]; ok {
+	if r, ok := f.creates[aws.ToString(token)]; ok {
 		if r.params != string(b) {
 			return nil, fault("IncompatibleParameterError", "The request has the same client request token as a previous request, with other parameters.")
 		}
 		fs, _ := f.fileSystem(r.fileSystem)
 		return fs, nil
 	}
-	props, err := awsapi.EncodeObject(input)
+	if err := validate(); err != nil {
+		return nil, err
+	}
+	values, err := awsapi.EncodeObject(input)
 	if err != nil {
 		return nil, err
 	}
-	delete(props, "ClientRequestToken")
-	delete(props, "Tags")
+	delete(values, "ClientRequestToken")
+	delete(values, "Tags")
+	props := map[string]any{}
+	if base != nil {
+		// A restore that leaves StorageType or KmsKeyId out gets SSD and the FSx-managed key, not the backup's.
+		props = copyProps(awsapi.Without(base, "Tags", "StorageType", "KmsKeyId"))
+	}
+	for k, v := range values {
+		if config, ok := v.(map[string]any); ok {
+			merged := asMap(props[k])
+			maps.Copy(merged, config)
+			v = merged
+		}
+		props[k] = v
+	}
+	applyDefaults(props)
 	f.next++
 	id := fmt.Sprintf("fs-%017d", f.next)
 	m := map[string]string{}
@@ -177,9 +225,91 @@ func (f *fakeAPI) create(token string, input any, tags []types.Tag) (*types.File
 	}
 	f.store.Put(fileSystemType, id, props)
 	f.lifecycle[id] = types.FileSystemLifecycleCreating
-	f.creates[token] = request{fileSystem: id, params: string(b)}
+	f.creates[aws.ToString(token)] = request{fileSystem: id, params: string(b)}
 	fs, _ := f.fileSystem(id)
 	return fs, nil
+}
+
+// managedKey is the ARN of the FSx-managed KMS key of the fake's account, which encrypts a file system whose create
+// sets no key.
+const managedKey = "arn:aws:kms:us-west-2:123456789012:key/0f1e2d3c-4b5a-4978-8796-a5b4c3d2e1f0"
+
+// configurations maps each file system type to its configuration property.
+var configurations = map[string]string{
+	string(types.FileSystemTypeLustre):  "LustreConfiguration",
+	string(types.FileSystemTypeWindows): "WindowsConfiguration",
+	string(types.FileSystemTypeOntap):   "OntapConfiguration",
+	string(types.FileSystemTypeOpenzfs): "OpenZFSConfiguration",
+}
+
+// applyDefaults fills in the values FSx documents for what a create left out of the file system's properties. A key
+// the create sets stays as it was sent: the suite requires AWS to hold the template's values, and its OtherForm and
+// RecordedForm cases give the key ARN FSx reports instead.
+func applyDefaults(props map[string]any) {
+	fsType := awsapi.String(props, "FileSystemType")
+	setDefault(props, "StorageType", string(types.StorageTypeSsd))
+	name, ok := configurations[fsType]
+	if !ok {
+		return
+	}
+	c := asMap(props[name])
+	switch fsType {
+	case string(types.FileSystemTypeLustre):
+		setDefault(c, "DeploymentType", string(types.LustreDeploymentTypeScratch1))
+		setDefault(c, "AutomaticBackupRetentionDays", 0.0)
+		setDefault(c, "CopyTagsToBackups", false)
+		setDefault(c, "DataCompressionType", string(types.DataCompressionTypeNone))
+		version := "2.10"
+		if c["DeploymentType"] == string(types.LustreDeploymentTypePersistent2) {
+			version = "2.12"
+			if awsapi.String(asMap(c["MetadataConfiguration"]), "Mode") != "" {
+				version = "2.15"
+			}
+		}
+		setDefault(props, "FileSystemTypeVersion", version)
+	case string(types.FileSystemTypeWindows):
+		setDefault(c, "DeploymentType", string(types.WindowsDeploymentTypeSingleAz1))
+		setDefault(c, "AutomaticBackupRetentionDays", 30.0)
+		setDefault(c, "CopyTagsToBackups", false)
+	case string(types.FileSystemTypeOntap):
+		setDefault(c, "AutomaticBackupRetentionDays", 30.0)
+		setDefault(c, "HAPairs", 1.0)
+		syncOntapThroughput(c, "ThroughputCapacity")
+		syncOntapThroughput(c, "ThroughputCapacityPerHAPair")
+	case string(types.FileSystemTypeOpenzfs):
+		setDefault(c, "AutomaticBackupRetentionDays", 30.0)
+		setDefault(c, "CopyTagsToBackups", false)
+		setDefault(c, "CopyTagsToVolumes", false)
+	}
+	props[name] = c
+	if fsType != string(types.FileSystemTypeLustre) {
+		setDefault(props, "NetworkType", string(types.NetworkTypeIpv4))
+	}
+	if _, ok := props["KmsKeyId"]; !ok && (fsType != string(types.FileSystemTypeLustre) || strings.HasPrefix(awsapi.String(c, "DeploymentType"), "PERSISTENT")) {
+		props["KmsKeyId"] = managedKey
+	}
+}
+
+func setDefault(props map[string]any, name string, value any) {
+	if _, ok := props[name]; !ok {
+		props[name] = value
+	}
+}
+
+// syncOntapThroughput sets the ThroughputCapacity of an ONTAP configuration from its ThroughputCapacityPerHAPair and
+// HAPairs, or the reverse. from names the one a call set.
+func syncOntapThroughput(c map[string]any, from string) {
+	pairs, _ := c["HAPairs"].(float64)
+	pairs = max(pairs, 1)
+	v, ok := c[from].(float64)
+	if !ok {
+		return
+	}
+	if from == "ThroughputCapacity" {
+		c["ThroughputCapacityPerHAPair"] = v / pairs
+	} else {
+		c["ThroughputCapacity"] = v * pairs
+	}
 }
 
 func (f *fakeAPI) CreateFileSystem(ctx context.Context, in *fsx.CreateFileSystemInput, _ ...func(*fsx.Options)) (*fsx.CreateFileSystemOutput, error) {
@@ -188,32 +318,35 @@ func (f *fakeAPI) CreateFileSystem(ctx context.Context, in *fsx.CreateFileSystem
 	if err := f.call("CreateFileSystem"); err != nil {
 		return nil, err
 	}
-	fs, err := f.create(aws.ToString(in.ClientRequestToken), in, in.Tags)
+	fs, err := f.create(in.ClientRequestToken, in, in.Tags, func() error { return validateCreate(in) }, nil)
 	return &fsx.CreateFileSystemOutput{FileSystem: fs}, err
 }
 
+// CreateFileSystemFromBackup restores a backup addBackup made. The new file system has the type of the backed-up one,
+// and its values unless the call sets others.
 func (f *fakeAPI) CreateFileSystemFromBackup(ctx context.Context, in *fsx.CreateFileSystemFromBackupInput, _ ...func(*fsx.Options)) (*fsx.CreateFileSystemFromBackupOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.call("CreateFileSystemFromBackup"); err != nil {
 		return nil, err
 	}
-	fs, err := f.create(aws.ToString(in.ClientRequestToken), in, in.Tags)
-	if err == nil {
-		props := f.store.Resource(fileSystemType, aws.ToString(fs.FileSystemId))
-		props["FileSystemType"] = string(types.FileSystemTypeLustre)
-		f.store.Put(fileSystemType, aws.ToString(fs.FileSystemId), props)
+	id := aws.ToString(in.BackupId)
+	if err := validID("BackupId", id, backupPattern, 12, 128); err != nil {
+		return nil, err
 	}
+	source, ok := f.sources[id]
+	validate := func() error {
+		if !ok {
+			return fault("BackupNotFound", "Backup '"+id+"' does not exist.")
+		}
+		return validateRestore(in, decodeFileSystem(source))
+	}
+	fs, err := f.create(in.ClientRequestToken, in, in.Tags, validate, source)
 	return &fsx.CreateFileSystemFromBackupOutput{FileSystem: fs}, err
 }
 
-// fileSystem returns the stored file system as DescribeFileSystems does, without moving its state on. The ONTAP
-// admin password stays in it, as if AWS returned it.
-func (f *fakeAPI) fileSystem(id string) (*types.FileSystem, bool) {
-	props := f.store.Resource(fileSystemType, id)
-	if props == nil {
-		return nil, false
-	}
+// decodeFileSystem returns a file system with the stored properties, in FSx's format.
+func decodeFileSystem(props map[string]any) *types.FileSystem {
 	fs := &types.FileSystem{}
 	lustre := asMap(props["LustreConfiguration"])
 	windows := asMap(props["WindowsConfiguration"])
@@ -238,6 +371,17 @@ func (f *fakeAPI) fileSystem(id string) (*types.FileSystem, bool) {
 			fs.WindowsConfiguration.Aliases = append(fs.WindowsConfiguration.Aliases, types.Alias{Name: aws.String(a), Lifecycle: types.AliasLifecycleAvailable})
 		}
 	}
+	return fs
+}
+
+// fileSystem returns the stored file system as DescribeFileSystems does, without moving its state on. The ONTAP
+// admin password stays in it, as if AWS returned it.
+func (f *fakeAPI) fileSystem(id string) (*types.FileSystem, bool) {
+	props := f.store.Resource(fileSystemType, id)
+	if props == nil {
+		return nil, false
+	}
+	fs := decodeFileSystem(props)
 	if fs.OpenZFSConfiguration != nil {
 		fs.OpenZFSConfiguration.RootVolumeId = aws.String("fsvol-0123")
 	}
@@ -287,6 +431,7 @@ func (f *fakeAPI) describe(id string) (*types.FileSystem, bool) {
 	actions := f.actions[id]
 	for i := range actions {
 		if actions[i].Status == types.StatusInProgress && !slices.Contains(optimizations, actions[i].AdministrativeActionType) {
+			delete(f.changing, id)
 			actions[i].Status = types.StatusCompleted
 			if f.failUpdate != "" {
 				if before, ok := f.undo[id]; ok {
@@ -307,6 +452,17 @@ func (f *fakeAPI) DescribeFileSystems(ctx context.Context, in *fsx.DescribeFileS
 	defer f.mu.Unlock()
 	if err := f.call("DescribeFileSystems"); err != nil {
 		return nil, err
+	}
+	if len(in.FileSystemIds) > 50 {
+		return nil, invalid("FileSystemIds can have up to 50 items.")
+	}
+	for _, id := range in.FileSystemIds {
+		if err := validFileSystemID(id); err != nil {
+			return nil, err
+		}
+	}
+	if in.MaxResults != nil && *in.MaxResults < 1 {
+		return nil, invalid("MaxResults must be greater than 0.")
 	}
 	if len(in.FileSystemIds) > 0 {
 		fs, ok := f.describe(in.FileSystemIds[0])
@@ -334,26 +490,40 @@ func (f *fakeAPI) DescribeDataRepositoryAssociations(ctx context.Context, in *fs
 	if err := f.call("DescribeDataRepositoryAssociations"); err != nil {
 		return nil, err
 	}
+	if err := validFilters(in.Filters); err != nil {
+		return nil, err
+	}
+	if in.MaxResults != nil && (*in.MaxResults < 1 || *in.MaxResults > 25) {
+		return nil, invalid("MaxResults must be 1 to 25.")
+	}
+	ids := slices.Sorted(maps.Keys(f.associations))
+	for _, filter := range in.Filters {
+		if filter.Name == types.FilterNameFileSystemId {
+			ids = slices.DeleteFunc(ids, func(id string) bool { return !slices.Contains(filter.Values, id) })
+		}
+	}
 	out := &fsx.DescribeDataRepositoryAssociationsOutput{}
-	for range f.associations[in.Filters[0].Values[0]] {
-		out.Associations = append(out.Associations, types.DataRepositoryAssociation{FileSystemId: aws.String(in.Filters[0].Values[0])})
+	for _, id := range ids {
+		for range f.associations[id] {
+			out.Associations = append(out.Associations, types.DataRepositoryAssociation{FileSystemId: aws.String(id)})
+		}
 	}
 	return out, nil
 }
 
-// change applies a change to the stored file system, as a call that changes AWS.
-func (f *fakeAPI) change(name string, id string, apply func(props map[string]any)) error {
-	if err := f.call(name); err != nil {
-		return err
-	}
+// change applies a change to the stored file system, as a call that changes AWS. A file system FSx doesn't have
+// fails with the code notFound. apply returns an error, without changing props, when FSx rejects the call.
+func (f *fakeAPI) change(id string, notFound string, apply func(props map[string]any) error) error {
 	if err := f.failer.Before(); err != nil {
 		return err
 	}
 	props := f.store.Resource(fileSystemType, id)
 	if props == nil {
-		return fault("FileSystemNotFound", "File system '"+id+"' does not exist.")
+		return fault(notFound, "The file system '"+id+"' does not exist.")
 	}
-	apply(props)
+	if err := apply(props); err != nil {
+		return err
+	}
 	f.store.Put(fileSystemType, id, props)
 	return f.failer.After()
 }
@@ -374,16 +544,31 @@ func copyProps(props map[string]any) map[string]any {
 func (f *fakeAPI) UpdateFileSystem(ctx context.Context, in *fsx.UpdateFileSystemInput, _ ...func(*fsx.Options)) (*fsx.UpdateFileSystemOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if err := f.call("UpdateFileSystem"); err != nil {
+		return nil, err
+	}
 	id := aws.ToString(in.FileSystemId)
+	if err := validFileSystemID(id); err != nil {
+		return nil, err
+	}
+	if err := validToken(in.ClientRequestToken); err != nil {
+		return nil, err
+	}
 	values, err := awsapi.EncodeObject(in)
 	if err != nil {
 		return nil, err
 	}
 	delete(values, "FileSystemId")
-	return &fsx.UpdateFileSystemOutput{}, f.change("UpdateFileSystem", id, func(props map[string]any) {
+	delete(values, "ClientRequestToken")
+	return &fsx.UpdateFileSystemOutput{}, f.change(id, "FileSystemNotFound", func(props map[string]any) error {
+		current := decodeFileSystem(props)
+		if err := validateUpdate(in, current, f.increased[id], f.changing[id]); err != nil {
+			return err
+		}
 		if f.failUpdate != "" {
 			f.undo[id] = copyProps(props)
 		}
+		changing := []string{}
 		for k, v := range values {
 			config, ok := v.(map[string]any)
 			if !ok {
@@ -408,8 +593,20 @@ func (f *fakeAPI) UpdateFileSystem(ctx context.Context, in *fsx.UpdateFileSystem
 				config["SelfManagedActiveDirectoryConfiguration"] = merged
 			}
 			maps.Copy(current, config)
+			if k == "OntapConfiguration" {
+				for _, from := range []string{"ThroughputCapacity", "ThroughputCapacityPerHAPair", "HAPairs"} {
+					if _, ok := config[from]; ok {
+						syncOntapThroughput(current, strings.Replace(from, "HAPairs", "ThroughputCapacityPerHAPair", 1))
+					}
+				}
+			}
 			props[k] = current
+			changing = append(changing, slices.Collect(maps.Keys(config))...)
 		}
+		if capacity := in.StorageCapacity; capacity != nil && *capacity > aws.ToInt32(current.StorageCapacity) {
+			f.increased[id] = true
+		}
+		f.changing[id] = changing
 		f.next++
 		requested := aws.Time(time.Unix(1793865600+int64(f.next), 0))
 		action := types.AdministrativeAction{AdministrativeActionType: types.AdministrativeActionTypeFileSystemUpdate, Status: types.StatusInProgress, RequestTime: requested}
@@ -420,6 +617,7 @@ func (f *fakeAPI) UpdateFileSystem(ctx context.Context, in *fsx.UpdateFileSystem
 		if props["FileSystemType"] == string(types.FileSystemTypeLustre) {
 			f.lifecycle[id] = types.FileSystemLifecycleUpdating
 		}
+		return nil
 	})
 }
 
@@ -435,10 +633,25 @@ func supportsBackup(props map[string]any) bool {
 	return false
 }
 
+// finalBackup returns whether a delete takes a final backup of a file system of the type, and the backup's tags. With
+// no SkipFinalBackup, FSx takes one of a Windows or OpenZFS file system, and none of a Lustre or ONTAP one.
+func finalBackup(fsType string, skip *bool, tags []types.Tag) (bool, []types.Tag) {
+	if skip == nil {
+		return fsType == string(types.FileSystemTypeWindows) || fsType == string(types.FileSystemTypeOpenzfs), tags
+	}
+	return !*skip, tags
+}
+
 func (f *fakeAPI) DeleteFileSystem(ctx context.Context, in *fsx.DeleteFileSystemInput, _ ...func(*fsx.Options)) (*fsx.DeleteFileSystemOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.call("DeleteFileSystem"); err != nil {
+		return nil, err
+	}
+	if err := validToken(in.ClientRequestToken); err != nil {
+		return nil, err
+	}
+	if err := validateDelete(in); err != nil {
 		return nil, err
 	}
 	id := aws.ToString(in.FileSystemId)
@@ -463,21 +676,29 @@ func (f *fakeAPI) DeleteFileSystem(ctx context.Context, in *fsx.DeleteFileSystem
 	if f.lifecycle[id] == types.FileSystemLifecycleDeleting {
 		return nil, fault("BadRequest", "The file system is already being deleted.")
 	}
-	skip, tags, typed := true, []types.Tag(nil), 0
+	fsType := awsapi.String(props, "FileSystemType")
+	takeBackup, tags := finalBackup(fsType, nil, nil)
+	typed := 0
 	if c := in.WindowsConfiguration; c != nil {
-		skip, tags, typed = aws.ToBool(c.SkipFinalBackup), c.FinalBackupTags, typed+1
+		takeBackup, tags = finalBackup(fsType, c.SkipFinalBackup, c.FinalBackupTags)
+		typed++
 	}
 	if c := in.OpenZFSConfiguration; c != nil {
-		skip, tags, typed = aws.ToBool(c.SkipFinalBackup), c.FinalBackupTags, typed+1
+		takeBackup, tags = finalBackup(fsType, c.SkipFinalBackup, c.FinalBackupTags)
+		typed++
 		f.deleteOptions[id] = c.Options
 	}
 	if c := in.LustreConfiguration; c != nil {
-		skip, tags, typed = aws.ToBool(c.SkipFinalBackup), c.FinalBackupTags, typed+1
+		takeBackup, tags = finalBackup(fsType, c.SkipFinalBackup, c.FinalBackupTags)
+		typed++
 	}
-	if typed > 1 || (typed == 1 && props["FileSystemType"] == string(types.FileSystemTypeOntap)) {
+	if typed > 1 || (typed == 1 && fsType == string(types.FileSystemTypeOntap)) {
 		return nil, fault("BadRequest", "The configuration doesn't match the file system type.")
 	}
-	if !skip {
+	if f.tasks[id] {
+		return nil, badRequest("A data repository task is PENDING or EXECUTING.")
+	}
+	if takeBackup {
 		if !supportsBackup(props) || f.associations[id] > 0 {
 			return nil, fault("BadRequest", "Backups are not supported for this file system.")
 		}
@@ -489,10 +710,34 @@ func (f *fakeAPI) DeleteFileSystem(ctx context.Context, in *fsx.DeleteFileSystem
 	return out, nil
 }
 
+// fileSystemOf returns the ID of the file system with the ARN, after checking the ARN.
+func fileSystemOf(arn *string) (string, error) {
+	if !validLength(aws.ToString(arn), 8, 512) {
+		return "", invalid("ResourceARN must be 8 to 512 characters.")
+	}
+	return strings.TrimPrefix(aws.ToString(arn), arnPrefix), nil
+}
+
 func (f *fakeAPI) TagResource(ctx context.Context, in *fsx.TagResourceInput, _ ...func(*fsx.Options)) (*fsx.TagResourceOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &fsx.TagResourceOutput{}, f.change("TagResource", strings.TrimPrefix(aws.ToString(in.ResourceARN), arnPrefix), func(props map[string]any) {
+	if err := f.call("TagResource"); err != nil {
+		return nil, err
+	}
+	id, err := fileSystemOf(in.ResourceARN)
+	if err != nil {
+		return nil, err
+	}
+	if in.Tags == nil {
+		return nil, invalid("Tags is required.")
+	}
+	if err := validTags("Tags", in.Tags); err != nil {
+		return nil, err
+	}
+	if slices.ContainsFunc(in.Tags, func(t types.Tag) bool { return strings.HasPrefix(aws.ToString(t.Key), "aws:") }) {
+		return nil, badRequest("The aws: prefix is reserved for AWS use.")
+	}
+	return &fsx.TagResourceOutput{}, f.change(id, "ResourceNotFound", func(props map[string]any) error {
 		tags := map[string]string{}
 		for _, t := range awsapi.Tags(props) {
 			tags[t.Key] = t.Value
@@ -500,14 +745,51 @@ func (f *fakeAPI) TagResource(ctx context.Context, in *fsx.TagResourceInput, _ .
 		for _, t := range in.Tags {
 			tags[aws.ToString(t.Key)] = aws.ToString(t.Value)
 		}
+		if n := f.tagCount(id, tags); n > maxTags {
+			return badRequest("A resource can have up to %d tags, and this one would have %d.", maxTags, n)
+		}
 		props["Tags"] = awsapi.TagList(tags)
+		return nil
 	})
+}
+
+// tagCount returns how many tags of the file system count against its limit, given its tags in the store: those
+// without the aws: prefix, and the delete options tag, which the store leaves out.
+func (f *fakeAPI) tagCount(id string, tags map[string]string) int {
+	n := 0
+	for key := range tags {
+		if !strings.HasPrefix(key, "aws:") {
+			n++
+		}
+	}
+	if _, ok := f.options[id]; ok {
+		n++
+	}
+	return n
 }
 
 func (f *fakeAPI) UntagResource(ctx context.Context, in *fsx.UntagResourceInput, _ ...func(*fsx.Options)) (*fsx.UntagResourceOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &fsx.UntagResourceOutput{}, f.change("UntagResource", strings.TrimPrefix(aws.ToString(in.ResourceARN), arnPrefix), func(props map[string]any) {
+	if err := f.call("UntagResource"); err != nil {
+		return nil, err
+	}
+	id, err := fileSystemOf(in.ResourceARN)
+	if err != nil {
+		return nil, err
+	}
+	if len(in.TagKeys) < 1 || len(in.TagKeys) > maxTags {
+		return nil, invalid("TagKeys must have 1 to %d keys.", maxTags)
+	}
+	for _, key := range in.TagKeys {
+		if err := validTag(key, nil); err != nil {
+			return nil, err
+		}
+	}
+	if slices.ContainsFunc(in.TagKeys, func(key string) bool { return strings.HasPrefix(key, "aws:") }) {
+		return nil, badRequest("The aws: prefix is reserved for AWS use.")
+	}
+	return &fsx.UntagResourceOutput{}, f.change(id, "ResourceNotFound", func(props map[string]any) error {
 		tags := map[string]string{}
 		for _, t := range awsapi.Tags(props) {
 			if !slices.Contains(in.TagKeys, t.Key) {
@@ -519,6 +801,7 @@ func (f *fakeAPI) UntagResource(ctx context.Context, in *fsx.UntagResourceInput,
 		} else {
 			delete(props, "Tags")
 		}
+		return nil
 	})
 }
 

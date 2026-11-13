@@ -170,6 +170,7 @@ func Test_Suite_Cluster(t *testing.T) {
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: clusterAPI,
 		RecordedForm: &nativetest.RecordedForm{
 			Property: "Configurations",
 			Template: []any{sparkDefaults(map[string]any{"spark.executor.memory": "4g"})},
@@ -385,9 +386,10 @@ func Test_Update(t *testing.T) {
 			calls: []string{"ModifyInstanceGroups"},
 		},
 		{
+			// EMR turns unhealthy node replacement on when RunJobFlow leaves it out, so the update turns it off.
 			name: "termination protection and unhealthy node replacement",
 			desired: with(base, map[string]any{"Instances": instances(1, map[string]any{
-				"TaskInstanceGroups": tasks, "TerminationProtected": true, "UnhealthyNodeReplacement": true,
+				"TaskInstanceGroups": tasks, "TerminationProtected": true, "UnhealthyNodeReplacement": false,
 			})}),
 			calls: []string{"SetTerminationProtection", "SetUnhealthyNodeReplacement"},
 		},
