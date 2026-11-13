@@ -46,9 +46,9 @@ func Test_NewServer(t *testing.T) {
 	})
 }
 
-func TestNewServerAggregationProofRequiresManagementListener(t *testing.T) {
+func TestNewServerRejectsLegacyAggregationProof(t *testing.T) {
 	t.Setenv("UCP_AGGREGATION_STARTUP_PROOF_ENABLED", "true")
-	for _, scenario := range []string{"disabled metrics", "missing prometheus", "dynamic port", "invalid port", "path collision"} {
+	for _, scenario := range []string{"configured metrics", "disabled metrics", "missing prometheus", "dynamic port", "invalid port", "path collision"} {
 		t.Run(scenario, func(t *testing.T) {
 			options := &ucp.Options{Config: &ucp.Config{}}
 			options.Config.Metrics = metricsservice.Options{Enabled: true,
@@ -66,7 +66,7 @@ func TestNewServerAggregationProofRequiresManagementListener(t *testing.T) {
 				options.Config.Metrics.Prometheus.Path = mtls.AggregationProofPath
 			}
 			_, err := NewServer(t.Context(), options)
-			require.ErrorContains(t, err, "aggregation serving proof requires an enabled management listener")
+			require.ErrorContains(t, err, "legacy aggregation proof endpoint is unavailable")
 		})
 	}
 }
