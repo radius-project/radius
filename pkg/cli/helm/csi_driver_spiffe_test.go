@@ -940,6 +940,7 @@ func Test_UninstallRadius_RemovesCSIDriverSPIFFEAfterRadius(t *testing.T) {
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
 		newUCPAPIServerTrustClient:  uninstallTrustClient,
+		newRotationStore:            emptyRotationTestStore,
 		newCSIDriverSPIFFEClient:    func(string) (kubernetes.Interface, error) { return k8sfake.NewClientset(), nil },
 	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
@@ -973,7 +974,8 @@ func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
 			client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 
 			impl := &Impl{
-				Helm: client,
+				Helm:             client,
+				newRotationStore: emptyRotationTestStore,
 				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 					t.Fatal("cert-manager was checked after the csi-driver-spiffe check failed")
 					return nil, nil, nil
@@ -1015,6 +1017,7 @@ func Test_UninstallRadius_KeepsCertManagerWhenCSIDriverSPIFFEIsKept(t *testing.T
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
 		newUCPAPIServerTrustClient:  uninstallTrustClient,
+		newRotationStore:            emptyRotationTestStore,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
 			return k8sfake.NewClientset(spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)), nil
@@ -1132,8 +1135,9 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 
 			objects := append([]runtime.Object{certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}, tt.objects...)
 			impl := &Impl{
-				Helm:   m,
-				logger: func(string, ...any) {},
+				Helm:             m,
+				logger:           func(string, ...any) {},
+				newRotationStore: emptyRotationTestStore,
 				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 					kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 					return kubeClient, apiextClient, nil

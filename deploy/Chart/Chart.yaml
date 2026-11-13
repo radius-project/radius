@@ -2,8 +2,7 @@ apiVersion: v2
 description: Radius provides a declarative way to manage your infrastructure and applications.
 name: radius
 annotations:
-  radius.io/ca-rotation-protocol: "1"
-  radius.io/aggregation-bootstrap-protocol: "1"
+  radius.io/ca-rotation-protocol: "4"
 # version is the chart version, which will be replaced when this chart is packaged.
 version: '0.42.42-dev'
 # appVersion is the version of Radius, which will be replaced when this chart is packaged.

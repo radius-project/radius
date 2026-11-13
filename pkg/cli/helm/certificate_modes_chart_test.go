@@ -212,7 +212,7 @@ func TestCertificatePublicSourceGuards(t *testing.T) {
 		{name: "unfinished or unknown journal", object: &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "v1", "kind": "ConfigMap", "metadata": map[string]any{"name": "radius-ca-rotation", "namespace": "radius-system"},
 			"data": map[string]any{"state.json": "{}"},
-		}}, err: "radius-ca-rotation exists"},
+		}}, err: "CA lifecycle journal has foreign or incomplete ownership"},
 		{name: "public source carries extra data", object: &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "v1", "kind": "ConfigMap", "metadata": map[string]any{"name": "radius-mtls-ca", "namespace": "radius-system"},
 			"data": map[string]any{"ca.crt": selected, "tls.key": "must not be copied"},

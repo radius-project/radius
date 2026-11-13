@@ -327,9 +327,11 @@ type Impl struct {
 	newUCPAPIServerTrustClient func(kubeContext string) (kubernetes.Interface, error)
 	// csiDriverSPIFFEPodWaitTimeout and csiDriverSPIFFEPodPollInterval override how long uninstall waits for Pods that
 	// use csi-driver-spiffe. Zero uses the defaults.
-	csiDriverSPIFFEPodWaitTimeout  time.Duration
-	csiDriverSPIFFEPodPollInterval time.Duration
-	newCertificateClient           func(kubeContext string) (kubernetes.Interface, error)
+	csiDriverSPIFFEPodWaitTimeout    time.Duration
+	csiDriverSPIFFEPodPollInterval   time.Duration
+	newCertificateClient             func(kubeContext string) (kubernetes.Interface, error)
+	newRotationStore                 func(kubeContext, namespace string) (*rotationStore, error)
+	validateCompletedProviderJournal func(*corev1.ConfigMap) error
 }
 
 var _ Interface = &Impl{}
@@ -371,7 +373,7 @@ func (i *Impl) logInfo(format string, v ...any) {
 // csi-driver-spiffe). It prepares and checks the Radius and Contour charts before it changes the cluster, and then
 // installs cert-manager, csi-driver-spiffe, Contour, Radius, and the Radius Contour Gateway in that order.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
-	if clusterOptions.Certificates.RotationPhase != "" {
+	if clusterOptions.Certificates.RotationPhase != "" || clusterOptions.Certificates.RotateCA {
 		return fmt.Errorf("CA rotation requires an installed Radius; use rad upgrade kubernetes --ca-rotation-phase")
 	}
 	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "install", nil); err != nil {
@@ -397,19 +399,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "install", radiusHelmChart); err != nil {
 		return err
 	}
-	store, err := i.rotationStoreForContext(kubeContext, clusterOptions.Radius.Namespace)
-	if err != nil {
-		return err
-	}
-	intent, found, err := store.bootstrapIntent(ctx)
-	if err != nil {
-		return err
-	}
-	policyInstalled := !(found && intent.Phase != bootstrapComplete) && (clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil)
+	policyInstalled := clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil
 	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, policyInstalled); err != nil {
 		return err
 	}
-	bootstrap, err := i.prepareAggregationBootstrap(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, certificates)
+	_, err = i.prepareAggregationBootstrap(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, certificates)
 	if err != nil {
 		return err
 	}
@@ -433,12 +427,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 				return err
 			}
 		}
-	}
-	certManagerRequesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, clusterOptions.Radius.Reinstall)
-	if err != nil {
-		return err
-	}
-	setCertManagerRequesters(radiusValues, certManagerRequesters)
+		certManagerRequesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, clusterOptions.Radius.Reinstall)
+		if err != nil {
+			return err
+		}
+		setCertManagerRequesters(radiusValues, certManagerRequesters)
 
 		// Install Contour before Radius. The Contour checks then see the cluster seconds before Contour is installed
 		// rather than after the wait for Radius, during which a k3s cluster that just started can install the Gateway API
@@ -464,6 +457,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	// Install Radius
+	if err := installDependencies(ctx); err != nil {
+		return err
+	}
 	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
 		return err
 	}
@@ -625,7 +621,7 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 // See the Helm upgrade documentation for details on ResetThenReuseValues behavior:
 // https://helm.sh/docs/helm/helm_upgrade/#options
 func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
-	if clusterOptions.Certificates.RotationPhase != "" {
+	if clusterOptions.Certificates.RotationPhase != "" || clusterOptions.Certificates.RotateCA {
 		return i.runCertificateRotation(ctx, clusterOptions, kubeContext, false)
 	}
 	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "upgrade", nil); err != nil {

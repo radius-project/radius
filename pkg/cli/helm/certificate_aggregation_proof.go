@@ -34,6 +34,10 @@ type PodAggregationProof struct {
 
 // ObserveAggregationProof observes serving trust without requiring component PKI.
 func ObserveAggregationProof(ctx context.Context, config *rest.Config, target TLSProofTarget) (PodAggregationProof, error) {
+	return PodAggregationProof{}, errCertificateObserverUnavailable
+}
+
+func observeLegacyAggregationFixture(ctx context.Context, config *rest.Config, target TLSProofTarget) (PodAggregationProof, error) {
 	if target.ContainerName != "ucp" {
 		return PodAggregationProof{}, errors.New("aggregation serving evidence requires the UCP container")
 	}

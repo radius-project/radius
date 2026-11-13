@@ -96,14 +96,7 @@ data:
       level: "info"
       json: true
 
-    {{- $rotation := include "radius.rotationState" . | mustFromJson }}
-    {{- if and $rotation (or (eq (toString $rotation.schemaVersion) "2") $rotation.bootstrap) (eq (include "radius.authz.mode" .) "off") }}
-    authorization:
-      mode: "off"
-      namespace: {{ .Release.Namespace | quote }}
-    {{- else }}
     {{- with include "radius.authz.serverConfig" . | trim }}{{ . | nindent 4 }}{{- end }}
-    {{- end }}
 
     {{- if and .Values.global.zipkin .Values.global.zipkin.url }}
     tracerProvider:

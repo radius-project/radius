@@ -26,6 +26,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -36,7 +37,6 @@ import (
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/spf13/pflag"
 	helm "helm.sh/helm/v4/pkg/action"
-	"helm.sh/helm/v4/pkg/chart/common"
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
@@ -56,6 +56,7 @@ type CertificateOptions struct {
 	CertIssuer    string
 	CABundle      string
 	RotationPhase string
+	RotateCA      bool
 }
 
 // AddFlags registers the certificate options shared by install and upgrade.
@@ -66,10 +67,14 @@ func (o *CertificateOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.CertIssuer, "cert-issuer", "", "Existing cert-manager.io Issuer/name or ClusterIssuer/name; requires dedicated public --ca-bundle on fresh install and live request-policy verification")
 	flags.StringVar(&o.CABundle, "ca-bundle", "", "Path to exactly one public dedicated signing CA PEM for --cert-issuer; never a private key or parent chain")
 	flags.StringVar(&o.RotationPhase, "ca-rotation-phase", "", "Run publish, adopt, issue, retire, or recover on installed Radius; recover performs an outage-capable new-only CA cutover")
+	flags.BoolVar(&o.RotateCA, "rotate-ca", false, "Replace both Radius-owned CAs (aggregation only with external TLS); currently blocked pending authenticated consumer observation")
 }
 
 // Validate checks flag combinations before contacting the cluster.
 func (o CertificateOptions) Validate() error {
+	if o.RotateCA && (o.RotationPhase != "" || o.Specified()) {
+		return errors.New("--rotate-ca cannot be combined with a phase or a supplied CA; use certificate selection flags for a BYO CA transition")
+	}
 	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "adopt" &&
 		o.RotationPhase != "issue" && o.RotationPhase != "retire" && o.RotationPhase != "recover" {
 		return fmt.Errorf("--ca-rotation-phase must be publish, adopt, issue, retire, or recover")
@@ -648,9 +653,6 @@ func (i *Impl) renderCertificatePolicy(ctx context.Context, options ClusterOptio
 			return fmt.Errorf("cannot copy Radius history for read-only issuer verification: %w", err)
 		}
 		upgrade := newUpgradeClient(configuration, options.Radius.Namespace, false, !options.ResetValues, options.Radius.Timeout, usesServerSideApply(configuration, options.Radius.ReleaseName))
-		if transaction != nil {
-			upgrade.ReuseValues, upgrade.ResetThenReuseValues, upgrade.ResetValues = false, false, true
-		}
 		upgrade.DryRunStrategy = helm.DryRunServer
 		_, err = upgrade.RunWithContext(ctx, options.Radius.ReleaseName, renderedChart, copyValues(current))
 	} else {
@@ -741,7 +743,7 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 
 // CheckRadiusCertificates validates the upgrade's certificate settings without creating Secrets.
 func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptions, kubeContext string) error {
-	if options.Certificates.RotationPhase != "" {
+	if options.Certificates.RotationPhase != "" || options.Certificates.RotateCA {
 		return i.runCertificateRotation(ctx, options, kubeContext, true)
 	}
 	if err := i.guardCertificateRotation(ctx, kubeContext, options.Radius.Namespace, "upgrade preflight", nil); err != nil {

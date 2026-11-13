@@ -56,23 +56,18 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 	if err != nil {
 		return fmt.Errorf("cannot check Radius CA rotation before %s: %w", operation, err)
 	}
-	bootstrap, found, bootstrapErr := store.bootstrapIntent(ctx)
+	_, found, bootstrapErr := store.bootstrapIntent(ctx)
 	if bootstrapErr != nil {
 		return bootstrapErr
 	}
-	if found && bootstrap.Phase != bootstrapComplete {
-		if operation == "install" {
-			// Install performs the stricter chart/settings/issuer identity check
-			// before entering its resumable bootstrap driver.
-			return nil
-		}
-		return errors.New("aggregation bootstrap is unfinished; resume the matching install before changing the release")
+	if found {
+		return errors.New("legacy aggregation bootstrap requires explicit recovery with the matching pre-token release before migration")
 	}
 	api, apiErr := store.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
 	if apiErr != nil && !apierrors.IsNotFound(apiErr) {
 		return fmt.Errorf("cannot inspect Radius APIService before %s: %w", operation, apiErr)
 	}
-	journal, state, err := store.read(ctx)
+	journal, err := store.kube.CoreV1().ConfigMaps(namespace).Get(ctx, rotationJournalName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		if api != nil && (api.GetAnnotations()[rotationRevision] != "" || api.GetAnnotations()[rotationJournalUID] != "") {
 			return errors.New("managed Radius trust is missing its public journal; restore the journal before changing the release")
@@ -82,20 +77,26 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 	if err != nil {
 		return err
 	}
+	state, err := decodeCertificateLifecycle(journal, namespace, store.release, store.now())
+	if err != nil {
+		return err
+	}
 	if state.Phase != rotationComplete {
 		return fmt.Errorf("CA rotation %s is unfinished in phase %s; resume it before %s", state.ID, state.Phase, operation)
 	}
-	if api == nil || api.GetUID() != state.APIServiceUID ||
-		api.GetAnnotations()[rotationJournalUID] != string(journal.UID) {
+	if state.APIServiceUID != "" && (api == nil || api.GetUID() != state.APIServiceUID ||
+		api.GetAnnotations()[rotationJournalUID] != string(journal.UID)) {
 		return errors.New("completed CA rotation belongs to a missing or replaced APIService; do not adopt it into a new installation")
 	}
-	if err := store.checkAPIService(api); err != nil {
-		return err
+	for name, plane := range state.Planes {
+		if err := store.checkLifecycleProjection(ctx, journal, state, name, plane); err != nil {
+			return err
+		}
 	}
 	if operation == "rollback" {
 		return errors.New("rollback is disabled after managed CA rotation: deploy a guarded forward upgrade that preserves current trust instead")
 	}
-	if target != nil && (target.Metadata == nil || target.Metadata.Annotations["radius.io/ca-rotation-protocol"] != "1") {
+	if target != nil && (target.Metadata == nil || target.Metadata.Annotations["radius.io/ca-rotation-protocol"] != "4") {
 		return errors.New("the target chart lacks the managed CA rotation protocol and could restore retired trust")
 	}
 	return nil

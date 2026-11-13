@@ -1,123 +1,94 @@
 {{/*
-The public journal is authoritative after completion. Active transactions may
-only be advanced by the phase driver, not by normal Helm rendering.
+Only completed schema4 journals may participate in ordinary Helm rendering.
+An active journal is never interpreted as permission to switch an issuer or
+overwrite overlap. The CLI must validate DER sets and observation barriers.
 */}}
-{{- define "radius.rotationJournal" -}}
-{{- $journal := .journal -}}
-{{- $root := .root -}}
-{{- $state := dict -}}
-{{- if $journal -}}
-{{- if or (ne (dig "metadata" "labels" "radius.io/trust-owner" "" $journal) $root.Release.Name) (dig "metadata" "ownerReferences" (list) $journal) (dig "metadata" "deletionTimestamp" "" $journal) (dig "metadata" "annotations" "meta.helm.sh/release-name" "" $journal) -}}
-{{- fail "Radius CA rotation journal has unexpected ownership." -}}
+{{- define "radius.lifecycleSnapshot" -}}
+{{- $namespace := lookup "v1" "Namespace" "" .Release.Namespace -}}
+{{- if dig "metadata" "annotations" "radius.io/aggregation-bootstrap-intent" "" $namespace -}}
+{{- fail "Legacy bootstrap intent without its journal migration cannot be reinterpreted as token/CSI readiness." -}}
 {{- end -}}
-{{- $state = mustFromJson (dig "data" "state.json" "" $journal) -}}
-{{- if or (not (kindIs "float64" $state.schemaVersion)) (not (has (toString $state.schemaVersion) (list "1" "2" "3"))) (ne $state.namespace $root.Release.Namespace) (ne $state.release $root.Release.Name) -}}
-{{- fail "Radius CA rotation journal does not match this installation." -}}
+{{- if lookup "v1" "ConfigMap" .Release.Namespace "radius-aggregation-bootstrap" -}}
+{{- fail "Legacy aggregation bootstrap journal requires explicit recovery with the matching pre-token release." -}}
 {{- end -}}
-{{- $plan := $state.plan | default dict -}}
-{{- if eq (toString $state.schemaVersion) "3" -}}
-{{- if or (ne $state.bootstrap true) (ne $state.phase "complete") $state.oldCA $state.previousRevision $state.priorRevisions $state.recovery $plan.oldComponentCA -}}
-{{- fail "Initial bootstrap completion must not fabricate a predecessor CA or rotation phase." -}}
-{{- end -}}
-{{- else if $state.bootstrap -}}
-{{- fail "Bootstrap completion requires its explicit lifecycle schema." -}}
-{{- end -}}
-{{- if eq (toString $state.schemaVersion) "1" -}}
-{{- if or $plan.scope $plan.aggregation $plan.externalIssuer -}}
-{{- fail "Legacy CA rotation journals cannot contain version 2 scope or issuer fields." -}}
-{{- end -}}
-{{- else -}}
-{{- if or (not (has $plan.scope (list "componentsAndAggregation" "aggregationOnly"))) (not $plan.aggregation) (not $plan.aggregation.deploymentUID) (not (kindIs "float64" $plan.aggregation.proofPort)) (lt (int $plan.aggregation.proofPort) 1) (gt (int $plan.aggregation.proofPort) 65535) (ne (float64 (int $plan.aggregation.proofPort)) $plan.aggregation.proofPort) -}}
-{{- fail "Version 2 CA rotation requires a valid scope and separate aggregation workload." -}}
-{{- end -}}
-{{- if eq $plan.scope "aggregationOnly" -}}
-{{- if or $plan.consumers $plan.oldComponentCA -}}
-{{- fail "Aggregation-only CA rotation must not contain component PKI." -}}
-{{- end -}}
-{{- else -}}
-{{- if or (not (kindIs "slice" $plan.consumers)) (ne (len $plan.consumers) 5) (and (ne (toString $state.schemaVersion) "3") (not $plan.oldComponentCA)) -}}
-{{- fail "Managed CA rotation requires all five component identities and public trust." -}}
-{{- end -}}
-{{- $seen := dict -}}
-{{- range $consumer := $plan.consumers -}}
-{{- if or (not (has $consumer.name (list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de"))) (hasKey $seen $consumer.name) (not $consumer.uid) (and (eq $consumer.name "ucp") (ne $consumer.uid $plan.aggregation.deploymentUID)) -}}
-{{- fail "Managed CA rotation contains inconsistent component identities." -}}
-{{- end -}}
-{{- $_ := set $seen $consumer.name true -}}
-{{- end -}}
-{{- end -}}
-{{- if eq $plan.targetMode "issuerRef" -}}
-{{- $issuer := $plan.externalIssuer | default dict -}}
-{{- if or (ne $issuer.group "cert-manager.io") (not (has $issuer.kind (list "Issuer" "ClusterIssuer"))) (not $issuer.name) (ne $issuer.name $plan.issuer) (not $issuer.uid) (not $issuer.specSHA256) (not $issuer.requestPolicy) $plan.signingSecret $plan.signingUID -}}
-{{- fail "External CA rotation requires a pinned public issuer without a signing Secret." -}}
-{{- end -}}
-{{- else if $plan.externalIssuer -}}
-{{- fail "Local CA rotation must not contain an external issuer." -}}
-{{- end -}}
-{{- end -}}
-{{- if ne $state.phase "complete" -}}
-{{- fail "Radius CA rotation is unfinished. Resume its explicit phase before changing the Helm release." -}}
-{{- end -}}
-{{- end -}}
-{{- toJson $state -}}
-{{- end -}}
-
-{{- define "radius.rotationState" -}}
-{{- $bootstrap := include "radius.bootstrapState" . | mustFromJson -}}
 {{- $journal := lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation" -}}
-{{- $state := include "radius.rotationJournal" (dict "journal" $journal "root" .) | mustFromJson -}}
-{{- if not $state -}}
-{{- $state = include "radius.bootstrapPresentation" . | mustFromJson -}}
+{{- $result := dict -}}
+{{- if $journal -}}
+{{- if or (ne (dig "metadata" "labels" "radius.io/trust-owner" "" $journal) .Release.Name)
+  (dig "metadata" "ownerReferences" (list) $journal)
+  (dig "metadata" "deletionTimestamp" "" $journal)
+  (dig "metadata" "annotations" "meta.helm.sh/release-name" "" $journal)
+  (empty $journal.metadata.uid) (empty $journal.metadata.resourceVersion)
+  (ne (len $journal.data) 1) (not (empty $journal.binaryData)) -}}
+{{- fail "CA lifecycle journal has foreign or incomplete ownership." -}}
 {{- end -}}
-{{- if $state -}}
-{{- if or (not $state.plan) (not $state.plan.targetTrustMap) (not $state.plan.targetTrustSHA256) (not $state.plan.issuer) (not $state.plan.servingSecret) -}}
-{{- fail "Radius CA rotation journal is missing its completed resource plan." -}}
+{{- $encoded := index $journal.data "state.json" | default "" -}}
+{{- if or (empty $encoded) (gt (len $encoded) 65536) -}}{{- fail "CA lifecycle journal is empty or too large." -}}{{- end -}}
+{{- $state := mustFromJson $encoded -}}
+{{- if or (ne (toString $state.schemaVersion) "4") (ne $state.namespace .Release.Namespace) (ne $state.release .Release.Name) -}}
+{{- fail "Legacy or foreign CA journal cannot be reinterpreted as token/CSI evidence." -}}
+{{- end -}}
+{{- if ne $state.phase "complete" -}}{{- fail "CA lifecycle is unfinished; Helm must preserve its staged overlap without modifying workloads or issuers." -}}{{- end -}}
+{{- if or (ne $state.mode (include "radius.authz.certificates.mode" .)) (ne $state.provider (include "radius.authz.tls.provider" .)) -}}
+{{- fail "CA lifecycle mode/provider does not match the selected chart settings." -}}
+{{- end -}}
+{{- if not (regexMatch `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$` ($state.id | default "")) -}}
+{{- fail "CA lifecycle transaction identity is invalid." -}}
+{{- end -}}
+{{- $planes := list "aggregation" -}}
+{{- if eq $state.provider "radius" -}}{{- $planes = append $planes "internal" -}}{{- end -}}
+{{- if ne (len $state.planes) (len $planes) -}}{{- fail "CA lifecycle must preserve every enabled trust plane." -}}{{- end -}}
+{{- range $plane := $planes -}}
+{{- $record := index $state.planes $plane | default dict -}}
+{{- $pin := $record.source | default dict -}}
+{{- $kind := "ConfigMap" -}}{{- $name := "radius-mtls-ca" -}}
+{{- if eq $plane "aggregation" -}}{{- $kind = "Secret" -}}{{- $name = "radius-apiserver-trust" -}}{{- end -}}
+{{- if or (ne $pin.kind $kind) (ne $pin.name $name) (empty $pin.uid) (empty $pin.resourceVersion) (empty $record.newCA) -}}
+{{- fail "CA lifecycle public source pin is incomplete." -}}
+{{- end -}}
+{{- $source := lookup "v1" $kind $.Release.Namespace $name -}}
+{{- if not $source -}}{{- fail "CA lifecycle public source is missing." -}}{{- end -}}
+{{- $annotations := $source.metadata.annotations | default dict -}}
+{{- $revision := printf "%s/complete" $state.id -}}
+{{- if or (ne $source.metadata.uid $pin.uid) (ne $source.metadata.resourceVersion $pin.resourceVersion)
+  (dig "metadata" "deletionTimestamp" "" $source) (dig "metadata" "ownerReferences" (list) $source)
+  (ne (dig "metadata" "labels" "app.kubernetes.io/managed-by" "" $source) "Helm")
+  (ne (index $annotations "meta.helm.sh/release-name") $.Release.Name)
+  (ne (index $annotations "meta.helm.sh/release-namespace") $.Release.Namespace)
+  (ne (index $annotations "radius.io/trust-journal-uid") $journal.metadata.uid)
+  (ne (index $annotations "radius.io/trust-revision") $revision)
+  (ne (len $source.data) 1) (not (empty $source.binaryData)) (not (empty $source.stringData)) -}}
+{{- fail "CA lifecycle public source identity, ownership or contents changed." -}}
+{{- end -}}
+{{- $bundle := index $source.data "ca.crt" | default "" -}}
+{{- if eq $kind "Secret" -}}
+{{- if or (ne $source.type "Opaque") (ne (index $annotations "cert-manager.io/allow-direct-injection") "true") -}}
+{{- fail "Aggregation lifecycle source must remain public-only and injection-enabled." -}}
+{{- end -}}
+{{- $bundle = b64dec $bundle -}}
+{{- end -}}
+{{- if or (empty $bundle) (ne $bundle (b64dec $pin.bundle)) (ne (sha256sum $bundle) $pin.sha256) -}}
+{{- fail "CA lifecycle source differs from its exact completed snapshot." -}}
+{{- end -}}
+{{- if ne $bundle (b64dec $record.newCA) -}}
+{{- fail "Completed CA lifecycle source must contain exactly the target anchor, not retained overlap." -}}
+{{- end -}}
+{{- $issuer := dict "group" $record.issuer.Group "kind" $record.issuer.Kind "name" $record.issuer.Name -}}
+{{- if or (ne $issuer.group "cert-manager.io") (not (has $issuer.kind (list "Issuer" "ClusterIssuer"))) (empty $issuer.name) -}}
+{{- fail "CA lifecycle issuer reference is invalid." -}}
+{{- end -}}
+{{- $expected := dict "group" "cert-manager.io" "kind" "Issuer" "name" "radius-ca-issuer" -}}
+{{- if eq $plane "aggregation" -}}{{- $_ := set $expected "name" "radius-apiserver-issuer" -}}{{- end -}}
+{{- if eq $state.mode "issuerRef" -}}{{- $expected = $.Values.global.rbac.certificates.issuerRef -}}{{- end -}}
+{{- if ne (toJson $issuer) (toJson $expected) -}}
+{{- fail "The selected chart cannot preserve this staged issuer; keep the lifecycle blocked rather than silently reverting issuance." -}}
+{{- end -}}
+{{- $_ := set $result $plane (dict "kind" $kind "name" $name "key" "ca.crt" "bundle" $bundle
+  "uid" $pin.uid "resourceVersion" $pin.resourceVersion "contentDigest" (sha256sum $bundle)
+  "issuer" $issuer "issuerDigest" (sha256sum (toJson $issuer))
+  "digest" (sha256sum (printf "%s\n%s" $bundle (toJson $issuer)))
+  "journalUID" $journal.metadata.uid "revision" $revision) -}}
 {{- end -}}
 {{- end -}}
-{{- toJson $state -}}
-{{- end -}}
-
-{{/*
-Read each mutable target before reading the journal. Rendered UID/resourceVersion
-preconditions prevent an older Helm apply from undoing a later phase write.
-*/}}
-{{- define "radius.rotationSnapshot" -}}
-{{- $object := lookup .apiVersion .kind .root.Release.Namespace .name -}}
-{{- $bootstrap := include "radius.bootstrapState" .root | mustFromJson -}}
-{{- if and $bootstrap (eq $bootstrap.phase "preparing") (has .kind (list "Deployment" "Service")) -}}
-{{- fail "Aggregation bootstrap has not verified its selected CA leaf; workloads cannot be installed yet." -}}
-{{- end -}}
-{{- $state := include "radius.rotationState" .root | mustFromJson -}}
-{{- if and $object $state -}}
-{{- if or (ne (dig "metadata" "annotations" "meta.helm.sh/release-name" "" $object) .root.Release.Name) (ne (dig "metadata" "annotations" "meta.helm.sh/release-namespace" "" $object) .root.Release.Namespace) (dig "metadata" "deletionTimestamp" "" $object) -}}
-{{- fail "A managed CA rotation resource changed ownership or is terminating." -}}
-{{- end -}}
-{{- if and $state.bootstrap (ne $state.phase "complete") (ne (dig "metadata" "annotations" "radius.io/aggregation-bootstrap" "" $object) $state.id) -}}
-{{- fail "Bootstrap cannot adopt a resource without its matching creation intent." -}}
-{{- end -}}
-{{- else if and $object (or (dig "metadata" "annotations" "radius.io/trust-revision" "" $object) (dig "metadata" "annotations" "radius.io/ca-rotation" "" $object)) -}}
-{{- fail "A managed CA rotation resource is missing its public journal." -}}
-{{- end -}}
-{{- toJson (dict "object" $object "state" $state) -}}
-{{- end -}}
-
-{{- define "radius.rotationMetadata" -}}
-{{- if .object -}}
-uid: {{ .object.metadata.uid | quote }}
-resourceVersion: {{ .object.metadata.resourceVersion | quote }}
-{{- end -}}
-{{- if .state }}
-annotations:
-  {{- if and .state.bootstrap (ne .state.phase "complete") }}
-  radius.io/aggregation-bootstrap: {{ .state.id | quote }}
-  {{- else }}
-  radius.io/trust-revision: {{ printf "%s/complete" .state.id | quote }}
-  {{- end }}
-  {{- $annotations := dig "metadata" "annotations" (dict) .object }}
-  {{- range $key := list "radius.io/ca-rotation" "radius.io/aggregation-route" "radius.io/aggregation-old-hash" "radius.io/aggregation-new-hash" }}
-  {{- if hasKey $annotations $key }}
-  {{ $key }}: {{ index $annotations $key | quote }}
-  {{- end }}
-  {{- end }}
-{{- end -}}
+{{- toJson $result -}}
 {{- end -}}

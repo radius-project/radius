@@ -58,6 +58,10 @@ type PodTLSProof struct {
 // ObserveTLSStartupProof reads bounded public evidence through the authenticated Kubernetes
 // exact-pod port-forward. It refuses redirects and verifies pod/container identity before and after the read.
 func ObserveTLSStartupProof(ctx context.Context, config *rest.Config, target TLSProofTarget) (PodTLSProof, error) {
+	return PodTLSProof{}, errCertificateObserverUnavailable
+}
+
+func observeLegacyTLSStartupFixture(ctx context.Context, config *rest.Config, target TLSProofTarget) (PodTLSProof, error) {
 	return observePodTLSProof(ctx, config, target, mtls.StartupProofPath, func(evidence mtls.StartupEvidence) error {
 		return evidence.Validate(string(target.PodUID), target.TrustBundleSHA256, target.LeafSHA256, time.Now())
 	})

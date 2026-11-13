@@ -233,11 +233,6 @@ de:
   # and public trust. The legacy de.ucpMTLS.enabled=true setting fails migration.
   internalAuth:
     enabled: false
-    # Requires an engine image implementing the A10 local TLS evidence contract.
-    # This proves loaded material, not a UCP handshake or safe CA rotation.
-    startupProof:
-      enabled: false
-      expectedTrustSHA256: ""
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.

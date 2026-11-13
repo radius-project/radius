@@ -282,8 +282,9 @@ func rotationLeafDigest(secret *corev1.Secret, ca []byte, namespace, component s
 		}
 	}
 	leaf := certificates[0]
-	identity, err := mtls.PeerIdentity(certificates, namespace)
-	if err != nil || identity.Component != component || leaf.IsCA || leaf.KeyUsage&x509.KeyUsageDigitalSignature == 0 {
+	if len(leaf.DNSNames) != 1 || leaf.DNSNames[0] != component+"."+namespace+".svc" ||
+		len(leaf.URIs) != 0 || len(leaf.IPAddresses) != 0 || len(leaf.EmailAddresses) != 0 ||
+		leaf.IsCA || leaf.KeyUsage&x509.KeyUsageDigitalSignature == 0 {
 		return "", errors.New("issued leaf has the wrong Radius identity or signing constraints")
 	}
 	pool := x509.NewCertPool()

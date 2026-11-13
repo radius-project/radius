@@ -219,7 +219,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	currentVersion := state.RadiusVersion
-	if r.Certificates.RotationPhase != "" {
+	if r.Certificates.RotationPhase != "" || r.Certificates.RotateCA {
 		if r.Chart != "" || r.Version != "" || len(r.Set) != 0 || len(r.SetFile) != 0 ||
 			len(r.ContourSet) != 0 || len(r.ContourSetFile) != 0 || r.ResetValues {
 			return fmt.Errorf("CA rotation cannot be combined with chart, version, values, or Contour changes")

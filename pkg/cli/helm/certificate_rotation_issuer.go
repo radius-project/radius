@@ -125,7 +125,17 @@ func (i *Impl) checkRotationIssuerPolicy(ctx context.Context, options ClusterOpt
 	if err := unstructured.SetNestedField(values, provider, "global", "rbac", "mtls", "provider"); err != nil {
 		return err
 	}
-	return i.renderIssuerPolicy(ctx, options, selected, source, values, kubeContext, true, &state)
+	if err := state.validate(time.Now()); err != nil {
+		return err
+	}
+	history, err := i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
+	if err != nil {
+		return err
+	}
+	if _, err := certificatePolicyBaseline(options, history); err != nil {
+		return err
+	}
+	return i.renderCertificatePolicy(ctx, options, certificatePolicyChart(selected), values, kubeContext, history)
 }
 
 func (i *Impl) rotationIssuerTarget(ctx context.Context, store *rotationStore, options ClusterOptions, effective map[string]any, kubeContext string) ([]byte, *rotationExternalIssuer, error) {

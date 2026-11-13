@@ -1,10 +1,8 @@
-{{- $rotation := include "radius.rotationSnapshot" (dict "root" . "apiVersion" "v1" "kind" "Service" "name" "ucp") | mustFromJson }}
 apiVersion: v1
 kind: Service
 metadata:
   name: ucp
   namespace: "{{ .Release.Namespace }}"
-  {{- include "radius.rotationMetadata" $rotation | nindent 2 }}
   labels:
     app.kubernetes.io/name: ucp
     app.kubernetes.io/part-of: radius
@@ -23,8 +21,4 @@ spec:
       targetPort: 9444
     {{- end }}
   selector:
-      {{- if $rotation.state }}
-      {{- toYaml $rotation.state.plan.serviceSelector | nindent 6 }}
-      {{- else }}
       app.kubernetes.io/name: ucp
-      {{- end }}

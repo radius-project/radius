@@ -1,3 +1,7 @@
+{{- $lifecycle := include "radius.lifecycleSnapshot" . | mustFromJson }}
+{{- if and $lifecycle (eq (include "radius.authz.mode" .) "off") }}
+{{- fail "Authorization Off after a CA lifecycle requires a guarded lifecycle transition." }}
+{{- end }}
 {{- if ne (include "radius.authz.mode" .) "off" }}
 {{- include "radius.authz.certificates.validate" . }}
 {{- $certificates := .Values.global.rbac.certificates | default dict }}
@@ -22,7 +26,6 @@ kind: Certificate
 metadata:
   name: radius-ca
   namespace: {{ $ns }}
-  {{- include "radius.rotationMetadata" (dict "object" $caObject "state" $rotation) | nindent 2 }}
   labels:
     app.kubernetes.io/part-of: radius
 spec:
@@ -51,7 +54,6 @@ kind: Issuer
 metadata:
   name: radius-ca-issuer
   namespace: {{ $ns }}
-  {{- include "radius.rotationMetadata" (dict "object" $issuerObject "state" $rotation) | nindent 2 }}
   labels:
     app.kubernetes.io/part-of: radius
 spec:
@@ -67,7 +69,6 @@ kind: Certificate
 metadata:
   name: radius-apiserver-ca
   namespace: {{ $ns }}
-  {{- include "radius.rotationMetadata" (dict "object" (index $objects $component) "state" $rotation) | nindent 2 }}
   labels:
     app.kubernetes.io/part-of: radius
 spec:
@@ -112,6 +113,10 @@ metadata:
   annotations:
     helm.sh/resource-policy: keep
     radius.io/certificate-mode: {{ $mode | quote }}
+    {{- if $source.journalUID }}
+    radius.io/trust-journal-uid: {{ $source.journalUID | quote }}
+    radius.io/trust-revision: {{ $source.revision | quote }}
+    {{- end }}
 data:
   ca.crt: {{ $source.bundle | toJson }}
 {{- end }}
@@ -129,6 +134,10 @@ metadata:
     cert-manager.io/allow-direct-injection: "true"
     helm.sh/resource-policy: keep
     radius.io/certificate-mode: {{ $mode | quote }}
+    {{- if $source.journalUID }}
+    radius.io/trust-journal-uid: {{ $source.journalUID | quote }}
+    radius.io/trust-revision: {{ $source.revision | quote }}
+    {{- end }}
 type: Opaque
 data:
   ca.crt: {{ $source.bundle | b64enc | quote }}

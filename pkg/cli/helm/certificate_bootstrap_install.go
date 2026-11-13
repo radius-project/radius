@@ -529,6 +529,22 @@ func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterO
 	if !pending && (options.RadiusInstalled || options.RadiusReleaseValues != nil || found) {
 		return nil, nil
 	}
+	return nil, fmt.Errorf("fresh authorization-enabled bootstrap cannot complete its authenticated process-readiness barrier: %w", errCertificateObserverUnavailable)
+}
+
+// prepareLegacyAggregationBootstrap is retained for recovery-format fixtures,
+// never dispatched by token/CSI installation.
+func (i *Impl) prepareLegacyAggregationBootstrap(ctx context.Context, options ClusterOptions, selected *chart.Chart,
+	configuration *helm.Configuration, effective map[string]any, kubeContext string, imported *certificatePlan) (*aggregationBootstrapInstaller, error) {
+	store, err := i.rotationStoreForContext(kubeContext, options.Radius.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	current, found, readErr := store.bootstrapIntent(ctx)
+	if readErr != nil {
+		return nil, readErr
+	}
+	pending := found && current.Phase != bootstrapComplete
 	if selected.Metadata == nil || selected.Metadata.Annotations["radius.io/aggregation-bootstrap-protocol"] != "1" {
 		return nil, errors.New("fresh enabled installation requires a chart supporting configured-CA aggregation bootstrap")
 	}

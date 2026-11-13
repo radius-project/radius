@@ -595,8 +595,10 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							release.Labels = radManagedByLabels()
 						}
 						client := NewMockHelmClient(gomock.NewController(t))
-						client.EXPECT().LoadChart(options.Radius.ChartPath).Return(certificateTestChart(t), nil)
-						client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
+						if command != "install" {
+							client.EXPECT().LoadChart(options.Radius.ChartPath).Return(certificateTestChart(t), nil)
+							client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
+						}
 						client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(release, nil)
 						impl := &Impl{
 							Helm: client,
@@ -610,8 +612,8 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 						}
 						var err error
 						if command == "install" {
-							// Fresh bootstrap runs this gate after recording creation
-							// intent, before requesting any Radius certificates.
+							// Exercise the prerequisite independently of the blocked
+							// fresh token/CSI bootstrap.
 							err = impl.ensureCertManager(t.Context(), options, kubeContext, nil, false)
 						} else if command == "upgrade" {
 							err = impl.UpgradeRadius(t.Context(), options, kubeContext)
@@ -989,6 +991,7 @@ func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testin
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
 		newUCPAPIServerTrustClient:  uninstallTrustClient,
+		newRotationStore:            emptyRotationTestStore,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))

@@ -191,10 +191,10 @@ func testObserveTLSProof(t *testing.T, aggregation bool) {
 			var err error
 			if aggregation {
 				var serving PodAggregationProof
-				serving, err = ObserveAggregationProof(ctx, config, expected)
+				serving, err = observeLegacyAggregationFixture(ctx, config, expected)
 				proof = PodTLSProof{Evidence: mtls.StartupEvidence(serving.Evidence), ContainerID: serving.ContainerID, RestartCount: serving.RestartCount}
 			} else {
-				proof, err = ObserveTLSStartupProof(ctx, config, expected)
+				proof, err = observeLegacyTLSStartupFixture(ctx, config, expected)
 			}
 			if scenario == "success" {
 				require.NoError(t, err)

@@ -1,4 +1,3 @@
-{{- $rotation := include "radius.rotationSnapshot" (dict "root" . "apiVersion" "apps/v1" "kind" "Deployment" "name" "ucp") | mustFromJson }}
 {{- $appversion := include "radius.versiontag" . }}
 {{- $receivers := list "applications-rp" "dynamic-rp" }}
 {{- if eq (include "radius.de.internalAuth.enabled" .) "true" }}
@@ -9,7 +8,6 @@ kind: Deployment
 metadata:
   name: ucp
   namespace: "{{ .Release.Namespace }}"
-  {{- include "radius.rotationMetadata" $rotation | nindent 2 }}
   labels:
     control-plane: ucp
     app.kubernetes.io/name: ucp
@@ -30,8 +28,8 @@ spec:
         {{- end }}
       annotations:
         checksum/authz-config: {{ include "radius.authz.configChecksum" . }}
-        checksum/caller-authentication: {{ .Values.ucp.kubernetesIssuer | default "kubernetes:local" | sha256sum }}
         checksum/metrics-port: {{ .Values.global.prometheus.port | toString | sha256sum }}
+        checksum/caller-authentication: {{ .Values.ucp.kubernetesIssuer | default "kubernetes:local" | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
@@ -66,8 +64,6 @@ spec:
         args:
         - --config-file=/etc/config/ucp-config.yaml
         env:
-        {{- with include "radius.authz.startupProofEnv" . | trim }}{{ . | nindent 8 }}{{- end }}
-        {{- with include "radius.aggregationProofEnv" (dict "root" . "state" $rotation.state) | trim }}{{ . | nindent 8 }}{{- end }}
         - name: TLS_CERT_DIR
           value: '/var/tls/cert'
         - name: PORT
@@ -168,22 +164,6 @@ spec:
                 audience: "sts.amazonaws.com"
         {{- end }}
         - name: cert
-          {{- if $rotation.state }}
-          projected:
-            sources:
-              - secret:
-                  name: {{ $rotation.state.plan.servingSecret }}
-                  items:
-                    - key: tls.crt
-                      path: tls.crt
-                    - key: tls.key
-                      path: tls.key
-              - configMap:
-                  name: {{ $rotation.state.plan.targetTrustMap }}
-                  items:
-                    - key: ca.crt
-                      path: ca.crt
-          {{- else }}
           secret:
             secretName: {{ include "radius.ucp.apiServerSecretName" . }}
         {{- if .Values.global.rootCA.cert }}

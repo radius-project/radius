@@ -43,7 +43,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOptions, kubeContext string, readOnly bool) error {
+func (i *Impl) runLegacyCertificateRotation(ctx context.Context, options ClusterOptions, kubeContext string, readOnly bool) error {
 	if err := options.Certificates.Validate(); err != nil {
 		return err
 	}

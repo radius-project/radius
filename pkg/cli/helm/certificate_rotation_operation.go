@@ -83,6 +83,9 @@ func withIdentityOperation(ctx context.Context, kube kubernetes.Interface, names
 }
 
 func (o *identityOperation) check(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if o == nil || o.lease == nil || o.lease.Name != identityOperationLeaseName ||
 		o.lease.UID == "" || o.lease.ResourceVersion == "" || ptr.Deref(o.lease.Spec.HolderIdentity, "") == "" {
 		return errors.New("identity operation has no pinned lock")
@@ -95,7 +98,7 @@ func (o *identityOperation) check(ctx context.Context) error {
 		live.DeletionTimestamp != nil || ptr.Deref(live.Spec.HolderIdentity, "") != *o.lease.Spec.HolderIdentity {
 		return errors.New("identity operation lock changed; stop and investigate before retrying")
 	}
-	return nil
+	return ctx.Err()
 }
 
 func (s *rotationStore) checkWrite(ctx context.Context) error {

@@ -714,7 +714,8 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 
 				detectCalls := 0
 				impl := &Impl{
-					Helm: client,
+					Helm:             client,
+					newRotationStore: emptyRotationTestStore,
 					newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 						detectCalls++
 						kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
