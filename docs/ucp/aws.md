@@ -202,6 +202,8 @@ EMR and FSx keep their own state in tags: `radius-operation-id` on both, and `ra
 
 Every native handler runs the shared suite in `pkg/ucp/aws/native/nativetest`, which deploys through UCP's controllers and worker with an in-memory AWS. A handler's tests give it a fake of the service's API backed by the same in-memory store. `pkg/ucp/aws/native/nativefake` has a fake handler for testing the framework. `Test_SchemaPermissionsCoverAWSCalls` in `pkg/ucp/aws/native/handlers` reads each handler's source and fails when a handler makes an AWS call that its schema's handler permissions don't list for the operation that makes it.
 
+The suite also checks the handler's record of the AWS calls it makes (`Suite.API`), described in [Adding a native handler](#adding-a-native-handler).
+
 Each handler also has a `Test_Replay_*` test that runs a create, read, update, and delete through the real AWS SDK against AWS's recorded responses (`pkg/ucp/aws/native/awsreplay`), in `testdata/` next to the handler. A cassette's `source` says whether AWS's responses were recorded or written by hand from the AWS API reference, for a type the recording account can't create. To record one:
 
 1. Create the supporting resources the test reads with `session.Input`, such as a subnet, and export their IDs as the `RADIUS_REC_*` variables the test names. Tag everything you create, and delete it afterwards.
@@ -214,7 +216,7 @@ A hand-written type is an AWS resource with no CloudFormation type, such as an S
 
 1. Write the schema in CloudFormation's resource schema format. Name the type as AWS would, such as `AWS::S3::Object` (`AWS.S3/Object` in Bicep), and name each property after the AWS API's parameter, in PascalCase, such as `Bucket`, `Key`, and `ContentType` from S3's `PutObject`.
 2. Name the file after the type, in lowercase with `::` as `-`, such as `aws-s3-object.json`, directly in `handwritten/`. Add a metadata file next to it when the type needs `identityScope`, `onDelete`, or `arnProperty`.
-3. Add the handler to `All` in `pkg/ucp/aws/native/handlers`, and run the shared suite for it.
+3. Add the handler to `All` in `pkg/ucp/aws/native/handlers`, and run the shared suite for it, with a record of the AWS calls it makes (see [Adding a native handler](#adding-a-native-handler)). A hand-written type has no CloudFormation schema to check its rules against, so AWS's API reference is the only source.
 
 UCP fails to load a hand-written schema that breaks one of these rules, and the registry checks the `list` handler, so the tests fail before it ships:
 
@@ -236,3 +238,27 @@ UCP never asks CloudFormation about a hand-written type, so nothing changes for 
 |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Cloud Control can create it in every Region Radius supports, and it behaves the same: primary identifier, property names and types, create-only properties, and what removing a property and deleting do | Hand it over to Cloud Control. Move the schema to `native/`, so new operations go to Cloud Control and the record works with either handler, and keep the handler, so an operation it started still finishes with it. Remove the schema and handler only in a release that refuses to upgrade while any record has an unfinished native operation of that type |
 | Anything else                                                                                                                                                                                            | Keep the Radius schema and handler, and close the issue                                                                                                                                                                                                                                                                                                        |
+
+#### Adding a native handler
+
+A handler's tests are only as good as its fake. A fake that accepts whatever the handler sends hides the bugs it should catch, as the DAX and FSx fakes did for their first handlers. So before writing the fake, write down what AWS's API reference says about each call the handler makes, and make the fake follow it.
+
+For every AWS call, record in the handler's `Suite.API`, keyed by the SDK client method, such as `CreateDBCluster`:
+
+- `Doc`: the call's page in AWS's API reference.
+- `Rules`: each rule the page, or a page it links to, states about:
+  - **Defaults** when a parameter is left out, such as DocumentDB restarting an instance on a CA change unless `CertificateRotationRestart` is `false`, or CodeBuild filling in a default.
+  - **State** the resource must be in, such as a DAX cluster that must be `available` before a resize.
+  - **Value limits**, such as network ACL rule numbers from 1 to 32766, or a name's length and pattern.
+  - **Parameters that can't be combined**, or that one requires another.
+  - **Idempotency token scope**: what a token is unique within, how long AWS keeps it, and what AWS does when the same token comes with other values.
+- `Unclear`: what the docs leave unclear, such as an error the page doesn't name. Don't guess a rule the docs don't state: write it down here, and say what the fake does instead.
+
+Each rule says what AWS documents, links to the page that states it when that isn't the call's page (`Rule.Doc`), and comes with a test of the fake:
+
+- A rule that makes AWS reject a call sets `Break`, which makes such a call against the fake, and `Code`, the error code AWS's docs give for it. The suite fails when the fake accepts the call, or rejects it with another code, such as `NotFound` from a call that broke something else.
+- Any other rule, such as a default, sets `Check`, which makes calls that show the fake follows it.
+
+The suite reads the handler's source and fails when a call the handler makes has no record, or a record names a call it doesn't make. It finds a call by a method of the package's SDK client interfaces, or by the SDK input the package builds for it, such as `&docdb.CreateDBClusterInput{}`. Where a rule the fake now enforces breaks a handler test, fix the handler, not the fake.
+
+In the handler's pull request, list the rules you checked for each call, with their doc links, so a reviewer can compare them with AWS's docs.

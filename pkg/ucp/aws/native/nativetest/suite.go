@@ -191,6 +191,11 @@ type Suite struct {
 	// ChangedOutside, when set, is a change to the resource in AWS outside Radius that a deploy of its template must
 	// undo, for a type whose Equivalent compares values only on what the template sets.
 	ChangedOutside *ChangedOutside
+
+	// API records each AWS call the handler makes, by the name of its AWS SDK client method, such as
+	// CreateDBCluster: the call's page in AWS's API reference and the rules AWS documents for it, which the fake must
+	// enforce. It is nil for a handler that makes no AWS SDK calls, such as nativefake's.
+	API map[string]Call
 }
 
 // ChangedOutside is a change to the resource in AWS outside Radius, such as another HLS container than the template's.
@@ -270,6 +275,12 @@ func Run(t *testing.T, s Suite) {
 	t.Run("member added outside Radius", func(t *testing.T) { s.outsideMember(t) })
 	t.Run("update interrupted before its first call", func(t *testing.T) { s.interruptedScopedUpdate(t) })
 	t.Run("delete again after the response is lost", func(t *testing.T) { s.deleteTokenRetry(t) })
+	t.Run("the fake follows AWS's documented API rules", func(t *testing.T) {
+		if s.API == nil {
+			t.Skip("the handler has no record of its AWS calls yet")
+		}
+		requireAPIRules(t, s.API, s.NewHandler(awsfake.NewCloudControl()))
+	})
 	nameProperty := s.NewHandler(awsfake.NewCloudControl()).Options().NameProperty
 	for _, reached := range []bool{true, false} {
 		suffix := map[bool]string{true: "after the create reached AWS", false: "before the create reached AWS"}[reached]
