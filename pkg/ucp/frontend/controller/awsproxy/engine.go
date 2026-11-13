@@ -631,6 +631,12 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	responseBody := map[string]any{"id": r.id.String(), "name": r.id.Name(), "type": r.id.Type(), "properties": responseProperties}
 
 	if len(patch) == 0 {
+		// This response is the resource as AWS has it, so it carries the extra properties a GET returns. A failed read
+		// fails the PUT before the record changes.
+		if resp, err := e.addExtraProperties(ctx, r, typeInfo, responseProperties); resp != nil || err != nil {
+			return resp, err
+		}
+
 		// Nothing to change in AWS, but the record takes this deploy's properties: a property the template now sets
 		// and later removes is then cleared. Equivalent wasn't used at unresolved paths, so AWS has the template's
 		// values there, and they are resolved.
@@ -1190,19 +1196,8 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 			return nil, err
 		}
 	}
-	if extraproperties.Names(r.typeName) != nil {
-		// Only types with extra properties need the schema here. DescribeType answers are cached, and a type with a
-		// native handler already has its schema from routing.
-		typeInfo := r.typeInfo
-		if typeInfo == nil {
-			typeInfo, err = describeType(ctx, e.clients, r.typeName, r.region)
-			if err != nil {
-				return ucp_aws.HandleAWSError(ctx, err)
-			}
-		}
-		if resp, err := addExtraProperties(ctx, e.clients.Kafka, r.typeName, r.region, aws.ToString(typeInfo.Schema), properties); resp != nil || err != nil {
-			return resp, err
-		}
+	if resp, err := e.addExtraProperties(ctx, r, r.typeInfo, properties); resp != nil || err != nil {
+		return resp, err
 	}
 	return armrpc_rest.NewOKResponse(map[string]any{
 		"id":         r.id.String(),

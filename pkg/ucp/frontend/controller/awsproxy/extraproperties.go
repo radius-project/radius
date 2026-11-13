@@ -24,6 +24,7 @@ import (
 	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/aws-sdk-go-v2/service/kafka"
 
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
@@ -56,8 +57,10 @@ func extraPropertyNames(typeName string, schema string) ([]string, error) {
 // named after AWS's field. An address AWS leaves empty is left out, and so is a name the type's schema declares (see
 // extraPropertyNames).
 //
-// A read whose extra call fails returns that failure, so UCP never leaves the values out silently. Only reads of one
-// resource call it, never a list, and the values are never sent to AWS or stored (see extraproperties.Without).
+// A read whose extra call fails returns that failure, so UCP never leaves the values out silently. Only responses that
+// return one resource as AWS has it call it: GET, POST /:get, and a PUT that finds nothing to change. A list doesn't,
+// and neither does a create or update in progress, whose final properties the Deployment Engine reads with GET. The
+// values are never sent to AWS or stored (see extraproperties.Without).
 func addExtraProperties(ctx context.Context, client ucp_aws.AWSKafkaClient, typeName string, region string, schema string, properties map[string]any) (armrpc_rest.Response, error) {
 	names, err := extraPropertyNames(typeName, schema)
 	if err != nil || len(names) == 0 {
@@ -81,6 +84,22 @@ func addExtraProperties(ctx context.Context, client ucp_aws.AWSKafkaClient, type
 		}
 	}
 	return nil, nil
+}
+
+// addExtraProperties adds the extra properties of r's type to properties, as the package-level addExtraProperties does.
+// typeInfo is the type's DescribeType answer, or nil to read it. Only a type with extra properties needs it, and
+// DescribeType answers are cached.
+func (e *engine) addExtraProperties(ctx context.Context, r *request, typeInfo *cloudformation.DescribeTypeOutput, properties map[string]any) (armrpc_rest.Response, error) {
+	if extraproperties.Names(r.typeName) == nil {
+		return nil, nil
+	}
+	if typeInfo == nil {
+		var err error
+		if typeInfo, err = describeType(ctx, e.clients, r.typeName, r.region); err != nil {
+			return ucp_aws.HandleAWSError(ctx, err)
+		}
+	}
+	return addExtraProperties(ctx, e.clients.Kafka, r.typeName, r.region, aws.ToString(typeInfo.Schema), properties)
 }
 
 // stringField returns the *string field name of out, or nil when out has no such field. Each extra property is named
