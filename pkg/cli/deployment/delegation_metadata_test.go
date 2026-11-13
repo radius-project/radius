@@ -95,7 +95,7 @@ func TestDelegationPlannerUsesResourceEnvironment(t *testing.T) {
 					},
 				}}}
 			}
-			planned, err := NewDelegationPlanner(loader, ucp, nil)(context.Background(), clients.DeploymentOptions{
+			planned, err := NewDelegationPlanner(loader, ucp, nil)(t.Context(), clients.DeploymentOptions{
 				Template: template, Parameters: tt.parameters,
 				Providers: &clients.Providers{Radius: &clients.RadiusProvider{
 					EnvironmentID: "/planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/workspace-default",
@@ -118,7 +118,7 @@ func TestDelegationPlannerPreservesStaticRPResources(t *testing.T) {
 					"import": "radius", "type": resourceType + "@2023-10-01-preview",
 				}},
 			}
-			planned, err := NewDelegationPlanner(nil, nil, nil)(context.Background(), clients.DeploymentOptions{
+			planned, err := NewDelegationPlanner(nil, nil, nil)(t.Context(), clients.DeploymentOptions{
 				Template:  template,
 				Providers: &clients.Providers{Radius: &clients.RadiusProvider{EnvironmentID: "workspace-environment"}},
 			}, "/planes/radius/local/resourceGroups/test")
@@ -168,7 +168,7 @@ func TestDelegationPlannerReadsRecipePackCreatedInDeployment(t *testing.T) {
 		},
 	}
 	loader := configloader.NewMockConfigurationLoader(gomock.NewController(t))
-	planned, err := NewDelegationPlanner(loader, ucp, nil)(context.Background(), clients.DeploymentOptions{
+	planned, err := NewDelegationPlanner(loader, ucp, nil)(t.Context(), clients.DeploymentOptions{
 		Template:  template,
 		Providers: &clients.Providers{Radius: &clients.RadiusProvider{EnvironmentID: "workspace-environment"}},
 	}, "/planes/radius/local/resourceGroups/test")
