@@ -20,6 +20,7 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   selfSigned: {}
+{{- if eq (include "radius.authz.tls.provider" .) "radius" }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -57,6 +58,7 @@ metadata:
 spec:
   ca:
     secretName: radius-ca
+{{- end }}
 ---
 # UCP's aggregated API certificate has its own CA, independent of global.rbac.certificates.mode.
 # Only the Kubernetes API server trusts it (through the APIService caBundle); no Radius component

@@ -1,4 +1,8 @@
 {{- $appversion := include "radius.versiontag" . }}
+{{- $receivers := list "applications-rp" "dynamic-rp" }}
+{{- if eq (include "radius.de.internalAuth.enabled" .) "true" }}
+{{- $receivers = append $receivers "bicep-de" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -142,7 +146,7 @@ spec:
           readOnly: true
         {{- with include "radius.authz.spiffe.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.caBundle.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
-        {{- with include "radius.authz.tokens.volumeMounts" (dict "root" . "receivers" (list "applications-rp" "dynamic-rp")) | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.tokens.volumeMounts" (dict "root" . "receivers" $receivers) | trim }}{{ . | nindent 8 }}{{- end }}
       volumes:
         - name: config-volume
           configMap:
@@ -183,4 +187,4 @@ spec:
             optional: true
         {{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.caBundle.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
-        {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "applications-rp" "dynamic-rp")) | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" $receivers) | trim }}{{ . | nindent 8 }}{{- end }}

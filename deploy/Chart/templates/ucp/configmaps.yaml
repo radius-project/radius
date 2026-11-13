@@ -57,7 +57,11 @@ data:
               Applications.Dapr: "http://applications-rp.radius-system:5443"
               Applications.Datastores: "http://applications-rp.radius-system:5443"
               Applications.Messaging: "http://applications-rp.radius-system:5443"
+              {{- if eq (include "radius.de.internalAuth.enabled" .) "true" }}
+              Microsoft.Resources: "{{ if eq (include "radius.authz.tls.provider" .) "radius" }}https{{ else }}http{{ end }}://bicep-de.{{ .Release.Namespace }}.svc:6443"
+              {{- else }}
               Microsoft.Resources: "http://bicep-de.radius-system:6443"
+              {{- end }}
             kind: "UCPNative"
         - id: "/planes/aws/aws"
           properties:
@@ -77,6 +81,9 @@ data:
     
     routing:
       defaultDownstreamEndpoint: "http://dynamic-rp.radius-system:8082"
+      {{- if eq (include "radius.de.internalAuth.enabled" .) "true" }}
+      authenticateDeploymentEngine: true
+      {{- end }}
 
     metricsProvider:
       enabled: true

@@ -1,16 +1,7 @@
 {{- $appversion := include "radius.versiontag" . }}
 {{- $image := include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
-{{- $settings := .Values.de.ucpMTLS | default dict }}
-{{- $mtls := false }}
-{{- if hasKey $settings "enabled" }}
-{{- $mtls = $settings.enabled }}
-{{- end }}
-{{- if not (kindIs "bool" $mtls) }}
-{{- fail "de.ucpMTLS.enabled must be a boolean" }}
-{{- end }}
-{{- if and $mtls (eq (include "radius.authz.mode" .) "off") }}
-{{- fail "de.ucpMTLS.enabled requires global.rbac.dryRun=true or global.rbac.enabled=true" }}
-{{- end }}
+{{- $auth := eq (include "radius.de.internalAuth.enabled" .) "true" }}
+{{- $provider := include "radius.authz.tls.provider" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -34,7 +25,10 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if eq .Values.global.prometheus.enabled true }}
+      {{- if $auth }}
+      annotations:
+        checksum/authz-config: {{ include "radius.authz.configChecksum" . }}
+      {{- else if eq .Values.global.prometheus.enabled true }}
       annotations:
         prometheus.io/path: "/metrics"
         prometheus.io/port: "6443"
@@ -42,6 +36,10 @@ spec:
       {{- end }}
     spec:
       serviceAccountName: bicep-de
+      {{- if and $auth (eq $provider "radius") }}
+      securityContext:
+        fsGroup: 65532
+      {{- end }}
       {{- if .Values.global.appendRootCA.cert }}
       initContainers:
       - name: append-root-ca
@@ -67,8 +65,10 @@ spec:
         - name: appsettings-vol
           configMap:
             name: bicep-de-config
-        {{- if $mtls }}
-        {{- include "radius.authz.mtls.volume" (dict "root" . "component" "bicep-de") | nindent 8 }}
+        {{- if $auth }}
+        {{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.caBundle.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "ucp")) | nindent 8 }}
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
@@ -92,8 +92,10 @@ spec:
         - name: appsettings-vol
           mountPath: /app/appsettings.Production.json
           subPath: appsettings.Production.json
-        {{- if $mtls }}
-        {{- include "radius.authz.mtls.volumeMount" . | nindent 8 }}
+        {{- if $auth }}
+        {{- with include "radius.authz.spiffe.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.caBundle.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- include "radius.authz.tokens.volumeMounts" (dict "root" . "receivers" (list "ucp")) | nindent 8 }}
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
@@ -114,18 +116,38 @@ spec:
         - name: ARM_AUTH_METHOD
           value: "UCPCredential"
         - name: ASPNETCORE_URLS
+        {{- if and $auth (eq $provider "radius") }}
+          value: https://+:6443
+        {{- else }}
           value: http://+:6443
+        {{- end }}
         - name: kubernetes
           value: "true"
         - name: RADIUSBACKENDURL
-        {{- if $mtls }}
-          value: https://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3
-        - name: UCP_MTLS_ENABLED
-          value: "true"
-        - name: UCP_MTLS_CERTIFICATE_DIRECTORY
-          value: {{ include "radius.authz.mtls.mountPath" . | quote }}
-        - name: UCP_MTLS_NAMESPACE
+        {{- if $auth }}
+          value: {{ if eq $provider "radius" }}https{{ else }}http{{ end }}://ucp.{{ .Release.Namespace }}.svc:9444/apis/api.ucp.dev/v1alpha3
+        - name: RADIUS_INTERNAL_AUTH_MODE
+          value: {{ include "radius.authz.mode" . | quote }}
+        - name: RADIUS_INTERNAL_AUTH_NAMESPACE
           value: {{ .Release.Namespace | quote }}
+        - name: RADIUS_INTERNAL_AUTH_UCP_TOKEN_FILE
+          value: {{ printf "%s/ucp/token" (include "radius.authz.tokens.mountPath" .) | quote }}
+        - name: RADIUS_INTERNAL_AUTH_API_SERVER
+          value: https://kubernetes.default.svc:443
+        - name: RADIUS_INTERNAL_AUTH_API_CA_FILE
+          value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        - name: RADIUS_INTERNAL_AUTH_API_TOKEN_FILE
+          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+        - name: RADIUS_INTERNAL_TLS_PROVIDER
+          value: {{ $provider | quote }}
+        {{- if eq $provider "radius" }}
+        - name: RADIUS_INTERNAL_TLS_TRUST_DOMAIN
+          value: {{ include "radius.authz.spiffe.trustDomain" . | quote }}
+        - name: RADIUS_INTERNAL_TLS_CERTIFICATE_DIRECTORY
+          value: {{ include "radius.authz.spiffe.mountPath" . | quote }}
+        - name: RADIUS_INTERNAL_TLS_CA_DIRECTORY
+          value: {{ include "radius.authz.caBundle.mountPath" . | quote }}
+        {{- end }}
         {{- else }}
           value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
         {{- end }}

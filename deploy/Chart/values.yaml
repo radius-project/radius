@@ -134,6 +134,11 @@ global:
     # TLS and plain HTTP, and need the mounted server certificate files.
     # Also warn/audit Pod Security violations on environment and application namespaces.
     dryRun: false
+    # Authentication always uses per-receiver ServiceAccount tokens. radius encrypts
+    # internal calls with SPIFFE server TLS; external uses HTTP under operator encryption.
+    # UCP's aggregated API still uses its separate TLS certificate with either provider.
+    tls:
+      provider: radius
     # Pod Security Standards level for the labels: "baseline" or "restricted".
     podSecurityLevel: baseline
     admission:
@@ -211,11 +216,11 @@ de:
   image: deployment-engine
   # Default tag uses Chart AppVersion.
   # tag: latest
-  # Opt in only with a deployment-engine image supporting UCP_MTLS_* (not yet
-  # supplied by the default image). Requires global.rbac.dryRun or global.rbac.enabled.
-  # Mounts only bicep-de-mtls and uses https://ucp.<namespace>.svc:9444.
-  # Off preserves the published engine's endpoint and mounts no component credentials.
-  ucpMTLS:
+  # Requires an explicitly selected engine image supporting RADIUS_INTERNAL_AUTH_*.
+  # No compatible published default image is claimed. Requires a non-off global mode.
+  # Uses receiver tokens in both providers; radius also mounts server-only CSI TLS
+  # and public trust. The legacy de.ucpMTLS.enabled=true setting fails migration.
+  internalAuth:
     enabled: false
   resources:
     requests:

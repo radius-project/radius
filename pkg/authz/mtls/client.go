@@ -83,10 +83,45 @@ func reloadContext() context.Context {
 // such as "ucp". It presents no client certificate. It accepts only a server whose
 // certificate chains to the Radius CA bundle in options.EffectiveCADirectory() and carries the
 // receiver's SPIFFE ID, and only then sends the projected ServiceAccount token read from
-// <options.TokenDirectory>/<receiver>/token as "Authorization: Bearer". It replaces any
-// Authorization header on the request and refuses non-https URLs.
+// <options.TokenDirectory>/<receiver>/token as "Authorization: Bearer". The external provider
+// instead requires HTTP under operator encryption, without loading certificate material.
+// Both providers replace any Authorization header on the request.
 func NewClientTransport(options authz.Options, receiver string) (http.RoundTripper, error) {
+	if err := options.ValidateTLSProvider(); err != nil {
+		return nil, err
+	}
+	if options.EffectiveTLSProvider() == authz.TLSProviderExternal {
+		if options.Namespace == "" || options.TokenDirectory == "" || receiver == "" {
+			return nil, errors.New("external token transport requires namespace, tokenDirectory, and receiver")
+		}
+		token := newTokenFile(filepath.Join(options.TokenDirectory, receiver, TokenFile))
+		if _, err := token.Token(); err != nil {
+			return nil, err
+		}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.Proxy = nil
+		return &externalTransport{Transport: transport, token: token}, nil
+	}
 	return newClientTransport(options, receiver)
+}
+
+type externalTransport struct {
+	*http.Transport
+	token *tokenFile
+}
+
+func (t *externalTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL.Scheme != "http" {
+		return nil, fmt.Errorf("external token transport requires http, got %q", req.URL.Scheme)
+	}
+	value, err := t.token.Token()
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(req.Context())
+	req.Header = req.Header.Clone()
+	req.Header.Set("Authorization", "Bearer "+value)
+	return t.Transport.RoundTrip(req)
 }
 
 // clientTransport attaches the receiver's token and stops reusing connections outside the
@@ -297,16 +332,20 @@ func (f *tokenFile) Token() (string, error) {
 
 // NewUpgradeTransport returns plain when the authorization mode is off. Otherwise it returns
 // a transport that sends requests for the given components with NewClientTransport, changing
-// an http URL to https, and sends all other requests through plain. A component matches by any
+// an http URL to https with the Radius provider, and sends all other requests through plain.
+// The external provider requires HTTP and never silently downgrades HTTPS. A component matches by any
 // of its DNS names: <component>, <component>.<namespace>, or <component>.<namespace>.svc.
 func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, components []string) (http.RoundTripper, error) {
+	if err := options.ValidateTLSProvider(); err != nil {
+		return nil, err
+	}
 	if options.EffectiveMode() == authz.ModeOff {
 		return plain, nil
 	}
 
 	secure := map[string]http.RoundTripper{}
 	for _, c := range components {
-		transport, err := newClientTransport(options, c)
+		transport, err := NewClientTransport(options, c)
 		if err != nil {
 			return nil, err
 		}
@@ -315,13 +354,14 @@ func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, compone
 		secure[c+"."+options.Namespace] = transport
 		secure[c+"."+options.Namespace+".svc"] = transport
 	}
-	return &upgradeTransport{plain: plain, secure: secure}, nil
+	return &upgradeTransport{plain: plain, secure: secure, external: options.EffectiveTLSProvider() == authz.TLSProviderExternal}, nil
 }
 
 type upgradeTransport struct {
 	plain http.RoundTripper
 	// secure maps each accepted host name to the transport for its component.
-	secure map[string]http.RoundTripper
+	secure   map[string]http.RoundTripper
+	external bool
 }
 
 // RoundTrip implements http.RoundTripper.
@@ -331,7 +371,7 @@ func (t *upgradeTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		return t.plain.RoundTrip(req)
 	}
 
-	if req.URL.Scheme == "http" {
+	if !t.external && req.URL.Scheme == "http" {
 		// A shallow copy keeps the caller's live req.Trailer; only the URL is replaced.
 		u := *req.URL
 		u.Scheme = "https"

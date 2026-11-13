@@ -29,7 +29,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 02a34436a937996011e86fc809c87973b61aed4b53132adc3ade230dcbf5568a
+          value: 024341e48a4b4c462f89d96ce9da94db066067e56c66a3f4c2a3c645349cbe5c
 
   - it: hashes the enforce mode
     set:
@@ -37,7 +37,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: f32a75024b850219eeba205e23b2a06eb37358c760a96fdb6af28550834af115
+          value: 746a456cff3676346ddc26f2cd59138cdf5ab59ba9ae03b2ee28d38278e0cc2b
 
   - it: changes the checksum when the trust domain changes
     set:
@@ -46,7 +46,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: fdce8307a373dbc3a1087e6a8938abaceecf90fd26a9b6f720946d9f7cd351ff
+          value: a35e5b152dae4add2a235a2beb0aac234a73e0d0f9d4b7f4811cf8df2e12a72c
 
   - it: changes the checksum when the CSI driver name changes
     set:
@@ -55,7 +55,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 391983fba120037f0bebcb5c4dd866f19dc0ad8e2f145b93dbb4ad76ade42279
+          value: f5334951ca6275bce94912cc59621f721db658b2b5329a6a53fdd73e4ac65671
 
   - it: ignores the trust domain when authorization is off
     set:

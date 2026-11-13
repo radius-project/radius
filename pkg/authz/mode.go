@@ -70,6 +70,10 @@ type Options struct {
 	// Mode is the authorization mode. Defaults to ModeOff when unset.
 	Mode Mode `yaml:"mode,omitempty"`
 
+	// TLSProvider selects Radius server TLS or HTTP protected by the operator's encryption.
+	// Both providers authenticate callers with receiver-scoped ServiceAccount tokens.
+	TLSProvider TLSProvider `yaml:"tlsProvider,omitempty"`
+
 	// PodSecurityLevel is the Pod Security level applied to environment namespaces when the mode is
 	// not off. Defaults to PodSecurityLevelBaseline when unset.
 	PodSecurityLevel PodSecurityLevel `yaml:"podSecurityLevel,omitempty"`
@@ -90,7 +94,7 @@ type Options struct {
 	// CertificateDirectory is the directory that holds, for components that receive internal
 	// calls, the server certificate and key (tls.crt and tls.key) issued by csi-driver-spiffe.
 	// It also holds the Radius CA bundle (ca.crt) when CADirectory is unset. It is required
-	// when the mode is not off.
+	// for receivers when the mode is not off and the TLS provider is Radius.
 	CertificateDirectory string `yaml:"certificateDirectory,omitempty"`
 
 	// CADirectory is the directory that holds the Radius CA bundle (ca.crt) that servers chain
@@ -109,6 +113,46 @@ type Options struct {
 	// Namespace is the Radius namespace. Callers' ServiceAccounts and receivers' SPIFFE IDs
 	// must be in it. It is required when the mode is not off.
 	Namespace string `yaml:"namespace,omitempty"`
+}
+
+// TLSProvider selects who encrypts internal component connections.
+type TLSProvider string
+
+const (
+	// TLSProviderRadius uses SPIFFE server certificates and the dedicated Radius CA.
+	TLSProviderRadius TLSProvider = "radius"
+	// TLSProviderExternal uses HTTP under operator-provided encryption.
+	TLSProviderExternal TLSProvider = "external"
+)
+
+// UnmarshalYAML rejects unknown providers instead of silently choosing a transport.
+func (p *TLSProvider) UnmarshalYAML(value *yaml.Node) error {
+	var s string
+	if err := value.Decode(&s); err != nil {
+		return err
+	}
+	provider := TLSProvider(s)
+	if provider != TLSProviderRadius && provider != TLSProviderExternal {
+		return fmt.Errorf("invalid TLS provider %q: must be radius or external", s)
+	}
+	*p = provider
+	return nil
+}
+
+// EffectiveTLSProvider returns the configured provider, defaulting to Radius.
+func (o Options) EffectiveTLSProvider() TLSProvider {
+	if o.TLSProvider == "" {
+		return TLSProviderRadius
+	}
+	return o.TLSProvider
+}
+
+// ValidateTLSProvider also validates Options constructed without YAML decoding.
+func (o Options) ValidateTLSProvider() error {
+	if p := o.EffectiveTLSProvider(); p != TLSProviderRadius && p != TLSProviderExternal {
+		return fmt.Errorf("invalid TLS provider %q: must be radius or external", p)
+	}
+	return nil
 }
 
 // EffectiveCADirectory returns CADirectory, or CertificateDirectory when it is unset.

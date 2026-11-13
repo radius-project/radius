@@ -93,6 +93,9 @@ func Test_NewConnectionFromUCPConfig(t *testing.T) {
 	direct := func(endpoint string) *UCPOptions {
 		return &UCPOptions{Kind: UCPConnectionKindDirect, Direct: &UCPDirectConnectionOptions{Endpoint: endpoint}}
 	}
+	external := func(mode authz.Mode) authz.Options {
+		return authz.Options{Mode: mode, TLSProvider: authz.TLSProviderExternal, TokenDirectory: tokenDir, Namespace: "radius-system"}
+	}
 
 	tests := []struct {
 		name          string
@@ -108,6 +111,9 @@ func Test_NewConnectionFromUCPConfig(t *testing.T) {
 		{name: "enforce kubernetes", option: &UCPOptions{Kind: UCPConnectionKindKubernetes}, authorization: on(authz.ModeEnforce), wantEndpoint: "https://kube:6443/apis/api.ucp.dev/v1alpha3"},
 		{name: "enforce direct http", option: direct("http://ucp.radius-system.svc:9444"), authorization: on(authz.ModeEnforce), wantErr: "must use https when the authorization mode is \"enforce\""},
 		{name: "dryRun direct http", option: direct("http://ucp.radius-system.svc:9444"), authorization: on(authz.ModeDryRun), wantErr: "must use https when the authorization mode is \"dryRun\""},
+		{name: "external enforce http", option: direct("http://ucp.radius-system.svc:9444"), authorization: external(authz.ModeEnforce), wantEndpoint: "http://ucp.radius-system.svc:9444"},
+		{name: "external dryRun http", option: direct("http://ucp.radius-system.svc:9444"), authorization: external(authz.ModeDryRun), wantEndpoint: "http://ucp.radius-system.svc:9444"},
+		{name: "external does not coerce https", option: direct("https://ucp.radius-system.svc:9444"), authorization: external(authz.ModeEnforce), wantErr: "must use http with the external TLS provider"},
 		{name: "enforce missing certificate directory", option: direct("https://ucp.radius-system.svc:9444"), authorization: authz.Options{Mode: authz.ModeEnforce, TokenDirectory: tokenDir, Namespace: "radius-system"}, wantErr: "requires certificateDirectory, tokenDirectory, and namespace"},
 		{name: "enforce missing token directory", option: direct("https://ucp.radius-system.svc:9444"), authorization: authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: certDir, Namespace: "radius-system"}, wantErr: "requires certificateDirectory, tokenDirectory, and namespace"},
 		{name: "enforce missing token", option: direct("https://ucp.radius-system.svc:9444"), authorization: authz.Options{Mode: authz.ModeEnforce, CertificateDirectory: certDir, TokenDirectory: t.TempDir(), Namespace: "radius-system"}, wantErr: "failed to read ServiceAccount token"},

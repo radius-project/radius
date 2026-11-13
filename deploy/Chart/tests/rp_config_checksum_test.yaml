@@ -33,7 +33,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 02a34436a937996011e86fc809c87973b61aed4b53132adc3ade230dcbf5568a
+          value: 024341e48a4b4c462f89d96ce9da94db066067e56c66a3f4c2a3c645349cbe5c
 
   - it: changes the dryRun checksum for a level-only upgrade to restricted
     set:
@@ -42,7 +42,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 1948d340304a8ba843b48fbcb73787a71682734a347560c7c3ea67bb1594b0a9
+          value: bac90d29223ce58c49ed3a87f066c46690da87a0279433ddf0327fc562647db6
 
   - it: hashes enforce with the default baseline level
     set:
@@ -50,7 +50,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: f32a75024b850219eeba205e23b2a06eb37358c760a96fdb6af28550834af115
+          value: 746a456cff3676346ddc26f2cd59138cdf5ab59ba9ae03b2ee28d38278e0cc2b
 
   - it: changes the enforce checksum for a level-only upgrade to restricted
     set:
@@ -59,7 +59,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 5fee4749d7a04d4d6d23fd6317c87925aa1270ea4b323ec4e5ffce1172b239cc
+          value: 5ab209fcf887e72f9e5270a70dd1bca3c84f182c3bcf03e637e2aa3bd22bda19
 
   - it: hashes an empty level as baseline
     set:
@@ -68,7 +68,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: f32a75024b850219eeba205e23b2a06eb37358c760a96fdb6af28550834af115
+          value: 746a456cff3676346ddc26f2cd59138cdf5ab59ba9ae03b2ee28d38278e0cc2b
 
   - it: keeps the checksum when prometheus is disabled
     set:
@@ -93,7 +93,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 19ce60dba216b26ab5f8335c1a551ab01b2544192f59db50b955f1a998cede50
+          value: bff9c689b96f8f0f1b29a81dd5105aff4e583016f78f9f2c9f0187f91e67a5f8
 
   - it: changes the checksum when the protected target kubeconfig Secret changes
     set:
@@ -102,7 +102,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 3c0c585eed7fd25dabce6fb28694c49af6eb99a13f374e8961f87ffc58af5f97
+          value: e4c0fa2fe6ee2fa5e9a28c811df7076c6cc2395d25cdec31a5ab3cdcdc9dce5d
 
   - it: changes the checksum when the control-plane namespace changes
     release:
@@ -112,7 +112,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: b51da448dc1869bee07adbf3b1fed069a3e3b4413f3165ec2ede88a72556f98c
+          value: eaa22b4b3a7eb161ec96c535ed12fec7f28791561f6d15bda1a278794a03cdc2
 
   - it: ignores protected Secret changes when authorization is off
     set:

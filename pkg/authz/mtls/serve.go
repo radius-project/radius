@@ -75,22 +75,26 @@ type Receiver struct {
 //
 // In off mode it calls srv.ListenAndServe, so behavior is unchanged.
 //
-// Otherwise the server presents the certificate in options.CertificateDirectory, never
-// requests a client certificate, and authenticates each request by its ServiceAccount
-// token, whose audience must be receiver.Name.
+// Otherwise both providers authenticate each request by its ServiceAccount token, whose
+// audience must be receiver.Name. The Radius provider presents the certificate in
+// options.CertificateDirectory and never requests a client certificate. The external
+// provider serves plain HTTP under operator encryption without loading TLS material.
 //
-// In dryRun mode the listener accepts both plain HTTP and TLS on the same port. Plain HTTP,
+// With the Radius provider in dryRun mode the listener accepts plain HTTP and TLS on the same port. Plain HTTP,
 // missing or invalid tokens, and callers that are not in receiver.AllowedCallers are logged
 // as would-deny, and the request is still served. While the signing keys are stale, every
 // request is rejected with AuthorizationUnavailable, as in enforce mode.
 //
-// In enforce mode the listener only accepts TLS. Plain HTTP is closed and logged as denied.
+// With the Radius provider in enforce mode the listener only accepts TLS. Plain HTTP is closed and logged as denied.
 // A missing or invalid token gets InvalidAuthenticationInfo, a token that cannot be checked
 // because the signing keys are stale gets AuthorizationUnavailable, and a caller that is not
 // in receiver.AllowedCallers gets AuthorizationFailed.
 //
 // ListenAndServe changes srv's Handler when the mode is not off.
 func ListenAndServe(ctx context.Context, srv *http.Server, options authz.Options, receiver Receiver) error {
+	if err := options.ValidateTLSProvider(); err != nil {
+		return err
+	}
 	mode := options.EffectiveMode()
 	if mode == authz.ModeOff {
 		return srv.ListenAndServe()
@@ -123,6 +127,10 @@ type serveConfig struct {
 }
 
 func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, receiver Receiver, config serveConfig) error {
+	if err := options.ValidateTLSProvider(); err != nil {
+		_ = ln.Close()
+		return err
+	}
 	mode := options.EffectiveMode()
 	if mode == authz.ModeOff {
 		return srv.Serve(ln)
@@ -142,7 +150,9 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	go source.Start(runCtx, config.pollInterval)
+	if source != nil {
+		go source.Start(runCtx, config.pollInterval)
+	}
 	go verifier.Run(runCtx)
 
 	s := &server{verifier: verifier, mode: mode, allowedCallers: receiver.AllowedCallers}
@@ -153,22 +163,36 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 	}
 	srv.Handler = s.authorizeCaller(handler)
 
+	if options.EffectiveTLSProvider() == authz.TLSProviderExternal {
+		return srv.Serve(ln)
+	}
 	return srv.Serve(newListener(ctx, ln, source.ServerConfig(), mode))
 }
 
 // newServerAuth loads the server certificate and creates the token verifier.
 func newServerAuth(options authz.Options, receiver Receiver, config serveConfig) (*token.Verifier, *Source, error) {
 	mode := options.EffectiveMode()
-	if options.CertificateDirectory == "" || options.Namespace == "" {
+	if err := options.ValidateTLSProvider(); err != nil {
+		return nil, nil, err
+	}
+	managed := options.EffectiveTLSProvider() == authz.TLSProviderRadius
+	if managed && (options.CertificateDirectory == "" || options.Namespace == "") {
 		return nil, nil, fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", mode)
+	}
+	if options.Namespace == "" {
+		return nil, nil, fmt.Errorf("authorization mode %q requires namespace", mode)
 	}
 	if receiver.Name == "" {
 		return nil, nil, errors.New("receiver name is required")
 	}
 
-	source, err := NewSourceWithCA(options.CertificateDirectory, options.EffectiveCADirectory())
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load server certificate: %w", err)
+	var source *Source
+	if managed {
+		var err error
+		source, err = NewSourceWithCA(options.CertificateDirectory, options.EffectiveCADirectory())
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to load server certificate: %w", err)
+		}
 	}
 
 	keys := receiver.KeySource

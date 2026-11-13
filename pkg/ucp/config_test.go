@@ -17,11 +17,47 @@ limitations under the License.
 package ucp
 
 import (
+	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/authz"
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/stretchr/testify/require"
 )
+
+func TestDeploymentEngineAuthenticationGate(t *testing.T) {
+	t.Parallel()
+	config, err := LoadConfig([]byte("routing:\n  authenticateDeploymentEngine: true\n"))
+	require.NoError(t, err)
+	_, err = NewDownstreamTransport(config)
+	require.ErrorContains(t, err, "requires a non-off authorization mode")
+
+	config.Authorization = authz.Options{
+		Mode: authz.ModeEnforce, TLSProvider: authz.TLSProviderExternal,
+		Namespace: "radius-test", TokenDirectory: t.TempDir(),
+	}
+	for _, receiver := range authenticatedDownstreams {
+		require.NoError(t, os.Mkdir(filepath.Join(config.Authorization.TokenDirectory, receiver), 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(config.Authorization.TokenDirectory, receiver, mtls.TokenFile), []byte("test-token"), 0o600))
+	}
+	_, err = NewDownstreamTransport(config)
+	require.ErrorContains(t, err, "bicep-de/token", "opt-in must require the engine receiver token")
+	config.Routing.AuthenticateDeploymentEngine = false
+	_, err = NewDownstreamTransport(config)
+	require.NoError(t, err, "gate-off must not require a token for the legacy engine")
+
+	config.Routing.AuthenticateDeploymentEngine = true
+	require.NoError(t, os.Mkdir(filepath.Join(config.Authorization.TokenDirectory, "bicep-de"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(config.Authorization.TokenDirectory, "bicep-de", mtls.TokenFile), []byte("test-token"), 0o600))
+	transport, err := NewDownstreamTransport(config)
+	require.NoError(t, err)
+	request, err := http.NewRequest(http.MethodGet, "https://bicep-de.radius-test.svc:6443/deployments", nil)
+	require.NoError(t, err)
+	_, err = transport.RoundTrip(request)
+	require.ErrorContains(t, err, "external token transport requires http", "engine must use the authenticated provider transport")
+}
 
 func Test_LoadConfig_AuthorizationMode(t *testing.T) {
 	t.Parallel()

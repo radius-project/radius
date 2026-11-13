@@ -24,6 +24,48 @@ tests:
       - hasDocuments:
           count: 5
 
+  - it: omits the component CA and issuer but retains aggregation issuers for external dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rbac.tls.provider: external
+    asserts: &externalCAs
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: metadata.name
+          value: radius-selfsigned-bootstrap
+        documentIndex: 0
+      - equal:
+          path: spec.selfSigned
+          value: {}
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: radius-apiserver-ca
+        documentIndex: 1
+      - equal:
+          path: spec.secretName
+          value: radius-apiserver-ca
+        documentIndex: 1
+      - equal:
+          path: spec.issuerRef.name
+          value: radius-selfsigned-bootstrap
+        documentIndex: 1
+      - equal:
+          path: metadata.name
+          value: radius-apiserver-issuer
+        documentIndex: 2
+      - equal:
+          path: spec.ca.secretName
+          value: radius-apiserver-ca
+        documentIndex: 2
+
+  - it: retains only aggregation CAs and issuers for external enforce
+    set:
+      global.rbac.enabled: true
+      global.rbac.tls.provider: external
+    asserts: *externalCAs
+
   - it: renders the self-signed bootstrap issuer and Radius CA
     set:
       global.rbac.enabled: true
@@ -166,29 +208,6 @@ tests:
       - notMatchRegex:
           path: spec.secretName
           pattern: '-mtls$'
-
-  - it: gives the engine its own identity in the release namespace
-    release:
-      namespace: radius-test
-    set:
-      global.rbac.enabled: true
-      de.ucpMTLS.enabled: true
-    documentSelector:
-      path: metadata.name
-      value: bicep-de-cert
-    asserts:
-      - equal:
-          path: metadata.namespace
-          value: radius-test
-      - equal:
-          path: spec.secretName
-          value: bicep-de-mtls
-      - equal:
-          path: spec.dnsNames
-          value: [bicep-de.radius-test.svc]
-      - equal:
-          path: spec.issuerRef.name
-          value: radius-ca-issuer
 
   - it: fails for caSecret mode
     set:

@@ -1,4 +1,8 @@
-{{- if ne (include "radius.authz.mode" .) "off" }}
+{{- if and (ne (include "radius.authz.mode" .) "off") (eq (include "radius.authz.tls.provider" .) "radius") }}
+{{- $receivers := list "ucp" "applications-rp" "dynamic-rp" }}
+{{- if eq (include "radius.de.internalAuth.enabled" .) "true" }}
+{{- $receivers = append $receivers "bicep-de" }}
+{{- end }}
 # csi-driver-spiffe creates each receiver's server CertificateRequest with the pod's own
 # ServiceAccount token, so the receivers that mount a SPIFFE volume need create on
 # certificaterequests in the release namespace.
@@ -31,7 +35,7 @@ roleRef:
   kind: Role
   name: radius-spiffe-certificaterequests
 subjects:
-{{- range list "ucp" "applications-rp" "dynamic-rp" }}
+{{- range $receivers }}
   - kind: ServiceAccount
     name: {{ . }}
     namespace: {{ $.Release.Namespace }}

@@ -9,7 +9,7 @@ metadata:
 spec:
   ports:
     - port: 6443
-      name: http
+      name: {{ if and (eq (include "radius.de.internalAuth.enabled" .) "true") (eq (include "radius.authz.tls.provider" .) "radius") }}https{{ else }}http{{ end }}
       protocol: TCP
       targetPort: 6443
   selector:

@@ -1,0 +1,352 @@
+suite: test deployment engine token and server TLS opt-in
+templates:
+  - de/deployment.yaml
+  - de/service.yaml
+  - ucp/deployment.yaml
+  - ucp/configmaps.yaml
+  - global/spiffe-rbac.yaml
+release:
+  name: radius
+  namespace: radius-test
+tests:
+  - it: preserves the published engine contract by default
+    asserts: &legacy
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUSBACKENDURL
+            value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.volumes
+          value:
+            - name: appsettings-vol
+              configMap:
+                name: bicep-de-config
+        template: de/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_MODE
+          any: true
+        template: de/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-bicep-de
+          any: true
+        template: ucp/deployment.yaml
+      - notMatchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: authenticateDeploymentEngine
+        template: ucp/configmaps.yaml
+      - equal:
+          path: spec.template.metadata.annotations["prometheus.io/scrape"]
+          value: "true"
+        template: de/deployment.yaml
+
+  - it: keeps the compatible-image gate off in dryRun
+    set:
+      global.rbac.dryRun: true
+    asserts: *legacy
+
+  - it: keeps the compatible-image gate off in enforce
+    set:
+      global.rbac.enabled: true
+    asserts: *legacy
+
+  - it: rejects the obsolete enabled client-certificate contract even when mode is off
+    set:
+      de.ucpMTLS.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: de.ucpMTLS.enabled is retired; select a token-capable engine image and migrate explicitly to de.internalAuth.enabled
+        template: ucp/deployment.yaml
+
+  - it: rejects opt-in while authentication is off
+    set:
+      de.internalAuth.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: de.internalAuth.enabled requires global.rbac.dryRun=true or global.rbac.enabled=true
+        template: ucp/deployment.yaml
+
+  - it: rejects a string switch
+    set:
+      de.internalAuth.enabled: "false"
+    asserts:
+      - failedTemplate:
+          errorMessage: de.internalAuth.enabled must be a boolean
+        template: ucp/deployment.yaml
+
+  - it: rejects a numeric switch
+    set:
+      de.internalAuth.enabled: 0
+    asserts:
+      - failedTemplate:
+          errorMessage: de.internalAuth.enabled must be a boolean
+        template: ucp/deployment.yaml
+
+  - it: rejects the old provider key instead of coercing external to radius
+    set:
+      global.rbac.mtls.provider: external
+    asserts:
+      - failedTemplate:
+          errorMessage: global.rbac.mtls is retired; migrate explicitly to global.rbac.tls.provider
+        template: ucp/deployment.yaml
+
+  - it: rejects the runtime field name as a Helm alias
+    set:
+      global.rbac.tlsProvider: external
+    asserts:
+      - failedTemplate:
+          errorMessage: global.rbac.tlsProvider is not supported; use global.rbac.tls.provider
+        template: ucp/deployment.yaml
+
+  - it: rejects an unknown provider
+    set:
+      global.rbac.tls.provider: bogus
+    asserts:
+      - failedTemplate:
+          errorMessage: global.rbac.tls.provider must be radius or external
+        template: ucp/deployment.yaml
+
+  - it: projects reciprocal bare receiver tokens and separate API credentials in managed enforce
+    set:
+      global.rbac.enabled: true
+      de.internalAuth.enabled: true
+      de.image: localhost:5000/deployment-engine
+      de.tag: source-test-only
+    asserts: &active
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: localhost:5000/deployment-engine:source-test-only
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-ucp
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: ucp
+                    expirationSeconds: 600
+                    path: token
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: token-ucp
+            mountPath: /var/run/radius/tokens/ucp
+            readOnly: true
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: token-bicep-de
+            projected:
+              sources:
+                - serviceAccountToken:
+                    audience: bicep-de
+                    expirationSeconds: 600
+                    path: token
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: token-bicep-de
+            mountPath: /var/run/radius/tokens/bicep-de
+            readOnly: true
+        template: ucp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_NAMESPACE
+            value: radius-test
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_UCP_TOKEN_FILE
+            value: /var/run/radius/tokens/ucp/token
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_API_SERVER
+            value: https://kubernetes.default.svc:443
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_API_CA_FILE
+            value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_API_TOKEN_FILE
+            value: /var/run/secrets/kubernetes.io/serviceaccount/token
+        template: de/deployment.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'authenticateDeploymentEngine: true'
+        template: ucp/configmaps.yaml
+      - notExists:
+          path: spec.template.metadata.annotations["prometheus.io/scrape"]
+        template: de/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].readinessProbe
+        template: de/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: mtls
+          any: true
+        template: de/deployment.yaml
+
+  - it: retains reciprocal tokens and the version gate in managed dryRun
+    set:
+      global.rbac.dryRun: true
+      de.internalAuth.enabled: true
+      de.image: localhost:5000/deployment-engine
+      de.tag: source-test-only
+    asserts: *active
+
+  - it: uses only server CSI TLS and public CA with canonical managed endpoints
+    set:
+      global.rbac.enabled: true
+      de.internalAuth.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes
+          value:
+            - name: appsettings-vol
+              configMap:
+                name: bicep-de-config
+            - name: spiffe
+              csi:
+                driver: spiffe.csi.radapp.io
+                readOnly: true
+                volumeAttributes:
+                  spiffe.csi.cert-manager.io/fs-group: "65532"
+            - name: radius-ca
+              secret:
+                secretName: radius-ca
+                items:
+                  - key: ca.crt
+                    path: ca.crt
+            - name: token-ucp
+              projected:
+                sources:
+                  - serviceAccountToken:
+                      audience: ucp
+                      expirationSeconds: 600
+                      path: token
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_MODE
+            value: enforce
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUSBACKENDURL
+            value: https://ucp.radius-test.svc:9444/apis/api.ucp.dev/v1alpha3
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_TLS_CERTIFICATE_DIRECTORY
+            value: /var/run/radius/spiffe
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_TLS_CA_DIRECTORY
+            value: /var/run/radius/ca
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ASPNETCORE_URLS
+            value: https://+:6443
+        template: de/deployment.yaml
+      - equal:
+          path: spec.ports
+          value:
+            - port: 6443
+              protocol: TCP
+              targetPort: 6443
+              name: https
+        template: de/service.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'Microsoft.Resources: "https://bicep-de.radius-test.svc:6443"'
+        template: ucp/configmaps.yaml
+      - contains:
+          path: subjects
+          content:
+            kind: ServiceAccount
+            name: bicep-de
+            namespace: radius-test
+        template: global/spiffe-rbac.yaml
+        documentIndex: 1
+
+  - it: uses tokens without internal TLS material for external dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rbac.tls.provider: external
+      de.internalAuth.enabled: true
+    asserts: &external
+      - equal:
+          path: spec.template.spec.volumes
+          value:
+            - name: appsettings-vol
+              configMap:
+                name: bicep-de-config
+            - name: token-ucp
+              projected:
+                sources:
+                  - serviceAccountToken:
+                      audience: ucp
+                      expirationSeconds: 600
+                      path: token
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_TLS_PROVIDER
+            value: external
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUSBACKENDURL
+            value: http://ucp.radius-test.svc:9444/apis/api.ucp.dev/v1alpha3
+        template: de/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ASPNETCORE_URLS
+            value: http://+:6443
+        template: de/deployment.yaml
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'Microsoft.Resources: "http://bicep-de.radius-test.svc:6443"'
+        template: ucp/configmaps.yaml
+      - hasDocuments:
+          count: 0
+        template: global/spiffe-rbac.yaml
+      - notExists:
+          path: spec.template.metadata.annotations["prometheus.io/scrape"]
+        template: de/deployment.yaml
+
+  - it: uses the same token-only external transport in enforce
+    set:
+      global.rbac.enabled: true
+      global.rbac.tls.provider: external
+      de.internalAuth.enabled: true
+    asserts: *external

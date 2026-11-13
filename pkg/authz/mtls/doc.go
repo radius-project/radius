@@ -27,6 +27,11 @@ limitations under the License.
 // spiffe://<trustDomain>/ns/<namespace>/sa/<receiver>.
 // Only after that succeeds does it send the projected token whose audience is the receiver.
 //
+// With the external TLS provider, operators supply encryption outside the process. The same
+// receivers and callers use HTTP without loading CSI or CA files, but still verify and send
+// the same receiver-scoped tokens. Business dryRun remains advisory except when signing keys
+// are unavailable, which always fails closed.
+//
 // The package name predates the switch from client certificates to tokens. Certificate
 // failures are *Error values carrying an authz error code, such as PeerCertificateInvalid,
 // for logging.

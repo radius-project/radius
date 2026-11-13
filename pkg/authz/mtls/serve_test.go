@@ -156,10 +156,16 @@ func startServer(t *testing.T, ca testCA, mode authz.Mode) testServer {
 
 // startServerWithHandler is startServer with a custom handler; nil uses http.DefaultServeMux.
 func startServerWithHandler(t *testing.T, ca testCA, mode authz.Mode, handler http.Handler) testServer {
+	return startServerWithProvider(t, ca, mode, handler, authz.TLSProviderRadius)
+}
+
+func startServerWithProvider(t *testing.T, ca testCA, mode authz.Mode, handler http.Handler, provider authz.TLSProvider) testServer {
 	t.Helper()
 
 	dir := t.TempDir()
-	writeFiles(t, dir, ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")}), ca.pem)
+	if provider == authz.TLSProviderRadius {
+		writeFiles(t, dir, ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")}), ca.pem)
+	}
 
 	core, logs := observer.New(zapcore.InfoLevel)
 	ctx, cancel := context.WithCancel(logr.NewContext(t.Context(), zapr.NewLogger(zap.New(core))))
@@ -171,7 +177,10 @@ func startServerWithHandler(t *testing.T, ca testCA, mode authz.Mode, handler ht
 		Handler:     handler,
 		BaseContext: func(net.Listener) context.Context { return ctx },
 	}
-	options := authz.Options{Mode: mode, CertificateDirectory: dir, Namespace: testNamespace}
+	options := authz.Options{Mode: mode, TLSProvider: provider, Namespace: testNamespace}
+	if provider == authz.TLSProviderRadius {
+		options.CertificateDirectory = dir
+	}
 	clock := &testClock{now: time.Now()}
 	keys := &staticKeys{}
 	config := serveConfig{pollInterval: testPollInterval, tokenNow: clock.Now}
@@ -186,6 +195,49 @@ func startServerWithHandler(t *testing.T, ca testCA, mode authz.Mode, handler ht
 	})
 
 	return testServer{url: ln.Addr().String(), dir: dir, logs: logs, clock: clock, keys: keys}
+}
+
+func TestServe_ExternalTokenAuthorization(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			seen := make(chan seenRequest, 16)
+			srv := startServerWithProvider(t, testCA{}, mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				id, ok := authz.IdentityFromContext(r.Context())
+				seen <- seenRequest{authorization: r.Header.Get("Authorization"), identity: id, hasIdentity: ok}
+			}), authz.TLSProviderExternal)
+			address := "http://" + srv.url
+			c := &http.Client{Timeout: 5 * time.Second}
+			require.Equal(t, http.StatusOK, send(t, c, address, "Bearer "+mintToken(t, "ucp", "applications-rp")))
+			valid := <-seen
+			require.True(t, valid.hasIdentity)
+			require.Equal(t, "ucp.radius-system.svc", valid.identity.String())
+			require.Empty(t, valid.authorization)
+
+			for _, tc := range requestCases(t) {
+				t.Run(tc.name, func(t *testing.T) {
+					want := tc.status
+					if mode == authz.ModeDryRun {
+						want = http.StatusOK
+					}
+					require.Equal(t, want, send(t, c, address, tc.authorization))
+					if mode == authz.ModeDryRun {
+						got := <-seen
+						require.False(t, got.hasIdentity)
+						require.Empty(t, got.authorization)
+					}
+					requireLogged(t, srv.logs, mode, tc.code, tc.want)
+				})
+			}
+			srv.keys.unavailable.Store(true)
+			srv.clock.Advance(token.DefaultMaxKeyAge)
+			for _, authorization := range []string{"", "Bearer malformed", "Bearer " + mintToken(t, "ucp", "applications-rp")} {
+				require.Equal(t, http.StatusServiceUnavailable, send(t, c, address, authorization))
+			}
+			require.Empty(t, seen, "stale-key requests must not reach handlers in either mode")
+		})
+	}
 }
 
 // client returns an HTTP client that verifies the applications-rp certificate from ca and
