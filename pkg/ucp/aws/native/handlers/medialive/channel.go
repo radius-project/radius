@@ -362,12 +362,14 @@ func (h *Channel) Update(ctx context.Context, request native.UpdateRequest) erro
 	opt := inRegion(request.Region)
 	changed := awsapi.Changed(request)
 	values := map[string]any{}
+	removesRole := false
 	for _, name := range changed {
 		if !slices.Contains(updatable, name) {
 			continue
 		}
 		value, ok := request.Desired[name]
 		if !ok {
+			removesRole = removesRole || name == "RoleArn"
 			if value, ok = removedDefaults[name]; !ok {
 				continue
 			}
@@ -395,7 +397,12 @@ func (h *Channel) Update(ctx context.Context, request native.UpdateRequest) erro
 			_, err := h.api.UpdateChannelClass(ctx, input, opt)
 			return err
 		})
-	case len(values) > 0:
+	case len(values) > 0 || removesRole:
+		// UpdateChannel removes the channel's role when the call leaves out RoleArn, so every update sends the
+		// template's role, and a template that removes the role makes a call without one.
+		if role, ok := request.Desired["RoleArn"]; ok {
+			values["RoleArn"] = role
+		}
 		input := &medialive.UpdateChannelInput{}
 		if err := awsapi.Decode(values, input); err != nil {
 			return err
