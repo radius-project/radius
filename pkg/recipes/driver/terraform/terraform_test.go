@@ -50,6 +50,17 @@ func setup(t *testing.T) (terraform.MockTerraformExecutor, terraformDriver) {
 	return *tfExecutor, driver
 }
 
+func TestTerraformRecoveryDoesNotStartAnotherApply(t *testing.T) {
+	t.Parallel()
+	// A nil executor would panic if recovery accidentally attempted Deploy.
+	d := &terraformDriver{}
+	output, err := d.Execute(t.Context(), driver.ExecuteOptions{BaseOptions: driver.BaseOptions{
+		Recipe: recipes.ResourceMetadata{ExecutionID: "interrupted", RecoverExecution: true},
+	}})
+	require.Nil(t, output)
+	require.ErrorContains(t, err, "no operation-specific completion or process-quiescence proof")
+}
+
 func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes.EnvironmentDefinition) {
 	envConfig := recipes.Configuration{
 		Providers: datamodel.Providers{

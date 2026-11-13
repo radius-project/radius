@@ -18,8 +18,10 @@ package controller
 
 import (
 	"context"
+	"errors"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/processor"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	recipecontroller "github.com/radius-project/radius/pkg/portableresources/backend/controller"
@@ -50,6 +52,17 @@ func NewRecipeDeleteController(opts ctrl.Options, engine engine.Engine, configur
 // Run processes DELETE operations for dynamic resources deployed using recipes.
 // It creates and delegates the request to DeleteResource controller to handle the deletion.
 func (c *RecipeDeleteController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+	_, resource, err := readDynamicResource(ctx, c.DatabaseClient(), request.ResourceID)
+	if errors.Is(err, &database.ErrNotFound{ID: request.ResourceID}) {
+		return ctrl.Result{}, nil
+	}
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if resource.DesiredState != nil {
+		runtime := delegationRuntime{opts: c.opts, engine: c.engine, loader: c.configurationLoader, secret: c.secretMaterializer}
+		return runtime.delete(ctx, request, resource)
+	}
 	deleteController, err := recipecontroller.NewDeleteResource(c.opts, &processor.DynamicProcessor{SecretMaterializer: c.secretMaterializer}, c.engine, c.configurationLoader)
 	if err != nil {
 		return ctrl.Result{}, err

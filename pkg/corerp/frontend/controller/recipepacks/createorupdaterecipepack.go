@@ -25,6 +25,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -54,6 +55,11 @@ func (r *CreateOrUpdateRecipePack) Run(ctx context.Context, w http.ResponseWrite
 	newResource, err := r.GetResourceFromRequest(ctx, req)
 	if err != nil {
 		return nil, err
+	}
+	for resourceType, definition := range newResource.Properties.Recipes {
+		if err := recipes.ValidateRecipeDefinition(resourceType, definition); err != nil {
+			return rest.NewBadRequestResponse(err.Error()), nil
+		}
 	}
 	old, etag, err := r.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {

@@ -152,14 +152,20 @@ model RecipeDefinition {
   @doc("(Optional) Connect to the source using HTTP instead of HTTPS. Use this only when the source does not support HTTPS such as a locally hosted registry for Bicep recipes. Defaults to `false` if not specified.")
   plainHttp?: boolean;
 
-  @doc("(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the module source such as a Git URL or a Terraform registry module.")
-  source: string;
+  @doc("(Required for Bicep and Terraform; omitted for delegated Recipes) Location of the Recipe. For Bicep this is an OCI registry reference. For Terraform this is the module source such as a Git URL or Terraform registry module.")
+  source?: string;
 
   @doc("(Optional) Default parameter values passed to the Recipe when it runs. An Environment can override these per resource type through its `recipeParameters` property.")
   parameters?: Record<unknown>;
 
   @doc("(Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object maps secret property names to module output names and always routes those outputs to the resource secret outputs.")
   outputs?: Record<unknown>;
+
+  @doc("(Required for delegated Recipes; omitted for provisioning Recipes) Radius Resource Type whose instance owns provisioning. Resource-type relationship metadata identifies the target instance.")
+  delegatesTo?: string;
+
+  @doc("(Optional for Bicep and Terraform Recipes) Radius Resource Types whose instances may contribute desired properties to this Recipe. Delegated Recipes cannot accept delegation.")
+  acceptsDelegationFrom?: string[];
 }
 
 @doc("The type of recipe")
@@ -169,6 +175,9 @@ enum RecipeKind {
 
   @doc("Bicep recipe")
   bicep: "bicep",
+
+  @doc("Contributes desired properties to a target Radius resource's provisioning recipe.")
+  delegated: "delegated",
 }
 
 @armResourceOperations

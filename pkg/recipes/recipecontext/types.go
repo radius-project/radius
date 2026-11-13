@@ -64,6 +64,9 @@ type Resource struct {
 	// context.resource.connections.[connection-name].name
 	// context.resource.connections.[connection-name].type
 	Connections map[string]recipes.ConnectedResource `json:"connections,omitempty"`
+
+	// IncomingReferences is absent for ordinary recipes and [] for targets without delegates.
+	IncomingReferences *[]recipes.IncomingReference `json:"incomingReferences,omitempty"`
 }
 
 // ResourceInfo represents name and id of the resource

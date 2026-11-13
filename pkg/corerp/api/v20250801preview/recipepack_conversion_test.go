@@ -132,3 +132,34 @@ func TestRecipePackConvertInvalidModel(t *testing.T) {
 		require.Equal(t, v1.ErrInvalidModelConversion, err)
 	})
 }
+
+func TestRecipePackDelegationRoundTrip(t *testing.T) {
+	t.Parallel()
+	var pack RecipePackResource
+	require.NoError(t, json.Unmarshal([]byte(`{"properties":{"recipes":{
+		"Radius.Compute/routes":{"kind":"delegated","delegatesTo":"Radius.Compute/containers"},
+		"Radius.Compute/containers":{"kind":"bicep","source":"module","acceptsDelegationFrom":["Radius.Compute/routes"]}
+	}}}`), &pack))
+	model, err := pack.ConvertTo()
+	require.NoError(t, err)
+	var roundTrip RecipePackResource
+	require.NoError(t, roundTrip.ConvertFrom(model))
+	encoded, err := json.Marshal(roundTrip.Properties.Recipes)
+	require.NoError(t, err)
+	var recipes map[string]map[string]any
+	require.NoError(t, json.Unmarshal(encoded, &recipes))
+	require.NotContains(t, recipes["Radius.Compute/routes"], "source")
+	require.NotContains(t, recipes["Radius.Compute/routes"], "plainHttp")
+	require.Equal(t, "Radius.Compute/containers", recipes["Radius.Compute/routes"]["delegatesTo"])
+	require.Equal(t, []any{"Radius.Compute/routes"}, recipes["Radius.Compute/containers"]["acceptsDelegationFrom"])
+}
+
+func TestRecipePackDelegationRejectsProvisioningFieldPresence(t *testing.T) {
+	t.Parallel()
+	for _, field := range []string{`"source":""`, `"plainHttp":false`, `"parameters":{}`, `"outputs":{}`, `"acceptsDelegationFrom":[]`} {
+		var pack RecipePackResource
+		require.NoError(t, json.Unmarshal([]byte(`{"properties":{"recipes":{"Radius.Compute/routes":{"kind":"delegated","delegatesTo":"Radius.Compute/containers",`+field+`}}}}`), &pack))
+		_, err := pack.ConvertTo()
+		require.ErrorContains(t, err, "cannot specify provisioning fields")
+	}
+}

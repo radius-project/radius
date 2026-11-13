@@ -17,6 +17,7 @@ limitations under the License.
 package engine
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -51,6 +52,46 @@ func setup(t *testing.T) (engine, configloader.MockConfigurationLoader, recipedr
 	return engine, *cfgLoader, *mDriver, *mDriverWithSecrets, *secretLoader
 }
 
+func TestEngineDelegationValidation(t *testing.T) {
+	t.Parallel()
+	const route = "/planes/radius/local/resourceGroups/rg/providers/Radius.Compute/routes/route"
+	valid := recipes.IncomingReference{ID: route, Type: "Radius.Compute/routes", APIVersion: "2025-08-01-preview", Revision: "desired-1", Properties: map[string]any{}}
+	for _, tt := range []struct {
+		name     string
+		incoming []recipes.IncomingReference
+		output   *recipes.RecipeOutput
+		invoke   bool
+		error    string
+	}{
+		{"missing complete input set", nil, nil, false, "complete related desired inputs"},
+		{"empty set", []recipes.IncomingReference{}, &recipes.RecipeOutput{}, true, ""},
+		{"combined result", []recipes.IncomingReference{valid}, &recipes.RecipeOutput{DelegatedOutputs: []recipes.DelegatedOutput{{ID: route, Revision: valid.Revision, Values: map[string]any{}}}}, true, ""},
+		{"missing delegate result", []recipes.IncomingReference{valid}, &recipes.RecipeOutput{Resources: []string{"owned-platform-resource"}}, true, "missing delegated outputs"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			engine, loader, driver, _, _ := setup(t)
+			metadata := recipes.ResourceMetadata{IncomingReferences: tt.incoming}
+			config := &recipes.Configuration{}
+			definition := &recipes.EnvironmentDefinition{Driver: recipes.TemplateKindBicep, AcceptsDelegationFrom: []string{"Radius.Compute/routes"}}
+			loader.EXPECT().LoadConfiguration(gomock.Any(), metadata).Return(config, nil)
+			loader.EXPECT().LoadRecipe(gomock.Any(), &metadata).Return(definition, nil)
+			if tt.invoke {
+				driver.EXPECT().Execute(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, options recipedriver.ExecuteOptions) (*recipes.RecipeOutput, error) {
+					require.Equal(t, tt.incoming, options.Recipe.IncomingReferences)
+					return tt.output, nil
+				}).Times(1)
+			}
+			result, err := engine.Execute(t.Context(), ExecuteOptions{Recipe: metadata})
+			if tt.error == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.error)
+			}
+			require.Same(t, tt.output, result)
+		})
+	}
+}
 func Test_Engine_Execute_Success(t *testing.T) {
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",

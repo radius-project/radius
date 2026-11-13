@@ -88,10 +88,19 @@ type EnvironmentDefinition struct {
 	// support. Unlike Outputs, a SecretOutputs entry always routes its module output to the recipe's
 	// secret outputs regardless of how the module itself classified it.
 	SecretOutputs map[string]string
+
+	// DelegatesTo names the resource type whose instance owns provisioning.
+	DelegatesTo string
+	// AcceptsDelegationFrom lists resource types accepted by this recipe.
+	AcceptsDelegationFrom []string
 }
 
 // ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
 type ResourceMetadata struct {
+	// ExecutionID optionally names a persisted native operation; empty retains ordinary driver behavior.
+	ExecutionID string
+	// RecoverExecution permits observing that operation, never submitting a replacement.
+	RecoverExecution bool
 	// Name represents the name of the recipe within the environment
 	Name string
 	// ApplicationID represents fully qualified resource ID for the application that the portable resource is consumed by
@@ -106,6 +115,8 @@ type ResourceMetadata struct {
 	// The key is connection name and the value contains the connected resource's metadata and properties.
 	// These are passed into the recipe context.
 	ConnectedResourcesProperties map[string]ConnectedResource
+	// IncomingReferences contains desired delegate inputs; nil retains ordinary recipe behavior.
+	IncomingReferences []IncomingReference
 	// Parameters represents key/value pairs to pass into the recipe template. Overrides any parameters set by the environment.
 	Parameters map[string]any
 }
@@ -137,6 +148,9 @@ type RecipeOutput struct {
 
 	// Values represents the key/value pairs of properties of the deployed resource.
 	Values map[string]any
+
+	// DelegatedOutputs contains logical delegate values, never platform inventory.
+	DelegatedOutputs []DelegatedOutput `json:"delegatedOutputs,omitempty"`
 
 	// Status represents the recipe status at deployment time of resource.
 	Status *rpv1.RecipeStatus
@@ -176,6 +190,11 @@ type RecipeDefinition struct {
 	SecretOutputs map[string]string
 	// PlainHTTP connects to the source using HTTP (not-HTTPS)
 	PlainHTTP bool
+
+	// DelegatesTo names the resource type whose instance owns provisioning.
+	DelegatesTo string
+	// AcceptsDelegationFrom lists resource types accepted by this recipe.
+	AcceptsDelegationFrom []string
 }
 
 // PrepareRecipeOutput populates the recipe output from the recipe deployment output stored in the "result" object.

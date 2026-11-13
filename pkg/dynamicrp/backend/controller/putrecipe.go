@@ -50,6 +50,14 @@ func NewRecipePutController(opts ctrl.Options, engine engine.Engine, configurati
 // Run processes PUT operations for dynamic resources deployed using recipes.
 // It creates and delegates the request to CreateOrUpdateResource controller to handle the operation.
 func (c *RecipePutController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
+	_, resource, err := readDynamicResource(ctx, c.DatabaseClient(), request.ResourceID)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if resource.DesiredState != nil {
+		runtime := delegationRuntime{opts: c.opts, engine: c.engine, loader: c.configurationLoader, secret: c.secretMaterializer}
+		return runtime.put(ctx, request, resource, "")
+	}
 	putController, err := recipecontroller.NewCreateOrUpdateResource(c.opts, &processor.DynamicProcessor{SecretMaterializer: c.secretMaterializer}, c.engine, c.configurationLoader)
 	if err != nil {
 		return ctrl.Result{}, err

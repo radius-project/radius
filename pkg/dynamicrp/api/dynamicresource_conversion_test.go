@@ -27,6 +27,49 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDelegatingResourcesEnvelope(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, body string
+		supplied   bool
+		invalid    bool
+	}{
+		{name: "absent", body: `{"properties":{"image":"unchanged"}}`},
+		{name: "empty", body: `{"properties":{"image":"unchanged"},"delegatingResources":[]}`, supplied: true},
+		{name: "engine transport", body: `{"properties":{"image":"unchanged","__radiusDelegatingResources":[]}}`, supplied: true},
+		{name: "engine transport null", body: `{"properties":{"__radiusDelegatingResources":null}}`, invalid: true},
+		{name: "two envelopes", body: `{"properties":{"__radiusDelegatingResources":[]},"delegatingResources":[]}`, invalid: true},
+		{name: "null", body: `{"delegatingResources": null}`, invalid: true},
+		{name: "object", body: `{"delegatingResources":{}}`, invalid: true},
+		{name: "nested", body: `{"delegatingResources":[{"delegatingResources":[]}]}`, invalid: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var versioned DynamicResource
+			err := json.Unmarshal([]byte(tc.body), &versioned)
+			if tc.invalid {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			converted, err := versioned.ConvertTo()
+			require.NoError(t, err)
+			resource := converted.(*datamodel.DynamicResource)
+			require.Equal(t, tc.supplied, resource.DelegatingResources != nil)
+			require.Equal(t, map[string]any{"image": "unchanged"}, resource.Properties)
+			stored, err := json.Marshal(resource)
+			require.NoError(t, err)
+			require.NotContains(t, string(stored), `"delegatingResources"`)
+			require.NotContains(t, string(stored), `"__radiusDelegatingResources"`)
+			require.NoError(t, versioned.ConvertFrom(resource))
+			public, err := json.Marshal(&versioned)
+			require.NoError(t, err)
+			require.NotContains(t, string(public), `"delegatingResources"`)
+			require.NotContains(t, string(public), `"__radiusDelegatingResources"`)
+		})
+	}
+}
+
 func Test_DynamicResource_ConvertVersionedToDataModel(t *testing.T) {
 	conversionTests := []struct {
 		filename string

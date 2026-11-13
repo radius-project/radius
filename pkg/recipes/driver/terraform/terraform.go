@@ -79,6 +79,9 @@ type terraformDriver struct {
 // Execute creates a unique directory for each execution of terraform and deploys the recipe using the
 // the Terraform CLI through terraform-exec. It returns a RecipeOutput or an error if the deployment fails.
 func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (*recipes.RecipeOutput, error) {
+	if opts.Recipe.RecoverExecution {
+		return nil, fmt.Errorf("terraform execution %s cannot be recovered safely: executor exposes Deploy/Delete but no operation-specific completion or process-quiescence proof; state locks and target state alone do not prove apply completed; refusing replay", opts.Recipe.ExecutionID)
+	}
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	requestDirPath, err := d.createExecutionDirectory(ctx, opts.Recipe, opts.Definition)

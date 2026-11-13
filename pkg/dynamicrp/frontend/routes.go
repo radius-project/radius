@@ -17,6 +17,7 @@ limitations under the License.
 package frontend
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -67,7 +68,12 @@ func (s *Service) registerRoutes(
 		),
 		AsyncOperationRetryAfter: time.Second * 5,
 		AsyncOperationTimeout:    time.Hour * 24,
+		DeleteFilters:            []controller.DeleteFilter[datamodel.DynamicResource]{makeDelegationDeleteFilter()},
 	}
+	// Capture validated plaintext inputs before the existing property encryption/redaction lifecycle.
+	resourceOptions.UpdateFilters = slices.Insert(resourceOptions.UpdateFilters, 2,
+		makeDesiredStateFilter(s.options.Recipes.ConfigurationLoader, ucpClient, handler))
+	resourceOptions.UpdateFilters = append(resourceOptions.UpdateFilters, makeDelegationUpdateFilter())
 
 	r.Route(pathBase+"planes/radius/{planeName}", func(r chi.Router) {
 

@@ -72,6 +72,7 @@ func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWrite
 			return resp, err
 		}
 	}
+	P(old).GetBaseResource().DeletionRequested = true
 
 	if r, err := e.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, e.AsyncOperationTimeout(), &etag); r != nil || err != nil {
 		return r, err
