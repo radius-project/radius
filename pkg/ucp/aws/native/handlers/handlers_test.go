@@ -78,11 +78,11 @@ func Test_withoutHandler(t *testing.T) {
 
 func Test_unsupportedNames(t *testing.T) {
 	catalog := schemas.Catalog{HandWritten: map[string]string{
-		"AWS::S3::Object":               `{}`,
-		"aws::iam::usertogroupaddition": `{}`,
-		"AWS::AppMesh::Mesh":            `{}`,
+		"AWS::S3::Object":            `{}`,
+		"aws::elasticsearch::domain": `{}`,
+		"AWS::AppMesh::Mesh":         `{}`,
 	}}
-	require.Equal(t, []string{"AWS::AppMesh::Mesh", "aws::iam::usertogroupaddition"}, unsupportedNames(catalog))
+	require.Equal(t, []string{"AWS::AppMesh::Mesh", "aws::elasticsearch::domain"}, unsupportedNames(catalog))
 	require.Empty(t, unsupportedNames(schemas.Catalog{HandWritten: map[string]string{"AWS::S3::Object": `{}`}}))
 }
 
