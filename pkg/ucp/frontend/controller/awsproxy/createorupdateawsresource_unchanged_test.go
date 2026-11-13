@@ -182,6 +182,8 @@ func Test_UpdateAWSResource_DefaultInListItem(t *testing.T) {
 				Schemas:           map[string]string{serverlessType: string(schema)},
 				ProvisioningTypes: map[string]cftypes.ProvisioningType{serverlessType: cftypes.ProvisioningTypeImmutable},
 			}
+			// A response that returns the cluster may read its broker addresses.
+			clients.Kafka = &fakeKafka{out: brokers()}
 			return h.putController(opts, clients)
 		}
 	}
