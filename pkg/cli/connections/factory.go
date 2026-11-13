@@ -107,7 +107,7 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 		Client:              dc,
 		OperationsClient:    doc,
 		RadiusResourceGroup: id.FindScope(resources_radius.ScopeResourceGroups),
-		DelegationPlanner:   deployment.NewDelegationPlanner(configloader.NewEnvironmentLoader(armClientOptions), ucp),
+		DelegationPlanner:   deployment.NewDelegationPlanner(configloader.NewEnvironmentLoader(armClientOptions), ucp, armClientOptions),
 	}, nil
 }
 
