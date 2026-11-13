@@ -54,6 +54,20 @@ metadata:
 spec:
   ca:
     secretName: radius-ca
+---
+# Signs the "<component>-mtls" certificates below from the same Radius CA. cert-manager's default
+# approver approves this issuer's requests, so they do not need radius-ca-issuer, whose requests
+# only Radius's csi-driver-spiffe approver may approve.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: radius-mtls-issuer
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  ca:
+    secretName: radius-ca
 {{- range $component := list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" }}
 ---
 apiVersion: cert-manager.io/v1
@@ -83,6 +97,6 @@ spec:
   issuerRef:
     group: cert-manager.io
     kind: Issuer
-    name: radius-ca-issuer
+    name: radius-mtls-issuer
 {{- end }}
 {{- end }}

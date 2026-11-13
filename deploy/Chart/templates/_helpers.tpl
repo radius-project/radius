@@ -191,6 +191,16 @@ TODO(D7): default to the application-template identity once the broker issues it
 {{- end -}}
 
 {{/*
+Usernames of the cert-manager controller that may request certificates from the Radius bootstrap and
+mTLS issuers. Empty defaults to cert-manager's default installation; rad install/upgrade sets the
+ServiceAccount of the cert-manager it installs or reuses.
+*/}}
+{{- define "radius.authz.certManagerRequesters" -}}
+{{- $certManager := (.Values.global.rbac | default dict).certManager | default dict -}}
+{{- $certManager.requesters | default (list "system:serviceaccount:cert-manager:cert-manager") | toJson -}}
+{{- end -}}
+
+{{/*
 Path where a component's mTLS Secret (<component>-mtls) is mounted.
 */}}
 {{- define "radius.authz.mtls.mountPath" -}}
@@ -248,5 +258,91 @@ Call with (dict "root" $ "component" "<component>").
 - name: mtls
   secret:
     secretName: {{ .component }}-mtls
+{{- end }}
+{{- end -}}
+
+{{/*
+Path where a receiver's csi-driver-spiffe server certificate (tls.crt, tls.key, ca.crt) is mounted.
+*/}}
+{{- define "radius.authz.spiffe.mountPath" -}}
+/var/run/radius/spiffe
+{{- end -}}
+
+{{/*
+Name of the CSIDriver that Radius's csi-driver-spiffe instance registers.
+*/}}
+{{- define "radius.authz.spiffe.csiDriverName" -}}
+{{- $spiffe := (.Values.global.rbac | default dict).spiffe | default dict -}}
+{{- $spiffe.csiDriverName | default "spiffe.csi.radapp.io" -}}
+{{- end -}}
+
+{{/*
+Renders the csi-driver-spiffe server certificate volume mount for a receiver container when the
+authorization mode is not off.
+*/}}
+{{- define "radius.authz.spiffe.volumeMount" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+- name: spiffe
+  mountPath: {{ include "radius.authz.spiffe.mountPath" . }}
+  readOnly: true
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders the csi-driver-spiffe server certificate volume for a receiver when the authorization mode
+is not off. The driver requests the certificate with the pod's ServiceAccount token, so the
+certificate carries the SPIFFE ID spiffe://<trust domain>/ns/<namespace>/sa/<service account>.
+Files are group-readable by gid 65532, the user Radius containers run as.
+*/}}
+{{- define "radius.authz.spiffe.volume" -}}
+{{- if ne (include "radius.authz.mode" .) "off" }}
+- name: spiffe
+  csi:
+    driver: {{ include "radius.authz.spiffe.csiDriverName" . }}
+    readOnly: true
+    volumeAttributes:
+      spiffe.csi.cert-manager.io/fs-group: "65532"
+{{- end }}
+{{- end -}}
+
+{{/*
+Directory under which a caller's projected ServiceAccount tokens are mounted, one subdirectory per
+receiver: <mountPath>/<receiver>/token.
+*/}}
+{{- define "radius.authz.tokens.mountPath" -}}
+/var/run/radius/tokens
+{{- end -}}
+
+{{/*
+Renders the projected ServiceAccount token volume mounts for a caller container when the
+authorization mode is not off. Call with (dict "root" $ "receivers" (list "<receiver>" ...)).
+*/}}
+{{- define "radius.authz.tokens.volumeMounts" -}}
+{{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- range .receivers }}
+- name: token-{{ . }}
+  mountPath: {{ include "radius.authz.tokens.mountPath" $.root }}/{{ . }}
+  readOnly: true
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders one projected ServiceAccount token volume per receiver a caller calls, when the
+authorization mode is not off. Each token's audience is the receiver's name, which the receiver's
+token verifier requires; the kubelet refreshes the 10-minute token before it expires.
+Call with (dict "root" $ "receivers" (list "<receiver>" ...)).
+*/}}
+{{- define "radius.authz.tokens.volumes" -}}
+{{- if ne (include "radius.authz.mode" .root) "off" }}
+{{- range .receivers }}
+- name: token-{{ . }}
+  projected:
+    sources:
+      - serviceAccountToken:
+          audience: {{ . | quote }}
+          expirationSeconds: 600
+          path: token
+{{- end }}
 {{- end }}
 {{- end -}}
