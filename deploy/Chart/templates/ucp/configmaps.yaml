@@ -20,6 +20,8 @@ data:
       {{- if ne (include "radius.authz.mode" .) "off" }}
       internalPort: 9444
       {{- end }}
+    kubernetesCallerAuthentication:
+      kubernetesIssuer: {{ .Values.ucp.kubernetesIssuer | default "kubernetes:local" | quote }}
     databaseProvider:
     {{- if .Values.database.enabled }}
       provider: "postgresql"
