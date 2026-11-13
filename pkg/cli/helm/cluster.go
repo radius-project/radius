@@ -399,17 +399,33 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "install", radiusHelmChart); err != nil {
 		return err
 	}
-	policyInstalled := clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil
-	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, policyInstalled); err != nil {
-		return err
-	}
-	_, err = i.prepareAggregationBootstrap(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, certificates)
+	bootstrap, err := i.prepareAggregationBootstrap(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, certificates, target)
 	if err != nil {
 		return err
 	}
-	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
-	if err := i.checkAggregationBeforeDependencies(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
+	policyChart := radiusHelmChart
+	if bootstrap != nil {
+		policyChart = initialCertificatePolicyChart(radiusHelmChart)
+	}
+	policyInstalled := clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil
+	if err := i.checkIssuerPolicy(ctx, clusterOptions, policyChart, radiusHelmConf, radiusValues, kubeContext, policyInstalled); err != nil {
 		return err
+	}
+	if bootstrap != nil && bootstrap.journal == nil {
+		if err := bootstrap.checkFresh(ctx); err != nil {
+			return err
+		}
+	}
+	if bootstrap != nil && bootstrap.journal != nil {
+		if err := bootstrap.checkPrepared(ctx); err != nil {
+			return err
+		}
+	}
+	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
+	if bootstrap == nil {
+		if err := i.checkAggregationBeforeDependencies(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
+			return err
+		}
 	}
 
 	// Check Contour and csi-driver-spiffe before installing anything, so that a problem leaves the cluster unchanged.
@@ -463,6 +479,15 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	// Install Radius
 	if err := installDependencies(ctx); err != nil {
 		return err
+	}
+	if bootstrap != nil {
+		if err := bootstrap.run(ctx); err != nil {
+			return err
+		}
+		if clusterOptions.Contour.Disabled {
+			return nil
+		}
+		return i.configureContourGateway(ctx, kubeContext)
 	}
 	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
 		return err

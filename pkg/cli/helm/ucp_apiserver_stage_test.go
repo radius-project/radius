@@ -403,15 +403,6 @@ func Test_UpgradeRadius_RequiresIndependentPublicSource(t *testing.T) {
 		c.requireNotStaged(t)
 	})
 
-	t.Run("fresh install", func(t *testing.T) {
-		shortenUCPAPIServiceWait(t)
-		u := newStageUpgrade(t, nil, "install")
-		c := newStageCluster(t, nil, true)
-		client := u.mock(t, 0, func() { t.Fatal("blocked bootstrap must stop Helm") })
-
-		require.ErrorIs(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=true"}), errFreshCertificateBootstrapUnavailable)
-		c.requireNotStaged(t)
-	})
 }
 
 func Test_UpgradeRadius_LateIssuanceDoesNotAuthorizeMigration(t *testing.T) {

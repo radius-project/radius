@@ -130,6 +130,7 @@ anchor; overlap and mode switching are lifecycle work, not Helm merge behavior.
 {{- $issuer := include "radius.authz.certificates.issuer" . | fromJson -}}
 {{- dict "kind" $kind "name" $name "key" "ca.crt" "bundle" $bundle
   "uid" (dig "metadata" "uid" "" $observed) "resourceVersion" (dig "metadata" "resourceVersion" "" $observed)
+  "bootstrapUID" (index (dig "metadata" "annotations" (dict) $observed) "radius.io/certificate-bootstrap" | default "")
   "contentDigest" (sha256sum $bundle) "issuerDigest" (sha256sum (toJson $issuer))
   "digest" (sha256sum (printf "%s\n%s" $bundle (toJson $issuer))) "issuer" $issuer | toJson -}}
 {{- end -}}

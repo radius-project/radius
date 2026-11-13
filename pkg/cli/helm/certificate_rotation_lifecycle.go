@@ -56,6 +56,22 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 	if err != nil {
 		return fmt.Errorf("cannot check Radius CA rotation before %s: %w", operation, err)
 	}
+	_, initial, initialErr := readInitialCertificateJournal(ctx, store)
+	if initialErr != nil && !apierrors.IsNotFound(initialErr) {
+		return initialErr
+	}
+	if initialErr == nil && initial.Phase != "complete" && operation != "install" {
+		return errors.New("finish the initial certificate installation before changing the release")
+	}
+	if apierrors.IsNotFound(initialErr) {
+		namespace, err := store.kube.CoreV1().Namespaces().Get(ctx, store.namespace, metav1.GetOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+		if err == nil && namespace.Annotations[initialCertificateIntent] != "" && operation != "install" {
+			return errors.New("recover the namespace's initial certificate intent before changing the release")
+		}
+	}
 	_, found, bootstrapErr := store.bootstrapIntent(ctx)
 	if bootstrapErr != nil {
 		return bootstrapErr

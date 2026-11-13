@@ -32,15 +32,16 @@ import (
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
-func TestBootstrapNativeInstallBlocksBeforeMutation(t *testing.T) {
+func TestBootstrapNativeInstallPublishesBeforeServingVerification(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
 	s, config, _, _ := newRotationTestStore(t)
 	ctx := t.Context()
 	require.NoError(t, s.dynamic.Resource(apiServiceResource).Delete(ctx, radiusAPIService, metav1.DeleteOptions{}))
@@ -81,6 +82,8 @@ func TestBootstrapNativeInstallBlocksBeforeMutation(t *testing.T) {
 				controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}).clients()
 			require.NoError(t, kube.AppsV1().Deployments(CertManagerNamespace).Delete(ctx, "cert-manager-cainjector", metav1.DeleteOptions{}))
 			deployment, replicaSet, pod := injectorFixture("cert-manager-cainjector")
+			deployment.Namespace, replicaSet.Namespace, pod.Namespace = CertManagerNamespace, CertManagerNamespace, CertManagerNamespace
+			deployment.Labels = map[string]string{"app.kubernetes.io/name": "cainjector", "app.kubernetes.io/component": "cainjector"}
 			_, err := kube.AppsV1().Deployments(deployment.Namespace).Create(ctx, deployment, metav1.CreateOptions{})
 			require.NoError(t, err)
 			_, err = kube.AppsV1().ReplicaSets(replicaSet.Namespace).Create(ctx, replicaSet, metav1.CreateOptions{})
@@ -90,19 +93,39 @@ func TestBootstrapNativeInstallBlocksBeforeMutation(t *testing.T) {
 			return kube, extensions, nil
 		},
 	}
-	require.ErrorIs(t, impl.InstallRadius(ctx, options, "test"), errFreshCertificateBootstrapUnavailable)
-	secrets, err := s.kube.CoreV1().Secrets(s.namespace).List(ctx, metav1.ListOptions{})
+	err = impl.InstallRadius(ctx, options, "test")
+	require.Error(t, err, "this isolated API server has no running UCP serving Pods or cainjector")
+	require.NotErrorIs(t, err, errCertificateObserverUnavailable)
+	require.ErrorContains(t, err, "aggregation deployment has not converged")
+	t.Logf("installed-product serving verification remains unfulfilled: %v", err)
+	liveOperator, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, operator.Name, metav1.GetOptions{})
 	require.NoError(t, err)
-	require.Len(t, secrets.Items, 1)
-	require.Equal(t, *operator, secrets.Items[0])
-	journals, err := s.kube.CoreV1().ConfigMaps(s.namespace).List(ctx, metav1.ListOptions{})
+	require.Equal(t, operator, liveOperator)
+	source, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	require.NoError(t, err)
-	require.Empty(t, journals.Items)
+	require.Equal(t, ca, source.Data[caCertificateKey])
+	require.Len(t, source.Data, 1)
+	_, state, err := readInitialCertificateJournal(ctx, s)
+	require.NoError(t, err)
+	require.Equal(t, "published", state.Phase)
 	leases, err := s.kube.CoordinationV1().Leases(s.namespace).List(ctx, metav1.ListOptions{})
 	require.NoError(t, err)
 	require.Empty(t, leases.Items)
-	_, err = s.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
-	require.True(t, apierrors.IsNotFound(err))
+	api, err := s.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, s.namespace+"/"+ucpAPIServerTrustSecretName, api.GetAnnotations()[injectCAFromSecretAnnotation])
+	flags := genericclioptions.NewConfigFlags(false)
+	flags.KubeConfig, flags.Namespace = &kubeconfig, &s.namespace
+	configuration, err := initHelmConfig(flags)
+	require.NoError(t, err)
+	recorded, err := impl.Helm.RunHelmGet(configuration, s.release)
+	require.NoError(t, err)
+	options.RadiusInstalled, options.Radius.Reinstall, options.RadiusReleaseValues = true, true, recorded.Config
+	require.ErrorContains(t, impl.InstallRadius(ctx, options, "test"), "aggregation deployment has not converged")
+	retriedSource, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, source.Name, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, source.UID, retriedSource.UID)
+	require.Equal(t, source.Data, retriedSource.Data)
 }
 
 func TestBootstrapNativeCreationAndFences(t *testing.T) {

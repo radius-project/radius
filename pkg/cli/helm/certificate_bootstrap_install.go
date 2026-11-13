@@ -42,8 +42,6 @@ const (
 	bootstrapNamespaceIntent = "radius.io/aggregation-bootstrap-intent"
 )
 
-var errFreshCertificateBootstrapUnavailable = errors.New("fresh certificate bootstrap requires the token/CSI two-stage public-source executor, which is not yet implemented; initial Kubernetes/cert-manager trust publication does not require authenticated workload observation")
-
 type aggregationBootstrapInstaller struct {
 	impl         *Impl
 	store        *rotationStore
@@ -506,7 +504,7 @@ func (i *Impl) newBootstrapInstaller(store *rotationStore, config *rest.Config, 
 }
 
 func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterOptions, selected *chart.Chart,
-	configuration *helm.Configuration, values map[string]any, kubeContext string, imported *certificatePlan) (*aggregationBootstrapInstaller, error) {
+	configuration *helm.Configuration, values map[string]any, kubeContext string, imported *certificatePlan, target *certificateTarget) (*initialCertificateInstaller, error) {
 	store, err := i.rotationStoreForContext(kubeContext, options.Radius.Namespace)
 	if err != nil {
 		return nil, err
@@ -522,16 +520,72 @@ func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterO
 		return nil, err
 	}
 	pending := found && current.Phase != bootstrapComplete
+	journal, initial, initialErr := readInitialCertificateJournal(ctx, store)
+	if initialErr != nil && !apierrors.IsNotFound(initialErr) {
+		return nil, initialErr
+	}
+	var namespaceIntent *initialCertificateState
+	if apierrors.IsNotFound(initialErr) {
+		namespace, err := store.kube.CoreV1().Namespaces().Get(ctx, store.namespace, metav1.GetOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			return nil, err
+		}
+		if err == nil && namespace.Annotations[initialCertificateIntent] != "" {
+			intent, err := decodeInitialCertificateState(namespace.Annotations[initialCertificateIntent], store, false)
+			if err != nil {
+				return nil, err
+			}
+			namespaceIntent = &intent
+		}
+	}
 	if mode == authz.ModeOff {
-		if pending {
+		if pending || namespaceIntent != nil || initialErr == nil && initial.Phase != "complete" {
 			return nil, errors.New("unfinished bootstrap cannot be bypassed by disabling authorization; resume the identical install")
 		}
 		return nil, nil
 	}
-	if !pending && (options.RadiusInstalled || options.RadiusReleaseValues != nil || found) {
+	if found {
+		return nil, errors.New("legacy bootstrap requires explicit pre-token recovery")
+	}
+	if initialErr == nil && initial.Phase == "complete" {
+		if !options.RadiusInstalled && options.RadiusReleaseValues == nil {
+			return nil, errors.New("completed certificate bootstrap belongs to a previous installation; do not adopt it")
+		}
 		return nil, nil
 	}
-	return nil, errFreshCertificateBootstrapUnavailable
+	if apierrors.IsNotFound(initialErr) && (options.RadiusInstalled || options.RadiusReleaseValues != nil) {
+		if namespaceIntent != nil {
+			return nil, errors.New("initial certificate journal is missing; restore it before changing this installation")
+		}
+		return nil, nil
+	}
+	if target == nil || selected.Metadata == nil || selected.Metadata.Annotations["radius.io/initial-certificate-protocol"] != "1" {
+		return nil, errors.New("fresh installation requires the selected chart's initial certificate protocol and validated target")
+	}
+	chartHash, err := bootstrapDigest(selected)
+	if err != nil {
+		return nil, err
+	}
+	intentHash, err := initialCertificateValuesDigest(effective)
+	if err != nil {
+		return nil, err
+	}
+	if initialErr == nil && (initial.IntentSHA256 != intentHash || initial.ChartSHA256 != chartHash ||
+		initial.Mode != target.Mode || initial.Provider != target.Provider) {
+		return nil, errors.New("bootstrap retry differs from the recorded chart or certificate intent")
+	}
+	if namespaceIntent != nil && (namespaceIntent.IntentSHA256 != intentHash || namespaceIntent.ChartSHA256 != chartHash ||
+		namespaceIntent.Mode != target.Mode || namespaceIntent.Provider != target.Provider) {
+		return nil, errors.New("namespace retains a different initial certificate intent")
+	}
+	if apierrors.IsNotFound(initialErr) {
+		initial = initialCertificateState{Version: 1, ID: uuid.NewString(), Namespace: store.namespace, Release: store.release,
+			Mode: target.Mode, Provider: target.Provider, Phase: "preparing", ChartSHA256: chartHash, IntentSHA256: intentHash,
+			Roots: map[string]aggregationBootstrapPin{}, Anchors: map[string]initialCertificateAnchor{},
+			Sources: map[string]certificateTrustProjection{}, Issuers: map[string]certificateIssuerSnapshot{}}
+	}
+	return &initialCertificateInstaller{impl: i, store: store, options: options, selected: selected, helm: configuration,
+		values: values, kubeContext: kubeContext, importPlan: imported, target: target, state: initial, journal: journal}, nil
 }
 
 // prepareLegacyAggregationBootstrap is retained for recovery-format fixtures,

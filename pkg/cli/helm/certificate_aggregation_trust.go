@@ -158,6 +158,10 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernet
 		if err != nil {
 			return false, err
 		}
+		if value == "" {
+			clean = 0
+			return false, nil
+		}
 		bundle, err := base64.StdEncoding.DecodeString(value)
 		if err != nil {
 			return false, err

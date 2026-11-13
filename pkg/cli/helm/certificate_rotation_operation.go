@@ -111,6 +111,13 @@ func (s *rotationStore) checkWrite(ctx context.Context) error {
 	if err := s.guardWrite(ctx); err != nil {
 		return err
 	}
+	_, initial, err := readInitialCertificateJournal(ctx, s)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	if err == nil && initial.Phase != "complete" {
+		return errors.New("finish the initial certificate installation before changing CA trust")
+	}
 	bootstrap, found, err := s.bootstrapIntent(ctx)
 	if err != nil {
 		return err

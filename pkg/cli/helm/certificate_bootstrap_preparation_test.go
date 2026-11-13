@@ -25,7 +25,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestBootstrapPreparationRejectsMissingExecutorBeforeWrites(t *testing.T) {
+func TestBootstrapPreparationDoesNotWriteOrRequestObserverCredentials(t *testing.T) {
 	t.Parallel()
 	for _, mode := range []string{"selfSigned", "caSecret", "issuerRef"} {
 		for _, provider := range []string{"radius", "external"} {
@@ -39,10 +39,12 @@ func TestBootstrapPreparationRejectsMissingExecutorBeforeWrites(t *testing.T) {
 					"certificates": map[string]any{"mode": mode},
 				}}}
 				impl := &Impl{newRotationStore: func(string, string) (*rotationStore, error) { return store, nil }}
-				installer, err := impl.prepareAggregationBootstrap(t.Context(), NewDefaultClusterOptions(), selected, nil, values, "", nil)
-				require.ErrorIs(t, err, errFreshCertificateBootstrapUnavailable)
-				require.NotErrorIs(t, err, errCertificateObserverUnavailable)
-				require.Nil(t, installer)
+				target := &certificateTarget{Mode: mode, Provider: provider}
+				installer, err := impl.prepareAggregationBootstrap(t.Context(), NewDefaultClusterOptions(), selected, nil, values, "", nil, target)
+				require.NoError(t, err)
+				require.NotNil(t, installer)
+				require.Same(t, target, installer.target)
+				require.Equal(t, "preparing", installer.state.Phase)
 				for _, action := range store.kube.(*kubefake.Clientset).Actions() {
 					require.Contains(t, []string{"get", "list"}, action.GetVerb())
 				}
