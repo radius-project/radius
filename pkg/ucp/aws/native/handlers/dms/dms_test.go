@@ -128,6 +128,7 @@ func Test_Suite_ReplicationInstance(t *testing.T) {
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: replicationInstanceAPI,
 	})
 }
 
@@ -179,6 +180,7 @@ func Test_Read(t *testing.T) {
 		"ReplicationInstanceClass":              "dms.t3.micro",
 		"AllocatedStorage":                      float64(50),
 		"AutoMinorVersionUpgrade":               false,
+		"AvailabilityZone":                      defaultZone,
 		"EngineVersion":                         "3.5.3",
 		"MultiAZ":                               true,
 		"DnsNameServers":                        "1.1.1.1,2.2.2.2",
