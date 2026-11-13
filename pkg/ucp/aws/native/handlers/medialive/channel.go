@@ -396,6 +396,11 @@ func (h *Channel) Update(ctx context.Context, request native.UpdateRequest) erro
 			return err
 		})
 	case len(values) > 0:
+		// UpdateChannel removes the channel's role when the call leaves out RoleArn, so every update sends the
+		// template's role.
+		if role, ok := request.Desired["RoleArn"]; ok {
+			values["RoleArn"] = role
+		}
 		input := &medialive.UpdateChannelInput{}
 		if err := awsapi.Decode(values, input); err != nil {
 			return err

@@ -20,10 +20,12 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
@@ -75,6 +77,40 @@ func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
 
 func fault(code string) error {
 	return &smithy.GenericAPIError{Code: code, Message: code, Fault: smithy.FaultClient}
+}
+
+var (
+	// namePattern is the pattern of application names, which are 1 to 128 characters.
+	namePattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,128}$`)
+
+	// optionIDPattern is the pattern of logging option IDs, which are 1 to 50 characters.
+	optionIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,50}$`)
+
+	// tokenPattern is the pattern of conditional tokens, which are 1 to 512 characters.
+	tokenPattern = regexp.MustCompile(`^[a-zA-Z0-9-_+/=]{1,512}$`)
+)
+
+// validARN reports whether arn is an ARN of 1 to 2048 characters, not bytes, as a log stream ARN must be.
+func validARN(arn string) bool {
+	return strings.HasPrefix(arn, "arn:") && utf8.RuneCountInString(arn) <= 2048
+}
+
+// validChange returns InvalidArgumentException, as AWS does, when a change names an application, logging option, or
+// log stream outside the limits AWS's API reference gives, or sends a version ID or conditional token outside them.
+func validChange(name *string, version *int64, token *string, ids []*string, arns []*string) error {
+	valid := namePattern.MatchString(aws.ToString(name)) &&
+		(version == nil || (*version >= 1 && *version <= 999999999)) &&
+		(token == nil || tokenPattern.MatchString(*token))
+	for _, id := range ids {
+		valid = valid && optionIDPattern.MatchString(aws.ToString(id))
+	}
+	for _, arn := range arns {
+		valid = valid && (arn == nil || validARN(*arn))
+	}
+	if !valid {
+		return fault("InvalidArgumentException")
+	}
+	return nil
 }
 
 // optionID returns the logging option ID of the stored resource with the identifier.
@@ -137,6 +173,9 @@ func (f *fakeAPI) DescribeApplication(ctx context.Context, in *kinesisanalyticsv
 		return nil, err
 	}
 	name := aws.ToString(in.ApplicationName)
+	if !namePattern.MatchString(name) {
+		return nil, fault("InvalidArgumentException")
+	}
 	app, ok := f.apps[name]
 	if !ok {
 		return nil, fault("ResourceNotFoundException")
@@ -161,6 +200,9 @@ func (f *fakeAPI) ListApplications(ctx context.Context, in *kinesisanalyticsv2.L
 	if err := f.errs["ListApplications"]; err != nil {
 		return nil, err
 	}
+	if (in.Limit != nil && (*in.Limit < 1 || *in.Limit > 50)) || (in.NextToken != nil && !namePattern.MatchString(*in.NextToken)) {
+		return nil, fault("InvalidRequestException")
+	}
 	names := slices.Sorted(maps.Keys(f.apps))
 	start, _ := strconv.Atoi(aws.ToString(in.NextToken))
 	out := &kinesisanalyticsv2.ListApplicationsOutput{}
@@ -179,6 +221,13 @@ func (f *fakeAPI) AddApplicationCloudWatchLoggingOption(ctx context.Context, in 
 	if err := f.errs["AddApplicationCloudWatchLoggingOption"]; err != nil {
 		return nil, err
 	}
+	stream := aws.String("")
+	if in.CloudWatchLoggingOption != nil {
+		stream = in.CloudWatchLoggingOption.LogStreamARN
+	}
+	if err := validChange(in.ApplicationName, in.CurrentApplicationVersionId, in.ConditionalToken, nil, []*string{stream}); err != nil {
+		return nil, err
+	}
 	name := aws.ToString(in.ApplicationName)
 	err := f.change(in.ApplicationName, in.CurrentApplicationVersionId, func(app *application) error {
 		f.next++
@@ -186,7 +235,7 @@ func (f *fakeAPI) AddApplicationCloudWatchLoggingOption(ctx context.Context, in 
 		f.store.Put(loggingOptionType, identifier, map[string]any{
 			"Id":                      identifier,
 			"ApplicationName":         name,
-			"CloudWatchLoggingOption": map[string]any{"LogStreamARN": aws.ToString(in.CloudWatchLoggingOption.LogStreamARN)},
+			"CloudWatchLoggingOption": map[string]any{"LogStreamARN": aws.ToString(stream)},
 		})
 		return nil
 	})
@@ -212,6 +261,9 @@ func (f *fakeAPI) DeleteApplicationCloudWatchLoggingOption(ctx context.Context, 
 	if err := f.errs["DeleteApplicationCloudWatchLoggingOption"]; err != nil {
 		return nil, err
 	}
+	if err := validChange(in.ApplicationName, in.CurrentApplicationVersionId, in.ConditionalToken, []*string{in.CloudWatchLoggingOptionId}, nil); err != nil {
+		return nil, err
+	}
 	err := f.change(in.ApplicationName, in.CurrentApplicationVersionId, func(app *application) error {
 		identifier, err := f.stored(aws.ToString(in.ApplicationName), aws.ToString(in.CloudWatchLoggingOptionId))
 		if err != nil {
@@ -227,6 +279,13 @@ func (f *fakeAPI) UpdateApplication(ctx context.Context, in *kinesisanalyticsv2.
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.errs["UpdateApplication"]; err != nil {
+		return nil, err
+	}
+	ids, arns := []*string{}, []*string{}
+	for _, u := range in.CloudWatchLoggingOptionUpdates {
+		ids, arns = append(ids, u.CloudWatchLoggingOptionId), append(arns, u.LogStreamARNUpdate)
+	}
+	if err := validChange(in.ApplicationName, in.CurrentApplicationVersionId, in.ConditionalToken, ids, arns); err != nil {
 		return nil, err
 	}
 	err := f.change(in.ApplicationName, in.CurrentApplicationVersionId, func(app *application) error {

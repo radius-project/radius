@@ -194,6 +194,7 @@ func Test_Suite_Channel(t *testing.T) {
 		FailCall: nativetest.FailCall(2, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: channelAPI,
 		// AWS fills in defaults inside video descriptions, so Equivalent compares them only on the template's values.
 		// A field the template drops, such as Sharpness, must still be removed in AWS.
 		// An empty HLS container selector, such as Fmp4HlsSettings, picks a container, so another container AWS has is
