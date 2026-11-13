@@ -18,6 +18,8 @@ package fsx
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"slices"
@@ -29,6 +31,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/fsx"
 	"github.com/aws/aws-sdk-go-v2/service/fsx/types"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -261,10 +264,22 @@ func create(t *testing.T, h *FileSystem, properties map[string]any) string {
 	return id
 }
 
+// updateStates maps a file system to the state UpdateState returned for its last update in a test, which finish
+// passes to UpdateProgress, as UCP does.
+var updateStates sync.Map
+
 // finish reads the progress of an operation until it is done.
 func finish(t *testing.T, h *FileSystem, id string, op native.Operation) native.Progress {
 	for range 5 {
-		progress, err := h.Progress(t.Context(), testRegion, id, op)
+		var progress native.Progress
+		var err error
+		if op == native.OperationUpdate {
+			state, _ := updateStates.Load(id)
+			text, _ := state.(string)
+			progress, err = h.UpdateProgress(t.Context(), testRegion, id, text)
+		} else {
+			progress, err = h.Progress(t.Context(), testRegion, id, op)
+		}
 		require.NoError(t, err)
 		if progress.Done {
 			return progress
@@ -274,9 +289,13 @@ func finish(t *testing.T, h *FileSystem, id string, op native.Operation) native.
 	return native.Progress{}
 }
 
-// update makes the handler update the file system to desired, with the patch UCP computes. UCP leaves out the
-// write-only values in unsent, whose fingerprints show they didn't change.
+// update makes the handler update the file system to desired, as UCP does: with the state UpdateState returns, a new
+// token, and the patch UCP computes. UCP leaves out the write-only values in unsent, whose fingerprints show they
+// didn't change.
 func update(t *testing.T, h *FileSystem, id string, base map[string]any, desired map[string]any, unsent ...string) error {
+	state, err := h.UpdateState(t.Context(), testRegion, id)
+	require.NoError(t, err)
+	updateStates.Store(id, state)
 	current, err := h.Read(t.Context(), testRegion, id)
 	require.NoError(t, err)
 	desired = jsonValue(t, desired)
@@ -296,7 +315,7 @@ func update(t *testing.T, h *FileSystem, id string, base map[string]any, desired
 	removed := awsoperations.RemovedPaths(jsonValue(t, base), desired)
 	patch, err := awsoperations.GeneratePatchWithOptions(a, b, []byte(schema(t)), awsoperations.PatchOptions{Removed: removed, Equivalent: equivalent})
 	require.NoError(t, err)
-	return h.Update(t.Context(), native.UpdateRequest{Region: testRegion, Identifier: id, Current: current, Desired: desired, Patch: patch})
+	return h.Update(t.Context(), native.UpdateRequest{Region: testRegion, Identifier: id, Current: current, Desired: desired, Patch: patch, Token: uuid.New().String(), State: state})
 }
 
 // requireDeleted reads the progress of a delete until FSx no longer has the file system.
@@ -692,6 +711,8 @@ func Test_Update(t *testing.T) {
 			}
 			require.Len(t, recorder.inputs, 1)
 			tt.want.FileSystemId = aws.String(id)
+			tt.want.ClientRequestToken = recorder.inputs[0].ClientRequestToken
+			require.NotEmpty(t, aws.ToString(tt.want.ClientRequestToken), "the update sends its token")
 			require.Equal(t, tt.want, recorder.inputs[0])
 			require.True(t, finish(t, h, id, native.OperationUpdate).Done)
 		})
@@ -778,16 +799,15 @@ func Test_Progress(t *testing.T) {
 		tagged := with(base, map[string]any{"Tags": tags("env", "dev")})
 		api.calls = nil
 		require.NoError(t, update(t, h, id, base, tagged))
-		require.Equal(t, []string{"TagResource", "TagResource"}, slices.DeleteFunc(api.calls, func(c string) bool { return strings.HasPrefix(c, "Describe") }), "the baseline tag, then the template's tags")
+		require.Equal(t, []string{"TagResource"}, slices.DeleteFunc(api.calls, func(c string) bool { return strings.HasPrefix(c, "Describe") }), "only the template's tags: the baseline is on UCP's record")
 		require.Nil(t, finish(t, h, id, native.OperationUpdate).Failure, "a tag change makes no administrative action, so the earlier failure isn't its")
-		read, err := h.Read(t.Context(), testRegion, id)
-		require.NoError(t, err)
-		require.Equal(t, tags("env", "dev"), read["Tags"], "Read leaves out the tag UCP keeps for updates")
+		fs, _ := api.fileSystem(id)
+		require.Empty(t, presentTags(fs.Tags, []string{updateBaselineTag}), "the baseline is on UCP's record, not a tag")
 
 		api.failUpdate = "The throughput capacity is not supported."
 		api.calls = nil
 		require.NoError(t, update(t, h, id, tagged, with(tagged, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 2048}})))
-		require.Equal(t, []string{"UpdateFileSystem"}, slices.DeleteFunc(api.calls, func(c string) bool { return strings.HasPrefix(c, "Describe") }), "the baseline tag already names the failed action")
+		require.Equal(t, []string{"UpdateFileSystem"}, slices.DeleteFunc(api.calls, func(c string) bool { return strings.HasPrefix(c, "Describe") }))
 		require.NotNil(t, finish(t, h, id, native.OperationUpdate).Failure, "a new failed action is the update's")
 	})
 
@@ -953,4 +973,248 @@ func Test_ReservedTags(t *testing.T) {
 		require.NoError(t, h.Delete(t.Context(), testRegion, id))
 		require.Nil(t, api.deleteOptions[id], "the delete sends no options the template didn't set as Options")
 	})
+}
+
+// manyTags returns n template tags.
+func manyTags(n int) []any {
+	out := []any{}
+	for i := range n {
+		out = append(out, map[string]any{"Key": fmt.Sprintf("key-%02d", i), "Value": "v"})
+	}
+	return out
+}
+
+func zfsWithOptions(n int) map[string]any {
+	return map[string]any{
+		"FileSystemType": "OPENZFS", "StorageCapacity": 64, "SubnetIds": []any{"subnet-0a1"},
+		"OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64, "Options": []any{"DELETE_CHILD_VOLUMES_AND_SNAPSHOTS"}},
+		"Tags":                 manyTags(n),
+	}
+}
+
+// Test_TagLimit checks that a template whose tags, with the ones Radius adds, are more than FSx's 50 fails with 400
+// before any AWS call, and says how many the template may set.
+func Test_TagLimit(t *testing.T) {
+	t.Run("create", func(t *testing.T) {
+		tests := []struct {
+			name       string
+			properties map[string]any
+			message    string
+		}{
+			{"49 tags and the operation tag fit", with(lustre("1:05:00"), map[string]any{"Tags": manyTags(49)}), ""},
+			{"50 tags and the operation tag don't", with(lustre("1:05:00"), map[string]any{"Tags": manyTags(50)}), "Radius needs 1 of them, so Tags can have at most 49. The template sets 50."},
+			{"48 tags and the delete options tag fit", zfsWithOptions(48), ""},
+			{"49 tags and the delete options tag don't", zfsWithOptions(49), "Radius needs 2 of them, so Tags can have at most 48. The template sets 49."},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				api := newFakeAPI(awsfake.NewCloudControl())
+				h := NewFileSystem(api)
+				_, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, tt.properties), ClientToken: uuid.New().String()})
+				if tt.message == "" {
+					require.NoError(t, err)
+					return
+				}
+				var failure *native.Failure
+				require.ErrorAs(t, err, &failure)
+				require.True(t, failure.ClientError)
+				require.Equal(t, native.OutcomeRejected, failure.Outcome)
+				require.Contains(t, failure.Message, tt.message)
+				require.Empty(t, api.calls, "no AWS call")
+			})
+		}
+	})
+
+	t.Run("update", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewFileSystem(api)
+		base := lustre("1:05:00")
+		id := create(t, h, base)
+		full := with(base, map[string]any{"Tags": manyTags(50)})
+
+		api.calls = nil
+		err := update(t, h, id, base, full)
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure)
+		require.Contains(t, failure.Message, "Radius needs 1 of them, so Tags can have at most 49. The template sets 50.", "the operation tag is still there")
+		require.Empty(t, slices.DeleteFunc(api.calls, func(c string) bool { return c == "DescribeFileSystems" }), "no call changes AWS")
+
+		require.NoError(t, h.Cleanup(t.Context(), testRegion, id, api.tokens[id]))
+		require.NoError(t, update(t, h, id, base, full), "once the operation tag is gone, the template gets all 50")
+		require.True(t, finish(t, h, id, native.OperationUpdate).Done)
+		read, err := h.Read(t.Context(), testRegion, id)
+		require.NoError(t, err)
+		require.Len(t, read["Tags"], 50)
+	})
+}
+
+// Test_Cleanup checks that Cleanup removes the operation tag of the file system's own create and the baseline tag of
+// older versions, keeps the delete options tag and the operation tag of another alias's create, and makes no call when
+// there is nothing to remove.
+func Test_Cleanup(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewFileSystem(api)
+	id := create(t, h, zfsWithOptions(1))
+	token := api.tokens[id]
+	fs, _ := api.fileSystem(id)
+	_, err := api.TagResource(t.Context(), &fsx.TagResourceInput{ResourceARN: fs.ResourceARN, Tags: []types.Tag{{Key: aws.String(updateBaselineTag), Value: aws.String("2026-11-05T05:27:51Z")}}})
+	require.NoError(t, err)
+	before, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+
+	require.NoError(t, h.Cleanup(t.Context(), testRegion, id, "another-create"))
+	fs, _ = api.fileSystem(id)
+	require.Equal(t, []string{awsapi.OperationTag, deleteOptionsTag}, presentTags(fs.Tags, reservedTags), "another alias's create still needs its tag")
+
+	require.NoError(t, h.Cleanup(t.Context(), testRegion, id, token))
+	fs, _ = api.fileSystem(id)
+	require.Equal(t, []string{deleteOptionsTag}, presentTags(fs.Tags, reservedTags), "a delete still needs the options")
+	after, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+	require.Equal(t, before, after, "Read never showed the tags")
+
+	api.calls = nil
+	require.NoError(t, h.Cleanup(t.Context(), testRegion, id, token))
+	require.Equal(t, []string{"DescribeFileSystems"}, api.calls, "nothing left to remove")
+
+	require.ErrorIs(t, h.Cleanup(t.Context(), testRegion, "fs-missing", token), native.ErrNotFound)
+}
+
+// Test_UpdateToken checks that an update sent again with the same token and input is the same request to FSx, so FSx
+// applies it once, and that the token FSx gets fits its rules and reveals nothing of the input.
+func Test_UpdateToken(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	recorder := &updates{fakeAPI: api}
+	h := NewFileSystem(recorder)
+	base := lustre("1:05:00")
+	id := create(t, h, base)
+	desired := jsonValue(t, with(base, map[string]any{"StorageCapacity": 2400}))
+	current, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+	patch, err := jsondiff.Compare(current, desired)
+	require.NoError(t, err)
+	request := native.UpdateRequest{Region: testRegion, Identifier: id, Current: current, Desired: desired, Patch: patch, Token: uuid.New().String()}
+
+	require.NoError(t, h.Update(t.Context(), request))
+	require.NoError(t, h.Update(t.Context(), request), "a resent update")
+	require.Len(t, recorder.inputs, 2)
+	token := aws.ToString(recorder.inputs[0].ClientRequestToken)
+	require.Equal(t, token, aws.ToString(recorder.inputs[1].ClientRequestToken))
+	require.Regexp(t, tokenPattern, token)
+	require.Len(t, api.actions[id], 2, "one update and its storage optimization, not two updates")
+
+	other := request
+	other.Desired = jsonValue(t, with(base, map[string]any{"StorageCapacity": 3600}))
+	other.Patch, err = jsondiff.Compare(current, other.Desired)
+	require.NoError(t, err)
+	require.NoError(t, h.Update(t.Context(), other), "other values with the same update token are a new FSx request")
+	require.NotEqual(t, token, aws.ToString(recorder.inputs[2].ClientRequestToken))
+
+	again := request
+	again.Token = uuid.New().String()
+	require.NoError(t, h.Update(t.Context(), again))
+	require.NotEqual(t, token, aws.ToString(recorder.inputs[3].ClientRequestToken), "a new update gets a new token")
+
+	none := request
+	none.Token = ""
+	require.NoError(t, h.Update(t.Context(), none))
+	require.Nil(t, recorder.inputs[4].ClientRequestToken, "without a token, the SDK makes one")
+}
+
+// Test_UpdateProgress_OlderBaselineTag finishes an update an older version started, which put the baseline in a tag
+// instead of UCP's record.
+func Test_UpdateProgress_OlderBaselineTag(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewFileSystem(api)
+	base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
+	id := create(t, h, base)
+	api.failUpdate = "The throughput capacity is not supported."
+	require.NoError(t, update(t, h, id, base, with(base, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 4096}})))
+	require.NotNil(t, finish(t, h, id, native.OperationUpdate).Failure)
+
+	baseline, err := h.UpdateState(t.Context(), testRegion, id)
+	require.NoError(t, err)
+	require.NotEmpty(t, baseline)
+	fs, _ := api.fileSystem(id)
+	_, err = api.TagResource(t.Context(), &fsx.TagResourceInput{ResourceARN: fs.ResourceARN, Tags: []types.Tag{{Key: aws.String(updateBaselineTag), Value: aws.String(baseline)}}})
+	require.NoError(t, err)
+
+	progress, err := h.UpdateProgress(t.Context(), testRegion, id, "")
+	require.NoError(t, err)
+	require.Nil(t, progress.Failure, "the tag names the earlier failure")
+	_, err = h.UpdateState(t.Context(), testRegion, "fs-missing")
+	require.ErrorIs(t, err, native.ErrNotFound)
+	progress, err = h.Progress(t.Context(), testRegion, id, native.OperationUpdate)
+	require.NoError(t, err)
+	require.Nil(t, progress.Failure)
+}
+
+func Test_Fake_TagRules(t *testing.T) {
+	ctx := t.Context()
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewFileSystem(api)
+	id := create(t, h, with(lustre("1:05:00"), map[string]any{"Tags": manyTags(48)}))
+	fs, _ := api.fileSystem(id)
+	code := func(err error) string {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr.ErrorCode()
+		}
+		return ""
+	}
+
+	_, err := api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: fs.ResourceARN, Tags: []types.Tag{{Key: aws.String("one-more"), Value: aws.String("v")}, {Key: aws.String("aws:x"), Value: aws.String("v")}}})
+	require.NoError(t, err, "48 tags, the operation tag, and one more are 50; aws: tags don't count")
+	_, err = api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: fs.ResourceARN, Tags: []types.Tag{{Key: aws.String("too-many"), Value: aws.String("v")}}})
+	require.Equal(t, "BadRequest", code(err))
+	_, err = api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: fs.ResourceARN, Tags: []types.Tag{{Key: aws.String("one-more"), Value: aws.String("w")}}})
+	require.NoError(t, err, "a key the file system has doesn't add a tag")
+
+	_, err = api.CreateFileSystem(ctx, &fsx.CreateFileSystemInput{ClientRequestToken: aws.String(uuid.New().String()), FileSystemType: types.FileSystemTypeLustre, Tags: awsapi.SDKTags[types.Tag](awsapi.Tags(map[string]any{"Tags": manyTags(51)}))})
+	require.Equal(t, "BadRequest", code(err))
+}
+
+func Test_Fake_UpdateTokenRules(t *testing.T) {
+	ctx := t.Context()
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewFileSystem(api)
+	id := create(t, h, lustre("1:05:00"))
+	code := func(err error) string {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) {
+			return apiErr.ErrorCode()
+		}
+		return ""
+	}
+	for _, token := range []string{"", strings.Repeat("a", 64), "has space"} {
+		_, err := api.UpdateFileSystem(ctx, &fsx.UpdateFileSystemInput{FileSystemId: aws.String(id), ClientRequestToken: aws.String(token), StorageCapacity: aws.Int32(2400)})
+		require.Equal(t, "BadRequest", code(err), token)
+	}
+	token := aws.String(strings.Repeat("a", 63))
+	_, err := api.UpdateFileSystem(ctx, &fsx.UpdateFileSystemInput{FileSystemId: aws.String(id), ClientRequestToken: token, StorageCapacity: aws.Int32(2400)})
+	require.NoError(t, err)
+	_, err = api.UpdateFileSystem(ctx, &fsx.UpdateFileSystemInput{FileSystemId: aws.String(id), ClientRequestToken: token, StorageCapacity: aws.Int32(3600)})
+	require.Equal(t, "IncompatibleParameterError", code(err))
+}
+
+// Test_UpdateToken_LeavesOutPasswords checks that the token FSx gets doesn't depend on a password, so it can't be used
+// to test guesses of one, and still depends on every other value.
+func Test_UpdateToken_LeavesOutPasswords(t *testing.T) {
+	input := func(admin string, directory string, throughput int32) *fsx.UpdateFileSystemInput {
+		return &fsx.UpdateFileSystemInput{
+			FileSystemId:       aws.String("fs-1"),
+			OntapConfiguration: &types.UpdateFileSystemOntapConfiguration{FsxAdminPassword: aws.String(admin), ThroughputCapacity: aws.Int32(throughput)},
+			WindowsConfiguration: &types.UpdateFileSystemWindowsConfiguration{
+				SelfManagedActiveDirectoryConfiguration: &types.SelfManagedActiveDirectoryConfigurationUpdates{UserName: aws.String("admin"), Password: aws.String(directory)},
+			},
+		}
+	}
+	token := "1b6f8f3e-7c2a-4d2e-9a51-0c6a7d1e2f3a"
+	first := aws.ToString(updateToken(token, input("secret-1", "secret-2", 128)))
+	require.Equal(t, first, aws.ToString(updateToken(token, input("other-1", "other-2", 128))), "the passwords aren't in the token")
+	require.NotEqual(t, first, aws.ToString(updateToken(token, input("secret-1", "secret-2", 256))))
+	require.NotEqual(t, first, aws.ToString(updateToken("other-token", input("secret-1", "secret-2", 128))))
+	original := input("secret-1", "secret-2", 128)
+	updateToken(token, original)
+	require.Equal(t, "secret-1", aws.ToString(original.OntapConfiguration.FsxAdminPassword), "the call still sends the password")
 }

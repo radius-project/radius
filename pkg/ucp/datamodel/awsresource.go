@@ -16,7 +16,11 @@ limitations under the License.
 
 package datamodel
 
-import v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+import (
+	"time"
+
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+)
 
 // AWSResource is UCP's record of one AWS resource it deploys. It is stored under the resource ID that ends in the
 // alias the template sets, for example /planes/aws/aws/accounts/{account}/regions/{region}/providers/AWS.EC2/VPC/app-vpc.
@@ -89,6 +93,30 @@ type AWSResourceProperties struct {
 	// takes a second copy. It is cleared when a create or update starts, and when the delete's progress reports that
 	// it failed. A delete call that returns an error, a timeout, or an error while waiting keeps it.
 	DeleteToken string `json:"deleteToken,omitempty"`
+
+	// UpdateToken is a UUID UCP makes before the first call of a native update. UCP sends it with every attempt of
+	// that update (native.UpdateRequest.Token) and uses it as the update's operation ID. A request that resumes an
+	// update UCP reserved but never tracked, or a deploy after an update call whose outcome UCP can't tell, sends it
+	// again. It is cleared when the update finishes, when AWS rejects it, and when another operation starts.
+	UpdateToken string `json:"updateToken,omitempty"`
+
+	// UpdateIntent is a hash of the values the update UpdateToken names applies, its last-applied properties and
+	// fingerprints. A deploy sends the update token again only when it applies the same values, so a token never
+	// covers two different updates.
+	UpdateIntent string `json:"updateIntent,omitempty"`
+
+	// UpdateState is the state a native handler keeps for the update UpdateToken names (see native.UpdatePreparer).
+	// UCP saves and clears it with UpdateToken. It never holds a secret.
+	UpdateState string `json:"updateState,omitempty"`
+
+	// CreateToken is the client token of the create that made the resource, kept after the create finished until the
+	// native handler cleaned the resource up (native.Cleaner), so the handler removes only this create's marks. It is
+	// empty for a resource UCP took over.
+	CreateToken string `json:"createToken,omitempty"`
+
+	// CleanedUpAt is when the native handler removed what it put on the resource only for a while (native.Cleaner),
+	// or nil until then. While it is nil, each deploy of the record asks the handler again.
+	CleanedUpAt *time.Time `json:"cleanedUpAt,omitempty"`
 
 	// LastRequestToken is the request token of the last operation that finished, and LastRequestError is its error,
 	// or nil when it succeeded. A redelivered operation that already finished reports this result instead of polling

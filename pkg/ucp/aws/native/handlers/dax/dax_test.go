@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dax"
 	"github.com/aws/aws-sdk-go-v2/service/dax/types"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -470,4 +471,90 @@ func Test_Update_SettingsAndNodes(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 3, got["ReplicationFactor"])
 	require.Equal(t, []any{"sg-3"}, got["SecurityGroupIds"])
+}
+
+// Test_Read_Unavailable checks that a read of a cluster DAX isn't returning tags for, such as one modifying during
+// maintenance, takes the tags from the record instead of calling ListTags, which DAX rejects then.
+func Test_Read_Unavailable(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewCluster(api)
+	identifier := deploy(t, h, cluster)
+	recorded := with(cluster, map[string]any{"Tags": map[string]any{"team": "recorded"}})
+
+	api.status[identifier] = "modifying"
+	got, err := h.ReadRecorded(t.Context(), region, identifier, recorded)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"team": "recorded"}, got["Tags"])
+
+	api.status[identifier] = "modifying"
+	got, err = h.Read(t.Context(), region, identifier)
+	require.NoError(t, err)
+	require.NotContains(t, got, "Tags", "without a record, the tags are unknown")
+	require.Equal(t, "dax.t3.small", got["NodeType"])
+
+	api.status[identifier] = "modifying"
+	resources, err := h.List(t.Context(), region)
+	require.NoError(t, err)
+	require.Len(t, resources, 1)
+	require.NotContains(t, resources[0].Properties, "Tags")
+	require.NotContains(t, api.calls, "ListTags")
+
+	got, err = h.ReadRecorded(t.Context(), region, identifier, recorded)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"owner": "", "team": "a"}, got["Tags"], "an available cluster's tags come from DAX")
+}
+
+// Test_Update_TagsUnavailable checks that a tag change while the cluster isn't available fails before any call, and
+// that an update with the record's tags makes no tag call.
+func Test_Update_TagsUnavailable(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewCluster(api)
+	identifier := deploy(t, h, cluster)
+
+	api.status[identifier] = "modifying"
+	current, err := h.ReadRecorded(t.Context(), region, identifier, cluster)
+	require.NoError(t, err)
+	desired := with(cluster, map[string]any{"Tags": map[string]any{"team": "b"}})
+	patch, err := jsondiff.Compare(current, desired)
+	require.NoError(t, err)
+	api.status[identifier] = "modifying"
+	api.calls = nil
+	err = h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: identifier, Current: current, Desired: desired, Patch: patch})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, "this cluster is modifying")
+	require.Equal(t, []string{"DescribeClusters"}, api.calls)
+}
+
+func Test_Fake_TagCallsNeedAvailable(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewCluster(api)
+	identifier := deploy(t, h, cluster)
+	arn := aws.String(arnPrefix + identifier)
+	calls := map[string]func() error{
+		"ListTags": func() error {
+			_, err := api.ListTags(t.Context(), &dax.ListTagsInput{ResourceName: arn})
+			return err
+		},
+		"TagResource": func() error {
+			_, err := api.TagResource(t.Context(), &dax.TagResourceInput{ResourceName: arn, Tags: []types.Tag{{Key: aws.String("a"), Value: aws.String("1")}}})
+			return err
+		},
+		"UntagResource": func() error {
+			_, err := api.UntagResource(t.Context(), &dax.UntagResourceInput{ResourceName: arn, TagKeys: []string{"team"}})
+			return err
+		},
+	}
+	for name, call := range calls {
+		t.Run(name, func(t *testing.T) {
+			api.status[identifier] = "modifying"
+			var apiErr smithy.APIError
+			require.ErrorAs(t, call(), &apiErr)
+			require.Equal(t, "InvalidClusterStateFault", apiErr.ErrorCode())
+			delete(api.status, identifier)
+			require.NoError(t, call())
+		})
+	}
 }

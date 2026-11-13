@@ -18,6 +18,8 @@ package awsproxy
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -287,12 +289,15 @@ func identifierRequired(r *request, schema string) (armrpc_rest.Response, error)
 
 // readNative reads a resource through the native handler. It returns the result in Cloud Control's shape, so the
 // rest of the engine treats both handlers the same, and nil when AWS has no such resource. A handler that reads only
-// the members it manages (native.ScopedReader) gets managed.
-func readNative(ctx context.Context, h native.Handler, region string, identifier string, managed []map[string]any) (*cloudcontrol.GetResourceOutput, error) {
+// the members it manages (native.ScopedReader) gets managed, and one that can't read some properties in some states
+// (native.RecordReader) gets recorded.
+func readNative(ctx context.Context, h native.Handler, region string, identifier string, managed []map[string]any, recorded map[string]any) (*cloudcontrol.GetResourceOutput, error) {
 	var properties map[string]any
 	var err error
 	if scoped, ok := h.(native.ScopedReader); ok {
 		properties, err = scoped.ReadScoped(ctx, region, identifier, managed)
+	} else if reader, ok := h.(native.RecordReader); ok {
+		properties, err = reader.ReadRecorded(ctx, region, identifier, recorded)
 	} else {
 		properties, err = h.Read(ctx, region, identifier)
 	}
@@ -311,15 +316,76 @@ func readNative(ctx context.Context, h native.Handler, region string, identifier
 	}, nil
 }
 
-// startUpdate starts an update and returns the token the worker polls: Cloud Control's request token, or an operation
-// ID UCP makes for a native handler.
-func (e *engine) startUpdate(ctx context.Context, r *request, identifier string, current map[string]any, desired map[string]any, patch jsondiff.Patch) (string, error) {
+// cleanup asks a native handler that puts on a resource what it needs only for a while (native.Cleaner) to remove it,
+// until it succeeds once for the record, which the deploy then saves. put calls it only for a record that has the
+// identifier and no unfinished create, as saved. The handler gets the record's create token, so it never removes the
+// mark of a create another alias lost, which that alias still needs to find it. A failure is only logged, and the
+// next deploy asks again.
+func cleanup(ctx context.Context, r *request, rec *datamodel.AWSResource, identifier string) {
+	cleaner, ok := r.handler.(native.Cleaner)
+	if !ok || rec.Properties.CleanedUpAt != nil {
+		return
+	}
+	if err := cleaner.Cleanup(ctx, r.region, identifier, rec.Properties.CreateToken); err != nil {
+		ucplog.FromContextOrDiscard(ctx).Error(err, "Failed to clean up the AWS resource; the next deploy tries again", "alias", r.id.Name(), "awsIdentifier", identifier)
+		return
+	}
+	now := records.Now().UTC()
+	rec.Properties.CleanedUpAt = &now
+	rec.Properties.CreateToken = ""
+}
+
+// prepareUpdate saves on rec, in memory, the update token a native update sends on every attempt, and the state the
+// handler keeps for it (native.UpdatePreparer), before the reservation saves them. A record that still has a token
+// has an update that may have reached AWS. When this deploy applies the same values, intent, it is the same update,
+// so its token and state are kept, and the update is sent again with them. Otherwise it is a new update, with a new
+// token and state, so a token never covers two different updates.
+func prepareUpdate(ctx context.Context, r *request, rec *datamodel.AWSResource, identifier string, intent string) error {
+	if r.handler == nil {
+		// Cloud Control serves this update, so a native update's token no longer names the latest update.
+		records.ClearUpdateToken(rec)
+		return nil
+	}
+	if rec.Properties.UpdateToken != "" && rec.Properties.UpdateIntent == intent {
+		return nil
+	}
+	state := ""
+	if preparer, ok := r.handler.(native.UpdatePreparer); ok {
+		var err error
+		if state, err = preparer.UpdateState(ctx, r.region, identifier); err != nil {
+			return err
+		}
+	}
+	rec.Properties.UpdateToken = uuid.New().String()
+	rec.Properties.UpdateState = state
+	rec.Properties.UpdateIntent = intent
+	return nil
+}
+
+// updateIntent returns a hash of the values an update applies: the last-applied properties, without write-only
+// values, and the fingerprints of the write-only ones.
+func updateIntent(a applied) string {
+	digests := map[string]string{}
+	if a.fingerprints != nil {
+		digests = a.fingerprints.Digests
+	}
+	b, _ := json.Marshal(map[string]any{"properties": a.properties, "fingerprints": digests})
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
+}
+
+// startUpdate starts an update and returns the token the worker polls: Cloud Control's request token, or for a native
+// handler the record's update token, which is the operation ID.
+func (e *engine) startUpdate(ctx context.Context, r *request, rec *datamodel.AWSResource, identifier string, current map[string]any, desired map[string]any, patch jsondiff.Patch) (string, error) {
 	if r.handler != nil {
-		err := r.handler.Update(ctx, native.UpdateRequest{Region: r.region, Identifier: identifier, Current: current, Desired: desired, Patch: patch})
+		err := r.handler.Update(ctx, native.UpdateRequest{
+			Region: r.region, Identifier: identifier, Current: current, Desired: desired, Patch: patch,
+			Token: rec.Properties.UpdateToken, State: rec.Properties.UpdateState,
+		})
 		if err != nil {
 			return "", err
 		}
-		return uuid.New().String(), nil
+		return rec.Properties.UpdateToken, nil
 	}
 
 	marshaled, err := json.Marshal(&patch)
@@ -501,7 +567,7 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 	// The create may have applied some or all of its values, so Radius owns them, and the update below clears one the
 	// template no longer sets.
 	records.KeepPending(rec)
-	rec.Properties.ClientToken = ""
+	records.FinishCreate(rec)
 	current, err := e.readResource(ctx, r, identifier)
 	if err != nil {
 		return handleError(ctx, r.id, err)
@@ -614,7 +680,7 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 	// The create may have applied some or all of its values, so Radius owns them. If the delete then fails, a later
 	// deploy clears one the template no longer sets.
 	records.KeepPending(rec)
-	rec.Properties.ClientToken = ""
+	records.FinishCreate(rec)
 	etag, err = e.store.Save(ctx, rec, etag)
 	if err != nil {
 		resp, err := saveError(r.id, err)
@@ -732,20 +798,35 @@ func rejected(r *request) armrpc_rest.Response {
 	return badRequest(fmt.Sprintf("Radius can't delete the AWS resource %q, because AWS doesn't let it delete a resource of type %s. Nothing was changed.", r.id.Name(), r.typeName))
 }
 
-// equivalentFor returns the native handler's rule for values AWS returns in another form, or nil when there is none.
-// It applies with either handler, because both read the same resource. recorded is whether UCP has a record of the
-// last deploy's values: only then does it add the handler's RecordedEquivalent, which GeneratePatchWithOptions then
-// uses only where the last deploy set the template's value.
-func equivalentFor(r *request, recorded bool) func(path string, template any, aws any) bool {
+// equivalentFor returns the native handler's rules for values AWS returns in another form, or nil when there are none.
+// It applies with either handler, because both read the same resource. properties are the template's, which
+// TemplateEquivalent gets. recorded is whether UCP has a record of the last deploy's values: only then does it add the
+// handler's RecordedEquivalent, which GeneratePatchWithOptions then uses only where the last deploy set the template's
+// value.
+func equivalentFor(r *request, recorded bool, properties map[string]any) func(path string, template any, aws any) bool {
 	if r.native == nil {
 		return nil
 	}
 	options := r.native.Handler.Options()
-	if !recorded || options.RecordedEquivalent == nil {
-		return options.Equivalent
+	rules := []func(path string, template any, aws any) bool{}
+	if options.Equivalent != nil {
+		rules = append(rules, options.Equivalent)
+	}
+	if options.TemplateEquivalent != nil {
+		rules = append(rules, func(path string, template any, aws any) bool {
+			return options.TemplateEquivalent(properties, path, template, aws)
+		})
+	}
+	if recorded && options.RecordedEquivalent != nil {
+		rules = append(rules, options.RecordedEquivalent)
+	}
+	if len(rules) == 0 {
+		return nil
 	}
 	return func(path string, template any, aws any) bool {
-		return (options.Equivalent != nil && options.Equivalent(path, template, aws)) || options.RecordedEquivalent(path, template, aws)
+		return slices.ContainsFunc(rules, func(rule func(path string, template any, aws any) bool) bool {
+			return rule(path, template, aws)
+		})
 	}
 }
 

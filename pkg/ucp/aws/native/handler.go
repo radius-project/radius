@@ -134,6 +134,36 @@ type DeletePreparer interface {
 	DeleteWithToken(ctx context.Context, region string, identifier string, token string) error
 }
 
+// UpdatePreparer is implemented by a handler that keeps state of its own for an update on UCP's record instead of in
+// AWS, such as the latest administrative action of an FSx file system that failed before the update, which Progress
+// must not take as the update's. Before the first call of an update, UCP calls UpdateState and saves the value on the
+// record with UpdateRequest.Token. It passes the value as UpdateRequest.State on every attempt of that update, and
+// calls UpdateProgress instead of Progress while it waits for it. UCP stores the value as it is, so it must never
+// hold a secret.
+type UpdatePreparer interface {
+	// UpdateState returns the state to keep for an update of the resource with the identifier. UCP calls it once per
+	// update, before any update call.
+	UpdateState(ctx context.Context, region string, identifier string) (string, error)
+
+	// UpdateProgress reads how far the update of the resource has got, as Progress does for OperationUpdate, given
+	// the state UpdateState returned for it.
+	UpdateProgress(ctx context.Context, region string, identifier string, state string) (Progress, error)
+}
+
+// Cleaner is implemented by a handler that puts on a resource what it needs only for a while, such as a tag that
+// finds a create UCP lost (see RecoverBySearch), or what older versions kept in AWS, so the resource ends up carrying
+// nothing of Radius's. UCP calls Cleanup once a create finished and the record is saved with the identifier and
+// without the client token, so a restart before that save can still find the create. A failure is only logged: UCP
+// calls Cleanup again at the next deploy of the record, and at each later one until it succeeds. A resource UCP took
+// over may carry the marks of a create another alias lost and still has to find, so the handler removes a mark only
+// when it holds createToken.
+type Cleaner interface {
+	// Cleanup removes from the resource with the identifier what the handler no longer needs. createToken is the
+	// client token of the create that made the resource, or "" when UCP took it over. It returns nil when there is
+	// nothing to remove.
+	Cleanup(ctx context.Context, region string, identifier string, createToken string) error
+}
+
 // ScopedReader is implemented by a handler whose resource is some members of a parent that others can add members to
 // as well, such as users a template adds to an existing IAM group. Read alone sees every member of the parent, so a
 // redeploy would remove members added outside Radius. UCP calls ReadScoped instead of Read, with the property sets the
@@ -153,6 +183,17 @@ type ScopedDeleter interface {
 	// DeleteScoped starts removing the members managed lists from the resource with the identifier. It returns
 	// ErrNotFound when the parent has none of them.
 	DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error
+}
+
+// RecordReader is implemented by a handler that can't read some properties while the resource is in some states, such
+// as the tags of a DAX cluster, which DAX returns only while the cluster is available. UCP calls ReadRecorded instead
+// of Read, with the properties its record shows the resource has: the last-applied properties, when no operation left
+// values unconfirmed. recorded is nil when UCP has no record of the resource, such as for `existing` and a take-over,
+// or its values aren't confirmed. The handler takes the properties it can't read from recorded, and leaves them out
+// when recorded is nil, so an update that would change them can fail clearly instead.
+type RecordReader interface {
+	// ReadRecorded returns the properties of the resource with the identifier, as Read does.
+	ReadRecorded(ctx context.Context, region string, identifier string, recorded map[string]any) (map[string]any, error)
 }
 
 // IdentifierResolver is implemented by a handler whose identifier has more than one form for one resource, such as one
@@ -227,6 +268,17 @@ type UpdateRequest struct {
 	// out write-only values whose fingerprint shows they are unchanged, and clears properties the template no longer
 	// sets. A handler applies Patch, and reads Desired only for context.
 	Patch jsondiff.Patch
+
+	// Token is a UUID saved on the record before the first call of this update, and the same on every attempt to
+	// send it: a request that resumes an update UCP reserved but never tracked, or the next deploy after an update
+	// call whose outcome UCP can't tell, sends it again. It is also the operation ID. A handler sends it as the API's
+	// idempotency token, so a resent update isn't applied twice. A new update, including one after this update
+	// finished or AWS rejected it, gets a new token.
+	Token string
+
+	// State is what UpdatePreparer.UpdateState returned before the first call of this update, for a handler that
+	// implements it, and "" otherwise.
+	State string
 }
 
 // Resource is a resource List returns.
@@ -332,6 +384,11 @@ type Options struct {
 	// leaves out something the last deploy set, such as a field inside a list item, so a rule that lets AWS's value
 	// hold more than the template, such as defaults AWS fills in, never hides a removal.
 	Equivalent func(path string, template any, aws any) bool
+
+	// TemplateEquivalent is Equivalent for a rule that also depends on another value the template sets, such as an
+	// engine version AWS upgrades on its own only while the template lets it. properties are the template's
+	// properties. UCP uses it where it uses Equivalent, with the same limits.
+	TemplateEquivalent func(properties map[string]any, path string, template any, aws any) bool
 
 	// RecordedEquivalent is Equivalent for a rule only a record of the last deploy can justify, such as a KMS alias AWS
 	// reports as the key's ARN, or values AWS adds to a create-only list that could also have been set outside the

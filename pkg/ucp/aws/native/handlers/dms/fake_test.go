@@ -119,6 +119,12 @@ func (f *fakeAPI) CreateReplicationInstance(ctx context.Context, in *dms.CreateR
 		return nil, err
 	}
 	props["ReplicationInstanceIdentifier"] = id
+	// DMS uses its default engine version when the create leaves EngineVersion out, and in place of an older one
+	// while AutoMinorVersionUpgrade is on, its default.
+	autoUpgrade := in.AutoMinorVersionUpgrade == nil || *in.AutoMinorVersionUpgrade
+	if version := aws.ToString(in.EngineVersion); version == "" || (autoUpgrade && compareVersions(version, defaultEngineVersion) < 0) {
+		props["EngineVersion"] = defaultEngineVersion
+	}
 	f.store.Put(instanceType, id, props)
 	f.status[id] = "creating"
 	return &dms.CreateReplicationInstanceOutput{}, nil
@@ -232,6 +238,9 @@ func (f *fakeAPI) ModifyReplicationInstance(ctx context.Context, in *dms.ModifyR
 		return nil, err
 	}
 	f.lastModify = in
+	if err := checkVersion(in, f.store.Resource(instanceType, f.instanceOf(in.ReplicationInstanceArn))); err != nil {
+		return nil, err
+	}
 	values, err := awsapi.EncodeObject(in)
 	if err != nil {
 		return nil, err
@@ -249,6 +258,38 @@ func (f *fakeAPI) ModifyReplicationInstance(ctx context.Context, in *dms.ModifyR
 		f.status[id] = "modifying"
 	})
 	return &dms.ModifyReplicationInstanceOutput{}, err
+}
+
+// defaultEngineVersion is the engine version the fake gives a create that leaves EngineVersion out.
+const defaultEngineVersion = "3.6.1"
+
+// checkVersion rejects a modify's EngineVersion as DMS does: DMS doesn't support engine version downgrades, and
+// another major version needs AllowMajorVersionUpgrade. The fake takes a version's first number as its major
+// version. props is the stored instance, or nil when there is none.
+func checkVersion(in *dms.ModifyReplicationInstanceInput, props map[string]any) error {
+	current := awsapi.String(props, "EngineVersion")
+	if in.EngineVersion == nil || current == "" {
+		return nil
+	}
+	version := aws.ToString(in.EngineVersion)
+	if compareVersions(version, current) < 0 {
+		return fault("ValidationError")
+	}
+	if major, _, _ := strings.Cut(version, "."); !strings.HasPrefix(current, major+".") && !in.AllowMajorVersionUpgrade {
+		return fault("ValidationError")
+	}
+	return nil
+}
+
+// compareVersions compares two engine versions such as 3.5.3 by their numbers, and as strings when either isn't
+// numbers joined by dots.
+func compareVersions(a string, b string) int {
+	na, okA := versionNumbers(a)
+	nb, okB := versionNumbers(b)
+	if !okA || !okB {
+		return strings.Compare(a, b)
+	}
+	return slices.Compare(padded(na, len(nb)), padded(nb, len(na)))
 }
 
 func (f *fakeAPI) DeleteReplicationInstance(ctx context.Context, in *dms.DeleteReplicationInstanceInput, _ ...func(*dms.Options)) (*dms.DeleteReplicationInstanceOutput, error) {

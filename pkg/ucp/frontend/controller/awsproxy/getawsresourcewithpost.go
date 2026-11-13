@@ -133,7 +133,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	if response == nil {
 		if err := p.retryer.RetryFunc(ctx, func(ctx context.Context) error {
 			if rt.handler != nil {
-				response, err = readNative(ctx, rt.handler, region, awsResourceIdentifier, nil)
+				response, err = readNative(ctx, rt.handler, region, awsResourceIdentifier, nil, nil)
 				if err == nil && response == nil {
 					err = native.ErrNotFound
 				}

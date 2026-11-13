@@ -2436,6 +2436,11 @@ func (r *recorder) List(ctx context.Context, region string) ([]native.Resource, 
 }
 
 func (r *recorder) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
+	return r.progress(func() (native.Progress, error) { return r.Handler.Progress(ctx, region, identifier, op) })
+}
+
+// progress calls read, unless the recorder holds operations in progress.
+func (r *recorder) progress(read func() (native.Progress, error)) (native.Progress, error) {
 	r.mu.Lock()
 	hold, onProgress := r.hold, r.onProgress
 	r.mu.Unlock()
@@ -2445,5 +2450,32 @@ func (r *recorder) Progress(ctx context.Context, region string, identifier strin
 	if hold {
 		return native.Progress{State: "in-progress", Waiting: "available"}, nil
 	}
-	return r.Handler.Progress(ctx, region, identifier, op)
+	return read()
+}
+
+// The recorder always has the methods of native.UpdatePreparer and native.Cleaner, so UCP calls them whatever the
+// handler under test has. For a handler without them, UpdateState returns "", UpdateProgress calls Progress, and
+// Cleanup does nothing.
+
+func (r *recorder) UpdateState(ctx context.Context, region string, identifier string) (string, error) {
+	if preparer, ok := r.Handler.(native.UpdatePreparer); ok {
+		return preparer.UpdateState(ctx, region, identifier)
+	}
+	return "", nil
+}
+
+func (r *recorder) UpdateProgress(ctx context.Context, region string, identifier string, state string) (native.Progress, error) {
+	return r.progress(func() (native.Progress, error) {
+		if preparer, ok := r.Handler.(native.UpdatePreparer); ok {
+			return preparer.UpdateProgress(ctx, region, identifier, state)
+		}
+		return r.Handler.Progress(ctx, region, identifier, native.OperationUpdate)
+	})
+}
+
+func (r *recorder) Cleanup(ctx context.Context, region string, identifier string, createToken string) error {
+	if cleaner, ok := r.Handler.(native.Cleaner); ok {
+		return cleaner.Cleanup(ctx, region, identifier, createToken)
+	}
+	return nil
 }

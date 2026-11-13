@@ -21,6 +21,10 @@ package fsx
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -57,6 +61,8 @@ var inRegion = awsapi.InRegion[fsx.Options]
 var (
 	_ native.Handler        = (*FileSystem)(nil)
 	_ native.DeletePreparer = (*FileSystem)(nil)
+	_ native.UpdatePreparer = (*FileSystem)(nil)
+	_ native.Cleaner        = (*FileSystem)(nil)
 )
 
 // failedStates are the states of a file system that failed, or that FSx can't reach, such as a Windows file system
@@ -241,9 +247,28 @@ func properties(fs *types.FileSystem) (map[string]any, error) {
 }
 
 // deleteOptionsTag is the tag key the handler puts on an OpenZFS file system whose template sets
-// OpenZFSConfiguration Options, with the options joined by spaces. Options are write-only, so UCP keeps no copy, and a
-// delete reads them from this tag. Read leaves the tag out, so it never counts as a change.
+// OpenZFSConfiguration Options, with the options joined by spaces. Options are write-only, because FSx doesn't return
+// them, and UCP never stores write-only values, so a delete reads them from this tag. Read leaves the tag out, so it
+// never counts as a change.
 const deleteOptionsTag = "radius-delete-options"
+
+// maxTags is how many tags FSx allows on a file system, not counting tags with the aws: prefix.
+const maxTags = 50
+
+// checkTagLimit returns a rejected failure when the template's tags and the radius tags the handler adds are more
+// than FSx allows, before any AWS call.
+func checkTagLimit(properties map[string]any, radius int) error {
+	return awsapi.TagLimit(properties, maxTags, radius, "an FSx file system")
+}
+
+// createTagCount is how many tags the handler adds to a create of properties: the operation tag, and the delete
+// options tag when the template sets OpenZFSConfiguration Options.
+func createTagCount(properties map[string]any) int {
+	if len(awsapi.Strings(asMap(properties["OpenZFSConfiguration"]), "Options")) > 0 {
+		return 2
+	}
+	return 1
+}
 
 // createTags returns the tags a create sends: the template's tags, the operation tag with token, and the delete
 // options tag when the template sets OpenZFSConfiguration Options.
@@ -274,6 +299,9 @@ func deleteOptions(tags []types.Tag) []types.DeleteFileSystemOpenZFSOption {
 // before a delete without the write-only values, and then the handler finds the file system by that tag.
 func (h *FileSystem) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	if err := awsapi.ReservedTags(request.Properties, reservedTags...); err != nil {
+		return "", err
+	}
+	if err := checkTagLimit(request.Properties, createTagCount(request.Properties)); err != nil {
 		return "", err
 	}
 	p := request.Properties
@@ -403,8 +431,9 @@ var updatable = map[string][]string{
 	},
 }
 
-// Update makes the patch's changes with one UpdateFileSystem call, then adds and removes tags. A property the
-// template no longer sets keeps AWS's value, because FSx has no call to clear it.
+// Update makes the patch's changes with one UpdateFileSystem call, sending the update's token as FSx's idempotency
+// token, so a resent update isn't applied twice. Then it removes and adds tags. A property the template no longer sets
+// keeps AWS's value, because FSx has no call to clear it.
 func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) error {
 	if err := awsapi.ReservedTags(request.Desired, reservedTags...); err != nil {
 		return err
@@ -427,6 +456,9 @@ func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) e
 				values[name] = changes
 			}
 		case "Tags":
+			if err := checkTagLimit(request.Desired, len(presentTags(fs.Tags, reservedTags))); err != nil {
+				return err
+			}
 			calls = append(calls, h.tagCalls(ctx, fs.ResourceARN, request, opt)...)
 		}
 	}
@@ -436,42 +468,90 @@ func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) e
 			return err
 		}
 		input.FileSystemId = aws.String(request.Identifier)
+		input.ClientRequestToken = updateToken(request.Token, input)
 		calls = append([]func() error{func() error {
 			_, err := h.api.UpdateFileSystem(ctx, input, opt)
-			return err
-		}}, calls...)
-	}
-	if baseline := failedBaseline(fs); baseline != "" {
-		// An update that makes no administrative action, such as a tag change or none at all, must not take the
-		// failed one as its.
-		calls = append([]func() error{func() error {
-			_, err := h.api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: fs.ResourceARN, Tags: []types.Tag{{Key: aws.String(updateBaselineTag), Value: aws.String(baseline)}}}, opt)
 			return err
 		}}, calls...)
 	}
 	return awsapi.Calls(calls...)
 }
 
-// reservedTags are the tag keys the handler keeps its own state in, which a template can't set.
+// updateToken returns the idempotency token of an UpdateFileSystem call: the first 32 hex characters of an
+// HMAC-SHA-256 of the call's input without its passwords, keyed by the update's token. A resent update with the same
+// input sends the same token, so FSx doesn't apply it twice. One whose input changed, such as after AWS applied part of
+// the update, sends a new token, because FSx rejects a token it has seen with other parameters. UCP returns the
+// update's token as the operation ID, so the passwords stay out of the HMAC: with them in, anyone who has the operation
+// ID and sees the call's token, such as in CloudTrail, could test guesses of a password. A resend that changes only a
+// password therefore sends the same token, and FSx rejects it, which clears the update's token for the next deploy. It
+// returns nil without a token, and then the SDK makes a new token for each call.
+func updateToken(token string, input *fsx.UpdateFileSystemInput) *string {
+	if token == "" {
+		return nil
+	}
+	values, _ := awsapi.EncodeObject(input)
+	delete(asMap(values["OntapConfiguration"]), "FsxAdminPassword")
+	delete(asMap(asMap(values["WindowsConfiguration"])["SelfManagedActiveDirectoryConfiguration"]), "Password")
+	// The values are strings, numbers, booleans, and lists and maps of them, which always marshal.
+	b, _ := json.Marshal(values)
+	mac := hmac.New(sha256.New, []byte(token))
+	mac.Write(b)
+	return aws.String(hex.EncodeToString(mac.Sum(nil))[:32])
+}
+
+// reservedTags are the tag keys the handler keeps its own state in, now or in older versions, which a template can't
+// set.
 var reservedTags = []string{awsapi.OperationTag, deleteOptionsTag, updateBaselineTag}
 
-// updateBaselineTag is the tag key the handler puts on a file system whose latest administrative action failed, with
-// that action's request time, before it starts an update. Progress ignores the actions it names, so an update that
-// makes no action of its own, such as a tag change, isn't reported as failed. Read leaves the tag out.
+// updateBaselineTag is the tag key older versions put on a file system whose latest administrative action failed,
+// before an update. The handler now keeps that state on UCP's record (see UpdateState). Read leaves the tag out,
+// UpdateProgress reads it for an update an older version started, and Cleanup removes it.
 const updateBaselineTag = "radius-update-baseline"
 
-// failedBaseline returns the request time of the file system's latest administrative action, other than optimizations,
-// when that action failed and the file system's baseline tag doesn't name it yet, and "" otherwise.
-func failedBaseline(fs *types.FileSystem) string {
+// presentTags returns the keys that tags has, in the order of keys.
+func presentTags(tags []types.Tag, keys []string) []string {
+	out := []string{}
+	for _, key := range keys {
+		if slices.ContainsFunc(tags, func(t types.Tag) bool { return aws.ToString(t.Key) == key }) {
+			out = append(out, key)
+		}
+	}
+	return out
+}
+
+// UpdateState returns the request time of the file system's latest administrative action, other than optimizations,
+// when that action failed, and "" otherwise. UCP keeps it on the record for the update, so UpdateProgress doesn't take
+// that failure as the update's when the update makes no action of its own, such as a tag change.
+func (h *FileSystem) UpdateState(ctx context.Context, region string, identifier string) (string, error) {
+	fs, err := h.describe(ctx, region, identifier)
+	if err != nil {
+		return "", err
+	}
 	latest := latestAction(fs, time.Time{})
 	if latest == nil || latest.Status != types.StatusFailed {
-		return ""
+		return "", nil
 	}
-	value := aws.ToTime(latest.RequestTime).UTC().Format(time.RFC3339Nano)
-	if value == tagValue(fs.Tags, updateBaselineTag) {
-		return ""
+	return aws.ToTime(latest.RequestTime).UTC().Format(time.RFC3339Nano), nil
+}
+
+// Cleanup removes the operation tag when it holds createToken, so it never removes the tag of a create another alias
+// lost, and the baseline tag of older versions. The file system then keeps a tag of Radius's only when its template
+// sets OpenZFS delete Options (see deleteOptionsTag).
+func (h *FileSystem) Cleanup(ctx context.Context, region string, identifier string, createToken string) error {
+	fs, err := h.describe(ctx, region, identifier)
+	if err != nil {
+		return err
 	}
-	return value
+	keys := []string{}
+	if createToken != "" && tagValue(fs.Tags, awsapi.OperationTag) == createToken {
+		keys = append(keys, awsapi.OperationTag)
+	}
+	keys = append(keys, presentTags(fs.Tags, []string{updateBaselineTag})...)
+	if len(keys) == 0 {
+		return nil
+	}
+	_, err = h.api.UntagResource(ctx, &fsx.UntagResourceInput{ResourceARN: fs.ResourceARN, TagKeys: keys}, inRegion(region))
+	return err
 }
 
 // latestAction returns the file system's latest administrative action other than optimizations that FSx requested
@@ -596,20 +676,20 @@ func asMap(v any) map[string]any {
 	return map[string]any{}
 }
 
-// tagCalls returns the calls that add and remove tags to go from the request's current tags to the desired ones.
-// The current tags never include the operation tag, so it stays.
+// tagCalls returns the calls that remove and add tags to go from the request's current tags to the desired ones.
+// Removals go first, so a change that replaces tags stays within FSx's tag limit.
 func (h *FileSystem) tagCalls(ctx context.Context, arn *string, request native.UpdateRequest, opt func(*fsx.Options)) []func() error {
 	set, remove := awsapi.TagChanges(awsapi.Tags(request.Current), awsapi.Tags(request.Desired))
 	calls := []func() error{}
-	if len(set) > 0 {
-		calls = append(calls, func() error {
-			_, err := h.api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: arn, Tags: awsapi.SDKTags[types.Tag](set)}, opt)
-			return err
-		})
-	}
 	if len(remove) > 0 {
 		calls = append(calls, func() error {
 			_, err := h.api.UntagResource(ctx, &fsx.UntagResourceInput{ResourceARN: arn, TagKeys: remove}, opt)
+			return err
+		})
+	}
+	if len(set) > 0 {
+		calls = append(calls, func() error {
+			_, err := h.api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: arn, Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 			return err
 		})
 	}
@@ -711,11 +791,22 @@ func (h *FileSystem) List(ctx context.Context, region string) ([]native.Resource
 	return out, nil
 }
 
-// Progress reads the file system's state. A create waits for it to be available. An update also waits for FSx to
-// finish its administrative actions, except optimizations that run in the background, and fails when the latest
-// one failed. A delete waits until FSx no
-// longer has the file system, and fails if FSx stops deleting it, such as when the final backup fails.
+// Progress reads the file system's state. A create waits for it to be available. An update waits as UpdateProgress
+// does with no state. A delete waits until FSx no longer has the file system, and fails if FSx stops deleting it,
+// such as when the final backup fails.
 func (h *FileSystem) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
+	return h.progress(ctx, region, identifier, op, "")
+}
+
+// UpdateProgress reads how far an update has got. It waits for the file system to be available and for FSx to finish
+// its administrative actions, except optimizations that run in the background, and fails when the latest action FSx
+// requested after state, the time UpdateState returned, failed. With no state, it uses the baseline tag an older
+// version put on the file system, if any, so an update an older version started finishes the same way.
+func (h *FileSystem) UpdateProgress(ctx context.Context, region string, identifier string, state string) (native.Progress, error) {
+	return h.progress(ctx, region, identifier, native.OperationUpdate, state)
+}
+
+func (h *FileSystem) progress(ctx context.Context, region string, identifier string, op native.Operation, baseline string) (native.Progress, error) {
 	fs, err := h.describe(ctx, region, identifier)
 	if err != nil {
 		return native.Progress{}, err
@@ -753,7 +844,10 @@ func (h *FileSystem) Progress(ctx context.Context, region string, identifier str
 	}
 	// The latest action after the baseline is the update's. FSx accepts an update and then runs it, so a change it
 	// can't make fails there, and the file system stays as it was. An update that made no action has none.
-	since, _ := time.Parse(time.RFC3339Nano, tagValue(fs.Tags, updateBaselineTag))
+	if baseline == "" {
+		baseline = tagValue(fs.Tags, updateBaselineTag)
+	}
+	since, _ := time.Parse(time.RFC3339Nano, baseline)
 	if latest := latestAction(fs, since); latest != nil && latest.Status == types.StatusFailed {
 		message := fmt.Sprintf("FSx failed the %s", latest.AdministrativeActionType)
 		if d := latest.FailureDetails; d != nil && d.Message != nil {
