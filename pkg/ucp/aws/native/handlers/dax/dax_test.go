@@ -117,6 +117,7 @@ func Test_Suite_Cluster(t *testing.T) {
 		FailCall: nativetest.FailCall(2, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: clusterAPI,
 	})
 }
 
@@ -164,21 +165,22 @@ func Test_Read(t *testing.T) {
 	got, err := h.Read(t.Context(), region, identifier)
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{
-		"ClusterName":                 "app-dax",
-		"Arn":                         arnPrefix + "app-dax",
-		"Description":                 "cache",
-		"IAMRoleARN":                  "arn:aws:iam::123456789012:role/dax",
-		"NodeType":                    "dax.t3.small",
-		"ReplicationFactor":           float64(1),
-		"SubnetGroupName":             "subnets",
-		"ParameterGroupName":          "params",
-		"PreferredMaintenanceWindow":  "sun:05:00-sun:06:00",
-		"SecurityGroupIds":            []any{"sg-1", "sg-2"},
-		"NotificationTopicARN":        "arn:aws:sns:us-west-2:123456789012:topic",
-		"SSESpecification":            map[string]any{"SSEEnabled": true},
-		"ClusterDiscoveryEndpoint":    "app-dax.abc123.dax-clusters.us-west-2.amazonaws.com:8111",
-		"ClusterDiscoveryEndpointURL": "dax://app-dax.abc123.dax-clusters.us-west-2.amazonaws.com",
-		"Tags":                        map[string]any{"owner": "", "team": "a"},
+		"ClusterName":                   "app-dax",
+		"Arn":                           arnPrefix + "app-dax",
+		"ClusterEndpointEncryptionType": "NONE",
+		"Description":                   "cache",
+		"IAMRoleARN":                    "arn:aws:iam::123456789012:role/dax",
+		"NodeType":                      "dax.t3.small",
+		"ReplicationFactor":             float64(1),
+		"SubnetGroupName":               "subnets",
+		"ParameterGroupName":            "params",
+		"PreferredMaintenanceWindow":    "sun:05:00-sun:06:00",
+		"SecurityGroupIds":              []any{"sg-1", "sg-2"},
+		"NotificationTopicARN":          "arn:aws:sns:us-west-2:123456789012:topic",
+		"SSESpecification":              map[string]any{"SSEEnabled": true},
+		"ClusterDiscoveryEndpoint":      "app-dax.abc123.dax-clusters.us-west-2.amazonaws.com:8111",
+		"ClusterDiscoveryEndpointURL":   "dax://app-dax.abc123.dax-clusters.us-west-2.amazonaws.com",
+		"Tags":                          map[string]any{"owner": "", "team": "a"},
 	}, got, "AWS's tags and the write-only AvailabilityZones are left out")
 
 	_, err = h.Read(t.Context(), region, "missing")

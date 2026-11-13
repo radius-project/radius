@@ -61,6 +61,7 @@ func Test_Options(t *testing.T) {
 func Test_Cluster_Restore(t *testing.T) {
 	t.Run("from a snapshot", func(t *testing.T) {
 		h, api := newCluster(t)
+		api.snapshots = []string{"snap-1"}
 		id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{
 			"DBClusterIdentifier": "Restored",
 			"SnapshotIdentifier":  "snap-1",
@@ -75,6 +76,7 @@ func Test_Cluster_Restore(t *testing.T) {
 
 	t.Run("to a point in time", func(t *testing.T) {
 		h, api := newCluster(t)
+		addClusters(api.store, "source")
 		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{
 			"DBClusterIdentifier":       "copy",
 			"SourceDBClusterIdentifier": "source",
@@ -290,6 +292,7 @@ func (p *pagedAPI) DescribeDBClusters(ctx context.Context, in *docdb.DescribeDBC
 
 func Test_Instance_Errors(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
+	addClusters(api.store, "app")
 	h := NewInstance(api)
 
 	api.errs["CreateDBInstance"] = fault("DBClusterNotFoundFault")
@@ -335,6 +338,7 @@ func Test_Instance_UpdatesEveryUpdatableProperty(t *testing.T) {
 // is left as AWS has it.
 func Test_Instance_RemovedDefaults(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
+	addClusters(api.store, "app")
 	h := NewInstance(api)
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{
 		"DBInstanceIdentifier": "one", "DBClusterIdentifier": "app", "AutoMinorVersionUpgrade": false,
@@ -362,6 +366,7 @@ func Test_Instance_RemovedDefaults(t *testing.T) {
 func Test_Instance_CertificateRotationRestart(t *testing.T) {
 	for _, restart := range []bool{false, true} {
 		api := newFakeAPI(awsfake.NewCloudControl())
+		addClusters(api.store, "app")
 		h := NewInstance(api)
 		properties := map[string]any{"DBInstanceIdentifier": "one", "DBClusterIdentifier": "app", "CACertificateIdentifier": "rds-ca-2019", "CertificateRotationRestart": restart}
 		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
@@ -376,6 +381,7 @@ func Test_Instance_CertificateRotationRestart(t *testing.T) {
 	}
 
 	api := newFakeAPI(awsfake.NewCloudControl())
+	addClusters(api.store, "app")
 	h := NewInstance(api)
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"DBInstanceIdentifier": "one", "DBClusterIdentifier": "app"}})
 	require.NoError(t, err)
