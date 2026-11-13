@@ -23,10 +23,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -180,6 +183,42 @@ func (s *Store) FindByIdentifier(ctx context.Context, id resources.ID, identifie
 	}
 }
 
+// Others returns the records of other aliases of id's type in the identity scope, as FindByIdentifier searches them.
+// UCP reads them to find the members of a parent that another alias may hold (see native.Members). Like
+// FindByIdentifier, it doesn't stop another alias from saving a record right after.
+func (s *Store) Others(ctx context.Context, id resources.ID, scope schemas.IdentityScope) ([]*datamodel.AWSResource, error) {
+	query := database.Query{RootScope: id.RootScope(), ResourceType: id.Type()}
+	if scope == schemas.IdentityScopeAccount {
+		query.RootScope, query.ScopeRecursive = accountScope(id), true
+	}
+	out := []*datamodel.AWSResource{}
+	token := ""
+	for {
+		opts := []database.QueryOptions{}
+		if token != "" {
+			opts = append(opts, database.WithPaginationToken(token))
+		}
+		result, err := s.db.Query(ctx, query, opts...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read the records of %s: %w", id.Type(), err)
+		}
+		for _, item := range result.Items {
+			if strings.EqualFold(item.ID, id.String()) {
+				continue
+			}
+			rec := &datamodel.AWSResource{}
+			if err := convert(item.Data, rec); err != nil {
+				return nil, fmt.Errorf("failed to read the record of %s: %w", item.ID, err)
+			}
+			out = append(out, rec)
+		}
+		if result.PaginationToken == "" {
+			return out, nil
+		}
+		token = result.PaginationToken
+	}
+}
+
 // accountScope returns the account scope of an AWS resource ID, such as /planes/aws/aws/accounts/1234, or its root
 // scope when it has no account.
 func accountScope(id resources.ID) string {
@@ -279,6 +318,10 @@ func ClearPending(rec *datamodel.AWSResource) {
 // KeepPending treats the values of an interrupted update as applied: the update may have reached AWS, so Radius owns
 // the pending properties, and a later deploy that omits one clears it. The pending values are then dropped.
 //
+// A path whose pending value differs from the last-applied one is added to UnresolvedPaths, because AWS may hold
+// either value or a mix. That matters for a list, which the pending value replaces whole: a field inside a list item
+// that the update was removing would otherwise no longer be owned, though AWS may still have it.
+//
 // Whether AWS has a write-only value the update sent cannot be known, so its fingerprint is not kept as applied, and
 // the previous one is dropped too. The next deploy sends that value again. Fingerprints that the update did not change
 // stay.
@@ -287,6 +330,7 @@ func KeepPending(rec *datamodel.AWSResource) {
 		if rec.Properties.LastApplied == nil {
 			rec.Properties.LastApplied = map[string]any{}
 		}
+		markUnresolved(rec)
 		merge(rec.Properties.LastApplied, rec.Properties.PendingLastApplied)
 	}
 	previous, pending := rec.Properties.Fingerprints, rec.Properties.PendingFingerprints
@@ -298,6 +342,24 @@ func KeepPending(rec *datamodel.AWSResource) {
 		}
 	}
 	ClearPending(rec)
+}
+
+// markUnresolved adds to UnresolvedPaths every path whose pending value differs from the last-applied one, from
+// either side, because AWS may hold either value or a mix: the operation in progress failed partway, or UCP can't tell
+// how it ended. A path only one side has counts too, such as a list the pending values change into an object.
+func markUnresolved(rec *datamodel.AWSResource) {
+	paths := rec.Properties.UnresolvedPaths
+	applied := awsoperations.FlattenProperties(rec.Properties.LastApplied)
+	pending := awsoperations.FlattenProperties(rec.Properties.PendingLastApplied)
+	for _, values := range []map[string]any{applied, pending} {
+		for path := range values {
+			if !reflect.DeepEqual(applied[path], pending[path]) {
+				paths = append(paths, path)
+			}
+		}
+	}
+	slices.Sort(paths)
+	rec.Properties.UnresolvedPaths = slices.Compact(paths)
 }
 
 // merge copies src into dst. When both hold an object under the same key, the objects are merged.
@@ -325,11 +387,12 @@ func ApplyPending(rec *datamodel.AWSResource) {
 }
 
 // applyPendingValues makes the pending last-applied properties and fingerprints the last-applied ones, and drops the
-// pending values.
+// pending values. AWS applied all of them, so no path is unresolved any more.
 func applyPendingValues(rec *datamodel.AWSResource) {
 	if rec.Properties.PendingLastApplied != nil {
 		rec.Properties.LastApplied = rec.Properties.PendingLastApplied
 		rec.Properties.Fingerprints = rec.Properties.PendingFingerprints
+		rec.Properties.UnresolvedPaths = nil
 	}
 	ClearPending(rec)
 }

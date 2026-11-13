@@ -110,6 +110,25 @@ sibling_main_commit() {
     git --git-dir="${SIBLING_ROOT}/$1.git" rev-parse main
 }
 
+# Commits the staged bicep-types-aws change and plans that commit.
+plan_aws_change() {
+    local seed="${SIBLING_ROOT}/bicep-types-aws-seed"
+
+    git -C "${seed}" commit -q -m "Change radius path"
+    git -C "${seed}" push -q origin main
+    AWS_COMMIT="$(sibling_main_commit bicep-types-aws)"
+    write_plan "${BASE_SHA}"
+    wrap_body
+    cp "${EXPECTED_PLAN}" \
+        "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
+}
+
+pin_aws_radius() {
+    git -C "${SIBLING_ROOT}/bicep-types-aws-seed" update-index --add \
+        --cacheinfo "160000,$1,radius"
+    plan_aws_change
+}
+
 wrap_body() {
     {
         echo '## Release plan'
@@ -514,6 +533,65 @@ test_rejects_unreachable_planned_sibling_commit() {
     ((++PASS))
 }
 
+test_accepts_matching_radius_pin() {
+    pin_aws_radius "${BASE_SHA}"
+    if ! run_validator > /dev/null; then
+        fail_test "expected a bicep-types-aws pin that matches the product commit to pass"
+        return
+    fi
+    ((++PASS))
+}
+
+test_notes_missing_radius_pin() {
+    local output
+
+    if ! output="$(run_validator 2>&1)"; then
+        fail_test "expected bicep-types-aws without a radius submodule to pass: ${output}"
+        return
+    fi
+    if [[ "${output}" != *"::notice::bicep-types-aws commit ${AWS_COMMIT} has no radius submodule"* ]]; then
+        fail_test "expected a notice for the missing radius submodule: ${output}"
+        return
+    fi
+    ((++PASS))
+}
+
+expect_radius_pin_failure() {
+    local expected="$1"
+    local output status=0
+
+    output="$(run_validator 2>&1)" || status=$?
+    if [[ "${status}" == 0 || "${output}" != *"${expected}"* ||
+        "${output}" != *"#pin-radius-in-bicep-types-aws"* ]]; then
+        fail_test "expected failure containing '${expected}': ${output}"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rejects_mismatched_radius_pin() {
+    local pinned="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+    pin_aws_radius "${pinned}"
+    expect_radius_pin_failure "pins Radius ${pinned}, but this release ships Radius ${BASE_SHA}"
+}
+
+test_rejects_radius_path_without_submodule() {
+    local seed="${SIBLING_ROOT}/bicep-types-aws-seed"
+
+    printf 'not a submodule\n' > "${seed}/radius"
+    git -C "${seed}" add radius
+    plan_aws_change
+    expect_radius_pin_failure "has a radius path that is not a submodule"
+}
+
+test_rejects_removed_radius_pin() {
+    pin_aws_radius "${BASE_SHA}"
+    git -C "${SIBLING_ROOT}/bicep-types-aws-seed" rm -q --cached radius
+    plan_aws_change
+    expect_radius_pin_failure "${AWS_COMMIT} removed its radius submodule"
+}
+
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/release-plan-fixture-XXXXXX")"
 
@@ -559,6 +637,16 @@ main() {
     test_accepts_sibling_branch_advance
     setup_repo
     test_rejects_unreachable_planned_sibling_commit
+    setup_repo
+    test_accepts_matching_radius_pin
+    setup_repo
+    test_notes_missing_radius_pin
+    setup_repo
+    test_rejects_mismatched_radius_pin
+    setup_repo
+    test_rejects_radius_path_without_submodule
+    setup_repo
+    test_rejects_removed_radius_pin
 
     if ((FAIL > 0)); then
         echo "release plan tests failed: ${PASS} passed, ${FAIL} failed"

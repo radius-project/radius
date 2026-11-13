@@ -38,9 +38,7 @@ type API interface {
 	ListAcceptedPortfolioShares(ctx context.Context, params *servicecatalog.ListAcceptedPortfolioSharesInput, optFns ...func(*servicecatalog.Options)) (*servicecatalog.ListAcceptedPortfolioSharesOutput, error)
 }
 
-func inRegion(region string) func(*servicecatalog.Options) {
-	return func(o *servicecatalog.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[servicecatalog.Options]
 
 var _ native.Handler = (*AcceptedPortfolioShare)(nil)
 

@@ -64,6 +64,7 @@ func All(cfg aws.Config) []native.Handler {
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
+	stsAPI := stssdk.NewFromConfig(cfg)
 	return []native.Handler{
 		docdb.NewCluster(docdbAPI),
 		docdb.NewInstance(docdbAPI),
@@ -78,12 +79,12 @@ func All(cfg aws.Config) []native.Handler {
 		ec2.NewVPNGatewayRoutePropagation(ec2API),
 		elbv2.NewListenerCertificate(elbv2sdk.NewFromConfig(cfg)),
 		lakeformation.NewDataLakeSettings(lakeformationAPI),
-		lakeformation.NewPermissions(lakeformationAPI),
+		lakeformation.NewPermissions(lakeformationAPI, stsAPI),
 		lakeformation.NewResource(lakeformationAPI),
 		codebuild.NewProject(codebuildsdk.NewFromConfig(cfg)),
 		medialive.NewChannel(medialivesdk.NewFromConfig(cfg)),
 		appsync.NewGraphQLSchema(appsyncsdk.NewFromConfig(cfg), s3sdk.NewFromConfig(cfg)),
-		cloudwatch.NewAnomalyDetector(cloudwatchsdk.NewFromConfig(cfg), stssdk.NewFromConfig(cfg)),
+		cloudwatch.NewAnomalyDetector(cloudwatchsdk.NewFromConfig(cfg), stsAPI),
 		sagemaker.NewTrialComponent(sagemakersdk.NewFromConfig(cfg)),
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),

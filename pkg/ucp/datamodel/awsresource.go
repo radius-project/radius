@@ -51,6 +51,13 @@ type AWSResourceProperties struct {
 	// fails, so the previous LastApplied stays.
 	PendingLastApplied map[string]any `json:"pendingLastApplied"`
 
+	// UnresolvedPaths are paths of LastApplied, like the keys of FlattenProperties in pkg/aws/operations, whose value
+	// isn't confirmed in AWS: an operation that changed them failed partway, or UCP can't tell how it ended, and its
+	// values were kept as possibly applied. AWS may still hold values LastApplied no longer has at these paths, such
+	// as a field inside a list item. A deploy sends the template's value at them, and they are cleared once a deploy
+	// succeeds.
+	UnresolvedPaths []string `json:"unresolvedPaths,omitempty"`
+
 	// Fingerprints are the fingerprints of the write-only values of the last successful deploy. UCP compares them
 	// with the template's values, because AWS never returns write-only values, so an unchanged value is not sent.
 	Fingerprints *AWSFingerprints `json:"fingerprints,omitempty"`
@@ -79,7 +86,8 @@ type AWSResourceProperties struct {
 
 	// DeleteToken is the value a native handler sends with every attempt to delete the resource, such as the name of a
 	// final snapshot (see native.DeletePreparer). UCP saves it before the first delete call, so a retried delete never
-	// takes a second copy. It is cleared when a create or update starts, and when AWS reports the delete failed.
+	// takes a second copy. It is cleared when a create or update starts, and when the delete's progress reports that
+	// it failed. A delete call that returns an error, a timeout, or an error while waiting keeps it.
 	DeleteToken string `json:"deleteToken,omitempty"`
 
 	// LastRequestToken is the request token of the last operation that finished, and LastRequestError is its error,

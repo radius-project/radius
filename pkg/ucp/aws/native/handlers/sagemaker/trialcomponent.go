@@ -47,9 +47,7 @@ type API interface {
 	ListTags(ctx context.Context, params *sagemaker.ListTagsInput, optFns ...func(*sagemaker.Options)) (*sagemaker.ListTagsOutput, error)
 }
 
-func inRegion(region string) func(*sagemaker.Options) {
-	return func(o *sagemaker.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[sagemaker.Options]
 
 var (
 	_ native.Handler           = (*TrialComponent)(nil)
@@ -123,16 +121,14 @@ func (h *TrialComponent) Read(ctx context.Context, region string, identifier str
 }
 
 func (h *TrialComponent) properties(ctx context.Context, region string, c *sagemaker.DescribeTrialComponentOutput) (map[string]any, error) {
-	tags := map[string]string{}
+	tags := []types.Tag{}
 	var token *string
 	for {
 		page, err := h.api.ListTags(ctx, &sagemaker.ListTagsInput{ResourceArn: c.TrialComponentArn, NextToken: token}, inRegion(region))
 		if err != nil {
 			return nil, awsapi.NotFound(err, "ResourceNotFound")
 		}
-		for _, t := range page.Tags {
-			tags[aws.ToString(t.Key)] = aws.ToString(t.Value)
-		}
+		tags = append(tags, page.Tags...)
 		if token = page.NextToken; token == nil {
 			break
 		}
@@ -149,7 +145,7 @@ func (h *TrialComponent) properties(ctx context.Context, region string, c *sagem
 		"LineageGroupArn":    c.LineageGroupArn,
 		"CreationTime":       timeString(c.CreationTime),
 		"LastModifiedTime":   timeString(c.LastModifiedTime),
-		"Tags":               awsapi.TagList(tags),
+		"Tags":               awsapi.TagListOf(tags),
 	})
 }
 
@@ -178,14 +174,6 @@ func timeOf(properties map[string]any, name string) (*time.Time, error) {
 	return &t, nil
 }
 
-func sdkTags(tags []awsapi.Tag) []types.Tag {
-	out := []types.Tag{}
-	for _, t := range tags {
-		out = append(out, types.Tag{Key: aws.String(t.Key), Value: aws.String(t.Value)})
-	}
-	return out
-}
-
 // Create creates the trial component.
 func (h *TrialComponent) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	p := request.Properties
@@ -200,7 +188,7 @@ func (h *TrialComponent) Create(ctx context.Context, request native.CreateReques
 	if input.EndTime, err = timeOf(p, "EndTime"); err != nil {
 		return "", err
 	}
-	input.Tags = sdkTags(awsapi.Tags(p))
+	input.Tags = awsapi.SDKTags[types.Tag](awsapi.Tags(p))
 	if _, err := h.api.CreateTrialComponent(ctx, input, inRegion(request.Region)); err != nil {
 		return "", err
 	}
@@ -277,7 +265,7 @@ func (h *TrialComponent) tagCalls(ctx context.Context, arn *string, request nati
 	calls := []func() error{}
 	if len(set) > 0 {
 		calls = append(calls, func() error {
-			_, err := h.api.AddTags(ctx, &sagemaker.AddTagsInput{ResourceArn: arn, Tags: sdkTags(set)}, opt)
+			_, err := h.api.AddTags(ctx, &sagemaker.AddTagsInput{ResourceArn: arn, Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 			return err
 		})
 	}

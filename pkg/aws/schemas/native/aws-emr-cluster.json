@@ -1149,8 +1149,6 @@
         "elasticmapreduce:DescribeCluster",
         "elasticmapreduce:ListInstanceGroups",
         "elasticmapreduce:GetAutoTerminationPolicy",
-        "elasticmapreduce:ListSteps",
-        "elasticmapreduce:ListBootstrapActions",
         "elasticmapreduce:GetManagedScalingPolicy",
         "iam:PassRole"
       ]
@@ -1161,10 +1159,8 @@
         "elasticmapreduce:AddTags",
         "elasticmapreduce:ListInstanceFleets",
         "elasticmapreduce:DescribeCluster",
-        "elasticmapreduce:ModifyInstanceFleet",
         "elasticmapreduce:ListInstanceGroups",
         "elasticmapreduce:RemoveAutoScalingPolicy",
-        "elasticmapreduce:PutAutoScalingPolicy",
         "elasticmapreduce:ModifyInstanceGroups",
         "elasticmapreduce:SetTerminationProtection",
         "elasticmapreduce:SetUnhealthyNodeReplacement",

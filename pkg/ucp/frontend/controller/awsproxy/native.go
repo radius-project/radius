@@ -190,11 +190,15 @@ func identifierFor(t *native.Type, properties map[string]any, schema string) (st
 	return t.Handler.(native.IdentifierEncoder).Identifier(properties)
 }
 
-// resolveIdentifier returns the native handler's one form of identifier (native.IdentifierResolver), or identifier
-// when the handler has one form, or there is no identifier.
-func resolveIdentifier(ctx context.Context, h native.Handler, region string, identifier string) (string, error) {
-	resolver, ok := h.(native.IdentifierResolver)
-	if !ok || identifier == "" {
+// resolveIdentifier returns the one form of identifier that the native handler of t declares (native.IdentifierResolver),
+// with either handler, as an identifier encoding applies with either handler. It returns identifier when the type has
+// no native handler, or one form, or there is no identifier.
+func resolveIdentifier(ctx context.Context, t *native.Type, region string, identifier string) (string, error) {
+	if t == nil || identifier == "" {
+		return identifier, nil
+	}
+	resolver, ok := t.Handler.(native.IdentifierResolver)
+	if !ok {
 		return identifier, nil
 	}
 	return resolver.ResolveIdentifier(ctx, region, identifier)
@@ -365,7 +369,8 @@ func (e *engine) startCreate(ctx context.Context, r *request, rec *datamodel.AWS
 // ETag, or etag when there is nothing to save.
 func (e *engine) prepareDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, identifier string) (string, error) {
 	preparer, ok := r.handler.(native.DeletePreparer)
-	if !ok || rec.Properties.DeleteToken != "" || onDelete(r) == schemas.OnDeleteReset {
+	_, scoped := r.handler.(native.ScopedDeleter)
+	if !ok || scoped || rec.Properties.DeleteToken != "" || onDelete(r) == schemas.OnDeleteReset {
 		return etag, nil
 	}
 	token, err := preparer.DeleteToken(ctx, r.region, identifier)
@@ -383,8 +388,8 @@ func (e *engine) prepareDelete(ctx context.Context, r *request, rec *datamodel.A
 
 // startDeleteCall starts a delete and returns the token the worker polls. For a type whose onDelete metadata is reset,
 // the native handler resets the resource instead (native.Resetter). A native handler that removes only the members it
-// manages (native.ScopedDeleter) gets the record's managed values, and one that sends the same value on every attempt
-// (native.DeletePreparer) gets deleteToken. Where Cloud Control serves the type, Cloud Control deletes it as
+// manages (native.ScopedDeleter) gets the record's managed values, even when it also sends a delete token, and one
+// that sends the same value on every attempt (native.DeletePreparer) gets deleteToken. Where Cloud Control serves the type, Cloud Control deletes it as
 // CloudFormation defines.
 func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier string, deleteToken string) (string, error) {
 	if r.handler != nil {
@@ -395,10 +400,12 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 		switch {
 		case resets && onDelete(r) == schemas.OnDeleteReset:
 			err = resetter.Reset(ctx, r.region, identifier)
+		case isScoped:
+			// DeleteScoped removes only the members the alias manages, so it comes before a delete token, which
+			// deletes the whole resource.
+			err = scoped.DeleteScoped(ctx, r.region, identifier, r.managed)
 		case prepares && deleteToken != "":
 			err = preparer.DeleteWithToken(ctx, r.region, identifier, deleteToken)
-		case isScoped:
-			err = scoped.DeleteScoped(ctx, r.region, identifier, r.managed)
 		default:
 			err = r.handler.Delete(ctx, r.region, identifier)
 		}
@@ -726,12 +733,20 @@ func rejected(r *request) armrpc_rest.Response {
 }
 
 // equivalentFor returns the native handler's rule for values AWS returns in another form, or nil when there is none.
-// It applies with either handler, because both read the same resource.
-func equivalentFor(r *request) func(path string, template any, aws any) bool {
+// It applies with either handler, because both read the same resource. recorded is whether UCP has a record of the
+// last deploy's values: only then does it add the handler's RecordedEquivalent, which GeneratePatchWithOptions then
+// uses only where the last deploy set the template's value.
+func equivalentFor(r *request, recorded bool) func(path string, template any, aws any) bool {
 	if r.native == nil {
 		return nil
 	}
-	return r.native.Handler.Options().Equivalent
+	options := r.native.Handler.Options()
+	if !recorded || options.RecordedEquivalent == nil {
+		return options.Equivalent
+	}
+	return func(path string, template any, aws any) bool {
+		return (options.Equivalent != nil && options.Equivalent(path, template, aws)) || options.RecordedEquivalent(path, template, aws)
+	}
 }
 
 // outcomeOf returns how much of a start call that failed with err AWS applied: the outcome a native handler reports

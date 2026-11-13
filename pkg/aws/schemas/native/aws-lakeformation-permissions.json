@@ -152,15 +152,16 @@
   "readOnlyProperties": ["/properties/Id"],
   "handlers": {
     "create": {
-      "permissions": ["lakeformation:GrantPermissions"]
+      "permissions": ["lakeformation:GrantPermissions", "sts:GetCallerIdentity"]
     },
     "read": {
-      "permissions": ["lakeformation:ListPermissions"]
+      "permissions": ["lakeformation:ListPermissions", "sts:GetCallerIdentity"]
     },
     "update": {
       "permissions": [
         "lakeformation:GrantPermissions",
-        "lakeformation:RevokePermissions"
+        "lakeformation:RevokePermissions",
+        "sts:GetCallerIdentity"
       ]
     },
     "delete": {

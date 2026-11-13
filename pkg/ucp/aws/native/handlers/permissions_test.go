@@ -63,18 +63,20 @@ const sdkServicePrefix = "github.com/aws/aws-sdk-go-v2/service/"
 // makes. Find runs when a PUT or a DELETE looks for a lost create, and Progress while UCP waits for a create, an
 // update, or a delete.
 var operationsOf = map[string][]string{
-	"Create":          {"create"},
-	"Find":            {"create", "delete"},
-	"Read":            {"read"},
-	"ReadScoped":      {"read"},
-	"Update":          {"update"},
-	"Delete":          {"delete"},
-	"DeleteScoped":    {"delete"},
-	"DeleteToken":     {"delete"},
-	"DeleteWithToken": {"delete"},
-	"Reset":           {"delete"},
-	"List":            {"list"},
-	"Progress":        {"create", "update", "delete"},
+	"Create":     {"create"},
+	"Find":       {"create", "delete"},
+	"Read":       {"read"},
+	"ReadScoped": {"read"},
+	// UCP resolves an identifier on a PUT and on `existing`.
+	"ResolveIdentifier": {"create", "read", "update"},
+	"Update":            {"update"},
+	"Delete":            {"delete"},
+	"DeleteScoped":      {"delete"},
+	"DeleteToken":       {"delete"},
+	"DeleteWithToken":   {"delete"},
+	"Reset":             {"delete"},
+	"List":              {"list"},
+	"Progress":          {"create", "update", "delete"},
 }
 
 // Test_SchemaPermissionsCoverAWSCalls checks that every AWS call a native handler makes is in its schema's handler
@@ -114,6 +116,62 @@ func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
 	}
 	slices.Sort(missing)
 	require.Empty(t, missing, "add each AWS call to the handler permissions of the operation that makes it")
+}
+
+// Test_SchemaPermissionsAreUsed checks the other way: every permission of the handler's own service in a schema is
+// for a call the handler makes for that operation, or for Read, which UCP calls during every operation, so a schema
+// never asks for more than the handler needs. AWS also checks some permissions for what a call does, such as tagging
+// a resource while creating it or taking a final backup while deleting it, and those are listed in implied.
+func Test_SchemaPermissionsAreUsed(t *testing.T) {
+	implied := map[string][]string{
+		"create": {
+			"dms:AddTagsToResource", "rds:AddTagsToResource", "fsx:TagResource", "dax:TagResource", "elasticmapreduce:AddTags",
+			// Tags sent in the create call itself: TagSpecifications, or Tags.
+			"ec2:CreateTags", "medialive:CreateTags", "sagemaker:AddTags",
+		},
+		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
+	}
+	catalog, err := schemas.Load()
+	require.NoError(t, err)
+	unused := []string{}
+	for _, h := range All(aws.Config{}) {
+		typ := reflect.TypeOf(h).Elem()
+		src := parseHandlerSource(t, filepath.Base(typ.PkgPath()))
+		reads := []string{}
+		for _, call := range src.calls(typ.Name(), "Read") {
+			reads = append(reads, src.api[call]+":"+call)
+		}
+		used := map[string][]string{}
+		for method, ops := range operationsOf {
+			for _, call := range src.calls(typ.Name(), method) {
+				for _, op := range ops {
+					used[op] = append(used[op], src.api[call]+":"+call)
+				}
+			}
+		}
+		// The services the handler's clients call. Permissions of other services, such as iam:PassRole, are for
+		// what a call does, and aren't checked.
+		services := map[string]bool{}
+		for _, prefix := range src.api {
+			services[prefix] = true
+		}
+		var schema struct {
+			Handlers map[string]struct {
+				Permissions []string `json:"permissions"`
+			} `json:"handlers"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		for op, handler := range schema.Handlers {
+			for _, action := range handler.Permissions {
+				service, _, _ := strings.Cut(action, ":")
+				if services[service] && !slices.Contains(used[op], action) && !slices.Contains(reads, action) && !slices.Contains(implied[op], action) {
+					unused = append(unused, h.TypeName()+" "+op+": "+action)
+				}
+			}
+		}
+	}
+	slices.Sort(unused)
+	require.Empty(t, unused, "remove each permission the handler doesn't need for the operation")
 }
 
 // handlerSource is the parsed source of a handler package. api maps each method of the package's AWS SDK client

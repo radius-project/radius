@@ -143,14 +143,15 @@ func Test_Await_Failures(t *testing.T) {
 		require.Nil(t, f.record())
 	})
 
-	t.Run("failed update keeps the previous values", func(t *testing.T) {
+	t.Run("failed update keeps its values as possibly applied", func(t *testing.T) {
 		f := newFixture(t)
 		f.cc.FailNext = "InternalFailure"
 		f.accept(records.OperationUpdate)
 		result := f.run(v1.OperationPut)
 		require.Equal(t, v1.CodeInternal, result.Error.Code)
 		rec := f.record()
-		require.Equal(t, map[string]any{}, rec.Properties.LastApplied)
+		require.Equal(t, map[string]any{"CidrBlock": "10.0.0.0/16"}, rec.Properties.LastApplied, "Cloud Control doesn't roll back a failed update")
+		require.Equal(t, []string{"CidrBlock"}, rec.Properties.UnresolvedPaths)
 		require.Nil(t, rec.Properties.PendingLastApplied)
 		require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
 	})
@@ -163,6 +164,8 @@ func Test_Await_Failures(t *testing.T) {
 		result := f.run(v1.OperationPut)
 		require.Contains(t, result.Error.Message, "no longer has the request")
 		require.Empty(t, f.record().Properties.RequestToken)
+		require.Equal(t, map[string]any{"CidrBlock": "10.0.0.0/16"}, f.record().Properties.LastApplied, "UCP can't tell how the update ended")
+		require.Equal(t, []string{"CidrBlock"}, f.record().Properties.UnresolvedPaths)
 	})
 
 	t.Run("polling fails, so the operation is retried", func(t *testing.T) {

@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -75,6 +76,16 @@ func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
 
 func clientError(code string) error {
 	return nativefake.ClientError(code, code)
+}
+
+// GetCallerIdentity returns the fake's account, as STS does.
+func (f *fakeAPI) GetCallerIdentity(ctx context.Context, in *sts.GetCallerIdentityInput, _ ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.call("GetCallerIdentity"); err != nil {
+		return nil, err
+	}
+	return &sts.GetCallerIdentityOutput{Account: aws.String(account)}, nil
 }
 
 func (f *fakeAPI) call(name string) error {
@@ -268,7 +279,16 @@ func canonical(r *types.Resource) string {
 	if db, name, ok := wholeTable(r); ok {
 		return "table|" + db + "|" + name
 	}
-	b, _ := json.Marshal(normalized(cfnResource(r)))
+	out := normalized(cfnResource(r))
+	if m, ok := out.(map[string]any); ok {
+		for _, v := range m {
+			// Like AWS, a resource without CatalogId is in the current account's catalog.
+			if inner, ok := v.(map[string]any); ok && inner["CatalogId"] == nil {
+				inner["CatalogId"] = account
+			}
+		}
+	}
+	b, _ := json.Marshal(out)
 	return string(b)
 }
 
@@ -608,6 +628,9 @@ var (
 func (t *trackedPermissions) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	identifier, err := t.Identifier(request.Properties)
 	if err != nil {
+		return "", err
+	}
+	if identifier, err = t.ResolveIdentifier(ctx, request.Region, identifier); err != nil {
 		return "", err
 	}
 	t.api.use(identifier)

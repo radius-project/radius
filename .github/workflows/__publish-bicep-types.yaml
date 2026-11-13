@@ -1,0 +1,249 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __publish-bicep-types
+
+on:
+  workflow_call:
+    inputs:
+      only_changed:
+        description: The successful change detector's explicit output.
+        required: true
+        type: string
+    secrets:
+      RADIUS_PUBLISHER_BOT_CLIENT_ID:
+        required: true
+      RADIUS_PUBLISHER_BOT_PRIVATE_KEY:
+        required: true
+    outputs:
+      status:
+        value: ${{ jobs.publish.outputs.status }}
+      manifest_digest:
+        value: ${{ jobs.publish.outputs.manifest_digest }}
+
+permissions: {}
+
+env:
+  ONLY_CHANGED: ${{ inputs.only_changed }}
+
+jobs:
+  bundle:
+    name: Capture Radius Bicep types
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' && github.ref_protected &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      artifact_id: ${{ steps.select.outputs.artifact_id || steps.upload.outputs.artifact-id }}
+    services:
+      registry:
+        image: registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+        ports:
+          - 5000/tcp
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Select immutable run bundle
+        id: select
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: select
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+
+      - name: Setup Go for generation
+        if: steps.select.outputs.reuse == 'false'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Download Go modules for generation
+        if: steps.select.outputs.reuse == 'false'
+        uses: ./.github/actions/go-mod-download
+
+      - name: Setup Node.js for generation
+        if: steps.select.outputs.reuse == 'false'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Install pinned generation tools
+        if: steps.select.outputs.reuse == 'false'
+        run: make install-bicep install-oras install-yq
+
+      - name: Generate types once
+        if: steps.select.outputs.reuse == 'false'
+        run: make generate-bicep-types VERSION=edge
+
+      - name: Capture native Bicep OCI bundle
+        if: steps.select.outputs.reuse == 'false'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: capture
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+          INPUT_REGISTRY: localhost:${{ job.services.registry.ports['5000'] }}
+
+      - name: Retain immutable bundle
+        if: steps.select.outputs.reuse == 'false'
+        id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: ${{ runner.temp }}/bicep-types/bicep-types-radius-${{ github.run_id }}.tar
+          archive: false
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish Radius edge and mirror ACR
+    needs: [bundle]
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' && github.ref_protected &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: radius-bicep-types-main-publish
+      cancel-in-progress: false
+    environment: publish-bicep
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    outputs:
+      status: ${{ steps.complete.outputs.status }}
+      manifest_digest: ${{ steps.complete.outputs.manifest_digest }}
+    steps:
+      - name: Checkout trusted publisher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install pinned copy tool
+        run: make install-oras
+
+      - name: Download the immutable run bundle
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.bundle.outputs.artifact_id }}
+          path: ${{ runner.temp }}/bicep-types/download
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ github.run_id }}
+          skip-decompress: true
+          digest-mismatch: error
+
+      - name: Validate bundle and stamp source manifest
+        id: prepare
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: prepare
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+          INPUT_ARTIFACT_ID: ${{ needs.bundle.outputs.artifact_id }}
+
+      - name: Isolate registry credentials
+        run: |
+          mkdir -p "${RUNNER_TEMP}/bicep-registry-credentials"
+          echo "DOCKER_CONFIG=${RUNNER_TEMP}/bicep-registry-credentials" >> "${GITHUB_ENV}"
+
+      - name: Login to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Publish GHCR and verify public access
+        id: publish
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: publish
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+
+      - name: Get private publisher App token
+        if: steps.publish.outputs.status == 'pending-mirror'
+        id: publisher-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          owner: azure-octo
+          repositories: radius-publisher
+          permission-actions: read
+          permission-contents: write
+
+      - name: Request and monitor the exact private ACR copy
+        if: steps.publish.outputs.status == 'pending-mirror'
+        id: mirror
+        timeout-minutes: 20
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.publisher-token.outputs.token }}
+          script: |
+            const { default: monitor } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/monitor-remote-workflow.mjs`)
+            await monitor({github, core})
+        env:
+          INPUT_OWNER: azure-octo
+          INPUT_REPO: radius-publisher
+          INPUT_WORKFLOW_FILE: publish-bicep-types.yml
+          INPUT_EVENT_TYPE: bicep-types
+          INPUT_RELEASE_IDENTIFIER: ${{ steps.publish.outputs.release_identifier }}
+          INPUT_CLIENT_PAYLOAD: ${{ steps.publish.outputs.client_payload }}
+          INPUT_REUSE_SUCCESSFUL: "false"
+
+      - name: Verify the mirrored digest and record the result
+        if: always() && steps.publish.outcome == 'success'
+        id: complete
+        timeout-minutes: 5
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: complete
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+          MIRROR_RESULT: ${{ steps.mirror.outcome }}
+          MIRROR_RELEASE_IDENTIFIER: ${{ steps.mirror.outputs.release_identifier }}
+          MIRROR_RUN_STATE: ${{ steps.mirror.outputs.run_state }}
+          MIRROR_RUN_ID: ${{ steps.mirror.outputs.run_id }}
+          MIRROR_RUN_URL: ${{ steps.mirror.outputs.run_url }}
+          MIRROR_CONCLUSION: ${{ steps.mirror.outputs.conclusion }}
+
+      - name: Retain publication receipt
+        if: always() && steps.prepare.outcome == 'success'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bicep-types-radius-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/bicep-types/receipt.json
+          if-no-files-found: error
+          retention-days: 30

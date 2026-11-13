@@ -157,7 +157,7 @@ func (h *ClientVpnEndpoint) properties(ctx context.Context, region string, e *ty
 	if o := e.TransitGatewayConfiguration; o != nil {
 		p["TransitGatewayConfiguration"] = map[string]any{"TransitGatewayId": o.TransitGatewayId, "AvailabilityZones": o.AvailabilityZones, "AvailabilityZoneIds": o.AvailabilityZoneIds}
 	}
-	if tags := endpointTags(e.Tags); tags != nil {
+	if tags := awsapi.TagListOf(e.Tags); tags != nil {
 		p["TagSpecifications"] = []any{map[string]any{"ResourceType": string(types.ResourceTypeClientVpnEndpoint), "Tags": tags}}
 	}
 	if policy != nil {
@@ -183,14 +183,6 @@ func authenticationOptions(options []types.ClientVpnAuthentication) []any {
 		out = append(out, m)
 	}
 	return out
-}
-
-func endpointTags(tags []types.Tag) []any {
-	m := map[string]string{}
-	for _, t := range tags {
-		m[aws.ToString(t.Key)] = aws.ToString(t.Value)
-	}
-	return awsapi.TagList(m)
 }
 
 // setPolicy sets the endpoint's authorization policy to policy, the AuthorizationPolicy property. token is the call's

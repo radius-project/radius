@@ -52,9 +52,7 @@ type API interface {
 	UntagResource(ctx context.Context, params *fsx.UntagResourceInput, optFns ...func(*fsx.Options)) (*fsx.UntagResourceOutput, error)
 }
 
-func inRegion(region string) func(*fsx.Options) {
-	return func(o *fsx.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[fsx.Options]
 
 var (
 	_ native.Handler        = (*FileSystem)(nil)
@@ -98,22 +96,28 @@ func (h *FileSystem) TypeName() string {
 // longer than the default.
 func (h *FileSystem) Options() native.Options {
 	return native.Options{
-		List:          native.ListRegion,
-		Recovery:      native.RecoverByResend,
-		Equivalent:    equivalent,
-		DeleteTimeout: 6 * time.Hour,
+		List:               native.ListRegion,
+		Recovery:           native.RecoverByResend,
+		Equivalent:         equivalent,
+		RecordedEquivalent: sameAlias,
+		DeleteTimeout:      6 * time.Hour,
 	}
 }
 
-// equivalent treats a KMS key ARN FSx returns as the key ID or alias the template sets. FSx returns the key's ARN
-// only, so an alias can't be told from another key, and KmsKeyId can't change after create anyway.
+// equivalent treats a KMS key ARN FSx returns as the key ID or ARN the template sets.
 func equivalent(path string, template any, aws any) bool {
 	t, okT := template.(string)
 	a, okA := aws.(string)
-	if path != "KmsKeyId" || !okT || !okA {
-		return false
-	}
-	return t == a || strings.HasSuffix(a, ":key/"+t) || strings.HasPrefix(t, "alias/") || strings.Contains(t, ":alias/")
+	return path == "KmsKeyId" && okT && okA && (t == a || strings.HasSuffix(a, ":key/"+t))
+}
+
+// sameAlias treats a KMS key ARN FSx returns as the alias the template sets. FSx returns the key's ARN only, so an
+// alias can't be told from another key: UCP uses it only where the last deploy set the same alias (see
+// native.Options.RecordedEquivalent), and KmsKeyId can't change after create.
+func sameAlias(path string, template any, aws any) bool {
+	t, okT := template.(string)
+	_, okA := aws.(string)
+	return path == "KmsKeyId" && okT && okA && (strings.HasPrefix(t, "alias/") || strings.Contains(t, ":alias/"))
 }
 
 // describe returns the file system with the identifier, or ErrNotFound.
@@ -151,7 +155,7 @@ func properties(fs *types.FileSystem) (map[string]any, error) {
 		"StorageCapacity":       fs.StorageCapacity,
 		"StorageType":           fs.StorageType,
 		"SubnetIds":             fs.SubnetIds,
-		"Tags":                  tagList(fs.Tags),
+		"Tags":                  awsapi.TagListOf(fs.Tags, deleteOptionsTag, updateBaselineTag),
 	}
 	if c := fs.LustreConfiguration; c != nil {
 		p["LustreMountName"] = c.MountName
@@ -241,20 +245,10 @@ func properties(fs *types.FileSystem) (map[string]any, error) {
 // delete reads them from this tag. Read leaves the tag out, so it never counts as a change.
 const deleteOptionsTag = "radius-delete-options"
 
-func tagList(tags []types.Tag) []any {
-	m := map[string]string{}
-	for _, t := range tags {
-		m[aws.ToString(t.Key)] = aws.ToString(t.Value)
-	}
-	delete(m, deleteOptionsTag)
-	delete(m, updateBaselineTag)
-	return awsapi.TagList(m)
-}
-
 // createTags returns the tags a create sends: the template's tags, the operation tag with token, and the delete
 // options tag when the template sets OpenZFSConfiguration Options.
 func createTags(properties map[string]any, token *string) []types.Tag {
-	tags := append(sdkTags(awsapi.Tags(properties)), types.Tag{Key: aws.String(awsapi.OperationTag), Value: token})
+	tags := append(awsapi.SDKTags[types.Tag](awsapi.Tags(properties)), types.Tag{Key: aws.String(awsapi.OperationTag), Value: token})
 	if options := awsapi.Strings(asMap(properties["OpenZFSConfiguration"]), "Options"); len(options) > 0 {
 		tags = append(tags, types.Tag{Key: aws.String(deleteOptionsTag), Value: aws.String(strings.Join(options, " "))})
 	}
@@ -270,14 +264,6 @@ func deleteOptions(tags []types.Tag) []types.DeleteFileSystemOpenZFSOption {
 				out = append(out, types.DeleteFileSystemOpenZFSOption(option))
 			}
 		}
-	}
-	return out
-}
-
-func sdkTags(tags []awsapi.Tag) []types.Tag {
-	out := []types.Tag{}
-	for _, t := range tags {
-		out = append(out, types.Tag{Key: aws.String(t.Key), Value: aws.String(t.Value)})
 	}
 	return out
 }
@@ -374,7 +360,7 @@ func (h *FileSystem) findByToken(ctx context.Context, region string, token strin
 	case 1:
 		return found[0], nil
 	}
-	return "", fmt.Errorf("found %d FSx file systems tagged with the same operation ID: %s", len(found), strings.Join(found, ", "))
+	return "", awsapi.Ambiguous("FSx file systems", found)
 }
 
 // all returns every file system in the region.
@@ -455,8 +441,9 @@ func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) e
 			return err
 		}}, calls...)
 	}
-	if baseline := failedBaseline(fs); baseline != "" && len(calls) > 0 {
-		// An update that makes no administrative action, such as a tag change, must not take the failed one as its.
+	if baseline := failedBaseline(fs); baseline != "" {
+		// An update that makes no administrative action, such as a tag change or none at all, must not take the
+		// failed one as its.
 		calls = append([]func() error{func() error {
 			_, err := h.api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: fs.ResourceARN, Tags: []types.Tag{{Key: aws.String(updateBaselineTag), Value: aws.String(baseline)}}}, opt)
 			return err
@@ -616,7 +603,7 @@ func (h *FileSystem) tagCalls(ctx context.Context, arn *string, request native.U
 	calls := []func() error{}
 	if len(set) > 0 {
 		calls = append(calls, func() error {
-			_, err := h.api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: arn, Tags: sdkTags(set)}, opt)
+			_, err := h.api.TagResource(ctx, &fsx.TagResourceInput{ResourceARN: arn, Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 			return err
 		})
 	}

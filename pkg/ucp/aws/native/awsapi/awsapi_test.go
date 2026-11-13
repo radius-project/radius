@@ -228,3 +228,34 @@ func Test_ReservedTags(t *testing.T) {
 	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 	require.Contains(t, failure.Message, "can't set them: a, b.")
 }
+
+// sdkOptions has the shape of an AWS SDK client's options.
+type sdkOptions struct {
+	Region string
+}
+
+func Test_SharedHelpers(t *testing.T) {
+	options := &sdkOptions{}
+	InRegion[sdkOptions]("eu-west-2")(options)
+	require.Equal(t, "eu-west-2", options.Region)
+
+	tags := SDKTags[sdkTag]([]Tag{{Key: "team", Value: "a"}, {Key: "owner", Value: ""}})
+	require.Equal(t, []sdkTag{{Key: aws.String("team"), Value: aws.String("a")}, {Key: aws.String("owner"), Value: aws.String("")}}, tags)
+	require.Empty(t, SDKTags[sdkTag](nil))
+
+	tags = append(tags, sdkTag{Key: aws.String(OperationTag), Value: aws.String("token")}, sdkTag{Key: aws.String("private"), Value: aws.String("x")}, sdkTag{Key: aws.String("bare")})
+	require.Equal(t, []any{
+		map[string]any{"Key": "bare", "Value": ""},
+		map[string]any{"Key": "owner", "Value": ""},
+		map[string]any{"Key": "team", "Value": "a"},
+	}, TagListOf(tags, "private"))
+	require.Nil(t, TagListOf([]sdkTag{}))
+	require.Panics(t, func() { SDKTags[int]([]Tag{{Key: "a"}}) })
+	require.Panics(t, func() { TagListOf([]int{1}) })
+
+	equivalent := CaseInsensitive("Name")
+	require.True(t, equivalent("Name", "App", "app"))
+	require.False(t, equivalent("Name", "App", "other"))
+	require.False(t, equivalent("Other", "App", "app"))
+	require.False(t, equivalent("Name", 1, "1"))
+}

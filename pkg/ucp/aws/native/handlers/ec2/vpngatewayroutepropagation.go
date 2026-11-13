@@ -65,6 +65,7 @@ func (h *VPNGatewayRoutePropagation) Options() native.Options {
 	return native.Options{
 		List:     native.ListNone,
 		Recovery: native.RecoverByResend,
+		Members:  &native.Members{Parent: "VpnGatewayId", List: "RouteTableIds"},
 	}
 }
 

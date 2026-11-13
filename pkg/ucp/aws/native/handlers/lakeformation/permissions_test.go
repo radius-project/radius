@@ -32,7 +32,7 @@ import (
 func newPermissions() (*trackedPermissions, *fakeAPI, *awsfake.CloudControl) {
 	store := awsfake.NewCloudControl()
 	api := newFakeAPI(store)
-	return &trackedPermissions{Permissions: NewPermissions(api), api: api}, api, store
+	return &trackedPermissions{Permissions: NewPermissions(api, api), api: api}, api, store
 }
 
 // grantOutside grants perms to the analyst on resource outside Radius.
@@ -102,7 +102,9 @@ func Test_Permissions_Resources(t *testing.T) {
 			properties := permissionsOf(tt.resource, list("SELECT"), list("SELECT"))
 			id, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: properties})
 			require.NoError(t, err)
-			require.Equal(t, identifierOf(t, properties), id)
+			resolved, err := h.ResolveIdentifier(ctx, region, identifierOf(t, properties))
+			require.NoError(t, err)
+			require.Equal(t, resolved, id, "Create returns the resolved identifier")
 
 			got, err := h.ReadScoped(ctx, region, id, []map[string]any{properties})
 			require.NoError(t, err)
@@ -345,7 +347,7 @@ func Test_Matches(t *testing.T) {
 }
 
 func Test_Permissions_Identifier(t *testing.T) {
-	h := NewPermissions(nil)
+	h := NewPermissions(nil, nil)
 	id, err := h.Identifier(map[string]any{
 		"Resource":          map[string]any{"TableResource": map[string]any{"Name": "t", "DatabaseName": "d"}},
 		"DataLakePrincipal": map[string]any{"DataLakePrincipalIdentifier": analyst},
@@ -357,4 +359,69 @@ func Test_Permissions_Identifier(t *testing.T) {
 	id, err = h.Identifier(map[string]any{"Resource": salesDatabase})
 	require.NoError(t, err)
 	require.Empty(t, id)
+}
+
+// Test_Permissions_ResolveIdentifier checks that ResolveIdentifier asks STS only for a CatalogId, drops only the
+// current account's, and returns an STS failure.
+func Test_Permissions_ResolveIdentifier(t *testing.T) {
+	principal := map[string]any{"DataLakePrincipalIdentifier": "arn:aws:iam::123456789012:role/analyst"}
+	idOf := func(resource map[string]any) string {
+		return identifierOf(t, map[string]any{"DataLakePrincipal": principal, "Resource": resource})
+	}
+	table := func(catalog string) map[string]any {
+		m := map[string]any{"DatabaseName": "sales", "Name": "orders"}
+		if catalog != "" {
+			m["CatalogId"] = catalog
+		}
+		return map[string]any{"TableResource": m}
+	}
+
+	t.Run("no CatalogId makes no STS call", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		id, err := NewPermissions(api, api).ResolveIdentifier(t.Context(), region, idOf(table("")))
+		require.NoError(t, err)
+		require.Equal(t, idOf(table("")), id)
+		require.Empty(t, api.calls)
+	})
+
+	t.Run("the current account's CatalogId is dropped", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		id, err := NewPermissions(api, api).ResolveIdentifier(t.Context(), region, idOf(table(account)))
+		require.NoError(t, err)
+		require.Equal(t, idOf(table("")), id)
+	})
+
+	t.Run("another account's CatalogId stays", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		id, err := NewPermissions(api, api).ResolveIdentifier(t.Context(), region, idOf(table("210987654321")))
+		require.NoError(t, err)
+		require.Equal(t, idOf(table("210987654321")), id)
+	})
+
+	t.Run("an STS failure is returned", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		api.errs["GetCallerIdentity"] = clientError("ExpiredToken")
+		_, err := NewPermissions(api, api).ResolveIdentifier(t.Context(), region, idOf(table(account)))
+		require.ErrorContains(t, err, "ExpiredToken")
+	})
+
+	t.Run("an identifier Cloud Control assigned stays", func(t *testing.T) {
+		id, err := NewPermissions(nil, nil).ResolveIdentifier(t.Context(), region, "abc123")
+		require.NoError(t, err)
+		require.Equal(t, "abc123", id)
+	})
+}
+
+// Test_Permissions_ReadNamesTarget checks that a read finds the permissions of the target the identifier names, not of
+// a template for another target, as when a PUT sends one target as name and another in its properties.
+func Test_Permissions_ReadNamesTarget(t *testing.T) {
+	ctx := t.Context()
+	h, _, _ := newPermissions()
+	sales := permissionsOf(salesDatabase, list("DESCRIBE"), nil)
+	_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: sales})
+	require.NoError(t, err)
+
+	marketing := identifierOf(t, permissionsOf(map[string]any{"DatabaseResource": map[string]any{"Name": "marketing"}}, list("DESCRIBE"), nil))
+	_, err = h.ReadScoped(ctx, region, marketing, []map[string]any{sales})
+	require.ErrorIs(t, err, native.ErrNotFound)
 }

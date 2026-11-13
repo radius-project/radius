@@ -63,11 +63,13 @@ func Test_Suite_UserToGroupAddition(t *testing.T) {
 		IdentifierProperty: "Id",
 		Properties:         group("admins", "ana", "bo"),
 		Changed:            group("admins", "bo", "cy"),
-		CreateOnlyChange:   group("readers", "ana", "bo"),
-		OtherForm:          map[string]any{"Users": []any{"bo", "ana"}},
-		MultiCall:          group("admins", "bo", "cy", "di"),
-		Calls:              3,
-		RejectedCalls:      1,
+		// IAM user names ignore case, so BO is bo.
+		SharedMember:     &nativetest.SharedMember{Overlapping: group("admins", "BO", "cy"), Disjoint: group("admins", "cy")},
+		CreateOnlyChange: group("readers", "ana", "bo"),
+		OtherForm:        map[string]any{"Users": []any{"bo", "ana"}},
+		MultiCall:        group("admins", "bo", "cy", "di"),
+		Calls:            3,
+		RejectedCalls:    1,
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &h.(*tracked).api.failer
 		}),
@@ -170,13 +172,31 @@ func Test_Create_Fails(t *testing.T) {
 
 	identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: group("admins", "missing-user", "bo"), ClientToken: token})
 	require.ErrorContains(t, err, "NoSuchEntity", "AWS rejected the first call")
-	require.Equal(t, "admins|"+native.GenerateName(token), identifier)
+	require.Empty(t, identifier, "nothing was added, so there is no resource to keep")
 
-	_, err = h.Create(ctx, native.CreateRequest{Region: region, Properties: group("admins", "ana", "missing-user"), ClientToken: token})
+	identifier, err = h.Create(ctx, native.CreateRequest{Region: region, Properties: group("admins", "ana", "missing-user"), ClientToken: token})
 	var failure *native.Failure
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, native.OutcomePartial, failure.Outcome, "the first user was added")
 	require.True(t, failure.ClientError)
+	require.Equal(t, "admins|"+native.GenerateName(token), identifier, "the user added is kept, so a delete removes it")
+
+	for name, properties := range map[string]map[string]any{
+		"no group":    group("", "ana"),
+		"no users":    group("admins"),
+		"no settings": {},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h.api.calls = nil
+			identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: properties, ClientToken: token})
+			var failure *native.Failure
+			require.ErrorAs(t, err, &failure)
+			require.True(t, failure.ClientError)
+			require.Equal(t, native.OutcomeRejected, failure.Outcome)
+			require.Empty(t, identifier)
+			require.Empty(t, h.api.calls, "nothing reaches AWS")
+		})
+	}
 }
 
 func Test_Update(t *testing.T) {

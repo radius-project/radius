@@ -117,6 +117,32 @@ That means service-specific code usually does not build raw HTTP stacks itself.
 Instead, it supplies a `Configure` callback that registers routes on top of the
 shared server.
 
+### Internal component authorization (mTLS)
+
+ARM-RPC frontends serve through `mtls.ListenAndServe` in
+[pkg/authz/mtls/serve.go](../../pkg/authz/mtls/serve.go), which applies the
+authorization mode from the `authorization` config section (set by the chart
+from `global.rbac.enabled` and `global.rbac.dryRun`):
+
+- `off` (default): plain HTTP, behavior unchanged.
+- `dryRun`: the same port accepts TLS and plain HTTP. Missing or invalid client
+  certificates and disallowed callers are logged as would-deny
+  (`PeerCertificateInvalid`, `AuthorizationFailed`), and every request is served.
+- `enforce`: a client certificate issued by the Radius CA is required. Failed
+  handshakes are closed and logged as `PeerCertificateInvalid`, and callers not
+  in the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
+  and `dynamic-rp` allow only the `ucp` identity.
+
+The certificate, key, and CA bundle are read from the mounted `<component>-mtls`
+Secret and reloaded by polling the files (every 10 seconds) without a restart.
+New handshakes use the new material, and each request's client certificate is
+checked against the current CA bundle. Probes and metrics stay on their plain
+ports.
+
+Every request also checks the current server certificate's validity. Cached peer verification lasts only until the earliest expiry in the verified chains or a material reload, whichever comes first. On an open connection, expired certificates or removed trust cause `enforce` to return `401 InvalidAuthenticationInfo` and close the connection; `dryRun` logs the failure and continues serving. Renewing the server certificate does not invalidate an otherwise trusted peer on an existing connection.
+
+Outbound mTLS clients also stop reusing connections when their client certificate or any certificate in the verified server chain expires. They retire the connection pool before the next request and close expired connections, including active HTTP/2 streams. The next request performs a fresh handshake with the current certificate and CA bundle instead of racing HTTP/2's asynchronous removal of the closed connection. A retired pool keeps only its unexpired connections that are still serving requests. Each later request closes the pool's idle connections and forgets the pool once it has no unexpired tracked connections. When a connection in a retired pool expires, the client closes it without replacing the current pool again.
+
 ### Request context and validation
 
 The server layer applies middleware that creates an ARM-aware request context.

@@ -53,9 +53,7 @@ type API interface {
 	ListTags(ctx context.Context, params *dax.ListTagsInput, optFns ...func(*dax.Options)) (*dax.ListTagsOutput, error)
 }
 
-func inRegion(region string) func(*dax.Options) {
-	return func(o *dax.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[dax.Options]
 
 var (
 	_ native.Handler           = (*Cluster)(nil)
@@ -87,7 +85,7 @@ func (h *Cluster) Options() native.Options {
 		List:         native.ListRegion,
 		Recovery:     native.RecoverByIdentifier,
 		NameProperty: "ClusterName",
-		Equivalent:   equivalent,
+		Equivalent:   awsapi.CaseInsensitive(caseInsensitive...),
 	}
 }
 
@@ -99,13 +97,6 @@ func (h *Cluster) Identifier(properties map[string]any) (string, error) {
 // caseInsensitive are the properties DAX returns in another case than the template may set them: names it stores in
 // lowercase, and the maintenance window.
 var caseInsensitive = []string{"ClusterName", "SubnetGroupName", "PreferredMaintenanceWindow"}
-
-// equivalent treats a value of caseInsensitive that differs only in case as the template's value.
-func equivalent(path string, template any, aws any) bool {
-	t, okT := template.(string)
-	a, okA := aws.(string)
-	return okT && okA && slices.Contains(caseInsensitive, path) && strings.EqualFold(t, a)
-}
 
 // describe returns the cluster with the name, or ErrNotFound.
 func (h *Cluster) describe(ctx context.Context, region string, name string) (*types.Cluster, error) {
@@ -212,14 +203,6 @@ func tagList(properties map[string]any) []awsapi.Tag {
 	return out
 }
 
-func sdkTags(tags []awsapi.Tag) []types.Tag {
-	out := []types.Tag{}
-	for _, t := range tags {
-		out = append(out, types.Tag{Key: aws.String(t.Key), Value: aws.String(t.Value)})
-	}
-	return out
-}
-
 // Create creates the cluster.
 func (h *Cluster) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	p := request.Properties
@@ -232,7 +215,7 @@ func (h *Cluster) Create(ctx context.Context, request native.CreateRequest) (str
 			input.SSESpecification = &types.SSESpecification{Enabled: aws.Bool(enabled)}
 		}
 	}
-	input.Tags = sdkTags(tagList(p))
+	input.Tags = awsapi.SDKTags[types.Tag](tagList(p))
 	if _, err := h.api.CreateCluster(ctx, input, inRegion(request.Region)); err != nil {
 		return "", err
 	}
@@ -419,7 +402,7 @@ func (h *Cluster) tagCalls(ctx context.Context, arn *string, request native.Upda
 	calls := []func() error{}
 	if len(set) > 0 {
 		calls = append(calls, func() error {
-			_, err := h.api.TagResource(ctx, &dax.TagResourceInput{ResourceName: arn, Tags: sdkTags(set)}, opt)
+			_, err := h.api.TagResource(ctx, &dax.TagResourceInput{ResourceName: arn, Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 			return err
 		})
 	}

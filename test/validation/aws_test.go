@@ -16,13 +16,16 @@ limitations under the License.
 package validation
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
+	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/stretchr/testify/require"
 )
 
@@ -118,6 +121,223 @@ func Test_isAWSResourceMissing(t *testing.T) {
 			t.Parallel()
 
 			require.Equal(t, tt.expected, isAWSResourceMissing(tt.resourceTypeName, tt.err))
+		})
+	}
+}
+
+// fakeCloudControl lists pages keyed by the request's NextToken, with "" for the first page, and reads resources from
+// get by identifier.
+type fakeCloudControl struct {
+	awsclient.AWSCloudControlClient
+	pages    map[string]*cloudcontrol.ListResourcesOutput
+	listErr  error
+	get      map[string]fakeGetResult
+	getCalls []string
+}
+
+type fakeGetResult struct {
+	output *cloudcontrol.GetResourceOutput
+	err    error
+}
+
+func (f *fakeCloudControl) ListResources(_ context.Context, input *cloudcontrol.ListResourcesInput, _ ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourcesOutput, error) {
+	if aws.ToString(input.TypeName) != queryDefinitionTypeName {
+		return nil, fmt.Errorf("unexpected type %s", aws.ToString(input.TypeName))
+	}
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
+	page, ok := f.pages[aws.ToString(input.NextToken)]
+	if !ok {
+		return nil, fmt.Errorf("unexpected token %q", aws.ToString(input.NextToken))
+	}
+	return page, nil
+}
+
+func (f *fakeCloudControl) GetResource(_ context.Context, input *cloudcontrol.GetResourceInput, _ ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+	if aws.ToString(input.TypeName) != queryDefinitionTypeName {
+		return nil, fmt.Errorf("unexpected type %s", aws.ToString(input.TypeName))
+	}
+	id := aws.ToString(input.Identifier)
+	f.getCalls = append(f.getCalls, id)
+	result, ok := f.get[id]
+	if !ok {
+		return nil, fmt.Errorf("unexpected read of %s", id)
+	}
+	return result.output, result.err
+}
+
+const queryDefinitionTypeName = "AWS::Logs::QueryDefinition"
+
+func listed(id string, properties *string) types.ResourceDescription {
+	return types.ResourceDescription{Identifier: aws.String(id), Properties: properties}
+}
+
+func onePage(descriptions ...types.ResourceDescription) map[string]*cloudcontrol.ListResourcesOutput {
+	return map[string]*cloudcontrol.ListResourcesOutput{"": {ResourceDescriptions: descriptions}}
+}
+
+func read(properties string) fakeGetResult {
+	return fakeGetResult{output: &cloudcontrol.GetResourceOutput{ResourceDescription: &types.ResourceDescription{Properties: aws.String(properties)}}}
+}
+
+func Test_ListAWSResourcesByProperty(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		client       *fakeCloudControl
+		expectedIDs  []string
+		expectedErr  string
+		expectedGets []string
+	}{
+		{
+			name: "full list properties match without a read",
+			client: &fakeCloudControl{pages: onePage(
+				listed("id-1", aws.String(`{"Name":"wanted"}`)),
+				listed("id-2", aws.String(`{"Name":"other"}`)),
+			)},
+			expectedIDs: []string{"id-1"},
+		},
+		{
+			name: "nil list properties are read",
+			client: &fakeCloudControl{
+				pages: onePage(listed("id-1", nil)),
+				get:   map[string]fakeGetResult{"id-1": read(`{"Name":"wanted"}`)},
+			},
+			expectedIDs:  []string{"id-1"},
+			expectedGets: []string{"id-1"},
+		},
+		{
+			name: "empty list properties are read",
+			client: &fakeCloudControl{
+				pages: onePage(listed("id-1", aws.String(`{}`))),
+				get:   map[string]fakeGetResult{"id-1": read(`{"Name":"wanted"}`)},
+			},
+			expectedIDs:  []string{"id-1"},
+			expectedGets: []string{"id-1"},
+		},
+		{
+			name: "list properties without the name are read",
+			client: &fakeCloudControl{
+				pages: onePage(
+					listed("id-1", aws.String(`{"QueryDefinitionId":"id-1"}`)),
+					listed("id-2", aws.String(`{"QueryDefinitionId":"id-2"}`)),
+				),
+				get: map[string]fakeGetResult{
+					"id-1": read(`{"Name":"other"}`),
+					"id-2": read(`{"Name":"wanted"}`),
+				},
+			},
+			expectedIDs:  []string{"id-2"},
+			expectedGets: []string{"id-1", "id-2"},
+		},
+		{
+			name: "a resource deleted before the read is skipped",
+			client: &fakeCloudControl{
+				pages: onePage(listed("id-1", nil)),
+				get:   map[string]fakeGetResult{"id-1": {err: &types.ResourceNotFoundException{Message: aws.String("not found")}}},
+			},
+			expectedIDs:  []string{},
+			expectedGets: []string{"id-1"},
+		},
+		{
+			name: "a failed read is returned",
+			client: &fakeCloudControl{
+				pages: onePage(listed("id-1", nil)),
+				get:   map[string]fakeGetResult{"id-1": {err: &types.ThrottlingException{Message: aws.String("rate exceeded")}}},
+			},
+			expectedErr:  "rate exceeded",
+			expectedGets: []string{"id-1"},
+		},
+		{
+			name: "a read without the name is an error",
+			client: &fakeCloudControl{
+				pages: onePage(listed("id-1", nil)),
+				get:   map[string]fakeGetResult{"id-1": read(`{}`)},
+			},
+			expectedErr:  "without Name",
+			expectedGets: []string{"id-1"},
+		},
+		{
+			name: "a read without a description is an error",
+			client: &fakeCloudControl{
+				pages: onePage(listed("id-1", nil)),
+				get:   map[string]fakeGetResult{"id-1": {output: &cloudcontrol.GetResourceOutput{}}},
+			},
+			expectedErr:  "no description",
+			expectedGets: []string{"id-1"},
+		},
+		{
+			name: "invalid read properties are an error",
+			client: &fakeCloudControl{
+				pages: onePage(listed("id-1", nil)),
+				get:   map[string]fakeGetResult{"id-1": read(`{`)},
+			},
+			expectedErr:  "failed to read the properties",
+			expectedGets: []string{"id-1"},
+		},
+		{
+			name: "an empty read is an error",
+			client: &fakeCloudControl{
+				pages: onePage(listed("id-1", nil)),
+				get:   map[string]fakeGetResult{"id-1": {}},
+			},
+			expectedErr:  "no description",
+			expectedGets: []string{"id-1"},
+		},
+		{
+			name:        "invalid list properties are an error",
+			client:      &fakeCloudControl{pages: onePage(listed("id-1", aws.String(`{`)))},
+			expectedErr: "failed to read the properties",
+		},
+		{
+			name:        "a name that is not a string is an error",
+			client:      &fakeCloudControl{pages: onePage(listed("id-1", aws.String(`{"Name":1}`)))},
+			expectedErr: "not a string",
+		},
+		{
+			name:        "a listed resource without an identifier is an error",
+			client:      &fakeCloudControl{pages: onePage(listed("", aws.String(`{"Name":"wanted"}`)))},
+			expectedErr: "no identifier",
+		},
+		{
+			name:        "a failed list is returned",
+			client:      &fakeCloudControl{listErr: &types.ThrottlingException{Message: aws.String("rate exceeded")}},
+			expectedErr: "rate exceeded",
+		},
+		{
+			name: "every page is searched",
+			client: &fakeCloudControl{
+				pages: map[string]*cloudcontrol.ListResourcesOutput{
+					"": {
+						ResourceDescriptions: []types.ResourceDescription{listed("id-1", aws.String(`{"Name":"wanted"}`))},
+						NextToken:            aws.String("page-2"),
+					},
+					"page-2": {
+						ResourceDescriptions: []types.ResourceDescription{listed("id-2", nil)},
+					},
+				},
+				get: map[string]fakeGetResult{"id-2": read(`{"Name":"wanted"}`)},
+			},
+			expectedIDs:  []string{"id-1", "id-2"},
+			expectedGets: []string{"id-2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ids, err := ListAWSResourcesByProperty(t.Context(), tt.client, queryDefinitionTypeName, "Name", "wanted")
+			if tt.expectedErr != "" {
+				require.ErrorContains(t, err, tt.expectedErr)
+				require.Nil(t, ids)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedIDs, ids)
+			}
+			require.Equal(t, tt.expectedGets, tt.client.getCalls)
 		})
 	}
 }

@@ -390,13 +390,14 @@ func Test_Equivalent(t *testing.T) {
 		{"ReplicationInstanceIdentifier", "App-DMS", "app-dms", true},
 		{"ReplicationSubnetGroupIdentifier", "Subnets", "subnets", true},
 		{"PreferredMaintenanceWindow", "Sun:06:00-Sun:06:30", "sun:06:00-sun:06:30", true},
-		{"ResourceIdentifier", "App-Rep-1", "app-rep-1", true},
+		{"ResourceIdentifier", "App-Rep-1", "app-rep-1", false},
+		{"ResourceIdentifier", "App-Rep-1", "App-Rep-1", false},
 		{"EngineVersion", "3.5.3", "3.5.4", false},
 		{"ReplicationInstanceClass", "DMS.T3.MICRO", "dms.t3.micro", false},
 		{"AllocatedStorage", 50, 50, false},
 	}
 	for _, tt := range tests {
-		require.Equal(t, tt.want, equivalent(tt.path, tt.template, tt.aws), "%s %v %v", tt.path, tt.template, tt.aws)
+		require.Equal(t, tt.want, NewReplicationInstance(nil).Options().Equivalent(tt.path, tt.template, tt.aws), "%s %v %v", tt.path, tt.template, tt.aws)
 	}
 }
 

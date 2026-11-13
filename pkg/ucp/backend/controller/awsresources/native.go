@@ -146,9 +146,9 @@ func finishNative(ctx context.Context, store *records.Store, id resources.ID, re
 }
 
 // saveNativeFailure finishes the record's operation op with failure, after setting its values by outcome. A delete
-// that AWS reported as failed (failed is true, unlike a timeout) clears the delete token, because AWS has finished that
-// delete: the next DELETE is a new request and gets a new token (see native.DeletePreparer). A timeout, or an error
-// waiting, keeps it, because the delete may still be running in AWS.
+// whose progress reported that it failed (failed is true) clears the delete token, because AWS has finished that
+// delete: the next DELETE is a new request and gets a new token (see native.DeletePreparer). An error the delete call
+// returned, a timeout, or an error while waiting keeps it, because the delete may still be running in AWS.
 func saveNativeFailure(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, op string, failure v1.ErrorDetails, outcome native.Outcome, failed bool) (ctrl.Result, error) {
 	err := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
 		if op == records.OperationDelete && outcome == native.OutcomeApplied {

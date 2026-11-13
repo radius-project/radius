@@ -20,6 +20,7 @@ package iam
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -40,9 +41,7 @@ type API interface {
 	RemoveUserFromGroup(ctx context.Context, params *iam.RemoveUserFromGroupInput, optFns ...func(*iam.Options)) (*iam.RemoveUserFromGroupOutput, error)
 }
 
-func inRegion(region string) func(*iam.Options) {
-	return func(o *iam.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[iam.Options]
 
 var (
 	_ native.Handler       = (*UserToGroupAddition)(nil)
@@ -75,6 +74,7 @@ func (h *UserToGroupAddition) Options() native.Options {
 	return native.Options{
 		List:     native.ListNone,
 		Recovery: native.RecoverByResend,
+		Members:  &native.Members{Parent: "GroupName", List: "Users", IgnoreCase: true},
 	}
 }
 
@@ -205,16 +205,29 @@ func (h *UserToGroupAddition) remove(ctx context.Context, region string, group s
 	}
 }
 
-// Create adds the users to the group, one call each, and returns the identifier. A failure after the first call is
-// partly applied, and a redeploy adds the rest.
+// Create adds the users to the group, one call each, and returns the identifier. A template without GroupName or
+// Users is rejected before any call. A failure after the first call is partly applied, and the identifier is returned
+// with it, so the record keeps the users added; a redeploy adds the rest. A failure of the first call added nothing,
+// so no identifier is returned with it.
 func (h *UserToGroupAddition) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	group := awsapi.String(request.Properties, "GroupName")
+	users := without(request.Properties, nil)
+	if group == "" || len(users) == 0 {
+		return "", &native.Failure{Message: "set GroupName and at least one user in Users", ClientError: true, Outcome: native.OutcomeRejected}
+	}
 	identifier := group + "|" + native.GenerateName(request.ClientToken)
 	calls := []func() error{}
-	for _, u := range without(request.Properties, nil) {
+	for _, u := range users {
 		calls = append(calls, h.add(ctx, request.Region, group, u))
 	}
-	return identifier, awsapi.Calls(calls...)
+	if err := awsapi.Calls(calls...); err != nil {
+		var failure *native.Failure
+		if errors.As(err, &failure) {
+			return identifier, err
+		}
+		return "", err
+	}
+	return identifier, nil
 }
 
 // Update removes the users the template no longer lists, then adds the new ones, one call each. A failure while it

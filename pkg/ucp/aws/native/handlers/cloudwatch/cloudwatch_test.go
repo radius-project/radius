@@ -17,10 +17,12 @@ limitations under the License.
 package cloudwatch
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -85,13 +87,28 @@ func identifierOf(t *testing.T, properties map[string]any) string {
 }
 
 func Test_Suite_AnomalyDetector(t *testing.T) {
+	anomalyDetectorSuite(t, single("Average", dims("InstanceId", "i-1", "AutoScalingGroupName", "asg")))
+}
+
+// Test_Suite_AnomalyDetector_CurrentAccount runs the suite for a template that names the current account as the
+// detector's AccountId, which the identifier leaves out.
+func Test_Suite_AnomalyDetector_CurrentAccount(t *testing.T) {
+	anomalyDetectorSuite(t, with(single("Average", dims("InstanceId", "i-1", "AutoScalingGroupName", "asg")), map[string]any{"AccountId": fakeAccount}))
+}
+
+func anomalyDetectorSuite(t *testing.T, metric map[string]any) {
+	withStat := func(stat string) map[string]any { return with(metric, map[string]any{"Stat": stat}) }
 	detector := map[string]any{
-		"SingleMetricAnomalyDetector": single("Average", dims("InstanceId", "i-1", "AutoScalingGroupName", "asg")),
+		"SingleMetricAnomalyDetector": metric,
 		"Configuration":               config("UTC"),
 		"MetricCharacteristics":       map[string]any{"PeriodicSpikes": true},
 	}
-	identifier := identifierOf(t, detector)
-	reordered := single("Average", dims("AutoScalingGroupName", "asg", "InstanceId", "i-1"))
+	identifier := identifierOf(t, with(detector, map[string]any{"SingleMetricAnomalyDetector": with(metric, map[string]any{"AccountId": nil})}))
+	reordered := with(metric, map[string]any{"Dimensions": dims("AutoScalingGroupName", "asg", "InstanceId", "i-1")})
+	other := with(metric, map[string]any{"AccountId": fakeAccount})
+	if _, ok := metric["AccountId"]; ok {
+		other = with(metric, map[string]any{"AccountId": nil})
+	}
 	nativetest.Run(t, nativetest.Suite{
 		TypeName: anomalyDetectorType,
 		Schema:   schema(t),
@@ -103,12 +120,36 @@ func Test_Suite_AnomalyDetector(t *testing.T) {
 		Identifier:         identifier,
 		Changed:            with(detector, map[string]any{"Configuration": config("America/New_York")}),
 		Removable:          "Configuration",
-		CreateOnlyChange:   with(detector, map[string]any{"SingleMetricAnomalyDetector": single("p90", dims("InstanceId", "i-1", "AutoScalingGroupName", "asg"))}),
+		CreateOnlyChange:   with(detector, map[string]any{"SingleMetricAnomalyDetector": withStat("p90")}),
 		OtherForm:          map[string]any{"SingleMetricAnomalyDetector": reordered},
-		// A detector without AccountId is in the current account, so a template that names that account explicitly is
-		// the same detector.
-		SameResource: with(detector, map[string]any{"SingleMetricAnomalyDetector": with(single("Average", dims("InstanceId", "i-1", "AutoScalingGroupName", "asg")), map[string]any{"AccountId": fakeAccount})}),
+		// A detector without AccountId is in the current account, so a template that names that account, or leaves it
+		// out, is the same detector.
+		SameResource: []map[string]any{with(detector, map[string]any{"SingleMetricAnomalyDetector": other})},
+		// The identifier with its keys and dimensions in another order, and with the current account.
+		SameResourceNames: []string{otherOrder(t, identifier, ""), otherOrder(t, identifier, fakeAccount)},
+		// The suite's Cloud Control names a detector of the current account as AWS keeps it, without the account.
+		CloudControlCreate: func(properties map[string]any) (string, map[string]any) {
+			resolved, err := newHandler(newFakeAPI(awsfake.NewCloudControl())).ResolveIdentifier(t.Context(), region, identifierOf(t, properties))
+			require.NoError(t, err)
+			return resolved, properties
+		},
 	})
+}
+
+// otherOrder returns identifier, the identifier of a detector of one metric, with Stat first, its dimensions in reverse
+// order, and account as AccountId when set.
+func otherOrder(t *testing.T, identifier string, account string) string {
+	id, err := parseIdentifier(identifier)
+	require.NoError(t, err)
+	dimensions := slices.Clone(id.Dimensions)
+	slices.Reverse(dimensions)
+	b, err := json.Marshal(dimensions)
+	require.NoError(t, err)
+	out := fmt.Sprintf(`{"Stat":%q,"Dimensions":%s,"MetricName":%q,"Namespace":%q`, id.Stat, b, id.MetricName, id.Namespace)
+	if account != "" {
+		out += fmt.Sprintf(`,"AccountId":%q`, account)
+	}
+	return out + "}"
 }
 
 func Test_Identifier(t *testing.T) {

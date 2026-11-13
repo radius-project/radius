@@ -164,6 +164,10 @@ type Suite struct {
 	// handler whose Recovery is native.RecoverBySearch.
 	Duplicates bool
 
+	// RecordedForm, when set, is a create-only property whose template value AWS reports in a form only a record of
+	// the last deploy shows to match, such as a KMS alias AWS reports as the key's ARN.
+	RecordedForm *RecordedForm
+
 	// RemovedItemField, when set, is a field inside an array item that a deploy sets and the next one leaves out, for
 	// a type whose Equivalent compares array items only on the values the template sets.
 	RemovedItemField *RemovedItemField
@@ -172,9 +176,17 @@ type Suite struct {
 	// range AWS takes. Each deploy gets 400 and leaves no record.
 	Invalid []map[string]any
 
-	// SameResource, when set, is another template for the resource Properties gives, such as one that sets a value
-	// AWS defaults to, like the current account. Two aliases must not both own the resource, whichever deploys first.
-	SameResource map[string]any
+	// SameResource are other templates for the resource Properties gives, such as one that sets a value AWS defaults
+	// to, like the current account. Two aliases must not both own the resource, whichever deploys first.
+	SameResource []map[string]any
+
+	// SameResourceNames are other forms of the identifier of the resource Properties gives, which a PUT can send as
+	// name to take the resource over. Another alias that sends one with Properties gets 409, as with the identifier.
+	SameResourceNames []string
+
+	// SharedMember, for a type whose resource is some members of a parent (native.Options.Members), gives templates
+	// for Properties's parent. Two aliases must never both hold a member.
+	SharedMember *SharedMember
 
 	// ChangedOutside, when set, is a change to the resource in AWS outside Radius that a deploy of its template must
 	// undo, for a type whose Equivalent compares values only on what the template sets.
@@ -191,6 +203,24 @@ type ChangedOutside struct {
 
 	// Restored reports whether AWS has the template's values again, given the resource as AWS has it.
 	Restored func(stored map[string]any) bool
+}
+
+// SharedMember gives templates for the parent of a Suite's Properties.
+type SharedMember struct {
+	// Overlapping lists a member Properties lists, and Disjoint lists none of them.
+	Overlapping map[string]any
+	Disjoint    map[string]any
+}
+
+// RecordedForm is a create-only property AWS reports in another form than the template sets, such as a KMS alias it
+// reports as the key's ARN, or a list it adds values to.
+type RecordedForm struct {
+	// Property is the property, Template and Other are two values the template can set, such as two aliases, and
+	// Stored is what AWS reports for Template, and may report for Other, such as the key ARN.
+	Property string
+	Template any
+	Other    any
+	Stored   any
 }
 
 // RemovedItemField is a field inside an array item, such as an EMR task group's AutoScalingPolicy.
@@ -213,6 +243,15 @@ func Run(t *testing.T, s Suite) {
 	t.Run("template the handler rejects", func(t *testing.T) { s.invalid(t) })
 	t.Run("another template for a resource another alias holds", func(t *testing.T) { s.sameResource(t, false) })
 	t.Run("a template for a resource another alias holds in another form", func(t *testing.T) { s.sameResource(t, true) })
+	t.Run("a take-over by a name for a resource another alias holds", s.sameResourceNames)
+	t.Run("a member another alias holds", func(t *testing.T) { s.sharedMember(t, false) })
+	t.Run("a member another alias holds, deployed first", func(t *testing.T) { s.sharedMember(t, true) })
+	t.Run("members another alias doesn't hold", s.disjointMembers)
+	t.Run("a delete after a deploy that adds a member another alias holds", s.deleteAfterHeldMember)
+	t.Run("a delete of a member both aliases list", s.deleteSharedMember)
+	t.Run("deletes of a member both aliases list, started together", s.deleteSharedMemberTogether)
+	t.Run("a take-over by name of a parent without it in the properties", s.takeOverMemberByName)
+	t.Run("a lost create sent again with a name for another parent", s.resumedCreateByName)
 	t.Run("redeploy after a change outside Radius", func(t *testing.T) { s.changedOutside(t, false) })
 	t.Run("take over a resource changed outside Radius", func(t *testing.T) { s.changedOutside(t, true) })
 	t.Run("create-only change", func(t *testing.T) { s.createOnlyChange(t) })
@@ -225,6 +264,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("delete as the metadata says", func(t *testing.T) { s.deleteByMetadata(t) })
 	t.Run("identifier another alias holds in the identity scope", func(t *testing.T) { s.identifierHeld(t) })
 	t.Run("value AWS returns in another form", func(t *testing.T) { s.otherForm(t) })
+	t.Run("create-only value only a record matches", func(t *testing.T) { s.recordedForm(t) })
 	t.Run("identifier of another product", func(t *testing.T) { s.otherProduct(t) })
 	t.Run("update fails between calls", func(t *testing.T) { s.multiCall(t) })
 	t.Run("member added outside Radius", func(t *testing.T) { s.outsideMember(t) })
@@ -1051,17 +1091,26 @@ func (s Suite) invalid(t *testing.T) {
 	}
 }
 
-// sameResource deploys Properties under one alias and SameResource under another, or the other way around when
-// reversed. Both templates give the same resource, so the second deploy gets 409 and changes nothing, and deleting
-// the first alias deletes the resource.
+// sameResource deploys Properties under one alias and each of SameResource under another, or the other way around
+// when reversed. Both templates give the same resource, so the second deploy gets 409 and changes nothing, and
+// deleting the first alias deletes the resource.
 func (s Suite) sameResource(t *testing.T, reversed bool) {
-	if s.SameResource == nil {
+	if len(s.SameResource) == 0 {
 		t.Skip("the type has one template form for a resource")
 	}
-	first, second := s.Properties, s.SameResource
-	if reversed {
-		first, second = second, first
+	for i, same := range s.SameResource {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			first, second := s.Properties, same
+			if reversed {
+				first, second = second, first
+			}
+			s.deployBoth(t, first, second)
+		})
 	}
+}
+
+// deployBoth deploys first under one alias and second, a template for the same resource, under another.
+func (s Suite) deployBoth(t *testing.T, first map[string]any, second map[string]any) {
 	h := s.newHarness(t)
 	h.deploy(first)
 	other := strings.TrimSuffix(h.path(), alias) + otherAlias
@@ -1073,6 +1122,245 @@ func (s Suite) sameResource(t *testing.T, reversed bool) {
 
 	h.remove()
 	h.requireRemoved(nil)
+}
+
+// sameResourceNames deploys Properties under one alias, and Properties with each of SameResourceNames under another.
+func (s Suite) sameResourceNames(t *testing.T) {
+	if len(s.SameResourceNames) == 0 {
+		t.Skip("the type has one form of identifier for a resource")
+	}
+	for i, name := range s.SameResourceNames {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			h := s.newHarness(t)
+			h.deploy(s.Properties)
+			other := strings.TrimSuffix(h.path(), alias) + otherAlias
+			resp := h.do(h.putFactory(), http.MethodPut, other, owner, map[string]any{"name": name, "properties": s.Properties})
+			require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+			require.Nil(t, h.recordAt(other))
+			before := h.stored()
+			require.NotNil(t, before, "the first alias's resource stays")
+
+			h.remove()
+			h.requireRemoved(before)
+		})
+	}
+}
+
+// recordedForm deploys a create-only value, such as a KMS alias, that AWS reports in another form. Deploying the same
+// value again changes nothing, because the record shows the template didn't change it. Changing it gets 400, even
+// though AWS may report the same form for the new value. Taking the resource over by name gets 400 too, because there
+// is no record to show the value unchanged.
+func (s Suite) recordedForm(t *testing.T) {
+	ref := s.RecordedForm
+	if ref == nil {
+		t.Skip("the type has no create-only value AWS reports in a form only a record matches")
+	}
+	resolve := func(h *harness) {
+		require.NoError(t, h.cc.Patch(s.TypeName, h.identifier(), []map[string]any{{"op": "replace", "path": "/" + ref.Property, "value": ref.Stored}}))
+	}
+	template := withValue(s.Properties, ref.Property, ref.Template)
+
+	t.Run("unchanged", func(t *testing.T) {
+		h := s.newHarness(t)
+		h.deploy(template)
+		resolve(h)
+		h.handler.reset()
+		resp := h.put(template)
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"Read"}, h.handler.reset(), "the same value is no change")
+	})
+
+	t.Run("changed", func(t *testing.T) {
+		h := s.newHarness(t)
+		h.deploy(template)
+		resolve(h)
+		before, applied := h.stored(), h.record().Properties.LastApplied
+		resp := h.put(withValue(s.Properties, ref.Property, ref.Other))
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Contains(t, resp.raw, ref.Property)
+		require.Equal(t, before, h.stored(), "nothing changes in AWS")
+		require.Equal(t, applied, h.record().Properties.LastApplied, "the record keeps the value AWS has")
+	})
+
+	t.Run("taken over by name", func(t *testing.T) {
+		h := s.newHarness(t)
+		h.deployAt(otherPath(h), template)
+		identifier := h.identifier()
+		resolve(h)
+		id, err := resources.ParseResource(otherPath(h))
+		require.NoError(t, err)
+		store := records.NewStore(h.db)
+		_, etag, err := store.Get(t.Context(), id)
+		require.NoError(t, err)
+		require.NoError(t, store.DeleteIfUnchanged(t.Context(), id, etag), "the resource has no record, as before a take-over")
+		before := h.stored()
+
+		resp := h.putNamed(identifier, template)
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Contains(t, resp.raw, ref.Property)
+		require.Equal(t, before, h.stored(), "nothing changes in AWS")
+	})
+}
+
+// sharedMember deploys Properties under one alias and SharedMember.Overlapping under another, or the other way around
+// when reversed. The second deploy gets 409 naming the first alias, changes nothing, and leaves no record.
+func (s Suite) sharedMember(t *testing.T, reversed bool) {
+	if s.SharedMember == nil {
+		t.Skip("the type's resource isn't members of a parent")
+	}
+	first, second := s.Properties, s.SharedMember.Overlapping
+	if reversed {
+		first, second = second, first
+	}
+	h := s.newHarness(t)
+	h.deploy(first)
+	h.handler.reset()
+	resp := h.putAt(otherPath(h), second)
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	require.Contains(t, resp.raw, alias)
+	require.Empty(t, h.handler.reset(), "nothing reaches AWS")
+	require.Nil(t, h.recordAt(otherPath(h)))
+	h.requireHeld(first)
+
+	h.remove()
+	h.requireRemoved(nil)
+}
+
+// disjointMembers deploys Properties under one alias and SharedMember.Disjoint, other members of the same parent,
+// under another. Both deploy, and deleting either leaves the other's members.
+func (s Suite) disjointMembers(t *testing.T) {
+	if s.SharedMember == nil {
+		t.Skip("the type's resource isn't members of a parent")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	h.deployAt(otherPath(h), s.SharedMember.Disjoint)
+	h.removeAt(otherPath(h))
+	h.requireHeld(s.Properties)
+
+	h.deployAt(otherPath(h), s.SharedMember.Disjoint)
+	h.remove()
+	require.Nil(t, h.record())
+	h.requireHeldAt(otherPath(h), s.SharedMember.Disjoint)
+	h.removeAt(otherPath(h))
+	require.Zero(t, h.cc.Count(s.TypeName))
+}
+
+// deleteAfterHeldMember deploys Properties under one alias and SharedMember.Disjoint under another, which then gets
+// 409 for SharedMember.Overlapping. Deleting the other alias removes only Disjoint's members.
+func (s Suite) deleteAfterHeldMember(t *testing.T) {
+	if s.SharedMember == nil {
+		t.Skip("the type's resource isn't members of a parent")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	h.deployAt(otherPath(h), s.SharedMember.Disjoint)
+	applied := h.recordAt(otherPath(h)).Properties.LastApplied
+	resp := h.putAt(otherPath(h), s.SharedMember.Overlapping)
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	require.Equal(t, applied, h.recordAt(otherPath(h)).Properties.LastApplied, "the record keeps only its own members")
+	require.Nil(t, h.recordAt(otherPath(h)).Properties.PendingLastApplied)
+
+	h.removeAt(otherPath(h))
+	h.requireHeld(s.Properties)
+	h.remove()
+	h.requireRemoved(nil)
+}
+
+// deleteSharedMember gives two aliases a member each lists, as two deploys at the same moment can, and deletes them
+// one at a time. The first delete leaves the member, which the other alias still lists, and the second removes it.
+func (s Suite) deleteSharedMember(t *testing.T) {
+	if s.SharedMember == nil {
+		t.Skip("the type's resource isn't members of a parent")
+	}
+	h := s.newHarness(t)
+	s.shareMember(h)
+
+	h.removeAt(otherPath(h))
+	h.requireHeld(s.Properties)
+	h.remove()
+	h.requireRemoved(nil)
+}
+
+// shareMember gives the alias at otherPath SharedMember.Disjoint, and its record SharedMember.Overlapping, as two
+// deploys at the same moment can, so both aliases list a member.
+func (s Suite) shareMember(h *harness) {
+	h.t.Helper()
+	h.deploy(s.Properties)
+	h.deployAt(otherPath(h), s.SharedMember.Disjoint)
+	id, err := resources.ParseResource(otherPath(h))
+	require.NoError(h.t, err)
+	store := records.NewStore(h.db)
+	rec, etag, err := store.Get(h.t.Context(), id)
+	require.NoError(h.t, err)
+	rec.Properties.LastApplied = s.SharedMember.Overlapping
+	_, err = store.Save(h.t.Context(), rec, etag)
+	require.NoError(h.t, err)
+}
+
+// deleteSharedMemberTogether deletes two aliases that both list a member, the second before the first finishes. The
+// member must not outlive both.
+func (s Suite) deleteSharedMemberTogether(t *testing.T) {
+	if s.SharedMember == nil {
+		t.Skip("the type's resource isn't members of a parent")
+	}
+	h := s.newHarness(t)
+	s.shareMember(h)
+	for _, path := range []string{h.path(), otherPath(h)} {
+		resp := h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, path, owner, nil)
+		require.Contains(t, []int{http.StatusAccepted, http.StatusNoContent}, resp.status, resp.raw)
+	}
+	h.finish()
+	require.Nil(t, h.record())
+	require.Nil(t, h.recordAt(otherPath(h)))
+	require.Zero(t, h.cc.Count(s.TypeName), "the last delete removes the member both listed")
+}
+
+// takeOverMemberByName deploys Properties, then has another alias take over the same parent by a name, with
+// SharedMember.Overlapping without the parent property. The handler takes the parent from the name, so the deploy
+// gets 409 like one that sets it.
+func (s Suite) takeOverMemberByName(t *testing.T) {
+	if s.SharedMember == nil {
+		t.Skip("the type's resource isn't members of a parent")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	parent, _, ok := strings.Cut(h.identifier(), "|")
+	require.True(t, ok, "the identifier is the parent and a name, joined with |")
+	properties := maps.Clone(s.SharedMember.Overlapping)
+	delete(properties, h.handler.Options().Members.Parent)
+	resp := h.do(h.putFactory(), http.MethodPut, otherPath(h), owner, map[string]any{"name": parent + "|other", "properties": properties})
+	require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+	require.Nil(t, h.recordAt(otherPath(h)))
+	h.requireHeld(s.Properties)
+}
+
+// resumedCreateByName deploys CreateOnlyChange, the same members of another parent, under one alias. The create of
+// Properties under another alias is lost, and a PUT sends it again with a name for CreateOnlyChange's parent. UCP finds
+// the lost create in Properties's parent, which the other alias doesn't hold, so the alias keeps every member it
+// added, and its delete removes them.
+func (s Suite) resumedCreateByName(t *testing.T) {
+	if s.SharedMember == nil || s.CreateOnlyChange == nil {
+		t.Skip("the type's resource isn't members of a parent")
+	}
+	h := s.newHarness(t)
+	h.deployAt(otherPath(h), s.CreateOnlyChange)
+	parent, _, ok := strings.Cut(h.identifier(), "|")
+	require.True(t, ok, "the identifier is the parent and a name, joined with |")
+	held := h.cc.Count(s.TypeName)
+
+	h.handler.lose("Create", true)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+	resp = h.do(h.putFactory(), http.MethodPut, h.path(), owner, map[string]any{"name": parent + "|other", "properties": s.Properties})
+	require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
+	h.finish()
+	h.requireHeld(s.Properties)
+
+	h.remove()
+	require.Nil(t, h.record())
+	require.Equal(t, held, h.cc.Count(s.TypeName), "the delete removes every member the alias added, and only those")
+	h.requireHeldAt(otherPath(h), s.CreateOnlyChange)
 }
 
 // otherForm makes AWS return values of the template in another form, and deploys the template again. The values
@@ -1264,8 +1552,12 @@ func (s Suite) outsideMember(t *testing.T) {
 // deleteTokenRetry loses the response of a delete that reached AWS, and deletes again. UCP saved the delete token on
 // the record before the first call, and the retry sends the same token, so AWS takes no second copy.
 func (s Suite) deleteTokenRetry(t *testing.T) {
-	if _, ok := s.NewHandler(awsfake.NewCloudControl()).(native.DeletePreparer); !ok {
+	handler := s.NewHandler(awsfake.NewCloudControl())
+	if _, ok := handler.(native.DeletePreparer); !ok {
 		t.Skip("the handler sends no delete token")
+	}
+	if _, ok := handler.(native.ScopedDeleter); ok {
+		t.Skip("the handler removes only the members it manages, which takes no delete token")
 	}
 	h := s.newHarness(t)
 	h.deploy(s.Properties)
@@ -1282,7 +1574,7 @@ func (s Suite) deleteTokenRetry(t *testing.T) {
 
 	h.removeEventually()
 	h.requireRemoved(nil)
-	require.NotEmpty(t, h.handler.tokens)
+	require.GreaterOrEqual(t, len(h.handler.tokens), 2, "the lost delete and its retry both send a token")
 	for _, token := range h.handler.tokens {
 		require.Equal(t, first, token, "every attempt sends the same delete token")
 	}
@@ -1388,11 +1680,25 @@ func withValue(properties map[string]any, property string, value any) map[string
 	return out
 }
 
+// requireSubset requires got to have every value of want. An object in want is compared the same way, so got may have
+// more values inside it, such as an AccountId AWS fills in, as UCP's patch keeps a value AWS has that the template
+// leaves out. Any other value, including a list, must be equal.
 func requireSubset(t testing.TB, want map[string]any, got map[string]any) {
 	t.Helper()
+	requireSubsetAt(t, "", normalize(t, want).(map[string]any), normalize(t, got).(map[string]any))
+}
+
+func requireSubsetAt(t testing.TB, path string, want map[string]any, got map[string]any) {
+	t.Helper()
 	for k, v := range want {
-		require.Contains(t, got, k)
-		require.EqualValues(t, normalize(t, v), normalize(t, got[k]), k)
+		require.Contains(t, got, k, path)
+		w, wantObject := v.(map[string]any)
+		g, gotObject := got[k].(map[string]any)
+		if wantObject && gotObject && len(w) > 0 {
+			requireSubsetAt(t, path+"/"+k, w, g)
+			continue
+		}
+		require.EqualValues(t, v, got[k], strings.TrimPrefix(path+"/"+k, "/"))
 	}
 }
 
@@ -1697,6 +2003,30 @@ func (h *harness) deploy(properties map[string]any) {
 	h.requireDeployed()
 }
 
+// deployAt deploys properties at the alias path and requires it to succeed, as deploy does at the suite's alias.
+func (h *harness) deployAt(path string, properties map[string]any) {
+	h.t.Helper()
+	resp := h.putAt(path, properties)
+	require.Contains(h.t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)
+	h.finish()
+	rec := h.recordAt(path)
+	require.Equal(h.t, v1.ProvisioningStateSucceeded, rec.ProvisioningState())
+	h.lastID = rec.Properties.AWSIdentifier
+}
+
+// otherPath returns the path of the suite's other alias.
+func otherPath(h *harness) string {
+	return h.collection() + "/" + otherAlias
+}
+
+// putNamed sends a PUT that takes over the AWS resource with the identifier, by name, with properties.
+func (h *harness) putNamed(identifier string, properties map[string]any) response {
+	put := func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+		return awsproxy.NewCreateOrUpdateAWSResource(opts, clients, func() (*ucp_aws.FingerprintKey, error) { return h.key, nil })
+	}
+	return h.do(put, http.MethodPut, h.path(), owner, map[string]any{"name": identifier, "properties": properties})
+}
+
 func (h *harness) requireDeployed() {
 	h.t.Helper()
 	rec := h.record()
@@ -1726,6 +2056,30 @@ func (h *harness) deployEventually(properties map[string]any) {
 
 // remove sends a DELETE and finishes the operation it starts. The DELETE gets 400 for a type whose onDelete metadata is
 // reject.
+// removeAt deletes the alias at path, which must succeed.
+func (h *harness) removeAt(path string) {
+	h.t.Helper()
+	resp := h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, path, owner, nil)
+	require.Contains(h.t, []int{http.StatusAccepted, http.StatusNoContent}, resp.status, resp.raw)
+	h.finish()
+	require.Nil(h.t, h.recordAt(path))
+}
+
+// requireHeld checks that AWS still has every member of properties under the alias: deploying them again only reads.
+func (h *harness) requireHeld(properties map[string]any) {
+	h.t.Helper()
+	h.requireHeldAt(h.path(), properties)
+}
+
+// requireHeldAt checks that AWS still has every member of properties under the alias at path.
+func (h *harness) requireHeldAt(path string, properties map[string]any) {
+	h.t.Helper()
+	h.handler.reset()
+	resp := h.putAt(path, properties)
+	require.Equal(h.t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(h.t, []string{"Read"}, h.handler.reset(), "AWS has every member, so the deploy only reads")
+}
+
 func (h *harness) remove() response {
 	h.t.Helper()
 	resp := h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil)
@@ -1876,27 +2230,54 @@ func (f finder) Find(ctx context.Context, request native.CreateRequest) (string,
 	return f.r.Handler.(native.Finder).Find(ctx, request)
 }
 
-// wrap returns the handler the registry gets for r: r, with the optional methods the handler under test has.
+// wrap returns the handler the registry gets for r: r, with the optional methods the handler under test has, so UCP
+// sees the same interfaces as for the handler itself.
 func (r *recorder) wrap() native.Handler {
 	_, encodes := r.Handler.(native.IdentifierEncoder)
 	_, finds := r.Handler.(native.Finder)
+	_, scopes := r.Handler.(native.ScopedReader)
+	e, f, sc := encoder{r}, finder{r}, scoped{r}
 	switch {
+	case encodes && finds && scopes:
+		return struct {
+			*recorder
+			encoder
+			finder
+			scoped
+		}{r, e, f, sc}
 	case encodes && finds:
 		return struct {
 			*recorder
 			encoder
 			finder
-		}{r, encoder{r}, finder{r}}
+		}{r, e, f}
+	case encodes && scopes:
+		return struct {
+			*recorder
+			encoder
+			scoped
+		}{r, e, sc}
+	case finds && scopes:
+		return struct {
+			*recorder
+			finder
+			scoped
+		}{r, f, sc}
 	case encodes:
 		return struct {
 			*recorder
 			encoder
-		}{r, encoder{r}}
+		}{r, e}
 	case finds:
 		return struct {
 			*recorder
 			finder
-		}{r, finder{r}}
+		}{r, f}
+	case scopes:
+		return struct {
+			*recorder
+			scoped
+		}{r, sc}
 	}
 	return r
 }
@@ -1970,28 +2351,26 @@ func (r *recorder) lostDelete(call func() error) error {
 	return call()
 }
 
-// The recorder always has the methods of native.ScopedReader, native.ScopedDeleter, and native.DeletePreparer, so the
-// registry and UCP see them whatever the handler under test has. A handler without them gets the call UCP would have
-// made instead: Read for ReadScoped and Delete for DeleteScoped. DeleteToken returns "" for such a handler, so UCP
-// never calls DeleteWithToken.
-
-func (r *recorder) ReadScoped(ctx context.Context, region string, identifier string, managed []map[string]any) (map[string]any, error) {
-	r.note("Read")
-	if scoped, ok := r.Handler.(native.ScopedReader); ok {
-		return scoped.ReadScoped(ctx, region, identifier, managed)
-	}
-	return r.Handler.Read(ctx, region, identifier)
+// scoped passes the methods of a handler under test whose resource is some members of a parent (native.ScopedReader
+// and native.ScopedDeleter) through a recorder.
+type scoped struct {
+	r *recorder
 }
 
-func (r *recorder) DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error {
-	r.note("Delete")
-	return r.lostDelete(func() error {
-		if scoped, ok := r.Handler.(native.ScopedDeleter); ok {
-			return scoped.DeleteScoped(ctx, region, identifier, managed)
-		}
-		return r.Handler.Delete(ctx, region, identifier)
+func (s scoped) ReadScoped(ctx context.Context, region string, identifier string, managed []map[string]any) (map[string]any, error) {
+	s.r.note("Read")
+	return s.r.Handler.(native.ScopedReader).ReadScoped(ctx, region, identifier, managed)
+}
+
+func (s scoped) DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error {
+	s.r.note("Delete")
+	return s.r.lostDelete(func() error {
+		return s.r.Handler.(native.ScopedDeleter).DeleteScoped(ctx, region, identifier, managed)
 	})
 }
+
+// The recorder always has the methods of native.DeletePreparer, so the registry and UCP see them whatever the
+// handler under test has. DeleteToken returns "" for a handler without them, so UCP never calls DeleteWithToken.
 
 // ResolveIdentifier passes the identifier to the handler under test when it resolves identifiers
 // (native.IdentifierResolver), and otherwise returns it as UCP uses it for a handler that doesn't.

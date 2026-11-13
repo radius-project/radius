@@ -49,10 +49,11 @@ const (
 )
 
 var (
-	_ native.Handler           = (*DataLakeSettings)(nil)
-	_ native.IdentifierEncoder = (*DataLakeSettings)(nil)
-	_ native.ScopedReader      = (*DataLakeSettings)(nil)
-	_ native.ScopedDeleter     = (*DataLakeSettings)(nil)
+	_ native.Handler            = (*DataLakeSettings)(nil)
+	_ native.IdentifierEncoder  = (*DataLakeSettings)(nil)
+	_ native.ScopedReader       = (*DataLakeSettings)(nil)
+	_ native.ScopedDeleter      = (*DataLakeSettings)(nil)
+	_ native.IdentifierResolver = (*DataLakeSettings)(nil)
 )
 
 // DataLakeSettings serves AWS::LakeFormation::DataLakeSettings, the one set of data lake settings of an account in a
@@ -84,6 +85,12 @@ func (h *DataLakeSettings) Options() native.Options {
 
 // Identifier returns DataLakeSettings, whatever the properties.
 func (h *DataLakeSettings) Identifier(properties map[string]any) (string, error) {
+	return settingsIdentifier, nil
+}
+
+// ResolveIdentifier returns the settings' one identifier for any identifier, because an account has one set of
+// settings in a region.
+func (h *DataLakeSettings) ResolveIdentifier(ctx context.Context, region string, identifier string) (string, error) {
 	return settingsIdentifier, nil
 }
 

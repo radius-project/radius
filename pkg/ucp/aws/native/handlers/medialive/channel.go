@@ -48,9 +48,7 @@ type API interface {
 	DeleteTags(ctx context.Context, params *medialive.DeleteTagsInput, optFns ...func(*medialive.Options)) (*medialive.DeleteTagsOutput, error)
 }
 
-func inRegion(region string) func(*medialive.Options) {
-	return func(o *medialive.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[medialive.Options]
 
 var _ native.Handler = (*Channel)(nil)
 

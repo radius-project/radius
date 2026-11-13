@@ -51,9 +51,7 @@ type AccountAPI interface {
 	GetCallerIdentity(ctx context.Context, params *sts.GetCallerIdentityInput, optFns ...func(*sts.Options)) (*sts.GetCallerIdentityOutput, error)
 }
 
-func inRegion(region string) func(*cloudwatch.Options) {
-	return func(o *cloudwatch.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[cloudwatch.Options]
 
 var (
 	_ native.Handler            = (*AnomalyDetector)(nil)
@@ -135,6 +133,23 @@ type dimension struct {
 
 func (id identity) isMath() bool {
 	return len(id.MetricDataQueries) > 0
+}
+
+// canonical returns id in the form Identifier gives, such as with its dimensions in order.
+func (id identity) canonical() (identity, error) {
+	b, err := json.Marshal(id)
+	if err != nil {
+		return identity{}, err
+	}
+	detector := map[string]any{}
+	if err := json.Unmarshal(b, &detector); err != nil {
+		return identity{}, err
+	}
+	kind := "SingleMetricAnomalyDetector"
+	if id.isMath() {
+		kind = "MetricMathAnomalyDetector"
+	}
+	return identityOf(map[string]any{kind: detector})
 }
 
 // encode returns the identity as JSON, the identifier.
@@ -369,12 +384,31 @@ func (h *AnomalyDetector) Read(ctx context.Context, region string, identifier st
 	if err != nil {
 		return nil, err
 	}
-	return properties(identifier, d, id)
+	account, err := accountOf(d, h.currentAccount(ctx, region))
+	if err != nil {
+		return nil, err
+	}
+	return properties(identifier, d, id, account)
 }
 
-// properties returns the properties of the detector d, whose identity is id. A detector of one metric is returned in
-// both forms, SingleMetricAnomalyDetector and the top-level properties, so it matches a template that uses either.
-func properties(identifier string, d *types.AnomalyDetector, id identity) (map[string]any, error) {
+// accountOf returns the account of a detector of one metric: the AccountId AWS returns, or the current account when
+// AWS leaves it out, because a detector without one is the current account's. It returns "" for a metric math detector.
+// A read returns it in SingleMetricAnomalyDetector, so a template that names the current account and one that leaves
+// the account out both match it, though the identifier leaves the current account out.
+func accountOf(d *types.AnomalyDetector, current func() (string, error)) (string, error) {
+	if d.SingleMetricAnomalyDetector == nil {
+		return "", nil
+	}
+	if account := aws.ToString(d.SingleMetricAnomalyDetector.AccountId); account != "" {
+		return account, nil
+	}
+	return current()
+}
+
+// properties returns the properties of the detector d, whose identity is id and account account. A detector of one
+// metric is returned in both forms, SingleMetricAnomalyDetector and the top-level properties, so it matches a template
+// that uses either.
+func properties(identifier string, d *types.AnomalyDetector, id identity, account string) (map[string]any, error) {
 	p := map[string]any{
 		"Id":                    identifier,
 		"Configuration":         configurationProperties(d.Configuration),
@@ -389,7 +423,7 @@ func properties(identifier string, d *types.AnomalyDetector, id identity) (map[s
 		}
 		p["Namespace"], p["MetricName"], p["Stat"], p["Dimensions"] = id.Namespace, id.MetricName, id.Stat, dims
 		p["SingleMetricAnomalyDetector"] = &types.SingleMetricAnomalyDetector{
-			AccountId:  aws.String(id.AccountId),
+			AccountId:  aws.String(account),
 			Namespace:  aws.String(id.Namespace),
 			MetricName: aws.String(id.MetricName),
 			Stat:       aws.String(id.Stat),
@@ -523,25 +557,26 @@ func btoi(b bool) int {
 	return 0
 }
 
-// ResolveIdentifier returns identifier without AccountId when that is the current account, the form List and Create
-// return. It asks STS for the current account only when the identifier has an AccountId. A detector of another
-// account keeps its AccountId.
+// ResolveIdentifier returns identifier in the form List and Create return: the form Identifier gives, without AccountId
+// when that is the current account. It asks STS for the current account only when the identifier has an AccountId. A
+// detector of another account keeps its AccountId.
 func (h *AnomalyDetector) ResolveIdentifier(ctx context.Context, region string, identifier string) (string, error) {
 	id, err := parseIdentifier(identifier)
 	if err != nil {
 		return "", err
 	}
-	if id.AccountId == "" {
-		return identifier, nil
-	}
-	current, err := h.currentAccount(ctx, region)()
-	if err != nil {
+	if id, err = id.canonical(); err != nil {
 		return "", err
 	}
-	if id.AccountId != current {
-		return identifier, nil
+	if id.AccountId != "" {
+		current, err := h.currentAccount(ctx, region)()
+		if err != nil {
+			return "", err
+		}
+		if id.AccountId == current {
+			id.AccountId = ""
+		}
 	}
-	id.AccountId = ""
 	return id.encode()
 }
 
@@ -625,7 +660,11 @@ func (h *AnomalyDetector) List(ctx context.Context, region string) ([]native.Res
 		if err != nil {
 			return err
 		}
-		p, err := properties(identifier, d, id)
+		owner, err := accountOf(d, account)
+		if err != nil {
+			return err
+		}
+		p, err := properties(identifier, d, id, owner)
 		if err != nil {
 			return err
 		}

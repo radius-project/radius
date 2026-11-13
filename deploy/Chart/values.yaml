@@ -69,7 +69,7 @@ global:
     # (pkg/recipes/terraform/install.go::downloadAndInstallTerraform)
     # pins to that version, so the pre-mounted binary must match or
     # recipes will see behavior differences between cold and warm starts.
-    version: "1.16.5"
+    version: "1.17.1"
     # URL for downloading Terraform binary. Leave empty to download the
     # version specified by `version` from releases.hashicorp.com. Provide
     # a complete direct download URL to override (e.g., for air-gapped or
@@ -120,11 +120,19 @@ global:
   # rejected with AdmissionPolicyDenied (enforce). Not rendered when the mode is off.
   # Applications RP also rejects environments and applications in that namespace, and output
   # resources there that reference a control-plane Secret (dryRun: logged; enforce: rejected).
+  # In dryRun and enforce, ucp, applications-rp, dynamic-rp, and controller mount their
+  # "<component>-mtls" Secret. UCP presents its certificate to the resource providers;
+  # the resource providers and controller call UCP over mTLS on internal port 9444.
+  # UCP port 9443 is not protected yet (planned for A6). Probes and metrics stay plain.
   # Example: rad install kubernetes --set global.rbac.dryRun=true
   rbac:
-    # Select enforce mode, issue component certificates, and enforce Pod Security labels.
+    # Enforce internal component authorization: require a client certificate from the Radius CA
+    # and reject unauthorized callers. Internal UCP-to-resource-provider calls use client mTLS.
+    # Also enforce Pod Security labels on environment and application namespaces.
     enabled: false
-    # Select dry-run mode, issue component certificates, and warn/audit Pod Security violations.
+    # Log what authorization checks would deny without rejecting requests. Servers accept both
+    # TLS and plain HTTP, and need the mounted certificate files.
+    # Also warn/audit Pod Security violations on environment and application namespaces.
     dryRun: false
     # Pod Security Standards level for the labels: "baseline" or "restricted".
     podSecurityLevel: baseline
@@ -213,7 +221,7 @@ dynamicrp:
     # Default install (this disabled) is PSA-baseline-compatible.
     enabled: false
     # Pinned rootless BuildKit image.
-    image: moby/buildkit:v0.34.1-rootless
+    image: moby/buildkit:v0.34.2-rootless
     # Limit concurrent OCI worker steps across all builds sharing the
     # BuildKit sidecar. Increase only after profiling representative cold
     # builds and sizing the resources below with sufficient headroom.

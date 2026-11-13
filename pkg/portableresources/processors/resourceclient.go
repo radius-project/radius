@@ -225,11 +225,8 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 			} else {
 				if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok {
 					statusCode, errorCode = responseError.StatusCode, responseError.ErrorCode
-					if statusCode == http.StatusNotFound {
-						switch errorCode {
-						case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound":
-							existence = "absent"
-						}
+					if isARMResourceAbsent(id, err) {
+						existence = "absent"
 					}
 				}
 			}
@@ -243,12 +240,8 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 			continue
 		}
 		if err != nil {
-			var responseError *azcore.ResponseError
-			if errors.As(err, &responseError) && responseError.StatusCode == http.StatusNotFound {
-				switch responseError.ErrorCode {
-				case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound", "RoleAssignmentNotFound":
-					return nil
-				}
+			if isARMResourceAbsent(id, err) {
+				return nil
 			}
 			return fmt.Errorf("failed to validate API version %q for resource %q: %w", apiVersion, id.String(), err)
 		}
@@ -261,7 +254,7 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 			continue
 		}
 		if err != nil {
-			if clients.Is404Error(err) {
+			if isARMResourceAbsent(id, err) {
 				return nil
 			}
 			return err
@@ -269,8 +262,20 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 
 		_, err = poller.PollUntilDone(ctx, nil)
 		if err != nil {
-			if clients.Is404Error(err) {
-				return nil
+			if responseError, ok := errors.AsType[*azcore.ResponseError](err); ok &&
+				(responseError.StatusCode == http.StatusNotFound ||
+					(responseError.StatusCode == http.StatusOK &&
+						(responseError.ErrorCode == "Canceled" ||
+							responseError.ErrorCode == "CanceledAndSupersededDueToAnotherOperation"))) {
+				// A missing or superseded operation does not prove that its target is gone.
+				// Do not issue another DELETE or change API versions while checking.
+				_, readErr := client.GetByID(ctx, id.String(), apiVersion, nil)
+				if isARMResourceAbsent(id, readErr) {
+					return nil
+				}
+				if readErr != nil {
+					return fmt.Errorf("failed to verify resource %q after delete polling failed: %w", id.String(), errors.Join(readErr, err))
+				}
 			}
 			return err
 		}
@@ -279,6 +284,24 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 	}
 
 	return fmt.Errorf("no API version was accepted for resource %q: %w", id.String(), versionError)
+}
+
+func isARMResourceAbsent(id resources.ID, err error) bool {
+	responseError, ok := errors.AsType[*azcore.ResponseError](err)
+	if !ok || responseError.StatusCode != http.StatusNotFound {
+		return false
+	}
+
+	switch responseError.ErrorCode {
+	case "ResourceNotFound", "ResourceGroupNotFound", "ParentResourceNotFound", "RoleAssignmentNotFound":
+		return true
+	case "NotFound":
+		// Microsoft.Network returns this code when an individual resource is absent.
+		// Do not extend it to providers where it could mean an unknown route.
+		return strings.EqualFold(id.ProviderNamespace(), "Microsoft.Network")
+	default:
+		return false
+	}
 }
 
 func isARMAPIVersionRejection(err error) bool {

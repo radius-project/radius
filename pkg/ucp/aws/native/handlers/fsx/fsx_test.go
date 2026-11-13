@@ -153,8 +153,14 @@ func Test_Suite_LustreFileSystem(t *testing.T) {
 		Removable:          "Tags",
 		CreateOnlyChange:   with(properties, map[string]any{"SubnetIds": []any{"subnet-0b2"}}),
 		OtherForm:          map[string]any{"KmsKeyId": "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"},
-		MultiCall:          with(properties, map[string]any{"StorageCapacity": 2400, "Tags": tags("env", "dev")}),
-		Calls:              3,
+		RecordedForm: &nativetest.RecordedForm{
+			Property: "KmsKeyId",
+			Template: "alias/fsx-old",
+			Other:    "alias/fsx-new",
+			Stored:   "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab",
+		},
+		MultiCall: with(properties, map[string]any{"StorageCapacity": 2400, "Tags": tags("env", "dev")}),
+		Calls:     3,
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
@@ -474,7 +480,11 @@ func Test_Create(t *testing.T) {
 		api.tokens[id] = "token-a"
 		api.errs["CreateFileSystem"] = fault("IncompatibleParameterError", "other parameters")
 		_, err = h.Create(t.Context(), request)
-		require.ErrorContains(t, err, "found 2 FSx file systems")
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure, "UCP can't tell which one it made")
+		require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+		require.Contains(t, failure.Message, "2 FSx file systems")
+		require.Contains(t, failure.Message, id)
 
 		api.errs["DescribeFileSystems"] = fault("ThrottlingException", "slow down")
 		_, err = h.Create(t.Context(), request)
@@ -491,6 +501,18 @@ func Test_Create(t *testing.T) {
 		again, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, restore), ClientToken: "token-r"})
 		require.NoError(t, err)
 		require.Equal(t, id, again)
+
+		// A delete that finds a lost create sends it again with the last create's values, which leave out the
+		// write-only BackupId, so the handler calls CreateFileSystem. FSx scopes the token to the file system, so it
+		// rejects the token with other parameters, and the handler finds the restored file system by its tag.
+		withoutBackup := maps.Clone(restore)
+		delete(withoutBackup, "BackupId")
+		api.calls = nil
+		resent, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, withoutBackup), ClientToken: "token-r"})
+		require.NoError(t, err)
+		require.Equal(t, id, resent, "the resend finds the restored file system")
+		require.Contains(t, api.calls, "CreateFileSystem")
+		require.Equal(t, 1, api.store.Count(fileSystemType), "no second file system")
 
 		_, err = h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, with(restore, map[string]any{"OntapConfiguration": map[string]any{}})), ClientToken: "t"})
 		failure := &native.Failure{}
@@ -727,6 +749,23 @@ func Test_Progress(t *testing.T) {
 		require.Nil(t, finish(t, h, id, native.OperationUpdate).Failure, "a later update that succeeds is done, though an earlier one failed")
 	})
 
+	t.Run("an update with no calls after one that failed", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewFileSystem(api)
+		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
+		id := create(t, h, base)
+		api.failUpdate = "The throughput capacity is not supported."
+		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 4096}})))
+		require.NotNil(t, finish(t, h, id, native.OperationUpdate).Failure)
+
+		api.calls = nil
+		removed := maps.Clone(base)
+		delete(removed, "StorageCapacity")
+		require.NoError(t, update(t, h, id, base, removed))
+		require.NotContains(t, api.calls, "UpdateFileSystem", "FSx keeps a removed StorageCapacity")
+		require.Nil(t, finish(t, h, id, native.OperationUpdate).Failure, "the update made no action, so the earlier failure isn't its")
+	})
+
 	t.Run("an update with no administrative action after one that failed", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)
@@ -800,8 +839,12 @@ func Test_Equivalent(t *testing.T) {
 	arn := "arn:aws:kms:us-west-2:111122223333:key/1234abcd"
 	require.True(t, equivalent("KmsKeyId", "1234abcd", arn))
 	require.True(t, equivalent("KmsKeyId", arn, arn))
-	require.True(t, equivalent("KmsKeyId", "alias/fsx", arn))
-	require.True(t, equivalent("KmsKeyId", "arn:aws:kms:us-west-2:111122223333:alias/fsx", arn))
+	require.False(t, equivalent("KmsKeyId", "alias/fsx", arn), "an alias needs the record")
+	require.True(t, sameAlias("KmsKeyId", "alias/fsx", arn))
+	require.True(t, sameAlias("KmsKeyId", "arn:aws:kms:us-west-2:111122223333:alias/fsx", arn))
+	require.False(t, sameAlias("KmsKeyId", "1234abcd", arn))
+	require.False(t, sameAlias("Other", "alias/fsx", arn))
+	require.False(t, sameAlias("KmsKeyId", 1, arn))
 	require.False(t, equivalent("KmsKeyId", "5678efgh", arn))
 	require.False(t, equivalent("StorageType", "ssd", "SSD"))
 	require.False(t, equivalent("KmsKeyId", 1, arn))

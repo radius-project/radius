@@ -45,7 +45,6 @@
       "permissions": [
         "lakeformation:RegisterResource",
         "lakeformation:DescribeResource",
-        "lakeformation:ListResources",
         "iam:PassRole",
         "iam:GetRole",
         "iam:GetRolePolicy",
@@ -54,10 +53,7 @@
       ]
     },
     "read": {
-      "permissions": [
-        "lakeformation:DescribeResource",
-        "lakeformation:ListResources"
-      ]
+      "permissions": ["lakeformation:DescribeResource"]
     },
     "update": {
       "permissions": [

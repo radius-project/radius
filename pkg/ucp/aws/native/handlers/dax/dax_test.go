@@ -422,7 +422,7 @@ func Test_Equivalent(t *testing.T) {
 		{"ReplicationFactor", 1, 1, false},
 	}
 	for _, tt := range tests {
-		require.Equal(t, tt.want, equivalent(tt.path, tt.template, tt.aws), "%s %v %v", tt.path, tt.template, tt.aws)
+		require.Equal(t, tt.want, NewCluster(nil).Options().Equivalent(tt.path, tt.template, tt.aws), "%s %v %v", tt.path, tt.template, tt.aws)
 	}
 }
 

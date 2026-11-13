@@ -25,6 +25,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	"github.com/aws/aws-sdk-go-v2/service/lakeformation/types"
+
+	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
 
 // notFoundCode is the error code Lake Formation returns for a resource, catalog entry, or setting it doesn't have.
@@ -44,9 +46,7 @@ type API interface {
 	ListResources(ctx context.Context, params *lakeformation.ListResourcesInput, optFns ...func(*lakeformation.Options)) (*lakeformation.ListResourcesOutput, error)
 }
 
-func inRegion(region string) func(*lakeformation.Options) {
-	return func(o *lakeformation.Options) { o.Region = region }
-}
+var inRegion = awsapi.InRegion[lakeformation.Options]
 
 // principalIDs returns the DataLakePrincipalIdentifier of each principal in the list property name of properties.
 func principalIDs(properties map[string]any, name string) []string {
