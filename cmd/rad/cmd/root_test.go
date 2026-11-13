@@ -21,12 +21,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -254,6 +257,37 @@ func Test_prettyPrintRPError(t *testing.T) {
 	err := fmt.Errorf("test error message")
 	result := prettyPrintRPError(err)
 	require.Contains(t, result, "test error")
+}
+
+func Test_prettyPrintRPError_ARMErrorDetails(t *testing.T) {
+	body := `{"error":{"code":"ResourceGroupNotFound","message":"Resource group 'rg' could not be found."}}`
+	respErr := runtime.NewResponseError(&http.Response{
+		StatusCode: http.StatusNotFound,
+		Body:       io.NopCloser(strings.NewReader(body)),
+	})
+	result := prettyPrintRPError(respErr)
+	require.Contains(t, result, "ResourceGroupNotFound")
+	require.Contains(t, result, "Resource group 'rg' could not be found.")
+}
+
+func Test_prettyPrintRPError_KubernetesStatusFallsBack(t *testing.T) {
+	body := `{
+  "kind": "Status",
+  "apiVersion": "v1",
+  "status": "Failure",
+  "message": "access to the Radius API is forbidden",
+  "reason": "Forbidden",
+  "code": 403
+}`
+	respErr := runtime.NewResponseError(&http.Response{
+		StatusCode: http.StatusForbidden,
+		Body:       io.NopCloser(strings.NewReader(body)),
+	})
+	result := prettyPrintRPError(respErr)
+	require.NotContains(t, result, `"code": ""`)
+	require.NotContains(t, result, `"message": ""`)
+	require.Contains(t, result, "403")
+	require.Contains(t, result, "access to the Radius API is forbidden")
 }
 
 func Test_prettyPrintJSON(t *testing.T) {
