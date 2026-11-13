@@ -25,6 +25,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	cctypes "github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
+	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/aws/aws-sdk-go-v2/service/kafka"
 	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
@@ -46,19 +47,72 @@ const (
 	mskARN         = "arn:aws:kafka:us-west-2:1234567:cluster/orders/abcd-1"
 )
 
-// mskSchemas are the parts of the MSK schemas the tests need. Cloud Control returns only Arn and CurrentVersion as
-// read-only properties.
+// mskSchemas are the parts of the MSK schemas the tests need, from CloudFormation in us-west-2. Cloud Control returns
+// only Arn and CurrentVersion as read-only properties.
 var mskSchemas = map[string]string{
 	mskType: `{
 		"primaryIdentifier": ["/properties/Arn"],
 		"readOnlyProperties": ["/properties/Arn", "/properties/CurrentVersion"],
-		"createOnlyProperties": ["/properties/ClusterName"]
+		"createOnlyProperties": ["/properties/BrokerNodeGroupInfo/BrokerAZDistribution", "/properties/BrokerNodeGroupInfo/ClientSubnets", "/properties/BrokerNodeGroupInfo/SecurityGroups", "/properties/EncryptionInfo/EncryptionAtRest", "/properties/EncryptionInfo/EncryptionInTransit/InCluster", "/properties/ClusterName"]
 	}`,
 	serverlessType: `{
 		"primaryIdentifier": ["/properties/Arn"],
 		"readOnlyProperties": ["/properties/Arn"],
-		"createOnlyProperties": ["/properties/ClusterName"]
+		"createOnlyProperties": ["/properties/ClusterName", "/properties/VpcConfigs", "/properties/ClientAuthentication", "/properties/Tags"]
 	}`,
+}
+
+// mskProvisioningTypes are the provisioning types DescribeType returns: AWS can only create and delete a serverless
+// cluster.
+var mskProvisioningTypes = map[string]cftypes.ProvisioningType{serverlessType: cftypes.ProvisioningTypeImmutable}
+
+// clusterTemplate returns the properties a recipe sets for an MSK cluster of typeName, with no security groups.
+func clusterTemplate(typeName string) map[string]any {
+	if typeName == serverlessType {
+		return map[string]any{
+			"ClusterName":          "orders",
+			"VpcConfigs":           []any{map[string]any{"SubnetIds": []any{"subnet-a", "subnet-b"}}},
+			"ClientAuthentication": map[string]any{"Sasl": map[string]any{"Iam": map[string]any{"Enabled": true}}},
+		}
+	}
+	return map[string]any{
+		"ClusterName":         "orders",
+		"KafkaVersion":        "3.6.0",
+		"NumberOfBrokerNodes": 2.0,
+		"BrokerNodeGroupInfo": map[string]any{"ClientSubnets": []any{"subnet-a", "subnet-b"}, "InstanceType": "kafka.m5.large"},
+	}
+}
+
+// clusterInAWS returns what Cloud Control's GetResource returns for clusterTemplate(typeName). MSK uses the VPC's
+// default security group when the template sets none. For a serverless cluster, this is the shape of a live read in
+// us-west-2: the default security group inside the VpcConfigs item, and empty Tags.
+func clusterInAWS(typeName string) map[string]any {
+	out := clusterTemplate(typeName)
+	out["Arn"] = mskARN
+	if typeName == serverlessType {
+		out["VpcConfigs"].([]any)[0].(map[string]any)["SecurityGroups"] = []any{"sg-default"}
+		out["Tags"] = map[string]any{}
+		return out
+	}
+	out["CurrentVersion"] = "K1"
+	out["BrokerNodeGroupInfo"].(map[string]any)["SecurityGroups"] = []any{"sg-default"}
+	return out
+}
+
+// succeeded returns properties with the provisioning state of a PUT that finished.
+func succeeded(properties map[string]any) map[string]any {
+	properties["provisioningState"] = "Succeeded"
+	return properties
+}
+
+// withAddresses returns properties with the addresses brokers() returns for typeName.
+func withAddresses(typeName string, properties map[string]any) map[string]any {
+	properties["BootstrapBrokerStringSaslIam"] = "b-1.orders.kafka.us-west-2.amazonaws.com:9098"
+	properties["BootstrapBrokerStringSaslIamIpv6"] = "b-1.orders.ipv6.kafka.us-west-2.amazonaws.com:9098"
+	if typeName == mskType {
+		properties["BootstrapBrokerStringTls"] = "b-1.orders.kafka.us-west-2.amazonaws.com:9094"
+	}
+	return properties
 }
 
 // fakeKafka returns out or err from GetBootstrapBrokers, and records each cluster ARN and region it was called with.
@@ -99,7 +153,7 @@ func withMSK(client ucp_aws.AWSKafkaClient, factory controllerFactory) controlle
 func withSchemas(schemas map[string]string, client ucp_aws.AWSKafkaClient, factory controllerFactory) controllerFactory {
 	return func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
 		clients.Kafka = client
-		clients.CloudFormation = &awsfake.CloudFormation{Schemas: schemas}
+		clients.CloudFormation = &awsfake.CloudFormation{Schemas: schemas, ProvisioningTypes: mskProvisioningTypes}
 		return factory(opts, clients)
 	}
 }
@@ -118,25 +172,17 @@ func brokers() *kafka.GetBootstrapBrokersOutput {
 	}
 }
 
-// seedCluster adds an MSK cluster to AWS and a record for it under path.
+// seedCluster adds an MSK cluster to AWS, as AWS reports it, and a record of its deploy under path.
 func seedCluster(h *harness, typeName string, path string) {
 	h.saveRecord(path, func(rec *datamodel.AWSResource) {
 		rec.Properties.AWSIdentifier = mskARN
-		rec.Properties.LastApplied = map[string]any{"ClusterName": "orders", "KafkaVersion": "3.6.0"}
+		rec.Properties.LastApplied = clusterTemplate(typeName)
 	})
-	h.cc.Put(typeName, mskARN, map[string]any{"Arn": mskARN, "ClusterName": "orders", "KafkaVersion": "3.6.0", "CurrentVersion": "K1"})
+	h.cc.Put(typeName, mskARN, clusterInAWS(typeName))
 }
 
 func Test_ExtraProperties_Read(t *testing.T) {
-	want := map[string]any{
-		"Arn":                              mskARN,
-		"ClusterName":                      "orders",
-		"KafkaVersion":                     "3.6.0",
-		"CurrentVersion":                   "K1",
-		"BootstrapBrokerStringSaslIam":     "b-1.orders.kafka.us-west-2.amazonaws.com:9098",
-		"BootstrapBrokerStringSaslIamIpv6": "b-1.orders.ipv6.kafka.us-west-2.amazonaws.com:9098",
-		"BootstrapBrokerStringTls":         "b-1.orders.kafka.us-west-2.amazonaws.com:9094",
-	}
+	want := withAddresses(mskType, clusterInAWS(mskType))
 
 	t.Run("GET adds the broker addresses AWS returns and leaves out empty ones", func(t *testing.T) {
 		h := newHarness(t)
@@ -152,7 +198,7 @@ func Test_ExtraProperties_Read(t *testing.T) {
 
 	t.Run("POST /:get adds the broker addresses", func(t *testing.T) {
 		h := newHarness(t)
-		h.cc.Put(mskType, mskARN, map[string]any{"Arn": mskARN, "ClusterName": "orders", "KafkaVersion": "3.6.0", "CurrentVersion": "K1"})
+		h.cc.Put(mskType, mskARN, clusterInAWS(mskType))
 		k := &fakeKafka{out: brokers()}
 
 		resp := h.do(withMSK(k, newGetWithPost), http.MethodPost, providers+"AWS.MSK/Cluster/:get", "", map[string]any{"name": mskARN})
@@ -168,10 +214,7 @@ func Test_ExtraProperties_Read(t *testing.T) {
 
 		resp := h.do(withMSK(k, NewGetAWSResource), http.MethodGet, serverlessPath, "", nil)
 		require.Equal(t, http.StatusOK, resp.status, resp.raw)
-		properties := resp.body["properties"].(map[string]any)
-		require.Equal(t, "b-1.orders.kafka.us-west-2.amazonaws.com:9098", properties["BootstrapBrokerStringSaslIam"])
-		require.Equal(t, "b-1.orders.ipv6.kafka.us-west-2.amazonaws.com:9098", properties["BootstrapBrokerStringSaslIamIpv6"])
-		require.NotContains(t, properties, "BootstrapBrokerStringTls")
+		require.Equal(t, withAddresses(serverlessType, clusterInAWS(serverlessType)), resp.body["properties"])
 	})
 
 	t.Run("other types make no extra call", func(t *testing.T) {
@@ -275,9 +318,9 @@ func Test_ExtraProperties_ReadFails(t *testing.T) {
 }
 
 func Test_ExtraProperties_NeverSentOrStored(t *testing.T) {
-	// The template sets extra properties, as if a caller sent back a body UCP returned.
+	// The template sets extra properties, as if a caller sent back a body UCP returned, with stale values.
 	extras := map[string]any{
-		"BootstrapBrokerStringSaslIam": "b-1.orders.kafka.us-west-2.amazonaws.com:9098",
+		"BootstrapBrokerStringSaslIam": "b-1.stale.kafka.us-west-2.amazonaws.com:9098",
 		"BootstrapBrokerString":        "stale",
 	}
 	withExtras := func(properties map[string]any) map[string]any {
@@ -296,30 +339,33 @@ func Test_ExtraProperties_NeverSentOrStored(t *testing.T) {
 		}
 	}
 
-	t.Run("a redeploy with nothing changed calls nothing in AWS", func(t *testing.T) {
+	t.Run("a redeploy with nothing changed calls nothing in AWS but the reads", func(t *testing.T) {
 		h := newHarness(t)
 		seedCluster(h, mskType, mskPath)
 		k := &fakeKafka{out: brokers()}
 
-		resp := put(h, k, withExtras(map[string]any{"ClusterName": "orders", "KafkaVersion": "3.6.0"}))
+		resp := put(h, k, withExtras(clusterTemplate(mskType)))
 		require.Equal(t, http.StatusOK, resp.status, resp.raw)
 		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
-		require.Equal(t, map[string]any{"ClusterName": "orders", "KafkaVersion": "3.6.0"}, h.record(mskPath).Properties.LastApplied)
-		requireNoExtras(t, "", resp.body["properties"].(map[string]any))
-		require.Empty(t, k.arns)
+		require.Equal(t, clusterTemplate(mskType), h.record(mskPath).Properties.LastApplied)
+		require.Equal(t, succeeded(withAddresses(mskType, clusterInAWS(mskType))), resp.body["properties"], "the response has AWS's addresses, not the template's")
 	})
 
 	t.Run("an update sends only the changed property", func(t *testing.T) {
 		h := newHarness(t)
 		seedCluster(h, mskType, mskPath)
+		k := &fakeKafka{out: brokers()}
 
-		resp := put(h, &fakeKafka{}, withExtras(map[string]any{"ClusterName": "orders", "KafkaVersion": "3.7.0"}))
+		template := clusterTemplate(mskType)
+		template["KafkaVersion"] = "3.7.0"
+		resp := put(h, k, withExtras(template))
 		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
 		calls := h.cc.Calls()
 		require.Equal(t, []string{"GetResource", "UpdateResource"}, operations(calls))
 		require.Contains(t, calls[1].Document, "3.7.0")
 		rec := h.record(mskPath)
 		requireNoExtras(t, calls[1].Document, rec.Properties.PendingLastApplied)
+		require.Empty(t, k.arns, "a cluster being updated isn't read; the Deployment Engine reads it with GET when the update finishes")
 
 		h.finish()
 		requireNoExtras(t, "", h.record(mskPath).Properties.LastApplied)
@@ -327,12 +373,73 @@ func Test_ExtraProperties_NeverSentOrStored(t *testing.T) {
 
 	t.Run("a create never sends them", func(t *testing.T) {
 		h := newHarness(t)
+		k := &fakeKafka{out: brokers()}
 
-		resp := put(h, &fakeKafka{}, withExtras(map[string]any{"ClusterName": "orders", "KafkaVersion": "3.6.0"}))
+		resp := put(h, k, withExtras(clusterTemplate(mskType)))
 		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
 		calls := h.cc.Calls()
 		require.Equal(t, []string{"CreateResource"}, operations(calls))
 		requireNoExtras(t, calls[0].Document, h.record(mskPath).Properties.PendingLastApplied)
+		require.Empty(t, k.arns, "a cluster being created isn't active yet")
+	})
+}
+
+// Test_ExtraProperties_PutResponse checks that a PUT that finds nothing to change returns the extra properties, as a
+// GET does, because the Deployment Engine uses that response for the recipe's outputs.
+func Test_ExtraProperties_PutResponse(t *testing.T) {
+	put := func(h *harness, k *fakeKafka, path string, body map[string]any) response {
+		return h.do(withMSK(k, h.putController), http.MethodPut, path, testOwner, body)
+	}
+
+	t.Run("a serverless cluster redeployed with nothing changed", func(t *testing.T) {
+		h := newHarness(t)
+		// Without the fix for #13763, a template must set the default security group AWS fills in, or the redeploy
+		// fails because AWS can't change VpcConfigs.
+		template := clusterInAWS(serverlessType)
+		delete(template, "Arn")
+		delete(template, "Tags")
+		h.saveRecord(serverlessPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = mskARN
+			rec.Properties.LastApplied = template
+		})
+		h.cc.Put(serverlessType, mskARN, clusterInAWS(serverlessType))
+		k := &fakeKafka{out: brokers()}
+
+		resp := put(h, k, serverlessPath, map[string]any{"properties": template})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+		require.Equal(t, succeeded(withAddresses(serverlessType, clusterInAWS(serverlessType))), resp.body["properties"])
+		require.Equal(t, []string{mskARN}, k.arns)
+		require.Equal(t, []string{"us-west-2"}, k.regions)
+	})
+
+	t.Run("a take-over by name with nothing to change", func(t *testing.T) {
+		h := newHarness(t)
+		h.cc.Put(mskType, mskARN, clusterInAWS(mskType))
+		k := &fakeKafka{out: brokers()}
+
+		resp := put(h, k, mskPath, map[string]any{"name": mskARN, "properties": clusterTemplate(mskType)})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+		require.Equal(t, succeeded(withAddresses(mskType, clusterInAWS(mskType))), resp.body["properties"])
+		require.Equal(t, mskARN, h.record(mskPath).Properties.AWSIdentifier)
+	})
+
+	t.Run("a failed read fails the PUT and leaves the record as it was", func(t *testing.T) {
+		h := newHarness(t)
+		seedCluster(h, mskType, mskPath)
+		// The last deploy set less than this template, so a successful PUT would save the template on the record.
+		h.saveRecord(mskPath, func(rec *datamodel.AWSResource) {
+			rec.Properties.LastApplied = map[string]any{"ClusterName": "orders"}
+		})
+		k := &fakeKafka{err: awsError(&smithy.GenericAPIError{Code: "ForbiddenException", Message: "not authorized to perform kafka:GetBootstrapBrokers", Fault: smithy.FaultClient})}
+
+		resp := put(h, k, mskPath, map[string]any{"properties": clusterTemplate(mskType)})
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "kafka:GetBootstrapBrokers")
+		require.Contains(t, resp.message(), mskARN)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+		require.Equal(t, map[string]any{"ClusterName": "orders"}, h.record(mskPath).Properties.LastApplied)
 	})
 }
 

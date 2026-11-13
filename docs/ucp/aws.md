@@ -90,11 +90,11 @@ Some values a recipe needs are not in the Cloud Control schema, so Cloud Control
 | `AWS::MSK::Cluster`           | `kafka:GetBootstrapBrokers` | Every broker address field AWS returns, such as `BootstrapBrokerString`, `BootstrapBrokerStringTls`, and `BootstrapBrokerStringSaslIam` |
 | `AWS::MSK::ServerlessCluster` | `kafka:GetBootstrapBrokers` | `BootstrapBrokerStringSaslIam` and `BootstrapBrokerStringSaslIamIpv6`                                                                   |
 
-- Only a GET and a POST `/:get` make the extra call. A list does not, and create, update, and delete still use Cloud Control only.
+- Every response that returns the resource as AWS has it makes the extra call: a GET, a POST `/:get`, and a PUT that finds nothing to change, including one that takes a resource over. The Deployment Engine uses that PUT response for a recipe's outputs. A PUT that starts a create or an update returns before AWS finishes, and doesn't make the call, because a cluster that is changing isn't active. The Deployment Engine reads the resource with GET when the operation finishes. A list does not make the call.
 - A field AWS leaves empty, because the cluster doesn't use that access method, is left out.
 - UCP adds the values only to its response. A PUT that sets one drops it before comparing, so it is never sent to AWS or stored in the record.
 - If AWS adds a property with the same name to the type's schema, AWS's property wins: a read returns Cloud Control's value, and a PUT sends it to AWS like any other property.
-- If the extra call fails, such as for a missing `kafka:GetBootstrapBrokers` permission or a cluster that is not active yet, the read fails with AWS's error code and message, naming the call. The status follows the rule for every AWS error in UCP: `400` when AWS reports a client fault, such as access denied or throttling, and `500` otherwise. UCP never leaves the values out silently.
+- If the extra call fails, such as for a missing `kafka:GetBootstrapBrokers` permission or a cluster that is not active yet, the read fails with AWS's error code and message, naming the call. A PUT with nothing to change fails the same way and leaves the record as it was. The status follows the rule for every AWS error in UCP: `400` when AWS reports a client fault, such as access denied or throttling, and `500` otherwise. UCP never leaves the values out silently.
 
 <br/><br/>
 
