@@ -17,6 +17,9 @@ limitations under the License.
 package awsproxy
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -25,10 +28,59 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/aws/schemas"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
+
+// cleanupCall is a call to stateful's Cleanup: the record as UCP had saved it then, and the create token it got.
+type cleanupCall struct {
+	saved       datamodel.AWSResourceProperties
+	createToken string
+}
+
+// stateful is nativeType's fake handler as a native.UpdatePreparer and a native.Cleaner, like FSx. It logs the states
+// it makes and gets, and each cleanup.
+type stateful struct {
+	*nativefake.Handler
+	h        *nativeHarness
+	states   *int
+	stateErr *error
+	progress *[]string
+	cleanups *[]cleanupCall
+	cleanErr *error
+}
+
+func (s stateful) UpdateState(ctx context.Context, region string, identifier string) (string, error) {
+	if *s.stateErr != nil {
+		return "", *s.stateErr
+	}
+	*s.states++
+	return fmt.Sprintf("state-%d", *s.states), nil
+}
+
+func (s stateful) UpdateProgress(ctx context.Context, region string, identifier string, state string) (native.Progress, error) {
+	*s.progress = append(*s.progress, state)
+	return s.Progress(ctx, region, identifier, native.OperationUpdate)
+}
+
+func (s stateful) Cleanup(ctx context.Context, region string, identifier string, createToken string) error {
+	*s.cleanups = append(*s.cleanups, cleanupCall{saved: s.h.record(nativePath).Properties, createToken: createToken})
+	return *s.cleanErr
+}
+
+// withStateful registers nativeType's handler as a stateful handler.
+func (h *nativeHarness) withStateful() *stateful {
+	h.t.Helper()
+	s := &stateful{Handler: h.fake, h: h, states: new(int), stateErr: new(error), progress: &[]string{}, cleanups: &[]cleanupCall{}, cleanErr: new(error)}
+	catalog := schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}
+	registry, err := native.NewRegistry(catalog, *s)
+	require.NoError(h.t, err)
+	h.native = registry
+	return s
+}
 
 // lastUpdate returns the last Update call the fake got.
 func lastUpdate(t *testing.T, calls []nativefake.Call) nativefake.Call {
@@ -177,5 +229,135 @@ func Test_Native_UpdateToken(t *testing.T) {
 		h.saveRecord(nativePath, func(rec *datamodel.AWSResource) { rec.Properties.UpdateToken = "kept" })
 		require.Equal(t, http.StatusAccepted, h.delete(nativePath, testOwner).status)
 		require.Empty(t, h.record(nativePath).Properties.UpdateToken)
+	})
+}
+
+// Test_Native_UpdateState checks the state UCP keeps for a handler's update: made once per update, before the first
+// call, passed to the update and to every progress read, kept when UCP sends the update again, and cleared when the
+// update finishes.
+func Test_Native_UpdateState(t *testing.T) {
+	h := newNativeHarness(t)
+	s := h.withStateful()
+	h.deploy(nativePath, nativeProperties(1))
+	require.Zero(t, *s.states, "a create makes no update state")
+
+	h.fake.LostResponses["Update"] = nativefake.ServerError("InternalFailure", "the response was lost")
+	require.Equal(t, http.StatusInternalServerError, h.put(nativePath, nativeProperties(2)).status)
+	require.Equal(t, "state-1", lastUpdate(t, h.fake.Calls()).State)
+	require.Equal(t, "state-1", h.record(nativePath).Properties.UpdateState)
+
+	h.cc.Put(nativeType, "app-native", map[string]any{"Name": "app-native", "Size": 1})
+	h.fake.Waits = 1
+	require.Equal(t, http.StatusCreated, h.put(nativePath, nativeProperties(2)).status)
+	require.Equal(t, "state-1", lastUpdate(t, h.fake.Calls()).State, "the update sent again keeps its state")
+	require.Equal(t, 1, *s.states)
+	for _, result := range h.finish() {
+		require.Nil(t, result.Error)
+	}
+	require.NotEmpty(t, *s.progress)
+	for _, state := range *s.progress {
+		require.Equal(t, "state-1", state, "the worker reads progress with the update's state")
+	}
+	require.Empty(t, h.record(nativePath).Properties.UpdateState)
+
+	h.deploy(nativePath, nativeProperties(3))
+	require.Equal(t, "state-2", lastUpdate(t, h.fake.Calls()).State, "a new update gets a new state")
+
+	*s.stateErr = nativefake.ClientError("ThrottlingException", "slow down")
+	h.fake.Calls()
+	resp := h.put(nativePath, nativeProperties(4))
+	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()), "no update without its state")
+	rec := h.record(nativePath)
+	require.Equal(t, v1.ProvisioningStateSucceeded, rec.ProvisioningState(), "nothing was reserved")
+	require.Empty(t, rec.Properties.UpdateToken)
+}
+
+// Test_Native_Cleanup checks when UCP asks a handler to clean up a resource (native.Cleaner): after a create, only once
+// the record is saved with the identifier and without the client token, and at the next deploys until it succeeds.
+func Test_Native_Cleanup(t *testing.T) {
+	t.Run("after the create is saved, and once more at the next deploy", func(t *testing.T) {
+		h := newNativeHarness(t)
+		s := h.withStateful()
+		h.deploy(nativePath, nativeProperties(1))
+		require.Len(t, *s.cleanups, 1)
+		first := (*s.cleanups)[0]
+		require.Equal(t, "app-native", first.saved.AWSIdentifier)
+		require.Empty(t, first.saved.ClientToken, "the record was saved before the cleanup")
+		require.NotEmpty(t, first.createToken)
+		require.Equal(t, first.createToken, first.saved.CreateToken, "the create's client token")
+		require.Nil(t, h.record(nativePath).Properties.CleanedUpAt)
+
+		require.Equal(t, http.StatusOK, h.put(nativePath, nativeProperties(1)).status)
+		require.Len(t, *s.cleanups, 2)
+		require.Equal(t, first.createToken, (*s.cleanups)[1].createToken)
+		rec := h.record(nativePath)
+		require.NotNil(t, rec.Properties.CleanedUpAt)
+		require.Empty(t, rec.Properties.CreateToken, "no longer needed")
+
+		h.deploy(nativePath, nativeProperties(2))
+		require.Len(t, *s.cleanups, 2, "a cleaned-up resource isn't asked again")
+	})
+
+	t.Run("a failed cleanup doesn't fail the deploy, and the next deploy tries again", func(t *testing.T) {
+		h := newNativeHarness(t)
+		s := h.withStateful()
+		*s.cleanErr = errors.New("throttled")
+		h.deploy(nativePath, nativeProperties(1))
+		require.Equal(t, http.StatusOK, h.put(nativePath, nativeProperties(1)).status)
+		require.Len(t, *s.cleanups, 2)
+		require.Nil(t, h.record(nativePath).Properties.CleanedUpAt)
+
+		*s.cleanErr = nil
+		require.Equal(t, http.StatusOK, h.put(nativePath, nativeProperties(1)).status)
+		require.Len(t, *s.cleanups, 3)
+		require.NotNil(t, h.record(nativePath).Properties.CleanedUpAt)
+	})
+
+	t.Run("a restart between the create and saving it never cleans up first", func(t *testing.T) {
+		h := newNativeHarness(t)
+		s := h.withStateful()
+		h.loseCreate(h.fake, nativePath, nativeProperties(1))
+		require.NotEmpty(t, h.record(nativePath).Properties.ClientToken)
+
+		h.deploy(nativePath, nativeProperties(1))
+		require.Empty(t, *s.cleanups, "the deploy that finds the lost create hasn't saved it yet")
+		require.Empty(t, h.record(nativePath).Properties.ClientToken)
+
+		require.Equal(t, http.StatusOK, h.put(nativePath, nativeProperties(1)).status)
+		require.Len(t, *s.cleanups, 1)
+	})
+
+	t.Run("a resource created again is cleaned up again", func(t *testing.T) {
+		h := newNativeHarness(t)
+		s := h.withStateful()
+		h.deploy(nativePath, nativeProperties(1))
+		require.Equal(t, http.StatusOK, h.put(nativePath, nativeProperties(1)).status)
+		require.NotNil(t, h.record(nativePath).Properties.CleanedUpAt)
+
+		h.cc.Remove(nativeType, "app-native")
+		*s.cleanErr = errors.New("throttled")
+		h.deploy(nativePath, nativeProperties(1))
+		rec := h.record(nativePath)
+		require.Nil(t, rec.Properties.CleanedUpAt, "the new resource has its own marks")
+		require.NotEqual(t, (*s.cleanups)[0].createToken, rec.Properties.CreateToken)
+
+		*s.cleanErr = nil
+		require.Equal(t, http.StatusOK, h.put(nativePath, nativeProperties(1)).status)
+		last := (*s.cleanups)[len(*s.cleanups)-1]
+		require.Equal(t, rec.Properties.CreateToken, last.createToken)
+		require.NotNil(t, h.record(nativePath).Properties.CleanedUpAt)
+	})
+
+	t.Run("a take-over is cleaned up without a create token", func(t *testing.T) {
+		h := newNativeHarness(t)
+		s := h.withStateful()
+		h.cc.Put(nativeType, "app-native", map[string]any{"Name": "app-native", "Size": 1})
+		h.deploy(nativePath, nativeProperties(1))
+		require.Empty(t, *s.cleanups, "the take-over deploy itself doesn't clean up")
+
+		require.Equal(t, http.StatusOK, h.put(nativePath, nativeProperties(1)).status)
+		require.Len(t, *s.cleanups, 1)
+		require.Empty(t, (*s.cleanups)[0].createToken, "another alias may have lost the create, so its marks stay")
 	})
 }

@@ -381,7 +381,7 @@ func merge(dst map[string]any, src map[string]any) {
 // success.
 func ApplyPending(rec *datamodel.AWSResource) {
 	applyPendingValues(rec)
-	rec.Properties.ClientToken = ""
+	FinishCreate(rec)
 	finish(rec, nil)
 	rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
 }
@@ -427,9 +427,22 @@ func finish(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	ClearUpdateToken(rec)
 }
 
-// ClearUpdateToken clears the update token, so the next update is a new one.
+// FinishCreate marks the first create as finished: it clears the client token, and keeps it as the create token, so a
+// native handler's cleanup can tell the marks of this create from another alias's (see native.Cleaner). The new
+// resource isn't cleaned up yet, even when one this record had before was. It changes nothing for a record whose
+// first create already finished.
+func FinishCreate(rec *datamodel.AWSResource) {
+	if rec.Properties.ClientToken != "" {
+		rec.Properties.CreateToken = rec.Properties.ClientToken
+		rec.Properties.CleanedUpAt = nil
+	}
+	rec.Properties.ClientToken = ""
+}
+
+// ClearUpdateToken clears the update token and the handler's state for it, so the next update is a new one.
 func ClearUpdateToken(rec *datamodel.AWSResource) {
 	rec.Properties.UpdateToken = ""
+	rec.Properties.UpdateState = ""
 	rec.Properties.UpdateIntent = ""
 }
 

@@ -156,6 +156,9 @@ func (f *fakeAPI) create(token string, input any, tags []types.Tag) (*types.File
 		fs, _ := f.fileSystem(r.fileSystem)
 		return fs, nil
 	}
+	if err := checkTagCount(len(tags)); err != nil {
+		return nil, err
+	}
 	props, err := awsapi.EncodeObject(input)
 	if err != nil {
 		return nil, err
@@ -518,10 +521,45 @@ func (f *fakeAPI) DeleteFileSystem(ctx context.Context, in *fsx.DeleteFileSystem
 	return out, nil
 }
 
+// checkTagCount fails as FSx does when a file system would have more than 50 tags, not counting those with the aws:
+// prefix.
+func checkTagCount(n int) error {
+	if n > maxTags {
+		return fault("BadRequest", "A file system can have at most 50 tags.")
+	}
+	return nil
+}
+
+// tagCount returns how many tags of the file system count toward its limit, with the keys added as well.
+func (f *fakeAPI) tagCount(id string, added []types.Tag) int {
+	keys := map[string]bool{}
+	fs, _ := f.fileSystem(id)
+	if fs != nil {
+		for _, t := range fs.Tags {
+			keys[aws.ToString(t.Key)] = true
+		}
+	}
+	for _, t := range added {
+		keys[aws.ToString(t.Key)] = true
+	}
+	n := 0
+	for key := range keys {
+		if !strings.HasPrefix(key, "aws:") {
+			n++
+		}
+	}
+	return n
+}
+
 func (f *fakeAPI) TagResource(ctx context.Context, in *fsx.TagResourceInput, _ ...func(*fsx.Options)) (*fsx.TagResourceOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &fsx.TagResourceOutput{}, f.change("TagResource", strings.TrimPrefix(aws.ToString(in.ResourceARN), arnPrefix), func(props map[string]any) {
+	id := strings.TrimPrefix(aws.ToString(in.ResourceARN), arnPrefix)
+	if err := checkTagCount(f.tagCount(id, in.Tags)); err != nil {
+		f.calls = append(f.calls, "TagResource")
+		return nil, err
+	}
+	return &fsx.TagResourceOutput{}, f.change("TagResource", id, func(props map[string]any) {
 		tags := map[string]string{}
 		for _, t := range awsapi.Tags(props) {
 			tags[t.Key] = t.Value
@@ -536,7 +574,14 @@ func (f *fakeAPI) TagResource(ctx context.Context, in *fsx.TagResourceInput, _ .
 func (f *fakeAPI) UntagResource(ctx context.Context, in *fsx.UntagResourceInput, _ ...func(*fsx.Options)) (*fsx.UntagResourceOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &fsx.UntagResourceOutput{}, f.change("UntagResource", strings.TrimPrefix(aws.ToString(in.ResourceARN), arnPrefix), func(props map[string]any) {
+	id := strings.TrimPrefix(aws.ToString(in.ResourceARN), arnPrefix)
+	return &fsx.UntagResourceOutput{}, f.change("UntagResource", id, func(props map[string]any) {
+		if slices.Contains(in.TagKeys, awsapi.OperationTag) {
+			delete(f.tokens, id)
+		}
+		if slices.Contains(in.TagKeys, deleteOptionsTag) {
+			delete(f.options, id)
+		}
 		tags := map[string]string{}
 		for _, t := range awsapi.Tags(props) {
 			if !slices.Contains(in.TagKeys, t.Key) {

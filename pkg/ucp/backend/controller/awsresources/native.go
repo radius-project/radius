@@ -31,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // now returns the current time. Tests replace it.
@@ -47,9 +48,10 @@ func (t *timedOut) Error() string {
 }
 
 // waitNative calls the native handler's Progress until the operation finishes, ctx ends, or the handler's timeout
-// passes. The timeout counts from when this worker started waiting, so a restarted worker waits it again. Progress
-// only reads AWS, so waiting again changes nothing in AWS.
-func (c *AwaitController) waitNative(ctx context.Context, id resources.ID, identifier string, op string) (native.Progress, error) {
+// passes. For an update of a handler that keeps state for it (native.UpdatePreparer), it calls UpdateProgress with
+// state, the record's. The timeout counts from when this worker started waiting, so a restarted worker waits it
+// again. Progress only reads AWS, so waiting again changes nothing in AWS.
+func (c *AwaitController) waitNative(ctx context.Context, id resources.ID, identifier string, op string, state string) (native.Progress, error) {
 	t := c.clients.Native.Lookup(resources_aws.ToAWSResourceType(id))
 	if t == nil {
 		return native.Progress{}, &native.Failure{Message: fmt.Sprintf("A native handler started the operation on the AWS resource %q, but UCP has no native handler for %s. Deploy again.", id.Name(), resources_aws.ToAWSResourceType(id))}
@@ -64,7 +66,13 @@ func (c *AwaitController) waitNative(ctx context.Context, id resources.ID, ident
 	deadline := now().Add(timeout)
 	interval := ucp_aws.MinPollInterval
 	for {
-		progress, err := t.Handler.Progress(ctx, region, identifier, nativeOp)
+		var progress native.Progress
+		var err error
+		if preparer, ok := t.Handler.(native.UpdatePreparer); ok && nativeOp == native.OperationUpdate {
+			progress, err = preparer.UpdateProgress(ctx, region, identifier, state)
+		} else {
+			progress, err = t.Handler.Progress(ctx, region, identifier, nativeOp)
+		}
 		var other *native.OtherProductError
 		if errors.Is(err, native.ErrNotFound) {
 			if nativeOp == native.OperationDelete {
@@ -97,6 +105,22 @@ func (c *AwaitController) waitNative(ctx context.Context, id resources.ID, ident
 	}
 }
 
+// cleanup lets a handler that puts on a resource what it needs only for a while (native.Cleaner) remove it, after
+// finishNative saved the finished create on the record. A failure is only logged: the next deploy asks again.
+func (c *AwaitController) cleanup(ctx context.Context, id resources.ID, identifier string, createToken string) {
+	t := c.clients.Native.Lookup(resources_aws.ToAWSResourceType(id))
+	if t == nil {
+		return
+	}
+	cleaner, ok := t.Handler.(native.Cleaner)
+	if !ok {
+		return
+	}
+	if err := cleaner.Cleanup(ctx, id.FindScope(resources_aws.ScopeRegions), identifier, createToken); err != nil {
+		ucplog.FromContextOrDiscard(ctx).Error(err, "Failed to clean up the AWS resource after its create; the next deploy tries again", "alias", id.Name(), "awsIdentifier", identifier)
+	}
+}
+
 // finishNative saves the result of a native operation on the record, as Run does for Cloud Control:
 //
 //   - success: a delete removes the record, and a create or update makes its pending values last-applied.
@@ -108,7 +132,9 @@ func (c *AwaitController) waitNative(ctx context.Context, id resources.ID, ident
 //   - timeout, or a missing handler: the outcome is unknown. The operation fails, naming the state UCP waited for, and
 //     the next deploy reads the resource and continues.
 //   - polling failed or stopped: the operation stays in progress, and the worker or the next request waits again.
-func finishNative(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, op string, progress native.Progress, err error) (ctrl.Result, error) {
+//
+// After it saves a successful create, it calls created.
+func finishNative(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, op string, progress native.Progress, err error, created func()) (ctrl.Result, error) {
 	var timeout *timedOut
 	var failure *native.Failure
 	switch {
@@ -142,6 +168,9 @@ func finishNative(ctx context.Context, store *records.Store, id resources.ID, re
 	} else if err != nil {
 		return requeue(ctx, fmt.Errorf("AWS finished the %s of %q, but UCP failed to save the result: %w", strings.ToLower(op), id.Name(), err)), nil
 	}
+	if op == records.OperationCreate {
+		created()
+	}
 	return ctrl.Result{}, nil
 }
 
@@ -159,7 +188,7 @@ func saveNativeFailure(ctx context.Context, store *records.Store, id resources.I
 		}
 		records.Settle(rec, outcome)
 		if op == records.OperationCreate && outcome == native.OutcomeApplied {
-			rec.Properties.ClientToken = ""
+			records.FinishCreate(rec)
 		}
 		records.Fail(rec, &failure)
 		return false

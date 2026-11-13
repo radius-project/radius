@@ -316,21 +316,50 @@ func readNative(ctx context.Context, h native.Handler, region string, identifier
 	}, nil
 }
 
-// prepareUpdate saves on rec, in memory, the update token a native update sends on every attempt, before the
-// reservation saves it. A record that still has a token has an update that may have reached AWS. When this deploy
-// applies the same values, intent, it is the same update, so its token is kept, and the update is sent again with it.
-// Otherwise it is a new update, with a new token, so a token never covers two different updates.
-func prepareUpdate(rec *datamodel.AWSResource, r *request, intent string) {
+// cleanup asks a native handler that puts on a resource what it needs only for a while (native.Cleaner) to remove it,
+// until it succeeds once for the record, which the deploy then saves. put calls it only for a record that has the
+// identifier and no unfinished create, as saved. The handler gets the record's create token, so it never removes the
+// mark of a create another alias lost, which that alias still needs to find it. A failure is only logged, and the
+// next deploy asks again.
+func cleanup(ctx context.Context, r *request, rec *datamodel.AWSResource, identifier string) {
+	cleaner, ok := r.handler.(native.Cleaner)
+	if !ok || rec.Properties.CleanedUpAt != nil {
+		return
+	}
+	if err := cleaner.Cleanup(ctx, r.region, identifier, rec.Properties.CreateToken); err != nil {
+		ucplog.FromContextOrDiscard(ctx).Error(err, "Failed to clean up the AWS resource; the next deploy tries again", "alias", r.id.Name(), "awsIdentifier", identifier)
+		return
+	}
+	now := records.Now().UTC()
+	rec.Properties.CleanedUpAt = &now
+	rec.Properties.CreateToken = ""
+}
+
+// prepareUpdate saves on rec, in memory, the update token a native update sends on every attempt, and the state the
+// handler keeps for it (native.UpdatePreparer), before the reservation saves them. A record that still has a token
+// has an update that may have reached AWS. When this deploy applies the same values, intent, it is the same update,
+// so its token and state are kept, and the update is sent again with them. Otherwise it is a new update, with a new
+// token and state, so a token never covers two different updates.
+func prepareUpdate(ctx context.Context, r *request, rec *datamodel.AWSResource, identifier string, intent string) error {
 	if r.handler == nil {
 		// Cloud Control serves this update, so a native update's token no longer names the latest update.
 		records.ClearUpdateToken(rec)
-		return
+		return nil
 	}
 	if rec.Properties.UpdateToken != "" && rec.Properties.UpdateIntent == intent {
-		return
+		return nil
+	}
+	state := ""
+	if preparer, ok := r.handler.(native.UpdatePreparer); ok {
+		var err error
+		if state, err = preparer.UpdateState(ctx, r.region, identifier); err != nil {
+			return err
+		}
 	}
 	rec.Properties.UpdateToken = uuid.New().String()
+	rec.Properties.UpdateState = state
 	rec.Properties.UpdateIntent = intent
+	return nil
 }
 
 // updateIntent returns a hash of the values an update applies: the last-applied properties, without write-only
@@ -351,7 +380,7 @@ func (e *engine) startUpdate(ctx context.Context, r *request, rec *datamodel.AWS
 	if r.handler != nil {
 		err := r.handler.Update(ctx, native.UpdateRequest{
 			Region: r.region, Identifier: identifier, Current: current, Desired: desired, Patch: patch,
-			Token: rec.Properties.UpdateToken,
+			Token: rec.Properties.UpdateToken, State: rec.Properties.UpdateState,
 		})
 		if err != nil {
 			return "", err
@@ -538,7 +567,7 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 	// The create may have applied some or all of its values, so Radius owns them, and the update below clears one the
 	// template no longer sets.
 	records.KeepPending(rec)
-	rec.Properties.ClientToken = ""
+	records.FinishCreate(rec)
 	current, err := e.readResource(ctx, r, identifier)
 	if err != nil {
 		return handleError(ctx, r.id, err)
@@ -651,7 +680,7 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 	// The create may have applied some or all of its values, so Radius owns them. If the delete then fails, a later
 	// deploy clears one the template no longer sets.
 	records.KeepPending(rec)
-	rec.Properties.ClientToken = ""
+	records.FinishCreate(rec)
 	etag, err = e.store.Save(ctx, rec, etag)
 	if err != nil {
 		resp, err := saveError(r.id, err)

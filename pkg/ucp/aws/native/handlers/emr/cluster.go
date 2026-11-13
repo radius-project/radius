@@ -73,6 +73,7 @@ var inRegion = awsapi.InRegion[emr.Options]
 var (
 	_ native.Handler = (*Cluster)(nil)
 	_ native.Finder  = (*Cluster)(nil)
+	_ native.Cleaner = (*Cluster)(nil)
 )
 
 // activeStates are the states of a cluster that is starting or running.
@@ -444,6 +445,9 @@ func (h *Cluster) Create(ctx context.Context, request native.CreateRequest) (str
 	if err := awsapi.ReservedTags(request.Properties, awsapi.OperationTag); err != nil {
 		return "", err
 	}
+	if err := awsapi.TagLimit(request.Properties, maxTags, 1, "an EMR cluster"); err != nil {
+		return "", err
+	}
 	p := request.Properties
 	input := &emr.RunJobFlowInput{}
 	if err := decode(awsapi.Without(p, "Instances", "Tags", "AdditionalInfo"), input); err != nil {
@@ -584,6 +588,33 @@ func (h *Cluster) Find(ctx context.Context, request native.CreateRequest) (strin
 	return "", awsapi.Ambiguous("EMR clusters", found)
 }
 
+// maxTags is how many tags EMR allows on a cluster, as EC2 does on a resource.
+const maxTags = 50
+
+// operationTags returns 1 when tags has the operation tag, which Cleanup hasn't removed yet, and 0 otherwise.
+func operationTags(tags []types.Tag) int {
+	if slices.ContainsFunc(tags, func(t types.Tag) bool { return aws.ToString(t.Key) == awsapi.OperationTag }) {
+		return 1
+	}
+	return 0
+}
+
+// Cleanup removes the operation tag, which only Find needs, to find a create UCP lost, so the cluster carries no tag
+// of Radius's. It removes the tag only when it holds createToken, so never the tag of a create another alias lost.
+func (h *Cluster) Cleanup(ctx context.Context, region string, identifier string, createToken string) error {
+	cluster, err := h.active(ctx, region, identifier)
+	if err != nil {
+		return err
+	}
+	if createToken == "" || !slices.ContainsFunc(cluster.Tags, func(t types.Tag) bool {
+		return aws.ToString(t.Key) == awsapi.OperationTag && aws.ToString(t.Value) == createToken
+	}) {
+		return nil
+	}
+	_, err = h.api.RemoveTags(ctx, &emr.RemoveTagsInput{ResourceId: cluster.Id, TagKeys: []string{awsapi.OperationTag}}, inRegion(region))
+	return err
+}
+
 // unchangeable is the failure of an update that changes properties EMR can't change on a running cluster.
 func unchangeable(names []string) error {
 	slices.Sort(names)
@@ -601,7 +632,8 @@ func (h *Cluster) Update(ctx context.Context, request native.UpdateRequest) erro
 	if err := awsapi.ReservedTags(request.Desired, awsapi.OperationTag); err != nil {
 		return err
 	}
-	if _, err := h.active(ctx, request.Region, request.Identifier); err != nil {
+	cluster, err := h.active(ctx, request.Region, request.Identifier)
+	if err != nil {
 		return err
 	}
 	opt := inRegion(request.Region)
@@ -646,6 +678,9 @@ func (h *Cluster) Update(ctx context.Context, request native.UpdateRequest) erro
 			}
 			calls = append(calls, call)
 		case "Tags":
+			if err := awsapi.TagLimit(request.Desired, maxTags, operationTags(cluster.Tags), "an EMR cluster"); err != nil {
+				return err
+			}
 			calls = append(calls, h.tagCalls(ctx, request, opt)...)
 		default:
 			unsupported = append(unsupported, name)
@@ -698,20 +733,21 @@ func (h *Cluster) terminationCall(ctx context.Context, id *string, value any, op
 	}, nil
 }
 
-// tagCalls returns the calls that add and remove tags to go from the request's current tags to the desired ones.
-// The current tags never include the operation tag, so it stays.
+// tagCalls returns the calls that remove and add tags to go from the request's current tags to the desired ones.
+// Removals go first, so a change that replaces tags stays within EMR's tag limit. The current tags never include the
+// operation tag, so an update leaves it as it is.
 func (h *Cluster) tagCalls(ctx context.Context, request native.UpdateRequest, opt func(*emr.Options)) []func() error {
 	set, remove := awsapi.TagChanges(awsapi.Tags(request.Current), awsapi.Tags(request.Desired))
 	calls := []func() error{}
-	if len(set) > 0 {
-		calls = append(calls, func() error {
-			_, err := h.api.AddTags(ctx, &emr.AddTagsInput{ResourceId: aws.String(request.Identifier), Tags: awsapi.SDKTags[types.Tag](set)}, opt)
-			return err
-		})
-	}
 	if len(remove) > 0 {
 		calls = append(calls, func() error {
 			_, err := h.api.RemoveTags(ctx, &emr.RemoveTagsInput{ResourceId: aws.String(request.Identifier), TagKeys: remove}, opt)
+			return err
+		})
+	}
+	if len(set) > 0 {
+		calls = append(calls, func() error {
+			_, err := h.api.AddTags(ctx, &emr.AddTagsInput{ResourceId: aws.String(request.Identifier), Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 			return err
 		})
 	}

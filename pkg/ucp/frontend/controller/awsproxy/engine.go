@@ -538,6 +538,8 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 			// Deleted outside Radius: create it again and update the record.
 			logger.Info("The AWS resource of an alias no longer exists; creating it again", "alias", r.id.Name(), "awsIdentifier", identifier)
 			rec.Properties.AWSIdentifier = ""
+		} else {
+			cleanup(ctx, r, rec, identifier)
 		}
 	default:
 		// No AWS resource under this alias yet. Take over one that already exists: first by name, then by the
@@ -668,7 +670,9 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	// Reserve the record with the values this deploy applies before calling AWS. The worker makes them last-applied
 	// when AWS succeeds.
 	prior := rec.ProvisioningState()
-	prepareUpdate(rec, r, updateIntent(applied))
+	if err := prepareUpdate(ctx, r, rec, identifier, updateIntent(applied)); err != nil {
+		return handleError(ctx, r.id, err)
+	}
 	rec.Properties.PendingLastApplied = applied.properties
 	rec.Properties.PendingFingerprints = applied.fingerprints
 	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationUpdate)
@@ -786,7 +790,7 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 				// The native handler made every change, and UCP has the identifier, so the create is finished: its
 				// values and fingerprints are last-applied, and the next deploy updates the resource as usual.
 				records.Settle(rec, outcome)
-				rec.Properties.ClientToken = ""
+				records.FinishCreate(rec)
 				rec.SetProvisioningState(v1.ProvisioningStateFailed)
 				return
 			case replay && outcome == native.OutcomeRejected:
@@ -1153,7 +1157,7 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 	}
 
 	rec.Properties.AWSIdentifier = status.Identifier
-	rec.Properties.ClientToken = ""
+	records.FinishCreate(rec)
 	etag, err = e.store.Save(ctx, rec, etag)
 	if err != nil {
 		resp, err := saveError(r.id, err)
