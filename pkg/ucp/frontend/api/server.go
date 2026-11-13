@@ -260,14 +260,11 @@ func (s *Service) listenAndServe(ctx context.Context, service *http.Server) erro
 		return service.ListenAndServeTLS(dir+"/"+mtls.CertFile, dir+"/"+mtls.KeyFile)
 	}
 
-	source, err := mtls.NewSource(dir)
-	if err != nil {
-		return fmt.Errorf("failed to load the API server certificate: %w", err)
+	if s.aggregationSource == nil {
+		if _, err := s.configureAggregationServing(service); err != nil {
+			return err
+		}
 	}
-	go source.Start(ctx, mtls.DefaultPollInterval)
-	// Keep any client-certificate settings already on the server, such as the request-header
-	// proxy's RequestClientCert and ClientCAs, and take only the rotating certificate from source.
-	service.TLSConfig = source.ServerConfigFrom(service.TLSConfig)
 	return service.ListenAndServeTLS("", "")
 }
 

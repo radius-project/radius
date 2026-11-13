@@ -450,7 +450,7 @@ func Test_listenAndServe_ServesCertificateFromDirectory(t *testing.T) {
 
 func Test_listenAndServe_FailsWithoutCertificateWhenAuthorizationIsOn(t *testing.T) {
 	err := newTestService(t.TempDir(), authz.ModeEnforce).listenAndServe(t.Context(), &http.Server{Addr: "127.0.0.1:0", ReadHeaderTimeout: time.Second})
-	require.ErrorContains(t, err, "failed to load the API server certificate")
+	require.ErrorContains(t, err, "failed to initialize aggregation serving certificate")
 }
 
 // newProxyClientCert returns a CA pool and a client certificate it signs, like the Kubernetes

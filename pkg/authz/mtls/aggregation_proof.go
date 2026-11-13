@@ -78,6 +78,9 @@ func NewAggregationProof(source *Source, namespace, podUID, expectedTrust string
 }
 
 func (s *Source) validateAggregationIdentity(m *material, namespace string) error {
+	if m == nil || m.cert == nil {
+		return errors.New("aggregation proof requires a serving certificate")
+	}
 	leaf := m.cert.Leaf
 	if leaf.IsCA || leaf.KeyUsage&x509.KeyUsageDigitalSignature == 0 {
 		return errors.New("invalid aggregation serving certificate usage")
@@ -87,9 +90,14 @@ func (s *Source) validateAggregationIdentity(m *material, namespace string) erro
 	if err != nil {
 		return errors.New("invalid aggregation serving certificate chain or usage")
 	}
-	identity, err := identityFromChains(chains, namespace)
-	if err != nil || identity.Component != "ucp" {
+	if len(leaf.DNSNames) != 1 || leaf.DNSNames[0] != "ucp."+namespace+".svc" ||
+		len(leaf.URIs) != 0 || len(leaf.IPAddresses) != 0 || len(leaf.EmailAddresses) != 0 {
 		return errors.New("invalid aggregation serving identity or key")
+	}
+	for _, cert := range chains[0] {
+		if err := checkKey(cert); err != nil {
+			return err
+		}
 	}
 	return nil
 }

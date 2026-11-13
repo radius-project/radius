@@ -154,6 +154,13 @@ func (e StartupEvidence) Validate(podUID, trustDigest, leafDigest string, now ti
 	if e.SchemaVersion != 1 || !e.Ready || e.ProofKind != "startup-tls-initialized" || e.PeerHandshakeVerified {
 		return errors.New("unsupported or unready TLS initialization evidence")
 	}
+	if !validFingerprint(leafDigest) || e.LeafSHA256 != leafDigest {
+		return errors.New("TLS initialization evidence does not match expected leaf")
+	}
+	return validateEvidenceMetadata(e, podUID, trustDigest, now)
+}
+
+func validateEvidenceMetadata(e StartupEvidence, podUID, trustDigest string, now time.Time) error {
 	if !validProofUUID(e.BootID) || !validProofUUID(podUID) {
 		return errors.New("invalid TLS process identity")
 	}
@@ -162,8 +169,8 @@ func (e StartupEvidence) Validate(podUID, trustDigest, leafDigest string, now ti
 		now.Before(e.NotBefore) || now.After(e.NotAfter) {
 		return errors.New("TLS initialization evidence has stale identity or validity")
 	}
-	if !validFingerprint(trustDigest) || !validFingerprint(leafDigest) || e.TrustBundleSHA256 != trustDigest ||
-		e.LeafSHA256 != leafDigest || len(e.CASHA256) == 0 || len(e.CASHA256) > maxProofCAs {
+	if !validFingerprint(trustDigest) || e.TrustBundleSHA256 != trustDigest ||
+		len(e.CASHA256) == 0 || len(e.CASHA256) > maxProofCAs {
 		return errors.New("TLS initialization evidence does not match expected material")
 	}
 	for i, hash := range e.CASHA256 {

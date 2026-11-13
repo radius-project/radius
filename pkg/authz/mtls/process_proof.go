@@ -17,7 +17,6 @@ limitations under the License.
 package mtls
 
 import (
-	"crypto/x509"
 	"errors"
 	"os"
 
@@ -46,26 +45,10 @@ func configuredStartupProof(options authz.Options) (*StartupProof, error) {
 		}
 		return nil, nil
 	case "true":
+		return nil, errors.New("UCP_MTLS_STARTUP_PROOF_ENABLED is no longer supported: server-only TLS requires trust-only evidence and an authorized observer; CLI observer authentication is not yet available")
 	default:
 		return nil, errors.New("TLS startup proof enabled setting must be true or false")
 	}
-	digest := os.Getenv("UCP_MTLS_EXPECTED_TRUST_SHA256")
-	podUID := os.Getenv("UCP_MTLS_POD_UID")
-	if options.EffectiveMode() == authz.ModeOff || options.CertificateDirectory == "" ||
-		options.Namespace == "" || !validFingerprint(digest) || !validProofUUID(podUID) {
-		return nil, errors.New("TLS startup proof requires enabled component mTLS, an expected trust digest and a pod UID")
-	}
-	source, err := sharedSource(options.CertificateDirectory)
-	if err != nil {
-		return nil, errors.New("cannot initialize component TLS startup proof")
-	}
-	if _, err := source.Reload(); err != nil {
-		return nil, errors.New("component TLS startup material is unavailable")
-	}
-	if err := source.bindProofNamespace(options.Namespace); err != nil {
-		return nil, err
-	}
-	return NewStartupProof(source, podUID, digest)
 }
 
 func (s *Source) bindProofNamespace(namespace string) error {
@@ -89,23 +72,7 @@ func (s *Source) bindProofNamespace(namespace string) error {
 }
 
 func (s *Source) validateProofIdentity(m *material, namespace string) error {
-	leaf := m.cert.Leaf
-	if leaf.IsCA || leaf.KeyUsage&x509.KeyUsageDigitalSignature == 0 {
-		return errors.New("invalid component TLS startup certificate usage")
-	}
-	for _, usage := range []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth} {
-		chains, err := leaf.Verify(x509.VerifyOptions{
-			Roots: m.pool, Intermediates: m.intermediates, CurrentTime: s.now(),
-			KeyUsages: []x509.ExtKeyUsage{usage},
-		})
-		if err != nil {
-			return errors.New("invalid component TLS startup certificate chain or usage")
-		}
-		if _, err := identityFromChains(chains, namespace); err != nil {
-			return errors.New("invalid component TLS startup identity or key")
-		}
-	}
-	return nil
+	return errors.New("legacy client-certificate startup identity is not supported by server-only TLS")
 }
 
 func clientSource(options authz.Options) (*Source, error) {
@@ -116,7 +83,7 @@ func clientSource(options authz.Options) (*Source, error) {
 	if proof != nil {
 		return proof.source, nil
 	}
-	return sharedSource(options.CertificateDirectory)
+	return sharedTrustSource(options.EffectiveCADirectory())
 }
 
 func listenerSource(options authz.Options) (*Source, error) {
@@ -127,5 +94,5 @@ func listenerSource(options authz.Options) (*Source, error) {
 	if proof != nil {
 		return proof.source, nil
 	}
-	return NewSource(options.CertificateDirectory)
+	return NewSourceWithCA(options.CertificateDirectory, options.EffectiveCADirectory())
 }

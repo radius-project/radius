@@ -246,13 +246,12 @@ func TestSource_Reload(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, changed)
 
-	// Invalid files keep the previous certificate.
+	// Invalid files invalidate the prior generation until a valid projection returns.
 	require.NoError(t, os.WriteFile(filepath.Join(dir.root, "..data", KeyFile), []byte("bad"), 0o600))
 	_, err = src.Reload()
 	require.Error(t, err)
-	cert, err := currentCert(src)
-	require.NoError(t, err)
-	require.Equal(t, first.cert.Raw, cert.Leaf.Raw)
+	_, err = currentCert(src)
+	require.Error(t, err)
 
 	// A rotated certificate and CA are picked up by Start.
 	rotatedCA := newCA(t)
@@ -314,7 +313,7 @@ func TestSource_ReloadKeepsChanging(t *testing.T) {
 	dir := newKubeletDir(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")}), ca.pem)
 	src, err := NewSource(dir.root)
 	require.NoError(t, err)
-	before, err := currentCert(src)
+	_, err = currentCert(src)
 	require.NoError(t, err)
 
 	reads := 0
@@ -326,9 +325,8 @@ func TestSource_ReloadKeepsChanging(t *testing.T) {
 
 	_, err = src.Reload()
 	require.ErrorContains(t, err, "kept changing")
-	after, err := currentCert(src)
-	require.NoError(t, err)
-	require.Same(t, before, after)
+	_, err = currentCert(src)
+	require.Error(t, err)
 }
 
 // TestNewSourceWithCA covers the csi-driver-spiffe volume contract: without a configured
@@ -420,7 +418,7 @@ func TestNewTrustSource(t *testing.T) {
 		dir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(dir, CAFile), []byte("not a certificate"), 0o600))
 		_, err := NewTrustSource(dir)
-		require.ErrorContains(t, err, "no certificates found")
+		require.ErrorContains(t, err, "only CA certificates")
 	})
 
 	t.Run("reloads the CA bundle", func(t *testing.T) {

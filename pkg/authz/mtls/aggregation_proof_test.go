@@ -29,6 +29,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const ucpServerName = "ucp." + testNamespace + ".svc"
+
+func componentSANs(component string) []string {
+	return []string{component + "." + testNamespace + ".svc"}
+}
+
 func TestAggregationProofUsesServingSource(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
@@ -106,9 +112,10 @@ func TestAggregationProofConfigurationIsolation(t *testing.T) {
 	_, err = NewAggregationProof(source, testNamespace, "not-a-uid", digest)
 	require.Error(t, err)
 	require.Empty(t, source.aggregationNamespace)
-	require.NoError(t, source.bindProofNamespace(testNamespace))
-	_, err = NewAggregationProof(source, testNamespace, uuid.NewString(), digest)
-	require.Error(t, err, "component transport cannot stand in for serving Source")
+	require.Error(t, source.bindProofNamespace(testNamespace))
+	trustOnly := newTrustSource(t, ca.pem)
+	_, err = NewAggregationProof(trustOnly, testNamespace, uuid.NewString(), digest)
+	require.Error(t, err, "outbound authority cannot stand in for serving Source")
 	_, err = NewAggregationProof(nil, testNamespace, uuid.NewString(), digest)
 	require.Error(t, err)
 }

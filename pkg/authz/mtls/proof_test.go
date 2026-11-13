@@ -73,7 +73,7 @@ func TestTrustBundleDigest(t *testing.T) {
 func TestStartupProofUsesActualSourceAndRenewsLeaf(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
-	first := ca.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+	first := ca.issue(t, certOptions{uris: spiffeURIs("ucp")})
 	dir := newKubeletDir(t, first, ca.pem)
 	source, err := NewSource(dir.root)
 	require.NoError(t, err)
@@ -87,7 +87,7 @@ func TestStartupProofUsesActualSourceAndRenewsLeaf(t *testing.T) {
 	require.NoError(t, before.Validate(podUID, digest, fingerprint(first.cert.Raw), time.Now()))
 	require.False(t, before.PeerHandshakeVerified)
 
-	second := ca.issue(t, certOptions{dnsNames: componentSANs("ucp")})
+	second := ca.issue(t, certOptions{uris: spiffeURIs("ucp")})
 	dir.update(t, second, ca.pem)
 	after, err := proof.Snapshot()
 	require.NoError(t, err)
@@ -96,14 +96,14 @@ func TestStartupProofUsesActualSourceAndRenewsLeaf(t *testing.T) {
 	require.Equal(t, before.InitializedAt, after.InitializedAt)
 	require.NotEqual(t, before.LeafSHA256, after.LeafSHA256)
 	client := newTestSource(t, ca, "controller")
-	result := handshake(t, source.ServerConfig(testNamespace), clientConfig(t, client, ucpServerName))
+	result := handshake(t, source.ServerConfig(), clientConfig(t, client, "ucp"))
 	require.NoError(t, result.clientErr)
 	require.NoError(t, result.serverErr)
 	require.Equal(t, second.cert.Raw, result.clientState.PeerCertificates[0].Raw)
 
 	other := newCA(t)
 	dir.update(t, other.issue(t, certOptions{dnsNames: componentSANs("ucp")}), other.pem)
-	_, err = source.ClientConfig(testNamespace)
+	_, err = source.clientConfig(spiffeID("ucp"), nil)
 	require.Error(t, err, "transport use must reject changed roots even without an evidence query")
 	_, err = proof.Snapshot()
 	require.Error(t, err)
@@ -238,7 +238,7 @@ func TestSourceOwnChainExpiresAfterLoad(t *testing.T) {
 			source, err := NewSource(dir)
 			require.NoError(t, err)
 			source.now = func() time.Time { return expires }
-			config, err := source.ClientConfig(testNamespace)
+			config, err := source.clientConfig(spiffeID("ucp"), nil)
 			require.NoError(t, err)
 			source.now = func() time.Time { return expires.Add(time.Nanosecond) }
 			_, err = source.load()
@@ -257,19 +257,20 @@ func TestStartupProofFailureInvalidatesPooledTransport(t *testing.T) {
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 			server.EnableHTTP2 = http2
 			server.TLS = &tls.Config{MinVersion: tls.VersionTLS12, Certificates: []tls.Certificate{
-				ca.issue(t, certOptions{dnsNames: componentSANs("ucp")}).tlsCertificate(t),
+				ca.issue(t, certOptions{uris: spiffeURIs("ucp")}).tlsCertificate(t),
 			}}
 			server.StartTLS()
 			defer server.Close()
 			leaf := ca.issue(t, certOptions{dnsNames: componentSANs("controller")})
 			dir := newKubeletDir(t, leaf, ca.pem)
-			transport, err := newClientTransport(authz.Options{Mode: authz.ModeEnforce,
-				CertificateDirectory: dir.root, Namespace: testNamespace}, ucpServerName)
+			options := clientOptions(t, ca.pem, authz.ModeEnforce)
+			options.CADirectory = dir.root
+			transport, err := newClientTransport(options, "ucp")
 			require.NoError(t, err)
 			defer transport.CloseIdleConnections()
 			digest, _, err := TrustBundleDigest(ca.pem, time.Now())
 			require.NoError(t, err)
-			proof, err := NewStartupProof(transport.source, uuid.NewString(), digest)
+			proof, err := NewTrustProof(transport.source, uuid.NewString(), digest, spiffeID("ucp"))
 			require.NoError(t, err)
 			client := &http.Client{Transport: transport}
 			for i := range 3 {
@@ -291,7 +292,74 @@ func TestStartupProofFailureInvalidatesPooledTransport(t *testing.T) {
 					_, err = proof.Snapshot()
 					require.NoError(t, err)
 				}
+
 			}
 		})
 	}
+}
+
+func TestTrustProofSchemaAndAnchorBounds(t *testing.T) {
+	t.Parallel()
+	now := time.Now().UTC().Truncate(time.Second)
+	first, second := expiringCA(t, nil, now.Add(time.Hour)), expiringCA(t, nil, now.Add(30*time.Minute))
+	bundle := append(bytes.Clone(first.pem), second.pem...)
+	directory := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(directory, CAFile), bundle, 0600))
+	source, err := NewTrustSource(directory)
+	require.NoError(t, err)
+	source.now = func() time.Time { return now }
+	digest, _, err := TrustBundleDigest(bundle, now)
+	require.NoError(t, err)
+	pod := uuid.NewString()
+	proof, err := NewTrustProof(source, pod, digest, spiffeID("ucp"))
+	require.NoError(t, err)
+	evidence, err := proof.Snapshot()
+	require.NoError(t, err)
+	require.NoError(t, evidence.Validate(pod, digest, spiffeID("ucp"), now))
+	require.Equal(t, second.cert.NotAfter, evidence.NotAfter)
+	notBefore := first.cert.NotBefore
+	if second.cert.NotBefore.After(notBefore) {
+		notBefore = second.cert.NotBefore
+	}
+	require.Equal(t, notBefore, evidence.NotBefore)
+	encoded, err := json.Marshal(evidence)
+	require.NoError(t, err)
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(encoded, &fields))
+	keys := make([]string, 0, len(fields))
+	for key := range fields {
+		keys = append(keys, key)
+	}
+	require.ElementsMatch(t, []string{"schemaVersion", "ready", "proofKind", "podUid", "bootId", "initializedAt",
+		"trustBundleSha256", "caSha256", "notBefore", "notAfter", "expectedServerSpiffeId", "peerHandshakeVerified"}, keys)
+	require.False(t, evidence.PeerHandshakeVerified)
+	require.NotContains(t, string(encoded), "BEGIN")
+	_, err = NewTrustProof(newTestSource(t, first, "ucp"), pod, digest, spiffeID("ucp"))
+	require.Error(t, err, "a serving leaf source cannot attest outbound authority")
+	_, err = NewTrustProof(source, uuid.NewString(), digest, spiffeID("ucp"))
+	require.Error(t, err, "proof cannot fabricate another process identity")
+	for _, change := range []func(*TrustEvidence){
+		func(e *TrustEvidence) { e.SchemaVersion = 1 },
+		func(e *TrustEvidence) { e.PeerHandshakeVerified = true },
+		func(e *TrustEvidence) { e.ExpectedServerSPIFFEID = spiffeID("controller") },
+		func(e *TrustEvidence) { e.ProofKind = "startup-tls-initialized" },
+		func(e *TrustEvidence) { e.Ready = false },
+		func(e *TrustEvidence) { e.CASHA256 = append(e.CASHA256, e.CASHA256[0]) },
+	} {
+		invalid := evidence
+		change(&invalid)
+		require.Error(t, invalid.Validate(pod, digest, spiffeID("ucp"), now))
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(directory, CAFile), first.pem, 0600))
+	_, err = proof.Snapshot()
+	require.Error(t, err, "changed selected trust invalidates the actual source")
+	_, err = source.clientConfig(spiffeID("ucp"), nil)
+	require.Error(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(directory, CAFile), bundle, 0600))
+	repaired, err := proof.Snapshot()
+	require.NoError(t, err)
+	require.Equal(t, evidence, repaired)
+	source.now = func() time.Time { return second.cert.NotAfter.Add(time.Nanosecond) }
+	_, err = proof.Snapshot()
+	require.Error(t, err, "current selected anchors, not a leaf certificate, bound readiness")
 }

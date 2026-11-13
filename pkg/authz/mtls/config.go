@@ -19,6 +19,7 @@ package mtls
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"slices"
 	"time"
 )
@@ -37,22 +38,40 @@ func (s *Source) ServerConfig() *tls.Config {
 // version is at least TLS 1.2. The certificate is read for each handshake, so reloads take
 // effect without a restart.
 func (s *Source) ServerConfigFrom(base *tls.Config) *tls.Config {
+	return s.ServingConfig(base)
+}
+
+// ServingConfig preserves the caller's live client-authentication policy while
+// selecting one immutable serving certificate generation per handshake.
+func (s *Source) ServingConfig(base *tls.Config) *tls.Config {
 	if base == nil {
 		base = &tls.Config{ClientAuth: tls.NoClientCert}
 	}
 	base = base.Clone()
 	base.Certificates = nil
 	base.GetCertificate = nil
-	base.GetConfigForClient = nil
 	if base.MinVersion < tls.VersionTLS12 {
 		base.MinVersion = tls.VersionTLS12
 	}
 
 	outer := base.Clone()
-	outer.GetConfigForClient = func(*tls.ClientHelloInfo) (*tls.Config, error) {
+	outer.GetConfigForClient = func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+		policy := base
+		if base.GetConfigForClient != nil {
+			selected, err := base.GetConfigForClient(hello)
+			if err != nil {
+				return nil, err
+			}
+			if selected != nil {
+				policy = selected
+			}
+		}
 		m, err := s.load()
 		if err != nil {
 			return nil, err
+		}
+		if m.cert == nil {
+			return nil, errors.New("trust-only source cannot serve a TLS certificate")
 		}
 
 		// http.Server adds ALPN protocols to the outer config; keep them so HTTP/2 still works.
@@ -61,9 +80,29 @@ func (s *Source) ServerConfigFrom(base *tls.Config) *tls.Config {
 			nextProtos = append(nextProtos, "http/1.1")
 		}
 
-		config := base.Clone()
+		config := policy.Clone()
+		config.GetConfigForClient = nil
+		config.GetCertificate = nil
+		if config.MinVersion < tls.VersionTLS12 {
+			config.MinVersion = tls.VersionTLS12
+		}
 		config.NextProtos = nextProtos
 		config.Certificates = []tls.Certificate{*m.cert}
+		verify := config.VerifyConnection
+		config.VerifyConnection = func(state tls.ConnectionState) error {
+			if verify != nil {
+				if err := verify(state); err != nil {
+					return err
+				}
+			}
+			if err := s.checkMaterial(m); err != nil {
+				return err
+			}
+			if s.guardServing.Load() {
+				s.serving.Store(hello.Conn, m)
+			}
+			return nil
+		}
 		return config, nil
 	}
 	return outer
@@ -78,9 +117,14 @@ func (s *Source) ServerConfigFrom(base *tls.Config) *tls.Config {
 // new connection, for example from http.Transport.DialTLSContext, so CA reloads take effect.
 // If verified is not nil, it receives the verified chain after a successful check.
 func (s *Source) clientConfig(spiffeID string, verified func([]*x509.Certificate)) (*tls.Config, error) {
+	config, _, err := s.clientSnapshot(spiffeID, verified)
+	return config, err
+}
+
+func (s *Source) clientSnapshot(spiffeID string, verified func([]*x509.Certificate)) (*tls.Config, *material, error) {
 	m, err := s.load()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &tls.Config{
@@ -90,6 +134,9 @@ func (s *Source) clientConfig(spiffeID string, verified func([]*x509.Certificate
 		// the Radius CA bundle and the SPIFFE ID instead, on every handshake.
 		InsecureSkipVerify: true, //nolint:gosec // The chain and SPIFFE ID are verified in VerifyConnection.
 		VerifyConnection: func(cs tls.ConnectionState) error {
+			if err := s.checkMaterial(m); err != nil {
+				return err
+			}
 			chain, err := verifyServer(m.pool, cs.PeerCertificates, spiffeID, s.now())
 			if err != nil {
 				return err
@@ -99,7 +146,7 @@ func (s *Source) clientConfig(spiffeID string, verified func([]*x509.Certificate
 			}
 			return nil
 		},
-	}, nil
+	}, m, nil
 }
 
 // verifyServer checks a server's certificate chain against pool and its SPIFFE ID, and
@@ -143,4 +190,17 @@ func verifyServer(pool *x509.CertPool, certs []*x509.Certificate, spiffeID strin
 		}
 	}
 	return nil, firstErr
+}
+
+// VerifyServerChain verifies a live server's exact SPIFFE identity against the
+// selected public anchors. It does not initialize or attest an outbound Source.
+func VerifyServerChain(anchors []byte, certs []*x509.Certificate, spiffeID string, now time.Time) ([]*x509.Certificate, error) {
+	if _, err := parsePublicTrust(anchors, now); err != nil {
+		return nil, err
+	}
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(anchors) {
+		return nil, errors.New("invalid selected server trust")
+	}
+	return verifyServer(pool, certs, spiffeID, now)
 }

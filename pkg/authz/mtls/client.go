@@ -193,7 +193,7 @@ func newClientTransport(options authz.Options, receiver string) (*clientTranspor
 	t.Proxy = nil
 	t.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		var validity connectionValidity
-		config, err := source.clientConfig(spiffeID, func(chain []*x509.Certificate) {
+		config, snapshot, err := source.clientSnapshot(spiffeID, func(chain []*x509.Certificate) {
 			validity = chainValidity(chain)
 		})
 		if err != nil {
@@ -214,6 +214,13 @@ func newClientTransport(options authz.Options, receiver string) (*clientTranspor
 		if err := conn.HandshakeContext(ctx); err != nil {
 			_ = raw.Close()
 			return nil, err
+		}
+		validity.trust, validity.epoch = snapshot.trust, snapshot.epoch
+		if snapshot.notBefore.After(validity.notBefore) {
+			validity.notBefore = snapshot.notBefore
+		}
+		if snapshot.notAfter.Before(validity.notAfter) {
+			validity.notAfter = snapshot.notAfter
 		}
 
 		t.mu.Lock()
@@ -250,7 +257,11 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.closeExpired()
+	current, err := t.source.load()
+	t.closeInvalid(current)
+	if err != nil {
+		return nil, err
+	}
 
 	// A shallow copy shares req.Trailer and req.Body, so trailers the caller sets while the
 	// body streams are still sent. Only the header map is replaced.

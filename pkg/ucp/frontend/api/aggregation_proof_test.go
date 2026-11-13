@@ -45,6 +45,7 @@ func aggregationServingMaterial(t *testing.T, dir, name string, ca *x509.Certifi
 	t.Helper()
 	leaf, key, _ := engineTestCertificate(t, name, ca, signer)
 	leaf.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
+	leaf.DNSNames, leaf.URIs = []string{name}, nil
 	der, err := x509.CreateCertificate(rand.Reader, leaf, ca, &key.PublicKey, signer)
 	require.NoError(t, err)
 	private, err := x509.MarshalPKCS8PrivateKey(key)
@@ -86,7 +87,7 @@ func TestAggregationServingProofRuntime(t *testing.T) {
 						// No component CertificateDirectory: serving proof works
 						// independently of component PKI and authorization mode.
 						Authorization: authz.Options{Mode: mode, Namespace: "radius-system"}}})
-					proof, err := service.PrepareAggregationProof(true)
+					proof, err := service.prepareLegacyAggregationProof(true)
 					require.NoError(t, err)
 					mux := http.NewServeMux()
 					mux.HandleFunc("/test", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
@@ -96,6 +97,7 @@ func TestAggregationServingProofRuntime(t *testing.T) {
 					require.NoError(t, err)
 					require.Same(t, service.aggregationSource, source)
 					server := httptest.NewUnstartedServer(aggregation.Handler)
+					server.Config.ConnContext, server.Config.ConnState = aggregation.ConnContext, aggregation.ConnState
 					server.TLS, server.EnableHTTP2 = aggregation.TLSConfig, h2
 					if h2 {
 						server.TLS.NextProtos = []string{"h2", "http/1.1"}
@@ -119,6 +121,7 @@ func TestAggregationServingProofRuntime(t *testing.T) {
 						transport.CloseIdleConnections()
 						response, err := client.Get(server.URL + "/test")
 						require.NoError(t, err)
+						require.Equal(t, http.StatusNoContent, response.StatusCode)
 						_, err = io.Copy(io.Discard, response.Body)
 						require.NoError(t, err)
 						require.NoError(t, response.Body.Close())
@@ -180,7 +183,7 @@ func TestAggregationServingProofConfiguration(t *testing.T) {
 					t.Setenv("UCP_AGGREGATION_POD_UID", uuid.NewString())
 				}
 			}
-			proof, err := service.PrepareAggregationProof(management)
+			proof, err := service.prepareLegacyAggregationProof(management)
 			require.Nil(t, proof)
 			if scenario == "default off" {
 				require.NoError(t, err)

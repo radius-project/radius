@@ -31,6 +31,15 @@ import (
 // Call before the host starts services; the returned handler belongs only on
 // the management listener, never on a public or internal application route.
 func (s *Service) PrepareAggregationProof(managementAvailable bool) (*mtls.AggregationProof, error) {
+	enabled := os.Getenv("UCP_AGGREGATION_STARTUP_PROOF_ENABLED")
+	if enabled != "" && enabled != "false" || os.Getenv("UCP_AGGREGATION_EXPECTED_TRUST_SHA256") != "" ||
+		os.Getenv("UCP_AGGREGATION_POD_UID") != "" {
+		return nil, errors.New("legacy aggregation proof endpoint is unavailable: token/CSI observer authentication has not been authorized")
+	}
+	return nil, nil
+}
+
+func (s *Service) prepareLegacyAggregationProof(managementAvailable bool) (*mtls.AggregationProof, error) {
 	switch os.Getenv("UCP_AGGREGATION_STARTUP_PROOF_ENABLED") {
 	case "", "false":
 		if os.Getenv("UCP_AGGREGATION_EXPECTED_TRUST_SHA256") != "" || os.Getenv("UCP_AGGREGATION_POD_UID") != "" {
@@ -89,6 +98,8 @@ func (s *Service) configureAggregationServing(server *http.Server) (*mtls.Source
 		}
 	}
 	server.TLSConfig = source.ServingConfig(server.TLSConfig)
+	source.GuardServingGeneration(server)
+	s.aggregationSource = source
 	podUID := s.aggregationPodUID
 	if podUID == "" && os.Getenv("UCP_MTLS_STARTUP_PROOF_ENABLED") == "true" {
 		// Preserve the original managed rotation header until chart integration

@@ -17,6 +17,7 @@ limitations under the License.
 package api
 
 import (
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"io"
@@ -36,7 +37,7 @@ import (
 func TestAggregationServingProofPreservesProxyPolicy(t *testing.T) {
 	clearAggregationProofEnv(t)
 	ca, key, caPEM := engineTestCertificate(t, "", nil, nil)
-	proxyCA, proxyKey, proxyPEM := engineTestCertificate(t, "", nil, nil)
+	proxyCA, proxyKey, _ := engineTestCertificate(t, "", nil, nil)
 	dir := t.TempDir()
 	aggregationServingMaterial(t, dir, "ucp.radius-system.svc", ca, key, caPEM)
 	digest, _, err := mtls.TrustBundleDigest(caPEM, time.Now())
@@ -47,7 +48,7 @@ func TestAggregationServingProofPreservesProxyPolicy(t *testing.T) {
 	service := NewService(&ucp.Options{Config: &ucp.Config{
 		Server:        hostoptions.ServerOptions{TLSCertificateDirectory: dir},
 		Authorization: authz.Options{Namespace: "radius-system"}}})
-	_, err = service.PrepareAggregationProof(true)
+	_, err = service.prepareLegacyAggregationProof(true)
 	require.NoError(t, err)
 	proxyRoots := x509.NewCertPool()
 	proxyRoots.AddCert(proxyCA)
@@ -62,12 +63,18 @@ func TestAggregationServingProofPreservesProxyPolicy(t *testing.T) {
 	_, err = service.configureAggregationServing(aggregation)
 	require.NoError(t, err)
 	server := httptest.NewUnstartedServer(aggregation.Handler)
+	server.Config.ConnContext, server.Config.ConnState = aggregation.ConnContext, aggregation.ConnState
 	server.TLS = aggregation.TLSConfig
 	server.StartTLS()
 	defer server.Close()
 	servingRoots := x509.NewCertPool()
 	servingRoots.AddCert(ca)
-	_, proxyClient := engineTestMaterial(t, "aggregation-proxy", proxyCA, proxyKey, proxyPEM)
+	proxyLeaf, proxyLeafKey, _ := engineTestCertificate(t, "aggregation-proxy.radius-system.svc", proxyCA, proxyKey)
+	proxyLeaf.URIs = nil
+	proxyLeaf.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+	proxyDER, err := x509.CreateCertificate(rand.Reader, proxyLeaf, proxyCA, &proxyLeafKey.PublicKey, proxyKey)
+	require.NoError(t, err)
+	proxyClient := tls.Certificate{Certificate: [][]byte{proxyDER}, PrivateKey: proxyLeafKey}
 	_, componentClient := engineTestMaterial(t, "controller.radius-system.svc", ca, key, caPEM)
 	for _, tt := range []struct {
 		name         string

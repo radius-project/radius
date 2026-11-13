@@ -166,7 +166,10 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 	if options.EffectiveTLSProvider() == authz.TLSProviderExternal {
 		return srv.Serve(ln)
 	}
-	return srv.Serve(newListener(ctx, ln, source.ServerConfig(), mode))
+	source.GuardServingGeneration(srv)
+	return srv.Serve(newListener(ctx, ln, source.ServerConfig(), mode, func(conn net.Conn) {
+		source.serving.Delete(conn)
+	}))
 }
 
 // newServerAuth loads the server certificate and creates the token verifier.
@@ -304,6 +307,7 @@ type listener struct {
 	ctx       context.Context
 	tlsConfig *tls.Config
 	mode      authz.Mode
+	onClose   func(net.Conn)
 
 	conns     chan net.Conn
 	errs      chan error
@@ -311,12 +315,13 @@ type listener struct {
 	closeOnce sync.Once
 }
 
-func newListener(ctx context.Context, inner net.Listener, tlsConfig *tls.Config, mode authz.Mode) *listener {
+func newListener(ctx context.Context, inner net.Listener, tlsConfig *tls.Config, mode authz.Mode, onClose func(net.Conn)) *listener {
 	l := &listener{
 		Listener:  inner,
 		ctx:       ctx,
 		tlsConfig: tlsConfig,
 		mode:      mode,
+		onClose:   onClose,
 		conns:     make(chan net.Conn),
 		errs:      make(chan error),
 		done:      make(chan struct{}),
@@ -381,7 +386,7 @@ func (l *listener) classify(c net.Conn) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	peeked := &peekedConn{Conn: c, r: br}
+	peeked := &peekedConn{Conn: c, r: br, onClose: l.onClose}
 
 	if first[0] != tlsHandshakeRecord {
 		logPlainHTTP(l.ctx, l.mode, c.RemoteAddr().String())
@@ -395,6 +400,7 @@ func (l *listener) classify(c net.Conn) (net.Conn, error) {
 
 	tlsConn := tls.Server(peeked, l.tlsConfig)
 	if err := tlsConn.HandshakeContext(l.ctx); err != nil {
+		_ = tlsConn.Close()
 		// Clients do not present certificates, so a failed handshake is not an authorization
 		// decision.
 		ucplog.FromContextOrDiscard(l.ctx).V(ucplog.LevelDebug).Info("TLS handshake failed", LogFieldPeerAddress, c.RemoteAddr().String(), "error", err.Error())
@@ -407,9 +413,17 @@ func (l *listener) classify(c net.Conn) (net.Conn, error) {
 // peekedConn replays bytes buffered while classifying the connection.
 type peekedConn struct {
 	net.Conn
-	r *bufio.Reader
+	r       *bufio.Reader
+	onClose func(net.Conn)
 }
 
 func (c *peekedConn) Read(p []byte) (int, error) {
 	return c.r.Read(p)
+}
+
+func (c *peekedConn) Close() error {
+	if c.onClose != nil {
+		c.onClose(c)
+	}
+	return c.Conn.Close()
 }

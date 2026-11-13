@@ -21,14 +21,102 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httptrace"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+func TestServingGenerationRejectsStalePooledHandshake(t *testing.T) {
+	t.Parallel()
+	for _, h2 := range []bool{false, true} {
+		for _, scenario := range []string{"leaf expiry", "intermediate expiry", "anchor retirement", "invalid projection"} {
+			t.Run(fmt.Sprintf("%t/%s", h2, scenario), func(t *testing.T) {
+				t.Parallel()
+				now := time.Now().UTC().Truncate(time.Second)
+				root := expiringCA(t, nil, now.Add(4*time.Hour))
+				issuer := root
+				if scenario == "intermediate expiry" {
+					issuer = expiringCA(t, &root, now.Add(10*time.Minute))
+				}
+				oldLeaf := issuer.issue(t, certOptions{dnsNames: []string{ucpServerName}, notAfter: now.Add(10 * time.Minute)})
+				if scenario == "intermediate expiry" {
+					oldLeaf = issuer.issue(t, certOptions{dnsNames: []string{ucpServerName}, notAfter: now.Add(time.Hour)})
+					oldLeaf.certPEM = append(oldLeaf.certPEM, issuer.pem...)
+				}
+				dir := newKubeletDir(t, oldLeaf, root.pem)
+				source, err := NewSource(dir.root)
+				require.NoError(t, err)
+				var clock atomic.Int64
+				clock.Store(now.UnixNano())
+				source.now = func() time.Time { return time.Unix(0, clock.Load()) }
+				var served atomic.Int32
+				server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					served.Add(1)
+					w.WriteHeader(http.StatusNoContent)
+				}))
+				source.GuardServingGeneration(server.Config)
+				server.TLS, server.EnableHTTP2 = source.ServerConfig(), h2
+				if h2 {
+					server.TLS.NextProtos = []string{"h2", "http/1.1"}
+				}
+				server.StartTLS()
+				defer server.Close()
+				roots := x509.NewCertPool()
+				roots.AddCert(root.cert)
+				transport := &http.Transport{ForceAttemptHTTP2: h2,
+					TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: roots, ServerName: ucpServerName}}
+				defer transport.CloseIdleConnections()
+				client := &http.Client{Transport: transport}
+				request := func(status int, wantReused bool) {
+					t.Helper()
+					reused := false
+					ctx := httptrace.WithClientTrace(t.Context(), &httptrace.ClientTrace{
+						GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused },
+					})
+					req, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+					require.NoError(t, err)
+					response, err := client.Do(req)
+					require.NoError(t, err)
+					_, err = io.Copy(io.Discard, response.Body)
+					require.NoError(t, err)
+					require.NoError(t, response.Body.Close())
+					require.Equal(t, status, response.StatusCode)
+					require.Equal(t, wantReused, reused)
+					require.Equal(t, map[bool]int{false: 1, true: 2}[h2], response.ProtoMajor)
+				}
+				request(http.StatusNoContent, false)
+				renewed := root.issue(t, certOptions{dnsNames: []string{ucpServerName}, notAfter: now.Add(2 * time.Hour)})
+				dir.update(t, renewed, root.pem)
+				request(http.StatusNoContent, true)
+				switch scenario {
+				case "leaf expiry", "intermediate expiry":
+					clock.Store(now.Add(20 * time.Minute).UnixNano())
+				case "anchor retirement":
+					replacement := newCA(t)
+					dir.update(t, replacement.issue(t, certOptions{dnsNames: []string{ucpServerName}}), replacement.pem)
+				case "invalid projection":
+					require.NoError(t, os.WriteFile(filepath.Join(dir.root, CAFile), []byte("invalid CA"), 0600))
+				}
+				request(http.StatusServiceUnavailable, true)
+				require.EqualValues(t, 2, served.Load(), "the original handshake must be checked before invoking the handler")
+				if scenario == "anchor retirement" || scenario == "invalid projection" {
+					dir.update(t, renewed, root.pem)
+					request(http.StatusServiceUnavailable, true)
+					require.EqualValues(t, 2, served.Load(), "repair must not resurrect an invalidated connection")
+				}
+			})
+		}
+	}
+}
 
 func TestServingConfig_TrustOverlapAndDelayedAggregator(t *testing.T) {
 	t.Parallel()
@@ -53,6 +141,7 @@ func TestServingConfig_TrustOverlapAndDelayedAggregator(t *testing.T) {
 					if len(state.VerifiedChains) == 0 {
 						return errors.New("aggregation client policy was not preserved")
 					}
+
 					authenticated.Add(1)
 					return nil
 				},
