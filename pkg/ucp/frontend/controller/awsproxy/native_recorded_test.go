@@ -88,7 +88,9 @@ func Test_Native_RecordReader(t *testing.T) {
 
 	unconfirmed := map[string]func(rec *datamodel.AWSResource){
 		"unresolved paths": func(rec *datamodel.AWSResource) { rec.Properties.UnresolvedPaths = []string{"Size"} },
-		"pending values":   func(rec *datamodel.AWSResource) { rec.Properties.PendingLastApplied = map[string]any{"Name": "app-native"} },
+		"pending values": func(rec *datamodel.AWSResource) {
+			rec.Properties.PendingLastApplied = map[string]any{"Name": "app-native"}
+		},
 	}
 	for name, change := range unconfirmed {
 		t.Run("a record with "+name+" gives nil", func(t *testing.T) {

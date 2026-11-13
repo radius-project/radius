@@ -21,6 +21,8 @@ package docdb
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"slices"
 	"strings"
@@ -377,9 +379,36 @@ func (h *Cluster) Delete(ctx context.Context, region string, identifier string) 
 }
 
 // DeleteToken returns the name of the final snapshot: the identifier, "-final-", and the UTC time, such as
-// app-docdb-final-20261104-212751.
+// app-docdb-final-20261104-212751, shortened to fit a snapshot name (see snapshotName).
 func (h *Cluster) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
-	return fmt.Sprintf("%s-final-%s", identifier, h.now().UTC().Format("20060102-150405")), nil
+	return snapshotName(fmt.Sprintf("%s-final-%s", identifier, h.now().UTC().Format("20060102-150405"))), nil
+}
+
+const (
+	// maxSnapshotName is the length limit of a cluster snapshot's name. The DeleteDBCluster reference allows 255
+	// characters for FinalDBSnapshotIdentifier, but the CreateDBClusterSnapshot reference and the guide to deleting a
+	// cluster say 63, so the handler keeps to 63.
+	maxSnapshotName = 63
+
+	// finalSuffixLength is the length of the end of a final snapshot's name, such as -final-20261104-212751.
+	finalSuffixLength = len("-final-20060102-150405")
+
+	// hashLength is the length of the hash that keeps a shortened name unique.
+	hashLength = 8
+)
+
+// snapshotName returns name when it fits maxSnapshotName. Otherwise it keeps the identifier's first 32 characters,
+// then a hash of the whole name, such as -1a2b3c4d, and the end with the time, so clusters whose identifiers start the
+// same still get different names. The result follows DocumentDB's rules for an identifier, as the identifier it starts
+// with does: it starts with a letter, and has no two hyphens in a row and no hyphen at the end. It also shortens a
+// name an older version saved on the record.
+func snapshotName(name string) string {
+	if len(name) <= maxSnapshotName {
+		return name
+	}
+	sum := sha256.Sum256([]byte(name))
+	start := strings.TrimRight(name[:maxSnapshotName-finalSuffixLength-hashLength-1], "-")
+	return start + "-" + hex.EncodeToString(sum[:])[:hashLength] + name[len(name)-finalSuffixLength:]
 }
 
 // DeleteWithToken deletes the cluster with a final snapshot named token. A cluster AWS is already deleting had a
@@ -391,7 +420,7 @@ func (h *Cluster) DeleteWithToken(ctx context.Context, region string, identifier
 	}
 	_, err := h.api.DeleteDBCluster(ctx, &docdb.DeleteDBClusterInput{
 		DBClusterIdentifier:       aws.String(identifier),
-		FinalDBSnapshotIdentifier: aws.String(token),
+		FinalDBSnapshotIdentifier: aws.String(snapshotName(token)),
 		SkipFinalSnapshot:         aws.Bool(false),
 	}, inRegion(region))
 	if awsapi.HasCode(err, "InvalidDBClusterStateFault") {
