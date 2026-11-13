@@ -521,7 +521,31 @@ func configChanges(name string, request native.UpdateRequest) map[string]any {
 			out[key] = value
 		}
 	}
+	if name == "OntapConfiguration" {
+		oneThroughput(out, current, desired)
+	}
 	return out
+}
+
+// oneThroughput leaves ThroughputCapacity out of ONTAP values that also set ThroughputCapacityPerHAPair to an agreeing
+// value: FSx takes only one of the two in a call, and sets the other from it. Values that disagree are both sent, and
+// FSx rejects them.
+func oneThroughput(out map[string]any, current map[string]any, desired map[string]any) {
+	total, okTotal := out["ThroughputCapacity"].(float64)
+	perPair, okPair := out["ThroughputCapacityPerHAPair"].(float64)
+	if !okTotal || !okPair {
+		return
+	}
+	pairs, ok := desired["HAPairs"].(float64)
+	if !ok {
+		pairs, ok = current["HAPairs"].(float64)
+	}
+	if !ok {
+		pairs = 1
+	}
+	if total == perPair*pairs {
+		delete(out, "ThroughputCapacity")
+	}
 }
 
 // directoryChanges returns the changed values of a Windows file system's Active Directory configuration. FSx takes a

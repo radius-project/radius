@@ -689,6 +689,13 @@ func Test_Update(t *testing.T) {
 			want:    &fsx.UpdateFileSystemInput{OntapConfiguration: &types.UpdateFileSystemOntapConfiguration{ThroughputCapacity: aws.Int32(256)}},
 		},
 		{
+			name:    "a throughput capacity set both as a total and per HA pair is sent once",
+			base:    ontap(nil),
+			desired: ontap(map[string]any{"ThroughputCapacity": 256, "ThroughputCapacityPerHAPair": 256}),
+			unsent:  []string{"OntapConfiguration/FsxAdminPassword"},
+			want:    &fsx.UpdateFileSystemInput{OntapConfiguration: &types.UpdateFileSystemOntapConfiguration{ThroughputCapacityPerHAPair: aws.Int32(256)}},
+		},
+		{
 			name:    "a removed property keeps AWS's value",
 			base:    ontap(map[string]any{"WeeklyMaintenanceStartTime": "1:05:00"}),
 			desired: ontap(nil),
@@ -992,4 +999,36 @@ func Test_ReservedTags(t *testing.T) {
 		require.NoError(t, h.Delete(t.Context(), testRegion, id))
 		require.Nil(t, api.deleteOptions[id], "the delete sends no options the template didn't set as Options")
 	})
+}
+
+func Test_OneThroughput(t *testing.T) {
+	tests := []struct {
+		name    string
+		current map[string]any
+		desired map[string]any
+		want    map[string]any
+	}{
+		{
+			name: "no HA pairs counts as one",
+			want: map[string]any{"ThroughputCapacityPerHAPair": 512.0},
+		},
+		{
+			name:    "the template's HA pairs",
+			current: map[string]any{"HAPairs": 1.0},
+			desired: map[string]any{"HAPairs": 2.0},
+			want:    map[string]any{"ThroughputCapacity": 512.0, "ThroughputCapacityPerHAPair": 512.0},
+		},
+		{
+			name:    "AWS's HA pairs when the template leaves them out",
+			current: map[string]any{"HAPairs": 2.0},
+			want:    map[string]any{"ThroughputCapacity": 512.0, "ThroughputCapacityPerHAPair": 512.0},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := map[string]any{"ThroughputCapacity": 512.0, "ThroughputCapacityPerHAPair": 512.0}
+			oneThroughput(out, tt.current, tt.desired)
+			require.Equal(t, tt.want, out)
+		})
+	}
 }
