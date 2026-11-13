@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -262,6 +263,13 @@ var endpointDefaults = map[string]any{
 	"VpnPort":                       443,
 }
 
+// policyDefaults are the values a property of the authorization policy goes back to when the template removes it:
+// AWS's default for ShadowMode, and no description.
+var policyDefaults = map[string]any{
+	"Description": "",
+	"ShadowMode":  string(types.ClientVpnAuthorizationPolicyShadowModeDisabled),
+}
+
 // Update makes the patch's changes with ModifyClientVpnEndpoint, then sets or deletes the authorization policy.
 func (h *ClientVpnEndpoint) Update(ctx context.Context, request native.UpdateRequest) error {
 	changed := awsapi.Changed(request)
@@ -296,6 +304,12 @@ func (h *ClientVpnEndpoint) Update(ctx context.Context, request native.UpdateReq
 	}
 	if slices.Contains(changed, "AuthorizationPolicy") {
 		if policy, ok := request.Desired["AuthorizationPolicy"]; ok {
+			// AWS keeps the value of a policy property the call leaves out, so a removed one goes back to its default.
+			if m, ok := policy.(map[string]any); ok {
+				values := maps.Clone(policyDefaults)
+				maps.Copy(values, m)
+				policy = values
+			}
 			calls = append(calls, func() error {
 				return h.setPolicy(ctx, request.Region, request.Identifier, policy, nil)
 			})

@@ -83,6 +83,22 @@ func Test_ClientVpnEndpoint_CreateWithPolicyToken(t *testing.T) {
 	require.Equal(t, []string{"CreateClientVpnEndpoint", "ModifyClientVpnEndpointAuthorizationPolicy"}, api.calls)
 }
 
+func Test_ClientVpnEndpoint_UpdatePolicyDefaults(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewClientVpnEndpoint(api)
+	id, err := h.Create(t.Context(), createRequest(with(endpointProperties(), map[string]any{"AuthorizationPolicy": testPolicy})))
+	require.NoError(t, err)
+	current, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+
+	// AWS keeps a policy value the call leaves out, so the handler sends the defaults of the values the template removed.
+	document := map[string]any{"PolicyDocument": testPolicy["PolicyDocument"]}
+	require.NoError(t, h.Update(t.Context(), updateRequest(t, id, current, with(current, map[string]any{"AuthorizationPolicy": document}))))
+	props, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+	require.Equal(t, with(document, map[string]any{"ShadowMode": "disabled"}), props["AuthorizationPolicy"])
+}
+
 func Test_ClientVpnEndpoint_CreateFails(t *testing.T) {
 	t.Run("AWS rejects the create", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
