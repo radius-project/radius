@@ -190,8 +190,10 @@ func requireAPIServiceCABundle(t *testing.T, client dynamic.Interface, want test
 		if !assert.NoError(c, err) {
 			return
 		}
-		certs := parseCertificates(bundle)
-		assert.Equal(c, len(certs), countCertificates(bundle))
+		certs, err := parseCertificateBundlePEM(bundle)
+		if !assert.NoError(c, err) {
+			return
+		}
 		found := false
 		for _, cert := range certs {
 			assert.True(c, cert.IsCA, "the caBundle holds a certificate that is not a CA")

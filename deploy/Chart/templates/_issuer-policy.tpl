@@ -5,12 +5,7 @@ approvers, CEL programs, or authorization webhooks. All reads use live lookup;
 offline rendering cannot supply prerequisite evidence through values.
 */}}
 {{- define "radius.authz.certificateComponents" -}}
-{{- $mtls := (.Values.global.rbac.mtls | default dict) -}}
-{{- if eq (default "radius" $mtls.provider) "external" -}}
 {{- list "ucp" | toJson -}}
-{{- else -}}
-{{- list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" | toJson -}}
-{{- end -}}
 {{- end -}}
 
 {{- define "radius.authz.policySpec" -}}
@@ -19,7 +14,7 @@ offline rendering cannot supply prerequisite evidence through values.
 {{- dict
   "selector" (dict "issuerRef" .issuer "namespace" (dict "matchNames" (list .namespace)))
   "allowed" (dict "dnsNames" (dict "values" (list $san) "required" true "validations" (list (dict "rule" $rule)))
-    "isCA" false "usages" (list "digital signature" "server auth" "client auth"))
+    "isCA" false "usages" (list "digital signature" "server auth"))
   "constraints" (dict "minDuration" "24h" "maxDuration" "24h"
     "privateKey" (dict "algorithm" "ECDSA" "minSize" 256 "maxSize" 256)) | toJson -}}
 {{- end -}}
@@ -63,7 +58,7 @@ official binary, version, command and configuration layout must be inspectable.
 {{- fail (printf "issuerRef prerequisite: %s command/environment overrides are unsupported." .role) -}}
 {{- end -}}
 {{- range $container.env | default list -}}
-{{- if or (ne $.role "certManager") (ne .name "POD_NAMESPACE") .value (ne .valueFrom.fieldRef.fieldPath "metadata.namespace") -}}
+{{- if or (not (has $.role (list "certManager" "spiffe"))) (ne .name "POD_NAMESPACE") .value (ne .valueFrom.fieldRef.fieldPath "metadata.namespace") -}}
 {{- fail (printf "issuerRef prerequisite: %s environment overrides are unsupported except the cert-manager POD_NAMESPACE downward API." $.role) -}}
 {{- end -}}
 {{- end -}}
@@ -71,19 +66,44 @@ official binary, version, command and configuration layout must be inspectable.
 {{- if not (regexMatch `(^|/)cert-manager-controller:v1\.(2[0-9]|[3-9][0-9])\.[0-9]+$` $container.image) -}}
 {{- fail "issuerRef prerequisite: certManager requires an inspectable official cert-manager-controller v1.20+ image tag." -}}
 {{- end -}}
-{{- $disabled := false -}}
+{{- $controllers := false -}}
 {{- range $container.args | default list -}}
 {{- if hasPrefix "--controllers" . -}}
-{{- if or $disabled (not (has . (list "--controllers=-certificaterequests-approver" "--controllers=*,-certificaterequests-approver"))) -}}
-{{- fail "issuerRef prerequisite: certManager must explicitly disable only certificaterequests-approver, without duplicate controller flags." -}}
+{{- if or $controllers (not (has . (list "--controllers=*" "--controllers=-certificaterequests-approver" "--controllers=*,-certificaterequests-approver"))) -}}
+{{- fail "issuerRef prerequisite: certManager requires inspectable controllers without duplicate controller flags." -}}
 {{- end -}}
-{{- $disabled = true -}}
+{{- $controllers = true -}}
 {{- else if not (regexMatch `^--(v|cluster-resource-namespace|leader-election-namespace|acme-http01-solver-image|max-concurrent-challenges|cluster-issuer-ambient-credentials|issuer-ambient-credentials|enable-certificate-owner-ref|dns01-recursive-nameservers|dns01-recursive-nameservers-only|logging-format|metrics-listen-address|healthz-listen-address)=` .) -}}
 {{- fail (printf "issuerRef prerequisite: unsupported certManager argument %q; config files and approval/controller overrides are not accepted." .) -}}
 {{- end -}}
 {{- end -}}
-{{- if not $disabled -}}
-{{- fail "issuerRef prerequisite: certManager default auto-approval must be explicitly disabled with --controllers=-certificaterequests-approver." -}}
+{{- /* Selected-signer RBAC below excludes default auto-approval without changing unrelated signers. */ -}}
+{{- else if eq .role "spiffe" -}}
+{{- if not (regexMatch `(^|/)cert-manager-csi-driver-spiffe-approver:v0\.15\.1$` $container.image) -}}
+{{- fail "issuerRef prerequisite: spiffe requires the supported cert-manager-csi-driver-spiffe-approver:v0.15.1 controller." -}}
+{{- end -}}
+{{- $issuer := .issuer -}}
+{{- $expected := dict
+  "issuer-name" $issuer.name "issuer-kind" $issuer.kind "issuer-group" $issuer.group
+  "trust-domain" (include "radius.authz.spiffe.trustDomain" .root)
+  "csi-driver-name" (include "radius.authz.spiffe.csiDriverName" .root)
+  "certificate-request-duration" "24h" -}}
+{{- $seen := dict -}}
+{{- range $container.args | default list -}}
+{{- $parts := splitList "=" . -}}
+{{- $name := trimPrefix "--" (first $parts) -}}
+{{- if or (ne (len $parts) 2) (hasKey $seen $name) -}}{{- fail "issuerRef prerequisite: spiffe arguments must use unique --name=value flags." -}}{{- end -}}
+{{- $_ := set $seen $name true -}}
+{{- if hasKey $expected $name -}}
+{{- if ne (last $parts) (index $expected $name) -}}{{- fail (printf "issuerRef prerequisite: spiffe %s differs from the selected chart profile." $name) -}}{{- end -}}
+{{- else if eq $name "runtime-issuance-config-map-name" -}}
+{{- if ne (last $parts) "" -}}{{- fail "issuerRef prerequisite: spiffe runtime issuance overrides are unsupported." -}}{{- end -}}
+{{- else if not (has $name (list "log-level" "leader-election-namespace" "metrics-bind-address" "readiness-probe-bind-address" "runtime-issuance-config-map-namespace")) -}}
+{{- fail (printf "issuerRef prerequisite: unsupported spiffe argument %q; non-SPIFFE auto-approval and own-ServiceAccount issuance are forbidden." .) -}}
+{{- end -}}
+{{- end -}}
+{{- range $name, $_ := $expected -}}
+{{- if not (hasKey $seen $name) -}}{{- fail (printf "issuerRef prerequisite: spiffe must explicitly configure --%s." $name) -}}{{- end -}}
 {{- end -}}
 {{- else -}}
 {{- if not (regexMatch `(^|/)cert-manager-approver-policy:v0\.29\.0$` $container.image) -}}
@@ -252,11 +272,18 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- $prereqs := $c.requestPolicy | default dict -}}
 {{- $cm := include "radius.authz.policyController" (dict "ref" ($prereqs.certManager | default dict) "role" "certManager") | fromJson -}}
 {{- $ap := include "radius.authz.policyController" (dict "ref" ($prereqs.approverPolicy | default dict) "role" "approverPolicy") | fromJson -}}
+{{- $spiffe := dict -}}
+{{- if eq (include "radius.authz.tls.provider" .) "radius" -}}
+{{- $spiffe = include "radius.authz.policyController" (dict "ref" ($prereqs.spiffe | default dict) "role" "spiffe" "issuer" $issuer "root" .) | fromJson -}}
+{{- end -}}
 {{- include "radius.authz.policyWebhook" . -}}
-{{- if eq (toJson $cm) (toJson $ap) -}}{{- fail "issuerRef prerequisite: certManager and approverPolicy must use separate ServiceAccounts." -}}{{- end -}}
+{{- if or (eq (toJson $cm) (toJson $ap)) (eq (toJson $cm) (toJson $spiffe)) (eq (toJson $ap) (toJson $spiffe)) -}}{{- fail "issuerRef prerequisite: certificate controllers must use separate ServiceAccounts." -}}{{- end -}}
 {{- $requestor := printf "system:serviceaccount:%s:%s" $cm.namespace $cm.name -}}
+{{- if not (has $requestor (include "radius.authz.certManagerRequesters" . | fromJsonArray)) -}}
+{{- fail "issuerRef prerequisite: the chart certManager.requesters must include the verified cert-manager controller identity." -}}
+{{- end -}}
 {{- $expected := dict -}}
-{{- range list "ucp" "applications-rp" "dynamic-rp" "controller" "bicep-de" -}}
+{{- range list "ucp" -}}
 {{- $_ := set $expected (printf "radius-%s-%s" $root.Release.Namespace .) (include "radius.authz.policySpec" (dict "component" . "namespace" $root.Release.Namespace "issuer" $issuer "requestor" $requestor) | fromJson) -}}
 {{- end -}}
 {{- $policies := (lookup "policy.cert-manager.io/v1alpha1" "CertificateRequestPolicy" "" "").items | default list -}}
@@ -283,9 +310,10 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- range include "radius.authz.certificateComponents" . | fromJsonArray -}}
 {{- if not (hasKey $found (printf "radius-%s-%s" $root.Release.Namespace .)) -}}{{- fail "issuerRef prerequisite: install all expected Ready Radius CertificateRequestPolicies before installing Radius." -}}{{- end -}}
 {{- end -}}
-{{- $bindings := concat ((lookup "rbac.authorization.k8s.io/v1" "ClusterRoleBinding" "" "").items | default list) ((lookup "rbac.authorization.k8s.io/v1" "RoleBinding" .Release.Namespace "").items | default list) -}}
+{{- $bindings := concat ((lookup "rbac.authorization.k8s.io/v1" "ClusterRoleBinding" "" "").items | default list) ((lookup "rbac.authorization.k8s.io/v1" "RoleBinding" "" "").items | default list) -}}
 {{- $usable := dict -}}
 {{- $approverPermissions := dict -}}
+{{- $spiffePermissions := dict -}}
 {{- range $binding := $bindings -}}
 {{- $roleNamespace := "" -}}
 {{- if eq $binding.roleRef.kind "Role" -}}{{- $roleNamespace = $binding.metadata.namespace -}}{{- end -}}
@@ -294,7 +322,9 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- range $subject := $binding.subjects | default list -}}
 {{- $isCM := include "radius.authz.policySubjectMatches" (dict "sa" $cm "subject" $subject) -}}
 {{- $isAP := include "radius.authz.policySubjectMatches" (dict "sa" $ap "subject" $subject) -}}
-{{- if and (eq $binding.roleRef.name "cluster-admin") (or $isCM $isAP) -}}
+{{- $isSPIFFE := false -}}
+{{- if $spiffe -}}{{- $isSPIFFE = not (empty (include "radius.authz.policySubjectMatches" (dict "sa" $spiffe "subject" $subject))) -}}{{- end -}}
+{{- if and (eq $binding.roleRef.name "cluster-admin") (or $isCM $isAP $isSPIFFE) -}}
 {{- fail "issuerRef prerequisite: certificate controllers must not have cluster-admin authority." -}}
 {{- end -}}
 {{- range $rule := $role.rules | default list -}}
@@ -304,7 +334,8 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- range $resource := list "certificates" "certificaterequests" "issuers" "clusterissuers" -}}
 {{- range $verb := list "create" "update" "patch" -}}
 {{- $name := "" -}}{{- if $rule.resourceNames -}}{{- $name = first $rule.resourceNames -}}{{- end -}}
-{{- if and $isComponent (include "radius.authz.policyRuleMatches" (dict "rule" $rule "group" "cert-manager.io" "resource" $resource "verb" $verb "name" $name)) -}}
+{{- $receiverCreate := and (eq $resource "certificaterequests") (eq $verb "create") (eq $binding.metadata.namespace $root.Release.Namespace) (has $component (include "radius.authz.certificates.receivers" $root | fromJsonArray)) -}}
+{{- if and $isComponent (not $receiverCreate) (include "radius.authz.policyRuleMatches" (dict "rule" $rule "group" "cert-manager.io" "resource" $resource "verb" $verb "name" $name)) -}}
 {{- fail (printf "issuerRef prerequisite: component %s must not create or modify certificate or issuer resources." $component) -}}
 {{- end -}}
 {{- end -}}
@@ -314,7 +345,7 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- range $name, $_ := $expected -}}
 {{- if hasKey $found $name -}}
 {{- if include "radius.authz.policyRuleMatches" (dict "rule" $rule "group" "policy.cert-manager.io" "resource" "certificaterequestpolicies" "verb" "use" "name" $name) -}}
-{{- if $isCM -}}{{- $_ := set $usable $name true -}}{{- end -}}
+{{- if and $isCM (or (eq $binding.kind "ClusterRoleBinding") (eq $binding.metadata.namespace $root.Release.Namespace)) -}}{{- $_ := set $usable $name true -}}{{- end -}}
 {{- if and (ne $binding.roleRef.name "cluster-admin") (not (or (and (eq $subject.kind "ServiceAccount") (eq $subject.name $cm.name) (eq $subject.namespace $cm.namespace)) (and (eq $subject.kind "User") (eq $subject.name $requestor)))) -}}
 {{- fail (printf "issuerRef prerequisite: binding %s grants Radius policy use to a subject other than the cert-manager requestor." $binding.metadata.name) -}}
 {{- end -}}
@@ -326,10 +357,23 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- $signer := printf "%ss.cert-manager.io/%s" (lower $issuer.kind) $signerName -}}
 {{- $canApprove := include "radius.authz.policyRuleMatches" (dict "rule" $rule "group" "cert-manager.io" "resource" "signers" "verb" "approve" "name" $signer) -}}
 {{- if and (eq $binding.kind "ClusterRoleBinding") (or $canApprove (and (or (has "cert-manager.io" $rule.apiGroups) (has "*" $rule.apiGroups)) (or (has "signers" $rule.resources) (has "*" $rule.resources)) (or (has "approve" $rule.verbs) (has "*" $rule.verbs)) (or (has (printf "%ss.cert-manager.io/*" (lower $issuer.kind)) $rule.resourceNames) (has (printf "%ss.cert-manager.io/%s" (lower $issuer.kind) $issuer.name) $rule.resourceNames)))) -}}
-{{- if and (ne $binding.roleRef.name "cluster-admin") (not (and (eq $subject.kind "ServiceAccount") (eq $subject.name $ap.name) (eq $subject.namespace $ap.namespace))) -}}
+{{- $exactAP := and (eq $subject.kind "ServiceAccount") (eq $subject.name $ap.name) (eq $subject.namespace $ap.namespace) -}}
+{{- $exactSPIFFE := and $isSPIFFE (eq $subject.kind "ServiceAccount") (eq $subject.name $spiffe.name) (eq $subject.namespace $spiffe.namespace) -}}
+{{- if and (ne $binding.roleRef.name "cluster-admin") (not (or $exactAP $exactSPIFFE)) -}}
 {{- fail (printf "issuerRef prerequisite: binding %s permits another subject (including the default approver) to approve the selected signer." $binding.metadata.name) -}}
 {{- end -}}
 {{- if $isAP -}}{{- $_ := set $approverPermissions "signer" true -}}{{- end -}}
+{{- if $isSPIFFE -}}{{- $_ := set $spiffePermissions "signer" true -}}{{- end -}}
+{{- end -}}
+{{- if and $isSPIFFE (eq $binding.kind "ClusterRoleBinding") -}}
+{{- range $permission := list
+  (dict "group" "cert-manager.io" "resource" "certificaterequests/status" "verb" "patch")
+  (dict "group" "cert-manager.io" "resource" "certificaterequests" "verb" "list")
+  (dict "group" "cert-manager.io" "resource" "certificaterequests" "verb" "watch") -}}
+{{- if include "radius.authz.policyRuleMatches" (merge (dict "rule" $rule "name" "") $permission) -}}
+{{- $_ := set $spiffePermissions (printf "%s/%s" $permission.resource $permission.verb) true -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- if and $isAP (eq $binding.kind "ClusterRoleBinding") -}}
 {{- range $permission := list
@@ -362,4 +406,5 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- if not (hasKey $usable $name) -}}{{- fail "issuerRef prerequisite: the actual cert-manager controller ServiceAccount lacks policy use RBAC in the Radius namespace." -}}{{- end -}}
 {{- end -}}
 {{- if ne (len $approverPermissions) 18 -}}{{- fail "issuerRef prerequisite: approver-policy lacks required cluster-wide signer approval, request/policy status, informer read/watch, or SubjectAccessReview permissions." -}}{{- end -}}
+{{- if and $spiffe (ne (len $spiffePermissions) 4) -}}{{- fail "issuerRef prerequisite: SPIFFE approver lacks selected-signer approval or request read/watch/status permissions." -}}{{- end -}}
 {{- end -}}

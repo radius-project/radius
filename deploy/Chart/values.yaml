@@ -156,35 +156,44 @@ global:
       # The Kubernetes API server trusts the API server CA for ucp.<namespace>.svc, so only
       # cert-manager may request from it. The policy needs Kubernetes 1.30 or later.
       requesters: []
-    # CAs and issuers for Radius server certificates. Rendered only when the authorization mode
-    # is not off, and require cert-manager >=1.20.0.
-    # rad install/upgrade manages this prerequisite; plain Helm users must install it first.
-    # In selfSigned mode, the only mode supported today, two separate Radius-owned CAs are created
-    # in the release namespace:
-    # - Radius CA: signs only the csi-driver-spiffe server certificates. Its requests are approved
-    #   only by Radius's csi-driver-spiffe approver; cert-manager's default approver must not
-    #   approve signer "issuers.cert-manager.io/<namespace>.radius-ca-issuer".
-    # - API server CA: Certificate and Secret "radius-apiserver-ca" and Issuer
-    #   "radius-apiserver-issuer". It signs only UCP's aggregated API certificate
-    #   (Certificate "ucp-cert", Secret "ucp-apiserver-tls", SAN ucp.<namespace>.svc, 24 hours,
-    #   renewed at 16 hours), which cert-manager's default approver approves. cert-manager's
-    #   cainjector copies ca.crt of Secret "radius-apiserver-ca", the self-signed CA certificate,
-    #   into the v1alpha3.api.ucp.dev APIService caBundle and follows each renewal of the CA (the
-    #   cainjector must run with APIService injection enabled and watch this namespace); no Radius
-    #   component trusts it. While UCP moves from an earlier CA, such as the Helm-generated ucp-ca,
-    #   rad install/upgrade/rollback keeps both trusted through Secret "radius-apiserver-trust",
-    #   then deletes that Secret, points the APIService at "radius-apiserver-ca", and waits until
-    #   the APIService is Available.
-    # rad install/upgrade configures the cert-manager it installs (approveSignerNames) and fails
-    # if an existing cert-manager would auto-approve radius-ca-issuer requests.
+    # Non-off certificate issuance requires cert-manager >=1.20.0; BYO also requires
+    # Kubernetes ValidatingAdmissionPolicy. See the chart README for the full contract,
+    # direct Helm two-stage selfSigned bootstrap and paired CLI/lifecycle requirements.
+    # selfSigned keeps internal and aggregation CAs independent. BYO uses the provided
+    # compatible CA/issuer for both profiles without broadening requester permissions.
+    # External TLS needs aggregation DNS issuance only, not internal SPIFFE certificates.
     certificates:
-      # Where the Radius CA comes from. Only selfSigned is supported today: cert-manager
-      # creates Radius-owned CAs as described above, with ECDSA P-256 keys. caSecret and issuerRef
-      # (bring your own CA or issuer) are rejected until they are implemented; when they are, the
-      # operator's CA or issuer is used where applicable, including for UCP's aggregated API
-      # certificate, and must support the required DNS and SPIFFE URI identities. Request
-      # restrictions still apply to whichever issuer is used.
+      # selfSigned | caSecret | issuerRef. Switching CA/mode/issuer requires the lifecycle.
       mode: selfSigned
+      # caSecret: existing operator-owned TLS Secret, never mounted or owned by this chart.
+      # Two scoped Issuers reference it: radius-ca-issuer and radius-apiserver-issuer.
+      caSecret: ""
+      # Exactly one public selected signing CA in PEM, not a key or organization chain.
+      # Rendering checks shape; paired CLI validation owns CA/key/profile feasibility.
+      caBundle: ""
+      # issuerRef: existing external issuer; its signing key stays external.
+      issuerRef:
+        group: cert-manager.io
+        kind: Issuer
+        name: ""
+      # issuerRef requires live request-aware policy evidence, never a bypass boolean.
+      # approver-policy v0.29.0 handles only CM-requested UCP DNS. The pinned CSI
+      # approver handles annotated own-Pod SPIFFE requests and skips unannotated DNS.
+      # No default approver may approve the shared signer.
+      requestPolicy:
+        certManager:
+          namespace: cert-manager
+          deployment: cert-manager
+        approverPolicy:
+          namespace: cert-manager
+          deployment: cert-manager-approver-policy
+        spiffe:
+          namespace: radius-system
+          deployment: cert-manager-csi-driver-spiffe-approver
+        webhook:
+          namespace: cert-manager
+          service: cert-manager-webhook
+          configuration: cert-manager-webhook
     # Server certificates from Radius's own csi-driver-spiffe instance, which rad install/upgrade
     # installs in the release namespace when the authorization mode is not off. ucp,
     # applications-rp, and dynamic-rp mount a CSI volume at /var/run/radius/spiffe holding a
@@ -193,9 +202,11 @@ global:
     # tokens at /var/run/radius/tokens/<receiver>/token, with the receiver's name as the audience.
     # Receivers verify each caller's token offline; callers verify the receiver's SPIFFE ID before
     # sending a token. The Radius CA bundle comes from a separate volume: every component projects
-    # only key ca.crt of Secret "radius-ca" to /var/run/radius/ca (never tls.key), because
-    # csi-driver-spiffe writes no ca.crt without a source CA bundle. Plain Helm users must install
-    # csi-driver-spiffe with the same trust domain and CSI driver name.
+    # only public ca.crt to /var/run/radius/ca (never a signing key), from radius-mtls-ca
+    # for BYO/staged lifecycle, or radius-ca in selfSigned bootstrap. Pinned CSI requests
+    # key encipherment, digital signature, client auth and server auth, but callers never
+    # present component client certificates. Plain Helm users must install CSI with the
+    # selected issuer, same trust domain/driver name and non-SPIFFE auto-approval disabled.
     spiffe:
       # SPIFFE trust domain of the Radius server certificates.
       trustDomain: radius.internal

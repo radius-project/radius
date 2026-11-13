@@ -21,7 +21,9 @@ The v0.62.0 chart described `global.rbac.enabled` and `global.rbac.dryRun` as re
 
 `rad install kubernetes` and `rad upgrade kubernetes` manage this prerequisite when a non-off mode is selected, including when upgrade reuses saved values. A plain `helm install` or `helm upgrade` does not install cert-manager: install a supported cert-manager, including its CRDs, and wait for its controller and webhook to be ready before applying the Radius chart with either setting enabled. Otherwise the upgrade fails because the cert-manager resource types are missing. See [cert-manager installation troubleshooting](../../docs/contributing/contributing-code/contributing-code-control-plane/troubleshooting-installation.md#cert-manager) for supported versions and ownership rules.
 
-With either setting enabled and `global.rbac.tls.provider=radius` (the default), ucp, applications-rp, and dynamic-rp also mount a csi-driver-spiffe CSI volume (driver `global.rbac.spiffe.csiDriverName`), so their pods start only when that driver is installed. `rad install kubernetes` and `rad upgrade kubernetes` install it; plain Helm users must install csi-driver-spiffe with the same driver name and trust domain, with its approver limited to the `radius-ca-issuer` Issuer, before applying the chart. They must also limit cert-manager's default approver (`approveSignerNames`) so that it approves the `radius-selfsigned-bootstrap` and `radius-apiserver-issuer` Issuers in the Radius namespace but not `radius-ca-issuer`. The chart issues UCP's aggregated API certificate from `radius-apiserver-issuer`, with its own CA. The APIService takes its `caBundle` from `ca.crt` of the `radius-apiserver-ca` Secret, the self-signed CA certificate, through cert-manager's cainjector, so the API server follows each renewal of that CA without `rad` or Helm running. The cainjector must run with APIService injection enabled and watch the Radius namespace. Only while UCP moves from an earlier CA does the APIService trust the `radius-apiserver-trust` Secret instead, as shown below. Because the Kubernetes API server trusts that CA for UCP, the chart's `radius-certificate-issuance` ValidatingAdmissionPolicy (Kubernetes 1.30 or later) lets only the cert-manager controller, `global.rbac.certManager.requesters`, request certificates from `radius-apiserver-issuer` and `radius-selfsigned-bootstrap`, and limits Radius service accounts to `radius-ca-issuer`. Do not configure csi-driver-spiffe with a source CA bundle that points at `radius-ca`: the driver reads it at startup, before the chart has created that Secret. Instead, managed components read the Radius CA bundle from `ca.crt` of the `radius-ca` Secret, mounted at `/var/run/radius/ca`, so pods wait until cert-manager has issued it. See [csi-driver-spiffe installation troubleshooting](../../docs/contributing/contributing-code/contributing-code-control-plane/troubleshooting-installation.md#csi-driver-spiffe).
+With either setting enabled and `global.rbac.tls.provider=radius` (the default), ucp, applications-rp, and dynamic-rp mount csi-driver-spiffe CSI volumes; the deployment engine does so only with its compatible-image gate enabled. The controller is caller-only. Plain Helm users must install csi-driver-spiffe v0.15.1 with the selected issuer, driver name, trust domain and 24-hour duration. Its approver must have `autoApproveNonSPIFFE=false`, and cert-manager's default approver must not have approval permission for the internal signer. In `selfSigned`, the default approver may approve the distinct bootstrap and aggregation signers. The chart's `radius-certificate-issuance` policy restricts selected-issuer creation to active receivers or the configured cert-manager requester; it denies CA requests from the leaf issuers in both DryRun and Enforce. Kubernetes 1.30+ admission is required for BYO modes.
+
+Internal public trust is mounted separately at `/var/run/radius/ca`; no signing key or other component's leaf Secret is mounted. Only selfSigned bootstrap may project `radius-ca/ca.crt` until the lifecycle stages the independent `radius-mtls-ca` ConfigMap. BYO uses that public ConfigMap immediately. Do not configure CSI with a startup source bundle that does not exist yet. See [csi-driver-spiffe installation troubleshooting](../../docs/contributing/contributing-code/contributing-code-control-plane/troubleshooting-installation.md#csi-driver-spiffe).
 
 `global.rbac.tls.provider=external` uses HTTP for internal component calls under operator-provided encryption. Both providers use the same receiver-scoped ServiceAccount tokens and caller checks; external components do not mount or read internal CSI certificates or the Radius CA bundle. UCP's independent aggregated API TLS remains enabled and still requires cert-manager. The Helm key is `global.rbac.tls.provider`; it renders the runtime configuration field `authorization.tlsProvider`. Unknown providers, the retired `global.rbac.mtls` settings, and the unsupported Helm alias `global.rbac.tlsProvider` fail rendering rather than silently selecting Radius TLS.
 
@@ -30,20 +32,66 @@ With either setting enabled and `global.rbac.tls.provider=radius` (the default),
 Turning authorization on or off, and upgrading from an edge build that authenticated components with client certificates, changes how every component authenticates. Helm rolls ucp, applications-rp, dynamic-rp, and the controller one at a time, so for about the time the rollout takes, calls between an old and a new pod fail TLS verification or authentication and return errors. Radius does not fall back to weaker authentication to avoid this window. Plan these changes for a maintenance window:
 
 1. Pause deployments that call Radius, such as `rad deploy` pipelines.
-1. Run `rad upgrade kubernetes` with the new settings, or `rad rollback kubernetes` to return to an earlier revision. The command waits for the Radius workloads and, when authorization is on, points the APIService at `radius-apiserver-ca`. When authorization turns on, it first applies the `radius-apiserver-ca` Certificate and its Issuers with the release's Helm ownership metadata, waits for cert-manager to issue the CA, and trusts it alongside the earlier UCP CA before Helm reissues UCP's certificate, so the API server can reach UCP throughout. It keeps any earlier UCP CA trusted through the `radius-apiserver-trust` Secret until every UCP pod serves a certificate from `radius-apiserver-ca`, and waits for the `v1alpha3.api.ucp.dev` APIService to have its CA bundle and become Available. It fails with diagnostics if any of these does not happen. `rad rollback kubernetes` refuses a revision whose chart issues component client Certificates from `radius-ca-issuer` or `radius-mtls-issuer`, as earlier charts did, because cert-manager's default approver no longer approves those Issuers.
+1. Use a CLI build with the paired certificate validation and lifecycle layers before changing CA, issuer or certificate mode. This chart layer does not implement those transitions. `rad rollback kubernetes` also refuses older charts that issue component client Certificates from `radius-ca-issuer` or `radius-mtls-issuer`.
 1. Retry any deployment that failed during the window.
 
 A plain `helm upgrade --wait` waits only for the workloads; check the APIService with `kubectl get apiservice v1alpha3.api.ucp.dev` before resuming.
 
-With authorization on, a fresh plain Helm install needs no extra step. When upgrading from authorization off with plain Helm, keep the Helm-generated `ucp-ca` trusted while UCP rolls. Put only public CA certificates in the trust Secret, never the `ca.crt` of `ucp-apiserver-tls`:
+The aggregation source is permanently the public-only `radius-apiserver-trust` Secret, with the **annotation** `cert-manager.io/allow-direct-injection: "true"`. Never delete it to return injection to a signing Secret. On a fresh selfSigned Helm bootstrap, cert-manager first generates the two CAs. A second **cluster-connected** Helm render can then read the public aggregation CA and create this trust Secret. An offline render cannot know the newly generated anchor; the APIService cannot become Available until the public source is staged. Internal selfSigned bootstrap still works through the public-only signing-Secret projection. To avoid a bootstrap gap, the paired lifecycle must pre-stage the sources before workload issuance.
 
-```bash
-kubectl get apiservice v1alpha3.api.ucp.dev -o jsonpath='{.spec.caBundle}' | base64 -d > ca.crt
-kubectl create secret generic radius-apiserver-trust -n radius-system --from-file=ca.crt
-kubectl annotate secret radius-apiserver-trust -n radius-system cert-manager.io/allow-direct-injection=true
+Existing public sources are preserved byte-for-byte, carry `helm.sh/resource-policy: keep`, and must not be overwritten to switch CA or mode. An existing `radius-ca-rotation` journal fails chart rendering until the paired lifecycle supplies its validated journal-aware resolver. The current CLI baseline still contains transient-trust deletion and signing-Secret convergence checks: it must be adapted by the lifecycle layer before composing this chart. cainjector v1.20/v1.21 merges CAs by default, so configuring the source alone does not prove that stale anchors have retired from the APIService.
+
+### Internal service certificate modes
+
+`global.rbac.certificates.mode` selects the issuer and public anchor for both planes. `selfSigned` (default) retains separate Radius-owned internal and aggregation CAs. `caSecret` creates two distinct namespaced Issuers, `radius-ca-issuer` and `radius-apiserver-issuer`, referencing the **same operator-owned signing Secret**. `issuerRef` uses the selected existing `cert-manager.io` Issuer or ClusterIssuer for both profiles; the chart neither renders nor owns it. With `global.rbac.tls.provider=external`, only aggregation DNS issuance remains: no internal CA, CSI mount or receiver CertificateRequest-create Role is rendered.
+
+```yaml
+global:
+  rbac:
+    dryRun: true
+    tls:
+      provider: radius
+    certificates:
+      mode: caSecret
+      caSecret: operator-signing-ca
+      caBundle: |
+        -----BEGIN CERTIFICATE-----
+        <public selected signing CA, not its parent chain>
+        -----END CERTIFICATE-----
 ```
 
-Then run `helm upgrade`, append the `tls.crt` of `radius-apiserver-ca` to that Secret's `ca.crt` once cert-manager issues it, and wait for the `ucp` Deployment to roll out. Finally delete the `radius-apiserver-trust` Secret and run `helm upgrade` again, so the APIService trusts only `radius-apiserver-ca` and follows its renewals. cainjector adds certificates to the `caBundle` but removes only expired ones, so skipping the second upgrade leaves `ucp-ca` trusted and stops the bundle from following renewals. With plain Helm, the API server cannot reach UCP from when UCP serves its new certificate until you append `radius-apiserver-ca`. `rad` does these steps itself and avoids that gap by issuing `radius-apiserver-ca` and trusting it before the Helm upgrade.
+`caBundle` contains exactly one public selected signing CA certificate, usually a dedicated intermediate, never a private key, organization root substituted for that intermediate, or whole organization chain. Input accepts LF or CRLF PEM and surrounding whitespace; a newly rendered source trims the surrounding whitespace and adds one LF. An existing matching source retains its exact bytes. Ambiguous signing chains must be resolved by selecting the actual signing CA, not by broadening trust. Render-time checks validate PEM shape only. The paired CLI validation owns strict DER/CA/key/date checks and signing-Secret matching, and must verify feasibility for every actual receiver URI SAN and `ucp.<namespace>.svc`. Name constraints must allow both the URI trust-domain host and aggregation DNS suffix for managed BYO; external needs only DNS. A shared CA does not grant shared requester authority.
+
+Only UCP aggregation uses an ordinary leaf Certificate: `ucp-cert` writes `ucp-apiserver-tls`, with one DNS SAN, ECDSA P-256, 24-hour duration, 8-hour early renewal and digital-signature/server-auth usages. Internal receivers use CSI, not `<component>-mtls` Secrets. Pinned CSI v0.15.1 requests **key encipherment, digital signature, client auth and server auth**; its evaluator requires those usages and the requester's own exact SPIFFE URI. The client-auth EKU does not authorize callers: runtime callers never present component client certificates and still send receiver-audience ServiceAccount tokens.
+
+For `issuerRef`, leave `caSecret` empty and supply:
+
+```yaml
+issuerRef:
+  group: cert-manager.io
+  kind: Issuer # or ClusterIssuer
+  name: existing-external-issuer
+requestPolicy:
+  certManager:
+    namespace: cert-manager
+    deployment: cert-manager
+  approverPolicy:
+    namespace: cert-manager
+    deployment: cert-manager-approver-policy
+  spiffe:
+    namespace: radius-system
+    deployment: cert-manager-csi-driver-spiffe-approver
+  webhook:
+    namespace: cert-manager
+    service: cert-manager-webhook
+    configuration: cert-manager-webhook
+```
+
+These are fields under `global.rbac.certificates`. A connected render checks Ready current issuer/controller rollouts and Pods, fail-closed cert-manager webhooks, effective policy-use/signer RBAC, and approver-policy v0.29.0. Managed mode also checks the pinned CSI approver profile and its selected-signer permissions; external does not require the CSI approver. Unsupported arguments, unknown controller configuration, unavailable reads, extra overlapping policies and other selected-signer approval grants fail explicitly. No boolean can replace this evidence, and no default approver may approve the shared signer.
+
+The only approver-policy profile is `radius-<namespace>-ucp`: selector matches the exact issuer and namespace; `allowed` permits only required DNS `ucp.<namespace>.svc`, `isCA: false` and usages `digital signature`, `server auth`. Its DNS validation rule is `cr.username == '<actual cert-manager username>' && cr.namespace == '<namespace>' && cr.name.startsWith('ucp-cert-')`; constraints require min/max duration `24h` and ECDSA min/max size `256`. The actual cert-manager requester must appear in `global.rbac.certManager.requesters` and alone receive `use` on this policy. Do not bind Pod identities to it: approver-policy's policies are OR-ed, and an applicable DNS policy can deny a CSI request. The separate CSI approver handles annotated own-Pod URI requests and must skip unannotated DNS requests. The Kubernetes administrative `cluster-admin` boundary is unchanged; these checks do not isolate the existing privileged engine from other Secrets.
+
+The shared CLI helpers in `pkg/cli/helm/certificate_bundle.go` and `cainjector_prerequisites.go` provide strict whole-input PEM parsing and read-only injector configuration discovery. PEM parsing preserves order and duplicates and does not apply CA validity or historical-overlap policy. Injector discovery checks all identifiable Deployments and Pods, requires exactly one eligible current rollout, supports inspectable v1.20/v1.21 flags and an immutable mounted `CAInjectorConfiguration`, and returns configuration/source/Pod pins. Unknown, mutable or unreadable configuration fails with a diagnostic. These helpers alone are not successful live issuance, injection, cryptographic feasibility or exact-set convergence evidence; A9/A10 must consume them.
 
 ### Deployment Engine token authentication integration prerequisite
 

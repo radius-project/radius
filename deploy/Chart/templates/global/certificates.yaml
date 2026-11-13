@@ -1,16 +1,9 @@
 {{- if ne (include "radius.authz.mode" .) "off" }}
-{{- $certificates := ((.Values.global.rbac).certificates) | default dict }}
-{{- $mode := "selfSigned" }}
-{{- if hasKey $certificates "mode" }}
-{{- $mode = toString $certificates.mode }}
-{{- end }}
-{{- /* Bring-your-own CA modes are not implemented yet; reject them rather than silently creating a Radius CA. */}}
-{{- if has $mode (list "caSecret" "issuerRef") }}
-{{- fail (printf "global.rbac.certificates.mode=%s is not supported yet. Use selfSigned." $mode) }}
-{{- else if ne $mode "selfSigned" }}
-{{- fail (printf "global.rbac.certificates.mode=%q is not valid. Use selfSigned." $mode) }}
-{{- end }}
+{{- include "radius.authz.certificates.validate" . }}
+{{- $certificates := .Values.global.rbac.certificates | default dict }}
+{{- $mode := include "radius.authz.certificates.mode" . }}
 {{- $ns := .Release.Namespace }}
+{{- if eq $mode "selfSigned" }}
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -20,7 +13,9 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   selfSigned: {}
+{{- end }}
 {{- if eq (include "radius.authz.tls.provider" .) "radius" }}
+{{- if eq $mode "selfSigned" }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -45,6 +40,8 @@ spec:
     group: cert-manager.io
     kind: Issuer
     name: radius-selfsigned-bootstrap
+{{- end }}
+{{- if ne $mode "issuerRef" }}
 ---
 # Signs only the csi-driver-spiffe server certificates; Radius's csi-driver-spiffe approver is the
 # only approver allowed to approve its requests.
@@ -57,13 +54,12 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   ca:
-    secretName: radius-ca
+    secretName: {{ if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-ca{{ end }}
 {{- end }}
+{{- end }}
+{{- if eq $mode "selfSigned" }}
 ---
-# UCP's aggregated API certificate has its own CA, independent of global.rbac.certificates.mode.
-# Only the Kubernetes API server trusts it (through the APIService caBundle); no Radius component
-# mounts it. cert-manager's default approver approves its requests; it must not approve requests
-# for radius-ca-issuer, which only Radius's csi-driver-spiffe approver approves.
+# selfSigned keeps aggregation independent of the internal SPIFFE CA.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -75,10 +71,6 @@ spec:
   isCA: true
   commonName: radius-apiserver-ca
   secretName: radius-apiserver-ca
-  # Lets cert-manager's cainjector copy ca.crt, this self-signed CA certificate, into UCP's APIService.
-  secretTemplate:
-    annotations:
-      cert-manager.io/allow-direct-injection: "true"
   # 1 year, renewed at two-thirds of its lifetime, keeping the key like radius-ca.
   duration: 8760h
   renewBefore: 2920h
@@ -90,6 +82,8 @@ spec:
     group: cert-manager.io
     kind: Issuer
     name: radius-selfsigned-bootstrap
+{{- end }}
+{{- if ne $mode "issuerRef" }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -100,5 +94,40 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   ca:
-    secretName: radius-apiserver-ca
+    secretName: {{ if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-apiserver-ca{{ end }}
+{{- end }}
+{{- if and (ne $mode "selfSigned") (eq (include "radius.authz.tls.provider" .) "radius") }}
+{{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") | fromJson }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: radius-mtls-ca
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: radius
+  annotations:
+    helm.sh/resource-policy: keep
+    radius.io/certificate-mode: {{ $mode | quote }}
+data:
+  ca.crt: {{ $source.bundle | toJson }}
+{{- end }}
+{{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") | fromJson }}
+{{- if $source.bundle }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: radius-apiserver-trust
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: radius
+  annotations:
+    cert-manager.io/allow-direct-injection: "true"
+    helm.sh/resource-policy: keep
+    radius.io/certificate-mode: {{ $mode | quote }}
+type: Opaque
+data:
+  ca.crt: {{ $source.bundle | b64enc | quote }}
+{{- end }}
 {{- end }}
