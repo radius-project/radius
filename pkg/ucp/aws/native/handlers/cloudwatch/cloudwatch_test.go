@@ -233,6 +233,20 @@ func Test_LegacyForm(t *testing.T) {
 	}
 }
 
+// Test_NoMetricNameOrStat reads and deletes a detector whose template names only its namespace. CloudWatch rejects an
+// empty MetricName or Stat, so the calls leave out the ones the detector doesn't have.
+func Test_NoMetricNameOrStat(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := newHandler(api)
+	identifier, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"SingleMetricAnomalyDetector": map[string]any{"Namespace": "AWS/EC2"}}})
+	require.NoError(t, err)
+
+	_, err = h.Read(t.Context(), region, identifier)
+	require.NoError(t, err)
+	require.NoError(t, h.Delete(t.Context(), region, identifier))
+	require.Empty(t, api.store.List(anomalyDetectorType))
+}
+
 func Test_MetricMath(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
 	h := newHandler(api)
