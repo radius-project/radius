@@ -18,6 +18,7 @@ package iam
 
 import (
 	"context"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -130,10 +131,26 @@ func (f *fakeAPI) put(e entry, users []string) {
 	f.store.Put(e.typeName, e.identifier, e.properties)
 }
 
+// namePattern is the pattern IAM's API reference gives for group and user names, which are 1 to 128 characters.
+var namePattern = regexp.MustCompile(`^[\w+=,.@-]{1,128}$`)
+
+// validNames returns ValidationError, as IAM does, when a name isn't 1 to 128 characters of the names' pattern.
+func validNames(names ...string) error {
+	for _, name := range names {
+		if !namePattern.MatchString(name) {
+			return fault("ValidationError")
+		}
+	}
+	return nil
+}
+
 // change makes a call that changes AWS, failing it as the failer says.
 func (f *fakeAPI) change(method string, group string, user string, apply func() error) error {
 	f.calls = append(f.calls, method)
 	if err := f.errs[method]; err != nil {
+		return err
+	}
+	if err := validNames(group, user); err != nil {
 		return err
 	}
 	if err := f.failer.Before(); err != nil {
@@ -155,12 +172,22 @@ func (f *fakeAPI) GetGroup(ctx context.Context, in *iam.GetGroupInput, _ ...func
 		return nil, err
 	}
 	group := aws.ToString(in.GroupName)
+	if err := validNames(group); err != nil {
+		return nil, err
+	}
+	if in.MaxItems != nil && (*in.MaxItems < 1 || *in.MaxItems > 1000) {
+		return nil, fault("ValidationError")
+	}
 	if strings.HasPrefix(group, missingPrefix) {
 		return nil, fault("NoSuchEntity")
 	}
 	users := f.users(group)
 	start, _ := strconv.Atoi(aws.ToString(in.Marker))
-	end := min(start+pageSize, len(users))
+	size := pageSize
+	if in.MaxItems != nil {
+		size = min(size, int(*in.MaxItems))
+	}
+	end := min(start+size, len(users))
 	out := &iam.GetGroupOutput{Group: &types.Group{GroupName: aws.String(group)}}
 	for _, u := range users[start:end] {
 		out.Users = append(out.Users, types.User{UserName: aws.String(u)})
