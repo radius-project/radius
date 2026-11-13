@@ -597,7 +597,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}
 	patch, err := awsoperations.GeneratePatchWithOptions(currentState, desiredState, schema, awsoperations.PatchOptions{
 		Removed:       removed,
-		Equivalent:    equivalentFor(r, rec.Properties.LastApplied != nil),
+		Equivalent:    equivalentFor(r, rec.Properties.LastApplied != nil, properties),
 		LastApplied:   rec.Properties.LastApplied,
 		Unresolved:    rec.Properties.UnresolvedPaths,
 		FailUncertain: r.native != nil && r.native.Handler.Options().DisruptiveUpdate,

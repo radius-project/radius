@@ -732,20 +732,35 @@ func rejected(r *request) armrpc_rest.Response {
 	return badRequest(fmt.Sprintf("Radius can't delete the AWS resource %q, because AWS doesn't let it delete a resource of type %s. Nothing was changed.", r.id.Name(), r.typeName))
 }
 
-// equivalentFor returns the native handler's rule for values AWS returns in another form, or nil when there is none.
-// It applies with either handler, because both read the same resource. recorded is whether UCP has a record of the
-// last deploy's values: only then does it add the handler's RecordedEquivalent, which GeneratePatchWithOptions then
-// uses only where the last deploy set the template's value.
-func equivalentFor(r *request, recorded bool) func(path string, template any, aws any) bool {
+// equivalentFor returns the native handler's rules for values AWS returns in another form, or nil when there are none.
+// It applies with either handler, because both read the same resource. properties are the template's, which
+// TemplateEquivalent gets. recorded is whether UCP has a record of the last deploy's values: only then does it add the
+// handler's RecordedEquivalent, which GeneratePatchWithOptions then uses only where the last deploy set the template's
+// value.
+func equivalentFor(r *request, recorded bool, properties map[string]any) func(path string, template any, aws any) bool {
 	if r.native == nil {
 		return nil
 	}
 	options := r.native.Handler.Options()
-	if !recorded || options.RecordedEquivalent == nil {
-		return options.Equivalent
+	rules := []func(path string, template any, aws any) bool{}
+	if options.Equivalent != nil {
+		rules = append(rules, options.Equivalent)
+	}
+	if options.TemplateEquivalent != nil {
+		rules = append(rules, func(path string, template any, aws any) bool {
+			return options.TemplateEquivalent(properties, path, template, aws)
+		})
+	}
+	if recorded && options.RecordedEquivalent != nil {
+		rules = append(rules, options.RecordedEquivalent)
+	}
+	if len(rules) == 0 {
+		return nil
 	}
 	return func(path string, template any, aws any) bool {
-		return (options.Equivalent != nil && options.Equivalent(path, template, aws)) || options.RecordedEquivalent(path, template, aws)
+		return slices.ContainsFunc(rules, func(rule func(path string, template any, aws any) bool) bool {
+			return rule(path, template, aws)
+		})
 	}
 }
 

@@ -478,6 +478,30 @@ func Test_Native_Equivalent(t *testing.T) {
 	require.Equal(t, []string{"Read", "Update"}, methods(h.fake.Calls()))
 }
 
+// Test_Native_TemplateEquivalent checks that a rule that depends on another value of the template gets the template's
+// properties, so a value AWS upgraded on its own counts as the template's only while the template allows it.
+func Test_Native_TemplateEquivalent(t *testing.T) {
+	h := newNativeHarness(t)
+	h.fake.Opts.TemplateEquivalent = func(properties map[string]any, path string, template any, aws any) bool {
+		return path == "Version" && properties["AutoUpgrade"] != false && template == "5.0.1" && aws == "5.0.2"
+	}
+	properties := nativeProperties(1)
+	properties["Version"] = "5.0.1"
+	h.deploy(nativePath, properties)
+	h.cc.Put(nativeType, "app-native", map[string]any{"Name": "app-native", "Size": 1, "Version": "5.0.2"})
+	h.fake.Calls()
+
+	resp := h.put(nativePath, properties)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()), "AWS's upgrade counts as the template's version")
+
+	properties["AutoUpgrade"] = false
+	require.Equal(t, http.StatusCreated, h.put(nativePath, properties).status)
+	calls := h.fake.Calls()
+	require.Equal(t, []string{"Read", "Update"}, methods(calls))
+	require.Contains(t, calls[1].Patch, map[string]any{"op": "replace", "path": "/Version", "value": "5.0.1"}, "without the upgrade, the template's version is sent")
+}
+
 func Test_handleError(t *testing.T) {
 	id := resources.MustParse(nativePath)
 	tests := []struct {

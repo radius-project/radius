@@ -333,6 +333,11 @@ type Options struct {
 	// hold more than the template, such as defaults AWS fills in, never hides a removal.
 	Equivalent func(path string, template any, aws any) bool
 
+	// TemplateEquivalent is Equivalent for a rule that also depends on another value the template sets, such as an
+	// engine version AWS upgrades on its own only while the template lets it. properties are the template's
+	// properties. UCP uses it where it uses Equivalent, with the same limits.
+	TemplateEquivalent func(properties map[string]any, path string, template any, aws any) bool
+
 	// RecordedEquivalent is Equivalent for a rule only a record of the last deploy can justify, such as a KMS alias AWS
 	// reports as the key's ARN, or values AWS adds to a create-only list that could also have been set outside the
 	// template. UCP uses it only where the last deploy set the template's value, so it never counts AWS's value as the

@@ -27,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	dms "github.com/aws/aws-sdk-go-v2/service/databasemigrationservice"
 	"github.com/aws/aws-sdk-go-v2/service/databasemigrationservice/types"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -398,6 +399,103 @@ func Test_Equivalent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		require.Equal(t, tt.want, NewReplicationInstance(nil).Options().Equivalent(tt.path, tt.template, tt.aws), "%s %v %v", tt.path, tt.template, tt.aws)
+	}
+}
+
+func Test_UpgradedVersion(t *testing.T) {
+	on := map[string]any{"EngineVersion": "3.5.3"}
+	off := map[string]any{"EngineVersion": "3.5.3", "AutoMinorVersionUpgrade": false}
+	tests := []struct {
+		name       string
+		properties map[string]any
+		path       string
+		template   any
+		aws        any
+		want       bool
+	}{
+		{"a later minor version", on, "EngineVersion", "3.5.3", "3.5.4", true},
+		{"a later version of the same major version", on, "EngineVersion", "3.5.3", "3.6.1", true},
+		{"AutoMinorVersionUpgrade set to true", with(on, map[string]any{"AutoMinorVersionUpgrade": true}), "EngineVersion", "3.5.3", "3.5.4", true},
+		{"a version with fewer numbers", on, "EngineVersion", "3.5", "3.5.1", true},
+		{"the same version with more numbers", on, "EngineVersion", "3.5.1", "3.5.1.0", true},
+		{"AutoMinorVersionUpgrade off", off, "EngineVersion", "3.5.3", "3.5.4", false},
+		{"an older version", on, "EngineVersion", "3.5.3", "3.5.2", false},
+		{"an older version with fewer numbers", on, "EngineVersion", "3.5.3", "3.5", false},
+		{"another major version", on, "EngineVersion", "3.5.3", "4.0.0", false},
+		{"a version that isn't numbers", on, "EngineVersion", "3.5.3", "3.5.beta", false},
+		{"another property", on, "AllocatedStorage", "3.5.3", "3.5.4", false},
+		{"a value that isn't a string", on, "EngineVersion", 3, "3.5.4", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, NewReplicationInstance(nil).Options().TemplateEquivalent(tt.properties, tt.path, tt.template, tt.aws))
+		})
+	}
+}
+
+// Test_Create_EngineVersion checks the version DMS gives an instance whose template sets an older one than DMS's
+// default, which the next deploy of the same template must count as the template's.
+func Test_Create_EngineVersion(t *testing.T) {
+	tests := []struct {
+		name    string
+		changes map[string]any
+		want    string
+		same    bool
+	}{
+		{"AutoMinorVersionUpgrade left out", map[string]any{"AutoMinorVersionUpgrade": nil}, defaultEngineVersion, true},
+		{"AutoMinorVersionUpgrade on", map[string]any{"AutoMinorVersionUpgrade": true}, defaultEngineVersion, true},
+		{"AutoMinorVersionUpgrade off", map[string]any{"AutoMinorVersionUpgrade": false}, "3.5.3", true},
+		{"EngineVersion left out", map[string]any{"EngineVersion": nil}, defaultEngineVersion, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := NewReplicationInstance(newFakeAPI(awsfake.NewCloudControl()))
+			template := with(instance, tt.changes)
+			identifier := deploy(t, h, template)
+			props, err := h.Read(t.Context(), region, identifier)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, props["EngineVersion"])
+			if tt.same {
+				same := props["EngineVersion"] == template["EngineVersion"] || h.Options().TemplateEquivalent(template, "EngineVersion", template["EngineVersion"], props["EngineVersion"])
+				require.True(t, same, "a redeploy must not send DMS an older version")
+			}
+		})
+	}
+}
+
+func Test_Modify_EngineVersionRules(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+		major   bool
+		code    string
+	}{
+		{"a later version", "3.5.4", false, ""},
+		{"a later version of the same major version", "3.6.1", false, ""},
+		{"an older version", "3.5.2", true, "ValidationError"},
+		{"another major version", "4.0.0", false, "ValidationError"},
+		{"another major version with AllowMajorVersionUpgrade", "4.0.0", true, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			api := newFakeAPI(awsfake.NewCloudControl())
+			h := NewReplicationInstance(api)
+			identifier := deploy(t, h, instance)
+			created, err := h.describe(t.Context(), region, identifier)
+			require.NoError(t, err)
+			_, err = api.ModifyReplicationInstance(t.Context(), &dms.ModifyReplicationInstanceInput{
+				ReplicationInstanceArn:   created.ReplicationInstanceArn,
+				EngineVersion:            aws.String(tt.version),
+				AllowMajorVersionUpgrade: tt.major,
+			})
+			if tt.code == "" {
+				require.NoError(t, err)
+				return
+			}
+			var apiErr smithy.APIError
+			require.ErrorAs(t, err, &apiErr)
+			require.Equal(t, tt.code, apiErr.ErrorCode())
+		})
 	}
 }
 
