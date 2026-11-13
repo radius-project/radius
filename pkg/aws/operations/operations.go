@@ -178,7 +178,10 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 // inside it.
 //
 // A property in the current state that the desired state does not set is kept, because AWS or someone else may have
-// set it, unless it is in opts.Removed: Radius set it in the last deploy, so the patch clears it.
+// set it, unless it is in opts.Removed: Radius set it in the last deploy, so the patch clears it. Inside list items,
+// with a record of the last deploy (opts.LastApplied), the same holds for a field AWS has that the template doesn't
+// set, such as a default AWS fills in: it is kept unless the last deploy may have set it. A list whose items don't all
+// match AWS's on the values the template sets is sent as the template sets it.
 func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema []byte, opts PatchOptions) (jsondiff.Patch, error) {
 	// See: https://github.com/radius-project/radius/blob/main/docs/adr/ucp/001-aws-resource-updating.md
 
@@ -213,10 +216,15 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	flattenedDesiredStateObject := FlattenProperties(desiredStateObject)
 
 	rules := parseSchemaRules(schema)
-	owned, err := ownedValues(opts.LastApplied)
+	applied, err := decodedLastApplied(opts.LastApplied)
 	if err != nil {
 		return nil, err
 	}
+	var owned map[string]any
+	if applied != nil {
+		owned = FlattenProperties(applied)
+	}
+	writeOnly := PropertyPaths(resourceTypeSchema.WriteOnlyProperties)
 
 	// A value AWS reports in a different form, such as reordered subnets or a fuller engine version, is unchanged:
 	// use AWS's value so the patch leaves it alone. Equivalent is used only where Radius knows what it owns (see
@@ -231,14 +239,31 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 			flattenedDesiredStateObject[k] = current
 			continue
 		}
-		if opts.Equivalent == nil {
+		resolved := !overlapsAny(k, opts.Unresolved)
+		known := resolved && ownsSame(owned, k, v)
+		if opts.Equivalent != nil {
+			if known && opts.Equivalent(k, v, current) {
+				flattenedDesiredStateObject[k] = current
+				continue
+			} else if !known && opts.FailUncertain && !ownsAll(owned, k, current, opts.Unresolved) && opts.Equivalent(k, v, current) {
+				uncertain = append(uncertain, k)
+				continue
+			}
+		}
+		// AWS may fill in fields inside list items, such as a default security group. With a record of the last
+		// deploy, keep each one Radius didn't set: the template's list is the last deploy's, or the last deploy set
+		// nothing at that field in any item. Without one, such as on a take-over, UCP can't tell AWS's defaults from
+		// values set outside the template, so the template's list is sent.
+		list, isList := v.([]any)
+		if !isList || !resolved || applied == nil {
 			continue
 		}
-		known := ownsSame(owned, k, v) && !overlapsAny(k, opts.Unresolved)
-		if known && opts.Equivalent(k, v, current) {
-			flattenedDesiredStateObject[k] = current
-		} else if !known && opts.FailUncertain && !ownsAll(owned, k, current, opts.Unresolved) && opts.Equivalent(k, v, current) {
-			uncertain = append(uncertain, k)
+		fields := listFields{
+			writeOnly: writeOnly,
+			awsOwned:  func(path string) bool { return known || !setsAt(applied, strings.Split(path, "/")) },
+		}
+		if filled, ok := rules.fillAt(k, list, current, desiredStateObject, fields); ok {
+			flattenedDesiredStateObject[k] = filled
 		}
 	}
 	if len(uncertain) > 0 {
@@ -305,9 +330,9 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	return jsondiff.CompareJSON(currentState, updatedDesiredState)
 }
 
-// ownedValues returns the flattened values of lastApplied, decoded from JSON as the template's are, so they compare
-// equal to the same template values. It returns nil when lastApplied is nil.
-func ownedValues(lastApplied map[string]any) (map[string]any, error) {
+// decodedLastApplied returns lastApplied decoded from JSON as the template's values are, so they compare equal to the
+// same template values. It returns nil when lastApplied is nil.
+func decodedLastApplied(lastApplied map[string]any) (map[string]any, error) {
 	if lastApplied == nil {
 		return nil, nil
 	}
@@ -318,7 +343,26 @@ func ownedValues(lastApplied map[string]any) (map[string]any, error) {
 	// b is a marshaled map, so it always decodes.
 	decoded := map[string]any{}
 	_ = json.Unmarshal(b, &decoded)
-	return FlattenProperties(decoded), nil
+	return decoded, nil
+}
+
+// setsAt reports whether obj has a value at the path given by segments, where "*" stands for every item of a list.
+func setsAt(obj any, segments []string) bool {
+	if len(segments) == 0 {
+		return obj != nil
+	}
+	if segments[0] == "*" {
+		list, _ := obj.([]any)
+		for _, item := range list {
+			if setsAt(item, segments[1:]) {
+				return true
+			}
+		}
+		return false
+	}
+	m, _ := obj.(map[string]any)
+	v, ok := m[segments[0]]
+	return ok && setsAt(v, segments[1:])
 }
 
 // setsAny reports whether flattened has a key at, under, or over path.

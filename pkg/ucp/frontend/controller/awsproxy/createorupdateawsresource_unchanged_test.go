@@ -21,13 +21,19 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	cftypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
+	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -146,4 +152,66 @@ func Test_UpdateAWSResource_ValuesAWSReportsDifferently(t *testing.T) {
 			require.Equal(t, http.StatusOK, res.StatusCode)
 		})
 	}
+}
+
+// Test_UpdateAWSResource_DefaultInListItem redeploys an AWS::MSK::ServerlessCluster, a type AWS can only create and
+// delete, with its CloudFormation schema. AWS filled the VPC's default security group into the VpcConfigs item the
+// template set with only subnets. An unchanged redeploy calls nothing but GetResource, and a template that drops
+// security groups the last deploy set still fails, because AWS can't change them.
+func Test_UpdateAWSResource_DefaultInListItem(t *testing.T) {
+	schema, err := os.ReadFile("../../../../aws/operations/testdata/aws-msk-serverlesscluster.json")
+	require.NoError(t, err)
+	path := providers + "AWS.MSK/ServerlessCluster/app-kafka"
+	vpcConfigs := func(securityGroups ...any) []any {
+		item := map[string]any{"SubnetIds": []any{"subnet-a", "subnet-b"}}
+		if len(securityGroups) > 0 {
+			item["SecurityGroups"] = securityGroups
+		}
+		return []any{item}
+	}
+	properties := func(vpc []any) map[string]any {
+		return map[string]any{
+			"ClusterName":          "orders",
+			"VpcConfigs":           vpc,
+			"ClientAuthentication": map[string]any{"Sasl": map[string]any{"Iam": map[string]any{"Enabled": true}}},
+		}
+	}
+	withSchema := func(h *harness) controllerFactory {
+		return func(opts armrpc_controller.Options, clients ucp_aws.Clients) (armrpc_controller.Controller, error) {
+			clients.CloudFormation = &awsfake.CloudFormation{
+				Schemas:           map[string]string{serverlessType: string(schema)},
+				ProvisioningTypes: map[string]cftypes.ProvisioningType{serverlessType: cftypes.ProvisioningTypeImmutable},
+			}
+			return h.putController(opts, clients)
+		}
+	}
+	seed := func(h *harness, lastApplied map[string]any) {
+		h.saveRecord(path, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = mskARN
+			rec.Properties.LastApplied = lastApplied
+		})
+		stored := properties(vpcConfigs("sg-default"))
+		stored["Arn"] = mskARN
+		stored["Tags"] = map[string]any{}
+		h.cc.Put(serverlessType, mskARN, stored)
+	}
+
+	t.Run("an unchanged redeploy calls nothing in AWS", func(t *testing.T) {
+		h := newHarness(t)
+		seed(h, properties(vpcConfigs()))
+
+		resp := h.do(withSchema(h), http.MethodPut, path, testOwner, map[string]any{"properties": properties(vpcConfigs())})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+	})
+
+	t.Run("dropping security groups the last deploy set fails", func(t *testing.T) {
+		h := newHarness(t)
+		seed(h, properties(vpcConfigs("sg-default")))
+
+		resp := h.do(withSchema(h), http.MethodPut, path, testOwner, map[string]any{"properties": properties(vpcConfigs())})
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Contains(t, resp.message(), "VpcConfigs")
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+	})
 }
