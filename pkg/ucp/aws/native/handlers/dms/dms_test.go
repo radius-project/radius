@@ -414,7 +414,9 @@ func Test_UpgradedVersion(t *testing.T) {
 		want       bool
 	}{
 		{"a later minor version", on, "EngineVersion", "3.5.3", "3.5.4", true},
-		{"a later version of the same major version", on, "EngineVersion", "3.5.3", "3.6.1", true},
+		{"a later version in another series", on, "EngineVersion", "3.5.3", "3.6.1", false},
+		{"3.4 to 3.5, which the docs disagree on", on, "EngineVersion", "3.4.7", "3.5.4", false},
+		{"a template version with one number", on, "EngineVersion", "3", "3.0.1", false},
 		{"AutoMinorVersionUpgrade set to true", with(on, map[string]any{"AutoMinorVersionUpgrade": true}), "EngineVersion", "3.5.3", "3.5.4", true},
 		{"a version with fewer numbers", on, "EngineVersion", "3.5", "3.5.1", true},
 		{"the same version with more numbers", on, "EngineVersion", "3.5.1", "3.5.1.0", true},
@@ -434,7 +436,8 @@ func Test_UpgradedVersion(t *testing.T) {
 }
 
 // Test_Create_EngineVersion checks the version DMS gives an instance whose template sets an older one than DMS's
-// default, which the next deploy of the same template must count as the template's.
+// default, and whether the next deploy of the same template counts it as the template's: only within the template's
+// series, such as 3.6.1 for 3.6.0.
 func Test_Create_EngineVersion(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -442,10 +445,10 @@ func Test_Create_EngineVersion(t *testing.T) {
 		want    string
 		same    bool
 	}{
-		{"AutoMinorVersionUpgrade left out", map[string]any{"AutoMinorVersionUpgrade": nil}, defaultEngineVersion, true},
-		{"AutoMinorVersionUpgrade on", map[string]any{"AutoMinorVersionUpgrade": true}, defaultEngineVersion, true},
+		{"AutoMinorVersionUpgrade left out", map[string]any{"AutoMinorVersionUpgrade": nil, "EngineVersion": "3.6.0"}, defaultEngineVersion, true},
+		{"AutoMinorVersionUpgrade on", map[string]any{"AutoMinorVersionUpgrade": true, "EngineVersion": "3.6.0"}, defaultEngineVersion, true},
 		{"AutoMinorVersionUpgrade off", map[string]any{"AutoMinorVersionUpgrade": false}, "3.5.3", true},
-		{"EngineVersion left out", map[string]any{"EngineVersion": nil}, defaultEngineVersion, false},
+		{"an older series", map[string]any{"AutoMinorVersionUpgrade": nil}, defaultEngineVersion, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -455,10 +458,8 @@ func Test_Create_EngineVersion(t *testing.T) {
 			props, err := h.Read(t.Context(), region, identifier)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, props["EngineVersion"])
-			if tt.same {
-				same := props["EngineVersion"] == template["EngineVersion"] || h.Options().TemplateEquivalent(template, "EngineVersion", template["EngineVersion"], props["EngineVersion"])
-				require.True(t, same, "a redeploy must not send DMS an older version")
-			}
+			same := props["EngineVersion"] == template["EngineVersion"] || h.Options().TemplateEquivalent(template, "EngineVersion", template["EngineVersion"], props["EngineVersion"])
+			require.Equal(t, tt.same, same)
 		})
 	}
 }

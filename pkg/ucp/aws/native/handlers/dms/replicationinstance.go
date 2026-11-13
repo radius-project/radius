@@ -82,10 +82,17 @@ func (h *ReplicationInstance) Options() native.Options {
 	}
 }
 
-// upgradedVersion treats an EngineVersion DMS reports as the template's when it has the same major version, its
-// first number, and is the same or later, while the template leaves AutoMinorVersionUpgrade on, its default. DMS
+// upgradedVersion treats an EngineVersion DMS reports as the template's when it has the same first two numbers, such
+// as 3.5.4 for 3.5.3, and is the same or later, while the template leaves AutoMinorVersionUpgrade on, its default. DMS
 // then creates the instance with its default version when the template's is older, and upgrades a deprecated version
 // in the maintenance window. DMS can't go back to an older version, so a redeploy must not send the template's.
+//
+// The docs disagree on what a major version is. The release notes say a manual upgrade from 3.4.x to 3.5.x needs
+// AllowMajorVersionUpgrade (https://docs.aws.amazon.com/dms/latest/userguide/CHAP_ReleaseNotes.html), while the guide
+// to modifying an instance says 3.4.x to 3.5.x isn't a major upgrade
+// (https://docs.aws.amazon.com/dms/latest/userguide/CHAP_ReplicationInstance.Modifying.html). The rule takes the
+// stricter reading, so another first two numbers, such as 3.5 for a template's 3.4, is always a change: at worst a
+// redeploy sends an update, but it never hides a version the template asks for.
 func upgradedVersion(properties map[string]any, path string, template any, aws any) bool {
 	t, okT := template.(string)
 	a, okA := aws.(string)
@@ -94,7 +101,9 @@ func upgradedVersion(properties map[string]any, path string, template any, aws a
 	}
 	templateVersion, okT := versionNumbers(t)
 	awsVersion, okA := versionNumbers(a)
-	return okT && okA && templateVersion[0] == awsVersion[0] && slices.Compare(padded(awsVersion, len(templateVersion)), padded(templateVersion, len(awsVersion))) >= 0
+	return okT && okA && len(templateVersion) >= 2 && len(awsVersion) >= 2 &&
+		slices.Equal(templateVersion[:2], awsVersion[:2]) &&
+		slices.Compare(padded(awsVersion, len(templateVersion)), padded(templateVersion, len(awsVersion))) >= 0
 }
 
 // versionNumbers returns the numbers of a version such as 3.5.3, or false when it isn't numbers joined by dots.
