@@ -116,6 +116,7 @@ func anomalyDetectorSuite(t *testing.T, metric map[string]any) {
 			return newHandler(newFakeAPI(store))
 		},
 		IdentifierProperty: "Id",
+		API:                anomalyDetectorAPI,
 		Properties:         detector,
 		Identifier:         identifier,
 		Changed:            with(detector, map[string]any{"Configuration": config("America/New_York")}),

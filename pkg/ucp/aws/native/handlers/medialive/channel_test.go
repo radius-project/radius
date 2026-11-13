@@ -208,12 +208,16 @@ func Test_UpdateChannelClass(t *testing.T) {
 	current, err := h.Read(t.Context(), region, id)
 	require.NoError(t, err)
 
-	destinations := []any{map[string]any{"Id": "archive", "Settings": []any{map[string]any{"Url": "s3ssl://a"}, map[string]any{"Url": "s3ssl://b"}}}}
+	destinations := object(t, `[
+		{"Id": "archive", "Settings": [{"Url": "s3ssl://a"}, {"Url": "s3ssl://b"}]},
+		{"Id": "mp", "MediaPackageSettings": [{"ChannelId": "app-mediapackage"}]},
+		{"Id": "hls", "Settings": [{"Url": "https://p-ep.akamaientrypoint.net/cmaf/live/1/out"}, {"Url": "https://b-ep.akamaientrypoint.net/cmaf/live/1/out"}]}
+	]`)
 	desired := with(properties, map[string]any{"ChannelClass": "STANDARD", "Destinations": destinations})
 	api.calls = nil
 	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{
 		Region: region, Identifier: id, Current: current, Desired: desired,
-		Patch: patch(t, `[{"op":"replace","path":"/ChannelClass","value":"STANDARD"},{"op":"replace","path":"/Destinations/0/Settings","value":[]}]`),
+		Patch: patch(t, `[{"op":"replace","path":"/ChannelClass","value":"STANDARD"},{"op":"replace","path":"/Destinations/0/Settings","value":[]},{"op":"replace","path":"/Destinations/2/Settings","value":[]}]`),
 	}))
 	require.Equal(t, []string{"DescribeChannel " + region, "UpdateChannelClass " + region}, api.calls)
 	settle(t, h, id, native.OperationUpdate)

@@ -109,6 +109,9 @@ func environment(variables ...map[string]any) map[string]any {
 	return out
 }
 
+// githubSource is a project source that CodeBuild supports webhooks for.
+var githubSource = map[string]any{"Type": "GITHUB", "Location": "https://github.com/example/app.git"}
+
 var project = map[string]any{
 	"Name":          "app-build",
 	"ServiceRole":   "arn:aws:iam::123456789012:role/app-build",
@@ -131,6 +134,7 @@ func newSuite(fs *fakes, t *testing.T) nativetest.Suite {
 		},
 		IdentifierProperty: "Name",
 		Identifier:         "app-build",
+		API:                projectAPI,
 	}
 }
 
@@ -314,7 +318,7 @@ func Test_Read(t *testing.T) {
 }
 
 func Test_Create(t *testing.T) {
-	base := map[string]any{"Name": "app-build", "Source": map[string]any{"Type": "NO_SOURCE"}}
+	base := map[string]any{"Name": "app-build", "Source": githubSource}
 
 	t.Run("sets visibility and the webhook", func(t *testing.T) {
 		properties := with(base, map[string]any{"Visibility": "public_read", "ResourceAccessRole": "arn:aws:iam::123456789012:role/logs", "Triggers": map[string]any{"Webhook": true, "BuildType": "build"}})
@@ -358,7 +362,7 @@ func Test_Create(t *testing.T) {
 }
 
 func Test_Update(t *testing.T) {
-	base := map[string]any{"Name": "app-build", "Source": map[string]any{"Type": "NO_SOURCE"}}
+	base := map[string]any{"Name": "app-build", "Source": githubSource}
 
 	t.Run("removed properties go back to AWS's defaults", func(t *testing.T) {
 		applied := with(base, map[string]any{"TimeoutInMinutes": 30, "ConcurrentBuildLimit": 2, "Cache": map[string]any{"Type": "LOCAL", "Modes": []any{"LOCAL_SOURCE_CACHE"}}, "Tags": tags("team", "a")})
@@ -417,7 +421,7 @@ func Test_Update(t *testing.T) {
 }
 
 func Test_Delete(t *testing.T) {
-	base := map[string]any{"Name": "app-build", "Source": map[string]any{"Type": "NO_SOURCE"}}
+	base := map[string]any{"Name": "app-build", "Source": githubSource}
 
 	t.Run("deletes the webhook first", func(t *testing.T) {
 		h, api := deployed(t, with(base, map[string]any{"Triggers": triggers("PUSH")}))

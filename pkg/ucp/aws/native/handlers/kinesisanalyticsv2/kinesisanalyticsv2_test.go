@@ -63,6 +63,7 @@ func Test_Suite_LoggingOption(t *testing.T) {
 		Properties:         loggingOption("app-one", streamOne),
 		Changed:            loggingOption("app-one", streamTwo),
 		CreateOnlyChange:   loggingOption("app-two", streamOne),
+		API:                loggingOptionAPI,
 	})
 }
 

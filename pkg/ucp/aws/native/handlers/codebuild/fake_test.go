@@ -20,9 +20,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/codebuild"
@@ -34,11 +37,37 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
-const arnPrefix = "arn:aws:codebuild:us-west-2:123456789012:project/"
+const (
+	arnPrefix = "arn:aws:codebuild:us-west-2:123456789012:project/"
+
+	// invalidInput is the error code CodeBuild returns for input that isn't valid.
+	invalidInput = "InvalidInputException"
+
+	// defaultKey is the AWS managed key for Amazon S3, which a project that sets no EncryptionKey uses, in the form
+	// AWS reports it.
+	defaultKey = "arn:aws:kms:us-west-2:123456789012:alias/aws/s3"
+
+	// listPageSize is how many names ListProjects returns in one page.
+	listPageSize = 100
+)
+
+// projectName is the pattern CodeBuild's API reference gives for the project names CreateProject and the webhook
+// calls take, which are 2 to 150 characters.
+var projectName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9\-_]{1,149}$`)
+
+// providerSources are the source types of the providers CodeBuild supports webhooks and build status reports for.
+var providerSources = []string{"GITHUB", "GITHUB_ENTERPRISE", "GITLAB", "GITLAB_SELF_MANAGED", "BITBUCKET"}
+
+// webhookEvents are the events the pattern of an EVENT webhook filter can list.
+var webhookEvents = []string{
+	"PUSH", "PULL_REQUEST_CREATED", "PULL_REQUEST_UPDATED", "PULL_REQUEST_CLOSED", "PULL_REQUEST_REOPENED",
+	"PULL_REQUEST_MERGED", "RELEASED", "PRERELEASED", "WORKFLOW_JOB_QUEUED",
+}
 
 // fakeAPI is an in-memory CodeBuild API. It keeps projects in an awsfake store, in the type's property format, so the
 // suite's Cloud Control sees the same resources. The project's webhook is its Triggers property. A deleted project
-// still shows in one read before it is gone, as AWS's reads can lag.
+// still shows in one read before it is gone, as AWS's reads can lag. It follows the rules CodeBuild's API reference
+// gives for each call, which projectAPI records.
 type fakeAPI struct {
 	store  *awsfake.CloudControl
 	failer nativetest.Failer
@@ -47,7 +76,7 @@ type fakeAPI struct {
 	deleting map[string]bool
 	calls    []string
 
-	// pageSize, when set, is how many names ListProjects returns in one page.
+	// pageSize, when set, is how many names ListProjects returns in one page instead of AWS's 100.
 	pageSize int
 
 	// errs maps a method name to an error the call returns instead of acting.
@@ -153,6 +182,160 @@ func empty(v any) bool {
 	return false
 }
 
+// settings are the fields of a CreateProject or UpdateProject input that CodeBuild checks.
+type settings struct {
+	Description             *string
+	TimeoutInMinutes        *int32
+	QueuedTimeoutInMinutes  *int32
+	Source                  *types.ProjectSource
+	SecondarySources        []types.ProjectSource
+	Artifacts               *types.ProjectArtifacts
+	SecondaryArtifacts      []types.ProjectArtifacts
+	SecondarySourceVersions []types.ProjectSourceVersion
+	Tags                    []types.Tag
+}
+
+// validSettings returns InvalidInputException, as CodeBuild does, when the settings of a CreateProject or
+// UpdateProject input break the limits CodeBuild's API reference gives.
+func validSettings(input any) error {
+	s := settings{}
+	b, err := json.Marshal(input)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	outside := func(v *int32, low int32, high int32) bool {
+		return v != nil && (*v < low || *v > high)
+	}
+	if (s.Description != nil && utf8.RuneCountInString(*s.Description) > 255) || outside(s.TimeoutInMinutes, 5, 2160) || outside(s.QueuedTimeoutInMinutes, 5, 480) {
+		return fault(invalidInput)
+	}
+	if len(s.SecondarySources) > 12 || len(s.SecondaryArtifacts) > 12 || len(s.SecondarySourceVersions) > 12 || len(s.Tags) > 50 {
+		return fault(invalidInput)
+	}
+	sources := s.SecondarySources
+	if s.Source != nil {
+		sources = append(sources, *s.Source)
+	}
+	for _, source := range sources {
+		if aws.ToBool(source.ReportBuildStatus) && !slices.Contains(providerSources, upper(source.Type)) {
+			return fault(invalidInput)
+		}
+	}
+	artifacts := s.SecondaryArtifacts
+	if s.Artifacts != nil {
+		artifacts = append(artifacts, *s.Artifacts)
+	}
+	for _, a := range artifacts {
+		if aws.ToBool(a.EncryptionDisabled) && upper(a.Type) != string(types.ArtifactsTypeS3) {
+			return fault(invalidInput)
+		}
+	}
+	for _, a := range s.SecondaryArtifacts {
+		if upper(a.Type) == string(types.ArtifactsTypeCodepipeline) {
+			return fault(invalidInput)
+		}
+	}
+	return nil
+}
+
+// upper returns the enum value in uppercase, as CodeBuild reads it.
+func upper[T ~string](v T) string {
+	return strings.ToUpper(string(v))
+}
+
+// fillDefaults fills in the values CodeBuild uses for the fields a project leaves out, as AWS returns them.
+func fillDefaults(props map[string]any) {
+	defaults := map[string]any{
+		"TimeoutInMinutes":       float64(60),
+		"QueuedTimeoutInMinutes": float64(480),
+		"EncryptionKey":          defaultKey,
+	}
+	for name, value := range defaults {
+		if _, ok := props[name]; !ok {
+			props[name] = value
+		}
+	}
+	if environment := object(props, "Environment"); environment != nil {
+		if _, ok := environment["PrivilegedMode"]; !ok {
+			environment["PrivilegedMode"] = false
+		}
+	}
+	for _, artifacts := range append(objects(props, "SecondaryArtifacts"), object(props, "Artifacts")) {
+		if artifacts == nil || upper(awsapi.String(artifacts, "Type")) != string(types.ArtifactsTypeS3) {
+			continue
+		}
+		for _, name := range []string{"NamespaceType", "Packaging"} {
+			if _, ok := artifacts[name]; !ok {
+				artifacts[name] = "NONE"
+			}
+		}
+	}
+}
+
+// validWebhook returns InvalidInputException, as CodeBuild does, when a CreateWebhook or UpdateWebhook input breaks
+// the rules CodeBuild's API reference gives for the project's source. A create also needs a source that supports
+// webhooks.
+func validWebhook(props map[string]any, buildType types.WebhookBuildType, groups [][]types.WebhookFilter, scope *types.ScopeConfiguration, create bool) error {
+	source := upper(awsapi.String(object(props, "Source"), "Type"))
+	if buildType != "" && !slices.Contains(buildType.Values(), types.WebhookBuildType(upper(buildType))) {
+		return fault(invalidInput)
+	}
+	if upper(buildType) == string(types.WebhookBuildTypeRunnerBuildkiteBuild) {
+		if source != string(types.SourceTypeNoSource) {
+			return fault(invalidInput)
+		}
+	} else if create && !slices.Contains(providerSources, source) {
+		return fault(invalidInput)
+	}
+	for _, group := range groups {
+		if !slices.ContainsFunc(group, func(f types.WebhookFilter) bool { return upper(f.Type) == string(types.WebhookFilterTypeEvent) }) {
+			return fault(invalidInput)
+		}
+		for _, filter := range group {
+			if !validFilter(filter) {
+				return fault(invalidInput)
+			}
+		}
+	}
+	if scope != nil {
+		if !slices.Contains(scope.Scope.Values(), types.WebhookScopeType(upper(scope.Scope))) {
+			return fault(invalidInput)
+		}
+		github := source == "GITHUB" || source == "GITHUB_ENTERPRISE"
+		gitlab := source == "GITLAB" || source == "GITLAB_SELF_MANAGED"
+		group := upper(scope.Scope) == string(types.WebhookScopeTypeGitlabGroup)
+		if (group && !gitlab) || (!group && !github) {
+			return fault(invalidInput)
+		}
+		if (source == "GITHUB_ENTERPRISE" || source == "GITLAB_SELF_MANAGED") && aws.ToString(scope.Domain) == "" {
+			return fault(invalidInput)
+		}
+	}
+	return nil
+}
+
+// validFilter reports whether the filter is one CodeBuild takes: one of the filter types, with a list of webhook
+// events as the pattern of an EVENT filter, and an RE2 regular expression as the pattern of any other.
+func validFilter(filter types.WebhookFilter) bool {
+	if !slices.Contains(filter.Type.Values(), types.WebhookFilterType(upper(filter.Type))) {
+		return false
+	}
+	pattern := aws.ToString(filter.Pattern)
+	if upper(filter.Type) != string(types.WebhookFilterTypeEvent) {
+		_, err := regexp.Compile(pattern)
+		return err == nil
+	}
+	for event := range strings.SplitSeq(pattern, ",") {
+		if !slices.Contains(webhookEvents, strings.TrimSpace(event)) {
+			return false
+		}
+	}
+	return true
+}
+
 func (f *fakeAPI) CreateProject(ctx context.Context, in *codebuild.CreateProjectInput, opts ...func(*codebuild.Options)) (*codebuild.CreateProjectOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -160,6 +343,15 @@ func (f *fakeAPI) CreateProject(ctx context.Context, in *codebuild.CreateProject
 		return nil, err
 	}
 	name := aws.ToString(in.Name)
+	if !projectName.MatchString(name) {
+		return nil, fault(invalidInput)
+	}
+	if err := validSettings(in); err != nil {
+		return nil, err
+	}
+	if in.Environment != nil && in.Environment.Fleet != nil && in.VpcConfig != nil {
+		return nil, fault(invalidInput)
+	}
 	if f.store.Resource(projectType, name) != nil {
 		return nil, fault("ResourceAlreadyExistsException")
 	}
@@ -170,6 +362,7 @@ func (f *fakeAPI) CreateProject(ctx context.Context, in *codebuild.CreateProject
 	if err := set(props, in); err != nil {
 		return nil, err
 	}
+	fillDefaults(props)
 	f.store.Put(projectType, name, props)
 	project, err := f.project(name, props)
 	if err != nil {
@@ -214,11 +407,15 @@ func (f *fakeAPI) BatchGetProjects(ctx context.Context, in *codebuild.BatchGetPr
 	if err := f.call("BatchGetProjects", opts); err != nil {
 		return nil, err
 	}
+	if len(in.Names) < 1 || len(in.Names) > 100 || slices.Contains(in.Names, "") {
+		return nil, fault(invalidInput)
+	}
 	out := &codebuild.BatchGetProjectsOutput{}
-	for _, name := range in.Names {
+	for _, requested := range in.Names {
+		name := strings.TrimPrefix(requested, arnPrefix)
 		props := f.store.Resource(projectType, name)
 		if props == nil {
-			out.ProjectsNotFound = append(out.ProjectsNotFound, name)
+			out.ProjectsNotFound = append(out.ProjectsNotFound, requested)
 			continue
 		}
 		if f.deleting[name] {
@@ -240,15 +437,19 @@ func (f *fakeAPI) ListProjects(ctx context.Context, in *codebuild.ListProjectsIn
 	if err := f.call("ListProjects", opts); err != nil {
 		return nil, err
 	}
+	if in.NextToken != nil && *in.NextToken == "" {
+		return nil, fault(invalidInput)
+	}
 	names := f.store.List(projectType)
 	start := 0
 	if in.NextToken != nil {
 		start, _ = strconv.Atoi(aws.ToString(in.NextToken))
 	}
-	end := len(names)
-	if f.pageSize > 0 && start+f.pageSize < end {
-		end = start + f.pageSize
+	size := listPageSize
+	if f.pageSize > 0 {
+		size = f.pageSize
 	}
+	end := min(start+size, len(names))
 	out := &codebuild.ListProjectsOutput{Projects: names[start:end]}
 	if end < len(names) {
 		out.NextToken = aws.String(strconv.Itoa(end))
@@ -262,8 +463,18 @@ func (f *fakeAPI) UpdateProject(ctx context.Context, in *codebuild.UpdateProject
 	if err := f.call("UpdateProject", opts); err != nil {
 		return nil, err
 	}
+	if aws.ToString(in.Name) == "" {
+		return nil, fault(invalidInput)
+	}
+	if err := validSettings(in); err != nil {
+		return nil, err
+	}
 	return &codebuild.UpdateProjectOutput{}, f.change(aws.ToString(in.Name), func(props map[string]any) error {
-		return set(props, in, "Name")
+		if err := set(props, in, "Name"); err != nil {
+			return err
+		}
+		fillDefaults(props)
+		return nil
 	})
 }
 
@@ -272,6 +483,9 @@ func (f *fakeAPI) UpdateProjectVisibility(ctx context.Context, in *codebuild.Upd
 	defer f.mu.Unlock()
 	if err := f.call("UpdateProjectVisibility", opts); err != nil {
 		return nil, err
+	}
+	if aws.ToString(in.ProjectArn) == "" || !slices.Contains(in.ProjectVisibility.Values(), in.ProjectVisibility) {
+		return nil, fault(invalidInput)
 	}
 	name := strings.TrimPrefix(aws.ToString(in.ProjectArn), arnPrefix)
 	return &codebuild.UpdateProjectVisibilityOutput{}, f.change(name, func(props map[string]any) error {
@@ -291,6 +505,9 @@ func (f *fakeAPI) DeleteProject(ctx context.Context, in *codebuild.DeleteProject
 		return nil, err
 	}
 	name := aws.ToString(in.Name)
+	if name == "" {
+		return nil, fault(invalidInput)
+	}
 	if f.store.Resource(projectType, name) != nil {
 		f.deleting[name] = true
 	}
@@ -303,9 +520,15 @@ func (f *fakeAPI) CreateWebhook(ctx context.Context, in *codebuild.CreateWebhook
 	if err := f.call("CreateWebhook", opts); err != nil {
 		return nil, err
 	}
+	if !projectName.MatchString(aws.ToString(in.ProjectName)) {
+		return nil, fault(invalidInput)
+	}
 	return &codebuild.CreateWebhookOutput{}, f.change(aws.ToString(in.ProjectName), func(props map[string]any) error {
 		if _, ok := webhookIn(props); ok {
 			return fault("ResourceAlreadyExistsException")
+		}
+		if err := validWebhook(props, in.BuildType, in.FilterGroups, in.ScopeConfiguration, true); err != nil {
+			return err
 		}
 		triggers := map[string]any{"Webhook": true}
 		if err := set(triggers, in, "ProjectName", "ManualCreation"); err != nil {
@@ -322,10 +545,16 @@ func (f *fakeAPI) UpdateWebhook(ctx context.Context, in *codebuild.UpdateWebhook
 	if err := f.call("UpdateWebhook", opts); err != nil {
 		return nil, err
 	}
+	if !projectName.MatchString(aws.ToString(in.ProjectName)) {
+		return nil, fault(invalidInput)
+	}
 	return &codebuild.UpdateWebhookOutput{}, f.change(aws.ToString(in.ProjectName), func(props map[string]any) error {
 		triggers, ok := webhookIn(props)
 		if !ok {
 			return fault(notFound)
+		}
+		if err := validWebhook(props, in.BuildType, in.FilterGroups, nil, false); err != nil {
+			return err
 		}
 		return set(triggers, in, "ProjectName", "RotateSecret")
 	})
@@ -336,6 +565,9 @@ func (f *fakeAPI) DeleteWebhook(ctx context.Context, in *codebuild.DeleteWebhook
 	defer f.mu.Unlock()
 	if err := f.call("DeleteWebhook", opts); err != nil {
 		return nil, err
+	}
+	if !projectName.MatchString(aws.ToString(in.ProjectName)) {
+		return nil, fault(invalidInput)
 	}
 	return &codebuild.DeleteWebhookOutput{}, f.change(aws.ToString(in.ProjectName), func(props map[string]any) error {
 		if _, ok := webhookIn(props); !ok {

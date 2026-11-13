@@ -84,7 +84,7 @@ func tags(pairs ...string) []any {
 
 var trial = map[string]any{
 	"TrialComponentName": "app-trial",
-	"DisplayName":        "App trial",
+	"DisplayName":        "App-trial",
 	"StartTime":          "2026-01-02T03:04:05Z",
 	"Status":             map[string]any{"PrimaryStatus": "InProgress"},
 	"MetadataProperties": map[string]any{"ProjectId": "p-1"},
@@ -107,11 +107,12 @@ func Test_Suite_TrialComponent(t *testing.T) {
 		Removable:          "Tags",
 		CreateOnlyChange:   with(trial, map[string]any{"MetadataProperties": map[string]any{"ProjectId": "p-2"}}),
 		OtherForm:          map[string]any{"StartTime": "2026-01-01T19:04:05.000-08:00"},
-		MultiCall:          with(trial, map[string]any{"DisplayName": "Three calls", "Tags": tags("env", "dev")}),
+		MultiCall:          with(trial, map[string]any{"DisplayName": "Three-calls", "Tags": tags("env", "dev")}),
 		Calls:              3,
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: trialComponentAPI,
 	})
 }
 
@@ -203,7 +204,7 @@ func Test_Update(t *testing.T) {
 		require.NoError(t, update(with(trial, map[string]any{"DisplayName": nil, "StartTime": nil, "Status": nil}), "DisplayName", "StartTime", "Status"))
 		props, err := h.Read(t.Context(), region, "app-trial")
 		require.NoError(t, err)
-		require.Equal(t, "App trial", props["DisplayName"])
+		require.Equal(t, "App-trial", props["DisplayName"])
 		require.Equal(t, "2026-01-02T03:04:05Z", props["StartTime"])
 	})
 

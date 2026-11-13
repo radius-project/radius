@@ -18,9 +18,14 @@ package cloudwatch
 
 import (
 	"context"
+	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
+	_ "time/tzdata"
+	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
@@ -38,8 +43,8 @@ import (
 // it returns every detector of one metric with SingleMetricAnomalyDetector set, whichever form created it, and with
 // AccountId set to the current account for a detector created without one. A detector created with another account's
 // AccountId is another detector, as a monitoring account sees one of a source account. It leaves out the deprecated
-// top-level fields AWS also returns, which the handler never reads. It also serves the STS call for the current
-// account.
+// top-level fields AWS also returns, which the handler never reads. It rejects the requests CloudWatch's API reference
+// says AWS rejects (see api_test.go). It also serves the STS call for the current account.
 type fakeAPI struct {
 	store  *awsfake.CloudControl
 	failer nativetest.Failer
@@ -139,9 +144,19 @@ func (f *fakeAPI) PutAnomalyDetector(ctx context.Context, in *cloudwatch.PutAnom
 	if err := f.call("PutAnomalyDetector", optFns); err != nil {
 		return nil, err
 	}
-	if in.MetricMathAnomalyDetector != nil && in.SingleMetricAnomalyDetector != nil {
-		return nil, fault("InvalidParameterCombinationException")
+	single, err := checkDetector(in.SingleMetricAnomalyDetector, in.MetricMathAnomalyDetector, &types.SingleMetricAnomalyDetector{
+		//nolint:staticcheck // AWS still takes the deprecated fields, and rejects them next to the detector forms.
+		Namespace: in.Namespace, MetricName: in.MetricName, Dimensions: in.Dimensions, Stat: in.Stat,
+	})
+	if err != nil {
+		return nil, err
 	}
+	if err := checkConfiguration(in.Configuration); err != nil {
+		return nil, err
+	}
+	put := *in
+	put.SingleMetricAnomalyDetector = single
+	in = &put
 	if math := in.MetricMathAnomalyDetector; math != nil {
 		// Like AWS, the detector has ReturnData true on a query the put leaves it unset on.
 		queries := slices.Clone(math.MetricDataQueries)
@@ -176,7 +191,7 @@ func (f *fakeAPI) PutAnomalyDetector(ctx context.Context, in *cloudwatch.PutAnom
 		return nil, err
 	}
 	if identifier == "" {
-		return nil, fault("MissingRequiredParameterException")
+		return nil, fault("MissingParameter")
 	}
 	// A detector of the current account is one detector, whether the put names the account or not, so it is kept
 	// under the identifier without the account.
@@ -211,6 +226,9 @@ func (f *fakeAPI) DescribeAnomalyDetectors(ctx context.Context, in *cloudwatch.D
 	if err := f.call("DescribeAnomalyDetectors", optFns); err != nil {
 		return nil, err
 	}
+	if err := checkDescribe(in); err != nil {
+		return nil, err
+	}
 	kinds := in.AnomalyDetectorTypes
 	if len(kinds) == 0 {
 		kinds = []types.AnomalyDetectorType{types.AnomalyDetectorTypeSingleMetric}
@@ -232,12 +250,19 @@ func (f *fakeAPI) DescribeAnomalyDetectors(ctx context.Context, in *cloudwatch.D
 	}
 	start := 0
 	if in.NextToken != nil {
-		start, _ = strconv.Atoi(aws.ToString(in.NextToken))
+		var err error
+		if start, err = strconv.Atoi(aws.ToString(in.NextToken)); err != nil || start < 0 || start > len(matches) {
+			return nil, fault("InvalidNextToken")
+		}
+	}
+	size := f.pageSize
+	if limit := int(aws.ToInt32(in.MaxResults)); limit > 0 && (size == 0 || limit < size) {
+		size = limit
 	}
 	out := &cloudwatch.DescribeAnomalyDetectorsOutput{AnomalyDetectors: matches[start:]}
-	if f.pageSize > 0 && len(matches)-start > f.pageSize {
-		out.AnomalyDetectors = matches[start : start+f.pageSize]
-		out.NextToken = aws.String(strconv.Itoa(start + f.pageSize))
+	if size > 0 && len(matches)-start > size {
+		out.AnomalyDetectors = matches[start : start+size]
+		out.NextToken = aws.String(strconv.Itoa(start + size))
 	}
 	return out, nil
 }
@@ -273,8 +298,15 @@ func (f *fakeAPI) DeleteAnomalyDetector(ctx context.Context, in *cloudwatch.Dele
 	if err := f.call("DeleteAnomalyDetector", optFns); err != nil {
 		return nil, err
 	}
+	single, err := checkDetector(in.SingleMetricAnomalyDetector, in.MetricMathAnomalyDetector, &types.SingleMetricAnomalyDetector{
+		//nolint:staticcheck // AWS still takes the deprecated fields, and rejects them next to the detector forms.
+		Namespace: in.Namespace, MetricName: in.MetricName, Dimensions: in.Dimensions, Stat: in.Stat,
+	})
+	if err != nil {
+		return nil, err
+	}
 	props, err := awsapi.EncodeObject(&cloudwatch.PutAnomalyDetectorInput{
-		MetricMathAnomalyDetector: in.MetricMathAnomalyDetector, SingleMetricAnomalyDetector: in.SingleMetricAnomalyDetector,
+		MetricMathAnomalyDetector: in.MetricMathAnomalyDetector, SingleMetricAnomalyDetector: single,
 	})
 	if err != nil {
 		return nil, err
@@ -303,4 +335,194 @@ func (f *fakeAPI) DeleteAnomalyDetector(ctx context.Context, in *cloudwatch.Dele
 		}
 	}
 	return nil, fault("ResourceNotFoundException")
+}
+
+// The limits CloudWatch's API reference gives for anomaly detectors.
+const (
+	maxDimensions     = 30
+	maxExcludedRanges = 10
+	maxDetectorIDs    = 50
+	maxResults        = 100
+)
+
+// statPattern is the pattern CloudWatch's API reference gives for the statistic of a detector of one metric.
+var statPattern = regexp.MustCompile(`^(?:(SampleCount|Average|Sum|Minimum|Maximum|IQM|(p|tc|tm|ts|wm)(\d{1,2}(\.\d{0,10})?|100)|[ou]\d+(\.\d*)?)(_E|_L|_H)?|(TM|TC|TS|WM)\(((((\d{1,2})(\.\d{0,10})?|100(\.0{0,10})?)%)?:((\d{1,2})(\.\d{0,10})?|100(\.0{0,10})?)%|((\d{1,2})(\.\d{0,10})?|100(\.0{0,10})?)%:(((\d{1,2})(\.\d{0,10})?|100(\.0{0,10})?)%)?)\)|(TM|TC|TS|WM|PR)\(((\d+(\.\d{0,10})?|(\d+(\.\d{0,10})?[Ee][+-]?\d+)):((\d+(\.\d{0,10})?|(\d+(\.\d{0,10})?[Ee][+-]?\d+)))?|((\d+(\.\d{0,10})?|(\d+(\.\d{0,10})?[Ee][+-]?\d+)))?:(\d+(\.\d{0,10})?|(\d+(\.\d{0,10})?[Ee][+-]?\d+)))\))$`)
+
+// queryIDPattern is the form of a metric data query's Id: letters, numbers, and underscores, starting with a lowercase
+// letter.
+var queryIDPattern = regexp.MustCompile(`^[a-z][A-Za-z0-9_]*$`)
+
+// checkLength returns ValidationError when s is set and its length, in characters, is outside min to max.
+func checkLength(s *string, min int, max int) error {
+	if s != nil && (utf8.RuneCountInString(*s) < min || utf8.RuneCountInString(*s) > max) {
+		return fault("ValidationError")
+	}
+	return nil
+}
+
+// checkDetector checks the forms of a detector a put or delete names: a detector of one metric, a metric math
+// detector, or the deprecated top-level fields, which can't be combined. It returns the detector of one metric the
+// call names, in either form, or nil.
+func checkDetector(single *types.SingleMetricAnomalyDetector, math *types.MetricMathAnomalyDetector, topLevel *types.SingleMetricAnomalyDetector) (*types.SingleMetricAnomalyDetector, error) {
+	hasTopLevel := topLevel.Namespace != nil || topLevel.MetricName != nil || topLevel.Stat != nil || len(topLevel.Dimensions) > 0
+	if btoi(single != nil)+btoi(math != nil)+btoi(hasTopLevel) > 1 {
+		return nil, fault("InvalidParameterCombination")
+	}
+	if hasTopLevel {
+		single = topLevel
+	}
+	if single != nil {
+		return single, checkSingle(single)
+	}
+	if math != nil {
+		return nil, checkMath(math)
+	}
+	return nil, nil
+}
+
+// checkSingle checks the fields of a detector of one metric.
+func checkSingle(s *types.SingleMetricAnomalyDetector) error {
+	if err := checkLength(s.AccountId, 1, 255); err != nil {
+		return err
+	}
+	if err := checkMetric(s.Namespace, s.MetricName, s.Dimensions); err != nil {
+		return err
+	}
+	if s.Stat != nil && (utf8.RuneCountInString(*s.Stat) > 50 || !statPattern.MatchString(*s.Stat)) {
+		return fault("ValidationError")
+	}
+	return nil
+}
+
+// checkMetric checks a metric's namespace, name, and dimensions, any of which may be unset.
+func checkMetric(namespace *string, name *string, dimensions []types.Dimension) error {
+	if err := checkLength(namespace, 1, 255); err != nil {
+		return err
+	}
+	if namespace != nil && strings.HasPrefix(*namespace, ":") {
+		return fault("ValidationError")
+	}
+	if err := checkLength(name, 1, 255); err != nil {
+		return err
+	}
+	if len(dimensions) > maxDimensions {
+		return fault("ValidationError")
+	}
+	for _, d := range dimensions {
+		if d.Name == nil || d.Value == nil {
+			return fault("MissingParameter")
+		}
+		if err := checkLength(d.Name, 1, 255); err != nil {
+			return err
+		}
+		if err := checkLength(d.Value, 1, 1024); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkMath checks the queries of a metric math detector. A query without ReturnData counts as one with ReturnData
+// true, as AWS returns it.
+func checkMath(m *types.MetricMathAnomalyDetector) error {
+	returned := 0
+	for _, q := range m.MetricDataQueries {
+		if q.Id == nil {
+			return fault("MissingParameter")
+		}
+		if err := checkLength(q.Id, 1, 255); err != nil {
+			return err
+		}
+		if !queryIDPattern.MatchString(*q.Id) {
+			return fault("InvalidParameterValue")
+		}
+		if q.Expression != nil && q.MetricStat != nil {
+			return fault("InvalidParameterCombination")
+		}
+		if q.Expression == nil && q.MetricStat == nil {
+			return fault("MissingParameter")
+		}
+		if err := checkLength(q.Expression, 1, 2048); err != nil {
+			return err
+		}
+		if err := checkLength(q.AccountId, 1, 255); err != nil {
+			return err
+		}
+		if q.Period != nil && *q.Period < 1 {
+			return fault("ValidationError")
+		}
+		if s := q.MetricStat; s != nil {
+			if s.Metric == nil || s.Period == nil || s.Stat == nil {
+				return fault("MissingParameter")
+			}
+			if *s.Period < 1 {
+				return fault("ValidationError")
+			}
+			if err := checkMetric(s.Metric.Namespace, s.Metric.MetricName, s.Metric.Dimensions); err != nil {
+				return err
+			}
+		}
+		if aws.ToBool(q.ReturnData) || q.ReturnData == nil {
+			returned++
+		}
+	}
+	if returned != 1 {
+		return fault("InvalidParameterValue")
+	}
+	return nil
+}
+
+// checkConfiguration checks a detector's configuration, which may be nil.
+func checkConfiguration(c *types.AnomalyDetectorConfiguration) error {
+	if c == nil {
+		return nil
+	}
+	if len(c.ExcludedTimeRanges) > maxExcludedRanges {
+		return fault("InvalidParameterValue")
+	}
+	for _, r := range c.ExcludedTimeRanges {
+		if r.StartTime == nil || r.EndTime == nil {
+			return fault("MissingParameter")
+		}
+	}
+	if zone := c.MetricTimezone; zone != nil {
+		if err := checkLength(zone, 0, 50); err != nil {
+			return err
+		}
+		if _, err := time.LoadLocation(*zone); err != nil || *zone == "Local" {
+			return fault("InvalidParameterValue")
+		}
+	}
+	if c.AdaptationSpeed != "" && !slices.Contains(c.AdaptationSpeed.Values(), c.AdaptationSpeed) {
+		return fault("ValidationError")
+	}
+	if c.OutlierFilteringStrength != "" && !slices.Contains(c.OutlierFilteringStrength.Values(), c.OutlierFilteringStrength) {
+		return fault("ValidationError")
+	}
+	return nil
+}
+
+// checkDescribe checks the filters of a DescribeAnomalyDetectors request.
+func checkDescribe(in *cloudwatch.DescribeAnomalyDetectorsInput) error {
+	if len(in.AnomalyDetectorIds) > 0 && (in.Namespace != nil || in.MetricName != nil || len(in.Dimensions) > 0 || len(in.AnomalyDetectorTypes) > 0) {
+		return fault("InvalidParameterCombination")
+	}
+	if len(in.AnomalyDetectorIds) > maxDetectorIDs || len(in.AnomalyDetectorTypes) > 2 {
+		return fault("ValidationError")
+	}
+	for _, kind := range in.AnomalyDetectorTypes {
+		if !slices.Contains(kind.Values(), kind) {
+			return fault("ValidationError")
+		}
+	}
+	if err := checkMetric(in.Namespace, in.MetricName, in.Dimensions); err != nil {
+		return err
+	}
+	if in.MaxResults != nil && *in.MaxResults < 1 {
+		return fault("ValidationError")
+	}
+	if in.MaxResults != nil && *in.MaxResults > maxResults {
+		return fault("InvalidParameterValue")
+	}
+	return nil
 }
