@@ -63,6 +63,26 @@ func Test_ClientVpnEndpoint_CreateWithPolicy(t *testing.T) {
 	require.Equal(t, id, props["Id"])
 }
 
+func Test_ClientVpnEndpoint_CreateWithPolicyToken(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewClientVpnEndpoint(api)
+	request := createRequest(with(endpointProperties(), map[string]any{"AuthorizationPolicy": testPolicy}))
+
+	// EC2 rejects a client token another request used, so the policy call can't take the create's token.
+	id, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
+	policy, ok := api.tokens[testRegion+"/"+*policyToken(request.ClientToken)]
+	require.True(t, ok, "the policy call sends a token")
+	require.Equal(t, "ModifyClientVpnEndpointAuthorizationPolicy", policy.call)
+	require.NotEqual(t, request.ClientToken, *policyToken(request.ClientToken))
+
+	api.calls = nil
+	again, err := h.Create(t.Context(), request)
+	require.NoError(t, err, "a create sent again sends the same tokens")
+	require.Equal(t, id, again)
+	require.Equal(t, []string{"CreateClientVpnEndpoint", "ModifyClientVpnEndpointAuthorizationPolicy"}, api.calls)
+}
+
 func Test_ClientVpnEndpoint_CreateFails(t *testing.T) {
 	t.Run("AWS rejects the create", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
