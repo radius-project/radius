@@ -18,11 +18,16 @@ package helm
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -122,5 +127,43 @@ func TestAggregationStageCanceledBeforeReadsOrRender(t *testing.T) {
 				return "", false, nil
 			})
 		require.ErrorIs(t, err, context.Canceled)
+	}
+}
+
+func TestAggregationPreflightDoesNotCleanUpOff(t *testing.T) {
+	t.Parallel()
+	options := NewDefaultClusterOptions()
+	render := func(context.Context) (string, bool, error) {
+		t.Fatal("Off preflight must not render or clean up annotations")
+		return "", false, nil
+	}
+	require.NoError(t, (&Impl{}).checkAggregationBeforeDependencies(t.Context(), options, "", nil, render))
+	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
+	err := (&Impl{}).checkAggregationBeforeDependencies(t.Context(), options, "", nil,
+		func(context.Context) (string, bool, error) { return "", true, nil })
+	require.ErrorIs(t, err, errCertificateObserverUnavailable)
+}
+
+func TestRollbackUnsupportedAggregationStopsBeforeDependencies(t *testing.T) {
+	t.Parallel()
+	for _, explicit := range []bool{false, true} {
+		t.Run(fmt.Sprint(explicit), func(t *testing.T) {
+			t.Parallel()
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
+				{Version: 1, Config: authzOnValues, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}},
+					Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+				{Version: 2, Config: map[string]any{}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}},
+					Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+			}, nil)
+			impl := &Impl{Helm: client, newRotationStore: emptyRotationTestStore}
+			var err error
+			if explicit {
+				err = impl.RollbackRadiusToRevision(t.Context(), "test-context", 1)
+			} else {
+				err = impl.RollbackRadius(t.Context(), "test-context")
+			}
+			require.ErrorIs(t, err, errCertificateObserverUnavailable)
+		})
 	}
 }

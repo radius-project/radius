@@ -407,6 +407,10 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
+	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
+	if err := i.checkAggregationBeforeDependencies(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
+		return err
+	}
 
 	// Check Contour and csi-driver-spiffe before installing anything, so that a problem leaves the cluster unchanged.
 	var contour *contourPlan
@@ -463,7 +467,6 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
 		return err
 	}
-	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
 	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
 		return err
 	}
@@ -654,6 +657,10 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "upgrade", radiusHelmChart); err != nil {
 		return err
 	}
+	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
+	if err := i.checkAggregationBeforeDependencies(ctx, clusterOptions, kubeContext, storedValues, render); err != nil {
+		return err
+	}
 
 	// Check the Contour and csi-driver-spiffe upgrades before upgrading anything, so that a problem leaves the
 	// cluster unchanged.
@@ -683,7 +690,6 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
 		return err
 	}
-	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
 	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, storedValues, render); err != nil {
 		return err
 	}
@@ -869,10 +875,10 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	if err := checkRollbackCertificateIssuers(history, targetRevision); err != nil {
 		return err
 	}
-	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, targetRevision); err != nil {
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
 		return err
 	}
-	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
+	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, targetRevision); err != nil {
 		return err
 	}
 
@@ -934,10 +940,10 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 		return err
 	}
 
-	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, revision); err != nil {
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
 		return err
 	}
-	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
+	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, revision); err != nil {
 		return err
 	}
 
