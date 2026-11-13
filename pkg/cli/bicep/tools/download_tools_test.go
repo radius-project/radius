@@ -18,13 +18,91 @@ package tools
 
 import (
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/internal/tooling"
 	"github.com/stretchr/testify/require"
 )
+
+func TestDownloadToFolder(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name      string
+		status    int
+		truncated bool
+		wantErr   string
+	}{
+		{name: "success", status: http.StatusOK},
+		{name: "not found", status: http.StatusNotFound, wantErr: "404 Not Found"},
+		{name: "gateway timeout", status: http.StatusGatewayTimeout, wantErr: "504 Gateway Timeout"},
+		{name: "partial content", status: http.StatusPartialContent, wantErr: "206 Partial Content"},
+		{name: "interrupted download", status: http.StatusOK, truncated: true, wantErr: "unexpected EOF"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			const contents = "downloaded binary"
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tt.truncated {
+					w.Header().Set("Content-Length", fmt.Sprint(len(contents)+10))
+				}
+				w.WriteHeader(tt.status)
+				_, err := w.Write([]byte(contents))
+				if err != nil {
+					t.Errorf("write download response: %v", err)
+				}
+			}))
+			defer server.Close()
+
+			for _, installed := range []bool{false, true} {
+				t.Run(fmt.Sprintf("installed=%t", installed), func(t *testing.T) {
+					filename := filepath.Join(t.TempDir(), "bin", "bicep")
+					const previous = "previous binary"
+					if installed {
+						require.NoError(t, os.MkdirAll(filepath.Dir(filename), 0o755))
+						require.NoError(t, os.WriteFile(filename, []byte(previous), 0o755))
+					}
+
+					err := downloadToFolder(filename, server.URL)
+					if tt.wantErr == "" {
+						require.NoError(t, err)
+						actual, err := os.ReadFile(filename)
+						require.NoError(t, err)
+						require.Equal(t, contents, string(actual))
+						if runtime.GOOS != "windows" {
+							info, err := os.Stat(filename)
+							require.NoError(t, err)
+							require.Equal(t, os.FileMode(0o755), info.Mode().Perm())
+						}
+					} else {
+						require.ErrorContains(t, err, tt.wantErr)
+						require.ErrorContains(t, err, server.URL)
+						if installed {
+							actual, err := os.ReadFile(filename)
+							require.NoError(t, err)
+							require.Equal(t, previous, string(actual))
+						} else {
+							_, err := os.Stat(filename)
+							require.ErrorIs(t, err, os.ErrNotExist)
+						}
+					}
+
+					temporaryFiles, err := filepath.Glob(filepath.Join(filepath.Dir(filename), ".bicep-*"))
+					require.NoError(t, err)
+					require.Empty(t, temporaryFiles)
+				})
+			}
+		})
+	}
+}
 
 func TestBicepToolManifest(t *testing.T) {
 	t.Parallel()

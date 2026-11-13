@@ -22,9 +22,8 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
-
-	"github.com/radius-project/radius/pkg/cli/clients"
 )
 
 const (
@@ -116,58 +115,55 @@ func GetValidPlatform(currentOS, currentArch string) (string, error) {
 	return platform, nil
 }
 
-// DownloadToFolder creates a folder and a file, downloads the bicep binary to the file,
+// DownloadToFolder downloads Bicep, replacing the destination only after a successful download.
 func DownloadToFolder(filepath string) error {
-	// Create folders
-	err := os.MkdirAll(path.Dir(filepath), os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("failed to create folder %s: %v", path.Dir(filepath), err)
-	}
-
-	// Create the file
-	bicepBinary, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer bicepBinary.Close()
-
-	// Get file binary
 	binary, err := GetValidPlatform(runtime.GOOS, runtime.GOARCH)
 	if err != nil {
 		return err
 	}
 
-	// Get binaryName extension
 	binaryName, err := getFilename(binary)
 	if err != nil {
 		return err
 	}
 
-	// Get the data
-	resp, err := http.Get(binaryRepo + binaryName)
-	if clients.Is404Error(err) {
-		return fmt.Errorf("unable to locate bicep binary resource %s: %v", binaryRepo+binaryName, err)
-	} else if err != nil {
-		return err
+	return downloadToFolder(filepath, binaryRepo+binaryName)
+}
+
+func downloadToFolder(filename, downloadURL string) error {
+	resp, err := http.Get(downloadURL)
+	if err != nil {
+		return fmt.Errorf("failed to download bicep from %s: %w", downloadURL, err)
 	}
 	defer resp.Body.Close()
 
-	// Write the body to file
-	_, err = io.Copy(bicepBinary, resp.Body)
-	if err != nil {
-		return err
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download bicep from %s: unexpected HTTP status %s", downloadURL, resp.Status)
 	}
 
-	// Get the filemode so we can mark it as executable
-	file, err := bicepBinary.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to read file attributes %s: %v", filepath, err)
+	if err := os.MkdirAll(filepath.Dir(filename), os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create folder %s: %w", filepath.Dir(filename), err)
 	}
 
-	// Make file executable by everyone
-	err = bicepBinary.Chmod(file.Mode() | 0111)
+	// Keep the installed binary intact if the download or file write fails.
+	bicepBinary, err := os.CreateTemp(filepath.Dir(filename), ".bicep-*")
 	if err != nil {
-		return fmt.Errorf("failed to change permissions for %s: %v", filepath, err)
+		return fmt.Errorf("failed to create temporary bicep file: %w", err)
+	}
+	defer os.Remove(bicepBinary.Name())
+	defer bicepBinary.Close()
+
+	if _, err := io.Copy(bicepBinary, resp.Body); err != nil {
+		return fmt.Errorf("failed to download bicep from %s: %w", downloadURL, err)
+	}
+	if err := bicepBinary.Chmod(0o755); err != nil {
+		return fmt.Errorf("failed to change permissions for %s: %w", filename, err)
+	}
+	if err := bicepBinary.Close(); err != nil {
+		return fmt.Errorf("failed to close downloaded bicep file: %w", err)
+	}
+	if err := os.Rename(bicepBinary.Name(), filename); err != nil {
+		return fmt.Errorf("failed to replace bicep binary %s: %w", filename, err)
 	}
 
 	return nil
