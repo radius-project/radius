@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -27,6 +28,7 @@ import (
 	awsec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/smithy-go"
+	"github.com/wI2L/jsondiff"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -262,6 +264,14 @@ var endpointDefaults = map[string]any{
 	"VpnPort":                       443,
 }
 
+// policyDefaults are the values a property of the authorization policy goes back to when the template removes it:
+// AWS's default for ShadowMode, and no description. A property the template never set, such as one set outside
+// Radius, isn't in the patch, so it keeps AWS's value.
+var policyDefaults = map[string]any{
+	"Description": "",
+	"ShadowMode":  string(types.ClientVpnAuthorizationPolicyShadowModeDisabled),
+}
+
 // Update makes the patch's changes with ModifyClientVpnEndpoint, then sets or deletes the authorization policy.
 func (h *ClientVpnEndpoint) Update(ctx context.Context, request native.UpdateRequest) error {
 	changed := awsapi.Changed(request)
@@ -296,6 +306,18 @@ func (h *ClientVpnEndpoint) Update(ctx context.Context, request native.UpdateReq
 	}
 	if slices.Contains(changed, "AuthorizationPolicy") {
 		if policy, ok := request.Desired["AuthorizationPolicy"]; ok {
+			// AWS keeps the value of a policy property the call leaves out, so one the template removed goes back to
+			// its default.
+			if m, ok := policy.(map[string]any); ok {
+				values := maps.Clone(m)
+				for _, op := range request.Patch {
+					name, removed := strings.CutPrefix(op.Path, "/AuthorizationPolicy/")
+					if def, ok := policyDefaults[name]; removed && op.Type == jsondiff.OperationRemove && ok {
+						values[name] = def
+					}
+				}
+				policy = values
+			}
 			calls = append(calls, func() error {
 				return h.setPolicy(ctx, request.Region, request.Identifier, policy, nil)
 			})

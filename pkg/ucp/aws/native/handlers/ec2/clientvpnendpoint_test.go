@@ -24,6 +24,7 @@ import (
 	awsec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/stretchr/testify/require"
+	"github.com/wI2L/jsondiff"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -101,6 +102,55 @@ func Test_ClientVpnEndpoint_CreateWithPolicyToken(t *testing.T) {
 	require.Equal(t, id, again)
 	require.Equal(t, []string{request.ClientToken, request.ClientToken}, api.creates)
 	require.Equal(t, []string{api.policies[0], api.policies[0]}, api.policies)
+}
+
+func Test_ClientVpnEndpoint_UpdatePolicyDefaults(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewClientVpnEndpoint(api)
+	id, err := h.Create(t.Context(), createRequest(with(endpointProperties(), map[string]any{"AuthorizationPolicy": testPolicy})))
+	require.NoError(t, err)
+	current, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+
+	// AWS keeps a policy value the call leaves out, so the handler sends the defaults of the values the template removed.
+	document := map[string]any{"PolicyDocument": testPolicy["PolicyDocument"]}
+	require.NoError(t, h.Update(t.Context(), updateRequest(t, id, current, with(current, map[string]any{"AuthorizationPolicy": document}))))
+	props, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+	require.Equal(t, with(document, map[string]any{"ShadowMode": "disabled"}), props["AuthorizationPolicy"])
+}
+
+// policyInputs is the fake EC2 API, recording the input of each policy call.
+type policyInputs struct {
+	*fakeAPI
+	inputs []*awsec2.ModifyClientVpnEndpointAuthorizationPolicyInput
+}
+
+func (p *policyInputs) ModifyClientVpnEndpointAuthorizationPolicy(ctx context.Context, in *awsec2.ModifyClientVpnEndpointAuthorizationPolicyInput, opts ...func(*awsec2.Options)) (*awsec2.ModifyClientVpnEndpointAuthorizationPolicyOutput, error) {
+	p.inputs = append(p.inputs, in)
+	return p.fakeAPI.ModifyClientVpnEndpointAuthorizationPolicy(ctx, in, opts...)
+}
+
+// Test_ClientVpnEndpoint_UpdatePolicyKeepsUnmanaged checks that a policy change resets only the values the template
+// removed: a value the template never set, which the patch doesn't remove, isn't sent, so AWS keeps it.
+func Test_ClientVpnEndpoint_UpdatePolicyKeepsUnmanaged(t *testing.T) {
+	api := &policyInputs{fakeAPI: newFakeAPI(awsfake.NewCloudControl())}
+	h := NewClientVpnEndpoint(api)
+	id, err := h.Create(t.Context(), createRequest(with(endpointProperties(), map[string]any{"AuthorizationPolicy": testPolicy})))
+	require.NoError(t, err)
+	current, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+
+	document := map[string]any{"PolicyDocument": "permit(principal, action == Action::\"connect\", resource);"}
+	api.inputs = nil
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{
+		Region: testRegion, Identifier: id, Current: current, Desired: with(current, map[string]any{"AuthorizationPolicy": document}),
+		Patch: jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/AuthorizationPolicy/PolicyDocument", Value: document["PolicyDocument"]}},
+	}))
+	require.Len(t, api.inputs, 1)
+	require.Equal(t, document["PolicyDocument"], aws.ToString(api.inputs[0].PolicyDocument))
+	require.Empty(t, api.inputs[0].ShadowMode, "a ShadowMode the template never set keeps AWS's value")
+	require.Nil(t, api.inputs[0].Description, "a description the template never set keeps AWS's value")
 }
 
 func Test_ClientVpnEndpoint_CreateFails(t *testing.T) {
