@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -74,6 +76,106 @@ type request struct {
 
 	// route is the handler that serves the request. put, get, and delete set it.
 	route
+
+	// managed are the property sets the alias may have applied, which a native handler that reads only the members it
+	// manages gets (native.ScopedReader). put, get, and startDelete set them from the record. They are nil when UCP
+	// has no record.
+	managed []map[string]any
+}
+
+// managedValues returns the property sets the alias may have applied: the record's last-applied and possibly applied
+// properties, and desired when it isn't nil.
+func managedValues(rec *datamodel.AWSResource, desired map[string]any) []map[string]any {
+	out := []map[string]any{}
+	for _, properties := range []map[string]any{rec.Properties.LastApplied, rec.Properties.PendingLastApplied, desired} {
+		if properties != nil {
+			out = append(out, properties)
+		}
+	}
+	return out
+}
+
+// ownManaged returns managedValues(rec, desired) without the members another alias's record may hold, for a native
+// handler that names its members (native.Members), so a read, an update, and a delete never treat them as this
+// alias's. A desired that lists such a member gets 409 naming that alias, before anything is reserved or sent to AWS.
+// identifier is the AWS identifier the request acts on, the record's or a take-over's name, which names the parent the
+// handler acts on. An alias's record holds the members of its last-applied and possibly applied properties, so a
+// member stays held until the deploy that removes it, or the delete, finishes. A record being deleted still holds its
+// members against a deploy, but not against another delete, so of two aliases that list a member, the one deleted
+// last removes it.
+//
+// The read and the reservation that follows are separate steps, so two aliases that add the same member at the same
+// moment can both hold it. Each then leaves it out of its delete while the other isn't being deleted, and a redeploy
+// of either that lists it gets 409 until the other removes it.
+func (e *engine) ownManaged(ctx context.Context, r *request, rec *datamodel.AWSResource, identifier string, desired map[string]any) ([]map[string]any, armrpc_rest.Response, error) {
+	managed := managedValues(rec, desired)
+	if r.handler == nil || r.native == nil || r.handler.Options().Members == nil {
+		return managed, nil, nil
+	}
+	m := r.handler.Options().Members
+	others, err := e.store.Others(ctx, r.id, r.native.Metadata.IdentityScope)
+	if err != nil {
+		return nil, nil, err
+	}
+	// held maps a parent to its members and the alias that holds each, and kept to those a delete must leave.
+	held := map[string]map[string]string{}
+	kept := map[string]map[string]bool{}
+	for _, other := range others {
+		deleting := records.IsRunning(other) && records.PendingOperation(other) == records.OperationDelete
+		for _, properties := range managedValues(other, nil) {
+			parent, members := m.Of(other.Properties.AWSIdentifier, properties)
+			if held[parent] == nil {
+				held[parent], kept[parent] = map[string]string{}, map[string]bool{}
+			}
+			for _, member := range members {
+				held[parent][member] = other.ID
+				kept[parent][member] = kept[parent][member] || !deleting
+			}
+		}
+	}
+	if desired != nil {
+		parent, members := m.Of(identifier, desired)
+		for _, member := range members {
+			if holder, ok := held[parent][member]; ok {
+				return nil, conflict("%q in %s of %q is already managed under the alias %q. Remove it from this template, or from the other alias first.", member, m.List, parent, records.AliasOf(holder)), nil
+			}
+		}
+	}
+	out := []map[string]any{}
+	for _, properties := range managed {
+		parent, _ := m.Of(identifier, properties)
+		out = append(out, m.Without(properties, kept[parent]))
+	}
+	return out, nil, nil
+}
+
+// keepPending treats the values of an interrupted operation as applied, as records.KeepPending does. For a native
+// handler whose resource is some members of a parent (native.ScopedReader), a member list keeps the members of both
+// the last deploy and the interrupted one: the operation may have stopped before it removed the old members, so Radius
+// still owns them until a later deploy removes them.
+func keepPending(r *request, rec *datamodel.AWSResource) {
+	if _, scoped := r.handler.(native.ScopedReader); scoped {
+		addMembers(rec.Properties.PendingLastApplied, rec.Properties.LastApplied)
+	}
+	records.KeepPending(rec)
+}
+
+// addMembers adds to each list in properties the members of the same list in previous that it doesn't have.
+func addMembers(properties map[string]any, previous map[string]any) {
+	for name, value := range properties {
+		list, ok := value.([]any)
+		earlier, wasList := previous[name].([]any)
+		if !ok || !wasList {
+			continue
+		}
+		list = slices.Clone(list)
+		for _, member := range earlier {
+			if !slices.ContainsFunc(list, func(v any) bool { return reflect.DeepEqual(v, member) }) {
+				list = append(list, member)
+			}
+		}
+		properties[name] = list
+	}
 }
 
 // begin reads the region and rejects legacy and deprecated types. A non-nil response ends the request.
@@ -173,7 +275,7 @@ func (e *engine) resume(ctx context.Context, r *request, rec *datamodel.AWSResou
 		case records.OperationCreate:
 			rec.SetProvisioningState(v1.ProvisioningStateAccepted)
 		default:
-			records.KeepPending(rec)
+			keepPending(r, rec)
 			rec.SetProvisioningState(v1.ProvisioningStateFailed)
 		}
 		etag, err := e.store.Save(ctx, rec, etag)
@@ -276,7 +378,7 @@ func (e *engine) readResource(ctx context.Context, r *request, identifier string
 	var out *cloudcontrol.GetResourceOutput
 	var err error
 	if r.handler != nil {
-		out, err = readNative(ctx, r.handler, r.region, identifier)
+		out, err = readNative(ctx, r.handler, r.region, identifier, r.managed)
 	} else {
 		out, err = e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			TypeName:   aws.String(r.typeName),
@@ -337,6 +439,9 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if err := e.route(ctx, r); err != nil {
 		return handleError(ctx, r.id, err)
 	}
+	if name, err = resolveIdentifier(ctx, r.native, r.region, name); err != nil {
+		return handleError(ctx, r.id, err)
+	}
 	typeInfo := r.typeInfo
 	if typeInfo == nil {
 		typeInfo, err = describeType(ctx, e.clients, r.typeName, r.region)
@@ -390,6 +495,14 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	}
 
 	properties := body.Properties
+	// A lost create is found in the parent its properties name, whatever the name (see resumeNativeCreate).
+	target := rec.Properties.AWSIdentifier
+	if target == "" && !records.IsFirstCreate(rec) {
+		target = name
+	}
+	if r.managed, resp, err = e.ownManaged(ctx, r, rec, target, properties); resp != nil || err != nil {
+		return resp, err
+	}
 	identifier := rec.Properties.AWSIdentifier
 	var current *cloudcontrol.GetResourceOutput
 	applied := applied{properties: withoutSecrets(properties, secrets), fingerprints: fingerprints}
@@ -417,6 +530,9 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 			lookup, err = identifierFor(r.native, properties, schema)
 			if err != nil {
 				return identifierError(ctx, r, err)
+			}
+			if lookup, err = resolveIdentifier(ctx, r.native, r.region, lookup); err != nil {
+				return handleError(ctx, r.id, err)
 			}
 		}
 		if lookup != "" {
@@ -585,6 +701,9 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 	known, err := identifierFor(r.native, properties, schema)
 	if err != nil {
 		return identifierError(ctx, r, err)
+	}
+	if known, err = resolveIdentifier(ctx, r.native, r.region, known); err != nil {
+		return handleError(ctx, r.id, err)
 	}
 	if name != "" && known != name {
 		return badRequest(fmt.Sprintf("name %q does not match an AWS resource of type %s. Set name only to take over an existing resource, or remove it and set the identifier properties to create one.", name, r.typeName)), nil
@@ -836,6 +955,11 @@ func (e *engine) delete(ctx context.Context, httpReq *http.Request) (armrpc_rest
 // it never sends the create again, so a create only a resend could find removes only the record.
 func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string) (armrpc_rest.Response, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
+	managed, refused, err := e.ownManaged(ctx, r, rec, rec.Properties.AWSIdentifier, nil)
+	if refused != nil || err != nil {
+		return refused, err
+	}
+	r.managed = managed
 	switch onDelete(r) {
 	case schemas.OnDeleteNothing:
 		logger.Info("Removing the record of an AWS resource without changing it in AWS", "alias", r.id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier)
@@ -1047,6 +1171,9 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	}
 	if err := e.route(ctx, r); err != nil {
 		return handleError(ctx, r.id, err)
+	}
+	if r.managed, resp, err = e.ownManaged(ctx, r, rec, rec.Properties.AWSIdentifier, nil); resp != nil || err != nil {
+		return resp, err
 	}
 
 	current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)

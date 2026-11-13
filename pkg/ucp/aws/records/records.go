@@ -183,6 +183,42 @@ func (s *Store) FindByIdentifier(ctx context.Context, id resources.ID, identifie
 	}
 }
 
+// Others returns the records of other aliases of id's type in the identity scope, as FindByIdentifier searches them.
+// UCP reads them to find the members of a parent that another alias may hold (see native.Members). Like
+// FindByIdentifier, it doesn't stop another alias from saving a record right after.
+func (s *Store) Others(ctx context.Context, id resources.ID, scope schemas.IdentityScope) ([]*datamodel.AWSResource, error) {
+	query := database.Query{RootScope: id.RootScope(), ResourceType: id.Type()}
+	if scope == schemas.IdentityScopeAccount {
+		query.RootScope, query.ScopeRecursive = accountScope(id), true
+	}
+	out := []*datamodel.AWSResource{}
+	token := ""
+	for {
+		opts := []database.QueryOptions{}
+		if token != "" {
+			opts = append(opts, database.WithPaginationToken(token))
+		}
+		result, err := s.db.Query(ctx, query, opts...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read the records of %s: %w", id.Type(), err)
+		}
+		for _, item := range result.Items {
+			if strings.EqualFold(item.ID, id.String()) {
+				continue
+			}
+			rec := &datamodel.AWSResource{}
+			if err := convert(item.Data, rec); err != nil {
+				return nil, fmt.Errorf("failed to read the record of %s: %w", item.ID, err)
+			}
+			out = append(out, rec)
+		}
+		if result.PaginationToken == "" {
+			return out, nil
+		}
+		token = result.PaginationToken
+	}
+}
+
 // accountScope returns the account scope of an AWS resource ID, such as /planes/aws/aws/accounts/1234, or its root
 // scope when it has no account.
 func accountScope(id resources.ID) string {

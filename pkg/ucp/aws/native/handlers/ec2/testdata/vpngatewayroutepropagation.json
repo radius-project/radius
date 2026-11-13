@@ -1,0 +1,80 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_ROUTE_TABLE": "rtb-0a2f3eafa3551219f",
+    "RADIUS_REC_ROUTE_TABLE_2": "rtb-0c3623b89f8c9be2c",
+    "RADIUS_REC_VPN_GATEWAY": "vgw-06425e3b619cedac1"
+  },
+  "interactions": [
+    {
+      "service": "EC2",
+      "operation": "EnableVgwRoutePropagation",
+      "request": "Action=EnableVgwRoutePropagation\u0026GatewayId=vgw-06425e3b619cedac1\u0026RouteTableId=rtb-0a2f3eafa3551219f\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cEnableVgwRoutePropagationResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e4ca9db71-0010-4ae7-9bdf-5e94a287345f\u003c/requestId\u003e\u003creturn\u003etrue\u003c/return\u003e\u003c/EnableVgwRoutePropagationResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeRouteTables",
+      "request": "Action=DescribeRouteTables\u0026Filter.1.Name=route-table-id\u0026Filter.1.Value.1=rtb-0a2f3eafa3551219f\u0026Filter.1.Value.2=rtb-0c3623b89f8c9be2c\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeRouteTablesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e9ebcd4e2-596f-434b-aa40-65f0b050584e\u003c/requestId\u003e\u003crouteTableSet\u003e\u003citem\u003e\u003crouteTableId\u003ertb-0c3623b89f8c9be2c\u003c/routeTableId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003crouteSet\u003e\u003citem\u003e\u003cdestinationCidrBlock\u003e10.77.0.0/16\u003c/destinationCidrBlock\u003e\u003cgatewayId\u003elocal\u003c/gatewayId\u003e\u003cstate\u003eactive\u003c/state\u003e\u003corigin\u003eCreateRouteTable\u003c/origin\u003e\u003c/item\u003e\u003c/routeSet\u003e\u003cassociationSet/\u003e\u003cpropagatingVgwSet/\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003citem\u003e\u003crouteTableId\u003ertb-0a2f3eafa3551219f\u003c/routeTableId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003crouteSet\u003e\u003citem\u003e\u003cdestinationCidrBlock\u003e10.77.0.0/16\u003c/destinationCidrBlock\u003e\u003cgatewayId\u003elocal\u003c/gatewayId\u003e\u003cstate\u003eactive\u003c/state\u003e\u003corigin\u003eCreateRouteTable\u003c/origin\u003e\u003c/item\u003e\u003c/routeSet\u003e\u003cassociationSet/\u003e\u003cpropagatingVgwSet\u003e\u003citem\u003e\u003cgatewayId\u003evgw-06425e3b619cedac1\u003c/gatewayId\u003e\u003c/item\u003e\u003c/propagatingVgwSet\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003c/routeTableSet\u003e\u003c/DescribeRouteTablesResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DisableVgwRoutePropagation",
+      "request": "Action=DisableVgwRoutePropagation\u0026GatewayId=vgw-06425e3b619cedac1\u0026RouteTableId=rtb-0a2f3eafa3551219f\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDisableVgwRoutePropagationResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e6007b072-1829-4fde-9b9d-b99351429496\u003c/requestId\u003e\u003creturn\u003etrue\u003c/return\u003e\u003c/DisableVgwRoutePropagationResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "EnableVgwRoutePropagation",
+      "request": "Action=EnableVgwRoutePropagation\u0026GatewayId=vgw-06425e3b619cedac1\u0026RouteTableId=rtb-0c3623b89f8c9be2c\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cEnableVgwRoutePropagationResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e2938a5ff-c534-4d6a-8dbb-2c1992be55d9\u003c/requestId\u003e\u003creturn\u003etrue\u003c/return\u003e\u003c/EnableVgwRoutePropagationResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeRouteTables",
+      "request": "Action=DescribeRouteTables\u0026Filter.1.Name=route-table-id\u0026Filter.1.Value.1=rtb-0a2f3eafa3551219f\u0026Filter.1.Value.2=rtb-0c3623b89f8c9be2c\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeRouteTablesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ef5b9665a-950f-4f14-9093-c611cb284782\u003c/requestId\u003e\u003crouteTableSet\u003e\u003citem\u003e\u003crouteTableId\u003ertb-0c3623b89f8c9be2c\u003c/routeTableId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003crouteSet\u003e\u003citem\u003e\u003cdestinationCidrBlock\u003e10.77.0.0/16\u003c/destinationCidrBlock\u003e\u003cgatewayId\u003elocal\u003c/gatewayId\u003e\u003cstate\u003eactive\u003c/state\u003e\u003corigin\u003eCreateRouteTable\u003c/origin\u003e\u003c/item\u003e\u003c/routeSet\u003e\u003cassociationSet/\u003e\u003cpropagatingVgwSet\u003e\u003citem\u003e\u003cgatewayId\u003evgw-06425e3b619cedac1\u003c/gatewayId\u003e\u003c/item\u003e\u003c/propagatingVgwSet\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003citem\u003e\u003crouteTableId\u003ertb-0a2f3eafa3551219f\u003c/routeTableId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003crouteSet\u003e\u003citem\u003e\u003cdestinationCidrBlock\u003e10.77.0.0/16\u003c/destinationCidrBlock\u003e\u003cgatewayId\u003elocal\u003c/gatewayId\u003e\u003cstate\u003eactive\u003c/state\u003e\u003corigin\u003eCreateRouteTable\u003c/origin\u003e\u003c/item\u003e\u003c/routeSet\u003e\u003cassociationSet/\u003e\u003cpropagatingVgwSet/\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003c/routeTableSet\u003e\u003c/DescribeRouteTablesResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeRouteTables",
+      "request": "Action=DescribeRouteTables\u0026Filter.1.Name=route-table-id\u0026Filter.1.Value.1=rtb-0a2f3eafa3551219f\u0026Filter.1.Value.2=rtb-0c3623b89f8c9be2c\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeRouteTablesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003eb41613f7-835e-491e-b118-a384c57ef314\u003c/requestId\u003e\u003crouteTableSet\u003e\u003citem\u003e\u003crouteTableId\u003ertb-0c3623b89f8c9be2c\u003c/routeTableId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003crouteSet\u003e\u003citem\u003e\u003cdestinationCidrBlock\u003e10.77.0.0/16\u003c/destinationCidrBlock\u003e\u003cgatewayId\u003elocal\u003c/gatewayId\u003e\u003cstate\u003eactive\u003c/state\u003e\u003corigin\u003eCreateRouteTable\u003c/origin\u003e\u003c/item\u003e\u003c/routeSet\u003e\u003cassociationSet/\u003e\u003cpropagatingVgwSet\u003e\u003citem\u003e\u003cgatewayId\u003evgw-06425e3b619cedac1\u003c/gatewayId\u003e\u003c/item\u003e\u003c/propagatingVgwSet\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003citem\u003e\u003crouteTableId\u003ertb-0a2f3eafa3551219f\u003c/routeTableId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003crouteSet\u003e\u003citem\u003e\u003cdestinationCidrBlock\u003e10.77.0.0/16\u003c/destinationCidrBlock\u003e\u003cgatewayId\u003elocal\u003c/gatewayId\u003e\u003cstate\u003eactive\u003c/state\u003e\u003corigin\u003eCreateRouteTable\u003c/origin\u003e\u003c/item\u003e\u003c/routeSet\u003e\u003cassociationSet/\u003e\u003cpropagatingVgwSet/\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003c/routeTableSet\u003e\u003c/DescribeRouteTablesResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DisableVgwRoutePropagation",
+      "request": "Action=DisableVgwRoutePropagation\u0026GatewayId=vgw-06425e3b619cedac1\u0026RouteTableId=rtb-0c3623b89f8c9be2c\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDisableVgwRoutePropagationResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e1e5f9e84-88bd-4619-be60-bce84a5fca6b\u003c/requestId\u003e\u003creturn\u003etrue\u003c/return\u003e\u003c/DisableVgwRoutePropagationResponse\u003e"
+    }
+  ]
+}
