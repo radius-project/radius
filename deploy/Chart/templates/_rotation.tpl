@@ -55,6 +55,7 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
   (ne (dig "metadata" "labels" "app.kubernetes.io/managed-by" "" $source) "Helm")
   (ne (index $annotations "meta.helm.sh/release-name") $.Release.Name)
   (ne (index $annotations "meta.helm.sh/release-namespace") $.Release.Namespace)
+  (ne (index $annotations "radius.io/certificate-mode") $state.mode)
   (ne (index $annotations "radius.io/trust-journal-uid") $journal.metadata.uid)
   (ne (index $annotations "radius.io/trust-revision") $revision)
   (ne (len $source.data) 1) (not (empty $source.binaryData)) (not (empty $source.stringData)) -}}

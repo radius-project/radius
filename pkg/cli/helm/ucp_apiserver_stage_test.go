@@ -409,7 +409,7 @@ func Test_UpgradeRadius_RequiresIndependentPublicSource(t *testing.T) {
 		c := newStageCluster(t, nil, true)
 		client := u.mock(t, 0, func() { t.Fatal("blocked bootstrap must stop Helm") })
 
-		require.ErrorIs(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=true"}), errCertificateObserverUnavailable)
+		require.ErrorIs(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=true"}), errFreshCertificateBootstrapUnavailable)
 		c.requireNotStaged(t)
 	})
 }

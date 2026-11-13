@@ -234,7 +234,7 @@ func TestCertificateRotationPlaneSelection(t *testing.T) {
 func TestLifecycleProjectionRevisionAndIdentity(t *testing.T) {
 	t.Parallel()
 	for _, phase := range []rotationPhase{rotationPublish, rotationComplete} {
-		for _, scenario := range []string{"unchanged", "metadata update", "replacement", "changed bundle", "foreign journal"} {
+		for _, scenario := range []string{"unchanged", "metadata update", "replacement", "changed bundle", "foreign journal", "changed mode"} {
 			t.Run(string(phase)+"/"+scenario, func(t *testing.T) {
 				t.Parallel()
 				state, journal := lifecycleFixture(t)
@@ -246,6 +246,7 @@ func TestLifecycleProjectionRevisionAndIdentity(t *testing.T) {
 				source := permanentPublicTrustSecret(plane.Source.Bundle)
 				source.UID, source.ResourceVersion = plane.Source.UID, plane.Source.ResourceVersion
 				source.Annotations[rotationJournalUID] = string(journal.UID)
+				source.Annotations["radius.io/certificate-mode"] = state.Mode
 				source.Annotations[rotationRevision] = state.ID + "/" + string(phase)
 				switch scenario {
 				case "metadata update":
@@ -257,6 +258,8 @@ func TestLifecycleProjectionRevisionAndIdentity(t *testing.T) {
 					source.Data[caCertificateKey] = plane.OldCA
 				case "foreign journal":
 					source.Annotations[rotationJournalUID] = "foreign"
+				case "changed mode":
+					source.Annotations["radius.io/certificate-mode"] = "issuerRef"
 				}
 				store := &rotationStore{kube: kubefake.NewClientset(source)}
 				err := store.checkLifecycleProjection(t.Context(), journal, state, "aggregation", plane)

@@ -42,6 +42,8 @@ const (
 	bootstrapNamespaceIntent = "radius.io/aggregation-bootstrap-intent"
 )
 
+var errFreshCertificateBootstrapUnavailable = errors.New("fresh certificate bootstrap requires the token/CSI two-stage public-source executor, which is not yet implemented; initial Kubernetes/cert-manager trust publication does not require authenticated workload observation")
+
 type aggregationBootstrapInstaller struct {
 	impl         *Impl
 	store        *rotationStore
@@ -529,7 +531,7 @@ func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterO
 	if !pending && (options.RadiusInstalled || options.RadiusReleaseValues != nil || found) {
 		return nil, nil
 	}
-	return nil, fmt.Errorf("fresh authorization-enabled bootstrap cannot complete its authenticated process-readiness barrier: %w", errCertificateObserverUnavailable)
+	return nil, errFreshCertificateBootstrapUnavailable
 }
 
 // prepareLegacyAggregationBootstrap is retained for recovery-format fixtures,

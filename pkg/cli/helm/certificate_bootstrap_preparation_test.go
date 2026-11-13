@@ -25,7 +25,7 @@ import (
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
-func TestBootstrapPreparationRejectsUnsupportedObservationBeforeWrites(t *testing.T) {
+func TestBootstrapPreparationRejectsMissingExecutorBeforeWrites(t *testing.T) {
 	t.Parallel()
 	for _, mode := range []string{"selfSigned", "caSecret", "issuerRef"} {
 		for _, provider := range []string{"radius", "external"} {
@@ -40,7 +40,8 @@ func TestBootstrapPreparationRejectsUnsupportedObservationBeforeWrites(t *testin
 				}}}
 				impl := &Impl{newRotationStore: func(string, string) (*rotationStore, error) { return store, nil }}
 				installer, err := impl.prepareAggregationBootstrap(t.Context(), NewDefaultClusterOptions(), selected, nil, values, "", nil)
-				require.ErrorIs(t, err, errCertificateObserverUnavailable)
+				require.ErrorIs(t, err, errFreshCertificateBootstrapUnavailable)
+				require.NotErrorIs(t, err, errCertificateObserverUnavailable)
 				require.Nil(t, installer)
 				for _, action := range store.kube.(*kubefake.Clientset).Actions() {
 					require.Contains(t, []string{"get", "list"}, action.GetVerb())

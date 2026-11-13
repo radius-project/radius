@@ -123,7 +123,8 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 		metadata := metav1.ObjectMeta{Name: plane.Source.Name, Namespace: state.Namespace,
 			Labels: map[string]string{helmManagedByLabel: helmManagedByValue},
 			Annotations: map[string]string{helmReleaseNameAnnotation: state.Release, helmReleaseNamespaceAnnotation: state.Namespace,
-				rotationJournalUID: string(journal.UID), rotationRevision: state.ID + "/complete"}}
+				"radius.io/certificate-mode": state.Mode,
+				rotationJournalUID:           string(journal.UID), rotationRevision: state.ID + "/complete"}}
 		if name == "internal" {
 			source, createErr := kube.CoreV1().ConfigMaps(state.Namespace).Create(t.Context(), &corev1.ConfigMap{
 				ObjectMeta: metadata, Data: map[string]string{caCertificateKey: string(plane.NewCA)},

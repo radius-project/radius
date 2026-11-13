@@ -391,6 +391,7 @@ func (s *rotationStore) checkLifecycleProjection(ctx context.Context, journal *c
 		metadata.GetLabels()[helmManagedByLabel] != helmManagedByValue ||
 		annotations[helmReleaseNameAnnotation] != state.Release ||
 		annotations[helmReleaseNamespaceAnnotation] != state.Namespace ||
+		annotations["radius.io/certificate-mode"] != state.Mode ||
 		annotations[rotationJournalUID] != string(journal.UID) ||
 		annotations[rotationRevision] != state.ID+"/"+string(state.Phase) ||
 		metadata.GetResourceVersion() == "" || plane.Source.UID != metadata.GetUID() ||

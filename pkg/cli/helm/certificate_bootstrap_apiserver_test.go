@@ -90,7 +90,7 @@ func TestBootstrapNativeInstallBlocksBeforeMutation(t *testing.T) {
 			return kube, extensions, nil
 		},
 	}
-	require.ErrorIs(t, impl.InstallRadius(ctx, options, "test"), errCertificateObserverUnavailable)
+	require.ErrorIs(t, impl.InstallRadius(ctx, options, "test"), errFreshCertificateBootstrapUnavailable)
 	secrets, err := s.kube.CoreV1().Secrets(s.namespace).List(ctx, metav1.ListOptions{})
 	require.NoError(t, err)
 	require.Len(t, secrets.Items, 1)

@@ -55,8 +55,8 @@ type PodTLSProof struct {
 	RestartCount int32
 }
 
-// ObserveTLSStartupProof reads bounded public evidence through the authenticated Kubernetes
-// exact-pod port-forward. It refuses redirects and verifies pod/container identity before and after the read.
+// ObserveTLSStartupProof refuses observation until a lawful CLI observer identity
+// is available. The legacy transport below is retained only for fixtures.
 func ObserveTLSStartupProof(ctx context.Context, config *rest.Config, target TLSProofTarget) (PodTLSProof, error) {
 	return PodTLSProof{}, errCertificateObserverUnavailable
 }
@@ -174,6 +174,14 @@ func proofContainer(pod *corev1.Pod, target TLSProofTarget) (corev1.ContainerSta
 }
 
 func decodeTLSProof(data []byte, evidence *mtls.StartupEvidence) error {
+	return decodeCertificateProof(data, evidence, []string{"schemaVersion", "ready", "proofKind", "podUid", "bootId", "initializedAt",
+		"trustBundleSha256", "caSha256", "leafSha256", "notBefore", "notAfter", "peerHandshakeVerified"})
+}
+
+func decodeCertificateProof(data []byte, evidence any, required []string) error {
+	if len(data) == 0 || len(data) > 8192 {
+		return errors.New("TLS proof is empty or exceeds its size limit")
+	}
 	// A map detects duplicate top-level names before typed decoding. Duplicate names
 	// could otherwise let different clients disagree about ready or identity.
 	decoder := json.NewDecoder(bytes.NewReader(data))
@@ -206,8 +214,7 @@ func decodeTLSProof(data []byte, evidence *mtls.StartupEvidence) error {
 	if _, err := decoder.Token(); err != io.EOF {
 		return errors.New("unexpected trailing TLS startup proof data")
 	}
-	for _, name := range []string{"schemaVersion", "ready", "proofKind", "podUid", "bootId", "initializedAt",
-		"trustBundleSha256", "caSha256", "leafSha256", "notBefore", "notAfter", "peerHandshakeVerified"} {
+	for _, name := range required {
 		if !names[name] {
 			return errors.New("missing TLS startup proof field")
 		}
