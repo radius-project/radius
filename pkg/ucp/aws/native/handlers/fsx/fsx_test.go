@@ -18,11 +18,13 @@ package fsx
 
 import (
 	"encoding/json"
+	"fmt"
 	"maps"
 	"os"
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"uuid"
 
@@ -110,8 +112,8 @@ func lustre(weeklyMaintenance string) map[string]any {
 	return map[string]any{
 		"FileSystemType":   "LUSTRE",
 		"StorageCapacity":  1200,
-		"SubnetIds":        []any{"subnet-0a1"},
-		"SecurityGroupIds": []any{"sg-0a1"},
+		"SubnetIds":        []any{"subnet-0a1b2c3d4"},
+		"SecurityGroupIds": []any{"sg-0a1b2c3d4"},
 		"KmsKeyId":         "1234abcd-12ab-34cd-56ef-1234567890ab",
 		"LustreConfiguration": map[string]any{
 			"DeploymentType":             "PERSISTENT_2",
@@ -119,6 +121,16 @@ func lustre(weeklyMaintenance string) map[string]any {
 			"WeeklyMaintenanceStartTime": weeklyMaintenance,
 		},
 		"Tags": tags("owner", "", "team", "a"),
+	}
+}
+
+// cloudControlCreate returns a Suite.CloudControlCreate that gives each file system Cloud Control creates an ID in
+// FSx's format, as FSx assigns it.
+func cloudControlCreate() func(properties map[string]any) (string, map[string]any) {
+	var n atomic.Int64
+	return func(properties map[string]any) (string, map[string]any) {
+		id := fmt.Sprintf("fs-c%016x", n.Add(1))
+		return id, with(properties, map[string]any{"Id": id})
 	}
 }
 
@@ -147,11 +159,13 @@ func Test_Suite_LustreFileSystem(t *testing.T) {
 			return fs.add(NewFileSystem(api), api)
 		},
 		IdentifierProperty: "Id",
+		CloudControlCreate: cloudControlCreate(),
+		API:                fileSystemAPI,
 		WriteOnly:          []string{"SecurityGroupIds"},
 		Properties:         properties,
 		Changed:            with(properties, map[string]any{"LustreConfiguration": lustre("2:05:00")["LustreConfiguration"]}),
 		Removable:          "Tags",
-		CreateOnlyChange:   with(properties, map[string]any{"SubnetIds": []any{"subnet-0b2"}}),
+		CreateOnlyChange:   with(properties, map[string]any{"SubnetIds": []any{"subnet-0b2c3d4e5"}}),
 		OtherForm:          map[string]any{"KmsKeyId": "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"},
 		RecordedForm: &nativetest.RecordedForm{
 			Property: "KmsKeyId",
@@ -176,8 +190,8 @@ func Test_Suite_OntapFileSystem(t *testing.T) {
 		return map[string]any{
 			"FileSystemType":   "ONTAP",
 			"StorageCapacity":  1024,
-			"SubnetIds":        []any{"subnet-0a1"},
-			"SecurityGroupIds": []any{"sg-0a1"},
+			"SubnetIds":        []any{"subnet-0a1b2c3d4"},
+			"SecurityGroupIds": []any{"sg-0a1b2c3d4"},
 			"OntapConfiguration": map[string]any{
 				"DeploymentType":     "SINGLE_AZ_1",
 				"ThroughputCapacity": throughput,
@@ -195,6 +209,8 @@ func Test_Suite_OntapFileSystem(t *testing.T) {
 			return fs.add(NewFileSystem(api), api)
 		},
 		IdentifierProperty: "Id",
+		CloudControlCreate: cloudControlCreate(),
+		API:                fileSystemAPI,
 		WriteOnly:          []string{"SecurityGroupIds", "OntapConfiguration/FsxAdminPassword"},
 		Properties:         properties,
 		Changed:            ontap(256, "Fsx-admin-one"),
@@ -219,8 +235,8 @@ func Test_Suite_WindowsFileSystem(t *testing.T) {
 		return map[string]any{
 			"FileSystemType":   "WINDOWS",
 			"StorageCapacity":  32,
-			"SubnetIds":        []any{"subnet-0a1"},
-			"SecurityGroupIds": []any{"sg-0a1"},
+			"SubnetIds":        []any{"subnet-0a1b2c3d4"},
+			"SecurityGroupIds": []any{"sg-0a1b2c3d4"},
 			"WindowsConfiguration": map[string]any{
 				"DeploymentType":     deployment,
 				"ThroughputCapacity": throughput,
@@ -243,6 +259,8 @@ func Test_Suite_WindowsFileSystem(t *testing.T) {
 			return fs.add(NewFileSystem(api), api)
 		},
 		IdentifierProperty: "Id",
+		CloudControlCreate: cloudControlCreate(),
+		API:                fileSystemAPI,
 		WriteOnly:          []string{"SecurityGroupIds", "WindowsConfiguration/SelfManagedActiveDirectoryConfiguration/Password"},
 		Properties:         properties,
 		Changed:            windows("SINGLE_AZ_2", 64, "Ad-join-one"),
@@ -316,7 +334,7 @@ func Test_DeleteRetryTakesOneBackup(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
 	h := NewFileSystem(api)
 	id := create(t, h, map[string]any{
-		"FileSystemType": "OPENZFS", "StorageCapacity": 64, "SubnetIds": []any{"subnet-0a1"},
+		"FileSystemType": "OPENZFS", "StorageCapacity": 64, "SubnetIds": []any{"subnet-0a1b2c3d4"},
 		"OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64},
 		"Tags":                 tags("team", "a"),
 	})
@@ -341,9 +359,12 @@ func Test_DeleteRetryTakesOneBackup(t *testing.T) {
 }
 
 func Test_FinalBackupByType(t *testing.T) {
-	base := map[string]any{"StorageCapacity": 1200, "SubnetIds": []any{"subnet-0a1"}}
+	base := map[string]any{"StorageCapacity": 1200, "SubnetIds": []any{"subnet-0a1b2c3d4"}}
 	lustre := func(deployment string, extra map[string]any) map[string]any {
 		config := map[string]any{"DeploymentType": deployment}
+		if throughput, ok := map[string]int{"PERSISTENT_1": 50, "PERSISTENT_2": 125}[deployment]; ok {
+			config["PerUnitStorageThroughput"] = throughput
+		}
 		maps.Copy(config, extra)
 		return with(base, map[string]any{"FileSystemType": "LUSTRE", "LustreConfiguration": config})
 	}
@@ -354,7 +375,7 @@ func Test_FinalBackupByType(t *testing.T) {
 		backup       bool
 	}{
 		{"Windows", with(base, map[string]any{"FileSystemType": "WINDOWS", "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}), 0, true},
-		{"OpenZFS", with(base, map[string]any{"FileSystemType": "OPENZFS", "OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1"}}), 0, true},
+		{"OpenZFS", with(base, map[string]any{"FileSystemType": "OPENZFS", "OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64}}), 0, true},
 		{"persistent Lustre", lustre("PERSISTENT_1", nil), 0, true},
 		{"persistent Lustre with no association", lustre("PERSISTENT_2", nil), 0, true},
 		{"persistent Lustre linked to S3 by an association", lustre("PERSISTENT_2", nil), 1, false},
@@ -381,9 +402,9 @@ func Test_FinalBackupByType(t *testing.T) {
 	t.Run("OpenZFS options the template set", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)
-		zfs := map[string]any{"DeploymentType": "SINGLE_AZ_1", "Options": []any{"DELETE_CHILD_VOLUMES_AND_SNAPSHOTS"}}
+		zfs := map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64, "Options": []any{"DELETE_CHILD_VOLUMES_AND_SNAPSHOTS"}}
 		withOptions := create(t, h, with(base, map[string]any{"FileSystemType": "OPENZFS", "OpenZFSConfiguration": zfs, "Tags": tags("team", "a")}))
-		without := create(t, h, with(base, map[string]any{"FileSystemType": "OPENZFS", "OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1"}}))
+		without := create(t, h, with(base, map[string]any{"FileSystemType": "OPENZFS", "OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64}}))
 
 		read, err := h.Read(t.Context(), testRegion, withOptions)
 		require.NoError(t, err)
@@ -441,7 +462,7 @@ func Test_FinalBackupFails(t *testing.T) {
 
 func Test_Create(t *testing.T) {
 	ontap := map[string]any{
-		"FileSystemType": "ONTAP", "StorageCapacity": 1024, "SubnetIds": []any{"subnet-0a1"},
+		"FileSystemType": "ONTAP", "StorageCapacity": 1024, "SubnetIds": []any{"subnet-0a1b2c3d4"},
 		"OntapConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 128, "FsxAdminPassword": "Fsx-admin-one"},
 	}
 	request := native.CreateRequest{Region: testRegion, Properties: jsonValue(t, ontap), ClientToken: "token-a"}
@@ -491,10 +512,25 @@ func Test_Create(t *testing.T) {
 		require.ErrorContains(t, err, "slow down")
 	})
 
+	t.Run("an ONTAP template with both agreeing throughput values, as a read gives them", func(t *testing.T) {
+		api := newFakeAPI(awsfake.NewCloudControl())
+		h := NewFileSystem(api)
+		both := with(ontap, map[string]any{"OntapConfiguration": map[string]any{
+			"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 256, "ThroughputCapacityPerHAPair": 256, "HAPairs": 1, "FsxAdminPassword": "Fsx-admin-one",
+		}})
+		id, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, both), ClientToken: "token-both"})
+		require.NoError(t, err, "FSx takes one of the two on create, so the handler sends only ThroughputCapacityPerHAPair")
+		fs, ok := api.fileSystem(id)
+		require.True(t, ok)
+		require.Equal(t, int32(256), aws.ToInt32(fs.OntapConfiguration.ThroughputCapacity))
+		require.Equal(t, int32(256), aws.ToInt32(fs.OntapConfiguration.ThroughputCapacityPerHAPair))
+	})
+
 	t.Run("restore from a backup", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)
-		restore := map[string]any{"FileSystemType": "LUSTRE", "BackupId": "backup-0a1", "SubnetIds": []any{"subnet-0a1"}, "Tags": tags("team", "a")}
+		api.addBackup("backup-0a1b2c3d4", jsonValue(t, lustre("1:05:00")))
+		restore := map[string]any{"FileSystemType": "LUSTRE", "BackupId": "backup-0a1b2c3d4", "SubnetIds": []any{"subnet-0a1b2c3d4"}, "Tags": tags("team", "a")}
 		id, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, restore), ClientToken: "token-r"})
 		require.NoError(t, err)
 		require.Contains(t, api.calls, "CreateFileSystemFromBackup")
@@ -546,11 +582,11 @@ func Test_Read_Passwords(t *testing.T) {
 	h := NewFileSystem(api)
 	ids := []string{
 		create(t, h, map[string]any{
-			"FileSystemType": "ONTAP", "StorageCapacity": 1024, "SubnetIds": []any{"subnet-0a1"},
+			"FileSystemType": "ONTAP", "StorageCapacity": 1024, "SubnetIds": []any{"subnet-0a1b2c3d4"},
 			"OntapConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 128, "FsxAdminPassword": "ontap-admin-secret"},
 		}),
 		create(t, h, map[string]any{
-			"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1"},
+			"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1b2c3d4"},
 			"WindowsConfiguration": map[string]any{
 				"ThroughputCapacity": 32, "Aliases": []any{"files.example.com"},
 				"SelfManagedActiveDirectoryConfiguration": map[string]any{
@@ -589,12 +625,15 @@ func Test_Read_Configurations(t *testing.T) {
 	h := NewFileSystem(api)
 	properties := []map[string]any{
 		{
-			"FileSystemType": "LUSTRE", "StorageCapacity": 1200, "SubnetIds": []any{"subnet-0a1"},
+			"FileSystemType": "LUSTRE", "StorageCapacity": 1200, "SubnetIds": []any{"subnet-0a1b2c3d4"},
 			"LustreConfiguration": map[string]any{"DeploymentType": "PERSISTENT_1", "PerUnitStorageThroughput": 50, "ImportPath": "s3://bucket/data", "DataCompressionType": "LZ4"},
 		},
 		{
-			"FileSystemType": "OPENZFS", "StorageCapacity": 64, "SubnetIds": []any{"subnet-0a1"},
-			"OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64, "RouteTableIds": []any{"rtb-1"}, "Options": []any{"DELETE_CHILD_VOLUMES_AND_SNAPSHOTS"}},
+			"FileSystemType": "OPENZFS", "StorageCapacity": 64, "SubnetIds": []any{"subnet-0a1b2c3d4"},
+			"OpenZFSConfiguration": map[string]any{
+				"DeploymentType": "MULTI_AZ_1", "ThroughputCapacity": 160, "PreferredSubnetId": "subnet-0a1b2c3d4", "RouteTableIds": []any{"rtb-0a1b2c3d1"},
+				"Options": []any{"DELETE_CHILD_VOLUMES_AND_SNAPSHOTS"},
+			},
 		},
 	}
 	for _, p := range properties {
@@ -602,7 +641,14 @@ func Test_Read_Configurations(t *testing.T) {
 		read, err := h.Read(t.Context(), testRegion, id)
 		require.NoError(t, err)
 		for k, v := range awsapi.Without(jsonValue(t, p), "OpenZFSConfiguration") {
-			require.Equal(t, v, read[k], k)
+			config, ok := v.(map[string]any)
+			if !ok {
+				require.Equal(t, v, read[k], k)
+				continue
+			}
+			for name, value := range config {
+				require.Equal(t, value, asMap(read[k])[name], k+"/"+name, "AWS adds the defaults of what the template leaves out")
+			}
 		}
 		require.Equal(t, id, read["Id"])
 		require.Equal(t, arnPrefix+id, read["ResourceARN"])
@@ -611,20 +657,27 @@ func Test_Read_Configurations(t *testing.T) {
 	require.NoError(t, err)
 	zfs := listed[1].Properties
 	require.Equal(t, "fsvol-0123", zfs["RootVolumeId"])
-	require.Equal(t, map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64.0, "RouteTableIds": []any{"rtb-1"}}, zfs["OpenZFSConfiguration"], "Options is write-only")
+	config := asMap(zfs["OpenZFSConfiguration"])
+	require.NotContains(t, config, "Options", "Options is write-only")
+	for name, value := range map[string]any{"DeploymentType": "MULTI_AZ_1", "ThroughputCapacity": 160.0, "PreferredSubnetId": "subnet-0a1b2c3d4", "RouteTableIds": []any{"rtb-0a1b2c3d1"}} {
+		require.Equal(t, value, config[name], name)
+	}
 	require.Equal(t, "abcdef", listed[0].Properties["LustreMountName"])
 }
 
 func Test_Update(t *testing.T) {
 	ontap := func(extra map[string]any) map[string]any {
-		config := map[string]any{"DeploymentType": "MULTI_AZ_1", "ThroughputCapacity": 128, "FsxAdminPassword": "Fsx-admin-one", "RouteTableIds": []any{"rtb-1", "rtb-2"}}
+		config := map[string]any{
+			"DeploymentType": "MULTI_AZ_1", "PreferredSubnetId": "subnet-0a1b2c3d4", "ThroughputCapacity": 128, "FsxAdminPassword": "Fsx-admin-one",
+			"RouteTableIds": []any{"rtb-0a1b2c3d1", "rtb-0a1b2c3d2"},
+		}
 		maps.Copy(config, extra)
-		return map[string]any{"FileSystemType": "ONTAP", "StorageCapacity": 1024, "SubnetIds": []any{"subnet-0a1", "subnet-0b2"}, "OntapConfiguration": config}
+		return map[string]any{"FileSystemType": "ONTAP", "StorageCapacity": 1024, "SubnetIds": []any{"subnet-0a1b2c3d4", "subnet-0b2c3d4e5"}, "OntapConfiguration": config}
 	}
 	windows := func(extra map[string]any) map[string]any {
 		ad := map[string]any{"DomainName": "example.com", "UserName": "joiner", "Password": "ad-one", "DnsIps": []any{"10.0.0.1"}}
 		maps.Copy(ad, extra)
-		return map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1"},
+		return map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1b2c3d4"},
 			"WindowsConfiguration": map[string]any{"ThroughputCapacity": 32, "SelfManagedActiveDirectoryConfiguration": ad}}
 	}
 	tests := []struct {
@@ -637,9 +690,9 @@ func Test_Update(t *testing.T) {
 		{
 			name:    "route tables and a changed admin password",
 			base:    ontap(nil),
-			desired: ontap(map[string]any{"RouteTableIds": []any{"rtb-2", "rtb-3"}, "FsxAdminPassword": "Fsx-admin-two"}),
+			desired: ontap(map[string]any{"RouteTableIds": []any{"rtb-0a1b2c3d2", "rtb-0a1b2c3d3"}, "FsxAdminPassword": "Fsx-admin-two"}),
 			want: &fsx.UpdateFileSystemInput{OntapConfiguration: &types.UpdateFileSystemOntapConfiguration{
-				AddRouteTableIds: []string{"rtb-3"}, RemoveRouteTableIds: []string{"rtb-1"}, FsxAdminPassword: aws.String("Fsx-admin-two"),
+				AddRouteTableIds: []string{"rtb-0a1b2c3d3"}, RemoveRouteTableIds: []string{"rtb-0a1b2c3d1"}, FsxAdminPassword: aws.String("Fsx-admin-two"),
 			}},
 		},
 		{
@@ -648,6 +701,13 @@ func Test_Update(t *testing.T) {
 			desired: ontap(map[string]any{"ThroughputCapacity": 256}),
 			unsent:  []string{"OntapConfiguration/FsxAdminPassword"},
 			want:    &fsx.UpdateFileSystemInput{OntapConfiguration: &types.UpdateFileSystemOntapConfiguration{ThroughputCapacity: aws.Int32(256)}},
+		},
+		{
+			name:    "a throughput capacity set both as a total and per HA pair is sent once",
+			base:    ontap(nil),
+			desired: ontap(map[string]any{"ThroughputCapacity": 256, "ThroughputCapacityPerHAPair": 256}),
+			unsent:  []string{"OntapConfiguration/FsxAdminPassword"},
+			want:    &fsx.UpdateFileSystemInput{OntapConfiguration: &types.UpdateFileSystemOntapConfiguration{ThroughputCapacityPerHAPair: aws.Int32(256)}},
 		},
 		{
 			name:    "a removed property keeps AWS's value",
@@ -708,7 +768,7 @@ func Test_Update(t *testing.T) {
 	t.Run("errors", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)
-		require.ErrorIs(t, h.Update(t.Context(), native.UpdateRequest{Region: testRegion, Identifier: "fs-missing"}), native.ErrNotFound)
+		require.ErrorIs(t, h.Update(t.Context(), native.UpdateRequest{Region: testRegion, Identifier: "fs-00000000deadbeef"}), native.ErrNotFound)
 		id := create(t, h, lustre("1:05:00"))
 		err := h.Update(t.Context(), native.UpdateRequest{Region: testRegion, Identifier: id, Desired: map[string]any{"StorageCapacity": "big"},
 			Patch: jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/StorageCapacity"}}})
@@ -720,7 +780,7 @@ func Test_Progress(t *testing.T) {
 	t.Run("an update waits for its administrative action, but not for an optimization", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)
-		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
+		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1b2c3d4"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
 		id := create(t, h, base)
 		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"StorageCapacity": 64})))
 		progress, err := h.Progress(t.Context(), testRegion, id, native.OperationUpdate)
@@ -734,28 +794,28 @@ func Test_Progress(t *testing.T) {
 	t.Run("an update whose administrative action fails", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)
-		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
+		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1b2c3d4"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
 		id := create(t, h, base)
 		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"StorageCapacity": 64})))
 		require.Nil(t, finish(t, h, id, native.OperationUpdate).Failure)
 
 		api.failUpdate = "The throughput capacity is not supported."
-		desired := with(base, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 4096}})
+		desired := with(base, map[string]any{"StorageCapacity": 64, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 4608}})
 		require.NoError(t, update(t, h, id, base, desired))
 		progress := finish(t, h, id, native.OperationUpdate)
 		require.Equal(t, "FSx failed the FILE_SYSTEM_UPDATE: The throughput capacity is not supported.", progress.Failure.Message)
 
-		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"StorageCapacity": 128})))
+		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"StorageCapacity": 64, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 64}})))
 		require.Nil(t, finish(t, h, id, native.OperationUpdate).Failure, "a later update that succeeds is done, though an earlier one failed")
 	})
 
 	t.Run("an update with no calls after one that failed", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)
-		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
+		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1b2c3d4"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
 		id := create(t, h, base)
 		api.failUpdate = "The throughput capacity is not supported."
-		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 4096}})))
+		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 4608}})))
 		require.NotNil(t, finish(t, h, id, native.OperationUpdate).Failure)
 
 		api.calls = nil
@@ -769,10 +829,10 @@ func Test_Progress(t *testing.T) {
 	t.Run("an update with no administrative action after one that failed", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)
-		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
+		base := map[string]any{"FileSystemType": "WINDOWS", "StorageCapacity": 32, "SubnetIds": []any{"subnet-0a1b2c3d4"}, "WindowsConfiguration": map[string]any{"ThroughputCapacity": 32}}
 		id := create(t, h, base)
 		api.failUpdate = "The throughput capacity is not supported."
-		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 4096}})))
+		require.NoError(t, update(t, h, id, base, with(base, map[string]any{"WindowsConfiguration": map[string]any{"ThroughputCapacity": 4608}})))
 		require.NotNil(t, finish(t, h, id, native.OperationUpdate).Failure)
 
 		tagged := with(base, map[string]any{"Tags": tags("env", "dev")})
@@ -817,7 +877,7 @@ func Test_Progress(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, `AWS reports the file system as "MISCONFIGURED"`, progress.Failure.Message)
 
-		_, err = h.Progress(t.Context(), testRegion, "fs-missing", native.OperationCreate)
+		_, err = h.Progress(t.Context(), testRegion, "fs-00000000deadbeef", native.OperationCreate)
 		require.ErrorIs(t, err, native.ErrNotFound)
 	})
 }
@@ -827,11 +887,11 @@ func Test_ReadErrors(t *testing.T) {
 	h := NewFileSystem(api)
 	create(t, h, lustre("1:05:00"))
 	api.errs["DescribeFileSystems"] = fault("ThrottlingException", "slow down")
-	_, err := h.Read(t.Context(), testRegion, "fs-1")
+	_, err := h.Read(t.Context(), testRegion, "fs-00000000000000001")
 	require.ErrorContains(t, err, "slow down")
 	_, err = h.List(t.Context(), testRegion)
 	require.ErrorContains(t, err, "slow down")
-	_, err = NewFileSystem(noFileSystem{api}).Read(t.Context(), testRegion, "fs-1")
+	_, err = NewFileSystem(noFileSystem{api}).Read(t.Context(), testRegion, "fs-00000000000000001")
 	require.ErrorIs(t, err, native.ErrNotFound)
 }
 
@@ -908,7 +968,7 @@ func Test_UpdatesEveryUpdatableProperty(t *testing.T) {
 // with one is rejected before any change, so a template can't hide a failed update or choose how a delete removes
 // child volumes.
 func Test_ReservedTags(t *testing.T) {
-	base := map[string]any{"FileSystemType": "OPENZFS", "StorageCapacity": 64, "SubnetIds": []any{"subnet-0a1"}, "OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64}}
+	base := map[string]any{"FileSystemType": "OPENZFS", "StorageCapacity": 64, "SubnetIds": []any{"subnet-0a1b2c3d4"}, "OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64}}
 	requireRejected := func(t *testing.T, err error, key string) {
 		t.Helper()
 		var failure *native.Failure
@@ -953,4 +1013,36 @@ func Test_ReservedTags(t *testing.T) {
 		require.NoError(t, h.Delete(t.Context(), testRegion, id))
 		require.Nil(t, api.deleteOptions[id], "the delete sends no options the template didn't set as Options")
 	})
+}
+
+func Test_OneThroughput(t *testing.T) {
+	tests := []struct {
+		name    string
+		current map[string]any
+		desired map[string]any
+		want    map[string]any
+	}{
+		{
+			name: "no HA pairs counts as one",
+			want: map[string]any{"ThroughputCapacityPerHAPair": 512.0},
+		},
+		{
+			name:    "the template's HA pairs",
+			current: map[string]any{"HAPairs": 1.0},
+			desired: map[string]any{"HAPairs": 2.0},
+			want:    map[string]any{"ThroughputCapacity": 512.0, "ThroughputCapacityPerHAPair": 512.0},
+		},
+		{
+			name:    "AWS's HA pairs when the template leaves them out",
+			current: map[string]any{"HAPairs": 2.0},
+			want:    map[string]any{"ThroughputCapacity": 512.0, "ThroughputCapacityPerHAPair": 512.0},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := map[string]any{"ThroughputCapacity": 512.0, "ThroughputCapacityPerHAPair": 512.0}
+			oneThroughput(out, tt.current, tt.desired)
+			require.Equal(t, tt.want, out)
+		})
+	}
 }
