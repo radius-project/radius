@@ -39,6 +39,7 @@ import (
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -127,7 +128,7 @@ func validateCASecretName(name string) error {
 		return fmt.Errorf("CA Secret must have a valid Kubernetes Secret name")
 	}
 	switch name {
-	case "radius-ca", "ucp-cert", "ucp-mtls", "applications-rp-mtls", "dynamic-rp-mtls", "controller-mtls", "bicep-de-mtls":
+	case "radius-ca", "radius-apiserver-ca", "radius-apiserver-trust", "ucp-cert", "ucp-apiserver-tls", "ucp-mtls", "applications-rp-mtls", "dynamic-rp-mtls", "controller-mtls", "bicep-de-mtls":
 		return fmt.Errorf("CA Secret must not name a Radius-managed certificate Secret")
 	}
 	return nil
@@ -154,6 +155,13 @@ func validateSigningCA(certPEM, keyPEM []byte, now time.Time) (*x509.Certificate
 }
 
 func validatePublicCA(certPEM []byte, now time.Time) (*x509.Certificate, error) {
+	public, err := parseCertificateBundlePEM(certPEM)
+	if err != nil {
+		return nil, fmt.Errorf("CA certificate must contain only PEM certificates: %w", err)
+	}
+	if len(public) != 1 {
+		return nil, fmt.Errorf("CA trust bundle must contain exactly one dedicated signing CA certificate, without its parent chain")
+	}
 	certs, err := parseSigningCertificates(certPEM, now)
 	if err != nil {
 		return nil, err
@@ -165,20 +173,16 @@ func validatePublicCA(certPEM []byte, now time.Time) (*x509.Certificate, error) 
 }
 
 func parseSigningCertificates(certPEM []byte, now time.Time) ([]*x509.Certificate, error) {
-	var certs []*x509.Certificate
-	for rest := bytes.TrimSpace(certPEM); len(rest) > 0; {
-		if !bytes.HasPrefix(rest, []byte("-----BEGIN CERTIFICATE-----")) {
-			return nil, fmt.Errorf("CA certificate must contain only PEM certificates")
+	certs, err := parseCertificateBundlePEM(certPEM)
+	if err != nil {
+		return nil, fmt.Errorf("CA certificate must contain only PEM certificates without malformed PEM: %w", err)
+	}
+	seen := map[string]bool{}
+	for _, cert := range certs {
+		if seen[string(cert.Raw)] {
+			return nil, fmt.Errorf("CA certificate chain contains a duplicate certificate")
 		}
-		block, remaining := pem.Decode(rest)
-		if block == nil || block.Type != "CERTIFICATE" || len(block.Headers) != 0 ||
-			bytes.Count(rest[:len(rest)-len(remaining)], []byte("-----BEGIN ")) != 1 {
-			return nil, fmt.Errorf("CA certificate contains malformed PEM")
-		}
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return nil, fmt.Errorf("CA certificate contains invalid X.509 data")
-		}
+		seen[string(cert.Raw)] = true
 		if !cert.IsCA || !cert.BasicConstraintsValid || cert.KeyUsage&x509.KeyUsageCertSign == 0 {
 			return nil, fmt.Errorf("CA certificate requires CA basic constraints and certificate signing key usage")
 		}
@@ -200,11 +204,6 @@ func parseSigningCertificates(certPEM []byte, now time.Time) ([]*x509.Certificat
 		if len(cert.UnhandledCriticalExtensions) > 0 {
 			return nil, fmt.Errorf("CA certificate has unsupported critical extensions")
 		}
-		certs = append(certs, cert)
-		rest = bytes.TrimSpace(remaining)
-	}
-	if len(certs) == 0 {
-		return nil, fmt.Errorf("CA certificate PEM is empty")
 	}
 	for index := 1; index < len(certs); index++ {
 		if !bytes.Equal(certs[index-1].RawIssuer, certs[index].RawSubject) {
@@ -228,9 +227,13 @@ func parseSigningCertificates(certPEM []byte, now time.Time) ([]*x509.Certificat
 }
 
 type certificatePlan struct {
-	client    kubernetes.Interface
-	namespace string
-	secret    *corev1.Secret
+	client        kubernetes.Interface
+	namespace     string
+	secret        *corev1.Secret
+	beforeWrite   func(context.Context) error
+	requiresLease bool
+	signingSecret *corev1.Secret
+	chain         []*x509.Certificate
 }
 
 func (i *Impl) certificateClient(kubeContext string) (kubernetes.Interface, error) {
@@ -288,6 +291,62 @@ func setCertificateValues(values map[string]any, certificates map[string]any) {
 // prepareCertificates performs all certificate checks without changing the cluster. Only public
 // certificate values are added to current; signing material stays in the returned in-memory plan.
 func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, defaults, current map[string]any, kubeContext string, installed bool) (*certificatePlan, error) {
+	plan, err := i.prepareCertificateSelection(ctx, options, defaults, current, kubeContext)
+	if err != nil {
+		return nil, err
+	}
+	if installed {
+		if err := unchangedCertificateSelection(options.RadiusReleaseValues, current); err != nil {
+			return nil, err
+		}
+		if plan != nil && plan.secret != nil {
+			return nil, fmt.Errorf("an installed signing Secret is missing; recover it or use coordinated CA migration")
+		}
+	}
+	return plan, nil
+}
+
+func unchangedCertificateSelection(stored, current map[string]any) error {
+	if certificateMode(stored) != certificateMode(current) {
+		return fmt.Errorf("certificate mode changes require coordinated CA migration; keep the installed mode")
+	}
+	switch certificateMode(current) {
+	case "caSecret":
+		if certificateValues(stored)["caSecret"] != certificateValues(current)["caSecret"] {
+			return fmt.Errorf("changing the signing Secret requires coordinated CA migration")
+		}
+	case "issuerRef":
+		oldIssuer, err := issuerReference(certificateValues(stored))
+		if err != nil {
+			return fmt.Errorf("stored issuer reference is invalid; recover its pinned settings before upgrading: %w", err)
+		}
+		newIssuer, err := issuerReference(certificateValues(current))
+		if err != nil {
+			return err
+		}
+		if oldIssuer != newIssuer {
+			return fmt.Errorf("changing the certificate issuer requires coordinated CA migration")
+		}
+	default:
+		return nil
+	}
+	ca, err := validatePublicCA([]byte(stringValue(certificateValues(current)["caBundle"])), time.Now())
+	if err != nil {
+		return err
+	}
+	if !sameCACertificate(stringValue(certificateValues(stored)["caBundle"]), ca) {
+		return fmt.Errorf("changing or recovering CA trust requires coordinated CA migration; preserve the stored dedicated CA")
+	}
+	return nil
+}
+
+func stringValue(value any) string {
+	text, _ := value.(string)
+	return text
+}
+
+// prepareCertificateSelection validates the desired selection without authorizing a transition.
+func (i *Impl) prepareCertificateSelection(ctx context.Context, options ClusterOptions, defaults, current map[string]any, kubeContext string) (*certificatePlan, error) {
 	o := options.Certificates
 	if err := o.Validate(); err != nil {
 		return nil, err
@@ -306,6 +365,19 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 	}
 	merged := valuesutil.CoalesceTables(copyValues(current), copyValues(stored))
 	merged = valuesutil.CoalesceTables(merged, copyValues(defaults))
+	if certificateValues(current)["mode"] == "selfSigned" && certificateMode(stored) != "selfSigned" {
+		settings := copyValues(certificateValues(merged))
+		for _, field := range []string{"caSecret", "caBundle"} {
+			if _, explicit := certificateValues(current)[field]; !explicit {
+				settings[field] = ""
+			}
+		}
+		if _, explicit := certificateValues(current)["issuerRef"]; !explicit {
+			settings["issuerRef"] = map[string]any{"group": "cert-manager.io", "kind": "Issuer", "name": ""}
+		}
+		setCertificateValues(merged, settings)
+		setCertificateValues(current, copyValues(settings))
+	}
 	var certPEM, keyPEM []byte
 	var signingCA *x509.Certificate
 	secretName := o.CASecret
@@ -343,6 +415,7 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 		}
 		settings := copyValues(certificateValues(merged))
 		settings["mode"] = "issuerRef"
+		delete(settings, "caSecret")
 		settings["issuerRef"] = map[string]any{"group": issuer.Group, "kind": issuer.Kind, "name": issuer.Name}
 		if o.CABundle != "" {
 			publicPEM, err := os.ReadFile(o.CABundle)
@@ -350,7 +423,7 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 				return nil, fmt.Errorf("cannot read --ca-bundle file")
 			}
 			settings["caBundle"] = string(publicPEM)
-		} else if !installed {
+		} else if options.RadiusReleaseValues == nil {
 			return nil, fmt.Errorf("--cert-issuer requires --ca-bundle for a fresh installation")
 		}
 		setCertificateValues(merged, settings)
@@ -359,13 +432,13 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 	if mode != "selfSigned" && mode != "caSecret" && mode != "issuerRef" {
 		return nil, fmt.Errorf("unsupported certificate mode; use selfSigned, caSecret or issuerRef")
 	}
-	if installed && certificateMode(stored) != mode {
-		return nil, fmt.Errorf("certificate mode changes require coordinated CA migration; keep the installed mode")
-	}
 	settings := certificateValues(merged)
 	if mode == "selfSigned" {
 		if settings["caSecret"] != nil && settings["caSecret"] != "" || settings["caBundle"] != nil && settings["caBundle"] != "" {
 			return nil, fmt.Errorf("CA Secret and bundle require certificate mode caSecret or issuerRef")
+		}
+		if ref, ok := settings["issuerRef"].(map[string]any); ok && stringValue(ref["name"]) != "" {
+			return nil, fmt.Errorf("an external issuer reference requires certificate mode issuerRef")
 		}
 		return nil, nil
 	}
@@ -377,7 +450,7 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 		return nil, fmt.Errorf("dedicated CA certificates require global.rbac.dryRun=true or global.rbac.enabled=true")
 	}
 	if mode == "issuerRef" {
-		return nil, i.prepareIssuerCertificates(settings, stored, current, installed)
+		return nil, i.prepareIssuerCertificates(settings, current)
 	}
 	secretName, ok := settings["caSecret"].(string)
 	if !ok || secretName == "" {
@@ -386,16 +459,13 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 	if err := validateCASecretName(secretName); err != nil {
 		return nil, err
 	}
-	if installed && certificateValues(stored)["caSecret"] != secretName {
-		return nil, fmt.Errorf("changing the signing Secret requires coordinated CA migration")
-	}
 	client, err := i.certificateClient(kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create certificate Kubernetes client: %w", err)
 	}
 	plan := &certificatePlan{client: client, namespace: options.Radius.Namespace}
 	existing, err := client.CoreV1().Secrets(plan.namespace).Get(ctx, secretName, metav1.GetOptions{})
-	if err != nil && (!apierrors.IsNotFound(err) || o.CACert == "" || installed) {
+	if err != nil && (!apierrors.IsNotFound(err) || o.CACert == "") {
 		return nil, fmt.Errorf("cannot read signing CA Secret %s/%s; check that it exists and that access is permitted", plan.namespace, secretName)
 	}
 	if err == nil {
@@ -406,6 +476,7 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 			return nil, fmt.Errorf("imported CA Secret already exists with different content; it will not be overwritten")
 		}
 		certPEM, keyPEM = existing.Data[corev1.TLSCertKey], existing.Data[corev1.TLSPrivateKeyKey]
+		plan.signingSecret = existing.DeepCopy()
 	} else {
 		plan.secret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: plan.namespace},
@@ -417,23 +488,22 @@ func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, 
 	if err != nil {
 		return nil, err
 	}
-	bundle := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: signingCA.Raw}))
-	if installed && certificateValues(stored)["caBundle"] == nil {
-		return nil, fmt.Errorf("stored dedicated CA trust is missing; recover the prior public CA bundle before upgrading instead of adopting current Secret contents")
+	plan.chain, err = parseSigningCertificates(certPEM, time.Now())
+	if err != nil {
+		return nil, err
 	}
+	bundle := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: signingCA.Raw}))
 	// Explicit Helm bundles and stored trust must identify exactly this CA, even if PEM whitespace differs.
-	for _, values := range []map[string]any{current, stored} {
-		if raw, exists := certificateValues(values)["caBundle"]; exists {
-			text, ok := raw.(string)
-			if !ok || !sameCACertificate(text, signingCA) {
-				return nil, fmt.Errorf("CA trust bundle must contain exactly the dedicated signing CA; changing trust requires coordinated CA migration")
-			}
+	if raw, exists := certificateValues(current)["caBundle"]; exists {
+		text, ok := raw.(string)
+		if !ok || !sameCACertificate(text, signingCA) {
+			return nil, fmt.Errorf("CA trust bundle must contain exactly the dedicated signing CA; changing trust requires coordinated CA migration")
 		}
 	}
 	if o.CACert == "" && o.CASecret == "" {
 		raw, ok := settings["caBundle"].(string)
 		if !ok || !sameCACertificate(raw, signingCA) {
-			return nil, fmt.Errorf("CA trust bundle must contain exactly the dedicated signing CA")
+			return nil, fmt.Errorf("CA trust bundle must contain exactly the dedicated signing CA; changing trust requires coordinated CA migration")
 		}
 	}
 	setCertificateValues(current, map[string]any{"mode": "caSecret", "caSecret": secretName, "caBundle": strings.TrimSpace(bundle)})
@@ -463,7 +533,7 @@ func issuerReference(settings map[string]any) (certificateIssuerReference, error
 	return parseCertificateIssuer(kind + "/" + name)
 }
 
-func (i *Impl) prepareIssuerCertificates(settings, stored, current map[string]any, installed bool) error {
+func (i *Impl) prepareIssuerCertificates(settings, current map[string]any) error {
 	if settings["caSecret"] != nil && settings["caSecret"] != "" {
 		return fmt.Errorf("issuerRef must not specify a signing Secret; the private key stays with the external issuer")
 	}
@@ -479,20 +549,6 @@ func (i *Impl) prepareIssuerCertificates(settings, stored, current map[string]an
 	if err != nil {
 		return err
 	}
-	if installed {
-		old := certificateValues(stored)
-		oldIssuer, err := issuerReference(old)
-		if err != nil {
-			return fmt.Errorf("stored issuer reference is invalid; recover its pinned settings before upgrading: %w", err)
-		}
-		if oldIssuer != issuer {
-			return fmt.Errorf("changing the certificate issuer requires coordinated CA migration")
-		}
-		oldBundle, ok := old["caBundle"].(string)
-		if !ok || !sameCACertificate(oldBundle, ca) {
-			return fmt.Errorf("changing or recovering CA trust requires coordinated CA migration; preserve the stored dedicated CA")
-		}
-	}
 	pinned := copyValues(settings)
 	pinned["issuerRef"] = map[string]any{"group": issuer.Group, "kind": issuer.Kind, "name": issuer.Name}
 	pinned["caBundle"] = strings.TrimSpace(string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Raw})))
@@ -506,7 +562,8 @@ func (i *Impl) prepareIssuerCertificates(settings, stored, current map[string]an
 // checkIssuerPolicy renders the actual selected chart with live lookups, but no resource or release writes.
 // The chart, not a second CLI policy evaluator, verifies the operator-managed issuer prerequisites.
 func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) error {
-	if certificateMode(current) != "issuerRef" {
+	mode := certificateMode(current)
+	if mode == "selfSigned" {
 		return nil
 	}
 	found := false
@@ -520,47 +577,61 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 	if !found {
 		return fmt.Errorf("selected Radius chart has no shared live issuer-policy verifier; use a chart supporting issuerRef")
 	}
+	client, err := i.certificateClient(kubeContext)
+	if err != nil {
+		return fmt.Errorf("cannot create cainjector prerequisite client: %w", err)
+	}
+	inspect := true
+	if mode == "caSecret" {
+		newClients := i.newCertManagerClients
+		if newClients == nil {
+			newClients = newCertManagerClients
+		}
+		kubeClient, extensionClient, err := newClients(kubeContext)
+		if err != nil {
+			return fmt.Errorf("cannot inspect cert-manager before CA installation: %w", err)
+		}
+		installation, err := detectCertManager(ctx, kubeClient, extensionClient)
+		if err != nil {
+			return err
+		}
+		inspect = installation.Installed
+		client = kubeClient
+	}
+	if inspect {
+		if _, err := inspectCAInjectorPrerequisites(ctx, client, options.Radius.Namespace); err != nil {
+			return fmt.Errorf("live issuer-policy verification failed: %w", err)
+		}
+	}
+	var history []*releasev1.Release
+	if installed {
+		history, err = i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
+		if err != nil {
+			return fmt.Errorf("cannot read Radius history for live issuer-policy verification: %w", err)
+		}
+		baseline, err := certificatePolicyBaseline(options, history)
+		if err != nil {
+			return err
+		}
+		previous := valuesutil.CoalesceTables(copyValues(baseline.Config), copyValues(baseline.Chart.Values))
+		if err := unchangedCertificateSelection(previous, current); err != nil {
+			return fmt.Errorf("the installed chart selects different certificate settings; changing issuers requires coordinated CA migration: %w", err)
+		}
+	}
+	return i.renderCertificatePolicy(ctx, options, selected, current, kubeContext, history)
+}
+
+// renderCertificatePolicy proves the chosen target against live chart policy and a
+// baseline history snapshot. It never authorizes or applies a target transition.
+func (i *Impl) renderCertificatePolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, history []*releasev1.Release) error {
 	configuration, err := i.cluster().RenderConfiguration(kubeContext, options.Radius.Namespace)
 	if err != nil {
 		return fmt.Errorf("cannot configure live issuer-policy verification: %w", err)
 	}
 	renderedChart := cloneChart(selected)
-	if installed {
-		history, historyErr := i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
-		if historyErr != nil {
-			return fmt.Errorf("cannot read Radius history for live issuer-policy verification: %w", historyErr)
-		}
-		// Select the same revision as Helm, and reject concurrent changes rather than proving stale settings.
-		latest, deployed := -1, -1
-		for index, revision := range history {
-			if revision == nil {
-				continue
-			}
-			if latest < 0 || revision.Version > history[latest].Version {
-				latest = index
-			}
-			if revisionStatus(revision) == releasecommon.StatusDeployed && (deployed < 0 || revision.Version > history[deployed].Version) {
-				deployed = index
-			}
-		}
-		if latest < 0 {
-			return fmt.Errorf("Radius release history is empty; recover the installed release before issuer-policy verification")
-		}
-		baseline := history[latest]
-		if revisionStatus(baseline) != releasecommon.StatusDeployed && deployed >= 0 {
-			baseline = history[deployed]
-		}
-		if !reflect.DeepEqual(copyValues(baseline.Config), copyValues(options.RadiusReleaseValues)) {
-			return fmt.Errorf("stored Radius settings changed since preflight; retry to validate the current issuer, trust and policy scope")
-		}
-		if baseline.Chart == nil {
-			return fmt.Errorf("stored Radius chart is missing; recover the installed issuer settings before upgrading")
-		}
-		previous := valuesutil.CoalesceTables(copyValues(baseline.Config), copyValues(baseline.Chart.Values))
-		oldIssuer, oldErr := issuerReference(certificateValues(previous))
-		newIssuer, newErr := issuerReference(certificateValues(current))
-		if oldErr != nil || newErr != nil || certificateMode(previous) != "issuerRef" || oldIssuer != newIssuer {
-			return fmt.Errorf("the installed chart selects a different certificate issuer; changing issuers requires coordinated CA migration")
+	if history != nil {
+		if _, err := certificatePolicyBaseline(options, history); err != nil {
+			return err
 		}
 		configuration.Releases, err = releaseHistoryStorage(history)
 		if err != nil {
@@ -580,22 +651,59 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 	return nil
 }
 
-func sameCACertificate(text string, signingCA *x509.Certificate) bool {
-	trimmed := strings.TrimSpace(text)
-	if !strings.HasPrefix(trimmed, "-----BEGIN CERTIFICATE-----") || strings.Count(trimmed, "-----BEGIN ") != 1 {
-		return false
+func certificatePolicyBaseline(options ClusterOptions, history []*releasev1.Release) (*releasev1.Release, error) {
+	latest, deployed := -1, -1
+	for index, revision := range history {
+		if revision == nil {
+			continue
+		}
+		if latest < 0 || revision.Version > history[latest].Version {
+			latest = index
+		}
+		if revisionStatus(revision) == releasecommon.StatusDeployed && (deployed < 0 || revision.Version > history[deployed].Version) {
+			deployed = index
+		}
 	}
-	block, rest := pem.Decode([]byte(trimmed))
-	return block != nil && block.Type == "CERTIFICATE" && len(block.Headers) == 0 &&
-		len(bytes.TrimSpace(rest)) == 0 && bytes.Equal(block.Bytes, signingCA.Raw)
+	if latest < 0 {
+		return nil, fmt.Errorf("Radius release history is empty; recover the installed release before issuer-policy verification")
+	}
+	baseline := history[latest]
+	if revisionStatus(baseline) != releasecommon.StatusDeployed && deployed >= 0 {
+		baseline = history[deployed]
+	}
+	if !reflect.DeepEqual(copyValues(baseline.Config), copyValues(options.RadiusReleaseValues)) {
+		return nil, fmt.Errorf("stored Radius settings changed since preflight; retry to validate the current issuer, trust and policy scope")
+	}
+	if baseline.Chart == nil {
+		return nil, fmt.Errorf("stored Radius chart is missing; recover the installed issuer settings before upgrading")
+	}
+	return baseline, nil
+}
+
+func sameCACertificate(text string, signingCA *x509.Certificate) bool {
+	certs, err := parseCertificateBundlePEM([]byte(text))
+	return err == nil && len(certs) == 1 && bytes.Equal(certs[0].Raw, signingCA.Raw)
 }
 
 func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) error {
 	if plan == nil || plan.secret == nil {
 		return nil
 	}
+	if plan.requiresLease && plan.beforeWrite == nil {
+		return fmt.Errorf("certificate import for a transition requires the lifecycle's active Lease write guard")
+	}
+	if plan.beforeWrite != nil {
+		if err := plan.beforeWrite(ctx); err != nil {
+			return fmt.Errorf("certificate import write guard: %w", err)
+		}
+	}
 	_, err := plan.client.CoreV1().Namespaces().Get(ctx, plan.namespace, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
+		if plan.beforeWrite != nil {
+			if err := plan.beforeWrite(ctx); err != nil {
+				return fmt.Errorf("certificate import namespace write guard: %w", err)
+			}
+		}
 		_, err = plan.client.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: plan.namespace}}, metav1.CreateOptions{})
 		if apierrors.IsAlreadyExists(err) {
 			err = nil
@@ -603,6 +711,11 @@ func (i *Impl) applyCertificatePlan(ctx context.Context, plan *certificatePlan) 
 	}
 	if err != nil {
 		return fmt.Errorf("cannot prepare namespace for imported CA Secret; check namespace permissions")
+	}
+	if plan.beforeWrite != nil {
+		if err := plan.beforeWrite(ctx); err != nil {
+			return fmt.Errorf("certificate import Secret write guard: %w", err)
+		}
 	}
 	_, err = plan.client.CoreV1().Secrets(plan.namespace).Create(ctx, plan.secret, metav1.CreateOptions{})
 	if err != nil {
@@ -619,7 +732,7 @@ func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptio
 	if err != nil {
 		return err
 	}
-	if _, err := i.prepareCertificates(ctx, options, chart.Values, current, kubeContext, true); err != nil {
+	if _, _, err := i.prepareSelectedCertificates(ctx, options, chart, current, kubeContext, true); err != nil {
 		return err
 	}
 	return i.checkIssuerPolicy(ctx, options, chart, configuration, current, kubeContext, true)

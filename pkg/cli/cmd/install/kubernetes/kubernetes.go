@@ -63,13 +63,18 @@ When Radius is installed but Contour is not, or the latest Contour release revis
 For authorization-enabled installations, use '--ca-secret' for an existing dedicated signing CA
 or '--ca-cert' with '--ca-key' to import one. The key is stored only in a create-only Kubernetes
 Secret outside Helm ownership, retained on failure and uninstall. Without these flags the chart
-uses its self-signed CA. Use '--cert-issuer Issuer/name' or 'ClusterIssuer/name' with '--ca-bundle'
+uses its self-signed CAs. Use '--cert-issuer Issuer/name' or 'ClusterIssuer/name' with '--ca-bundle'
 for an existing external issuer and exactly one public dedicated CA certificate, without its
 key or parent chain. This requires an operator-provisioned Radius namespace, controllers,
 admission webhooks and bounded request policies. Live verification runs before any changes;
 Radius never installs or reconfigures those issuer prerequisites.
 Reinstall preserves stored certificate settings; switching modes, issuers or trust requires
 coordinated CA migration.
+Certificate flags apply to both TLS providers: internal SPIFFE server identities and UCP's
+aggregation DNS certificate with provider radius, or aggregation DNS only with provider external.
+CA validation checks the selected profiles and supplied parent constraints; it does not prove
+that an external backend will issue them. Public trust staging and convergence require the paired
+certificate lifecycle implementation.
 `,
 		Example: `# Install Radius with default settings in current Kubernetes context
 rad install kubernetes
