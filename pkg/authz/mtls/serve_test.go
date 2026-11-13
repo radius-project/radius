@@ -401,16 +401,12 @@ func TestServe_Off(t *testing.T) {
 	require.Empty(t, srv.logs.All())
 }
 
-// registerDefaultServeMux registers the test handler once, so -count > 1 doesn't panic.
-var registerDefaultServeMux sync.Once
-
 func TestServe_NilHandlerUsesDefaultServeMux(t *testing.T) {
 	t.Parallel()
-	const path = "/mtls-test/default-serve-mux"
-	registerDefaultServeMux.Do(func() {
-		http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusTeapot)
-		})
+	// Repeated runs share DefaultServeMux, so each invocation needs its own route.
+	path := "/mtls-test/default-serve-mux/" + rand.Text()
+	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
 	})
 
 	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {

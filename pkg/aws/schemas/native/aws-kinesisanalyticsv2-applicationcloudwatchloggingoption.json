@@ -1,0 +1,62 @@
+{
+  "typeName": "AWS::KinesisAnalyticsV2::ApplicationCloudWatchLoggingOption",
+  "description": "Resource Type definition for AWS::KinesisAnalyticsV2::ApplicationCloudWatchLoggingOption",
+  "additionalProperties": false,
+  "properties": {
+    "Id": {
+      "type": "string",
+      "description": "ApplicationName and the logging option ID AWS assigns, joined with \"|\"."
+    },
+    "ApplicationName": {
+      "type": "string"
+    },
+    "CloudWatchLoggingOption": {
+      "$ref": "#/definitions/CloudWatchLoggingOption"
+    }
+  },
+  "definitions": {
+    "CloudWatchLoggingOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "LogStreamARN": {
+          "type": "string"
+        }
+      },
+      "required": ["LogStreamARN"]
+    }
+  },
+  "required": ["CloudWatchLoggingOption", "ApplicationName"],
+  "createOnlyProperties": ["/properties/ApplicationName"],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "kinesisanalytics:AddApplicationCloudWatchLoggingOption",
+        "kinesisanalytics:DescribeApplication"
+      ]
+    },
+    "read": {
+      "permissions": ["kinesisanalytics:DescribeApplication"]
+    },
+    "update": {
+      "permissions": [
+        "kinesisanalytics:DescribeApplication",
+        "kinesisanalytics:UpdateApplication"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "kinesisanalytics:DeleteApplicationCloudWatchLoggingOption",
+        "kinesisanalytics:DescribeApplication"
+      ]
+    },
+    "list": {
+      "permissions": [
+        "kinesisanalytics:DescribeApplication",
+        "kinesisanalytics:ListApplications"
+      ]
+    }
+  }
+}

@@ -51,8 +51,38 @@ type DeploymentTemplateStatus struct {
 	// Operation tracks the status of an in-progress provisioning operation.
 	Operation *ResourceOperation `json:"operation,omitempty"`
 
+	// Coordinator persists dispatch intent and output inventory independently of the operation resume token.
+	Coordinator *DeploymentCoordinatorStatus `json:"coordinator,omitempty"`
+
 	// Phrase indicates the current status of the Deployment Template.
 	Phrase DeploymentTemplatePhrase `json:"phrase,omitempty"`
+}
+
+// DeploymentCoordinatorStatus records durable deployment intent and output ownership.
+type DeploymentCoordinatorStatus struct {
+	// Phase is Idle, PutDispatching, PutRunning, PutInventoryPending, DeleteDispatching, DeleteRunning, RetryWaiting, or Blocked.
+	Phase string `json:"phase,omitempty"`
+
+	Outputs []DeploymentOutputStatus `json:"outputs,omitempty"`
+
+	// ResourceID identifies the active delete target or stable deployment PUT ID.
+	ResourceID string `json:"resourceID,omitempty"`
+
+	SubmittedHash string `json:"submittedHash,omitempty"`
+
+	// Message explains a blocked or failed operation.
+	Message string `json:"message,omitempty"`
+
+	// RetryAfter prevents retry dispatch before the persisted deadline.
+	RetryAfter *metav1.Time `json:"retryAfter,omitempty"`
+}
+
+// DeploymentOutputStatus tracks an output retained by the deployment coordinator.
+type DeploymentOutputStatus struct {
+	ID string `json:"id"`
+
+	// State is Current or PendingDelete.
+	State string `json:"state"`
 }
 
 // DeploymentTemplatePhrase is a string representation of the current status of a Deployment Template.

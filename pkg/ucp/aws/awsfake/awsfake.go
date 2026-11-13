@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -80,6 +81,16 @@ type CloudControl struct {
 	// its value; otherwise the fake assigns an identifier, like AWS does for a VPC.
 	Identifiers map[string]string
 
+	// Assign maps a type to how the fake names a new resource of it, for a type whose identifier includes a value AWS
+	// assigns, such as an association ID. It returns the identifier and the properties to store, or "" to fall back to
+	// IdentifierOf and Identifiers.
+	Assign map[string]func(properties map[string]any) (string, map[string]any)
+
+	// IdentifierOf maps a type to the function that computes its identifier from its properties, for a type whose
+	// identifier is more than one property. It takes the place of Identifiers for the type, and returns "" when the
+	// properties don't give all of it.
+	IdentifierOf map[string]func(properties map[string]any) string
+
 	// WriteOnly maps a type to the paths of its write-only properties, which GetResource never returns, like AWS. "*"
 	// matches every array item.
 	WriteOnly map[string][]string
@@ -106,13 +117,15 @@ type CloudControl struct {
 // NewCloudControl returns an empty CloudControl.
 func NewCloudControl() *CloudControl {
 	return &CloudControl{
-		resources:   map[string]map[string]any{},
-		requests:    map[string]*request{},
-		tokens:      map[string]clientRequest{},
-		Identifiers: map[string]string{},
-		WriteOnly:   map[string][]string{},
-		Errors:      map[string]error{},
-		Before:      map[string]func(){},
+		resources:    map[string]map[string]any{},
+		requests:     map[string]*request{},
+		tokens:       map[string]clientRequest{},
+		Identifiers:  map[string]string{},
+		IdentifierOf: map[string]func(map[string]any) string{},
+		WriteOnly:    map[string][]string{},
+		Assign:       map[string]func(map[string]any) (string, map[string]any){},
+		Errors:       map[string]error{},
+		Before:       map[string]func(){},
 	}
 }
 
@@ -132,6 +145,90 @@ func (c *CloudControl) Resource(typeName string, identifier string) map[string]a
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return clone(c.resources[key(typeName, identifier)])
+}
+
+// Read returns a resource without its write-only values, as GetResource does, and whether it exists. It is not
+// recorded as a call. A native handler fake uses it, so both handlers see the same resources.
+func (c *CloudControl) Read(typeName string, identifier string) (map[string]any, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	props, ok := c.resources[key(typeName, identifier)]
+	if !ok {
+		return nil, false
+	}
+	props = clone(props)
+	for _, p := range c.WriteOnly[typeName] {
+		removePath(props, strings.Split(p, "/"))
+	}
+	return props, true
+}
+
+// Create stores a new resource and returns its identifier: the value of the type's identifier property, or one the
+// fake assigns, as CreateResource does. It is not recorded as a call.
+func (c *CloudControl) Create(typeName string, properties map[string]any) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	identifier, properties := c.name(typeName, properties)
+	c.resources[key(typeName, identifier)] = clone(properties)
+	return identifier
+}
+
+// name returns the identifier of a new resource with properties, and the properties to store: as Assign says for the
+// type, or the value of its identifier property, or one the fake assigns.
+func (c *CloudControl) name(typeName string, properties map[string]any) (string, map[string]any) {
+	if assign := c.Assign[typeName]; assign != nil {
+		if identifier, assigned := assign(properties); identifier != "" {
+			return identifier, assigned
+		}
+	}
+	identifier := c.identifierOf(typeName, properties)
+	if identifier == "" {
+		c.next++
+		identifier = "id-" + strconv.Itoa(c.next)
+	}
+	return identifier, properties
+}
+
+// identifierOf returns the identifier properties give for typeName, or "" when they don't give it.
+func (c *CloudControl) identifierOf(typeName string, properties map[string]any) string {
+	if f := c.IdentifierOf[typeName]; f != nil {
+		return f(properties)
+	}
+	identifier, _ := properties[c.Identifiers[typeName]].(string)
+	return identifier
+}
+
+// Patch applies JSON patch operations to a resource, as UpdateResource does. It is not recorded as a call.
+func (c *CloudControl) Patch(typeName string, identifier string, patch []map[string]any) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	props, ok := c.resources[key(typeName, identifier)]
+	if !ok {
+		return &cctypes.ResourceNotFoundException{Message: aws.String("not found")}
+	}
+	updated := clone(props)
+	for _, op := range patch {
+		if err := applyOperation(updated, op); err != nil {
+			return err
+		}
+	}
+	c.resources[key(typeName, identifier)] = updated
+	return nil
+}
+
+// List returns the identifiers of the resources of a type.
+func (c *CloudControl) List(typeName string) []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	prefix := strings.ToLower(typeName) + "|"
+	out := []string{}
+	for k := range c.resources {
+		if identifier, ok := strings.CutPrefix(k, prefix); ok {
+			out = append(out, identifier)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // Remove deletes a resource, as if it was deleted outside Radius.
@@ -249,11 +346,7 @@ func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.
 	if err := json.Unmarshal([]byte(aws.ToString(params.DesiredState)), &props); err != nil {
 		return nil, err
 	}
-	identifier, _ := props[c.Identifiers[typeName]].(string)
-	if identifier == "" {
-		c.next++
-		identifier = "id-" + strconv.Itoa(c.next)
-	}
+	identifier, props := c.name(typeName, props)
 	token := c.accept(cctypes.OperationCreate, typeName, identifier)
 	if c.requests[token].failure == nil {
 		c.resources[key(typeName, identifier)] = props
@@ -351,9 +444,16 @@ func (c *CloudControl) GetResourceRequestStatus(ctx context.Context, params *clo
 	return &cloudcontrol.GetResourceRequestStatusOutput{ProgressEvent: event}, nil
 }
 
-// ListResources is not supported.
+// ListResources returns every resource of the type, in one page.
 func (c *CloudControl) ListResources(ctx context.Context, params *cloudcontrol.ListResourcesInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourcesOutput, error) {
-	return nil, fmt.Errorf("ListResources is not supported by the fake")
+	typeName := aws.ToString(params.TypeName)
+	out := &cloudcontrol.ListResourcesOutput{TypeName: params.TypeName}
+	for _, identifier := range c.List(typeName) {
+		props, _ := c.Read(typeName, identifier)
+		b, _ := json.Marshal(props)
+		out.ResourceDescriptions = append(out.ResourceDescriptions, cctypes.ResourceDescription{Identifier: aws.String(identifier), Properties: aws.String(string(b))})
+	}
+	return out, nil
 }
 
 // CancelResourceRequest is not supported.

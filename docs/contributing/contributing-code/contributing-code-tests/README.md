@@ -39,6 +39,8 @@ To compile every test without running them, use `make test-compile`.
 
 For the opt-in user-facing RBAC prototype, see [Testing the user RBAC prototype](./user-rbac-poc.md). It builds this checkout into a dedicated kind cluster and exercises authenticated real API requests; it is not part of the default functional suite.
 
+Unit tests run on Linux in CI. To check that Go code and tests also compile and pass `go vet` on Windows, run `make lint-go-windows`. It runs `GOOS=windows go vet ./...` for amd64; set `WINDOWS_VET_ARCHS="amd64 arm64"` to add arm64. Files that cannot build on Windows, such as envtest-based tests, use `//go:build !windows`. This check catches compile errors only, not runtime bugs such as using `path` instead of `path/filepath` on OS paths.
+
 ### Integration tests
 
 Integration tests exercise a feature together with its dependencies. In Radius they live alongside the unit tests under `./pkg/...` rather than in a separate tree, and they run as part of `make test`. They use in-memory servers and data stores instead of a deployed control plane, which keeps them fast and self-contained. Examples:
@@ -90,11 +92,13 @@ When you are iterating on control-plane images (for example the applications res
 
 #### RBAC policy storage
 
-Run fast policy checks with `go test -race ./pkg/ucp/authorization ./pkg/components/database/inmemory -short -count=1`. For the full 10,000-assignment/1,000-role capacity checks, run:
+Run fast policy checks with `go test -race ./pkg/ucp/authorization ./pkg/components/database/inmemory -short -count=1`. To check that a policy at the full 10,000-assignment/1,000-role limit fits the storage layout, run:
 
 ```bash
-go test -race ./pkg/ucp/authorization -run '^(TestPolicyStoreManifestCapacity|TestPolicyCacheRateLimitedCapacity)$' -count=1 -v
+go test -race ./pkg/ucp/authorization -run '^TestPolicyStoreManifestCapacity$' -count=1 -v
 ```
+
+That test only writes the full-size policy, because decoding it under `-race` takes minutes. `TestPolicyStoreRecordLimits` checks limit rejection with small limits, and `TestPolicyCacheRateLimitedRefresh` checks the refresh read path on a multi-page policy.
 
 Assignment metadata regressions cover description and principal display-label updates, clearing optional metadata, history and generation changes, identical-PUT idempotency, and preservation of identity and ownership. Only metadata is mutable; changing the assignment's role or principal identity still requires a different assignment.
 
@@ -104,7 +108,7 @@ History regressions cover updating and deleting maximum-sized initialized assign
 go test -race ./pkg/ucp/authorization -run '^(TestPolicyStoreMaximumHistorySnapshots|TestPolicyStoreBootstrapHistoryCapacity)$' -count=1
 ```
 
-The manifest reports 86 index pages and an anchor smaller than 1 KiB. Cold-cache and changed-generation refreshes each use 174 GETs. The fake-clock rate limiter checks the deterministic 870 ms throttling cost at 200 QPS/200 burst with the burst exhausted; it does not gate race-instrumented validation on wall-clock time. Separate fake-clock tests enforce the unchanged thirty-second freshness boundary. Immutable payload chunks split at 128 entries or 128 KiB; manifests validate their IDs, kinds, entry counts and generation. A root holds at most 128 chunks, so large entries can exhaust this bound before reaching the role/assignment count limits; oversized data fails explicitly with `PolicyCapacityExceeded`.
+The full-size manifest has 86 index pages and an anchor smaller than 1 KiB. Cold-cache and changed-generation refreshes each use one GET for the anchor, one for the root, and two per page, so the full-size policy needs 174 GETs. The fake-clock rate limiter checks the deterministic throttling cost (870 ms at full size) at 200 QPS/200 burst with the burst exhausted; it does not gate race-instrumented validation on wall-clock time. Separate fake-clock tests enforce the unchanged thirty-second freshness boundary. Immutable payload chunks split at 128 entries or 128 KiB; manifests validate their IDs, kinds, entry counts and generation. A root holds at most 128 chunks, so large entries can exhaust this bound before reaching the role/assignment count limits; oversized data fails explicitly with `PolicyCapacityExceeded`.
 
 Policy-load regressions retain unregistered permissions for inspection and remediation but exclude them from grants; role writes still reject unknown permissions. Bootstrap tests start with no assignments, require the trusted Kubernetes settings guard outside `Enforce`, and publish guard-provided Bootstrap administrators atomically with settings. The same generation's audit includes each newly added full assignment resource in `after.roleAssignments`, including its ID, principal and Bootstrap provenance; it is a delta, not the policy inventory. Repeated guard identities do not create duplicate deltas, and same-mode additions and recovery preserve them. Standalone assignment changes retain singular `roleAssignment` snapshots. In `Enforce`, the Radius settings permission remains mandatory. Bootstrap-only policies allow additive changes and authorized same-tuple promotion to permanent ownership; once a permanent administrator exists, its last grant cannot be removed.
 

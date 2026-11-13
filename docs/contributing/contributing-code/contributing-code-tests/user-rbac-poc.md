@@ -4,7 +4,7 @@
 
 Test read-only access, environment restrictions, custom roles, revocation, and administrator protection from the [RBAC feature spec](../../../../eng/design-notes/security/2026-09-built-in-rbac-feature-spec.md#key-scenarios).
 
-Both user and internal RBAC are enforced. Internal component authentication uses the token stack (draft PRs #13725, #13726, #13728, #13729, at `84a4bed8d`): each internal call carries a projected ServiceAccount token whose audience is the receiver, and the receiver takes the caller's component name only from the verified token. Use only a disposable local cluster: the deployment engine cannot send a token yet, so UCP identifies it by pod IP, and component read/shared-store isolation is incomplete.
+Both user and internal RBAC are enforced. Internal component authentication uses the token stack (draft PRs #13725, #13726, #13728, #13729, at `326322bff`): each internal call carries a projected ServiceAccount token whose audience is the receiver, and the receiver takes the caller's component name only from the verified token. Use only a disposable local cluster: the deployment engine cannot send a token yet, so UCP identifies it by pod IP, and component read/shared-store isolation is incomplete.
 
 `RBAC_POC_INTERNAL_MODE` selects internal authorization: `enforce` (default), `dryRun`, or `off`. Only `enforce` runs the whole `test` suite. In `dryRun`, user RBAC works in Disabled and DryRun modes, but switching it to Enforce fails with `ComponentProtocolNotEnforced`. `off` also turns user RBAC off. Each `test` run needs a fresh cluster because authorization can be initialized only once.
 

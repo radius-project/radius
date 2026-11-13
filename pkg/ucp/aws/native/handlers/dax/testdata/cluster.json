@@ -1,0 +1,371 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_DAX_ROLE_ARN": "arn:aws:iam::123456789012:role/radius-rec-rc899e-dax",
+    "RADIUS_REC_DAX_SUBNET_GROUP": "radius-rec-rc899e",
+    "RADIUS_REC_RUN": "rc899e",
+    "RADIUS_REC_SECURITY_GROUP": "sg-025abd55fc53a734b"
+  },
+  "interactions": [
+    {
+      "service": "DAX",
+      "operation": "CreateCluster",
+      "request": "{\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NodeType\":\"dax.t3.small\",\"ReplicationFactor\":1,\"SecurityGroupIds\":[\"sg-025abd55fc53a734b\"],\"SubnetGroupName\":\"radius-rec-rc899e\",\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Port\":8111},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"creating\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":1,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"Nodes\":[{\"AvailabilityZone\":\"us-west-2b\",\"Endpoint\":{\"Address\":\"radius-rec-rc899e-a.ojxp5e.nodes.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111},\"NodeCreateTime\":1.793859968535E9,\"NodeId\":\"radius-rec-rc899e-a\",\"NodeStatus\":\"available\",\"ParameterGroupStatus\":\"in-sync\"}],\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"available\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":1,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"Nodes\":[{\"AvailabilityZone\":\"us-west-2b\",\"Endpoint\":{\"Address\":\"radius-rec-rc899e-a.ojxp5e.nodes.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111},\"NodeCreateTime\":1.793859968535E9,\"NodeId\":\"radius-rec-rc899e-a\",\"NodeStatus\":\"available\",\"ParameterGroupStatus\":\"in-sync\"}],\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"available\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "ListTags",
+      "request": "{\"ResourceName\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":1,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"Nodes\":[{\"AvailabilityZone\":\"us-west-2b\",\"Endpoint\":{\"Address\":\"radius-rec-rc899e-a.ojxp5e.nodes.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111},\"NodeCreateTime\":1.793859968535E9,\"NodeId\":\"radius-rec-rc899e-a\",\"NodeStatus\":\"available\",\"ParameterGroupStatus\":\"in-sync\"}],\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"available\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "UpdateCluster",
+      "request": "{\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"ActiveNodes\":1,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"Nodes\":[{\"AvailabilityZone\":\"us-west-2b\",\"Endpoint\":{\"Address\":\"radius-rec-rc899e-a.ojxp5e.nodes.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111},\"NodeCreateTime\":1.793859968535E9,\"NodeId\":\"radius-rec-rc899e-a\",\"NodeStatus\":\"available\",\"ParameterGroupStatus\":\"in-sync\"}],\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"available\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":1,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"Nodes\":[{\"AvailabilityZone\":\"us-west-2b\",\"Endpoint\":{\"Address\":\"radius-rec-rc899e-a.ojxp5e.nodes.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111},\"NodeCreateTime\":1.793859968535E9,\"NodeId\":\"radius-rec-rc899e-a\",\"NodeStatus\":\"available\",\"ParameterGroupStatus\":\"in-sync\"}],\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"available\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":1,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"Nodes\":[{\"AvailabilityZone\":\"us-west-2b\",\"Endpoint\":{\"Address\":\"radius-rec-rc899e-a.ojxp5e.nodes.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111},\"NodeCreateTime\":1.793859968535E9,\"NodeId\":\"radius-rec-rc899e-a\",\"NodeStatus\":\"available\",\"ParameterGroupStatus\":\"in-sync\"}],\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"available\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "ListTags",
+      "request": "{\"ResourceName\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DeleteCluster",
+      "request": "{\"ClusterName\":\"radius-rec-rc899e\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Cluster\":{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterDiscoveryEndpoint\":{\"Address\":\"radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\",\"Port\":8111,\"URL\":\"dax://radius-rec-rc899e.ojxp5e.dax-clusters.us-west-2.amazonaws.com\"},\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"NodeType\":\"dax.t3.small\",\"ParameterGroup\":{\"NodeIdsToReboot\":[],\"ParameterApplyStatus\":\"in-sync\",\"ParameterGroupName\":\"default.dax1.0\"},\"PreferredMaintenanceWindow\":\"mon:13:00-mon:14:00\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"SecurityGroups\":[{\"SecurityGroupIdentifier\":\"sg-025abd55fc53a734b\",\"Status\":\"active\"}],\"Status\":\"deleting\",\"SubnetGroup\":\"radius-rec-rc899e\",\"TotalNodes\":1}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Clusters\":[{\"ActiveNodes\":0,\"ClusterArn\":\"arn:aws:dax:us-west-2:123456789012:cache/radius-rec-rc899e\",\"ClusterEndpointEncryptionType\":\"NONE\",\"ClusterName\":\"radius-rec-rc899e\",\"Description\":\"radius recording\",\"IamRoleArn\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-dax\",\"NetworkType\":\"ipv4\",\"SSEDescription\":{\"Status\":\"DISABLED\"},\"Status\":\"deleting\",\"TotalNodes\":0}]}"
+    },
+    {
+      "service": "DAX",
+      "operation": "DescribeClusters",
+      "request": "{\"ClusterNames\":[\"radius-rec-rc899e\"]}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"ClusterNotFoundFault\",\"message\":\"Cluster radius-rec-rc899e not found.\"}"
+    }
+  ]
+}

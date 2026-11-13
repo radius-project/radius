@@ -1,0 +1,340 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_RUN": "rc899e",
+    "RADIUS_REC_SECURITY_GROUP": "sg-025abd55fc53a734b",
+    "RADIUS_REC_SUBNET": "subnet-0a25e6291b3a86d5e"
+  },
+  "interactions": [
+    {
+      "service": "FSx",
+      "operation": "CreateFileSystem",
+      "request": "{\"ClientRequestToken\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\",\"FileSystemType\":\"OPENZFS\",\"OpenZFSConfiguration\":{\"AutomaticBackupRetentionDays\":0,\"DeploymentType\":\"SINGLE_AZ_1\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"SecurityGroupIds\":[\"sg-025abd55fc53a734b\"],\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"},{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystem\":{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"CREATING\",\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"CREATING\",\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"CREATING\",\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"CREATING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"CREATING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"CREATING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"CREATING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"CREATING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"CREATING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"CREATING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"AVAILABLE\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"AVAILABLE\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"AVAILABLE\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"1:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "UpdateFileSystem",
+      "request": "{\"ClientRequestToken\":\"2a591202-9491-4892-b880-bfc9ffe46fcd\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"OpenZFSConfiguration\":{\"AutomaticBackupRetentionDays\":0,\"WeeklyMaintenanceStartTime\":\"2:05:00\"}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystem\":{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"AVAILABLE\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}}"
+    },
+    {
+      "service": "FSx",
+      "operation": "TagResource",
+      "request": "{\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"Tags\":[{\"Key\":\"stage\",\"Value\":\"updated\"}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"AVAILABLE\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"AVAILABLE\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"AVAILABLE\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DeleteFileSystem",
+      "request": "{\"ClientRequestToken\":\"693c816b-bbaa-4c48-b99c-eecdc2027c77\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"OpenZFSConfiguration\":{\"FinalBackupTags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"SkipFinalBackup\":false}}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"Lifecycle\":\"DELETING\",\"OpenZFSResponse\":{\"FinalBackupId\":\"backup-038b829633b4af3c9\"}}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"FileSystems\":[{\"CreationTime\":1.793861454915E9,\"DNSName\":\"fs-089a7cf3c8cc70ead.fsx.us-west-2.amazonaws.com\",\"FileSystemId\":\"fs-089a7cf3c8cc70ead\",\"FileSystemType\":\"OPENZFS\",\"KmsKeyId\":\"arn:aws:kms:us-west-2:123456789012:key/edc2e1b2-12f7-4d77-94dd-92c24bad85e3\",\"Lifecycle\":\"DELETING\",\"NetworkInterfaceIds\":[\"eni-01f9e5855d2d31d27\"],\"NetworkType\":\"IPV4\",\"OpenZFSConfiguration\":{\"CopyTagsToBackups\":false,\"CopyTagsToVolumes\":false,\"DeploymentType\":\"SINGLE_AZ_1\",\"DiskIopsConfiguration\":{\"Iops\":192,\"Mode\":\"AUTOMATIC\"},\"RootVolumeId\":\"fsvol-059a034711dfbc9cb\",\"ThroughputCapacity\":64,\"WeeklyMaintenanceStartTime\":\"2:05:00\"},\"OwnerId\":\"123456789012\",\"ResourceARN\":\"arn:aws:fsx:us-west-2:123456789012:file-system/fs-089a7cf3c8cc70ead\",\"StorageCapacity\":64,\"StorageType\":\"SSD\",\"SubnetIds\":[\"subnet-0a25e6291b3a86d5e\"],\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"radius-operation-id\",\"Value\":\"b140b23a-024f-45f4-8d70-a601dbeb8444\"},{\"Key\":\"stage\",\"Value\":\"updated\"},{\"Key\":\"Name\",\"Value\":\"radius-rec-rc899e-zfs\"}],\"VpcId\":\"vpc-05ed4309b07dc6f99\"}]}"
+    },
+    {
+      "service": "FSx",
+      "operation": "DescribeFileSystems",
+      "request": "{\"FileSystemIds\":[\"fs-089a7cf3c8cc70ead\"]}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"FileSystemNotFound\",\"Message\":\"File system 'fs-089a7cf3c8cc70ead' does not exist.\"}"
+    }
+  ]
+}

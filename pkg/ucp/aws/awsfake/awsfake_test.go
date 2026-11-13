@@ -169,8 +169,6 @@ func Test_FailuresHooksAndErrors(t *testing.T) {
 	_, err = c.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{})
 	require.ErrorIs(t, err, boom)
 
-	_, err = c.ListResources(ctx, nil)
-	require.Error(t, err)
 	_, err = c.CancelResourceRequest(ctx, nil)
 	require.Error(t, err)
 	_, err = c.ListResourceRequests(ctx, nil)
@@ -249,4 +247,18 @@ func Test_AppendArrayItem(t *testing.T) {
 		PatchDocument: aws.String(`[{"op":"add","path":"/Outer/0/List/-","value":"x"}]`),
 	})
 	require.Error(t, err)
+}
+
+func Test_ListResources(t *testing.T) {
+	c := NewCloudControl()
+	c.WriteOnly["AWS::Test::T"] = []string{"Secret"}
+	c.Put("AWS::Test::T", "b", map[string]any{"Name": "b", "Secret": "s"})
+	c.Put("AWS::Test::T", "a", map[string]any{"Name": "a"})
+	c.Put("AWS::Test::Other", "x", map[string]any{})
+
+	out, err := c.ListResources(t.Context(), &cloudcontrol.ListResourcesInput{TypeName: aws.String("AWS::Test::T")})
+	require.NoError(t, err)
+	require.Len(t, out.ResourceDescriptions, 2)
+	require.Equal(t, "a", aws.ToString(out.ResourceDescriptions[0].Identifier))
+	require.JSONEq(t, `{"Name": "b"}`, aws.ToString(out.ResourceDescriptions[1].Properties), "write-only values are not returned")
 }

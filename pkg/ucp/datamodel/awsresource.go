@@ -33,8 +33,9 @@ type AWSResource struct {
 
 // AWSResourceProperties are the properties of an AWS resource record.
 type AWSResourceProperties struct {
-	// AWSIdentifier is what Cloud Control finds the resource by, such as vpc-0a1b2c3d. It is saved before the create
-	// when the properties give it, such as BucketName, and when the create finishes otherwise.
+	// AWSIdentifier is what Cloud Control finds the resource by, such as vpc-0a1b2c3d. A native handler stores the
+	// same value, so a record works with either handler. It is saved before the create when the properties give it,
+	// such as BucketName, and when the create finishes otherwise.
 	AWSIdentifier string `json:"awsIdentifier,omitempty"`
 
 	// Owner is who deploys this alias. A PUT or DELETE from a different owner fails.
@@ -49,6 +50,13 @@ type AWSResourceProperties struct {
 	// progress. UCP saves it before it calls AWS. It becomes LastApplied when AWS succeeds, and is dropped when AWS
 	// fails, so the previous LastApplied stays.
 	PendingLastApplied map[string]any `json:"pendingLastApplied"`
+
+	// UnresolvedPaths are paths of LastApplied, like the keys of FlattenProperties in pkg/aws/operations, whose value
+	// isn't confirmed in AWS: an operation that changed them failed partway, or UCP can't tell how it ended, and its
+	// values were kept as possibly applied. AWS may still hold values LastApplied no longer has at these paths, such
+	// as a field inside a list item. A deploy sends the template's value at them, and they are cleared once a deploy
+	// succeeds.
+	UnresolvedPaths []string `json:"unresolvedPaths,omitempty"`
 
 	// Fingerprints are the fingerprints of the write-only values of the last successful deploy. UCP compares them
 	// with the template's values, because AWS never returns write-only values, so an unchanged value is not sent.
@@ -67,8 +75,20 @@ type AWSResourceProperties struct {
 	ClientToken string `json:"clientToken,omitempty"`
 
 	// RequestToken is the token Cloud Control returns when it accepts a create, update, or delete. UCP polls the
-	// request with it, and uses it as the operation ID.
+	// request with it, and uses it as the operation ID. For an operation a native handler serves, it is the operation
+	// ID UCP makes, and the worker polls the handler instead.
 	RequestToken string `json:"requestToken,omitempty"`
+
+	// Handler is what serves the operation in progress, or served the last one: "native" for a native handler, and
+	// empty for Cloud Control. An operation finishes with the handler that started it, even when the region has since
+	// gained or lost Cloud Control support for the type.
+	Handler string `json:"handler,omitempty"`
+
+	// DeleteToken is the value a native handler sends with every attempt to delete the resource, such as the name of a
+	// final snapshot (see native.DeletePreparer). UCP saves it before the first delete call, so a retried delete never
+	// takes a second copy. It is cleared when a create or update starts, and when the delete's progress reports that
+	// it failed. A delete call that returns an error, a timeout, or an error while waiting keeps it.
+	DeleteToken string `json:"deleteToken,omitempty"`
 
 	// LastRequestToken is the request token of the last operation that finished, and LastRequestError is its error,
 	// or nil when it succeeded. A redelivered operation that already finished reports this result instead of polling

@@ -143,14 +143,15 @@ func Test_Await_Failures(t *testing.T) {
 		require.Nil(t, f.record())
 	})
 
-	t.Run("failed update keeps the previous values", func(t *testing.T) {
+	t.Run("failed update keeps its values as possibly applied", func(t *testing.T) {
 		f := newFixture(t)
 		f.cc.FailNext = "InternalFailure"
 		f.accept(records.OperationUpdate)
 		result := f.run(v1.OperationPut)
 		require.Equal(t, v1.CodeInternal, result.Error.Code)
 		rec := f.record()
-		require.Equal(t, map[string]any{}, rec.Properties.LastApplied)
+		require.Equal(t, map[string]any{"CidrBlock": "10.0.0.0/16"}, rec.Properties.LastApplied, "Cloud Control doesn't roll back a failed update")
+		require.Equal(t, []string{"CidrBlock"}, rec.Properties.UnresolvedPaths)
 		require.Nil(t, rec.Properties.PendingLastApplied)
 		require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
 	})
@@ -163,6 +164,8 @@ func Test_Await_Failures(t *testing.T) {
 		result := f.run(v1.OperationPut)
 		require.Contains(t, result.Error.Message, "no longer has the request")
 		require.Empty(t, f.record().Properties.RequestToken)
+		require.Equal(t, map[string]any{"CidrBlock": "10.0.0.0/16"}, f.record().Properties.LastApplied, "UCP can't tell how the update ended")
+		require.Equal(t, []string{"CidrBlock"}, f.record().Properties.UnresolvedPaths)
 	})
 
 	t.Run("polling fails, so the operation is retried", func(t *testing.T) {
@@ -306,10 +309,12 @@ func Test_NewAwaitController_RequiresCloudControl(t *testing.T) {
 func Test_Register(t *testing.T) {
 	registry := worker.NewControllerRegistry()
 	require.NoError(t, Register(registry, ucp_aws.Clients{CloudControl: awsfake.NewCloudControl()}, ctrl.Options{DatabaseClient: inmemory.NewClient()}))
-	for _, method := range []v1.OperationMethod{v1.OperationPut, v1.OperationDelete} {
-		c, err := registry.Get(v1.OperationType{Type: records.OperationType, Method: method})
-		require.NoError(t, err)
-		require.IsType(t, &AwaitController{}, c)
+	for _, operationType := range []string{records.OperationType, records.NativeOperationType} {
+		for _, method := range []v1.OperationMethod{v1.OperationPut, v1.OperationDelete} {
+			c, err := registry.Get(v1.OperationType{Type: operationType, Method: method})
+			require.NoError(t, err)
+			require.IsType(t, &AwaitController{}, c)
+		}
 	}
 }
 

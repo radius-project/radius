@@ -73,7 +73,7 @@ func (s *PolicyStore) simulateDeployment(ctx context.Context, original *PolicySn
 		seen[target] = true
 		var change *api.PolicyChange
 		var impact bool
-		result, change, impact, err = applyPolicyMutationWithAuthority(ctx, working, original, actor, mutation, s.settings)
+		result, change, impact, err = applyPolicyMutationWithAuthority(ctx, working, original, actor, mutation, s.settings, s.limits)
 		if err != nil {
 			return Policy{}, nil, nil, err
 		}

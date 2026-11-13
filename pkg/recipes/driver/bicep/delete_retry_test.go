@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -49,6 +50,7 @@ func Test_Bicep_Delete_RetryPolicy(t *testing.T) {
 	}{
 		{name: "authorization failure", err: &azcore.ResponseError{StatusCode: http.StatusForbidden, ErrorCode: "AuthorizationFailed"}, retries: 20, failures: 21, wantCalls: 1, wantFailure: true},
 		{name: "wrapped authorization failure", err: &processors.ResourceError{ID: "test", Inner: fmt.Errorf("delete failed: %w", &azcore.ResponseError{StatusCode: http.StatusForbidden, ErrorCode: "AuthorizationFailed"})}, retries: 20, failures: 21, wantCalls: 1, wantFailure: true},
+		{name: "authorization failure verifying canceled delete", err: errors.Join(&azcore.ResponseError{StatusCode: http.StatusForbidden, ErrorCode: "AuthorizationFailed"}, &azcore.ResponseError{StatusCode: http.StatusOK, ErrorCode: "Canceled"}), retries: 20, failures: 21, wantCalls: 1, wantFailure: true},
 		{name: "authentication failure", err: &azcore.ResponseError{StatusCode: http.StatusUnauthorized}, retries: 20, failures: 21, wantCalls: 1, wantFailure: true},
 		{name: "authorization failure from failed long-running operation", err: &azcore.ResponseError{StatusCode: http.StatusOK, ErrorCode: "AuthorizationFailed"}, retries: 20, failures: 21, wantCalls: 1, wantFailure: true},
 		{name: "linked authorization failure", err: &azcore.ResponseError{StatusCode: http.StatusBadRequest, ErrorCode: "LinkedAuthorizationFailed"}, retries: 20, failures: 21, wantCalls: 1, wantFailure: true},
@@ -67,6 +69,10 @@ func Test_Bicep_Delete_RetryPolicy(t *testing.T) {
 		{name: "bad gateway then success", err: &azcore.ResponseError{StatusCode: http.StatusBadGateway}, retries: 2, failures: 1, wantCalls: 2, wantElapsed: time.Minute},
 		{name: "gateway timeout then success", err: &azcore.ResponseError{StatusCode: http.StatusGatewayTimeout}, retries: 2, failures: 1, wantCalls: 2, wantElapsed: time.Minute},
 		{name: "azure in-use dependency then success", err: &azcore.ResponseError{StatusCode: http.StatusBadRequest, ErrorCode: "InUseSubnetCannotBeDeleted"}, retries: 2, failures: 1, wantCalls: 2, wantElapsed: time.Minute},
+		{name: "public IP dependency then success", err: &azcore.ResponseError{StatusCode: http.StatusBadRequest, ErrorCode: "PublicIPAddressCannotBeDeleted"}, retries: 2, failures: 1, wantCalls: 2, wantElapsed: time.Minute},
+		{name: "NSG dependency then success", err: &azcore.ResponseError{StatusCode: http.StatusBadRequest, ErrorCode: "InUseNetworkSecurityGroupCannotBeDeleted"}, retries: 2, failures: 1, wantCalls: 2, wantElapsed: time.Minute},
+		{name: "NAT gateway dependency then success", err: &azcore.ResponseError{StatusCode: http.StatusBadRequest, ErrorCode: "CannotDeleteNatGatewayAssociatedToSubnet"}, retries: 2, failures: 1, wantCalls: 2, wantElapsed: time.Minute},
+		{name: "unverified canceled operation then success", err: &azcore.ResponseError{StatusCode: http.StatusOK, ErrorCode: "Canceled"}, retries: 2, failures: 1, wantCalls: 2, wantElapsed: time.Minute},
 		{name: "failed long-running operation then success", err: &processors.ResourceError{ID: "test", Inner: &azcore.ResponseError{StatusCode: http.StatusOK, ErrorCode: "Conflict"}}, retries: 2, failures: 1, wantCalls: 2, wantElapsed: time.Minute},
 		{name: "invalid request then success", err: &azcore.ResponseError{StatusCode: http.StatusBadRequest}, retries: 2, failures: 1, wantCalls: 2, wantElapsed: time.Minute},
 		{name: "unhandled not found then success", err: &azcore.ResponseError{StatusCode: http.StatusNotFound}, retries: 2, failures: 1, wantCalls: 2, wantElapsed: time.Minute},
@@ -109,6 +115,57 @@ func Test_Bicep_Delete_RetryPolicy(t *testing.T) {
 			})
 		})
 	}
+}
+
+func Test_Bicep_Delete_DuplicateOutputs(t *testing.T) {
+	const azureID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Network/publicIPAddresses/test-ip"
+	const awsID = "/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.S3/Bucket/test-bucket"
+	const kubeID = "/planes/kubernetes/local/namespaces/test/providers/core/Secret/test-secret"
+	tests := []struct {
+		name string
+		id   string
+		also []string
+	}{
+		{name: "Azure explicit output and deployment inventory", id: azureID, also: []string{azureID}},
+		{name: "Azure case variants", id: azureID, also: []string{strings.ToLower(azureID)}},
+		{name: "Azure qualified and unqualified", id: azureID, also: []string{"/planes/azure/azurecloud" + azureID}},
+		{name: "AWS duplicates", id: awsID, also: []string{awsID}},
+		{name: "Kubernetes duplicates", id: kubeID, also: []string{kubeID}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			d, client, _, _ := setupDeleteInputs(t)
+			d.options = BicepOptions{DeleteRetryCount: 1}
+			gomock.InOrder(
+				client.EXPECT().Delete(gomock.Any(), tt.id).Return(&azcore.ResponseError{
+					StatusCode: http.StatusBadRequest, ErrorCode: "PublicIPAddressCannotBeDeleted",
+				}),
+				client.EXPECT().Delete(gomock.Any(), tt.id).Return(nil),
+			)
+			outputs := []rpv1.OutputResource{
+				{ID: resources.MustParse(tt.id), RadiusManaged: new(false)},
+				{ID: resources.MustParse(tt.id)},
+				{ID: resources.MustParse(tt.id), RadiusManaged: new(true)},
+			}
+			for _, id := range tt.also {
+				outputs = append(outputs, rpv1.OutputResource{ID: resources.MustParse(id), RadiusManaged: new(true)})
+			}
+			require.NoError(t, d.Delete(t.Context(), driver.DeleteOptions{OutputResources: outputs}))
+		})
+	}
+}
+
+func Test_Bicep_Delete_AWSNamesRemainCaseSensitive(t *testing.T) {
+	d, client, _, _ := setupDeleteInputs(t)
+	const prefix = "/planes/aws/aws/accounts/1/regions/us-west-2/providers/AWS.SQS/Queue/"
+	var outputs []rpv1.OutputResource
+	for _, name := range []string{"test-queue", "Test-Queue"} {
+		id := prefix + name
+		client.EXPECT().Delete(gomock.Any(), id).Return(nil)
+		outputs = append(outputs, rpv1.OutputResource{ID: resources.MustParse(id), RadiusManaged: new(true)})
+	}
+	require.NoError(t, d.Delete(t.Context(), driver.DeleteOptions{OutputResources: outputs}))
 }
 
 func Test_Bicep_Delete_CanceledDuringRetryDelay(t *testing.T) {

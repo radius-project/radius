@@ -127,6 +127,8 @@ When you pass `--kubecontext`, the `kubectl` and `helm` commands in these messag
 
 ## cert-manager
 
+**Warning:** Radius RBAC is a work in progress. Full functionality is not guaranteed. The `global.rbac.enabled` and `global.rbac.dryRun` Helm settings are experimental; do not rely on RBAC for production access control. Install, reinstall, and upgrade print this warning before managing cert-manager whenever the effective settings enable RBAC, including when they reuse stored release values.
+
 Radius authorization depends on [cert-manager](https://cert-manager.io/). `rad install kubernetes` and `rad upgrade kubernetes` only manage cert-manager when authorization is enabled, by passing exactly one of `--set global.rbac.dryRun=true` or `--set global.rbac.enabled=true`, or by reusing those values stored on the Radius release during upgrade or `--reinstall`. Current flags override stored values; `rad upgrade kubernetes --reset-values` discards stored values. With authorization off (the default), install and upgrade do not look for, install, or change cert-manager.
 
 ### Supported versions

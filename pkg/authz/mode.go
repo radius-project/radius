@@ -146,14 +146,6 @@ func (o Options) EffectiveCADirectory() string {
 	return o.CADirectory
 }
 
-// EffectiveCADirectory returns CADirectory, or CertificateDirectory when it is unset.
-func (o Options) EffectiveCADirectory() string {
-	if o.CADirectory == "" {
-		return o.CertificateDirectory
-	}
-	return o.CADirectory
-}
-
 // EffectiveMode returns the configured mode, or ModeOff when it is unset.
 func (o Options) EffectiveMode() Mode {
 	if o.Mode == "" {

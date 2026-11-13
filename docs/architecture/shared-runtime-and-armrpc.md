@@ -174,6 +174,8 @@ restart; new handshakes use the new material. Before each request, a client
 closes every connection whose verified server chain has expired, including
 connections in use, which aborts their in-flight requests.
 
+Outbound mTLS clients also stop reusing connections when their client certificate or any certificate in the verified server chain expires. They retire the connection pool before the next request and close expired connections, including active HTTP/2 streams. The next request performs a fresh handshake with the current certificate and CA bundle instead of racing HTTP/2's asynchronous removal of the closed connection. A retired pool keeps only its unexpired connections that are still serving requests. Each later request closes the pool's idle connections and forgets the pool once it has no unexpired tracked connections. When a connection in a retired pool expires, the client closes it without replacing the current pool again.
+
 ### Request context and validation
 
 The server layer applies middleware that creates an ARM-aware request context.

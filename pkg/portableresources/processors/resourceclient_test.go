@@ -174,7 +174,9 @@ func Test_Delete_ARM(t *testing.T) {
 				handleDeleteSuccess()(w, r)
 				return
 			}
-			handleNotFound(t)(w, r)
+			handleJSONResponse(t, map[string]any{
+				"error": map[string]string{"code": "ResourceNotFound", "message": "resource is absent"},
+			}, http.StatusNotFound)(w, r)
 		})
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: new("Microsoft.Compute"),
@@ -712,6 +714,7 @@ func Test_GetAWSPropertiesByIdentifier(t *testing.T) {
 			body := map[string]any{}
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			require.Equal(t, map[string]any{"name": path.Base(AWSResourceID), "properties": map[string]any{}}, body)
+			require.Equal(t, AWSResourceID, r.Header.Get(sdkclients.AWSResourceIDHeader))
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(status)
 			_, _ = w.Write([]byte(response))

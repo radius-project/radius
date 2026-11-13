@@ -53,6 +53,10 @@ resource group, environment, and recipe pack for deploying applications.
 
 Overrides can be set by specifying Helm chart values with the '--set' flag. For more information visit https://docs.radapp.io/guides/operations/kubernetes/install/.
 
+Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed.
+The 'global.rbac.enabled' and 'global.rbac.dryRun' Helm settings are experimental.
+Do not rely on RBAC for production access control.
+
 Contour chart values can be set with '--contour-set' and '--contour-set-file'. They take precedence over the values that Radius sets.
 When the cluster already has Gateway API CRDs from another installer, such as the Traefik chart in k3s, Radius uses them
 instead of letting Contour take them over. Before it installs anything, Radius checks that they serve the versions that Contour needs,
