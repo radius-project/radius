@@ -236,6 +236,23 @@ func Test_UpdateChannelClass(t *testing.T) {
 	require.Equal(t, "STANDARD", api.store.Resource(channelType, id)["ChannelClass"], "nothing changed")
 }
 
+// Test_UpdateKeepsRole checks that an update that doesn't change RoleArn sends it, because UpdateChannel removes the
+// role of a call that leaves it out.
+func Test_UpdateKeepsRole(t *testing.T) {
+	h, api := newChannel(t)
+	properties := channel(t, outputGroups(t, "", ""))
+	id := created(t, h, properties)
+	current, err := h.Read(t.Context(), region, id)
+	require.NoError(t, err)
+
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{
+		Region: region, Identifier: id, Current: current, Desired: with(properties, map[string]any{"LogLevel": "DEBUG"}),
+		Patch: patch(t, `[{"op":"replace","path":"/LogLevel","value":"DEBUG"}]`),
+	}))
+	settle(t, h, id, native.OperationUpdate)
+	require.Equal(t, properties["RoleArn"], api.store.Resource(channelType, id)["RoleArn"])
+}
+
 func Test_UpdateRemoved(t *testing.T) {
 	h, api := newChannel(t)
 	properties := channel(t, outputGroups(t, "", ""))
