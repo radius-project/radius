@@ -17,6 +17,7 @@ limitations under the License.
 package emr
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"maps"
@@ -961,6 +962,52 @@ func Test_ScaledCounts(t *testing.T) {
 	})
 }
 
+// Test_FleetDefaults checks that values EMR gives an instance type configuration the template leaves out aren't
+// removals: once managed scaling changes a task fleet's capacity, a redeploy of the same template changes nothing. A
+// value the template no longer sets that isn't EMR's default still can't be cleared.
+func Test_FleetDefaults(t *testing.T) {
+	fleets := func(weight any) map[string]any {
+		config := map[string]any{"InstanceType": "m5.xlarge"}
+		if weight != nil {
+			config["WeightedCapacity"] = weight
+		}
+		return map[string]any{
+			"MasterInstanceFleet": map[string]any{"Name": "master", "TargetOnDemandCapacity": 1, "InstanceTypeConfigs": []any{map[string]any{"InstanceType": "m5.xlarge"}}},
+			"TaskInstanceFleets":  []any{map[string]any{"Name": "task", "TargetSpotCapacity": 2, "InstanceTypeConfigs": []any{config}}},
+			"Ec2SubnetIds":        []any{"subnet-0a1"},
+		}
+	}
+	scaling := map[string]any{"ComputeLimits": map[string]any{"MaximumCapacityUnits": 8, "MinimumCapacityUnits": 2, "UnitType": "Instances"}}
+	tests := []struct {
+		name   string
+		weight any
+		err    string
+	}{
+		{name: "EMR's defaults"},
+		{name: "a weighted capacity the template no longer sets", weight: 2, err: "Instances/TaskInstanceFleets"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			api := newFakeAPI(awsfake.NewCloudControl())
+			h := NewCluster(fleetDefaults{api})
+			base := with(clusterProperties(), map[string]any{"ManagedScalingPolicy": scaling, "Instances": fleets(tt.weight)})
+			id := create(t, h, base)
+			setInstances(api, id, func(inst map[string]any) {
+				asMap(asList(inst["TaskInstanceFleets"])[0])["TargetSpotCapacity"] = 5.0
+			})
+			changes(api)
+			desired := with(base, map[string]any{"Instances": fleets(nil)})
+			err := update(t, h, id, desired, awsoperations.RemovedPaths(jsonValue(t, base), jsonValue(t, desired))...)
+			if tt.err != "" {
+				require.ErrorContains(t, err, tt.err)
+				return
+			}
+			require.NoError(t, err)
+			require.Empty(t, changes(api))
+		})
+	}
+}
+
 // Test_RemovedAutoScalingPolicy checks that a template that no longer sets a group's automatic scaling policy removes
 // it in AWS, and then sets the template's count, for the core group and a task group. A change inside the policy is
 // still rejected.
@@ -1030,4 +1077,48 @@ func Test_ReservedTags(t *testing.T) {
 	require.ErrorAs(t, update(t, h, id, reserved), &failure)
 	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 	require.Empty(t, changes(api), "nothing changed in AWS")
+}
+
+func Test_ValueAt(t *testing.T) {
+	v := map[string]any{"Instances": map[string]any{"a/b": []any{map[string]any{"WeightedCapacity": 1.0}}}}
+	tests := []struct {
+		pointer string
+		want    any
+	}{
+		{"/Instances/a~1b/0/WeightedCapacity", 1.0},
+		{"/Instances/a~1b/1/WeightedCapacity", nil},
+		{"/Instances/a~1b/x", nil},
+		{"/Instances/a~1b/0/WeightedCapacity/deeper", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.pointer, func(t *testing.T) {
+			require.Equal(t, tt.want, valueAt(v, tt.pointer))
+		})
+	}
+}
+
+// fleetDefaults is the fake EMR API, reporting the values EMR gives an instance type of a fleet that leaves them out:
+// WeightedCapacity 1, and BidPriceAsPercentageOfOnDemandPrice 100 when BidPrice isn't set either
+// (https://docs.aws.amazon.com/emr/latest/APIReference/API_InstanceTypeConfig.html).
+type fleetDefaults struct {
+	*fakeAPI
+}
+
+func (f fleetDefaults) ListInstanceFleets(ctx context.Context, in *emr.ListInstanceFleetsInput, opts ...func(*emr.Options)) (*emr.ListInstanceFleetsOutput, error) {
+	out, err := f.fakeAPI.ListInstanceFleets(ctx, in, opts...)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out.InstanceFleets {
+		specs := out.InstanceFleets[i].InstanceTypeSpecifications
+		for j := range specs {
+			if specs[j].WeightedCapacity == nil {
+				specs[j].WeightedCapacity = aws.Int32(1)
+			}
+			if specs[j].BidPrice == nil && specs[j].BidPriceAsPercentageOfOnDemandPrice == nil {
+				specs[j].BidPriceAsPercentageOfOnDemandPrice = aws.Float64(100)
+			}
+		}
+	}
+	return out, nil
 }
