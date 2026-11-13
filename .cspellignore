@@ -10,6 +10,7 @@ ARM's
 AWSCredential
 AWSCredentialProvider
 AcquireLock
+Alexa
 Amidst
 amannn
 AnonymousCredential
@@ -280,6 +281,7 @@ ObserverFunc
 ObserverResult
 Ollama
 OnFailure
+ONTAP
 OpenAI
 OpenAPI
 OpenAPIv
