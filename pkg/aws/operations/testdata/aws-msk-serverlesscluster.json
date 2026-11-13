@@ -55,9 +55,7 @@
           }
         }
       },
-      "required": [
-        "SubnetIds"
-      ]
+      "required": ["SubnetIds"]
     },
     "ClientAuthentication": {
       "type": "object",
@@ -67,9 +65,7 @@
         }
       },
       "additionalProperties": false,
-      "required": [
-        "Sasl"
-      ]
+      "required": ["Sasl"]
     },
     "Sasl": {
       "type": "object",
@@ -79,9 +75,7 @@
           "$ref": "#/definitions/Iam"
         }
       },
-      "required": [
-        "Iam"
-      ]
+      "required": ["Iam"]
     },
     "Iam": {
       "type": "object",
@@ -91,28 +85,18 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "Enabled"
-      ]
+      "required": ["Enabled"]
     }
   },
-  "required": [
-    "ClusterName",
-    "VpcConfigs",
-    "ClientAuthentication"
-  ],
+  "required": ["ClusterName", "VpcConfigs", "ClientAuthentication"],
   "createOnlyProperties": [
     "/properties/ClusterName",
     "/properties/VpcConfigs",
     "/properties/ClientAuthentication",
     "/properties/Tags"
   ],
-  "primaryIdentifier": [
-    "/properties/Arn"
-  ],
-  "readOnlyProperties": [
-    "/properties/Arn"
-  ],
+  "primaryIdentifier": ["/properties/Arn"],
+  "readOnlyProperties": ["/properties/Arn"],
   "tagging": {
     "taggable": true,
     "tagOnCreate": true,
@@ -142,9 +126,7 @@
       "timeoutInMinutes": 120
     },
     "read": {
-      "permissions": [
-        "kafka:DescribeClusterV2"
-      ]
+      "permissions": ["kafka:DescribeClusterV2"]
     },
     "delete": {
       "permissions": [
@@ -155,9 +137,7 @@
       "timeoutInMinutes": 75
     },
     "list": {
-      "permissions": [
-        "kafka:ListClustersV2"
-      ]
+      "permissions": ["kafka:ListClustersV2"]
     }
   }
 }
