@@ -59,6 +59,10 @@ RBAC on every invocation; Radius does not reconfigure those prerequisites.
 Mode, signing Secret, issuer and trust changes require coordinated CA migration.
 Certificate validation cannot be bypassed with '--skip-preflight'; '--preflight-only'
 performs the same live validation without changing resources or Helm history.
+Both TLS providers retain the selected CA: provider radius requires receiver SPIFFE URI and UCP
+aggregation DNS profiles; external requires aggregation DNS only. Local CA feasibility is not
+proof of issuance by an external backend. Public trust staging and convergence require the
+paired certificate lifecycle implementation.
 
 When Contour is installed, the upgrade also upgrades it. Contour chart values can be set with
 '--contour-set' and '--contour-set-file'. They take precedence over the values stored on the Contour

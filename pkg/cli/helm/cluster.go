@@ -51,9 +51,9 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
-	Radius      RadiusChartOptions
-	Contour     ContourChartOptions
-	CertManager CertManagerChartOptions
+	Radius       RadiusChartOptions
+	Contour      ContourChartOptions
+	CertManager  CertManagerChartOptions
 	Certificates CertificateOptions
 	// CSIDriverSPIFFE is Radius's csi-driver-spiffe, which issues server certificates when authorization is enabled.
 	CSIDriverSPIFFE CSIDriverSPIFFEChartOptions
@@ -328,7 +328,7 @@ type Impl struct {
 	// use csi-driver-spiffe. Zero uses the defaults.
 	csiDriverSPIFFEPodWaitTimeout  time.Duration
 	csiDriverSPIFFEPodPollInterval time.Duration
-	newCertificateClient        func(kubeContext string) (kubernetes.Interface, error)
+	newCertificateClient           func(kubeContext string) (kubernetes.Interface, error)
 }
 
 var _ Interface = &Impl{}
@@ -383,7 +383,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	certificates, err := i.prepareCertificates(ctx, clusterOptions, radiusHelmChart.Values, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil)
+	target, certificates, err := i.prepareSelectedCertificates(ctx, clusterOptions, radiusHelmChart, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil)
 	if err != nil {
 		return err
 	}
@@ -399,7 +399,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 			return err
 		}
 	}
-	spiffe, err := i.planCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues)
+	spiffe, err := i.planSelectedCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, target)
 	if err != nil {
 		return err
 	}
@@ -612,7 +612,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	certificates, err := i.prepareCertificates(ctx, clusterOptions, radiusHelmChart.Values, radiusValues, kubeContext, true)
+	target, certificates, err := i.prepareSelectedCertificates(ctx, clusterOptions, radiusHelmChart, radiusValues, kubeContext, true)
 	if err != nil {
 		return err
 	}
@@ -629,7 +629,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 			return err
 		}
 	}
-	spiffe, err := i.planCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, storedValues)
+	spiffe, err := i.planSelectedCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, target)
 	if err != nil {
 		return err
 	}

@@ -693,6 +693,46 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 	}
 }
 
+func Test_planSelectedCSIDriverSPIFFE(t *testing.T) {
+	for _, provider := range []string{"radius", "external"} {
+		for _, mode := range []string{"selfSigned", "caSecret", "issuerRef"} {
+			t.Run(provider+"/"+mode, func(t *testing.T) {
+				wantPlan := provider == "radius" && mode != "issuerRef"
+				client := withValidatingAdmissionPolicyAPI(k8sfake.NewClientset())
+				mockHelm := NewMockHelmClient(gomock.NewController(t))
+				if wantPlan {
+					mockHelm.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
+				}
+				impl := &Impl{Helm: mockHelm, newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
+					require.True(t, wantPlan, "operator-managed or external CSI must remain untouched")
+					return client, nil
+				}}
+				selected := certificateIssuerReference{Group: "cert-manager.io", Kind: "Issuer", Name: "selected-internal"}
+				target := &certificateTarget{
+					Mode: mode, Provider: provider,
+					Values: map[string]any{"global": map[string]any{"rbac": map[string]any{
+						"enabled": true, "spiffe": map[string]any{"trustDomain": "custom.example"},
+					}}},
+					Planes: map[string]certificatePlaneTarget{"internal": {Issuer: selected}},
+				}
+				plan, err := impl.planSelectedCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "context", target)
+				require.NoError(t, err)
+				if !wantPlan {
+					require.Nil(t, plan)
+					require.Empty(t, client.Actions())
+					return
+				}
+				require.Equal(t, "selected-internal", nestedValue(plan.values, "app", "issuer", "name"))
+				require.Equal(t, issuerSignerName(RadiusSystemNamespace, selected.Name), nestedValue(plan.values, "app", "approver", "signerName"))
+				require.Equal(t, "custom.example", nestedValue(plan.values, "app", "trustDomain"))
+				for _, action := range client.Actions() {
+					require.Contains(t, []string{"get", "list"}, action.GetVerb())
+				}
+			})
+		}
+	}
+}
+
 func Test_planCSIDriverSPIFFE_ClientError(t *testing.T) {
 	t.Parallel()
 	mockHelmClient := NewMockHelmClient(gomock.NewController(t))
@@ -929,7 +969,7 @@ func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
 			t.Parallel()
 
 			client := NewMockHelmClient(gomock.NewController(t))
-			client.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{Metadata: &chart.Metadata{Name: "radius", Version: "0.1.0"}}, nil)
+			client.EXPECT().LoadChart(gomock.Any()).Return(certificateTestChart(t), nil)
 			client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 
 			impl := &Impl{

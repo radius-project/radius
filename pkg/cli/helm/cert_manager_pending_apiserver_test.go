@@ -21,6 +21,7 @@ package helm
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -94,7 +95,7 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 
 					options := NewDefaultClusterOptions()
 					options.Contour.Disabled = true
-					options.Radius.ChartPath = chartPath
+					options.Radius.ChartPath = filepath.Join("..", "..", "..", "deploy", "Chart")
 					options.CertManager.ChartPath = chartPath
 					options.CertManager.ReleaseName = name
 					options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}

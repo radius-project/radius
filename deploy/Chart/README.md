@@ -45,6 +45,8 @@ Existing public sources are preserved byte-for-byte, carry `helm.sh/resource-pol
 
 `global.rbac.certificates.mode` selects the issuer and public anchor for both planes. `selfSigned` (default) retains separate Radius-owned internal and aggregation CAs. `caSecret` creates two distinct namespaced Issuers, `radius-ca-issuer` and `radius-apiserver-issuer`, referencing the **same operator-owned signing Secret**. `issuerRef` uses the selected existing `cert-manager.io` Issuer or ClusterIssuer for both profiles; the chart neither renders nor owns it. With `global.rbac.tls.provider=external`, only aggregation DNS issuance remains: no internal CA, CSI mount or receiver CertificateRequest-create Role is rendered.
 
+The CLI certificate flags select these modes for either provider. It validates complete PEM input, CA/key/chain cryptography, and URI/DNS constraint feasibility using the selected chart's real issuer/receiver inventory. Both the actual chart's live policy render and cainjector prerequisite inspection run for BYO modes before resource changes when the controllers already exist. Public target planning does not authorize rotation or prove that an external issuer can issue a leaf. See [CLI certificate validation and lifecycle boundaries](../../docs/contributing/contributing-code/contributing-code-control-plane/configSettings.md#2-update-shared-service-options).
+
 ```yaml
 global:
   rbac:

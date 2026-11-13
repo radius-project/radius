@@ -180,6 +180,32 @@ type csiDriverSPIFFEPlan struct {
 	namespace    string
 }
 
+func (i *Impl) planSelectedCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, target *certificateTarget) (*csiDriverSPIFFEPlan, error) {
+	if target.Provider == "external" || target.Mode == "issuerRef" {
+		// issuerRef's pinned CSI instance is an operator prerequisite checked by the
+		// shared live chart verifier. Do not repair or retarget it after that proof.
+		return nil, nil
+	}
+	plan, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, target.Values)
+	if err != nil || plan == nil {
+		return plan, err
+	}
+	settings := resolveSPIFFESettings(nil, target.Values)
+	plan.values = buildCSIDriverSPIFFEValues(options.Radius.Namespace, settings)
+	issuer, ok := target.Planes["internal"]
+	if !ok {
+		return nil, fmt.Errorf("selected chart has no internal issuer for its CSI receivers")
+	}
+	app := plan.values["app"].(map[string]any)
+	app["issuer"] = map[string]any{"group": issuer.Issuer.Group, "kind": issuer.Issuer.Kind, "name": issuer.Issuer.Name}
+	signer := "clusterissuers.cert-manager.io/" + issuer.Issuer.Name
+	if issuer.Issuer.Kind == "Issuer" {
+		signer = issuerSignerName(options.Radius.Namespace, issuer.Issuer.Name)
+	}
+	app["approver"].(map[string]any)["signerName"] = signer
+	return plan, nil
+}
+
 // planCSIDriverSPIFFE checks, without changing the cluster, that Radius's csi-driver-spiffe instance can be
 // installed or upgraded. It fails when the release exists but rad did not install it, or when another
 // csi-driver-spiffe runs on the cluster, because only one can register on each node. Install and upgrade call it
