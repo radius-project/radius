@@ -593,17 +593,35 @@ func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testin
 	)
 	cases := []struct {
 		name      string
+		outputIDs []string
 		recipeErr error
+		saveErr   error
+		wantSave  bool
 		wantIDs   []string
 	}{
 		{
-			name:    "deployment succeeded",
-			wantIDs: []string{newID},
+			name:      "deployment succeeded",
+			outputIDs: []string{newID},
+			wantSave:  true,
+			wantIDs:   []string{newID},
 		},
 		{
 			name:      "cleanup of previous output resources failed",
+			outputIDs: []string{newID},
 			recipeErr: recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, "failed to delete", util.ExecutionError, nil),
+			wantSave:  true,
 			wantIDs:   []string{newID, previousID},
+		},
+		{
+			name:      "save fails",
+			outputIDs: []string{newID},
+			saveErr:   &database.ErrConcurrency{},
+			wantSave:  true,
+			wantIDs:   []string{newID},
+		},
+		{
+			name:      "invalid output resource ID",
+			outputIDs: []string{"not-a-resource-id"},
 		},
 	}
 
@@ -631,13 +649,15 @@ func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testin
 			}
 			msc.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil)
 			cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil)
-			eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&recipes.RecipeOutput{Resources: []string{newID}}, tt.recipeErr)
+			eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&recipes.RecipeOutput{Resources: tt.outputIDs}, tt.recipeErr)
 
 			var saved *TestResource
-			msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
-				saved = obj.Data.(*TestResource)
-				return nil
-			})
+			if tt.wantSave {
+				msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+					saved = obj.Data.(*TestResource)
+					return tt.saveErr
+				})
+			}
 
 			ctrlr, err := NewCreateOrUpdateResource(ctrl.Options{DatabaseClient: msc}, errorProcessorReference, eng, cfg)
 			require.NoError(t, err)
@@ -649,7 +669,11 @@ func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testin
 				CorrelationID:    uuid.New().String(),
 				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 			})
-			require.Error(t, err)
+			// The processing error is returned whether or not the output resources were saved.
+			require.ErrorIs(t, err, errProcessor)
+			if !tt.wantSave {
+				return
+			}
 
 			require.NotNil(t, saved)
 			ids := []string{}
