@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/name: bicep-de
     app.kubernetes.io/part-of: radius
 spec:
-  replicas: 1
+  replicas: {{ include "radius.provider.replicas" (dict "root" . "name" "bicep-de") }}
   selector:
     matchLabels:
       app.kubernetes.io/name: bicep-de
@@ -64,7 +64,7 @@ spec:
       volumes:
         - name: appsettings-vol
           configMap:
-            name: bicep-de-config
+            name: {{ include "radius.provider.configurationName" (dict "root" . "name" "bicep-de-config") }}
         {{- if $auth }}
         {{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.caBundle.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
@@ -109,6 +109,12 @@ spec:
         {{- end }}
         {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
         env:
+        {{- if $auth }}
+        - name: RADIUS_INTERNAL_AUTH_POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        {{- end }}
         - name: ASPNETCORE_ENVIRONMENT
           value: "Production"
         - name: SKIP_ARM

@@ -49,6 +49,7 @@ func TestInternalIdentityPreservesProxyBoundary(t *testing.T) {
 	internal := service.internalServer(aggregation)
 	for _, forged := range []bool{false, true} {
 		request := httptest.NewRequest(http.MethodGet, mtls.InternalIdentityPath+"?challenge="+uuid.NewString(), nil)
+		request.TLS = &tls.ConnectionState{HandshakeComplete: true}
 		request = request.WithContext(authz.WithIdentity(request.Context(), authz.Identity{Namespace: "radius-system", Component: "bicep-de"}))
 		if forged {
 			request.Header.Set("X-Remote-User", "admin")

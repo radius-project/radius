@@ -1,0 +1,8 @@
+{{- $journal := lookup "v1" "ConfigMap" .Release.Namespace "radius-provider-transition" -}}
+{{- if $journal -}}
+{{- $state := mustFromJson (dig "data" "state.json" "" $journal) -}}
+{{- if ne (toString $state.version) "2" -}}
+{{- fail "Legacy provider journal cannot be reinterpreted as token/CSI protocol v2. Preserve it for an explicit supported migration." -}}
+{{- end -}}
+{{- fail "Provider transition finalization is unavailable: production loaded-trust reporting and authorized observation, including controller coverage and aggregation caches, are incomplete." -}}
+{{- end -}}

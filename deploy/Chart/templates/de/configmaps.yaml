@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: bicep-de-config
+  name: {{ include "radius.provider.configurationName" (dict "root" . "name" "bicep-de-config") }}
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: bicep-de

@@ -11,7 +11,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: dynamic-rp-buildkit-config
+  name: {{ include "radius.provider.configurationName" (dict "root" . "name" "dynamic-rp-buildkit-config") }}
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: dynamic-rp

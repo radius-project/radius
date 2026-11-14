@@ -141,6 +141,15 @@ func TestInternalIdentityCommonRequestPath(t *testing.T) {
 					require.Equal(t, "no-store", response.Header.Get("Cache-Control"))
 					require.NoError(t, response.Body.Close())
 				}
+				if provider == authz.TLSProviderRadius && mode == authz.ModeDryRun {
+					request, err := http.NewRequest(http.MethodGet, "http://"+rpAddress+InternalIdentityPath+"?challenge="+challenge, nil)
+					require.NoError(t, err)
+					request.Header.Set("Authorization", "Bearer "+mintToken(t, "ucp", "applications-rp"))
+					response, err := (&http.Client{Timeout: 5 * time.Second}).Do(request)
+					require.NoError(t, err)
+					require.Equal(t, http.StatusUnauthorized, response.StatusCode, "managed proof must not use the ordinary DryRun plaintext exception")
+					require.NoError(t, response.Body.Close())
+				}
 				response, err = client.Get(endpoint + "&challenge=" + challenge)
 				require.NoError(t, err)
 				require.Equal(t, http.StatusBadRequest, response.StatusCode)
@@ -166,7 +175,7 @@ func TestInternalIdentityTimestampWirePrecision(t *testing.T) {
 }
 
 func TestInternalIdentityUnavailableWithoutUpstreamOrPod(t *testing.T) {
-	options := authz.Options{Namespace: testNamespace, Mode: authz.ModeEnforce}
+	options := authz.Options{Namespace: testNamespace, Mode: authz.ModeEnforce, TLSProvider: authz.TLSProviderExternal}
 	for _, pod := range []string{"", uuid.NewString()} {
 		handler := internalIdentityHandler(http.NotFoundHandler(), options, "applications-rp", pod, time.Now)
 		request := httptest.NewRequest(http.MethodGet, InternalIdentityPath+"?challenge="+uuid.NewString(), nil)

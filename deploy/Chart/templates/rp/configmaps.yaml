@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: applications-rp-config
+  name: {{ include "radius.provider.configurationName" (dict "root" . "name" "applications-rp-config") }}
   namespace: {{ .Release.Namespace }}
   labels:
     app.kubernetes.io/name: applications-rp

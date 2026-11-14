@@ -204,6 +204,10 @@ func internalIdentityHandler(next http.Handler, options authz.Options, component
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
+		if options.EffectiveTLSProvider() == authz.TLSProviderRadius && (r.TLS == nil || !r.TLS.HandshakeComplete) {
+			http.Error(w, "managed internal identity evidence requires TLS", http.StatusUnauthorized)
+			return
+		}
 		identity, verified := authz.IdentityFromContext(r.Context())
 		if !verified || identity.Namespace != options.Namespace || !slices.Contains(authz.Components, identity.Component) {
 			http.Error(w, "verified internal identity required", http.StatusUnauthorized)

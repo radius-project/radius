@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/name: controller
     app.kubernetes.io/part-of: radius
 spec:
-  replicas: 1
+  replicas: {{ include "radius.provider.replicas" (dict "root" . "name" "controller") }}
   selector:
     matchLabels:
       app.kubernetes.io/name: controller
@@ -114,7 +114,7 @@ spec:
           emptyDir: {}
         - name: config-volume
           configMap:
-            name: controller-config
+            name: {{ include "radius.provider.configurationName" (dict "root" . "name" "controller-config") }}
         {{- with include "radius.authz.caBundle.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if .Values.global.rootCA.cert }}

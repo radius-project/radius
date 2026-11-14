@@ -12,7 +12,7 @@ metadata:
   name: applications-rp
   namespace: {{ .Release.Namespace }}
 spec:
-  replicas: 1
+  replicas: {{ include "radius.provider.replicas" (dict "root" . "name" "applications-rp") }}
   selector:
     matchLabels:
      app.kubernetes.io/name: applications-rp
@@ -164,6 +164,7 @@ spec:
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
+        {{- include "radius.internalIdentity.podEnv" . | nindent 8 }}
         {{- if .Values.database.enabled }}
         - name: POSTGRES_PASSWORD
           valueFrom:
@@ -231,7 +232,7 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: applications-rp-config
+            name: {{ include "radius.provider.configurationName" (dict "root" . "name" "applications-rp-config") }}
         {{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.caBundle.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}

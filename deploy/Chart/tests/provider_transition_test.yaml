@@ -1,0 +1,89 @@
+suite: test token provider migration preparation
+templates:
+  - ucp/deployment.yaml
+  - rp/deployment.yaml
+  - dynamic-rp/deployment.yaml
+  - controller/deployment.yaml
+  - de/deployment.yaml
+  - ucp/configmaps.yaml
+tests:
+  - it: keeps isolated configuration and exact workload replicas
+    set:
+      global.rbac.providerGeneration: "0123456789abcdef0123456789abcdef"
+      global.rbac.providerReplicas:
+        ucp: 2
+        applications-rp: 3
+        dynamic-rp: 2
+        controller: 1
+        bicep-de: 2
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 2
+        template: ucp/deployment.yaml
+      - equal:
+          path: metadata.name
+          value: ucp-config-0123456789abcdef0123456789abcdef
+        template: ucp/configmaps.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-volume
+            configMap:
+              name: ucp-config-0123456789abcdef0123456789abcdef
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.replicas
+          value: 3
+        template: rp/deployment.yaml
+  - it: refuses omission of the trust-only controller
+    set:
+      global.rbac.providerReplicas:
+        ucp: 1
+        applications-rp: 1
+        dynamic-rp: 1
+        bicep-de: 1
+    asserts:
+      - failedTemplate:
+          errorMessage: providerReplicas requires all five pinned workloads, including the trust-only controller.
+        template: ucp/deployment.yaml
+  - it: projects pod identity for both managed receipt participants
+    set:
+      global.rbac.enabled: true
+      de.internalAuth.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
+        template: rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_INTERNAL_AUTH_POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
+        template: de/deployment.yaml
+  - it: projects external receipt identity without a controller listener identity
+    set:
+      global.rbac.dryRun: true
+      global.rbac.tls.provider: external
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_POD_UID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.uid
+        template: ucp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUS_POD_UID
+          any: true
+        template: controller/deployment.yaml

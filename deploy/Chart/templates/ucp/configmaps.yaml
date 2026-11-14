@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: ucp-config
+  name: {{ include "radius.provider.configurationName" (dict "root" . "name" "ucp-config") }}
   namespace: "{{ .Release.Namespace }}"
   labels:
     app.kubernetes.io/name: ucp
