@@ -58,7 +58,10 @@ func Test_DynamicRP_Recipe_RedeployDeletesDroppedOutputResource(t *testing.T) {
 	customPackID := fmt.Sprintf("%s/providers/Radius.Core/recipePacks/%s", options.Workspace.Scope, recipePackName)
 
 	configMapExists := func(ctx context.Context, t *testing.T, ct rp.RPTest, configMap string) bool {
-		_, err := ct.Options.K8sClient.CoreV1().ConfigMaps(name).Get(ctx, configMap, metav1.GetOptions{})
+		// The recipe deploys to the environment's cluster, which can differ from the control plane's.
+		client, err := rp.DeploymentTargetK8sClient(ct.Options)
+		require.NoError(t, err)
+		_, err = client.CoreV1().ConfigMaps(name).Get(ctx, configMap, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
 			return false
 		}
