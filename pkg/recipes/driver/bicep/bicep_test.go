@@ -1291,6 +1291,52 @@ func Test_GetGCOutputResources(t *testing.T) {
 	require.Equal(t, exp, res)
 }
 
+func Test_GetGCOutputResources_CaseOnlyChange(t *testing.T) {
+	tests := []struct {
+		name       string
+		previous   string
+		current    string
+		wantDelete bool
+	}{
+		{
+			name:     "Azure ID with different casing is the same resource",
+			previous: "/subscriptions/test-sub/resourceGroups/Test-RG/providers/Microsoft.Storage/storageAccounts/Account",
+			current:  "/subscriptions/test-sub/resourcegroups/test-rg/providers/Microsoft.Storage/storageAccounts/account",
+		},
+		{
+			name:     "Azure ID with and without the plane prefix is the same resource",
+			previous: "/planes/azure/azure/subscriptions/test-sub/resourceGroups/Test-RG/providers/Microsoft.Storage/storageAccounts/Account",
+			current:  "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/account",
+		},
+		{
+			name:       "AWS ID with different casing is a different resource",
+			previous:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/Bucket",
+			current:    "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/bucket",
+			wantDelete: true,
+		},
+		{
+			name:       "Kubernetes ID with different casing is a different resource",
+			previous:   "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/Config",
+			current:    "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/config",
+			wantDelete: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &bicepDriver{}
+			res, err := d.getGCOutputResources([]string{tt.current}, []string{tt.previous})
+			require.NoError(t, err)
+			if !tt.wantDelete {
+				require.Empty(t, res)
+				return
+			}
+			require.Len(t, res, 1)
+			require.Equal(t, tt.previous, res[0].ID.String())
+		})
+	}
+}
+
 func Test_GetGCOutputResources_AWSReadOnly(t *testing.T) {
 	d := &bicepDriver{}
 	image := "/planes/aws/aws/accounts/000000000000/regions/us-west-2/providers/AWS.EC2/Image/ami-0123456789abcdef0"
