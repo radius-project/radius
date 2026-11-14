@@ -260,7 +260,10 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 		// Without fresh signing keys no token can be checked, so every request is rejected
 		// until a refresh succeeds, even in dryRun.
 		mode := s.mode
-		if decision.Code == v1.CodeAuthorizationUnavailable {
+		if r.URL.Path == InternalIdentityPath {
+			w.Header().Set("Cache-Control", "no-store")
+		}
+		if decision.Code == v1.CodeAuthorizationUnavailable || r.URL.Path == InternalIdentityPath {
 			mode = authz.ModeEnforce
 		}
 		if err := authz.Apply(ctx, mode, decision); err != nil {
@@ -273,6 +276,8 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 		r = r.WithContext(r.Context())
 		r.Header = r.Header.Clone()
 		r.Header.Del("Authorization")
+		// Never inherit an identity from another authentication boundary.
+		r = r.WithContext(authz.WithoutIdentity(r.Context()))
 		if decision.Allowed {
 			r = r.WithContext(authz.WithIdentity(r.Context(), id))
 		}

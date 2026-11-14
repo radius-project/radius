@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/authz/mtls"
@@ -38,6 +39,32 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/authorization"
 	"github.com/stretchr/testify/require"
 )
+
+func TestInternalIdentityPreservesProxyBoundary(t *testing.T) {
+	t.Setenv("RADIUS_POD_UID", uuid.NewString())
+	service := NewService(&ucp.Options{Config: &ucp.Config{
+		Authorization: authz.Options{Mode: authz.ModeDryRun, Namespace: "radius-system"},
+	}})
+	aggregation := &http.Server{Handler: http.NotFoundHandler()}
+	internal := service.internalServer(aggregation)
+	for _, forged := range []bool{false, true} {
+		request := httptest.NewRequest(http.MethodGet, mtls.InternalIdentityPath+"?challenge="+uuid.NewString(), nil)
+		request = request.WithContext(authz.WithIdentity(request.Context(), authz.Identity{Namespace: "radius-system", Component: "bicep-de"}))
+		if forged {
+			request.Header.Set("X-Remote-User", "admin")
+		}
+		recorder := httptest.NewRecorder()
+		internal.Handler.ServeHTTP(recorder, request)
+		if forged {
+			require.Equal(t, http.StatusUnauthorized, recorder.Code)
+		} else {
+			require.Equal(t, http.StatusOK, recorder.Code)
+		}
+		recorder = httptest.NewRecorder()
+		aggregation.Handler.ServeHTTP(recorder, request)
+		require.Equal(t, http.StatusNotFound, recorder.Code, "receipt must not be added to aggregation")
+	}
+}
 
 func TestAggregationComponentTrustSeparation(t *testing.T) {
 	t.Parallel()

@@ -43,6 +43,11 @@ func WithIdentity(ctx context.Context, id Identity) context.Context {
 	return context.WithValue(ctx, identityKey{}, id)
 }
 
+// WithoutIdentity masks an identity inherited from another authentication boundary.
+func WithoutIdentity(ctx context.Context) context.Context {
+	return context.WithValue(ctx, identityKey{}, struct{}{})
+}
+
 // IdentityFromContext returns the caller's identity stored by WithIdentity.
 func IdentityFromContext(ctx context.Context) (Identity, bool) {
 	id, ok := ctx.Value(identityKey{}).(Identity)
