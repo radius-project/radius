@@ -104,7 +104,7 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 		PrevState:     prevState,
 	})
 	if err != nil {
-		return nil, definition, err
+		return res, definition, err
 	}
 
 	return res, definition, nil

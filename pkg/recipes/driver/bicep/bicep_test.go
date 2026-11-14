@@ -704,7 +704,8 @@ func Test_Bicep_Delete_RetriesEachResource(t *testing.T) {
 }
 
 // Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource checks that when a redeploy drops output resources,
-// one failed delete does not stop the other stale resources from being deleted.
+// one failed delete does not stop the other stale resources from being deleted, and that the output of the successful
+// deployment is still returned with the error.
 func Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource(t *testing.T) {
 	ts := registrytest.NewFakeRegistryServer(t)
 	t.Cleanup(ts.CloseServer)
@@ -722,7 +723,7 @@ func Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource(t *testing.T)
 	client.EXPECT().Delete(gomock.Any(), failing).Return(errors.New("failing is locked")).Times(1)
 	client.EXPECT().Delete(gomock.Any(), stale).Return(nil).Times(1)
 
-	_, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+	output, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
 		BaseOptions: driver.BaseOptions{
 			Recipe: recipes.ResourceMetadata{
 				Name:          "test-resource",
@@ -737,10 +738,47 @@ func Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource(t *testing.T)
 		},
 		PrevState: []string{failing, stale, failing, stale},
 	})
+	require.NotNil(t, output)
+	require.Equal(t, ts.TestImageURL, output.Status.TemplatePath)
 	recipeErr := &recipes.RecipeError{}
 	require.ErrorAs(t, err, &recipeErr)
 	require.Equal(t, recipes.RecipeGarbageCollectionFailed, recipeErr.ErrorDetails.Code)
 	require.Equal(t, fmt.Sprintf("code RecipeDeletionFailed: err failed to delete resource %q after 1 attempt(s), last error: failing is locked", failing), recipeErr.ErrorDetails.Message)
+}
+
+// Test_Bicep_Execute_GarbageCollectionInvalidPreviousIDReturnsOutput checks that the output of a successful deployment
+// is returned when a previous output resource ID cannot be parsed.
+func Test_Bicep_Execute_GarbageCollectionInvalidPreviousIDReturnsOutput(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	driverBicep, _, _, _ := setupDeleteInputs(t)
+	driverBicep.DeploymentClient = &deploymentClientSpy{
+		response: &clients.ClientCreateOrUpdateResponse{
+			Properties: &armdeployments.DeploymentPropertiesExtended{},
+		},
+	}
+	driverBicep.RegistryClient = ts.TestServer.Client()
+
+	output, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Recipe: recipes.ResourceMetadata{
+				Name:          "test-resource",
+				ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+			},
+			Definition: recipes.EnvironmentDefinition{
+				Name:         "direct-module",
+				Driver:       recipes.TemplateKindBicep,
+				TemplatePath: ts.TestImageURL,
+			},
+		},
+		PrevState: []string{"not-a-resource-id"},
+	})
+	require.NotNil(t, output)
+	recipeErr := &recipes.RecipeError{}
+	require.ErrorAs(t, err, &recipeErr)
+	require.Equal(t, recipes.RecipeGarbageCollectionFailed, recipeErr.ErrorDetails.Code)
 }
 
 // Test_Bicep_Delete_SendsAWSOwner checks that the recipe's owner reaches the resource client, which sends it to UCP
@@ -1251,6 +1289,52 @@ func Test_GetGCOutputResources(t *testing.T) {
 	res, err := d.getGCOutputResources(after, before)
 	require.NoError(t, err)
 	require.Equal(t, exp, res)
+}
+
+func Test_GetGCOutputResources_CaseOnlyChange(t *testing.T) {
+	tests := []struct {
+		name       string
+		previous   string
+		current    string
+		wantDelete bool
+	}{
+		{
+			name:     "Azure ID with different casing is the same resource",
+			previous: "/subscriptions/test-sub/resourceGroups/Test-RG/providers/Microsoft.Storage/storageAccounts/Account",
+			current:  "/subscriptions/test-sub/resourcegroups/test-rg/providers/Microsoft.Storage/storageAccounts/account",
+		},
+		{
+			name:     "Azure ID with and without the plane prefix is the same resource",
+			previous: "/planes/azure/azure/subscriptions/test-sub/resourceGroups/Test-RG/providers/Microsoft.Storage/storageAccounts/Account",
+			current:  "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/account",
+		},
+		{
+			name:       "AWS ID with different casing is a different resource",
+			previous:   "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/Bucket",
+			current:    "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/bucket",
+			wantDelete: true,
+		},
+		{
+			name:       "Kubernetes ID with different casing is a different resource",
+			previous:   "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/Config",
+			current:    "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/config",
+			wantDelete: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &bicepDriver{}
+			res, err := d.getGCOutputResources([]string{tt.current}, []string{tt.previous})
+			require.NoError(t, err)
+			if !tt.wantDelete {
+				require.Empty(t, res)
+				return
+			}
+			require.Len(t, res, 1)
+			require.Equal(t, tt.previous, res[0].ID.String())
+		})
+	}
 }
 
 func Test_GetGCOutputResources_AWSReadOnly(t *testing.T) {

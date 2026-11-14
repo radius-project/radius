@@ -243,7 +243,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	garbageCollectionStartTime := time.Now()
 	diff, err := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
 	if err != nil {
-		return nil, err
+		return recipeResponse, err
 	}
 
 	// Deleting obsolete output resources.
@@ -254,7 +254,8 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeGarbageCollectionDuration(ctx, garbageCollectionStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationGC, opts.Recipe.Name, &opts.Definition, metrics.FailedOperationState))
-		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
+		// The deployment succeeded, so return its output for the caller to keep tracking the new resources.
+		return recipeResponse, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeGarbageCollectionDuration(ctx, garbageCollectionStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationGC, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
@@ -302,10 +303,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 
 		// Explicit recipe outputs and deployment inventory can contain the same resource.
 		// Deduplicate here so saved state and redeploy garbage collection are covered too.
-		key := outputResource.ID.String()
-		if path := azureResourcePath(outputResource.ID); path != "" {
-			key = strings.ToLower(path)
-		}
+		key := outputResourceKey(outputResource.ID)
 		if _, exists := deleting[key]; exists {
 			continue
 		}
@@ -419,6 +417,15 @@ func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResour
 	}
 
 	return false
+}
+
+// outputResourceKey identifies the resource that an output resource ID refers to. Azure IDs match without case and
+// with or without an Azure plane prefix. Other resource IDs match exactly.
+func outputResourceKey(id resources.ID) string {
+	if path := azureResourcePath(id); path != "" {
+		return strings.ToLower(path)
+	}
+	return id.String()
 }
 
 func azureResourcePath(id resources.ID) string {
@@ -833,24 +840,36 @@ func wrapARMParameters(params map[string]any) map[string]any {
 
 // getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and
 // returns a slice of OutputResources that contains the elements that are in the "previous" slice but not in the "current".
+// IDs are compared with outputResourceKey.
 func (d *bicepDriver) getGCOutputResources(current []string, previous []string) ([]rpv1.OutputResource, error) {
-	// We can easily determine which resources have changed via a brute-force search comparing IDs.
-	// The lists of resources we work with are small, so this is fine.
+	currentKeys := make(map[string]struct{}, len(current))
+	for _, currentResourceID := range current {
+		key := currentResourceID
+		if id, err := resources.Parse(currentResourceID); err == nil {
+			key = outputResourceKey(id)
+		}
+		currentKeys[key] = struct{}{}
+	}
+
 	diff := []rpv1.OutputResource{}
 	for _, prevResourceId := range previous {
-		found := slices.Contains(current, prevResourceId)
-
-		if !found {
-			id, err := resources.Parse(prevResourceId)
-			if err != nil {
-				return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
-			}
-
-			diff = append(diff, rpv1.OutputResource{
-				ID:            id,
-				RadiusManaged: new(!resources_aws.IsReadOnlyResource(id)),
-			})
+		if slices.Contains(current, prevResourceId) {
+			continue
 		}
+
+		id, err := resources.Parse(prevResourceId)
+		if err != nil {
+			return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
+		}
+		// A redeploy can return the same Azure resource with different casing. Deleting it would delete the live resource.
+		if _, found := currentKeys[outputResourceKey(id)]; found {
+			continue
+		}
+
+		diff = append(diff, rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: new(!resources_aws.IsReadOnlyResource(id)),
+		})
 	}
 
 	return diff, nil

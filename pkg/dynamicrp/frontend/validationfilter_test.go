@@ -198,6 +198,7 @@ func TestDefaultAsyncPut_ValidationPreventsPersistence(t *testing.T) {
 				ResponseConverter: converter.DynamicResourceDataModelToVersioned,
 				UpdateFilters: makeUpdateFilters(
 					makeDefaultsFilter(ucp),
+					makeStatusFilter(),
 					makeValidationFilter(ucp),
 					func(context.Context, *datamodel.DynamicResource, *datamodel.DynamicResource, *ctrl.Options) (rest.Response, error) {
 						t.Fatal("encryption must not run for an invalid request")

@@ -28,6 +28,8 @@ import (
 //go:generate go tool mockgen -typed -destination=./mock_driver.go -package=driver -self_package github.com/radius-project/radius/pkg/recipes/driver github.com/radius-project/radius/pkg/recipes/driver Driver
 type Driver interface {
 	// Execute fetches the recipe contents and deploys the recipe and returns deployed resources, secrets and values.
+	// When the deployment succeeds but deleting resources from the previous deployment fails, it returns the
+	// output together with a RecipeGarbageCollectionFailed error.
 	Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error)
 
 	// Delete handles deletion of output resources for the recipe deployment.
