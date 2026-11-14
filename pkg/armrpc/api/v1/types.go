@@ -181,6 +181,8 @@ type InternalMetadata struct {
 	UpdatedAPIVersion string `json:"updatedApiVersion,omitempty"`
 	// AsyncProvisioningState is the provisioning state for async operation.
 	AsyncProvisioningState ProvisioningState `json:"provisioningState,omitempty"`
+	// DeletionRequested preserves delete intent while the async worker reports Updating.
+	DeletionRequested bool `json:"deletionRequested,omitempty"`
 }
 
 // BaseResource represents common resource properties used for all resources.

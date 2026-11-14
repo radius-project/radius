@@ -102,6 +102,20 @@ type bicepDriver struct {
 func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (*recipes.RecipeOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", opts.Definition.Name, opts.Definition.TemplatePath))
+	if opts.Recipe.RecoverExecution {
+		if opts.Recipe.ExecutionID == "" {
+			return nil, fmt.Errorf("bicep recovery requires the original execution identity")
+		}
+		deploymentID, err := createDeploymentID(opts.Recipe.ResourceID, deploymentPrefix+opts.Recipe.ExecutionID)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := d.recoverDeployment(ctx, deploymentID.String())
+		if err != nil {
+			return nil, err
+		}
+		return d.finishDeployment(ctx, opts, deploymentID, nil, resp)
+	}
 
 	recipeData := make(map[string]any)
 	downloadStartTime := time.Now()
@@ -162,6 +176,9 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	}
 
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
+	if opts.Recipe.ExecutionID != "" {
+		deploymentName = deploymentPrefix + opts.Recipe.ExecutionID
+	}
 	deploymentID, err := createDeploymentID(recipeContext.Resource.ID, deploymentName)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
@@ -200,7 +217,14 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
+	return d.finishDeployment(ctx, opts, deploymentID, recipeData, resp)
+}
 
+func (d *bicepDriver) finishDeployment(ctx context.Context, opts driver.ExecuteOptions, deploymentID resources.ID, recipeData map[string]any, resp clients.ClientCreateOrUpdateResponse) (*recipes.RecipeOutput, error) {
+	logger := logr.FromContextOrDiscard(ctx)
+	if resp.Properties == nil {
+		return nil, fmt.Errorf("native deployment returned no properties")
+	}
 	// Log only IDs, not output values, which can contain credentials.
 	outputResourceIDs := make([]string, 0, len(resp.Properties.OutputResources))
 	for _, output := range resp.Properties.OutputResources {
@@ -231,6 +255,9 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 	if shouldExecuteImageBuildHook {
+		if opts.Recipe.RecoverExecution {
+			return nil, fmt.Errorf("native deployment recovered, but imageBuild hook completion cannot be proven; refusing hook replay")
+		}
 		if err := d.executeImageBuildHook(ctx, recipeData, resp.Properties.Outputs, recipeResponse, opts); err != nil {
 			return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 		}
@@ -259,6 +286,36 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeGarbageCollectionDuration(ctx, garbageCollectionStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationGC, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
 	return recipeResponse, nil
+}
+
+// recoverDeployment only reads the original deployment. Even a 404 cannot prove that
+// an earlier worker will not subsequently submit its already-prepared request.
+func (d *bicepDriver) recoverDeployment(ctx context.Context, id string) (clients.ClientCreateOrUpdateResponse, error) {
+	for {
+		resp, err := d.DeploymentClient.Get(ctx, id, clients.DeploymentsClientAPIVersion)
+		if err != nil {
+			return resp, fmt.Errorf("cannot observe original bicep deployment %s; refusing replacement submission: %w", id, err)
+		}
+		if resp.Properties == nil || resp.Properties.ProvisioningState == nil {
+			return resp, fmt.Errorf("original bicep deployment has no provisioning state; refusing replay")
+		}
+		switch strings.ToLower(string(*resp.Properties.ProvisioningState)) {
+		case "succeeded":
+			return resp, nil
+		case "failed", "canceled":
+			return resp, fmt.Errorf("original bicep deployment is %s; partial inventory requires reconciliation before a new execution", *resp.Properties.ProvisioningState)
+		case "accepted", "running", "updating", "creating":
+			timer := time.NewTimer(pollFrequency)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return resp, ctx.Err()
+			case <-timer.C:
+			}
+		default:
+			return resp, fmt.Errorf("original bicep deployment has unsupported state %q; refusing replay", *resp.Properties.ProvisioningState)
+		}
+	}
 }
 
 // Delete deletes all of the output resources that are marked as managed by Radius.

@@ -19,6 +19,8 @@ package engine
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/components/metrics"
@@ -90,6 +92,23 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 	if err != nil {
 		return nil, nil, err
 	}
+	if len(definition.AcceptsDelegationFrom) > 0 && recipe.IncomingReferences == nil {
+		err := fmt.Errorf("a recipe accepting delegation requires the complete related desired inputs before provisioning")
+		return nil, definition, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
+	}
+	if recipe.IncomingReferences != nil {
+		if err := recipes.ValidateIncomingReferences(recipe.IncomingReferences); err != nil {
+			return nil, definition, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
+		}
+		for _, reference := range recipe.IncomingReferences {
+			if !slices.ContainsFunc(definition.AcceptsDelegationFrom, func(accepted string) bool {
+				return strings.EqualFold(accepted, reference.Type)
+			}) {
+				err := fmt.Errorf("the target recipe does not accept delegation from resource type %q", reference.Type)
+				return nil, definition, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
+			}
+		}
+	}
 
 	secrets, err := e.getRecipeConfigSecrets(ctx, driver, configuration, definition)
 	if err != nil {
@@ -105,6 +124,16 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 	})
 	if err != nil {
 		return nil, definition, err
+	}
+	if recipe.IncomingReferences != nil || (res != nil && len(res.DelegatedOutputs) > 0) {
+		if res == nil {
+			err = fmt.Errorf("the target recipe did not return a result")
+		} else {
+			err = res.ValidateDelegatedOutputs(recipe.IncomingReferences)
+		}
+		if err != nil {
+			return res, definition, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), util.ExecutionError, recipes.GetErrorDetails(err))
+		}
 	}
 
 	return res, definition, nil
@@ -211,6 +240,10 @@ func (e *engine) getDriver(ctx context.Context, recipeMetadata recipes.ResourceM
 	definition, err := e.options.ConfigurationLoader.LoadRecipe(ctx, &recipeMetadata)
 	if err != nil {
 		return nil, nil, err
+	}
+	if definition.Driver == "delegated" {
+		err := fmt.Errorf("a delegating resource must be provisioned through its target recipe")
+		return definition, nil, recipes.NewRecipeError(recipes.RecipeValidationFailed, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
 	}
 
 	// Determine Recipe driver type

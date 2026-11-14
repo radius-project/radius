@@ -144,6 +144,11 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	}
 
 	interceptor := &responseInterceptor{Inner: p.transport}
+	if req.Method == http.MethodGet && len(id.TypeSegments()) > 0 && strings.EqualFold(id.TypeSegments()[0].Type, "Microsoft.Resources/deployments") {
+		interceptor.Rewrite = func(response *http.Response) error {
+			return expandDelegatedDeploymentOutputs(ctx, p.DatabaseClient(), response)
+		}
+	}
 	sender := proxy.NewARMProxy(proxy.ReverseProxyOptions{RoundTripper: interceptor}, downstreamURL, nil)
 	sender.ServeHTTP(w, proxyReq)
 
@@ -343,7 +348,8 @@ retry:
 //
 // This type is NOT thread-safe and should be created and used per-request.
 type responseInterceptor struct {
-	Inner http.RoundTripper
+	Inner   http.RoundTripper
+	Rewrite func(*http.Response) error
 
 	Response *http.Response
 	Error    error
@@ -352,5 +358,11 @@ type responseInterceptor struct {
 // RoundTrip implements http.RoundTripper by capturing the response and error.
 func (i *responseInterceptor) RoundTrip(req *http.Request) (*http.Response, error) {
 	i.Response, i.Error = i.Inner.RoundTrip(req)
+	if i.Error == nil && i.Response != nil && i.Rewrite != nil {
+		if err := i.Rewrite(i.Response); err != nil {
+			i.Error = err
+			return nil, err
+		}
+	}
 	return i.Response, i.Error
 }

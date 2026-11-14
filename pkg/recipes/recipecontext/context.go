@@ -18,6 +18,7 @@ package recipecontext
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -60,6 +61,16 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 			Name: parsedEnv.Name(),
 			ID:   metadata.EnvironmentID,
 		},
+	}
+	if metadata.IncomingReferences != nil {
+		if err := recipes.ValidateIncomingReferences(metadata.IncomingReferences); err != nil {
+			return nil, fmt.Errorf("failed to build delegated recipe inputs: %w", err)
+		}
+		incoming := slices.Clone(metadata.IncomingReferences)
+		slices.SortFunc(incoming, func(a, b recipes.IncomingReference) int {
+			return strings.Compare(strings.ToLower(a.ID), strings.ToLower(b.ID))
+		})
+		recipeContext.Resource.IncomingReferences = &incoming
 	}
 
 	if config.Runtime.Kubernetes != nil {

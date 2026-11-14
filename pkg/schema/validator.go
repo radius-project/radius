@@ -312,6 +312,12 @@ func (v *Validator) validateRadiusConstraints(schema *openapi3.Schema) error {
 func (v *Validator) validateRadiusConstraintsWithPath(schema *openapi3.Schema, path string) error {
 	var errors ValidationErrors
 
+	if raw, exists := schema.Extensions[ResourceReferenceAnnotation]; exists {
+		if err := validateResourceReferenceAnnotation(raw, schema.Type != nil && schema.Type.Is("string")); err != nil {
+			errors.Add(NewConstraintError(path, err.Error()))
+		}
+	}
+
 	// Check for prohibited features
 	if err := v.checkProhibitedFeatures(schema); err != nil {
 		if valErr, ok := err.(*ValidationError); ok {
@@ -857,7 +863,12 @@ func ValidateResourceRequestAgainstSchema(ctx context.Context, resourceData map[
 	return validateResourceAgainstSchema(ctx, resourceData, schemaData, false)
 }
 
-func validateResourceAgainstSchema(ctx context.Context, resourceData map[string]any, schemaData any, allowEncryptedFields bool) error {
+// ValidateDesiredResourceInputs rejects computed read-only properties in plaintext desired inputs.
+func ValidateDesiredResourceInputs(ctx context.Context, properties map[string]any, schemaData any) error {
+	return validateResourceAgainstSchema(ctx, map[string]any{"properties": properties}, schemaData, false, openapi3.VisitAsRequest())
+}
+
+func validateResourceAgainstSchema(ctx context.Context, resourceData map[string]any, schemaData any, allowEncryptedFields bool, options ...openapi3.SchemaValidationOption) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if schemaData == nil {
 		// Extract resource identifier for cleaner logging
@@ -920,7 +931,7 @@ func validateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 		propertiesData = nil
 	}
 
-	if err := schemaRef.Value.VisitJSON(propertiesData); err != nil {
+	if err := schemaRef.Value.VisitJSON(propertiesData, options...); err != nil {
 		if !allowEncryptedFields {
 			return formatResourceRequestValidationError(err, openAPISchema)
 		}

@@ -52,6 +52,7 @@ type ResourceDeploymentClient struct {
 	Client              sdkclients.ResourceDeploymentsClient
 	OperationsClient    *sdkclients.ResourceDeploymentOperationsClient
 	Tags                map[string]*string
+	DelegationPlanner   func(context.Context, clients.DeploymentOptions, string) (map[string]any, error)
 }
 
 var _ clients.DeploymentClient = (*ResourceDeploymentClient)(nil)
@@ -113,6 +114,13 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 
 	resourceId = ucpresources.MakeUCPID(scopes, types, nil)
 	providerConfig := dc.GetProviderConfigs(options)
+	if dc.DelegationPlanner != nil {
+		template, err := dc.DelegationPlanner(ctx, options, "/planes/radius/local/resourceGroups/"+dc.RadiusResourceGroup)
+		if err != nil {
+			return nil, err
+		}
+		options.Template = template
+	}
 
 	poller, err := dc.Client.CreateOrUpdate(ctx,
 		sdkclients.Deployment{

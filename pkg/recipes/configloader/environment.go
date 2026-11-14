@@ -390,15 +390,17 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 		// TODO: For now, we can set "Name" to default as recipe packs don't have named recipes.
 		// We will remove this field from EnvironmentDefinition once we deprecate Applications.Core.
 		definition := &recipes.EnvironmentDefinition{
-			Name:            "default",
-			Driver:          recipeDefinition.Kind,
-			ResourceType:    resource.Type(),
-			Parameters:      parameters,
-			TemplatePath:    templatePath,
-			TemplateVersion: templateVersion,
-			PlainHTTP:       recipeDefinition.PlainHTTP,
-			Outputs:         recipeDefinition.Outputs,
-			SecretOutputs:   recipeDefinition.SecretOutputs,
+			Name:                  "default",
+			Driver:                recipeDefinition.Kind,
+			ResourceType:          resource.Type(),
+			Parameters:            parameters,
+			TemplatePath:          templatePath,
+			TemplateVersion:       templateVersion,
+			PlainHTTP:             recipeDefinition.PlainHTTP,
+			Outputs:               recipeDefinition.Outputs,
+			SecretOutputs:         recipeDefinition.SecretOutputs,
+			DelegatesTo:           recipeDefinition.DelegatesTo,
+			AcceptsDelegationFrom: recipeDefinition.AcceptsDelegationFrom,
 		}
 		return definition, nil
 	}
@@ -477,22 +479,32 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 				if definition.Kind == nil {
 					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing the required \"kind\" field", resourceType, recipePackID)
 				}
-				if definition.Source == nil {
+				if definition.Source == nil && *definition.Kind != v20250801preview.RecipeKindDelegated {
 					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing the required \"source\" field", resourceType, recipePackID)
 				}
 
+				model, err := recipePackResource.ConvertTo()
+				if err != nil {
+					return nil, err
+				}
+				recipeDefinition := model.(*datamodel.RecipePack).Properties.Recipes[recipePackResourceType]
+				if err := recipes.ValidateRecipeDefinition(resourceType, recipeDefinition); err != nil {
+					return nil, err
+				}
 				var plainHTTP bool
 				if definition.PlainHTTP != nil {
 					plainHTTP = *definition.PlainHTTP
 				}
 				outputs, secretOutputs := v20250801preview.SplitRecipeOutputs(definition.Outputs)
 				return &recipes.RecipeDefinition{
-					Kind:          string(*definition.Kind),
-					Source:        string(*definition.Source),
-					Parameters:    definition.Parameters,
-					PlainHTTP:     plainHTTP,
-					Outputs:       outputs,
-					SecretOutputs: secretOutputs,
+					Kind:                  string(*definition.Kind),
+					Source:                recipeDefinition.Source,
+					Parameters:            definition.Parameters,
+					PlainHTTP:             plainHTTP,
+					Outputs:               outputs,
+					SecretOutputs:         secretOutputs,
+					DelegatesTo:           recipeDefinition.DelegatesTo,
+					AcceptsDelegationFrom: recipeDefinition.AcceptsDelegationFrom,
 				}, nil
 			}
 		}

@@ -2060,7 +2060,7 @@
         },
         "source": {
           "type": "string",
-          "description": "(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the module source such as a Git URL or a Terraform registry module."
+          "description": "(Required for Bicep and Terraform; omitted for delegated Recipes) Location of the Recipe. For Bicep this is an OCI registry reference. For Terraform this is the module source such as a Git URL or Terraform registry module."
         },
         "parameters": {
           "type": "object",
@@ -2071,11 +2071,21 @@
           "type": "object",
           "description": "(Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object maps secret property names to module output names and always routes those outputs to the resource secret outputs.",
           "additionalProperties": {}
+        },
+        "delegatesTo": {
+          "type": "string",
+          "description": "(Required for delegated Recipes; omitted for provisioning Recipes) Radius Resource Type whose instance owns provisioning. Resource-type relationship metadata identifies the target instance."
+        },
+        "acceptsDelegationFrom": {
+          "type": "array",
+          "description": "(Optional for Bicep and Terraform Recipes) Radius Resource Types whose instances may contribute desired properties to this Recipe. Delegated Recipes cannot accept delegation.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
-        "kind",
-        "source"
+        "kind"
       ]
     },
     "RecipeKind": {
@@ -2083,7 +2093,8 @@
       "description": "The type of recipe",
       "enum": [
         "terraform",
-        "bicep"
+        "bicep",
+        "delegated"
       ],
       "x-ms-enum": {
         "name": "RecipeKind",
@@ -2098,6 +2109,11 @@
             "name": "bicep",
             "value": "bicep",
             "description": "Bicep recipe"
+          },
+          {
+            "name": "delegated",
+            "value": "delegated",
+            "description": "Contributes desired properties to a target Radius resource's provisioning recipe."
           }
         ]
       }

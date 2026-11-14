@@ -29,6 +29,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestContextIncomingReferences(t *testing.T) {
+	t.Parallel()
+	const route = "/planes/radius/local/resourceGroups/rg/providers/Radius.Compute/routes/"
+	incoming := []recipes.IncomingReference{
+		{ID: route + "z", Type: "Radius.Compute/routes", APIVersion: "2025-08-01-preview", Revision: "z", Properties: map[string]any{"kind": "TCP"}},
+		{ID: route + "a", Type: "Radius.Compute/routes", APIVersion: "2025-08-01-preview", Revision: "a", Properties: map[string]any{}},
+	}
+	for _, tt := range []struct {
+		name     string
+		incoming []recipes.IncomingReference
+	}{
+		{"ordinary", nil},
+		{"empty target", []recipes.IncomingReference{}},
+		{"combined", incoming},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			context, err := New(&recipes.ResourceMetadata{ResourceID: testResourceID, EnvironmentID: testEnvironmentID, IncomingReferences: tt.incoming}, &recipes.Configuration{})
+			require.NoError(t, err)
+			data, err := json.Marshal(context.Resource)
+			require.NoError(t, err)
+			var serialized map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal(data, &serialized))
+			if tt.incoming == nil {
+				require.NotContains(t, serialized, "incomingReferences")
+			} else if len(tt.incoming) == 0 {
+				require.JSONEq(t, "[]", string(serialized["incomingReferences"]))
+			} else {
+				require.Equal(t, "a", (*context.Resource.IncomingReferences)[0].Revision)
+				require.Equal(t, "z", incoming[0].Revision)
+			}
+		})
+	}
+}
+
 // The IDs the hash cases below are built from. Named so a call reads as the
 // owner it describes rather than as four long strings.
 const (

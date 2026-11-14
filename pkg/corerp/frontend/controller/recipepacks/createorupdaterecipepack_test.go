@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
@@ -47,6 +48,39 @@ func TestNewCreateOrUpdateRecipePack(t *testing.T) {
 	controller, err := NewCreateOrUpdateRecipePack(opts)
 	require.NoError(t, err)
 	require.NotNil(t, controller)
+}
+
+func TestRecipePackRejectsInvalidDelegationBeforeStorage(t *testing.T) {
+	t.Parallel()
+	for _, recipe := range []string{
+		`{"kind":"delegated"}`,
+		`{"kind":"delegated","delegatesTo":"containers"}`,
+		`{"kind":"delegated","delegatesTo":"Radius.Compute/containers","source":""}`,
+		`{"kind":"bicep","source":"module","acceptsDelegationFrom":[null]}`,
+	} {
+		t.Run(recipe, func(t *testing.T) {
+			t.Parallel()
+			store := database.NewMockClient(gomock.NewController(t))
+			controller, err := NewCreateOrUpdateRecipePack(ctrl.Options{DatabaseClient: store})
+			require.NoError(t, err)
+			request := httptest.NewRequest(http.MethodPut,
+				"/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/test?api-version=2025-08-01-preview",
+				strings.NewReader(`{"location":"global","properties":{"recipes":{"Radius.Compute/routes":`+recipe+`}}}`))
+			request.Header.Set("Content-Type", "application/json")
+			ctx := rpctest.NewARMRequestContext(request)
+			writer := httptest.NewRecorder()
+			response, err := controller.Run(ctx, writer, request)
+			if err != nil {
+				var clientError *v1.ErrClientRP
+				require.ErrorAs(t, err, &clientError)
+				require.Equal(t, v1.CodeInvalidRequestContent, clientError.Code)
+				return
+			}
+			require.NoError(t, err)
+			require.NoError(t, response.Apply(ctx, writer, request))
+			require.Equal(t, http.StatusBadRequest, writer.Code)
+		})
+	}
 }
 
 func TestCreateOrUpdateRecipePackRun_CreateNew(t *testing.T) {

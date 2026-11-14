@@ -157,6 +157,18 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		logger.Info("Skipping sensitive field detection due to missing apiVersion", "resourceID", req.ResourceID)
 	}
 
+	if source, ok := any(resource).(interface {
+		RestoreDesiredInputs(context.Context, encryption.KeyProvider) (map[string]any, error)
+	}); ok {
+		desired, err := source.RestoreDesiredInputs(ctx, encryption.NewKubernetesKeyProvider(c.KubeClient(), nil))
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to restore saved recipe inputs: %w", err)
+		}
+		if desired != nil {
+			recipeProperties = desired
+		}
+	}
+
 	// Clone existing output resources so we can diff them later.
 	previousOutputResources := c.copyOutputResources(resource)
 

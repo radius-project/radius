@@ -627,9 +627,13 @@ type RecipeDefinition struct {
 	// REQUIRED; (Required) The kind of Recipe, which determines how Radius runs it.
 	Kind *RecipeKind
 
-	// REQUIRED; (Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes
-	// this is the module source such as a Git URL or a Terraform registry module.
-	Source *string
+	// (Optional for Bicep and Terraform Recipes) Radius Resource Types whose instances may contribute desired properties to this
+	// Recipe. Delegated Recipes cannot accept delegation.
+	AcceptsDelegationFrom []*string
+
+	// (Required for delegated Recipes; omitted for provisioning Recipes) Radius Resource Type whose instance owns provisioning.
+	// Resource-type relationship metadata identifies the target instance.
+	DelegatesTo *string
 
 	// (Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform
 	// module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object
@@ -643,6 +647,10 @@ type RecipeDefinition struct {
 	// (Optional) Connect to the source using HTTP instead of HTTPS. Use this only when the source does not support HTTPS such
 	// as a locally hosted registry for Bicep recipes. Defaults to `false` if not specified.
 	PlainHTTP *bool
+
+	// (Required for Bicep and Terraform; omitted for delegated Recipes) Location of the Recipe. For Bicep this is an OCI registry
+	// reference. For Terraform this is the module source such as a Git URL or Terraform registry module.
+	Source *string
 }
 
 // RecipePackProperties - Recipe Pack properties

@@ -117,6 +117,49 @@ func TestRecipeOutput_PrepareRecipeResponse_RejectsProviderResourceIDs(t *testin
 	require.Empty(t, ro.ProviderResourceIDs)
 }
 
+func TestRecipeOutputDelegatedRevisions(t *testing.T) {
+	t.Parallel()
+	const id = "/planes/radius/local/resourceGroups/rg/providers/Radius.Compute/routes/route"
+	incoming := []IncomingReference{{ID: id, Type: "Radius.Compute/routes", APIVersion: "2025-08-01-preview", Revision: "revision-1", Properties: map[string]any{}}}
+	valid := DelegatedOutput{ID: id, Revision: "revision-1", Values: map[string]any{"listener": "endpoint"}}
+	for _, tt := range []struct {
+		name    string
+		outputs []DelegatedOutput
+		error   string
+	}{
+		{"matching", []DelegatedOutput{valid}, ""},
+		{"missing", nil, "missing delegated outputs"},
+		{"duplicate", []DelegatedOutput{valid, valid}, "duplicate Radius resource ID"},
+		{"stale revision", []DelegatedOutput{{ID: id, Revision: "revision-0", Values: valid.Values}}, "desired-state revision"},
+		{"unexpected resource", []DelegatedOutput{{ID: id + "-other", Revision: valid.Revision, Values: valid.Values}}, "does not identify"},
+		{"null values", []DelegatedOutput{{ID: id, Revision: valid.Revision}}, "computed values object"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			output := RecipeOutput{DelegatedOutputs: tt.outputs}
+			err := output.ValidateDelegatedOutputs(incoming)
+			if tt.error == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.error)
+			}
+		})
+	}
+	for _, extra := range []string{"", `,"resources":["native-id"]`, `,"secrets":{"password":"private-value"}`} {
+		var result map[string]any
+		require.NoError(t, json.Unmarshal([]byte(`{"delegatedOutputs":[{"id":"`+id+`","revision":"revision-1","values":{}`+extra+`}]}`), &result))
+		var output RecipeOutput
+		err := output.PrepareRecipeResponse(result)
+		if extra != "" {
+			require.ErrorContains(t, err, "unknown field")
+		} else {
+			require.NoError(t, err)
+			require.NoError(t, output.ValidateDelegatedOutputs(incoming))
+			require.Empty(t, output.Resources)
+		}
+	}
+}
+
 func TestRecipeOutput_ProviderResourceID(t *testing.T) {
 	id := "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
 	ro := &RecipeOutput{}
