@@ -91,8 +91,12 @@ func NewDelegationPlanner(loader configloader.ConfigurationLoader, ucp *v2023100
 				}
 				body, _ := declaration["properties"].(map[string]any)
 				properties, _ := body["properties"].(map[string]any)
+				definition, declared, err := deploymentDeclaredRecipe(ctx, template, properties["environment"], parameters, scope, resourceType, armOptions)
+				if err != nil {
+					return fmt.Errorf("failed to load deployment recipe for %q: %w", resourceType, err)
+				}
 				resourceEnvironment := environment
-				if value, present := properties["environment"]; present {
+				if value, present := properties["environment"]; present && !declared {
 					var resolved bool
 					resourceEnvironment, resolved = deploymentMetadataString(value, template, parameters)
 					if !resolved {
@@ -103,6 +107,9 @@ func NewDelegationPlanner(loader configloader.ConfigurationLoader, ucp *v2023100
 						}
 						env, _ := declarations[match[1]].(map[string]any)
 						envType, _, _ := strings.Cut(fmt.Sprint(env["type"]), "@")
+						if envType == "Applications.Core/environments" {
+							continue
+						}
 						envBody, _ := env["properties"].(map[string]any)
 						envName, ok := deploymentMetadataString(envBody["name"], template, parameters)
 						if !ok || (envType != "Radius.Core/environments" && envType != "Applications.Core/environments") {
@@ -111,15 +118,14 @@ func NewDelegationPlanner(loader configloader.ConfigurationLoader, ucp *v2023100
 						resourceEnvironment = scope + "/providers/" + envType + "/" + envName
 					}
 				}
-				if strings.Contains(strings.ToLower(resourceEnvironment), "/providers/applications.core/environments/") {
+				if !declared && strings.Contains(strings.ToLower(resourceEnvironment), "/providers/applications.core/environments/") {
 					continue
 				}
 				metadata := recipes.ResourceMetadata{
 					ResourceID:    scope + "/providers/" + resourceType + "/deployment-planning",
 					EnvironmentID: resourceEnvironment,
 				}
-				definition, declared, err := deploymentDeclaredRecipe(ctx, template, properties["environment"], parameters, scope, resourceType, armOptions)
-				if err == nil && !declared {
+				if !declared {
 					definition, err = loader.LoadRecipe(ctx, &metadata)
 				}
 				if err != nil {

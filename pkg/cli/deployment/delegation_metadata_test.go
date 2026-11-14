@@ -143,7 +143,8 @@ func TestDelegationPlannerReadsRecipePackCreatedInDeployment(t *testing.T) {
 	})
 	require.NoError(t, err)
 	template := map[string]any{
-		"imports": map[string]any{"radius": map[string]any{"provider": "Radius"}},
+		"imports":   map[string]any{"radius": map[string]any{"provider": "Radius"}},
+		"variables": map[string]any{"applicationName": "app"},
 		"resources": map[string]any{
 			"pack": map[string]any{
 				"import": "radius", "type": "Radius.Core/recipePacks@2025-08-01-preview",
@@ -155,7 +156,7 @@ func TestDelegationPlannerReadsRecipePackCreatedInDeployment(t *testing.T) {
 			},
 			"env": map[string]any{
 				"import": "radius", "type": "Radius.Core/environments@2025-08-01-preview",
-				"properties": map[string]any{"name": "env", "properties": map[string]any{
+				"properties": map[string]any{"name": "[format('{0}-env',variables('applicationName'))]", "properties": map[string]any{
 					"recipePacks": []any{"[reference('pack').id]"},
 				}},
 			},
