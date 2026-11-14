@@ -48,6 +48,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/recipes/engine"
+	"github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -526,9 +527,14 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 					Times(1)
 			}
 
-			// No mock for the processor...
+			// No mock for the processor. The recipe deployed, so its output resources are saved before the
+			// processing error is returned.
 			if stillPassing && tt.processorErr != nil {
 				stillPassing = false
+				msc.EXPECT().
+					Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(nil).
+					Times(1)
 			}
 
 			if stillPassing && tt.saveErr != nil {
@@ -576,6 +582,82 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, ctrl.Result{}, res)
 			}
+		})
+	}
+}
+
+func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testing.T) {
+	const (
+		previousID = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/previous"
+		newID      = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/new"
+	)
+	cases := []struct {
+		name      string
+		recipeErr error
+		wantIDs   []string
+	}{
+		{
+			name:    "deployment succeeded",
+			wantIDs: []string{newID},
+		},
+		{
+			name:      "cleanup of previous output resources failed",
+			recipeErr: recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, "failed to delete", util.ExecutionError, nil),
+			wantIDs:   []string{newID, previousID},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			mctrl := gomock.NewController(t)
+			msc := database.NewMockClient(mctrl)
+			eng := engine.NewMockEngine(mctrl)
+			cfg := configloader.NewMockConfigurationLoader(mctrl)
+
+			data := map[string]any{
+				"name":     "tr",
+				"type":     TestResourceType,
+				"id":       TestResourceID,
+				"location": v1.LocationGlobal,
+				"properties": map[string]any{
+					"application":       TestApplicationID,
+					"environment":       TestEnvironmentID,
+					"provisioningState": "Accepted",
+					"status": map[string]any{
+						"outputResources": []map[string]any{{"id": previousID, "radiusManaged": true}},
+					},
+					"recipe": map[string]any{"name": "test-recipe"},
+				},
+			}
+			msc.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil)
+			cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil)
+			eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&recipes.RecipeOutput{Resources: []string{newID}}, tt.recipeErr)
+
+			var saved *TestResource
+			msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+				saved = obj.Data.(*TestResource)
+				return nil
+			})
+
+			ctrlr, err := NewCreateOrUpdateResource(ctrl.Options{DatabaseClient: msc}, errorProcessorReference, eng, cfg)
+			require.NoError(t, err)
+
+			_, err = ctrlr.Run(t.Context(), &ctrl.Request{
+				OperationID:      uuid.New(),
+				OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
+				ResourceID:       TestResourceID,
+				CorrelationID:    uuid.New().String(),
+				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
+			})
+			require.Error(t, err)
+
+			require.NotNil(t, saved)
+			ids := []string{}
+			for _, output := range saved.OutputResources() {
+				ids = append(ids, output.ID.String())
+			}
+			require.Equal(t, tt.wantIDs, ids)
+			require.Equal(t, util.ExecutionError, saved.Properties.Recipe.DeploymentStatus)
 		})
 	}
 }

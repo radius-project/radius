@@ -193,6 +193,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		// Now we're ready to process the resource. This will handle the updates to any user-visible state.
 		err = c.processor.Process(ctx, resource, processors.Options{RecipeOutput: recipeOutput, RuntimeConfiguration: config.Runtime, UcpClient: c.BaseController.UcpClient()})
 		if err != nil {
+			if recipeOutput != nil {
+				c.saveRecipeOutputResources(ctx, resource, recipeDataModel, recipeOutput, previousOutputs, cleanupErr != nil, req.ResourceID, currentETag, logger)
+			}
 			if redactionCompleted {
 				return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 			}
@@ -440,6 +443,34 @@ func setRecipeStatus[P rpv1.RadiusResourceModel](data P, recipeStatus rpv1.Recip
 	status := rm.GetResourceStatus().DeepCopyRecipeStatus()
 	status.Recipe = &recipeStatus
 	rm.SetResourceStatus(status)
+}
+
+// saveRecipeOutputResources saves the output resources of a recipe that deployed when processing its output failed,
+// so a later deployment or delete still finds them. When keepPrevious is true, deleting the previous output resources
+// failed, so they are kept too. Saving is best effort: the caller returns the processing error either way.
+func (c *CreateOrUpdateResource[P, T]) saveRecipeOutputResources(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, output *recipes.RecipeOutput, previous []rpv1.OutputResource, keepPrevious bool, resourceID string, etag string, logger logr.Logger) {
+	outputResources, err := processors.GetOutputResourcesFromRecipe(output)
+	if err != nil {
+		logger.Error(err, "failed to read the output resources of the recipe")
+		return
+	}
+
+	rm := resource.ResourceMetadata()
+	status := rm.GetResourceStatus()
+	status.OutputResources = outputResources
+	rm.SetResourceStatus(status)
+	if keepPrevious {
+		keepPreviousOutputResources(resource, previous)
+	}
+
+	// Delete skips the recipe for a setup error, so record an execution error.
+	recipe := recipeDataModel.GetRecipe()
+	recipe.DeploymentStatus = util.ExecutionError
+	recipeDataModel.SetRecipe(recipe)
+
+	if err := c.DatabaseClient().Save(ctx, &database.Object{ID: resourceID, Data: resource}, database.WithETag(etag)); err != nil {
+		logger.Error(err, "failed to save the output resources of the recipe")
+	}
 }
 
 // keepPreviousOutputResources adds the previous output resources that the new output no longer contains, so a
