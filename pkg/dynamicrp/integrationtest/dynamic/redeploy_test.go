@@ -177,6 +177,43 @@ func Test_Dynamic_Resource_Recipe_Redeploy_TracksOutputResources(t *testing.T) {
 	response.EqualsErrorCode(http.StatusNotFound, v1.CodeNotFound)
 }
 
+func Test_Dynamic_Resource_Recipe_Redeploy_CleanupFailureKeepsBothOutputs(t *testing.T) {
+	mockDriver, ucp := startRecipeHost(t)
+
+	withPrevState := func(prevState ...string) any {
+		return gomock.Cond(func(options driver.ExecuteOptions) bool {
+			return slices.Equal(options.PrevState, prevState)
+		})
+	}
+	gomock.InOrder(
+		mockDriver.EXPECT().Execute(gomock.Any(), withPrevState()).
+			Return(recipeOutput(oldOutputResourceID), nil),
+		mockDriver.EXPECT().Execute(gomock.Any(), withPrevState(oldOutputResourceID)).
+			Return(recipeOutput(newOutputResourceID), recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, "failed to delete", recipes_util.ExecutionError, nil)),
+		// The next deployment retries deleting the resource the failed cleanup left.
+		mockDriver.EXPECT().Execute(gomock.Any(), withPrevState(newOutputResourceID, oldOutputResourceID)).
+			Return(recipeOutput(newOutputResourceID), nil),
+		mockDriver.EXPECT().Delete(gomock.Any(), gomock.Cond(func(options driver.DeleteOptions) bool {
+			return slices.Equal(outputResourceIDs(options.OutputResources), []string{newOutputResourceID})
+		})).Return(nil),
+	)
+
+	require.Equal(t, string(v1.ProvisioningStateSucceeded), deployRecipeResource(t, ucp, recipeResource(testEnvironmentID, "old")))
+
+	require.Equal(t, string(v1.ProvisioningStateFailed), deployRecipeResource(t, ucp, recipeResource(testEnvironmentID, "new")))
+	require.Equal(t, []string{newOutputResourceID, oldOutputResourceID}, storedOutputResourceIDs(t, ucp))
+	recipe := getRecipeResourceProperties(t, ucp)["recipe"].(map[string]any)
+	require.Equal(t, string(recipes_util.ExecutionError), recipe["recipeStatus"])
+
+	require.Equal(t, string(v1.ProvisioningStateSucceeded), deployRecipeResource(t, ucp, recipeResource(testEnvironmentID, "new")))
+	require.Equal(t, []string{newOutputResourceID}, storedOutputResourceIDs(t, ucp))
+
+	response := ucp.MakeRequest(http.MethodDelete, testRecipeResourceURL, nil)
+	response.WaitForOperationComplete(nil)
+	response = ucp.MakeRequest(http.MethodGet, testRecipeResourceURL, nil)
+	response.EqualsErrorCode(http.StatusNotFound, v1.CodeNotFound)
+}
+
 func Test_Dynamic_Resource_Recipe_Redeploy_RejectsEnvironmentChange(t *testing.T) {
 	mockDriver, ucp := startRecipeHost(t)
 	mockDriver.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(recipeOutput(oldOutputResourceID), nil).Times(1)

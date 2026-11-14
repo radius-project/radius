@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/go-logr/logr"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -159,6 +160,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 
 	// Clone existing output resources so we can diff them later.
 	previousOutputResources := c.copyOutputResources(resource)
+	previousOutputs := slices.Clone(resource.OutputResources())
 
 	// Load configuration
 	metadata := recipes.ResourceMetadata{EnvironmentID: resource.ResourceMetadata().EnvironmentID(), ApplicationID: resource.ResourceMetadata().ApplicationID(), ResourceID: resource.GetBaseResource().ID}
@@ -173,9 +175,14 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	// Now we're ready to process recipes (if needed).
 	recipeDataModel, supportsRecipes := any(resource).(datamodel.RecipeDataModel)
 	var recipeOutput *recipes.RecipeOutput
+	// cleanupErr is set when the recipe deployed but deleting resources from the previous deployment failed.
+	// The new output is still saved, and the operation fails after the save.
+	var cleanupErr *recipes.RecipeError
 	if supportsRecipes && recipeDataModel.GetRecipe() != nil {
 		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated, recipeProperties)
-		if err != nil {
+		if recipeErr, ok := errors.AsType[*recipes.RecipeError](err); ok && recipeOutput != nil && recipeErr.ErrorDetails.Code == recipes.RecipeGarbageCollectionFailed {
+			cleanupErr = recipeErr
+		} else if err != nil {
 			return c.handleRecipeError(ctx, err, recipeDataModel, req.ResourceID, currentETag, logger, redactionCompleted)
 		}
 	}
@@ -197,10 +204,16 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		recipeData := recipeDataModel.GetRecipe()
 		if recipeData != nil {
 			recipeData.DeploymentStatus = util.Success
+			if cleanupErr != nil {
+				recipeData.DeploymentStatus = util.RecipeDeploymentStatus(cleanupErr.DeploymentStatus)
+			}
 			recipeDataModel.SetRecipe(recipeData)
 		}
 		if recipeOutput != nil && recipeOutput.Status != nil {
 			setRecipeStatus(resource, *recipeOutput.Status)
+		}
+		if cleanupErr != nil {
+			keepPreviousOutputResources(resource, previousOutputs)
 		}
 	}
 
@@ -214,6 +227,11 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 			return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 		}
 		return ctrl.Result{}, err
+	}
+
+	if cleanupErr != nil {
+		logger.Error(cleanupErr, "failed to delete output resources that the recipe no longer returns")
+		return ctrl.NewFailedResult(cleanupErr.ErrorDetails), nil
 	}
 
 	return ctrl.Result{}, err
@@ -421,5 +439,21 @@ func setRecipeStatus[P rpv1.RadiusResourceModel](data P, recipeStatus rpv1.Recip
 	rm := data.ResourceMetadata()
 	status := rm.GetResourceStatus().DeepCopyRecipeStatus()
 	status.Recipe = &recipeStatus
+	rm.SetResourceStatus(status)
+}
+
+// keepPreviousOutputResources adds the previous output resources that the new output no longer contains, so a
+// later deployment or delete retries deleting them.
+func keepPreviousOutputResources[P rpv1.RadiusResourceModel](data P, previous []rpv1.OutputResource) {
+	rm := data.ResourceMetadata()
+	status := rm.GetResourceStatus()
+	for _, output := range previous {
+		kept := slices.ContainsFunc(status.OutputResources, func(current rpv1.OutputResource) bool {
+			return current.ID.String() == output.ID.String()
+		})
+		if !kept {
+			status.OutputResources = append(status.OutputResources, output)
+		}
+	}
 	rm.SetResourceStatus(status)
 }
