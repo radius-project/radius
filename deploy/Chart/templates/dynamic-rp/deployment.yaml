@@ -242,7 +242,7 @@ spec:
         {{- end}}
         {{- include "radius.targetCluster.env" . | nindent 8 }}
         ports:
-        - containerPort: 5443
+        - containerPort: 8082
           name: dynamic-rp
           protocol: TCP
         {{- if eq .Values.global.prometheus.enabled true }}

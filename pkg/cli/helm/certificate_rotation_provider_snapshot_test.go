@@ -77,11 +77,11 @@ func TestAggregationTransitionExternalIssuerSnapshot(t *testing.T) {
 				return nil
 			}
 			kube.ClearActions()
-			snapshot, err := s.aggregationTransitionSnapshot(ctx)
+			snapshot, err := s.legacyAggregationTransitionSnapshot(ctx)
 			require.NoError(t, err)
 			require.True(t, snapshot.Complete)
 			require.Equal(t, rotationAggregationOnly, snapshot.Scope)
-			require.NoError(t, s.checkAggregationTransitionSnapshot(ctx, snapshot))
+			require.NoError(t, s.checkLegacyAggregationTransitionSnapshot(ctx, snapshot))
 			for _, action := range kube.Actions() {
 				require.Equal(t, "get", action.GetVerb())
 				if action.GetResource().Resource == "secrets" {
@@ -94,7 +94,7 @@ func TestAggregationTransitionExternalIssuerSnapshot(t *testing.T) {
 			}
 			require.NoError(t, unstructured.SetNestedField(issuer.Object, "https://changed.example", "spec", "vault", "server"))
 			require.NoError(t, client.Tracker().Update(resource, issuer, issuer.GetNamespace()))
-			require.ErrorContains(t, s.checkAggregationTransitionSnapshot(ctx, snapshot), "specification changed")
+			require.ErrorContains(t, s.checkLegacyAggregationTransitionSnapshot(ctx, snapshot), "specification changed")
 		})
 	}
 }
@@ -106,7 +106,7 @@ func TestAggregationTransitionSnapshot(t *testing.T) {
 		t.Run(scenario, func(t *testing.T) {
 			s, state := completedAggregationFixture(t)
 			ctx, ns := t.Context(), s.namespace
-			snapshot, err := s.aggregationTransitionSnapshot(ctx)
+			snapshot, err := s.legacyAggregationTransitionSnapshot(ctx)
 			require.NoError(t, err)
 			require.True(t, snapshot.Complete)
 			require.NotEmpty(t, snapshot.JournalUID)
@@ -188,7 +188,7 @@ func TestAggregationTransitionSnapshot(t *testing.T) {
 			}
 			kube.ClearActions()
 			dynamic.ClearActions()
-			err = s.checkAggregationTransitionSnapshot(ctx, snapshot)
+			err = s.checkLegacyAggregationTransitionSnapshot(ctx, snapshot)
 			if scenario == "unchanged" || scenario == "leaf renewal" {
 				require.NoError(t, err)
 			} else {
@@ -204,20 +204,20 @@ func TestAggregationTransitionSnapshot(t *testing.T) {
 func TestAggregationTransitionSnapshotLegacyAndActive(t *testing.T) {
 	runner, _ := rotationRunnerFixture(t)
 	s, ctx := runner.store, t.Context()
-	_, err := s.aggregationTransitionSnapshot(ctx)
+	_, err := s.legacyAggregationTransitionSnapshot(ctx)
 	require.ErrorContains(t, err, "complete the CA rotation")
 	require.NoError(t, s.kube.CoreV1().ConfigMaps(s.namespace).Delete(ctx, rotationJournalName, metav1.DeleteOptions{}))
-	legacy, err := s.aggregationTransitionSnapshot(ctx)
+	legacy, err := s.legacyAggregationTransitionSnapshot(ctx)
 	require.NoError(t, err)
 	require.False(t, legacy.Complete)
 	require.Empty(t, legacy.JournalUID)
 	require.NotEmpty(t, legacy.APIServiceUID)
-	require.Error(t, s.checkAggregationTransitionSnapshot(ctx, legacy))
+	require.Error(t, s.checkLegacyAggregationTransitionSnapshot(ctx, legacy))
 }
 
 func TestAggregationTransitionSnapshotAllowsQuiescedProviderChange(t *testing.T) {
 	s, _ := completedAggregationFixture(t)
-	snapshot, err := s.aggregationTransitionSnapshot(t.Context())
+	snapshot, err := s.legacyAggregationTransitionSnapshot(t.Context())
 	require.NoError(t, err)
 	kube := s.kube.(*kubefake.Clientset)
 	deployment, err := kube.AppsV1().Deployments(s.namespace).Get(t.Context(), "ucp", metav1.GetOptions{})
@@ -225,6 +225,6 @@ func TestAggregationTransitionSnapshotAllowsQuiescedProviderChange(t *testing.T)
 	deployment.Spec.Replicas = ptr.To(int32(0))
 	deployment.Spec.Template.Spec.Containers[0].Env = nil
 	require.NoError(t, kube.Tracker().Update(appsv1.SchemeGroupVersion.WithResource("deployments"), deployment, s.namespace))
-	require.NoError(t, s.checkAggregationTransitionSnapshot(t.Context(), snapshot),
+	require.NoError(t, s.checkLegacyAggregationTransitionSnapshot(t.Context(), snapshot),
 		"identity adapter is not readiness evidence; provider callback separately verifies final target readiness")
 }

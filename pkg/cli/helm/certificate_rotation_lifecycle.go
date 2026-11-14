@@ -51,6 +51,32 @@ func (i *Impl) rotationStoreForContext(kubeContext, namespace string) (*rotation
 	return &rotationStore{kube: kube, dynamic: dynamic, namespace: namespace, release: radiusReleaseName, now: time.Now}, nil
 }
 
+func (s *rotationStore) checkOrphanedCertificateSources(ctx context.Context) error {
+	check := func(metadata metav1.Object) error {
+		if metadata.GetAnnotations()[rotationRevision] != "" || metadata.GetAnnotations()[rotationJournalUID] != "" {
+			return errors.New("managed Radius trust is missing its public journal; restore the journal before changing the release")
+		}
+		return nil
+	}
+	internal, err := s.kube.CoreV1().ConfigMaps(s.namespace).Get(ctx, "radius-mtls-ca", metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	if err == nil {
+		if err := check(internal); err != nil {
+			return err
+		}
+	}
+	aggregation, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return err
+	}
+	if err == nil {
+		return check(aggregation)
+	}
+	return nil
+}
+
 func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namespace, operation string, target *chart.Chart) error {
 	store, err := i.rotationStoreForContext(kubeContext, namespace)
 	if err != nil {
@@ -88,8 +114,9 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 		if api != nil && (api.GetAnnotations()[rotationRevision] != "" || api.GetAnnotations()[rotationJournalUID] != "") {
 			return errors.New("managed Radius trust is missing its public journal; restore the journal before changing the release")
 		}
-		return nil
+		return store.checkOrphanedCertificateSources(ctx)
 	}
+
 	if err != nil {
 		return err
 	}
@@ -100,8 +127,10 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 	if state.Phase != rotationComplete {
 		return fmt.Errorf("CA rotation %s is unfinished in phase %s; resume it before %s", state.ID, state.Phase, operation)
 	}
-	if state.APIServiceUID != "" && (api == nil || api.GetUID() != state.APIServiceUID ||
-		api.GetAnnotations()[rotationJournalUID] != string(journal.UID)) {
+	if state.Execution != nil && state.Execution.FinalReleaseVersion == 0 {
+		return errors.New("CA trust is retired but its final Helm reconciliation is unfinished; resume the lifecycle first")
+	}
+	if state.APIServiceUID != "" && (api == nil || api.GetUID() != state.APIServiceUID) {
 		return errors.New("completed CA rotation belongs to a missing or replaced APIService; do not adopt it into a new installation")
 	}
 	if err := store.checkCertificateLifecycleRecovery(ctx, journal); err != nil {

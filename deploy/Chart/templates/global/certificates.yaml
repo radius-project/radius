@@ -8,7 +8,8 @@
 {{- $certificates := .Values.global.rbac.certificates | default dict }}
 {{- $mode := include "radius.authz.certificates.mode" . }}
 {{- $ns := .Release.Namespace }}
-{{- if eq $mode "selfSigned" }}
+{{- $planned := include "radius.lifecycleResourceNames" . | mustFromJson }}
+{{- if and (eq $mode "selfSigned") (not (hasKey $planned "Issuer/radius-selfsigned-bootstrap")) }}
 {{ include "radius.authz.certificates.bootstrapIssuer" . }}
 {{- end }}
 {{- if eq (include "radius.authz.tls.provider" .) "radius" }}
@@ -16,7 +17,7 @@
 ---
 {{ include "radius.authz.certificates.root" (dict "root" . "name" "radius-ca") }}
 {{- end }}
-{{- if ne $mode "issuerRef" }}
+{{- if and (ne $mode "issuerRef") (not (hasKey $planned "Issuer/radius-ca-issuer")) }}
 ---
 # Signs only the csi-driver-spiffe server certificates; Radius's csi-driver-spiffe approver is the
 # only approver allowed to approve its requests.
@@ -29,14 +30,14 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   ca:
-    secretName: {{ if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-ca{{ end }}
+    secretName: {{ if $lifecycle }}{{ $lifecycle.internal.signingSecret | quote }}{{ else if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-ca{{ end }}
 {{- end }}
 {{- end }}
 {{- if eq $mode "selfSigned" }}
 ---
 {{ include "radius.authz.certificates.root" (dict "root" . "name" "radius-apiserver-ca") }}
 {{- end }}
-{{- if ne $mode "issuerRef" }}
+{{- if and (ne $mode "issuerRef") (not (hasKey $planned "Issuer/radius-apiserver-issuer")) }}
 ---
 apiVersion: cert-manager.io/v1
 kind: Issuer
@@ -47,9 +48,10 @@ metadata:
     app.kubernetes.io/part-of: radius
 spec:
   ca:
-    secretName: {{ if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-apiserver-ca{{ end }}
+    secretName: {{ if $lifecycle }}{{ $lifecycle.aggregation.signingSecret | quote }}{{ else if eq $mode "caSecret" }}{{ $certificates.caSecret | quote }}{{ else }}radius-apiserver-ca{{ end }}
 {{- end }}
-{{- if and (ne $mode "selfSigned") (eq (include "radius.authz.tls.provider" .) "radius") }}
+{{ include "radius.lifecycleResources" . }}
+{{- if and (or $lifecycle (ne $mode "selfSigned")) (eq (include "radius.authz.tls.provider" .) "radius") }}
 {{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") | fromJson }}
 ---
 apiVersion: v1

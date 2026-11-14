@@ -11,6 +11,20 @@ release:
   name: radius
   namespace: radius-system
 tests:
+  - it: declares the actual Dynamic RP listener for exact-pod serving observation
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 8082
+            name: dynamic-rp
+            protocol: TCP
+        template: dynamic-rp/deployment.yaml
+      - matchRegex:
+          path: data["radius-self-host.yaml"]
+          pattern: '(?m)^server:\n  host: "0.0.0.0"\n  port: 8082$'
+        template: dynamic-rp/configmaps.yaml
+
   - it: does not configure authorization or open the UCP internal port by default
     asserts:
       - notContains:

@@ -143,10 +143,10 @@ func TestAggregationTransitionNativeReplacement(t *testing.T) {
 	for _, phase := range rotationPhases[1:] {
 		advanceRotationTest(t, s, phase)
 	}
-	snapshot, err := s.aggregationTransitionSnapshot(ctx)
+	snapshot, err := s.legacyAggregationTransitionSnapshot(ctx)
 	require.NoError(t, err)
 	require.Equal(t, rotationAggregationOnly, snapshot.Scope)
-	require.NoError(t, s.checkAggregationTransitionSnapshot(ctx, snapshot))
+	require.NoError(t, s.checkLegacyAggregationTransitionSnapshot(ctx, snapshot))
 	issuer, err := s.dynamic.Resource(rotationIssuerResource).Namespace(ns).Get(ctx, state.Plan.Issuer, metav1.GetOptions{})
 	require.NoError(t, err)
 	require.NoError(t, s.dynamic.Resource(rotationIssuerResource).Namespace(ns).Delete(ctx, issuer.GetName(), metav1.DeleteOptions{}))
@@ -157,5 +157,5 @@ func TestAggregationTransitionNativeReplacement(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, snapshot.SignerSHA256, "")
 	require.NotEmpty(t, replaced.GetUID())
-	require.ErrorContains(t, s.checkAggregationTransitionSnapshot(ctx, snapshot), "aggregation state changed")
+	require.ErrorContains(t, s.checkLegacyAggregationTransitionSnapshot(ctx, snapshot), "aggregation state changed")
 }

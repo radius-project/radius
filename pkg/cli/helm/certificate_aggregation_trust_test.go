@@ -111,7 +111,11 @@ func TestClearAggregationInjection(t *testing.T) {
 			}
 			require.Equal(t, api.Object["spec"], live.Object["spec"])
 			for _, action := range kube.Actions() {
-				require.NotEqual(t, "secrets", action.GetResource().Resource, "Off cleanup must not read or delete signing/public Secrets")
+				if action.GetResource().Resource == "secrets" {
+					require.Equal(t, "get", action.GetVerb(), "Off cleanup must not mutate Secrets")
+					require.Equal(t, ucpAPIServerTrustSecretName, action.(k8stesting.GetAction).GetName(),
+						"only the permanent public source may be inspected for orphaned journal markers")
+				}
 			}
 		})
 	}

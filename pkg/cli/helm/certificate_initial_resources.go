@@ -191,7 +191,11 @@ func (b *initialCertificateInstaller) rootIssued(ctx context.Context, name strin
 	if !found {
 		return false, errors.New("bootstrap signer has no pinned Certificate")
 	}
-	root, err := b.store.dynamic.Resource(rotationCertificateResource).Namespace(b.store.namespace).Get(ctx, name, metav1.GetOptions{})
+	return certificateRootIssued(ctx, b.store, name, pin, secret)
+}
+
+func certificateRootIssued(ctx context.Context, store *rotationStore, name string, pin aggregationBootstrapPin, secret *corev1.Secret) (bool, error) {
+	root, err := store.dynamic.Resource(rotationCertificateResource).Namespace(store.namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}

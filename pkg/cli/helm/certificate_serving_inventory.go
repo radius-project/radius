@@ -34,23 +34,21 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type aggregationServingInventory struct {
+type servingInventory struct {
 	targets  []ServingCertificateTarget
 	versions []string
 }
 
-func readAggregationServingInventory(ctx context.Context, kube kubernetes.Interface, namespace string) (aggregationServingInventory, error) {
-	var inventory aggregationServingInventory
+func readAggregationServingInventory(ctx context.Context, kube kubernetes.Interface, namespace string) (servingInventory, error) {
+	return readAggregationServingInventoryForCA(ctx, kube, namespace, nil, nil)
+}
+
+func readAggregationServingInventoryForCA(ctx context.Context, kube kubernetes.Interface, namespace string, sourceBundle, servingCA []byte) (servingInventory, error) {
+	var inventory servingInventory
 	if err := ctx.Err(); err != nil {
 		return inventory, err
 	}
-	pin := func(kind string, object metav1.Object) error {
-		if object.GetUID() == "" || object.GetResourceVersion() == "" || object.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%s %s has no live identity", kind, object.GetName())
-		}
-		inventory.versions = append(inventory.versions, fmt.Sprintf("%s/%s/%s@%s", kind, object.GetName(), object.GetUID(), object.GetResourceVersion()))
-		return nil
-	}
+	pin := inventory.pin
 	source, err := kube.CoreV1().Secrets(namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	if err != nil {
 		return inventory, err
@@ -58,7 +56,12 @@ func readAggregationServingInventory(ctx context.Context, kube kubernetes.Interf
 	if err := publicAggregationSource(source, namespace); err != nil {
 		return inventory, err
 	}
-	if _, err := validatePublicCA(source.Data[caCertificateKey], time.Now()); err != nil {
+	if servingCA == nil {
+		servingCA = source.Data[caCertificateKey]
+	} else if err := exactCertificateSet(source.Data[caCertificateKey], sourceBundle, time.Now()); err != nil {
+		return inventory, err
+	}
+	if _, err := validatePublicCA(servingCA, time.Now()); err != nil {
 		return inventory, err
 	}
 	if err := pin("Secret", source); err != nil {
@@ -128,7 +131,7 @@ func readAggregationServingInventory(ctx context.Context, kube kubernetes.Interf
 			TLSProofTarget: TLSProofTarget{Namespace: namespace, PodName: pod.Name, PodUID: pod.UID, ContainerName: "ucp", Port: uint16(port)},
 			WorkloadUID:    deployment.UID, WorkloadGeneration: deployment.Generation,
 			ServiceAccount: account.Name, ServiceAccountUID: account.UID,
-			CA: source.Data[caCertificateKey], DNSName: "ucp." + namespace + ".svc",
+			CA: servingCA, DNSName: "ucp." + namespace + ".svc",
 		})
 	}
 	endpoints, err := kube.DiscoveryV1().EndpointSlices(namespace).List(ctx, metav1.ListOptions{

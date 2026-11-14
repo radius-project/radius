@@ -13,6 +13,14 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- end -}}
 
 {{- define "radius.authz.certificates.issuer" -}}
+{{- $lifecycle := include "radius.lifecycleSnapshot" .root | mustFromJson -}}
+{{- $source := index $lifecycle .plane -}}
+{{- if and $lifecycle (not $source) (not (and (eq .plane "internal") (eq (include "radius.authz.tls.provider" .root) "external"))) -}}
+{{- fail "Requested issuer plane is absent from the CA lifecycle." -}}
+{{- end -}}
+{{- if $source -}}
+{{- $source.issuer | toJson -}}
+{{- else -}}
 {{- $c := .root.Values.global.rbac.certificates | default dict -}}
 {{- if eq (include "radius.authz.certificates.mode" .root) "issuerRef" -}}
 {{- $c.issuerRef | toJson -}}
@@ -20,6 +28,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- $name := "radius-ca-issuer" -}}
 {{- if eq .plane "aggregation" -}}{{- $name = "radius-apiserver-issuer" -}}{{- end -}}
 {{- dict "group" "cert-manager.io" "kind" "Issuer" "name" $name | toJson -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -66,6 +75,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- include "radius.authz.issuerPolicy.validate" . -}}
 {{- end -}}
 {{- end -}}
+{{- if not $lifecycle -}}
 {{- range $plane := list "internal" "aggregation" -}}
 {{- if or (eq $plane "aggregation") (eq (include "radius.authz.tls.provider" $) "radius") -}}
 {{- $name := "radius-ca-issuer" -}}{{- $signing := "radius-ca" -}}
@@ -75,6 +85,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- $expected := $signing -}}{{- if eq $mode "caSecret" -}}{{- $expected = $c.caSecret -}}{{- end -}}
 {{- if or (eq $mode "issuerRef") (ne (dig "spec" "ca" "secretName" "" $existing) $expected) -}}
 {{- fail (printf "certificate lifecycle prerequisite: existing Issuer %s would be removed or retargeted; use the lifecycle command instead of changing certificate modes through Helm." $name) -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

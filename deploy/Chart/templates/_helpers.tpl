@@ -241,7 +241,8 @@ chart generates the ucp-cert Secret.
 */}}
 {{- define "radius.ucp.apiServerSecretName" -}}
 {{- if ne (include "radius.authz.mode" .) "off" -}}
-ucp-apiserver-tls
+{{- $snapshot := include "radius.lifecycleSnapshot" . | mustFromJson -}}
+{{- dig "aggregation" "servingSecret" "ucp-apiserver-tls" $snapshot -}}
 {{- else -}}
 ucp-cert
 {{- end -}}

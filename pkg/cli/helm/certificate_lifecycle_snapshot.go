@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // certificateIssuerSnapshot pins configuration without copying an operator's
@@ -173,8 +174,14 @@ func (s *rotationStore) snapshotCertificatePlane(ctx context.Context, name, mode
 	}
 	snapshot.Source.certificateObjectPin = certificateObjectPin{Name: source.GetName(), UID: source.GetUID(),
 		ResourceVersion: source.GetResourceVersion(), SHA256: fmt.Sprintf("%x", sha256.Sum256(snapshot.Source.Bundle))}
+	snapshot.Source.JournalUID = types.UID(source.GetAnnotations()[rotationJournalUID])
+	snapshot.Source.Revision = source.GetAnnotations()[rotationRevision]
 	if mode != "issuerRef" {
-		if err := validateCASecretName(issuer.SigningSecret); err != nil {
+		if mode == "selfSigned" {
+			if len(validation.IsDNS1123Subdomain(issuer.SigningSecret)) != 0 {
+				return snapshot, errors.New("owned selfSigned issuer has an invalid signing Secret name")
+			}
+		} else if err := validateCASecretName(issuer.SigningSecret); err != nil {
 			return snapshot, err
 		}
 		secret, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, issuer.SigningSecret, metav1.GetOptions{})
@@ -228,6 +235,27 @@ func (s *rotationStore) checkCertificateLifecycleRecovery(ctx context.Context, j
 	state, err := decodeCertificateLifecycle(journal, s.namespace, s.release, s.now())
 	if err != nil {
 		return err
+	}
+	if state.Execution != nil {
+		writer := &certificateExecutionWriter{store: s, journal: journal, state: state}
+		namespace, err := s.kube.CoreV1().Namespaces().Get(ctx, s.namespace, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if namespace.UID != state.Execution.NamespaceUID || namespace.DeletionTimestamp != nil {
+			return errors.New("certificate execution belongs to another namespace instance")
+		}
+		if err := writer.checkMaterial(ctx); err != nil {
+			return err
+		}
+		current, err := s.kube.CoreV1().ConfigMaps(s.namespace).Get(ctx, journal.Name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		if current.UID != journal.UID || current.ResourceVersion != journal.ResourceVersion || !reflect.DeepEqual(current.Data, journal.Data) {
+			return errors.New("CA lifecycle journal changed during execution recovery")
+		}
+		return ctx.Err()
 	}
 	if state.APIServiceUID != "" {
 		api, err := s.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
@@ -297,13 +325,10 @@ func (s *rotationStore) checkCertificateSignerSnapshot(ctx context.Context, pin 
 }
 
 func (plane certificateLifecyclePlane) validateSnapshots(namespace, mode string) error {
-	before := plane.Previous
-	if before == nil || !slices.Contains([]string{"selfSigned", "caSecret", "issuerRef"}, before.Mode) {
-		return errors.New("CA lifecycle requires its previous plane configuration snapshot")
-	}
-	if err := before.Issuer.validate(namespace); err != nil {
+	if err := plane.validatePreviousSnapshot(namespace); err != nil {
 		return err
 	}
+	before := plane.Previous
 	if err := plane.TargetIssuer.validate(namespace); err != nil {
 		return err
 	}
@@ -312,6 +337,25 @@ func (plane certificateLifecyclePlane) validateSnapshots(namespace, mode string)
 	}
 	if mode != "issuerRef" && (plane.Signer == nil || plane.TargetIssuer.SigningSecret != plane.Signer.Name) {
 		return errors.New("target issuer configuration does not select the pinned local signer")
+	}
+	if plane.Affected && mode == "issuerRef" && before.Issuer.Reference == plane.TargetIssuer.Reference {
+		return errors.New("issuerRef CA replacement requires a distinct staged issuer; same-name out-of-band replacement cannot honor trust-before-issuance")
+	}
+	if !plane.Affected && (before.Mode != mode || before.Issuer.Reference != plane.TargetIssuer.Reference ||
+		before.Issuer.UID != plane.TargetIssuer.UID || before.Issuer.SpecSHA256 != plane.TargetIssuer.SpecSHA256 ||
+		!reflect.DeepEqual(before.Signer, plane.Signer) || !bytes.Equal(before.Source.Bundle, plane.Source.Bundle)) {
+		return errors.New("unaffected plane must retain its issuer configuration and exact public source")
+	}
+	return nil
+}
+
+func (plane certificateLifecyclePlane) validatePreviousSnapshot(namespace string) error {
+	before := plane.Previous
+	if before == nil || !slices.Contains([]string{"selfSigned", "caSecret", "issuerRef"}, before.Mode) {
+		return errors.New("CA lifecycle requires its previous plane configuration snapshot")
+	}
+	if err := before.Issuer.validate(namespace); err != nil {
+		return err
 	}
 	if before.Source.Kind != plane.Source.Kind || before.Source.Name != plane.Source.Name ||
 		before.Source.UID == "" || before.Source.UID != plane.Source.UID || before.Source.ResourceVersion == "" ||
@@ -334,14 +378,6 @@ func (plane certificateLifecyclePlane) validateSnapshots(namespace, mode string)
 		before.Signer.ResourceVersion == "" || before.Signer.SHA256 != fmt.Sprintf("%x", sha256.Sum256(old[0].Raw)) ||
 		before.Issuer.SigningSecret != before.Signer.Name {
 		return errors.New("previous local signer requires its observed identity and historical DER pin")
-	}
-	if plane.Affected && mode == "issuerRef" && before.Issuer.Reference == plane.TargetIssuer.Reference {
-		return errors.New("issuerRef CA replacement requires a distinct staged issuer; same-name out-of-band replacement cannot honor trust-before-issuance")
-	}
-	if !plane.Affected && (before.Mode != mode || before.Issuer.Reference != plane.TargetIssuer.Reference ||
-		before.Issuer.UID != plane.TargetIssuer.UID || before.Issuer.SpecSHA256 != plane.TargetIssuer.SpecSHA256 ||
-		!reflect.DeepEqual(before.Signer, plane.Signer) || !bytes.Equal(before.Source.Bundle, plane.Source.Bundle)) {
-		return errors.New("unaffected plane must retain its issuer configuration and exact public source")
 	}
 	return nil
 }

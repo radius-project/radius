@@ -43,6 +43,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// Kept in the test binary for pre-token format fixtures, never in the CLI.
 func (i *Impl) runLegacyCertificateRotation(ctx context.Context, options ClusterOptions, kubeContext string, readOnly bool) error {
 	if err := options.Certificates.Validate(); err != nil {
 		return err

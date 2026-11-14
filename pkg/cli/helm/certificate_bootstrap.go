@@ -38,6 +38,7 @@ import (
 
 const (
 	aggregationBootstrapName  = "radius-aggregation-bootstrap"
+	bootstrapNamespaceIntent  = "radius.io/aggregation-bootstrap-intent"
 	aggregationBootstrapOwner = "radius.io/aggregation-bootstrap"
 	bootstrapPreparing        = "preparing"
 	bootstrapInstalling       = "installing"

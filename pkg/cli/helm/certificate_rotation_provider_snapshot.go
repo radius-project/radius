@@ -17,13 +17,12 @@ limitations under the License.
 package helm
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"maps"
+	"fmt"
+	"reflect"
 
 	"github.com/radius-project/radius/pkg/authz/mtls"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,8 +31,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// This snapshot is a public identity pin, NOT a lock. CA/provider operations
-// must share exclusion before check-then-write can authorize provider changes.
+// This public configuration pin is neither a lock nor serving/readiness evidence.
+// Provider operations must hold the shared Lease and observe their own workloads.
 type aggregationTransitionSnapshot struct {
 	APIServiceUID types.UID     `json:"apiServiceUID"`
 	JournalUID    types.UID     `json:"journalUID,omitempty"`
@@ -45,151 +44,133 @@ type aggregationTransitionSnapshot struct {
 }
 
 func (s *rotationStore) aggregationTransitionSnapshot(ctx context.Context) (aggregationTransitionSnapshot, error) {
-	bootstrap, found, err := s.bootstrapIntent(ctx)
-	if err != nil {
-		return aggregationTransitionSnapshot{}, err
+	var result aggregationTransitionSnapshot
+	_, initial, err := readInitialCertificateJournal(ctx, s)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return result, err
 	}
-	if found && bootstrap.Phase != bootstrapComplete {
-		return aggregationTransitionSnapshot{}, errors.New("complete aggregation bootstrap before changing provider")
+	if err == nil && initial.Phase != "complete" {
+		return result, errors.New("complete initial certificate bootstrap before changing provider")
+	}
+	namespace, err := s.kube.CoreV1().Namespaces().Get(ctx, s.namespace, metav1.GetOptions{})
+	if err != nil {
+		return result, err
+	}
+	if namespace.Annotations[initialCertificateIntent] != "" && initial.Phase != "complete" {
+		return result, errors.New("recover the namespace's initial certificate intent before changing provider")
+	}
+	if _, found, err := s.bootstrapIntent(ctx); err != nil {
+		return result, err
+	} else if found {
+		return result, errors.New("legacy aggregation bootstrap requires recovery with the matching pre-token release")
 	}
 	api, err := s.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
 	if err != nil {
-		return aggregationTransitionSnapshot{}, err
+		return result, err
 	}
-	if err := s.checkAPIService(api); err != nil {
-		return aggregationTransitionSnapshot{}, err
+	if err := s.checkLifecycleAPIService(api); err != nil {
+		return result, err
 	}
 	public, err := apiServiceBundle(api)
 	if err != nil {
-		return aggregationTransitionSnapshot{}, err
+		return result, err
 	}
 	digest, roots, err := mtls.TrustBundleDigest(public, s.now())
 	if err != nil || len(roots) != 1 {
-		return aggregationTransitionSnapshot{}, errors.New("provider transition requires one valid aggregation CA")
+		return result, errors.New("provider transition requires exactly one valid aggregation CA")
 	}
-	journal, state, err := s.read(ctx)
+	result.APIServiceUID, result.TrustSHA256 = api.GetUID(), digest
+	journal, err := s.kube.CoreV1().ConfigMaps(s.namespace).Get(ctx, rotationJournalName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		if api.GetAnnotations()[rotationJournalUID] != "" || api.GetAnnotations()[rotationRevision] != "" {
-			return aggregationTransitionSnapshot{}, errors.New("managed aggregation trust is missing its journal")
+			return result, errors.New("managed aggregation trust is missing its journal")
 		}
-		return aggregationTransitionSnapshot{APIServiceUID: api.GetUID(), TrustSHA256: digest}, nil
+		// The provider owns baseline initialization. Do not invent a completed
+		// rotation or import legacy shared-certificate evidence into its plan.
+		return result, ctx.Err()
 	}
 	if err != nil {
-		return aggregationTransitionSnapshot{}, err
+		return result, err
 	}
-	if state.Phase != rotationComplete || state.Plan == nil {
-		return aggregationTransitionSnapshot{}, errors.New("complete the CA rotation before changing provider")
-	}
-	if journal.UID == "" || state.APIServiceUID != api.GetUID() || api.GetAnnotations()[rotationJournalUID] != string(journal.UID) ||
-		api.GetAnnotations()[rotationRevision] != state.revision() || !bytes.Equal(public, state.NewCA) {
-		return aggregationTransitionSnapshot{}, errors.New("aggregation identity or trust changed outside its completed journal")
-	}
-	var issuer *unstructured.Unstructured
-	if state.Plan.ExternalIssuer != nil {
-		// A provider snapshot pins public identity; it neither issues a request
-		// nor claims that the target provider's policy or workloads are ready.
-		issuer, err = s.externalRotationIssuer(ctx, state.Plan)
-		if err != nil {
-			return aggregationTransitionSnapshot{}, err
-		}
-	} else {
-		if err := s.checkPlannedSigner(ctx, state); err != nil {
-			return aggregationTransitionSnapshot{}, err
-		}
-	}
-	workload, err := state.Plan.aggregationWorkload()
+	state, err := decodeCertificateLifecycle(journal, s.namespace, s.release, s.now())
 	if err != nil {
-		return aggregationTransitionSnapshot{}, err
+		return result, err
 	}
-	deployment, err := s.kube.AppsV1().Deployments(s.namespace).Get(ctx, "ucp", metav1.GetOptions{})
+	if state.Phase != rotationComplete || state.Execution != nil && state.Execution.FinalReleaseVersion == 0 {
+		return result, errors.New("complete the CA rotation before changing provider")
+	}
+	if err := s.checkCertificateLifecycleRecovery(ctx, journal); err != nil {
+		return result, err
+	}
+	plane := state.Planes["aggregation"]
+	if state.APIServiceUID != "" && state.APIServiceUID != api.GetUID() {
+		return result, errors.New("completed aggregation APIService identity changed")
+	}
+	if err := exactCertificateSet(public, plane.NewCA, s.now()); err != nil {
+		return result, err
+	}
+	if api.GetAnnotations()[injectCAFromSecretAnnotation] != s.namespace+"/"+plane.Source.Name ||
+		api.GetAnnotations()["cert-manager.io/inject-ca-from"] != "" ||
+		api.GetAnnotations()["cert-manager.io/inject-apiserver-ca"] != "" {
+		return result, errors.New("aggregation APIService no longer uses its permanent public source")
+	}
+	issuer := plane.TargetIssuer
+	issuer.ResourceVersion = ""
+	var signer *certificateObjectPin
+	if plane.Signer != nil {
+		copy := *plane.Signer
+		copy.ResourceVersion = ""
+		signer = &copy
+	}
+	encoded, err := json.Marshal(struct {
+		Issuer certificateIssuerSnapshot
+		Signer *certificateObjectPin
+		Source types.UID
+		Mode   string
+	}{issuer, signer, plane.Source.UID, state.Mode})
 	if err != nil {
-		return aggregationTransitionSnapshot{}, err
+		return result, err
 	}
-	if deployment.UID != workload.DeploymentUID || !rotationOwned(deployment, s.namespace, s.release) {
-		return aggregationTransitionSnapshot{}, errors.New("aggregation deployment identity changed")
+	result.JournalUID, result.Revision = journal.UID, state.ID+"/complete"
+	result.SignerSHA256 = fmt.Sprintf("%x", sha256.Sum256(encoded))
+	result.Scope, result.Complete = rotationAggregationOnly, true
+	if state.Provider == "radius" {
+		result.Scope = rotationComponentsAndAggregation
 	}
-	if err := rotationAggregationProjection(deployment.Spec.Template.Spec, state.Plan); err != nil {
-		return aggregationTransitionSnapshot{}, err
-	}
-	service, err := s.kube.CoreV1().Services(s.namespace).Get(ctx, "ucp", metav1.GetOptions{})
+	current, err := s.kube.CoreV1().ConfigMaps(s.namespace).Get(ctx, journal.Name, metav1.GetOptions{})
 	if err != nil {
-		return aggregationTransitionSnapshot{}, err
+		return result, err
 	}
-	if service.UID != state.Plan.ServiceUID || !rotationOwned(service, s.namespace, s.release) ||
-		!maps.Equal(service.Spec.Selector, state.Plan.ServiceSelector) {
-		return aggregationTransitionSnapshot{}, errors.New("aggregation Service identity or completed routing changed")
-	}
-	trust, err := s.kube.CoreV1().ConfigMaps(s.namespace).Get(ctx, state.Plan.TargetTrustMap, metav1.GetOptions{})
-	if err != nil {
-		return aggregationTransitionSnapshot{}, err
-	}
-	trustDigest, _, err := mtls.TrustBundleDigest([]byte(trust.Data["ca.crt"]), s.now())
-	if err != nil || trustDigest != digest || trust.UID == "" || trust.DeletionTimestamp != nil ||
-		trust.Immutable == nil || !*trust.Immutable || trust.Labels[rotationOwner] != s.release {
-		return aggregationTransitionSnapshot{}, errors.New("aggregation immutable trust identity changed")
-	}
-	if issuer == nil {
-		issuer, err = s.dynamic.Resource(rotationIssuerResource).Namespace(s.namespace).Get(ctx, state.Plan.Issuer, metav1.GetOptions{})
-		if err != nil {
-			return aggregationTransitionSnapshot{}, err
-		}
-		secretName, _, err := unstructured.NestedString(issuer.Object, "spec", "ca", "secretName")
-		if err != nil || secretName != state.Plan.SigningSecret || issuer.GetUID() == "" || issuer.GetDeletionTimestamp() != nil ||
-			issuer.GetLabels()[rotationOwner] != s.release || issuer.GetLabels()[rotationTransaction] != state.ID {
-			return aggregationTransitionSnapshot{}, errors.New("aggregation issuer identity or configuration changed")
-		}
-	}
-	certificate, err := s.dynamic.Resource(rotationCertificateResource).Namespace(s.namespace).Get(ctx, state.Plan.ServingSecret, metav1.GetOptions{})
-	if err != nil {
-		return aggregationTransitionSnapshot{}, err
-	}
-	serving, err := s.kube.CoreV1().Secrets(s.namespace).Get(ctx, state.Plan.ServingSecret, metav1.GetOptions{})
-	if err != nil {
-		return aggregationTransitionSnapshot{}, err
-	}
-	if _, err := rotationLeafDigest(serving, state.NewCA, s.namespace, "ucp", false, s.now()); err != nil {
-		return aggregationTransitionSnapshot{}, err
-	}
-	if certificate.GetUID() == "" {
-		return aggregationTransitionSnapshot{}, errors.New("aggregation Certificate has no identity")
-	}
-	if err := checkAggregationCertificate(certificate, state, s.namespace); err != nil {
-		return aggregationTransitionSnapshot{}, err
-	}
-	// Exclude leaf bytes and status/resourceVersion so ordinary renewal does not
-	// invalidate a transition. Include resource UIDs and all public issuer/spec intent.
-	config := struct {
-		Mode            string
-		SigningUID      types.UID
-		IssuerUID       types.UID
-		CertificateUID  types.UID
-		ServingUID      types.UID
-		Trust           string
-		DeploymentUID   types.UID
-		ServiceUID      types.UID
-		TrustUID        types.UID
-		IssuerSpec      any
-		CertificateSpec any
-		ExternalIssuer  *rotationExternalIssuer `json:"ExternalIssuer,omitempty"`
-	}{state.Plan.TargetMode, state.Plan.SigningUID, issuer.GetUID(), certificate.GetUID(), serving.UID,
-		state.Plan.TargetTrustMap, deployment.UID, service.UID, trust.UID, issuer.Object["spec"], certificate.Object["spec"], state.Plan.ExternalIssuer}
-	encoded, err := json.Marshal(config)
-	if err != nil {
-		return aggregationTransitionSnapshot{}, err
-	}
-	sum := sha256.Sum256(encoded)
-	result := aggregationTransitionSnapshot{APIServiceUID: api.GetUID(), JournalUID: journal.UID,
-		Revision: state.revision(), TrustSHA256: digest, SignerSHA256: hex.EncodeToString(sum[:]),
-		Scope: state.Plan.effectiveScope(), Complete: true}
 	after, err := s.dynamic.Resource(apiServiceResource).Get(ctx, radiusAPIService, metav1.GetOptions{})
-	if err != nil || after.GetUID() != api.GetUID() || after.GetResourceVersion() != api.GetResourceVersion() {
-		return aggregationTransitionSnapshot{}, errors.New("aggregation APIService changed during provider snapshot")
+	if err != nil {
+		return result, err
 	}
-	current, currentState, err := s.read(ctx)
-	if err != nil || current.UID != journal.UID || current.ResourceVersion != journal.ResourceVersion || currentState.ID != state.ID {
-		return aggregationTransitionSnapshot{}, errors.New("CA journal changed during provider snapshot")
+	if current.UID != journal.UID || current.ResourceVersion != journal.ResourceVersion ||
+		!reflect.DeepEqual(current.Data, journal.Data) ||
+		after.GetUID() != api.GetUID() || after.GetResourceVersion() != api.GetResourceVersion() {
+		return result, errors.New("aggregation state changed during provider snapshot")
 	}
-	return result, nil
+	return result, ctx.Err()
+}
+
+func (s *rotationStore) checkLifecycleAPIService(api *unstructured.Unstructured) error {
+	if api.GetUID() == "" || api.GetResourceVersion() == "" || api.GetDeletionTimestamp() != nil ||
+		len(api.GetOwnerReferences()) != 0 || !rotationOwned(api, s.namespace, s.release) {
+		return errors.New("aggregation APIService identity or ownership changed")
+	}
+	namespace, _, err := unstructured.NestedString(api.Object, "spec", "service", "namespace")
+	if err != nil || namespace != s.namespace {
+		return errors.New("aggregation APIService points to another namespace")
+	}
+	name, _, err := unstructured.NestedString(api.Object, "spec", "service", "name")
+	if err != nil || name != "ucp" {
+		return errors.New("aggregation APIService points to another service")
+	}
+	insecure, _, err := unstructured.NestedBool(api.Object, "spec", "insecureSkipTLSVerify")
+	if err != nil || insecure {
+		return errors.New("aggregation APIService must verify serving certificates")
+	}
+	return nil
 }
 
 func (s *rotationStore) checkAggregationTransitionSnapshot(ctx context.Context, expected aggregationTransitionSnapshot) error {

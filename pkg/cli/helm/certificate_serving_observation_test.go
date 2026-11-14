@@ -52,7 +52,7 @@ import (
 
 func TestAggregationServingInventory(t *testing.T) {
 	t.Parallel()
-	for _, scenario := range []string{"success", "extra pod", "missing endpoint", "foreign endpoint", "wrong address", "wrong port", "rolling", "unready routing", "private source"} {
+	for _, scenario := range []string{"success", "overlap with new-only serving", "extra pod", "missing endpoint", "foreign endpoint", "wrong address", "wrong port", "rolling", "unready routing", "private source"} {
 		t.Run(scenario, func(t *testing.T) {
 			t.Parallel()
 			ca := newTestCA(t, "public")
@@ -96,9 +96,16 @@ func TestAggregationServingInventory(t *testing.T) {
 			case "private source":
 				source.Data["tls.key"] = []byte("must-not-consume")
 			}
+			if scenario == "overlap with new-only serving" {
+				source.Data[caCertificateKey] = append(append([]byte{}, newTestCA(t, "previous").pem...), ca.pem...)
+			}
 			kube := kubefake.NewClientset(source, service, deployment, account, pod, endpoints)
 			inventory, err := readAggregationServingInventory(t.Context(), kube, RadiusSystemNamespace)
-			if scenario != "success" {
+			if scenario == "overlap with new-only serving" {
+				require.Error(t, err, "fresh-bootstrap inventory still requires one CA")
+				inventory, err = readAggregationServingInventoryForCA(t.Context(), kube, RadiusSystemNamespace, source.Data[caCertificateKey], ca.pem)
+			}
+			if scenario != "success" && scenario != "overlap with new-only serving" {
 				require.Error(t, err)
 				return
 			}
@@ -107,7 +114,7 @@ func TestAggregationServingInventory(t *testing.T) {
 			require.Len(t, inventory.versions, 6)
 			require.Equal(t, uint16(9443), inventory.targets[0].Port)
 			require.Equal(t, deployment.Generation, inventory.targets[0].WorkloadGeneration)
-			require.Equal(t, source.Data[caCertificateKey], inventory.targets[0].CA)
+			require.Equal(t, ca.pem, inventory.targets[0].CA)
 			require.Equal(t, account.UID, inventory.targets[0].ServiceAccountUID)
 			require.Equal(t, pod.UID, inventory.targets[0].PodUID)
 		})

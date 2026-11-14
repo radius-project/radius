@@ -31,7 +31,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/authz/mtls"
-	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,7 +39,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
-var errCertificateObserverUnavailable = errors.New("CA lifecycle blocked before mutation: authenticated observation of every actual outbound trust authority is not available; component ServiceAccount token minting, token extraction, API bearer forwarding and anonymous proof routes are not permitted")
+var errCertificateObserverUnavailable = errors.New("CA lifecycle blocked before mutation: production observation coverage and authorized access are unavailable for every required outbound authority and aggregation trust consumer; component ServiceAccount token minting, token extraction, API bearer forwarding and anonymous proof routes are not permitted")
 
 // certificateLifecycle is the token/CSI journal. Legacy journals cannot be
 // reinterpreted: their CertificateUIDs do not identify pod-local CSI material.
@@ -56,6 +55,7 @@ type certificateLifecycle struct {
 	APIServiceUID types.UID                            `json:"apiServiceUID,omitempty"`
 	Planes        map[string]certificateLifecyclePlane `json:"planes"`
 	Consumers     []certificateConsumerPin             `json:"consumers,omitempty"`
+	Execution     *certificateLifecycleExecution       `json:"execution,omitempty"`
 }
 
 type certificateLifecyclePlane struct {
@@ -79,7 +79,9 @@ type certificateObjectPin struct {
 type certificateTrustProjection struct {
 	Kind string `json:"kind"`
 	certificateObjectPin
-	Bundle []byte `json:"bundle"`
+	Bundle     []byte    `json:"bundle"`
+	JournalUID types.UID `json:"journalUID,omitempty"`
+	Revision   string    `json:"revision,omitempty"`
 }
 
 // certificateConsumerPin records Kubernetes observations, never a synthetic
@@ -142,7 +144,7 @@ func (state certificateLifecycle) validate(now time.Time) error {
 	id, err := uuid.Parse(state.ID)
 	if state.SchemaVersion != 4 || err != nil || id == uuid.Nil || id.String() != state.ID ||
 		state.Namespace == "" || state.Release == "" || state.CreatedAt.IsZero() || state.CreatedAt.After(now) ||
-		!slices.Contains(rotationPhases, state.Phase) ||
+		!(slices.Contains(rotationPhases, state.Phase) || state.Phase == certificatePrepare) ||
 		!slices.Contains([]string{"radius", "external"}, state.Provider) ||
 		!slices.Contains([]string{"selfSigned", "caSecret", "issuerRef"}, state.Mode) {
 		return errors.New("invalid CA lifecycle identity, phase or provider")
@@ -153,6 +155,13 @@ func (state certificateLifecycle) validate(now time.Time) error {
 	}
 	if len(state.Planes) != len(names) {
 		return errors.New("CA lifecycle must pin every enabled trust plane")
+	}
+	if state.Execution != nil {
+		if err := state.validateExecution(); err != nil {
+			return err
+		}
+	} else if state.Phase == certificatePrepare {
+		return errors.New("certificate preparation requires a durable execution intent")
 	}
 	affected := false
 	for _, name := range names {
@@ -166,10 +175,23 @@ func (state certificateLifecycle) validate(now time.Time) error {
 		if name == "aggregation" && plane.Affected && state.APIServiceUID == "" {
 			return errors.New("aggregation change requires a pinned APIService")
 		}
-		if err := plane.validate(name, state.Phase, now); err != nil {
+		if state.Phase == certificatePrepare {
+			if err := state.validatePreparingPlane(name, plane, now); err != nil {
+				return err
+			}
+			continue
+		}
+		phase := state.Phase
+		// Retirement is a durable intent before either independent source is
+		// changed. A plane retains valid overlap until its own CAS completes.
+		if state.Execution != nil && phase == rotationRetire && plane.Affected &&
+			plane.Source.Revision == state.ID+"/publish" {
+			phase = rotationReady
+		}
+		if err := plane.validate(name, phase, now); err != nil {
 			return err
 		}
-		if err := plane.validateSnapshots(state.Namespace, state.Mode); err != nil {
+		if err := state.validateTargetSnapshot(name, plane); err != nil {
 			return err
 		}
 		if state.Mode == "issuerRef" && plane.Signer != nil ||
@@ -324,7 +346,7 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 	options.RadiusInstalled = true
 	options.RadiusReleaseValues = copyValues(release.Config)
 	values := copyValues(release.Config)
-	target, _, err := i.prepareCertificateTarget(ctx, options, release.Chart, values, kubeContext)
+	target, imports, err := i.prepareCertificateTarget(ctx, options, release.Chart, values, kubeContext)
 	if err != nil {
 		return err
 	}
@@ -339,28 +361,57 @@ func (i *Impl) runCertificateRotation(ctx context.Context, options ClusterOption
 		return err
 	}
 	journal, err := store.kube.CoreV1().ConfigMaps(store.namespace).Get(ctx, rotationJournalName, metav1.GetOptions{})
+	var state certificateLifecycle
 	if err == nil {
 		if err := store.checkCertificateLifecycleRecovery(ctx, journal); err != nil {
 			return err
 		}
+		state, err = decodeCertificateLifecycle(journal, store.namespace, store.release, store.now())
+		if err != nil {
+			return err
+		}
 	} else if apierrors.IsNotFound(err) {
-		baselineValues, err := valuesutil.CoalesceValues(release.Chart, copyValues(release.Config))
-		if err != nil {
+		journal = nil
+		if err := store.checkOrphanedCertificateSources(ctx); err != nil {
 			return err
-		}
-		baseline, err := certificateProfilePlan(release.Chart, baselineValues, store.namespace)
-		if err != nil {
-			return err
-		}
-		if _, err := store.snapshotCertificateInstallation(ctx, baseline); err != nil {
-			return fmt.Errorf("cannot snapshot the installed certificate configuration: %w", err)
 		}
 	} else {
 		return err
 	}
+	requested := rotationPhase(options.Certificates.RotationPhase)
+	if requested == "" {
+		requested = rotationPublish
+	}
+	if release.Chart.Metadata == nil || release.Chart.Metadata.Annotations["radius.io/ca-rotation-protocol"] != "4" {
+		return errors.New("CA rotation requires an installed schema4-capable chart; first upgrade the chart without changing its CA selection")
+	}
+	if journal == nil || state.Phase == rotationComplete && state.Execution != nil &&
+		state.Execution.FinalReleaseVersion != 0 && requested == rotationPublish {
+		state, err = store.planCertificateLifecycle(ctx, release, release.Chart, target, "")
+		if err != nil {
+			return fmt.Errorf("cannot plan the selected certificate transition: %w", err)
+		}
+	} else if state.Execution == nil {
+		return errors.New("the recorded lifecycle has no executable token/CSI resource intent")
+	}
+	if state.Mode != target.Mode || state.Provider != target.Provider {
+		return errors.New("retry differs from the recorded certificate mode or provider")
+	}
+	targetHash, err := bootstrapDigest(target.Values)
+	if err != nil || targetHash != state.Execution.TargetValuesSHA256 {
+		return errors.New("retry changed the recorded certificate target values")
+	}
 	// No Lease, imported Secret, journal or source write is permitted before a
-	// usable consumer-observation mechanism has been authorized.
-	return errCertificateObserverUnavailable
+	// complete observation mechanism and authorized access have been supplied.
+	// Schema2 UCP-server-trust evidence is not an all-authority implementation.
+	writer := &certificateExecutionWriter{store: store, state: state, journal: journal}
+	if readOnly {
+		return errCertificateObserverUnavailable
+	}
+	executor := &certificateLifecycleExecutor{writer: writer, impl: i, options: options,
+		selected: release.Chart, target: target, imports: imports, kubeContext: kubeContext}
+	writer.observeServing = executor.observeServing
+	return executor.run(ctx, requested)
 }
 
 func (s *rotationStore) checkLifecycleProjection(ctx context.Context, journal *corev1.ConfigMap, state certificateLifecycle, name string, plane certificateLifecyclePlane) error {

@@ -43,3 +43,16 @@ annotations:
   radius.io/certificate-bootstrap: {{ $journal.metadata.uid | quote }}
 {{- end -}}
 {{- end -}}
+
+{{- define "radius.authz.certificates.signingIssuer" -}}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ .name }}
+  namespace: {{ .root.Release.Namespace }}
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  ca:
+    secretName: {{ .secretName | quote }}
+{{- end -}}

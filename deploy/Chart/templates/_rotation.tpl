@@ -50,14 +50,19 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
 {{- if not $source -}}{{- fail "CA lifecycle public source is missing." -}}{{- end -}}
 {{- $annotations := $source.metadata.annotations | default dict -}}
 {{- $revision := printf "%s/complete" $state.id -}}
+{{- $journalUID := $journal.metadata.uid -}}
+{{- if and $state.execution (not $record.affected) -}}
+{{- $revision = $pin.revision | default "" -}}
+{{- $journalUID = $pin.journalUID | default "" -}}
+{{- end -}}
 {{- if or (ne $source.metadata.uid $pin.uid) (empty $source.metadata.resourceVersion)
   (dig "metadata" "deletionTimestamp" "" $source) (dig "metadata" "ownerReferences" (list) $source)
   (ne (dig "metadata" "labels" "app.kubernetes.io/managed-by" "" $source) "Helm")
   (ne (index $annotations "meta.helm.sh/release-name") $.Release.Name)
   (ne (index $annotations "meta.helm.sh/release-namespace") $.Release.Namespace)
   (ne (index $annotations "radius.io/certificate-mode") $state.mode)
-  (ne (index $annotations "radius.io/trust-journal-uid") $journal.metadata.uid)
-  (ne (index $annotations "radius.io/trust-revision") $revision)
+  (ne (index $annotations "radius.io/trust-journal-uid" | default "") $journalUID)
+  (ne (index $annotations "radius.io/trust-revision" | default "") $revision)
   (ne (len $source.data) 1) (not (empty $source.binaryData)) (not (empty $source.stringData)) -}}
 {{- fail "CA lifecycle public source identity, ownership or contents changed." -}}
 {{- end -}}
@@ -110,14 +115,83 @@ overwrite overlap. The CLI must validate DER sets and observation barriers.
 {{- if eq $plane "aggregation" -}}{{- $_ := set $expected "name" "radius-apiserver-issuer" -}}{{- end -}}
 {{- if eq $state.mode "issuerRef" -}}{{- $expected = $.Values.global.rbac.certificates.issuerRef -}}{{- end -}}
 {{- if ne (toJson $issuer) (toJson $expected) -}}
-{{- fail "The selected chart cannot preserve this staged issuer; keep the lifecycle blocked rather than silently reverting issuance." -}}
+{{- $planned := false -}}
+{{- range $resource := dig "execution" "resources" (list) $state -}}
+{{- if and (eq $resource.kind "Issuer") (eq $resource.name $issuer.name) (eq $resource.plane $plane)
+  (eq (dig "observed" "uid" "" $resource) $target.uid)
+  (eq (dig "observed" "specSHA256" "" $resource) $target.specSHA256)
+  (eq (dig "ca" "secretName" "" $resource.spec) $record.signer.name) -}}
+{{- $planned = true -}}
 {{- end -}}
-{{- $_ := set $result $plane (dict "kind" $kind "name" $name "key" "ca.crt" "bundle" $bundle
+{{- end -}}
+{{- if not $planned -}}
+{{- fail "The selected chart cannot preserve this staged issuer without its owned execution intent." -}}
+{{- end -}}
+{{- end -}}
+{{- $descriptor := dict "kind" $kind "name" $name "key" "ca.crt" "bundle" $bundle
   "uid" $pin.uid "resourceVersion" $source.metadata.resourceVersion "contentDigest" (sha256sum $bundle)
-  "issuer" $issuer "issuerDigest" (sha256sum (toJson $issuer))
+  "issuer" $issuer "signingSecret" $target.signingSecret "issuerDigest" (sha256sum (toJson $issuer))
   "digest" (sha256sum (printf "%s\n%s" $bundle (toJson $issuer)))
-  "journalUID" $journal.metadata.uid "revision" $revision) -}}
+  "bootstrapUID" (index $annotations "radius.io/certificate-bootstrap" | default "")
+  "journalUID" $journalUID "revision" $revision -}}
+{{- if and (eq $plane "aggregation") (dig "execution" "servingSecret" "" $state) -}}
+{{- $_ := set $descriptor "servingSecret" $state.execution.servingSecret -}}
+{{- end -}}
+{{- $_ := set $result $plane $descriptor -}}
 {{- end -}}
 {{- end -}}
 {{- toJson $result -}}
+{{- end -}}
+
+{{- define "radius.lifecycleResourceNames" -}}
+{{- $planned := dict -}}
+{{- $snapshot := include "radius.lifecycleSnapshot" . | mustFromJson -}}
+{{- if $snapshot -}}
+{{- $journal := lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation" -}}
+{{- range $resource := dig "execution" "resources" (list) (mustFromJson (index $journal.data "state.json")) -}}
+{{- $_ := set $planned (printf "%s/%s" $resource.kind $resource.name) true -}}
+{{- end -}}
+{{- end -}}
+{{- $planned | toJson -}}
+{{- end -}}
+
+{{- define "radius.lifecycleResources" -}}
+{{- $snapshot := include "radius.lifecycleSnapshot" . | mustFromJson -}}
+{{- if $snapshot -}}
+{{- $journal := lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation" -}}
+{{- $state := mustFromJson (index $journal.data "state.json") -}}
+{{- range $resource := dig "execution" "resources" (list) $state -}}
+{{- if not (has $resource.kind (list "Issuer" "Certificate")) -}}
+{{- fail "Lifecycle resources may contain only owned certificate roots and issuers." -}}
+{{- end -}}
+{{- $live := lookup "cert-manager.io/v1" $resource.kind $.Release.Namespace $resource.name -}}
+{{- $existingBootstrap := and (eq $resource.kind "Issuer") (eq $resource.name "radius-selfsigned-bootstrap")
+  (hasKey $resource.spec "selfSigned") (eq (len $resource.spec) 1) (empty $resource.spec.selfSigned)
+  (eq (dig "before" "uid" "" $resource) (dig "observed" "uid" "" $resource))
+  (eq (dig "before" "specSHA256" "" $resource) (dig "observed" "specSHA256" "" $resource)) -}}
+{{- if or (not $live) (empty $resource.observed)
+  (ne $live.metadata.uid $resource.observed.uid)
+  (ne (sha256sum (toJson $live.spec)) $resource.observed.specSHA256)
+  (dig "metadata" "deletionTimestamp" "" $live) (dig "metadata" "ownerReferences" (list) $live)
+  (ne (dig "metadata" "labels" "app.kubernetes.io/managed-by" "" $live) "Helm")
+  (ne (dig "metadata" "annotations" "meta.helm.sh/release-name" "" $live) $.Release.Name)
+  (ne (dig "metadata" "annotations" "meta.helm.sh/release-namespace" "" $live) $.Release.Namespace)
+  (and (not $existingBootstrap) (ne (dig "metadata" "annotations" "radius.io/certificate-lifecycle" "" $live) $journal.metadata.uid))
+  (and (not $existingBootstrap) (ne (dig "metadata" "annotations" "helm.sh/resource-policy" "" $live) "keep")) -}}
+{{- fail "Staged lifecycle resource identity, ownership or configuration changed." -}}
+{{- end }}
+---
+apiVersion: cert-manager.io/v1
+kind: {{ $resource.kind }}
+metadata:
+  name: {{ $resource.name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- $live.metadata.labels | toYaml | nindent 4 }}
+  annotations:
+    {{- $live.metadata.annotations | toYaml | nindent 4 }}
+spec:
+  {{- $live.spec | toYaml | nindent 2 }}
+{{- end -}}
+{{- end -}}
 {{- end -}}
