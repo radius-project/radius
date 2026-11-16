@@ -511,6 +511,7 @@ func TestServe_ConfigErrors(t *testing.T) {
 		receiver Receiver
 		want     string
 	}{
+		{name: "unknown TLS provider", options: authz.Options{Mode: authz.ModeEnforce, TLSProvider: "typo"}, receiver: receiver, want: "invalid TLS provider"},
 		{name: "missing directory", options: authz.Options{Mode: authz.ModeEnforce, Namespace: testNamespace}, receiver: receiver, want: "requires certificateDirectory"},
 		{name: "missing namespace", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir}, receiver: receiver, want: "requires certificateDirectory and namespace"},
 		{name: "missing receiver", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, Namespace: testNamespace}, want: "receiver name is required"},

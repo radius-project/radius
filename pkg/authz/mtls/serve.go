@@ -172,9 +172,6 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 // newServerAuth loads the server certificate and creates the token verifier.
 func newServerAuth(options authz.Options, receiver Receiver, config serveConfig) (*token.Verifier, *Source, error) {
 	mode := options.EffectiveMode()
-	if err := options.ValidateTLSProvider(); err != nil {
-		return nil, nil, err
-	}
 	managed := options.EffectiveTLSProvider() == authz.TLSProviderRadius
 	if managed && (options.CertificateDirectory == "" || options.Namespace == "") {
 		return nil, nil, fmt.Errorf("authorization mode %q requires certificateDirectory and namespace", mode)

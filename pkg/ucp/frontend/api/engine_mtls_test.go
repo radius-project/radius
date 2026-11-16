@@ -75,7 +75,9 @@ func TestInternalServer_DeploymentEngineTokenIdentity(t *testing.T) {
 	const pathBase = "/apis/api.ucp.dev/v1alpha3"
 	ca, caKey, caPEM := engineTestCertificate(t, "", nil, nil)
 	serverDir, serverCertificate := engineTestMaterial(t, "ucp."+namespace+".svc", ca, caKey, caPEM)
-	keys := newEngineTokenKeys(t)
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	keys := engineTokenKeys{key: key}
 	specLoader, err := validator.LoadSpec(t.Context(), "ucp", swagger.SpecFilesUCP, []string{pathBase}, "")
 	require.NoError(t, err)
 
@@ -218,13 +220,6 @@ func TestInternalServer_DeploymentEngineTokenIdentity(t *testing.T) {
 
 type engineTokenKeys struct {
 	key *ecdsa.PrivateKey
-}
-
-func newEngineTokenKeys(t *testing.T) engineTokenKeys {
-	t.Helper()
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	require.NoError(t, err)
-	return engineTokenKeys{key: key}
 }
 
 func (k engineTokenKeys) Fetch(context.Context) (token.KeySet, error) {
