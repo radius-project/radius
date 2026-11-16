@@ -431,7 +431,7 @@ func initSubCommands() {
 func configureOutput(cmd *cobra.Command, writer *output.OutputWriter) {
 	writer.Writer = cmd.OutOrStdout()
 	writer.LogWriter = nil
-	if flag := cmd.Flag("output"); flag != nil && strings.EqualFold(strings.TrimSpace(flag.Value.String()), output.FormatJson) {
+	if flag := cmd.Flag("output"); cmd.Name() != "initialize" && flag != nil && strings.EqualFold(strings.TrimSpace(flag.Value.String()), output.FormatJson) {
 		writer.LogWriter = cmd.ErrOrStderr()
 	}
 	output.SetLogWriter(writer.LogWriter)

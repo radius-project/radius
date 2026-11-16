@@ -104,7 +104,7 @@ func TestPolicySafety(t *testing.T) {
 			scenario.edit(&policy, &actor, &mutation)
 			snapshot, err := NewPolicySnapshot(catalog, policy)
 			require.NoError(t, err)
-			_, _, _, err = applyPolicyMutation(t.Context(), snapshot, actor, mutation, nil)
+			_, _, _, err = applyPolicyMutation(t.Context(), snapshot, actor, mutation, nil, defaultPolicyLimits)
 			if scenario.code == "" {
 				require.NoError(t, err)
 			} else {
@@ -140,7 +140,7 @@ func TestPolicySafetyOwnership(t *testing.T) {
 			if scenario.sameSource {
 				actor.Management = *assignment.Properties.ManagedBy
 			}
-			_, _, impact, err := applyPolicyMutation(t.Context(), snapshot, actor, PolicyMutation{Target: *assignment.ID, Delete: true}, nil)
+			_, _, impact, err := applyPolicyMutation(t.Context(), snapshot, actor, PolicyMutation{Target: *assignment.ID, Delete: true}, nil, defaultPolicyLimits)
 			if scenario.allowed {
 				require.NoError(t, err)
 				require.Equal(t, scenario.takeover, impact)
@@ -181,7 +181,7 @@ func TestPolicySafetyMetadataOwnership(t *testing.T) {
 			properties.Description = to.Ptr("updated")
 			_, change, _, err := applyPolicyMutation(t.Context(), snapshot, actor, PolicyMutation{
 				Target: *policy.Assignments[1].ID, Assignment: properties,
-			}, nil)
+			}, nil, defaultPolicyLimits)
 			if scenario.allowed {
 				require.NoError(t, err)
 				require.Equal(t, "updated", *change.After.RoleAssignment.Description)
@@ -231,7 +231,7 @@ func TestPolicySafetyDelegation(t *testing.T) {
 			}
 			snapshot, err := NewPolicySnapshot(catalog, policy)
 			require.NoError(t, err)
-			_, _, highImpact, err := applyPolicyMutation(t.Context(), snapshot, actor, mutation, nil)
+			_, _, highImpact, err := applyPolicyMutation(t.Context(), snapshot, actor, mutation, nil, defaultPolicyLimits)
 			if expected != "" {
 				require.ErrorContains(t, err, expected)
 			} else {
@@ -251,13 +251,13 @@ func TestPolicySafetyServerFieldsAndBootstrapTransition(t *testing.T) {
 	}
 	current, err := NewPolicySnapshot(catalog, policy)
 	require.NoError(t, err)
-	_, _, _, err = applyPolicyMutation(t.Context(), current, policyActor(), readerMutation(), nil)
+	_, _, _, err = applyPolicyMutation(t.Context(), current, policyActor(), readerMutation(), nil, defaultPolicyLimits)
 	require.NoError(t, err)
 	mutation := assignmentMutation("permanent", builtInID("radius-administrator"), "/", "charlie")
 	mutation.Assignment.Scope = to.Ptr(teamB)
 	mutation.Assignment.CreatedBy = to.Ptr("forged")
 	mutation.Assignment.ManagedBy = &api.AssignmentManagement{Kind: to.Ptr(api.AssignmentManagementKindBootstrap)}
-	next, change, impact, err := applyPolicyMutation(t.Context(), current, policyActor(), mutation, nil)
+	next, change, impact, err := applyPolicyMutation(t.Context(), current, policyActor(), mutation, nil, defaultPolicyLimits)
 	require.NoError(t, err)
 	require.Equal(t, 1, permanentAdministrators(next))
 	require.True(t, impact)

@@ -15,7 +15,7 @@ const modules = [
   [".github/scripts/cloud-test-context.mjs", ["setup", "testStatus"]],
   [
     ".github/scripts/cloud-test-artifacts.mjs",
-    ["capture", "select", "prepare", "publish"]
+    ["capture", "select", "prepare", "publish", "testTypesRegistry"]
   ],
   [".github/scripts/azure-oidc-login.mjs", ["login"]]
 ];

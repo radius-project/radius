@@ -28,6 +28,8 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
+	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/statearchive/factory"
 	"github.com/spf13/cobra"
@@ -143,6 +145,50 @@ func Test_ConfigureOutput(t *testing.T) {
 					}
 				}
 			})
+		}
+	}
+}
+
+func Test_ConfigureOutput_InitIgnoresFormat(t *testing.T) {
+	t.Cleanup(func() { output.SetLogWriter(nil) })
+	for _, alias := range []string{"init", "initialize"} {
+		for _, format := range []string{"json", "table", "plain-text", "", " JSON ", "xml"} {
+			for _, flagName := range []string{"--output", "-o"} {
+				for _, before := range []bool{false, true} {
+					t.Run(fmt.Sprintf("%s/%s/%s/before=%t", alias, format, flagName, before), func(t *testing.T) {
+						var stdout, stderr bytes.Buffer
+						writer := &output.OutputWriter{}
+						root := &cobra.Command{Use: "rad"}
+						root.PersistentFlags().StringP("output", "o", output.DefaultFormat, "output format")
+						root.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+							configureOutput(cmd, writer)
+						}
+						command, _ := radinit.NewCommand(&framework.Impl{})
+						command.RunE = func(cmd *cobra.Command, args []string) error {
+							require.True(t, cmd.Flags().Changed("output"))
+							actual, err := cmd.Flags().GetString("output")
+							require.NoError(t, err)
+							require.Equal(t, format, actual)
+							writer.LogInfo("Human-readable status")
+							return nil
+						}
+						root.AddCommand(command)
+						root.SetOut(&stdout)
+						root.SetErr(&stderr)
+						args := []string{alias, flagName, format}
+						if before {
+							args = []string{flagName, format, alias}
+						}
+						root.SetArgs(args)
+
+						require.NoError(t, root.ExecuteContext(t.Context()))
+						require.Equal(t, "Human-readable status\n", stdout.String())
+						require.Empty(t, stderr.String())
+						require.Same(t, os.Stdout, output.LogWriter())
+						require.False(t, root.PersistentFlags().Lookup("output").Hidden)
+					})
+				}
+			}
 		}
 	}
 }
@@ -313,6 +359,9 @@ func Test_InitAndWorkspaceCreate_RegisteredWithoutPreview(t *testing.T) {
 			require.Nil(t, cmd.Flags().Lookup("preview"), "rad %s must not expose --preview", strings.Join(tc.args, " "))
 			for _, flag := range tc.flags {
 				require.NotNilf(t, cmd.Flags().Lookup(flag), "rad %s must expose --%s", strings.Join(tc.args, " "), flag)
+			}
+			if tc.name == "initialize" {
+				require.True(t, cmd.Flags().Lookup("output").Hidden, "initialization only accepts output for compatibility")
 			}
 		})
 	}
