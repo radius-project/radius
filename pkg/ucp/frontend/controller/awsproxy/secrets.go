@@ -97,7 +97,7 @@ func removeWriteOnly(out *cloudcontrol.GetResourceOutput, paths []string) error 
 	if err := json.Unmarshal([]byte(*out.ResourceDescription.Properties), &properties); err != nil {
 		return err
 	}
-	removePaths(properties, paths)
+	awsoperations.RemovePaths(properties, paths)
 	state, err := json.Marshal(properties)
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func buildResponseProperties(current map[string]any, request map[string]any, sec
 	}
 
 	echoed, _ := deepCopy(request).(map[string]any)
-	removePaths(echoed, secrets)
+	awsoperations.RemovePaths(echoed, secrets)
 	mergeProperties(out, echoed)
 	return out
 }
@@ -152,41 +152,5 @@ func deepCopy(v any) any {
 		return out
 	default:
 		return v
-	}
-}
-
-// removePaths removes the properties at paths from properties in place. A "*" segment matches every array item.
-func removePaths(properties map[string]any, paths []string) {
-	for _, p := range paths {
-		removePath(properties, strings.Split(p, "/"))
-	}
-}
-
-func removePath(obj map[string]any, segments []string) {
-	if obj == nil || len(segments) == 0 {
-		return
-	}
-	if len(segments) == 1 {
-		delete(obj, segments[0])
-		return
-	}
-
-	value := obj[segments[0]]
-	if segments[1] == "*" {
-		if len(segments) == 2 {
-			delete(obj, segments[0])
-			return
-		}
-		items, _ := value.([]any)
-		for _, item := range items {
-			if m, ok := item.(map[string]any); ok {
-				removePath(m, segments[2:])
-			}
-		}
-		return
-	}
-
-	if m, ok := value.(map[string]any); ok {
-		removePath(m, segments[1:])
 	}
 }
