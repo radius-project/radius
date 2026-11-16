@@ -632,7 +632,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 
 	if len(patch) == 0 {
 		// This response is the resource as AWS has it, so it carries the extra properties a GET returns. A failed read
-		// fails the PUT before the record changes.
+		// fails the PUT before it saves this deploy's properties. It doesn't undo a recovery checkRecord already saved.
 		if resp, err := e.addExtraProperties(ctx, r, typeInfo, responseProperties); resp != nil || err != nil {
 			return resp, err
 		}

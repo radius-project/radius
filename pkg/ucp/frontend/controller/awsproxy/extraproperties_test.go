@@ -425,7 +425,7 @@ func Test_ExtraProperties_PutResponse(t *testing.T) {
 		require.Equal(t, mskARN, h.record(mskPath).Properties.AWSIdentifier)
 	})
 
-	t.Run("a failed read fails the PUT and leaves the record as it was", func(t *testing.T) {
+	t.Run("a failed read fails the PUT without saving its properties", func(t *testing.T) {
 		h := newHarness(t)
 		seedCluster(h, mskType, mskPath)
 		// The last deploy set less than this template, so a successful PUT would save the template on the record.
