@@ -536,12 +536,7 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "uninstall", nil); err != nil {
 		return err
 	}
-	// Uninstall Radius
-	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
-		return err
-	}
-	// rad creates the UCP API server trust Secret outside the Helm release.
-	if err := i.deleteUCPAPIServerTrust(ctx, kubeContext, clusterOptions.Radius.Namespace); err != nil {
+	if err := i.uninstallRadiusRelease(ctx, clusterOptions.Radius.Namespace, kubeContext); err != nil {
 		return err
 	}
 

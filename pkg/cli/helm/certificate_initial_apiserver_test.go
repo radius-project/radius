@@ -152,6 +152,40 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 			source, err := local.kube.CoreV1().Secrets(local.namespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 			require.NoError(t, err)
 			require.Len(t, source.Data, 1)
+			for _, changed := range []string{"resourceVersion", "UID"} {
+				t.Run("cleanup rejects stale "+changed, func(t *testing.T) {
+					stale := source.DeepCopy()
+					if changed == "resourceVersion" {
+						stale.ResourceVersion = "1"
+					} else {
+						stale.UID = "another-object"
+					}
+					require.NoError(t, withIdentityOperation(t.Context(), local.kube, local.namespace, func(operation *identityOperation) error {
+						b.operation = operation
+						err := b.deleteBootstrapObject(t.Context(), stale, func(options metav1.DeleteOptions) error {
+							return local.kube.CoreV1().Secrets(local.namespace).Delete(t.Context(), source.Name, options)
+						})
+						require.True(t, apierrors.IsConflict(err), "%v", err)
+						return nil
+					}))
+					live, err := local.kube.CoreV1().Secrets(local.namespace).Get(t.Context(), source.Name, metav1.GetOptions{})
+					require.NoError(t, err)
+					require.Equal(t, source, live)
+				})
+			}
+			initialUninstallFixture(t, b, nil)
+			uninstall := NewDefaultClusterOptions()
+			uninstall.Radius.Namespace, uninstall.Contour.Namespace = local.namespace, local.namespace
+			require.NoError(t, impl.UninstallRadius(t.Context(), uninstall, "fixture"))
+			namespace, err := local.kube.CoreV1().Namespaces().Get(t.Context(), local.namespace, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.NotContains(t, namespace.Annotations, initialCertificateIntent)
+			target, plan, err = impl.prepareCertificateTarget(t.Context(), options, selected, values, "fixture")
+			require.NoError(t, err)
+			fresh, err := impl.prepareAggregationBootstrap(t.Context(), options, selected, nil, values, "fixture", plan, target)
+			require.NoError(t, err)
+			require.NotNil(t, fresh)
+			require.NoError(t, fresh.checkFresh(t.Context()))
 		})
 	}
 }
