@@ -143,8 +143,9 @@ func (c *stageCluster) helmReissuesUCPCertificate(t *testing.T) {
 }
 
 // offAPIServiceVariants are the APIServices an upgrade or rollback to authorization on can find while UCP serves a
-// certificate from ucp-ca. After an earlier on→off cycle, Helm's off release keeps the inject-ca-from-secret annotation
-// rad set, and cainjector may already have merged the leftover radius-apiserver-ca into the bundle.
+// certificate from ucp-ca. After an earlier on→off cycle that stopped before ReconcileUCPOffAPIServerTrust, or that an
+// older rad ran, Helm's off release keeps the inject-ca-from-secret annotation rad set, and cainjector may already have
+// merged the leftover radius-apiserver-ca into the bundle.
 var offAPIServiceVariants = []string{"off", "stale annotation, ucp-ca only", "stale annotation, leftover CA merged"}
 
 func (c *stageCluster) addOffAPIService(t *testing.T, variant string) {
@@ -335,10 +336,11 @@ func (c *stageCluster) requireTrusts(t *testing.T, leaf *x509.Certificate, who s
 		who, leaf.Issuer.CommonName, apiServiceCABundle(t, c.dynamic))
 }
 
-// helmAppliesOff does what Helm does when it applies a release with authorization off: it writes Secret ucp-cert,
-// sets the APIService caBundle to the CA of that Secret and drops the inject annotation, and then the ucp Deployment
-// rolls out with ucp-cert mounted. target is the ucp-cert Secret and caBundle that a rollback applies from the target
-// revision; for an upgrade it is nil and, as the chart does, Helm keeps a live ucp-cert or generates ucp-ca. It checks
+// helmAppliesOff does what Helm does when it applies a release with authorization off: it writes Secret ucp-cert and
+// sets the APIService caBundle to the CA of that Secret, and then the ucp Deployment rolls out with ucp-cert mounted.
+// As live, Helm cannot remove the inject-ca-from-secret annotation that rad set, so cainjector keeps merging the CA of
+// the annotated Secret, while it exists, into the caBundle. target is the ucp-cert Secret and caBundle that a rollback
+// applies from the target revision; for an upgrade it is nil and, as the chart does, Helm keeps a live ucp-cert or generates ucp-ca. It checks
 // that the API server trusts the certificate UCP serves before and after the rollout.
 func (c *stageCluster) helmAppliesOff(t *testing.T, target *corev1.Secret, caBundle []byte) {
 	t.Helper()
@@ -362,8 +364,7 @@ func (c *stageCluster) helmAppliesOff(t *testing.T, target *corev1.Secret, caBun
 	}
 	apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 	require.NoError(t, err)
-	apiService.SetAnnotations(nil)
-	require.NoError(t, unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(caBundle), "spec", "caBundle"))
+	require.NoError(t, unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(c.cainjectorMerges(t, apiService, caBundle)), "spec", "caBundle"))
 	_, err = c.dynamic.Resource(apiServicesResource).Update(t.Context(), apiService, metav1.UpdateOptions{})
 	require.NoError(t, err)
 	c.requireTrusts(t, before, "the running UCP pods")
@@ -376,6 +377,44 @@ func (c *stageCluster) helmAppliesOff(t *testing.T, target *corev1.Secret, caBun
 	_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
 	require.NoError(t, err)
 	c.requireTrusts(t, c.servedLeaf(t), "the UCP pods Helm rolls out")
+}
+
+// cainjectorMerges returns bundle with the ca.crt of the Secret that the inject-ca-from-secret annotation of
+// apiService names, as cainjector leaves the caBundle after Helm applies bundle, when that Secret exists.
+func (c *stageCluster) cainjectorMerges(t *testing.T, apiService *unstructured.Unstructured, bundle []byte) []byte {
+	t.Helper()
+	source := apiService.GetAnnotations()[injectCAFromSecretAnnotation]
+	if source == "" {
+		return bundle
+	}
+	namespace, name, _ := strings.Cut(source, "/")
+	secret, err := c.kube.CoreV1().Secrets(namespace).Get(t.Context(), name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return bundle
+	}
+	require.NoError(t, err)
+	return encodeCertificates(unionCertificates(caCertificates(bundle), caCertificates(secret.Data[caCertificateKey])))
+}
+
+// requireOffTrust checks the state rad leaves after authorization turns off: the APIService has none of the
+// cert-manager inject annotations and its caBundle holds only the CA in Secret ucp-cert, which UCP serves, and the
+// Secrets of the radius-apiserver-ca chain that only authorization on uses are gone.
+func (c *stageCluster) requireOffTrust(t *testing.T) {
+	t.Helper()
+	apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	for _, annotation := range []string{"cert-manager.io/inject-ca-from", injectCAFromSecretAnnotation, "cert-manager.io/inject-apiserver-ca"} {
+		require.NotContains(t, apiService.GetAnnotations(), annotation, "rad must remove %s once authorization is off", annotation)
+	}
+	offCertificate, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpOffCertificateSecretName, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, pemSubjects(t, encodeCertificates(caCertificates(offCertificate.Data[caCertificateKey]))), apiServiceCABundle(t, c.dynamic),
+		"the caBundle must hold only the CA of Secret %s", ucpOffCertificateSecretName)
+	c.requireTrusts(t, c.servedLeaf(t), "UCP")
+	for _, name := range []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName, ucpAPIServerTrustSecretName} {
+		_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), name, metav1.GetOptions{})
+		require.True(t, apierrors.IsNotFound(err), "Secret %s must be removed once authorization is off, got %v", name, err)
+	}
 }
 
 // stagedOffCertificate returns Secret ucp-cert as rad left it before Helm, or nil.
@@ -568,7 +607,7 @@ func Test_UpgradeRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 				require.NoError(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"}))
 				require.Equal(t, 1, helmCalls)
 				require.Equal(t, []string{"ucp-ca"}, apiServiceCABundle(t, c.dynamic))
-				requireNoTrustSecret(t, c.kube)
+				c.requireOffTrust(t)
 			})
 		}
 	}
@@ -662,6 +701,25 @@ func Test_StageUCPAPIServerCA_OffToOffSkipsCluster(t *testing.T) {
 	}
 }
 
+// An earlier switch to authorization off that stopped after Helm, or ran an older rad, leaves the inject annotation and
+// the radius-apiserver-ca chain behind. Running the command again with authorization off removes them.
+func Test_UpgradeRadius_OffToOffRemovesLeftoverTrust(t *testing.T) {
+	for _, command := range []string{"upgrade", "install --reinstall"} {
+		t.Run(command, func(t *testing.T) {
+			shortenUCPAPIServiceWait(t)
+			u := newStageUpgrade(t, map[string]any{}, command)
+			c := newStageCluster(t, nil, true)
+			c.onUCP(t)
+			c.helmAppliesOff(t, nil, nil)
+			require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
+
+			client := u.mock(t, 1, func() { c.helmAppliesOff(t, nil, nil) })
+			require.NoError(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=false"}))
+			c.requireOffTrust(t)
+		})
+	}
+}
+
 func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
 	shortenUCPAPIServiceWait(t)
 	u := newStageUpgrade(t, authzOnValues, "upgrade")
@@ -696,6 +754,7 @@ func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
 	require.NoError(t, u.run(t, c.impl(client, "cert-manager"), off))
 	require.Equal(t, 1, helmCalls)
 	require.Equal(t, []string{"ucp-ca"}, apiServiceCABundle(t, c.dynamic))
+	c.requireOffTrust(t)
 }
 
 // (b): a rollback from a revision with authorization off to one with it on stages radius-apiserver-ca from the
@@ -801,7 +860,7 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 				}
 				require.NoError(t, err)
 				require.Equal(t, 1, rollbacks)
-				requireNoTrustSecret(t, c.kube)
+				c.requireOffTrust(t)
 			})
 		}
 	}

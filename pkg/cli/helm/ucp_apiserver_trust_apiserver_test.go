@@ -36,8 +36,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -122,6 +124,54 @@ func TestUCPAPIServerTrustFollowsCARenewal_APIServer(t *testing.T) {
 	onlyFirst.AddCert(issued.cert)
 	_, err = leaf.Verify(x509.VerifyOptions{Roots: onlyFirst, DNSName: "ucp." + RadiusSystemNamespace + ".svc", KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
 	require.Error(t, err, "a bundle that kept only the expired CA certificate must not verify UCP")
+}
+
+// TestUCPOffTrustPatch_APIServer checks, on a real API server, that the patch rad sends once authorization is off
+// does not apply over a write it has not read, and that settleUCPOffTrust then removes the cert-manager inject
+// annotation and leaves only ucp-ca in the caBundle.
+func TestUCPOffTrustPatch_APIServer(t *testing.T) {
+	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
+		t.Skip("Run make test or set KUBEBUILDER_ASSETS to run the isolated API-server regression.")
+	}
+	helmBinary, err := exec.LookPath("helm")
+	require.NoError(t, err, "the test renders the chart with the helm binary")
+	shortenUCPAPIServiceWait(t)
+	ucpAPIServiceTimeout = 10 * time.Second
+
+	kubeconfig, _ := startTestAPIServer(t)
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	require.NoError(t, err)
+	dynamicClient, err := dynamic.NewForConfig(config)
+	require.NoError(t, err)
+	ctx := t.Context()
+
+	// The APIService as authorization on renders it, after cainjector merged radius-apiserver-ca with ucp-ca.
+	ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
+	_, apiService := renderUCPAPIServerTrustObjects(t, helmBinary)
+	require.Contains(t, apiService.GetAnnotations(), injectCAFromSecretAnnotation)
+	bundle := append(append([]byte{}, ucpCA.pem...), apiServerCA.pem...)
+	require.NoError(t, unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(bundle), "spec", "caBundle"))
+	stale, err := dynamicClient.Resource(apiServicesResource).Create(ctx, apiService, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// Another writer changes the APIService after rad read it.
+	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType,
+		[]byte(`{"metadata":{"labels":{"example.com/written":"after-rad-read"}}}`), metav1.PatchOptions{})
+	require.NoError(t, err)
+	patch, err := ucpOffTrustPatch(stale, caCertificates(ucpCA.pem))
+	require.NoError(t, err)
+	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.JSONPatchType, patch, metav1.PatchOptions{FieldManager: FieldManager})
+	require.True(t, apierrors.IsInvalid(err), "a stale resourceVersion test must fail as Invalid, which settleUCPOffTrust retries; got %v", err)
+
+	require.NoError(t, settleUCPOffTrust(ctx, "test-context", dynamicClient, caCertificates(ucpCA.pem)))
+	settled, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.NotContains(t, settled.GetAnnotations(), injectCAFromSecretAnnotation)
+	require.Equal(t, "after-rad-read", settled.GetLabels()["example.com/written"])
+	encoded, _, _ := unstructured.NestedString(settled.Object, "spec", "caBundle")
+	got, err := base64.StdEncoding.DecodeString(encoded)
+	require.NoError(t, err)
+	require.Equal(t, ucpCA.pem, got)
 }
 
 // renderUCPAPIServerTrustObjects renders the radius-apiserver-ca Certificate and the UCP APIService with

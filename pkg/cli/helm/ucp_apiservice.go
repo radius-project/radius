@@ -55,10 +55,11 @@ var (
 // and waits until the UCP APIService has a CA bundle and the API server reports it Available. Helm waits only for
 // workloads, and with authorization on the APIService trusts UCP only after cert-manager issues
 // radius-apiserver-ca and its cainjector copies the CA into the APIService. With authorization off, the chart sets
-// the CA bundle itself and this returns at once.
+// the CA bundle itself, and this only removes the trust that authorization on left, as
+// ReconcileUCPOffAPIServerTrust describes.
 func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode) error {
 	if mode == authz.ModeOff {
-		return nil
+		return i.ReconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace)
 	}
 	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace); err != nil {
 		return err

@@ -114,7 +114,8 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		return nil
 	}
 	// Decide from what the API server trusts, not from the inject-ca-from-secret annotation: Helm's switch to
-	// authorization off keeps the annotation rad set, while UCP serves a ucp-ca certificate again.
+	// authorization off keeps the annotation rad set, and a run that stopped before ReconcileUCPOffAPIServerTrust, or an
+	// older rad, leaves it while UCP serves a ucp-ca certificate again.
 	current, _, _, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
 	if err != nil {
 		return err
