@@ -18,14 +18,18 @@ package mechanics_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"uuid"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/docdb"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/kafka"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -40,8 +44,8 @@ import (
 )
 
 // These tests cover the kinds of AWS types that Cloud Control doesn't fully manage: a type AWS can create and delete
-// but not update, a read-only type AWS creates on its own, and a type with an extra read for values AWS's schema leaves
-// out. Each deploys through rad deploy and the Deployment Engine.
+// but not update, a read-only type AWS creates on its own, a type UCP serves with a native handler, and a type with
+// an extra read for values AWS's schema leaves out. Each deploys through rad deploy and the Deployment Engine.
 
 // Test_AWSCreateAndDeleteOnlyTypeRejectsChange deploys a placement group, redeploys it unchanged, then changes its
 // strategy. AWS can't update a placement group, so the unchanged redeploy must send nothing, and the change must fail
@@ -155,6 +159,84 @@ func Test_AWSReadOnlyTypeWithExisting(t *testing.T) {
 	test.Test(t)
 }
 
+// Test_AWSNativeTypeRedeployAndDelete deploys a recipe with a DocumentDB cluster, which Cloud Control can't create, so
+// UCP's native handler serves it. The unchanged redeploy must send nothing to AWS, including the password AWS never
+// returns, and deleting the application must delete the cluster and keep a final snapshot.
+func Test_AWSNativeTypeRedeployAndDelete(t *testing.T) {
+	template := "testdata/aws-mechanics-docdb-recipe.bicep"
+	name := "corerp-mechanics-aws-docdb"
+	appName := name + "-app"
+	clusterIdentifier := "radiusfunctionaltest-" + uuid.New().String()
+	creationTimestamp := testutil.GetCreationTimestamp()
+	parameters := []string{
+		"clusterIdentifier=" + clusterIdentifier,
+		"subnetGroupName=" + clusterIdentifier,
+		"@" + passwordParameterFile(t),
+		"creationTimestamp=" + creationTimestamp,
+		testutil.GetAWSAccountId(),
+		testutil.GetAWSRegion(),
+		testutil.GetBicepRecipeRegistry(),
+		testutil.GetBicepRecipeVersion(),
+	}
+	resourceSet := recipeResourceSet(name, appName, "AWS.DocDB/DBCluster", clusterIdentifier)
+
+	var clusterResourceID string
+	var since time.Time
+	var rpTest rp.RPTest
+	rpTest = rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor:    beforeCleanup(step.NewDeployExecutor(template, parameters...)),
+			RPResources: resourceSet,
+			// cleanupRadiusResources deletes the application and environment within the test deadline.
+			SkipResourceDeletion: true,
+			SkipObjectValidation: true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				requireAWSWrite(ctx, t, ct, clusterIdentifier, msgCreating)
+				cluster := requireDocDBCluster(ctx, t, newDocDBClient(ctx, t), clusterIdentifier)
+				clusterResourceID = aws.ToString(cluster.DbClusterResourceId)
+				requireExtenderValue(ctx, t, ct, name, "endpoint", aws.ToString(cluster.Endpoint))
+				since = time.Now()
+			},
+		},
+		{
+			Executor:                               beforeCleanup(step.NewDeployExecutor(template, parameters...)),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				requireNoAWSWrites(ctx, t, ct, since, clusterIdentifier)
+				cluster := requireDocDBCluster(ctx, t, newDocDBClient(ctx, t), clusterIdentifier)
+				require.Equal(t, clusterResourceID, aws.ToString(cluster.DbClusterResourceId), "the redeploy replaced the cluster")
+			},
+		},
+		{
+			Executor:                               beforeCleanup(deleteApplication(&rpTest, appName)),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				client := newDocDBClient(ctx, t)
+				exists, err := docDBClusterExists(ctx, client, clusterIdentifier)
+				require.NoError(t, err)
+				require.False(t, exists, "the cluster %s is still in AWS", clusterIdentifier)
+
+				snapshots, err := docDBFinalSnapshots(ctx, client, clusterIdentifier)
+				require.NoError(t, err)
+				require.Len(t, snapshots, 1, "deleting the cluster must keep exactly one final snapshot")
+			},
+		},
+	})
+
+	rpTest.PreSetup = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+		subnetIDs := createTestNetwork(ctx, t, newEC2Client(ctx, t), clusterIdentifier, creationTimestamp)
+		createDocDBSubnetGroup(ctx, t, newDocDBClient(ctx, t), clusterIdentifier, subnetIDs, creationTimestamp)
+		// Cleanups run in reverse order: Radius deletes the app, then the test deletes the cluster if it remains and
+		// its final snapshots, then the subnet group and network.
+		cleanupDocDBCluster(t, newDocDBClient(ctx, t), clusterIdentifier)
+		cleanupRadiusResources(t, ct.Options.ManagementClient, validation.ResourcesInDeletionOrder(resourceSet)...)
+	}
+	rpTest.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAWS}
+	rpTest.Test(t)
+}
+
 // Test_AWSExtraReadPropertyRedeploySendsNothing deploys a recipe with an MSK Serverless cluster that outputs
 // BootstrapBrokerStringSaslIam, which UCP reads with an extra call because AWS's schema leaves it out. The redeploy
 // must send nothing to AWS: the broker addresses are in what UCP reads, not in the template.
@@ -231,6 +313,20 @@ func Test_AWSExtraReadPropertyRedeploySendsNothing(t *testing.T) {
 	rpTest.Test(t)
 }
 
+// passwordParameterFile writes a new master user password to a deployment parameters file and returns its path. A
+// file keeps the password out of the rad deploy command line, which the test logs.
+func passwordParameterFile(t *testing.T) string {
+	content, err := json.Marshal(map[string]any{
+		"$schema":        "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+		"contentVersion": "1.0.0.0",
+		"parameters":     map[string]any{"masterUserPassword": map[string]any{"value": strings.ReplaceAll(uuid.New().String(), "-", "")}},
+	})
+	require.NoError(t, err)
+	path := filepath.Join(t.TempDir(), "parameters.json")
+	require.NoError(t, os.WriteFile(path, content, 0o600))
+	return path
+}
+
 // recipeResourceSet returns the environment, application, and extender a recipe template deploys, with the extender's
 // one AWS output resource. Its ID ends in the alias, not the AWS identifier.
 func recipeResourceSet(name string, appName string, awsType string, alias string) *validation.RPResourceSet {
@@ -295,6 +391,10 @@ func requireErrorMessage(message string) func(*testing.T, *radcli.CLIError) {
 
 func newEC2Client(ctx context.Context, t *testing.T) *ec2.Client {
 	return ec2.NewFromConfig(loadAWSConfig(ctx, t))
+}
+
+func newDocDBClient(ctx context.Context, t *testing.T) *docdb.Client {
+	return docdb.NewFromConfig(loadAWSConfig(ctx, t))
 }
 
 func newKafkaClient(ctx context.Context, t *testing.T) *kafka.Client {

@@ -28,6 +28,8 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/docdb"
+	docdbtypes "github.com/aws/aws-sdk-go-v2/service/docdb/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/kafka"
@@ -52,7 +54,7 @@ const (
 )
 
 const (
-	// cleanupTimeout bounds each cleanup. Deleting an MSK cluster and its network takes several minutes.
+	// cleanupTimeout bounds each cleanup. Deleting a DocumentDB cluster or an MSK cluster takes several minutes.
 	cleanupTimeout = 30 * time.Minute
 
 	// cleanupReserve is the time the slow tests keep for cleanup before the go test deadline. When the test binary
@@ -353,6 +355,131 @@ func newestAmazonLinuxImage(ctx context.Context, t *testing.T, client *ec2.Clien
 	}
 	require.NotEmpty(t, aws.ToString(newest.ImageId), "found no public Amazon Linux 2023 AMI")
 	return aws.ToString(newest.ImageId)
+}
+
+// createDocDBSubnetGroup creates a DB subnet group for the subnets, and deletes it when the test ends.
+func createDocDBSubnetGroup(ctx context.Context, t *testing.T, client *docdb.Client, name string, subnetIDs []string, creationTimestamp string) {
+	_, err := client.CreateDBSubnetGroup(ctx, &docdb.CreateDBSubnetGroupInput{
+		DBSubnetGroupName:        aws.String(name),
+		DBSubnetGroupDescription: aws.String("Radius functional test"),
+		SubnetIds:                subnetIDs,
+		Tags:                     []docdbtypes.Tag{{Key: aws.String("RadiusCreationTimestamp"), Value: aws.String(creationTimestamp)}},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		ctx, cancel := cleanupContext(t)
+		defer cancel()
+
+		t.Logf("deleting DB subnet group %s", name)
+		err := poll(ctx, 15*time.Second, func() (bool, error) {
+			_, err := client.DeleteDBSubnetGroup(ctx, &docdb.DeleteDBSubnetGroupInput{DBSubnetGroupName: aws.String(name)})
+			switch {
+			case err == nil, errorCode(err) == "DBSubnetGroupNotFoundFault":
+				return true, nil
+			case errorCode(err) == "InvalidDBSubnetGroupStateFault":
+				return false, nil
+			default:
+				return false, err
+			}
+		})
+		if err != nil {
+			t.Errorf("failed to delete DB subnet group %s: %v", name, err)
+		}
+	})
+}
+
+// docDBCluster returns the DocumentDB cluster with the identifier, or nil when AWS has none.
+func docDBCluster(ctx context.Context, client *docdb.Client, identifier string) (*docdbtypes.DBCluster, error) {
+	out, err := client.DescribeDBClusters(ctx, &docdb.DescribeDBClustersInput{DBClusterIdentifier: aws.String(identifier)})
+	if errorCode(err) == "DBClusterNotFoundFault" {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	if len(out.DBClusters) == 0 {
+		return nil, nil
+	}
+	return &out.DBClusters[0], nil
+}
+
+func docDBClusterExists(ctx context.Context, client *docdb.Client, identifier string) (bool, error) {
+	cluster, err := docDBCluster(ctx, client, identifier)
+	return cluster != nil, err
+}
+
+// requireDocDBCluster requires that AWS has an available DocumentDB cluster with the identifier, and returns it.
+func requireDocDBCluster(ctx context.Context, t *testing.T, client *docdb.Client, identifier string) *docdbtypes.DBCluster {
+	cluster, err := docDBCluster(ctx, client, identifier)
+	require.NoError(t, err)
+	require.NotNil(t, cluster, "AWS has no DocumentDB cluster %s", identifier)
+	require.Equal(t, "docdb", aws.ToString(cluster.Engine))
+	require.Equal(t, "available", aws.ToString(cluster.Status))
+	return cluster
+}
+
+// docDBFinalSnapshots returns the final snapshots UCP took when it deleted the cluster with the identifier. UCP names
+// them "<identifier>-final-<UTC time>".
+func docDBFinalSnapshots(ctx context.Context, client *docdb.Client, identifier string) ([]docdbtypes.DBClusterSnapshot, error) {
+	out, err := client.DescribeDBClusterSnapshots(ctx, &docdb.DescribeDBClusterSnapshotsInput{
+		DBClusterIdentifier: aws.String(identifier),
+		SnapshotType:        aws.String("manual"),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(out.DBClusterSnapshots, func(s docdbtypes.DBClusterSnapshot) bool {
+		return !strings.HasPrefix(aws.ToString(s.DBClusterSnapshotIdentifier), identifier+"-final-")
+	}), nil
+}
+
+// cleanupDocDBCluster deletes the cluster with the identifier, if the test left it, and then every final snapshot of
+// it, when the test ends. Radius never deletes a final snapshot, so the test must.
+func cleanupDocDBCluster(t *testing.T, client *docdb.Client, identifier string) {
+	t.Cleanup(func() {
+		ctx, cancel := cleanupContext(t)
+		defer cancel()
+
+		err := poll(ctx, 15*time.Second, func() (bool, error) {
+			cluster, err := docDBCluster(ctx, client, identifier)
+			if err != nil || cluster == nil {
+				return cluster == nil, err
+			}
+			if aws.ToString(cluster.Status) != "available" {
+				return false, nil
+			}
+			t.Logf("deleting DocumentDB cluster %s", identifier)
+			_, err = client.DeleteDBCluster(ctx, &docdb.DeleteDBClusterInput{DBClusterIdentifier: aws.String(identifier), SkipFinalSnapshot: aws.Bool(true)})
+			if errorCode(err) == "InvalidDBClusterStateFault" {
+				return false, nil
+			}
+			return false, err
+		})
+		if err != nil {
+			t.Errorf("failed to delete DocumentDB cluster %s: %v", identifier, err)
+			return
+		}
+
+		err = poll(ctx, 15*time.Second, func() (bool, error) {
+			snapshots, err := docDBFinalSnapshots(ctx, client, identifier)
+			if err != nil {
+				return false, err
+			}
+			for _, snapshot := range snapshots {
+				if aws.ToString(snapshot.Status) != "available" {
+					continue
+				}
+				t.Logf("deleting DocumentDB snapshot %s", aws.ToString(snapshot.DBClusterSnapshotIdentifier))
+				_, err := client.DeleteDBClusterSnapshot(ctx, &docdb.DeleteDBClusterSnapshotInput{DBClusterSnapshotIdentifier: snapshot.DBClusterSnapshotIdentifier})
+				if err != nil && errorCode(err) != "DBClusterSnapshotNotFoundFault" {
+					return false, err
+				}
+			}
+			return len(snapshots) == 0, nil
+		})
+		if err != nil {
+			t.Errorf("failed to delete the final snapshots of DocumentDB cluster %s: %v", identifier, err)
+		}
+	})
 }
 
 // listMSKClusters returns the ARNs of the MSK clusters named name.
