@@ -94,7 +94,7 @@ tools:
 
   - name: kubectl
     makePrefix: KUBECTL
-    version: v1.37.1
+    version: v1.37.2
     source:
       type: stable-text
       repository: kubernetes/kubernetes
@@ -103,16 +103,16 @@ tools:
     platforms:
       linux_amd64:
         asset: kubectl
-        checksum: 65691ff77eb6fa44c908b77a1082c9f092c3b9733b5cefabec0d1104890e21a8
+        checksum: c04487523e7aa7d1493f7808174c899db93d7a9cf57531420cd76b9bd415f8f4
       linux_arm64:
         asset: kubectl
-        checksum: ff749f4b78d9c4f1ec87307df9b50119ed819e2094aa9810cb9acffc3286c8c7
+        checksum: fcc16f63186659d9722014b7e02d5fdd2d4e669cb8c0ab66365d7d3b8ba03509
       darwin_amd64:
         asset: kubectl
-        checksum: 6851381c486ff6edd691623e3d65c87cb9a5b02887ff8fbbb38d8a031b748387
+        checksum: 88379aff5c8111de6be0a394adffba2819e44cde269f3ab23cef76de1a48eaa8
       darwin_arm64:
         asset: kubectl
-        checksum: fd65982c97ddad3106754b69ffa196d0e543aa591930ae52aed1adfb92f8c77f
+        checksum: 55701af0d51815ee335f240e48acf0959c3c23017ed3fa816e880c4a92bae581
     checksumSource:
       type: url-file
       urlTemplate: https://dl.k8s.io/release/{version}/bin/{os}/{arch}/kubectl.sha256
@@ -300,7 +300,7 @@ tools:
 
   - name: terraform
     makePrefix: TERRAFORM
-    version: 1.16.5
+    version: 1.17.1
     source:
       type: hashicorp-checkpoint
       repository: hashicorp/terraform
@@ -309,16 +309,16 @@ tools:
     platforms:
       linux_amd64:
         asset: terraform_{version}_linux_amd64.zip
-        checksum: 2bc2fcfff033265c9e02ca0351f01794eb122f62a9b2a49a3294b9e49eaab5e4
+        checksum: 4638628058e71a55212b1c563712eac03b902128f40740f3dc8174df12135061
       linux_arm64:
         asset: terraform_{version}_linux_arm64.zip
-        checksum: 61a50b00485ee4810cf20581ef080fc54d34d666e175c58d9a10501c65c1ccde
+        checksum: 988e950a1c23058093b0e66ab2d5fb53fc18345ecfbd5871acf51dbac9325edd
       darwin_amd64:
         asset: terraform_{version}_darwin_amd64.zip
-        checksum: 9809158e481cf2d3a8433e59179f397b8edb5172397711bd98f6bb32edcaf53b
+        checksum: fde92387cf9c0de74255003c85291f8fbede54585c10d0635ca7a43633d4d171
       darwin_arm64:
         asset: terraform_{version}_darwin_arm64.zip
-        checksum: ecdef65e24193d627f27c39baeda31295f08c938d8a3d4764f442fb916d4b7dc
+        checksum: b1ecb3fe0d0a0290c1ab6f83d967d43f25da05d0b671ee0fb355252268dce95a
     checksumSource:
       type: url-file
       urlTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_SHA256SUMS

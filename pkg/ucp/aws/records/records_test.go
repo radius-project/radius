@@ -25,8 +25,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
@@ -89,7 +91,7 @@ func Test_Store_Errors(t *testing.T) {
 	store := NewStore(failing{Client: inmemory.NewClient()})
 	_, _, err := store.Get(t.Context(), parse(t, vpcID))
 	require.ErrorContains(t, err, "failed to read the record")
-	_, err = store.FindByIdentifier(t.Context(), parse(t, vpcID), "vpc-1")
+	_, err = store.FindByIdentifier(t.Context(), parse(t, vpcID), "vpc-1", schemas.IdentityScopeRegion)
 	require.ErrorContains(t, err, "failed to search the records")
 	require.Error(t, store.Touch(t.Context(), parse(t, vpcID)))
 
@@ -105,7 +107,7 @@ func Test_FindByIdentifier(t *testing.T) {
 	store := NewStore(db)
 	ctx := t.Context()
 
-	holder, err := store.FindByIdentifier(ctx, parse(t, otherID), "")
+	holder, err := store.FindByIdentifier(ctx, parse(t, otherID), "", schemas.IdentityScopeRegion)
 	require.NoError(t, err)
 	require.Empty(t, holder)
 
@@ -114,28 +116,96 @@ func Test_FindByIdentifier(t *testing.T) {
 	_, err = store.Save(ctx, rec, "")
 	require.NoError(t, err)
 
-	holder, err = store.FindByIdentifier(ctx, parse(t, otherID), "vpc-1")
+	holder, err = store.FindByIdentifier(ctx, parse(t, otherID), "vpc-1", schemas.IdentityScopeRegion)
 	require.NoError(t, err)
 	require.Equal(t, vpcID, holder)
 	require.Equal(t, "app-vpc", AliasOf(holder))
 
 	// The alias's own record does not count.
-	holder, err = store.FindByIdentifier(ctx, parse(t, vpcID), "vpc-1")
+	holder, err = store.FindByIdentifier(ctx, parse(t, vpcID), "vpc-1", schemas.IdentityScopeRegion)
 	require.NoError(t, err)
 	require.Empty(t, holder)
 
 	// Other types and regions do not count.
-	holder, err = store.FindByIdentifier(ctx, parse(t, "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.EC2/VPC/x"), "vpc-1")
+	holder, err = store.FindByIdentifier(ctx, parse(t, "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.EC2/VPC/x"), "vpc-1", schemas.IdentityScopeRegion)
 	require.NoError(t, err)
 	require.Empty(t, holder)
-	holder, err = store.FindByIdentifier(ctx, parse(t, "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Subnet/x"), "vpc-1")
+	holder, err = store.FindByIdentifier(ctx, parse(t, "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.EC2/Subnet/x"), "vpc-1", schemas.IdentityScopeRegion)
 	require.NoError(t, err)
 	require.Empty(t, holder)
 }
 
+func Test_FindByIdentifier_AccountScope(t *testing.T) {
+	store := NewStore(inmemory.NewClient())
+	ctx := t.Context()
+	holderID := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.IAM/AccountPasswordPolicy/policy"
+	rec := NewRecord(parse(t, holderID), "owner")
+	rec.Properties.AWSIdentifier = "1234567"
+	_, err := store.Save(ctx, rec, "")
+	require.NoError(t, err)
+
+	otherRegion := parse(t, "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.IAM/AccountPasswordPolicy/other")
+	holder, err := store.FindByIdentifier(ctx, otherRegion, "1234567", schemas.IdentityScopeAccount)
+	require.NoError(t, err)
+	require.Equal(t, holderID, holder, "an account-wide type is searched in every region of the account")
+
+	holder, err = store.FindByIdentifier(ctx, otherRegion, "1234567", schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Empty(t, holder)
+
+	// An account whose ID starts with the holder's is another account.
+	otherAccount := parse(t, "/planes/aws/aws/accounts/12345678/regions/us-west-2/providers/AWS.IAM/AccountPasswordPolicy/other")
+	holder, err = store.FindByIdentifier(ctx, otherAccount, "1234567", schemas.IdentityScopeAccount)
+	require.NoError(t, err)
+	require.Empty(t, holder)
+}
+
+func Test_accountScope(t *testing.T) {
+	require.Equal(t, "/planes/aws/aws/accounts/1234567", accountScope(parse(t, vpcID)))
+	noAccount := parse(t, "/planes/aws/aws/regions/us-west-2/providers/AWS.EC2/VPC/x")
+	require.Equal(t, noAccount.RootScope(), accountScope(noAccount))
+}
+
+func Test_Settle(t *testing.T) {
+	newRecord := func() *datamodel.AWSResource {
+		rec := NewRecord(parse(t, vpcID), "owner")
+		rec.Properties.LastApplied = map[string]any{"CidrBlock": "10.0.0.0/16", "Tags": map[string]any{"a": "1"}}
+		rec.Properties.Fingerprints = &datamodel.AWSFingerprints{KeyID: "k", Digests: map[string]string{"Secret": "old", "Kept": "same"}}
+		rec.Properties.PendingLastApplied = map[string]any{"EnableDnsSupport": true, "Tags": map[string]any{"b": "2"}}
+		rec.Properties.PendingFingerprints = &datamodel.AWSFingerprints{KeyID: "k", Digests: map[string]string{"Secret": "new", "Kept": "same"}}
+		rec.Properties.PendingOperation = OperationUpdate
+		return rec
+	}
+
+	rec := newRecord()
+	Settle(rec, native.OutcomeRejected)
+	require.Equal(t, map[string]any{"CidrBlock": "10.0.0.0/16", "Tags": map[string]any{"a": "1"}}, rec.Properties.LastApplied)
+	require.Equal(t, "old", rec.Properties.Fingerprints.Digests["Secret"])
+
+	for _, outcome := range []native.Outcome{native.OutcomePartial, native.OutcomeUnknown} {
+		rec = newRecord()
+		Settle(rec, outcome)
+		require.Equal(t, map[string]any{"CidrBlock": "10.0.0.0/16", "EnableDnsSupport": true, "Tags": map[string]any{"a": "1", "b": "2"}}, rec.Properties.LastApplied)
+		require.Equal(t, map[string]string{"Kept": "same"}, rec.Properties.Fingerprints.Digests)
+	}
+
+	rec = newRecord()
+	Settle(rec, native.OutcomeApplied)
+	require.Equal(t, map[string]any{"EnableDnsSupport": true, "Tags": map[string]any{"b": "2"}}, rec.Properties.LastApplied)
+	require.Equal(t, "new", rec.Properties.Fingerprints.Digests["Secret"])
+
+	for _, outcome := range []native.Outcome{native.OutcomeRejected, native.OutcomePartial, native.OutcomeUnknown, native.OutcomeApplied} {
+		rec = newRecord()
+		Settle(rec, outcome)
+		require.Nil(t, rec.Properties.PendingLastApplied)
+		require.Nil(t, rec.Properties.PendingFingerprints)
+		require.Empty(t, rec.Properties.PendingOperation)
+	}
+}
+
 func Test_FindByIdentifier_Pages(t *testing.T) {
 	store := NewStore(paged{Client: inmemory.NewClient()})
-	holder, err := store.FindByIdentifier(t.Context(), parse(t, otherID), "vpc-1")
+	holder, err := store.FindByIdentifier(t.Context(), parse(t, otherID), "vpc-1", schemas.IdentityScopeRegion)
 	require.NoError(t, err)
 	require.Equal(t, vpcID, holder)
 }
@@ -270,6 +340,69 @@ func Test_KeepPending(t *testing.T) {
 	rec = NewRecord(parse(t, vpcID), "owner")
 	KeepPending(rec)
 	require.Nil(t, rec.Properties.LastApplied)
+}
+
+// Test_KeepPending_Unresolved checks that the paths a possibly applied update changed stay unresolved until AWS applies
+// a deploy fully, so a list the update replaces whole doesn't lose a field AWS may still have.
+func Test_KeepPending_Unresolved(t *testing.T) {
+	interrupted := func() *datamodel.AWSResource {
+		rec := NewRecord(parse(t, vpcID), "owner")
+		rec.Properties.LastApplied = map[string]any{
+			"Mode":   "old",
+			"Same":   "kept",
+			"Videos": []any{map[string]any{"Name": "hd", "Sharpness": 75.0}},
+			"Nested": map[string]any{"B": "2"},
+		}
+		rec.Properties.PendingLastApplied = map[string]any{
+			"Mode":   "new",
+			"Same":   "kept",
+			"Videos": []any{map[string]any{"Name": "hd"}},
+			"Nested": map[string]any{"B": "2", "C": "3"},
+		}
+		rec.Properties.UnresolvedPaths = []string{"Earlier", "Mode"}
+		return rec
+	}
+
+	rec := interrupted()
+	KeepPending(rec)
+	require.Equal(t, []string{"Earlier", "Mode", "Nested/C", "Videos"}, rec.Properties.UnresolvedPaths, "changed paths are added to earlier ones, sorted, once each")
+
+	for _, outcome := range []native.Outcome{native.OutcomePartial, native.OutcomeUnknown} {
+		rec = interrupted()
+		Settle(rec, outcome)
+		require.Equal(t, []string{"Earlier", "Mode", "Nested/C", "Videos"}, rec.Properties.UnresolvedPaths)
+	}
+
+	rec = interrupted()
+	Settle(rec, native.OutcomeRejected)
+	require.Equal(t, []string{"Earlier", "Mode"}, rec.Properties.UnresolvedPaths, "AWS changed nothing, so nothing new is unresolved, and nothing is resolved")
+
+	rec = interrupted()
+	Settle(rec, native.OutcomeApplied)
+	require.Nil(t, rec.Properties.UnresolvedPaths, "AWS applied everything")
+
+	rec = interrupted()
+	ApplyPending(rec)
+	require.Nil(t, rec.Properties.UnresolvedPaths)
+
+	// A list the update changes into an object is unresolved at both paths, because AWS may still have the list.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.LastApplied = map[string]any{"Config": []any{map[string]any{"Name": "hd", "Sharpness": 75.0}}}
+	rec.Properties.PendingLastApplied = map[string]any{"Config": map[string]any{"Items": []any{"hd"}}}
+	KeepPending(rec)
+	require.Equal(t, []string{"Config", "Config/Items"}, rec.Properties.UnresolvedPaths)
+
+	// A first create has no last-applied properties, so every path it sets is unresolved.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.PendingLastApplied = map[string]any{"Videos": []any{"a"}, "Mode": "new"}
+	KeepPending(rec)
+	require.Equal(t, []string{"Mode", "Videos"}, rec.Properties.UnresolvedPaths)
+
+	// An operation without pending values, such as a delete, resolves nothing.
+	rec = interrupted()
+	rec.Properties.PendingLastApplied = nil
+	ApplyPending(rec)
+	require.Equal(t, []string{"Earlier", "Mode"}, rec.Properties.UnresolvedPaths)
 }
 
 func Test_KeepPending_Fingerprints(t *testing.T) {

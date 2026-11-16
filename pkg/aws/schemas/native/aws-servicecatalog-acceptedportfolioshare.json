@@ -1,0 +1,51 @@
+{
+  "typeName": "AWS::ServiceCatalog::AcceptedPortfolioShare",
+  "description": "Resource Type definition for AWS::ServiceCatalog::AcceptedPortfolioShare",
+  "additionalProperties": false,
+  "properties": {
+    "AcceptLanguage": {
+      "type": "string",
+      "description": "The language code.",
+      "pattern": "^(en|jp|zh)$"
+    },
+    "PortfolioId": {
+      "type": "string",
+      "description": "The portfolio identifier.",
+      "minLength": 1,
+      "maxLength": 100
+    }
+  },
+  "tagging": {
+    "taggable": false
+  },
+  "required": ["PortfolioId"],
+  "createOnlyProperties": [
+    "/properties/AcceptLanguage",
+    "/properties/PortfolioId"
+  ],
+  "writeOnlyProperties": ["/properties/AcceptLanguage"],
+  "primaryIdentifier": ["/properties/PortfolioId"],
+  "handlers": {
+    "read": {
+      "permissions": ["servicecatalog:ListAcceptedPortfolioShares"]
+    },
+    "list": {
+      "permissions": ["servicecatalog:ListAcceptedPortfolioShares"]
+    },
+    "create": {
+      "permissions": [
+        "servicecatalog:AcceptPortfolioShare",
+        "servicecatalog:ListAcceptedPortfolioShares"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "servicecatalog:RejectPortfolioShare",
+        "servicecatalog:ListAcceptedPortfolioShares"
+      ]
+    },
+    "update": {
+      "permissions": ["servicecatalog:ListAcceptedPortfolioShares"]
+    }
+  }
+}

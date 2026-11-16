@@ -1,0 +1,157 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_RUN": "nk10931"
+  },
+  "interactions": [
+    {
+      "service": "CloudWatch",
+      "operation": "PutAnomalyDetector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3FBbm9tYWx5RGV0ZWN0b3JJZHgwMTFFMTYwMjFGNTc2MjM4MjVDMDg3M0YxNjhBQzZGRjUtQXZlcmFnZS02MC1Ob25l/w==",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn79xQW5vbWFseURldGVjdG9ySWR4MDExRTE2MDIxRjU3NjIzODI1QzA4NzNGMTY4QUM2RkY1LUF2ZXJhZ2UtNjAtTm9uZW1Db25maWd1cmF0aW9uv3JFeGNsdWRlZFRpbWVSYW5nZXOfv2dFbmRUaW1lwftB2lXCoAAAAGlTdGFydFRpbWXB+0HaVW5AAAAA//9uTWV0cmljVGltZXpvbmVwQW1lcmljYS9OZXdfWW9ya/9qRGltZW5zaW9uc5+/ZE5hbWVwcmFkaXVzLXJlY29yZGluZ2VWYWx1ZWduazEwOTMx//9qTWV0cmljTmFtZXJyYWRpdXMtcmVjLW5rMTA5MzFpTmFtZXNwYWNlcFJhZGl1cy9SZWNvcmRpbmd4G1NpbmdsZU1ldHJpY0Fub21hbHlEZXRlY3Rvcr9pQWNjb3VudElkbDEyMzQ1Njc4OTAxMmpEaW1lbnNpb25zn79kTmFtZXByYWRpdXMtcmVjb3JkaW5nZVZhbHVlZ25rMTA5MzH//2pNZXRyaWNOYW1lcnJhZGl1cy1yZWMtbmsxMDkzMWlOYW1lc3BhY2VwUmFkaXVzL1JlY29yZGluZ2RTdGF0Z0F2ZXJhZ2X/ZFN0YXRnQXZlcmFnZWpTdGF0ZVZhbHVlcFBFTkRJTkdfVFJBSU5JTkf///8=",
+      "binary": true
+    },
+    {
+      "service": "STS",
+      "operation": "GetCallerIdentity",
+      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e8664f359-5549-48ab-8037-0f285e4d70e8\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn79xQW5vbWFseURldGVjdG9ySWR4MDExRTE2MDIxRjU3NjIzODI1QzA4NzNGMTY4QUM2RkY1LUF2ZXJhZ2UtNjAtTm9uZW1Db25maWd1cmF0aW9uv3JFeGNsdWRlZFRpbWVSYW5nZXOfv2dFbmRUaW1lwftB2lXCoAAAAGlTdGFydFRpbWXB+0HaVW5AAAAA//9uTWV0cmljVGltZXpvbmVwQW1lcmljYS9OZXdfWW9ya/9qRGltZW5zaW9uc5+/ZE5hbWVwcmFkaXVzLXJlY29yZGluZ2VWYWx1ZWduazEwOTMx//9qTWV0cmljTmFtZXJyYWRpdXMtcmVjLW5rMTA5MzFpTmFtZXNwYWNlcFJhZGl1cy9SZWNvcmRpbmd4G1NpbmdsZU1ldHJpY0Fub21hbHlEZXRlY3Rvcr9pQWNjb3VudElkbDEyMzQ1Njc4OTAxMmpEaW1lbnNpb25zn79kTmFtZXByYWRpdXMtcmVjb3JkaW5nZVZhbHVlZ25rMTA5MzH//2pNZXRyaWNOYW1lcnJhZGl1cy1yZWMtbmsxMDkzMWlOYW1lc3BhY2VwUmFkaXVzL1JlY29yZGluZ2RTdGF0Z0F2ZXJhZ2X/ZFN0YXRnQXZlcmFnZWpTdGF0ZVZhbHVlcFBFTkRJTkdfVFJBSU5JTkf///8=",
+      "binary": true
+    },
+    {
+      "service": "STS",
+      "operation": "GetCallerIdentity",
+      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003ea1c4e928-a487-457a-a09c-a5e5a4624d24\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "PutAnomalyDetector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3FBbm9tYWx5RGV0ZWN0b3JJZHgwMTFFMTYwMjFGNTc2MjM4MjVDMDg3M0YxNjhBQzZGRjUtQXZlcmFnZS02MC1Ob25l/w==",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn79xQW5vbWFseURldGVjdG9ySWR4MDExRTE2MDIxRjU3NjIzODI1QzA4NzNGMTY4QUM2RkY1LUF2ZXJhZ2UtNjAtTm9uZW1Db25maWd1cmF0aW9uv3JFeGNsdWRlZFRpbWVSYW5nZXOf//9qRGltZW5zaW9uc5+/ZE5hbWVwcmFkaXVzLXJlY29yZGluZ2VWYWx1ZWduazEwOTMx//9qTWV0cmljTmFtZXJyYWRpdXMtcmVjLW5rMTA5MzFpTmFtZXNwYWNlcFJhZGl1cy9SZWNvcmRpbmd4G1NpbmdsZU1ldHJpY0Fub21hbHlEZXRlY3Rvcr9pQWNjb3VudElkbDEyMzQ1Njc4OTAxMmpEaW1lbnNpb25zn79kTmFtZXByYWRpdXMtcmVjb3JkaW5nZVZhbHVlZ25rMTA5MzH//2pNZXRyaWNOYW1lcnJhZGl1cy1yZWMtbmsxMDkzMWlOYW1lc3BhY2VwUmFkaXVzL1JlY29yZGluZ2RTdGF0Z0F2ZXJhZ2X/ZFN0YXRnQXZlcmFnZWpTdGF0ZVZhbHVlcFBFTkRJTkdfVFJBSU5JTkf///8=",
+      "binary": true
+    },
+    {
+      "service": "STS",
+      "operation": "GetCallerIdentity",
+      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e4b025cb6-d3f3-494f-98f9-8b454bc476bd\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn79xQW5vbWFseURldGVjdG9ySWR4MDExRTE2MDIxRjU3NjIzODI1QzA4NzNGMTY4QUM2RkY1LUF2ZXJhZ2UtNjAtTm9uZW1Db25maWd1cmF0aW9uv3JFeGNsdWRlZFRpbWVSYW5nZXOf//9qRGltZW5zaW9uc5+/ZE5hbWVwcmFkaXVzLXJlY29yZGluZ2VWYWx1ZWduazEwOTMx//9qTWV0cmljTmFtZXJyYWRpdXMtcmVjLW5rMTA5MzFpTmFtZXNwYWNlcFJhZGl1cy9SZWNvcmRpbmd4G1NpbmdsZU1ldHJpY0Fub21hbHlEZXRlY3Rvcr9pQWNjb3VudElkbDEyMzQ1Njc4OTAxMmpEaW1lbnNpb25zn79kTmFtZXByYWRpdXMtcmVjb3JkaW5nZVZhbHVlZ25rMTA5MzH//2pNZXRyaWNOYW1lcnJhZGl1cy1yZWMtbmsxMDkzMWlOYW1lc3BhY2VwUmFkaXVzL1JlY29yZGluZ2RTdGF0Z0F2ZXJhZ2X/ZFN0YXRnQXZlcmFnZWpTdGF0ZVZhbHVlcFBFTkRJTkdfVFJBSU5JTkf///8=",
+      "binary": true
+    },
+    {
+      "service": "STS",
+      "operation": "GetCallerIdentity",
+      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003efdd4f317-673c-461b-9d04-84ba6b4fab8d\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn79xQW5vbWFseURldGVjdG9ySWR4MDExRTE2MDIxRjU3NjIzODI1QzA4NzNGMTY4QUM2RkY1LUF2ZXJhZ2UtNjAtTm9uZW1Db25maWd1cmF0aW9uv3JFeGNsdWRlZFRpbWVSYW5nZXOf//9qRGltZW5zaW9uc5+/ZE5hbWVwcmFkaXVzLXJlY29yZGluZ2VWYWx1ZWduazEwOTMx//9qTWV0cmljTmFtZXJyYWRpdXMtcmVjLW5rMTA5MzFpTmFtZXNwYWNlcFJhZGl1cy9SZWNvcmRpbmd4G1NpbmdsZU1ldHJpY0Fub21hbHlEZXRlY3Rvcr9pQWNjb3VudElkbDEyMzQ1Njc4OTAxMmpEaW1lbnNpb25zn79kTmFtZXByYWRpdXMtcmVjb3JkaW5nZVZhbHVlZ25rMTA5MzH//2pNZXRyaWNOYW1lcnJhZGl1cy1yZWMtbmsxMDkzMWlOYW1lc3BhY2VwUmFkaXVzL1JlY29yZGluZ2RTdGF0Z0F2ZXJhZ2X/ZFN0YXRnQXZlcmFnZWpTdGF0ZVZhbHVlcFBFTkRJTkdfVFJBSU5JTkf///8=",
+      "binary": true
+    },
+    {
+      "service": "STS",
+      "operation": "GetCallerIdentity",
+      "request": "Action=GetCallerIdentity\u0026Version=2011-06-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml"
+      },
+      "body": "\u003cGetCallerIdentityResponse xmlns=\"https://sts.amazonaws.com/doc/2011-06-15/\"\u003e\n  \u003cGetCallerIdentityResult\u003e\n    \u003cArn\u003earn:aws:iam::123456789012:user/radius-recording\u003c/Arn\u003e\n    \u003cUserId\u003eAIDAREPLAY\u003c/UserId\u003e\n    \u003cAccount\u003e123456789012\u003c/Account\u003e\n  \u003c/GetCallerIdentityResult\u003e\n  \u003cResponseMetadata\u003e\n    \u003cRequestId\u003e73fc9333-ab56-4a4f-bbe3-9a6f80e17db5\u003c/RequestId\u003e\n  \u003c/ResponseMetadata\u003e\n\u003c/GetCallerIdentityResponse\u003e\n"
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DeleteAnomalyDetector",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v/8=",
+      "binary": true
+    },
+    {
+      "service": "CloudWatch",
+      "operation": "DescribeAnomalyDetectors",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
+      },
+      "body": "v3BBbm9tYWx5RGV0ZWN0b3Jzn///",
+      "binary": true
+    }
+  ]
+}

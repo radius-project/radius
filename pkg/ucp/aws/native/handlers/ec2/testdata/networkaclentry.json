@@ -1,0 +1,88 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_NETWORK_ACL": "acl-0658d4d80a3e56e99"
+  },
+  "interactions": [
+    {
+      "service": "EC2",
+      "operation": "CreateNetworkAclEntry",
+      "request": "Action=CreateNetworkAclEntry\u0026CidrBlock=10.0.0.0%2F16\u0026Egress=false\u0026NetworkAclId=acl-0658d4d80a3e56e99\u0026PortRange.From=443\u0026PortRange.To=443\u0026Protocol=6\u0026RuleAction=allow\u0026RuleNumber=100\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cCreateNetworkAclEntryResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003eafb4795d-db7f-4eaa-8eaa-cef765ed95a8\u003c/requestId\u003e\u003creturn\u003etrue\u003c/return\u003e\u003c/CreateNetworkAclEntryResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkAcls",
+      "request": "Action=DescribeNetworkAcls\u0026NetworkAclId.1=acl-0658d4d80a3e56e99\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeNetworkAclsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e3b8a2270-6ddb-4a74-ad4a-7cabd1c1aab3\u003c/requestId\u003e\u003cnetworkAclSet\u003e\u003citem\u003e\u003cnetworkAclId\u003eacl-0658d4d80a3e56e99\u003c/networkAclId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003cdefault\u003efalse\u003c/default\u003e\u003centrySet\u003e\u003citem\u003e\u003cruleNumber\u003e32767\u003c/ruleNumber\u003e\u003cprotocol\u003e-1\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003etrue\u003c/egress\u003e\u003ccidrBlock\u003e0.0.0.0/0\u003c/cidrBlock\u003e\u003c/item\u003e\u003citem\u003e\u003cruleNumber\u003e100\u003c/ruleNumber\u003e\u003cprotocol\u003e6\u003c/protocol\u003e\u003cruleAction\u003eallow\u003c/ruleAction\u003e\u003cegress\u003efalse\u003c/egress\u003e\u003ccidrBlock\u003e10.0.0.0/16\u003c/cidrBlock\u003e\u003cportRange\u003e\u003cfrom\u003e443\u003c/from\u003e\u003cto\u003e443\u003c/to\u003e\u003c/portRange\u003e\u003c/item\u003e\u003citem\u003e\u003cruleNumber\u003e32767\u003c/ruleNumber\u003e\u003cprotocol\u003e-1\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003efalse\u003c/egress\u003e\u003ccidrBlock\u003e0.0.0.0/0\u003c/cidrBlock\u003e\u003c/item\u003e\u003c/entrySet\u003e\u003cassociationSet/\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003c/networkAclSet\u003e\u003c/DescribeNetworkAclsResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkAcls",
+      "request": "Action=DescribeNetworkAcls\u0026NetworkAclId.1=acl-0658d4d80a3e56e99\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeNetworkAclsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e75e240f6-8031-4a93-a45a-68bff1bb3a50\u003c/requestId\u003e\u003cnetworkAclSet\u003e\u003citem\u003e\u003cnetworkAclId\u003eacl-0658d4d80a3e56e99\u003c/networkAclId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003cdefault\u003efalse\u003c/default\u003e\u003centrySet\u003e\u003citem\u003e\u003cruleNumber\u003e32767\u003c/ruleNumber\u003e\u003cprotocol\u003e-1\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003etrue\u003c/egress\u003e\u003ccidrBlock\u003e0.0.0.0/0\u003c/cidrBlock\u003e\u003c/item\u003e\u003citem\u003e\u003cruleNumber\u003e100\u003c/ruleNumber\u003e\u003cprotocol\u003e6\u003c/protocol\u003e\u003cruleAction\u003eallow\u003c/ruleAction\u003e\u003cegress\u003efalse\u003c/egress\u003e\u003ccidrBlock\u003e10.0.0.0/16\u003c/cidrBlock\u003e\u003cportRange\u003e\u003cfrom\u003e443\u003c/from\u003e\u003cto\u003e443\u003c/to\u003e\u003c/portRange\u003e\u003c/item\u003e\u003citem\u003e\u003cruleNumber\u003e32767\u003c/ruleNumber\u003e\u003cprotocol\u003e-1\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003efalse\u003c/egress\u003e\u003ccidrBlock\u003e0.0.0.0/0\u003c/cidrBlock\u003e\u003c/item\u003e\u003c/entrySet\u003e\u003cassociationSet/\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003c/networkAclSet\u003e\u003c/DescribeNetworkAclsResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "ReplaceNetworkAclEntry",
+      "request": "Action=ReplaceNetworkAclEntry\u0026CidrBlock=10.0.0.0%2F16\u0026Egress=false\u0026NetworkAclId=acl-0658d4d80a3e56e99\u0026PortRange.From=443\u0026PortRange.To=443\u0026Protocol=6\u0026RuleAction=deny\u0026RuleNumber=100\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cReplaceNetworkAclEntryResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e122f3499-1c35-4031-8aa5-c70f8a090612\u003c/requestId\u003e\u003creturn\u003etrue\u003c/return\u003e\u003c/ReplaceNetworkAclEntryResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkAcls",
+      "request": "Action=DescribeNetworkAcls\u0026NetworkAclId.1=acl-0658d4d80a3e56e99\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeNetworkAclsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e805ec37b-09e8-42aa-ae2e-7394d0a00d26\u003c/requestId\u003e\u003cnetworkAclSet\u003e\u003citem\u003e\u003cnetworkAclId\u003eacl-0658d4d80a3e56e99\u003c/networkAclId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003cdefault\u003efalse\u003c/default\u003e\u003centrySet\u003e\u003citem\u003e\u003cruleNumber\u003e32767\u003c/ruleNumber\u003e\u003cprotocol\u003e-1\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003etrue\u003c/egress\u003e\u003ccidrBlock\u003e0.0.0.0/0\u003c/cidrBlock\u003e\u003c/item\u003e\u003citem\u003e\u003cruleNumber\u003e100\u003c/ruleNumber\u003e\u003cprotocol\u003e6\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003efalse\u003c/egress\u003e\u003ccidrBlock\u003e10.0.0.0/16\u003c/cidrBlock\u003e\u003cportRange\u003e\u003cfrom\u003e443\u003c/from\u003e\u003cto\u003e443\u003c/to\u003e\u003c/portRange\u003e\u003c/item\u003e\u003citem\u003e\u003cruleNumber\u003e32767\u003c/ruleNumber\u003e\u003cprotocol\u003e-1\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003efalse\u003c/egress\u003e\u003ccidrBlock\u003e0.0.0.0/0\u003c/cidrBlock\u003e\u003c/item\u003e\u003c/entrySet\u003e\u003cassociationSet/\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003c/networkAclSet\u003e\u003c/DescribeNetworkAclsResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkAcls",
+      "request": "Action=DescribeNetworkAcls\u0026NetworkAclId.1=acl-0658d4d80a3e56e99\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeNetworkAclsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e0ebc5430-244d-473d-a5f7-38fe6104a84a\u003c/requestId\u003e\u003cnetworkAclSet\u003e\u003citem\u003e\u003cnetworkAclId\u003eacl-0658d4d80a3e56e99\u003c/networkAclId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003cdefault\u003efalse\u003c/default\u003e\u003centrySet\u003e\u003citem\u003e\u003cruleNumber\u003e32767\u003c/ruleNumber\u003e\u003cprotocol\u003e-1\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003etrue\u003c/egress\u003e\u003ccidrBlock\u003e0.0.0.0/0\u003c/cidrBlock\u003e\u003c/item\u003e\u003citem\u003e\u003cruleNumber\u003e100\u003c/ruleNumber\u003e\u003cprotocol\u003e6\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003efalse\u003c/egress\u003e\u003ccidrBlock\u003e10.0.0.0/16\u003c/cidrBlock\u003e\u003cportRange\u003e\u003cfrom\u003e443\u003c/from\u003e\u003cto\u003e443\u003c/to\u003e\u003c/portRange\u003e\u003c/item\u003e\u003citem\u003e\u003cruleNumber\u003e32767\u003c/ruleNumber\u003e\u003cprotocol\u003e-1\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003efalse\u003c/egress\u003e\u003ccidrBlock\u003e0.0.0.0/0\u003c/cidrBlock\u003e\u003c/item\u003e\u003c/entrySet\u003e\u003cassociationSet/\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003c/networkAclSet\u003e\u003c/DescribeNetworkAclsResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DeleteNetworkAclEntry",
+      "request": "Action=DeleteNetworkAclEntry\u0026Egress=false\u0026NetworkAclId=acl-0658d4d80a3e56e99\u0026RuleNumber=100\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDeleteNetworkAclEntryResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e3285caef-a680-43bf-945d-8c3c0ff405ce\u003c/requestId\u003e\u003creturn\u003etrue\u003c/return\u003e\u003c/DeleteNetworkAclEntryResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeNetworkAcls",
+      "request": "Action=DescribeNetworkAcls\u0026NetworkAclId.1=acl-0658d4d80a3e56e99\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeNetworkAclsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e03d72498-3207-420b-82a0-596a5833186a\u003c/requestId\u003e\u003cnetworkAclSet\u003e\u003citem\u003e\u003cnetworkAclId\u003eacl-0658d4d80a3e56e99\u003c/networkAclId\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cownerId\u003e123456789012\u003c/ownerId\u003e\u003cdefault\u003efalse\u003c/default\u003e\u003centrySet\u003e\u003citem\u003e\u003cruleNumber\u003e32767\u003c/ruleNumber\u003e\u003cprotocol\u003e-1\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003etrue\u003c/egress\u003e\u003ccidrBlock\u003e0.0.0.0/0\u003c/cidrBlock\u003e\u003c/item\u003e\u003citem\u003e\u003cruleNumber\u003e32767\u003c/ruleNumber\u003e\u003cprotocol\u003e-1\u003c/protocol\u003e\u003cruleAction\u003edeny\u003c/ruleAction\u003e\u003cegress\u003efalse\u003c/egress\u003e\u003ccidrBlock\u003e0.0.0.0/0\u003c/cidrBlock\u003e\u003c/item\u003e\u003c/entrySet\u003e\u003cassociationSet/\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003c/item\u003e\u003c/networkAclSet\u003e\u003c/DescribeNetworkAclsResponse\u003e"
+    }
+  ]
+}
