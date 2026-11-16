@@ -17,6 +17,7 @@ limitations under the License.
 package fsx
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -510,6 +511,20 @@ func Test_Create(t *testing.T) {
 		require.ErrorContains(t, err, "slow down")
 	})
 
+	t.Run("an ONTAP template with both agreeing throughput values, as a read gives them", func(t *testing.T) {
+		api := &createInputs{fakeAPI: newFakeAPI(awsfake.NewCloudControl())}
+		h := NewFileSystem(api)
+		both := with(ontap, map[string]any{"OntapConfiguration": map[string]any{
+			"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 256, "ThroughputCapacityPerHAPair": 256, "HAPairs": 1, "FsxAdminPassword": "Fsx-admin-one",
+		}})
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: testRegion, Properties: jsonValue(t, both), ClientToken: "token-both"})
+		require.NoError(t, err)
+		// FSx takes ThroughputCapacity or ThroughputCapacityPerHAPair on create, not both.
+		require.Len(t, api.inputs, 1)
+		require.Nil(t, api.inputs[0].OntapConfiguration.ThroughputCapacity)
+		require.Equal(t, int32(256), aws.ToInt32(api.inputs[0].OntapConfiguration.ThroughputCapacityPerHAPair))
+	})
+
 	t.Run("restore from a backup", func(t *testing.T) {
 		api := newFakeAPI(awsfake.NewCloudControl())
 		h := NewFileSystem(api)
@@ -667,6 +682,13 @@ func Test_Update(t *testing.T) {
 			desired: ontap(map[string]any{"ThroughputCapacity": 256}),
 			unsent:  []string{"OntapConfiguration/FsxAdminPassword"},
 			want:    &fsx.UpdateFileSystemInput{OntapConfiguration: &types.UpdateFileSystemOntapConfiguration{ThroughputCapacity: aws.Int32(256)}},
+		},
+		{
+			name:    "a throughput capacity set both as a total and per HA pair is sent once",
+			base:    ontap(nil),
+			desired: ontap(map[string]any{"ThroughputCapacity": 256, "ThroughputCapacityPerHAPair": 256}),
+			unsent:  []string{"OntapConfiguration/FsxAdminPassword"},
+			want:    &fsx.UpdateFileSystemInput{OntapConfiguration: &types.UpdateFileSystemOntapConfiguration{ThroughputCapacityPerHAPair: aws.Int32(256)}},
 		},
 		{
 			name:    "a removed property keeps AWS's value",
@@ -1217,4 +1239,47 @@ func Test_UpdateToken_LeavesOutPasswords(t *testing.T) {
 	original := input("secret-1", "secret-2", 128)
 	updateToken(token, original)
 	require.Equal(t, "secret-1", aws.ToString(original.OntapConfiguration.FsxAdminPassword), "the call still sends the password")
+}
+
+func Test_OneThroughput(t *testing.T) {
+	tests := []struct {
+		name    string
+		current map[string]any
+		desired map[string]any
+		want    map[string]any
+	}{
+		{
+			name: "no HA pairs counts as one",
+			want: map[string]any{"ThroughputCapacityPerHAPair": 512.0},
+		},
+		{
+			name:    "the template's HA pairs",
+			current: map[string]any{"HAPairs": 1.0},
+			desired: map[string]any{"HAPairs": 2.0},
+			want:    map[string]any{"ThroughputCapacity": 512.0, "ThroughputCapacityPerHAPair": 512.0},
+		},
+		{
+			name:    "AWS's HA pairs when the template leaves them out",
+			current: map[string]any{"HAPairs": 2.0},
+			want:    map[string]any{"ThroughputCapacity": 512.0, "ThroughputCapacityPerHAPair": 512.0},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := map[string]any{"ThroughputCapacity": 512.0, "ThroughputCapacityPerHAPair": 512.0}
+			oneThroughput(out, tt.current, tt.desired)
+			require.Equal(t, tt.want, out)
+		})
+	}
+}
+
+// createInputs is the fake FSx API, recording the input of each CreateFileSystem call.
+type createInputs struct {
+	*fakeAPI
+	inputs []*fsx.CreateFileSystemInput
+}
+
+func (c *createInputs) CreateFileSystem(ctx context.Context, in *fsx.CreateFileSystemInput, opts ...func(*fsx.Options)) (*fsx.CreateFileSystemOutput, error) {
+	c.inputs = append(c.inputs, in)
+	return c.fakeAPI.CreateFileSystem(ctx, in, opts...)
 }
