@@ -17,6 +17,8 @@ limitations under the License.
 package helm
 
 import (
+	"context"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"io"
@@ -37,6 +39,7 @@ import (
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,6 +52,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
+
+	"github.com/radius-project/radius/pkg/authz"
 )
 
 var (
@@ -131,15 +136,16 @@ func (c *stageCluster) helmReissuesUCPCertificate(t *testing.T) {
 	t.Helper()
 	c.issueAPIServerCA(t)
 	secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
-	_, err := secrets.Create(t.Context(), tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, c.apiServerCA), c.apiServerCA.pem), metav1.CreateOptions{})
+	_, err := secrets.Create(t.Context(), apiServerTLSSecret(t, c.apiServerCA), metav1.CreateOptions{})
 	require.NoError(t, err)
 	_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Create(t.Context(), ucpDeployment(true), metav1.CreateOptions{})
 	require.NoError(t, err)
 }
 
 // offAPIServiceVariants are the APIServices an upgrade or rollback to authorization on can find while UCP serves a
-// certificate from ucp-ca. After an earlier on→off cycle, Helm's off release keeps the inject-ca-from-secret annotation
-// rad set, and cainjector may already have merged the leftover radius-apiserver-ca into the bundle.
+// certificate from ucp-ca. After an earlier on→off cycle that stopped before ReconcileUCPOffAPIServerTrust, or that an
+// older rad ran, Helm's off release keeps the inject-ca-from-secret annotation rad set, and cainjector may already have
+// merged the leftover radius-apiserver-ca into the bundle.
 var offAPIServiceVariants = []string{"off", "stale annotation, ucp-ca only", "stale annotation, leftover CA merged"}
 
 func (c *stageCluster) addOffAPIService(t *testing.T, variant string) {
@@ -280,6 +286,195 @@ func renderedStagedCA(t *testing.T, manifest string) map[string]map[string]any {
 
 var authzOnValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}
 
+var authzDryRunValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+
+// onUCP makes the cluster look like Radius with authorization on: cert-manager issued radius-apiserver-ca and
+// ucp-cert into ucp-apiserver-tls, which the ucp Deployment mounts, and cainjector maintains the APIService.
+func (c *stageCluster) onUCP(t *testing.T) {
+	t.Helper()
+	c.issueAPIServerCA(t)
+	secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
+	_, err := secrets.Create(t.Context(), apiServerTLSSecret(t, c.apiServerCA), metav1.CreateOptions{})
+	require.NoError(t, err)
+	deployment := ucpDeployment(true)
+	deployment.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: ucpCertificateVolumeName,
+		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: ucpAPIServerTLSSecretName}}}}
+	_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Create(t.Context(), deployment, metav1.CreateOptions{})
+	require.NoError(t, err)
+	require.NoError(t, c.dynamic.Tracker().Add(c.cainjectorAPIService()))
+}
+
+// servedLeaf returns the certificate UCP serves from the Secret that the ucp Deployment mounts.
+func (c *stageCluster) servedLeaf(t *testing.T) *x509.Certificate {
+	t.Helper()
+	deployment, err := c.kube.AppsV1().Deployments(RadiusSystemNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})
+	require.NoError(t, err)
+	name := ""
+	for _, volume := range deployment.Spec.Template.Spec.Volumes {
+		if volume.Name == ucpCertificateVolumeName && volume.Secret != nil {
+			name = volume.Secret.SecretName
+		}
+	}
+	secret, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), name, metav1.GetOptions{})
+	require.NoError(t, err, "the ucp Deployment mounts Secret %q", name)
+	leaf, err := firstCertificate(secret.Data[corev1.TLSCertKey])
+	require.NoError(t, err)
+	return leaf
+}
+
+// requireTrusts checks that the APIService caBundle verifies leaf as UCP's serving certificate.
+func (c *stageCluster) requireTrusts(t *testing.T, leaf *x509.Certificate, who string) {
+	t.Helper()
+	apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
+	bundle, err := base64.StdEncoding.DecodeString(encoded)
+	require.NoError(t, err)
+	roots := x509.NewCertPool()
+	for _, ca := range testCACertificates(t, bundle) {
+		roots.AddCert(ca)
+	}
+	_, err = leaf.Verify(x509.VerifyOptions{Roots: roots, DNSName: "ucp." + RadiusSystemNamespace + ".svc", KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
+	require.NoError(t, err, "the API server must trust the certificate %s serve (issuer %s), but its caBundle holds %v",
+		who, leaf.Issuer.CommonName, apiServiceCABundle(t, c.dynamic))
+}
+
+// helmAppliesOff does what Helm does when it applies a release with authorization off: it writes Secret ucp-cert and
+// sets the APIService caBundle to the CA of that Secret, and then the ucp Deployment rolls out with ucp-cert mounted.
+// As live, Helm cannot remove the inject-ca-from-secret annotation that rad set, so cainjector keeps merging the CA of
+// the annotated Secret, while it exists, into the caBundle. target is the ucp-cert Secret and caBundle that a rollback
+// applies from the target revision; for an upgrade it is nil and, as the chart does, Helm keeps a live ucp-cert or generates ucp-ca. It checks
+// that the API server trusts the certificate UCP serves before and after the rollout.
+func (c *stageCluster) helmAppliesOff(t *testing.T, target *corev1.Secret, caBundle []byte) {
+	t.Helper()
+	before := c.servedLeaf(t)
+	secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
+	switch existing, err := secrets.Get(t.Context(), ucpOffCertificateSecretName, metav1.GetOptions{}); {
+	case target != nil && err == nil:
+		existing.Data = target.Data
+		_, err = secrets.Update(t.Context(), existing, metav1.UpdateOptions{})
+		require.NoError(t, err)
+	case target != nil:
+		_, err = secrets.Create(t.Context(), target.DeepCopy(), metav1.CreateOptions{})
+		require.NoError(t, err)
+	case err == nil:
+		caBundle = existing.Data[caCertificateKey]
+	default:
+		require.True(t, apierrors.IsNotFound(err))
+		_, err = secrets.Create(t.Context(), tlsSecret(ucpOffCertificateSecretName, issueUCPCertificate(t, c.ucpCA), c.ucpCA.pem), metav1.CreateOptions{})
+		require.NoError(t, err)
+		caBundle = c.ucpCA.pem
+	}
+	apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.NoError(t, unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(c.cainjectorMerges(t, apiService, caBundle)), "spec", "caBundle"))
+	_, err = c.dynamic.Resource(apiServicesResource).Update(t.Context(), apiService, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	c.requireTrusts(t, before, "the running UCP pods")
+
+	deployments := c.kube.AppsV1().Deployments(RadiusSystemNamespace)
+	deployment, err := deployments.Get(t.Context(), "ucp", metav1.GetOptions{})
+	require.NoError(t, err)
+	deployment.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: ucpCertificateVolumeName,
+		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: ucpOffCertificateSecretName}}}}
+	_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	c.requireTrusts(t, c.servedLeaf(t), "the UCP pods Helm rolls out")
+}
+
+// cainjectorMerges returns bundle with the ca.crt of the Secret that the inject-ca-from-secret annotation of
+// apiService names, as cainjector leaves the caBundle after Helm applies bundle, when that Secret exists.
+func (c *stageCluster) cainjectorMerges(t *testing.T, apiService *unstructured.Unstructured, bundle []byte) []byte {
+	t.Helper()
+	source := apiService.GetAnnotations()[injectCAFromSecretAnnotation]
+	if source == "" {
+		return bundle
+	}
+	namespace, name, _ := strings.Cut(source, "/")
+	secret, err := c.kube.CoreV1().Secrets(namespace).Get(t.Context(), name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return bundle
+	}
+	require.NoError(t, err)
+	return encodeCertificates(unionCertificates(testCACertificates(t, bundle), testCACertificates(t, secret.Data[caCertificateKey])))
+}
+
+// requireOffTrust checks the state rad leaves after authorization turns off: the APIService has none of the
+// cert-manager inject annotations and its caBundle holds only the CA in Secret ucp-cert, which UCP serves, and the
+// Secrets of the radius-apiserver-ca chain that only authorization on uses are gone.
+func (c *stageCluster) requireOffTrust(t *testing.T) {
+	t.Helper()
+	apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	for _, annotation := range []string{"cert-manager.io/inject-ca-from", injectCAFromSecretAnnotation, "cert-manager.io/inject-apiserver-ca"} {
+		require.NotContains(t, apiService.GetAnnotations(), annotation, "rad must remove %s once authorization is off", annotation)
+	}
+	offCertificate, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpOffCertificateSecretName, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, pemSubjects(t, encodeCertificates(testCACertificates(t, offCertificate.Data[caCertificateKey]))), apiServiceCABundle(t, c.dynamic),
+		"the caBundle must hold only the CA of Secret %s", ucpOffCertificateSecretName)
+	c.requireTrusts(t, c.servedLeaf(t), "UCP")
+	for _, name := range []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName, ucpAPIServerTrustSecretName} {
+		_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), name, metav1.GetOptions{})
+		require.True(t, apierrors.IsNotFound(err), "Secret %s must be removed once authorization is off, got %v", name, err)
+	}
+}
+
+// stagedOffCertificate returns Secret ucp-cert as rad left it before Helm, or nil.
+func (c *stageCluster) stagedOffCertificate(t *testing.T) *corev1.Secret {
+	t.Helper()
+	secret, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpOffCertificateSecretName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	require.NoError(t, err)
+	return secret
+}
+
+// requireStagedOffCertificate checks that rad applied Secret ucp-cert before Helm, owned by the Radius release so Helm
+// adopts it, and that its certificate is valid for UCP.
+func requireStagedOffCertificate(t *testing.T, secret *corev1.Secret) {
+	t.Helper()
+	require.NotNil(t, secret, "rad must apply Secret %s before Helm turns authorization off", ucpOffCertificateSecretName)
+	require.Equal(t, "Helm", secret.Labels["app.kubernetes.io/managed-by"])
+	require.Equal(t, "radius", secret.Annotations["meta.helm.sh/release-name"])
+	require.Equal(t, RadiusSystemNamespace, secret.Annotations["meta.helm.sh/release-namespace"])
+	leaf, err := firstCertificate(secret.Data[corev1.TLSCertKey])
+	require.NoError(t, err)
+	cas := testCACertificates(t, secret.Data[caCertificateKey])
+	require.Len(t, cas, 1)
+	require.True(t, verifiesUCPCertificate(leaf, cas[0], RadiusSystemNamespace))
+}
+
+// renderedOffCertificate returns Secret ucp-cert and the APIService caBundle in a manifest with authorization off.
+func renderedOffCertificate(t *testing.T, manifest string) (*corev1.Secret, []byte) {
+	t.Helper()
+	var secret *corev1.Secret
+	var caBundle []byte
+	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
+	for {
+		object := &unstructured.Unstructured{}
+		err := decoder.Decode(&object.Object)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		require.NoError(t, err)
+		switch {
+		case object.GetKind() == "Secret" && object.GetName() == ucpOffCertificateSecretName:
+			secret = &corev1.Secret{}
+			require.NoError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(object.Object, secret))
+		case object.GetKind() == "APIService":
+			encoded, _, _ := unstructured.NestedString(object.Object, "spec", "caBundle")
+			var err error
+			caBundle, err = base64.StdEncoding.DecodeString(encoded)
+			require.NoError(t, err)
+		}
+	}
+	require.NotNil(t, secret)
+	require.NotEmpty(t, caBundle)
+	return secret, caBundle
+}
+
 // stageUpgrade is rad upgrade kubernetes, or rad install kubernetes --reinstall, from a deployed release with values
 // deployed, with Helm storage in memory.
 type stageUpgrade struct {
@@ -321,11 +516,10 @@ func (u *stageUpgrade) mock(t *testing.T, upgrades int, beforeHelm func()) *Mock
 		})
 	client.EXPECT().LoadChart(gomock.Any()).AnyTimes().
 		DoAndReturn(func(string) (*chart.Chart, error) { return loadStageTestChart(t), nil })
-	if upgrades != 0 {
-		expectCSIDriverSPIFFEPull(t, client)
-		client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, radManagedByLabels()).
-			AnyTimes().Return(&releasev1.Release{}, nil)
-	}
+	// rad installs csi-driver-spiffe only when authorization will be on.
+	expectCSIDriverSPIFFEPull(t, client).AnyTimes()
+	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, radManagedByLabels()).
+		AnyTimes().Return(&releasev1.Release{}, nil)
 	if u.command == "install" {
 		client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, gomock.Any(), gomock.Any(), gomock.Any()).Times(upgrades).
 			DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, _ bool, timeout time.Duration, labels map[string]string) (*releasev1.Release, error) {
@@ -334,7 +528,7 @@ func (u *stageUpgrade) mock(t *testing.T, upgrades int, beforeHelm func()) *Mock
 			})
 		return client
 	}
-	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), true, gomock.Any()).Times(upgrades).
+	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(upgrades).
 		DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, _ bool, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
 			beforeHelm()
 			return u.helmClient.RunHelmUpgrade(u.configuration, c, vals, name, namespace, false, reuse, timeout)
@@ -353,6 +547,9 @@ func (u *stageUpgrade) run(t *testing.T, impl *Impl, setArgs []string) error {
 	options.RadiusReleaseValues = state.RadiusValues
 	switch u.command {
 	case "upgrade":
+		return impl.UpgradeRadius(t.Context(), options, "test-context")
+	case "upgrade --reset-values":
+		options.ResetValues = true
 		return impl.UpgradeRadius(t.Context(), options, "test-context")
 	case "install --reinstall":
 		options.Radius.Reinstall = true
@@ -388,6 +585,33 @@ func Test_UpgradeRadius_BlocksLegacyAggregationMigrationBeforeWrites(t *testing.
 			})
 		}
 	}
+
+	// When an upgrade turns authorization off, rad stages Secret ucp-cert and moves UCP onto it while the API server
+	// trusts both radius-apiserver-ca and ucp-ca, so the ucp-ca caBundle that Helm then applies matches what UCP serves.
+	// With --reset-values rad drops the stored values, but the deployed release still has authorization on.
+	for _, command := range []string{"upgrade", "upgrade --reset-values", "install --reinstall"} {
+		for name, deployed := range map[string]map[string]any{"enforce": authzOnValues, "dryRun": authzDryRunValues} {
+			t.Run(command+"/"+name+" to off", func(t *testing.T) {
+				shortenUCPAPIServiceWait(t)
+				u := newStageUpgrade(t, deployed, command)
+				c := newStageCluster(t, nil, true)
+				c.onUCP(t)
+
+				helmCalls := 0
+				client := u.mock(t, 1, func() {
+					helmCalls++
+					staged := c.stagedOffCertificate(t)
+					c.helmAppliesOff(t, nil, nil)
+					requireStagedOffCertificate(t, staged)
+				})
+
+				require.NoError(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"}))
+				require.Equal(t, 1, helmCalls)
+				require.Equal(t, []string{"ucp-ca"}, apiServiceCABundle(t, c.dynamic))
+				c.requireOffTrust(t)
+			})
+		}
+	}
 }
 
 func Test_UpgradeRadius_RequiresIndependentPublicSource(t *testing.T) {
@@ -405,6 +629,44 @@ func Test_UpgradeRadius_RequiresIndependentPublicSource(t *testing.T) {
 
 }
 
+// Without --reinstall, rad install leaves an installed release unchanged, so the authorization mode in the values it
+// was given does not take effect: rad must not stage, wait for, or reconcile a CA the release does not use.
+func Test_InstallRadius_InstalledReleaseKeepsAuthzMode(t *testing.T) {
+	t.Run("off release with authorization on values", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		u := newStageUpgrade(t, map[string]any{}, "install")
+		c := newStageCluster(t, nil, true)
+		apiService := c.offAPIService(t)
+		require.NoError(t, c.dynamic.Tracker().Add(apiService))
+
+		require.NoError(t, u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), []string{"global.rbac.enabled=true"}))
+		require.Empty(t, c.clusterWrites())
+		live, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.Equal(t, apiService.Object, live.Object)
+	})
+
+	t.Run("on release with authorization off values", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		u := newStageUpgrade(t, authzOnValues, "install")
+		c := newStageCluster(t, nil, true)
+		c.onUCP(t)
+		// A ucp-cert Secret left from an earlier release with authorization off.
+		_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(),
+			tlsSecret(ucpOffCertificateSecretName, issueUCPCertificate(t, c.ucpCA), c.ucpCA.pem), metav1.CreateOptions{})
+		require.NoError(t, err)
+		writes := len(c.clusterWrites())
+
+		require.NoError(t, u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"}))
+		require.Empty(t, c.clusterWrites()[writes:])
+		require.Equal(t, ucpAPIServerCASource(RadiusSystemNamespace), apiServiceCASource(t, c.dynamic))
+		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
+	})
+}
+
+// (e): when cert-manager does not issue radius-apiserver-ca in time, rad stops before Helm, so UCP keeps serving
+// ucp-cert from ucp-ca, which the API server still trusts. Running the command again after cert-manager issues the CA
+// finishes the stage and the upgrade.
 func Test_UpgradeRadius_LateIssuanceDoesNotAuthorizeMigration(t *testing.T) {
 	shortenUCPAPIServiceWait(t)
 	u := newStageUpgrade(t, map[string]any{}, "upgrade")
@@ -433,6 +695,95 @@ func Test_UpgradeRadius_LateIssuanceDoesNotAuthorizeMigration(t *testing.T) {
 	c.requireNotStaged(t)
 }
 
+// When UCP does not move to the staged ucp-cert in time before authorization turns off, rad stops before Helm with
+// both CAs trusted. Running the command again once UCP has rolled out finishes the upgrade.
+// With authorization off before and after, UCP already serves the certificate of the off chart, so rad does not read
+// the cluster or render the chart.
+func Test_StageUCPAPIServerCA_OffToOffSkipsCluster(t *testing.T) {
+	impl := &Impl{newUCPAPIServerTrustClient: func(string) (kubernetes.Interface, error) { return nil, errors.New("no cluster") }}
+	render := func(context.Context) (string, bool, error) {
+		t.Fatal("rad must not render the chart")
+		return "", false, nil
+	}
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeOff, render))
+	for _, deployed := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
+		require.ErrorContains(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", deployed, authz.ModeOff, render), "no cluster")
+	}
+}
+
+// An earlier switch to authorization off that stopped after Helm, or ran an older rad, leaves the inject annotation and
+// the radius-apiserver-ca chain behind. Running the command again with authorization off removes them.
+func Test_UpgradeRadius_OffToOffRemovesLeftoverTrust(t *testing.T) {
+	for _, command := range []string{"upgrade", "install --reinstall"} {
+		t.Run(command, func(t *testing.T) {
+			shortenUCPAPIServiceWait(t)
+			u := newStageUpgrade(t, map[string]any{}, command)
+			c := newStageCluster(t, nil, true)
+			c.onUCP(t)
+			c.helmAppliesOff(t, nil, nil)
+			require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
+
+			client := u.mock(t, 1, func() { c.helmAppliesOff(t, nil, nil) })
+			require.NoError(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=false"}))
+			c.requireOffTrust(t)
+		})
+	}
+}
+
+// setUCPRolledOut sets the status of the ucp Deployment to one that has, or has not, finished rolling out.
+func (c *stageCluster) setUCPRolledOut(t *testing.T, rolledOut bool) {
+	t.Helper()
+	deployments := c.kube.AppsV1().Deployments(RadiusSystemNamespace)
+	deployment, err := deployments.Get(t.Context(), "ucp", metav1.GetOptions{})
+	require.NoError(t, err)
+	deployment.Status = ucpDeployment(rolledOut).Status
+	_, err = deployments.UpdateStatus(t.Context(), deployment, metav1.UpdateOptions{})
+	require.NoError(t, err)
+}
+
+func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	u := newStageUpgrade(t, authzOnValues, "upgrade")
+	c := newStageCluster(t, nil, true)
+	c.onUCP(t)
+	c.setUCPRolledOut(t, false)
+	off := []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"}
+
+	err := u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), off)
+	require.ErrorContains(t, err, "UCP does not serve the certificate in Secret ucp-cert")
+	require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system rollout status deployment/ucp`)
+	require.Equal(t, []string{"radius-apiserver-ca", "ucp-ca"}, apiServiceCABundle(t, c.dynamic), "the API server must trust both CAs while pods move")
+	deployed, err := u.helmClient.RunHelmGet(u.configuration, "radius")
+	require.NoError(t, err)
+	require.Equal(t, 1, deployed.Version, "rad must not call Helm")
+
+	// The ucp Deployment template already mounts ucp-cert, but its pods have not rolled out, so some still serve the
+	// radius-apiserver-ca certificate. A retry must wait for them again rather than let Helm drop radius-apiserver-ca.
+	// The test render cannot look up the live ucp-cert, as rad's server-side render does, so the retry renders a new
+	// ucp-ca; the rollback test checks that a retry with the same rendered Secret writes nothing.
+	onSecret, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
+	require.NoError(t, err)
+	onLeaf, err := firstCertificate(onSecret.Data[corev1.TLSCertKey])
+	require.NoError(t, err)
+	err = u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), off)
+	require.ErrorContains(t, err, "UCP does not serve the certificate in Secret ucp-cert")
+	c.requireTrusts(t, onLeaf, "the UCP pods that have not rolled out")
+	c.requireTrusts(t, c.servedLeaf(t), "the UCP pods that rolled out")
+
+	c.setUCPRolledOut(t, true)
+	helmCalls := 0
+	client := u.mock(t, 1, func() {
+		helmCalls++
+		c.helmAppliesOff(t, nil, nil)
+	})
+	require.NoError(t, u.run(t, c.impl(client, "cert-manager"), off))
+	require.Equal(t, 1, helmCalls)
+	require.Equal(t, []string{"ucp-ca"}, apiServiceCABundle(t, c.dynamic))
+	c.requireOffTrust(t)
+}
+
+// (b): a rollback from a revision with authorization off to one with it on stages radius-apiserver-ca from the
+// target revision's manifest before Helm rolls back, after the rollback issuer guard and the dependency reconcile.
 func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T) {
 	manifest := renderStageTestManifest(t, authzOnValues)
 	history := func(targetManifest string) []*releasev1.Release {
@@ -470,6 +821,89 @@ func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T)
 			})
 		}
 	}
+
+	// A rollback from a revision with authorization on to one with it off stages the target revision's Secret
+	// ucp-cert and moves UCP onto it before Helm applies that revision's ucp-ca caBundle.
+	offManifest := renderStageTestManifest(t, map[string]any{})
+	offSecret, offCABundle := renderedOffCertificate(t, offManifest)
+	for _, toRevision := range []bool{false, true} {
+		name := "RollbackRadius"
+		if toRevision {
+			name = "RollbackRadiusToRevision"
+		}
+		for current, values := range map[string]map[string]any{"enforce": authzOnValues, "dryRun": authzDryRunValues} {
+			t.Run(name+"/"+current+" to off", func(t *testing.T) {
+				shortenUCPAPIServiceWait(t)
+				c := newStageCluster(t, nil, true)
+				c.onUCP(t)
+				m := NewMockHelmClient(gomock.NewController(t))
+				m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
+					{Version: 1, Config: map[string]any{}, Manifest: offManifest, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+					{Version: 2, Config: values, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+				}, nil)
+				m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
+				rollbacks := 0
+				m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
+					rollbacks++
+					staged := c.stagedOffCertificate(t)
+					c.helmAppliesOff(t, offSecret, offCABundle)
+					requireStagedOffCertificate(t, staged)
+					require.Equal(t, offSecret.Data, staged.Data, "rad must stage the target revision's Secret %s", ucpOffCertificateSecretName)
+					return nil
+				})
+
+				var err error
+				if toRevision {
+					err = impl(c, m).RollbackRadiusToRevision(t.Context(), "test-context", 1)
+				} else {
+					err = impl(c, m).RollbackRadius(t.Context(), "test-context")
+				}
+				require.NoError(t, err)
+				require.Equal(t, 1, rollbacks)
+				c.requireOffTrust(t)
+			})
+		}
+	}
+
+	// A rollback retried after UCP did not finish moving to the staged ucp-cert waits for the rollout again, though the
+	// ucp Deployment template already mounts ucp-cert, and rolls back only once every pod serves it.
+	t.Run("retry with an incomplete rollout", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		c := newStageCluster(t, nil, true)
+		c.onUCP(t)
+		c.setUCPRolledOut(t, false)
+		releases := []*releasev1.Release{
+			{Version: 1, Config: map[string]any{}, Manifest: offManifest, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Version: 2, Config: authzOnValues, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+		}
+		mock := func(rollbacks int, beforeHelm func()) *MockHelmClient {
+			m := NewMockHelmClient(gomock.NewController(t))
+			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(releases, nil)
+			m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
+			m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Times(rollbacks).DoAndReturn(func(*helm.Configuration, string, int, bool) error {
+				beforeHelm()
+				return nil
+			})
+			return m
+		}
+
+		for range 2 {
+			err := impl(c, mock(0, func() {})).RollbackRadius(t.Context(), "test-context")
+			require.ErrorContains(t, err, "UCP does not serve the certificate in Secret ucp-cert")
+			require.Equal(t, []string{"radius-apiserver-ca", "ucp-ca"}, apiServiceCABundle(t, c.dynamic), "the API server must trust both CAs while pods move")
+		}
+
+		c.setUCPRolledOut(t, true)
+		rollbacks := 0
+		writes := len(c.clusterWrites())
+		require.NoError(t, impl(c, mock(1, func() {
+			rollbacks++
+			require.Empty(t, c.clusterWrites()[writes:], "a retry after the stage finished must not write before Helm")
+			c.helmAppliesOff(t, offSecret, offCABundle)
+		})).RollbackRadius(t.Context(), "test-context"))
+		require.Equal(t, 1, rollbacks)
+		c.requireOffTrust(t)
+	})
 
 	// The issuer guard refuses the target before rad stages anything.
 	t.Run("refused target stages nothing", func(t *testing.T) {

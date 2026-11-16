@@ -404,11 +404,12 @@ func (f *issuerPolicyFixture) server(t *testing.T) *httptest.Server {
 
 // renderChart uses the same REST-backed Helm engine as a server-connected install or
 // CLI preflight, without installing anything or executing a CertificateRequest.
-func (f *issuerPolicyFixture) renderChart(t *testing.T) (map[string]string, error) {
+func (f *issuerPolicyFixture) renderChart(t *testing.T, extraTemplates ...*common.File) (map[string]string, error) {
 	t.Helper()
 	server := f.server(t)
 	chart, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
 	require.NoError(t, err)
+	chart.Templates = append(chart.Templates, extraTemplates...)
 	values, err := chartutil.CoalesceValues(chart, f.values)
 	require.NoError(t, err)
 	eng := engine.New(&rest.Config{Host: server.URL})

@@ -176,7 +176,7 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernet
 	})
 }
 
-func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, release string, mode authz.Mode, render renderRadiusManifest) error {
+func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, release string, deployed, mode authz.Mode, render renderRadiusManifest) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}

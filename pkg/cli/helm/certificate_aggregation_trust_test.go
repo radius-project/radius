@@ -126,7 +126,7 @@ func TestAggregationStageCanceledBeforeReadsOrRender(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
-		err := (&Impl{}).stageUCPAPIServerCA(ctx, "", RadiusSystemNamespace, radiusReleaseName, mode,
+		err := (&Impl{}).stageUCPAPIServerCA(ctx, "", RadiusSystemNamespace, radiusReleaseName, mode, mode,
 			func(context.Context) (string, bool, error) {
 				t.Fatal("canceled staging must not render or mutate")
 				return "", false, nil

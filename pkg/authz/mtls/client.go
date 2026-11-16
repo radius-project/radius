@@ -134,8 +134,8 @@ func (t *externalTransport) RoundTrip(req *http.Request) (*http.Response, error)
 type clientTransport struct {
 	*http.Transport
 	source   *Source
-	token    *tokenFile
 	spiffeID string
+	token    *tokenFile
 
 	mu      sync.Mutex
 	current *http.Transport
@@ -194,8 +194,8 @@ func newClientTransport(options authz.Options, receiver string) (*clientTranspor
 	t := &clientTransport{
 		Transport: http.DefaultTransport.(*http.Transport).Clone(),
 		source:    source,
-		token:     token,
 		spiffeID:  spiffeID,
+		token:     token,
 		retired:   map[*http.Transport]struct{}{},
 		conns:     map[*trackedConn]connectionValidity{},
 	}
@@ -206,46 +206,6 @@ func newClientTransport(options authz.Options, receiver string) (*clientTranspor
 		return t.dialTLS(ctx, network, addr, nil)
 	}
 	return t, nil
-}
-
-// chainValidity returns the period in which every certificate in chain is valid.
-func chainValidity(chain []*x509.Certificate) connectionValidity {
-	var v connectionValidity
-	for i, cert := range chain {
-		if i == 0 || cert.NotBefore.After(v.notBefore) {
-			v.notBefore = cert.NotBefore
-		}
-		if i == 0 || cert.NotAfter.Before(v.notAfter) {
-			v.notAfter = cert.NotAfter
-		}
-	}
-	return v
-}
-
-// RoundTrip sends req with the receiver's token. The token is written only to connections
-// whose server passed verification in DialTLSContext, so it is never sent to a server that
-// failed verification. Connections whose verified server chain is no longer valid are closed
-// first, forcing a fresh handshake with the current CA bundle.
-func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if req.URL.Scheme != "https" {
-		return nil, fmt.Errorf("refusing to send a ServiceAccount token over %q; the URL must use https", req.URL.Scheme)
-	}
-	token, err := t.token.Token()
-	if err != nil {
-		return nil, err
-	}
-	current, err := t.source.load()
-	pool := t.transportForRequest(current)
-	if err != nil {
-		return nil, err
-	}
-
-	// A shallow copy shares req.Trailer and req.Body, so trailers the caller sets while the
-	// body streams are still sent. Only the header map is replaced.
-	req = req.WithContext(req.Context())
-	req.Header = req.Header.Clone()
-	req.Header.Set("Authorization", "Bearer "+token)
-	return pool.RoundTrip(req)
 }
 
 // newPool returns a connection pool cloned from the template whose connections record it.
@@ -297,6 +257,47 @@ func (t *clientTransport) dialTLS(ctx context.Context, network, addr string, poo
 	}
 	t.mu.Unlock()
 	return conn, nil
+}
+
+// chainValidity returns the period in which every certificate in chain is valid.
+func chainValidity(chain []*x509.Certificate) connectionValidity {
+	var v connectionValidity
+	for i, cert := range chain {
+		if i == 0 || cert.NotBefore.After(v.notBefore) {
+			v.notBefore = cert.NotBefore
+		}
+		if i == 0 || cert.NotAfter.Before(v.notAfter) {
+			v.notAfter = cert.NotAfter
+		}
+	}
+	return v
+}
+
+// RoundTrip sends req with the receiver's token. The token is written only to connections
+// whose server passed verification in DialTLSContext, so it is never sent to a server that
+// failed verification. If a connection's verified server chain is no longer valid, the
+// connection is closed and the request uses a fresh pool, forcing a new handshake with the
+// current CA bundle.
+func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL.Scheme != "https" {
+		return nil, fmt.Errorf("refusing to send a ServiceAccount token over %q; the URL must use https", req.URL.Scheme)
+	}
+	token, err := t.token.Token()
+	if err != nil {
+		return nil, err
+	}
+	current, err := t.source.load()
+	pool := t.transportForRequest(current)
+	if err != nil {
+		return nil, err
+	}
+
+	// A shallow copy shares req.Trailer and req.Body, so trailers the caller sets while the
+	// body streams are still sent. Only the header map is replaced.
+	req = req.WithContext(req.Context())
+	req.Header = req.Header.Clone()
+	req.Header.Set("Authorization", "Bearer "+token)
+	return pool.RoundTrip(req)
 }
 
 // CloseIdleConnections closes idle connections in the current and retired connection pools.

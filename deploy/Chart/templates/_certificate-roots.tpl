@@ -24,6 +24,11 @@ spec:
   isCA: true
   commonName: {{ .name }}
   secretName: {{ .name }}
+  {{- if eq .name "radius-apiserver-ca" }}
+  secretTemplate:
+    annotations:
+      cert-manager.io/allow-direct-injection: "true"
+  {{- end }}
   duration: 8760h
   renewBefore: 2920h
   privateKey:

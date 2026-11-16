@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,6 +53,13 @@ const (
 	// ucpAPIServerTLSSecretName is the Secret of UCP's aggregated API certificate when authorization is on.
 	ucpAPIServerTLSSecretName = "ucp-apiserver-tls"
 
+	// ucpOffCertificateSecretName is the Secret of UCP's aggregated API certificate that the chart generates from
+	// ucp-ca when authorization is off.
+	ucpOffCertificateSecretName = "ucp-cert"
+
+	// ucpCertificateVolumeName is the volume of the ucp Deployment that mounts UCP's aggregated API certificate.
+	ucpCertificateVolumeName = "cert"
+
 	// allowDirectInjectionAnnotation lets cert-manager's cainjector copy ca.crt of a Secret into an APIService.
 	allowDirectInjectionAnnotation = "cert-manager.io/allow-direct-injection"
 
@@ -66,7 +74,8 @@ const (
 // cert-manager's cainjector. If rad staged the trust Secret with an earlier CA, such as ucp-ca, it first trusts both
 // CAs and waits until every UCP pod serves a certificate from radius-apiserver-ca; if UCP does not move in time it
 // returns an error and leaves both CAs trusted. It then points the APIService at Secret radius-apiserver-ca and
-// deletes the trust Secret, which removes the earlier CA.
+// deletes only the transient trust Secret, which removes the earlier CA. An A8
+// Helm-owned public copy is retained unchanged as a historical continuity pin.
 func (i *Impl) reconcileLegacyUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
@@ -90,9 +99,28 @@ func (i *Impl) reconcileLegacyUCPAPIServerTrust(ctx context.Context, kubeContext
 		return err
 	}
 
+	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("read APIService before aggregation trust reconciliation: %w", err)
+	}
+	if err == nil {
+		if err := validateUCPAPIServerAPIAnchors(ca, apiService); err != nil {
+			return err
+		}
+	}
+
 	trusted, overlap, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
 	if err != nil {
 		return err
+	}
+	retained, err := retainedUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
+	if err != nil {
+		return err
+	}
+	if retained != nil {
+		// The A8 public copy is no longer an injection source. Do not rewrite or
+		// delete its identity/ownership; it remains a historical continuity pin.
+		overlap = false
 	}
 	if overlap {
 		trusted = unionCertificates(trusted, []*x509.Certificate{ca})
@@ -103,7 +131,7 @@ func (i *Impl) reconcileLegacyUCPAPIServerTrust(ctx context.Context, kubeContext
 			output.LogInfo("Waiting for UCP to serve a certificate from %s before the API server stops trusting earlier CAs...", ucpAPIServerCASecretName)
 			err = wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
 				var leaf *x509.Certificate
-				leaf, problem, err = ucpServingCertificate(ctx, kubeClient, radiusNamespace, ca)
+				leaf, problem, err = ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpAPIServerTLSSecretName, ucpAPIServerCASecretName, ca)
 				return leaf != nil, err
 			})
 			if err != nil {
@@ -170,7 +198,7 @@ func settleLegacyUCPAPIServerCA(ctx context.Context, kubeContext string, kubeCli
 	clean := 0
 	problem := "it has not been checked"
 	err := wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
-		_, caBundle, caProblem, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
+		ca, caBundle, caProblem, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
 		if err != nil {
 			return false, err
 		}
@@ -185,6 +213,9 @@ func settleLegacyUCPAPIServerCA(ctx context.Context, kubeContext string, kubeCli
 		}
 		if err != nil {
 			return false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
+		}
+		if err := validateUCPAPIServerAPIAnchors(ca, apiService); err != nil {
+			return false, err
 		}
 		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 		bundle, err := base64.StdEncoding.DecodeString(encoded)
@@ -289,6 +320,9 @@ func readLegacyUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, 
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerCASecretName, err)
 	}
+	if err := validateUCPAPIServerCAOwnership(secret); err != nil {
+		return nil, nil, "", err
+	}
 	cert, err := firstCertificate(secret.Data[corev1.TLSCertKey])
 	if err != nil {
 		return nil, nil, "its tls.crt has no certificate: " + err.Error(), nil
@@ -309,15 +343,31 @@ func readLegacyUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, 
 	if len(unionCertificates(cas, []*x509.Certificate{cert})) != len(cas) {
 		return nil, nil, "its ca.crt does not hold the CA certificate in tls.crt", nil
 	}
+	if err := validateUCPAPIServerRenewal(cert, cas); err != nil {
+		return nil, nil, "", err
+	}
+	retained, err := retainedUCPAPIServerTrust(ctx, client, radiusNamespace)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	if retained != nil {
+		pins, err := parseCertificateBundlePEM(retained.Data[caCertificateKey])
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("invalid retained aggregation trust: %w", err)
+		}
+		if err := validateUCPAPIServerRenewal(cert, pins); err != nil {
+			return nil, nil, "", err
+		}
+	}
 	if secret.Annotations[allowDirectInjectionAnnotation] != "true" {
 		return nil, nil, fmt.Sprintf("it does not have annotation %s: \"true\", which the Certificate's secretTemplate sets", allowDirectInjectionAnnotation), nil
 	}
 	return cert, bundle, "", nil
 }
 
-// ucpServingCertificate returns UCP's API server certificate once the ucp Deployment has rolled out and that
-// certificate is issued by ca, or describes why it is not yet.
-func ucpServingCertificate(ctx context.Context, client kubernetes.Interface, radiusNamespace string, ca *x509.Certificate) (*x509.Certificate, string, error) {
+// ucpServingCertificate returns UCP's API server certificate in Secret secretName once the ucp Deployment has rolled
+// out with that Secret mounted and caName's certificate ca issued it, or describes why it is not yet.
+func ucpServingCertificate(ctx context.Context, client kubernetes.Interface, radiusNamespace, secretName, caName string, ca *x509.Certificate) (*x509.Certificate, string, error) {
 	deployment, err := client.AppsV1().Deployments(radiusNamespace).Get(ctx, "ucp", metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return nil, "Deployment ucp does not exist", nil
@@ -334,22 +384,36 @@ func ucpServingCertificate(ctx context.Context, client kubernetes.Interface, rad
 		deployment.Status.UpdatedReplicas != replicas || deployment.Status.AvailableReplicas != replicas {
 		return nil, "Deployment ucp has not finished rolling out", nil
 	}
+	if mounted := ucpCertificateSecret(deployment); mounted != "" && mounted != secretName {
+		return nil, fmt.Sprintf("Deployment ucp mounts Secret %q instead of %s", mounted, secretName), nil
+	}
 
-	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerTLSSecretName, metav1.GetOptions{})
+	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, secretName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return nil, "Secret " + ucpAPIServerTLSSecretName + " does not exist", nil
+		return nil, "Secret " + secretName + " does not exist", nil
 	}
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTLSSecretName, err)
+		return nil, "", fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, secretName, err)
 	}
 	leaf, err := firstCertificate(secret.Data[corev1.TLSCertKey])
 	if err != nil {
-		return nil, "Secret " + ucpAPIServerTLSSecretName + " has no certificate", nil
+		return nil, "Secret " + secretName + " has no certificate", nil
 	}
 	if !verifiesUCPCertificate(leaf, ca, radiusNamespace) {
-		return nil, "the certificate in Secret " + ucpAPIServerTLSSecretName + " is not issued by " + ucpAPIServerCASecretName, nil
+		return nil, "the certificate in Secret " + secretName + " is not issued by " + caName, nil
 	}
 	return leaf, "", nil
+}
+
+// ucpCertificateSecret returns the Secret that deployment mounts as UCP's API server certificate, or "" if it mounts
+// none, as before the chart named the volume.
+func ucpCertificateSecret(deployment *appsv1.Deployment) string {
+	for _, volume := range deployment.Spec.Template.Spec.Volumes {
+		if volume.Name == ucpCertificateVolumeName && volume.Secret != nil {
+			return volume.Secret.SecretName
+		}
+	}
+	return ""
 }
 
 // verifiesUCPCertificate reports whether ca issued leaf for UCP's Service name and it is valid now.
@@ -398,6 +462,9 @@ func writeUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, ra
 			Data: map[string][]byte{caCertificateKey: bundle},
 		}, metav1.CreateOptions{})
 	} else if err == nil {
+		if secret.Annotations["radius.io/certificate-mode"] != "" {
+			return nil, fmt.Errorf("preserve retained aggregation trust Secret %s/%s; use the certificate lifecycle instead of overwriting its public CA", radiusNamespace, ucpAPIServerTrustSecretName)
+		}
 		if secret.Annotations[allowDirectInjectionAnnotation] == "true" && len(secret.Data) == 1 && bytes.Equal(secret.Data[caCertificateKey], bundle) {
 			return bundle, nil
 		}

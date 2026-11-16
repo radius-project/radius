@@ -468,7 +468,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 			} else {
 				output.LogInfo("Installing Contour...")
 			}
-			err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
+			_, err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
 			if err != nil {
 				return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 			}
@@ -495,12 +495,16 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
 		return err
 	}
-	err = helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
+	applied, err := helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
-	if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues); err != nil {
-		return err
+	// When Helm left an installed release unchanged, the authorization mode of radiusValues did not take effect, so
+	// there is no APIService change to wait for or reconcile.
+	if applied {
+		if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues); err != nil {
+			return err
+		}
 	}
 
 	if clusterOptions.Contour.Disabled {

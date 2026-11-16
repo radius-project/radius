@@ -18,6 +18,7 @@ package helm
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"strings"
 	"testing"
@@ -56,6 +57,25 @@ func TestTokenCertificateModesChart(t *testing.T) {
 					rendered, err := f.renderChart(t)
 					require.NoError(t, err)
 					objects := chartObjects(t, rendered)
+					for _, object := range objects {
+						if object.GetKind() != "Deployment" {
+							continue
+						}
+						volumes, _, err := unstructured.NestedSlice(object.Object, "spec", "template", "spec", "volumes")
+						require.NoError(t, err)
+						for _, raw := range volumes {
+							secret, ok := raw.(map[string]any)["secret"].(map[string]any)
+							if !ok {
+								continue
+							}
+							switch secret["secretName"] {
+							case "radius-apiserver-ca", "operator-signing-ca":
+								t.Fatalf("%s mounts a signing Secret: %v", object.GetName(), secret)
+							case "radius-ca":
+								require.Equal(t, []any{map[string]any{"key": "ca.crt", "path": "ca.crt"}}, secret["items"])
+							}
+						}
+					}
 					find := func(kind, name string) *unstructured.Unstructured {
 						for _, obj := range objects {
 							if obj.GetKind() == kind && obj.GetName() == name {
@@ -71,7 +91,11 @@ func TestTokenCertificateModesChart(t *testing.T) {
 						return
 					}
 					api := find("APIService", "v1alpha3.api.ucp.dev")
-					require.Equal(t, "radius-system/radius-apiserver-trust", api.GetAnnotations()[injectCAFromSecretAnnotation])
+					sourceName := "radius-apiserver-trust"
+					if mode == "selfSigned" {
+						sourceName = "radius-apiserver-ca"
+					}
+					require.Equal(t, "radius-system/"+sourceName, api.GetAnnotations()[injectCAFromSecretAnnotation])
 					require.Nil(t, find("Secret", "operator-signing-ca"))
 					aggregation := find("Certificate", "ucp-cert")
 					require.NotNil(t, aggregation)
@@ -85,7 +109,7 @@ func TestTokenCertificateModesChart(t *testing.T) {
 						}
 					}
 					if mode == "selfSigned" {
-						require.Nil(t, find("Secret", "radius-apiserver-trust"), "a second connected render follows CA issuance")
+						require.Nil(t, find("Secret", "radius-apiserver-trust"), "selfSigned follows its owned signer directly")
 						require.NotNil(t, find("Certificate", "radius-apiserver-ca"))
 					} else {
 						trust := find("Secret", "radius-apiserver-trust")
@@ -132,6 +156,69 @@ func TestTokenCertificateModesChart(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+func TestCertificateModesDoNotAddSecretReaderPermissions(t *testing.T) {
+	grants := func(objects []*unstructured.Unstructured) []string {
+		var result []string
+		for _, object := range objects {
+			if object.GetKind() != "Role" && object.GetKind() != "ClusterRole" {
+				continue
+			}
+			rules, _, err := unstructured.NestedSlice(object.Object, "rules")
+			require.NoError(t, err)
+			for _, raw := range rules {
+				rule := raw.(map[string]any)
+				resources, _, err := unstructured.NestedStringSlice(rule, "resources")
+				require.NoError(t, err)
+				for _, resource := range resources {
+					if resource == "secrets" || resource == "*" {
+						encoded, err := json.Marshal(rule)
+						require.NoError(t, err)
+						result = append(result, object.GetKind()+"/"+object.GetName()+":"+string(encoded))
+						break
+					}
+				}
+			}
+		}
+		return result
+	}
+	for _, provider := range []string{"radius", "external"} {
+		t.Run(provider, func(t *testing.T) {
+			f := newIssuerPolicyFixture(t)
+			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
+			issuerCertificates := rbac["certificates"]
+			rbac["tls"] = map[string]any{"provider": provider}
+			rbac["enabled"], rbac["dryRun"] = false, false
+			if provider == "external" {
+				var objects []*unstructured.Unstructured
+				for _, object := range f.objects {
+					if !strings.HasPrefix(object.GetName(), "cert-manager-csi-driver-spiffe-approver") && object.GetName() != "spiffe-approver" {
+						objects = append(objects, object)
+					}
+				}
+				f.objects = objects
+			}
+			rendered, err := f.renderChart(t)
+			require.NoError(t, err)
+			baseline := grants(chartObjects(t, rendered))
+			rbac["dryRun"] = true
+			for _, mode := range []string{"selfSigned", "caSecret", "issuerRef"} {
+				if mode != "issuerRef" {
+					rbac["certificates"] = map[string]any{"mode": mode}
+					if mode == "caSecret" {
+						rbac["certificates"].(map[string]any)["caSecret"] = "operator-signing-ca"
+						rbac["certificates"].(map[string]any)["caBundle"] = "-----BEGIN CERTIFICATE-----\ndGVzdA==\n-----END CERTIFICATE-----\n"
+					}
+				} else {
+					rbac["certificates"] = issuerCertificates
+				}
+				rendered, err := f.renderChart(t)
+				require.NoError(t, err)
+				require.ElementsMatch(t, baseline, grants(chartObjects(t, rendered)), mode+" must not add Secret readers")
+			}
+		})
 	}
 }
 

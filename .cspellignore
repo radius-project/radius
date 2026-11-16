@@ -403,6 +403,7 @@ Sidekiq
 SignalR
 Snyk
 SPIFFE
+SPIFFEID
 SplitNamespace
 SqlDatabase
 SqlDatabaseListSecretsResult
