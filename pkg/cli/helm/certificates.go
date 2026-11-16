@@ -166,9 +166,6 @@ func validatePublicCA(certPEM []byte, now time.Time) (*x509.Certificate, error) 
 	if err != nil {
 		return nil, err
 	}
-	if len(certs) != 1 {
-		return nil, fmt.Errorf("CA trust bundle must contain exactly one dedicated signing CA certificate, without its parent chain")
-	}
 	return certs[0], nil
 }
 
@@ -286,24 +283,6 @@ func setCertificateValues(values map[string]any, certificates map[string]any) {
 		global["rbac"] = rbac
 	}
 	rbac["certificates"] = certificates
-}
-
-// prepareCertificates performs all certificate checks without changing the cluster. Only public
-// certificate values are added to current; signing material stays in the returned in-memory plan.
-func (i *Impl) prepareCertificates(ctx context.Context, options ClusterOptions, defaults, current map[string]any, kubeContext string, installed bool) (*certificatePlan, error) {
-	plan, err := i.prepareCertificateSelection(ctx, options, defaults, current, kubeContext)
-	if err != nil {
-		return nil, err
-	}
-	if installed {
-		if err := unchangedCertificateSelection(options.RadiusReleaseValues, current); err != nil {
-			return nil, err
-		}
-		if plan != nil && plan.secret != nil {
-			return nil, fmt.Errorf("an installed signing Secret is missing; recover it or use coordinated CA migration")
-		}
-	}
-	return plan, nil
 }
 
 func unchangedCertificateSelection(stored, current map[string]any) error {

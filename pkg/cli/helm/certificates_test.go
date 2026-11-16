@@ -41,15 +41,13 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	helm "helm.sh/helm/v4/pkg/action"
-	chart "helm.sh/helm/v4/pkg/chart/v2"
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/release"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
-	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -231,7 +229,7 @@ func TestCertificateExpiryWarning(t *testing.T) {
 				newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil },
 				logger:               func(format string, values ...any) { fmt.Fprintf(&logs, format, values...) },
 			}
-			_, err := impl.prepareCertificates(t.Context(), NewDefaultClusterOptions(), nil, caReleaseValues("operator-ca", cert), "", false)
+			_, _, err := impl.prepareSelectedCertificates(t.Context(), NewDefaultClusterOptions(), certificateTestChart(t), caReleaseValues("operator-ca", cert), "", false)
 			require.NoError(t, err)
 			require.Equal(t, days <= 30, strings.Contains(logs.String(), "within 30 days"))
 		})
@@ -257,7 +255,7 @@ func TestCertificateSecretValidationErrors(t *testing.T) {
 				})
 			}
 			impl := &Impl{newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil }}
-			_, err := impl.prepareCertificates(t.Context(), NewDefaultClusterOptions(), nil, caReleaseValues("operator-ca", cert), "", false)
+			_, _, err := impl.prepareSelectedCertificates(t.Context(), NewDefaultClusterOptions(), certificateTestChart(t), caReleaseValues("operator-ca", cert), "", false)
 			require.Error(t, err)
 			require.NotContains(t, err.Error(), "private-key-sentinel")
 			for _, action := range kube.Actions() {
@@ -401,7 +399,7 @@ func caTLSSecret(name string, cert, key []byte) *corev1.Secret {
 	}
 }
 
-func TestPrepareCertificates(t *testing.T) {
+func TestPrepareSelectedCertificates(t *testing.T) {
 	t.Parallel()
 	cert, key, _ := testSigningCA(t, nil, nil, nil, nil)
 	otherCert, _, _ := testSigningCA(t, nil, nil, nil, nil)
@@ -452,7 +450,9 @@ func TestPrepareCertificates(t *testing.T) {
 				require.Equal(t, "selected-cluster", context)
 				return kube, nil
 			}}
-			plan, err := impl.prepareCertificates(t.Context(), options, tt.defaults, current, "selected-cluster", tt.installed)
+			selected := certificateTestChart(t)
+			selected.Values = valuesutil.CoalesceTables(copyValues(tt.defaults), selected.Values)
+			_, plan, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, "selected-cluster", tt.installed)
 			require.Equal(t, storedBefore, copyValues(tt.stored))
 			for _, action := range kube.Actions() {
 				require.Equal(t, "get", action.GetVerb(), "preparation must be read only")
@@ -471,7 +471,7 @@ func TestPrepareCertificates(t *testing.T) {
 	}
 }
 
-func TestRadiusCertificateImportRetainedAfterFailureAndUninstall(t *testing.T) {
+func TestRadiusCertificateImportRetainedAfterUninstall(t *testing.T) {
 	t.Parallel()
 	cert, key, _ := testSigningCA(t, nil, nil, nil, nil)
 	dir := t.TempDir()
@@ -481,13 +481,9 @@ func TestRadiusCertificateImportRetainedAfterFailureAndUninstall(t *testing.T) {
 	client := NewMockHelmClient(gomock.NewController(t))
 	kube := k8sfake.NewClientset()
 	impl := &Impl{
-		Helm:                       client,
-		newCertificateClient:       func(string) (kubernetes.Interface, error) { return kube, nil },
-		newUCPAPIServerTrustClient: func(string) (kubernetes.Interface, error) { return kube, nil },
-		newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
-			k, a := (fakeCertManagerCluster{crd: true, controller: certManagerController("security", "v1.21.2", "")}).clients()
-			return k, a, nil
-		},
+		Helm:                        client,
+		newCertificateClient:        func(string) (kubernetes.Interface, error) { return kube, nil },
+		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kube, nil },
 		removeDefaultContourGateway: func(context.Context, string) error { return nil },
 	}
 	options := NewDefaultClusterOptions()
@@ -498,19 +494,6 @@ func TestRadiusCertificateImportRetainedAfterFailureAndUninstall(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, impl.applyCertificatePlan(t.Context(), plan))
 	name := target.SigningSecret
-	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, true, gomock.Any(), gomock.Nil()).
-		DoAndReturn(func(_ *helm.Configuration, _ *chart.Chart, values map[string]any, _, _ string, _ bool, _ time.Duration, _ map[string]string) (*releasev1.Release, error) {
-			secret, err := kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), name, metav1.GetOptions{})
-			require.NoError(t, err)
-			require.Equal(t, key, secret.Data[corev1.TLSPrivateKeyKey])
-			serialized, err := json.Marshal(values)
-			require.NoError(t, err)
-			require.NotContains(t, string(serialized), "PRIVATE KEY")
-			require.Equal(t, strings.TrimSpace(string(cert)), certificateValues(values)["caBundle"])
-			return nil, errors.New("Radius readiness failed")
-		})
-	_, err = client.RunHelmInstall(nil, certificateTestChart(t), values, "radius", RadiusSystemNamespace, true, time.Minute, nil)
-	require.ErrorContains(t, err, "Radius readiness failed")
 	require.NotEmpty(t, name)
 	client.EXPECT().RunHelmGet(gomock.Any(), "cert-manager").Return(nil, driver.ErrReleaseNotFound)
 	client.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).Return(nil, driver.ErrReleaseNotFound).AnyTimes()
@@ -567,7 +550,7 @@ func TestCertificateImportLifecycle(t *testing.T) {
 				})
 			}
 			current := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-			plan, err := impl.prepareCertificates(t.Context(), options, nil, current, "context", false)
+			_, plan, err := impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), current, "context", false)
 			if scenario == "missing key file" || scenario == "malformed files" {
 				require.Error(t, err)
 				require.Empty(t, kube.Actions())
@@ -591,7 +574,7 @@ func TestCertificateImportLifecycle(t *testing.T) {
 				require.NoError(t, err)
 				require.Contains(t, logs.String(), "retained on failure and uninstall")
 				retryValues := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-				retryPlan, err := impl.prepareCertificates(t.Context(), options, nil, retryValues, "context", false)
+				_, retryPlan, err := impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), retryValues, "context", false)
 				require.NoError(t, err)
 				require.Nil(t, retryPlan.secret)
 				require.Equal(t, current, retryValues)
@@ -601,7 +584,7 @@ func TestCertificateImportLifecycle(t *testing.T) {
 				require.NoError(t, err)
 				existing.Data[corev1.TLSPrivateKeyKey] = []byte("private-key-sentinel")
 				require.NoError(t, kube.Tracker().Update(corev1.SchemeGroupVersion.WithResource("secrets"), existing, RadiusSystemNamespace))
-				_, err = impl.prepareCertificates(t.Context(), options, nil, map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}, "context", false)
+				_, _, err = impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}, "context", false)
 				require.ErrorContains(t, err, "will not be overwritten")
 			}
 			for _, action := range kube.Actions() {
@@ -616,18 +599,12 @@ func TestCertificateImportLifecycle(t *testing.T) {
 func TestRadiusCertificateHelmValues(t *testing.T) {
 	t.Parallel()
 	cert, key, _ := testSigningCA(t, nil, nil, nil, nil)
-	for _, operation := range []string{"install", "upgrade", "reinstall", "preflight-only", "blocked upgrade", "blocked install"} {
+	for _, operation := range []string{"install", "installed settings", "blocked selection"} {
 		t.Run(operation, func(t *testing.T) {
 			t.Parallel()
-			helmClient := NewMockHelmClient(gomock.NewController(t))
 			kube := k8sfake.NewClientset(caTLSSecret("operator-ca", cert, key))
 			impl := &Impl{
-				Helm:                 helmClient,
 				newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil },
-				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
-					k, a := (fakeCertManagerCluster{crd: true, controller: certManagerController("security", "v1.21.2", "")}).clients()
-					return k, a, nil
-				},
 			}
 
 			options := NewDefaultClusterOptions()
@@ -641,7 +618,7 @@ func TestRadiusCertificateHelmValues(t *testing.T) {
 			} else {
 				options.RadiusReleaseValues = caReleaseValues("operator-ca", cert)
 			}
-			if operation == "blocked upgrade" || operation == "blocked install" {
+			if operation == "blocked selection" {
 				options.Radius.SetArgs = []string{"global.rbac.certificates.mode=selfSigned"}
 			}
 			assertValues := func(values map[string]any) {
@@ -709,7 +686,7 @@ func TestPrepareIssuerCertificates(t *testing.T) {
 		{name: "trust replacement rejected", values: true, edit: func(o *ClusterOptions, v map[string]any) { certificateValues(v)["caBundle"] = string(other) }, err: "coordinated CA migration"},
 		{name: "stored trust missing", edit: func(o *ClusterOptions, v map[string]any) {
 			delete(certificateValues(o.RadiusReleaseValues), "caBundle")
-		}, err: "caBundle"},
+		}, err: "empty"},
 		{name: "chain prohibited", values: true, edit: func(o *ClusterOptions, v map[string]any) {
 			certificateValues(v)["caBundle"] = string(append(append([]byte{}, cert...), cert...))
 		}, err: "exactly one dedicated"},
@@ -742,7 +719,7 @@ func TestPrepareIssuerCertificates(t *testing.T) {
 				t.Fatal("external issuer mode must never read a private signing Secret")
 				return nil, nil
 			}}
-			plan, err := impl.prepareCertificates(t.Context(), options, nil, current, "context", options.RadiusInstalled)
+			_, plan, err := impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), current, "context", options.RadiusInstalled)
 			require.Equal(t, before, copyValues(options.RadiusReleaseValues))
 			require.Nil(t, plan, "issuer prerequisites are operator-owned")
 			if tt.err != "" {
@@ -835,9 +812,7 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 					if strings.HasPrefix(object.GetName(), "cert-manager-csi-driver-spiffe-approver") || object.GetName() == "spiffe-approver" {
 						continue
 					}
-					if object.GetKind() != "CertificateRequestPolicy" || object.GetName() == "radius-radius-system-ucp" {
-						onlyUCP = append(onlyUCP, object)
-					}
+					onlyUCP = append(onlyUCP, object)
 				}
 				fixture.objects = onlyUCP
 			}

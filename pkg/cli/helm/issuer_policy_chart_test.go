@@ -306,10 +306,10 @@ func (f *issuerPolicyFixture) server(t *testing.T) *httptest.Server {
 		if kind == "CertificateRequestPolicy" {
 			version = "policy.cert-manager.io/v1alpha1"
 		}
-		resources["admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy"] = metav1.APIResource{
-			Name: "validatingadmissionpolicies", Kind: "ValidatingAdmissionPolicy",
-		}
 		resources[version+"/"+kind] = metav1.APIResource{Name: resource, Kind: kind, Namespaced: kind != "CertificateRequestPolicy"}
+	}
+	resources["admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy"] = metav1.APIResource{
+		Name: "validatingadmissionpolicies", Kind: "ValidatingAdmissionPolicy",
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
