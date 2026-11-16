@@ -482,15 +482,22 @@ func Test_Read_Unavailable(t *testing.T) {
 	recorded := with(cluster, map[string]any{"Tags": map[string]any{"team": "recorded"}})
 
 	api.status[identifier] = "modifying"
-	got, err := h.ReadRecorded(t.Context(), region, identifier, recorded)
+	got, unknown, err := h.ReadRecorded(t.Context(), region, identifier, recorded)
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{"team": "recorded"}, got["Tags"])
+	require.Empty(t, unknown)
+
+	api.status[identifier] = "modifying"
+	got, unknown, err = h.ReadRecorded(t.Context(), region, identifier, nil)
+	require.NoError(t, err)
+	require.NotContains(t, got, "Tags")
+	require.Equal(t, []string{"Tags"}, unknown, "without a record, the tags are unknown, not absent")
+	require.Equal(t, "dax.t3.small", got["NodeType"])
 
 	api.status[identifier] = "modifying"
 	got, err = h.Read(t.Context(), region, identifier)
 	require.NoError(t, err)
-	require.NotContains(t, got, "Tags", "without a record, the tags are unknown")
-	require.Equal(t, "dax.t3.small", got["NodeType"])
+	require.NotContains(t, got, "Tags")
 
 	api.status[identifier] = "modifying"
 	resources, err := h.List(t.Context(), region)
@@ -499,9 +506,10 @@ func Test_Read_Unavailable(t *testing.T) {
 	require.NotContains(t, resources[0].Properties, "Tags")
 	require.NotContains(t, api.calls, "ListTags")
 
-	got, err = h.ReadRecorded(t.Context(), region, identifier, recorded)
+	got, unknown, err = h.ReadRecorded(t.Context(), region, identifier, nil)
 	require.NoError(t, err)
 	require.Equal(t, map[string]any{"owner": "", "team": "a"}, got["Tags"], "an available cluster's tags come from DAX")
+	require.Empty(t, unknown)
 }
 
 // Test_Update_TagsUnavailable checks that a tag change while the cluster isn't available fails before any call, and
@@ -512,7 +520,7 @@ func Test_Update_TagsUnavailable(t *testing.T) {
 	identifier := deploy(t, h, cluster)
 
 	api.status[identifier] = "modifying"
-	current, err := h.ReadRecorded(t.Context(), region, identifier, cluster)
+	current, _, err := h.ReadRecorded(t.Context(), region, identifier, cluster)
 	require.NoError(t, err)
 	desired := with(cluster, map[string]any{"Tags": map[string]any{"team": "b"}})
 	patch, err := jsondiff.Compare(current, desired)

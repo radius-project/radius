@@ -189,11 +189,14 @@ type ScopedDeleter interface {
 // as the tags of a DAX cluster, which DAX returns only while the cluster is available. UCP calls ReadRecorded instead
 // of Read, with the properties its record shows the resource has: the last-applied properties, when no operation left
 // values unconfirmed. recorded is nil when UCP has no record of the resource, such as for `existing` and a take-over,
-// or its values aren't confirmed. The handler takes the properties it can't read from recorded, and leaves them out
-// when recorded is nil, so an update that would change them can fail clearly instead.
+// or its values aren't confirmed. The handler takes the properties it can't read from recorded. When recorded is nil,
+// it leaves them out and returns their names as unknown, so UCP doesn't take them as absent: a deploy that no longer
+// sets one that the record may own gets 409 and changes nothing, because UCP can't tell what to remove, and a later
+// deploy removes it once AWS returns it.
 type RecordReader interface {
-	// ReadRecorded returns the properties of the resource with the identifier, as Read does.
-	ReadRecorded(ctx context.Context, region string, identifier string, recorded map[string]any) (map[string]any, error)
+	// ReadRecorded returns the properties of the resource with the identifier, as Read does, and the names of the
+	// top-level properties it couldn't read and left out, such as Tags.
+	ReadRecorded(ctx context.Context, region string, identifier string, recorded map[string]any) (properties map[string]any, unknown []string, err error)
 }
 
 // IdentifierResolver is implemented by a handler whose identifier has more than one form for one resource, such as one

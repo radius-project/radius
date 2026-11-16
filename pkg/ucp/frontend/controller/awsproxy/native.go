@@ -291,29 +291,46 @@ func identifierRequired(r *request, schema string) (armrpc_rest.Response, error)
 // rest of the engine treats both handlers the same, and nil when AWS has no such resource. A handler that reads only
 // the members it manages (native.ScopedReader) gets managed, and one that can't read some properties in some states
 // (native.RecordReader) gets recorded.
-func readNative(ctx context.Context, h native.Handler, region string, identifier string, managed []map[string]any, recorded map[string]any) (*cloudcontrol.GetResourceOutput, error) {
+func readNative(ctx context.Context, h native.Handler, region string, identifier string, managed []map[string]any, recorded map[string]any) (*cloudcontrol.GetResourceOutput, []string, error) {
 	var properties map[string]any
+	var unknown []string
 	var err error
 	if scoped, ok := h.(native.ScopedReader); ok {
 		properties, err = scoped.ReadScoped(ctx, region, identifier, managed)
 	} else if reader, ok := h.(native.RecordReader); ok {
-		properties, err = reader.ReadRecorded(ctx, region, identifier, recorded)
+		properties, unknown, err = reader.ReadRecorded(ctx, region, identifier, recorded)
 	} else {
 		properties, err = h.Read(ctx, region, identifier)
 	}
 	if errors.Is(err, native.ErrNotFound) {
-		return nil, nil
+		return nil, nil, nil
 	} else if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	state, err := json.Marshal(properties)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return &cloudcontrol.GetResourceOutput{
 		TypeName:            aws.String(h.TypeName()),
 		ResourceDescription: &cctypes.ResourceDescription{Identifier: aws.String(identifier), Properties: aws.String(string(state))},
-	}, nil
+	}, unknown, nil
+}
+
+// droppedUnknown returns the unknown properties, which the handler couldn't read (see native.RecordReader), that the
+// template no longer sets and the record's last-applied properties have, sorted. UCP may own their values in AWS, but
+// can't tell what to remove.
+func droppedUnknown(unknown []string, properties map[string]any, lastApplied map[string]any) []string {
+	out := []string{}
+	for _, name := range unknown {
+		_, set := properties[name]
+		_, owned := lastApplied[name]
+		if !set && owned {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // cleanup asks a native handler that puts on a resource what it needs only for a while (native.Cleaner) to remove it,

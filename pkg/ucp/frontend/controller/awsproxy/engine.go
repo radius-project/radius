@@ -85,6 +85,10 @@ type request struct {
 	// recorded are the properties the record shows the resource has, which a native handler that can't read some
 	// properties in some states gets (native.RecordReader). put, get, and startDelete set them (see recordedValues).
 	recorded map[string]any
+
+	// unknown are the top-level properties the last read couldn't return (native.RecordReader), which are unknown
+	// rather than absent.
+	unknown []string
 }
 
 // recordedValues returns the record's last-applied properties when no operation left values unconfirmed, and nil
@@ -394,7 +398,7 @@ func (e *engine) readResource(ctx context.Context, r *request, identifier string
 	var out *cloudcontrol.GetResourceOutput
 	var err error
 	if r.handler != nil {
-		out, err = readNative(ctx, r.handler, r.region, identifier, r.managed, r.recorded)
+		out, r.unknown, err = readNative(ctx, r.handler, r.region, identifier, r.managed, r.recorded)
 	} else {
 		out, err = e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			TypeName:   aws.String(r.typeName),
@@ -595,6 +599,11 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	currentProperties := map[string]any{}
 	if err := json.Unmarshal(currentState, &currentProperties); err != nil {
 		return nil, err
+	}
+
+	if dropped := droppedUnknown(r.unknown, properties, rec.Properties.LastApplied); len(dropped) > 0 {
+		names := strings.Join(dropped, ", ")
+		return conflict("AWS can't return %s of the AWS resource %q now, such as while the resource is busy, and the template no longer sets them, so UCP can't tell what to remove. UCP changed nothing. Deploy again when the resource is available.", names, r.id.Name()), nil
 	}
 
 	schema := []byte(aws.ToString(typeInfo.Schema))

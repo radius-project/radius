@@ -113,18 +113,26 @@ func (h *Cluster) describe(ctx context.Context, region string, name string) (*ty
 
 // Read returns the cluster's properties, without Tags while the cluster isn't available.
 func (h *Cluster) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
-	return h.ReadRecorded(ctx, region, identifier, nil)
+	properties, _, err := h.ReadRecorded(ctx, region, identifier, nil)
+	return properties, err
 }
 
 // ReadRecorded returns the cluster's properties. DAX returns a cluster's tags only while it is available, so in any
-// other state, such as modifying during maintenance, Tags are recorded's, the tags the last deploy applied, and are
-// left out when recorded is nil.
-func (h *Cluster) ReadRecorded(ctx context.Context, region string, identifier string, recorded map[string]any) (map[string]any, error) {
+// other state, such as modifying during maintenance, Tags are recorded's, the tags the last deploy applied. When
+// recorded is nil, Tags are left out and returned as unknown.
+func (h *Cluster) ReadRecorded(ctx context.Context, region string, identifier string, recorded map[string]any) (map[string]any, []string, error) {
 	cluster, err := h.describe(ctx, region, identifier)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return h.properties(ctx, region, cluster, recorded)
+	properties, err := h.properties(ctx, region, cluster, recorded)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !available(cluster) && recorded == nil {
+		return properties, []string{"Tags"}, nil
+	}
+	return properties, nil, nil
 }
 
 // available reports whether DAX takes calls that need the cluster available, such as ListTags and TagResource.
