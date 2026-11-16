@@ -78,5 +78,3 @@ Users can keep their existing secret-management tools and stop passing credentia
 Deployment authors in a namespace share its approved Secret access; use separate namespaces where different access is required. Templates remain trusted to use the credentials they receive.
 
 The initial version supports secure string inputs, not secure objects. Existing inline values remain exposed until users replace them with references.
-
-AI-drafted.
