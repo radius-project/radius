@@ -25,6 +25,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -47,7 +48,9 @@ const testToken = "test-token"
 // projected token for UCP to a new token directory. The certificate carries the SPIFFE ID
 // of serviceAccount as its only SAN, as csi-driver-spiffe issues it, so only the CA and SPIFFE
 // ID decide whether a client trusts a server that presents it.
-func writeCertificate(t *testing.T, serviceAccount string) (string, string, tls.Certificate) {
+// writeCertificate writes a self-signed certificate with serviceAccount's SPIFFE ID as its
+// own CA bundle. ips are added as IP SANs.
+func writeCertificate(t *testing.T, serviceAccount string, ips ...net.IP) (string, string, tls.Certificate) {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err)
@@ -57,6 +60,7 @@ func writeCertificate(t *testing.T, serviceAccount string) (string, string, tls.
 		SerialNumber:          big.NewInt(1),
 		Subject:               pkix.Name{CommonName: serviceAccount},
 		URIs:                  []*url.URL{spiffeID},
+		IPAddresses:           ips,
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(time.Hour),
 		IsCA:                  true,
@@ -135,24 +139,26 @@ func Test_NewConnectionFromUCPConfig(t *testing.T) {
 
 // Test_NewConnectionFromUCPConfig_Transport checks which transport a direct connection uses
 // by calling a TLS server at 127.0.0.1 whose certificate comes from the Radius CA. The default
-// transport rejects the unknown CA. The authenticated transport sends UCP's token to a server
+// transport rejects the unknown CA; in that case the certificate also carries 127.0.0.1, so
+// the error does not depend on whether the platform verifier checks the host name first. The authenticated transport sends UCP's token to a server
 // with UCP's SPIFFE ID, and rejects any other SPIFFE ID without sending the token.
 func Test_NewConnectionFromUCPConfig_Transport(t *testing.T) {
 	tests := []struct {
 		name           string
 		mode           authz.Mode
 		serviceAccount string
+		ips            []net.IP
 		wantErr        string
 		wantAuth       string
 	}{
-		{name: "off", mode: authz.ModeOff, serviceAccount: "ucp", wantErr: "x509: certificate signed by unknown authority"},
+		{name: "off", mode: authz.ModeOff, serviceAccount: "ucp", ips: []net.IP{net.IPv4(127, 0, 0, 1)}, wantErr: "x509: certificate signed by unknown authority"},
 		{name: "dryRun ucp", mode: authz.ModeDryRun, serviceAccount: "ucp", wantAuth: "Bearer " + testToken},
 		{name: "enforce ucp", mode: authz.ModeEnforce, serviceAccount: "ucp", wantAuth: "Bearer " + testToken},
 		{name: "enforce wrong SPIFFE ID", mode: authz.ModeEnforce, serviceAccount: "controller", wantErr: authz.CodePeerCertificateInvalid},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			certDir, tokenDir, cert := writeCertificate(t, tt.serviceAccount)
+			certDir, tokenDir, cert := writeCertificate(t, tt.serviceAccount, tt.ips...)
 			var gotAuth []string
 			srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotAuth = append(gotAuth, r.Header.Get("Authorization"))

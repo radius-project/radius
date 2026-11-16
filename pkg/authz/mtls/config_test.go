@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -257,6 +258,24 @@ func TestClientConfig_NoPeerCertificates(t *testing.T) {
 	t.Parallel()
 	err := trustClient(t, newCA(t).pem, "ucp").VerifyConnection(tls.ConnectionState{})
 	requireCode(t, err, "PeerCertificateInvalid")
+}
+
+// TestVerifiedByConnectionCheck checks that the verifier decides every handshake: its error
+// fails the handshake, and it sees the server's certificate.
+func TestVerifiedByConnectionCheck(t *testing.T) {
+	t.Parallel()
+	require.Panics(t, func() { verifiedByConnectionCheck(nil) })
+
+	server := newCA(t).issue(t, certOptions{uris: spiffeURIs("ucp")})
+	var seen []*x509.Certificate
+	reject := verifiedByConnectionCheck(func(cs tls.ConnectionState) error {
+		seen = cs.PeerCertificates
+		return errors.New("rejected by verifier")
+	})
+	result := handshake(t, staticServer(t, server), reject)
+	require.ErrorContains(t, result.clientErr, "rejected by verifier")
+	require.Len(t, seen, 1)
+	require.Equal(t, spiffeID("ucp"), seen[0].URIs[0].String())
 }
 
 // TestClientConfig_RotationDuringHandshake rotates the client's CA bundle after the handshake
