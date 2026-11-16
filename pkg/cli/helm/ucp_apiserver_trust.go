@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,6 +57,13 @@ const (
 
 	// ucpAPIServerTLSSecretName is the Secret of UCP's aggregated API certificate when authorization is on.
 	ucpAPIServerTLSSecretName = "ucp-apiserver-tls"
+
+	// ucpOffCertificateSecretName is the Secret of UCP's aggregated API certificate that the chart generates from
+	// ucp-ca when authorization is off.
+	ucpOffCertificateSecretName = "ucp-cert"
+
+	// ucpCertificateVolumeName is the volume of the ucp Deployment that mounts UCP's aggregated API certificate.
+	ucpCertificateVolumeName = "cert"
 
 	// allowDirectInjectionAnnotation lets cert-manager's cainjector copy ca.crt of a Secret into an APIService.
 	allowDirectInjectionAnnotation = "cert-manager.io/allow-direct-injection"
@@ -108,7 +116,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 			output.LogInfo("Waiting for UCP to serve a certificate from %s before the API server stops trusting earlier CAs...", ucpAPIServerCASecretName)
 			err = wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
 				var leaf *x509.Certificate
-				leaf, problem, err = ucpServingCertificate(ctx, kubeClient, radiusNamespace, ca)
+				leaf, problem, err = ucpServingCertificate(ctx, kubeClient, radiusNamespace, ucpAPIServerTLSSecretName, ucpAPIServerCASecretName, ca)
 				return leaf != nil, err
 			})
 			if err != nil {
@@ -320,9 +328,9 @@ func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radius
 	return cert, bundle, "", nil
 }
 
-// ucpServingCertificate returns UCP's API server certificate once the ucp Deployment has rolled out and that
-// certificate is issued by ca, or describes why it is not yet.
-func ucpServingCertificate(ctx context.Context, client kubernetes.Interface, radiusNamespace string, ca *x509.Certificate) (*x509.Certificate, string, error) {
+// ucpServingCertificate returns UCP's API server certificate in Secret secretName once the ucp Deployment has rolled
+// out with that Secret mounted and caName's certificate ca issued it, or describes why it is not yet.
+func ucpServingCertificate(ctx context.Context, client kubernetes.Interface, radiusNamespace, secretName, caName string, ca *x509.Certificate) (*x509.Certificate, string, error) {
 	deployment, err := client.AppsV1().Deployments(radiusNamespace).Get(ctx, "ucp", metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return nil, "Deployment ucp does not exist", nil
@@ -339,22 +347,36 @@ func ucpServingCertificate(ctx context.Context, client kubernetes.Interface, rad
 		deployment.Status.UpdatedReplicas != replicas || deployment.Status.AvailableReplicas != replicas {
 		return nil, "Deployment ucp has not finished rolling out", nil
 	}
+	if mounted := ucpCertificateSecret(deployment); mounted != "" && mounted != secretName {
+		return nil, fmt.Sprintf("Deployment ucp mounts Secret %q instead of %s", mounted, secretName), nil
+	}
 
-	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerTLSSecretName, metav1.GetOptions{})
+	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, secretName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return nil, "Secret " + ucpAPIServerTLSSecretName + " does not exist", nil
+		return nil, "Secret " + secretName + " does not exist", nil
 	}
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTLSSecretName, err)
+		return nil, "", fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, secretName, err)
 	}
 	leaf, err := firstCertificate(secret.Data[corev1.TLSCertKey])
 	if err != nil {
-		return nil, "Secret " + ucpAPIServerTLSSecretName + " has no certificate", nil
+		return nil, "Secret " + secretName + " has no certificate", nil
 	}
 	if !verifiesUCPCertificate(leaf, ca, radiusNamespace) {
-		return nil, "the certificate in Secret " + ucpAPIServerTLSSecretName + " is not issued by " + ucpAPIServerCASecretName, nil
+		return nil, "the certificate in Secret " + secretName + " is not issued by " + caName, nil
 	}
 	return leaf, "", nil
+}
+
+// ucpCertificateSecret returns the Secret that deployment mounts as UCP's API server certificate, or "" if it mounts
+// none, as before the chart named the volume.
+func ucpCertificateSecret(deployment *appsv1.Deployment) string {
+	for _, volume := range deployment.Spec.Template.Spec.Volumes {
+		if volume.Name == ucpCertificateVolumeName && volume.Secret != nil {
+			return volume.Secret.SecretName
+		}
+	}
+	return ""
 }
 
 // verifiesUCPCertificate reports whether ca issued leaf for UCP's Service name and it is valid now.

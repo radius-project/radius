@@ -163,9 +163,14 @@ The APIService's permanent public source is Secret `radius-apiserver-trust`, wit
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Before each request, a client
 closes every connection whose verified server chain has expired, including
-connections in use, which aborts their in-flight requests.
-
-Before reusing a connection, outbound token clients check the validity of every certificate in the verified server chain. They retire the connection pool before the next request and close expired connections, including active HTTP/2 streams. The next request performs a fresh handshake with the current CA bundle instead of racing HTTP/2's asynchronous removal of the closed connection. A retired pool keeps only its unexpired connections that are still serving requests. Each later request closes the pool's idle connections and forgets the pool once it has no unexpired tracked connections. When a connection in a retired pool expires, the client closes it without replacing the current pool again. Clients still present no certificate; they send their token only after verifying the server.
+connections in use, which aborts their in-flight requests and active HTTP/2
+streams. It also retires the connection pool that held the expired connection,
+so the request performs a fresh handshake with the current CA bundle instead of
+racing HTTP/2's asynchronous removal of the closed connection. A retired pool
+keeps only its unexpired connections that are still serving requests. Each
+later request closes the pool's idle connections and forgets the pool once it
+has no unexpired tracked connections. When a connection in a retired pool
+expires, the client closes it without replacing the current pool again.
 
 ### Request context and validation
 

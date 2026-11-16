@@ -144,8 +144,8 @@ tests:
             name: radius-apiserver-ca
             namespace: radius-system
           data:
-            ca.crt: YXBpc2VydmVyLWNh
-            tls.crt: YXBpc2VydmVyLWNh
+            ca.crt: YXBpLWNh
+            tls.crt: YXBpLWNh
             tls.key: a2V5
     asserts:
       - equal:
@@ -154,7 +154,7 @@ tests:
         documentIndex: 1
       - equal:
           path: spec.caBundle
-          value: YXBpc2VydmVyLWNh
+          value: YXBpLWNh
         documentIndex: 1
 
   - it: injects and renders the caBundle from the trust Secret during the upgrade overlap
@@ -176,7 +176,7 @@ tests:
             name: radius-apiserver-ca
             namespace: radius-system
           data:
-            ca.crt: YXBpc2VydmVyLWNh
+            ca.crt: YXBpLWNh
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
