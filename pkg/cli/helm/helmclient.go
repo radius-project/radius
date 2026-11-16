@@ -160,7 +160,8 @@ func newInstallClient(helmConf *helm.Configuration, releaseName, namespace strin
 // A non-positive timeout falls back to DefaultInstallTimeout.
 // See https://helm.sh/docs/helm/helm_upgrade/#options for details on --reset-then-reuse-values behavior.
 func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool, timeout time.Duration) (*releasev1.Release, error) {
-	upgradeClient := newUpgradeClient(helmConf, namespace, wait, reuseValues, timeout, usesServerSideApply(helmConf, releaseName))
+	serverSideApply := usesServerSideApply(helmConf, releaseName)
+	upgradeClient := withRecreateStrategyPreparer(newUpgradeClient(helmConf, namespace, wait, reuseValues, timeout, serverSideApply), helmConf, serverSideApply)
 
 	if vals == nil {
 		vals = map[string]any{}
@@ -416,7 +417,8 @@ func (client *HelmClientImpl) RunHelmRollback(helmConf *helm.Configuration, rele
 		return fmt.Errorf("revision %d of release %q has no stored chart", revision, releaseName)
 	}
 
-	upgradeClient := newRollbackClient(helmConf, target.Namespace, revision, wait, usesServerSideApply(helmConf, releaseName))
+	serverSideApply := usesServerSideApply(helmConf, releaseName)
+	upgradeClient := withRecreateStrategyPreparer(newRollbackClient(helmConf, target.Namespace, revision, wait, serverSideApply), helmConf, serverSideApply)
 	vals := target.Config
 	if vals == nil {
 		vals = map[string]any{}
