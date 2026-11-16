@@ -42,6 +42,7 @@ type CLIClusterOptions struct {
 	Radius       ChartOptions
 	Contour      ChartOptions
 	Certificates CertificateOptions
+	TLS          TLSProviderOptions
 
 	// ResetValues, when true, instructs `UpgradeRadius` to discard the user-supplied
 	// values stored on the previous Helm release and use only the current invocation's
@@ -56,6 +57,7 @@ type ClusterOptions struct {
 	Contour      ContourChartOptions
 	CertManager  CertManagerChartOptions
 	Certificates CertificateOptions
+	TLS          TLSProviderOptions
 	// CSIDriverSPIFFE is Radius's csi-driver-spiffe, which issues server certificates when authorization is enabled.
 	CSIDriverSPIFFE CSIDriverSPIFFEChartOptions
 
@@ -197,6 +199,7 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 
 	options.ResetValues = cliOptions.ResetValues
 	options.Certificates = cliOptions.Certificates
+	options.TLS = cliOptions.TLS
 
 	return options
 }

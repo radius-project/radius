@@ -353,7 +353,7 @@ func (s *Service) internalServer(aggregation *http.Server) *http.Server {
 	componentBoundary := &authorization.RequestHeaderAuthenticator{}
 	return &http.Server{
 		Addr:        fmt.Sprintf("%s:%d", s.options.Config.Server.Host, s.options.Config.Server.InternalPort),
-		Handler:     componentBoundary.Middleware(aggregation.Handler),
+		Handler:     componentBoundary.Middleware(mtls.WithInternalIdentityHandler(aggregation.Handler, s.options.Config.Authorization, "ucp")),
 		BaseContext: aggregation.BaseContext,
 	}
 }

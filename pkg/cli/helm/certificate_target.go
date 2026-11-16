@@ -25,6 +25,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/url"
@@ -72,6 +73,15 @@ type certificatePublicSource struct {
 }
 
 func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, error) {
+	if err := i.prepareTLSProvider(options, selected.Values, current, installed); err != nil {
+		return nil, nil, err
+	}
+	_, currentProvider, _ := providerValue(current)
+	_, storedProvider, _ := providerValue(options.RadiusReleaseValues)
+	if (currentProvider || storedProvider) && (selected.Metadata == nil ||
+		selected.Metadata.Annotations["radius.io/provider-transition-protocol"] != "2") {
+		return nil, nil, errors.New("selected chart does not support token/CSI TLS provider protocol v2")
+	}
 	target, plan, err := i.prepareCertificateTarget(ctx, options, selected, current, kubeContext)
 	if err != nil {
 		return nil, nil, err
@@ -90,6 +100,9 @@ func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterO
 // prepareCertificateTarget runs before the ordinary anti-switch guard so the lifecycle
 // can compare a validated target with its journal. The import handle never enters target.
 func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string) (*certificateTarget, *certificatePlan, error) {
+	if (options.Certificates.RotateCA || options.Certificates.RotationPhase != "") && options.TLS.Provider != "" {
+		return nil, nil, errors.New("CA rotation cannot be combined with a TLS provider selection")
+	}
 	plan, err := i.prepareCertificateSelection(ctx, options, selected.Values, current, kubeContext)
 	if err != nil {
 		return nil, nil, err

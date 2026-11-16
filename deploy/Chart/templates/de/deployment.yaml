@@ -109,6 +109,12 @@ spec:
         {{- end }}
         {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
         env:
+        {{- if $auth }}
+        - name: RADIUS_INTERNAL_AUTH_POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        {{- end }}
         - name: ASPNETCORE_ENVIRONMENT
           value: "Production"
         - name: SKIP_ARM

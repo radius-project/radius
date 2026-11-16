@@ -4,6 +4,7 @@ name: radius
 annotations:
   radius.io/ca-rotation-protocol: "4"
   radius.io/initial-certificate-protocol: "1"
+  radius.io/provider-transition-protocol: "2"
 # version is the chart version, which will be replaced when this chart is packaged.
 version: '0.42.42-dev'
 # appVersion is the version of Radius, which will be replaced when this chart is packaged.
