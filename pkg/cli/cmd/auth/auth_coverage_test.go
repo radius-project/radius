@@ -32,7 +32,7 @@ func TestValidateMissingOutputFlag(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().AddFlagSet(NewCommand(&framework.Impl{}).PersistentFlags())
 	r := &runner{config: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}}
-	require.EqualError(t, r.Validate(cmd, nil), `flag accessed but not defined: output`)
+	require.EqualError(t, r.Validate(cmd, nil), `flag "output" does not exist`)
 	require.NotNil(t, r.workspace)
 }
 
@@ -41,7 +41,7 @@ func TestValidateMissingWorkspaceFlag(t *testing.T) {
 	cmd := &cobra.Command{}
 	commonflags.AddOutputFlag(cmd)
 	r := &runner{config: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}}
-	require.EqualError(t, r.Validate(cmd, nil), `flag accessed but not defined: workspace`)
+	require.EqualError(t, r.Validate(cmd, nil), `flag "workspace" does not exist`)
 	require.Nil(t, r.workspace)
 }
 
