@@ -156,7 +156,8 @@ test(
       CHECKOUT_REF: context.sha,
       UNIQUE_ID: "func0123456789",
       GITHUB_RUN_ATTEMPT: "1",
-      REL_VERSION: tag
+      REL_VERSION: tag,
+      TEST_BICEP_TYPES_REGISTRY: "testregistry123.azurecr.io"
     };
     const args = { context, core: { getInput: () => directory } };
     const execute = async (command) => {

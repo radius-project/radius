@@ -30,7 +30,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -157,6 +161,178 @@ func TestInitialCertificateControllerFixtureExecution(t *testing.T) {
 			})
 		}
 	}
+}
+
+// Helm removal and certificate issuance are fixtures; the uninstall entrypoint,
+// bootstrap execution, ownership checks and cleanup use their production paths.
+func initialUninstallFixture(t *testing.T, b *initialCertificateInstaller, afterHelm func()) {
+	t.Helper()
+	client := NewMockHelmClient(gomock.NewController(t))
+	b.impl.Helm = client
+	b.impl.removeDefaultContourGateway = (&defaultContourGatewayCalls{}).remove
+	client.EXPECT().RunHelmUninstall(gomock.Any(), radiusReleaseName, b.store.namespace, true).
+		DoAndReturn(func(*helm.Configuration, string, string, bool) (*release.UninstallReleaseResponse, error) {
+			for key := range b.state.Roots {
+				resource, name, err := initialRootResource(key)
+				require.NoError(t, err)
+				err = b.store.dynamic.Resource(resource).Namespace(b.store.namespace).Delete(t.Context(), name, metav1.DeleteOptions{})
+				require.True(t, err == nil || apierrors.IsNotFound(err), "%v", err)
+			}
+			if afterHelm != nil {
+				afterHelm()
+			}
+			return &release.UninstallReleaseResponse{}, nil
+		})
+	client.EXPECT().RunHelmUninstall(gomock.Any(), contourReleaseName, b.store.namespace, true).
+		Return(&release.UninstallReleaseResponse{}, nil).AnyTimes()
+	for _, name := range []string{csiDriverSPIFFEReleaseName, certManagerReleaseName} {
+		client.EXPECT().RunHelmGet(gomock.Any(), name).Return(nil, driver.ErrReleaseNotFound).AnyTimes()
+	}
+}
+
+func TestInitialCertificateUninstallAndFreshEnforce(t *testing.T) {
+	for _, mode := range []string{"selfSigned", "caSecret"} {
+		t.Run(mode, func(t *testing.T) {
+			b, fresh := initialControllerFixture(t, mode, "radius")
+			require.NoError(t, b.run(t.Context()))
+			var operator *corev1.Secret
+			if mode == "caSecret" {
+				var err error
+				operator, err = b.store.kube.CoreV1().Secrets(b.store.namespace).Get(t.Context(), "operator-ca", metav1.GetOptions{})
+				require.NoError(t, err)
+			}
+			initialUninstallFixture(t, b, nil)
+			require.NoError(t, b.impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
+			_, err := b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Get(t.Context(), initialCertificateJournal, metav1.GetOptions{})
+			require.True(t, apierrors.IsNotFound(err))
+			namespace, err := b.store.kube.CoreV1().Namespaces().Get(t.Context(), b.store.namespace, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.NotContains(t, namespace.Annotations, initialCertificateIntent)
+			if operator != nil {
+				current, err := b.store.kube.CoreV1().Secrets(b.store.namespace).Get(t.Context(), operator.Name, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, operator, current)
+			}
+			next := fresh()
+			require.NoError(t, next.run(t.Context()))
+			require.Equal(t, "complete", next.state.Phase)
+			require.NotEqual(t, b.state.ID, next.state.ID)
+		})
+	}
+}
+
+func TestInitialCertificateUninstallPreservesForeignState(t *testing.T) {
+	for _, change := range []string{"journal", "namespace intent", "public source", "signer"} {
+		t.Run(change, func(t *testing.T) {
+			b, _ := initialControllerFixture(t, "selfSigned", "radius")
+			require.NoError(t, b.run(t.Context()))
+			ctx := t.Context()
+			var preserved metav1.Object
+			switch change {
+			case "journal", "public source":
+				name := initialCertificateJournal
+				if change == "public source" {
+					name = "radius-mtls-ca"
+				}
+				client := b.store.kube.CoreV1().ConfigMaps(b.store.namespace)
+				cm, err := client.Get(ctx, name, metav1.GetOptions{})
+				require.NoError(t, err)
+				if change == "journal" {
+					cm.Labels[rotationOwner] = "foreign"
+				} else {
+					cm.Annotations[initialCertificateIntent] = "foreign"
+				}
+				preserved, err = client.Update(ctx, cm, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			case "namespace intent":
+				client := b.store.kube.CoreV1().Namespaces()
+				ns, err := client.Get(ctx, b.store.namespace, metav1.GetOptions{})
+				require.NoError(t, err)
+				ns.Annotations[initialCertificateIntent] = "foreign"
+				preserved, err = client.Update(ctx, ns, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			case "signer":
+				client := b.store.kube.CoreV1().Secrets(b.store.namespace)
+				secret, err := client.Get(ctx, "radius-ca", metav1.GetOptions{})
+				require.NoError(t, err)
+				secret.Annotations["cert-manager.io/certificate-name"] = "foreign"
+				preserved, err = client.Update(ctx, secret, metav1.UpdateOptions{})
+				require.NoError(t, err)
+			}
+			if change == "journal" {
+				b.impl.Helm = NewMockHelmClient(gomock.NewController(t))
+			} else {
+				initialUninstallFixture(t, b, nil)
+			}
+			require.Error(t, b.impl.UninstallRadius(ctx, NewDefaultClusterOptions(), "test-context"))
+			var current metav1.Object
+			var err error
+			switch change {
+			case "journal", "public source":
+				current, err = b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Get(ctx, preserved.GetName(), metav1.GetOptions{})
+			case "namespace intent":
+				current, err = b.store.kube.CoreV1().Namespaces().Get(ctx, preserved.GetName(), metav1.GetOptions{})
+			case "signer":
+				current, err = b.store.kube.CoreV1().Secrets(b.store.namespace).Get(ctx, preserved.GetName(), metav1.GetOptions{})
+			}
+			require.NoError(t, err)
+			require.Equal(t, preserved, current)
+			_, err = b.impl.prepareAggregationBootstrap(ctx, b.options, b.selected, nil, b.values, "", b.importPlan, b.target)
+			require.Error(t, err, "fresh enforce must not adopt unknown remaining state")
+		})
+	}
+}
+
+func TestInitialCertificateUninstallInterruptedCleanup(t *testing.T) {
+	for _, point := range []string{"radius-ca", "radius-apiserver-ca", "radius-mtls-ca", ucpAPIServerTrustSecretName, "namespace", initialCertificateJournal} {
+		t.Run(point, func(t *testing.T) {
+			b, fresh := initialControllerFixture(t, "selfSigned", "radius")
+			require.NoError(t, b.run(t.Context()))
+			kube := b.store.kube.(*kubefake.Clientset)
+			injected := false
+			kube.PrependReactor("*", "*", func(action k8stesting.Action) (bool, runtime.Object, error) {
+				match := false
+				switch action := action.(type) {
+				case k8stesting.DeleteAction:
+					if action.GetResource().Resource != "leases" {
+						options := action.GetDeleteOptions()
+						require.NotNil(t, options.Preconditions)
+						require.NotEmpty(t, *options.Preconditions.UID)
+						require.NotEmpty(t, *options.Preconditions.ResourceVersion)
+					}
+					match = action.GetName() == point
+				case k8stesting.PatchAction:
+					match = point == "namespace" && action.GetResource().Resource == "namespaces"
+				}
+				if match && !injected {
+					injected = true
+					return true, nil, errors.New("cleanup interruption")
+				}
+				return false, nil, nil
+			})
+			initialUninstallFixture(t, b, nil)
+			require.ErrorContains(t, b.impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"), "cleanup interruption")
+			require.True(t, injected)
+			_, err := b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Get(t.Context(), initialCertificateJournal, metav1.GetOptions{})
+			require.NoError(t, err)
+			initialUninstallFixture(t, b, nil)
+			require.NoError(t, b.impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
+			require.NoError(t, fresh().run(t.Context()))
+		})
+	}
+}
+
+func TestInitialCertificateUninstallCancellation(t *testing.T) {
+	b, _ := initialControllerFixture(t, "selfSigned", "radius")
+	require.NoError(t, b.run(t.Context()))
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	initialUninstallFixture(t, b, cancel)
+	require.ErrorIs(t, b.impl.UninstallRadius(ctx, NewDefaultClusterOptions(), "test-context"), context.Canceled)
+	_, err := b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Get(t.Context(), initialCertificateJournal, metav1.GetOptions{})
+	require.NoError(t, err)
+	_, err = b.store.kube.CoreV1().Secrets(b.store.namespace).Get(t.Context(), "radius-ca", metav1.GetOptions{})
+	require.NoError(t, err)
 }
 
 func TestInitialCertificateControllerFixtureRecovery(t *testing.T) {

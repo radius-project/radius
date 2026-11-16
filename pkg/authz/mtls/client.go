@@ -127,13 +127,20 @@ func (t *externalTransport) RoundTrip(req *http.Request) (*http.Response, error)
 
 // clientTransport attaches the receiver's token and stops reusing connections outside the
 // validity of any certificate in the server's verified chain.
+//
+// The embedded Transport is a template. Requests use current, a clone that is replaced when
+// one of its connections expires. Replaced pools are retired; a later request forgets a
+// retired pool once it has no unexpired tracked connections.
 type clientTransport struct {
 	*http.Transport
-	source *Source
-	token  *tokenFile
+	source   *Source
+	token    *tokenFile
+	spiffeID string
 
-	mu    sync.Mutex
-	conns map[*trackedConn]connectionValidity
+	mu      sync.Mutex
+	current *http.Transport
+	retired map[*http.Transport]struct{}
+	conns   map[*trackedConn]connectionValidity
 }
 
 type connectionValidity struct {
@@ -147,6 +154,8 @@ type connectionValidity struct {
 type trackedConn struct {
 	net.Conn
 	transport *clientTransport
+	// pool is the connection pool that dialed the connection, or nil for the template.
+	pool *http.Transport
 }
 
 // Close implements net.Conn.
@@ -186,47 +195,15 @@ func newClientTransport(options authz.Options, receiver string) (*clientTranspor
 		Transport: http.DefaultTransport.(*http.Transport).Clone(),
 		source:    source,
 		token:     token,
+		spiffeID:  spiffeID,
+		retired:   map[*http.Transport]struct{}{},
 		conns:     map[*trackedConn]connectionValidity{},
 	}
 	// A proxy would see the token's destination and could hold the connection open, and
 	// internal calls never go through a proxy.
 	t.Proxy = nil
 	t.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		var validity connectionValidity
-		config, snapshot, err := source.clientSnapshot(spiffeID, func(chain []*x509.Certificate) {
-			validity = chainValidity(chain)
-		})
-		if err != nil {
-			return nil, err
-		}
-		config.ServerName = hostname(addr)
-		config.NextProtos = []string{"h2", "http/1.1"}
-
-		raw, err := t.DialContext(ctx, network, addr)
-		if err != nil {
-			return nil, err
-		}
-
-		ctx, cancel := context.WithTimeout(ctx, t.TLSHandshakeTimeout)
-		defer cancel()
-		tracked := &trackedConn{Conn: raw, transport: t}
-		conn := tls.Client(tracked, config)
-		if err := conn.HandshakeContext(ctx); err != nil {
-			_ = raw.Close()
-			return nil, err
-		}
-		validity.trust, validity.epoch = snapshot.trust, snapshot.epoch
-		if snapshot.notBefore.After(validity.notBefore) {
-			validity.notBefore = snapshot.notBefore
-		}
-		if snapshot.notAfter.Before(validity.notAfter) {
-			validity.notAfter = snapshot.notAfter
-		}
-
-		t.mu.Lock()
-		t.conns[tracked] = validity
-		t.mu.Unlock()
-		return conn, nil
+		return t.dialTLS(ctx, network, addr, nil)
 	}
 	return t, nil
 }
@@ -258,7 +235,7 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 	current, err := t.source.load()
-	t.closeInvalid(current)
+	pool := t.transportForRequest(current)
 	if err != nil {
 		return nil, err
 	}
@@ -268,31 +245,140 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.WithContext(req.Context())
 	req.Header = req.Header.Clone()
 	req.Header.Set("Authorization", "Bearer "+token)
-	return t.Transport.RoundTrip(req)
+	return pool.RoundTrip(req)
 }
 
-func (t *clientTransport) closeInvalid(current *material) {
+// newPool returns a connection pool cloned from the template whose connections record it.
+func (t *clientTransport) newPool() *http.Transport {
+	pool := t.Transport.Clone()
+	pool.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		return t.dialTLS(ctx, network, addr, pool)
+	}
+	return pool
+}
+
+func (t *clientTransport) dialTLS(ctx context.Context, network, addr string, pool *http.Transport) (net.Conn, error) {
+	var validity connectionValidity
+	config, snapshot, err := t.source.clientSnapshot(t.spiffeID, func(chain []*x509.Certificate) {
+		validity = chainValidity(chain)
+	})
+	if err != nil {
+		return nil, err
+	}
+	config.ServerName = hostname(addr)
+	config.NextProtos = []string{"h2", "http/1.1"}
+
+	raw, err := t.DialContext(ctx, network, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, t.TLSHandshakeTimeout)
+	defer cancel()
+	tracked := &trackedConn{Conn: raw, transport: t, pool: pool}
+	conn := tls.Client(tracked, config)
+	if err := conn.HandshakeContext(ctx); err != nil {
+		_ = raw.Close()
+		return nil, err
+	}
+	validity.trust, validity.epoch = snapshot.trust, snapshot.epoch
+	if snapshot.notBefore.After(validity.notBefore) {
+		validity.notBefore = snapshot.notBefore
+	}
+	if snapshot.notAfter.Before(validity.notAfter) {
+		validity.notAfter = snapshot.notAfter
+	}
+
+	t.mu.Lock()
+	t.conns[tracked] = validity
+	// A request that started before its pool was retired can still dial on it.
+	if pool != nil && pool != t.current {
+		t.retired[pool] = struct{}{}
+	}
+	t.mu.Unlock()
+	return conn, nil
+}
+
+// CloseIdleConnections closes idle connections in the current and retired connection pools.
+func (t *clientTransport) CloseIdleConnections() {
+	t.mu.Lock()
+	pools := t.poolsLocked()
+	t.mu.Unlock()
+	for _, pool := range pools {
+		pool.CloseIdleConnections()
+	}
+}
+
+func (t *clientTransport) poolsLocked() []*http.Transport {
+	pools := make([]*http.Transport, 0, len(t.retired)+1)
+	if t.current != nil {
+		pools = append(pools, t.current)
+	}
+	for pool := range t.retired {
+		pools = append(pools, pool)
+	}
+	return pools
+}
+
+func (t *clientTransport) transportForRequest(material *material) *http.Transport {
 	var expired []*trackedConn
 	t.mu.Lock()
 	now := t.source.now()
+	replace := t.current == nil
 	for conn, validity := range t.conns {
-		if current == nil || validity.trust != current.trust || validity.epoch != current.epoch ||
+		if material == nil || validity.trust != material.trust || validity.epoch != material.epoch ||
 			now.Before(validity.notBefore) || now.After(validity.notAfter) {
 			expired = append(expired, conn)
+			// An expired connection in a retired pool cannot serve this request, so closing
+			// it is enough.
+			replace = replace || conn.pool == t.current
 		}
 	}
-	t.mu.Unlock()
-	if len(expired) == 0 {
-		return
+	if replace {
+		// An active HTTP/2 connection stays in its pool until its read loop observes
+		// the close. Use a fresh pool so this request cannot select that connection.
+		if t.current != nil {
+			t.retired[t.current] = struct{}{}
+		}
+		t.current = t.newPool()
 	}
+	// Close idle connections in retired pools, including connections that finished their
+	// requests since the pool was retired, and forget pools with no connections left.
+	var retired []*http.Transport
+	if len(t.retired) > 0 {
+		retired = t.retiredInUseLocked(now)
+	}
+	current := t.current
+	t.mu.Unlock()
 
-	// Closing idle connections removes them from the pool before this request picks one.
 	// Connections in use are closed too, which aborts their in-flight requests: an HTTP/2
 	// connection in use would otherwise take new requests.
-	t.CloseIdleConnections()
 	for _, conn := range expired {
 		_ = conn.Close()
 	}
+	for _, pool := range retired {
+		pool.CloseIdleConnections()
+	}
+	return current
+}
+
+// retiredInUseLocked forgets retired pools without unexpired connections and returns the rest.
+func (t *clientTransport) retiredInUseLocked(now time.Time) []*http.Transport {
+	live := map[*http.Transport]bool{}
+	for conn, validity := range t.conns {
+		if !now.Before(validity.notBefore) && !now.After(validity.notAfter) {
+			live[conn.pool] = true
+		}
+	}
+	var retired []*http.Transport
+	for pool := range t.retired {
+		if live[pool] {
+			retired = append(retired, pool)
+		} else {
+			delete(t.retired, pool)
+		}
+	}
+	return retired
 }
 
 // tokenFile caches a projected ServiceAccount token. The kubelet rotates the token by

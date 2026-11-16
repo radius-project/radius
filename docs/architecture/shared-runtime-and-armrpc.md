@@ -175,6 +175,8 @@ The [token/CSI lifecycle](../../pkg/cli/helm/certificate_lifecycle.go) separates
 
 Provider transition execution and recovery are deferred, not completed token-transition support. The fixture-only executor and configuration preparation have been removed. The completed-v2 read-only validator remains reachable from ordinary lifecycle guards and retains its exact saved-schema checks, including all five workloads; it does not claim controller observation or authorize writes. Existing authenticated UCP/RP readiness receipts and shared token transport are unchanged. The controller remains trust-only without a new listener or CSI serving identity.
 
+Before reusing a connection, outbound token clients check the validity of every certificate in the verified server chain. They retire the connection pool before the next request and close expired connections, including active HTTP/2 streams. The next request performs a fresh handshake with the current CA bundle instead of racing HTTP/2's asynchronous removal of the closed connection. A retired pool keeps only its unexpired connections that are still serving requests. Each later request closes the pool's idle connections and forgets the pool once it has no unexpired tracked connections. When a connection in a retired pool expires, the client closes it without replacing the current pool again. Clients still present no certificate; they send their token only after verifying the server.
+
 ### Request context and validation
 
 The server layer applies middleware that creates an ARM-aware request context.

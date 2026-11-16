@@ -735,7 +735,7 @@ func Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource(t *testing.T)
 				TemplatePath: ts.TestImageURL,
 			},
 		},
-		PrevState: []string{failing, stale},
+		PrevState: []string{failing, stale, failing, stale},
 	})
 	recipeErr := &recipes.RecipeError{}
 	require.ErrorAs(t, err, &recipeErr)
