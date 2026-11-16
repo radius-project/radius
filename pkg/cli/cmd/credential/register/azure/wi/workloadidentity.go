@@ -19,9 +19,11 @@ package wi
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/credential/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -114,6 +116,15 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.Format = format
+
+	// Cobra only checks that required flags were provided, not that they have values.
+	// Reject empty or whitespace-only values so invalid credentials never reach UCP.
+	if strings.TrimSpace(r.ClientID) == "" {
+		return clierrors.Message("The value of the --client-id flag cannot be empty or whitespace-only.")
+	}
+	if strings.TrimSpace(r.TenantID) == "" {
+		return clierrors.Message("The value of the --tenant-id flag cannot be empty or whitespace-only.")
+	}
 
 	return nil
 }

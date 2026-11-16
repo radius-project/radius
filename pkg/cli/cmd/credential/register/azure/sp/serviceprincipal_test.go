@@ -100,6 +100,36 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
 		},
+		{
+			Name: "Azure command with empty client-id",
+			Input: []string{
+				"--client-id", "",
+				"--client-secret", "efgh",
+				"--tenant-id", "ijkl",
+			},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
+		},
+		{
+			Name: "Azure command with whitespace-only client-secret",
+			Input: []string{
+				"--client-id", "abcd",
+				"--client-secret", "   ",
+				"--tenant-id", "ijkl",
+			},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
+		},
+		{
+			Name: "Azure command with empty tenant-id",
+			Input: []string{
+				"--client-id", "abcd",
+				"--client-secret", "efgh",
+				"--tenant-id", "",
+			},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
