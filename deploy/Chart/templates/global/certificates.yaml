@@ -71,6 +71,9 @@ spec:
   isCA: true
   commonName: radius-apiserver-ca
   secretName: radius-apiserver-ca
+  secretTemplate:
+    annotations:
+      cert-manager.io/allow-direct-injection: "true"
   # 1 year, renewed at two-thirds of its lifetime, keeping the key like radius-ca.
   duration: 8760h
   renewBefore: 2920h
@@ -113,7 +116,7 @@ data:
   ca.crt: {{ $source.bundle | toJson }}
 {{- end }}
 {{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") | fromJson }}
-{{- if $source.bundle }}
+{{- if and $source.bundle (ne $mode "selfSigned") }}
 ---
 apiVersion: v1
 kind: Secret

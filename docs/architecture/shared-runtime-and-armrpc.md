@@ -158,14 +158,19 @@ after the server is verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
 Internal public trust is mounted separately at `/var/run/radius/ca`, never with a CA signing key. BYO uses ConfigMap `radius-mtls-ca`; only selfSigned bootstrap projects `radius-ca/ca.crt` until an independent source is staged. In selfSigned mode aggregation retains a separate CA. In caSecret mode distinct internal and aggregation Issuers share the operator's signing Secret; issuerRef selects the existing issuer for both request profiles. UCP's ordinary DNS Certificate and internal own-Pod SPIFFE CSI requests have separate approval restrictions, even under the same CA. Runtime callers never present component client certificates; pinned CSI's client-auth EKU is not caller authorization.
 
-The APIService's permanent public source is Secret `radius-apiserver-trust`, with the direct-injection annotation, not a leaf Secret or organization root. The chart guards existing sources and rotation journals against unvalidated overwrite. A new selfSigned CA needs a second connected render or lifecycle pre-staging before this source exists. CLI crypto/profile validation and journal-aware lifecycle/convergence remain paired integrations; cainjector merging alone does not establish exact retirement of old anchors. See the [certificate-mode contract](../../deploy/Chart/README.md#internal-service-certificate-modes).
+In selfSigned mode the APIService follows public `ca.crt` of the cert-manager-owned `radius-apiserver-ca` Secret through cainjector, including same-key, same-subject renewal without another Helm run. BYO modes retain the pinned public-only `radius-apiserver-trust` source, never a leaf Secret or organization root. Existing A8 selfSigned public copies remain unused for injection and retained as `rad` continuity pins. Connected Helm checks signer ownership/profile structurally; `rad` also compares subject public key info and encoded subject with retained trust at command boundaries. Neither blocks changes between commands. The chart guards public sources and rotation journals against unvalidated overwrite; lifecycle operations requiring newly generated anchor pins must stage issuance before a connected render. Journal-aware convergence remains paired lifecycle work: cainjector merging alone does not establish exact retirement of old anchors. See the [certificate-mode contract](../../deploy/Chart/README.md#internal-service-certificate-modes).
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Before each request, a client
 closes every connection whose verified server chain has expired, including
-connections in use, which aborts their in-flight requests.
-
-Before reusing a connection, outbound token clients check the validity of every certificate in the verified server chain. They retire the connection pool before the next request and close expired connections, including active HTTP/2 streams. The next request performs a fresh handshake with the current CA bundle instead of racing HTTP/2's asynchronous removal of the closed connection. A retired pool keeps only its unexpired connections that are still serving requests. Each later request closes the pool's idle connections and forgets the pool once it has no unexpired tracked connections. When a connection in a retired pool expires, the client closes it without replacing the current pool again. Clients still present no certificate; they send their token only after verifying the server.
+connections in use, which aborts their in-flight requests and active HTTP/2
+streams. It also retires the connection pool that held the expired connection,
+so the request performs a fresh handshake with the current CA bundle instead of
+racing HTTP/2's asynchronous removal of the closed connection. A retired pool
+keeps only its unexpired connections that are still serving requests. Each
+later request closes the pool's idle connections and forgets the pool once it
+has no unexpired tracked connections. When a connection in a retired pool
+expires, the client closes it without replacing the current pool again.
 
 ### Request context and validation
 

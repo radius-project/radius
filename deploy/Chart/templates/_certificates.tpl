@@ -84,9 +84,9 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- end -}}
 
 {{/*
-Return {kind,name,key,bundle,digest,issuer}, independently for each trust plane.
-Existing public sources are authoritative but must equal the configured bootstrap
-anchor; overlap and mode switching are lifecycle work, not Helm merge behavior.
+Return the selected public source, identity, digests and issuer for each plane.
+selfSigned aggregation follows the owned signer's ca.crt; existing BYO public
+sources stay pinned. Overlap and mode switching belong to the lifecycle.
 */}}
 {{- define "radius.authz.certificates.publicSource" -}}
 {{- $root := .root -}}
@@ -94,21 +94,34 @@ anchor; overlap and mode switching are lifecycle work, not Helm merge behavior.
 {{- $kind := "ConfigMap" -}}{{- $name := "radius-mtls-ca" -}}{{- $signing := "radius-ca" -}}
 {{- if eq .plane "aggregation" -}}
 {{- $kind = "Secret" -}}{{- $name = "radius-apiserver-trust" -}}{{- $signing = "radius-apiserver-ca" -}}
+{{- if eq $mode "selfSigned" -}}{{- $name = $signing -}}{{- end -}}
 {{- end -}}
 {{- $existing := lookup "v1" $kind $root.Release.Namespace $name -}}
 {{- $observed := $existing -}}
 {{- $bundle := "" -}}
+{{- if and (eq .plane "aggregation") (eq $mode "selfSigned") $existing -}}
+{{- $annotations := $existing.metadata.annotations | default dict -}}
+{{- $data := $existing.data | default dict -}}
+{{- if or (ne $existing.type "kubernetes.io/tls")
+  (ne (index $annotations "cert-manager.io/certificate-name") "radius-apiserver-ca")
+  (ne (index $annotations "cert-manager.io/issuer-name") "radius-selfsigned-bootstrap")
+  (ne (index $annotations "cert-manager.io/issuer-kind") "Issuer")
+  (ne (index $annotations "cert-manager.io/issuer-group") "cert-manager.io")
+  (empty (index $data "tls.crt")) (empty (index $data "tls.key")) (empty (index $data "ca.crt")) -}}
+{{- fail "selfSigned aggregation prerequisite: radius-apiserver-ca must be a TLS Secret issued for Certificate radius-apiserver-ca by cert-manager.io/Issuer radius-selfsigned-bootstrap with tls.crt, tls.key and ca.crt; preserve foreign resources and repair ownership before retrying." -}}
+{{- end -}}
+{{- end -}}
 {{- if ne $mode "selfSigned" -}}
 {{- $bundle = printf "%s\n" (trim $root.Values.global.rbac.certificates.caBundle) -}}
 {{- else if $existing -}}
 {{- $bundle = index ($existing.data | default dict) "ca.crt" | default "" -}}
 {{- if eq $kind "Secret" -}}{{- $bundle = b64dec $bundle -}}{{- end -}}
-{{- else -}}
+{{- else if ne .plane "aggregation" -}}
 {{- $secret := lookup "v1" "Secret" $root.Release.Namespace $signing -}}
 {{- $observed = $secret -}}
 {{- $bundle = dig "data" "ca.crt" "" $secret | b64dec -}}
 {{- end -}}
-{{- if $existing -}}
+{{- if and $existing (not (and (eq .plane "aggregation") (eq $mode "selfSigned"))) -}}
 {{- $recordedMode := index ($existing.metadata.annotations | default dict) "radius.io/certificate-mode" | default "" -}}
 {{- if and $recordedMode (ne $recordedMode $mode) -}}
 {{- fail "certificate lifecycle prerequisite: the public source belongs to another certificate mode; use the lifecycle command." -}}

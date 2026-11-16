@@ -229,5 +229,5 @@ func Test_Helm_Rollback_AllowsTargetWithoutUnapprovedIssuerCertificates(t *testi
 		RunHelmRollback(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", 1, true).
 		Return(nil)
 
-	require.NoError(t, (&Impl{Helm: mockHelmClient}).RollbackRadiusToRevision(t.Context(), "test-context", 1))
+	require.NoError(t, withoutUCPAPIService(&Impl{Helm: mockHelmClient}).RollbackRadiusToRevision(t.Context(), "test-context", 1))
 }

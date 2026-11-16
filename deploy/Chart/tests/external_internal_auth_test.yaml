@@ -92,7 +92,7 @@ tests:
         documentIndex: 1
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
-          value: radius-test/radius-apiserver-trust
+          value: radius-test/radius-apiserver-ca
         template: ucp/apiservice.yaml
         documentIndex: 1
 

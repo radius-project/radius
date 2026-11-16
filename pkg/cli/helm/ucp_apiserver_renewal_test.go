@@ -1,0 +1,297 @@
+/*
+Copyright 2026 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package helm
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
+	"math/big"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/radius-project/radius/pkg/authz"
+	"github.com/stretchr/testify/require"
+	"helm.sh/helm/v4/pkg/chart/common"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+)
+
+func reissueTestCA(t *testing.T, ca testCA, notAfter time.Time) testCA {
+	t.Helper()
+	template := *ca.cert
+	template.SerialNumber = big.NewInt(time.Now().UnixNano())
+	template.NotBefore, template.NotAfter = time.Now().Add(-time.Minute), notAfter
+	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &ca.key.PublicKey, ca.key)
+	require.NoError(t, err)
+	cert, err := x509.ParseCertificate(der)
+	require.NoError(t, err)
+	return testCA{cert: cert, key: ca.key, pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
+}
+
+func mustParseCertificate(t *testing.T, pemBytes []byte) *x509.Certificate {
+	t.Helper()
+	cert, err := firstCertificate(pemBytes)
+	require.NoError(t, err)
+	return cert
+}
+
+func retainedAggregationTrust(ca testCA) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, UID: "retained-copy", ResourceVersion: "7",
+			Labels: map[string]string{"app.kubernetes.io/managed-by": "Helm"},
+			Annotations: map[string]string{
+				"radius.io/certificate-mode": "selfSigned", allowDirectInjectionAnnotation: "true",
+				"meta.helm.sh/release-name": "radius", "meta.helm.sh/release-namespace": RadiusSystemNamespace,
+				"helm.sh/resource-policy": "keep",
+			},
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{caCertificateKey: ca.pem},
+	}
+}
+
+func TestSelfSignedAggregationRenewalGuards(t *testing.T) {
+	old := reissueTestCA(t, newTestCA(t, ucpAPIServerCASecretName), time.Now().Add(time.Minute))
+	renewed := reissueTestCA(t, old, time.Now().Add(2*time.Hour))
+	require.Equal(t, old.cert.RawSubjectPublicKeyInfo, renewed.cert.RawSubjectPublicKeyInfo)
+	require.Equal(t, old.cert.RawSubject, renewed.cert.RawSubject)
+	require.NotEqual(t, old.cert.SerialNumber, renewed.cert.SerialNumber)
+	require.True(t, renewed.cert.NotAfter.After(old.cert.NotAfter))
+
+	subjectTemplate := *renewed.cert
+	subjectTemplate.RawSubject = nil
+	subjectTemplate.Subject.Organization = []string{"unexpected"}
+	subjectTemplate.SerialNumber = big.NewInt(123456)
+	der, err := x509.CreateCertificate(rand.Reader, &subjectTemplate, &subjectTemplate, &old.key.PublicKey, old.key)
+	require.NoError(t, err)
+	changedSubject, err := x509.ParseCertificate(der)
+	require.NoError(t, err)
+
+	for _, tt := range []struct {
+		name string
+		ca   testCA
+		edit func(*corev1.Secret, *corev1.Secret)
+		want string
+	}{
+		{name: "same key and subject renewal", ca: renewed},
+		{name: "different key", ca: newTestCA(t, ucpAPIServerCASecretName), want: "key or subject changed"},
+		{name: "different subject with same key", ca: testCA{cert: changedSubject, key: old.key,
+			pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}, want: "key or subject changed"},
+		{name: "foreign signer", ca: renewed, edit: func(s, _ *corev1.Secret) {
+			s.Annotations[certificateNameAnnotation] = "operator-certificate"
+		}, want: "foreign or has an invalid profile"},
+		{name: "unexpected issuer", ca: renewed, edit: func(s, _ *corev1.Secret) {
+			s.Annotations["cert-manager.io/issuer-name"] = "operator-issuer"
+		}, want: "foreign or has an invalid profile"},
+		{name: "foreign retained copy", ca: renewed, edit: func(_, pin *corev1.Secret) {
+			pin.Labels["app.kubernetes.io/managed-by"] = "operator"
+		}, want: "foreign or invalid"},
+		{name: "invalid retained copy type", ca: renewed, edit: func(_, pin *corev1.Secret) {
+			pin.Type = corev1.SecretTypeTLS
+		}, want: "foreign or invalid"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			signer, pin := apiServerCASecret(tt.ca), retainedAggregationTrust(old)
+			if tt.edit != nil {
+				tt.edit(signer, pin)
+			}
+			client := kubefake.NewSimpleClientset(signer, pin)
+			cert, bundle, problem, err := readUCPAPIServerCA(t.Context(), client, RadiusSystemNamespace)
+			if tt.want != "" {
+				require.ErrorContains(t, err, tt.want)
+				require.Nil(t, cert)
+				require.Nil(t, bundle)
+			} else {
+				require.NoError(t, err)
+				require.Empty(t, problem)
+				require.Equal(t, renewed.cert.Raw, cert.Raw)
+			}
+			for _, action := range client.Actions() {
+				require.Equal(t, "get", action.GetVerb(), "preflight must not alter either Secret")
+			}
+			if tt.edit == nil && tt.want != "" {
+				// Without the retained copy, the APIService's existing root
+				// must still pin identity before either lifecycle write path.
+				client := kubefake.NewSimpleClientset(signer)
+				api := ucpAPIService(base64.StdEncoding.EncodeToString(old.pem), "True", "Passed")
+				dynamic := ucpAPIServiceDynamicClient(api)
+				impl := trustImpl(client, dynamic)
+				render := func(context.Context) (string, bool, error) {
+					t.Fatal("identity must be checked before Helm render or mutation")
+					return "", false, nil
+				}
+				require.ErrorContains(t, impl.stageUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace,
+					"radius", authz.ModeDryRun, authz.ModeDryRun, render), tt.want)
+				require.ErrorContains(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test", RadiusSystemNamespace), tt.want)
+				got, err := dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, api, got, "failed continuity checks must not alter APIService trust")
+			}
+		})
+	}
+}
+
+func TestSelfSignedAggregationSourceAndRenewal(t *testing.T) {
+	old := reissueTestCA(t, newTestCA(t, ucpAPIServerCASecretName), time.Now().Add(time.Minute))
+	renewed := reissueTestCA(t, old, time.Now().Add(2*time.Hour))
+	for _, provider := range []string{"radius", "external"} {
+		t.Run(provider, func(t *testing.T) {
+			f := newIssuerPolicyFixture(t)
+			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
+			rbac["certificates"] = map[string]any{"mode": "selfSigned"}
+			rbac["tls"] = map[string]any{"provider": provider}
+			signer := apiServerCASecret(old)
+			signer.UID, signer.ResourceVersion = "stable-signer", "1"
+			pin := retainedAggregationTrust(old)
+			for _, object := range []*corev1.Secret{signer, pin} {
+				data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
+				require.NoError(t, err)
+				data["apiVersion"], data["kind"] = "v1", "Secret"
+				f.objects = append(f.objects, &unstructured.Unstructured{Object: data})
+			}
+			manifests, err := f.renderChart(t, &common.File{Name: "templates/source-contract.json",
+				Data: []byte(`{{ include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") }}`)})
+			require.NoError(t, err)
+			var source struct {
+				Kind, Name, Key, Bundle, UID, ResourceVersion, ContentDigest, IssuerDigest, Digest string
+				Issuer                                                                             map[string]string
+			}
+			require.NoError(t, json.Unmarshal([]byte(manifests["radius/templates/source-contract.json"]), &source))
+			require.Equal(t, "Secret", source.Kind)
+			require.Equal(t, ucpAPIServerCASecretName, source.Name)
+			require.Equal(t, caCertificateKey, source.Key)
+			require.Equal(t, string(old.pem), source.Bundle)
+			require.Equal(t, "stable-signer", source.UID)
+			require.Equal(t, "1", source.ResourceVersion)
+			require.Equal(t, fmt.Sprintf("%x", sha256.Sum256(old.pem)), source.ContentDigest)
+			require.NotEmpty(t, source.IssuerDigest)
+			require.NotEmpty(t, source.Digest)
+			require.Equal(t, RadiusAPIServerIssuerName, source.Issuer["name"])
+			delete(manifests, "radius/templates/source-contract.json")
+			var api *unstructured.Unstructured
+			for _, obj := range chartObjects(t, manifests) {
+				require.False(t, obj.GetKind() == "Secret" && obj.GetName() == ucpAPIServerTrustSecretName,
+					"the kept A8 copy must not be rewritten or adopted")
+				if obj.GetKind() == "APIService" {
+					api = obj
+				}
+			}
+			require.NotNil(t, api)
+			require.Equal(t, RadiusSystemNamespace+"/"+source.Name, api.GetAnnotations()[injectCAFromSecretAnnotation])
+
+			// A read-only injection fixture follows the annotation to the renewed
+			// Secret. No second Helm render or rad invocation publishes this CA.
+			client := kubefake.NewSimpleClientset(signer, pin)
+			live, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), source.Name, metav1.GetOptions{})
+			require.NoError(t, err)
+			live.Data[corev1.TLSCertKey], live.Data[caCertificateKey] = renewed.pem, renewed.pem
+			_, err = client.CoreV1().Secrets(RadiusSystemNamespace).Update(t.Context(), live, metav1.UpdateOptions{})
+			require.NoError(t, err)
+			cluster := &stageCluster{kube: client}
+			encoded, _, err := unstructured.NestedString(api.Object, "spec", "caBundle")
+			require.NoError(t, err)
+			bundle, err := base64.StdEncoding.DecodeString(encoded)
+			require.NoError(t, err)
+			bundle = cluster.cainjectorMerges(t, api, bundle)
+			leaf := mustParseCertificate(t, issueUCPCertificate(t, renewed))
+			future := old.cert.NotAfter.Add(time.Second)
+			roots := x509.NewCertPool()
+			require.True(t, roots.AppendCertsFromPEM(bundle))
+			_, err = leaf.Verify(x509.VerifyOptions{Roots: roots, CurrentTime: future,
+				DNSName: "ucp." + RadiusSystemNamespace + ".svc", KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
+			require.NoError(t, err)
+			frozen := x509.NewCertPool()
+			frozen.AddCert(old.cert)
+			_, err = leaf.Verify(x509.VerifyOptions{Roots: frozen, CurrentTime: future,
+				DNSName: "ucp." + RadiusSystemNamespace + ".svc", KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
+			require.Error(t, err, "the frozen A8 copy cannot verify after its root expires")
+			var expired x509.CertificateInvalidError
+			require.ErrorAs(t, err, &expired)
+			require.Equal(t, x509.Expired, expired.Reason)
+			got, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), source.Name, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, types.UID("stable-signer"), got.UID)
+			require.Equal(t, signer.Annotations, got.Annotations)
+			kept, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), pin.Name, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, pin, kept)
+		})
+	}
+}
+
+func TestSelfSignedAggregationStructuralGuards(t *testing.T) {
+	for _, provider := range []string{"radius", "external"} {
+		for _, field := range []string{"type", certificateNameAnnotation, "cert-manager.io/issuer-name",
+			"cert-manager.io/issuer-kind", "cert-manager.io/issuer-group", "tls.crt", "tls.key", "ca.crt"} {
+			t.Run(provider+"/"+field, func(t *testing.T) {
+				f := newIssuerPolicyFixture(t)
+				rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
+				rbac["certificates"] = map[string]any{"mode": "selfSigned"}
+				rbac["tls"] = map[string]any{"provider": provider}
+				signer := apiServerCASecret(newTestCA(t, ucpAPIServerCASecretName))
+				switch {
+				case field == "type":
+					signer.Type = corev1.SecretTypeOpaque
+				case strings.HasPrefix(field, "cert-manager.io/"):
+					delete(signer.Annotations, field)
+				default:
+					delete(signer.Data, field)
+				}
+				data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(signer)
+				require.NoError(t, err)
+				data["apiVersion"], data["kind"] = "v1", "Secret"
+				f.objects = append(f.objects, &unstructured.Unstructured{Object: data})
+				_, err = f.renderChart(t)
+				require.ErrorContains(t, err, "selfSigned aggregation prerequisite")
+			})
+		}
+	}
+}
+
+func TestReconcileRetainsA8AggregationCopy(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	old := newTestCA(t, ucpAPIServerCASecretName)
+	renewed := reissueTestCA(t, old, time.Now().Add(2*time.Hour))
+	pin := retainedAggregationTrust(old)
+	signer := apiServerCASecret(renewed)
+	signer.UID = "signer"
+	client := kubefake.NewSimpleClientset(signer, pin)
+	api := ucpAPIService(base64.StdEncoding.EncodeToString(old.pem), "True", "Passed")
+	dynamic := ucpAPIServiceDynamicClient(api)
+	require.NoError(t, trustImpl(client, dynamic).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+	kept, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), pin.Name, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, pin, kept)
+	got, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), signer.Name, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.Equal(t, signer, got)
+	for _, action := range client.Actions() {
+		require.Equal(t, "get", action.GetVerb())
+	}
+}

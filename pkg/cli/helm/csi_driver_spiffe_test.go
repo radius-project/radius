@@ -47,8 +47,8 @@ import (
 )
 
 // expectCSIDriverSPIFFEPull expects loadChart to pull the pinned csi-driver-spiffe chart. The caller expects LoadChart.
-func expectCSIDriverSPIFFEPull(t *testing.T, m *MockHelmClient) {
-	m.EXPECT().RunHelmPull(gomock.Any(), csiDriverSPIFFEReleaseName).
+func expectCSIDriverSPIFFEPull(t *testing.T, m *MockHelmClient) *MockHelmClientRunHelmPullCall {
+	return m.EXPECT().RunHelmPull(gomock.Any(), csiDriverSPIFFEReleaseName).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
 			pull := helm.NewPull(pullopts...)
 			require.Equal(t, csiDriverSPIFFEHelmRepo, pull.RepoURL)

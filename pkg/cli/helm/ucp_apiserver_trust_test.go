@@ -52,6 +52,13 @@ type testCA struct {
 	pem  []byte
 }
 
+func testCACertificates(t *testing.T, bundle []byte) []*x509.Certificate {
+	t.Helper()
+	certs, err := caCertificates(bundle)
+	require.NoError(t, err)
+	return certs
+}
+
 func newTestCA(t *testing.T, name string) testCA {
 	t.Helper()
 	return mustTestCA(name)
@@ -113,7 +120,19 @@ func tlsSecret(name string, crt, caCrt []byte) *corev1.Secret {
 // whose ca.crt is the CA certificate itself, annotated by secretTemplate so cainjector may copy it.
 func apiServerCASecret(ca testCA) *corev1.Secret {
 	secret := tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem)
-	secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
+	secret.Annotations = map[string]string{
+		allowDirectInjectionAnnotation: "true", certificateNameAnnotation: ucpAPIServerCASecretName,
+		"cert-manager.io/issuer-name": RadiusBootstrapIssuerName, "cert-manager.io/issuer-kind": "Issuer",
+		"cert-manager.io/issuer-group": "cert-manager.io",
+	}
+	return secret
+}
+
+// apiServerTLSSecret is ucp-apiserver-tls as cert-manager issues it for Certificate ucp-cert from radius-apiserver-ca.
+func apiServerTLSSecret(t *testing.T, ca testCA) *corev1.Secret {
+	t.Helper()
+	secret := tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, ca), ca.pem)
+	secret.Annotations = map[string]string{"cert-manager.io/certificate-name": ucpAPIServerCertificateName}
 	return secret
 }
 
@@ -149,8 +168,7 @@ var issuedUCPAPIServerCA = sync.OnceValue(func() []byte { return mustTestCA("rad
 // issuedUCPAPIServerTrustClient returns a client for a fresh install where cert-manager has issued
 // radius-apiserver-ca.
 func issuedUCPAPIServerTrustClient(string) (kubernetes.Interface, error) {
-	secret := tlsSecret(ucpAPIServerCASecretName, issuedUCPAPIServerCA(), issuedUCPAPIServerCA())
-	secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
+	secret := apiServerCASecret(testCA{pem: issuedUCPAPIServerCA()})
 	return kubefake.NewSimpleClientset(secret), nil
 }
 
@@ -314,8 +332,9 @@ func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			shortenUCPAPIServiceWait(t)
-			if tt.want != "cert-manager.io/allow-direct-injection" {
-				tt.secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
+			tt.secret.Annotations = apiServerCASecret(ca).Annotations
+			if tt.want == "cert-manager.io/allow-direct-injection" {
+				delete(tt.secret.Annotations, allowDirectInjectionAnnotation)
 			}
 			kubeClient := kubefake.NewSimpleClientset(tt.secret)
 			dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
@@ -342,13 +361,13 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	impl := trustImpl(kubeClient, dynamicClient)
 
 	// Off does not touch the cluster.
-	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, noStageManifest))
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeOff, noStageManifest))
 	_, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	require.Error(t, err)
 
 	// rad seeds the trust Secret from the live caBundle before Helm renders the APIService from it. This chart has no
 	// radius-apiserver-ca Certificate to stage; Test_UpgradeRadius_StagesUCPAPIServerCABeforeHelm covers staging.
-	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeEnforce, noStageManifest))
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeEnforce, noStageManifest))
 	require.Equal(t, []string{"ucp-ca"}, trustedSubjects(t, kubeClient))
 
 	// Helm installs the new CA and starts rolling UCP; the rollout has not finished, so both CAs stay trusted.
@@ -377,7 +396,7 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	requireNoTrustSecret(t, kubeClient)
 
 	// The next upgrade does not seed the trust Secret again.
-	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeEnforce, noStageManifest))
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeEnforce, noStageManifest))
 	requireNoTrustSecret(t, kubeClient)
 }
 
