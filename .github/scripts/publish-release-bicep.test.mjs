@@ -648,8 +648,13 @@ test("reusable workflow stays preparatory, separates generation credentials, and
     new URL("../workflows/__publish-bicep-types.yaml", import.meta.url),
     "utf8"
   );
-  for (const action of ["setup-node", "upload-artifact", "download-artifact"]) {
-    const pattern = new RegExp(`uses: actions/${action}@[a-f0-9]{40}`, "g");
+  for (const action of [
+    "actions/setup-node",
+    "actions/upload-artifact",
+    "actions/download-artifact",
+    "docker/login-action"
+  ]) {
+    const pattern = new RegExp(`uses: ${action}@[a-f0-9]{40}`, "g");
     const current = mainPublisher.match(pattern)[0];
     assert.ok(yaml.match(pattern).every((pin) => pin === current));
   }
