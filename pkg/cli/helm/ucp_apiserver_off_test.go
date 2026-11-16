@@ -261,6 +261,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 	})
 
 	t.Run("waits for UCP to serve ucp-cert and resumes", func(t *testing.T) {
+		expireUCPAPIServiceWait(t)
 		c := newStageCluster(t, nil, false)
 		c.onUCP(t)
 		// Helm wrote Secret ucp-cert and the off caBundle, but UCP still serves the certificate from radius-apiserver-ca.

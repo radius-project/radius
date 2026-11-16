@@ -689,7 +689,7 @@ func Test_InstallRadius_InstalledReleaseKeepsAuthzMode(t *testing.T) {
 // ucp-cert from ucp-ca, which the API server still trusts. Running the command again after cert-manager issues the CA
 // finishes the stage and the upgrade.
 func Test_UpgradeRadius_StageUCPAPIServerCATimeout(t *testing.T) {
-	shortenUCPAPIServiceWait(t)
+	expireUCPAPIServiceWait(t)
 	rendered := renderedStagedCA(t, renderStageTestManifest(t, authzOnValues))
 	u := newStageUpgrade(t, map[string]any{}, "upgrade")
 	c := newStageCluster(t, nil, false)
@@ -767,7 +767,7 @@ func (c *stageCluster) setUCPRolledOut(t *testing.T, rolledOut bool) {
 }
 
 func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
-	shortenUCPAPIServiceWait(t)
+	expireUCPAPIServiceWait(t)
 	u := newStageUpgrade(t, authzOnValues, "upgrade")
 	c := newStageCluster(t, nil, true)
 	c.onUCP(t)
@@ -918,7 +918,7 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 	// A rollback retried after UCP did not finish moving to the staged ucp-cert waits for the rollout again, though the
 	// ucp Deployment template already mounts ucp-cert, and rolls back only once every pod serves it.
 	t.Run("retry with an incomplete rollout", func(t *testing.T) {
-		shortenUCPAPIServiceWait(t)
+		expireUCPAPIServiceWait(t)
 		c := newStageCluster(t, nil, true)
 		c.onUCP(t)
 		c.setUCPRolledOut(t, false)
