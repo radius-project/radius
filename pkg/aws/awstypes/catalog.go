@@ -32,6 +32,9 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
+
+	"github.com/radius-project/radius/pkg/aws/schemas"
 )
 
 // legacyTypes maps each legacy type to the type, or property, that replaces it. Cloud Control manages every
@@ -40,7 +43,6 @@ var legacyTypes = map[string]string{
 	"AWS::AmazonMQ::ConfigurationAssociation": "the Configuration property of AWS::AmazonMQ::Broker",
 	"AWS::Elasticsearch::Domain":              "AWS::OpenSearchService::Domain",
 	"AWS::IAM::Policy":                        "AWS::IAM::ManagedPolicy, or AWS::IAM::RolePolicy, AWS::IAM::UserPolicy, or AWS::IAM::GroupPolicy for an inline policy",
-	"AWS::IAM::UserToGroupAddition":           "the Groups property of AWS::IAM::User",
 	"AWS::Route53::RecordSetGroup":            "AWS::Route53::RecordSet",
 	"AWS::SNS::TopicPolicy":                   "AWS::SNS::TopicInlinePolicy",
 	"AWS::SQS::QueuePolicy":                   "AWS::SQS::QueueInlinePolicy",
@@ -250,10 +252,29 @@ func UnsupportedMessage(typeName string) (string, bool) {
 	return "", false
 }
 
+// handWrittenTypes returns the types with a hand-written schema in pkg/aws/schemas. The schemas are built into Radius,
+// and a test in pkg/aws/schemas loads them. If they failed to load, there would be none.
+var handWrittenTypes = sync.OnceValue(func() map[string]string {
+	catalog, _ := schemas.Load()
+	return catalog.HandWritten
+})
+
 // IsReadOnly reports whether typeName is a type that AWS creates on its own. Radius can reference these types with
 // `existing` but never creates or manages them. The match ignores case.
+//
+// A type with a hand-written schema in pkg/aws/schemas is never read-only, even when a refresh finds a read-only
+// CloudFormation type with its name: Radius keeps serving its own type until a person reviews the clash.
 func IsReadOnly(typeName string) bool {
-	return slices.ContainsFunc(readOnlyTypes, func(t string) bool { return strings.EqualFold(t, typeName) })
+	return isReadOnly(typeName, readOnlyTypes, handWrittenTypes())
+}
+
+func isReadOnly(typeName string, readOnly []string, handWritten map[string]string) bool {
+	for name := range handWritten {
+		if strings.EqualFold(name, typeName) {
+			return false
+		}
+	}
+	return slices.ContainsFunc(readOnly, func(t string) bool { return strings.EqualFold(t, typeName) })
 }
 
 // ReadOnlyTypes returns the read-only types, sorted.

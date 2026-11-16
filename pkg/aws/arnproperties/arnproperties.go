@@ -33,17 +33,24 @@ var arnPropertiesByLowerType = sync.OnceValue(func() map[string]string {
 	// The schemas are built into Radius, and a test in pkg/aws/schemas loads them. If they failed to load, the catalog
 	// would have no metadata, and only the generated catalog would be used.
 	catalog, _ := schemas.Load()
-	return byLowerType(arnProperties, catalog.Metadata)
+	return byLowerType(arnProperties, catalog)
 })
 
-// byLowerType returns generated, keyed by the lowercase type, with the arnProperty of each type in metadata that
-// declares one. Hand-written types aren't in the generated catalog, and metadata overrides it for the others.
-func byLowerType(generated map[string]string, metadata map[string]schemas.Metadata) map[string]string {
+// byLowerType returns generated, keyed by the lowercase type, with the arnProperty of each type in catalog's metadata
+// that declares one, which overrides generated. A hand-written type uses only its metadata: if a refresh finds a
+// CloudFormation type with its name, generated has AWS's property, which the Radius schema may not have.
+func byLowerType(generated map[string]string, catalog schemas.Catalog) map[string]string {
+	handWritten := map[string]bool{}
+	for resourceType := range catalog.HandWritten {
+		handWritten[strings.ToLower(resourceType)] = true
+	}
 	result := map[string]string{}
 	for resourceType, property := range generated {
-		result[strings.ToLower(resourceType)] = property
+		if lower := strings.ToLower(resourceType); !handWritten[lower] {
+			result[lower] = property
+		}
 	}
-	for resourceType, m := range metadata {
+	for resourceType, m := range catalog.Metadata {
 		if m.ARNProperty != nil {
 			result[strings.ToLower(resourceType)] = *m.ARNProperty
 		}
@@ -53,7 +60,8 @@ func byLowerType(generated map[string]string, metadata map[string]schemas.Metada
 
 // Lookup returns the property that holds the ARN of a resource of the given CloudFormation type, such as "TopicArn"
 // for "AWS::SNS::Topic". The type is matched case-insensitively. A type's arnProperty in its metadata in
-// pkg/aws/schemas takes precedence over the generated catalog.
+// pkg/aws/schemas takes precedence over the generated catalog, and a hand-written type is known only from its
+// metadata.
 //
 // known is false when the type isn't in the catalog. When known is true and property is empty, the type has no
 // property with the resource's own ARN.

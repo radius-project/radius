@@ -118,16 +118,16 @@ func finishNative(ctx context.Context, store *records.Store, id resources.ID, re
 			Message: timeoutMessage(id, op, timeout),
 			Target:  request.ResourceID,
 		}
-		return saveNativeFailure(ctx, store, id, request, op, details, native.OutcomeUnknown)
+		return saveNativeFailure(ctx, store, id, request, op, details, native.OutcomeUnknown, false)
 	case errors.As(err, &failure):
-		return saveNativeFailure(ctx, store, id, request, op, failureOf(failure, request), failure.Outcome)
+		return saveNativeFailure(ctx, store, id, request, op, failureOf(failure, request), failure.Outcome, false)
 	case err != nil:
 		if ctx.Err() != nil {
 			return ctrl.Result{}, err
 		}
 		return requeue(ctx, err), nil
 	case progress.Failure != nil:
-		return saveNativeFailure(ctx, store, id, request, op, failureOf(progress.Failure, request), progress.Failure.Outcome)
+		return saveNativeFailure(ctx, store, id, request, op, failureOf(progress.Failure, request), progress.Failure.Outcome, true)
 	}
 
 	err = update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
@@ -145,11 +145,17 @@ func finishNative(ctx context.Context, store *records.Store, id resources.ID, re
 	return ctrl.Result{}, nil
 }
 
-// saveNativeFailure finishes the record's operation op with failure, after setting its values by outcome.
-func saveNativeFailure(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, op string, failure v1.ErrorDetails, outcome native.Outcome) (ctrl.Result, error) {
+// saveNativeFailure finishes the record's operation op with failure, after setting its values by outcome. A delete
+// whose progress reported that it failed (failed is true) clears the delete token, because AWS has finished that
+// delete: the next DELETE is a new request and gets a new token (see native.DeletePreparer). An error the delete call
+// returned, a timeout, or an error while waiting keeps it, because the delete may still be running in AWS.
+func saveNativeFailure(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, op string, failure v1.ErrorDetails, outcome native.Outcome, failed bool) (ctrl.Result, error) {
 	err := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
 		if op == records.OperationDelete && outcome == native.OutcomeApplied {
 			return true
+		}
+		if op == records.OperationDelete && failed {
+			rec.Properties.DeleteToken = ""
 		}
 		records.Settle(rec, outcome)
 		if op == records.OperationCreate && outcome == native.OutcomeApplied {

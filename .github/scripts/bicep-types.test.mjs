@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -50,6 +51,111 @@ const artifact = {
   workflow_run: { id: 123, head_branch: "main", head_sha: context.sha }
 };
 
+const readYaml = (file) =>
+  JSON.parse(execFileSync("yq", ["-o=json", ".", file], { encoding: "utf8" }));
+const mainWorkflow = readYaml(".github/workflows/build-main.yaml");
+const publisherWorkflow = readYaml(
+  ".github/workflows/__publish-bicep-types.yaml"
+);
+const publisherSecrets = {
+  "client-id": "RADIUS_PUBLISHER_BOT_CLIENT_ID",
+  "private-key": "RADIUS_PUBLISHER_BOT_PRIVATE_KEY"
+};
+
+function checkPublisherSecrets(main, reusable) {
+  const caller = main.jobs["build-and-push-bicep-types"];
+  assert.equal(caller.uses, "./.github/workflows/__publish-bicep-types.yaml");
+  const names = Object.values(publisherSecrets).sort();
+  assert.deepEqual(Object.keys(caller.secrets ?? {}).sort(), names);
+  const declarations = reusable.on.workflow_call.secrets;
+  assert.deepEqual(Object.keys(declarations ?? {}).sort(), names);
+  const token = reusable.jobs.publish.steps.find(
+    (step) => step.id === "publisher-token"
+  );
+  assert.match(token.uses, /^actions\/create-github-app-token@/);
+  for (const [input, name] of Object.entries(publisherSecrets)) {
+    assert.equal(caller.secrets[name], `\${{ secrets.${name} }}`);
+    assert.equal(declarations[name].required, true);
+    assert.equal(token.with[input], `\${{ secrets.${name} }}`);
+  }
+  assert.equal(reusable.jobs.publish.environment, "publish-bicep");
+  assert.deepEqual(reusable.jobs.bundle.permissions, {
+    contents: "read",
+    actions: "read"
+  });
+  const runtime = structuredClone(reusable);
+  delete runtime.on;
+  runtime.jobs.publish.steps = runtime.jobs.publish.steps.filter(
+    (step) => step.id !== "publisher-token"
+  );
+  assert.doesNotMatch(
+    JSON.stringify(runtime),
+    /\bsecrets\b|RADIUS_PUBLISHER_BOT_|actions\/create-github-app-token@/
+  );
+}
+
+test("publisher App secrets are explicitly forwarded, required and consumed only by the publishing token step", () => {
+  checkPublisherSecrets(mainWorkflow, publisherWorkflow);
+});
+
+test("publisher secret contract rejects missing wiring and broader credential use", async (t) => {
+  const mutations = [
+    [
+      "broad inheritance",
+      (caller) => {
+        caller.secrets = "inherit";
+      }
+    ],
+    [
+      "generation consumes secrets",
+      (_caller, reusable) => {
+        reusable.jobs.bundle.env = {
+          APP_KEY: "${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}"
+        };
+      }
+    ]
+  ];
+  for (const name of Object.values(publisherSecrets)) {
+    mutations.push(
+      [
+        `missing forwarding: ${name}`,
+        (caller) => {
+          delete caller.secrets[name];
+        }
+      ],
+      [
+        `wrong source: ${name}`,
+        (caller) => {
+          caller.secrets[name] = "${{ secrets.OTHER }}";
+        }
+      ],
+      [
+        `missing declaration: ${name}`,
+        (_caller, reusable) => {
+          delete reusable.on.workflow_call.secrets[name];
+        }
+      ],
+      [
+        `optional declaration: ${name}`,
+        (_caller, reusable) => {
+          reusable.on.workflow_call.secrets[name].required = false;
+        }
+      ]
+    );
+  }
+  for (const [name, mutate] of mutations) {
+    await t.test(name, () => {
+      const main = structuredClone(mainWorkflow);
+      const reusable = structuredClone(publisherWorkflow);
+      mutate(main.jobs["build-and-push-bicep-types"], reusable);
+      assert.throws(
+        () => checkPublisherSecrets(main, reusable),
+        assert.AssertionError
+      );
+    });
+  }
+});
+
 test("queued main isolates the private App and has no production Azure authority", async () => {
   const main = await readFile(
     new URL("../workflows/build-main.yaml", import.meta.url),
@@ -62,14 +168,13 @@ test("queued main isolates the private App and has no production Azure authority
   const caller = main
     .split(/^  build-and-push-bicep-types:\s*$/m)[1]
     .split(/^  [\w-]+:\s*$/m)[0];
-  const [contract, generation, publishing] = reusable.split(
+  const [, generation, publishing] = reusable.split(
     /^  (?:bundle|publish):\s*$/m
   );
   assert.doesNotMatch(
     caller + reusable,
     /BICEPTYPES_|id-token:|az acr|az account|azure-oidc-login/
   );
-  assert.doesNotMatch(caller + contract, /secrets:/);
   assert.doesNotMatch(
     generation,
     /secrets\.|packages:\s*write|id-token:\s*write/

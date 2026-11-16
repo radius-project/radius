@@ -104,8 +104,11 @@ func TestFluxSecretReferencesRealCompiler(t *testing.T) {
 			},
 		},
 	}
-	_, err = controller.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(deployment)})
-	require.NoError(t, err)
+	// The coordinator persists the finalizer and initial inventory before dispatch.
+	for range 3 {
+		_, err = controller.Reconcile(t.Context(), ctrl.Request{NamespacedName: k8sclient.ObjectKeyFromObject(deployment)})
+		require.NoError(t, err)
+	}
 	require.Equal(t, 1, submissions)
 	require.NoError(t, c.Get(t.Context(), k8sclient.ObjectKeyFromObject(deployment), deployment))
 	require.NotContains(t, fmt.Sprintf("%+v", deployment), "resolved-secret-marker")

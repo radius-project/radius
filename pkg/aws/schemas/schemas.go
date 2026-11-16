@@ -26,7 +26,9 @@ limitations under the License.
 //
 // A type can also have per-type metadata, which CloudFormation's schema format has no field for, in a file next to its
 // schema named after it with .metadata.json in place of .json, such as aws-iam-accountpasswordpolicy.metadata.json.
-// See Metadata. Other files, such as README.md, are ignored.
+// See Metadata. Other files, such as README.md, are ignored, and a subdirectory fails the load.
+//
+// Radius owns the hand-written schemas, so they follow rules that LoadFS checks. See checkHandWritten.
 package schemas
 
 import (
@@ -35,7 +37,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"path"
+	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -127,9 +132,9 @@ func Load() (Catalog, error) {
 	return LoadFS(embedded)
 }
 
-// LoadFS reads the schemas and metadata in the native and handwritten directories of fsys. A file that is not valid
-// JSON, a schema without a typeName, a type with two schemas, and metadata with no schema of its type next to it, or
-// with an unknown field or value, fail.
+// LoadFS reads the schemas and metadata in the native and handwritten directories of fsys. A subdirectory, a file that
+// is not valid JSON, a schema without a typeName, a type with two schemas, metadata with no schema of its type next to
+// it, or with an unknown field or value, and a hand-written schema that breaks a rule of checkHandWritten, fail.
 func LoadFS(fsys fs.FS) (Catalog, error) {
 	catalog := Catalog{Native: map[string]string{}, HandWritten: map[string]string{}, Metadata: map[string]Metadata{}}
 	seen := map[string]string{}
@@ -144,7 +149,12 @@ func LoadFS(fsys fs.FS) (Catalog, error) {
 		// typeNames maps each schema file name in the directory to its type, for the metadata files.
 		typeNames := map[string]string{}
 		for _, entry := range entries {
-			if entry.IsDir() || !isSchemaFile(entry.Name()) {
+			// bicep-types-aws reads these directories recursively, so a schema in a subdirectory would get a Bicep
+			// type that UCP doesn't serve.
+			if entry.IsDir() {
+				return Catalog{}, fmt.Errorf("the AWS schema directory %s has a subdirectory %s. Put each schema directly in %s", dir.name, entry.Name(), dir.name)
+			}
+			if !isSchemaFile(entry.Name()) {
 				continue
 			}
 			file := path.Join(dir.name, entry.Name())
@@ -170,7 +180,7 @@ func LoadFS(fsys fs.FS) (Catalog, error) {
 			dir.schemas[schema.TypeName] = string(data)
 		}
 		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), metadataSuffix) {
+			if !strings.HasSuffix(entry.Name(), metadataSuffix) {
 				continue
 			}
 			metadata, err := readMetadata(fsys, dir.name, entry.Name(), typeNames)
@@ -178,6 +188,15 @@ func LoadFS(fsys fs.FS) (Catalog, error) {
 				return Catalog{}, err
 			}
 			catalog.Metadata[metadata.TypeName] = metadata
+		}
+		if dir.name != HandWrittenDir {
+			continue
+		}
+		for _, name := range slices.Sorted(maps.Keys(typeNames)) {
+			typeName := typeNames[name]
+			if err := checkHandWritten(name, dir.schemas[typeName], catalog.MetadataOf(typeName)); err != nil {
+				return Catalog{}, fmt.Errorf("the hand-written AWS schema %s %w", path.Join(dir.name, name), err)
+			}
 		}
 	}
 	return catalog, nil
@@ -229,4 +248,141 @@ func readMetadata(fsys fs.FS, dir string, name string, typeNames map[string]stri
 // isSchemaFile reports whether a file name is a schema: a .json file that is not per-type metadata.
 func isSchemaFile(name string) bool {
 	return strings.HasSuffix(name, ".json") && !strings.HasSuffix(name, metadataSuffix)
+}
+
+var (
+	typeNamePattern     = regexp.MustCompile(`^AWS::[A-Za-z0-9]+::[A-Za-z0-9]+$`)
+	propertyNamePattern = regexp.MustCompile(`^[A-Z][A-Za-z0-9]*$`)
+	handlerNames        = []string{"create", "read", "update", "delete", "list"}
+)
+
+// checkHandWritten checks the rules for a hand-written schema, which Radius owns and bicep-types-aws turns into a
+// Bicep type. name is its file name, and metadata is its type's metadata, with defaults:
+//
+//   - the typeName follows CloudFormation's naming, such as AWS::S3::Object, and the file is named after it
+//   - the top-level properties are in PascalCase, as the AWS API's parameter names are
+//   - the primaryIdentifier is set, and it and every create-only, read-only, and write-only path name a property.
+//     A path that names nothing would make UCP skip it, such as a write-only value it never removes from responses
+//   - handlers lists the AWS permissions of create, read, and delete, when a delete calls AWS, and of any other
+//     operation it lists
+func checkHandWritten(name string, data string, metadata Metadata) error {
+	var schema struct {
+		TypeName             string                     `json:"typeName"`
+		Properties           map[string]json.RawMessage `json:"properties"`
+		PrimaryIdentifier    []string                   `json:"primaryIdentifier"`
+		CreateOnlyProperties []string                   `json:"createOnlyProperties"`
+		ReadOnlyProperties   []string                   `json:"readOnlyProperties"`
+		WriteOnlyProperties  []string                   `json:"writeOnlyProperties"`
+		Handlers             map[string]struct {
+			Permissions []string `json:"permissions"`
+		} `json:"handlers"`
+	}
+	var document map[string]any
+	if err := json.Unmarshal([]byte(data), &document); err != nil {
+		return fmt.Errorf("is not a valid schema: %w", err)
+	}
+	if err := json.Unmarshal([]byte(data), &schema); err != nil {
+		return fmt.Errorf("is not a valid schema: %w", err)
+	}
+	if !typeNamePattern.MatchString(schema.TypeName) {
+		return fmt.Errorf("has typeName %q. Use CloudFormation's naming, such as AWS::S3::Object", schema.TypeName)
+	}
+	if want := strings.ToLower(strings.ReplaceAll(schema.TypeName, "::", "-")) + ".json"; name != want {
+		return fmt.Errorf("is for %s, so name the file %s", schema.TypeName, want)
+	}
+
+	if len(schema.Properties) == 0 {
+		return fmt.Errorf("has no properties")
+	}
+	for _, property := range slices.Sorted(maps.Keys(schema.Properties)) {
+		if !propertyNamePattern.MatchString(property) {
+			return fmt.Errorf("has the property %q. Use the AWS API's parameter name in PascalCase, such as ContentType", property)
+		}
+	}
+	if len(schema.PrimaryIdentifier) == 0 {
+		return fmt.Errorf("has no primaryIdentifier")
+	}
+	for _, list := range []struct {
+		field    string
+		pointers []string
+	}{
+		{"primaryIdentifier", schema.PrimaryIdentifier},
+		{"createOnlyProperties", schema.CreateOnlyProperties},
+		{"readOnlyProperties", schema.ReadOnlyProperties},
+		{"writeOnlyProperties", schema.WriteOnlyProperties},
+	} {
+		for _, pointer := range list.pointers {
+			if !resolves(document, pointer) {
+				return fmt.Errorf("has %q in %s, which names no property in the schema", pointer, list.field)
+			}
+		}
+	}
+
+	required := []string{"create", "read"}
+	if metadata.OnDelete == OnDeleteDelete || metadata.OnDelete == OnDeleteReset {
+		required = append(required, "delete")
+	}
+	for _, handler := range required {
+		if _, ok := schema.Handlers[handler]; !ok {
+			return fmt.Errorf("has no %s handler. List the AWS permissions it needs under handlers", handler)
+		}
+	}
+	for _, handler := range slices.Sorted(maps.Keys(schema.Handlers)) {
+		if !slices.Contains(handlerNames, handler) {
+			return fmt.Errorf("has the handler %q. Use create, read, update, delete, or list", handler)
+		}
+		if len(schema.Handlers[handler].Permissions) == 0 {
+			return fmt.Errorf("lists no permissions for its %s handler", handler)
+		}
+	}
+	return nil
+}
+
+// maxRefs is how many $ref hops resolves follows for one value, so a $ref loop fails instead of running forever.
+const maxRefs = 32
+
+// resolves reports whether pointer, such as /properties/Settings/Password or /properties/Grants/*/Secret, names a
+// property in the schema document. It walks the path the way UCP removes write-only values: each segment is a property
+// of an object, and "*" is the items of an array. It follows $ref into definitions.
+func resolves(document map[string]any, pointer string) bool {
+	path, ok := strings.CutPrefix(pointer, "/properties/")
+	if !ok || path == "" {
+		return false
+	}
+	node := document
+	for _, segment := range strings.Split(path, "/") {
+		if node = deref(document, node); node == nil {
+			return false
+		}
+		if segment == "*" {
+			node, ok = node["items"].(map[string]any)
+		} else {
+			properties, _ := node["properties"].(map[string]any)
+			node, ok = properties[segment].(map[string]any)
+		}
+		if !ok {
+			return false
+		}
+	}
+	return deref(document, node) != nil
+}
+
+// deref returns node, or the definition its $ref names, following $ref up to maxRefs times. It returns nil for a $ref
+// that names no definition, or a loop.
+func deref(document map[string]any, node map[string]any) map[string]any {
+	for range maxRefs {
+		ref, ok := node["$ref"].(string)
+		if !ok {
+			return node
+		}
+		name, ok := strings.CutPrefix(ref, "#/definitions/")
+		if !ok {
+			return nil
+		}
+		definitions, _ := document["definitions"].(map[string]any)
+		if node, ok = definitions[name].(map[string]any); !ok {
+			return nil
+		}
+	}
+	return nil
 }

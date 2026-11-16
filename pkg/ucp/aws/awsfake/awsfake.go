@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"uuid"
 
@@ -81,6 +82,11 @@ type CloudControl struct {
 	// its value; otherwise the fake assigns an identifier, like AWS does for a VPC.
 	Identifiers map[string]string
 
+	// Assign maps a type to how the fake names a new resource of it, for a type whose identifier includes a value AWS
+	// assigns, such as an association ID. It returns the identifier and the properties to store, or "" to fall back to
+	// IdentifierOf and Identifiers.
+	Assign map[string]func(properties map[string]any) (string, map[string]any)
+
 	// IdentifierOf maps a type to the function that computes its identifier from its properties, for a type whose
 	// identifier is more than one property. It takes the place of Identifiers for the type, and returns "" when the
 	// properties don't give all of it.
@@ -118,6 +124,7 @@ func NewCloudControl() *CloudControl {
 		Identifiers:  map[string]string{},
 		IdentifierOf: map[string]func(map[string]any) string{},
 		WriteOnly:    map[string][]string{},
+		Assign:       map[string]func(map[string]any) (string, map[string]any){},
 		Errors:       map[string]error{},
 		Before:       map[string]func(){},
 	}
@@ -162,13 +169,25 @@ func (c *CloudControl) Read(typeName string, identifier string) (map[string]any,
 func (c *CloudControl) Create(typeName string, properties map[string]any) string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	identifier, properties := c.name(typeName, properties)
+	c.resources[key(typeName, identifier)] = clone(properties)
+	return identifier
+}
+
+// name returns the identifier of a new resource with properties, and the properties to store: as Assign says for the
+// type, or the value of its identifier property, or one the fake assigns.
+func (c *CloudControl) name(typeName string, properties map[string]any) (string, map[string]any) {
+	if assign := c.Assign[typeName]; assign != nil {
+		if identifier, assigned := assign(properties); identifier != "" {
+			return identifier, assigned
+		}
+	}
 	identifier := c.identifierOf(typeName, properties)
 	if identifier == "" {
 		c.next++
 		identifier = "id-" + strconv.Itoa(c.next)
 	}
-	c.resources[key(typeName, identifier)] = clone(properties)
-	return identifier
+	return identifier, properties
 }
 
 // identifierOf returns the identifier properties give for typeName, or "" when they don't give it.
@@ -328,11 +347,7 @@ func (c *CloudControl) CreateResource(ctx context.Context, params *cloudcontrol.
 	if err := json.Unmarshal([]byte(aws.ToString(params.DesiredState)), &props); err != nil {
 		return nil, err
 	}
-	identifier := c.identifierOf(typeName, props)
-	if identifier == "" {
-		c.next++
-		identifier = "id-" + strconv.Itoa(c.next)
-	}
+	identifier, props := c.name(typeName, props)
 	token := c.accept(cctypes.OperationCreate, typeName, identifier)
 	if c.requests[token].failure == nil {
 		c.resources[key(typeName, identifier)] = props
@@ -459,10 +474,18 @@ type CloudFormation struct {
 
 	// ProvisioningTypes maps a type to its provisioning type. A type that is not in it is FULLY_MUTABLE.
 	ProvisioningTypes map[string]cftypes.ProvisioningType
+
+	describeTypeCalls atomic.Int64
+}
+
+// DescribeTypeCalls returns how many times DescribeType was called.
+func (c *CloudFormation) DescribeTypeCalls() int {
+	return int(c.describeTypeCalls.Load())
 }
 
 // DescribeType returns the schema and provisioning type of a type.
 func (c *CloudFormation) DescribeType(ctx context.Context, params *cloudformation.DescribeTypeInput, optFns ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error) {
+	c.describeTypeCalls.Add(1)
 	schema, ok := c.Schemas[aws.ToString(params.TypeName)]
 	if !ok {
 		return nil, fmt.Errorf("no schema for %s", aws.ToString(params.TypeName))

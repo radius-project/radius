@@ -1,0 +1,106 @@
+{
+  "typeName": "AWS::DocDB::DBInstance",
+  "description": "Resource Type definition for AWS::DocDB::DBInstance",
+  "additionalProperties": false,
+  "properties": {
+    "DBInstanceClass": {
+      "type": "string"
+    },
+    "Port": {
+      "type": "string"
+    },
+    "DBClusterIdentifier": {
+      "type": "string"
+    },
+    "AvailabilityZone": {
+      "type": "string"
+    },
+    "PreferredMaintenanceWindow": {
+      "type": "string"
+    },
+    "EnablePerformanceInsights": {
+      "type": "boolean"
+    },
+    "AutoMinorVersionUpgrade": {
+      "type": "boolean"
+    },
+    "DBInstanceIdentifier": {
+      "type": "string"
+    },
+    "CACertificateIdentifier": {
+      "type": "string"
+    },
+    "CertificateRotationRestart": {
+      "type": "boolean"
+    },
+    "Endpoint": {
+      "type": "string"
+    },
+    "Id": {
+      "type": "string",
+      "description": "The instance identifier, the same as DBInstanceIdentifier."
+    },
+    "Tags": {
+      "type": "array",
+      "uniqueItems": false,
+      "items": {
+        "$ref": "#/definitions/Tag"
+      },
+      "insertionOrder": false
+    }
+  },
+  "definitions": {
+    "Tag": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Value": {
+          "type": "string"
+        },
+        "Key": {
+          "type": "string"
+        }
+      },
+      "required": ["Value", "Key"]
+    }
+  },
+  "required": ["DBInstanceClass", "DBClusterIdentifier"],
+  "createOnlyProperties": [
+    "/properties/DBClusterIdentifier",
+    "/properties/AvailabilityZone",
+    "/properties/DBInstanceIdentifier"
+  ],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": [
+    "/properties/Port",
+    "/properties/Id",
+    "/properties/Endpoint"
+  ],
+  "writeOnlyProperties": ["/properties/CertificateRotationRestart"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "rds:AddTagsToResource",
+        "rds:CreateDBInstance",
+        "rds:DescribeDBInstances"
+      ]
+    },
+    "read": {
+      "permissions": ["rds:DescribeDBInstances", "rds:ListTagsForResource"]
+    },
+    "update": {
+      "permissions": [
+        "rds:AddTagsToResource",
+        "rds:DescribeDBInstances",
+        "rds:ModifyDBInstance",
+        "rds:RemoveTagsFromResource"
+      ]
+    },
+    "delete": {
+      "permissions": ["rds:DeleteDBInstance", "rds:DescribeDBInstances"]
+    },
+    "list": {
+      "permissions": ["rds:DescribeDBInstances", "rds:ListTagsForResource"]
+    }
+  }
+}

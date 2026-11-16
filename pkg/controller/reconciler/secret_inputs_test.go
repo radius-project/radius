@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
 	radapp "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
@@ -41,7 +42,8 @@ func referenceDeployment(t *testing.T) *radapp.DeploymentTemplate {
 	provider, err := sdkclients.GenerateProviderConfig("default", "", "").String()
 	require.NoError(t, err)
 	return &radapp.DeploymentTemplate{
-		ObjectMeta: metav1.ObjectMeta{Name: "app", Namespace: "app", Generation: 1},
+		ObjectMeta: metav1.ObjectMeta{Name: "app", Namespace: "app", UID: "deployment-uid", Generation: 1, Finalizers: []string{DeploymentTemplateFinalizer}},
+		Status:     radapp.DeploymentTemplateStatus{Coordinator: &radapp.DeploymentCoordinatorStatus{Phase: coordinatorIdle}},
 		Spec: radapp.DeploymentTemplateSpec{
 			Template:   `{"parameters":{"password":{"type":"secureString"},"application":{"type":"string"}},"resources":[]}`,
 			Parameters: map[string]string{"application": "orders"},
@@ -58,8 +60,9 @@ func secretTestClient(t *testing.T, objects ...client.Object) client.Client {
 	scheme := runtime.NewScheme()
 	require.NoError(t, corev1.AddToScheme(scheme))
 	require.NoError(t, radapp.AddToScheme(scheme))
+	objects = append(objects, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "app"}})
 	return fake.NewClientBuilder().WithScheme(scheme).
-		WithStatusSubresource(&radapp.DeploymentTemplate{}).WithObjects(objects...).Build()
+		WithStatusSubresource(&radapp.DeploymentTemplate{}, &radapp.DeploymentResource{}).WithObjects(objects...).Build()
 }
 
 type countingReader struct {
@@ -166,7 +169,7 @@ func (c *inputDeploymentClient) CreateOrUpdate(ctx context.Context, deployment s
 	return nil, c.put(ctx, deployment, id)
 }
 
-func (c *inputDeploymentClient) GetDeployment(_ context.Context, id, version string) (sdkclients.ClientCreateOrUpdateResponse, error) {
+func (c *inputDeploymentClient) Get(_ context.Context, id, version string) (sdkclients.ClientCreateOrUpdateResponse, error) {
 	return c.get(id)
 }
 
@@ -209,7 +212,8 @@ func TestSecretSubmissionRecoveryRotationAndRetry(t *testing.T) {
 			submittedID = id
 			stored := &radapp.DeploymentTemplate{}
 			require.NoError(t, base.Get(ctx, client.ObjectKeyFromObject(deployment), stored))
-			require.Equal(t, id, stored.Status.PendingSubmission)
+			require.Equal(t, coordinatorPutDispatching, stored.Status.Coordinator.Phase)
+			require.Equal(t, id, stored.Status.Coordinator.ResourceID)
 			require.NotEmpty(t, stored.Status.AttemptedInputRevision)
 			if puts == 1 {
 				require.Empty(t, stored.Status.AppliedInputRevision)
@@ -220,7 +224,7 @@ func TestSecretSubmissionRecoveryRotationAndRetry(t *testing.T) {
 		get: func(id string) (sdkclients.ClientCreateOrUpdateResponse, error) {
 			require.Equal(t, submittedID, id)
 			return sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{
-				Properties: &armdeployments.DeploymentPropertiesExtended{ProvisioningState: &state},
+				Properties: &armdeployments.DeploymentPropertiesExtended{ProvisioningState: &state, OutputResources: []*armdeployments.ResourceReference{}},
 			}}, nil
 		},
 	}
@@ -235,7 +239,7 @@ func TestSecretSubmissionRecoveryRotationAndRetry(t *testing.T) {
 	stored := &radapp.DeploymentTemplate{}
 	require.NoError(t, base.Get(t.Context(), request.NamespacedName, stored))
 	attempted := stored.Status.AttemptedInputRevision
-	require.NotEmpty(t, stored.Status.PendingSubmission)
+	require.Equal(t, coordinatorPutDispatching, stored.Status.Coordinator.Phase)
 	// A restarted reconciler recovers the deployment through GET without a new PUT.
 	result, err := reconciler.Reconcile(t.Context(), request)
 	require.NoError(t, err)
@@ -254,6 +258,7 @@ func TestSecretSubmissionRecoveryRotationAndRetry(t *testing.T) {
 	require.Equal(t, 1, puts)
 	require.NoError(t, base.Get(t.Context(), request.NamespacedName, stored))
 	require.Equal(t, attempted, stored.Status.AppliedInputRevision)
+	coordinatorStep(t, reconciler, stored)
 	require.Equal(t, radapp.DeploymentTemplatePhraseReady, stored.Status.Phrase)
 	serialized, err := json.Marshal(stored)
 	require.NoError(t, err)
@@ -270,8 +275,13 @@ func TestSecretSubmissionRecoveryRotationAndRetry(t *testing.T) {
 	require.Equal(t, attempted, stored.Status.AppliedInputRevision)
 	// A failed deployment must retry even when the previous successful spec hash matches.
 	state = armdeployments.ProvisioningStateFailed
-	_, err = reconciler.Reconcile(t.Context(), request)
-	require.NoError(t, err)
+	coordinatorStep(t, reconciler, stored)
+	require.Equal(t, coordinatorPutInventoryPending, stored.Status.Coordinator.Phase)
+	coordinatorStep(t, reconciler, stored)
+	require.Equal(t, coordinatorRetryWaiting, stored.Status.Coordinator.Phase)
+	stored.Status.Coordinator.RetryAfter = &metav1.Time{Time: time.Now().Add(-time.Minute)}
+	require.NoError(t, base.Status().Update(t.Context(), stored))
+	coordinatorStep(t, reconciler, stored)
 	require.Equal(t, 3, puts)
 	require.NoError(t, base.Get(t.Context(), request.NamespacedName, stored))
 	require.Equal(t, attempted, stored.Status.AppliedInputRevision)
@@ -301,14 +311,13 @@ func TestSecretSubmissionUncertainFailsClosed(t *testing.T) {
 	request := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(deployment)}
 	for range 3 {
 		_, err := r.Reconcile(t.Context(), request)
-		require.Error(t, err)
-		require.NotContains(t, err.Error(), "resolved-secret-marker")
+		require.NoError(t, err)
 	}
 	require.Equal(t, 1, puts)
 	stored := &radapp.DeploymentTemplate{}
 	require.NoError(t, c.Get(t.Context(), request.NamespacedName, stored))
-	require.Equal(t, radapp.DeploymentTemplatePhraseFailed, stored.Status.Phrase)
-	require.NotEmpty(t, stored.Status.PendingSubmission)
+	require.Equal(t, coordinatorPutRunning, stored.Status.Coordinator.Phase)
+	require.NotEmpty(t, stored.Status.Operation.DeploymentID)
 	require.Empty(t, stored.Status.AppliedInputRevision)
 	data, err := json.Marshal(stored)
 	require.NoError(t, err)
@@ -333,10 +342,11 @@ func TestSecretInputFailureDoesNotReusePreviousSuccess(t *testing.T) {
 	}
 	request := ctrl.Request{NamespacedName: client.ObjectKeyFromObject(deployment)}
 	_, err = r.Reconcile(t.Context(), request)
-	require.ErrorContains(t, err, "SecretInputUnavailable")
+	require.NoError(t, err)
 	stored := &radapp.DeploymentTemplate{}
 	require.NoError(t, c.Get(t.Context(), request.NamespacedName, stored))
 	require.Equal(t, radapp.DeploymentTemplatePhraseFailed, stored.Status.Phrase)
+	require.Contains(t, stored.Status.Coordinator.Message, "SecretInputUnavailable")
 	require.Equal(t, "previous-success", stored.Status.AppliedInputRevision)
 	require.Nil(t, stored.Status.Operation)
 }
@@ -346,6 +356,8 @@ func TestSecretOperationOutputTrackingRetry(t *testing.T) {
 	deployment.UID = "deployment-uid"
 	deployment.Status.Operation = &radapp.ResourceOperation{OperationKind: radapp.OperationKindPut, DeploymentID: "/deployment"}
 	deployment.Status.AttemptedInputRevision = "attempt"
+	deployment.Status.Coordinator.Phase = coordinatorPutRunning
+	deployment.Status.Coordinator.ResourceID = "/deployment"
 	deployment.Status.ObservedGeneration = deployment.Generation
 	base := secretTestClient(t, deployment)
 	c := &failingStatusClient{Client: base, failAt: 1}
@@ -364,22 +376,87 @@ func TestSecretOperationOutputTrackingRetry(t *testing.T) {
 		},
 	}
 	// Output tracking succeeded, but saving the applied revision failed.
-	_, err := r.reconcileOperation(t.Context(), deployment)
+	_, err := r.pollPut(t.Context(), deployment)
 	require.ErrorContains(t, err, "status write failure")
 	require.NoError(t, base.Get(t.Context(), client.ObjectKeyFromObject(deployment), deployment))
 	require.Empty(t, deployment.Status.AppliedInputRevision)
-	_, err = r.reconcileOperation(t.Context(), deployment)
+	_, err = r.pollPut(t.Context(), deployment)
 	require.NoError(t, err)
 	require.Equal(t, "attempt", deployment.Status.AppliedInputRevision)
+	// Inventory is durable before trackers are projected, even if inputs are now unavailable.
+	require.Len(t, deployment.Status.Coordinator.Outputs, 1)
 	resources := &radapp.DeploymentResourceList{}
 	require.NoError(t, base.List(t.Context(), resources))
-	require.Len(t, resources.Items, 1)
+	require.Empty(t, resources.Items)
+}
+
+func TestSecretCoordinatorAdoptsPendingSubmission(t *testing.T) {
+	deployment := referenceDeployment(t)
+	deployment.Status.Coordinator = nil
+	deployment.Status.PendingSubmission = "/deployment"
+	deployment.Status.AttemptedInputRevision = "attempt"
+	c := secretTestClient(t, deployment)
+	state := armdeployments.ProvisioningStateSucceeded
+	r := &DeploymentTemplateReconciler{
+		Client: c, EventRecorder: record.NewFakeRecorder(10),
+		ResourceDeploymentsClient: &inputDeploymentClient{
+			get: func(id string) (sdkclients.ClientCreateOrUpdateResponse, error) {
+				require.Equal(t, "/deployment", id)
+				return sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{
+					Properties: &armdeployments.DeploymentPropertiesExtended{ProvisioningState: &state},
+				}}, nil
+			},
+		},
+	}
+	coordinatorStep(t, r, deployment)
+	require.Empty(t, deployment.Status.PendingSubmission)
+	require.Equal(t, coordinatorPutRunning, deployment.Status.Coordinator.Phase)
+	require.Equal(t, "/deployment", deployment.Status.Coordinator.ResourceID)
+	require.Empty(t, deployment.Status.Operation.ResumeToken)
+	coordinatorStep(t, r, deployment)
+	require.Equal(t, "attempt", deployment.Status.AppliedInputRevision)
+}
+
+func TestSecretCoordinatorRetainsFailedInventory(t *testing.T) {
+	deployment := referenceDeployment(t)
+	deployment.Status.Coordinator.Phase = coordinatorPutRunning
+	deployment.Status.Coordinator.ResourceID = "/deployment"
+	deployment.Status.Operation = &radapp.ResourceOperation{OperationKind: radapp.OperationKindPut, DeploymentID: "/deployment"}
+	deployment.Status.AttemptedInputRevision = "attempt"
+	deployment.Status.AppliedInputRevision = "previous-success"
+	c := secretTestClient(t, deployment)
+	state := armdeployments.ProvisioningStateFailed
+	var outputs []*armdeployments.ResourceReference
+	events := record.NewFakeRecorder(10)
+	r := &DeploymentTemplateReconciler{
+		Client: c, EventRecorder: events,
+		ResourceDeploymentsClient: &inputDeploymentClient{
+			get: func(string) (sdkclients.ClientCreateOrUpdateResponse, error) {
+				return sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{
+					Properties: &armdeployments.DeploymentPropertiesExtended{ProvisioningState: &state, OutputResources: outputs},
+				}}, nil
+			},
+		},
+	}
+	coordinatorStep(t, r, deployment)
+	require.Equal(t, coordinatorPutInventoryPending, deployment.Status.Coordinator.Phase)
+	coordinatorStep(t, r, deployment)
+	require.Equal(t, coordinatorPutInventoryPending, deployment.Status.Coordinator.Phase, "missing inventory cannot permit another submission")
+	require.NotNil(t, deployment.Status.Operation)
+	id := "/planes/radius/local/resourceGroups/default/providers/Applications.Core/containers/partial"
+	outputs = []*armdeployments.ResourceReference{{ID: &id}}
+	coordinatorStep(t, r, deployment)
+	require.Equal(t, coordinatorRetryWaiting, deployment.Status.Coordinator.Phase)
+	require.Equal(t, []radapp.DeploymentOutputStatus{{ID: id, State: outputCurrent}}, deployment.Status.Coordinator.Outputs)
+	require.Equal(t, "previous-success", deployment.Status.AppliedInputRevision)
 }
 
 func TestSecretRotationDuringOperationAndDeletion(t *testing.T) {
 	deployment := referenceDeployment(t)
 	deployment.Status.Operation = &radapp.ResourceOperation{OperationKind: radapp.OperationKindPut, DeploymentID: "/deployment"}
 	deployment.Status.AttemptedInputRevision = "old-attempt"
+	deployment.Status.Coordinator.Phase = coordinatorPutRunning
+	deployment.Status.Coordinator.ResourceID = "/deployment"
 	deployment.Status.ObservedGeneration = deployment.Generation
 	deployment.Finalizers = []string{DeploymentTemplateFinalizer}
 	c := secretTestClient(t, deployment)
@@ -400,12 +477,17 @@ func TestSecretRotationDuringOperationAndDeletion(t *testing.T) {
 	require.NoError(t, err)
 	state = armdeployments.ProvisioningStateSucceeded
 	_, err = r.Reconcile(t.Context(), request)
-	require.ErrorContains(t, err, "SecretInputUnavailable")
+	require.NoError(t, err)
+	_, err = r.Reconcile(t.Context(), request)
+	require.NoError(t, err)
 	require.NoError(t, c.Get(t.Context(), request.NamespacedName, deployment))
 	require.Equal(t, "old-attempt", deployment.Status.AppliedInputRevision)
 	require.Equal(t, radapp.DeploymentTemplatePhraseFailed, deployment.Status.Phrase)
 	// Deletion must finish without resolving now-unavailable inputs.
 	require.NoError(t, c.Delete(t.Context(), deployment))
+	require.NoError(t, c.Get(t.Context(), request.NamespacedName, deployment))
+	deployment.Status.Coordinator.RetryAfter = &metav1.Time{Time: time.Now().Add(-time.Minute)}
+	require.NoError(t, c.Status().Update(t.Context(), deployment))
 	_, err = r.Reconcile(t.Context(), request)
 	require.NoError(t, err)
 	require.Error(t, c.Get(t.Context(), request.NamespacedName, &radapp.DeploymentTemplate{}))

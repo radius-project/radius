@@ -122,6 +122,9 @@ jobs:
           node-version-file: .node-version
           package-manager-cache: false
 
+      - name: Install workflow test YAML parser
+        run: make install-yq
+
       - name: Test Bicep publishing
         run: node --test .github/scripts/bicep-types.test.mjs
 

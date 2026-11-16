@@ -17,6 +17,7 @@ limitations under the License.
 package native_test
 
 import (
+	"context"
 	"regexp"
 	"testing"
 	"time"
@@ -80,6 +81,53 @@ func Test_NewRegistry_Metadata(t *testing.T) {
 
 	_, err = native.NewRegistry(catalog, noReset{nativefake.New("AWS::IAM::AccountPasswordPolicy", store)})
 	require.EqualError(t, err, "the AWS type AWS::IAM::AccountPasswordPolicy resets on delete, but its native handler has no Reset method")
+}
+
+func Test_NewRegistry_ListHandler(t *testing.T) {
+	store := awsfake.NewCloudControl()
+	register := func(schema string, list native.ListSupport, handWritten bool) error {
+		h := nativefake.New("AWS::S3::Object", store)
+		h.Opts.List = list
+		catalog := schemas.Catalog{Native: map[string]string{"AWS::S3::Object": schema}}
+		if handWritten {
+			catalog = schemas.Catalog{HandWritten: map[string]string{"AWS::S3::Object": schema}}
+		}
+		_, err := native.NewRegistry(catalog, h)
+		return err
+	}
+	withList := `{"handlers": {"list": {"permissions": ["s3:ListBucket"]}}}`
+
+	tests := []struct {
+		name        string
+		schema      string
+		list        native.ListSupport
+		handWritten bool
+		wantErr     string
+	}{
+		{name: "lists by region with a list handler", schema: withList, list: native.ListRegion, handWritten: true},
+		{name: "lists under a parent with a list handler", schema: withList, list: native.ListParent, handWritten: true},
+		{name: "can't list with no list handler", schema: `{"handlers": {}}`, list: native.ListNone, handWritten: true},
+		{
+			name: "can list with no list handler", schema: `{}`, list: native.ListRegion, handWritten: true,
+			wantErr: "the native handler for the AWS type AWS::S3::Object: it can list, but its schema has no list handler. Add one with the AWS permissions a list needs",
+		},
+		{
+			name: "can't list with a list handler", schema: withList, list: native.ListNone, handWritten: true,
+			wantErr: "the native handler for the AWS type AWS::S3::Object: it can't list, but its schema has a list handler. Remove it from the schema",
+		},
+		{name: "handlers that aren't an object", schema: `{"handlers": []}`, handWritten: true, wantErr: "its schema can't be read"},
+		{name: "a native schema is AWS's, so it isn't checked", schema: withList, list: native.ListNone},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := register(tt.schema, tt.list, tt.handWritten)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
 }
 
 // noReset is a handler without a Reset method.
@@ -192,4 +240,66 @@ func Test_Failure(t *testing.T) {
 func Test_OtherProductError(t *testing.T) {
 	err := &native.OtherProductError{Identifier: "app-docdb", Product: "aurora-postgresql"}
 	require.Equal(t, `the AWS identifier "app-docdb" belongs to another product (aurora-postgresql)`, err.Error())
+}
+
+// readsOnlyScoped has ReadScoped but no DeleteScoped.
+type readsOnlyScoped struct {
+	native.Handler
+}
+
+func (readsOnlyScoped) ReadScoped(ctx context.Context, region string, identifier string, managed []map[string]any) (map[string]any, error) {
+	return nil, nil
+}
+
+func Test_NewRegistry_Scoped(t *testing.T) {
+	store := awsfake.NewCloudControl()
+	catalog := schemas.Catalog{Native: map[string]string{"AWS::IAM::UserToGroupAddition": `{}`}}
+	h := nativefake.New("AWS::IAM::UserToGroupAddition", store)
+
+	_, err := native.NewRegistry(catalog, h.Scoped("Users"))
+	require.NoError(t, err)
+
+	_, err = native.NewRegistry(catalog, readsOnlyScoped{h})
+	require.EqualError(t, err, "the native handler for the AWS type AWS::IAM::UserToGroupAddition must have both ReadScoped and DeleteScoped, or neither")
+}
+
+func Test_NewRegistry_Members(t *testing.T) {
+	catalog := schemas.Catalog{Native: map[string]string{"AWS::IAM::UserToGroupAddition": `{}`}}
+	h := nativefake.New("AWS::IAM::UserToGroupAddition", awsfake.NewCloudControl())
+	h.Opts.Members = &native.Members{Parent: "GroupName", List: "Users"}
+
+	_, err := native.NewRegistry(catalog, h.Scoped("Users"))
+	require.NoError(t, err)
+
+	_, err = native.NewRegistry(catalog, h)
+	require.EqualError(t, err, "the native handler for the AWS type AWS::IAM::UserToGroupAddition names members, so it must have ReadScoped, a parent, and a list")
+}
+
+func Test_Members(t *testing.T) {
+	users := &native.Members{Parent: "GroupName", List: "Users", IgnoreCase: true}
+	parent, members := users.Of("", map[string]any{"GroupName": "Admins", "Users": []any{"Ana", "bo", "ANA"}})
+	require.Equal(t, "admins", parent)
+	require.Equal(t, []string{"ana", "bo"}, members, "each member once, in lowercase")
+
+	parent, _ = users.Of("Ops|radius-0123456789ab", map[string]any{"Users": []any{"ana"}})
+	require.Equal(t, "ops", parent, "the identifier names the parent")
+
+	properties := map[string]any{"GroupName": "admins", "Users": []any{"Ana", "bo"}}
+	require.Equal(t, map[string]any{"GroupName": "admins", "Users": []any{"bo"}}, users.Without(properties, map[string]bool{"ana": true}))
+	require.Equal(t, []any{"Ana", "bo"}, properties["Users"], "Without doesn't change its argument")
+
+	certificates := &native.Members{Parent: "ListenerArn", List: "Certificates", Key: "CertificateArn"}
+	listed := map[string]any{"ListenerArn": "arn:l", "Certificates": []any{map[string]any{"CertificateArn": "arn:A"}, map[string]any{"CertificateArn": "arn:b"}}}
+	parent, members = certificates.Of("", listed)
+	require.Equal(t, "arn:l", parent)
+	require.Equal(t, []string{"arn:A", "arn:b"}, members, "ARNs keep their case")
+	require.Equal(t, []any{map[string]any{"CertificateArn": "arn:b"}}, certificates.Without(listed, map[string]bool{"arn:A": true})["Certificates"])
+	require.Equal(t, listed, certificates.Without(listed, map[string]bool{"arn:a": true}))
+}
+
+func Test_GenerateName(t *testing.T) {
+	name := native.GenerateName("token")
+	require.Regexp(t, `^radius-[0-9a-f]{12}$`, name)
+	require.Equal(t, name, native.GenerateName("token"))
+	require.NotEqual(t, name, native.GenerateName("other"))
 }

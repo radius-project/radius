@@ -29,6 +29,10 @@ type DeploymentResourceSpec struct {
 
 // DeploymentResourceStatus defines the observed state of a DeploymentResource resource.
 type DeploymentResourceStatus struct {
+	// ProvisionedResourceID records the output identity confirmed by the template controller.
+	// Only the status subresource may write this field; metadata and spec are not provenance.
+	ProvisionedResourceID string `json:"provisionedResourceID,omitempty"`
+
 	// Id is the resource id of the Radius resource.
 	Id string `json:"id,omitempty"`
 

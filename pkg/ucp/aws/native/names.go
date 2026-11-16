@@ -109,3 +109,12 @@ func (r *NameRules) fit(hexCharacters string) string {
 	}
 	return name
 }
+
+// GenerateName returns "radius-" followed by 12 lowercase hex characters of the SHA-256 hash of seed, such as
+// radius-3f9a1c0b7d2e, as a name UCP generates. A handler whose identifier has a part UCP makes, such as a type whose
+// resource is some members of a parent (ScopedReader), uses it with the record's client token, so every attempt of
+// one create gets the same identifier.
+func GenerateName(seed string) string {
+	sum := sha256.Sum256([]byte(seed))
+	return (&NameRules{}).fit(hex.EncodeToString(sum[:])[:generatedHexLength])
+}

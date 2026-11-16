@@ -1,0 +1,174 @@
+{
+  "typeName": "AWS::LakeFormation::Permissions",
+  "description": "Resource Type definition for AWS::LakeFormation::Permissions",
+  "additionalProperties": false,
+  "properties": {
+    "Resource": {
+      "$ref": "#/definitions/Resource"
+    },
+    "Permissions": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      }
+    },
+    "Id": {
+      "type": "string",
+      "description": "DataLakePrincipal and Resource, as a JSON object. The resource is the permissions in Permissions and PermissionsWithGrantOption, so other permissions of the principal on the resource stay as they are."
+    },
+    "DataLakePrincipal": {
+      "$ref": "#/definitions/DataLakePrincipal"
+    },
+    "PermissionsWithGrantOption": {
+      "type": "array",
+      "insertionOrder": false,
+      "uniqueItems": false,
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "definitions": {
+    "DataLakePrincipal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "DataLakePrincipalIdentifier": {
+          "type": "string"
+        }
+      }
+    },
+    "TableResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "DatabaseName": {
+          "type": "string"
+        },
+        "CatalogId": {
+          "type": "string"
+        },
+        "TableWildcard": {
+          "$ref": "#/definitions/TableWildcard"
+        },
+        "Name": {
+          "type": "string"
+        }
+      }
+    },
+    "Resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "DatabaseResource": {
+          "$ref": "#/definitions/DatabaseResource"
+        },
+        "DataLocationResource": {
+          "$ref": "#/definitions/DataLocationResource"
+        },
+        "TableWithColumnsResource": {
+          "$ref": "#/definitions/TableWithColumnsResource"
+        },
+        "TableResource": {
+          "$ref": "#/definitions/TableResource"
+        }
+      }
+    },
+    "DatabaseResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "CatalogId": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        }
+      }
+    },
+    "DataLocationResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "S3Resource": {
+          "type": "string"
+        },
+        "CatalogId": {
+          "type": "string"
+        }
+      }
+    },
+    "TableWildcard": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "TableWithColumnsResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "DatabaseName": {
+          "type": "string"
+        },
+        "ColumnNames": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "type": "string"
+          }
+        },
+        "CatalogId": {
+          "type": "string"
+        },
+        "Name": {
+          "type": "string"
+        },
+        "ColumnWildcard": {
+          "$ref": "#/definitions/ColumnWildcard"
+        }
+      }
+    },
+    "ColumnWildcard": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ExcludedColumnNames": {
+          "type": "array",
+          "uniqueItems": false,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": ["DataLakePrincipal", "Resource"],
+  "createOnlyProperties": [
+    "/properties/DataLakePrincipal",
+    "/properties/Resource"
+  ],
+  "primaryIdentifier": ["/properties/Id"],
+  "readOnlyProperties": ["/properties/Id"],
+  "handlers": {
+    "create": {
+      "permissions": ["lakeformation:GrantPermissions", "sts:GetCallerIdentity"]
+    },
+    "read": {
+      "permissions": ["lakeformation:ListPermissions", "sts:GetCallerIdentity"]
+    },
+    "update": {
+      "permissions": [
+        "lakeformation:GrantPermissions",
+        "lakeformation:RevokePermissions",
+        "sts:GetCallerIdentity"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "lakeformation:ListPermissions",
+        "lakeformation:RevokePermissions"
+      ]
+    }
+  }
+}

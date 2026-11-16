@@ -119,6 +119,53 @@ type Resetter interface {
 	Reset(ctx context.Context, region string, identifier string) error
 }
 
+// DeletePreparer is implemented by a handler whose delete must send the same value on every attempt, so a retried
+// delete never takes a second copy of the data, such as the name of a DocumentDB cluster's final snapshot or the
+// idempotency token of an FSx delete. Before the first delete call, UCP calls DeleteToken and saves the value on the
+// record, then calls DeleteWithToken instead of Delete with that value on every attempt. A create or update clears the
+// value, and so does a delete whose Progress reports that it failed, so the next delete gets a new one. A DeleteWithToken
+// call that returns an error, a timeout, or an error while waiting keeps it, because the delete may still be running.
+type DeletePreparer interface {
+	// DeleteToken returns the value to send with every attempt to delete the resource with the identifier. UCP calls
+	// it once per delete, so it may use the current time.
+	DeleteToken(ctx context.Context, region string, identifier string) (string, error)
+
+	// DeleteWithToken starts deleting the resource with the identifier, as Delete does, sending token.
+	DeleteWithToken(ctx context.Context, region string, identifier string, token string) error
+}
+
+// ScopedReader is implemented by a handler whose resource is some members of a parent that others can add members to
+// as well, such as users a template adds to an existing IAM group. Read alone sees every member of the parent, so a
+// redeploy would remove members added outside Radius. UCP calls ReadScoped instead of Read, with the property sets the
+// alias may have applied: on a PUT, the last-applied, possibly applied, and desired properties, and otherwise the
+// last-applied and possibly applied ones. A handler that implements ScopedReader also implements ScopedDeleter.
+type ScopedReader interface {
+	// ReadScoped returns the properties of the resource with the identifier, with only the members that one of
+	// managed lists, or ErrNotFound when the parent has none of them. managed is nil when UCP has no record of the
+	// resource, such as for `existing`, and then every member is returned.
+	ReadScoped(ctx context.Context, region string, identifier string, managed []map[string]any) (map[string]any, error)
+}
+
+// ScopedDeleter is implemented by a handler that implements ScopedReader. UCP calls DeleteScoped instead of Delete,
+// with the last-applied and possibly applied properties, so the delete removes only the members the alias may have
+// added and leaves the rest of the parent as it is.
+type ScopedDeleter interface {
+	// DeleteScoped starts removing the members managed lists from the resource with the identifier. It returns
+	// ErrNotFound when the parent has none of them.
+	DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error
+}
+
+// IdentifierResolver is implemented by a handler whose identifier has more than one form for one resource, such as one
+// that names a default value, like the current account, or leaves it out. UCP resolves every identifier it takes from
+// a template or a name to the handler's one form, before it looks up the alias that holds it, reserves it, or saves
+// it. The identifiers the handler returns, from Create, Find, and List, must already be in that form. A record holds
+// the resolved form, so a request by alias needs no resolving.
+type IdentifierResolver interface {
+	// ResolveIdentifier returns the handler's one form of identifier. An error is reported as handleError reports a
+	// handler's error, such as 400 for a client failure.
+	ResolveIdentifier(ctx context.Context, region string, identifier string) (string, error)
+}
+
 // Finder is implemented by a handler whose Options().Recovery is RecoverBySearch.
 type Finder interface {
 	// Find returns the identifier of the resource a create sent with request made, or "" when AWS has none. It finds
@@ -285,6 +332,17 @@ type Options struct {
 	// leaves out something the last deploy set, such as a field inside a list item, so a rule that lets AWS's value
 	// hold more than the template, such as defaults AWS fills in, never hides a removal.
 	Equivalent func(path string, template any, aws any) bool
+
+	// RecordedEquivalent is Equivalent for a rule only a record of the last deploy can justify, such as a KMS alias AWS
+	// reports as the key's ARN, or values AWS adds to a create-only list that could also have been set outside the
+	// template. UCP uses it only where the last deploy set the template's value, so it never counts AWS's value as the
+	// template's without a record, such as when a PUT takes over a resource by name. Such a value the template changes
+	// is then always a change.
+	RecordedEquivalent func(path string, template any, aws any) bool
+
+	// Members, for a handler that implements ScopedReader and gives each alias its own identifier, names the members
+	// two aliases must not both hold (see Members).
+	Members *Members
 
 	// DisruptiveUpdate is true for a type whose update restarts or interrupts the resource, such as one that must be
 	// stopped to change, so an update UCP doesn't need costs more than a failed deploy. When Equivalent counts AWS's

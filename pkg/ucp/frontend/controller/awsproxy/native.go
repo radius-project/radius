@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"maps"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -189,6 +190,20 @@ func identifierFor(t *native.Type, properties map[string]any, schema string) (st
 	return t.Handler.(native.IdentifierEncoder).Identifier(properties)
 }
 
+// resolveIdentifier returns the one form of identifier that the native handler of t declares (native.IdentifierResolver),
+// with either handler, as an identifier encoding applies with either handler. It returns identifier when the type has
+// no native handler, or one form, or there is no identifier.
+func resolveIdentifier(ctx context.Context, t *native.Type, region string, identifier string) (string, error) {
+	if t == nil || identifier == "" {
+		return identifier, nil
+	}
+	resolver, ok := t.Handler.(native.IdentifierResolver)
+	if !ok {
+		return identifier, nil
+	}
+	return resolver.ResolveIdentifier(ctx, region, identifier)
+}
+
 // segmentEscaper escapes the characters that would split a resource ID segment, and "%", so the escaping can be
 // reversed.
 var segmentEscaper = strings.NewReplacer("%", "%25", "/", "%2F")
@@ -271,9 +286,16 @@ func identifierRequired(r *request, schema string) (armrpc_rest.Response, error)
 }
 
 // readNative reads a resource through the native handler. It returns the result in Cloud Control's shape, so the
-// rest of the engine treats both handlers the same, and nil when AWS has no such resource.
-func readNative(ctx context.Context, h native.Handler, region string, identifier string) (*cloudcontrol.GetResourceOutput, error) {
-	properties, err := h.Read(ctx, region, identifier)
+// rest of the engine treats both handlers the same, and nil when AWS has no such resource. A handler that reads only
+// the members it manages (native.ScopedReader) gets managed.
+func readNative(ctx context.Context, h native.Handler, region string, identifier string, managed []map[string]any) (*cloudcontrol.GetResourceOutput, error) {
+	var properties map[string]any
+	var err error
+	if scoped, ok := h.(native.ScopedReader); ok {
+		properties, err = scoped.ReadScoped(ctx, region, identifier, managed)
+	} else {
+		properties, err = h.Read(ctx, region, identifier)
+	}
 	if errors.Is(err, native.ErrNotFound) {
 		return nil, nil
 	} else if err != nil {
@@ -342,15 +364,49 @@ func (e *engine) startCreate(ctx context.Context, r *request, rec *datamodel.AWS
 	return aws.ToString(response.ProgressEvent.Identifier), aws.ToString(response.ProgressEvent.RequestToken), nil
 }
 
+// prepareDelete saves on the record the value a native handler sends with every attempt to delete the resource
+// (native.DeletePreparer), before the first delete call, so a retried delete sends the same value. It returns the new
+// ETag, or etag when there is nothing to save.
+func (e *engine) prepareDelete(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, identifier string) (string, error) {
+	preparer, ok := r.handler.(native.DeletePreparer)
+	_, scoped := r.handler.(native.ScopedDeleter)
+	if !ok || scoped || rec.Properties.DeleteToken != "" || onDelete(r) == schemas.OnDeleteReset {
+		return etag, nil
+	}
+	token, err := preparer.DeleteToken(ctx, r.region, identifier)
+	if err != nil || token == "" {
+		return etag, err
+	}
+	rec.Properties.DeleteToken = token
+	saved, err := e.store.Save(ctx, rec, etag)
+	if err != nil {
+		rec.Properties.DeleteToken = ""
+		return etag, fmt.Errorf("failed to save the delete token of %s: %w", r.id.String(), err)
+	}
+	return saved, nil
+}
+
 // startDeleteCall starts a delete and returns the token the worker polls. For a type whose onDelete metadata is reset,
-// the native handler resets the resource instead (native.Resetter). Where Cloud Control serves such a type, Cloud
-// Control deletes it as CloudFormation defines.
-func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier string) (string, error) {
+// the native handler resets the resource instead (native.Resetter). A native handler that removes only the members it
+// manages (native.ScopedDeleter) gets the record's managed values, even when it also sends a delete token, and one
+// that sends the same value on every attempt (native.DeletePreparer) gets deleteToken. Where Cloud Control serves the type, Cloud Control deletes it as
+// CloudFormation defines.
+func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier string, deleteToken string) (string, error) {
 	if r.handler != nil {
 		var err error
-		if resetter, ok := r.handler.(native.Resetter); ok && onDelete(r) == schemas.OnDeleteReset {
+		resetter, resets := r.handler.(native.Resetter)
+		scoped, isScoped := r.handler.(native.ScopedDeleter)
+		preparer, prepares := r.handler.(native.DeletePreparer)
+		switch {
+		case resets && onDelete(r) == schemas.OnDeleteReset:
 			err = resetter.Reset(ctx, r.region, identifier)
-		} else {
+		case isScoped:
+			// DeleteScoped removes only the members the alias manages, so it comes before a delete token, which
+			// deletes the whole resource.
+			err = scoped.DeleteScoped(ctx, r.region, identifier, r.managed)
+		case prepares && deleteToken != "":
+			err = preparer.DeleteWithToken(ctx, r.region, identifier, deleteToken)
+		default:
 			err = r.handler.Delete(ctx, r.region, identifier)
 		}
 		if err != nil {
@@ -377,8 +433,9 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //     properties, because the template may have changed since. If AWS has none, the create is sent again with the
 //     template. If another alias manages the resource Find returns, the request gets 409.
 //   - RecoverByResend: the create is sent again with the template. AWS may return the first resource, with the lost
-//     create's values, so UCP treats the result like a found resource rather than a new create. When the create
-//     fails but returns an identifier, the record keeps it (see identifierToKeep), and the request fails.
+//     create's values, so UCP treats the result like a found resource rather than a new create. For a handler whose
+//     resource is some members of a parent, UCP first saves the members of both (see saveResendMembers). When the
+//     create fails but returns an identifier, the record keeps it (see identifierToKeep), and the request fails.
 //
 // When UCP reads the resource, it continues by what AWS shows:
 //
@@ -388,12 +445,19 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //     deploy sends them.
 //   - created: the create is finished, and the request continues as an update with the template, which sends every
 //     write-only value, because the record has no fingerprints for them.
-//   - failed: the request returns the failure, and the record stays, so a DELETE can remove the resource.
+//   - failed, and AWS changed nothing (native.OutcomeRejected), such as a GraphQL schema AppSync couldn't create: the
+//     create is sent again with this deploy's template.
+//   - failed otherwise: the request returns the failure, and the record stays, so a DELETE can remove the resource.
 func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, properties map[string]any, deploy applied, typeInfo *cloudformation.DescribeTypeOutput, parsed *typeSchema, secrets []string) (armrpc_rest.Response, error) {
 	identifier := rec.Properties.AWSIdentifier
 	if identifier == "" {
 		var err error
 		if r.handler.Options().Recovery == native.RecoverByResend {
+			var resp armrpc_rest.Response
+			etag, resp, err = e.saveResendMembers(ctx, r, rec, etag, deploy, parsed)
+			if resp != nil || err != nil {
+				return resp, err
+			}
 			identifier, err = e.resendCreate(ctx, r, rec, properties)
 		} else {
 			identifier, err = e.findCreate(ctx, r, rec, rec.Properties.PendingLastApplied)
@@ -427,6 +491,8 @@ func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamo
 			return nil, err
 		}
 		return conflict("A create of the AWS resource %q is still running in AWS. Deploy again when it finishes.", r.id.Name()), nil
+	case progress.Failure != nil && progress.Failure.Outcome == native.OutcomeRejected:
+		return e.create(ctx, r, rec, etag, "", properties, deploy, typeInfo, parsed, secrets)
 	case progress.Failure != nil:
 		return failureResponse(r.id, progress.Failure), nil
 	}
@@ -557,6 +623,42 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 	return etag, nil, nil
 }
 
+// saveResendMembers saves the record before a create is sent again with the template, for a handler whose resource is
+// some members of a parent (native.ScopedReader). The create sent again may add the template's members and then fail,
+// so the pending values become the template's, with the members of the lost create added, and a DELETE removes the
+// members of both. Which attempt's write-only values AWS has is unknown, so the record keeps no fingerprints for them.
+//
+// A template that changes a create-only property of the lost create, such as the parent, gets 400 and nothing is
+// saved or sent: sending the create again would add members to another parent, and the record would lose the lost
+// create's members.
+func (e *engine) saveResendMembers(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, deploy applied, parsed *typeSchema) (string, armrpc_rest.Response, error) {
+	if _, scoped := r.handler.(native.ScopedReader); !scoped {
+		return etag, nil, nil
+	}
+	patch, err := jsondiff.Compare(rec.Properties.PendingLastApplied, deploy.properties)
+	if err != nil {
+		return "", nil, err
+	}
+	// The pending values have no write-only values, so the template's aren't changes.
+	patch = slices.DeleteFunc(patch, func(op jsondiff.Operation) bool {
+		_, ok := parsed.writeOnlyPattern(op.Path)
+		return ok
+	})
+	if resp := createOnlyChanged(r, parsed, patch); resp != nil {
+		return "", resp, nil
+	}
+	pending := maps.Clone(deploy.properties)
+	addMembers(pending, rec.Properties.PendingLastApplied)
+	rec.Properties.PendingLastApplied = pending
+	rec.Properties.PendingFingerprints = nil
+	etag, err = e.store.Save(ctx, rec, etag)
+	if err != nil {
+		resp, err := saveError(r.id, err)
+		return "", resp, err
+	}
+	return etag, nil, nil
+}
+
 // identifierToKeep returns the identifier a resent create returned along with an error, so the record can keep it:
 // AWS may have made the resource before the error, such as when a later call of a create that takes more than one
 // call failed. The next request then reads AWS by the identifier instead of sending the failing create again. It
@@ -631,12 +733,20 @@ func rejected(r *request) armrpc_rest.Response {
 }
 
 // equivalentFor returns the native handler's rule for values AWS returns in another form, or nil when there is none.
-// It applies with either handler, because both read the same resource.
-func equivalentFor(r *request) func(path string, template any, aws any) bool {
+// It applies with either handler, because both read the same resource. recorded is whether UCP has a record of the
+// last deploy's values: only then does it add the handler's RecordedEquivalent, which GeneratePatchWithOptions then
+// uses only where the last deploy set the template's value.
+func equivalentFor(r *request, recorded bool) func(path string, template any, aws any) bool {
 	if r.native == nil {
 		return nil
 	}
-	return r.native.Handler.Options().Equivalent
+	options := r.native.Handler.Options()
+	if !recorded || options.RecordedEquivalent == nil {
+		return options.Equivalent
+	}
+	return func(path string, template any, aws any) bool {
+		return (options.Equivalent != nil && options.Equivalent(path, template, aws)) || options.RecordedEquivalent(path, template, aws)
+	}
 }
 
 // outcomeOf returns how much of a start call that failed with err AWS applied: the outcome a native handler reports

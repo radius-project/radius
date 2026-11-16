@@ -17,8 +17,14 @@ limitations under the License.
 package nativetest
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -95,8 +101,15 @@ func settingSuite(onDelete schemas.OnDelete, scope schemas.IdentityScope, resetT
 		HandWritten: true,
 		Schema: `{
 			"typeName": "AWS::Test::Setting",
+			"properties": {"Id": {"type": "string"}, "MinimumLength": {"type": "integer"}, "RequireSymbols": {"type": "boolean"}},
 			"primaryIdentifier": ["/properties/Id"],
-			"createOnlyProperties": ["/properties/Id"]
+			"createOnlyProperties": ["/properties/Id"],
+			"handlers": {
+				"create": {"permissions": ["test:PutSetting"]},
+				"read": {"permissions": ["test:GetSetting"]},
+				"update": {"permissions": ["test:PutSetting"]},
+				"delete": {"permissions": ["test:DeleteSetting"]}
+			}
 		}`,
 		Metadata: fmt.Sprintf(`{"typeName": %q, "identityScope": %q, "onDelete": %q}`, typeName, scope, onDelete),
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
@@ -179,9 +192,16 @@ func Test_Suite_Search(t *testing.T) {
 	Run(t, assignedSuite("AWS::Test::Permission", native.RecoverBySearch))
 }
 
-// Test_Suite_HandWrittenType runs the suite for a fake handler of a type with no CloudFormation type, whose
-// identifier values contain "|" and "/", so it has its own identifier encoding.
+// Test_Suite_HandWrittenType runs the suite for a fake handler of a test-only type with no CloudFormation type. Its
+// schema and metadata are files in testdata/handwritten, laid out as in pkg/aws/schemas/handwritten, so they load
+// with the same rules. Its identifier values contain "|" and "/", so it has its own identifier encoding.
 func Test_Suite_HandWrittenType(t *testing.T) {
+	const typeName = "AWS::Test::Object"
+	read := func(name string) string {
+		data, err := os.ReadFile(filepath.Join("testdata", "handwritten", name))
+		require.NoError(t, err)
+		return string(data)
+	}
 	identifierOf := func(properties map[string]any) (string, error) {
 		bucket, _ := properties["Bucket"].(string)
 		key, _ := properties["Key"].(string)
@@ -193,22 +213,17 @@ func Test_Suite_HandWrittenType(t *testing.T) {
 	}
 	properties := map[string]any{"Bucket": "app-assets", "Key": "config/../a|b.json", "ContentType": "application/json", "Body": "e30="}
 	identifier, err := identifierOf(properties)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	Run(t, Suite{
-		TypeName:    "AWS::Test::Object",
+		TypeName:    typeName,
 		HandWritten: true,
-		Schema: `{
-			"typeName": "AWS::Test::Object",
-			"primaryIdentifier": ["/properties/Bucket", "/properties/Key"],
-			"createOnlyProperties": ["/properties/Bucket", "/properties/Key"],
-			"writeOnlyProperties": ["/properties/Body"]
-		}`,
+		Schema:      read("aws-test-object.json"),
+		Metadata:    read("aws-test-object.metadata.json"),
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			h := nativefake.New("AWS::Test::Object", store)
+			h := nativefake.New(typeName, store)
 			h.IdentifierOf = identifierOf
 			h.CreateOnly = []string{"Bucket", "Key"}
+			h.Opts.List = native.ListRegion
 			return h.Encoding()
 		},
 		WriteOnly:        []string{"Body"},
@@ -217,8 +232,161 @@ func Test_Suite_HandWrittenType(t *testing.T) {
 		Changed:          map[string]any{"Bucket": "app-assets", "Key": "config/../a|b.json", "ContentType": "text/plain", "Body": "e30="},
 		ChangedWriteOnly: map[string]any{"Bucket": "app-assets", "Key": "config/../a|b.json", "ContentType": "application/json", "Body": "eyJhIjoxfQ=="},
 		Removable:        "ContentType",
-		CreateOnlyChange: nil,
+		CreateOnlyChange: map[string]any{"Bucket": "app-assets", "Key": "config/other.json", "ContentType": "application/json", "Body": "e30="},
 	})
+}
+
+// Test_Suite_DeleteToken runs the suite for a type whose delete takes a copy, like a final snapshot, named by a delete
+// token UCP saves on the record before the first delete call. A retried delete sends the same token and takes no
+// second copy.
+func Test_Suite_DeleteToken(t *testing.T) {
+	var handler *nativefake.Handler
+	suite := assignedSuite("AWS::Test::Snapshotted", native.RecoverByResend)
+	suite.NewHandler = func(store *awsfake.CloudControl) native.Handler {
+		handler = nativefake.New("AWS::Test::Snapshotted", store)
+		handler.Opts.Recovery = native.RecoverByResend
+		handler.Waits = 1
+		return handler.DeleteTokens()
+	}
+	Run(t, suite)
+
+	t.Run("one copy for a retried delete", func(t *testing.T) {
+		suite.deleteTokenRetry(t)
+		require.Equal(t, 1, handler.Copies())
+	})
+}
+
+// Test_Suite_Scoped runs the suite for a type whose resource is some members of a parent, like users a template adds
+// to an IAM group. Members added outside Radius stay through a take-over, an update, and a delete, and an update that
+// fails while it removes members keeps every member it may still have to remove.
+func Test_Suite_Scoped(t *testing.T) {
+	scopedSuite(t, func(h *nativefake.Handler) native.Handler { return h.Scoped("Users") })
+}
+
+// scopedTokens is a handler whose resource is some members of a parent and that also sends a delete token, which a
+// delete of the members must not use in place of DeleteScoped.
+type scopedTokens struct {
+	scopedHandler
+	tokens native.DeletePreparer
+}
+
+type scopedHandler interface {
+	native.Handler
+	native.ScopedReader
+	native.ScopedDeleter
+}
+
+func (s scopedTokens) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
+	return s.tokens.DeleteToken(ctx, region, identifier)
+}
+
+// FailOn fails a call of the scoped handler, as nativefake.Handler.FailOn does.
+func (s scopedTokens) FailOn(call int, err error) {
+	s.scopedHandler.(interface{ FailOn(int, error) }).FailOn(call, err)
+}
+
+func (s scopedTokens) DeleteWithToken(ctx context.Context, region string, identifier string, token string) error {
+	return s.tokens.DeleteWithToken(ctx, region, identifier, token)
+}
+
+// Test_Suite_ScopedWithDeleteToken runs the suite for a type whose resource is some members of a parent and whose
+// handler also sends a delete token. Every delete removes only the members the alias manages.
+func Test_Suite_ScopedWithDeleteToken(t *testing.T) {
+	scopedSuite(t, func(h *nativefake.Handler) native.Handler {
+		return scopedTokens{scopedHandler: h.Scoped("Users").(scopedHandler), tokens: h.DeleteTokens().(native.DeletePreparer)}
+	})
+}
+
+func scopedSuite(t *testing.T, wrap func(h *nativefake.Handler) native.Handler) {
+	const typeName = "AWS::Test::Membership"
+	group := func(users ...string) map[string]any {
+		list := []any{}
+		for _, u := range users {
+			list = append(list, u)
+		}
+		return map[string]any{"Group": "admins", "Users": list}
+	}
+	Run(t, Suite{
+		TypeName: typeName,
+		Schema: `{
+			"typeName": "AWS::Test::Membership",
+			"primaryIdentifier": ["/properties/Group"],
+			"createOnlyProperties": ["/properties/Group"]
+		}`,
+		NewHandler: func(store *awsfake.CloudControl) native.Handler {
+			h := nativefake.New(typeName, store)
+			h.Opts.Recovery = native.RecoverByResend
+			h.CreateOnly = []string{"Group"}
+			return wrap(h)
+		},
+		IdentifierProperty: "Group",
+		Properties:         group("ana", "bo"),
+		Identifier:         "admins",
+		Changed:            group("bo", "cy"),
+		CreateOnlyChange:   map[string]any{"Group": "readers", "Users": []any{"ana", "bo"}},
+		MultiCall:          group("bo", "cy", "di"),
+		Calls:              3,
+		RejectedCalls:      1,
+		FailCall: func(handler native.Handler, call int, err error) {
+			handler.(interface{ FailOn(int, error) }).FailOn(call, err)
+		},
+		Outside: func(store *awsfake.CloudControl, properties map[string]any) func() bool {
+			id := fmt.Sprint(properties["Group"])
+			current := store.Resource(typeName, id)
+			if current == nil {
+				current = map[string]any{"Group": id, "Users": []any{}}
+			}
+			current["Users"] = append(current["Users"].([]any), "outsider")
+			store.Put(typeName, id, current)
+			return func() bool {
+				props := store.Resource(typeName, id)
+				return props != nil && slices.Contains(props["Users"].([]any), any("outsider"))
+			}
+		},
+	})
+}
+
+// Test_SchemaTypes checks the schema type check on each kind of definition it follows.
+func Test_SchemaTypes(t *testing.T) {
+	schema := map[string]any{
+		"definitions": map[string]any{
+			"Endpoint": map[string]any{"type": "object", "properties": map[string]any{"Port": map[string]any{"type": "string"}}},
+		},
+	}
+	def := map[string]any{"type": "object", "properties": map[string]any{
+		"Endpoint": map[string]any{"$ref": "#/definitions/Endpoint"},
+		"Missing":  map[string]any{"$ref": "#/definitions/Missing"},
+		"Ratio":    map[string]any{"type": "number"},
+		"Size":     map[string]any{"type": "integer"},
+		"Either":   map[string]any{"type": []any{"object", "string"}},
+		"Enabled":  map[string]any{"type": "boolean"},
+		"Names":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		"Labels":   map[string]any{"type": "object", "patternProperties": map[string]any{"^[a-z]+$": map[string]any{"type": "string"}}},
+		"Untyped":  map[string]any{},
+	}}
+	value := map[string]any{
+		"Endpoint": map[string]any{"Port": 27017.0},
+		"Missing":  "x",
+		"Ratio":    2.0,
+		"Size":     1.5,
+		"Either":   "text",
+		"Enabled":  nil,
+		"Names":    []any{"a", true},
+		"Labels":   map[string]any{"team": 1.0, "Other": 1.0},
+		"Untyped":  []any{},
+		"Unknown":  "x",
+	}
+	mismatches := []string{}
+	schemaTypes(schema, def, "", value, &mismatches)
+	require.ElementsMatch(t, []string{
+		"/Endpoint/Port: integer, but the schema says string",
+		"/Missing: unknown $ref #/definitions/Missing",
+		"/Size: number, but the schema says integer",
+		"/Enabled: null, but the schema says boolean",
+		"/Names/1: boolean, but the schema says string",
+		"/Labels/team: integer, but the schema says string",
+	}, mismatches)
+	require.Equal(t, "func()", jsonType(func() {}))
 }
 
 // keyedSuite returns the suite for a type whose identifier is Bucket + "/" + Key, from the handler's own encoding,
@@ -240,10 +408,21 @@ func keyedSuite(typeName string, handWritten bool) Suite {
 		HandWritten: handWritten,
 		Schema: `{
 			"typeName": "` + typeName + `",
-			"properties": {"Key": {"type": "string", "minLength": 1, "maxLength": 1024}},
+			"properties": {
+				"Bucket": {"type": "string"},
+				"Key": {"type": "string", "minLength": 1, "maxLength": 1024},
+				"ContentType": {"type": "string"},
+				"Body": {"type": "string"}
+			},
 			"primaryIdentifier": ["/properties/Bucket", "/properties/Key"],
 			"createOnlyProperties": ["/properties/Bucket", "/properties/Key"],
-			"writeOnlyProperties": ["/properties/Body"]
+			"writeOnlyProperties": ["/properties/Body"],
+			"handlers": {
+				"create": {"permissions": ["test:PutObject"]},
+				"read": {"permissions": ["test:GetObject"]},
+				"update": {"permissions": ["test:PutObject"]},
+				"delete": {"permissions": ["test:DeleteObject"]}
+			}
 		}`,
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
 			h := nativefake.New(typeName, store)
