@@ -32,6 +32,7 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -208,9 +209,10 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 // Deployment, then waits until every UCP pod serves it. Helm then keeps that Secret, because the chart reuses a live
 // ucp-cert and its ucp-ca, or a rollback applies the same Secret, so the caBundle Helm applies trusts what UCP serves.
 //
-// It does nothing when the ucp Deployment or the APIService does not exist, the Deployment already mounts ucp-cert, or
-// manifest has no ucp-cert Secret. If UCP does not serve the certificate in time, it returns an error before Helm
-// changes anything, with both CAs trusted; running the command again resumes.
+// It does nothing when the ucp Deployment or the APIService does not exist, the Deployment mounts no named certificate
+// volume, or manifest has no ucp-cert Secret. If UCP does not serve the certificate in time, it returns an error before
+// Helm changes anything, with both CAs trusted; running the command again checks the same stage and waits again, and
+// writes nothing that already holds.
 func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNamespace, releaseName string, render renderRadiusManifest) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
@@ -224,7 +226,10 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if err != nil {
 		return fmt.Errorf("failed to read Deployment %s/ucp: %w", radiusNamespace, err)
 	}
-	if mounted := ucpCertificateSecret(deployment); mounted == "" || mounted == ucpOffCertificateSecretName {
+	// When an earlier run already mounted ucp-cert, its pods may still be rolling out with the radius-apiserver-ca
+	// certificate, so rad checks the stage and waits for them again before Helm drops that CA.
+	mounted := ucpCertificateSecret(deployment)
+	if mounted == "" {
 		return nil
 	}
 	live, found, err := readUCPAPIServiceCABundle(ctx, dynamicClient)
@@ -258,14 +263,16 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if err := trustUCPAPIServerCAs(ctx, kubeContext, dynamicClient, unionCertificates(live, target)); err != nil {
 		return err
 	}
-	patch, err := json.Marshal(map[string]any{"spec": map[string]any{"template": map[string]any{"spec": map[string]any{
-		"volumes": []any{map[string]any{"name": ucpCertificateVolumeName, "secret": map[string]any{"secretName": ucpOffCertificateSecretName}}},
-	}}}})
-	if err != nil {
-		return err
-	}
-	if _, err := deployments.Patch(ctx, "ucp", types.StrategicMergePatchType, patch, metav1.PatchOptions{FieldManager: FieldManager}); err != nil {
-		return fmt.Errorf("failed to mount Secret %s in Deployment %s/ucp: %w", ucpOffCertificateSecretName, radiusNamespace, err)
+	if mounted != ucpOffCertificateSecretName {
+		patch, err := json.Marshal(map[string]any{"spec": map[string]any{"template": map[string]any{"spec": map[string]any{
+			"volumes": []any{map[string]any{"name": ucpCertificateVolumeName, "secret": map[string]any{"secretName": ucpOffCertificateSecretName}}},
+		}}}})
+		if err != nil {
+			return err
+		}
+		if _, err := deployments.Patch(ctx, "ucp", types.StrategicMergePatchType, patch, metav1.PatchOptions{FieldManager: FieldManager}); err != nil {
+			return fmt.Errorf("failed to mount Secret %s in Deployment %s/ucp: %w", ucpOffCertificateSecretName, radiusNamespace, err)
+		}
 	}
 
 	var problem string
@@ -388,6 +395,9 @@ func applyHelmOwnedSecret(ctx context.Context, kubeContext string, client kubern
 	}
 	maps.Copy(updated.Labels, rendered.Labels)
 	setHelmOwnership(&updated.ObjectMeta, releaseName, releaseNamespace)
+	if equality.Semantic.DeepEqual(existing, updated) {
+		return nil
+	}
 	if _, err := secrets.Update(ctx, updated, metav1.UpdateOptions{FieldManager: FieldManager}); err != nil {
 		return fmt.Errorf("failed to update Secret %s/%s: %w", releaseNamespace, rendered.Name, err)
 	}
