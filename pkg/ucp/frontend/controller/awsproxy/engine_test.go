@@ -52,6 +52,7 @@ import (
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/records"
 	"github.com/radius-project/radius/pkg/ucp/backend/controller/awsresources"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
@@ -151,6 +152,13 @@ type harness struct {
 
 	// key returns the fingerprint key, like aws.Module.FingerprintKey. Tests replace it to change or remove the key.
 	key FingerprintKeyFunc
+
+	// native holds the native handlers, and provisioningTypes, when set, replaces harnessProvisioningTypes.
+	native            *native.Registry
+	provisioningTypes map[string]cftypes.ProvisioningType
+
+	// headers are added to every request.
+	headers map[string]string
 }
 
 func newHarness(t *testing.T) *harness {
@@ -175,7 +183,11 @@ func newHarness(t *testing.T) *harness {
 }
 
 func (h *harness) clients() ucp_aws.Clients {
-	return ucp_aws.Clients{CloudControl: h.cc, CloudFormation: &awsfake.CloudFormation{Schemas: harnessSchemas, ProvisioningTypes: harnessProvisioningTypes}}
+	provisioningTypes := harnessProvisioningTypes
+	if h.provisioningTypes != nil {
+		provisioningTypes = h.provisioningTypes
+	}
+	return ucp_aws.Clients{CloudControl: h.cc, CloudFormation: &awsfake.CloudFormation{Schemas: harnessSchemas, ProvisioningTypes: provisioningTypes}, Native: h.native}
 }
 
 // putController creates the PUT controller with the harness's fingerprint key.
@@ -212,6 +224,9 @@ func (h *harness) do(factory controllerFactory, method string, path string, owne
 	req.Host, req.URL.Host, req.URL.Scheme = testHost, testHost, testScheme
 	if owner != "" {
 		req.Header.Set(sdkclients.AWSResourceOwnerHeader, owner)
+	}
+	for k, v := range h.headers {
+		req.Header.Set(k, v)
 	}
 	controller, err := factory(h.options(), h.clients())
 	require.NoError(h.t, err)
@@ -749,8 +764,11 @@ func Test_Update_FailurePaths(t *testing.T) {
 
 		results := h.finish()
 		require.Equal(t, v1.CodeInvalid, results[0].Error.Code)
+		// Cloud Control doesn't roll back a failed update, so AWS may have applied part of it: its values are kept as
+		// possibly applied, and a later deploy that leaves one out clears it.
 		rec = h.record(bktPath)
-		require.Equal(t, previous, rec.Properties.LastApplied)
+		require.Equal(t, map[string]any{"BucketName": "assets", "A": "2"}, rec.Properties.LastApplied)
+		require.Equal(t, []string{"A"}, rec.Properties.UnresolvedPaths)
 		require.Nil(t, rec.Properties.PendingLastApplied)
 		require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
 

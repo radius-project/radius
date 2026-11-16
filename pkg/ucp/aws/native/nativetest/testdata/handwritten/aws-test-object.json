@@ -1,0 +1,40 @@
+{
+  "typeName": "AWS::Test::Object",
+  "description": "A test-only hand-written type, shaped like an S3 object. It is outside pkg/aws/schemas/handwritten, so UCP never serves it and bicep-types-aws never reads it.",
+  "properties": {
+    "Bucket": {
+      "type": "string"
+    },
+    "Key": {
+      "type": "string"
+    },
+    "Body": {
+      "type": "string"
+    },
+    "ContentType": {
+      "type": "string"
+    }
+  },
+  "required": ["Bucket", "Key"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/Bucket", "/properties/Key"],
+  "createOnlyProperties": ["/properties/Bucket", "/properties/Key"],
+  "writeOnlyProperties": ["/properties/Body"],
+  "handlers": {
+    "create": {
+      "permissions": ["test:PutObject", "test:GetObject"]
+    },
+    "read": {
+      "permissions": ["test:GetObject"]
+    },
+    "update": {
+      "permissions": ["test:PutObject", "test:GetObject"]
+    },
+    "delete": {
+      "permissions": ["test:DeleteObject"]
+    },
+    "list": {
+      "permissions": ["test:ListObjects"]
+    }
+  }
+}

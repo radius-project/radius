@@ -17,6 +17,8 @@ limitations under the License.
 package bicep
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -115,6 +117,42 @@ func Test_Validate(t *testing.T) {
 			ValidateCallback: func(t *testing.T, r framework.Runner) {
 				runner := r.(*Runner)
 				require.Equal(t, "test.yaml", runner.DestinationFile)
+			},
+		},
+		{
+			Name:          "rad bicep generate-kubernetes-manifest - valid with stdout destination file",
+			Input:         []string{"app.bicep", "-g", "default", "-d", "-"},
+			ExpectedValid: true,
+			ValidateCallback: func(t *testing.T, r framework.Runner) {
+				runner := r.(*Runner)
+				require.Equal(t, "-", runner.DestinationFile)
+			},
+		},
+		{
+			Name:          "rad bicep generate-kubernetes-manifest - valid with name and source-revision",
+			Input:         []string{"app.bicep", "-g", "default", "--name", "orders-app", "--source-revision", "abc1234"},
+			ExpectedValid: true,
+			ValidateCallback: func(t *testing.T, r framework.Runner) {
+				runner := r.(*Runner)
+				require.Equal(t, "orders-app", runner.Name)
+				require.Equal(t, "abc1234", runner.SourceRevision)
+			},
+		},
+		{
+			Name:          "rad bicep generate-kubernetes-manifest - valid with bicepparam file",
+			Input:         []string{"app.bicep", "-g", "default", "-p", "@app.bicepparam"},
+			ExpectedValid: true,
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				mocks.Bicep.EXPECT().
+					Call("build-params", "--stdout", "app.bicepparam").
+					Return([]byte(`{"parametersJson":"{\"parameters\":{\"tag\":{\"value\":\"v1.2.3\"}}}"}`), nil).
+					Times(1)
+			},
+			ValidateCallback: func(t *testing.T, r framework.Runner) {
+				runner := r.(*Runner)
+				require.Equal(t, map[string]map[string]any{
+					"tag": {"value": "v1.2.3"},
+				}, runner.Parameters)
 			},
 		},
 		{
@@ -239,5 +277,159 @@ func Test_Run(t *testing.T) {
 			Type:  sdkclients.ProviderTypeAWS,
 			Value: sdkclients.Value{Scope: awsScope, Owner: "deploy;/planes/radius/local/resourceGroups/default;;"},
 		}, providerConfig.AWS)
+	})
+
+	t.Run("Omits spec.parameters when parameters map is empty or only contains nil values", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+
+		bicepMock := bicep.NewMockInterface(ctrl)
+		bicepMock.EXPECT().
+			PrepareTemplate(gomock.Any(), "app.bicep").
+			Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
+			Times(1)
+
+		runner := &Runner{
+			Bicep:           bicepMock,
+			Output:          &output.MockOutput{},
+			FilePath:        "app.bicep",
+			FileSystem:      filesystem.NewMemMapFileSystem(),
+			DestinationFile: "app.yaml",
+			Group:           "default",
+			Parameters: map[string]map[string]any{
+				"optional": {"value": nil},
+				"unbound":  {},
+			},
+		}
+
+		require.NoError(t, runner.Run(t.Context()))
+
+		actual, err := runner.FileSystem.ReadFile("app.yaml")
+		require.NoError(t, err)
+		require.NotContains(t, string(actual), "parameters:")
+
+		var manifest map[string]any
+		require.NoError(t, yaml.Unmarshal(actual, &manifest))
+		spec, ok := manifest["spec"].(map[string]any)
+		require.True(t, ok)
+		require.NotContains(t, spec, "parameters")
+	})
+
+	t.Run("Writes manifest to stdout without log message when destination-file is -", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+
+		bicepMock := bicep.NewMockInterface(ctrl)
+		bicepMock.EXPECT().
+			PrepareTemplate(gomock.Any(), "app.bicep").
+			Return(map[string]any{"resources": map[string]any{}}, bicep.RadiusExtensionPin{}, nil).
+			Times(1)
+
+		var stdout bytes.Buffer
+		outputSink := &output.MockOutput{}
+		memFS := filesystem.NewMemMapFileSystem()
+		runner := &Runner{
+			Bicep:           bicepMock,
+			Output:          outputSink,
+			Stdout:          &stdout,
+			FilePath:        "app.bicep",
+			FileSystem:      memFS,
+			DestinationFile: "-",
+			Group:           "default",
+			Name:            "my-app",
+			SourceRevision:  "deadbeef",
+		}
+
+		require.NoError(t, runner.Run(t.Context()))
+		require.Empty(t, outputSink.Writes)
+		require.False(t, memFS.Exists("-"))
+
+		var manifest struct {
+			APIVersion string `yaml:"apiVersion"`
+			Kind       string `yaml:"kind"`
+			Metadata   struct {
+				Name        string            `yaml:"name"`
+				Annotations map[string]string `yaml:"annotations"`
+			} `yaml:"metadata"`
+			Spec map[string]any `yaml:"spec"`
+		}
+		require.NoError(t, yaml.Unmarshal(stdout.Bytes(), &manifest))
+		require.Equal(t, "radapp.io/v1alpha3", manifest.APIVersion)
+		require.Equal(t, "DeploymentTemplate", manifest.Kind)
+		require.Equal(t, "my-app", manifest.Metadata.Name)
+		require.Equal(t, map[string]string{"radapp.io/source-revision": "deadbeef"}, manifest.Metadata.Annotations)
+		require.NotContains(t, manifest.Spec, "parameters")
+	})
+
+	t.Run("Routes OutputWriter status logs to stderr when destination-file is -", func(t *testing.T) {
+		t.Cleanup(func() {
+			output.SetLogWriter(nil)
+		})
+
+		ctrl := gomock.NewController(t)
+		var stdout, stderr bytes.Buffer
+		ow := &output.OutputWriter{Writer: &stdout}
+
+		bicepMock := bicep.NewMockInterface(ctrl)
+		bicepMock.EXPECT().
+			PrepareTemplate(gomock.Any(), "app.bicep").
+			DoAndReturn(func(_ context.Context, _ string) (map[string]any, bicep.RadiusExtensionPin, error) {
+				step := ow.BeginStep("Building app.bicep...")
+				ow.CompleteStep(step)
+				return map[string]any{"resources": map[string]any{}}, bicep.RadiusExtensionPin{}, nil
+			}).
+			Times(1)
+
+		f := &framework.Impl{
+			Bicep:  bicepMock,
+			Output: ow,
+		}
+		cmd, r := NewCommand(f)
+		runner := r.(*Runner)
+		runner.FileSystem = filesystem.NewMemMapFileSystem()
+
+		cmd.SetOut(&stdout)
+		cmd.SetErr(&stderr)
+		cmd.SetArgs([]string{"app.bicep", "-g", "default", "-d", "-"})
+		require.NoError(t, cmd.ParseFlags([]string{"app.bicep", "-g", "default", "-d", "-"}))
+		require.NoError(t, runner.Validate(cmd, []string{"app.bicep"}))
+		require.NoError(t, runner.Run(t.Context()))
+
+		require.Contains(t, stderr.String(), "Building app.bicep...")
+		require.NotContains(t, stdout.String(), "Building app.bicep...")
+		require.NotContains(t, stdout.String(), "DeploymentTemplate file created")
+
+		var manifest map[string]any
+		require.NoError(t, yaml.Unmarshal(stdout.Bytes(), &manifest))
+		require.Equal(t, "DeploymentTemplate", manifest["kind"])
+	})
+
+	t.Run("Rejects non-string parameter values without panicking", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+
+		bicepMock := bicep.NewMockInterface(ctrl)
+		bicepMock.EXPECT().
+			PrepareTemplate(gomock.Any(), "app.bicep").
+			Return(map[string]any{}, bicep.RadiusExtensionPin{}, nil).
+			Times(1)
+
+		var stdout bytes.Buffer
+		runner := &Runner{
+			Bicep:      bicepMock,
+			Output:     &output.MockOutput{},
+			Stdout:     &stdout,
+			FilePath:   "app.bicep",
+			FileSystem: filesystem.NewMemMapFileSystem(),
+			Parameters: map[string]map[string]any{
+				"tag":      {"value": "v1.0.0"},
+				"replicas": {"value": 3},
+			},
+			DestinationFile: "-",
+			Group:           "default",
+		}
+
+		err := runner.Run(t.Context())
+		require.ErrorContains(t, err, `parameter "replicas" must have a string value, got int`)
 	})
 }

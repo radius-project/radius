@@ -16,6 +16,8 @@ limitations under the License.
 
 package aws
 
+import "github.com/radius-project/radius/pkg/ucp/aws/native"
+
 // Clients contains the AWS clients.
 type Clients struct {
 	// CloudControl is the AWS Cloud Control client.
@@ -26,4 +28,7 @@ type Clients struct {
 
 	// Kafka is the Amazon MSK client, which reads the broker addresses of an MSK cluster.
 	Kafka AWSKafkaClient
+
+	// Native holds the native handlers, for types UCP serves without Cloud Control. Nil means none.
+	Native *native.Registry
 }

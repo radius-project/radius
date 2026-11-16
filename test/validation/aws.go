@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
@@ -34,10 +35,12 @@ import (
 )
 
 const (
-	AWSMemoryDBClusterResourceType  = "AWS.MemoryDB/Cluster"
-	AWSRDSDBInstanceResourceType    = "AWS.RDS/DBInstance"
-	AWSLogsMetricFilterResourceType = "AWS.Logs/MetricFilter"
-	AWSLogsLogGroupResourceType     = "AWS.Logs/LogGroup"
+	AWSMemoryDBClusterResourceType     = "AWS.MemoryDB/Cluster"
+	AWSRDSDBInstanceResourceType       = "AWS.RDS/DBInstance"
+	AWSLogsMetricFilterResourceType    = "AWS.Logs/MetricFilter"
+	AWSLogsLogGroupResourceType        = "AWS.Logs/LogGroup"
+	AWSLogsQueryDefinitionResourceType = "AWS.Logs/QueryDefinition"
+	AWSS3BucketResourceType            = "AWS.S3/Bucket"
 )
 
 type AWSResource struct {
@@ -160,6 +163,80 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 	}
 
 	return false, err
+}
+
+// ListAWSResourcesByProperty returns the identifiers of the resources of the Cloud Control type typeName whose
+// top-level string property equals value. Use it for types whose identifier AWS assigns, so a test can only find the
+// resource by another property, such as its name.
+//
+// Cloud Control may return partial properties from a list, so when a listed resource does not include property, the
+// resource is read with GetResource. A resource that is gone by then is skipped. Any other failure to learn the
+// property is returned as an error, so callers never mistake a resource they could not read for one that is absent.
+func ListAWSResourcesByProperty(ctx context.Context, client awsclient.AWSCloudControlClient, typeName string, property string, value string) ([]string, error) {
+	ids := []string{}
+	paginator := cloudcontrol.NewListResourcesPaginator(client, &cloudcontrol.ListResourcesInput{TypeName: &typeName})
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, description := range page.ResourceDescriptions {
+			id := aws.ToString(description.Identifier)
+			if id == "" {
+				return nil, fmt.Errorf("Cloud Control listed a %s with no identifier", typeName)
+			}
+
+			actual, found, err := awsStringProperty(description.Properties, property)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read the properties of %s %s from the list: %w", typeName, id, err)
+			}
+			if !found {
+				output, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{TypeName: &typeName, Identifier: &id})
+				if isAWSResourceMissing(typeName, err) {
+					continue
+				}
+				if err != nil {
+					return nil, fmt.Errorf("failed to read %s %s: %w", typeName, id, err)
+				}
+				if output == nil || output.ResourceDescription == nil {
+					return nil, fmt.Errorf("Cloud Control returned no description of %s %s", typeName, id)
+				}
+				actual, found, err = awsStringProperty(output.ResourceDescription.Properties, property)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read the properties of %s %s: %w", typeName, id, err)
+				}
+				if !found {
+					return nil, fmt.Errorf("Cloud Control returned %s %s without %s", typeName, id, property)
+				}
+			}
+
+			if actual == value {
+				ids = append(ids, id)
+			}
+		}
+	}
+	return ids, nil
+}
+
+// awsStringProperty returns the top-level string property named property from the JSON properties of an AWS
+// resource. found is false when properties is nil or does not include property.
+func awsStringProperty(properties *string, property string) (value string, found bool, err error) {
+	if properties == nil {
+		return "", false, nil
+	}
+	decoded := map[string]any{}
+	if err := json.Unmarshal([]byte(*properties), &decoded); err != nil {
+		return "", false, err
+	}
+	raw, found := decoded[property]
+	if !found || raw == nil {
+		return "", false, nil
+	}
+	value, ok := raw.(string)
+	if !ok {
+		return "", false, fmt.Errorf("property %s is not a string", property)
+	}
+	return value, true, nil
 }
 
 // awsLogGroupTypeName is the CloudControl type name for the resources created by AWS.Logs/LogGroup.
