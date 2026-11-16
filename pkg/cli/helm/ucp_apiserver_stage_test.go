@@ -136,7 +136,7 @@ func (c *stageCluster) helmReissuesUCPCertificate(t *testing.T) {
 	t.Helper()
 	c.issueAPIServerCA(t)
 	secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
-	_, err := secrets.Create(t.Context(), tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, c.apiServerCA), c.apiServerCA.pem), metav1.CreateOptions{})
+	_, err := secrets.Create(t.Context(), apiServerTLSSecret(t, c.apiServerCA), metav1.CreateOptions{})
 	require.NoError(t, err)
 	_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Create(t.Context(), ucpDeployment(true), metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -291,7 +291,7 @@ func (c *stageCluster) onUCP(t *testing.T) {
 	t.Helper()
 	c.issueAPIServerCA(t)
 	secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
-	_, err := secrets.Create(t.Context(), tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, c.apiServerCA), c.apiServerCA.pem), metav1.CreateOptions{})
+	_, err := secrets.Create(t.Context(), apiServerTLSSecret(t, c.apiServerCA), metav1.CreateOptions{})
 	require.NoError(t, err)
 	deployment := ucpDeployment(true)
 	deployment.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: ucpCertificateVolumeName,

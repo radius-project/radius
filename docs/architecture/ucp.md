@@ -93,7 +93,9 @@ After Helm, once UCP serves `ucp-cert`, `rad` removes its cert-manager inject
 annotation and sets the `caBundle` to the CA of `ucp-cert` in one patch guarded
 by the APIService's uid and resourceVersion, then deletes the
 `radius-apiserver-ca`, `ucp-apiserver-tls` and `radius-apiserver-trust` Secrets,
-so cainjector cannot add `radius-apiserver-ca` back. In the
+so cainjector cannot add `radius-apiserver-ca` back. Each delete applies only
+when `rad` owns the Secret and it is unchanged since `rad` read it; otherwise
+`rad` leaves it and warns. In the
 `selfSigned` certificate mode, the only mode supported today, this CA is
 separate from the `radius-ca` that signs component server certificates. The Kubernetes API server trusts that CA for UCP, so the
 `radius-certificate-issuance` ValidatingAdmissionPolicy lets only the
