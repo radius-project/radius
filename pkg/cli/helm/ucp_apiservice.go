@@ -118,6 +118,16 @@ func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options Cluster
 	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, mode, render)
 }
 
+func (i *Impl) checkAggregationBeforeDependencies(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, render renderRadiusManifest) error {
+	mode, err := installedAuthzMode(options, storedValues)
+	if err != nil || mode == authz.ModeOff {
+		return err
+	}
+	// Active-mode staging is read-only while lifecycle execution is blocked.
+	// Diagnose an unsupported transition before changing shared dependencies.
+	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, mode, render)
+}
+
 func installedAuthzMode(options ClusterOptions, storedValues map[string]any) (authz.Mode, error) {
 	currentValues, err := parseUserValuesFromCLI(&options.Radius)
 	if err != nil {

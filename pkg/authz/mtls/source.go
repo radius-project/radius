@@ -51,8 +51,14 @@ const (
 // material is one consistent set of certificate, key, and CA bundle. cert is nil for a
 // trust-only Source.
 type material struct {
-	cert *tls.Certificate
-	pool *x509.CertPool
+	cert          *tls.Certificate
+	pool          *x509.CertPool
+	intermediates *x509.CertPool
+	trust         [sha256.Size]byte
+	notBefore     time.Time
+	notAfter      time.Time
+	caPEM         []byte
+	epoch         uint64
 }
 
 // Source holds a component's certificate, key, and CA bundle loaded from a directory,
@@ -66,9 +72,18 @@ type Source struct {
 	now       func() time.Time
 	readFile  func(string) ([]byte, error)
 
-	mu      sync.Mutex
-	digest  [sha256.Size]byte
-	current atomic.Pointer[material]
+	mu                   sync.Mutex
+	digest               [sha256.Size]byte
+	current              atomic.Pointer[material]
+	serving              sync.Map
+	guardServing         atomic.Bool
+	expectedTrust        string
+	proofMode            atomic.Bool
+	invalidations        uint64
+	startupProof         *StartupProof
+	trustProof           *TrustProof
+	proofNamespace       string
+	aggregationNamespace string
 }
 
 // NewSource loads the certificate, key, and CA bundle from dir. It returns an error if
@@ -108,26 +123,51 @@ func (s *Source) files() []string {
 }
 
 // Reload reads the files and, if they changed and are valid, replaces the current
-// material. It reports whether the material changed. On error the previous material
-// stays in use.
-func (s *Source) Reload() (bool, error) {
+// material. Invalid projections retire the previous generation rather than allowing
+// new requests to send tokens over stale trust.
+func (s *Source) Reload() (changed bool, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	defer func() {
+		if err != nil {
+			s.invalidations++
+			s.current.Store(nil)
+		}
+	}()
 
 	raw, digest, err := s.readStable()
 	if err != nil {
 		return false, err
 	}
 	if s.current.Load() != nil && digest == s.digest {
-		return false, nil
+		return false, s.checkMaterial(s.current.Load())
 	}
 
 	m, err := s.parse(raw)
 	if err != nil {
 		return false, err
 	}
+	m.epoch = s.invalidations
+	if s.proofNamespace != "" {
+		if err := s.validateProofIdentity(m, s.proofNamespace); err != nil {
+			return false, err
+		}
+	}
+	if s.aggregationNamespace != "" {
+		if err := s.validateAggregationIdentity(m, s.aggregationNamespace); err != nil {
+			return false, err
+		}
+	}
+	if s.expectedTrust != "" {
+		trust, err := parsePublicTrust(raw[len(raw)-1], s.now())
+		if err != nil || trust.digest != s.expectedTrust {
+			return false, errors.New("CA bundle differs from pinned startup trust")
+		}
+		boundPublicTrust(m, trust)
+	}
 
 	s.digest = digest
+	s.retireServingGenerations(m)
 	s.current.Store(m)
 	return true, nil
 }
@@ -138,11 +178,44 @@ func (s *Source) readStable() ([][]byte, [sha256.Size]byte, error) {
 	var prev [sha256.Size]byte
 	paths := s.files()
 	for attempt := range maxReadAttempts {
+		generations := map[string]string{}
 		raw := make([][]byte, len(paths))
 		for i, path := range paths {
-			data, err := s.readFile(path)
+			directory := filepath.Dir(path)
+			projection := filepath.Join(directory, "..data")
+			target, known := generations[projection]
+			if !known {
+				var err error
+				target, err = os.Readlink(projection)
+				if err != nil && !errors.Is(err, os.ErrNotExist) {
+					return nil, prev, errors.New("cannot resolve projected TLS generation")
+				}
+				if err == nil && !filepath.IsLocal(target) {
+					return nil, prev, errors.New("invalid projected TLS generation")
+				}
+				generations[projection] = target
+			}
+			readPath := path
+			if target != "" {
+				readPath = filepath.Join(directory, target, filepath.Base(path))
+			}
+			data, err := s.readFile(readPath)
 			if err != nil {
 				return nil, prev, fmt.Errorf("failed to read %s: %w", filepath.Base(path), err)
+			}
+			stable := true
+			for projection, target := range generations {
+				current, err := os.Readlink(projection)
+				if target == "" && errors.Is(err, os.ErrNotExist) {
+					continue
+				}
+				if err != nil || current != target {
+					stable = false
+					break
+				}
+			}
+			if !stable {
+				continue
 			}
 			raw[i] = data
 		}
@@ -159,12 +232,17 @@ func (s *Source) readStable() ([][]byte, [sha256.Size]byte, error) {
 // parse builds material from the file contents read in the order of files.
 func (s *Source) parse(raw [][]byte) (*material, error) {
 	caPEM := raw[len(raw)-1]
+	trust, err := parsePublicTrust(caPEM, s.now())
+	if err != nil {
+		return nil, err
+	}
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(caPEM) {
 		return nil, errors.New("failed to load CA bundle: no certificates found")
 	}
 	if s.trustOnly {
-		return &material{pool: pool}, nil
+		return &material{pool: pool, trust: sha256.Sum256(caPEM), caPEM: bytes.Clone(caPEM),
+			notBefore: trust.notBefore, notAfter: trust.notAfter}, nil
 	}
 
 	cert, err := tls.X509KeyPair(raw[0], raw[1])
@@ -185,16 +263,28 @@ func (s *Source) parse(raw [][]byte) (*material, error) {
 		}
 		intermediates.AddCert(c)
 	}
-	if _, err := cert.Leaf.Verify(x509.VerifyOptions{
+	chains, err := cert.Leaf.Verify(x509.VerifyOptions{
 		Roots:         pool,
 		Intermediates: intermediates,
 		CurrentTime:   s.now(),
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, fmt.Errorf("certificate is not issued by the CA bundle: %w", err)
 	}
 
-	return &material{cert: &cert, pool: pool}, nil
+	m := &material{cert: &cert, pool: pool, intermediates: intermediates, trust: sha256.Sum256(caPEM), caPEM: bytes.Clone(caPEM),
+		notBefore: cert.Leaf.NotBefore, notAfter: cert.Leaf.NotAfter}
+	for _, c := range chains[0] {
+		if c.NotBefore.After(m.notBefore) {
+			m.notBefore = c.NotBefore
+		}
+		boundPublicTrust(m, trust)
+		if c.NotAfter.Before(m.notAfter) {
+			m.notAfter = c.NotAfter
+		}
+	}
+	return m, nil
 }
 
 func (s *Source) checkExpiry(cert *tls.Certificate) error {
@@ -211,7 +301,7 @@ func (s *Source) isValid(leaf *x509.Certificate) bool {
 }
 
 // Start polls the files every interval until ctx is done, reloading them when they
-// change. Errors are logged and the previous material stays in use.
+// change. Errors are logged and invalidate the loaded generation.
 func (s *Source) Start(ctx context.Context, interval time.Duration) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	ticker := time.NewTicker(interval)
@@ -236,12 +326,32 @@ func (s *Source) Start(ctx context.Context, interval time.Duration) {
 // the same version. It fails closed if the certificate has expired, for example after
 // a failed rotation.
 func (s *Source) load() (*material, error) {
-	m := s.current.Load()
-	if m.cert == nil {
-		return m, nil
+	if _, err := s.Reload(); err != nil {
+		return nil, err
 	}
-	if err := s.checkExpiry(m.cert); err != nil {
+	return s.loadCurrent()
+}
+
+func (s *Source) loadCurrent() (*material, error) {
+	m := s.current.Load()
+	if err := s.checkMaterial(m); err != nil {
 		return nil, err
 	}
 	return m, nil
+}
+
+func (s *Source) checkMaterial(m *material) error {
+	if m == nil {
+		return errors.New("mTLS material is not initialized")
+	}
+	if m.cert != nil {
+		if err := s.checkExpiry(m.cert); err != nil {
+			return err
+		}
+	}
+	now := s.now()
+	if now.Before(m.notBefore) || now.After(m.notAfter) {
+		return &Error{Code: authz.CodeCertificateExpired, Reason: "own certificate chain has expired or is not yet valid"}
+	}
+	return nil
 }

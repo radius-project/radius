@@ -104,7 +104,11 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 						err = impl.UpgradeRadius(t.Context(), options, testKubeContext)
 					} else {
 						options.Radius.Reinstall = command == "install --reinstall"
-						err = impl.InstallRadius(t.Context(), options, testKubeContext)
+						// Fresh enabled installs now enter the bootstrap driver
+						// before this dependency gate. Exercise the gate against
+						// real Helm storage without pretending the stub chart
+						// implements configured-CA bootstrap.
+						err = impl.ensureCertManager(t.Context(), options, testKubeContext, nil, options.Radius.Reinstall)
 					}
 					require.True(t, clierrors.IsFriendlyError(err), "%v", err)
 					require.ErrorContains(t, err, string(status))

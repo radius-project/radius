@@ -23,31 +23,31 @@ creates a logger, builds the server, and hands execution to shared hosting.
 
 ## Quick Reference
 
-| Topic | Start Here |
-|------|------------|
-| Startup | `cmd/ucpd/cmd/root.go` |
-| HTTP/API wiring | `pkg/ucp/frontend/api/server.go` |
-| Top-level routes | `pkg/ucp/frontend/api/routes.go` |
+| Topic            | Start Here                                     |
+|------------------|------------------------------------------------|
+| Startup          | `cmd/ucpd/cmd/root.go`                         |
+| HTTP/API wiring  | `pkg/ucp/frontend/api/server.go`               |
+| Top-level routes | `pkg/ucp/frontend/api/routes.go`               |
 | Proxy/adaptation | `pkg/ucp/frontend/controller`, `pkg/ucp/proxy` |
-| Resource IDs | `pkg/ucp/resources` |
+| Resource IDs     | `pkg/ucp/resources`                            |
 
-| Test Focus | Packages |
-|-----------|----------|
+| Test Focus           | Packages                                        |
+|----------------------|-------------------------------------------------|
 | Unit and route tests | `./pkg/ucp/frontend/...`, `./pkg/ucp/proxy/...` |
-| Integration coverage | `./pkg/ucp/integrationtests/...` |
-| Broad safety check | `./pkg/ucp/...` |
+| Integration coverage | `./pkg/ucp/integrationtests/...`                |
+| Broad safety check   | `./pkg/ucp/...`                                 |
 
 ## Core Packages
 
-| Package | Responsibility |
-|--------|----------------|
-| `pkg/ucp/frontend` | HTTP handlers, route registration, API surface |
-| `pkg/ucp/proxy` | request forwarding and proxy helpers |
-| `pkg/ucp/aws` | AWS-specific adaptation logic |
-| `pkg/ucp/resources` | UCP resource ID parsing and construction |
-| `pkg/ucp/datamodel` | version-agnostic UCP storage model |
-| `pkg/ucp/server` | service startup and hosting integration |
-| `pkg/ucp/config` | runtime configuration types |
+| Package             | Responsibility                                 |
+|---------------------|------------------------------------------------|
+| `pkg/ucp/frontend`  | HTTP handlers, route registration, API surface |
+| `pkg/ucp/proxy`     | request forwarding and proxy helpers           |
+| `pkg/ucp/aws`       | AWS-specific adaptation logic                  |
+| `pkg/ucp/resources` | UCP resource ID parsing and construction       |
+| `pkg/ucp/datamodel` | version-agnostic UCP storage model             |
+| `pkg/ucp/server`    | service startup and hosting integration        |
+| `pkg/ucp/config`    | runtime configuration types                    |
 
 ## How It Works
 
@@ -96,6 +96,16 @@ uses `mtls.ListenAndServe` with UCP's csi-driver-spiffe certificate, requires a
 ServiceAccount token with audience `ucp`, accepts any Radius component identity,
 and reloads certificates without a restart. See
 [Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization).
+
+The aggregation server also uses a polling TLS Source for its mounted `ucp-cert` certificate, key and CA bundle. Each handshake captures one coherent generation without replacing the aggregation endpoint's separate client-authentication policy. Invalid projection updates invalidate the source. Requests on existing connections check their original handshake chain against current trust and validity; repairing a projection cannot resurrect an invalidated connection. Serving-certificate renewal does not itself migrate the legacy CA or prove aggregator adoption.
+
+Active authorization permanently points cainjector at the public-only `radius-apiserver-trust` Secret. It must not point at a signing Secret or a leaf's returned CA. [Ordinary reconciliation](../../pkg/cli/helm/certificate_aggregation_trust.go) observes the exact selected DER set without deleting this source or racing a merging injector with unconditional patches. It then inventories the actual Service, EndpointSlices, Deployment, ServiceAccount and selected Pods before and after TLS-only serving measurements. This is observed convergence, not protection against future shared-controller writes.
+
+The [schema4 model](../../pkg/cli/helm/certificate_lifecycle.go) pins independent internal and aggregation anchors, issuers, public sources and observed identities. The [chart resolver](../../deploy/Chart/templates/_rotation.tpl) rejects active or legacy journals and accepts only compatible completed snapshots with matching UID, ownership, journal binding and exact bytes. Unrelated metadata updates do not invalidate a completed snapshot; active phases retain their exact observed revision. The executor renders staged issuers from the selected chart under recorded resource intent, then reconciles the original chart after retirement.
+
+The production rotation entrypoint performs read-only A9 target preparation and then fails before Lease, import, journal or source writes. Production authority-specific reporting and authorized acquisition are incomplete, including actual Kubernetes aggregator cache adoption. The wired exact-Pod serving observer cannot substitute for that evidence. The CLI must not mint or extract component tokens, impersonate UCP, forward API credentials to workloads or add an anonymous proof route. Explicit legacy proof configuration also fails UCP startup; the old metrics proof endpoint is not an available observation path.
+
+Fresh enabled CLI bootstrap uses Kubernetes/cert-manager public state to stage roots and permanent public trust before applying the full chart; it does not require workload observer credentials. Legacy rotation/bootstrap implementations are removed, and any legacy journal or namespace creation marker requires recovery with the matching pre-token release. The shared [operation guard](../../pkg/cli/helm/certificate_rotation_operation.go) protects supported writes with ownership, cancellation and conditional-write checks. A11 provider journals remain fail-closed without their full validator. Internal issuerRef/CSI switching and expired-anchor/outage recovery remain unsupported. See [the chart's lifecycle limits](../../deploy/Chart/README.md#internal-service-certificate-modes); no local fixture establishes live issuance, compatible-image, HA, compromise-recovery or full incident-response acceptance.
 
 ## Invariants And Constraints
 

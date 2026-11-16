@@ -508,7 +508,7 @@ func Test_ensureCertManager(t *testing.T) {
 					detectCalls++
 					kubeClient, apiextClient := tt.cluster.clients()
 					return kubeClient, apiextClient, nil
-				},
+				}, newRotationStore: emptyRotationTestStore,
 			}
 
 			options := NewDefaultClusterOptions()
@@ -535,15 +535,12 @@ func Test_ensureCertManager(t *testing.T) {
 	}
 }
 
-func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
+func Test_BootstrapCertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
 	mockHelmClient := NewMockHelmClient(ctrl)
-	// csi-driver-spiffe is checked, without changing the cluster, before cert-manager.
-	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
-	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(certificateTestChart(t), nil)
 
 	impl := &Impl{
 		Helm: mockHelmClient,
@@ -560,7 +557,7 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	options.Radius.ChartPath = "radius-chart"
 	options.Contour.Disabled = true
 	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-	err := impl.InstallRadius(t.Context(), options, "test-context")
+	err := impl.ensureCertManager(t.Context(), options, "test-context", nil, false)
 	require.ErrorContains(t, err, "v"+CertManagerMinimumVersion)
 }
 
@@ -595,8 +592,6 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							release.Labels = radManagedByLabels()
 						}
 						client := NewMockHelmClient(gomock.NewController(t))
-						client.EXPECT().LoadChart(options.Radius.ChartPath).Return(certificateTestChart(t), nil)
-						client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 						client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(release, nil)
 						impl := &Impl{
 							Helm: client,
@@ -606,14 +601,11 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 								t.Error("pending release must stop before Kubernetes detection or readiness checks")
 								return nil, nil, errors.New("unexpected Kubernetes detection")
-							},
+							}, newRotationStore: emptyRotationTestStore,
 						}
-						var err error
-						if command == "upgrade" {
-							err = impl.UpgradeRadius(t.Context(), options, kubeContext)
-						} else {
-							err = impl.InstallRadius(t.Context(), options, kubeContext)
-						}
+						// Exercise dependency gating independently of the earlier
+						// public-source/observer barrier in command entrypoints.
+						err := impl.ensureCertManager(t.Context(), options, kubeContext, options.RadiusReleaseValues, command != "install")
 						require.Error(t, err)
 						for _, part := range []string{
 							`"shared-cert-manager"`, `"security"`, "revision 3", string(status),
@@ -666,7 +658,7 @@ func Test_ensureCertManager_ReleaseLookupErrorDoesNotRepair(t *testing.T) {
 			failure := apierrors.NewForbidden(schema.GroupResource{Resource: "secrets"}, "", errors.New("denied"))
 			client := NewMockHelmClient(gomock.NewController(t))
 			client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, failure)
-			impl := &Impl{Helm: client}
+			impl := &Impl{Helm: client, newRotationStore: emptyRotationTestStore}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, upgrade)
@@ -696,7 +688,7 @@ func Test_ensureCertManager_NewerOwnedRelease(t *testing.T) {
 				impl := &Impl{Helm: client, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 					k, a := (fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, "v1.22.1", "")}).clients()
 					return k, a, nil
-				}}
+				}, newRotationStore: emptyRotationTestStore}
 				options := NewDefaultClusterOptions()
 				options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 				err := impl.ensureCertManager(t.Context(), options, "test-context", nil, upgrade)
@@ -730,7 +722,7 @@ func Test_ensureCertManager_DetectionFailureDoesNotRepair(t *testing.T) {
 					return true, nil, failure
 				})
 				return k, a, nil
-			}}
+			}, newRotationStore: emptyRotationTestStore}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, false)
@@ -844,7 +836,7 @@ func Test_ensureCertManager_UnreadyWebhookIsNotReused(t *testing.T) {
 			require.NoError(t, err)
 			impl := &Impl{Helm: client, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 				return k, a, nil
-			}}
+			}, newRotationStore: emptyRotationTestStore}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 			err = impl.ensureCertManager(t.Context(), options, "test-context", nil, version == "v1.22.1")
@@ -954,7 +946,7 @@ func Test_UninstallCertManager(t *testing.T) {
 				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
 					return fakeCertManagerDynamicClient(tt.listErr, tt.objects...), nil
 				},
-				logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
+				logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }, newRotationStore: emptyRotationTestStore,
 			}
 			err := impl.UninstallCertManager(t.Context(), NewDefaultClusterOptions(), "test-context")
 			if tt.wantErr {
@@ -985,6 +977,7 @@ func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testin
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
 		newUCPAPIServerTrustClient:  uninstallTrustClient,
+		newRotationStore:            emptyRotationTestStore,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))

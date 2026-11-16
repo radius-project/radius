@@ -940,6 +940,7 @@ func Test_UninstallRadius_RemovesCSIDriverSPIFFEAfterRadius(t *testing.T) {
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
 		newUCPAPIServerTrustClient:  uninstallTrustClient,
+		newRotationStore:            emptyRotationTestStore,
 		newCSIDriverSPIFFEClient:    func(string) (kubernetes.Interface, error) { return k8sfake.NewClientset(), nil },
 	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))
@@ -961,7 +962,7 @@ func Test_UninstallCertManager_RemovesCSIDriverSPIFFEFirst(t *testing.T) {
 }
 
 // A foreign csi-driver-spiffe stops install and upgrade before they touch cert-manager or any release.
-func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
+func Test_ForeignCSIDriverSPIFFE_FailsDuringReadOnlyPlanning(t *testing.T) {
 	t.Parallel()
 
 	for _, command := range []string{"install", "upgrade"} {
@@ -969,11 +970,11 @@ func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
 			t.Parallel()
 
 			client := NewMockHelmClient(gomock.NewController(t))
-			client.EXPECT().LoadChart(gomock.Any()).Return(certificateTestChart(t), nil)
 			client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 
 			impl := &Impl{
-				Helm: client,
+				Helm:             client,
+				newRotationStore: emptyRotationTestStore,
 				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 					t.Fatal("cert-manager was checked after the csi-driver-spiffe check failed")
 					return nil, nil, nil
@@ -987,12 +988,8 @@ func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 			options.Contour.Disabled = true
 
-			var err error
-			if command == "install" {
-				err = impl.InstallRadius(t.Context(), options, "test-context")
-			} else {
-				err = impl.UpgradeRadius(t.Context(), options, "test-context")
-			}
+			options.Radius.Reinstall = command == "upgrade"
+			_, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", nil)
 			require.ErrorContains(t, err, "Radius stopped before changing the cluster because another csi-driver-spiffe (DaemonSet identity/workload-identity-node) runs on it.")
 		})
 	}
@@ -1015,6 +1012,7 @@ func Test_UninstallRadius_KeepsCertManagerWhenCSIDriverSPIFFEIsKept(t *testing.T
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
 		newUCPAPIServerTrustClient:  uninstallTrustClient,
+		newRotationStore:            emptyRotationTestStore,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
 			return k8sfake.NewClientset(spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)), nil
@@ -1032,7 +1030,7 @@ func Test_UninstallRadius_KeepsCertManagerWhenCSIDriverSPIFFEIsKept(t *testing.T
 
 // Helm rolls back only the Radius release, so rollback first makes csi-driver-spiffe match the target revision's
 // authorization settings, or stops before changing anything when it cannot.
-func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
+func Test_RollbackDependencies_ReconcileCSIDriverSPIFFE(t *testing.T) {
 	t.Parallel()
 
 	rbac := func(rbac map[string]any) map[string]any {
@@ -1056,12 +1054,11 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		toRevision bool
-		target     map[string]any
-		objects    []runtime.Object
-		expect     func(*testing.T, *MockHelmClient)
-		wantErr    string
+		name    string
+		target  map[string]any
+		objects []runtime.Object
+		expect  func(*testing.T, *MockHelmClient)
+		wantErr string
 	}{
 		{
 			name:   "different trust domain upgrades the driver before rolling back",
@@ -1072,23 +1069,6 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
 					m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, false, DefaultInstallTimeout).
 						Return(&releasev1.Release{}, nil),
-					m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil),
-				)
-				expectCSIDriverSPIFFEPull(t, m)
-				m.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil)
-			},
-		},
-		{
-			name:       "rollback to a revision also reconciles the driver",
-			toRevision: true,
-			target:     targetValues,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				gomock.InOrder(
-					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
-					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
-					m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, false, DefaultInstallTimeout).
-						Return(&releasev1.Release{}, nil),
-					m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil),
 				)
 				expectCSIDriverSPIFFEPull(t, m)
 				m.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil)
@@ -1101,7 +1081,6 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
 					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
-					m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil),
 				)
 			},
 		},
@@ -1109,7 +1088,6 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 			name:   "authorization off in the target changes nothing else",
 			target: nil,
 			expect: func(_ *testing.T, m *MockHelmClient) {
-				m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil)
 			},
 		},
 		{
@@ -1127,13 +1105,13 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 			t.Parallel()
 
 			m := NewMockHelmClient(gomock.NewController(t))
-			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history(tt.target), nil)
 			tt.expect(t, m)
 
 			objects := append([]runtime.Object{certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}, tt.objects...)
 			impl := &Impl{
-				Helm:   m,
-				logger: func(string, ...any) {},
+				Helm:             m,
+				logger:           func(string, ...any) {},
+				newRotationStore: emptyRotationTestStore,
 				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 					kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 					return kubeClient, apiextClient, nil
@@ -1142,12 +1120,7 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 				newCertManagerDynamicClient: readyUCPAPIServiceClient,
 				newUCPAPIServerTrustClient:  issuedUCPAPIServerTrustClient,
 			}
-			var err error
-			if tt.toRevision {
-				err = impl.RollbackRadiusToRevision(t.Context(), "test-context", 1)
-			} else {
-				err = impl.RollbackRadius(t.Context(), "test-context")
-			}
+			err := impl.reconcileRollbackDependencies(t.Context(), "test-context", history(tt.target), 1)
 			if tt.wantErr != "" {
 				require.ErrorContains(t, err, tt.wantErr)
 				return

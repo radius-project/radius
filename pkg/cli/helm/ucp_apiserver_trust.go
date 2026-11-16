@@ -39,16 +39,11 @@ import (
 )
 
 const (
-	// ucpAPIServerTrustSecretName is the Secret whose ca.crt holds the CA certificates the Kubernetes API server
-	// trusts for UCP while UCP moves from an earlier CA, such as the Helm-generated ucp-ca, to radius-apiserver-ca.
-	// Before the Helm call that turns authorization on, rad stages radius-apiserver-ca and writes both CAs into it, so
-	// the API server trusts the new CA before Helm reissues ucp-cert. rad deletes it once every UCP pod serves a
-	// certificate from radius-apiserver-ca; Helm would revert the overlap if the chart owned it.
+	// ucpAPIServerTrustSecretName is the permanent public-only injection source.
+	// Ordinary reconciliation must not delete it or discover trust from a signer.
 	ucpAPIServerTrustSecretName = "radius-apiserver-trust"
 
-	// ucpAPIServerCASecretName is the Secret of the CA that issues UCP's aggregated API certificate. Outside the
-	// upgrade overlap, cert-manager's cainjector copies its ca.crt, the self-signed CA certificate, into the
-	// APIService caBundle, so the API server follows each renewal of the CA without rad running.
+	// ucpAPIServerCASecretName is the signing Secret, not an APIService injection source.
 	ucpAPIServerCASecretName = "radius-apiserver-ca"
 
 	// injectCAFromSecretAnnotation names the Secret whose ca.crt cert-manager's cainjector copies into the APIService.
@@ -72,7 +67,7 @@ const (
 // CAs and waits until every UCP pod serves a certificate from radius-apiserver-ca; if UCP does not move in time it
 // returns an error and leaves both CAs trusted. It then points the APIService at Secret radius-apiserver-ca and
 // deletes the trust Secret, which removes the earlier CA.
-func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
+func (i *Impl) reconcileLegacyUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return err
@@ -145,7 +140,7 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 
 // ucpAPIServerCASource is the inject-ca-from-secret value that makes cainjector copy radius-apiserver-ca.
 func ucpAPIServerCASource(radiusNamespace string) string {
-	return radiusNamespace + "/" + ucpAPIServerCASecretName
+	return radiusNamespace + "/" + ucpAPIServerTrustSecretName
 }
 
 // injectUCPAPIServerCA makes cainjector copy ca.crt of radius-apiserver-ca into the UCP APIService, and sets the
@@ -171,7 +166,7 @@ func injectUCPAPIServerCA(ctx context.Context, dynamicClient dynamic.Interface, 
 // ca.crt into the caBundle it reads from its cache and only drops expired certificates, so a reconcile that read the
 // APIService before rad switched it can write an earlier CA, such as ucp-ca, back and keep it trusted. rad sets the
 // caBundle to ca.crt again whenever that happens.
-func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string) error {
+func settleLegacyUCPAPIServerCA(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string) error {
 	clean := 0
 	problem := "it has not been checked"
 	err := wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
@@ -286,7 +281,7 @@ func (i *Impl) ucpAPIServerTrustClients(kubeContext string) (kubernetes.Interfac
 // readUCPAPIServerCA returns the CA certificate in tls.crt of radius-apiserver-ca and the ca.crt cainjector copies
 // into the APIService, or describes why they are not usable. ca.crt must hold only CA certificates, including the
 // one in tls.crt, and the Secret must allow cainjector to copy it.
-func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radiusNamespace string) (*x509.Certificate, []byte, string, error) {
+func readLegacyUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radiusNamespace string) (*x509.Certificate, []byte, string, error) {
 	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerCASecretName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return nil, nil, "it does not exist", nil

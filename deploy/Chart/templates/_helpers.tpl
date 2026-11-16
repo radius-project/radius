@@ -142,6 +142,14 @@ Fails rendering when dry run is combined with enforcement.
 */}}
 {{- define "radius.authz.mode" -}}
 {{- $rbac := .Values.global.rbac | default dict -}}
+{{- range $setting := list "startupProof" "aggregationProof" -}}
+{{- $legacy := get $rbac $setting -}}
+{{- if $legacy -}}
+{{- if or (not (kindIs "map" $legacy)) (get $legacy "enabled") (get $legacy "expectedTrustSHA256") -}}
+{{- fail "legacy certificate startup proof configuration is unsupported; authenticated lifecycle observation is not available" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- $_ := include "radius.authz.tls.provider" . -}}
 {{- if and $rbac.enabled $rbac.dryRun -}}
 {{- fail "global.rbac.dryRun=true cannot be combined with global.rbac.enabled=true: dry run is a preflight check for installations that are not yet enforcing. Set global.rbac.enabled=false to run the dry run." -}}
@@ -233,7 +241,8 @@ chart generates the ucp-cert Secret.
 */}}
 {{- define "radius.ucp.apiServerSecretName" -}}
 {{- if ne (include "radius.authz.mode" .) "off" -}}
-ucp-apiserver-tls
+{{- $snapshot := include "radius.lifecycleSnapshot" . | mustFromJson -}}
+{{- dig "aggregation" "servingSecret" "ucp-apiserver-tls" $snapshot -}}
 {{- else -}}
 ucp-cert
 {{- end -}}

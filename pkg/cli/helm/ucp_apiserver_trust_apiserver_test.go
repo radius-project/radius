@@ -40,21 +40,18 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// TestUCPAPIServerTrustFollowsCARenewal_APIServer installs the chart's UCP APIService and lets rad point it at
-// radius-apiserver-ca, then reissues that CA without running rad and checks that cert-manager's cainjector adds the
-// reissued CA to the APIService caBundle. Once the old CA certificate expires, the API server, written in Go, rejects
-// it as a root, so a bundle that kept only the old certificate would stop verifying UCP.
+// TestUCPAPIServerPublicSourceProjection_APIServer checks cainjector's projection
+// of an explicitly staged public CA, not automatic lifecycle or serving readiness.
 //
 // It needs cert-manager's cainjector binary, built from the cert-manager release Radius installs, for example:
 //
 //	git clone --depth 1 --branch v1.21.2 https://github.com/cert-manager/cert-manager
 //	(cd cert-manager/cmd/cainjector && go build -o /tmp/cainjector .)
-//	CERT_MANAGER_CAINJECTOR=/tmp/cainjector go test ./pkg/cli/helm -run TestUCPAPIServerTrustFollowsCARenewal_APIServer
-func TestUCPAPIServerTrustFollowsCARenewal_APIServer(t *testing.T) {
+//	CERT_MANAGER_CAINJECTOR=/tmp/cainjector go test ./pkg/cli/helm -run TestUCPAPIServerPublicSourceProjection_APIServer
+func TestUCPAPIServerPublicSourceProjection_APIServer(t *testing.T) {
 	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
 		t.Skip("Run make test or set KUBEBUILDER_ASSETS to run the isolated API-server regression.")
 	}
@@ -74,38 +71,26 @@ func TestUCPAPIServerTrustFollowsCARenewal_APIServer(t *testing.T) {
 	_, err = client.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: RadiusSystemNamespace}}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	caCertificate, apiService := renderUCPAPIServerTrustObjects(t, helmBinary)
+	_, apiService := renderUCPAPIServerTrustObjects(t, helmBinary)
 	_, err = dynamicClient.Resource(apiServicesResource).Create(ctx, apiService, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	// cert-manager issues radius-apiserver-ca as the chart's Certificate asks: a self-signed CA whose ca.crt is the
-	// CA certificate itself, with the Certificate's secretTemplate annotations.
-	secretAnnotations, _, err := unstructured.NestedStringMap(caCertificate.Object, "spec", "secretTemplate", "annotations")
-	require.NoError(t, err)
 	// The first CA certificate expires soon, so the test can check trust after it expires.
 	issued := reissueTestCA(t, newTestCA(t, "radius-apiserver-ca"), time.Now().Add(40*time.Second))
-	_, err = client.CoreV1().Secrets(RadiusSystemNamespace).Create(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerCASecretName, Namespace: RadiusSystemNamespace, Annotations: secretAnnotations},
-		Type:       corev1.SecretTypeTLS,
-		Data:       map[string][]byte{corev1.TLSCertKey: issued.pem, corev1.TLSPrivateKeyKey: []byte("key"), caCertificateKey: issued.pem},
-	}, metav1.CreateOptions{})
+	source := permanentPublicTrustSecret(issued.pem)
+	source.UID, source.ResourceVersion = "", ""
+	_, err = client.CoreV1().Secrets(RadiusSystemNamespace).Create(ctx, source, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	startCAInjector(t, cainjector, kubeconfig)
 
-	impl := &Impl{
-		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return client, nil },
-		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
-	}
-	require.NoError(t, impl.reconcileUCPAPIServerTrust(ctx, "test-context", RadiusSystemNamespace))
-	requireNoTrustSecret(t, client)
 	requireAPIServiceCABundle(t, dynamicClient, issued)
 
-	// cert-manager renews the CA with the same key (rotationPolicy: Never). rad does not run.
+	// The fixture stages public trust directly. This is not lifecycle authorization.
 	renewed := reissueTestCA(t, issued, time.Now().Add(2*time.Hour))
-	secret, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(ctx, ucpAPIServerCASecretName, metav1.GetOptions{})
+	secret, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	require.NoError(t, err)
-	secret.Data[corev1.TLSCertKey], secret.Data[caCertificateKey] = renewed.pem, renewed.pem
+	secret.Data[caCertificateKey] = renewed.pem
 	_, err = client.CoreV1().Secrets(RadiusSystemNamespace).Update(ctx, secret, metav1.UpdateOptions{})
 	require.NoError(t, err)
 
@@ -173,7 +158,7 @@ func startCAInjector(t *testing.T, binary, kubeconfig string) {
 	})
 }
 
-// requireAPIServiceCABundle waits until cainjector points the APIService caBundle at radius-apiserver-ca and the
+// requireAPIServiceCABundle waits until cainjector projects the permanent public source and the
 // bundle holds want, and returns the bundle. cainjector keeps earlier certificates until they expire, so the bundle
 // may also hold earlier certificates of the same CA, but nothing else.
 func requireAPIServiceCABundle(t *testing.T, client dynamic.Interface, want testCA) []byte {
@@ -184,7 +169,7 @@ func requireAPIServiceCABundle(t *testing.T, client dynamic.Interface, want test
 		if !assert.NoError(c, err) {
 			return
 		}
-		assert.Equal(c, "radius-system/radius-apiserver-ca", apiService.GetAnnotations()[injectCAFromSecretAnnotation])
+		assert.Equal(c, ucpAPIServerCASource(RadiusSystemNamespace), apiService.GetAnnotations()[injectCAFromSecretAnnotation])
 		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 		bundle, err = base64.StdEncoding.DecodeString(encoded)
 		if !assert.NoError(c, err) {

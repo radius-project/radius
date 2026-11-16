@@ -210,7 +210,7 @@ func Test_Helm_Rollback_RefusesUnapprovedIssuerCertificates(t *testing.T) {
 			mockHelmClient.EXPECT().LoadChart(gomock.Any()).Times(0)
 			mockHelmClient.EXPECT().RunHelmRollback(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-			err := tt.rollback(&Impl{Helm: mockHelmClient}, t)
+			err := tt.rollback(&Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore}, t)
 			require.ErrorContains(t, err, "Radius cannot roll back to revision 1 because it issues these component client Certificates: radius-system/applications-rp-cert (Issuer "+tt.issuer+")")
 			require.ErrorContains(t, err, "rad rollback kubernetes --list-revisions")
 		})
@@ -229,5 +229,5 @@ func Test_Helm_Rollback_AllowsTargetWithoutUnapprovedIssuerCertificates(t *testi
 		RunHelmRollback(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", 1, true).
 		Return(nil)
 
-	require.NoError(t, (&Impl{Helm: mockHelmClient}).RollbackRadiusToRevision(t.Context(), "test-context", 1))
+	require.NoError(t, (&Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore}).RollbackRadiusToRevision(t.Context(), "test-context", 1))
 }

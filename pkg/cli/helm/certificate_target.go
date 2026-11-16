@@ -78,7 +78,7 @@ func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterO
 	}
 	if installed {
 		if err := unchangedCertificateSelection(options.RadiusReleaseValues, current); err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
 		}
 		if plan != nil && plan.secret != nil {
 			return nil, nil, fmt.Errorf("an installed signing Secret is missing; recover it or use coordinated CA migration")

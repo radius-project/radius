@@ -28,6 +28,7 @@ import (
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -326,9 +327,11 @@ type Impl struct {
 	newUCPAPIServerTrustClient func(kubeContext string) (kubernetes.Interface, error)
 	// csiDriverSPIFFEPodWaitTimeout and csiDriverSPIFFEPodPollInterval override how long uninstall waits for Pods that
 	// use csi-driver-spiffe. Zero uses the defaults.
-	csiDriverSPIFFEPodWaitTimeout  time.Duration
-	csiDriverSPIFFEPodPollInterval time.Duration
-	newCertificateClient           func(kubeContext string) (kubernetes.Interface, error)
+	csiDriverSPIFFEPodWaitTimeout    time.Duration
+	csiDriverSPIFFEPodPollInterval   time.Duration
+	newCertificateClient             func(kubeContext string) (kubernetes.Interface, error)
+	newRotationStore                 func(kubeContext, namespace string) (*rotationStore, error)
+	validateCompletedProviderJournal func(*corev1.ConfigMap) error
 }
 
 var _ Interface = &Impl{}
@@ -370,6 +373,12 @@ func (i *Impl) logInfo(format string, v ...any) {
 // csi-driver-spiffe). It prepares and checks the Radius and Contour charts before it changes the cluster, and then
 // installs cert-manager, csi-driver-spiffe, Contour, Radius, and the Radius Contour Gateway in that order.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	if clusterOptions.Certificates.RotationPhase != "" || clusterOptions.Certificates.RotateCA {
+		return fmt.Errorf("CA rotation requires an installed Radius; use rad upgrade kubernetes --ca-rotation-phase")
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "install", nil); err != nil {
+		return err
+	}
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
 	// The RPs and other resources are all deployed to the
@@ -387,8 +396,36 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
-	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil); err != nil {
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "install", radiusHelmChart); err != nil {
 		return err
+	}
+	bootstrap, err := i.prepareAggregationBootstrap(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, certificates, target)
+	if err != nil {
+		return err
+	}
+	policyChart := radiusHelmChart
+	if bootstrap != nil {
+		policyChart = initialCertificatePolicyChart(radiusHelmChart)
+	}
+	policyInstalled := clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil
+	if err := i.checkIssuerPolicy(ctx, clusterOptions, policyChart, radiusHelmConf, radiusValues, kubeContext, policyInstalled); err != nil {
+		return err
+	}
+	if bootstrap != nil && bootstrap.journal == nil {
+		if err := bootstrap.checkFresh(ctx); err != nil {
+			return err
+		}
+	}
+	if bootstrap != nil && bootstrap.journal != nil {
+		if err := bootstrap.checkPrepared(ctx); err != nil {
+			return err
+		}
+	}
+	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
+	if bootstrap == nil {
+		if err := i.checkAggregationBeforeDependencies(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
+			return err
+		}
 	}
 
 	// Check Contour and csi-driver-spiffe before installing anything, so that a problem leaves the cluster unchanged.
@@ -404,43 +441,57 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 
-	if certificateMode(radiusValues) != "issuerRef" {
-		if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+	installDependencies := func(ctx context.Context) error {
+		if certificateMode(radiusValues) != "issuerRef" {
+			if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+				return err
+			}
+		}
+		certManagerRequesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, clusterOptions.Radius.Reinstall)
+		if err != nil {
 			return err
 		}
-	}
-	certManagerRequesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, clusterOptions.Radius.Reinstall)
-	if err != nil {
-		return err
-	}
-	setCertManagerRequesters(radiusValues, certManagerRequesters)
+		setCertManagerRequesters(radiusValues, certManagerRequesters)
 
-	// Install Contour before Radius. The Contour checks then see the cluster seconds before Contour is installed
-	// rather than after the wait for Radius, during which a k3s cluster that just started can install the Gateway API
-	// CRDs of Traefik. If the Radius install fails afterwards, running the command again installs Radius and leaves the
-	// installed Contour release unchanged.
-	if clusterOptions.Contour.Disabled {
-		output.LogInfo("Contour is disabled, skipping installation")
-	} else if contour != nil {
-		// ApplyHelmChart upgrades an installed release only when Reinstall is set.
-		contourOptions := clusterOptions.Contour.ChartOptions
-		contourOptions.Reinstall = contour.upgrade
-		if contour.upgrade {
-			output.LogInfo("Upgrading Contour...")
-		} else {
-			output.LogInfo("Installing Contour...")
+		// Install Contour before Radius. The Contour checks then see the cluster seconds before Contour is installed
+		// rather than after the wait for Radius, during which a k3s cluster that just started can install the Gateway API
+		// CRDs of Traefik. If the Radius install fails afterwards, running the command again installs Radius and leaves the
+		// installed Contour release unchanged.
+		if clusterOptions.Contour.Disabled {
+			output.LogInfo("Contour is disabled, skipping installation")
+		} else if contour != nil {
+			// ApplyHelmChart upgrades an installed release only when Reinstall is set.
+			contourOptions := clusterOptions.Contour.ChartOptions
+			contourOptions.Reinstall = contour.upgrade
+			if contour.upgrade {
+				output.LogInfo("Upgrading Contour...")
+			} else {
+				output.LogInfo("Installing Contour...")
+			}
+			err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
+			if err != nil {
+				return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
+			}
 		}
-		err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
-		if err != nil {
-			return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
-		}
+		return nil
 	}
 
 	// Install Radius
+	if err := installDependencies(ctx); err != nil {
+		return err
+	}
+	if bootstrap != nil {
+		if err := bootstrap.run(ctx); err != nil {
+			return err
+		}
+		if clusterOptions.Contour.Disabled {
+			return nil
+		}
+		return i.configureContourGateway(ctx, kubeContext)
+	}
 	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
 		return err
 	}
-	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
 	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
 		return err
 	}
@@ -482,6 +533,9 @@ func setCertManagerRequesters(radiusValues map[string]any, requesters []string) 
 // once the Radius Pods that mount its certificate volumes are gone, so the driver can unmount them. When it keeps the
 // driver, it returns a *CSIDriverSPIFFEKeptError after removing Radius and Contour.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "uninstall", nil); err != nil {
+		return err
+	}
 	// Uninstall Radius
 	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
 		return err
@@ -595,6 +649,12 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 // See the Helm upgrade documentation for details on ResetThenReuseValues behavior:
 // https://helm.sh/docs/helm/helm_upgrade/#options
 func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	if clusterOptions.Certificates.RotationPhase != "" || clusterOptions.Certificates.RotateCA {
+		return i.runCertificateRotation(ctx, clusterOptions, kubeContext, false)
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "upgrade", nil); err != nil {
+		return err
+	}
 	helmAction := NewHelmAction(i.Helm)
 
 	// reuseValues is the inverse of the user-facing --reset-values flag: by default we
@@ -617,6 +677,13 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, true); err != nil {
+		return err
+	}
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "upgrade", radiusHelmChart); err != nil {
+		return err
+	}
+	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
+	if err := i.checkAggregationBeforeDependencies(ctx, clusterOptions, kubeContext, storedValues, render); err != nil {
 		return err
 	}
 
@@ -648,7 +715,6 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
 		return err
 	}
-	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
 	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, storedValues, render); err != nil {
 		return err
 	}
@@ -732,6 +798,9 @@ func (i *Impl) GetLatestRadiusVersion(ctx context.Context) (string, error) {
 // RollbackRadius rolls back the Radius installation to the previous revision.
 func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	clusterOptions := NewDefaultClusterOptions()
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "rollback", nil); err != nil {
+		return err
+	}
 
 	// Initialize helm configuration
 	flags := genericclioptions.ConfigFlags{
@@ -831,10 +900,10 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	if err := checkRollbackCertificateIssuers(history, targetRevision); err != nil {
 		return err
 	}
-	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, targetRevision); err != nil {
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
 		return err
 	}
-	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
+	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, targetRevision); err != nil {
 		return err
 	}
 
@@ -856,6 +925,9 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 // RollbackRadiusToRevision rolls back the Radius installation to a specific revision.
 func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string, revision int) error {
 	clusterOptions := NewDefaultClusterOptions()
+	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "rollback", nil); err != nil {
+		return err
+	}
 
 	// Initialize helm configuration
 	flags := genericclioptions.ConfigFlags{
@@ -893,10 +965,10 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 		return err
 	}
 
-	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, revision); err != nil {
+	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
 		return err
 	}
-	if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
+	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, revision); err != nil {
 		return err
 	}
 

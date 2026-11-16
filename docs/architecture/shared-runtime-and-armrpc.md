@@ -165,6 +165,12 @@ restart; new handshakes use the new material. Before each request, a client
 closes every connection whose verified server chain has expired, including
 connections in use, which aborts their in-flight requests.
 
+The [source-bound trust report](../../pkg/authz/mtls/trust_proof.go) describes the actual outbound CA generation, not a client certificate or a successful peer handshake. Its schema2 selected-anchor validity bounds do not establish token readiness or inbound serving readiness. No new Radius observer route is enabled: explicitly enabling the legacy process or aggregation proof configuration fails startup until an authenticated observer contract is approved.
+
+The CLI can independently measure an exact Pod's serving certificate through [TLS-only observation](../../pkg/cli/helm/certificate_serving_observation.go). Kubernetes credentials authenticate only the outer port-forward connection; no workload HTTP request or component token is sent. The selected CA and DNS or SPIFFE identity verify the inner TLS connection. This measures serving material, not the Pod's outbound loaded trust or every HA API server's trust.
+
+The [token/CSI lifecycle](../../pkg/cli/helm/certificate_lifecycle.go) separates internal and aggregation trust planes and rejects legacy journals rather than reinterpreting their Certificate UIDs as CSI observations. Fresh enabled CLI bootstrap stages independent public trust before Helm waits for serving readiness. Rotation remains blocked before Lease acquisition or mutation because production outbound-trust reporting and authorized acquisition, including aggregator adoption evidence, remain unresolved. The serving-fleet observer is wired but cannot establish outbound trust. Superseded state machines and anonymous proof clients are removed; serialized legacy fixtures test rejection. See [the current CLI boundaries](../contributing/contributing-code/contributing-code-control-plane/configSettings.md#2-update-shared-service-options); isolated API-server fixtures are not live issuance or image acceptance.
+
 ### Request context and validation
 
 The server layer applies middleware that creates an ARM-aware request context.

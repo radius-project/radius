@@ -90,6 +90,14 @@ func Test_Validate(t *testing.T) {
 		{Name: "issuer kind required", Input: []string{"--cert-issuer=issuer"}, ExpectedValid: false},
 		{Name: "external issuer", Input: []string{"--cert-issuer=Issuer/issuer", "--ca-bundle=public.pem"}, ExpectedValid: true},
 		{Name: "bundle without issuer", Input: []string{"--ca-bundle=public.pem"}, ExpectedValid: false},
+		{Name: "rotation publish", Input: []string{"--ca-rotation-phase=publish", "--ca-secret=next-ca"}, ExpectedValid: true},
+		{Name: "rotation adopt", Input: []string{"--ca-rotation-phase=adopt"}, ExpectedValid: true},
+		{Name: "rotation issue", Input: []string{"--ca-rotation-phase=issue"}, ExpectedValid: true},
+		{Name: "rotation retire", Input: []string{"--ca-rotation-phase=retire"}, ExpectedValid: true},
+		{Name: "explicit recovery", Input: []string{"--ca-rotation-phase=recover", "--ca-secret=next-ca"}, ExpectedValid: true},
+		{Name: "target changed after publish", Input: []string{"--ca-rotation-phase=issue", "--ca-secret=next-ca"}, ExpectedValid: false},
+		{Name: "internal phase rejected", Input: []string{"--ca-rotation-phase=ready"}, ExpectedValid: false},
+		{Name: "empty rotation phase", Input: []string{"--ca-rotation-phase="}, ExpectedValid: false},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -131,6 +139,51 @@ func Test_Run_CertificateFlags(t *testing.T) {
 				require.NoError(t, runner.Run(t.Context()))
 			})
 		}
+	}
+}
+
+func Test_Run_RotationDispatch(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name      string
+		flags     []string
+		preflight bool
+		rejected  bool
+	}{
+		{name: "publish", flags: []string{"--ca-secret=next-ca"}},
+		{name: "read only", flags: []string{"--preflight-only"}, preflight: true},
+		{name: "skip does not bypass driver", flags: []string{"--skip-preflight"}},
+		{name: "no software upgrade", flags: []string{"--version=0.47.0"}, rejected: true},
+		{name: "no values override", flags: []string{"--set=global.rbac.enabled=true"}, rejected: true},
+		{name: "no chart override", flags: []string{"--chart=elsewhere"}, rejected: true},
+		{name: "no reset", flags: []string{"--reset-values"}, rejected: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd, r := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+			runner := r.(*Runner)
+			require.NoError(t, cmd.ParseFlags(append([]string{"--ca-rotation-phase=publish"}, tt.flags...)))
+			require.NoError(t, runner.Validate(cmd, nil))
+			mock := helm.NewMockInterface(gomock.NewController(t))
+			runner.Helm = mock
+			stored := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+			mock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0", RadiusValues: stored}, nil)
+			if tt.rejected {
+				require.ErrorContains(t, runner.Run(t.Context()), "cannot be combined")
+				return
+			}
+			check := func(_ context.Context, options helm.ClusterOptions, _ string) error {
+				require.Equal(t, "publish", options.Certificates.RotationPhase)
+				require.Equal(t, stored, options.RadiusReleaseValues)
+				require.Empty(t, options.Radius.ChartPath)
+				return nil
+			}
+			if tt.preflight {
+				mock.EXPECT().CheckRadiusCertificates(gomock.Any(), gomock.Any(), "").DoAndReturn(check)
+			} else {
+				mock.EXPECT().UpgradeRadius(gomock.Any(), gomock.Any(), "").DoAndReturn(check)
+			}
+			require.NoError(t, runner.Run(t.Context()))
+		})
 	}
 }
 

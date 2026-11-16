@@ -19,6 +19,7 @@ package server
 import (
 	"context"
 
+	"github.com/radius-project/radius/pkg/authz/mtls"
 	"github.com/radius-project/radius/pkg/components/hosting"
 	"github.com/radius-project/radius/pkg/components/metrics/metricsservice"
 	"github.com/radius-project/radius/pkg/components/profiler/profilerservice"
@@ -30,20 +31,33 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/initializer"
 )
 
-// NewServer initializes a host for UCP based on the provided options. It creates the AWS clients first, so the
-// frontend and the backend share them.
+// NewServer initializes TLS evidence and shared AWS clients before creating the UCP host.
 func NewServer(ctx context.Context, options *ucp.Options) (*hosting.Host, error) {
+	metrics := options.Config.Metrics
+	proof, err := mtls.ProcessStartupProof(options.Config.Authorization,
+		metrics.Enabled && metrics.Prometheus != nil && metrics.Prometheus.Port > 0 &&
+			metrics.Prometheus.Port <= 65535 && metrics.Prometheus.Path != mtls.StartupProofPath)
+	if err != nil {
+		return nil, err
+	}
+	frontend := api.NewService(options)
+	aggregationProof, err := frontend.PrepareAggregationProof(
+		metrics.Enabled && metrics.Prometheus != nil && metrics.Prometheus.Port > 0 &&
+			metrics.Prometheus.Port <= 65535 && metrics.Prometheus.Path != mtls.AggregationProofPath)
+	if err != nil {
+		return nil, err
+	}
 	if err := ucp_aws_frontend.InitializeClients(ctx, options); err != nil {
 		return nil, err
 	}
 
 	services := []hosting.Service{
-		api.NewService(options),
+		frontend,
 		backend.NewService(options),
 	}
 
 	if options.Config.Metrics.Enabled {
-		services = append(services, &metricsservice.Service{Options: &options.Config.Metrics})
+		services = append(services, &metricsservice.Service{Options: &options.Config.Metrics, StartupProof: proof, AggregationProof: aggregationProof})
 	}
 
 	if options.Config.Profiler.Enabled {

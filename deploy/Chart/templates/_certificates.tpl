@@ -13,6 +13,14 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- end -}}
 
 {{- define "radius.authz.certificates.issuer" -}}
+{{- $lifecycle := include "radius.lifecycleSnapshot" .root | mustFromJson -}}
+{{- $source := index $lifecycle .plane -}}
+{{- if and $lifecycle (not $source) (not (and (eq .plane "internal") (eq (include "radius.authz.tls.provider" .root) "external"))) -}}
+{{- fail "Requested issuer plane is absent from the CA lifecycle." -}}
+{{- end -}}
+{{- if $source -}}
+{{- $source.issuer | toJson -}}
+{{- else -}}
 {{- $c := .root.Values.global.rbac.certificates | default dict -}}
 {{- if eq (include "radius.authz.certificates.mode" .root) "issuerRef" -}}
 {{- $c.issuerRef | toJson -}}
@@ -20,6 +28,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- $name := "radius-ca-issuer" -}}
 {{- if eq .plane "aggregation" -}}{{- $name = "radius-apiserver-issuer" -}}{{- end -}}
 {{- dict "group" "cert-manager.io" "kind" "Issuer" "name" $name | toJson -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -41,9 +50,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- define "radius.authz.certificates.validate" -}}
 {{- $c := .Values.global.rbac.certificates | default dict -}}
 {{- $mode := include "radius.authz.certificates.mode" . -}}
-{{- if lookup "v1" "ConfigMap" .Release.Namespace "radius-ca-rotation" -}}
-{{- fail "certificate lifecycle prerequisite: radius-ca-rotation exists; use the lifecycle command that validates and preserves its pinned public sources before rendering Helm." -}}
-{{- end -}}
+{{- $lifecycle := include "radius.lifecycleSnapshot" . | mustFromJson -}}
 {{- if eq $mode "selfSigned" -}}
 {{- if or $c.caSecret $c.caBundle (($c.issuerRef | default dict).name) -}}
 {{- fail "selfSigned must not specify caSecret, caBundle or issuerRef.name; CA/mode switches require the certificate lifecycle." -}}
@@ -68,6 +75,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- include "radius.authz.issuerPolicy.validate" . -}}
 {{- end -}}
 {{- end -}}
+{{- if not $lifecycle -}}
 {{- range $plane := list "internal" "aggregation" -}}
 {{- if or (eq $plane "aggregation") (eq (include "radius.authz.tls.provider" $) "radius") -}}
 {{- $name := "radius-ca-issuer" -}}{{- $signing := "radius-ca" -}}
@@ -82,6 +90,7 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- end -}}
 {{- end -}}
 {{- end -}}
+{{- end -}}
 
 {{/*
 Return {kind,name,key,bundle,digest,issuer}, independently for each trust plane.
@@ -90,6 +99,12 @@ anchor; overlap and mode switching are lifecycle work, not Helm merge behavior.
 */}}
 {{- define "radius.authz.certificates.publicSource" -}}
 {{- $root := .root -}}
+{{- $lifecycle := include "radius.lifecycleSnapshot" $root | mustFromJson -}}
+{{- if $lifecycle -}}
+{{- $source := index $lifecycle .plane -}}
+{{- if not $source -}}{{- fail "Requested trust plane is absent from the CA lifecycle." -}}{{- end -}}
+{{- $source | toJson -}}
+{{- else -}}
 {{- $mode := include "radius.authz.certificates.mode" $root -}}
 {{- $kind := "ConfigMap" -}}{{- $name := "radius-mtls-ca" -}}{{- $signing := "radius-ca" -}}
 {{- if eq .plane "aggregation" -}}
@@ -126,6 +141,8 @@ anchor; overlap and mode switching are lifecycle work, not Helm merge behavior.
 {{- $issuer := include "radius.authz.certificates.issuer" . | fromJson -}}
 {{- dict "kind" $kind "name" $name "key" "ca.crt" "bundle" $bundle
   "uid" (dig "metadata" "uid" "" $observed) "resourceVersion" (dig "metadata" "resourceVersion" "" $observed)
+  "bootstrapUID" (index (dig "metadata" "annotations" (dict) $observed) "radius.io/certificate-bootstrap" | default "")
   "contentDigest" (sha256sum $bundle) "issuerDigest" (sha256sum (toJson $issuer))
   "digest" (sha256sum (printf "%s\n%s" $bundle (toJson $issuer))) "issuer" $issuer | toJson -}}
+{{- end -}}
 {{- end -}}

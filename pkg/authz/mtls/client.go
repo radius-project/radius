@@ -19,6 +19,7 @@ package mtls
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -138,6 +139,8 @@ type clientTransport struct {
 type connectionValidity struct {
 	notBefore time.Time
 	notAfter  time.Time
+	trust     [sha256.Size]byte
+	epoch     uint64
 }
 
 // trackedConn is a connection that clientTransport stops tracking when it is closed.
@@ -190,7 +193,7 @@ func newClientTransport(options authz.Options, receiver string) (*clientTranspor
 	t.Proxy = nil
 	t.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		var validity connectionValidity
-		config, err := source.clientConfig(spiffeID, func(chain []*x509.Certificate) {
+		config, snapshot, err := source.clientSnapshot(spiffeID, func(chain []*x509.Certificate) {
 			validity = chainValidity(chain)
 		})
 		if err != nil {
@@ -211,6 +214,13 @@ func newClientTransport(options authz.Options, receiver string) (*clientTranspor
 		if err := conn.HandshakeContext(ctx); err != nil {
 			_ = raw.Close()
 			return nil, err
+		}
+		validity.trust, validity.epoch = snapshot.trust, snapshot.epoch
+		if snapshot.notBefore.After(validity.notBefore) {
+			validity.notBefore = snapshot.notBefore
+		}
+		if snapshot.notAfter.Before(validity.notAfter) {
+			validity.notAfter = snapshot.notAfter
 		}
 
 		t.mu.Lock()
@@ -247,7 +257,11 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	t.closeExpired()
+	current, err := t.source.load()
+	t.closeInvalid(current)
+	if err != nil {
+		return nil, err
+	}
 
 	// A shallow copy shares req.Trailer and req.Body, so trailers the caller sets while the
 	// body streams are still sent. Only the header map is replaced.
@@ -257,12 +271,13 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.Transport.RoundTrip(req)
 }
 
-func (t *clientTransport) closeExpired() {
+func (t *clientTransport) closeInvalid(current *material) {
 	var expired []*trackedConn
 	t.mu.Lock()
 	now := t.source.now()
 	for conn, validity := range t.conns {
-		if now.Before(validity.notBefore) || now.After(validity.notAfter) {
+		if current == nil || validity.trust != current.trust || validity.epoch != current.epoch ||
+			now.Before(validity.notBefore) || now.After(validity.notAfter) {
 			expired = append(expired, conn)
 		}
 	}

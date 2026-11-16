@@ -77,7 +77,7 @@ type renderRadiusManifest func(ctx context.Context) (manifest string, ok bool, e
 // APIService caBundle already holds only the key of radius-apiserver-ca. When manifest has no radius-apiserver-ca
 // Certificate, as in charts before it, it only records the CAs of the live caBundle in the trust Secret. If cert-manager
 // does not issue the CA in time, it returns an error before Helm changes anything; running the command again resumes.
-func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace, releaseName string, mode authz.Mode, render renderRadiusManifest) error {
+func (i *Impl) stageLegacyUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace, releaseName string, mode authz.Mode, render renderRadiusManifest) error {
 	if mode == authz.ModeOff {
 		return nil
 	}
