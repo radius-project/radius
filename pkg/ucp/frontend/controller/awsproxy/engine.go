@@ -81,6 +81,23 @@ type request struct {
 	// manages gets (native.ScopedReader). put, get, and startDelete set them from the record. They are nil when UCP
 	// has no record.
 	managed []map[string]any
+
+	// recorded are the properties the record shows the resource has, which a native handler that can't read some
+	// properties in some states gets (native.RecordReader). put, get, and startDelete set them (see recordedValues).
+	recorded map[string]any
+
+	// unknown are the top-level properties the last read couldn't return (native.RecordReader), which are unknown
+	// rather than absent.
+	unknown []string
+}
+
+// recordedValues returns the record's last-applied properties when no operation left values unconfirmed, and nil
+// otherwise, or when UCP has no record of the last deploy.
+func recordedValues(rec *datamodel.AWSResource) map[string]any {
+	if rec.Properties.PendingLastApplied != nil || len(rec.Properties.UnresolvedPaths) > 0 {
+		return nil
+	}
+	return rec.Properties.LastApplied
 }
 
 // managedValues returns the property sets the alias may have applied: the record's last-applied and possibly applied
@@ -327,6 +344,9 @@ func (e *engine) reserve(ctx context.Context, r *request, rec *datamodel.AWSReso
 	if op != records.OperationDelete {
 		rec.Properties.DeleteToken = ""
 	}
+	if op != records.OperationUpdate {
+		records.ClearUpdateToken(rec)
+	}
 	rec.SetProvisioningState(records.StateOf(op))
 	etag, err := e.store.Save(ctx, rec, etag)
 	if err != nil {
@@ -378,7 +398,7 @@ func (e *engine) readResource(ctx context.Context, r *request, identifier string
 	var out *cloudcontrol.GetResourceOutput
 	var err error
 	if r.handler != nil {
-		out, err = readNative(ctx, r.handler, r.region, identifier, r.managed)
+		out, r.unknown, err = readNative(ctx, r.handler, r.region, identifier, r.managed, r.recorded)
 	} else {
 		out, err = e.clients.CloudControl.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			TypeName:   aws.String(r.typeName),
@@ -503,6 +523,7 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if r.managed, resp, err = e.ownManaged(ctx, r, rec, target, properties); resp != nil || err != nil {
 		return resp, err
 	}
+	r.recorded = recordedValues(rec)
 	identifier := rec.Properties.AWSIdentifier
 	var current *cloudcontrol.GetResourceOutput
 	applied := applied{properties: withoutSecrets(properties, secrets), fingerprints: fingerprints}
@@ -521,6 +542,8 @@ func (e *engine) put(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 			// Deleted outside Radius: create it again and update the record.
 			logger.Info("The AWS resource of an alias no longer exists; creating it again", "alias", r.id.Name(), "awsIdentifier", identifier)
 			rec.Properties.AWSIdentifier = ""
+		} else {
+			cleanup(ctx, r, rec, identifier)
 		}
 	default:
 		// No AWS resource under this alias yet. Take over one that already exists: first by name, then by the
@@ -578,6 +601,11 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 		return nil, err
 	}
 
+	if dropped := droppedUnknown(r.unknown, properties, rec.Properties.LastApplied); len(dropped) > 0 {
+		names := strings.Join(dropped, ", ")
+		return conflict("AWS can't return %s of the AWS resource %q now, such as while the resource is busy, and the template no longer sets them, so UCP can't tell what to remove. UCP changed nothing. Deploy again when the resource is available.", names, r.id.Name()), nil
+	}
+
 	schema := []byte(aws.ToString(typeInfo.Schema))
 	removed := []string{}
 	if records.HasApplied(rec) {
@@ -597,7 +625,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}
 	patch, err := awsoperations.GeneratePatchWithOptions(currentState, desiredState, schema, awsoperations.PatchOptions{
 		Removed:       removed,
-		Equivalent:    equivalentFor(r, rec.Properties.LastApplied != nil),
+		Equivalent:    equivalentFor(r, rec.Properties.LastApplied != nil, properties),
 		LastApplied:   rec.Properties.LastApplied,
 		Unresolved:    rec.Properties.UnresolvedPaths,
 		FailUncertain: r.native != nil && r.native.Handler.Options().DisruptiveUpdate,
@@ -644,6 +672,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 		rec.Properties.UnresolvedPaths = nil
 		rec.Properties.Fingerprints = applied.fingerprints
 		records.ClearPending(rec)
+		records.ClearUpdateToken(rec)
 		rec.Properties.RequestToken = ""
 		rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
 		if _, err := e.store.Save(ctx, rec, etag); err != nil {
@@ -656,6 +685,10 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	// Reserve the record with the values this deploy applies before calling AWS. The worker makes them last-applied
 	// when AWS succeeds.
 	prior := rec.ProvisioningState()
+	previousToken := rec.Properties.UpdateToken
+	if err := prepareUpdate(ctx, r, rec, identifier, updateIntent(applied)); err != nil {
+		return handleError(ctx, r.id, err)
+	}
 	rec.Properties.PendingLastApplied = applied.properties
 	rec.Properties.PendingFingerprints = applied.fingerprints
 	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationUpdate)
@@ -664,14 +697,21 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	}
 
 	logger.Info("Updating AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier, "handler", handlerName(r))
-	requestToken, err := e.startUpdate(ctx, r, identifier, currentProperties, properties, patch)
+	requestToken, err := e.startUpdate(ctx, r, rec, identifier, currentProperties, properties, patch)
 	if err != nil {
 		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
 			// When AWS rejected the update, it changed nothing, and the previous last-applied properties stay. A
 			// transport or server error, or a native update that failed partway, does not show that AWS changed
 			// nothing, so Radius owns the pending properties, as when an interrupted update is recovered, and a later
-			// deploy that omits one clears it.
-			records.Settle(rec, outcomeOf(err))
+			// deploy that omits one clears it. That deploy sends the update token again, in case AWS has this update.
+			// A rejected resend keeps the token too: AWS rejected only this attempt, such as by throttling, and may
+			// have accepted an earlier one.
+			outcome := outcomeOf(err)
+			records.Settle(rec, outcome)
+			resend := previousToken != "" && previousToken == rec.Properties.UpdateToken
+			if outcome == native.OutcomeRejected && !resend {
+				records.ClearUpdateToken(rec)
+			}
 			rec.SetProvisioningState(prior)
 		})
 		return handleError(ctx, r.id, err)
@@ -769,7 +809,7 @@ func (e *engine) create(ctx context.Context, r *request, rec *datamodel.AWSResou
 				// The native handler made every change, and UCP has the identifier, so the create is finished: its
 				// values and fingerprints are last-applied, and the next deploy updates the resource as usual.
 				records.Settle(rec, outcome)
-				rec.Properties.ClientToken = ""
+				records.FinishCreate(rec)
 				rec.SetProvisioningState(v1.ProvisioningStateFailed)
 				return
 			case replay && outcome == native.OutcomeRejected:
@@ -966,6 +1006,7 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		return refused, err
 	}
 	r.managed = managed
+	r.recorded = recordedValues(rec)
 	switch onDelete(r) {
 	case schemas.OnDeleteNothing:
 		logger.Info("Removing the record of an AWS resource without changing it in AWS", "alias", r.id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier)
@@ -1135,7 +1176,7 @@ func (e *engine) recoverCreate(ctx context.Context, r *request, rec *datamodel.A
 	}
 
 	rec.Properties.AWSIdentifier = status.Identifier
-	rec.Properties.ClientToken = ""
+	records.FinishCreate(rec)
 	etag, err = e.store.Save(ctx, rec, etag)
 	if err != nil {
 		resp, err := saveError(r.id, err)
@@ -1181,6 +1222,7 @@ func (e *engine) get(ctx context.Context, httpReq *http.Request) (armrpc_rest.Re
 	if r.managed, resp, err = e.ownManaged(ctx, r, rec, rec.Properties.AWSIdentifier, nil); resp != nil || err != nil {
 		return resp, err
 	}
+	r.recorded = recordedValues(rec)
 
 	current, err := e.readResource(ctx, r, rec.Properties.AWSIdentifier)
 	if err != nil {
