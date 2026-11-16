@@ -382,6 +382,7 @@ func merge(dst map[string]any, src map[string]any) {
 func ApplyPending(rec *datamodel.AWSResource) {
 	applyPendingValues(rec)
 	FinishCreate(rec)
+	ClearUpdateToken(rec)
 	finish(rec, nil)
 	rec.SetProvisioningState(v1.ProvisioningStateSucceeded)
 }
@@ -413,8 +414,20 @@ func Settle(rec *datamodel.AWSResource, outcome native.Outcome) {
 
 // Fail finishes a failed update or delete: the pending values are dropped, so the previous last-applied properties
 // and fingerprints stay. The request token moves to LastRequestToken with failure, so a redelivered operation reports
-// the same error. The update token is cleared, so the next update is a new one, even when this one timed out.
+// the same error. The update token is cleared, because AWS finished the update, so the next update is a new one (see
+// FailUnfinished).
 func Fail(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
+	ClearPending(rec)
+	ClearUpdateToken(rec)
+	finish(rec, failure)
+	rec.SetProvisioningState(v1.ProvisioningStateFailed)
+}
+
+// FailUnfinished finishes an update UCP stopped waiting for before AWS finished it, such as at the timeout, as Fail
+// does, but keeps the update token and the handler's state for it. AWS accepted the update and may still run it, so a
+// deploy of the same values sends it again with its token, and AWS answers with the update it has, instead of taking
+// it as a new one.
+func FailUnfinished(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	ClearPending(rec)
 	finish(rec, failure)
 	rec.SetProvisioningState(v1.ProvisioningStateFailed)
@@ -424,7 +437,6 @@ func finish(rec *datamodel.AWSResource, failure *v1.ErrorDetails) {
 	rec.Properties.LastRequestToken = rec.Properties.RequestToken
 	rec.Properties.LastRequestError = failure
 	rec.Properties.RequestToken = ""
-	ClearUpdateToken(rec)
 }
 
 // FinishCreate marks the first create as finished: it clears the client token, and keeps it as the create token, so a

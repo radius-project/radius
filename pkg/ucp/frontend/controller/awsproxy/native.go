@@ -374,8 +374,9 @@ func updateIntent(a applied) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// startUpdate starts an update and returns the token the worker polls: Cloud Control's request token, or for a native
-// handler the record's update token, which is the operation ID.
+// startUpdate starts an update and returns the token the worker polls: Cloud Control's request token, or an operation
+// ID UCP makes for a native handler. A native update gets the record's update token, which UCP keeps apart from the
+// operation ID, so it is never returned to the caller.
 func (e *engine) startUpdate(ctx context.Context, r *request, rec *datamodel.AWSResource, identifier string, current map[string]any, desired map[string]any, patch jsondiff.Patch) (string, error) {
 	if r.handler != nil {
 		err := r.handler.Update(ctx, native.UpdateRequest{
@@ -385,7 +386,7 @@ func (e *engine) startUpdate(ctx context.Context, r *request, rec *datamodel.AWS
 		if err != nil {
 			return "", err
 		}
-		return rec.Properties.UpdateToken, nil
+		return uuid.New().String(), nil
 	}
 
 	marshaled, err := json.Marshal(&patch)

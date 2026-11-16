@@ -95,9 +95,11 @@ type AWSResourceProperties struct {
 	DeleteToken string `json:"deleteToken,omitempty"`
 
 	// UpdateToken is a UUID UCP makes before the first call of a native update. UCP sends it with every attempt of
-	// that update (native.UpdateRequest.Token) and uses it as the update's operation ID. A request that resumes an
-	// update UCP reserved but never tracked, or a deploy after an update call whose outcome UCP can't tell, sends it
-	// again. It is cleared when the update finishes, when AWS rejects it, and when another operation starts.
+	// that update (native.UpdateRequest.Token). A request that resumes an update UCP reserved but never tracked, or a
+	// deploy after an update call whose outcome UCP can't tell or that UCP stopped waiting for, sends it again. It is
+	// cleared when the update finishes in AWS, when AWS rejects its first attempt, and when another operation starts.
+	// Each attempt has its own operation ID, so a resend of an update that timed out isn't taken as the one that
+	// finished.
 	UpdateToken string `json:"updateToken,omitempty"`
 
 	// UpdateIntent is a hash of the values the update UpdateToken names applies, its last-applied properties and

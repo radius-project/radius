@@ -480,11 +480,10 @@ func (h *FileSystem) Update(ctx context.Context, request native.UpdateRequest) e
 // updateToken returns the idempotency token of an UpdateFileSystem call: the first 32 hex characters of an
 // HMAC-SHA-256 of the call's input without its passwords, keyed by the update's token. A resent update with the same
 // input sends the same token, so FSx doesn't apply it twice. One whose input changed, such as after AWS applied part of
-// the update, sends a new token, because FSx rejects a token it has seen with other parameters. UCP returns the
-// update's token as the operation ID, so the passwords stay out of the HMAC: with them in, anyone who has the operation
-// ID and sees the call's token, such as in CloudTrail, could test guesses of a password. A resend that changes only a
-// password therefore sends the same token, and FSx rejects it, which clears the update's token for the next deploy. It
-// returns nil without a token, and then the SDK makes a new token for each call.
+// the update, sends a new token, because FSx rejects a token it has seen with other parameters. The passwords stay out
+// of the HMAC, so the token FSx gets, which CloudTrail logs, can't be used to test guesses of a password even if the
+// update's token leaks. A changed password is another update, with another update token, so it still gets a new FSx
+// token. It returns nil without a token, and then the SDK makes a new token for each call.
 func updateToken(token string, input *fsx.UpdateFileSystemInput) *string {
 	if token == "" {
 		return nil

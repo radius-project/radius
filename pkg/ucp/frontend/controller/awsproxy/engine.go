@@ -670,6 +670,7 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 	// Reserve the record with the values this deploy applies before calling AWS. The worker makes them last-applied
 	// when AWS succeeds.
 	prior := rec.ProvisioningState()
+	previousToken := rec.Properties.UpdateToken
 	if err := prepareUpdate(ctx, r, rec, identifier, updateIntent(applied)); err != nil {
 		return handleError(ctx, r.id, err)
 	}
@@ -688,9 +689,12 @@ func (e *engine) update(ctx context.Context, r *request, rec *datamodel.AWSResou
 			// transport or server error, or a native update that failed partway, does not show that AWS changed
 			// nothing, so Radius owns the pending properties, as when an interrupted update is recovered, and a later
 			// deploy that omits one clears it. That deploy sends the update token again, in case AWS has this update.
+			// A rejected resend keeps the token too: AWS rejected only this attempt, such as by throttling, and may
+			// have accepted an earlier one.
 			outcome := outcomeOf(err)
 			records.Settle(rec, outcome)
-			if outcome == native.OutcomeRejected {
+			resend := previousToken != "" && previousToken == rec.Properties.UpdateToken
+			if outcome == native.OutcomeRejected && !resend {
 				records.ClearUpdateToken(rec)
 			}
 			rec.SetProvisioningState(prior)

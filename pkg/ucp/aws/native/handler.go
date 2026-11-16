@@ -271,9 +271,9 @@ type UpdateRequest struct {
 
 	// Token is a UUID saved on the record before the first call of this update, and the same on every attempt to
 	// send it: a request that resumes an update UCP reserved but never tracked, or the next deploy after an update
-	// call whose outcome UCP can't tell, sends it again. It is also the operation ID. A handler sends it as the API's
-	// idempotency token, so a resent update isn't applied twice. A new update, including one after this update
-	// finished or AWS rejected it, gets a new token.
+	// call whose outcome UCP can't tell or that UCP stopped waiting for, sends it again. A handler sends it as the
+	// API's idempotency token, so a resent update isn't applied twice. A new update, including one after this update
+	// finished in AWS or AWS rejected its first attempt, gets a new token. It is never returned to the caller.
 	Token string
 
 	// State is what UpdatePreparer.UpdateState returned before the first call of this update, for a handler that

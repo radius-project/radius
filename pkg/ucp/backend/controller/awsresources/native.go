@@ -190,7 +190,12 @@ func saveNativeFailure(ctx context.Context, store *records.Store, id resources.I
 		if op == records.OperationCreate && outcome == native.OutcomeApplied {
 			records.FinishCreate(rec)
 		}
-		records.Fail(rec, &failure)
+		if op == records.OperationUpdate && !failed {
+			// UCP stopped waiting, such as at the timeout, and AWS may still run the update.
+			records.FailUnfinished(rec, &failure)
+		} else {
+			records.Fail(rec, &failure)
+		}
 		return false
 	})
 	if errors.Is(err, errSuperseded) {

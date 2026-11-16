@@ -95,9 +95,9 @@ func lastUpdate(t *testing.T, calls []nativefake.Call) nativefake.Call {
 }
 
 // Test_Native_UpdateToken checks the token UCP gives a native update: a new one for each update, saved before the
-// call and used as the operation ID, and the same one when UCP sends an update again that may have reached AWS.
+// call and kept apart from the operation ID, and the same one when UCP sends an update again that may have reached AWS.
 func Test_Native_UpdateToken(t *testing.T) {
-	t.Run("each update gets a new token, which is its operation ID", func(t *testing.T) {
+	t.Run("each update gets a new token, apart from its operation ID", func(t *testing.T) {
 		h := newNativeHarness(t)
 		h.deploy(nativePath, nativeProperties(1))
 		h.fake.Calls()
@@ -107,7 +107,7 @@ func Test_Native_UpdateToken(t *testing.T) {
 		require.NotEmpty(t, first)
 		rec := h.record(nativePath)
 		require.Equal(t, first, rec.Properties.UpdateToken, "saved before the call")
-		require.Equal(t, first, rec.Properties.RequestToken, "the operation ID")
+		require.NotEqual(t, first, rec.Properties.RequestToken, "the operation ID is returned to the caller, the token never is")
 		for _, result := range h.finish() {
 			require.Nil(t, result.Error)
 		}
@@ -200,6 +200,65 @@ func Test_Native_UpdateToken(t *testing.T) {
 		h.provisioningTypes[nativeType] = cftypes.ProvisioningTypeNonProvisionable
 		h.deploy(nativePath, nativeProperties(2))
 		require.NotEqual(t, first, lastUpdate(t, h.fake.Calls()).Token, "the native update after Cloud Control's is a new one")
+	})
+
+	t.Run("a resend AWS rejects keeps the token of the update it resends", func(t *testing.T) {
+		h := newNativeHarness(t)
+		s := h.withStateful()
+		h.deploy(nativePath, nativeProperties(1))
+		h.fake.LostResponses["Update"] = nativefake.ServerError("InternalFailure", "the response was lost")
+		require.Equal(t, http.StatusInternalServerError, h.put(nativePath, nativeProperties(2)).status)
+		first := lastUpdate(t, h.fake.Calls()).Token
+		unresolved := h.record(nativePath).Properties.UnresolvedPaths
+		require.NotEmpty(t, unresolved)
+
+		// The resend fails with a client fault, such as throttling or a busy resource. That doesn't show what AWS
+		// did with the first attempt, which it may have accepted.
+		h.cc.Put(nativeType, "app-native", map[string]any{"Name": "app-native", "Size": 1})
+		h.fake.Errors["Update"] = nativefake.ClientError("ThrottlingException", "Rate exceeded")
+		require.Equal(t, http.StatusBadRequest, h.put(nativePath, nativeProperties(2)).status)
+		require.Equal(t, first, lastUpdate(t, h.fake.Calls()).Token)
+		rec := h.record(nativePath)
+		require.Equal(t, first, rec.Properties.UpdateToken)
+		require.Equal(t, "state-1", rec.Properties.UpdateState)
+		require.Equal(t, unresolved, rec.Properties.UnresolvedPaths, "the first attempt's values stay possibly applied")
+
+		delete(h.fake.Errors, "Update")
+		h.deploy(nativePath, nativeProperties(2))
+		require.Equal(t, first, lastUpdate(t, h.fake.Calls()).Token)
+		require.Equal(t, 1, *s.states, "the resend keeps the first attempt's state")
+	})
+
+	t.Run("a timed-out update keeps its token for a resend of the same values", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.deploy(nativePath, nativeProperties(1))
+		h.fake.Waits = 1_000_000
+		h.fake.Opts.UpdateTimeout = time.Millisecond
+		require.Equal(t, http.StatusCreated, h.put(nativePath, nativeProperties(2)).status)
+		first := lastUpdate(t, h.fake.Calls()).Token
+		require.NotNil(t, h.finish()[0].Error)
+		require.Equal(t, first, h.record(nativePath).Properties.UpdateToken, "AWS accepted the update and may still run it")
+
+		h.fake.Waits = 0
+		h.fake.Opts.UpdateTimeout = 0
+		h.cc.Put(nativeType, "app-native", map[string]any{"Name": "app-native", "Size": 1})
+		h.deploy(nativePath, nativeProperties(2))
+		require.Equal(t, first, lastUpdate(t, h.fake.Calls()).Token)
+	})
+
+	t.Run("an update that failed in AWS gets a new token next time", func(t *testing.T) {
+		h := newNativeHarness(t)
+		h.deploy(nativePath, nativeProperties(1))
+		h.fake.Failures[native.OperationUpdate] = &native.Failure{Message: "the update failed"}
+		require.Equal(t, http.StatusCreated, h.put(nativePath, nativeProperties(2)).status)
+		first := lastUpdate(t, h.fake.Calls()).Token
+		require.NotNil(t, h.finish()[0].Error)
+		require.Empty(t, h.record(nativePath).Properties.UpdateToken, "AWS finished it, so a resend with its token would get its result")
+
+		delete(h.fake.Failures, native.OperationUpdate)
+		h.cc.Put(nativeType, "app-native", map[string]any{"Name": "app-native", "Size": 1})
+		h.deploy(nativePath, nativeProperties(2))
+		require.NotEqual(t, first, lastUpdate(t, h.fake.Calls()).Token)
 	})
 
 	t.Run("a rejected update gets a new token next time", func(t *testing.T) {
