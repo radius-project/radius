@@ -165,10 +165,22 @@ func issuedUCPAPIServerTrustClient(string) (kubernetes.Interface, error) {
 	return kubefake.NewSimpleClientset(secret), nil
 }
 
+// shortenUCPAPIServiceWait polls every 10ms. A wait that settles needs several polls in a row, such as
+// ucpAPIServerCASettleChecks clean polls after a conflict and a cainjector write-back, so the timeout leaves room for
+// a slow run (for example with -race) and a test that settles still finishes in milliseconds.
 func shortenUCPAPIServiceWait(t *testing.T) {
-	timeout, interval := ucpAPIServiceTimeout, ucpAPIServicePollInterval
-	ucpAPIServiceTimeout, ucpAPIServicePollInterval = 50*time.Millisecond, 10*time.Millisecond
-	t.Cleanup(func() { ucpAPIServiceTimeout, ucpAPIServicePollInterval = timeout, interval })
+	setUCPAPIServiceWait(t, 10*time.Second)
+}
+
+// expireUCPAPIServiceWait polls every 10ms and times out after 50ms, for a test that expects a wait to time out.
+func expireUCPAPIServiceWait(t *testing.T) {
+	setUCPAPIServiceWait(t, 50*time.Millisecond)
+}
+
+func setUCPAPIServiceWait(t *testing.T, timeout time.Duration) {
+	previousTimeout, previousInterval := ucpAPIServiceTimeout, ucpAPIServicePollInterval
+	ucpAPIServiceTimeout, ucpAPIServicePollInterval = timeout, 10*time.Millisecond
+	t.Cleanup(func() { ucpAPIServiceTimeout, ucpAPIServicePollInterval = previousTimeout, previousInterval })
 }
 
 // trustedSubjects returns the CommonNames of the CA certificates in the trust Secret, and checks that the Secret
@@ -315,7 +327,7 @@ func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			shortenUCPAPIServiceWait(t)
+			expireUCPAPIServiceWait(t)
 			if tt.want != "cert-manager.io/allow-direct-injection" {
 				tt.secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
 			}
@@ -333,7 +345,7 @@ func Test_reconcileUCPAPIServerTrust_RejectsUnusableCASecret(t *testing.T) {
 func noStageManifest(context.Context) (string, bool, error) { return "", true, nil }
 
 func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
-	shortenUCPAPIServiceWait(t)
+	expireUCPAPIServiceWait(t)
 	ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
 
 	// Before the upgrade the chart set the APIService caBundle to the Helm-generated ucp-ca, and UCP serves a
@@ -384,7 +396,7 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 }
 
 func Test_reconcileUCPAPIServerTrust_ServingCertificateFromOtherCA(t *testing.T) {
-	shortenUCPAPIServiceWait(t)
+	expireUCPAPIServiceWait(t)
 	ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
 	kubeClient := kubefake.NewSimpleClientset(
 		&corev1.Secret{
