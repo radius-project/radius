@@ -426,12 +426,19 @@ func Test_WriteOnly_PendingFingerprints(t *testing.T) {
 		require.Equal(t, http.StatusCreated, h.put(dbPath, changed).status)
 		results := h.finish()
 		require.NotNil(t, results[0].Error)
+		// AWS may have applied the new password before the update failed, so neither fingerprint describes what AWS
+		// has, and the password's is dropped. The others stay.
 		rec := h.record(dbPath)
-		require.Equal(t, previous, rec.Properties.Fingerprints)
+		require.NotContains(t, rec.Properties.Fingerprints.Digests, "Password")
+		for path, digest := range previous.Digests {
+			if path != "Password" {
+				require.Equal(t, digest, rec.Properties.Fingerprints.Digests[path], path)
+			}
+		}
 		require.Nil(t, rec.Properties.PendingFingerprints)
 		h.cc.Calls()
 
-		// AWS did not apply the new password, so the next deploy sends it again.
+		// UCP can't tell whether AWS has the new password, so the next deploy sends it again.
 		resp := h.put(dbPath, changed)
 		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
 		require.Equal(t, []string{"add /Password"}, patchOps(t, h.cc.Calls()[1].Document))

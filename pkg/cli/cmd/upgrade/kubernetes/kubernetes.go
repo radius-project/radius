@@ -64,6 +64,11 @@ aggregation DNS profiles; external requires aggregation DNS only. Local CA feasi
 proof of issuance by an external backend. Public trust staging and convergence require the
 paired certificate lifecycle implementation.
 
+Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed.
+The 'global.rbac.enabled' and 'global.rbac.dryRun' Helm settings are experimental,
+including when their values are preserved from a previous installation.
+Do not rely on RBAC for production access control.
+
 When Contour is installed, the upgrade also upgrades it. Contour chart values can be set with
 '--contour-set' and '--contour-set-file'. They take precedence over the values stored on the Contour
 release and over the values that Radius sets, and --reset-values discards the stored Contour values too.

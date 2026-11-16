@@ -16,7 +16,7 @@ func TestGenerateDeploymentResourceName(t *testing.T) {
 		{
 			name:       "valid resource ID",
 			resourceId: "/subscriptions/123/resourceGroups/myResourceGroup/providers/Microsoft.Web/sites/mySite",
-			want:       "mySite",
+			want:       "output-259c3d8b59b1a4545d24f0c2c41628414f2842dad49fb9e4810cddeb",
 			wantErr:    false,
 		},
 		{

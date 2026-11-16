@@ -1,0 +1,392 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_CLIENT_VPN_CLIENT_CERTIFICATE": "arn:aws:acm:us-west-2:123456789012:certificate/2b706e84-7abd-4cc8-a99b-d3a33287413c",
+    "RADIUS_REC_CLIENT_VPN_SERVER_CERTIFICATE": "arn:aws:acm:us-west-2:123456789012:certificate/c7c20549-a639-4fb1-973f-80d9acc2c766",
+    "RADIUS_REC_RUN": "rc899e",
+    "RADIUS_REC_SUBNET": "subnet-0a25e6291b3a86d5e",
+    "RADIUS_REC_VPC": "vpc-05ed4309b07dc6f99"
+  },
+  "interactions": [
+    {
+      "service": "EC2",
+      "operation": "CreateClientVpnEndpoint",
+      "request": "Action=CreateClientVpnEndpoint\u0026Authentication.1.MutualAuthentication.ClientRootCertificateChainArn=arn%3Aaws%3Aacm%3Aus-west-2%3A123456789012%3Acertificate%2F2b706e84-7abd-4cc8-a99b-d3a33287413c\u0026Authentication.1.Type=certificate-authentication\u0026ClientCidrBlock=10.250.0.0%2F22\u0026ClientToken=8bdf5c3d-f2be-4fe3-bbdc-26252d7a2c6e\u0026ConnectionLogOptions.Enabled=false\u0026Description=radius-rec-rc899e\u0026ServerCertificateArn=arn%3Aaws%3Aacm%3Aus-west-2%3A123456789012%3Acertificate%2Fc7c20549-a639-4fb1-973f-80d9acc2c766\u0026TagSpecification.1.ResourceType=client-vpn-endpoint\u0026TagSpecification.1.Tag.1.Key=radius-recording\u0026TagSpecification.1.Tag.1.Value=rc899e\u0026Version=2016-11-15\u0026VpcId=vpc-05ed4309b07dc6f99",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cCreateClientVpnEndpointResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e132e0e67-1065-453c-8fff-3589e8fbff7f\u003c/requestId\u003e\u003cdnsName\u003ecvpn-endpoint-07ad8670f7dcfc554.prod.clientvpn.us-west-2.amazonaws.com\u003c/dnsName\u003e\u003cstatus\u003e\u003ccode\u003epending-associate\u003c/code\u003e\u003c/status\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003c/CreateClientVpnEndpointResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnEndpoints",
+      "request": "Action=DescribeClientVpnEndpoints\u0026ClientVpnEndpointId.1=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnEndpointsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e288dcdb9-bd25-46f2-91fe-c3ebd835ca69\u003c/requestId\u003e\u003cclientVpnEndpoint\u003e\u003citem\u003e\u003cauthenticationOptions\u003e\u003citem\u003e\u003cmutualAuthentication\u003e\u003cclientRootCertificateChain\u003earn:aws:acm:us-west-2:123456789012:certificate/2b706e84-7abd-4cc8-a99b-d3a33287413c\u003c/clientRootCertificateChain\u003e\u003c/mutualAuthentication\u003e\u003ctype\u003ecertificate-authentication\u003c/type\u003e\u003c/item\u003e\u003c/authenticationOptions\u003e\u003cclientCidrBlock\u003e10.250.0.0/22\u003c/clientCidrBlock\u003e\u003cclientConnectOptions\u003e\u003cenabled\u003efalse\u003c/enabled\u003e\u003cstatus\u003e\u003ccode\u003eapplying\u003c/code\u003e\u003c/status\u003e\u003c/clientConnectOptions\u003e\u003cclientLoginBannerOptions\u003e\u003cenabled\u003efalse\u003c/enabled\u003e\u003c/clientLoginBannerOptions\u003e\u003cclientRouteEnforcementOptions\u003e\u003cenforced\u003efalse\u003c/enforced\u003e\u003c/clientRouteEnforcementOptions\u003e\u003cconnectionLogOptions\u003e\u003cEnabled\u003efalse\u003c/Enabled\u003e\u003cIncludeAuthorizationPolicyContext\u003efalse\u003c/IncludeAuthorizationPolicyContext\u003e\u003c/connectionLogOptions\u003e\u003ccreationTime\u003e2026-11-05T06:40:23\u003c/creationTime\u003e\u003cdescription\u003eradius-rec-rc899e\u003c/description\u003e\u003cdisconnectOnSessionTimeout\u003etrue\u003c/disconnectOnSessionTimeout\u003e\u003cdnsName\u003e*.cvpn-endpoint-07ad8670f7dcfc554.prod.clientvpn.us-west-2.amazonaws.com\u003c/dnsName\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003cendpointIpAddressType\u003eipv4\u003c/endpointIpAddressType\u003e\u003cstatus\u003e\u003ccode\u003epending-associate\u003c/code\u003e\u003c/status\u003e\u003csecurityGroupIdSet\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroupIdSet\u003e\u003cselfServicePortalUrl\u003ehttps://self-service.clientvpn.amazonaws.com/endpoints/cvpn-endpoint-07ad8670f7dcfc554\u003c/selfServicePortalUrl\u003e\u003cserverCertificateArn\u003earn:aws:acm:us-west-2:123456789012:certificate/c7c20549-a639-4fb1-973f-80d9acc2c766\u003c/serverCertificateArn\u003e\u003csessionTimeoutHours\u003e24\u003c/sessionTimeoutHours\u003e\u003csplitTunnel\u003efalse\u003c/splitTunnel\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003ctrafficIpAddressType\u003eipv4\u003c/trafficIpAddressType\u003e\u003ctransportProtocol\u003eudp\u003c/transportProtocol\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cvpnPort\u003e443\u003c/vpnPort\u003e\u003cvpnProtocol\u003eopenvpn\u003c/vpnProtocol\u003e\u003c/item\u003e\u003c/clientVpnEndpoint\u003e\u003c/DescribeClientVpnEndpointsResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "GetClientVpnEndpointAuthorizationPolicy",
+      "request": "Action=GetClientVpnEndpointAuthorizationPolicy\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cGetClientVpnEndpointAuthorizationPolicyResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e34160c68-b193-4397-a00f-e15d3c0c1899\u003c/requestId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003c/GetClientVpnEndpointAuthorizationPolicyResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnEndpoints",
+      "request": "Action=DescribeClientVpnEndpoints\u0026ClientVpnEndpointId.1=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnEndpointsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e326b26be-b71a-44b6-b3e6-1fcf4ec8c62f\u003c/requestId\u003e\u003cclientVpnEndpoint\u003e\u003citem\u003e\u003cauthenticationOptions\u003e\u003citem\u003e\u003cmutualAuthentication\u003e\u003cclientRootCertificateChain\u003earn:aws:acm:us-west-2:123456789012:certificate/2b706e84-7abd-4cc8-a99b-d3a33287413c\u003c/clientRootCertificateChain\u003e\u003c/mutualAuthentication\u003e\u003ctype\u003ecertificate-authentication\u003c/type\u003e\u003c/item\u003e\u003c/authenticationOptions\u003e\u003cclientCidrBlock\u003e10.250.0.0/22\u003c/clientCidrBlock\u003e\u003cclientConnectOptions\u003e\u003cenabled\u003efalse\u003c/enabled\u003e\u003cstatus\u003e\u003ccode\u003eapplying\u003c/code\u003e\u003c/status\u003e\u003c/clientConnectOptions\u003e\u003cclientLoginBannerOptions\u003e\u003cenabled\u003efalse\u003c/enabled\u003e\u003c/clientLoginBannerOptions\u003e\u003cclientRouteEnforcementOptions\u003e\u003cenforced\u003efalse\u003c/enforced\u003e\u003c/clientRouteEnforcementOptions\u003e\u003cconnectionLogOptions\u003e\u003cEnabled\u003efalse\u003c/Enabled\u003e\u003cIncludeAuthorizationPolicyContext\u003efalse\u003c/IncludeAuthorizationPolicyContext\u003e\u003c/connectionLogOptions\u003e\u003ccreationTime\u003e2026-11-05T06:40:23\u003c/creationTime\u003e\u003cdescription\u003eradius-rec-rc899e\u003c/description\u003e\u003cdisconnectOnSessionTimeout\u003etrue\u003c/disconnectOnSessionTimeout\u003e\u003cdnsName\u003e*.cvpn-endpoint-07ad8670f7dcfc554.prod.clientvpn.us-west-2.amazonaws.com\u003c/dnsName\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003cendpointIpAddressType\u003eipv4\u003c/endpointIpAddressType\u003e\u003cstatus\u003e\u003ccode\u003epending-associate\u003c/code\u003e\u003c/status\u003e\u003csecurityGroupIdSet\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroupIdSet\u003e\u003cselfServicePortalUrl\u003ehttps://self-service.clientvpn.amazonaws.com/endpoints/cvpn-endpoint-07ad8670f7dcfc554\u003c/selfServicePortalUrl\u003e\u003cserverCertificateArn\u003earn:aws:acm:us-west-2:123456789012:certificate/c7c20549-a639-4fb1-973f-80d9acc2c766\u003c/serverCertificateArn\u003e\u003csessionTimeoutHours\u003e24\u003c/sessionTimeoutHours\u003e\u003csplitTunnel\u003efalse\u003c/splitTunnel\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003ctrafficIpAddressType\u003eipv4\u003c/trafficIpAddressType\u003e\u003ctransportProtocol\u003eudp\u003c/transportProtocol\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cvpnPort\u003e443\u003c/vpnPort\u003e\u003cvpnProtocol\u003eopenvpn\u003c/vpnProtocol\u003e\u003c/item\u003e\u003c/clientVpnEndpoint\u003e\u003c/DescribeClientVpnEndpointsResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "GetClientVpnEndpointAuthorizationPolicy",
+      "request": "Action=GetClientVpnEndpointAuthorizationPolicy\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cGetClientVpnEndpointAuthorizationPolicyResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e4e48c408-60ad-4fc2-8c59-cc04d194461b\u003c/requestId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003c/GetClientVpnEndpointAuthorizationPolicyResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "AssociateClientVpnTargetNetwork",
+      "request": "Action=AssociateClientVpnTargetNetwork\u0026ClientToken=a1ed6237-81a9-4574-816e-6c059424db07\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026SubnetId=subnet-0a25e6291b3a86d5e\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cAssociateClientVpnTargetNetworkResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ec957501c-ba4b-451b-831b-2cd441fd987a\u003c/requestId\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003c/AssociateClientVpnTargetNetworkResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ee05862a1-8737-40cf-afc6-0b3485c751e5\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e3993f790-c0f4-41e1-925f-6632f81bf3fc\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e63ed9254-6c0f-4f9a-9413-00237f36e65f\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e5940453e-cda7-42b1-92e7-dc88b822cf81\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e3ef2565c-2949-4711-9315-52a48db12c32\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e085782b9-a092-4e1c-9a74-2ff298c32500\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e1d948da8-cdee-4797-bf3b-bde44dcc4ec1\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e8c445114-8e4a-4cc5-b326-1ae168b34106\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e362ac2b2-1cd0-4f76-b273-550b19e2769b\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e9c170f91-e696-4439-a0f6-e53623bf9909\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003eacfe3e8b-18b8-4662-a3c6-d165a920fb74\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003eb8081dee-afa8-4e0a-804b-33d4b93be7f8\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e01b4af8d-2ab3-47f6-8677-8d5ab8ee8bc8\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e0daa7ca0-14ed-4a33-b51c-4ab347fe629c\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociated\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ee8677821-203b-4461-9315-f42ec1024312\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociated\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e83310f23-9f0b-4ce7-88b5-4ba9d21f9353\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003eassociated\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DisassociateClientVpnTargetNetwork",
+      "request": "Action=DisassociateClientVpnTargetNetwork\u0026AssociationId=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDisassociateClientVpnTargetNetworkResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ec497c949-70c8-4dc8-8513-4e9b74dca480\u003c/requestId\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003c/DisassociateClientVpnTargetNetworkResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ef9909900-c03f-4fc7-98a5-3c389f1f2e0c\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e6bb6f811-df47-4eb5-9cd9-2bf7cf2cac2d\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e9ef7fd01-606c-491e-9c0e-e5c13f4710b2\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ecfdbb6ec-23f2-4bd6-95ac-241d31f3c178\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003edae9db7d-337b-402b-ba58-3948d95eb2ec\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ef4c408e1-b3c3-40e4-a785-19513f9c8505\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ef9352e3c-4deb-49eb-a667-39140692520d\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e46a53f6a-71c4-45b9-a6b6-351c7a750ec2\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e54809938-638b-4a8f-a874-af926e6de44c\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e8ff5ef03-66b3-4b63-95c2-02629d917f94\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003e805995fa-db9b-48ca-b503-68a7efec4c12\u003c/requestId\u003e\u003cclientVpnTargetNetworks\u003e\u003citem\u003e\u003cassociationId\u003ecvpn-assoc-0859fe2523a771f3b\u003c/associationId\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003ctargetNetworkId\u003esubnet-0a25e6291b3a86d5e\u003c/targetNetworkId\u003e\u003csecurityGroups\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroups\u003e\u003cstatus\u003e\u003ccode\u003edisassociating\u003c/code\u003e\u003c/status\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003c/item\u003e\u003c/clientVpnTargetNetworks\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnTargetNetworks",
+      "request": "Action=DescribeClientVpnTargetNetworks\u0026AssociationIds.1=cvpn-assoc-0859fe2523a771f3b\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnTargetNetworksResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ebc9a4579-e6e0-4d6d-9d43-c5a7981e5e62\u003c/requestId\u003e\u003cclientVpnTargetNetworks/\u003e\u003c/DescribeClientVpnTargetNetworksResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnEndpoints",
+      "request": "Action=DescribeClientVpnEndpoints\u0026ClientVpnEndpointId.1=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDescribeClientVpnEndpointsResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003eec98d380-4adb-400c-81df-77d9328c5bb3\u003c/requestId\u003e\u003cclientVpnEndpoint\u003e\u003citem\u003e\u003cauthenticationOptions\u003e\u003citem\u003e\u003cmutualAuthentication\u003e\u003cclientRootCertificateChain\u003earn:aws:acm:us-west-2:123456789012:certificate/2b706e84-7abd-4cc8-a99b-d3a33287413c\u003c/clientRootCertificateChain\u003e\u003c/mutualAuthentication\u003e\u003ctype\u003ecertificate-authentication\u003c/type\u003e\u003c/item\u003e\u003c/authenticationOptions\u003e\u003cclientCidrBlock\u003e10.250.0.0/22\u003c/clientCidrBlock\u003e\u003cclientConnectOptions\u003e\u003cenabled\u003efalse\u003c/enabled\u003e\u003cstatus\u003e\u003ccode\u003eapplied\u003c/code\u003e\u003c/status\u003e\u003c/clientConnectOptions\u003e\u003cclientLoginBannerOptions\u003e\u003cenabled\u003efalse\u003c/enabled\u003e\u003c/clientLoginBannerOptions\u003e\u003cclientRouteEnforcementOptions\u003e\u003cenforced\u003efalse\u003c/enforced\u003e\u003c/clientRouteEnforcementOptions\u003e\u003cconnectionLogOptions\u003e\u003cEnabled\u003efalse\u003c/Enabled\u003e\u003cIncludeAuthorizationPolicyContext\u003efalse\u003c/IncludeAuthorizationPolicyContext\u003e\u003c/connectionLogOptions\u003e\u003ccreationTime\u003e2026-11-05T06:40:23\u003c/creationTime\u003e\u003cdescription\u003eradius-rec-rc899e\u003c/description\u003e\u003cdisconnectOnSessionTimeout\u003etrue\u003c/disconnectOnSessionTimeout\u003e\u003cdnsName\u003e*.cvpn-endpoint-07ad8670f7dcfc554.prod.clientvpn.us-west-2.amazonaws.com\u003c/dnsName\u003e\u003cclientVpnEndpointId\u003ecvpn-endpoint-07ad8670f7dcfc554\u003c/clientVpnEndpointId\u003e\u003cendpointIpAddressType\u003eipv4\u003c/endpointIpAddressType\u003e\u003cstatus\u003e\u003ccode\u003epending-associate\u003c/code\u003e\u003c/status\u003e\u003csecurityGroupIdSet\u003e\u003citem\u003esg-0aca40cdeaff4764b\u003c/item\u003e\u003c/securityGroupIdSet\u003e\u003cselfServicePortalUrl\u003ehttps://self-service.clientvpn.amazonaws.com/endpoints/cvpn-endpoint-07ad8670f7dcfc554\u003c/selfServicePortalUrl\u003e\u003cserverCertificateArn\u003earn:aws:acm:us-west-2:123456789012:certificate/c7c20549-a639-4fb1-973f-80d9acc2c766\u003c/serverCertificateArn\u003e\u003csessionTimeoutHours\u003e24\u003c/sessionTimeoutHours\u003e\u003csplitTunnel\u003efalse\u003c/splitTunnel\u003e\u003ctagSet\u003e\u003citem\u003e\u003ckey\u003eradius-recording\u003c/key\u003e\u003cvalue\u003erc899e\u003c/value\u003e\u003c/item\u003e\u003c/tagSet\u003e\u003ctrafficIpAddressType\u003eipv4\u003c/trafficIpAddressType\u003e\u003ctransportProtocol\u003eudp\u003c/transportProtocol\u003e\u003cvpcId\u003evpc-05ed4309b07dc6f99\u003c/vpcId\u003e\u003cvpnPort\u003e443\u003c/vpnPort\u003e\u003cvpnProtocol\u003eopenvpn\u003c/vpnProtocol\u003e\u003c/item\u003e\u003c/clientVpnEndpoint\u003e\u003c/DescribeClientVpnEndpointsResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DeleteClientVpnEndpoint",
+      "request": "Action=DeleteClientVpnEndpoint\u0026ClientVpnEndpointId=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cDeleteClientVpnEndpointResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"\u003e\u003crequestId\u003ec0185afe-6b64-466e-917d-e1edf7287402\u003c/requestId\u003e\u003cstatus\u003e\u003ccode\u003edeleting\u003c/code\u003e\u003c/status\u003e\u003c/DeleteClientVpnEndpointResponse\u003e"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeClientVpnEndpoints",
+      "request": "Action=DescribeClientVpnEndpoints\u0026ClientVpnEndpointId.1=cvpn-endpoint-07ad8670f7dcfc554\u0026Version=2016-11-15",
+      "status": 400,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "\u003c?xml version=\"1.0\" encoding=\"UTF-8\"?\u003e\n\u003cResponse\u003e\u003cErrors\u003e\u003cError\u003e\u003cCode\u003eInvalidClientVpnEndpointId.NotFound\u003c/Code\u003e\u003cMessage\u003eEndpoint cvpn-endpoint-07ad8670f7dcfc554 does not exist\u003c/Message\u003e\u003c/Error\u003e\u003c/Errors\u003e\u003cRequestID\u003ed3b538a1-5286-493a-a875-bfd8e91d7882\u003c/RequestID\u003e\u003c/Response\u003e"
+    }
+  ]
+}

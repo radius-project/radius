@@ -1,0 +1,109 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_CODEBUILD_ROLE": "arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild",
+    "RADIUS_REC_RUN": "rc899e"
+  },
+  "interactions": [
+    {
+      "service": "CodeBuild",
+      "operation": "CreateProject",
+      "request": "{\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"description\":\"Radius recording\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"type\":\"LINUX_CONTAINER\"},\"name\":\"radius-rec-rc899e\",\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":10}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"project\":{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859348874E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":10}}"
+    },
+    {
+      "service": "CodeBuild",
+      "operation": "BatchGetProjects",
+      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859348874E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":10}],\"projectsNotFound\":[]}"
+    },
+    {
+      "service": "CodeBuild",
+      "operation": "BatchGetProjects",
+      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859348874E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":10}],\"projectsNotFound\":[]}"
+    },
+    {
+      "service": "CodeBuild",
+      "operation": "BatchGetProjects",
+      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859348874E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":10}],\"projectsNotFound\":[]}"
+    },
+    {
+      "service": "CodeBuild",
+      "operation": "UpdateProject",
+      "request": "{\"description\":\"Radius recording, updated\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"type\":\"LINUX_CONTAINER\"},\"name\":\"radius-rec-rc899e\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"type\":\"NO_SOURCE\"},\"timeoutInMinutes\":15}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"project\":{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording, updated\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859348874E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":15},\"webhookDeletedStatus\":\"no_webhook\"}"
+    },
+    {
+      "service": "CodeBuild",
+      "operation": "BatchGetProjects",
+      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording, updated\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859349235E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":15}],\"projectsNotFound\":[]}"
+    },
+    {
+      "service": "CodeBuild",
+      "operation": "BatchGetProjects",
+      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording, updated\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859349235E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":15}],\"projectsNotFound\":[]}"
+    },
+    {
+      "service": "CodeBuild",
+      "operation": "BatchGetProjects",
+      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording, updated\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859349235E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":15}],\"projectsNotFound\":[]}"
+    },
+    {
+      "service": "CodeBuild",
+      "operation": "DeleteProject",
+      "request": "{\"name\":\"radius-rec-rc899e\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"webhookDeletedStatus\":\"no_webhook\"}"
+    },
+    {
+      "service": "CodeBuild",
+      "operation": "BatchGetProjects",
+      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"projects\":[],\"projectsNotFound\":[\"radius-rec-rc899e\"]}"
+    }
+  ]
+}

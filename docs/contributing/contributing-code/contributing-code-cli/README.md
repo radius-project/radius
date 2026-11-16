@@ -105,6 +105,8 @@ Use the injected `output.Interface` for command output: `WriteFormatted` for res
 
 Commands returning data with `--output json` must emit a single JSON document, including when a list is empty; status-only commands need not invent a JSON result. Honor the requested format instead of hard-coding table output (for example, `rad rollback kubernetes --list-revisions --output json`). Regression tests should parse the complete captured stdout, not just extract its JSON portion, and check errors separately. Do not merge stderr into stdout when piping JSON to another tool.
 
+`rad init` is an interactive wizard with a human-readable progress display and summary, not a machine-readable result. It has no supported output-format parameter. For backward compatibility, a hidden `--output`/`-o` flag accepts any value but is ignored with a warning on stderr. For unattended setup, use the explicit installation, workspace, resource-group, and environment commands with the required inputs instead.
+
 Classify errors as *expected* or *unexpected*:
 
 - **Expected** — a known state that is not a bug, such as "application not found". Return these as plain user-facing messages using `clierrors.Message` or `clierrors.MessageWithCause`. Write complete sentences ending with a period, for example `"The application could not be found."`.
