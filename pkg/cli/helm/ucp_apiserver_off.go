@@ -281,8 +281,7 @@ func ownsUCPOffSecret(secret *corev1.Secret, leftover ucpOffLeftoverSecret) bool
 	if leftover.certificate != "" {
 		return secret.Annotations[certificateNameAnnotation] == leftover.certificate
 	}
-	_, ok := secret.Data[caCertificateKey]
-	return ok && len(secret.Data) == 1 && secret.Annotations[allowDirectInjectionAnnotation] == "true"
+	return ownsUCPAPIServerTrust(secret)
 }
 
 // waitForUCPOffCertificate waits until every UCP pod serves the certificate in Secret ucp-cert, issued by one of

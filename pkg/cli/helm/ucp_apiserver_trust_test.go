@@ -25,6 +25,8 @@ import (
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"testing"
@@ -39,6 +41,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
@@ -385,8 +388,9 @@ func Test_reconcileUCPAPIServerTrust_ServingCertificateFromOtherCA(t *testing.T)
 	ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
 	kubeClient := kubefake.NewSimpleClientset(
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace},
-			Data:       map[string][]byte{caCertificateKey: ucpCA.pem},
+			ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace,
+				Annotations: map[string]string{allowDirectInjectionAnnotation: "true"}},
+			Data: map[string][]byte{caCertificateKey: ucpCA.pem},
 		},
 		apiServerCASecret(apiServerCA),
 		tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, ucpCA), ucpCA.pem),
@@ -402,7 +406,9 @@ func Test_reconcileUCPAPIServerTrust_ServingCertificateFromOtherCA(t *testing.T)
 
 func Test_deleteUCPAPIServerTrust(t *testing.T) {
 	kubeClient := kubefake.NewSimpleClientset(&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace},
+		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace,
+			Annotations: map[string]string{allowDirectInjectionAnnotation: "true"}},
+		Data: map[string][]byte{caCertificateKey: newTestCA(t, "ucp-ca").pem},
 	})
 	impl := trustImpl(kubeClient, ucpAPIServiceDynamicClient())
 
@@ -411,4 +417,177 @@ func Test_deleteUCPAPIServerTrust(t *testing.T) {
 	require.Error(t, err)
 	// A missing Secret is not an error.
 	require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+}
+
+// foreignTrustSecret is a Secret named radius-apiserver-trust that neither rad nor the chart README's plain-Helm
+// steps wrote: it holds other data and lacks the allow-direct-injection annotation.
+func foreignTrustSecret() *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, UID: "foreign-object", ResourceVersion: "1"},
+		Data:       map[string][]byte{"unrelated-data": []byte("fixture")},
+	}
+}
+
+func requireForeignTrustSecretKept(t *testing.T, client kubernetes.Interface) {
+	t.Helper()
+	secret, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	require.NoError(t, err, "rad must not delete a radius-apiserver-trust Secret it does not own")
+	require.Equal(t, types.UID("foreign-object"), secret.UID)
+	require.Equal(t, map[string][]byte{"unrelated-data": []byte("fixture")}, secret.Data)
+	require.NotContains(t, secret.Annotations, allowDirectInjectionAnnotation)
+}
+
+const trustDeleteHint = `kubectl --context "test-context" -n radius-system delete secret radius-apiserver-trust`
+
+// stampTrustSecret gives the trust Secret the uid and resourceVersion the API server would.
+func stampTrustSecret(t *testing.T, client *kubefake.Clientset) {
+	t.Helper()
+	secret, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	require.NoError(t, err)
+	secret.UID, secret.ResourceVersion = "trust-1", "1"
+	require.NoError(t, client.Tracker().Update(corev1.SchemeGroupVersion.WithResource("secrets"), secret, RadiusSystemNamespace))
+}
+
+func Test_UCPAPIServerTrust_ForeignSecret(t *testing.T) {
+	t.Run("writer refuses it and keeps its data", func(t *testing.T) {
+		ucpCA := newTestCA(t, "ucp-ca")
+		kubeClient := kubefake.NewSimpleClientset(foreignTrustSecret())
+
+		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, caCertificates(ucpCA.pem))
+		require.ErrorContains(t, err, "radius-apiserver-trust")
+		requireForeignTrustSecretKept(t, kubeClient)
+	})
+
+	t.Run("upgrade to authorization on refuses it before Helm", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		u := newStageUpgrade(t, map[string]any{}, "upgrade")
+		c := newStageCluster(t, nil, true)
+		c.addOffAPIService(t, offAPIServiceVariants[0])
+		_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), foreignTrustSecret(), metav1.CreateOptions{})
+		require.NoError(t, err)
+
+		err = u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), []string{"global.rbac.enabled=true"})
+		require.ErrorContains(t, err, "Secret radius-system/radius-apiserver-trust")
+		require.ErrorContains(t, err, trustDeleteHint)
+		requireForeignTrustSecretKept(t, c.kube)
+		require.Empty(t, c.certManagerWrites(), "rad must not stage radius-apiserver-ca when it cannot stage the trust")
+	})
+
+	t.Run("reconcile ignores it and warns", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		apiServerCA := newTestCA(t, "radius-apiserver-ca")
+		kubeClient := kubefake.NewSimpleClientset(
+			foreignTrustSecret(),
+			apiServerCASecret(apiServerCA),
+			apiServerTLSSecret(t, apiServerCA),
+			ucpDeployment(true),
+		)
+		dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
+		logs := []string{}
+		impl := trustImpl(kubeClient, dynamicClient)
+		impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
+
+		require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
+		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+		requireForeignTrustSecretKept(t, kubeClient)
+		require.Len(t, logs, 1)
+		require.Contains(t, logs[0], trustDeleteHint)
+	})
+
+	t.Run("uninstall keeps it and warns", func(t *testing.T) {
+		kubeClient := kubefake.NewSimpleClientset(foreignTrustSecret())
+		logs := []string{}
+		impl := trustImpl(kubeClient, ucpAPIServiceDynamicClient())
+		impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
+
+		require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		requireForeignTrustSecretKept(t, kubeClient)
+		require.Len(t, logs, 1)
+		require.Contains(t, logs[0], trustDeleteHint)
+	})
+}
+
+func Test_deleteUCPAPIServerTrust_Pinned(t *testing.T) {
+	for _, plainHelm := range []bool{false, true} {
+		t.Run(fmt.Sprintf("deletes the Secret rad owns, pinned to what it read (plain Helm %t)", plainHelm), func(t *testing.T) {
+			c := newStageCluster(t, nil, false)
+			c.putTrustSecret(t, plainHelm)
+			stampTrustSecret(t, c.kube)
+			deleted := c.enforceDeletePreconditions(t, nil)
+
+			require.NoError(t, c.impl(nil, "").deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+			require.Equal(t, []string{ucpAPIServerTrustSecretName}, *deleted)
+			requireNoTrustSecret(t, c.kube)
+		})
+	}
+
+	for name, change := range map[string]func(*corev1.Secret){
+		"changed":   func(s *corev1.Secret) { s.ResourceVersion = "2" },
+		"recreated": func(s *corev1.Secret) { s.UID = "trust-2" },
+	} {
+		t.Run("keeps a Secret "+name+" after rad reads it", func(t *testing.T) {
+			c := newStageCluster(t, nil, false)
+			c.putTrustSecret(t, false)
+			stampTrustSecret(t, c.kube)
+			once := false
+			deleted := c.enforceDeletePreconditions(t, func(string) {
+				if once {
+					return
+				}
+				once = true
+				object, err := c.kube.Tracker().Get(corev1.SchemeGroupVersion.WithResource("secrets"), RadiusSystemNamespace, ucpAPIServerTrustSecretName)
+				require.NoError(t, err)
+				secret := object.(*corev1.Secret).DeepCopy()
+				change(secret)
+				require.NoError(t, c.kube.Tracker().Update(corev1.SchemeGroupVersion.WithResource("secrets"), secret, RadiusSystemNamespace))
+			})
+			logs := []string{}
+			impl := c.impl(nil, "")
+			impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
+
+			require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+			require.Empty(t, *deleted)
+			require.NotNil(t, c.secret(t, ucpAPIServerTrustSecretName))
+			require.Len(t, logs, 1)
+			require.Contains(t, logs[0], "changed after rad read it")
+		})
+	}
+
+	t.Run("reconcile deletes the trust Secret pinned to what it read", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		c := newStageCluster(t, nil, false)
+		c.putTrustSecret(t, false)
+		stampTrustSecret(t, c.kube)
+		c.issueAPIServerCA(t)
+		_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), apiServerTLSSecret(t, c.apiServerCA), metav1.CreateOptions{})
+		require.NoError(t, err)
+		_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Create(t.Context(), ucpDeployment(true), metav1.CreateOptions{})
+		require.NoError(t, err)
+		require.NoError(t, c.dynamic.Tracker().Add(ucpAPIService("", "", "")))
+		deleted := c.enforceDeletePreconditions(t, nil)
+
+		require.NoError(t, c.impl(nil, "").reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.Equal(t, []string{ucpAPIServerTrustSecretName}, *deleted)
+		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
+	})
+}
+
+func Test_writeUCPAPIServerTrust_RetriesConflict(t *testing.T) {
+	apiServerCA := newTestCA(t, "radius-apiserver-ca")
+	c := newStageCluster(t, nil, false)
+	c.putTrustSecret(t, false)
+	conflicts := 0
+	c.kube.PrependReactor("update", "secrets", func(clienttesting.Action) (bool, runtime.Object, error) {
+		if conflicts > 0 {
+			return false, nil, nil
+		}
+		conflicts++
+		return true, nil, apierrors.NewConflict(corev1.Resource("secrets"), ucpAPIServerTrustSecretName, errors.New("the object has been modified"))
+	})
+
+	_, err := writeUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace, caCertificates(append(append([]byte{}, c.ucpCA.pem...), apiServerCA.pem...)))
+	require.NoError(t, err)
+	require.Equal(t, 1, conflicts)
+	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, trustedSubjects(t, c.kube))
 }
