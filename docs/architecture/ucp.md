@@ -85,7 +85,10 @@ before the Helm call, waits for cert-manager to issue the CA, and trusts both
 CAs through the `radius-apiserver-trust` Secret before Helm reissues UCP's
 certificate. It keeps both trusted until every UCP pod serves
 a certificate from `radius-apiserver-ca`, and then points the APIService at
-`radius-apiserver-ca` and deletes that Secret. In the
+`radius-apiserver-ca` and deletes that Secret. When authorization turns off,
+`rad` instead applies the `ucp-cert` Secret that the target release renders,
+trusts its CA alongside `radius-apiserver-ca`, and moves UCP onto it before the
+Helm call, so the `ucp-ca` `caBundle` Helm applies matches what UCP serves. In the
 `selfSigned` certificate mode, the only mode supported today, this CA is
 separate from the `radius-ca` that signs component server certificates. The Kubernetes API server trusts that CA for UCP, so the
 `radius-certificate-issuance` ValidatingAdmissionPolicy lets only the

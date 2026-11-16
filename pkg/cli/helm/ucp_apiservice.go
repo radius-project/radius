@@ -115,7 +115,12 @@ func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options Cluster
 	if err != nil {
 		return err
 	}
-	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, mode, render)
+	// storedValues is nil with --reset-values, but the deployed release keeps the values it was installed with.
+	current, err := resolveAuthzMode(options.RadiusReleaseValues, nil)
+	if err != nil {
+		return err
+	}
+	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, current, mode, render)
 }
 
 func installedAuthzMode(options ClusterOptions, storedValues map[string]any) (authz.Mode, error) {
@@ -142,7 +147,25 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 	if err != nil || !found {
 		return err
 	}
-	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, mode, renderRadiusRollback(history, revision))
+	current, found, err := rolledBackAuthzMode(history, latestRevision(history))
+	if err != nil {
+		return err
+	}
+	if !found {
+		current = authz.ModeOff
+	}
+	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, current, mode, renderRadiusRollback(history, revision))
+}
+
+// latestRevision returns the newest revision of history, which is the release Helm rolls back from.
+func latestRevision(history []*releasev1.Release) int {
+	latest := 0
+	for _, rel := range history {
+		if rel != nil && rel.Version > latest {
+			latest = rel.Version
+		}
+	}
+	return latest
 }
 
 func rolledBackAuthzMode(history []*releasev1.Release, revision int) (authz.Mode, bool, error) {
