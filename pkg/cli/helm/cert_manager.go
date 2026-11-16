@@ -376,19 +376,6 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 	return nil
 }
 
-// radOwnedCertManagerRelease returns the latest cert-manager Helm release when it carries rad's ownership
-// labels, or nil when the release does not exist or rad did not install it.
-func (i *Impl) radOwnedCertManagerRelease(options ChartOptions, kubeContext string) (*releasev1.Release, error) {
-	rel, err := NewHelmAction(i.Helm).getRelease(kubeContext, options.ReleaseName, options.Namespace)
-	if err != nil || rel == nil {
-		return nil, err
-	}
-	if !radOwnsCertManagerRelease(rel) {
-		return nil, nil
-	}
-	return rel, nil
-}
-
 func radOwnsCertManagerRelease(rel *releasev1.Release) bool {
 	if rel == nil {
 		return false
@@ -433,8 +420,11 @@ func pendingCertManagerReleaseError(rel *releasev1.Release, options ChartOptions
 
 // isRadOwnedCertManager reports whether the cert-manager Helm release exists and carries rad's ownership labels.
 func (i *Impl) isRadOwnedCertManager(options ChartOptions, kubeContext string) (bool, error) {
-	rel, err := i.radOwnedCertManagerRelease(options, kubeContext)
-	return rel != nil, err
+	rel, err := NewHelmAction(i.Helm).getRelease(kubeContext, options.ReleaseName, options.Namespace)
+	if err != nil {
+		return false, err
+	}
+	return radOwnsCertManagerRelease(rel), nil
 }
 
 // CertManagerInstalledByRad reports whether the default cert-manager release exists and rad installed it.
