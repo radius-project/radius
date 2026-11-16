@@ -381,7 +381,11 @@ func (h *Channel) Update(ctx context.Context, request native.UpdateRequest) erro
 	class := awsapi.String(request.Desired, "ChannelClass")
 	switch {
 	case slices.Contains(changed, "ChannelClass") && class != "":
-		if others := slices.DeleteFunc(slices.Sorted(maps.Keys(values)), func(name string) bool { return name == "Destinations" }); len(others) > 0 {
+		others := slices.DeleteFunc(slices.Sorted(maps.Keys(values)), func(name string) bool { return name == "Destinations" })
+		if removesRole {
+			others = append(others, "RoleArn")
+		}
+		if len(others) > 0 {
 			return &native.Failure{
 				Message:     "MediaLive changes ChannelClass in a call of its own, which can't also change " + strings.Join(others, ", ") + ". Change ChannelClass in one deploy, and the other properties in the next.",
 				ClientError: true,

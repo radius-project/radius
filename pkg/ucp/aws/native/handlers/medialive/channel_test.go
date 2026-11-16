@@ -231,6 +231,20 @@ func Test_UpdateChannelClass(t *testing.T) {
 	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 	require.Contains(t, failure.Message, "LogLevel")
 	require.Equal(t, "STANDARD", api.store.Resource(channelType, id)["ChannelClass"], "nothing changed")
+
+	// UpdateChannelClass can't remove the role, so a class change that also removes RoleArn is rejected too.
+	noRole := with(desired, map[string]any{"ChannelClass": "SINGLE_PIPELINE"})
+	delete(noRole, "RoleArn")
+	api.calls = nil
+	err = h.Update(t.Context(), native.UpdateRequest{
+		Region: region, Identifier: id, Current: current, Desired: noRole,
+		Patch: patch(t, `[{"op":"replace","path":"/ChannelClass","value":"SINGLE_PIPELINE"},{"op":"remove","path":"/RoleArn"}]`),
+	})
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, "RoleArn")
+	require.NotContains(t, api.calls, "UpdateChannelClass "+region, "nothing changed")
+	require.Equal(t, properties["RoleArn"], api.store.Resource(channelType, id)["RoleArn"], "the role stays")
 }
 
 // Test_UpdateKeepsRole checks that an update that doesn't change RoleArn sends it, because UpdateChannel removes the
