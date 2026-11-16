@@ -119,7 +119,10 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if err != nil {
 		return fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpOffCertificateSecretName, err)
 	}
-	offCAs := caCertificates(offSecret.Data[caCertificateKey])
+	offCAs, err := caCertificates(offSecret.Data[caCertificateKey])
+	if err != nil {
+		return fmt.Errorf("invalid Secret %s/%s ca.crt: %w", radiusNamespace, ucpOffCertificateSecretName, err)
+	}
 	if len(offCAs) == 0 {
 		return fmt.Errorf("Secret %s/%s has no CA certificate in %s", radiusNamespace, ucpOffCertificateSecretName, caCertificateKey)
 	}
@@ -228,7 +231,10 @@ func ucpOffTrustClean(apiService *unstructured.Unstructured, offCAs []*x509.Cert
 	if err != nil {
 		return false, fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
 	}
-	live := caCertificates(bundle)
+	live, err := caCertificates(bundle)
+	if err != nil {
+		return false, fmt.Errorf("invalid APIService trust bundle: %w", err)
+	}
 	return containsCertificates(live, offCAs) && containsCertificates(offCAs, live), nil
 }
 

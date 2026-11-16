@@ -79,7 +79,8 @@ const (
 // cert-manager's cainjector. If rad staged the trust Secret with an earlier CA, such as ucp-ca, it first trusts both
 // CAs and waits until every UCP pod serves a certificate from radius-apiserver-ca; if UCP does not move in time it
 // returns an error and leaves both CAs trusted. It then points the APIService at Secret radius-apiserver-ca and
-// deletes the trust Secret, which removes the earlier CA.
+// deletes only the transient trust Secret, which removes the earlier CA. An A8
+// Helm-owned public copy is retained unchanged as a historical continuity pin.
 func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
@@ -103,9 +104,28 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, radi
 		return err
 	}
 
+	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("read APIService before aggregation trust reconciliation: %w", err)
+	}
+	if err == nil {
+		if err := validateUCPAPIServerAPIAnchors(ca, apiService); err != nil {
+			return err
+		}
+	}
+
 	trusted, overlap, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
 	if err != nil {
 		return err
+	}
+	retained, err := retainedUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
+	if err != nil {
+		return err
+	}
+	if retained != nil {
+		// The A8 public copy is no longer an injection source. Do not rewrite or
+		// delete its identity/ownership; it remains a historical continuity pin.
+		overlap = false
 	}
 	if overlap {
 		trusted = unionCertificates(trusted, []*x509.Certificate{ca})
@@ -183,7 +203,7 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kubeClient ku
 	clean := 0
 	problem := "it has not been checked"
 	err := wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
-		_, caBundle, caProblem, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
+		ca, caBundle, caProblem, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
 		if err != nil {
 			return false, err
 		}
@@ -198,6 +218,9 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kubeClient ku
 		}
 		if err != nil {
 			return false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
+		}
+		if err := validateUCPAPIServerAPIAnchors(ca, apiService); err != nil {
+			return false, err
 		}
 		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 		bundle, err := base64.StdEncoding.DecodeString(encoded)
@@ -302,6 +325,9 @@ func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radius
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerCASecretName, err)
 	}
+	if err := validateUCPAPIServerCAOwnership(secret); err != nil {
+		return nil, nil, "", err
+	}
 	cert, err := firstCertificate(secret.Data[corev1.TLSCertKey])
 	if err != nil {
 		return nil, nil, "its tls.crt has no certificate: " + err.Error(), nil
@@ -321,6 +347,22 @@ func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, radius
 	}
 	if len(unionCertificates(cas, []*x509.Certificate{cert})) != len(cas) {
 		return nil, nil, "its ca.crt does not hold the CA certificate in tls.crt", nil
+	}
+	if err := validateUCPAPIServerRenewal(cert, cas); err != nil {
+		return nil, nil, "", err
+	}
+	retained, err := retainedUCPAPIServerTrust(ctx, client, radiusNamespace)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	if retained != nil {
+		pins, err := parseCertificateBundlePEM(retained.Data[caCertificateKey])
+		if err != nil {
+			return nil, nil, "", fmt.Errorf("invalid retained aggregation trust: %w", err)
+		}
+		if err := validateUCPAPIServerRenewal(cert, pins); err != nil {
+			return nil, nil, "", err
+		}
 	}
 	if secret.Annotations[allowDirectInjectionAnnotation] != "true" {
 		return nil, nil, fmt.Sprintf("it does not have annotation %s: \"true\", which the Certificate's secretTemplate sets", allowDirectInjectionAnnotation), nil
@@ -425,6 +467,9 @@ func writeUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, ra
 			Data: map[string][]byte{caCertificateKey: bundle},
 		}, metav1.CreateOptions{})
 	} else if err == nil {
+		if secret.Annotations["radius.io/certificate-mode"] != "" {
+			return nil, fmt.Errorf("preserve retained aggregation trust Secret %s/%s; use the certificate lifecycle instead of overwriting its public CA", radiusNamespace, ucpAPIServerTrustSecretName)
+		}
 		if secret.Annotations[allowDirectInjectionAnnotation] == "true" && len(secret.Data) == 1 && bytes.Equal(secret.Data[caCertificateKey], bundle) {
 			return bundle, nil
 		}

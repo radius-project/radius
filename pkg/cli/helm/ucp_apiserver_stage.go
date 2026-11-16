@@ -97,6 +97,10 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if err != nil {
 		return err
 	}
+	current, _, _, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
+	if err != nil {
+		return err
+	}
 
 	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -120,8 +124,7 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	// Decide from what the API server trusts, not from the inject-ca-from-secret annotation: Helm's switch to
 	// authorization off keeps the annotation rad set, and a run that stopped before ReconcileUCPOffAPIServerTrust, or an
 	// older rad, leaves it while UCP serves a ucp-ca certificate again.
-	current, _, _, err := readUCPAPIServerCA(ctx, kubeClient, radiusNamespace)
-	if err != nil {
+	if err := validateUCPAPIServerAPIAnchors(current, apiService); err != nil {
 		return err
 	}
 	if current != nil && onlyKey(live, current) {
@@ -258,7 +261,10 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 	if rendered == nil {
 		return nil
 	}
-	target := caCertificates(rendered.Data[caCertificateKey])
+	target, err := caCertificates(rendered.Data[caCertificateKey])
+	if err != nil {
+		return fmt.Errorf("invalid rendered Secret %s ca.crt: %w", ucpOffCertificateSecretName, err)
+	}
 	if len(target) == 0 {
 		return fmt.Errorf("the rendered Secret %s has no CA certificate in %s", ucpOffCertificateSecretName, caCertificateKey)
 	}
@@ -314,7 +320,10 @@ func readUCPAPIServiceCABundle(ctx context.Context, dynamicClient dynamic.Interf
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
 	}
-	cas := caCertificates(bundle)
+	cas, err := caCertificates(bundle)
+	if err != nil {
+		return nil, false, fmt.Errorf("invalid APIService trust bundle: %w", err)
+	}
 	return cas, len(cas) > 0, nil
 }
 

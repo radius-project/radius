@@ -2,7 +2,7 @@
 {{- $caBundle := "" }}
 {{- $caSource := "radius-apiserver-trust" }}
 {{- if $authz }}
-# The APIService trusts the independent public source, never this leaf Secret's ca.crt.
+# The APIService trusts the selected CA source, never this leaf Secret's ca.crt.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -29,6 +29,7 @@ spec:
   issuerRef:
     {{- include "radius.authz.certificates.issuer" (dict "root" . "plane" "aggregation") | fromJson | toYaml | nindent 4 }}
 {{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") | fromJson }}
+{{- $caSource = $source.name }}
 {{- $caBundle = $source.bundle | b64enc }}
 {{- else }}
 {{- $ca := genCA "ucp-ca" 3650 }}

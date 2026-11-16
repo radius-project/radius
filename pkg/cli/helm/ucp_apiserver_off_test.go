@@ -67,7 +67,7 @@ func (c *stageCluster) putTrustSecret(t *testing.T, plainHelm bool) {
 	t.Helper()
 	secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
 	if !plainHelm {
-		_, err := writeUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace, caCertificates(c.ucpCA.pem))
+		_, err := writeUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace, testCACertificates(t, c.ucpCA.pem))
 		require.NoError(t, err)
 		return
 	}
@@ -359,7 +359,7 @@ func Test_ucpOffTrustPatch(t *testing.T) {
 		"example.com/kept":               "value",
 	})
 
-	patch, err := ucpOffTrustPatch(apiService, caCertificates(ca.pem))
+	patch, err := ucpOffTrustPatch(apiService, testCACertificates(t, ca.pem))
 	require.NoError(t, err)
 	var operations []map[string]any
 	require.NoError(t, json.Unmarshal(patch, &operations))
