@@ -2,8 +2,6 @@
 
 Issues: [#13500](https://github.com/radius-project/radius/issues/13500) and [#12999](https://github.com/radius-project/radius/issues/12999).
 
-[Technical design](https://gist.github.com/willdavsmith/6fb41f2374680d7e6ea05c452f61e822): API details, authorization, controller behavior, tests, and implementation questions.
-
 ## Context
 
 Users configure Radius Flux deployments in `radius-gitops-config.yaml` at the root of their watched Git repository. The `params` field selects a `.bicepparam` file containing deployment inputs.
@@ -81,4 +79,4 @@ Deployment authors in a namespace share its approved Secret access; use separate
 
 The initial version supports secure string inputs, not secure objects. Existing inline values remain exposed until users replace them with references.
 
-AI-drafted. Implementation constraints and verification requirements are retained in the technical design.
+AI-drafted.
