@@ -520,6 +520,49 @@ func Test_UCPAPIServerTrust_ForeignSecret(t *testing.T) {
 	})
 }
 
+// An annotated Secret whose only ca.crt is empty is not in the shape rad or the plain-Helm steps write, so rad
+// leaves it alone, as the chart does.
+func Test_UCPAPIServerTrust_EmptyCACertificate(t *testing.T) {
+	emptyTrustSecret := func() *corev1.Secret {
+		return &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace, UID: "empty-object", ResourceVersion: "1",
+				Annotations: map[string]string{allowDirectInjectionAnnotation: "true"}},
+			Data: map[string][]byte{caCertificateKey: {}},
+		}
+	}
+	requireKept := func(t *testing.T, client kubernetes.Interface) {
+		t.Helper()
+		secret, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
+		require.NoError(t, err, "rad must not delete a radius-apiserver-trust Secret with an empty ca.crt")
+		require.Equal(t, types.UID("empty-object"), secret.UID)
+		require.Equal(t, map[string][]byte{caCertificateKey: {}}, secret.Data)
+	}
+
+	t.Run("is not owned", func(t *testing.T) {
+		require.False(t, ownsUCPAPIServerTrust(emptyTrustSecret()))
+		require.False(t, ownsUCPOffSecret(emptyTrustSecret(), ucpOffLeftoverSecrets[0]))
+	})
+
+	t.Run("writer refuses it and keeps it", func(t *testing.T) {
+		kubeClient := kubefake.NewSimpleClientset(emptyTrustSecret())
+		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, caCertificates(newTestCA(t, "ucp-ca").pem))
+		require.ErrorContains(t, err, "radius-apiserver-trust")
+		requireKept(t, kubeClient)
+	})
+
+	t.Run("uninstall keeps it and warns", func(t *testing.T) {
+		kubeClient := kubefake.NewSimpleClientset(emptyTrustSecret())
+		logs := []string{}
+		impl := trustImpl(kubeClient, ucpAPIServiceDynamicClient())
+		impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
+
+		require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		requireKept(t, kubeClient)
+		require.Len(t, logs, 1)
+		require.Contains(t, logs[0], trustDeleteHint)
+	})
+}
+
 func Test_deleteUCPAPIServerTrust_Pinned(t *testing.T) {
 	for _, plainHelm := range []bool{false, true} {
 		t.Run(fmt.Sprintf("deletes the Secret rad owns, pinned to what it read (plain Helm %t)", plainHelm), func(t *testing.T) {

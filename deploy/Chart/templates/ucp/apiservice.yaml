@@ -38,7 +38,7 @@ so the API server follows each renewal of radius-apiserver-ca. While UCP moves f
 as ucp-ca, rad issues radius-apiserver-ca before this release reissues ucp-cert and keeps Secret
 radius-apiserver-trust with both CAs, and the APIService trusts it instead; rad deletes it once UCP serves a certificate from radius-apiserver-ca. Rendering the current ca.crt keeps
 the caBundle Helm applies equal to the one cainjector injects. A Secret of that name is used only in the
-shape rad and the plain-Helm steps in the README write: only ca.crt, annotated allow-direct-injection=true.
+shape rad and the plain-Helm steps in the README write: only a non-empty ca.crt, annotated allow-direct-injection=true.
 */}}
 {{- $trust := lookup "v1" "Secret" .Release.Namespace "radius-apiserver-trust" }}
 {{- $trustData := dig "data" dict $trust }}

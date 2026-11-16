@@ -308,16 +308,15 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 }
 
 // ownsUCPAPIServerTrust reports whether secret, the trust Secret, has the shape rad writes and the chart README's
-// plain-Helm steps create: only ca.crt, with annotation cert-manager.io/allow-direct-injection=true. rad writes,
+// plain-Helm steps create: only a non-empty ca.crt, with annotation cert-manager.io/allow-direct-injection=true. rad writes,
 // trusts and deletes only such a Secret; the chart renders the APIService from it only then too.
 func ownsUCPAPIServerTrust(secret *corev1.Secret) bool {
-	_, ok := secret.Data[caCertificateKey]
-	return ok && len(secret.Data) == 1 && secret.Annotations[allowDirectInjectionAnnotation] == "true"
+	return len(secret.Data[caCertificateKey]) > 0 && len(secret.Data) == 1 && secret.Annotations[allowDirectInjectionAnnotation] == "true"
 }
 
 // foreignUCPAPIServerTrustProblem describes a trust Secret that rad does not own.
 func foreignUCPAPIServerTrustProblem(radiusNamespace string) string {
-	return fmt.Sprintf("Secret %s/%s does not hold only %s with annotation %s=true as rad writes it",
+	return fmt.Sprintf("Secret %s/%s does not hold only a non-empty %s with annotation %s=true as rad writes it",
 		radiusNamespace, ucpAPIServerTrustSecretName, caCertificateKey, allowDirectInjectionAnnotation)
 }
 
