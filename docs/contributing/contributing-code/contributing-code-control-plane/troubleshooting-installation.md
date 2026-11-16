@@ -133,6 +133,8 @@ Radius authorization depends on [cert-manager](https://cert-manager.io/). `rad i
 
 These settings support fresh enabled installations and preserving an existing enabled mode. Turning authorization from Off to DryRun or Enforce on an existing installation is rejected before mutation until observer-backed lifecycle support can prove that consumers loaded the new trust. Installing cert-manager, scheduling a maintenance window, or using `--reinstall` does not remove that block.
 
+Authorization-enabled install and upgrade also require `create` on `pods/portforward` in `radius-system` (or the configured Radius namespace) for exact-Pod serving-certificate checks. If the API server rejects the tunnel, ask the cluster administrator to grant this permission to the CLI's Kubernetes identity. Check the selected context with `kubectl --context CONTEXT auth can-i create pods --subresource=portforward -n radius-system`, replacing `CONTEXT` and the namespace as needed. Port-forward access does not supply the missing production loaded-trust observations or enable CA rotation.
+
 Cert-manager preflight, certificate Secret operations, and Helm use the same CLI kubeconfig selection: merge the files in `KUBECONFIG`, or use `~/.kube/config` when it is unset, and honor the selected `--kubecontext`. Missing entries in a merged list are skipped; malformed or unusable configurations and unknown contexts fail explicitly rather than selecting a different cluster. This CLI behavior does not change server-side kubeconfig loading.
 
 ### Supported versions
