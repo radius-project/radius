@@ -113,7 +113,15 @@ func tlsSecret(name string, crt, caCrt []byte) *corev1.Secret {
 // whose ca.crt is the CA certificate itself, annotated by secretTemplate so cainjector may copy it.
 func apiServerCASecret(ca testCA) *corev1.Secret {
 	secret := tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem)
-	secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
+	secret.Annotations = map[string]string{allowDirectInjectionAnnotation: "true", "cert-manager.io/certificate-name": ucpAPIServerCASecretName}
+	return secret
+}
+
+// apiServerTLSSecret is ucp-apiserver-tls as cert-manager issues it for Certificate ucp-cert from radius-apiserver-ca.
+func apiServerTLSSecret(t *testing.T, ca testCA) *corev1.Secret {
+	t.Helper()
+	secret := tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, ca), ca.pem)
+	secret.Annotations = map[string]string{"cert-manager.io/certificate-name": ucpAPIServerCertificateName}
 	return secret
 }
 
@@ -333,13 +341,13 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	impl := trustImpl(kubeClient, dynamicClient)
 
 	// Off does not touch the cluster.
-	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, noStageManifest))
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeOff, noStageManifest))
 	_, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	require.Error(t, err)
 
 	// rad seeds the trust Secret from the live caBundle before Helm renders the APIService from it. This chart has no
 	// radius-apiserver-ca Certificate to stage; Test_UpgradeRadius_StagesUCPAPIServerCABeforeHelm covers staging.
-	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeEnforce, noStageManifest))
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeEnforce, noStageManifest))
 	require.Equal(t, []string{"ucp-ca"}, trustedSubjects(t, kubeClient))
 
 	// Helm installs the new CA and starts rolling UCP; the rollout has not finished, so both CAs stay trusted.
@@ -368,7 +376,7 @@ func Test_UCPAPIServerTrust_UpgradeFromUCPCA(t *testing.T) {
 	requireNoTrustSecret(t, kubeClient)
 
 	// The next upgrade does not seed the trust Secret again.
-	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeEnforce, noStageManifest))
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeEnforce, noStageManifest))
 	requireNoTrustSecret(t, kubeClient)
 }
 

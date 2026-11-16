@@ -83,23 +83,32 @@ func (s *Source) clientConfig(spiffeID string, verified func([]*x509.Certificate
 		return nil, err
 	}
 
+	return verifiedByConnectionCheck(func(cs tls.ConnectionState) error {
+		chain, err := verifyServer(m.pool, cs.PeerCertificates, spiffeID, s.now())
+		if err != nil {
+			return err
+		}
+		if verified != nil {
+			verified(chain)
+		}
+		return nil
+	}), nil
+}
+
+// verifiedByConnectionCheck returns a client config that verifies the server only with
+// verify, which runs on every handshake, including resumed ones. The standard verifier
+// matches the server name against DNS SANs, but Radius server certificates carry only a
+// SPIFFE URI SAN, so verify must check the chain and the SPIFFE ID itself. It panics if
+// verify is nil, so the standard verification is never turned off without a replacement.
+func verifiedByConnectionCheck(verify func(tls.ConnectionState) error) *tls.Config {
+	if verify == nil {
+		panic("mtls: verifiedByConnectionCheck requires a verifier")
+	}
 	return &tls.Config{
-		MinVersion: tls.VersionTLS12,
-		// The standard verifier matches the server name against DNS SANs, but Radius server
-		// certificates carry only a SPIFFE URI SAN. VerifyConnection checks the chain against
-		// the Radius CA bundle and the SPIFFE ID instead, on every handshake.
-		InsecureSkipVerify: true, //nolint:gosec // The chain and SPIFFE ID are verified in VerifyConnection.
-		VerifyConnection: func(cs tls.ConnectionState) error {
-			chain, err := verifyServer(m.pool, cs.PeerCertificates, spiffeID, s.now())
-			if err != nil {
-				return err
-			}
-			if verified != nil {
-				verified(chain)
-			}
-			return nil
-		},
-	}, nil
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: true, //nolint:gosec // verify replaces the standard verification.
+		VerifyConnection:   verify,
+	}
 }
 
 // verifyServer checks a server's certificate chain against pool and its SPIFFE ID, and
