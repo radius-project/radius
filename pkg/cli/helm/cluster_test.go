@@ -446,7 +446,8 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 
 	// Mock Helm Upgrade for Radius
-	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, true, options.Radius.Timeout).Return(radiusRelease, nil).Times(1)
+	migration := expectControllerStrategyMigration(mockHelmClient, true)
+	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, true, options.Radius.Timeout).Return(radiusRelease, nil).After(migration).Times(1)
 
 	// Contour is installed, and its release installed the Gateway API CRDs.
 	contourRelease := newRel(options.Contour.ReleaseName, "0.1.0")
@@ -527,6 +528,7 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 
 	// Mock Helm Upgrade for Radius
+	expectControllerStrategyMigration(mockHelmClient, true)
 	mockHelmClient.EXPECT().RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, true, gomock.Any()).Return(radiusRelease, nil).Times(1)
 
 	// Contour is NOT installed
@@ -674,6 +676,7 @@ func Test_Helm_UpgradeRadius_RadiusUpgradeError(t *testing.T) {
 		Return(nil, driver.ErrReleaseNotFound).Times(1)
 
 	// Mock Helm Upgrade for Radius - return error
+	expectControllerStrategyMigration(mockHelmClient, true)
 	mockHelmClient.EXPECT().
 		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, true, gomock.Any()).
 		Return(nil, fmt.Errorf("upgrade failed")).
@@ -720,6 +723,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 
 	// Mock Helm Upgrade for Radius - succeeds
+	expectControllerStrategyMigration(mockHelmClient, true)
 	mockHelmClient.EXPECT().
 		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, true, gomock.Any()).
 		Return(radiusRelease, nil).Times(1)
@@ -829,6 +833,7 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 
 	// reuseValues argument (last) MUST be false when ResetValues is opted into.
+	expectControllerStrategyMigration(mockHelmClient, false)
 	mockHelmClient.EXPECT().
 		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), gomock.AssignableToTypeOf(&chart.Chart{}), gomock.Any(), "radius", "radius-system", true, false, gomock.Any()).
 		Return(radiusRelease, nil).
