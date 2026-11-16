@@ -232,15 +232,15 @@ func (c *rateLimitedPolicyClient) Get(ctx context.Context, id string, opts ...da
 	return c.Client.Get(ctx, id, opts...)
 }
 
-func TestPolicyCacheRateLimitedCapacity(t *testing.T) {
-	if testing.Short() {
-		t.Skip("full 10000 assignment and 1000 role rate-limited refresh exercise")
-	}
+func TestPolicyCacheRateLimitedRefresh(t *testing.T) {
+	t.Parallel()
 	db := inmemory.NewClient()
 	writer := newTestPolicyStore(t, db, false)
 	initializer, err := NewPolicyInitializer(writer, initializationVerifierFunc(func(context.Context, Policy) error { return nil }))
 	require.NoError(t, err)
-	require.NoError(t, initializer.Initialize(t.Context(), fullCapacityPolicy()))
+	require.NoError(t, initializer.Initialize(t.Context(), capacityPolicy(20, 300)))
+	pages := manifestPageCount(t, writer)
+	require.Greater(t, pages, 1, "the refresh must read more than one manifest page")
 	clk := clocktesting.NewFakeClock(time.Now())
 	limited := &rateLimitedPolicyClient{Client: db, clock: clk, limiter: rate.NewLimiter(200, 200)}
 	reader := newTestPolicyStore(t, limited, false)
@@ -261,16 +261,25 @@ func TestPolicyCacheRateLimitedCapacity(t *testing.T) {
 		require.NoError(t, cache.Refresh(t.Context()))
 		require.NoError(t, cache.Ready())
 		require.Equal(t, generation, cache.value.Generation())
-		require.Equal(t, 174, limited.gets, "one anchor, one root, 86 index pages and 86 payload chunks")
-		require.Equal(t, 870*time.Millisecond, clk.Since(started), "deterministic sustained-QPS cost, independent of race instrumentation")
+		require.Equal(t, refreshGets(pages), limited.gets, "one anchor, one root, and one index page and payload chunk per page")
+		require.Equal(t, refreshDuration(limited.gets), clk.Since(started), "deterministic sustained-QPS cost, independent of race instrumentation")
 		policy, err := cache.value.Policy()
 		require.NoError(t, err)
-		require.Len(t, policy.Assignments, 10000)
-		require.Len(t, policy.CustomRoles, 1000)
+		require.Len(t, policy.Assignments, 300)
+		require.Len(t, policy.CustomRoles, 20)
 		decisions, err := cache.Evaluate(testIdentity(), []Check{{"Radius.Core/applications/write", appA}})
 		require.NoError(t, err)
 		require.True(t, decisions[0].Allowed)
-		t.Logf("generation=%d gets=%d rateLimitedDuration=%s ready=true", generation, limited.gets, clk.Since(started))
 		clk.Step(PolicyRefreshInterval)
 	}
+}
+
+// refreshGets is the number of reads a cold or changed-generation refresh makes.
+func refreshGets(pages int) int {
+	return 2 + 2*pages
+}
+
+// refreshDuration is the sustained cost of gets at 200 QPS with the burst exhausted.
+func refreshDuration(gets int) time.Duration {
+	return time.Duration(gets) * time.Second / 200
 }

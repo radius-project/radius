@@ -223,7 +223,7 @@ func checkOwnership(actor PolicyActor, existing *api.RoleAssignmentProperties, d
 	return nil
 }
 
-func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor PolicyActor, mutation PolicyMutation, guard SettingsChangeGuard) (Policy, *api.PolicyChange, bool, error) {
+func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor PolicyActor, mutation PolicyMutation, guard SettingsChangeGuard, limits policyLimits) (Policy, *api.PolicyChange, bool, error) {
 	fail := func(err error) (Policy, *api.PolicyChange, bool, error) { return Policy{}, nil, false, err }
 	if _, err := key(&actor.Identity.Principal); err != nil {
 		return fail(err)
@@ -478,8 +478,8 @@ func applyPolicyMutation(ctx context.Context, current *PolicySnapshot, actor Pol
 	if permanentAdministrators(current.policy) > 0 && permanentAdministrators(policy) == 0 {
 		return fail(fmt.Errorf("LastAdministratorProtected: a permanent installation administrator is required"))
 	}
-	if len(policy.Assignments) > 10000 || len(policy.CustomRoles) > 1000 {
-		return fail(fmt.Errorf("PolicyCapacityExceeded: maximum 10000 assignments and 1000 custom roles"))
+	if err := limits.check(policy); err != nil {
+		return fail(err)
 	}
 	if _, err := NewPolicySnapshot(current.evaluator.catalog, policy); err != nil {
 		return fail(err)

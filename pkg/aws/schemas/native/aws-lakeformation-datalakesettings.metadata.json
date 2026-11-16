@@ -1,0 +1,5 @@
+{
+  "typeName": "AWS::LakeFormation::DataLakeSettings",
+  "identityScope": "region",
+  "onDelete": "nothing"
+}

@@ -68,6 +68,8 @@ AWS POST `/:get` reads accept a top-level `name`, which is used as the primary i
 
 GET `.../<alias>` reads UCP's record of the alias, then reads AWS by the identifier in the record. It returns 404 when there is no record. Use POST `/:get` with `name` or named properties to read a resource Radius did not create. See [AWS resource records](../ucp/aws.md#resource-records-and-alias-ids).
 
+UCP calls AWS through Cloud Control, except for types a native handler in `pkg/ucp/aws/native` serves: types with no CloudFormation type, and types Cloud Control can't create in the request's region. Both use the same record and worker. See [Native handlers](../ucp/aws.md#native-handlers).
+
 ### Internal endpoint
 
 The Kubernetes APIService endpoint (Service port 443 to container port 9443)

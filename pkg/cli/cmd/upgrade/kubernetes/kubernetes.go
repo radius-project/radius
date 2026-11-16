@@ -72,6 +72,11 @@ Do not combine rotation with chart, version, values, Contour or authorization ch
 '--ca-rotation-phase recover' explicitly permits an outage to establish new-only trust after
 expiry or compromise; select a fresh CA with '--ca-secret' or '--ca-cert' and '--ca-key'.
 
+Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed.
+The 'global.rbac.enabled' and 'global.rbac.dryRun' Helm settings are experimental,
+including when their values are preserved from a previous installation.
+Do not rely on RBAC for production access control.
+
 When Contour is installed, the upgrade also upgrades it. Contour chart values can be set with
 '--contour-set' and '--contour-set-file'. They take precedence over the values stored on the Contour
 release and over the values that Radius sets, and --reset-values discards the stored Contour values too.

@@ -1,0 +1,83 @@
+{
+  "typeName": "AWS::LakeFormation::Resource",
+  "description": "Resource Type definition for AWS::LakeFormation::Resource",
+  "sourceUrl": "https://github.com/aws-cloudformation/aws-cloudformation-rpdk.git",
+  "additionalProperties": false,
+  "properties": {
+    "Id": {
+      "description": "The CloudFormation primary identifier for the LakeFormation::Resource. Mirrors ResourceArn once the resource exists; populated by the handler. Customers should reference the LakeFormation::Resource by ResourceArn.",
+      "type": "string"
+    },
+    "ResourceArn": {
+      "description": "The Amazon Resource Name (ARN) of the Data Source.",
+      "type": "string",
+      "pattern": "^arn:[a-z-]+:[a-z0-9-]+:(([a-z]+-)+[0-9])?:([0-9]{12})?:.+$"
+    },
+    "WithFederation": {
+      "description": "Allows Lake Formation to assume a role to access tables in a federated database.",
+      "type": "boolean"
+    },
+    "HybridAccessEnabled": {
+      "description": "Indicates whether the data access of tables pointing to the location can be managed by both Lake Formation permissions as well as Amazon S3 bucket policies.",
+      "type": "boolean"
+    },
+    "UseServiceLinkedRole": {
+      "description": "Designates a trusted caller, an IAM principal, by registering this caller with the Data Catalog.",
+      "type": "boolean"
+    },
+    "RoleArn": {
+      "description": "The IAM role that registered a resource.",
+      "type": "string",
+      "pattern": "^arn:[a-z-]+:iam::([0-9]{12})?:.+$"
+    }
+  },
+  "required": ["ResourceArn", "UseServiceLinkedRole"],
+  "primaryIdentifier": ["/properties/Id"],
+  "additionalIdentifiers": [["/properties/ResourceArn"]],
+  "createOnlyProperties": ["/properties/ResourceArn"],
+  "writeOnlyProperties": ["/properties/UseServiceLinkedRole"],
+  "readOnlyProperties": ["/properties/Id"],
+  "tagging": {
+    "taggable": false
+  },
+  "handlers": {
+    "create": {
+      "permissions": [
+        "lakeformation:RegisterResource",
+        "lakeformation:DescribeResource",
+        "iam:PassRole",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "read": {
+      "permissions": ["lakeformation:DescribeResource"]
+    },
+    "update": {
+      "permissions": [
+        "lakeformation:UpdateResource",
+        "lakeformation:DescribeResource",
+        "lakeformation:DeregisterResource",
+        "lakeformation:RegisterResource",
+        "iam:PassRole",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:CreateServiceLinkedRole"
+      ]
+    },
+    "delete": {
+      "permissions": [
+        "lakeformation:DeregisterResource",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:PutRolePolicy"
+      ]
+    },
+    "list": {
+      "permissions": ["lakeformation:ListResources"]
+    }
+  }
+}
