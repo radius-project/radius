@@ -29,7 +29,9 @@ Internal public trust is mounted separately at `/var/run/radius/ca`; no signing 
 
 ### Changing the authorization mode or upgrading from an mTLS build
 
-Turning authorization on or off, and upgrading from an edge build that authenticated components with client certificates, changes how every component authenticates. Helm rolls ucp, applications-rp, dynamic-rp, and the controller one at a time, so for about the time the rollout takes, calls between an old and a new pod fail TLS verification or authentication and return errors. Radius does not fall back to weaker authentication to avoid this window. Plan these changes for a maintenance window:
+Turning authorization from Off to DryRun or Enforce on an existing installation is rejected before mutation until an observer-backed lifecycle can prove that consumers loaded the new trust. A maintenance window, `--reinstall`, or a plain Helm upgrade does not bypass this requirement. Fresh authorization-enabled CLI installation follows the bootstrap flow described below.
+
+For otherwise supported changes, such as turning authorization off or upgrading an authorization-enabled edge build that authenticated components with client certificates, Helm rolls ucp, applications-rp, dynamic-rp, and the controller one at a time. Calls between old and new pods can fail TLS verification or authentication during that rollout. Radius does not fall back to weaker authentication. Plan these changes for a maintenance window; a window does not authorize an unsupported CA or provider transition:
 
 1. Pause deployments that call Radius, such as `rad deploy` pipelines.
 1. Use a CLI build with the paired certificate validation and lifecycle layers before changing CA, issuer or certificate mode. This chart layer does not implement those transitions. `rad rollback kubernetes` also refuses older charts that issue component client Certificates from `radius-ca-issuer` or `radius-mtls-issuer`.
