@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -753,7 +754,7 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 				return err
 			})
 		case "CoreInstanceGroup", "TaskInstanceGroups":
-			if removesField(request.Patch, key, []string{"AutoScalingPolicy"}) {
+			if removesField(request.Patch, request.Current, key, []string{"AutoScalingPolicy"}) {
 				unsupported = append(unsupported, "Instances/"+key)
 				continue
 			}
@@ -771,7 +772,7 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 			resizes = append(resizes, changes.resizes...)
 			unscaled = append(unscaled, changes.unscaled...)
 		case "MasterInstanceFleet", "CoreInstanceFleet", "TaskInstanceFleets":
-			if !scaled || removesField(request.Patch, key, capacities) || !covers(without(desired[key], capacities...), without(current[key], capacities...), false) {
+			if !scaled || removesField(request.Patch, request.Current, key, capacities) || !covers(without(desired[key], capacities...), without(current[key], capacities...), false) {
 				unsupported = append(unsupported, "Instances/"+key)
 			}
 		default:
@@ -796,24 +797,56 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 
 // removesField reports whether the patch removes a property inside the Instances property key, other than those in
 // allowed, which the update handles. EMR has no call that clears any other, and the comparison with AWS only checks
-// the properties the template still sets, so a removal would otherwise count as applied.
-func removesField(patch jsondiff.Patch, key string, allowed []string) bool {
+// the properties the template still sets, so a removal would otherwise count as applied. A value EMR set because the
+// template leaves it out (see emrDefaults) isn't a removal: the patch removes it from a list item only because the
+// template's item doesn't have it.
+func removesField(patch jsondiff.Patch, current map[string]any, key string, allowed []string) bool {
 	prefix := "/Instances/" + key + "/"
 	for _, op := range patch {
 		if op.Type != jsondiff.OperationRemove || !strings.HasPrefix(op.Path, prefix) {
 			continue
 		}
 		segments := strings.Split(op.Path, "/")
-		if !slices.Contains(allowed, segments[len(segments)-1]) {
-			return true
+		name := segments[len(segments)-1]
+		if slices.Contains(allowed, name) {
+			continue
 		}
+		if value, ok := emrDefaults[name]; ok && value == valueAt(current, op.Path) {
+			continue
+		}
+		return true
 	}
 	return false
 }
 
+// emrDefaults are the values EMR gives an instance fleet's instance type configuration that leaves them out:
+// WeightedCapacity is 1, and BidPriceAsPercentageOfOnDemandPrice is 100 when BidPrice isn't set either.
+var emrDefaults = map[string]any{"WeightedCapacity": 1.0, "BidPriceAsPercentageOfOnDemandPrice": 100.0}
+
+// pointerSegment unescapes a segment of a JSON pointer.
+var pointerSegment = strings.NewReplacer("~1", "/", "~0", "~")
+
+// valueAt returns the value at pointer, a JSON pointer, in v, or nil when v has none.
+func valueAt(v any, pointer string) any {
+	for _, segment := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+		switch t := v.(type) {
+		case map[string]any:
+			v = t[pointerSegment.Replace(segment)]
+		case []any:
+			i, err := strconv.Atoi(segment)
+			if err != nil || i < 0 || i >= len(t) {
+				return nil
+			}
+			v = t[i]
+		default:
+			return nil
+		}
+	}
+	return v
+}
+
 // changedKeys returns the properties of Instances the patch changes, sorted.
 func changedKeys(patch jsondiff.Patch, current map[string]any, desired map[string]any) []string {
-	unescape := strings.NewReplacer("~1", "/", "~0", "~")
 	out := []string{}
 	add := func(key string) {
 		if !slices.Contains(out, key) {
@@ -826,7 +859,7 @@ func changedKeys(patch jsondiff.Patch, current map[string]any, desired map[strin
 			continue
 		}
 		if len(segments) > 1 {
-			add(unescape.Replace(segments[1]))
+			add(pointerSegment.Replace(segments[1]))
 			continue
 		}
 		for _, m := range []map[string]any{current, desired} {

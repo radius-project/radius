@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -294,7 +295,7 @@ func (h *FileSystem) Create(ctx context.Context, request native.CreateRequest) (
 		}
 	} else {
 		input := &fsx.CreateFileSystemInput{}
-		if err := awsapi.Decode(awsapi.Without(p, "Tags"), input); err != nil {
+		if err := awsapi.Decode(createProperties(p), input); err != nil {
 			return "", err
 		}
 		input.ClientRequestToken, input.Tags = token, tags
@@ -521,7 +522,44 @@ func configChanges(name string, request native.UpdateRequest) map[string]any {
 			out[key] = value
 		}
 	}
+	if name == "OntapConfiguration" {
+		oneThroughput(out, current, desired)
+	}
 	return out
+}
+
+// createProperties returns the properties a create sends, which are the template's without Tags. An ONTAP template
+// that sets both ThroughputCapacity and an agreeing ThroughputCapacityPerHAPair, as one copied from a read does, sends
+// only the latter.
+func createProperties(properties map[string]any) map[string]any {
+	out := awsapi.Without(properties, "Tags")
+	if ontap, ok := out["OntapConfiguration"].(map[string]any); ok {
+		ontap = maps.Clone(ontap)
+		oneThroughput(ontap, nil, ontap)
+		out["OntapConfiguration"] = ontap
+	}
+	return out
+}
+
+// oneThroughput leaves ThroughputCapacity out of ONTAP values that also set ThroughputCapacityPerHAPair to an agreeing
+// value: FSx takes only one of the two in a call, and sets the other from it. Values that disagree are both sent, and
+// FSx rejects them.
+func oneThroughput(out map[string]any, current map[string]any, desired map[string]any) {
+	total, okTotal := out["ThroughputCapacity"].(float64)
+	perPair, okPair := out["ThroughputCapacityPerHAPair"].(float64)
+	if !okTotal || !okPair {
+		return
+	}
+	pairs, ok := desired["HAPairs"].(float64)
+	if !ok {
+		pairs, ok = current["HAPairs"].(float64)
+	}
+	if !ok {
+		pairs = 1
+	}
+	if total == perPair*pairs {
+		delete(out, "ThroughputCapacity")
+	}
 }
 
 // directoryChanges returns the changed values of a Windows file system's Active Directory configuration. FSx takes a
