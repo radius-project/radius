@@ -4,10 +4,6 @@ bounded. Unknown layouts fail closed rather than pretending to evaluate arbitrar
 approvers, CEL programs, or authorization webhooks. All reads use live lookup;
 offline rendering cannot supply prerequisite evidence through values.
 */}}
-{{- define "radius.authz.certificateComponents" -}}
-{{- list "ucp" | toJson -}}
-{{- end -}}
-
 {{- define "radius.authz.policySpec" -}}
 {{- $san := printf "%s.%s.svc" .component .namespace -}}
 {{- $rule := printf "cr.username == '%s' && cr.namespace == '%s' && cr.name.startsWith('%s-cert-')" .requestor .namespace .component -}}
@@ -283,9 +279,7 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- fail "issuerRef prerequisite: the chart certManager.requesters must include the verified cert-manager controller identity." -}}
 {{- end -}}
 {{- $expected := dict -}}
-{{- range list "ucp" -}}
-{{- $_ := set $expected (printf "radius-%s-%s" $root.Release.Namespace .) (include "radius.authz.policySpec" (dict "component" . "namespace" $root.Release.Namespace "issuer" $issuer "requestor" $requestor) | fromJson) -}}
-{{- end -}}
+{{- $_ := set $expected (printf "radius-%s-ucp" $root.Release.Namespace) (include "radius.authz.policySpec" (dict "component" "ucp" "namespace" $root.Release.Namespace "issuer" $issuer "requestor" $requestor) | fromJson) -}}
 {{- $policies := (lookup "policy.cert-manager.io/v1alpha1" "CertificateRequestPolicy" "" "").items | default list -}}
 {{- $found := dict -}}
 {{- range $policies -}}
@@ -307,8 +301,8 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- $_ := set $found .metadata.name true -}}
 {{- end -}}
 {{- end -}}
-{{- range include "radius.authz.certificateComponents" . | fromJsonArray -}}
-{{- if not (hasKey $found (printf "radius-%s-%s" $root.Release.Namespace .)) -}}{{- fail "issuerRef prerequisite: install all expected Ready Radius CertificateRequestPolicies before installing Radius." -}}{{- end -}}
+{{- range $name, $_ := $expected -}}
+{{- if not (hasKey $found $name) -}}{{- fail "issuerRef prerequisite: install all expected Ready Radius CertificateRequestPolicies before installing Radius." -}}{{- end -}}
 {{- end -}}
 {{- $bindings := concat ((lookup "rbac.authorization.k8s.io/v1" "ClusterRoleBinding" "" "").items | default list) ((lookup "rbac.authorization.k8s.io/v1" "RoleBinding" "" "").items | default list) -}}
 {{- $usable := dict -}}

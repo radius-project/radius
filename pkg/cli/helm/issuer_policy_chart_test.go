@@ -18,7 +18,6 @@ package helm
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -244,26 +243,20 @@ func newIssuerPolicyFixture(t *testing.T) *issuerPolicyFixture {
 				"operations": operations, "resources": resources}},
 		}}
 	}
-	names := []any{}
-	for _, component := range []string{"ucp"} {
-		name := "radius-radius-system-" + component
-		names = append(names, name)
-		ready(add("policy.cert-manager.io/v1alpha1", "CertificateRequestPolicy", "", name, map[string]any{
-			"selector": map[string]any{"issuerRef": issuer, "namespace": map[string]any{"matchNames": []any{"radius-system"}}},
-			"allowed": map[string]any{
-				"dnsNames": map[string]any{"values": []any{component + ".radius-system.svc"}, "required": true,
-					"validations": []any{map[string]any{"rule": fmt.Sprintf(
-						"cr.username == 'system:serviceaccount:cert-manager:cert-manager' && cr.namespace == 'radius-system' && cr.name.startsWith('%s-cert-')", component)}}},
-				"isCA": false, "usages": []any{"digital signature", "server auth"},
-			},
-			"constraints": map[string]any{"minDuration": "24h", "maxDuration": "24h",
-				"privateKey": map[string]any{"algorithm": "ECDSA", "minSize": int64(256), "maxSize": int64(256)}},
-		}))
-	}
+	ready(add("policy.cert-manager.io/v1alpha1", "CertificateRequestPolicy", "", "radius-radius-system-ucp", map[string]any{
+		"selector": map[string]any{"issuerRef": issuer, "namespace": map[string]any{"matchNames": []any{"radius-system"}}},
+		"allowed": map[string]any{
+			"dnsNames": map[string]any{"values": []any{"ucp.radius-system.svc"}, "required": true,
+				"validations": []any{map[string]any{"rule": "cr.username == 'system:serviceaccount:cert-manager:cert-manager' && cr.namespace == 'radius-system' && cr.name.startsWith('ucp-cert-')"}}},
+			"isCA": false, "usages": []any{"digital signature", "server auth"},
+		},
+		"constraints": map[string]any{"minDuration": "24h", "maxDuration": "24h",
+			"privateKey": map[string]any{"algorithm": "ECDSA", "minSize": int64(256), "maxSize": int64(256)}},
+	}))
 	role := add("rbac.authorization.k8s.io/v1", "ClusterRole", "", "radius-policy-use", nil)
 	role.Object["rules"] = []any{map[string]any{
 		"apiGroups": []any{"policy.cert-manager.io"}, "resources": []any{"certificaterequestpolicies"},
-		"verbs": []any{"use"}, "resourceNames": names,
+		"verbs": []any{"use"}, "resourceNames": []any{"radius-radius-system-ucp"},
 	}}
 	approvalRole := add("rbac.authorization.k8s.io/v1", "ClusterRole", "", "approver", nil)
 	approvalRole.Object["rules"] = []any{
@@ -292,13 +285,8 @@ func newIssuerPolicyFixture(t *testing.T) *issuerPolicyFixture {
 	return f
 }
 
-// render uses the same REST-backed Helm engine as a server-connected install or
+// renderChart uses the same REST-backed Helm engine as a server-connected install or
 // CLI preflight, without installing anything or executing a CertificateRequest.
-func (f *issuerPolicyFixture) render(t *testing.T) (string, error) {
-	rendered, err := f.renderChart(t)
-	return rendered["radius/templates/global/certificates.yaml"] + rendered["radius/templates/ucp/apiservice.yaml"], err
-}
-
 func (f *issuerPolicyFixture) renderChart(t *testing.T) (map[string]string, error) {
 	t.Helper()
 	resources := map[string]metav1.APIResource{}
@@ -642,12 +630,13 @@ func TestIssuerPolicyChart(t *testing.T) {
 			if tt.change != nil {
 				tt.change(t, f)
 			}
-			rendered, err := f.render(t)
+			manifests, err := f.renderChart(t)
 			if tt.err != "" {
 				require.ErrorContains(t, err, tt.err)
 				return
 			}
 			require.NoError(t, err)
+			rendered := manifests["radius/templates/global/certificates.yaml"] + manifests["radius/templates/ucp/apiservice.yaml"]
 			require.Equal(t, 1, strings.Count(rendered, "kind: Certificate\n"), "only aggregation uses an ordinary Certificate")
 			require.Contains(t, rendered, "name: external-ca")
 			if tt.noComponents {
