@@ -655,6 +655,18 @@ func TestCreateOrUpdateResource_Run_RetainsFailedRecipeCleanupInventory(t *testi
 	}
 }
 
+func TestRetainFailedRecipeOutput_AWSNamesRemainCaseSensitive(t *testing.T) {
+	const prefix = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/"
+	resource := &dynamicdm.DynamicResource{Properties: map[string]any{}}
+	for _, name := range []string{"orders", "Orders", "orders"} {
+		require.NoError(t, retainFailedRecipeOutput(resource, &recipes.RecipeOutput{Resources: []string{prefix + name}}))
+	}
+	outputs := resource.OutputResources()
+	require.Len(t, outputs, 2)
+	require.Equal(t, prefix+"orders", outputs[0].ID.String())
+	require.Equal(t, prefix+"Orders", outputs[1].ID.String())
+}
+
 func TestRetainFailedRecipeOutput_DynamicResource(t *testing.T) {
 	resource := &dynamicdm.DynamicResource{Properties: map[string]any{}}
 	output := &recipes.RecipeOutput{

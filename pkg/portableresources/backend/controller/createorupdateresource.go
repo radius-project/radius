@@ -233,7 +233,13 @@ func retainFailedRecipeOutput(resource rpv1.RadiusResourceModel, output *recipes
 
 	metadata := resource.ResourceMetadata()
 	status := metadata.GetResourceStatus()
-	status.OutputResources = append(status.OutputResources, rpv1.GetGCOutputResources(status.OutputResources, outputResources)...)
+	for _, outputResource := range outputResources {
+		if !slices.ContainsFunc(status.OutputResources, func(existing rpv1.OutputResource) bool {
+			return existing.ID.String() == outputResource.ID.String()
+		}) {
+			status.OutputResources = append(status.OutputResources, outputResource)
+		}
+	}
 	if output.PendingDeploymentID != "" && !slices.Contains(status.PendingRecipeDeployments, output.PendingDeploymentID) {
 		status.PendingRecipeDeployments = append(status.PendingRecipeDeployments, output.PendingDeploymentID)
 	}

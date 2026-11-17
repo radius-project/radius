@@ -179,6 +179,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	}
 
 	var knownOutput *recipes.RecipeOutput
+	var completedDeployment *clients.ClientCreateOrUpdateResponse
 	submissionRejected := false
 	defer func() {
 		if err == nil || submissionRejected {
@@ -190,7 +191,14 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 			output.Resources = slices.Clone(knownOutput.Resources)
 			output.ProviderResourceIDs = knownOutput.ProviderResourceIDs
 		}
-		ids, inventoryErr := d.deploymentOutputResources(ctx, deploymentID.String())
+		var ids []string
+		var inventoryErr error
+		if completedDeployment != nil {
+			ids, inventoryErr = deploymentOutputResourceIDs(completedDeployment.Properties)
+		}
+		if completedDeployment == nil || inventoryErr != nil {
+			ids, inventoryErr = d.deploymentOutputResources(ctx, deploymentID.String())
+		}
 		if inventoryErr != nil {
 			logger.Error(inventoryErr, "Failed to recover recipe cleanup inventory; retaining deployment ID for deletion", "deploymentID", deploymentID.String())
 			return
@@ -232,6 +240,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
+	completedDeployment = &resp
 
 	// Log only IDs, not output values, which can contain credentials.
 	outputResourceIDs := make([]string, 0, len(resp.Properties.OutputResources))
@@ -299,20 +308,24 @@ func (d *bicepDriver) deploymentOutputResources(ctx context.Context, deploymentI
 	if err != nil {
 		return nil, err
 	}
-	if response.Properties == nil || response.Properties.ProvisioningState == nil {
+	return deploymentOutputResourceIDs(response.Properties)
+}
+
+func deploymentOutputResourceIDs(properties *armdeployments.DeploymentPropertiesExtended) ([]string, error) {
+	if properties == nil || properties.ProvisioningState == nil {
 		return nil, fmt.Errorf("deployment has no provisioning state")
 	}
-	switch strings.ToLower(string(*response.Properties.ProvisioningState)) {
+	switch strings.ToLower(string(*properties.ProvisioningState)) {
 	case "succeeded", "failed", "canceled":
 	default:
-		return nil, fmt.Errorf("deployment is still in progress: %s", *response.Properties.ProvisioningState)
+		return nil, fmt.Errorf("deployment is still in progress: %s", *properties.ProvisioningState)
 	}
-	if response.Properties.OutputResources == nil {
+	if properties.OutputResources == nil {
 		return nil, fmt.Errorf("deployment output resource inventory is unavailable")
 	}
 
-	ids := make([]string, 0, len(response.Properties.OutputResources))
-	for _, ref := range response.Properties.OutputResources {
+	ids := make([]string, 0, len(properties.OutputResources))
+	for _, ref := range properties.OutputResources {
 		if ref == nil || ref.ID == nil {
 			return nil, fmt.Errorf("deployment output resource inventory contains a missing resource ID")
 		}
@@ -341,7 +354,13 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 		if err != nil {
 			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
 		}
-		opts.OutputResources = append(opts.OutputResources, rpv1.GetGCOutputResources(opts.OutputResources, recovered)...)
+		for _, outputResource := range recovered {
+			if !slices.ContainsFunc(opts.OutputResources, func(existing rpv1.OutputResource) bool {
+				return existing.ID.String() == outputResource.ID.String()
+			}) {
+				opts.OutputResources = append(opts.OutputResources, outputResource)
+			}
+		}
 		if opts.PersistCleanup != nil {
 			if err := opts.PersistCleanup(ctx, opts.OutputResources, opts.PendingDeployments[i+1:]); err != nil {
 				return fmt.Errorf("failed to persist recovered recipe cleanup inventory: %w", err)

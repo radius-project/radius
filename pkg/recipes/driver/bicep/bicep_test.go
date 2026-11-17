@@ -276,8 +276,17 @@ func Test_Bicep_Execute_UncertainSubmission(t *testing.T) {
 }
 
 func Test_Bicep_Execute_PostDeploymentFailureRetainsExplicitResources(t *testing.T) {
-	for _, inventoryUnavailable := range []bool{false, true} {
-		t.Run(fmt.Sprintf("inventory unavailable=%t", inventoryUnavailable), func(t *testing.T) {
+	for _, tt := range []struct {
+		name                 string
+		finalPollInventory   bool
+		inventoryUnavailable bool
+	}{
+		{name: "recover missing poll state"},
+		{name: "retain pending when GET unavailable", inventoryUnavailable: true},
+		{name: "reuse final poll inventory", finalPollInventory: true},
+		{name: "reuse final poll inventory without GET", finalPollInventory: true, inventoryUnavailable: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			ts := registrytest.NewFakeRegistryServer(t)
 			t.Cleanup(ts.CloseServer)
@@ -300,7 +309,10 @@ func Test_Bicep_Execute_PostDeploymentFailureRetainsExplicitResources(t *testing
 					OutputResources:   []*armdeployments.ResourceReference{{ID: new(nativeID)}},
 				}},
 			}
-			if inventoryUnavailable {
+			if tt.finalPollInventory {
+				client.response.Properties.ProvisioningState = new(armdeployments.ProvisioningStateSucceeded)
+			}
+			if tt.inventoryUnavailable {
 				client.getErr = errors.New("inventory unavailable")
 			}
 			d := &bicepDriver{DeploymentClient: client, RegistryClient: ts.TestServer.Client()}
@@ -316,9 +328,80 @@ func Test_Bicep_Execute_PostDeploymentFailureRetainsExplicitResources(t *testing
 			require.ElementsMatch(t, []string{explicitID, nativeID}, output.Resources)
 			require.Empty(t, output.Values)
 			require.Empty(t, output.Secrets)
-			require.Equal(t, inventoryUnavailable, output.PendingDeploymentID != "")
+			require.Equal(t, tt.inventoryUnavailable && !tt.finalPollInventory, output.PendingDeploymentID != "")
+			if tt.finalPollInventory {
+				require.Zero(t, client.getCalls)
+			} else {
+				require.Equal(t, 1, client.getCalls)
+			}
 		})
 	}
+}
+
+func Test_Bicep_Execute_OutputParsingFailureRetainsPolledInventory(t *testing.T) {
+	const resourceID = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet"
+	for _, refs := range [][]*armdeployments.ResourceReference{{}, {{ID: new(resourceID)}}} {
+		t.Run(fmt.Sprintf("resource count=%d", len(refs)), func(t *testing.T) {
+			t.Parallel()
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+			client := &deploymentClientSpy{
+				response: &clients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+					ProvisioningState: new(armdeployments.ProvisioningStateSucceeded),
+					OutputResources:   refs,
+					Outputs: map[string]any{
+						"result": map[string]any{"value": map[string]any{"resources": 123}},
+					},
+				}},
+				getErr: errors.New("deployment state expired"),
+			}
+			d := &bicepDriver{DeploymentClient: client, RegistryClient: ts.TestServer.Client()}
+			output, err := d.Execute(t.Context(), driver.ExecuteOptions{
+				Recipe: recipes.ResourceMetadata{
+					Name:          "test-resource",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+				},
+				Definition: recipes.EnvironmentDefinition{
+					Name: "test-recipe", TemplatePath: ts.TestImageURL,
+				},
+			})
+			var recipeErr *recipes.RecipeError
+			require.ErrorAs(t, err, &recipeErr)
+			require.Equal(t, recipes.InvalidRecipeOutputs, recipeErr.ErrorDetails.Code)
+			require.NotNil(t, output)
+			require.Len(t, output.Resources, len(refs))
+			if len(refs) > 0 {
+				require.Equal(t, resourceID, output.Resources[0])
+			}
+			require.Empty(t, output.PendingDeploymentID)
+			require.Zero(t, client.getCalls)
+		})
+	}
+}
+
+func Test_Bicep_Delete_RecoveryPreservesAWSNameCase(t *testing.T) {
+	const deploymentID = "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe1"
+	const prefix = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.SNS/Topic/"
+	d, client, _, _ := setupDeleteInputs(t)
+	d.DeploymentClient = &deploymentClientSpy{
+		deploymentID: deploymentID,
+		getResponse: clients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateFailed),
+			OutputResources:   []*armdeployments.ResourceReference{{ID: new(prefix + "Orders")}},
+		}},
+	}
+	client.EXPECT().Delete(gomock.Any(), prefix+"orders").Return(nil)
+	client.EXPECT().Delete(gomock.Any(), prefix+"Orders").Return(nil)
+	require.NoError(t, d.Delete(t.Context(), driver.DeleteOptions{
+		PendingDeployments: []string{deploymentID},
+		OutputResources:    []rpv1.OutputResource{{ID: resources.MustParse(prefix + "orders"), RadiusManaged: new(true)}},
+		PersistCleanup: func(_ context.Context, outputs []rpv1.OutputResource, pending []string) error {
+			require.Len(t, outputs, 2)
+			require.Empty(t, pending)
+			return nil
+		},
+	}))
 }
 
 func Test_Bicep_Delete_RecoversPendingDeploymentInventory(t *testing.T) {

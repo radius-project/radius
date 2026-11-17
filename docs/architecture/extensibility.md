@@ -588,17 +588,20 @@ sequenceDiagram
   else default (recipe-backed)
     DynCtrl->>DeleteCtrl: NewRecipeDeleteController
     DeleteCtrl->>DB: load stored resource and output resources
-    DeleteCtrl->>Eng: Delete(ResourceMetadata, OutputResources)
+    DeleteCtrl->>Eng: Delete(ResourceMetadata, OutputResources, PendingDeployments)
     Eng->>Drv: driver.Delete
+    opt Pending Bicep deployments
+      Drv->>Drv: recover final owned-resource inventory
+      Drv->>DeleteCtrl: PersistCleanup
+      DeleteCtrl->>DB: save recovered IDs and remaining pending entries
+    end
+    Drv->>Drv: delete stored output resources
     Drv-->>Eng: deletion complete
     DeleteCtrl->>DB: delete resource record
   end
 ```
 
-`DeleteResource` skips driver deletion when the recipe deployment failed during
-setup, because no output resources were created. Otherwise it passes the stored
-output resources to the driver so recipe-created infrastructure can be cleaned
-up before the Radius resource record is removed.
+`DeleteResource` skips driver deletion after a recipe setup failure only when no stored output resources or pending deployments remain. Otherwise it passes both cleanup fields to the driver. Before deleting infrastructure, the Bicep driver must recover final, explicit inventory for pending deployments and save the recovered IDs through the controller. Unknown inventory blocks deletion; a missing list is not an empty inventory. The Radius resource record is removed only after cleanup succeeds.
 
 ## Invariants
 
