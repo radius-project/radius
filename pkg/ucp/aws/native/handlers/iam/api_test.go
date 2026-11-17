@@ -100,6 +100,8 @@ var userToGroupAdditionAPI = map[string]nativetest.Call{
 	},
 	"GetGroup": {
 		Doc: apiReference + "API_GetGroup.html",
+		Unclear: "The page doesn't name the error for a Marker that IAM didn't return. The fake accepts any Marker that " +
+			"fits the documented length and pattern, and starts a Marker it didn't return at the first user.",
 		Rules: []nativetest.Rule{
 			{
 				Rule: "MaxItems is at least 1",
@@ -135,6 +137,24 @@ var userToGroupAdditionAPI = map[string]nativetest.Call{
 					return err
 				},
 				Code: "NoSuchEntity",
+			},
+			{
+				Rule: "Marker, when sent, has at least 1 character",
+				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
+					_, err := newFakeAPI(store).GetGroup(ctx, &iam.GetGroupInput{GroupName: aws.String("admins"), Marker: aws.String("")})
+					return err
+				},
+				Code: "ValidationError",
+				Doc:  commonErrors,
+			},
+			{
+				Rule: "Marker has only characters from U+0020 to U+00FF",
+				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
+					_, err := newFakeAPI(store).GetGroup(ctx, &iam.GetGroupInput{GroupName: aws.String("admins"), Marker: aws.String("2\x00")})
+					return err
+				},
+				Code: "ValidationError",
+				Doc:  commonErrors,
 			},
 			{
 				Rule: "IAM may return fewer users than MaxItems while there are more, with IsTruncated true and a Marker",

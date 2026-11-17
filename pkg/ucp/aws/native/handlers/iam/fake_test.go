@@ -134,6 +134,9 @@ func (f *fakeAPI) put(e entry, users []string) {
 // namePattern is the pattern IAM's API reference gives for group and user names, which are 1 to 128 characters.
 var namePattern = regexp.MustCompile(`^[\w+=,.@-]{1,128}$`)
 
+// markerPattern is the pattern IAM's API reference gives for GetGroup's Marker, which has at least 1 character.
+var markerPattern = regexp.MustCompile(`^[\x{0020}-\x{00FF}]+$`)
+
 // validNames returns ValidationError, as IAM does, when a name isn't 1 to 128 characters of the names' pattern.
 func validNames(names ...string) error {
 	for _, name := range names {
@@ -176,6 +179,9 @@ func (f *fakeAPI) GetGroup(ctx context.Context, in *iam.GetGroupInput, _ ...func
 		return nil, err
 	}
 	if in.MaxItems != nil && (*in.MaxItems < 1 || *in.MaxItems > 1000) {
+		return nil, fault("ValidationError")
+	}
+	if in.Marker != nil && !markerPattern.MatchString(*in.Marker) {
 		return nil, fault("ValidationError")
 	}
 	if strings.HasPrefix(group, missingPrefix) {

@@ -36,8 +36,9 @@ const sdkServicePrefix = "github.com/aws/aws-sdk-go-v2/service/"
 
 // HandlerSource is the parsed source of a handler package, without its tests. API maps each AWS SDK operation the
 // package refers to, to the SDK service package it belongs to, such as docdb: the methods of the package's SDK client
-// interfaces, such as API and appsync's ObjectAPI, and the operations whose input the package builds, such as
-// &docdb.CreateDBClusterInput{}, so a call through a concrete client or an imported interface counts too.
+// interfaces, such as API and appsync's ObjectAPI, and the operations whose input type the package names anywhere,
+// such as docdb.CreateDBClusterInput in a literal, a variable, new, or a function's parameter or result, so a call
+// through a concrete client or an imported interface counts too.
 type HandlerSource struct {
 	API     map[string]string
 	methods map[string]*ast.FuncDecl
@@ -99,8 +100,8 @@ func ParseHandlerSource(t testing.TB, dir string) *HandlerSource {
 			}
 		}
 		ast.Inspect(file, func(n ast.Node) bool {
-			if lit, ok := n.(*ast.CompositeLit); ok {
-				if op, service := sdkInput(lit.Type, imports); op != "" {
+			if sel, ok := n.(*ast.SelectorExpr); ok {
+				if op, service := sdkInput(sel, imports); op != "" {
 					src.API[op] = service
 				}
 			}
@@ -111,12 +112,8 @@ func ParseHandlerSource(t testing.TB, dir string) *HandlerSource {
 }
 
 // sdkInput returns the operation and AWS SDK service package of an SDK input type, such as CreateDBCluster and docdb
-// for docdb.CreateDBClusterInput, or "" for any other type.
-func sdkInput(expr ast.Expr, imports map[string]string) (string, string) {
-	sel, ok := expr.(*ast.SelectorExpr)
-	if !ok {
-		return "", ""
-	}
+// for docdb.CreateDBClusterInput, or "" for any other selector.
+func sdkInput(sel *ast.SelectorExpr, imports map[string]string) (string, string) {
 	pkg, ok := sel.X.(*ast.Ident)
 	if !ok {
 		return "", ""

@@ -761,13 +761,12 @@ func validEntry(e types.NetworkAclEntry) error {
 		return fault(missingParameter)
 	}
 	protocol, err := strconv.Atoi(aws.ToString(e.Protocol))
-	numbered := err == nil
-	if !slices.Contains([]types.RuleAction{types.RuleActionAllow, types.RuleActionDeny}, e.RuleAction) ||
-		(numbered && (protocol < -1 || protocol > 255)) || !isBlock(e.CidrBlock, true) || !isBlock(e.Ipv6CidrBlock, false) {
+	if err != nil || !slices.Contains([]types.RuleAction{types.RuleActionAllow, types.RuleActionDeny}, e.RuleAction) ||
+		protocol < -1 || protocol > 255 || !isBlock(e.CidrBlock, true) || !isBlock(e.Ipv6CidrBlock, false) {
 		return fault(invalidValue)
 	}
-	if numbered && ((protocol == 6 || protocol == 17) && e.PortRange == nil ||
-		(protocol == 1 || (protocol == 58 && e.Ipv6CidrBlock != nil)) && e.IcmpTypeCode == nil) {
+	if (protocol == 6 || protocol == 17) && e.PortRange == nil ||
+		(protocol == 1 || (protocol == 58 && e.Ipv6CidrBlock != nil)) && e.IcmpTypeCode == nil {
 		return fault(missingParameter)
 	}
 	return nil
