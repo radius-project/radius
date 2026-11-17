@@ -221,6 +221,15 @@ var dataLakeSettingsAPI = map[string]nativetest.Call{
 				}),
 				Code: validationCode,
 			},
+			{
+				Rule: "Parameters keys, and AuthorizedSessionTagValueList and TrustedResourceOwners values, leave out control " +
+					"characters but tab",
+				Doc: settingsDoc,
+				Break: withSettings(func(s *types.DataLakeSettings) {
+					s.AuthorizedSessionTagValueList = []string{"tag\n"}
+				}),
+				Code: validationCode,
+			},
 		},
 		Unclear: "The page says the call replaces the list of admins, and the guide says the default permissions left out " +
 			"become empty, but neither says so for the other settings; the fake replaces them all, as the handler expects by " +
@@ -386,6 +395,21 @@ var permissionsAPI = map[string]nativetest.Call{
 					return grant(ctx, store, onDatabase(strings.Repeat("d", 256)), "ALTER")
 				},
 				Code: validationCode,
+			},
+			{
+				Rule: "database, table, and column names, and CatalogId, leave out control characters but tab",
+				Doc:  apiReference + "API_DatabaseResource.html",
+				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
+					return grant(ctx, store, onDatabase("sales\x00"), "ALTER")
+				},
+				Code: validationCode,
+			},
+			{
+				Rule: "names take tab and characters outside the Basic Multilingual Plane",
+				Doc:  apiReference + "API_DatabaseResource.html",
+				Check: func(ctx context.Context, store *awsfake.CloudControl) error {
+					return grant(ctx, store, onDatabase("sales\t😀"), "ALTER")
+				},
 			},
 			{
 				Rule: "the principal's DataLakePrincipalIdentifier is 1 to 255 characters",
