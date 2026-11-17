@@ -143,9 +143,15 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)
 	}
 
-	trusted, _, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
+	trusted, trust, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
 	if err != nil {
 		return err
+	}
+	if trust != nil && !ownsUCPAPIServerTrust(trust) {
+		return fmt.Errorf("%s, so rad cannot use it to keep the API server trusting UCP while UCP moves to %s. Helm has not changed Radius. "+
+			"If nothing else uses the Secret, delete it with %s, then run the command again",
+			foreignUCPAPIServerTrustProblem(radiusNamespace), ucpAPIServerCASecretName,
+			kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerTrustSecretName))
 	}
 	trusted = unionCertificates(trusted, live)
 	if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, trusted); err != nil {

@@ -211,7 +211,7 @@ func (i *Impl) warnForeignUCPOffSecrets(kubeContext, radiusNamespace string, fou
 		}
 		owner := fmt.Sprintf("cert-manager did not issue for Certificate %s", f.certificate)
 		if f.certificate == "" {
-			owner = fmt.Sprintf("does not hold only %s with annotation %s=true as rad writes it", caCertificateKey, allowDirectInjectionAnnotation)
+			owner = fmt.Sprintf("does not hold only a non-empty %s with annotation %s=true as rad writes it", caCertificateKey, allowDirectInjectionAnnotation)
 		}
 		i.logInfo("Warning: rad did not delete Secret %s/%s, which %s. Authorization off does not use it; if nothing else does, delete it with %s",
 			radiusNamespace, f.secret, owner, kubectlCommand(kubeContext, radiusNamespace, "delete secret "+f.secret))
@@ -287,8 +287,7 @@ func ownsUCPOffSecret(secret *corev1.Secret, leftover ucpOffLeftoverSecret) bool
 	if leftover.certificate != "" {
 		return secret.Annotations[certificateNameAnnotation] == leftover.certificate
 	}
-	_, ok := secret.Data[caCertificateKey]
-	return ok && len(secret.Data) == 1 && secret.Annotations[allowDirectInjectionAnnotation] == "true"
+	return ownsUCPAPIServerTrust(secret)
 }
 
 // waitForUCPOffCertificate waits until every UCP pod serves the certificate in Secret ucp-cert, issued by one of
