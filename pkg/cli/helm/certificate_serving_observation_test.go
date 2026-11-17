@@ -52,7 +52,7 @@ import (
 
 func TestAggregationServingInventory(t *testing.T) {
 	t.Parallel()
-	for _, scenario := range []string{"success", "overlap with new-only serving", "extra pod", "missing endpoint", "foreign endpoint", "wrong address", "wrong port", "rolling", "unready routing", "private source"} {
+	for _, scenario := range []string{"success", "overlap with new-only serving", "extra pod", "missing endpoint", "foreign endpoint", "wrong address", "wrong port", "rolling", "unready routing", "private source", "Off public CA", "Off foreign source", "Off wrong type"} {
 		t.Run(scenario, func(t *testing.T) {
 			t.Parallel()
 			ca := newTestCA(t, "public")
@@ -99,13 +99,27 @@ func TestAggregationServingInventory(t *testing.T) {
 			if scenario == "overlap with new-only serving" {
 				source.Data[caCertificateKey] = append(append([]byte{}, newTestCA(t, "previous").pem...), ca.pem...)
 			}
+			if strings.HasPrefix(scenario, "Off ") {
+				source.Name, source.Type = ucpOffCertificateSecretName, corev1.SecretTypeOpaque
+				source.Data["tls.key"] = []byte("not part of public serving evidence")
+				source.Data[caCertificateKey] = append(append([]byte{}, ca.pem...), issueUCPCertificate(t, ca)...)
+				if scenario == "Off foreign source" {
+					source.Labels = nil
+				}
+				if scenario == "Off wrong type" {
+					source.Type = corev1.SecretTypeBasicAuth
+				}
+			}
 			kube := kubefake.NewClientset(source, service, deployment, account, pod, endpoints)
 			inventory, err := readAggregationServingInventory(t.Context(), kube, RadiusSystemNamespace)
+			if strings.HasPrefix(scenario, "Off ") {
+				inventory, err = readOffAggregationServingInventory(t.Context(), kube, RadiusSystemNamespace)
+			}
 			if scenario == "overlap with new-only serving" {
 				require.Error(t, err, "fresh-bootstrap inventory still requires one CA")
 				inventory, err = readAggregationServingInventoryForCA(t.Context(), kube, RadiusSystemNamespace, source.Data[caCertificateKey], ca.pem)
 			}
-			if scenario != "success" && scenario != "overlap with new-only serving" {
+			if scenario != "success" && scenario != "overlap with new-only serving" && scenario != "Off public CA" {
 				require.Error(t, err)
 				return
 			}

@@ -35,10 +35,40 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 	}
 	journal, state, err := readInitialCertificateJournal(ctx, store)
 	if apierrors.IsNotFound(err) {
-		if err := i.uninstallHelmRelease("Radius", radiusReleaseName, namespace, kubeContext); err != nil {
+		ns, err := store.kube.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return i.uninstallHelmRelease("Radius", radiusReleaseName, namespace, kubeContext)
+		}
+		if err != nil {
 			return err
 		}
-		return i.deleteUCPAPIServerTrust(ctx, kubeContext, namespace)
+		return withIdentityOperation(ctx, store.kube, namespace, func(operation *identityOperation) error {
+			if err := operation.check(ctx); err != nil {
+				return err
+			}
+			if err := i.uninstallHelmRelease("Radius", radiusReleaseName, namespace, kubeContext); err != nil {
+				return err
+			}
+			ctx = withUCPMutationGuard(ctx, func(ctx context.Context, verb string, target metav1.PartialObjectMetadata) (bool, error) {
+				if err := operation.check(ctx); err != nil {
+					return false, err
+				}
+				current, err := store.kube.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				if ns.UID == "" || current.UID != ns.UID || current.DeletionTimestamp != nil ||
+					verb != "delete" || target.Kind != "Secret" || target.Namespace != namespace ||
+					target.Name != ucpAPIServerTrustSecretName || target.UID == "" || target.ResourceVersion == "" {
+					return false, errors.New("uninstall trust cleanup lost its pinned namespace or source")
+				}
+				if err := store.excludeCertificateOffTransition(ctx); err != nil {
+					return false, err
+				}
+				return false, ctx.Err()
+			})
+			return i.deleteUCPAPIServerTrust(ctx, kubeContext, namespace)
+		})
 	}
 	if err != nil {
 		return err

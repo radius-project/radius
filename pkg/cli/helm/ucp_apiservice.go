@@ -60,7 +60,15 @@ var (
 // ReconcileUCPOffAPIServerTrust describes.
 func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode) error {
 	if mode == authz.ModeOff {
-		return i.ReconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace)
+		return i.withCertificateOffOperation(ctx, kubeContext, radiusNamespace, mode, func(ctx context.Context) error {
+			operation, ok := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation)
+			if !ok {
+				// No namespace or APIService exists, so there is no trust to clean.
+				return ctx.Err()
+			}
+			operation.postHelm = true
+			return i.ReconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace)
+		})
 	}
 	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace); err != nil {
 		return err
@@ -135,8 +143,11 @@ func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options Cluster
 
 func (i *Impl) checkAggregationBeforeDependencies(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, render renderRadiusManifest) error {
 	mode, err := installedAuthzMode(options, storedValues)
-	if err != nil || mode == authz.ModeOff {
+	if err != nil {
 		return err
+	}
+	if mode == authz.ModeOff {
+		return i.clearAggregationInjection(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName)
 	}
 	// Active-mode staging is read-only while lifecycle execution is blocked.
 	// Diagnose an unsupported transition before changing shared dependencies.

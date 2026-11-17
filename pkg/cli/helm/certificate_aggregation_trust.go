@@ -272,11 +272,29 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, 
 		return err
 	}
 	if mode == authz.ModeOff {
-		return i.clearAggregationInjection(ctx, kubeContext, namespace, release)
+		if err := i.clearAggregationInjection(ctx, kubeContext, namespace, release); err != nil {
+			return err
+		}
+		if deployed == authz.ModeOff {
+			return nil
+		}
+		if err := i.stageUCPOffCertificate(ctx, kubeContext, namespace, release, render); err != nil {
+			return err
+		}
+		if operation, ok := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation); ok {
+			if err := operation.observe(ctx); err != nil {
+				return err
+			}
+			return operation.check(ctx)
+		}
+		return nil
+	}
+	if deployed == authz.ModeOff {
+		return errCertificateObserverUnavailable
 	}
 	kube, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
 	}
 	api, apiErr := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
 	if apiErr != nil && !apierrors.IsNotFound(apiErr) {
@@ -303,7 +321,7 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, 
 	}
 	selected, err := renderedAggregationTrust(manifest, namespace)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
 	}
 	if len(selected) == 0 {
 		return fmt.Errorf("selfSigned aggregation requires CA issuance and a second connected render before APIService readiness; automatic bootstrap is unavailable: %w", errCertificateObserverUnavailable)
@@ -382,53 +400,14 @@ func (i *Impl) clearAggregationInjection(ctx context.Context, kubeContext, names
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	store, err := i.rotationStoreForContext(kubeContext, namespace)
+	store, err := i.certificateOffStore(kubeContext, namespace)
 	if err != nil {
 		return err
 	}
-	kube, client := store.kube, store.dynamic
-	api, err := client.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil
+	if store.release != release {
+		return errors.New("authorization Off release identity changed")
 	}
-	if err != nil {
-		return err
-	}
-	if api.GetAnnotations()[injectCAFromSecretAnnotation] == "" &&
-		api.GetAnnotations()["cert-manager.io/inject-ca-from"] == "" &&
-		api.GetAnnotations()["cert-manager.io/inject-apiserver-ca"] == "" {
-		return nil
-	}
-	if api.GetUID() == "" || api.GetResourceVersion() == "" || api.GetDeletionTimestamp() != nil ||
-		api.GetLabels()[helmManagedByLabel] != helmManagedByValue ||
-		api.GetAnnotations()[helmReleaseNameAnnotation] != release ||
-		api.GetAnnotations()[helmReleaseNamespaceAnnotation] != namespace {
-		return errors.New("cannot clear CA injection on an APIService not owned by this Radius release")
-	}
-	return withIdentityOperation(ctx, kube, namespace, func(operation *identityOperation) error {
-		if err := operation.checkProviderJournal(ctx, release, i.validateCompletedProviderJournal); err != nil {
-			return err
-		}
-		if err := i.guardCertificateRotation(ctx, kubeContext, namespace, "authorization Off", nil); err != nil {
-			return err
-		}
-		patch := []map[string]any{
-			{"op": "test", "path": "/metadata/uid", "value": api.GetUID()},
-			{"op": "test", "path": "/metadata/resourceVersion", "value": api.GetResourceVersion()},
-		}
-		for _, annotation := range []string{injectCAFromSecretAnnotation, "cert-manager.io/inject-ca-from", "cert-manager.io/inject-apiserver-ca"} {
-			if _, found := api.GetAnnotations()[annotation]; found {
-				patch = append(patch, map[string]any{"op": "remove", "path": "/metadata/annotations/" + strings.ReplaceAll(annotation, "/", "~1")})
-			}
-		}
-		data, err := json.Marshal(patch)
-		if err != nil {
-			return err
-		}
-		if err := operation.check(ctx); err != nil {
-			return err
-		}
-		_, err = client.Resource(apiServicesResource).Patch(ctx, api.GetName(), types.JSONPatchType, data, metav1.PatchOptions{FieldManager: FieldManager})
-		return err
-	})
+	// This is exclusion only. Injection removal belongs to the inherited
+	// post-Helm writer, after UCP serves the Off certificate.
+	return store.excludeCertificateOffTransition(ctx)
 }

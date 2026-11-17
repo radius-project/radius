@@ -503,13 +503,12 @@ func Test_UCPAPIServerTrust_ForeignSecret(t *testing.T) {
 		require.NoError(t, err)
 
 		err = u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), []string{"global.rbac.enabled=true"})
-		require.ErrorContains(t, err, "Secret radius-system/radius-apiserver-trust")
-		require.ErrorContains(t, err, trustDeleteHint)
+		require.ErrorIs(t, err, errCertificateObserverUnavailable)
 		requireForeignTrustSecretKept(t, c.kube)
 		require.Empty(t, c.certManagerWrites(), "rad must not stage radius-apiserver-ca when it cannot stage the trust")
 	})
 
-	t.Run("reconcile ignores it and warns", func(t *testing.T) {
+	t.Run("reconcile rejects a foreign public source without writes", func(t *testing.T) {
 		shortenUCPAPIServiceWait(t)
 		apiServerCA := newTestCA(t, "radius-apiserver-ca")
 		kubeClient := kubefake.NewSimpleClientset(
@@ -523,12 +522,11 @@ func Test_UCPAPIServerTrust_ForeignSecret(t *testing.T) {
 		impl := trustImpl(kubeClient, dynamicClient)
 		impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
 
-		require.NoError(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
-		require.Equal(t, "radius-system/radius-apiserver-ca", apiServiceCASource(t, dynamicClient))
-		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, dynamicClient))
+		require.Error(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.Empty(t, apiServiceCASource(t, dynamicClient))
+		require.Empty(t, apiServiceCABundle(t, dynamicClient))
 		requireForeignTrustSecretKept(t, kubeClient)
-		require.Len(t, logs, 1)
-		require.Contains(t, logs[0], trustDeleteHint)
+		require.Empty(t, logs)
 	})
 
 	t.Run("uninstall keeps it and warns", func(t *testing.T) {
@@ -637,7 +635,7 @@ func Test_deleteUCPAPIServerTrust_Pinned(t *testing.T) {
 		})
 	}
 
-	t.Run("reconcile deletes the trust Secret pinned to what it read", func(t *testing.T) {
+	t.Run("shared cleanup deletes the trust Secret pinned to what it read", func(t *testing.T) {
 		shortenUCPAPIServiceWait(t)
 		c := newStageCluster(t, nil, false)
 		c.putTrustSecret(t, false)
@@ -650,9 +648,9 @@ func Test_deleteUCPAPIServerTrust_Pinned(t *testing.T) {
 		require.NoError(t, c.dynamic.Tracker().Add(ucpAPIService("", "", "")))
 		deleted := c.enforceDeletePreconditions(t, nil)
 
-		require.NoError(t, c.impl(nil, "").reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, c.impl(nil, "").deleteOwnedUCPAPIServerTrust(t.Context(), "test-context", c.kube, RadiusSystemNamespace))
 		require.Equal(t, []string{ucpAPIServerTrustSecretName}, *deleted)
-		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
+		require.Empty(t, apiServiceCABundle(t, c.dynamic), "shared deletion does not change APIService trust")
 	})
 }
 

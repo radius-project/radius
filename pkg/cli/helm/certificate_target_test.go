@@ -32,7 +32,6 @@ import (
 
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
@@ -267,20 +266,16 @@ func TestCASecretLivePreflight(t *testing.T) {
 				options := NewDefaultClusterOptions()
 				current := copyValues(fixture.values)
 				selected := certificateTestChart(t)
-				_, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, kubeContext, false)
+				target, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, kubeContext, false)
 				require.NoError(t, err)
 				err = impl.checkIssuerPolicy(t.Context(), options, selected, nil, current, kubeContext, false)
 				if invalidInjector {
 					require.ErrorContains(t, err, "not an inspectable")
 				} else {
 					require.NoError(t, err)
-					helmClient := NewMockHelmClient(gomock.NewController(t))
-					helmClient.EXPECT().LoadChart("local-chart").Return(selected, nil)
-					impl.Helm = helmClient
-					options.Radius.ChartPath = "local-chart"
-					options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=" + provider}
-					options.Certificates.CASecret = "operator-ca"
-					err = impl.InstallRadius(t.Context(), options, kubeContext)
+					// Fresh A10 installs use bootstrap, not the lower switch-on
+					// path. Its deployed-release transition gate stays closed.
+					err = target.checkTransition(map[string]any{})
 					require.ErrorContains(t, err, "mode=caSecret requires the certificate lifecycle")
 				}
 				for _, action := range client.Actions() {

@@ -86,6 +86,7 @@ type renderRadiusManifest func(ctx context.Context) (manifest string, ok bool, e
 // and the deployed release, in mode deployed, has it on, it stages the certificate of that release instead, as
 // stageUCPOffCertificate describes.
 func (i *Impl) stageLegacyUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace, releaseName string, deployed, mode authz.Mode, render renderRadiusManifest) error {
+	ctx = withUCPMutationGuard(ctx, i.ucpMutationGuard)
 	if mode == authz.ModeOff {
 		// With authorization off in the deployed release too, UCP already serves the certificate of the off chart.
 		if deployed == authz.ModeOff {
@@ -242,6 +243,7 @@ func (i *Impl) stageLegacyUCPAPIServerCA(ctx context.Context, kubeContext, radiu
 // Helm changes anything, with both CAs trusted; running the command again checks the same stage and waits again, and
 // writes nothing that already holds.
 func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNamespace, releaseName string, render renderRadiusManifest) error {
+	ctx = withUCPMutationGuard(ctx, i.ucpMutationGuard)
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return err
@@ -295,10 +297,15 @@ func (i *Impl) stageUCPOffCertificate(ctx context.Context, kubeContext, radiusNa
 		return err
 	}
 	if mounted != ucpOffCertificateSecretName {
-		patch, err := json.Marshal(map[string]any{"spec": map[string]any{"template": map[string]any{"spec": map[string]any{
+		patch, err := json.Marshal(map[string]any{"metadata": map[string]any{
+			"uid": deployment.UID, "resourceVersion": deployment.ResourceVersion,
+		}, "spec": map[string]any{"template": map[string]any{"spec": map[string]any{
 			"volumes": []any{map[string]any{"name": ucpCertificateVolumeName, "secret": map[string]any{"secretName": ucpOffCertificateSecretName}}},
 		}}}})
 		if err != nil {
+			return err
+		}
+		if _, err := checkUCPMutation(ctx, "patch", "Deployment", deployment); err != nil {
 			return err
 		}
 		if _, err := deployments.Patch(ctx, "ucp", types.StrategicMergePatchType, patch, metav1.PatchOptions{FieldManager: FieldManager}); err != nil {
@@ -348,13 +355,17 @@ func readUCPAPIServiceCABundle(ctx context.Context, dynamicClient dynamic.Interf
 // trustUCPAPIServerCAs sets the caBundle of the UCP APIService to cas and waits until it has held them for
 // ucpAPIServerCASettleChecks polls in a row, setting it again if cainjector writes back a caBundle it read earlier.
 func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, cas []*x509.Certificate) error {
-	patch, err := json.Marshal(map[string]any{"spec": map[string]any{"caBundle": base64.StdEncoding.EncodeToString(encodeCertificates(cas))}})
-	if err != nil {
-		return err
-	}
 	held := 0
-	err = wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
-		live, _, err := readUCPAPIServiceCABundle(ctx, dynamicClient)
+	err := wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
+		api, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		bundle, err := apiServiceBundle(api)
+		if err != nil {
+			return false, err
+		}
+		live, err := caCertificates(bundle)
 		if err != nil {
 			return false, err
 		}
@@ -363,7 +374,18 @@ func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient
 			return held >= ucpAPIServerCASettleChecks, nil
 		}
 		held = 0
-		if _, err := dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType, patch, metav1.PatchOptions{FieldManager: FieldManager}); err != nil {
+		patch, err := ucpTrustPatch(api, cas, false)
+		if err != nil {
+			return false, err
+		}
+		if _, err := checkUCPMutation(ctx, "patch", "APIService", api); err != nil {
+			return false, err
+		}
+		_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.JSONPatchType, patch, metav1.PatchOptions{FieldManager: FieldManager})
+		if apierrors.IsConflict(err) || apierrors.IsInvalid(err) || apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		if err != nil {
 			return false, fmt.Errorf("failed to update the caBundle of APIService %s: %w", ucpAPIServiceName, err)
 		}
 		return false, nil
@@ -408,10 +430,13 @@ func applyHelmOwnedSecret(ctx context.Context, kubeContext string, client kubern
 		desired.Namespace = releaseNamespace
 		desired.ResourceVersion = ""
 		setHelmOwnership(&desired.ObjectMeta, releaseName, releaseNamespace)
+		if _, err := checkUCPMutation(ctx, "create", "Secret", desired); err != nil {
+			return err
+		}
 		if _, err := secrets.Create(ctx, desired, metav1.CreateOptions{FieldManager: FieldManager}); err != nil {
 			return fmt.Errorf("failed to create Secret %s/%s: %w", releaseNamespace, rendered.Name, err)
 		}
-		return nil
+		return ctx.Err()
 	}
 	if err != nil {
 		return fmt.Errorf("failed to read Secret %s/%s: %w", releaseNamespace, rendered.Name, err)
@@ -432,10 +457,13 @@ func applyHelmOwnedSecret(ctx context.Context, kubeContext string, client kubern
 	if equality.Semantic.DeepEqual(existing, updated) {
 		return nil
 	}
+	if _, err := checkUCPMutation(ctx, "update", "Secret", existing); err != nil {
+		return err
+	}
 	if _, err := secrets.Update(ctx, updated, metav1.UpdateOptions{FieldManager: FieldManager}); err != nil {
 		return fmt.Errorf("failed to update Secret %s/%s: %w", releaseNamespace, rendered.Name, err)
 	}
-	return nil
+	return ctx.Err()
 }
 
 // setHelmOwnership sets the metadata Helm checks before it adopts an existing object into release releaseName.
@@ -526,6 +554,9 @@ func applyHelmOwnedObject(ctx context.Context, kubeContext string, client dynami
 	objects := client.Resource(resource).Namespace(releaseNamespace)
 	existing, err := objects.Get(ctx, desired.GetName(), metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
+		if _, err := checkUCPMutation(ctx, "create", rendered.GetKind(), desired); err != nil {
+			return err
+		}
 		if _, err := objects.Create(ctx, desired, metav1.CreateOptions{FieldManager: FieldManager}); err != nil {
 			return fmt.Errorf("failed to create %s %s/%s: %w", desired.GetKind(), releaseNamespace, desired.GetName(), err)
 		}
@@ -549,6 +580,9 @@ func applyHelmOwnedObject(ctx context.Context, kubeContext string, client dynami
 	mergedAnnotations := updated.GetAnnotations()
 	maps.Copy(mergedAnnotations, desired.GetAnnotations())
 	updated.SetAnnotations(mergedAnnotations)
+	if _, err := checkUCPMutation(ctx, "update", rendered.GetKind(), existing); err != nil {
+		return err
+	}
 	if _, err := objects.Update(ctx, updated, metav1.UpdateOptions{FieldManager: FieldManager}); err != nil {
 		return fmt.Errorf("failed to update %s %s/%s: %w", desired.GetKind(), releaseNamespace, desired.GetName(), err)
 	}

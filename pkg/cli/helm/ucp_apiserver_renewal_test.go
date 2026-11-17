@@ -421,13 +421,13 @@ func TestRetainedSelfSignedTrustReinstallAfterUninstall(t *testing.T) {
 				t.Fatal("no prior APIService remains; staging must not issue or replace a signer")
 				return "", false, nil
 			})
+			require.ErrorIs(t, err, errCertificateObserverUnavailable)
+			_, _, _, err = readUCPAPIServerCA(t.Context(), client, RadiusSystemNamespace)
 			switch signerState {
 			case "kept":
-				require.NoError(t, err, "the default kept signer must allow reinstall with its original key")
+				require.NoError(t, err, "the kept signer still matches its historical identity")
 			case "deleted":
-				require.ErrorContains(t, err, "exists without a usable radius-apiserver-ca signer")
-				require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system apply -f radius-apiserver-ca-backup.yaml`)
-				require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system delete secret radius-apiserver-trust`)
+				require.ErrorContains(t, err, "not found")
 			case "changed":
 				require.ErrorContains(t, err, "key or subject changed")
 			}

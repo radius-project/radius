@@ -76,10 +76,15 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 			certificateNameAnnotation: name, "cert-manager.io/issuer-name": RadiusBootstrapIssuerName,
 			"cert-manager.io/issuer-kind": "Issuer", "cert-manager.io/issuer-group": "cert-manager.io",
 		}
+		if name == ucpAPIServerCASecretName {
+			signer.Annotations[allowDirectInjectionAnnotation] = "true"
+		}
 		_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), signer, metav1.CreateOptions{})
 		require.NoError(t, err)
 	}
 	public := permanentPublicTrustSecret(ca)
+	public.Annotations["radius.io/certificate-mode"] = "selfSigned"
+	public.Annotations["helm.sh/resource-policy"] = "keep"
 	public.UID, public.ResourceVersion = "", ""
 	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), public, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -131,8 +136,9 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 					impl := &Impl{Helm: helmClient}
 					var radiusBefore []*releasev1.Release
 					if command == "upgrade" {
+						options.RadiusReleaseValues = copyValues(authzDryRunValues)
 						deployed := &releasev1.Release{Name: radiusReleaseName, Namespace: RadiusSystemNamespace,
-							Version: 1, Chart: chart, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
+							Version: 1, Chart: chart, Config: copyValues(authzDryRunValues), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
 						require.NoError(t, radiusConfiguration.Releases.Create(deployed))
 						t.Cleanup(func() {
 							_, err := radiusConfiguration.Releases.Delete(radiusReleaseName, 1)

@@ -21,9 +21,11 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -42,10 +44,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
@@ -82,6 +86,7 @@ type stageCluster struct {
 	ucpCA       testCA
 	apiServerCA testCA
 	issueCA     bool
+	prepare     func()
 }
 
 func newStageCluster(t *testing.T, apiService *unstructured.Unstructured, issueCA bool) *stageCluster {
@@ -92,8 +97,37 @@ func newStageCluster(t *testing.T, apiService *unstructured.Unstructured, issueC
 		apiServerCA: newTestCA(t, "radius-apiserver-ca"),
 		issueCA:     issueCA,
 	}
+	var revision atomic.Uint64
+	stamp := func(object runtime.Object, resource string) {
+		metadata, err := meta.Accessor(object)
+		require.NoError(t, err)
+		version := fmt.Sprint(revision.Add(1))
+		if metadata.GetUID() == "" {
+			metadata.SetUID(types.UID("fixture-" + resource + "-" + metadata.GetName() + "-" + version))
+		}
+		metadata.SetResourceVersion(version)
+		if resource == "apiservices" || resource == "deployments" {
+			labels := metadata.GetLabels()
+			if labels == nil {
+				labels = map[string]string{}
+			}
+			labels[helmManagedByLabel] = helmManagedByValue
+			metadata.SetLabels(labels)
+			annotations := metadata.GetAnnotations()
+			if annotations == nil {
+				annotations = map[string]string{}
+			}
+			annotations[helmReleaseNameAnnotation] = radiusReleaseName
+			annotations[helmReleaseNamespaceAnnotation] = RadiusSystemNamespace
+			metadata.SetAnnotations(annotations)
+		}
+	}
+	require.NoError(t, c.kube.Tracker().Add(&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: RadiusSystemNamespace, UID: "fixture-namespace", ResourceVersion: "1",
+	}}))
 	objects := []runtime.Object{}
 	if apiService != nil {
+		stamp(apiService, "apiservices")
 		objects = append(objects, apiService)
 	}
 	c.dynamic = dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), map[schema.GroupVersionResource]string{
@@ -101,6 +135,27 @@ func newStageCluster(t *testing.T, apiService *unstructured.Unstructured, issueC
 		stagedCertificatesResource: "CertificateList",
 		stagedIssuersResource:      "IssuerList",
 	}, objects...)
+	c.prepare = func() {
+		object, err := c.dynamic.Tracker().Get(apiServicesResource, "", ucpAPIServiceName)
+		if apierrors.IsNotFound(err) {
+			return
+		}
+		require.NoError(t, err)
+		metadata, err := meta.Accessor(object)
+		require.NoError(t, err)
+		if metadata.GetUID() == "" {
+			stamp(object, "apiservices")
+			require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, object, ""))
+		}
+	}
+	stampMutation := func(action clienttesting.Action) (bool, runtime.Object, error) {
+		if write, ok := action.(interface{ GetObject() runtime.Object }); ok {
+			stamp(write.GetObject(), action.GetResource().Resource)
+		}
+		return false, nil, nil
+	}
+	c.kube.PrependReactor("*", "*", stampMutation)
+	c.dynamic.PrependReactor("*", "*", stampMutation)
 	issue := func(action clienttesting.Action) (bool, runtime.Object, error) {
 		// UpdateAction has the same method set as CreateAction, so this matches both verbs.
 		name := action.(clienttesting.CreateAction).GetObject().(*unstructured.Unstructured).GetName()
@@ -167,11 +222,12 @@ func (c *stageCluster) addOffAPIService(t *testing.T, variant string) {
 // cainjectorCASource makes the APIService look like one cert-manager already maintains from radius-apiserver-ca.
 func (c *stageCluster) cainjectorAPIService() *unstructured.Unstructured {
 	apiService := ucpAPIService(base64.StdEncoding.EncodeToString(c.apiServerCA.pem), "True", "Passed")
-	apiService.SetAnnotations(map[string]string{injectCAFromSecretAnnotation: ucpAPIServerCASource(RadiusSystemNamespace)})
+	apiService.SetAnnotations(map[string]string{injectCAFromSecretAnnotation: RadiusSystemNamespace + "/" + ucpAPIServerCASecretName})
 	return apiService
 }
 
 func (c *stageCluster) impl(client HelmClient, certManagerControllerSA string) *Impl {
+	c.prepare()
 	return &Impl{
 		Helm:           client,
 		logger:         func(string, ...any) {},
@@ -189,6 +245,26 @@ func (c *stageCluster) impl(client HelmClient, certManagerControllerSA string) *
 		},
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return c.dynamic, nil },
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return c.kube, nil },
+		// Serving here is simulated by the fixture's rollout and certificate
+		// checks. Exact-Pod TLS observation has separate tests.
+		observeUCPOffServing: func(ctx context.Context, _, namespace string, kube kubernetes.Interface) error {
+			secret, err := kube.CoreV1().Secrets(namespace).Get(ctx, ucpOffCertificateSecretName, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			cas, err := caCertificates(secret.Data[caCertificateKey])
+			if err != nil || len(cas) == 0 {
+				return fmt.Errorf("fixture Off CA missing: %v", err)
+			}
+			leaf, problem, err := ucpServingCertificate(ctx, kube, namespace, ucpOffCertificateSecretName, "fixture Off CA", cas[0])
+			if err != nil {
+				return err
+			}
+			if leaf == nil {
+				return errors.New(problem)
+			}
+			return nil
+		},
 	}
 }
 
@@ -573,9 +649,10 @@ func Test_UpgradeRadius_BlocksLegacyAggregationMigrationBeforeWrites(t *testing.
 					helmCalls++
 				})
 
+				impl := c.impl(client, "cert-manager")
 				before, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 				require.NoError(t, err)
-				require.ErrorIs(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=true"}), errCertificateObserverUnavailable)
+				require.ErrorIs(t, u.run(t, impl, []string{"global.rbac.enabled=true"}), errCertificateObserverUnavailable)
 				require.Zero(t, helmCalls)
 				c.requireNotStaged(t)
 				after, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
@@ -639,7 +716,10 @@ func Test_InstallRadius_InstalledReleaseKeepsAuthzMode(t *testing.T) {
 		apiService := c.offAPIService(t)
 		require.NoError(t, c.dynamic.Tracker().Add(apiService))
 
-		require.NoError(t, u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), []string{"global.rbac.enabled=true"}))
+		impl := c.impl(u.mock(t, 0, func() {}), "cert-manager")
+		apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+		require.NoError(t, err)
+		require.NoError(t, u.run(t, impl, []string{"global.rbac.enabled=true"}))
 		require.Empty(t, c.clusterWrites())
 		live, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 		require.NoError(t, err)
@@ -659,7 +739,7 @@ func Test_InstallRadius_InstalledReleaseKeepsAuthzMode(t *testing.T) {
 
 		require.NoError(t, u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"}))
 		require.Empty(t, c.clusterWrites()[writes:])
-		require.Equal(t, ucpAPIServerCASource(RadiusSystemNamespace), apiServiceCASource(t, c.dynamic))
+		require.Equal(t, RadiusSystemNamespace+"/"+ucpAPIServerCASecretName, apiServiceCASource(t, c.dynamic))
 		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
 	})
 }
@@ -695,17 +775,15 @@ func Test_UpgradeRadius_LateIssuanceDoesNotAuthorizeMigration(t *testing.T) {
 	c.requireNotStaged(t)
 }
 
-// When UCP does not move to the staged ucp-cert in time before authorization turns off, rad stops before Helm with
-// both CAs trusted. Running the command again once UCP has rolled out finishes the upgrade.
-// With authorization off before and after, UCP already serves the certificate of the off chart, so rad does not read
-// the cluster or render the chart.
-func Test_StageUCPAPIServerCA_OffToOffSkipsCluster(t *testing.T) {
+// Even Off-to-Off must exclude retained lifecycle intent before Helm, but it does
+// not need to render a certificate transition.
+func Test_StageUCPAPIServerCA_OffToOffChecksLifecycle(t *testing.T) {
 	impl := &Impl{newUCPAPIServerTrustClient: func(string) (kubernetes.Interface, error) { return nil, errors.New("no cluster") }}
 	render := func(context.Context) (string, bool, error) {
 		t.Fatal("rad must not render the chart")
 		return "", false, nil
 	}
-	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeOff, render))
+	require.ErrorContains(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeOff, render), "no cluster")
 	for _, deployed := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
 		require.ErrorContains(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", deployed, authz.ModeOff, render), "no cluster")
 	}
@@ -898,7 +976,7 @@ func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T)
 		writes := len(c.clusterWrites())
 		require.NoError(t, impl(c, mock(1, func() {
 			rollbacks++
-			require.Empty(t, c.clusterWrites()[writes:], "a retry after the stage finished must not write before Helm")
+			require.Len(t, c.clusterWrites(), writes+1, "a completed-stage retry only acquires its operation Lease before Helm")
 			c.helmAppliesOff(t, offSecret, offCABundle)
 		})).RollbackRadius(t.Context(), "test-context"))
 		require.Equal(t, 1, rollbacks)

@@ -77,7 +77,7 @@ type ucpOffLeftoverFound struct {
 	object *corev1.Secret
 }
 
-// ReconcileUCPOffAPIServerTrust makes the Kubernetes API server trust UCP only through the CA of Secret ucp-cert once
+// reconcileUCPOffAPIServerTrust makes the Kubernetes API server trust UCP only through the CA of Secret ucp-cert once
 // Radius runs with authorization off. rad calls it after Helm installs, upgrades or rolls back to a release with
 // authorization off; it changes nothing when the cluster already has that state, so it also finishes an earlier run
 // that stopped after Helm.
@@ -100,7 +100,8 @@ type ucpOffLeftoverFound struct {
 //
 // It does nothing when the APIService or Secret ucp-cert does not exist. If UCP does not serve the certificate in
 // ucp-cert in time, it returns an error and leaves the caBundle trusting both CAs; running the command again resumes.
-func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
+func (i *Impl) reconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
+	ctx = withUCPMutationGuard(ctx, i.ucpMutationGuard)
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return err
@@ -136,7 +137,7 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	}
 	if clean && !hasUCPOffLeftover(found) {
 		i.warnForeignUCPOffSecrets(kubeContext, radiusNamespace, found)
-		return nil
+		return ctx.Err()
 	}
 
 	output.LogInfo("Removing the trust in %s from APIService %s now that authorization is off...", ucpAPIServerCASecretName, ucpAPIServiceName)
@@ -157,7 +158,15 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 		if f.state != ucpOffSecretLeftover {
 			continue
 		}
-		err := kubeClient.CoreV1().Secrets(radiusNamespace).Delete(ctx, f.secret, metav1.DeleteOptions{Preconditions: secretPreconditions(f.object)})
+		retain, err := checkUCPMutation(ctx, "delete", "Secret", f.object)
+		if err != nil {
+			return err
+		}
+		if retain {
+			found[n].state = ucpOffSecretKeep
+			continue
+		}
+		err = kubeClient.CoreV1().Secrets(radiusNamespace).Delete(ctx, f.secret, metav1.DeleteOptions{Preconditions: secretPreconditions(f.object)})
 		if err == nil {
 			found[n].state = ucpOffSecretKeep
 			continue
@@ -340,6 +349,9 @@ func settleUCPOffTrust(ctx context.Context, kubeContext string, dynamicClient dy
 		if err != nil {
 			return false, err
 		}
+		if _, err := checkUCPMutation(ctx, "patch", "APIService", apiService); err != nil {
+			return false, err
+		}
 		_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.JSONPatchType, patch, metav1.PatchOptions{FieldManager: FieldManager})
 		// A failed uid or resourceVersion test, or a concurrent write, means the APIService changed since rad read it.
 		if apierrors.IsInvalid(err) || apierrors.IsConflict(err) || apierrors.IsNotFound(err) {
@@ -360,6 +372,10 @@ func settleUCPOffTrust(ctx context.Context, kubeContext string, dynamicClient dy
 // ucpOffTrustPatch returns a JSON patch that removes the cert-manager inject annotations of apiService and sets its
 // caBundle to offCAs, and applies only while apiService has the uid and resourceVersion that rad read.
 func ucpOffTrustPatch(apiService *unstructured.Unstructured, offCAs []*x509.Certificate) ([]byte, error) {
+	return ucpTrustPatch(apiService, offCAs, true)
+}
+
+func ucpTrustPatch(apiService *unstructured.Unstructured, cas []*x509.Certificate, removeInjection bool) ([]byte, error) {
 	operations := []map[string]any{}
 	if uid := string(apiService.GetUID()); uid != "" {
 		operations = append(operations, map[string]any{"op": "test", "path": "/metadata/uid", "value": uid})
@@ -367,12 +383,14 @@ func ucpOffTrustPatch(apiService *unstructured.Unstructured, offCAs []*x509.Cert
 	if resourceVersion := apiService.GetResourceVersion(); resourceVersion != "" {
 		operations = append(operations, map[string]any{"op": "test", "path": "/metadata/resourceVersion", "value": resourceVersion})
 	}
-	for _, annotation := range ucpInjectAnnotations {
-		if _, ok := apiService.GetAnnotations()[annotation]; ok {
-			operations = append(operations, map[string]any{"op": "remove", "path": "/metadata/annotations/" + jsonPointerEscape(annotation)})
+	if removeInjection {
+		for _, annotation := range ucpInjectAnnotations {
+			if _, ok := apiService.GetAnnotations()[annotation]; ok {
+				operations = append(operations, map[string]any{"op": "remove", "path": "/metadata/annotations/" + jsonPointerEscape(annotation)})
+			}
 		}
 	}
-	operations = append(operations, map[string]any{"op": "add", "path": "/spec/caBundle", "value": base64.StdEncoding.EncodeToString(encodeCertificates(offCAs))})
+	operations = append(operations, map[string]any{"op": "add", "path": "/spec/caBundle", "value": base64.StdEncoding.EncodeToString(encodeCertificates(cas))})
 	return json.Marshal(operations)
 }
 

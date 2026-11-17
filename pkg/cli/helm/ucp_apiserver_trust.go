@@ -23,6 +23,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"time"
 
@@ -79,6 +80,7 @@ const (
 // deletes only the transient trust Secret, which removes the earlier CA. An A8
 // Helm-owned public copy is retained unchanged as a historical continuity pin.
 func (i *Impl) reconcileLegacyUCPAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
+	ctx = withUCPMutationGuard(ctx, i.ucpMutationGuard)
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return err
@@ -180,14 +182,31 @@ func ucpAPIServerCASource(radiusNamespace string) string {
 // injectUCPAPIServerCA makes cainjector copy ca.crt of radius-apiserver-ca into the UCP APIService, and sets the
 // caBundle to it now so the API server does not wait for cainjector.
 func injectUCPAPIServerCA(ctx context.Context, dynamicClient dynamic.Interface, radiusNamespace string, caBundle []byte) error {
+	api, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	metadata := map[string]any{"annotations": map[string]any{injectCAFromSecretAnnotation: ucpAPIServerCASource(radiusNamespace)}}
+	if api.GetUID() != "" {
+		metadata["uid"] = string(api.GetUID())
+	}
+	if api.GetResourceVersion() != "" {
+		metadata["resourceVersion"] = api.GetResourceVersion()
+	}
 	patch, err := json.Marshal(map[string]any{
-		"metadata": map[string]any{"annotations": map[string]any{injectCAFromSecretAnnotation: ucpAPIServerCASource(radiusNamespace)}},
+		"metadata": metadata,
 		"spec":     map[string]any{"caBundle": base64.StdEncoding.EncodeToString(caBundle)},
 	})
 	if err != nil {
 		return err
 	}
 	// A missing APIService is reported by the wait that follows.
+	if _, err := checkUCPMutation(ctx, "patch", "APIService", api); err != nil {
+		return err
+	}
 	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType, patch, metav1.PatchOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to point APIService %s at Secret %s: %w", ucpAPIServiceName, ucpAPIServerCASource(radiusNamespace), err)
@@ -284,6 +303,7 @@ func (i *Impl) deleteUCPAPIServerTrust(ctx context.Context, kubeContext, radiusN
 // the uid and resourceVersion rad read. It keeps a Secret that rad does not own, or that changed or was recreated
 // after rad read it, and warns about it.
 func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, radiusNamespace string) error {
+	ctx = withUCPMutationGuard(ctx, i.ucpMutationGuard)
 	secrets := kubeClient.CoreV1().Secrets(radiusNamespace)
 	read := func() (*corev1.Secret, error) {
 		secret, err := secrets.Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
@@ -307,6 +327,10 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 	if !ownsUCPAPIServerTrust(secret) {
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
 		return nil
+	}
+	retain, err := checkUCPMutation(ctx, "delete", "Secret", secret)
+	if err != nil || retain {
+		return err
 	}
 	err = secrets.Delete(ctx, ucpAPIServerTrustSecretName, metav1.DeleteOptions{Preconditions: secretPreconditions(secret)})
 	if err == nil {
@@ -530,6 +554,10 @@ func writeUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, ra
 	secrets := client.CoreV1().Secrets(radiusNamespace)
 	var foreign bool
 	err := retry.OnError(retry.DefaultRetry, func(err error) bool {
+		var rejected *ucpMutationGuardError
+		if errors.As(err, &rejected) {
+			return false
+		}
 		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
 	}, func() error {
 		var err error
@@ -550,7 +578,7 @@ func writeUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, ra
 func writeUCPAPIServerTrustOnce(ctx context.Context, secrets typedcorev1.SecretInterface, radiusNamespace string, bundle []byte) (bool, error) {
 	secret, err := secrets.Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		_, err = secrets.Create(ctx, &corev1.Secret{
+		created := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:        ucpAPIServerTrustSecretName,
 				Namespace:   radiusNamespace,
@@ -559,7 +587,11 @@ func writeUCPAPIServerTrustOnce(ctx context.Context, secrets typedcorev1.SecretI
 			},
 			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{caCertificateKey: bundle},
-		}, metav1.CreateOptions{})
+		}
+		if _, err := checkUCPMutation(ctx, "create", "Secret", created); err != nil {
+			return false, err
+		}
+		_, err = secrets.Create(ctx, created, metav1.CreateOptions{})
 		return false, err
 	}
 	if err != nil {
@@ -575,6 +607,9 @@ func writeUCPAPIServerTrustOnce(ctx context.Context, secrets typedcorev1.SecretI
 		return false, nil
 	}
 	secret.Data = map[string][]byte{caCertificateKey: bundle}
+	if _, err := checkUCPMutation(ctx, "update", "Secret", secret); err != nil {
+		return false, err
+	}
 	_, err = secrets.Update(ctx, secret, metav1.UpdateOptions{})
 	return false, err
 }
@@ -582,16 +617,26 @@ func writeUCPAPIServerTrustOnce(ctx context.Context, secrets typedcorev1.SecretI
 // applyUCPAPIServerTrust writes cas to the trust Secret and to the APIService caBundle. cert-manager's cainjector
 // would copy the Secret too, but setting the caBundle directly does not depend on when it runs.
 func applyUCPAPIServerTrust(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, cas []*x509.Certificate) error {
-	bundle, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, cas)
+	_, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, cas)
 	if err != nil {
 		return err
 	}
-	patch, err := json.Marshal(map[string]any{"spec": map[string]any{"caBundle": base64.StdEncoding.EncodeToString(bundle)}})
+	api, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	patch, err := ucpTrustPatch(api, cas, false)
 	if err != nil {
 		return err
 	}
 	// A missing APIService is reported by the wait that follows.
-	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType, patch, metav1.PatchOptions{})
+	if _, err := checkUCPMutation(ctx, "patch", "APIService", api); err != nil {
+		return err
+	}
+	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.JSONPatchType, patch, metav1.PatchOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to set the caBundle of APIService %s: %w", ucpAPIServiceName, err)
 	}

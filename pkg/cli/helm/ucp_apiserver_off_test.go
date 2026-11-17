@@ -152,13 +152,13 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			deleted := c.enforceDeletePreconditions(t, nil)
 			impl := c.impl(nil, "")
 
-			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+			require.NoError(t, impl.reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 			c.requireOffTrust(t)
 			require.ElementsMatch(t, ucpOffSecretNames, *deleted, "rad must delete each Secret it inspected, pinned to its uid and resourceVersion")
 
 			c.kube.ClearActions()
 			c.dynamic.ClearActions()
-			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+			require.NoError(t, impl.reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 			require.Empty(t, c.clusterWrites())
 		})
 	}
@@ -197,7 +197,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		impl := c.impl(nil, "")
 		impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
 
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 		c.requireOffAPIService(t)
 		require.Nil(t, c.secret(t, ucpAPIServerTrustSecretName))
 		recreated := c.secret(t, ucpAPIServerCASecretName)
@@ -209,7 +209,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		require.Contains(t, strings.Join(logs, "\n"), "Secret radius-system/ucp-apiserver-tls changed")
 
 		// A rerun deletes the changed Secret, which is still a leftover, and keeps the one its new Certificate owns.
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 		require.Nil(t, c.secret(t, ucpAPIServerTLSSecretName))
 		require.NotNil(t, c.secret(t, ucpAPIServerCASecretName))
 	})
@@ -234,7 +234,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		impl := c.impl(nil, "")
 		impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
 
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 		c.requireOffAPIService(t)
 		for _, name := range ucpOffSecretNames {
 			require.NotNil(t, c.secret(t, name), "rad must not delete Secret %s, which it does not own", name)
@@ -246,7 +246,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 
 		c.kube.ClearActions()
 		c.dynamic.ClearActions()
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 		require.Empty(t, c.clusterWrites())
 	})
 
@@ -256,7 +256,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		c.kube.ClearActions()
 		c.dynamic.ClearActions()
 		impl := c.impl(nil, "")
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 		require.Empty(t, c.clusterWrites())
 	})
 
@@ -276,7 +276,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		require.NoError(t, err)
 		impl := c.impl(nil, "")
 
-		err = impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
+		err = impl.reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
 		require.ErrorContains(t, err, "UCP does not serve the certificate in Secret ucp-cert")
 		require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system rollout status deployment/ucp`)
 		// The API server still trusts the certificate UCP serves, and nothing that issues it is removed.
@@ -296,7 +296,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: ucpOffCertificateSecretName}}}}
 		_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Update(t.Context(), deployment, metav1.UpdateOptions{})
 		require.NoError(t, err)
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 		c.requireOffTrust(t)
 	})
 
@@ -322,7 +322,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			return false, nil, nil
 		})
 
-		require.NoError(t, c.impl(nil, "").ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, c.impl(nil, "").reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 		require.Equal(t, 3, patches, "rad must patch again after the conflict and after cainjector's write-back")
 		require.Equal(t, 1, writeBacks)
 		c.requireOffTrust(t)
@@ -337,7 +337,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		}}
 		require.NoError(t, c.dynamic.Tracker().Add(certificate))
 
-		require.NoError(t, c.impl(nil, "").ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, c.impl(nil, "").reconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 		apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.NotContains(t, apiService.GetAnnotations(), injectCAFromSecretAnnotation)

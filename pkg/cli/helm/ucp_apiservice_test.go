@@ -153,16 +153,13 @@ func Test_waitForRolledBackUCPAPIService(t *testing.T) {
 		{Version: 1, Config: map[string]any{}},
 		{Version: 2, Config: map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}},
 	}
-	impl := &Impl{
-		newUCPAPIServerTrustClient: uninstallTrustClient,
-		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
-			return ucpAPIServiceDynamicClient(ucpAPIService("", "", "")), nil
-		},
-	}
+	cluster := newStageCluster(t, nil, false)
+	require.NoError(t, cluster.dynamic.Tracker().Add(ucpAPIService("", "", "")))
+	impl := cluster.impl(nil, "")
 
-	// Rolling back to a revision with authorization off does not wait.
+	// With no Off serving Secret there is no leftover trust to reconcile.
 	require.NoError(t, impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 1))
-	// Authorization-on rollback cannot discover trust from a signing Secret.
+	// Authorization-on rollback still requires its selected signer source.
 	err := impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 2)
-	require.ErrorContains(t, err, "cannot read permanent aggregation trust")
+	require.ErrorContains(t, err, `secrets "radius-apiserver-ca" not found`)
 }
