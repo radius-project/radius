@@ -68,7 +68,17 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 	helmClient := NewHelmClient()
 	configuration := newTestHelmConfiguration(t, kubeconfig, CertManagerNamespace)
 	radiusConfiguration := newTestHelmConfiguration(t, kubeconfig, RadiusSystemNamespace)
-	ca, _, _ := testSigningCA(t, nil, nil, nil, nil)
+	ca, key, _ := testSigningCA(t, nil, nil, nil, nil)
+	for _, name := range []string{"radius-ca", ucpAPIServerCASecretName} {
+		signer := caTLSSecret(name, ca, key)
+		signer.Data[caCertificateKey] = ca
+		signer.Annotations = map[string]string{
+			certificateNameAnnotation: name, "cert-manager.io/issuer-name": RadiusBootstrapIssuerName,
+			"cert-manager.io/issuer-kind": "Issuer", "cert-manager.io/issuer-group": "cert-manager.io",
+		}
+		_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), signer, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
 	public := permanentPublicTrustSecret(ca)
 	public.UID, public.ResourceVersion = "", ""
 	_, err = kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), public, metav1.CreateOptions{})

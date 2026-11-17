@@ -49,16 +49,33 @@ func readAggregationServingInventoryForCA(ctx context.Context, kube kubernetes.I
 		return inventory, err
 	}
 	pin := inventory.pin
-	source, err := kube.CoreV1().Secrets(namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	var source *corev1.Secret
+	var err error
+	if servingCA == nil {
+		_, servingCA, _, err = readUCPAPIServerCA(ctx, kube, namespace)
+		if err != nil {
+			return inventory, err
+		}
+		source, err = aggregationPublicSource(ctx, kube, namespace)
+	} else {
+		source, err = kube.CoreV1().Secrets(namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	}
 	if err != nil {
 		return inventory, err
 	}
-	if err := publicAggregationSource(source, namespace); err != nil {
-		return inventory, err
+	if source.Name == ucpAPIServerCASecretName {
+		if err := validateUCPAPIServerCAOwnership(source); err != nil {
+			return inventory, err
+		}
+	} else {
+		if err := publicAggregationSource(source, namespace); err != nil {
+			return inventory, err
+		}
 	}
-	if servingCA == nil {
-		servingCA = source.Data[caCertificateKey]
-	} else if err := exactCertificateSet(source.Data[caCertificateKey], sourceBundle, time.Now()); err != nil {
+	if sourceBundle == nil {
+		sourceBundle = servingCA
+	}
+	if err := exactCertificateSet(source.Data[caCertificateKey], sourceBundle, time.Now()); err != nil {
 		return inventory, err
 	}
 	if _, err := validatePublicCA(servingCA, time.Now()); err != nil {

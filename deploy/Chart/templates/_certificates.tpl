@@ -109,21 +109,21 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
 {{- $kind := "ConfigMap" -}}{{- $name := "radius-mtls-ca" -}}{{- $signing := "radius-ca" -}}
 {{- if eq .plane "aggregation" -}}
 {{- $kind = "Secret" -}}{{- $name = "radius-apiserver-trust" -}}{{- $signing = "radius-apiserver-ca" -}}
-{{- if eq $mode "selfSigned" -}}{{- $name = $signing -}}{{- end -}}
 {{- end -}}
+{{- if eq $mode "selfSigned" -}}{{- $kind = "Secret" -}}{{- $name = $signing -}}{{- end -}}
 {{- $existing := lookup "v1" $kind $root.Release.Namespace $name -}}
 {{- $observed := $existing -}}
 {{- $bundle := "" -}}
-{{- if and (eq .plane "aggregation") (eq $mode "selfSigned") $existing -}}
+{{- if and (eq $mode "selfSigned") $existing -}}
 {{- $annotations := $existing.metadata.annotations | default dict -}}
 {{- $data := $existing.data | default dict -}}
 {{- if or (ne $existing.type "kubernetes.io/tls")
-  (ne (index $annotations "cert-manager.io/certificate-name") "radius-apiserver-ca")
+  (ne (index $annotations "cert-manager.io/certificate-name") $signing)
   (ne (index $annotations "cert-manager.io/issuer-name") "radius-selfsigned-bootstrap")
   (ne (index $annotations "cert-manager.io/issuer-kind") "Issuer")
   (ne (index $annotations "cert-manager.io/issuer-group") "cert-manager.io")
   (empty (index $data "tls.crt")) (empty (index $data "tls.key")) (empty (index $data "ca.crt")) -}}
-{{- fail "selfSigned aggregation prerequisite: radius-apiserver-ca must be a TLS Secret issued for Certificate radius-apiserver-ca by cert-manager.io/Issuer radius-selfsigned-bootstrap with tls.crt, tls.key and ca.crt; preserve foreign resources and repair ownership before retrying." -}}
+{{- fail (printf "selfSigned %s prerequisite: %s must be a TLS Secret issued for its Certificate by cert-manager.io/Issuer radius-selfsigned-bootstrap with tls.crt, tls.key and ca.crt; preserve foreign resources and repair ownership before retrying." .plane $signing) -}}
 {{- end -}}
 {{- end -}}
 {{- if ne $mode "selfSigned" -}}
@@ -136,7 +136,7 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
 {{- $observed = $secret -}}
 {{- $bundle = dig "data" "ca.crt" "" $secret | b64dec -}}
 {{- end -}}
-{{- if and $existing (not (and (eq .plane "aggregation") (eq $mode "selfSigned"))) -}}
+{{- if and $existing (ne $mode "selfSigned") -}}
 {{- $recordedMode := index ($existing.metadata.annotations | default dict) "radius.io/certificate-mode" | default "" -}}
 {{- if and $recordedMode (ne $recordedMode $mode) -}}
 {{- fail "certificate lifecycle prerequisite: the public source belongs to another certificate mode; use the lifecycle command." -}}

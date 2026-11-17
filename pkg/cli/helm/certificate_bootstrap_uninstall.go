@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -85,9 +84,8 @@ func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context) error
 				return err
 			}
 			if err == nil {
-				if secret.UID != pin.UID || secret.ResourceVersion != pin.ResourceVersion ||
-					secret.Type != corev1.SecretTypeTLS || secret.Annotations["cert-manager.io/certificate-name"] != name {
-					return fmt.Errorf("preserving changed or foreign bootstrap signing Secret %s", name)
+				if err := validateBootstrapRenewal(secret, b.state.Anchors[plane], b.store.now()); err != nil {
+					return fmt.Errorf("preserving changed or foreign bootstrap signing Secret %s: %w", name, err)
 				}
 				if err := b.deleteBootstrapObject(ctx, secret, func(options metav1.DeleteOptions) error {
 					return client.Delete(ctx, name, options)

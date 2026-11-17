@@ -258,7 +258,7 @@ func permanentTrustAPIService(bundle []byte) *unstructured.Unstructured {
 	return api
 }
 
-func Test_reconcileUCPAPIServerTrust_DoesNotDiscoverTrustFromPrivateOrLeafSecrets(t *testing.T) {
+func TestReadUCPAPIServerCAUsesSignerPublicCAOnly(t *testing.T) {
 	shortenUCPAPIServiceWait(t)
 	apiServerCA, orgRoot := newTestCA(t, "radius-apiserver-ca"), newTestCA(t, "org-root")
 	// ucp-apiserver-tls carries an organization root in ca.crt; the API server must not trust it.
@@ -266,13 +266,13 @@ func Test_reconcileUCPAPIServerTrust_DoesNotDiscoverTrustFromPrivateOrLeafSecret
 		apiServerCASecret(apiServerCA),
 		tlsSecret(ucpAPIServerTLSSecretName, issueUCPCertificate(t, apiServerCA), orgRoot.pem),
 	)
-	dynamicClient := ucpAPIServiceDynamicClient(ucpAPIService("", "", ""))
-
-	require.ErrorContains(t, trustImpl(kubeClient, dynamicClient).reconcileUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace), "cannot read permanent aggregation trust")
-	require.Empty(t, apiServiceCASource(t, dynamicClient))
+	certificate, bundle, _, err := readUCPAPIServerCA(t.Context(), kubeClient, RadiusSystemNamespace)
+	require.NoError(t, err)
+	require.Equal(t, apiServerCA.cert.Raw, certificate.Raw)
+	require.Equal(t, apiServerCA.pem, bundle)
 	for _, action := range kubeClient.Actions() {
 		require.Equal(t, "get", action.GetVerb())
-		require.Equal(t, ucpAPIServerTrustSecretName, action.(clienttesting.GetAction).GetName())
+		require.NotEqual(t, ucpAPIServerTLSSecretName, action.(clienttesting.GetAction).GetName())
 	}
 	requireNoTrustSecret(t, kubeClient)
 }

@@ -18,10 +18,14 @@ package helm
 
 import (
 	"context"
+	"crypto"
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -94,7 +98,10 @@ func initialControllerFixture(t *testing.T, mode, provider string) (*initialCert
 			return false, nil, nil
 		}
 		require.NoError(t, err)
-		ca, key, _ := testSigningCA(t, nil, func(c *x509.Certificate) { c.Subject.CommonName = name }, nil, nil)
+		ca, key, _ := testSigningCA(t, nil, func(c *x509.Certificate) {
+			c.Subject.CommonName = name
+			c.NotBefore, c.NotAfter = store.now().Add(-time.Hour), store.now().Add(365*24*time.Hour)
+		}, nil, nil)
 		secret := caTLSSecret(name, ca, key)
 		secret.Data[caCertificateKey] = ca
 		secret.Annotations = map[string]string{"cert-manager.io/certificate-name": name,
@@ -161,6 +168,125 @@ func TestInitialCertificateControllerFixtureExecution(t *testing.T) {
 			})
 		}
 	}
+}
+
+func renewBootstrapFixture(t *testing.T, b *initialCertificateInstaller, change func(*x509.Certificate, *corev1.Secret)) {
+	t.Helper()
+	future := b.store.now()
+	for _, plane := range b.planeNames() {
+		anchor := b.state.Anchors[plane]
+		secret, err := b.store.kube.CoreV1().Secrets(b.store.namespace).Get(t.Context(), anchor.Signer.Name, metav1.GetOptions{})
+		require.NoError(t, err)
+		old := mustParseCertificate(t, anchor.CA)
+		if old.NotAfter.After(future) {
+			future = old.NotAfter.Add(time.Minute)
+		}
+		block, _ := pem.Decode(secret.Data[corev1.TLSPrivateKeyKey])
+		require.NotNil(t, block)
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		require.NoError(t, err)
+		signer, ok := key.(crypto.Signer)
+		require.True(t, ok)
+		next := *old
+		next.SerialNumber = big.NewInt(2)
+		next.NotBefore, next.NotAfter = old.NotAfter.Add(-time.Hour), old.NotAfter.Add(24*time.Hour)
+		if change != nil {
+			change(&next, secret)
+		}
+		der, err := x509.CreateCertificate(rand.Reader, &next, &next, signer.Public(), signer)
+		require.NoError(t, err)
+		bundle := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+		secret.Data[corev1.TLSCertKey], secret.Data[caCertificateKey] = bundle, bundle
+		_, err = b.store.kube.CoreV1().Secrets(b.store.namespace).Update(t.Context(), secret, metav1.UpdateOptions{})
+		require.NoError(t, err)
+	}
+	b.store.now = func() time.Time { return future }
+}
+
+func TestInitialCertificateRenewalAndUninstall(t *testing.T) {
+	for _, provider := range []string{"radius", "external"} {
+		for _, version := range []int{1, 2} {
+			t.Run(fmt.Sprintf("%s/schema%d", provider, version), func(t *testing.T) {
+				b, prepare := initialControllerFixture(t, "selfSigned", provider)
+				require.NoError(t, b.run(t.Context()))
+				require.Equal(t, 2, b.state.Version)
+				if version == 1 {
+					b.state.Version = 1
+					for plane, anchor := range b.state.Anchors {
+						anchor.PublicKey, anchor.Subject = nil, nil
+						b.state.Anchors[plane] = anchor
+					}
+					data, err := json.Marshal(b.state)
+					require.NoError(t, err)
+					b.journal.Data[rotationJournalKey] = string(data)
+					b.journal, err = b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Update(t.Context(), b.journal, metav1.UpdateOptions{})
+					require.NoError(t, err)
+				}
+				renewBootstrapFixture(t, b, nil)
+				require.NoError(t, b.checkObservedMaterial(t.Context()))
+				for _, anchor := range b.state.Anchors {
+					require.Error(t, b.store.checkCertificateSignerSnapshot(t.Context(), anchor.Signer, rotationPublish),
+						"an active lifecycle must still reject the changed revision and certificate")
+				}
+				for _, anchor := range b.state.Anchors {
+					_, err := validatePublicCA(anchor.CA, b.store.now())
+					require.Error(t, err, "the historical anchor has expired")
+					live, err := b.store.kube.CoreV1().Secrets(b.store.namespace).Get(t.Context(), anchor.Signer.Name, metav1.GetOptions{})
+					require.NoError(t, err)
+					require.NotEqual(t, anchor.Signer.ResourceVersion, live.ResourceVersion)
+				}
+				_, _, err := readInitialCertificateJournal(t.Context(), b.store)
+				require.NoError(t, err)
+				initialUninstallFixture(t, b, nil)
+				require.NoError(t, b.impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), ""))
+				fresh := prepare()
+				require.NoError(t, fresh.run(t.Context()))
+				require.NotEqual(t, b.state.ID, fresh.state.ID)
+			})
+		}
+	}
+}
+
+func TestInitialCertificateRenewalRejectsChangedIdentity(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		edit func(*x509.Certificate, *corev1.Secret)
+	}{
+		{"subject", func(c *x509.Certificate, _ *corev1.Secret) {
+			c.RawSubject = nil
+			c.Subject.Organization = []string{"foreign"}
+		}},
+		{"constraints", func(c *x509.Certificate, _ *corev1.Secret) { c.MaxPathLen = 0; c.MaxPathLenZero = true }},
+		{"UID", func(_ *x509.Certificate, s *corev1.Secret) { s.UID = "replacement" }},
+		{"type", func(_ *x509.Certificate, s *corev1.Secret) { s.Type = corev1.SecretTypeOpaque }},
+		{"owner", func(_ *x509.Certificate, s *corev1.Secret) { s.Annotations[certificateNameAnnotation] = "foreign" }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			b, _ := initialControllerFixture(t, "selfSigned", "radius")
+			require.NoError(t, b.run(t.Context()))
+			renewBootstrapFixture(t, b, tt.edit)
+			require.Error(t, b.checkObservedMaterial(t.Context()))
+			initialUninstallFixture(t, b, nil)
+			require.Error(t, b.impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), ""))
+			_, err := b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Get(t.Context(), initialCertificateJournal, metav1.GetOptions{})
+			require.NoError(t, err, "failed cleanup must retain recovery state")
+		})
+	}
+}
+
+func TestInitialCertificateRenewalRejectsNewKey(t *testing.T) {
+	b, _ := initialControllerFixture(t, "selfSigned", "radius")
+	require.NoError(t, b.run(t.Context()))
+	anchor := b.state.Anchors["internal"]
+	secret, err := b.store.kube.CoreV1().Secrets(b.store.namespace).Get(t.Context(), anchor.Signer.Name, metav1.GetOptions{})
+	require.NoError(t, err)
+	ca, key, _ := testSigningCA(t, nil, func(c *x509.Certificate) {
+		c.Subject.CommonName = anchor.Signer.Name
+	}, nil, nil)
+	secret.Data[corev1.TLSCertKey], secret.Data[corev1.TLSPrivateKeyKey], secret.Data[caCertificateKey] = ca, key, ca
+	_, err = b.store.kube.CoreV1().Secrets(b.store.namespace).Update(t.Context(), secret, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	require.ErrorContains(t, b.checkObservedMaterial(t.Context()), "key or subject changed")
 }
 
 // Helm removal and certificate issuance are fixtures; the uninstall entrypoint,
