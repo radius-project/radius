@@ -867,8 +867,10 @@ var clientVpnTargetNetworkAssociationAPI = map[string]nativetest.Call{
 				Code: "IdempotentParameterMismatch",
 			},
 		},
-		Unclear: codes + " The fake has no subnets or Availability Zones, so it doesn't check that a subnet is in the " +
-			"endpoint's VPC (InvalidClientVpnSubnetId.NotFound) or that each Availability Zone has one subnet " +
+		Unclear: codes + " The page forbids SubnetId with AvailabilityZone, and AvailabilityZone with AvailabilityZoneId, " +
+			"but not SubnetId with AvailabilityZoneId; the fake takes that pair. The fake has no subnets or Availability " +
+			"Zones, so it doesn't check that a subnet is in the endpoint's VPC (InvalidClientVpnSubnetId.NotFound) or " +
+			"that each Availability Zone has one subnet " +
 			"(InvalidClientVpnSubnetId.DuplicateAz). It doesn't keep endpoints for associations: only " +
 			"cvpn-endpoint-missing doesn't exist.",
 	},
@@ -1018,6 +1020,16 @@ func entryRulesOf(put putEntry) []nativetest.Rule {
 			Rule:  "Protocol is -1, for all protocols, or a protocol number",
 			Doc:   naclRules,
 			Break: rejectEntry(put, func(e *types.NetworkAclEntry) { e.Protocol = aws.String("256") }),
+			Code:  invalidValue,
+		},
+		{
+			Rule:  "Protocol is a protocol number, not a name such as tcp",
+			Break: rejectEntry(put, func(e *types.NetworkAclEntry) { e.Protocol = aws.String("tcp") }),
+			Code:  invalidValue,
+		},
+		{
+			Rule:  "a Protocol too large for an integer isn't a protocol number",
+			Break: rejectEntry(put, func(e *types.NetworkAclEntry) { e.Protocol = aws.String("99999999999999999999") }),
 			Code:  invalidValue,
 		},
 		{
@@ -1172,9 +1184,8 @@ var networkAclEntryAPI = map[string]nativetest.Call{
 			},
 		),
 		Unclear: codes + " No page says whether CidrBlock and Ipv6CidrBlock can be sent together; the fake takes both. " +
-			"The fake takes a protocol that isn't a number, such as tcp, which the page doesn't say EC2 takes, and keeps " +
-			"the ports and ICMP values of a protocol that ignores them. It doesn't enforce the quota of rules per network " +
-			"ACL (NetworkAclEntryLimitExceeded), 20 by default, because an account can raise it.",
+			"The fake keeps the ports and ICMP values of a protocol that ignores them. It doesn't enforce the quota of " +
+			"rules per network ACL (NetworkAclEntryLimitExceeded), 20 by default, because an account can raise it.",
 	},
 	"ReplaceNetworkAclEntry": {
 		Doc: page("ReplaceNetworkAclEntry"),

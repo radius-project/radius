@@ -169,6 +169,14 @@ var acceptedPortfolioShareAPI = map[string]nativetest.Call{
 				Code: "InvalidParametersException",
 			},
 			{
+				Rule: "PageToken's pattern leaves out control characters but tab, line feed, and carriage return",
+				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
+					_, err := listShares(ctx, store, &servicecatalog.ListAcceptedPortfolioSharesInput{PageToken: aws.String("\x00")})
+					return err
+				},
+				Code: "InvalidParametersException",
+			},
+			{
 				Rule: "PageToken's pattern allows letters of any language, and its limit counts characters, not bytes",
 				Check: func(ctx context.Context, store *awsfake.CloudControl) error {
 					_, err := listShares(ctx, store, &servicecatalog.ListAcceptedPortfolioSharesInput{PageToken: aws.String(strings.Repeat("界", 2024))})

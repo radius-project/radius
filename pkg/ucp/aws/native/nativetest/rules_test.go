@@ -200,11 +200,40 @@ func (h *Handler) Delete(ctx context.Context) error {
 	_, err := h.client.DeleteObject(ctx, &s3.DeleteObjectInput{})
 	return err
 }
+
+// Update builds its inputs in every other way Go allows: a variable, new, a helper's parameter, and a helper's result.
+func (h *Handler) Update(ctx context.Context) error {
+	var put s3.PutObjectInput
+	if _, err := h.client.PutObject(ctx, &put); err != nil {
+		return err
+	}
+	if _, err := h.client.HeadObject(ctx, new(s3.HeadObjectInput)); err != nil {
+		return err
+	}
+	if err := copyObject(ctx, h.client, nil); err != nil {
+		return err
+	}
+	_, err := h.client.ListObjectsV2(ctx, listInput())
+	return err
+}
+
+func copyObject(ctx context.Context, client *s3.Client, in *s3.CopyObjectInput) error {
+	_, err := client.CopyObject(ctx, in)
+	return err
+}
+
+func listInput() *s3.ListObjectsV2Input {
+	return nil
+}
 `
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "thing.go"), []byte(src), 0o600))
 	parsed := ParseHandlerSource(t, dir)
-	require.Equal(t, map[string]string{"GetObject": "s3", "DeleteObject": "s3"}, parsed.API)
-	require.Equal(t, []string{"DeleteObject", "GetObject"}, parsed.AllCalls("Handler"))
+	require.Equal(t, map[string]string{
+		"GetObject": "s3", "DeleteObject": "s3", "PutObject": "s3", "HeadObject": "s3", "CopyObject": "s3",
+		"ListObjectsV2": "s3", "ListBuckets": "s3",
+	}, parsed.API)
+	require.Equal(t, []string{"CopyObject", "DeleteObject", "GetObject", "HeadObject", "ListObjectsV2", "PutObject"}, parsed.AllCalls("Handler"))
+	require.Equal(t, []string{"CopyObject", "HeadObject", "ListObjectsV2", "PutObject"}, parsed.Calls("Handler", "Update"))
 	require.Nil(t, parsed.Calls("Handler", "Missing"))
 }
 

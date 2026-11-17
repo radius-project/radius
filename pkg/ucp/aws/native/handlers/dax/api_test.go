@@ -331,6 +331,14 @@ var clusterAPI = map[string]nativetest.Call{
 				Code:  "InvalidParameterCombinationException",
 			},
 			{
+				Rule: "a cluster has at least 1 node, its primary",
+				Break: createBreak(func(in *dax.CreateClusterInput) {
+					in.ReplicationFactor = 0
+					in.AvailabilityZones = nil
+				}),
+				Code: "InvalidParameterValueException",
+			},
+			{
 				Rule: "a cluster has at most 11 nodes: a primary and 10 read replicas",
 				Break: createBreak(func(in *dax.CreateClusterInput) {
 					in.ReplicationFactor = 12
