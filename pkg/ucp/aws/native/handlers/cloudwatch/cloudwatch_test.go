@@ -17,6 +17,7 @@ limitations under the License.
 package cloudwatch
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/stretchr/testify/require"
 
@@ -230,6 +232,50 @@ func Test_LegacyForm(t *testing.T) {
 	for _, call := range api.calls {
 		require.True(t, strings.HasSuffix(call, " "+region), "every call is sent to the request's region: %s", call)
 	}
+}
+
+// Test_NoMetricNameOrStat reads and deletes a detector whose template names only its namespace. CloudWatch rejects an
+// empty MetricName or Stat, so the calls leave out the ones the detector doesn't have.
+// detectorCalls is the fake CloudWatch API, recording the input of each DescribeAnomalyDetectors and
+// DeleteAnomalyDetector call.
+type detectorCalls struct {
+	*fakeAPI
+	describes []*cloudwatch.DescribeAnomalyDetectorsInput
+	deletes   []*cloudwatch.DeleteAnomalyDetectorInput
+}
+
+func (d *detectorCalls) DescribeAnomalyDetectors(ctx context.Context, in *cloudwatch.DescribeAnomalyDetectorsInput, opts ...func(*cloudwatch.Options)) (*cloudwatch.DescribeAnomalyDetectorsOutput, error) {
+	d.describes = append(d.describes, in)
+	return d.fakeAPI.DescribeAnomalyDetectors(ctx, in, opts...)
+}
+
+func (d *detectorCalls) DeleteAnomalyDetector(ctx context.Context, in *cloudwatch.DeleteAnomalyDetectorInput, opts ...func(*cloudwatch.Options)) (*cloudwatch.DeleteAnomalyDetectorOutput, error) {
+	d.deletes = append(d.deletes, in)
+	return d.fakeAPI.DeleteAnomalyDetector(ctx, in, opts...)
+}
+
+// Test_NoMetricNameOrStat checks that a detector whose template names only a namespace sends no empty MetricName or
+// Stat, which CloudWatch rejects: MetricName has a minimum length of 1, and Stat a pattern an empty value doesn't match
+// (https://docs.aws.amazon.com/AmazonCloudWatch/latest/APIReference/API_SingleMetricAnomalyDetector.html).
+func Test_NoMetricNameOrStat(t *testing.T) {
+	fake := newFakeAPI(awsfake.NewCloudControl())
+	api := &detectorCalls{fakeAPI: fake}
+	h := NewAnomalyDetector(api, fake)
+	identifier, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"SingleMetricAnomalyDetector": map[string]any{"Namespace": "AWS/EC2"}}})
+	require.NoError(t, err)
+
+	_, err = h.Read(t.Context(), region, identifier)
+	require.NoError(t, err)
+	require.NoError(t, h.Delete(t.Context(), region, identifier))
+	require.Empty(t, fake.store.List(anomalyDetectorType))
+
+	require.NotEmpty(t, api.describes)
+	for _, in := range api.describes {
+		require.Nil(t, in.MetricName, "a read sends no empty MetricName")
+	}
+	require.Len(t, api.deletes, 1)
+	require.Nil(t, api.deletes[0].SingleMetricAnomalyDetector.MetricName, "a delete sends no empty MetricName")
+	require.Nil(t, api.deletes[0].SingleMetricAnomalyDetector.Stat, "a delete sends no empty Stat")
 }
 
 func Test_MetricMath(t *testing.T) {
