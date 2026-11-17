@@ -54,7 +54,24 @@ func makeUpdateFilters(
 		controller.UpdateFilter[datamodel.DynamicResource](defaultsFilter),
 		controller.UpdateFilter[datamodel.DynamicResource](validationFilter),
 		controller.UpdateFilter[datamodel.DynamicResource](encryptionFilter),
+		preserveCleanupState,
 	}
+}
+
+func preserveCleanupState(ctx context.Context, newResource, oldResource *datamodel.DynamicResource, options *controller.Options) (rest.Response, error) {
+	if newResource == nil || oldResource == nil {
+		return nil, nil
+	}
+	// PUT replaces user properties, not the server's cleanup inventory.
+	oldStatus := oldResource.Status()
+	newStatus := newResource.Status()
+	for _, field := range []string{"outputResources", "pendingRecipeDeployments"} {
+		delete(newStatus, field)
+		if value, ok := oldStatus[field]; ok {
+			newStatus[field] = value
+		}
+	}
+	return nil, nil
 }
 
 // applySchemaDefaults adds defaults from the resource schema.

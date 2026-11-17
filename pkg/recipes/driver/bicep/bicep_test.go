@@ -69,6 +69,7 @@ type deploymentClientSpy struct {
 	getErr              error
 	getCalls            int
 	deploymentID        string
+	createErr           error
 }
 
 type deploymentPollerStub struct {
@@ -102,6 +103,9 @@ func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, deployment clien
 	s.createOrUpdateCalls++
 	s.deployment = deployment
 	s.deploymentID = deploymentID
+	if s.createErr != nil {
+		return nil, s.createErr
+	}
 	if s.response != nil {
 		return &deploymentPollerStub{response: *s.response, err: s.pollErr}, nil
 	}
@@ -213,6 +217,110 @@ func Test_Bicep_Execute_PartialDeploymentCleanup(t *testing.T) {
 	}
 }
 
+func Test_Bicep_Execute_UncertainSubmission(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		status   int
+		rejected bool
+		recover  bool
+	}{
+		{name: "lost response"},
+		{name: "poller construction error with recoverable inventory", recover: true},
+		{name: "server failure", status: http.StatusInternalServerError},
+		{name: "request timeout", status: http.StatusRequestTimeout},
+		{name: "throttling", status: http.StatusTooManyRequests},
+		{name: "validation rejected", status: http.StatusBadRequest, rejected: true},
+		{name: "authorization rejected", status: http.StatusForbidden, rejected: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+			var submissionErr error = errors.New("submission outcome unknown")
+			if tt.status != 0 {
+				submissionErr = &azcore.ResponseError{StatusCode: tt.status, RawResponse: &http.Response{
+					Body: io.NopCloser(strings.NewReader(`{"error":{"code":"SubmissionError","message":"submission failed"}}`)),
+				}}
+			}
+			client := &deploymentClientSpy{createErr: submissionErr}
+			if tt.recover {
+				client.getResponse.Properties = &armdeployments.DeploymentPropertiesExtended{
+					ProvisioningState: new(armdeployments.ProvisioningStateFailed),
+					OutputResources:   []*armdeployments.ResourceReference{{ID: new("/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet")}},
+				}
+			}
+			d := &bicepDriver{DeploymentClient: client, RegistryClient: ts.TestServer.Client()}
+			output, err := d.Execute(t.Context(), driver.ExecuteOptions{
+				Recipe: recipes.ResourceMetadata{
+					Name:          "test-resource",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+				},
+				Definition: recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: ts.TestImageURL},
+			})
+			var recipeErr *recipes.RecipeError
+			require.ErrorAs(t, err, &recipeErr)
+			require.Equal(t, recipes.RecipeDeploymentFailed, recipeErr.ErrorDetails.Code)
+			if tt.rejected {
+				require.Nil(t, output)
+				require.Zero(t, client.getCalls)
+			} else if tt.recover {
+				require.Len(t, output.Resources, 1)
+				require.Empty(t, output.PendingDeploymentID)
+			} else {
+				require.Equal(t, client.deploymentID, output.PendingDeploymentID)
+				require.Equal(t, 1, client.getCalls)
+			}
+		})
+	}
+}
+
+func Test_Bicep_Execute_PostDeploymentFailureRetainsExplicitResources(t *testing.T) {
+	for _, inventoryUnavailable := range []bool{false, true} {
+		t.Run(fmt.Sprintf("inventory unavailable=%t", inventoryUnavailable), func(t *testing.T) {
+			t.Parallel()
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+			const explicitID = "/planes/kubernetes/local/namespaces/test/providers/core/Secret/explicit"
+			const nativeID = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/vnet"
+			client := &deploymentClientSpy{
+				response: &clients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+					OutputResources: []*armdeployments.ResourceReference{{ID: new(nativeID)}},
+					Outputs: map[string]any{
+						"result": map[string]any{"value": map[string]any{
+							"resources": []string{explicitID},
+							"values":    map[string]any{"host": "do-not-publish"},
+							"secrets":   map[string]any{"password": "do-not-persist"},
+						}},
+						"imageBuild": "invalid",
+					},
+				}},
+				getResponse: clients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+					ProvisioningState: new(armdeployments.ProvisioningStateSucceeded),
+					OutputResources:   []*armdeployments.ResourceReference{{ID: new(nativeID)}},
+				}},
+			}
+			if inventoryUnavailable {
+				client.getErr = errors.New("inventory unavailable")
+			}
+			d := &bicepDriver{DeploymentClient: client, RegistryClient: ts.TestServer.Client()}
+			output, err := d.Execute(t.Context(), driver.ExecuteOptions{
+				Recipe: recipes.ResourceMetadata{
+					Name:          "test-resource",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Compute/containerImages/test-resource",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+				},
+				Definition: recipes.EnvironmentDefinition{Name: "test-recipe", ResourceType: containerImagesResourceType, TemplatePath: ts.TestImageURL},
+			})
+			require.ErrorContains(t, err, "imageBuild")
+			require.ElementsMatch(t, []string{explicitID, nativeID}, output.Resources)
+			require.Empty(t, output.Values)
+			require.Empty(t, output.Secrets)
+			require.Equal(t, inventoryUnavailable, output.PendingDeploymentID != "")
+		})
+	}
+}
+
 func Test_Bicep_Delete_RecoversPendingDeploymentInventory(t *testing.T) {
 	const deploymentID = "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe1"
 	const resourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.ContainerInstance/ngroups/test-group"
@@ -224,13 +332,47 @@ func Test_Bicep_Delete_RecoversPendingDeploymentInventory(t *testing.T) {
 			OutputResources:   []*armdeployments.ResourceReference{{ID: new(resourceID)}},
 		}},
 	}
-	resourceClient.EXPECT().Delete(gomock.Any(), resourceID).Return(nil).Times(1)
+	persisted := false
+	resourceClient.EXPECT().Delete(gomock.Any(), resourceID).DoAndReturn(func(context.Context, string) error {
+		require.True(t, persisted)
+		return nil
+	}).Times(1)
 	require.NoError(t, d.Delete(t.Context(), driver.DeleteOptions{
 		PendingDeployments: []string{deploymentID},
 		OutputResources: []rpv1.OutputResource{
 			{ID: resources.MustParse(resourceID), RadiusManaged: new(true)},
 		},
+		PersistCleanup: func(_ context.Context, outputs []rpv1.OutputResource, pending []string) error {
+			require.Len(t, outputs, 1)
+			require.Empty(t, pending)
+			persisted = true
+			return nil
+		},
 	}))
+}
+
+func Test_Bicep_Delete_StopsBeforeDeletingWhenInventorySaveFails(t *testing.T) {
+	const deploymentID = "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe1"
+	const resourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.ContainerInstance/ngroups/test-group"
+	d, _, _, _ := setupDeleteInputs(t)
+	d.DeploymentClient = &deploymentClientSpy{
+		deploymentID: deploymentID,
+		getResponse: clients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateFailed),
+			OutputResources:   []*armdeployments.ResourceReference{{ID: new(resourceID)}},
+		}},
+	}
+	saveErr := errors.New("database unavailable")
+	err := d.Delete(t.Context(), driver.DeleteOptions{
+		PendingDeployments: []string{deploymentID},
+		PersistCleanup: func(_ context.Context, outputs []rpv1.OutputResource, pending []string) error {
+			require.Equal(t, resourceID, outputs[0].ID.String())
+			require.Empty(t, pending)
+			return saveErr
+		},
+	})
+	require.ErrorIs(t, err, saveErr)
+	require.ErrorContains(t, err, "persist recovered recipe cleanup inventory")
 }
 
 func Test_CreateRecipeParameters_NoContextParameter(t *testing.T) {

@@ -178,6 +178,34 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		logger.Info("using Azure provider", "deploymentID", deploymentID, "scope", providerConfig.Az.Value.Scope)
 	}
 
+	var knownOutput *recipes.RecipeOutput
+	submissionRejected := false
+	defer func() {
+		if err == nil || submissionRejected {
+			return
+		}
+
+		output = &recipes.RecipeOutput{PendingDeploymentID: deploymentID.String()}
+		if knownOutput != nil {
+			output.Resources = slices.Clone(knownOutput.Resources)
+			output.ProviderResourceIDs = knownOutput.ProviderResourceIDs
+		}
+		ids, inventoryErr := d.deploymentOutputResources(ctx, deploymentID.String())
+		if inventoryErr != nil {
+			logger.Error(inventoryErr, "Failed to recover recipe cleanup inventory; retaining deployment ID for deletion", "deploymentID", deploymentID.String())
+			return
+		}
+		if output.Resources == nil {
+			output.Resources = ids
+		}
+		for _, id := range ids {
+			if !slices.Contains(output.Resources, id) {
+				output.Resources = append(output.Resources, id)
+			}
+		}
+		output.PendingDeploymentID = ""
+	}()
+
 	poller, err := d.DeploymentClient.CreateOrUpdate(
 		ctx,
 		clients.Deployment{
@@ -193,24 +221,12 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	)
 
 	if err != nil {
+		if responseErr, ok := errors.AsType[*azcore.ResponseError](err); ok {
+			submissionRejected = responseErr.StatusCode >= 400 && responseErr.StatusCode < 500 &&
+				responseErr.StatusCode != http.StatusRequestTimeout && responseErr.StatusCode != http.StatusTooManyRequests
+		}
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
-
-	defer func() {
-		if err == nil {
-			return
-		}
-
-		// Failed deployments do not have template outputs. Recover only the engine's owned-resource inventory.
-		output = &recipes.RecipeOutput{PendingDeploymentID: deploymentID.String()}
-		ids, inventoryErr := d.deploymentOutputResources(ctx, deploymentID.String())
-		if inventoryErr != nil {
-			logger.Error(inventoryErr, "Failed to recover recipe cleanup inventory; retaining deployment ID for deletion", "deploymentID", deploymentID.String())
-			return
-		}
-		output.Resources = ids
-		output.PendingDeploymentID = ""
-	}()
 
 	resp, err := poller.PollUntilDone(ctx, &clients.PollUntilDoneOptions{Frequency: pollFrequency})
 	if err != nil {
@@ -231,6 +247,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		"outputResourceIDs", outputResourceIDs)
 
 	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
+	knownOutput = recipeResponse
 	if err != nil {
 		if _, ok := errors.AsType[*recipes_util.MissingOutputValuesError](err); ok {
 			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
@@ -315,7 +332,7 @@ func (d *bicepDriver) deploymentOutputResources(ctx context.Context, deploymentI
 func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	for _, deploymentID := range opts.PendingDeployments {
+	for i, deploymentID := range opts.PendingDeployments {
 		ids, err := d.deploymentOutputResources(ctx, deploymentID)
 		if err != nil {
 			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, fmt.Sprintf("failed to recover cleanup inventory for deployment %q: %v", deploymentID, err), "", recipes.GetErrorDetails(err))
@@ -325,6 +342,11 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
 		}
 		opts.OutputResources = append(opts.OutputResources, rpv1.GetGCOutputResources(opts.OutputResources, recovered)...)
+		if opts.PersistCleanup != nil {
+			if err := opts.PersistCleanup(ctx, opts.OutputResources, opts.PendingDeployments[i+1:]); err != nil {
+				return fmt.Errorf("failed to persist recovered recipe cleanup inventory: %w", err)
+			}
+		}
 	}
 
 	resourceClient, err := d.resourceClientForDelete(ctx, opts)

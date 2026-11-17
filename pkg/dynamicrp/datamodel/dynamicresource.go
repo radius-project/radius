@@ -277,6 +277,9 @@ func (d *dynamicResourceBasicPropertiesAdapter) SetResourceStatus(status rpv1.Re
 	// This is tricky because users are allowed to add their own fields to ".properties.status".
 	// We need to do a merge instead of a simple overwrite.
 	existingStatus := d.resource.Status()
+	if len(status.PendingRecipeDeployments) == 0 {
+		delete(existingStatus, "pendingRecipeDeployments")
+	}
 	maps.Copy(existingStatus, marshaledResourceStatus)
 }
 

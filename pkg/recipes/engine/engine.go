@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/util"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -111,7 +110,7 @@ func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 	deletionStart := time.Now()
 	result := metrics.SuccessfulOperationState
 
-	definition, err := e.deleteCore(ctx, opts.Recipe, opts.OutputResources, opts.PendingDeployments)
+	definition, err := e.deleteCore(ctx, opts)
 	if err != nil {
 		result = metrics.FailedOperationState
 		if errorDetails := recipes.GetErrorDetails(err); errorDetails != nil {
@@ -128,7 +127,9 @@ func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 
 // deleteCore function is the core logic of the Delete function.
 // Any changes to the core logic of the Delete function should be made here.
-func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource, pendingDeployments []string) (*recipes.EnvironmentDefinition, error) {
+func (e *engine) deleteCore(ctx context.Context, opts DeleteOptions) (*recipes.EnvironmentDefinition, error) {
+	recipe := opts.Recipe
+	pendingDeployments := opts.PendingDeployments
 	logger := ucplog.FromContextOrDiscard(ctx)
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
@@ -161,8 +162,9 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 		Recipe:             recipe,
 		Definition:         *definition,
 		Secrets:            secrets,
-		OutputResources:    outputResources,
+		OutputResources:    opts.OutputResources,
 		PendingDeployments: pendingDeployments,
+		PersistCleanup:     opts.PersistCleanup,
 	})
 	if err != nil {
 		return definition, err

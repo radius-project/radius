@@ -18,9 +18,11 @@ package controller
 
 import (
 	"context"
+	"slices"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -93,11 +95,27 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 			Properties:    resourceProperties,
 		}
 
-		err = c.engine.Delete(ctx, engine.DeleteOptions{
+		deleteOptions := engine.DeleteOptions{
 			Recipe:             recipeData,
 			OutputResources:    data.OutputResources(),
 			PendingDeployments: pendingDeployments,
-		})
+		}
+		if len(pendingDeployments) > 0 {
+			deleteOptions.PersistCleanup = func(ctx context.Context, outputs []rpv1.OutputResource, pending []string) error {
+				metadata := data.ResourceMetadata()
+				status := metadata.GetResourceStatus()
+				status.OutputResources = slices.Clone(outputs)
+				status.PendingRecipeDeployments = slices.Clone(pending)
+				metadata.SetResourceStatus(status)
+				update := &database.Object{ID: request.ResourceID, Data: data}
+				if err := c.DatabaseClient().Save(ctx, update, database.WithETag(obj.ETag)); err != nil {
+					return err
+				}
+				obj.ETag = update.ETag
+				return nil
+			}
+		}
+		err = c.engine.Delete(ctx, deleteOptions)
 		if err != nil {
 			if recipeError, ok := err.(*recipes.RecipeError); ok {
 				return ctrl.NewFailedResult(recipeError.ErrorDetails), nil
