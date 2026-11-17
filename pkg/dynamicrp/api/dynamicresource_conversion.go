@@ -51,15 +51,24 @@ func (d *DynamicResource) ConvertTo() (v1.DataModelInterface, error) {
 	if apiVersion == "" {
 		apiVersion = Version
 	}
+	encodedMembers, err := json.Marshal(d.DelegatingResources)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal delegatingResources: %w", err)
+	}
+	var members []datamodel.DelegatingResource
+	if err := json.Unmarshal(encodedMembers, &members); err != nil {
+		return nil, fmt.Errorf("failed to decode delegatingResources: %w", err)
+	}
 
 	dm := &datamodel.DynamicResource{
-		ID:                to.String(d.ID),
-		Name:              to.String(d.Name),
-		Type:              to.String(d.Type),
-		Location:          to.String(d.Location),
-		Tags:              to.StringMap(d.Tags),
-		UpdatedAPIVersion: apiVersion,
-		Properties:        properties,
+		ID:                  to.String(d.ID),
+		Name:                to.String(d.Name),
+		Type:                to.String(d.Type),
+		Location:            to.String(d.Location),
+		Tags:                to.StringMap(d.Tags),
+		UpdatedAPIVersion:   apiVersion,
+		Properties:          properties,
+		DelegatingResources: members,
 	}
 
 	return dm, nil
@@ -95,6 +104,7 @@ func (d *DynamicResource) ConvertFrom(src v1.DataModelInterface) error {
 	d.Tags = *to.StringMapPtr(dm.Tags)
 	d.SystemData = fromSystemDataDataModel(dm.SystemData)
 	d.Properties = properties
+	d.DelegatingResources = nil
 	d.Properties["provisioningState"] = fromProvisioningStateDataModel(dm.AsyncProvisioningState)
 
 	return nil

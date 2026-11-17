@@ -17,6 +17,8 @@ limitations under the License.
 package v20250801preview
 
 import (
+	"fmt"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/to"
@@ -24,6 +26,21 @@ import (
 
 // ConvertTo converts from the versioned RecipePack resource to version-agnostic datamodel.
 func (src *RecipePackResource) ConvertTo() (v1.DataModelInterface, error) {
+	for resourceType, recipe := range src.Properties.Recipes {
+		if recipe == nil {
+			continue
+		}
+		if recipe.Kind != nil && *recipe.Kind == RecipeKindDelegated {
+			if recipe.Source != nil || recipe.PlainHTTP != nil || recipe.Parameters != nil || recipe.Outputs != nil || recipe.AcceptsDelegationFrom != nil {
+				return nil, &v1.ErrClientRP{
+					Code:    v1.CodeInvalidRequestContent,
+					Message: fmt.Sprintf("delegated recipe for resource type %q cannot specify provisioning fields or accept delegation", resourceType),
+				}
+			}
+		} else if recipe.DelegatesTo != nil {
+			return nil, &v1.ErrClientRP{Code: v1.CodeInvalidRequestContent, Message: "only a delegated recipe can specify delegatesTo"}
+		}
+	}
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	converted := &datamodel.RecipePack{
 		ID:                     to.String(src.ID),
@@ -89,15 +106,21 @@ func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamo
 	for key, recipe := range recipes {
 		if recipe != nil {
 			definition := &datamodel.RecipeDefinition{
-				Kind:       toRecipeKindDataModel(recipe.Kind),
-				Source:     to.String(recipe.Source),
-				Parameters: recipe.Parameters,
-				PlainHTTP:  to.Bool(recipe.PlainHTTP),
+				Kind:        toRecipeKindDataModel(recipe.Kind),
+				Source:      to.String(recipe.Source),
+				Parameters:  recipe.Parameters,
+				PlainHTTP:   to.Bool(recipe.PlainHTTP),
+				DelegatesTo: to.String(recipe.DelegatesTo),
+			}
+			for _, accepted := range recipe.AcceptsDelegationFrom {
+				definition.AcceptsDelegationFrom = append(definition.AcceptsDelegationFrom, to.String(accepted))
 			}
 			if recipe.Outputs != nil {
 				definition.Outputs, definition.SecretOutputs = SplitRecipeOutputs(recipe.Outputs)
 			}
 			result[key] = definition
+		} else {
+			result[key] = nil
 		}
 	}
 	return result
@@ -112,10 +135,16 @@ func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition) map[st
 	for key, recipe := range recipes {
 		if recipe != nil {
 			definition := &RecipeDefinition{
-				Kind:       fromRecipeKindDataModel(recipe.Kind),
-				Source:     new(recipe.Source),
-				Parameters: recipe.Parameters,
-				PlainHTTP:  new(recipe.PlainHTTP),
+				Kind:                  fromRecipeKindDataModel(recipe.Kind),
+				Parameters:            recipe.Parameters,
+				AcceptsDelegationFrom: to.ArrayofStringPtrs(recipe.AcceptsDelegationFrom),
+			}
+			if recipe.Kind != datamodel.RecipeKindDelegated {
+				definition.Source = new(recipe.Source)
+				definition.PlainHTTP = new(recipe.PlainHTTP)
+			}
+			if recipe.DelegatesTo != "" {
+				definition.DelegatesTo = new(recipe.DelegatesTo)
 			}
 			if outputs := mergeRecipeOutputs(recipe.Outputs, recipe.SecretOutputs); outputs != nil {
 				definition.Outputs = outputs

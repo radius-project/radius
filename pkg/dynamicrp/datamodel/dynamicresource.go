@@ -17,6 +17,7 @@ limitations under the License.
 package datamodel
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -40,6 +41,52 @@ type DynamicResource struct {
 
 	// Properties stores the properties of the resource being tracked.
 	Properties map[string]any `json:"properties"`
+
+	// DesiredState is internal protected input state, omitted by the public API converter.
+	DesiredState *DesiredState `json:"desiredState,omitempty"`
+
+	// DelegationTargetID is an internal cleanup binding, independent of mutable desired inputs.
+	DelegationTargetID string `json:"delegationTargetId,omitempty"`
+
+	// DelegatingResources is transient plaintext admission data and is never serialized.
+	DelegatingResources []DelegatingResource `json:"-"`
+	// DelegatingDesiredStates holds only protected members admitted with a target PUT.
+	// A nonnil empty slice is an authoritative initial group with no new members.
+	DelegatingDesiredStates *[]DynamicResource `json:"delegatingDesiredStates,omitempty"`
+	// DelegationOperationID serializes target and bound member arrivals using target ETags.
+	DelegationOperationID string `json:"delegationOperationId,omitempty"`
+	// DelegationExecutionStarted prevents replay after an ambiguous native execution.
+	DelegationExecutionStarted  bool   `json:"delegationExecutionStarted,omitempty"`
+	DelegationFailedOperationID string `json:"delegationFailedOperationId,omitempty"`
+	// DelegationResult protects returned native results until all logical outputs are published.
+	DelegationResult map[string]any `json:"delegationResult,omitempty"`
+	// DelegationResourceTypes retains query coverage when a target registration changes consent.
+	DelegationResourceTypes []string `json:"delegationResourceTypes,omitempty"`
+	// DelegationDeleting survives the async worker's generic Updating provisioning state.
+	DelegationDeleting bool `json:"delegationDeleting,omitempty"`
+}
+
+// DelegatingResource is one evaluated logical declaration in the API request envelope.
+type DelegatingResource struct {
+	ID         string            `json:"id"`
+	Type       string            `json:"type"`
+	APIVersion string            `json:"apiVersion"`
+	Location   string            `json:"location,omitempty"`
+	Tags       map[string]string `json:"tags,omitempty"`
+	Properties map[string]any    `json:"properties"`
+}
+
+// UnmarshalJSON rejects nested groups and fields outside the evaluated declaration contract.
+func (d *DelegatingResource) UnmarshalJSON(data []byte) error {
+	type plain DelegatingResource
+	var decoded plain
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&decoded); err != nil {
+		return fmt.Errorf("invalid delegating resource declaration")
+	}
+	*d = DelegatingResource(decoded)
+	return nil
 }
 
 // Status() returns the status of the resource.

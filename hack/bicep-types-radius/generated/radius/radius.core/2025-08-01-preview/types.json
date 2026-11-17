@@ -1748,7 +1748,7 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/153"
+          "$ref": "#/154"
         },
         "flags": 1,
         "description": "(Required) The kind of Recipe, which determines how Radius runs it."
@@ -1764,22 +1764,36 @@
         "type": {
           "$ref": "#/0"
         },
-        "flags": 1,
-        "description": "(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the module source such as a Git URL or a Terraform registry module."
+        "flags": 0,
+        "description": "(Required for Bicep and Terraform; omitted for delegated Recipes) Location of the Recipe. For Bicep this is an OCI registry reference. For Terraform this is the module source such as a Git URL or Terraform registry module."
       },
       "parameters": {
         "type": {
-          "$ref": "#/154"
+          "$ref": "#/155"
         },
         "flags": 0,
         "description": "(Optional) Default parameter values passed to the Recipe when it runs. An Environment can override these per resource type through its `recipeParameters` property."
       },
       "outputs": {
         "type": {
-          "$ref": "#/155"
+          "$ref": "#/156"
         },
         "flags": 0,
         "description": "(Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object maps secret property names to module output names and always routes those outputs to the resource secret outputs."
+      },
+      "delegatesTo": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "(Required for delegated Recipes; omitted for provisioning Recipes) Radius Resource Type whose instance owns provisioning. Resource-type relationship metadata identifies the target instance."
+      },
+      "acceptsDelegationFrom": {
+        "type": {
+          "$ref": "#/157"
+        },
+        "flags": 0,
+        "description": "(Optional for Bicep and Terraform Recipes) Radius Resource Types whose instances may contribute desired properties to this Recipe. Delegated Recipes cannot accept delegation."
       }
     }
   },
@@ -1792,6 +1806,10 @@
     "value": "bicep"
   },
   {
+    "$type": "StringLiteralType",
+    "value": "delegated"
+  },
+  {
     "$type": "UnionType",
     "elements": [
       {
@@ -1799,6 +1817,9 @@
       },
       {
         "$ref": "#/152"
+      },
+      {
+        "$ref": "#/153"
       }
     ]
   },
@@ -1819,6 +1840,12 @@
     }
   },
   {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
     "$type": "ObjectType",
     "name": "Record",
     "properties": {},
@@ -1832,21 +1859,21 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/166"
+          "$ref": "#/168"
         },
         "flags": 2,
         "description": "(Read Only) The status of the Recipe Pack resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/167"
+          "$ref": "#/169"
         },
         "flags": 2,
         "description": "(Read Only) Resource IDs of the Environments that reference this Recipe Pack."
       },
       "recipes": {
         "type": {
-          "$ref": "#/168"
+          "$ref": "#/170"
         },
         "flags": 1,
         "description": "(Required) The Recipes in this pack, keyed by the resource type each Recipe provisions. Each key is a resource type such as `Radius.Data/redisCaches`."
@@ -1889,12 +1916,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/158"
-      },
-      {
-        "$ref": "#/159"
-      },
-      {
         "$ref": "#/160"
       },
       {
@@ -1911,6 +1932,12 @@
       },
       {
         "$ref": "#/165"
+      },
+      {
+        "$ref": "#/166"
+      },
+      {
+        "$ref": "#/167"
       }
     ]
   },
@@ -1984,21 +2011,21 @@
       },
       "recipes": {
         "type": {
-          "$ref": "#/156"
+          "$ref": "#/158"
         },
         "flags": 2,
         "description": "(Required) The Recipes in this pack, keyed by the resource type each Recipe provisions. Each key is a resource type such as `Radius.Data/redisCaches`."
       },
       "properties": {
         "type": {
-          "$ref": "#/157"
+          "$ref": "#/159"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/169"
+          "$ref": "#/171"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2023,7 +2050,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/recipePacks@2025-08-01-preview",
     "body": {
-      "$ref": "#/170"
+      "$ref": "#/172"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -2052,10 +2079,10 @@
     },
     "elements": {
       "azurerm": {
-        "$ref": "#/178"
+        "$ref": "#/180"
       },
       "s3": {
-        "$ref": "#/176"
+        "$ref": "#/178"
       }
     }
   },
@@ -2069,7 +2096,7 @@
     "properties": {
       "type": {
         "type": {
-          "$ref": "#/175"
+          "$ref": "#/177"
         },
         "flags": 1
       },
@@ -2099,7 +2126,7 @@
     "properties": {
       "type": {
         "type": {
-          "$ref": "#/177"
+          "$ref": "#/179"
         },
         "flags": 1
       },
@@ -2155,12 +2182,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/179"
-      },
-      {
-        "$ref": "#/180"
-      },
-      {
         "$ref": "#/181"
       },
       {
@@ -2177,6 +2198,12 @@
       },
       {
         "$ref": "#/186"
+      },
+      {
+        "$ref": "#/187"
+      },
+      {
+        "$ref": "#/188"
       }
     ]
   },
@@ -2192,14 +2219,14 @@
     "properties": {
       "providerInstallation": {
         "type": {
-          "$ref": "#/190"
+          "$ref": "#/192"
         },
         "flags": 0,
         "description": "(Optional) Controls where Terraform installs providers from, such as a network mirror instead of the public registry."
       },
       "credentials": {
         "type": {
-          "$ref": "#/198"
+          "$ref": "#/200"
         },
         "flags": 0,
         "description": "(Optional) Credentials for authenticating to private Terraform registries such as `app.terraform.io`. Maps a registry hostname to its credential configuration. This authenticates to Terraform CLI registries over HTTP and does not authenticate Git-based module sources, which use a separate mechanism."
@@ -2212,14 +2239,14 @@
     "properties": {
       "networkMirror": {
         "type": {
-          "$ref": "#/191"
+          "$ref": "#/193"
         },
         "flags": 0,
         "description": "(Optional) A network mirror to install providers from instead of the public registry."
       },
       "direct": {
         "type": {
-          "$ref": "#/194"
+          "$ref": "#/196"
         },
         "flags": 0,
         "description": "(Optional) Providers to install directly from the public registry rather than a mirror."
@@ -2239,14 +2266,14 @@
       },
       "include": {
         "type": {
-          "$ref": "#/192"
+          "$ref": "#/194"
         },
         "flags": 0,
         "description": "(Optional) Provider address patterns to include from this mirror."
       },
       "exclude": {
         "type": {
-          "$ref": "#/193"
+          "$ref": "#/195"
         },
         "flags": 0,
         "description": "(Optional) Provider address patterns to exclude from this mirror."
@@ -2271,14 +2298,14 @@
     "properties": {
       "include": {
         "type": {
-          "$ref": "#/195"
+          "$ref": "#/197"
         },
         "flags": 0,
         "description": "(Optional) Provider address patterns to include for direct installation."
       },
       "exclude": {
         "type": {
-          "$ref": "#/196"
+          "$ref": "#/198"
         },
         "flags": 0,
         "description": "(Optional) Provider address patterns to exclude from direct installation."
@@ -2315,7 +2342,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/197"
+      "$ref": "#/199"
     }
   },
   {
@@ -2332,35 +2359,35 @@
     "properties": {
       "backend": {
         "type": {
-          "$ref": "#/174"
+          "$ref": "#/176"
         },
         "flags": 0,
         "description": "(Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Backend selection is immutable after TerraformSettings creation, including the Kubernetes default. Configure a cloud backend when creating new settings."
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/209"
+          "$ref": "#/211"
         },
         "flags": 2,
         "description": "(Read Only) The status of the Terraform settings resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/210"
+          "$ref": "#/212"
         },
         "flags": 2,
         "description": "(Read Only) Resource IDs of the Environments that reference this Terraform settings resource."
       },
       "terraformrc": {
         "type": {
-          "$ref": "#/189"
+          "$ref": "#/191"
         },
         "flags": 0,
         "description": "(Optional) Settings for the Terraform CLI configuration file. Radius renders these into a `.terraformrc` file used when running Terraform Recipes."
       },
       "env": {
         "type": {
-          "$ref": "#/211"
+          "$ref": "#/213"
         },
         "flags": 0,
         "description": "(Optional) Environment variables injected into the Terraform process during Recipe execution."
@@ -2403,12 +2430,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/201"
-      },
-      {
-        "$ref": "#/202"
-      },
-      {
         "$ref": "#/203"
       },
       {
@@ -2425,6 +2446,12 @@
       },
       {
         "$ref": "#/208"
+      },
+      {
+        "$ref": "#/209"
+      },
+      {
+        "$ref": "#/210"
       }
     ]
   },
@@ -2470,63 +2497,63 @@
       },
       "type": {
         "type": {
-          "$ref": "#/172"
+          "$ref": "#/174"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/173"
+          "$ref": "#/175"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "backend": {
         "type": {
-          "$ref": "#/174"
+          "$ref": "#/176"
         },
         "flags": 2,
         "description": "(Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Backend selection is immutable after TerraformSettings creation, including the Kubernetes default. Configure a cloud backend when creating new settings."
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/187"
+          "$ref": "#/189"
         },
         "flags": 2,
         "description": "(Read Only) The status of the Terraform settings resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/188"
+          "$ref": "#/190"
         },
         "flags": 2,
         "description": "(Read Only) Resource IDs of the Environments that reference this Terraform settings resource."
       },
       "terraformrc": {
         "type": {
-          "$ref": "#/189"
+          "$ref": "#/191"
         },
         "flags": 2,
         "description": "(Optional) Settings for the Terraform CLI configuration file. Radius renders these into a `.terraformrc` file used when running Terraform Recipes."
       },
       "env": {
         "type": {
-          "$ref": "#/199"
+          "$ref": "#/201"
         },
         "flags": 2,
         "description": "(Optional) Environment variables injected into the Terraform process during Recipe execution."
       },
       "properties": {
         "type": {
-          "$ref": "#/200"
+          "$ref": "#/202"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/212"
+          "$ref": "#/214"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2551,7 +2578,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/terraformSettings@2025-08-01-preview",
     "body": {
-      "$ref": "#/213"
+      "$ref": "#/215"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -2585,21 +2612,21 @@
       },
       "roleType": {
         "type": {
-          "$ref": "#/220"
+          "$ref": "#/222"
         },
         "flags": 2,
         "description": "Server-owned distinction between immutable release-defined built-ins and custom roles."
       },
       "permissions": {
         "type": {
-          "$ref": "#/221"
+          "$ref": "#/223"
         },
         "flags": 1,
         "description": "Explicit catalog permissions. Unknown permissions fail with UnknownPermission; custom wildcards and deny rules are not supported."
       },
       "assignableScopes": {
         "type": {
-          "$ref": "#/222"
+          "$ref": "#/224"
         },
         "flags": 0,
         "description": "Scopes where the role may be assigned, including descendants. Defaults to the role definition's scope. Writers must be allowed to create roles at every listed scope."
@@ -2618,10 +2645,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/218"
+        "$ref": "#/220"
       },
       {
-        "$ref": "#/219"
+        "$ref": "#/221"
       }
     ]
   },
@@ -2657,21 +2684,21 @@
       },
       "type": {
         "type": {
-          "$ref": "#/215"
+          "$ref": "#/217"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/216"
+          "$ref": "#/218"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/217"
+          "$ref": "#/219"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
@@ -2689,7 +2716,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/roleDefinitions@2025-08-01-preview",
     "body": {
-      "$ref": "#/223"
+      "$ref": "#/225"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -2716,7 +2743,7 @@
       },
       "principal": {
         "type": {
-          "$ref": "#/228"
+          "$ref": "#/230"
         },
         "flags": 1,
         "description": "The principal. Its type, issuer, and subject cannot change."
@@ -2737,7 +2764,7 @@
       },
       "managedBy": {
         "type": {
-          "$ref": "#/233"
+          "$ref": "#/235"
         },
         "flags": 2,
         "description": "Server-owned provenance. Only the same GitOps source may modify its assignments unless an authorized deletion explicitly takes ownership. Bootstrap assignments are managed through installation settings."
@@ -2757,7 +2784,7 @@
     "properties": {
       "type": {
         "type": {
-          "$ref": "#/232"
+          "$ref": "#/234"
         },
         "flags": 1,
         "description": "The kind of principal."
@@ -2801,13 +2828,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/229"
-      },
-      {
-        "$ref": "#/230"
-      },
-      {
         "$ref": "#/231"
+      },
+      {
+        "$ref": "#/232"
+      },
+      {
+        "$ref": "#/233"
       }
     ]
   },
@@ -2817,7 +2844,7 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/238"
+          "$ref": "#/240"
         },
         "flags": 1,
         "description": "How the assignment was created."
@@ -2872,16 +2899,16 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/234"
-      },
-      {
-        "$ref": "#/235"
-      },
-      {
         "$ref": "#/236"
       },
       {
         "$ref": "#/237"
+      },
+      {
+        "$ref": "#/238"
+      },
+      {
+        "$ref": "#/239"
       }
     ]
   },
@@ -2905,21 +2932,21 @@
       },
       "type": {
         "type": {
-          "$ref": "#/225"
+          "$ref": "#/227"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/226"
+          "$ref": "#/228"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "properties": {
         "type": {
-          "$ref": "#/227"
+          "$ref": "#/229"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
@@ -2937,7 +2964,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/roleAssignments@2025-08-01-preview",
     "body": {
-      "$ref": "#/239"
+      "$ref": "#/241"
     },
     "readableScopes": 0,
     "writableScopes": 0,

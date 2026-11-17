@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/deployment"
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/sdk"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -97,11 +98,16 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 	if err != nil {
 		return nil, err
 	}
+	ucp, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, armClientOptions)
+	if err != nil {
+		return nil, err
+	}
 
 	return &deployment.ResourceDeploymentClient{
 		Client:              dc,
 		OperationsClient:    doc,
 		RadiusResourceGroup: id.FindScope(resources_radius.ScopeResourceGroups),
+		DelegationPlanner:   deployment.NewDelegationPlanner(configloader.NewEnvironmentLoader(armClientOptions), ucp, armClientOptions),
 	}, nil
 }
 

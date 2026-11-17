@@ -22,6 +22,9 @@ import (
 
 const RecipePackResourceType = "Radius.Core/recipePacks"
 
+// RecipeKindDelegated contributes desired inputs to another resource's provisioning recipe.
+const RecipeKindDelegated = "delegated"
+
 // RecipePack represents the 2025-08-01-preview recipe pack resource.
 type RecipePack struct {
 	v1.BaseResource
@@ -53,7 +56,7 @@ type RecipeDefinition struct {
 	Kind string `json:"kind"`
 
 	// Source is the URL or path to the recipe source.
-	Source string `json:"source"`
+	Source string `json:"source,omitempty"`
 
 	// Parameters to pass to the recipe.
 	Parameters map[string]any `json:"parameters,omitempty"`
@@ -68,4 +71,10 @@ type RecipeDefinition struct {
 
 	// PlainHTTP connects to the source using HTTP (not-HTTPS).
 	PlainHTTP bool `json:"plainHTTP,omitempty"`
+
+	// DelegatesTo names the target Radius resource type, not an instance or property path.
+	DelegatesTo string `json:"delegatesTo,omitempty"`
+
+	// AcceptsDelegationFrom lists resource types accepted by this provisioning recipe.
+	AcceptsDelegationFrom []string `json:"acceptsDelegationFrom,omitempty"`
 }
