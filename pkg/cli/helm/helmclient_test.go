@@ -693,6 +693,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 					})
 				client.EXPECT().LoadChart(gomock.Any()).AnyTimes().
 					DoAndReturn(func(string) (*chart.Chart, error) { return loadChart(t), nil })
+				expectControllerStrategyMigration(client, true)
 				client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), true, gomock.Any()).
 					DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, wait, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
 						return helmClient.RunHelmUpgrade(configuration, c, vals, name, namespace, false, reuse, timeout)

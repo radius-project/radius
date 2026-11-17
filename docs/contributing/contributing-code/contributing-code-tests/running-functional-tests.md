@@ -335,6 +335,8 @@ Tests that use the rogue client helper (`test/rogue`) run a pod from the `rogue-
 
 The local runner provisions dedicated clusters for these groups. When running them manually, do not use a shared development cluster.
 
+The upgrade group includes `Test_RadUpgradeFromReleasedVersion`, which downloads the published v0.62.0 CLI for the host platform, verifies its release SHA-256 checksum, installs its actual chart and images, and upgrades to the build under test. It requires access to GitHub release assets and the published Helm chart and images. Before installing the baseline, it removes the two controller CRDs left by earlier installs, refusing to proceed if either still has instances; use a dedicated cluster. This covers the SSA-installed `RollingUpdate` to `Recreate` migration, release status, Deployment identity, and controller readiness. Keep the baseline pinned to a release with the old strategy while this compatibility path is supported. `Test_RadUpgradeKubernetes` separately exercises flags and value preservation using copies of the current chart with changed version metadata; those copies do not provide released-version compatibility coverage.
+
 For database tests, install Radius into a fresh cluster with `--set database.enabled=true`.
 
 For multicluster tests, create a `target-kubeconfig` Secret in `radius-system`, install Radius with `global.targetCluster.enabled=true`, and set `RADIUS_TEST_EXTERNAL_KUBECONFIG` to the host-side kubeconfig.
