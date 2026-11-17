@@ -280,6 +280,28 @@ func Test_UpdateKeepsRole(t *testing.T) {
 	require.Equal(t, properties["RoleArn"], aws.ToString(api.inputs[0].RoleArn))
 }
 
+// Test_UpdateKeepsUnmanagedRole checks that an update keeps a role the template doesn't manage, such as on a channel a
+// template took over by name without RoleArn. The patch doesn't remove RoleArn, so the update sends the channel's
+// current role, because UpdateChannel removes the role when the call leaves it out.
+func Test_UpdateKeepsUnmanagedRole(t *testing.T) {
+	api := &channelUpdates{fakeAPI: newFakeAPI(awsfake.NewCloudControl())}
+	h := NewChannel(api)
+	properties := channel(t, outputGroups(t, "", ""))
+	id := created(t, h, properties)
+	current, err := h.Read(t.Context(), region, id)
+	require.NoError(t, err)
+
+	adopted := maps.Clone(properties)
+	delete(adopted, "RoleArn")
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{
+		Region: region, Identifier: id, Current: current, Desired: with(adopted, map[string]any{"LogLevel": "DEBUG"}),
+		Patch: patch(t, `[{"op":"replace","path":"/LogLevel","value":"DEBUG"}]`),
+	}))
+	settle(t, h, id, native.OperationUpdate)
+	require.Len(t, api.inputs, 1)
+	require.Equal(t, properties["RoleArn"], aws.ToString(api.inputs[0].RoleArn))
+}
+
 // Test_UpdateRemovesRole checks that a template that removes only RoleArn makes an UpdateChannel call without a role,
 // which removes the channel's role.
 func Test_UpdateRemovesRole(t *testing.T) {
