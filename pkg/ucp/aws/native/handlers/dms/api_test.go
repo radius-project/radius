@@ -38,6 +38,7 @@ const (
 	quotas       = userGuide + "CHAP_Limits.html"
 	creating     = userGuide + "CHAP_ReplicationInstance.Creating.html"
 	modifying    = userGuide + "CHAP_ReplicationInstance.Modifying.html"
+	versions     = userGuide + "CHAP_ReplicationInstance.EngineVersions.html"
 
 	// validationUnclear is what the pages leave unclear about the error for a value outside its limits.
 	validationUnclear = "The pages name no error for a value outside its limits. The fake returns ValidationError, which " +
@@ -403,6 +404,11 @@ var modifyRules = []nativetest.Rule{
 		Break: modifyWith(func(in *dms.ModifyReplicationInstanceInput) { in.EngineVersion = aws.String("4.0.0") }),
 	},
 	{
+		Rule: "DMS doesn't support engine version downgrades",
+		Doc:  versions, Code: "ValidationError",
+		Break: modifyWith(func(in *dms.ModifyReplicationInstanceInput) { in.EngineVersion = aws.String("3.4.7") }),
+	},
+	{
 		Rule: "DMS doesn't count a change such as 3.4 to 3.5 as a major version change, so it needs no AllowMajorVersionUpgrade",
 		Doc:  modifying,
 		Check: func(ctx context.Context, store *awsfake.CloudControl) error {
@@ -575,8 +581,8 @@ var replicationInstanceAPI = map[string]nativetest.Call{
 	"ModifyReplicationInstance": {
 		Doc:   apiReference + "API_ModifyReplicationInstance.html",
 		Rules: modifyRules,
-		Unclear: validationUnclear + " That includes a smaller AllocatedStorage and a major version change without " +
-			"AllowMajorVersionUpgrade, where the fake takes the first number of a version as its major version. The " +
+		Unclear: validationUnclear + " That includes a smaller AllocatedStorage, a downgrade, and a major version change " +
+			"without AllowMajorVersionUpgrade, where the fake takes the first number of a version as its major version. The " +
 			"page doesn't say which states allow a modify; the fake accepts one in any state. It gives ApplyImmediately " +
 			"no default; the user guide says changes not applied immediately are " +
 			"queued, so the fake queues them when it is false or left out. It doesn't say whether a change of " +

@@ -10,6 +10,7 @@
 package helm
 
 import (
+	context "context"
 	reflect "reflect"
 	time "time"
 
@@ -79,6 +80,44 @@ func (c *MockHelmClientLoadChartCall) Do(f func(string) (*chart.Chart, error)) *
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockHelmClientLoadChartCall) DoAndReturn(f func(string) (*chart.Chart, error)) *MockHelmClientLoadChartCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// MigrateControllerStrategy mocks base method.
+func (m *MockHelmClient) MigrateControllerStrategy(ctx context.Context, helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, reuseValues bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MigrateControllerStrategy", ctx, helmConf, helmChart, vals, releaseName, namespace, reuseValues)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MigrateControllerStrategy indicates an expected call of MigrateControllerStrategy.
+func (mr *MockHelmClientMockRecorder) MigrateControllerStrategy(ctx, helmConf, helmChart, vals, releaseName, namespace, reuseValues any) *MockHelmClientMigrateControllerStrategyCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MigrateControllerStrategy", reflect.TypeOf((*MockHelmClient)(nil).MigrateControllerStrategy), ctx, helmConf, helmChart, vals, releaseName, namespace, reuseValues)
+	return &MockHelmClientMigrateControllerStrategyCall{Call: call}
+}
+
+// MockHelmClientMigrateControllerStrategyCall wrap *gomock.Call
+type MockHelmClientMigrateControllerStrategyCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockHelmClientMigrateControllerStrategyCall) Return(arg0 error) *MockHelmClientMigrateControllerStrategyCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockHelmClientMigrateControllerStrategyCall) Do(f func(context.Context, *helm.Configuration, *chart.Chart, map[string]any, string, string, bool) error) *MockHelmClientMigrateControllerStrategyCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockHelmClientMigrateControllerStrategyCall) DoAndReturn(f func(context.Context, *helm.Configuration, *chart.Chart, map[string]any, string, string, bool) error) *MockHelmClientMigrateControllerStrategyCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

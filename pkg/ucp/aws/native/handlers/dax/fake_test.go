@@ -571,6 +571,9 @@ func (f *fakeAPI) ListTags(ctx context.Context, in *dax.ListTagsInput, _ ...func
 	if err != nil {
 		return nil, err
 	}
+	if err := f.busy(aws.String(id)); err != nil {
+		return nil, err
+	}
 	props := f.store.Resource(clusterType, id)
 	if props == nil {
 		return nil, fault("ClusterNotFoundFault")

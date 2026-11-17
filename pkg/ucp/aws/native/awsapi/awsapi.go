@@ -239,6 +239,22 @@ func CaseInsensitive(paths ...string) func(path string, template any, aws any) b
 	}
 }
 
+// TagLimit returns a rejected failure when the template's Tags and the radius tags a handler adds to the resource are
+// more than limit, the most tags AWS allows on it, and nil otherwise. A handler calls it before any AWS call, so the
+// message says how many tags the template can set instead of AWS's error after a partial change. resource names the
+// resource in the message, such as "an FSx file system".
+func TagLimit(properties map[string]any, limit int, radius int, resource string) error {
+	n := len(Tags(properties))
+	if n+radius <= limit {
+		return nil
+	}
+	return &native.Failure{
+		Message:     fmt.Sprintf("AWS allows %d tags on %s, and Radius needs %d of them, so Tags can have at most %d. The template sets %d.", limit, resource, radius, limit-radius, n),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
+}
+
 // ReservedTags returns a rejected failure when the template's Tags set a key the handler keeps its own state in, such
 // as OperationTag, and nil otherwise. A handler calls it before any AWS call of a create or an update, so a template
 // can't change that state.

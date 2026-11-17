@@ -176,35 +176,9 @@ func createDefaults(props map[string]any, in *dms.CreateReplicationInstanceInput
 	if in.PreferredMaintenanceWindow == nil {
 		props["PreferredMaintenanceWindow"] = defaultWindow
 	}
-	if version := aws.ToString(in.EngineVersion); version == "" || (autoUpgrade && olderVersion(version, defaultEngineVersion)) {
+	if version := aws.ToString(in.EngineVersion); version == "" || (autoUpgrade && compareVersions(version, defaultEngineVersion) < 0) {
 		props["EngineVersion"] = defaultEngineVersion
 	}
-}
-
-// olderVersion reports whether engine version a is older than b, comparing their dot-separated numbers in order.
-func olderVersion(a string, b string) bool {
-	as, bs := strings.Split(a, "."), strings.Split(b, ".")
-	for i := range max(len(as), len(bs)) {
-		x, y := versionPart(as, i), versionPart(bs, i)
-		if x != y {
-			return x < y
-		}
-	}
-	return false
-}
-
-func versionPart(parts []string, i int) int {
-	if i >= len(parts) {
-		return 0
-	}
-	n, _ := strconv.Atoi(parts[i])
-	return n
-}
-
-// majorVersion returns the major version of an engine version, its first number, such as 3 for 3.5.3.
-func majorVersion(version string) string {
-	major, _, _ := strings.Cut(version, ".")
-	return major
 }
 
 // storageOf returns the AllocatedStorage of an instance's properties, or 0 when it has none.
@@ -236,10 +210,11 @@ func (f *fakeAPI) storage(except string) int {
 // validModify returns the error DMS returns for a modify of the instance id that breaks a rule.
 func (f *fakeAPI) validModify(id string, in *dms.ModifyReplicationInstanceInput) error {
 	props := f.store.Resource(instanceType, id)
-	current := awsapi.String(props, "EngineVersion")
+	if err := checkVersion(in, props); err != nil {
+		return err
+	}
 	valid := utf8.RuneCountInString(aws.ToString(in.ReplicationInstanceClass)) <= 30 &&
 		(in.PreferredMaintenanceWindow == nil || validWindow(*in.PreferredMaintenanceWindow)) &&
-		(in.EngineVersion == nil || in.AllowMajorVersionUpgrade || majorVersion(*in.EngineVersion) == majorVersion(current)) &&
 		(in.AllocatedStorage == nil || int(*in.AllocatedStorage) >= storageOf(props))
 	if !valid {
 		return fault("ValidationError")
@@ -483,6 +458,35 @@ func (f *fakeAPI) ModifyReplicationInstance(ctx context.Context, in *dms.ModifyR
 		f.status[id] = "modifying"
 	})
 	return &dms.ModifyReplicationInstanceOutput{}, err
+}
+
+// checkVersion rejects a modify's EngineVersion as DMS does: DMS doesn't support engine version downgrades, and
+// another major version needs AllowMajorVersionUpgrade. The fake takes a version's first number as its major
+// version. props is the stored instance, or nil when there is none.
+func checkVersion(in *dms.ModifyReplicationInstanceInput, props map[string]any) error {
+	current := awsapi.String(props, "EngineVersion")
+	if in.EngineVersion == nil || current == "" {
+		return nil
+	}
+	version := aws.ToString(in.EngineVersion)
+	if compareVersions(version, current) < 0 {
+		return fault("ValidationError")
+	}
+	if major, _, _ := strings.Cut(version, "."); !strings.HasPrefix(current, major+".") && !in.AllowMajorVersionUpgrade {
+		return fault("ValidationError")
+	}
+	return nil
+}
+
+// compareVersions compares two engine versions such as 3.5.3 by their numbers, and as strings when either isn't
+// numbers joined by dots.
+func compareVersions(a string, b string) int {
+	na, okA := versionNumbers(a)
+	nb, okB := versionNumbers(b)
+	if !okA || !okB {
+		return strings.Compare(a, b)
+	}
+	return slices.Compare(padded(na, len(nb)), padded(nb, len(na)))
 }
 
 func (f *fakeAPI) DeleteReplicationInstance(ctx context.Context, in *dms.DeleteReplicationInstanceInput, _ ...func(*dms.Options)) (*dms.DeleteReplicationInstanceOutput, error) {
