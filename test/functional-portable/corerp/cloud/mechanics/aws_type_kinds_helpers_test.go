@@ -20,7 +20,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"net/http"
 	"slices"
 	"strings"
 	"testing"
@@ -28,12 +30,17 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/docdb"
+	docdbtypes "github.com/aws/aws-sdk-go-v2/service/docdb/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/kafka"
 	kafkatypes "github.com/aws/aws-sdk-go-v2/service/kafka/types"
 	"github.com/aws/smithy-go"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -52,7 +59,7 @@ const (
 )
 
 const (
-	// cleanupTimeout bounds each cleanup. Deleting an MSK cluster and its network takes several minutes.
+	// cleanupTimeout bounds each cleanup. Deleting a DocumentDB cluster or an MSK cluster takes several minutes.
 	cleanupTimeout = 30 * time.Minute
 
 	// cleanupReserve is the time the slow tests keep for cleanup before the go test deadline. When the test binary
@@ -122,6 +129,66 @@ func beforeCleanup(executor step.Executor) step.FuncExecutor {
 	})
 	wrapped.Description = executor.GetDescription()
 	return wrapped
+}
+
+// deleteDeployedAWSResource returns a step that deletes an AWS resource a template deployed with rad deploy, through
+// UCP's AWS plane. Radius has no command for this. The step sends the owner rad deploy sets for a template with no
+// application, and waits until UCP's operation succeeds.
+func deleteDeployedAWSResource(rpTest *rp.RPTest, resourceID string) step.FuncExecutor {
+	executor := step.NewFuncExecutor(func(ctx context.Context, t *testing.T, _ test.TestOptions) {
+		workspace := rpTest.Options.Workspace
+		env, err := rpTest.Options.ManagementClient.GetEnvironment(ctx, workspace.Environment)
+		require.NoError(t, err)
+		scope, err := resources.ParseScope(workspace.Scope)
+		require.NoError(t, err)
+		owner := sdkclients.AWSDeploymentOwner(scope.FindScope(resources_radius.ScopeResourceGroups), "", aws.ToString(env.ID))
+
+		client := rpTest.Options.Connection.Client()
+		request, err := http.NewRequestWithContext(ctx, http.MethodDelete, rpTest.Options.Connection.Endpoint()+resourceID+"?api-version=default", nil)
+		require.NoError(t, err)
+		request.Header.Set(sdkclients.AWSResourceOwnerHeader, owner)
+		response, err := client.Do(request)
+		require.NoError(t, err)
+		body, err := io.ReadAll(response.Body)
+		_ = response.Body.Close()
+		require.NoError(t, err)
+		require.Equal(t, http.StatusAccepted, response.StatusCode, "UCP didn't start the delete: %s", body)
+
+		statusURL := response.Header.Get("Azure-AsyncOperation")
+		require.NotEmpty(t, statusURL)
+		err = poll(ctx, 15*time.Second, func() (bool, error) {
+			request, err := http.NewRequestWithContext(ctx, http.MethodGet, statusURL, nil)
+			if err != nil {
+				return false, err
+			}
+			response, err := client.Do(request)
+			if err != nil {
+				return false, err
+			}
+			body, err := io.ReadAll(response.Body)
+			_ = response.Body.Close()
+			if err != nil {
+				return false, err
+			}
+			if response.StatusCode != http.StatusOK {
+				return false, fmt.Errorf("reading the delete operation returned %d: %s", response.StatusCode, body)
+			}
+			status := struct{ Status string }{}
+			if err := json.Unmarshal(body, &status); err != nil {
+				return false, err
+			}
+			switch status.Status {
+			case "Succeeded":
+				return true, nil
+			case "Failed", "Canceled":
+				return false, fmt.Errorf("the delete didn't succeed: %s", body)
+			}
+			return false, nil
+		})
+		require.NoError(t, err)
+	})
+	executor.Description = "delete " + resourceID
+	return executor
 }
 
 // awsWrites returns the messages UCP logged since the time since for calls that change the AWS resource of alias.
@@ -353,6 +420,129 @@ func newestAmazonLinuxImage(ctx context.Context, t *testing.T, client *ec2.Clien
 	}
 	require.NotEmpty(t, aws.ToString(newest.ImageId), "found no public Amazon Linux 2023 AMI")
 	return aws.ToString(newest.ImageId)
+}
+
+// createDocDBSubnetGroup creates a DB subnet group for the subnets, and deletes it when the test ends.
+func createDocDBSubnetGroup(ctx context.Context, t *testing.T, client *docdb.Client, name string, subnetIDs []string, creationTimestamp string) {
+	_, err := client.CreateDBSubnetGroup(ctx, &docdb.CreateDBSubnetGroupInput{
+		DBSubnetGroupName:        aws.String(name),
+		DBSubnetGroupDescription: aws.String("Radius functional test"),
+		SubnetIds:                subnetIDs,
+		Tags:                     []docdbtypes.Tag{{Key: aws.String("RadiusCreationTimestamp"), Value: aws.String(creationTimestamp)}},
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		ctx, cancel := cleanupContext(t)
+		defer cancel()
+
+		t.Logf("deleting DB subnet group %s", name)
+		err := poll(ctx, 15*time.Second, func() (bool, error) {
+			_, err := client.DeleteDBSubnetGroup(ctx, &docdb.DeleteDBSubnetGroupInput{DBSubnetGroupName: aws.String(name)})
+			switch {
+			case err == nil, errorCode(err) == "DBSubnetGroupNotFoundFault":
+				return true, nil
+			case errorCode(err) == "InvalidDBSubnetGroupStateFault":
+				return false, nil
+			default:
+				return false, err
+			}
+		})
+		if err != nil {
+			t.Errorf("failed to delete DB subnet group %s: %v", name, err)
+		}
+	})
+}
+
+// docDBCluster returns the DocumentDB cluster with the identifier, or nil when AWS has none.
+func docDBCluster(ctx context.Context, client *docdb.Client, identifier string) (*docdbtypes.DBCluster, error) {
+	out, err := client.DescribeDBClusters(ctx, &docdb.DescribeDBClustersInput{DBClusterIdentifier: aws.String(identifier)})
+	if errorCode(err) == "DBClusterNotFoundFault" {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	if len(out.DBClusters) == 0 {
+		return nil, nil
+	}
+	return &out.DBClusters[0], nil
+}
+
+func docDBClusterExists(ctx context.Context, client *docdb.Client, identifier string) (bool, error) {
+	cluster, err := docDBCluster(ctx, client, identifier)
+	return cluster != nil, err
+}
+
+// requireDocDBCluster requires that AWS has an available DocumentDB cluster with the identifier, and returns it.
+func requireDocDBCluster(ctx context.Context, t *testing.T, client *docdb.Client, identifier string) *docdbtypes.DBCluster {
+	cluster, err := docDBCluster(ctx, client, identifier)
+	require.NoError(t, err)
+	require.NotNil(t, cluster, "AWS has no DocumentDB cluster %s", identifier)
+	require.Equal(t, "docdb", aws.ToString(cluster.Engine))
+	require.Equal(t, "available", aws.ToString(cluster.Status))
+	return cluster
+}
+
+// docDBSnapshots returns the manual snapshots of the cluster with the identifier. The identifier is unique to the test,
+// so these are the final snapshots UCP took when it deleted the cluster.
+func docDBSnapshots(ctx context.Context, client *docdb.Client, identifier string) ([]docdbtypes.DBClusterSnapshot, error) {
+	out, err := client.DescribeDBClusterSnapshots(ctx, &docdb.DescribeDBClusterSnapshotsInput{
+		DBClusterIdentifier: aws.String(identifier),
+		SnapshotType:        aws.String("manual"),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out.DBClusterSnapshots, nil
+}
+
+// cleanupDocDBCluster deletes the cluster with the identifier, if the test left it, and then every snapshot of it, when
+// the test ends. Radius never deletes a final snapshot, so the test must.
+func cleanupDocDBCluster(t *testing.T, client *docdb.Client, identifier string) {
+	t.Cleanup(func() {
+		ctx, cancel := cleanupContext(t)
+		defer cancel()
+
+		err := poll(ctx, 15*time.Second, func() (bool, error) {
+			cluster, err := docDBCluster(ctx, client, identifier)
+			if err != nil || cluster == nil {
+				return cluster == nil, err
+			}
+			if aws.ToString(cluster.Status) != "available" {
+				return false, nil
+			}
+			t.Logf("deleting DocumentDB cluster %s", identifier)
+			_, err = client.DeleteDBCluster(ctx, &docdb.DeleteDBClusterInput{DBClusterIdentifier: aws.String(identifier), SkipFinalSnapshot: aws.Bool(true)})
+			if errorCode(err) == "InvalidDBClusterStateFault" {
+				return false, nil
+			}
+			return false, err
+		})
+		if err != nil {
+			t.Errorf("failed to delete DocumentDB cluster %s: %v", identifier, err)
+			return
+		}
+
+		err = poll(ctx, 15*time.Second, func() (bool, error) {
+			snapshots, err := docDBSnapshots(ctx, client, identifier)
+			if err != nil {
+				return false, err
+			}
+			for _, snapshot := range snapshots {
+				if aws.ToString(snapshot.Status) != "available" {
+					continue
+				}
+				t.Logf("deleting DocumentDB snapshot %s", aws.ToString(snapshot.DBClusterSnapshotIdentifier))
+				_, err := client.DeleteDBClusterSnapshot(ctx, &docdb.DeleteDBClusterSnapshotInput{DBClusterSnapshotIdentifier: snapshot.DBClusterSnapshotIdentifier})
+				if err != nil && errorCode(err) != "DBClusterSnapshotNotFoundFault" {
+					return false, err
+				}
+			}
+			return len(snapshots) == 0, nil
+		})
+		if err != nil {
+			t.Errorf("failed to delete the final snapshots of DocumentDB cluster %s: %v", identifier, err)
+		}
+	})
 }
 
 // listMSKClusters returns the ARNs of the MSK clusters named name.
