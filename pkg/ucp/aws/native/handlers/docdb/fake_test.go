@@ -18,6 +18,7 @@ package docdb
 
 import (
 	"context"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -270,12 +271,25 @@ func (f *fakeAPI) DeleteDBCluster(ctx context.Context, in *docdb.DeleteDBCluster
 		return nil, fault("InvalidDBClusterStateFault")
 	}
 	snapshot := aws.ToString(in.FinalDBSnapshotIdentifier)
+	if !validSnapshotName(snapshot) {
+		return nil, fault("InvalidParameterValue")
+	}
 	if slices.Contains(f.snapshots, snapshot) {
 		return nil, fault("DBClusterSnapshotAlreadyExistsFault")
 	}
 	f.snapshots = append(f.snapshots, snapshot)
 	f.status[clusterType+"/"+id] = "deleting"
 	return &docdb.DeleteDBClusterOutput{}, nil
+}
+
+// snapshotPattern is DocumentDB's rule for a cluster snapshot's name: 1 to 63 letters, numbers, or hyphens, starting
+// with a letter, with no two hyphens in a row and no hyphen at the end. The DeleteDBCluster reference allows 255
+// characters, but the CreateDBClusterSnapshot reference and the guide to deleting a cluster say 63, so the fake
+// enforces 63.
+var snapshotPattern = regexp.MustCompile(`^[A-Za-z](-?[A-Za-z0-9])*$`)
+
+func validSnapshotName(name string) bool {
+	return len(name) <= 63 && snapshotPattern.MatchString(name)
 }
 
 func (f *fakeAPI) CreateDBInstance(ctx context.Context, in *docdb.CreateDBInstanceInput, _ ...func(*docdb.Options)) (*docdb.CreateDBInstanceOutput, error) {

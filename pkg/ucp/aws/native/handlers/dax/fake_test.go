@@ -381,6 +381,9 @@ func (f *fakeAPI) ListTags(ctx context.Context, in *dax.ListTagsInput, _ ...func
 	if err := f.call("ListTags"); err != nil {
 		return nil, err
 	}
+	if err := f.busy(aws.String(clusterOf(in.ResourceName))); err != nil {
+		return nil, err
+	}
 	props := f.store.Resource(clusterType, clusterOf(in.ResourceName))
 	if props == nil {
 		return nil, fault("ClusterNotFoundFault")
@@ -410,6 +413,9 @@ func (f *fakeAPI) TagResource(ctx context.Context, in *dax.TagResourceInput, _ .
 	if err := f.call("TagResource"); err != nil {
 		return nil, err
 	}
+	if err := f.busy(aws.String(clusterOf(in.ResourceName))); err != nil {
+		return nil, err
+	}
 	return &dax.TagResourceOutput{}, f.change(clusterOf(in.ResourceName), func(props map[string]any) {
 		tags := storedTags(props)
 		for _, t := range in.Tags {
@@ -423,6 +429,9 @@ func (f *fakeAPI) UntagResource(ctx context.Context, in *dax.UntagResourceInput,
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.call("UntagResource"); err != nil {
+		return nil, err
+	}
+	if err := f.busy(aws.String(clusterOf(in.ResourceName))); err != nil {
 		return nil, err
 	}
 	return &dax.UntagResourceOutput{}, f.change(clusterOf(in.ResourceName), func(props map[string]any) {
