@@ -68,6 +68,7 @@ type fakeAPI struct {
 	actions   map[string][]types.AdministrativeAction
 	creates   map[string]request
 	deletes   map[string]request // by token
+	updates   map[string]request // by token
 	backups   []backup
 
 	// tokens maps a file system to the value of its operation tag, which the store leaves out, as Read does.
@@ -119,6 +120,7 @@ func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
 		actions:       map[string][]types.AdministrativeAction{},
 		creates:       map[string]request{},
 		deletes:       map[string]request{},
+		updates:       map[string]request{},
 		tokens:        map[string]string{},
 		undo:          map[string]map[string]any{},
 		options:       map[string]string{},
@@ -541,6 +543,9 @@ func copyProps(props map[string]any) map[string]any {
 	return out
 }
 
+// UpdateFileSystem applies an update. A token FSx has seen with the same parameters is the same request: FSx returns
+// the first response and changes nothing again. With other parameters, it fails. The SDK fills in a new token when
+// the call leaves it out, so an update without one is always a new request.
 func (f *fakeAPI) UpdateFileSystem(ctx context.Context, in *fsx.UpdateFileSystemInput, _ ...func(*fsx.Options)) (*fsx.UpdateFileSystemOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -554,6 +559,17 @@ func (f *fakeAPI) UpdateFileSystem(ctx context.Context, in *fsx.UpdateFileSystem
 	if err := validToken(in.ClientRequestToken); err != nil {
 		return nil, err
 	}
+	token := aws.ToString(in.ClientRequestToken)
+	b, err := json.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	if r, ok := f.updates[token]; ok && token != "" {
+		if r.params != string(b) {
+			return nil, fault("IncompatibleParameterError", "The request has the same client request token as a previous request, with other parameters.")
+		}
+		return &fsx.UpdateFileSystemOutput{}, nil
+	}
 	values, err := awsapi.EncodeObject(in)
 	if err != nil {
 		return nil, err
@@ -564,6 +580,9 @@ func (f *fakeAPI) UpdateFileSystem(ctx context.Context, in *fsx.UpdateFileSystem
 		current := decodeFileSystem(props)
 		if err := validateUpdate(in, current, f.increased[id], f.changing[id]); err != nil {
 			return err
+		}
+		if token != "" {
+			f.updates[token] = request{fileSystem: id, params: string(b)}
 		}
 		if f.failUpdate != "" {
 			f.undo[id] = copyProps(props)
@@ -754,13 +773,16 @@ func (f *fakeAPI) TagResource(ctx context.Context, in *fsx.TagResourceInput, _ .
 }
 
 // tagCount returns how many tags of the file system count against its limit, given its tags in the store: those
-// without the aws: prefix, and the delete options tag, which the store leaves out.
+// without the aws: prefix, and the operation and delete options tags, which the store leaves out.
 func (f *fakeAPI) tagCount(id string, tags map[string]string) int {
 	n := 0
 	for key := range tags {
 		if !strings.HasPrefix(key, "aws:") {
 			n++
 		}
+	}
+	if _, ok := f.tokens[id]; ok {
+		n++
 	}
 	if _, ok := f.options[id]; ok {
 		n++
@@ -790,6 +812,12 @@ func (f *fakeAPI) UntagResource(ctx context.Context, in *fsx.UntagResourceInput,
 		return nil, badRequest("The aws: prefix is reserved for AWS use.")
 	}
 	return &fsx.UntagResourceOutput{}, f.change(id, "ResourceNotFound", func(props map[string]any) error {
+		if slices.Contains(in.TagKeys, awsapi.OperationTag) {
+			delete(f.tokens, id)
+		}
+		if slices.Contains(in.TagKeys, deleteOptionsTag) {
+			delete(f.options, id)
+		}
 		tags := map[string]string{}
 		for _, t := range awsapi.Tags(props) {
 			if !slices.Contains(in.TagKeys, t.Key) {

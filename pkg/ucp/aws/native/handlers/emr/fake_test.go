@@ -410,6 +410,9 @@ func (f *fakeAPI) RunJobFlow(ctx context.Context, in *emr.RunJobFlowInput, _ ...
 	if err != nil {
 		return nil, err
 	}
+	if err := checkTagCount(len(in.Tags)); err != nil {
+		return nil, err
+	}
 	encoded, err := awsapi.EncodeObject(in)
 	if err != nil {
 		return nil, err
@@ -1005,14 +1008,35 @@ var taggable = []types.ClusterState{
 	types.ClusterStateTerminating,
 }
 
+// checkTagCount fails as EMR does when a cluster would have more than 50 tags. EMR's tag restrictions are EC2's, which
+// allow 50 tags on a resource, not counting those with the aws: prefix. The pages name no error code; the fake returns
+// ValidationException.
+func checkTagCount(n int) error {
+	if n > maxTags {
+		return fault("ValidationException", "A cluster can have at most 50 tags.")
+	}
+	return nil
+}
+
 func (f *fakeAPI) AddTags(ctx context.Context, in *emr.AddTagsInput, _ ...func(*emr.Options)) (*emr.AddTagsOutput, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	check := validTags(in.Tags)
+	id := aws.ToString(in.ResourceId)
+	keys := map[string]bool{}
+	for _, t := range awsapi.Tags(f.store.Resource(clusterType, id)) {
+		keys[t.Key] = true
+	}
+	if _, ok := f.tokens[id]; ok {
+		keys[awsapi.OperationTag] = true
+	}
+	for _, t := range in.Tags {
+		keys[aws.ToString(t.Key)] = true
+	}
+	check := firstError(validTags(in.Tags), checkTagCount(len(keys)))
 	if len(in.Tags) == 0 {
 		check = invalid("Tags is required")
 	}
-	return &emr.AddTagsOutput{}, f.change("AddTags", aws.ToString(in.ResourceId), check, taggable, func(props map[string]any) {
+	return &emr.AddTagsOutput{}, f.change("AddTags", id, check, taggable, func(props map[string]any) {
 		tags := map[string]string{}
 		for _, t := range awsapi.Tags(props) {
 			tags[t.Key] = t.Value
@@ -1032,6 +1056,9 @@ func (f *fakeAPI) RemoveTags(ctx context.Context, in *emr.RemoveTagsInput, _ ...
 		check = invalid("TagKeys is required")
 	}
 	return &emr.RemoveTagsOutput{}, f.change("RemoveTags", aws.ToString(in.ResourceId), check, taggable, func(props map[string]any) {
+		if slices.Contains(in.TagKeys, awsapi.OperationTag) {
+			delete(f.tokens, aws.ToString(in.ResourceId))
+		}
 		tags := map[string]string{}
 		for _, t := range awsapi.Tags(props) {
 			if !slices.Contains(in.TagKeys, t.Key) {

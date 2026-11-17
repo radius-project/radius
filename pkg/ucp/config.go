@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
+	"github.com/radius-project/radius/pkg/ucp/authorization"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.yaml.in/yaml/v3"
@@ -41,6 +42,14 @@ type Config struct {
 
 	// Authorization is the configuration for internal component authorization.
 	Authorization authz.Options `yaml:"authorization"`
+
+	// CallerAuthentication configures verified Kubernetes request-header identity.
+	// When both trust sources are absent, forwarded identity headers are rejected.
+	CallerAuthentication *authorization.RequestHeaderOptions `yaml:"callerAuthentication,omitempty"`
+
+	// KubernetesCallerAuthentication loads dedicated aggregation-proxy trust from
+	// the cluster at startup. It is mutually exclusive with CallerAuthentication.
+	KubernetesCallerAuthentication *authorization.KubernetesRequestHeaderOptions `yaml:"kubernetesCallerAuthentication,omitempty"`
 
 	// Database is the configuration for the database used for resource data.
 	Database databaseprovider.Options `yaml:"databaseProvider"`

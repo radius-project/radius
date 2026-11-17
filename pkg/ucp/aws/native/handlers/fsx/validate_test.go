@@ -44,9 +44,6 @@ var (
 	filterPattern     = regexp.MustCompile(`^[0-9a-zA-Z\*\.\\/\?\-\_]*$`)
 )
 
-// maxTags is how many tags FSx lets a resource have, not counting tags with the aws: prefix.
-const maxTags = 50
-
 // invalid returns ValidationError, which FSx returns for input that doesn't meet a parameter's format or constraints.
 func invalid(format string, args ...any) error {
 	return fault("ValidationError", fmt.Sprintf(format, args...))

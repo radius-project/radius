@@ -70,8 +70,8 @@ func (f *fakeAPI) describe(ctx context.Context, name string) (types.Cluster, err
 	return out.Clusters[0], nil
 }
 
-// available creates the cluster app-dax from createInput(change) and reads it until it is available.
-func available(ctx context.Context, store *awsfake.CloudControl, change func(in *dax.CreateClusterInput)) (*fakeAPI, error) {
+// availableCluster creates the cluster app-dax from createInput(change) and reads it until it is available.
+func availableCluster(ctx context.Context, store *awsfake.CloudControl, change func(in *dax.CreateClusterInput)) (*fakeAPI, error) {
 	f, err := create(ctx, store, change)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func named(name string) func(in *dax.CreateClusterInput) {
 // windowBreak returns a Break that makes call with the maintenance window, on an available cluster.
 func windowBreak(window string, call func(ctx context.Context, f *fakeAPI, window *string) error) func(ctx context.Context, store *awsfake.CloudControl) error {
 	return func(ctx context.Context, store *awsfake.CloudControl) error {
-		f, err := available(ctx, store, nil)
+		f, err := availableCluster(ctx, store, nil)
 		if err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ func tagCallRules(needsAvailable bool, call func(ctx context.Context, f *fakeAPI
 		{
 			Rule: "ResourceName is the cluster's ARN, not its name",
 			Break: func(ctx context.Context, store *awsfake.CloudControl) error {
-				f, err := available(ctx, store, nil)
+				f, err := availableCluster(ctx, store, nil)
 				if err != nil {
 					return err
 				}
@@ -253,7 +253,7 @@ func decreaseApp(ctx context.Context, f *fakeAPI, in *dax.DecreaseReplicationFac
 // onAvailable returns a Break that makes call on the available three-node cluster app-dax.
 func onAvailable(call func(ctx context.Context, f *fakeAPI) error) func(ctx context.Context, store *awsfake.CloudControl) error {
 	return func(ctx context.Context, store *awsfake.CloudControl) error {
-		f, err := available(ctx, store, nil)
+		f, err := availableCluster(ctx, store, nil)
 		if err != nil {
 			return err
 		}
@@ -533,7 +533,7 @@ var clusterAPI = map[string]nativetest.Call{
 			{
 				Rule: "the call changes only the settings it names",
 				Check: func(ctx context.Context, store *awsfake.CloudControl) error {
-					f, err := available(ctx, store, func(in *dax.CreateClusterInput) { in.SecurityGroupIds = []string{"sg-1"} })
+					f, err := availableCluster(ctx, store, func(in *dax.CreateClusterInput) { in.SecurityGroupIds = []string{"sg-1"} })
 					if err != nil {
 						return err
 					}
@@ -637,14 +637,10 @@ var clusterAPI = map[string]nativetest.Call{
 	},
 	"ListTags": {
 		Doc: apiReference + "API_dax_ListTags.html",
-		Rules: tagCallRules(false, func(ctx context.Context, f *fakeAPI, resource string) error {
+		Rules: tagCallRules(true, func(ctx context.Context, f *fakeAPI, resource string) error {
 			_, err := f.ListTags(ctx, &dax.ListTagsInput{ResourceName: aws.String(resource)})
 			return err
 		}),
-		Unclear: "The page lists InvalidClusterStateFault, a cluster not available, so DAX rejects ListTags while the " +
-			"cluster is creating, modifying, or deleting. The fake doesn't enforce it yet: the handler's Read and List " +
-			"call ListTags on every cluster DescribeClusters returns, whatever its state, and fixing that needs a " +
-			"decision on what Read reports for Tags while the cluster isn't available.",
 	},
 	"TagResource": {
 		Doc: apiReference + "API_dax_TagResource.html",
@@ -655,7 +651,7 @@ var clusterAPI = map[string]nativetest.Call{
 			nativetest.Rule{
 				Rule: "a cluster has at most 50 tags",
 				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
-					f, err := available(ctx, store, func(in *dax.CreateClusterInput) { in.Tags = tags(50) })
+					f, err := availableCluster(ctx, store, func(in *dax.CreateClusterInput) { in.Tags = tags(50) })
 					if err != nil {
 						return err
 					}
@@ -674,7 +670,7 @@ var clusterAPI = map[string]nativetest.Call{
 				Rule: "a tag with a key the cluster has replaces its value, and keys are case sensitive",
 				Doc:  tagPage,
 				Check: func(ctx context.Context, store *awsfake.CloudControl) error {
-					f, err := available(ctx, store, func(in *dax.CreateClusterInput) { in.Tags = []types.Tag{tag("team", "a")} })
+					f, err := availableCluster(ctx, store, func(in *dax.CreateClusterInput) { in.Tags = []types.Tag{tag("team", "a")} })
 					if err != nil {
 						return err
 					}

@@ -566,10 +566,16 @@ var clusterAPI = merge(tagAPI(clusterArn, "DBClusterNotFoundFault", func(call ap
 				Code: "InvalidParameterCombination",
 			},
 			{
-				Rule: "FinalDBSnapshotIdentifier is 1 to 255 letters, numbers, or hyphens, starts with a letter, doesn't end " +
+				Rule: "FinalDBSnapshotIdentifier is letters, numbers, or hyphens, starts with a letter, doesn't end " +
 					"with a hyphen, and has no two hyphens in a row",
 				Doc:   commonErrors,
 				Break: against(onReadyCluster(nil, deleteCluster(&docdb.DeleteDBClusterInput{FinalDBSnapshotIdentifier: aws.String("final--1")}))),
+				Code:  "InvalidParameterValue",
+			},
+			{
+				Rule:  "FinalDBSnapshotIdentifier is at most 63 characters",
+				Doc:   deleteClusterGuide,
+				Break: against(onReadyCluster(nil, deleteCluster(&docdb.DeleteDBClusterInput{FinalDBSnapshotIdentifier: aws.String("a" + strings.Repeat("b", 63))}))),
 				Code:  "InvalidParameterValue",
 			},
 			{
@@ -610,9 +616,7 @@ var clusterAPI = merge(tagAPI(clusterArn, "DBClusterNotFoundFault", func(call ap
 		Unclear: codesUnclear + " Neither the page nor the guide names the error for a cluster with instances or " +
 			"deletion protection; the fake returns InvalidDBClusterStateFault for instances, and " +
 			"InvalidParameterCombination for deletion protection. The deletion guide and CreateDBClusterSnapshot's page " +
-			"limit a cluster snapshot's name to 63 characters, while this page says 255; the fake allows 255. The " +
-			"handler's name, the cluster's identifier, -final-, and the time, is longer than 63 characters for a " +
-			"cluster identifier longer than 42.",
+			"limit a cluster snapshot's name to 63 characters, while this page says 255; the fake enforces 63.",
 	},
 	"DescribeDBClusters": {
 		Doc: apiReference + "API_DescribeDBClusters.html",

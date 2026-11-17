@@ -35,6 +35,7 @@ const (
 	apiReference    = "https://docs.aws.amazon.com/emr/latest/APIReference/"
 	commonErrors    = apiReference + "CommonErrors.html"
 	managementGuide = "https://docs.aws.amazon.com/emr/latest/ManagementGuide/"
+	tagRestrictions = managementGuide + "emr-plan-tags-restrictions.html"
 	tagRules        = managementGuide + "emr-plan-tags.html"
 	terminationDoc  = managementGuide + "UsingEMR_TerminationProtection.html"
 )
@@ -356,6 +357,15 @@ func addTag(ctx context.Context, f *fakeAPI, id string, key string, value string
 	return err
 }
 
+// manyTags returns n tags with distinct keys.
+func manyTags(n int) []types.Tag {
+	out := []types.Tag{}
+	for i := range n {
+		out = append(out, types.Tag{Key: aws.String(fmt.Sprintf("key-%02d", i)), Value: aws.String("v")})
+	}
+	return out
+}
+
 func terminate(ctx context.Context, f *fakeAPI, ids []string) error {
 	_, err := f.TerminateJobFlows(ctx, &emr.TerminateJobFlowsInput{JobFlowIds: ids})
 	return err
@@ -599,6 +609,12 @@ var clusterAPI = map[string]nativetest.Call{
 					in.Tags = []types.Tag{{Key: aws.String(wide(maxTagKey)), Value: aws.String(wide(maxTagValue))}}
 				}),
 			},
+			{
+				Rule:  "a cluster has at most 50 tags, which EC2's tag restrictions allow on a resource",
+				Doc:   tagRestrictions,
+				Break: runCall(func(in *emr.RunJobFlowInput) { in.Tags = manyTags(51) }),
+				Code:  "ValidationException",
+			},
 		},
 		Unclear: "The page names no error for a request that breaks a rule. The fake returns ValidationError, which the " +
 			"Common Errors page gives for input that doesn't meet constraints. RunJobFlow takes no idempotency token. " +
@@ -612,7 +628,8 @@ var clusterAPI = map[string]nativetest.Call{
 			"The docs don't say whether DescribeCluster lists applications EMR installs that the request doesn't name, " +
 			"or their versions; the fake returns the request's. For release 7.0 and lower, the Management Guide says " +
 			"unhealthy node replacement's default depends on termination protection in some clusters; the fake turns it " +
-			"on. The docs give no limit on the number of tags.",
+			"on. The Management Guide applies EC2's tag restrictions, which allow 50 tags on a resource, without naming an " +
+			"error; the fake returns ValidationException.",
 	},
 	"DescribeCluster": {
 		Doc: apiReference + "API_DescribeCluster.html",
@@ -928,12 +945,24 @@ var clusterAPI = map[string]nativetest.Call{
 					return addTag(ctx, f, id, wide(maxTagKey), wide(maxTagValue))
 				}),
 			},
+			{
+				Rule: "a cluster has at most 50 tags, counting the ones it has, which EC2's tag restrictions allow on a resource",
+				Doc:  tagRestrictions,
+				Break: onCluster(func(ctx context.Context, f *fakeAPI, id string) error {
+					if err := addTag(ctx, f, id, "team", "a"); err != nil {
+						return err
+					}
+					_, err := f.AddTags(ctx, &emr.AddTagsInput{ResourceId: aws.String(id), Tags: manyTags(50)})
+					return err
+				}),
+				Code: "ValidationException",
+			},
 			terminatedTagsRule(func(ctx context.Context, f *fakeAPI, id string) error {
 				return addTag(ctx, f, id, "env", "dev")
 			}),
 		},
-		Unclear: "The docs don't name the error for a terminated cluster; the fake returns ValidationException. They give " +
-			"no limit on the number of tags.",
+		Unclear: "The docs don't name the error for a terminated cluster, or for more than 50 tags; the fake returns " +
+			"ValidationException.",
 	},
 	"RemoveTags": {
 		Doc: apiReference + "API_RemoveTags.html",
