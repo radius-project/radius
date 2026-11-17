@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/base64"
@@ -40,15 +41,43 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-// readUCPAPIServerCA consumes only the permanent public source, never a signer or
-// a leaf's returned ca.crt. Overlap is resolved by the lifecycle, not this helper.
+// Steady selfSigned trust follows the generated signer's public ca.crt. BYO and
+// journal-bound rotation keep their independent exact public-source contract.
 func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, namespace string) (*x509.Certificate, []byte, string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, "", err
 	}
-	source, err := client.CoreV1().Secrets(namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	source, err := aggregationPublicSource(ctx, client, namespace)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("cannot read permanent aggregation trust: %w", err)
+	}
+	if source.Name == ucpAPIServerCASecretName {
+		cert, bundle, problem, err := readLegacyUCPAPIServerCA(ctx, client, namespace)
+		if err != nil {
+			return cert, bundle, problem, err
+		}
+		if cert == nil {
+			return nil, nil, problem, fmt.Errorf("selfSigned aggregation signer is not usable: %s", problem)
+		}
+		store := &rotationStore{kube: client, namespace: namespace, release: radiusReleaseName, now: time.Now}
+		_, state, err := readInitialCertificateJournal(ctx, store)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return nil, nil, "", err
+		}
+		if err == nil {
+			if state.Mode != "selfSigned" {
+				return nil, nil, "", errors.New("bootstrap mode does not authorize selfSigned renewal")
+			}
+			anchor := state.Anchors["aggregation"]
+			if state.Phase == "complete" {
+				if err := validateBootstrapRenewal(source, anchor, store.now()); err != nil {
+					return nil, nil, "", err
+				}
+			} else if err := store.checkCertificateSignerSnapshot(ctx, anchor.Signer, rotationPublish); err != nil {
+				return nil, nil, "", err
+			}
+		}
+		return cert, bundle, problem, nil
 	}
 	if err := publicAggregationSource(source, namespace); err != nil {
 		return nil, nil, "", err
@@ -58,6 +87,39 @@ func readUCPAPIServerCA(ctx context.Context, client kubernetes.Interface, namesp
 		return nil, nil, "", fmt.Errorf("aggregation overlap requires an authorized lifecycle snapshot: %w", err)
 	}
 	return cert, source.Data[caCertificateKey], "", nil
+}
+
+func aggregationPublicSource(ctx context.Context, client kubernetes.Interface, namespace string) (*corev1.Secret, error) {
+	journal, err := client.CoreV1().ConfigMaps(namespace).Get(ctx, rotationJournalName, metav1.GetOptions{})
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	if err == nil {
+		state, err := decodeCertificateLifecycle(journal, namespace, radiusReleaseName, time.Now())
+		if err != nil {
+			return nil, err
+		}
+		if state.Phase != rotationComplete {
+			return nil, errors.New("active rotation requires its exact guarded projection")
+		}
+		source, err := client.CoreV1().Secrets(namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		plane := state.Planes["aggregation"]
+		if source.UID != plane.Source.UID || !bytes.Equal(source.Data[caCertificateKey], plane.NewCA) {
+			return nil, errors.New("completed rotation source differs from its journal")
+		}
+		return source, nil
+	}
+	source, err := client.CoreV1().Secrets(namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	if err == nil && source.Annotations["radius.io/certificate-mode"] != "selfSigned" {
+		return source, nil
+	}
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	return client.CoreV1().Secrets(namespace).Get(ctx, ucpAPIServerCASecretName, metav1.GetOptions{})
 }
 
 func publicAggregationSource(source *corev1.Secret, namespace string) error {
@@ -81,6 +143,19 @@ func (i *Impl) reconcileUCPAPIServerTrust(ctx context.Context, kubeContext, name
 	before, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
 	if err != nil {
 		return err
+	}
+	source, err := aggregationPublicSource(ctx, kube, namespace)
+	if err != nil {
+		return err
+	}
+	if source.Name == ucpAPIServerCASecretName {
+		ca, _, _, err := readUCPAPIServerCA(ctx, kube, namespace)
+		if err != nil {
+			return err
+		}
+		if err := validateUCPAPIServerAPIAnchors(ca, before); err != nil {
+			return err
+		}
 	}
 	// No Secret deletion or signer-source retargeting. Unknown overlap requires
 	// the lifecycle's serving and loaded-trust barriers before retirement.
@@ -109,7 +184,7 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernet
 	if err != nil {
 		return err
 	}
-	source, err := kube.CoreV1().Secrets(namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	source, err := aggregationPublicSource(ctx, kube, namespace)
 	if err != nil {
 		return err
 	}
@@ -120,8 +195,14 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernet
 		if err != nil {
 			return false, err
 		}
-		if err := publicAggregationSource(live, namespace); err != nil {
-			return false, err
+		if source.Name == ucpAPIServerCASecretName {
+			if err := validateUCPAPIServerCAOwnership(live); err != nil {
+				return false, err
+			}
+		} else {
+			if err := publicAggregationSource(live, namespace); err != nil {
+				return false, err
+			}
 		}
 		if live.UID != source.UID || live.ResourceVersion != source.ResourceVersion ||
 			exactCertificateSet(live.Data[caCertificateKey], selected, time.Now()) != nil {
@@ -149,7 +230,7 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernet
 		if err != nil || insecure {
 			return false, errors.New("APIService does not verify aggregation TLS")
 		}
-		if api.GetAnnotations()[injectCAFromSecretAnnotation] != ucpAPIServerCASource(namespace) ||
+		if api.GetAnnotations()[injectCAFromSecretAnnotation] != namespace+"/"+source.Name ||
 			api.GetAnnotations()["cert-manager.io/inject-ca-from"] != "" ||
 			api.GetAnnotations()["cert-manager.io/inject-apiserver-ca"] != "" {
 			return false, errors.New("APIService does not select the permanent public aggregation source")
@@ -166,6 +247,16 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernet
 		if err != nil {
 			return false, err
 		}
+		if source.Name == ucpAPIServerCASecretName {
+			current, err := validatePublicCA(selected, time.Now())
+			if err != nil {
+				return false, err
+			}
+			if err := validateUCPAPIServerAPIAnchors(current, api); err != nil {
+				return false, err
+			}
+			return renewedCertificateSet(bundle, current)
+		}
 		if err := exactCertificateSet(bundle, selected, time.Now()); err != nil {
 			// A merging injector can preserve old roots indefinitely. Do not
 			// silently race it with unconditional patches.
@@ -176,12 +267,53 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kube kubernet
 	})
 }
 
-func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, release string, mode authz.Mode, render renderRadiusManifest) error {
+func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, release string, deployed, mode authz.Mode, render renderRadiusManifest) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if mode == authz.ModeOff {
-		return i.clearAggregationInjection(ctx, kubeContext, namespace, release)
+		if err := i.clearAggregationInjection(ctx, kubeContext, namespace, release); err != nil {
+			return err
+		}
+		if deployed == authz.ModeOff {
+			return nil
+		}
+		if err := i.stageUCPOffCertificate(ctx, kubeContext, namespace, release, render); err != nil {
+			return err
+		}
+		if operation, ok := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation); ok {
+			if err := operation.observe(ctx); err != nil {
+				return err
+			}
+			return operation.check(ctx)
+		}
+		return nil
+	}
+	if deployed == authz.ModeOff {
+		return errCertificateObserverUnavailable
+	}
+	kube, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
+	if err != nil {
+		return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
+	}
+	api, apiErr := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	if apiErr != nil && !apierrors.IsNotFound(apiErr) {
+		return apiErr
+	}
+	if apiErr == nil {
+		source, err := aggregationPublicSource(ctx, kube, namespace)
+		if err != nil {
+			return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
+		}
+		if source.Name == ucpAPIServerCASecretName {
+			ca, _, _, err := readUCPAPIServerCA(ctx, kube, namespace)
+			if err != nil {
+				return err
+			}
+			if err := validateUCPAPIServerAPIAnchors(ca, api); err != nil {
+				return err
+			}
+		}
 	}
 	manifest, ok, err := render(ctx)
 	if err != nil || !ok {
@@ -189,14 +321,10 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, 
 	}
 	selected, err := renderedAggregationTrust(manifest, namespace)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
 	}
 	if len(selected) == 0 {
 		return fmt.Errorf("selfSigned aggregation requires CA issuance and a second connected render before APIService readiness; automatic bootstrap is unavailable: %w", errCertificateObserverUnavailable)
-	}
-	kube, _, err := i.ucpAPIServerTrustClients(kubeContext)
-	if err != nil {
-		return err
 	}
 	_, current, _, err := readUCPAPIServerCA(ctx, kube, namespace)
 	if err != nil {
@@ -224,6 +352,32 @@ func renderedAggregationTrust(manifest, namespace string) ([]byte, error) {
 		if err := json.Unmarshal(raw, &metadata); err != nil {
 			return nil, err
 		}
+		if metadata.Kind == "APIService" && metadata.Name == ucpAPIServiceName {
+			var api unstructured.Unstructured
+			if err := json.Unmarshal(raw, &api); err != nil {
+				return nil, err
+			}
+			if api.GetAnnotations()[injectCAFromSecretAnnotation] == namespace+"/"+ucpAPIServerCASecretName {
+				value, _, err := unstructured.NestedString(api.Object, "spec", "caBundle")
+				if err != nil {
+					return nil, err
+				}
+				if value == "" {
+					return nil, errors.New("rendered aggregation APIService has no CA bundle")
+				}
+				if bundle != nil {
+					return nil, errors.New("rendered aggregation trust has multiple sources")
+				}
+				bundle, err = base64.StdEncoding.DecodeString(value)
+				if err != nil {
+					return nil, err
+				}
+				if _, err := validatePublicCA(bundle, time.Now()); err != nil {
+					return nil, err
+				}
+			}
+			continue
+		}
 		if metadata.Kind != "Secret" || metadata.Name != ucpAPIServerTrustSecretName {
 			continue
 		}
@@ -246,53 +400,14 @@ func (i *Impl) clearAggregationInjection(ctx context.Context, kubeContext, names
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	store, err := i.rotationStoreForContext(kubeContext, namespace)
+	store, err := i.certificateOffStore(kubeContext, namespace)
 	if err != nil {
 		return err
 	}
-	kube, client := store.kube, store.dynamic
-	api, err := client.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		return nil
+	if store.release != release {
+		return errors.New("authorization Off release identity changed")
 	}
-	if err != nil {
-		return err
-	}
-	if api.GetAnnotations()[injectCAFromSecretAnnotation] == "" &&
-		api.GetAnnotations()["cert-manager.io/inject-ca-from"] == "" &&
-		api.GetAnnotations()["cert-manager.io/inject-apiserver-ca"] == "" {
-		return nil
-	}
-	if api.GetUID() == "" || api.GetResourceVersion() == "" || api.GetDeletionTimestamp() != nil ||
-		api.GetLabels()[helmManagedByLabel] != helmManagedByValue ||
-		api.GetAnnotations()[helmReleaseNameAnnotation] != release ||
-		api.GetAnnotations()[helmReleaseNamespaceAnnotation] != namespace {
-		return errors.New("cannot clear CA injection on an APIService not owned by this Radius release")
-	}
-	return withIdentityOperation(ctx, kube, namespace, func(operation *identityOperation) error {
-		if err := operation.checkProviderJournal(ctx, release, i.validateCompletedProviderJournal); err != nil {
-			return err
-		}
-		if err := i.guardCertificateRotation(ctx, kubeContext, namespace, "authorization Off", nil); err != nil {
-			return err
-		}
-		patch := []map[string]any{
-			{"op": "test", "path": "/metadata/uid", "value": api.GetUID()},
-			{"op": "test", "path": "/metadata/resourceVersion", "value": api.GetResourceVersion()},
-		}
-		for _, annotation := range []string{injectCAFromSecretAnnotation, "cert-manager.io/inject-ca-from", "cert-manager.io/inject-apiserver-ca"} {
-			if _, found := api.GetAnnotations()[annotation]; found {
-				patch = append(patch, map[string]any{"op": "remove", "path": "/metadata/annotations/" + strings.ReplaceAll(annotation, "/", "~1")})
-			}
-		}
-		data, err := json.Marshal(patch)
-		if err != nil {
-			return err
-		}
-		if err := operation.check(ctx); err != nil {
-			return err
-		}
-		_, err = client.Resource(apiServicesResource).Patch(ctx, api.GetName(), types.JSONPatchType, data, metav1.PatchOptions{FieldManager: FieldManager})
-		return err
-	})
+	// This is exclusion only. Injection removal belongs to the inherited
+	// post-Helm writer, after UCP serves the Off certificate.
+	return store.excludeCertificateOffTransition(ctx)
 }

@@ -18,12 +18,15 @@ not an override of a subsequent CA lifecycle.
 {{- range $key, $_ := $state -}}
 {{- if not (has $key $fields) -}}{{- fail "Initial certificate journal has an unknown field." -}}{{- end -}}
 {{- end -}}
-{{- if or (ne (int $state.version) 1) (empty $state.id)
+{{- if or (not (has (int $state.version) (list 1 2))) (empty $state.id)
     (ne $state.namespace .Release.Namespace) (ne $state.release .Release.Name)
     (not (has $state.mode (list "selfSigned" "caSecret" "issuerRef")))
     (not (has $state.provider (list "radius" "external")))
     (not (has $state.phase (list "preparing" "published" "complete"))) -}}
 {{- fail "Initial certificate journal has an unsupported schema or identity." -}}
+{{- end -}}
+{{- if and (eq (int $state.version) 2) (or (ne $state.phase "complete") (ne $state.mode "selfSigned")) -}}
+{{- fail "Renewable bootstrap schema requires completed selfSigned state." -}}
 {{- end -}}
 {{- $namespace := lookup "v1" "Namespace" "" .Release.Namespace -}}
 {{- if or (empty $namespace) (ne $namespace.metadata.uid $state.namespaceUID) -}}

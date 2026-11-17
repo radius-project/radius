@@ -72,6 +72,18 @@ type certificatePublicSource struct {
 	Issuer                              certificateIssuerReference
 }
 
+func (t *certificateTarget) checkTransition(stored map[string]any) error {
+	deployed, err := resolveAuthzMode(stored, nil)
+	if err != nil {
+		return err
+	}
+	target, err := resolveAuthzMode(nil, t.Values)
+	if err != nil {
+		return err
+	}
+	return checkUCPAPIServerCertificateTransition(deployed, target, t.Values)
+}
+
 func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, error) {
 	if err := i.prepareTLSProvider(options, selected.Values, current, installed); err != nil {
 		return nil, nil, err

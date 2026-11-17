@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/stretchr/testify/require"
@@ -29,93 +28,52 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
-	coordinationv1 "k8s.io/api/coordination/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	kubefake "k8s.io/client-go/kubernetes/fake"
-	k8stesting "k8s.io/client-go/testing"
 )
 
 func TestClearAggregationInjection(t *testing.T) {
 	t.Parallel()
-	for _, scenario := range []string{"success", "foreign", "changed API", "lease loss", "canceled before patch"} {
+	for _, scenario := range []string{"no journal", initialCertificateJournal, rotationJournalName, identityProviderJournal, "orphaned source", "namespace intent"} {
 		t.Run(scenario, func(t *testing.T) {
 			t.Parallel()
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
-			api := &unstructured.Unstructured{Object: map[string]any{
-				"apiVersion": "apiregistration.k8s.io/v1", "kind": "APIService",
-				"metadata": map[string]any{"name": ucpAPIServiceName, "uid": "api-one", "resourceVersion": "1",
-					"labels": map[string]any{helmManagedByLabel: helmManagedByValue},
-					"annotations": map[string]any{
-						helmReleaseNameAnnotation: radiusReleaseName, helmReleaseNamespaceAnnotation: RadiusSystemNamespace,
-						injectCAFromSecretAnnotation: "radius-system/old-signing-secret", "cert-manager.io/inject-apiserver-ca": "true", "keep": "unchanged",
-					}},
-				"spec": map[string]any{"caBundle": "not-modified-by-annotation-cleanup"},
-			}}
-			if scenario == "foreign" {
-				api.SetLabels(nil)
+			store := bootstrapStoreFixture(t)
+			kube := store.kube.(*kubefake.Clientset)
+			client := store.dynamic.(*dynamicfake.FakeDynamicClient)
+			ca := newTestCA(t, "radius-apiserver-ca")
+			api := permanentTrustAPIService(ca.pem)
+			require.NoError(t, client.Tracker().Add(api))
+			namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: store.namespace}}
+			switch scenario {
+			case "no journal":
+			case "namespace intent":
+				namespace.Annotations = map[string]string{initialCertificateIntent: "recorded"}
+			case "orphaned source":
+				source := permanentPublicTrustSecret(ca.pem)
+				source.Annotations[initialCertificateIntent] = "lost-journal"
+				require.NoError(t, kube.Tracker().Add(source))
+			default:
+				require.NoError(t, kube.Tracker().Add(&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: scenario, Namespace: store.namespace},
+					Data:       map[string]string{rotationJournalKey: `{"phase":"complete"}`},
+				}))
 			}
-			kube := kubefake.NewClientset()
-			client := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), api)
-			store := &rotationStore{kube: kube, dynamic: client, namespace: RadiusSystemNamespace, release: radiusReleaseName, now: time.Now}
-			kube.PrependReactor("create", "leases", func(action k8stesting.Action) (bool, runtime.Object, error) {
-				lease := action.(k8stesting.CreateAction).GetObject().(*coordinationv1.Lease)
-				lease.UID, lease.ResourceVersion = "lease-one", "1"
-				return false, nil, nil
-			})
-			gets := 0
-			kube.PrependReactor("get", "leases", func(action k8stesting.Action) (bool, runtime.Object, error) {
-				gets++
-				if gets >= 4 {
-					if scenario == "canceled before patch" {
-						cancel()
-					}
-					if scenario == "lease loss" {
-						return true, &coordinationv1.Lease{}, nil
-					}
-				}
-				return false, nil, nil
-			})
-			patches := 0
-			client.PrependReactor("patch", "apiservices", func(action k8stesting.Action) (bool, runtime.Object, error) {
-				patches++
-				if scenario == "changed API" {
-					changed := api.DeepCopy()
-					changed.SetResourceVersion("2")
-					require.NoError(t, client.Tracker().Update(apiServicesResource, changed, ""))
-				}
-				return false, nil, nil
-			})
+			require.NoError(t, kube.Tracker().Add(namespace))
 			impl := &Impl{newRotationStore: func(string, string) (*rotationStore, error) { return store, nil }}
-			err := impl.clearAggregationInjection(ctx, "", RadiusSystemNamespace, radiusReleaseName)
+			err := impl.clearAggregationInjection(t.Context(), "", RadiusSystemNamespace, radiusReleaseName)
 			live, readErr := client.Resource(apiServicesResource).Get(t.Context(), api.GetName(), metav1.GetOptions{})
 			require.NoError(t, readErr)
-			if scenario == "success" {
+			if scenario == "no journal" {
 				require.NoError(t, err)
-				require.Equal(t, "unchanged", live.GetAnnotations()["keep"])
-				require.Empty(t, live.GetAnnotations()[injectCAFromSecretAnnotation])
-				require.Empty(t, live.GetAnnotations()["cert-manager.io/inject-apiserver-ca"])
-				require.Equal(t, 1, patches)
 			} else {
 				require.Error(t, err)
-				require.Equal(t, api.GetAnnotations(), live.GetAnnotations())
-				if scenario != "changed API" {
-					require.Zero(t, patches)
-				}
-				if scenario == "canceled before patch" {
-					require.ErrorIs(t, err, context.Canceled)
-				}
 			}
-			require.Equal(t, api.Object["spec"], live.Object["spec"])
-			for _, action := range kube.Actions() {
-				if action.GetResource().Resource == "secrets" {
-					require.Equal(t, "get", action.GetVerb(), "Off cleanup must not mutate Secrets")
-					require.Equal(t, ucpAPIServerTrustSecretName, action.(k8stesting.GetAction).GetName(),
-						"only the permanent public source may be inspected for orphaned journal markers")
-				}
+			require.Equal(t, api, live, "pre-Helm exclusion must never remove injection or change trust")
+			for _, action := range append(kube.Actions(), client.Actions()...) {
+				require.Equal(t, "get", action.GetVerb(), "preflight must not acquire a Lease or mutate resources")
 			}
 		})
 	}
@@ -126,7 +84,7 @@ func TestAggregationStageCanceledBeforeReadsOrRender(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
-		err := (&Impl{}).stageUCPAPIServerCA(ctx, "", RadiusSystemNamespace, radiusReleaseName, mode,
+		err := (&Impl{}).stageUCPAPIServerCA(ctx, "", RadiusSystemNamespace, radiusReleaseName, mode, mode,
 			func(context.Context) (string, bool, error) {
 				t.Fatal("canceled staging must not render or mutate")
 				return "", false, nil
@@ -176,7 +134,7 @@ func TestAggregationPreflightDoesNotCleanUpOff(t *testing.T) {
 		t.Fatal("Off preflight must not render or clean up annotations")
 		return "", false, nil
 	}
-	require.NoError(t, (&Impl{}).checkAggregationBeforeDependencies(t.Context(), options, "", nil, render))
+	require.NoError(t, (&Impl{newRotationStore: emptyRotationTestStore}).checkAggregationBeforeDependencies(t.Context(), options, "", nil, render))
 	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 	err := (&Impl{}).checkAggregationBeforeDependencies(t.Context(), options, "", nil,
 		func(context.Context) (string, bool, error) { return "", true, nil })

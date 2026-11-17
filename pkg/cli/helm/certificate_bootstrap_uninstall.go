@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -36,10 +35,40 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 	}
 	journal, state, err := readInitialCertificateJournal(ctx, store)
 	if apierrors.IsNotFound(err) {
-		if err := i.uninstallHelmRelease("Radius", radiusReleaseName, namespace, kubeContext); err != nil {
+		ns, err := store.kube.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return i.uninstallHelmRelease("Radius", radiusReleaseName, namespace, kubeContext)
+		}
+		if err != nil {
 			return err
 		}
-		return i.deleteUCPAPIServerTrust(ctx, kubeContext, namespace)
+		return withIdentityOperation(ctx, store.kube, namespace, func(operation *identityOperation) error {
+			if err := operation.check(ctx); err != nil {
+				return err
+			}
+			if err := i.uninstallHelmRelease("Radius", radiusReleaseName, namespace, kubeContext); err != nil {
+				return err
+			}
+			ctx = withUCPMutationGuard(ctx, func(ctx context.Context, verb string, target metav1.PartialObjectMetadata) (bool, error) {
+				if err := operation.check(ctx); err != nil {
+					return false, err
+				}
+				current, err := store.kube.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+				if ns.UID == "" || current.UID != ns.UID || current.DeletionTimestamp != nil ||
+					verb != "delete" || target.Kind != "Secret" || target.Namespace != namespace ||
+					target.Name != ucpAPIServerTrustSecretName || target.UID == "" || target.ResourceVersion == "" {
+					return false, errors.New("uninstall trust cleanup lost its pinned namespace or source")
+				}
+				if err := store.excludeCertificateOffTransition(ctx); err != nil {
+					return false, err
+				}
+				return false, ctx.Err()
+			})
+			return i.deleteUCPAPIServerTrust(ctx, kubeContext, namespace)
+		})
 	}
 	if err != nil {
 		return err
@@ -85,9 +114,8 @@ func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context) error
 				return err
 			}
 			if err == nil {
-				if secret.UID != pin.UID || secret.ResourceVersion != pin.ResourceVersion ||
-					secret.Type != corev1.SecretTypeTLS || secret.Annotations["cert-manager.io/certificate-name"] != name {
-					return fmt.Errorf("preserving changed or foreign bootstrap signing Secret %s", name)
+				if err := validateBootstrapRenewal(secret, b.state.Anchors[plane], b.store.now()); err != nil {
+					return fmt.Errorf("preserving changed or foreign bootstrap signing Secret %s: %w", name, err)
 				}
 				if err := b.deleteBootstrapObject(ctx, secret, func(options metav1.DeleteOptions) error {
 					return client.Delete(ctx, name, options)

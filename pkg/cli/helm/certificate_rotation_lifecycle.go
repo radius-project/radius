@@ -85,7 +85,7 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 	if err := i.checkCompletedProviderJournal(ctx, store); err != nil {
 		return err
 	}
-	_, initial, initialErr := readInitialCertificateJournal(ctx, store)
+	initialJournal, initial, initialErr := readInitialCertificateJournal(ctx, store)
 	if initialErr != nil && !apierrors.IsNotFound(initialErr) {
 		return initialErr
 	}
@@ -116,6 +116,12 @@ func (i *Impl) guardCertificateRotation(ctx context.Context, kubeContext, namesp
 	if apierrors.IsNotFound(err) {
 		if api != nil && (api.GetAnnotations()[rotationRevision] != "" || api.GetAnnotations()[rotationJournalUID] != "") {
 			return errors.New("managed Radius trust is missing its public journal; restore the journal before changing the release")
+		}
+		if initialErr == nil && initial.Phase == "complete" && operation != "uninstall" {
+			bootstrap := &initialCertificateInstaller{store: store, state: initial, journal: initialJournal}
+			if err := bootstrap.checkObservedMaterial(ctx); err != nil {
+				return err
+			}
 		}
 		return store.checkOrphanedCertificateSources(ctx)
 	}

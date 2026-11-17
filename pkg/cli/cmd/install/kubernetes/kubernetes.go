@@ -74,6 +74,8 @@ admission webhooks and bounded request policies. Live verification runs before a
 Radius never installs or reconfigures those issuer prerequisites.
 Reinstall preserves stored certificate settings; switching modes, issuers or trust requires
 coordinated CA migration.
+Turning authorization on with a dedicated CA or external issuer, including a fresh installation,
+requires the paired certificate lifecycle. This command rejects it before dependency or Secret changes.
 Certificate flags apply to both TLS providers: internal SPIFFE server identities and UCP's
 aggregation DNS certificate with provider radius, or aggregation DNS only with provider external.
 CA validation checks the selected profiles and supplied parent constraints; it does not prove
@@ -96,14 +98,14 @@ rad install kubernetes --contour-set "contour.extraArgs={--disable-feature=tlsro
 # Install Radius with overrides in the current Kubernetes context
 rad install kubernetes --set key=value
 
-# Install with authorization dry run and an existing operator-owned dedicated signing CA
-rad install kubernetes --set global.rbac.dryRun=true --ca-secret my-radius-ca
+# Confirm the same operator-owned CA on an existing authorization-enabled installation
+rad install kubernetes --reinstall --ca-secret my-radius-ca
 
-# Import a dedicated signing CA without passing its key through Helm values
-rad install kubernetes --set global.rbac.dryRun=true --ca-cert /path/to/ca.crt --ca-key /path/to/ca.key
+# Confirm the same previously imported CA without passing its key through Helm values
+rad install kubernetes --reinstall --ca-cert /path/to/ca.crt --ca-key /path/to/ca.key
 
-# Use a preconfigured external issuer with its dedicated public CA
-rad install kubernetes --set global.rbac.dryRun=true --cert-issuer Issuer/radius-ca --ca-bundle /path/to/public-ca.pem
+# Confirm the same external issuer on an existing authorization-enabled installation
+rad install kubernetes --reinstall --cert-issuer Issuer/radius-ca --ca-bundle /path/to/public-ca.pem
 
 # Install Radius with a custom container registry
 # Images will be pulled as: myregistry.azurecr.io/controller, myregistry.azurecr.io/ucpd, etc.

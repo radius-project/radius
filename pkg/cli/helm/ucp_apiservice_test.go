@@ -29,6 +29,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
+	"k8s.io/client-go/kubernetes"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/radius-project/radius/pkg/authz"
 )
@@ -63,14 +65,31 @@ func readyUCPAPIServiceClient(string) (dynamic.Interface, error) {
 	return ucpAPIServiceDynamicClient(ucpAPIService(base64.StdEncoding.EncodeToString(issuedUCPAPIServerCA()), "True", "Passed")), nil
 }
 
+// withoutUCPAPIService makes impl see a cluster without the UCP APIService, so the step that removes trust left by
+// authorization on, after Helm switches it off, finds nothing to do.
+func withoutUCPAPIService(impl *Impl) *Impl {
+	impl.newCertManagerDynamicClient = func(string) (dynamic.Interface, error) { return ucpAPIServiceDynamicClient(), nil }
+	impl.newUCPAPIServerTrustClient = func(string) (kubernetes.Interface, error) { return kubefake.NewSimpleClientset(), nil }
+	return impl
+}
+
 func Test_waitForUCPAPIService(t *testing.T) {
 	timeout, interval := ucpAPIServiceTimeout, ucpAPIServicePollInterval
 	ucpAPIServiceTimeout, ucpAPIServicePollInterval = 50*time.Millisecond, 10*time.Millisecond
 	t.Cleanup(func() { ucpAPIServiceTimeout, ucpAPIServicePollInterval = timeout, interval })
 
-	// With authorization off the chart sets the CA bundle, so rad does not read the cluster.
-	off := &Impl{newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return nil, errors.New("no cluster") }}
+	// With authorization off the chart sets the CA bundle; rad only removes trust that authorization on left, which
+	// Test_ReconcileUCPOffAPIServerTrust covers, and fails if it cannot read the cluster.
+	off := &Impl{
+		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return ucpAPIServiceDynamicClient(), nil },
+		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubefake.NewSimpleClientset(), nil },
+	}
 	require.NoError(t, off.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff))
+	unreachable := &Impl{
+		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return nil, errors.New("no cluster") },
+		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubefake.NewSimpleClientset(), nil },
+	}
+	require.ErrorContains(t, unreachable.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff), "no cluster")
 
 	tests := []struct {
 		name    string
@@ -134,16 +153,13 @@ func Test_waitForRolledBackUCPAPIService(t *testing.T) {
 		{Version: 1, Config: map[string]any{}},
 		{Version: 2, Config: map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}},
 	}
-	impl := &Impl{
-		newUCPAPIServerTrustClient: uninstallTrustClient,
-		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
-			return ucpAPIServiceDynamicClient(ucpAPIService("", "", "")), nil
-		},
-	}
+	cluster := newStageCluster(t, nil, false)
+	require.NoError(t, cluster.dynamic.Tracker().Add(ucpAPIService("", "", "")))
+	impl := cluster.impl(nil, "")
 
-	// Rolling back to a revision with authorization off does not wait.
+	// With no Off serving Secret there is no leftover trust to reconcile.
 	require.NoError(t, impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 1))
-	// Authorization-on rollback cannot discover trust from a signing Secret.
+	// Authorization-on rollback still requires its selected signer source.
 	err := impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 2)
-	require.ErrorContains(t, err, "cannot read permanent aggregation trust")
+	require.ErrorContains(t, err, `secrets "radius-apiserver-ca" not found`)
 }

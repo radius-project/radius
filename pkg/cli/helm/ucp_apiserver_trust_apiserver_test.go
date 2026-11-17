@@ -20,13 +20,10 @@ package helm
 
 import (
 	"bytes"
-	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"io"
-	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,15 +33,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// TestUCPAPIServerPublicSourceProjection_APIServer checks cainjector's projection
-// of an explicitly staged public CA, not automatic lifecycle or serving readiness.
+// TestUCPAPIServerPublicSourceProjection_APIServer checks real cainjector
+// propagation from a renewed signer's ca.crt, not lifecycle or serving readiness.
 //
 // It needs cert-manager's cainjector binary, built from the cert-manager release Radius installs, for example:
 //
@@ -77,7 +76,8 @@ func TestUCPAPIServerPublicSourceProjection_APIServer(t *testing.T) {
 
 	// The first CA certificate expires soon, so the test can check trust after it expires.
 	issued := reissueTestCA(t, newTestCA(t, "radius-apiserver-ca"), time.Now().Add(40*time.Second))
-	source := permanentPublicTrustSecret(issued.pem)
+	source := apiServerCASecret(issued)
+	source.Annotations[allowDirectInjectionAnnotation] = "true"
 	source.UID, source.ResourceVersion = "", ""
 	_, err = client.CoreV1().Secrets(RadiusSystemNamespace).Create(ctx, source, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -86,11 +86,12 @@ func TestUCPAPIServerPublicSourceProjection_APIServer(t *testing.T) {
 
 	requireAPIServiceCABundle(t, dynamicClient, issued)
 
-	// The fixture stages public trust directly. This is not lifecycle authorization.
+	// Issuance is a fixture; propagation uses the real cainjector without Helm.
 	renewed := reissueTestCA(t, issued, time.Now().Add(2*time.Hour))
-	secret, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	secret, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(ctx, ucpAPIServerCASecretName, metav1.GetOptions{})
 	require.NoError(t, err)
 	secret.Data[caCertificateKey] = renewed.pem
+	secret.Data[corev1.TLSCertKey] = renewed.pem
 	_, err = client.CoreV1().Secrets(RadiusSystemNamespace).Update(ctx, secret, metav1.UpdateOptions{})
 	require.NoError(t, err)
 
@@ -98,15 +99,63 @@ func TestUCPAPIServerPublicSourceProjection_APIServer(t *testing.T) {
 
 	// The API server verifies UCP's certificate against the bundle after the first CA certificate expired.
 	leaf := mustParseCertificate(t, issueUCPCertificate(t, renewed))
-	time.Sleep(time.Until(issued.cert.NotAfter.Add(time.Second)))
+	future := issued.cert.NotAfter.Add(time.Second)
 	roots := x509.NewCertPool()
 	require.True(t, roots.AppendCertsFromPEM(bundle))
-	_, err = leaf.Verify(x509.VerifyOptions{Roots: roots, DNSName: "ucp." + RadiusSystemNamespace + ".svc", KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
+	_, err = leaf.Verify(x509.VerifyOptions{Roots: roots, CurrentTime: future, DNSName: "ucp." + RadiusSystemNamespace + ".svc", KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
 	require.NoError(t, err)
 	onlyFirst := x509.NewCertPool()
 	onlyFirst.AddCert(issued.cert)
-	_, err = leaf.Verify(x509.VerifyOptions{Roots: onlyFirst, DNSName: "ucp." + RadiusSystemNamespace + ".svc", KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
+	_, err = leaf.Verify(x509.VerifyOptions{Roots: onlyFirst, CurrentTime: future, DNSName: "ucp." + RadiusSystemNamespace + ".svc", KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
 	require.Error(t, err, "a bundle that kept only the expired CA certificate must not verify UCP")
+}
+
+// TestUCPOffTrustPatch_APIServer checks, on a real API server, that the patch rad sends once authorization is off
+// does not apply over a write it has not read, and that settleUCPOffTrust then removes the cert-manager inject
+// annotation and leaves only ucp-ca in the caBundle.
+func TestUCPOffTrustPatch_APIServer(t *testing.T) {
+	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
+		t.Skip("Run make test or set KUBEBUILDER_ASSETS to run the isolated API-server regression.")
+	}
+	helmBinary, err := exec.LookPath("helm")
+	require.NoError(t, err, "the test renders the chart with the helm binary")
+	shortenUCPAPIServiceWait(t)
+	ucpAPIServiceTimeout = 10 * time.Second
+
+	kubeconfig, _ := startTestAPIServer(t)
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	require.NoError(t, err)
+	dynamicClient, err := dynamic.NewForConfig(config)
+	require.NoError(t, err)
+	ctx := t.Context()
+
+	// The APIService as authorization on renders it, after cainjector merged radius-apiserver-ca with ucp-ca.
+	ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
+	_, apiService := renderUCPAPIServerTrustObjects(t, helmBinary)
+	require.Contains(t, apiService.GetAnnotations(), injectCAFromSecretAnnotation)
+	bundle := append(append([]byte{}, ucpCA.pem...), apiServerCA.pem...)
+	require.NoError(t, unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(bundle), "spec", "caBundle"))
+	stale, err := dynamicClient.Resource(apiServicesResource).Create(ctx, apiService, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// Another writer changes the APIService after rad read it.
+	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.MergePatchType,
+		[]byte(`{"metadata":{"labels":{"example.com/written":"after-rad-read"}}}`), metav1.PatchOptions{})
+	require.NoError(t, err)
+	patch, err := ucpOffTrustPatch(stale, testCACertificates(t, ucpCA.pem))
+	require.NoError(t, err)
+	_, err = dynamicClient.Resource(apiServicesResource).Patch(ctx, ucpAPIServiceName, types.JSONPatchType, patch, metav1.PatchOptions{FieldManager: FieldManager})
+	require.True(t, apierrors.IsInvalid(err), "a stale resourceVersion test must fail as Invalid, which settleUCPOffTrust retries; got %v", err)
+
+	require.NoError(t, settleUCPOffTrust(ctx, "test-context", dynamicClient, testCACertificates(t, ucpCA.pem)))
+	settled, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.NotContains(t, settled.GetAnnotations(), injectCAFromSecretAnnotation)
+	require.Equal(t, "after-rad-read", settled.GetLabels()["example.com/written"])
+	encoded, _, _ := unstructured.NestedString(settled.Object, "spec", "caBundle")
+	got, err := base64.StdEncoding.DecodeString(encoded)
+	require.NoError(t, err)
+	require.Equal(t, ucpCA.pem, got)
 }
 
 // renderUCPAPIServerTrustObjects renders the radius-apiserver-ca Certificate and the UCP APIService with
@@ -158,7 +207,7 @@ func startCAInjector(t *testing.T, binary, kubeconfig string) {
 	})
 }
 
-// requireAPIServiceCABundle waits until cainjector projects the permanent public source and the
+// requireAPIServiceCABundle waits until cainjector projects the signer's public ca.crt and the
 // bundle holds want, and returns the bundle. cainjector keeps earlier certificates until they expire, so the bundle
 // may also hold earlier certificates of the same CA, but nothing else.
 func requireAPIServiceCABundle(t *testing.T, client dynamic.Interface, want testCA) []byte {
@@ -169,7 +218,7 @@ func requireAPIServiceCABundle(t *testing.T, client dynamic.Interface, want test
 		if !assert.NoError(c, err) {
 			return
 		}
-		assert.Equal(c, ucpAPIServerCASource(RadiusSystemNamespace), apiService.GetAnnotations()[injectCAFromSecretAnnotation])
+		assert.Equal(c, RadiusSystemNamespace+"/"+ucpAPIServerCASecretName, apiService.GetAnnotations()[injectCAFromSecretAnnotation])
 		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 		bundle, err = base64.StdEncoding.DecodeString(encoded)
 		if !assert.NoError(c, err) {
@@ -188,25 +237,4 @@ func requireAPIServiceCABundle(t *testing.T, client dynamic.Interface, want test
 		assert.True(c, found, "the caBundle does not hold the current radius-apiserver-ca certificate")
 	}, 30*time.Second, 200*time.Millisecond)
 	return bundle
-}
-
-// reissueTestCA reissues ca with the same key and subject, a new serial and notAfter, as cert-manager renews a CA
-// with rotationPolicy: Never.
-func reissueTestCA(t *testing.T, ca testCA, notAfter time.Time) testCA {
-	t.Helper()
-	template := *ca.cert
-	template.SerialNumber = big.NewInt(time.Now().UnixNano())
-	template.NotBefore, template.NotAfter = time.Now().Add(-time.Minute), notAfter
-	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &ca.key.PublicKey, ca.key)
-	require.NoError(t, err)
-	cert, err := x509.ParseCertificate(der)
-	require.NoError(t, err)
-	return testCA{cert: cert, key: ca.key, pem: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})}
-}
-
-func mustParseCertificate(t *testing.T, pemBytes []byte) *x509.Certificate {
-	t.Helper()
-	cert, err := firstCertificate(pemBytes)
-	require.NoError(t, err)
-	return cert
 }

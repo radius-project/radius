@@ -49,8 +49,10 @@ const (
 )
 
 type initialCertificateAnchor struct {
-	CA     []byte                `json:"ca"`
-	Signer *certificateObjectPin `json:"signer,omitempty"`
+	CA        []byte                `json:"ca"`
+	Signer    *certificateObjectPin `json:"signer,omitempty"`
+	PublicKey []byte                `json:"publicKey,omitempty"`
+	Subject   []byte                `json:"subject,omitempty"`
 }
 
 // This journal describes a new installation, never an old/new overlap or loaded
@@ -139,7 +141,7 @@ func decodeInitialCertificateState(raw string, store *rotationStore, bound bool)
 		return state, err
 	}
 	id, err := uuid.Parse(state.ID)
-	if err != nil || id == uuid.Nil || id.String() != state.ID || state.Version != 1 ||
+	if err != nil || id == uuid.Nil || id.String() != state.ID || (state.Version != 1 && state.Version != 2) ||
 		state.Namespace != store.namespace || bound && state.NamespaceUID == "" || state.Release != store.release ||
 		(state.Mode != "selfSigned" && state.Mode != "caSecret" && state.Mode != "issuerRef") ||
 		(state.Provider != "radius" && state.Provider != "external") ||
@@ -147,6 +149,9 @@ func decodeInitialCertificateState(raw string, store *rotationStore, bound bool)
 		!validCertificateHash(state.ChartSHA256) || !validCertificateHash(state.IntentSHA256) ||
 		!validCertificateHash(state.ValuesSHA256) || state.Roots == nil || state.Anchors == nil || state.Sources == nil || state.Issuers == nil {
 		return state, errors.New("invalid initial certificate transaction identity or configuration")
+	}
+	if state.Version == 2 && (state.Phase != "complete" || state.Mode != "selfSigned") {
+		return state, errors.New("renewable bootstrap schema requires completed selfSigned state")
 	}
 	if !bound && (state.NamespaceUID != "" || state.Phase != "preparing" ||
 		len(state.Roots)+len(state.Anchors)+len(state.Sources)+len(state.Issuers) != 0) {
@@ -166,6 +171,14 @@ func decodeInitialCertificateState(raw string, store *rotationStore, bound bool)
 		certificates, err := parseCertificateBundlePEM(anchor.CA)
 		if !validPlane(plane) || err != nil || len(certificates) != 1 || !certificates[0].IsCA {
 			return state, errors.New("invalid bootstrap anchor observation")
+		}
+		if state.Version == 2 {
+			if !bytes.Equal(anchor.PublicKey, certificates[0].RawSubjectPublicKeyInfo) ||
+				!bytes.Equal(anchor.Subject, certificates[0].RawSubject) {
+				return state, errors.New("bootstrap renewal identity differs from its historical anchor")
+			}
+		} else if len(anchor.PublicKey) != 0 || len(anchor.Subject) != 0 {
+			return state, errors.New("version 1 bootstrap cannot contain renewal identity fields")
 		}
 		if state.Mode == "issuerRef" {
 			if anchor.Signer != nil {
@@ -378,6 +391,18 @@ func (b *initialCertificateInstaller) run(ctx context.Context) error {
 			return err
 		}
 		b.state.Phase = "complete"
+		if b.state.Mode == "selfSigned" {
+			b.state.Version = 2
+			for plane, anchor := range b.state.Anchors {
+				certificates, err := parseCertificateBundlePEM(anchor.CA)
+				if err != nil || len(certificates) != 1 {
+					return errors.New("cannot record completed bootstrap renewal identity")
+				}
+				anchor.PublicKey = bytes.Clone(certificates[0].RawSubjectPublicKeyInfo)
+				anchor.Subject = bytes.Clone(certificates[0].RawSubject)
+				b.state.Anchors[plane] = anchor
+			}
+		}
 		return b.save(ctx)
 	})
 }
@@ -477,6 +502,16 @@ func (b *initialCertificateInstaller) checkObservedMaterial(ctx context.Context)
 		}
 	}
 	for _, anchor := range b.state.Anchors {
+		if b.state.Mode == "selfSigned" && b.state.Phase == "complete" {
+			secret, err := b.store.kube.CoreV1().Secrets(b.store.namespace).Get(ctx, anchor.Signer.Name, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			if err := validateBootstrapRenewal(secret, anchor, b.store.now()); err != nil {
+				return err
+			}
+			continue
+		}
 		if _, err := validatePublicCA(anchor.CA, b.store.now()); err != nil {
 			return err
 		}

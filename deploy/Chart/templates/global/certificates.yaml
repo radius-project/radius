@@ -75,7 +75,7 @@ data:
   ca.crt: {{ $source.bundle | toJson }}
 {{- end }}
 {{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") | fromJson }}
-{{- if $source.bundle }}
+{{- if and $source.bundle (ne $mode "selfSigned") }}
 ---
 apiVersion: v1
 kind: Secret

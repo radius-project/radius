@@ -48,19 +48,41 @@ func readAggregationServingInventoryForCA(ctx context.Context, kube kubernetes.I
 	if err := ctx.Err(); err != nil {
 		return inventory, err
 	}
-	pin := inventory.pin
-	source, err := kube.CoreV1().Secrets(namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	var source *corev1.Secret
+	var err error
+	if servingCA == nil {
+		_, servingCA, _, err = readUCPAPIServerCA(ctx, kube, namespace)
+		if err != nil {
+			return inventory, err
+		}
+		source, err = aggregationPublicSource(ctx, kube, namespace)
+	} else {
+		source, err = kube.CoreV1().Secrets(namespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+	}
 	if err != nil {
 		return inventory, err
 	}
-	if err := publicAggregationSource(source, namespace); err != nil {
+	if source.Name == ucpAPIServerCASecretName {
+		if err := validateUCPAPIServerCAOwnership(source); err != nil {
+			return inventory, err
+		}
+	} else {
+		if err := publicAggregationSource(source, namespace); err != nil {
+			return inventory, err
+		}
+	}
+	if sourceBundle == nil {
+		sourceBundle = servingCA
+	}
+	if err := exactCertificateSet(source.Data[caCertificateKey], sourceBundle, time.Now()); err != nil {
 		return inventory, err
 	}
-	if servingCA == nil {
-		servingCA = source.Data[caCertificateKey]
-	} else if err := exactCertificateSet(source.Data[caCertificateKey], sourceBundle, time.Now()); err != nil {
-		return inventory, err
-	}
+	return readAggregationServingInventoryFromSource(ctx, kube, namespace, servingCA, source)
+}
+
+func readAggregationServingInventoryFromSource(ctx context.Context, kube kubernetes.Interface, namespace string, servingCA []byte, source *corev1.Secret) (servingInventory, error) {
+	var inventory servingInventory
+	pin := inventory.pin
 	if _, err := validatePublicCA(servingCA, time.Now()); err != nil {
 		return inventory, err
 	}
@@ -193,9 +215,42 @@ func readAggregationServingInventoryForCA(ctx context.Context, kube kubernetes.I
 }
 
 func observeAggregationServing(ctx context.Context, kubeContext, namespace string, kube kubernetes.Interface) error {
+	return observeAggregationInventory(ctx, kubeContext, namespace, func(ctx context.Context) (servingInventory, error) {
+		return readAggregationServingInventory(ctx, kube, namespace)
+	})
+}
+
+func observeOffAggregationServing(ctx context.Context, kubeContext, namespace string, kube kubernetes.Interface) error {
+	return observeAggregationInventory(ctx, kubeContext, namespace, func(ctx context.Context) (servingInventory, error) {
+		return readOffAggregationServingInventory(ctx, kube, namespace)
+	})
+}
+
+func readOffAggregationServingInventory(ctx context.Context, kube kubernetes.Interface, namespace string) (servingInventory, error) {
+	source, err := kube.CoreV1().Secrets(namespace).Get(ctx, ucpOffCertificateSecretName, metav1.GetOptions{})
+	if err != nil {
+		return servingInventory{}, err
+	}
+	if (source.Type != corev1.SecretTypeOpaque && source.Type != corev1.SecretTypeTLS) ||
+		source.Labels[helmManagedByLabel] != helmManagedByValue ||
+		source.Annotations[helmReleaseNameAnnotation] != radiusReleaseName ||
+		source.Annotations[helmReleaseNamespaceAnnotation] != namespace {
+		return servingInventory{}, errors.New("Off serving source must be the owned Helm certificate Secret")
+	}
+	cas, err := caCertificates(source.Data[caCertificateKey])
+	if err != nil {
+		return servingInventory{}, err
+	}
+	if len(cas) != 1 {
+		return servingInventory{}, errors.New("Off serving source requires exactly one CA")
+	}
+	return readAggregationServingInventoryFromSource(ctx, kube, namespace, encodeCertificates(cas), source)
+}
+
+func observeAggregationInventory(ctx context.Context, kubeContext, namespace string, read func(context.Context) (servingInventory, error)) error {
 	ctx, cancel := context.WithTimeout(ctx, ucpAPIServiceTimeout)
 	defer cancel()
-	before, err := readAggregationServingInventory(ctx, kube, namespace)
+	before, err := read(ctx)
 	if err != nil {
 		return err
 	}
@@ -210,7 +265,7 @@ func observeAggregationServing(ctx context.Context, kubeContext, namespace strin
 			return fmt.Errorf("aggregation serving pod %s: %w", target.PodName, err)
 		}
 	}
-	after, err := readAggregationServingInventory(ctx, kube, namespace)
+	after, err := read(ctx)
 	if err != nil {
 		return err
 	}

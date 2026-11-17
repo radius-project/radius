@@ -623,13 +623,12 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 					transport, err := newClientTransport(options, "applications-rp")
 					require.NoError(t, err)
 					t.Cleanup(transport.CloseIdleConnections)
-					// httptest serves its own certificate to clients that send no SNI, so use a
-					// host name and dial the test server.
-					baseURL := "https://applications-rp.radius-system.svc:5443"
 					releaseReadError := make(chan struct{})
 					var releaseOnce sync.Once
 					release := func() { releaseOnce.Do(func() { close(releaseReadError) }) }
 					defer release()
+					// httptest serves its own certificate to clients that send no SNI, so use a
+					// host name and dial the test server.
 					var dials atomic.Int32
 					transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
 						conn, err := (&net.Dialer{}).DialContext(ctx, network, srv.Listener.Addr().String())
@@ -638,6 +637,7 @@ func TestClientTransport_PeerExpiresOnOpenConnection(t *testing.T) {
 						}
 						return conn, err
 					}
+					baseURL := "https://applications-rp.radius-system.svc:5443"
 					client := &http.Client{Transport: transport, Timeout: 10 * time.Second}
 					request := func() (bool, error) {
 						var reused bool
@@ -787,26 +787,18 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 
 			transport, err := newClientTransport(clientOptions(t, root.pem, authz.ModeEnforce), "applications-rp")
 			require.NoError(t, err)
-			t.Cleanup(transport.CloseIdleConnections)
+			// Both servers present the applications-rp SPIFFE ID; separate host names give
+			// each its own connection.
+			urlA, urlB := "https://a.applications-rp.radius-system.svc", "https://b.applications-rp.radius-system.svc"
 			transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-				_, port, err := net.SplitHostPort(addr)
-				if err != nil {
-					return nil, err
+				target := srvA.Listener.Addr().String()
+				if strings.HasPrefix(addr, "b.") {
+					target = srvB.Listener.Addr().String()
 				}
-				return (&net.Dialer{}).DialContext(ctx, network, net.JoinHostPort("127.0.0.1", port))
+				return (&net.Dialer{}).DialContext(ctx, network, target)
 			}
-			urlA := strings.Replace(srvA.URL, "127.0.0.1", "applications-rp.radius-system.svc", 1)
-			urlB := strings.Replace(srvB.URL, "127.0.0.1", "applications-rp.radius-system.svc", 1)
+			t.Cleanup(transport.CloseIdleConnections)
 			client := &http.Client{Transport: transport, Timeout: 10 * time.Second}
-			get := func(client *http.Client, url string) (int, error) {
-				response, err := client.Get(url)
-				if err != nil {
-					return 0, err
-				}
-				defer response.Body.Close()
-				_, err = io.Copy(io.Discard, response.Body)
-				return response.StatusCode, err
-			}
 			setNow := func(at time.Time) {
 				transport.source.mu.Lock()
 				transport.source.now = func() time.Time { return at }
@@ -851,7 +843,14 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 				require.Error(t, <-pending, "closing the expired connection must interrupt its request")
 			}
 			require.Same(t, current, transport.pool(), "a connection in a retired pool must not replace the current pool")
-			require.Equal(t, 1, transport.openConns())
+			if expireB {
+				// The expired connection is closed before the request is sent.
+				require.Equal(t, 1, transport.openConns())
+			} else {
+				// The retired pool refuses B's connection when it goes idle, so net/http closes it
+				// from the connection's read loop after returning B's response. Wait for that close.
+				require.Eventually(t, func() bool { return transport.openConns() == 1 }, 10*time.Second, 10*time.Millisecond)
+			}
 
 			_, err = get(client, urlA)
 			require.NoError(t, err)
@@ -876,4 +875,15 @@ func (t *clientTransport) openConns() int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return len(t.conns)
+}
+
+// get sends GET url and returns the status code.
+func get(c *http.Client, url string) (int, error) {
+	resp, err := c.Get(url)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return resp.StatusCode, nil
 }

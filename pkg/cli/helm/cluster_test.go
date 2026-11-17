@@ -40,12 +40,12 @@ func Test_Helm_InstallRadius(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	gatewayCalls := &defaultContourGatewayCalls{}
-	impl := &Impl{
+	impl := withoutUCPAPIService(&Impl{
 		Helm:                           mockHelmClient,
 		newRotationStore:               emptyRotationTestStore,
 		configureDefaultContourGateway: gatewayCalls.configure,
 		contourCluster:                 staticCRDs(),
-	}
+	})
 	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -350,7 +350,7 @@ func Test_Helm_HistoryConsumers_RevisionOrder(t *testing.T) {
 			client.EXPECT().
 				RunHelmRollback(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius", tt.expectedRollback, true).
 				Return(nil)
-			impl := &Impl{Helm: client, newRotationStore: emptyRotationTestStore}
+			impl := withoutUCPAPIService(&Impl{Helm: client, newRotationStore: emptyRotationTestStore})
 
 			state, err := impl.CheckRadiusInstall("test-context")
 			require.NoError(t, err)
@@ -416,11 +416,11 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	gatewayCalls := &defaultContourGatewayCalls{}
-	impl := &Impl{
+	impl := withoutUCPAPIService(&Impl{
 		Helm:                           mockHelmClient,
 		configureDefaultContourGateway: gatewayCalls.configure,
 		contourCluster:                 staticCRDs(contourBundleCRDs()...), newRotationStore: emptyRotationTestStore,
-	}
+	})
 	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -505,7 +505,7 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore}
+	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore})
 	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -700,7 +700,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient, contourCluster: staticCRDs(), newRotationStore: emptyRotationTestStore}
+	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient, contourCluster: staticCRDs(), newRotationStore: emptyRotationTestStore})
 	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -811,7 +811,7 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore}
+	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore})
 	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -857,7 +857,7 @@ func Test_Helm_RollbackRadius_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore}
+	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore})
 	ctx := t.Context()
 	kubeContext := "test-context"
 
@@ -927,7 +927,7 @@ func Test_Helm_RollbackRadius_PrereleaseOrdering(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			mockHelmClient := NewMockHelmClient(ctrl)
-			impl := &Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore}
+			impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore})
 			history := make([]*releasev1.Release, 0, len(testCase.versions))
 			for index, chartVersion := range testCase.versions {
 				history = append(history, &releasev1.Release{
@@ -1026,7 +1026,7 @@ func Test_Helm_RollbackRadiusToRevision_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore}
+	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient, newRotationStore: emptyRotationTestStore})
 	ctx := t.Context()
 	kubeContext := "test-context"
 	targetRevision := 3

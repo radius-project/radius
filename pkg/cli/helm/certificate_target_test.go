@@ -266,13 +266,17 @@ func TestCASecretLivePreflight(t *testing.T) {
 				options := NewDefaultClusterOptions()
 				current := copyValues(fixture.values)
 				selected := certificateTestChart(t)
-				_, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, kubeContext, false)
+				target, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, kubeContext, false)
 				require.NoError(t, err)
 				err = impl.checkIssuerPolicy(t.Context(), options, selected, nil, current, kubeContext, false)
 				if invalidInjector {
 					require.ErrorContains(t, err, "not an inspectable")
 				} else {
 					require.NoError(t, err)
+					// Fresh A10 installs use bootstrap, not the lower switch-on
+					// path. Its deployed-release transition gate stays closed.
+					err = target.checkTransition(map[string]any{})
+					require.ErrorContains(t, err, "mode=caSecret requires the certificate lifecycle")
 				}
 				for _, action := range client.Actions() {
 					require.Contains(t, []string{"get", "list"}, action.GetVerb())
