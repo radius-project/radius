@@ -17,6 +17,7 @@ limitations under the License.
 package dynamic
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"slices"
@@ -189,7 +190,11 @@ func Test_Dynamic_Resource_Recipe_Redeploy_CleanupFailureKeepsBothOutputs(t *tes
 		mockDriver.EXPECT().Execute(gomock.Any(), withPrevState()).
 			Return(recipeOutput(oldOutputResourceID), nil),
 		mockDriver.EXPECT().Execute(gomock.Any(), withPrevState(oldOutputResourceID)).
-			Return(recipeOutput(newOutputResourceID), recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, "failed to delete", recipes_util.ExecutionError, nil)),
+			DoAndReturn(func(context.Context, driver.ExecuteOptions) (*recipes.RecipeOutput, error) {
+				output := recipeOutput(newOutputResourceID)
+				output.UndeletedResources = []string{oldOutputResourceID}
+				return output, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, "failed to delete", recipes_util.ExecutionError, nil)
+			}),
 		// The next deployment retries deleting the resource the failed cleanup left.
 		mockDriver.EXPECT().Execute(gomock.Any(), withPrevState(newOutputResourceID, oldOutputResourceID)).
 			Return(recipeOutput(newOutputResourceID), nil),

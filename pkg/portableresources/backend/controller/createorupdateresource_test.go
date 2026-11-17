@@ -588,40 +588,72 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 
 func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testing.T) {
 	const (
-		previousID = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/previous"
-		newID      = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/new"
+		deletedID   = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/deleted"
+		undeletedID = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/undeleted"
+		newID       = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/new"
+		awsID       = "/planes/aws/aws/accounts/123456789012/regions/us-west-2/providers/AWS.S3/Bucket/bucket"
+		awsARN      = "arn:aws:s3:::bucket"
 	)
+	cleanupErr := recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, "failed to delete", util.ExecutionError, nil)
 	cases := []struct {
 		name      string
 		outputIDs []string
+		undeleted []string
 		recipeErr error
 		saveErr   error
-		wantSave  bool
 		wantIDs   []string
 	}{
 		{
 			name:      "deployment succeeded",
 			outputIDs: []string{newID},
-			wantSave:  true,
 			wantIDs:   []string{newID},
 		},
 		{
-			name:      "cleanup of previous output resources failed",
+			name:      "cleanup failed for one previous output resource",
 			outputIDs: []string{newID},
-			recipeErr: recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, "failed to delete", util.ExecutionError, nil),
-			wantSave:  true,
-			wantIDs:   []string{newID, previousID},
+			undeleted: []string{undeletedID},
+			recipeErr: cleanupErr,
+			wantIDs:   []string{newID, undeletedID},
+		},
+		{
+			name:      "cleanup failed but reported no undeleted output resources",
+			outputIDs: []string{newID},
+			undeleted: []string{},
+			recipeErr: cleanupErr,
+			wantIDs:   []string{newID},
 		},
 		{
 			name:      "save fails",
 			outputIDs: []string{newID},
 			saveErr:   &database.ErrConcurrency{},
-			wantSave:  true,
 			wantIDs:   []string{newID},
 		},
 		{
-			name:      "invalid output resource ID",
+			name:      "one invalid output resource ID",
+			outputIDs: []string{newID, "not-a-resource-id", awsID},
+			wantIDs:   []string{newID, awsID},
+		},
+		{
+			name:      "all output resource IDs invalid",
 			outputIDs: []string{"not-a-resource-id"},
+			wantIDs:   []string{},
+		},
+		{
+			name:      "all output resource IDs invalid and cleanup failed",
+			outputIDs: []string{"not-a-resource-id"},
+			undeleted: []string{undeletedID},
+			recipeErr: cleanupErr,
+			wantIDs:   []string{undeletedID},
+		},
+		{
+			name:      "no output resources",
+			outputIDs: nil,
+			wantIDs:   []string{},
+		},
+		{
+			name:      "empty output resources",
+			outputIDs: []string{},
+			wantIDs:   []string{},
 		},
 	}
 
@@ -642,22 +674,25 @@ func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testin
 					"environment":       TestEnvironmentID,
 					"provisioningState": "Accepted",
 					"status": map[string]any{
-						"outputResources": []map[string]any{{"id": previousID, "radiusManaged": true}},
+						"outputResources": []map[string]any{
+							{"id": deletedID, "radiusManaged": true},
+							{"id": undeletedID, "radiusManaged": true},
+						},
 					},
 					"recipe": map[string]any{"name": "test-recipe"},
 				},
 			}
 			msc.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil)
 			cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil)
-			eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&recipes.RecipeOutput{Resources: tt.outputIDs}, tt.recipeErr)
+			output := &recipes.RecipeOutput{Resources: tt.outputIDs, UndeletedResources: tt.undeleted}
+			output.SetProviderResourceID(awsID, awsARN)
+			eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(output, tt.recipeErr)
 
 			var saved *TestResource
-			if tt.wantSave {
-				msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
-					saved = obj.Data.(*TestResource)
-					return tt.saveErr
-				})
-			}
+			msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+				saved = obj.Data.(*TestResource)
+				return tt.saveErr
+			})
 
 			ctrlr, err := NewCreateOrUpdateResource(ctrl.Options{DatabaseClient: msc}, errorProcessorReference, eng, cfg)
 			require.NoError(t, err)
@@ -671,19 +706,81 @@ func TestCreateOrUpdateResource_Run_ProcessorErrorSavesOutputResources(t *testin
 			})
 			// The processing error is returned whether or not the output resources were saved.
 			require.ErrorIs(t, err, errProcessor)
-			if !tt.wantSave {
-				return
-			}
 
 			require.NotNil(t, saved)
 			ids := []string{}
 			for _, output := range saved.OutputResources() {
 				ids = append(ids, output.ID.String())
+				if output.ID.String() == awsID {
+					require.Equal(t, awsARN, output.ProviderResourceID)
+				}
 			}
 			require.Equal(t, tt.wantIDs, ids)
 			require.Equal(t, util.ExecutionError, saved.Properties.Recipe.DeploymentStatus)
 		})
 	}
+}
+
+func TestCreateOrUpdateResource_Run_CleanupFailureKeepsOnlyUndeletedOutputResources(t *testing.T) {
+	const (
+		deletedID   = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/deleted"
+		undeletedID = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/undeleted"
+		newID       = "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/new"
+	)
+	mctrl := gomock.NewController(t)
+	msc := database.NewMockClient(mctrl)
+	eng := engine.NewMockEngine(mctrl)
+	cfg := configloader.NewMockConfigurationLoader(mctrl)
+
+	data := map[string]any{
+		"name":     "tr",
+		"type":     TestResourceType,
+		"id":       TestResourceID,
+		"location": v1.LocationGlobal,
+		"properties": map[string]any{
+			"application":       TestApplicationID,
+			"environment":       TestEnvironmentID,
+			"provisioningState": "Accepted",
+			"status": map[string]any{
+				"outputResources": []map[string]any{
+					{"id": deletedID, "radiusManaged": true},
+					{"id": undeletedID, "radiusManaged": true},
+				},
+			},
+			"recipe": map[string]any{"name": "test-recipe"},
+		},
+	}
+	msc.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{ID: TestResourceID, ETag: "etag-1", Data: data}, nil)
+	cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil)
+	cleanupErr := recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, "failed to delete", util.ExecutionError, nil)
+	eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&recipes.RecipeOutput{Resources: []string{newID}, UndeletedResources: []string{undeletedID}}, cleanupErr)
+
+	var saved *TestResource
+	msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+		saved = obj.Data.(*TestResource)
+		return nil
+	})
+
+	ctrlr, err := NewCreateOrUpdateResource(ctrl.Options{DatabaseClient: msc}, successProcessorReference, eng, cfg)
+	require.NoError(t, err)
+
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
+		OperationID:      uuid.New(),
+		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
+		ResourceID:       TestResourceID,
+		CorrelationID:    uuid.New().String(),
+		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
+	})
+	require.NoError(t, err)
+	require.Equal(t, v1.ProvisioningStateFailed, res.ProvisioningState())
+
+	require.NotNil(t, saved)
+	ids := []string{}
+	for _, output := range saved.OutputResources() {
+		ids = append(ids, output.ID.String())
+	}
+	// SuccessProcessor records newOutputResource as the deployed output.
+	require.Equal(t, []string{newOutputResourceResourceID, undeletedID}, ids)
 }
 
 func TestCreateOrUpdateResource_Run_RecipeErrorSurfacedWhenStatusSaveFails(t *testing.T) {

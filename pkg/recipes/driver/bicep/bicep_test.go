@@ -740,6 +740,8 @@ func Test_Bicep_Execute_GarbageCollectionDeletesEveryStaleResource(t *testing.T)
 	})
 	require.NotNil(t, output)
 	require.Equal(t, ts.TestImageURL, output.Status.TemplatePath)
+	// Only the resource that failed to delete is reported, so the caller doesn't keep tracking the deleted one.
+	require.Equal(t, []string{failing}, output.UndeletedResources)
 	recipeErr := &recipes.RecipeError{}
 	require.ErrorAs(t, err, &recipeErr)
 	require.Equal(t, recipes.RecipeGarbageCollectionFailed, recipeErr.ErrorDetails.Code)
@@ -776,9 +778,54 @@ func Test_Bicep_Execute_GarbageCollectionInvalidPreviousIDReturnsOutput(t *testi
 		PrevState: []string{"not-a-resource-id"},
 	})
 	require.NotNil(t, output)
+	require.Equal(t, []string{"not-a-resource-id"}, output.UndeletedResources)
 	recipeErr := &recipes.RecipeError{}
 	require.ErrorAs(t, err, &recipeErr)
 	require.Equal(t, recipes.RecipeGarbageCollectionFailed, recipeErr.ErrorDetails.Code)
+}
+
+func Test_Bicep_DeleteOutputResources_UndeletedResources(t *testing.T) {
+	const (
+		vaultID  = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/vault"
+		secretID = vaultID + "/secrets/password"
+		otherID  = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/other"
+		readOnly = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/readonly"
+	)
+	outputResources := []rpv1.OutputResource{
+		{ID: resources.MustParse(vaultID), RadiusManaged: new(true)},
+		{ID: resources.MustParse(secretID), RadiusManaged: new(true)},
+		{ID: resources.MustParse(otherID), RadiusManaged: new(true)},
+		{ID: resources.MustParse(readOnly), RadiusManaged: new(false)},
+	}
+
+	t.Run("failed vault keeps its secret", func(t *testing.T) {
+		driverBicep, client, _, _ := setupDeleteInputs(t)
+		client.EXPECT().Delete(gomock.Any(), vaultID).Return(errors.New("vault is locked"))
+		client.EXPECT().Delete(gomock.Any(), otherID).Return(nil)
+
+		undeleted, err := driverBicep.deleteOutputResources(t.Context(), driver.DeleteOptions{OutputResources: outputResources})
+		require.Error(t, err)
+		require.Equal(t, []string{vaultID, secretID}, undeleted)
+	})
+
+	t.Run("all deleted", func(t *testing.T) {
+		driverBicep, client, _, _ := setupDeleteInputs(t)
+		client.EXPECT().Delete(gomock.Any(), vaultID).Return(nil)
+		client.EXPECT().Delete(gomock.Any(), otherID).Return(nil)
+
+		undeleted, err := driverBicep.deleteOutputResources(t.Context(), driver.DeleteOptions{OutputResources: outputResources})
+		require.NoError(t, err)
+		require.Empty(t, undeleted)
+	})
+
+	t.Run("no resource client reports every managed resource", func(t *testing.T) {
+		driverBicep, _, _, _ := setupDeleteInputs(t)
+		driverBicep.resourceClientFactory = nil
+
+		undeleted, err := driverBicep.deleteOutputResources(t.Context(), driver.DeleteOptions{OutputResources: outputResources})
+		require.Error(t, err)
+		require.Equal(t, []string{vaultID, secretID, otherID}, undeleted)
+	})
 }
 
 // Test_Bicep_Delete_SendsAWSOwner checks that the recipe's owner reaches the resource client, which sends it to UCP
