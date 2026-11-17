@@ -63,6 +63,9 @@ func fault(code string) error {
 // portfolioIDPattern is the pattern of portfolio IDs, which are 1 to 100 characters.
 var portfolioIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_\-]{1,100}$`)
 
+// pageTokenPattern is the documented pattern of PageToken.
+var pageTokenPattern = regexp.MustCompile(`^[\t\n\r\x{20}-\x{D7FF}\x{E000}-\x{FFFD}]*$`)
+
 // shareType returns the share type a call names, or IMPORTED, the type AWS uses when a call names none.
 func shareType(t types.PortfolioShareType) types.PortfolioShareType {
 	if t == "" {
@@ -145,7 +148,8 @@ func (f *fakeAPI) ListAcceptedPortfolioShares(ctx context.Context, in *serviceca
 	if err := validInput(in.AcceptLanguage, in.PortfolioShareType); err != nil {
 		return nil, err
 	}
-	if in.PageSize < 0 || in.PageSize > 100 || utf8.RuneCountInString(aws.ToString(in.PageToken)) > 2024 {
+	if in.PageSize < 0 || in.PageSize > 100 || utf8.RuneCountInString(aws.ToString(in.PageToken)) > 2024 ||
+		!pageTokenPattern.MatchString(aws.ToString(in.PageToken)) {
 		return nil, fault("InvalidParametersException")
 	}
 	out := &servicecatalog.ListAcceptedPortfolioSharesOutput{}

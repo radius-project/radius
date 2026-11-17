@@ -415,6 +415,33 @@ var clusterAPI = merge(tagAPI(clusterArn, "DBClusterNotFoundFault", func(call ap
 				}),
 			},
 			nativetest.Rule{
+				Rule: "without one of the backup and maintenance windows, DocumentDB picks a 30-minute window that doesn't " +
+					"conflict with the other",
+				Check: func(ctx context.Context, _ *awsfake.CloudControl) error {
+					for _, edit := range []func(*docdb.CreateDBClusterInput){
+						func(in *docdb.CreateDBClusterInput) { in.PreferredBackupWindow = aws.String("09:00-23:00") },
+						func(in *docdb.CreateDBClusterInput) {
+							in.PreferredMaintenanceWindow = aws.String("sun:06:00-sun:20:00")
+						},
+					} {
+						f := newFakeAPI(awsfake.NewCloudControl())
+						if err := createCluster(ctx, f, edit); err != nil {
+							return err
+						}
+						c, err := describeCluster(ctx, f, "app")
+						if err != nil {
+							return err
+						}
+						backup, okB := backupWindow(aws.ToString(c.PreferredBackupWindow))
+						maintenance, okM := maintenanceWindow(aws.ToString(c.PreferredMaintenanceWindow))
+						if !okB || !okM || backup.overlaps(maintenance) {
+							return fmt.Errorf("the cluster has windows %q and %q", aws.ToString(c.PreferredBackupWindow), aws.ToString(c.PreferredMaintenanceWindow))
+						}
+					}
+					return nil
+				},
+			},
+			nativetest.Rule{
 				Rule: "MasterUsername is 1 to 63 letters or numbers, and starts with a letter",
 				Doc:  commonErrors,
 				Break: against(func(ctx context.Context, f *fakeAPI) error {
@@ -1165,6 +1192,32 @@ var instanceAPI = merge(tagAPI(instanceArn, "DBInstanceNotFound", func(call apiC
 					}
 					return nil
 				},
+			},
+			{
+				Rule: "CertificateRotationRestart defaults to true, so a queued CA certificate change without it restarts " +
+					"the instance, even after an earlier queued change set it to false",
+				Check: against(onReadyInstance(func(in *docdb.CreateDBInstanceInput) { in.CACertificateIdentifier = aws.String("rds-ca-2019") }, func(ctx context.Context, f *fakeAPI) error {
+					if err := modifyInstance(&docdb.ModifyDBInstanceInput{CACertificateIdentifier: aws.String("rds-ca-ecc384-g1"), CertificateRotationRestart: aws.Bool(false)})(ctx, f); err != nil {
+						return err
+					}
+					if _, err := describeInstance(ctx, f, "app-1"); err != nil {
+						return err
+					}
+					if err := modifyInstance(&docdb.ModifyDBInstanceInput{CACertificateIdentifier: aws.String("rds-ca-rsa2048-g1")})(ctx, f); err != nil {
+						return err
+					}
+					if _, err := describeInstance(ctx, f, "app-1"); err != nil {
+						return err
+					}
+					if err := modifyInstance(&docdb.ModifyDBInstanceInput{PromotionTier: aws.Int32(2), ApplyImmediately: aws.Bool(true)})(ctx, f); err != nil {
+						return err
+					}
+					i, err := describeInstance(ctx, f, "app-1")
+					if err != nil || aws.ToString(i.CACertificateIdentifier) != "rds-ca-rsa2048-g1" || f.restarts["app-1"] != 1 {
+						return fmt.Errorf("the instance has CA %s after %d restarts: %v", aws.ToString(i.CACertificateIdentifier), f.restarts["app-1"], err)
+					}
+					return nil
+				})),
 			},
 			{
 				Rule:  "PromotionTier is 0 to 15",

@@ -119,10 +119,24 @@ var (
 
 	// rolePattern is the pattern of RoleArn in RegisterResource and UpdateResource.
 	rolePattern = regexp.MustCompile(`^arn:aws:iam::[0-9]*:role/.*$`)
+
+	// namePattern is the documented pattern of Lake Formation's names and IDs.
+	namePattern = regexp.MustCompile(`^[\t\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]*$`)
 )
 
-// validLength returns ValidationError when a value isn't 1 to 255 characters, the limit of Lake Formation's names
-// and IDs.
+// validName returns ValidationError when a value isn't 1 to 255 characters or doesn't match namePattern, the limits
+// of Lake Formation's names and IDs.
+func validName(values ...string) error {
+	for _, s := range values {
+		if validLength(s) != nil || !namePattern.MatchString(s) {
+			return clientError(validationCode)
+		}
+	}
+	return nil
+}
+
+// validLength returns ValidationError when a value isn't 1 to 255 characters, the limit of Lake Formation's names,
+// IDs, and principal identifiers.
 func validLength(values ...string) error {
 	for _, s := range values {
 		if n := utf8.RuneCountInString(s); n < 1 || n > 255 {
@@ -157,11 +171,11 @@ func validSettings(s *types.DataLakeSettings) error {
 			}
 		}
 	}
-	if err := validLength(append(slices.Clone(s.AuthorizedSessionTagValueList), s.TrustedResourceOwners...)...); err != nil {
+	if err := validName(append(slices.Clone(s.AuthorizedSessionTagValueList), s.TrustedResourceOwners...)...); err != nil {
 		return err
 	}
 	for k, v := range s.Parameters {
-		if validLength(k) != nil || utf8.RuneCountInString(v) > maxParameterLength {
+		if validName(k) != nil || utf8.RuneCountInString(v) > maxParameterLength {
 			return clientError(validationCode)
 		}
 	}
@@ -209,7 +223,7 @@ func filtered(r *types.Resource) bool {
 func validResource(r *types.Resource) error {
 	catalog := func(id *string) error {
 		if id != nil {
-			return validLength(*id)
+			return validName(*id)
 		}
 		return nil
 	}
@@ -218,16 +232,16 @@ func validResource(r *types.Resource) error {
 		if err := catalog(r.Database.CatalogId); err != nil {
 			return err
 		}
-		return validLength(aws.ToString(r.Database.Name))
+		return validName(aws.ToString(r.Database.Name))
 	case r.Table != nil:
 		if err := catalog(r.Table.CatalogId); err != nil {
 			return err
 		}
-		if err := validLength(aws.ToString(r.Table.DatabaseName)); err != nil {
+		if err := validName(aws.ToString(r.Table.DatabaseName)); err != nil {
 			return err
 		}
 		if r.Table.Name != nil {
-			if err := validLength(*r.Table.Name); err != nil {
+			if err := validName(*r.Table.Name); err != nil {
 				return err
 			}
 		} else if r.Table.TableWildcard == nil {
@@ -242,7 +256,7 @@ func validResource(r *types.Resource) error {
 		if t.ColumnWildcard != nil {
 			columns = append(columns, t.ColumnWildcard.ExcludedColumnNames...)
 		}
-		if err := validLength(append([]string{aws.ToString(t.DatabaseName), aws.ToString(t.Name)}, columns...)...); err != nil {
+		if err := validName(append([]string{aws.ToString(t.DatabaseName), aws.ToString(t.Name)}, columns...)...); err != nil {
 			return err
 		}
 		if len(t.ColumnNames) == 0 && t.ColumnWildcard == nil {

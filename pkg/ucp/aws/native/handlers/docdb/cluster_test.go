@@ -390,3 +390,62 @@ func Test_Instance_CertificateRotationRestart(t *testing.T) {
 	}}))
 	require.Nil(t, api.lastModifyInstance.CertificateRotationRestart, "a template without the flag leaves DocumentDB's default")
 }
+
+// Test_Fake_RecreatedDropsQueuedChanges checks that a cluster or instance created with the identifier of a deleted
+// one doesn't take the changes the deleted one left for its maintenance window.
+func Test_Fake_RecreatedDropsQueuedChanges(t *testing.T) {
+	t.Run("instance", func(t *testing.T) {
+		ctx := t.Context()
+		f := newFakeAPI(awsfake.NewCloudControl())
+		require.NoError(t, onReadyInstance(nil, modifyInstance(&docdb.ModifyDBInstanceInput{DBInstanceClass: aws.String("db.r6g.large")}))(ctx, f))
+		_, err := describeInstance(ctx, f, "app-1")
+		require.NoError(t, err)
+		_, err = f.DeleteDBInstance(ctx, &docdb.DeleteDBInstanceInput{DBInstanceIdentifier: aws.String("app-1")})
+		require.NoError(t, err)
+		_, err = describeInstance(ctx, f, "app-1")
+		require.NoError(t, err)
+		_, err = describeInstance(ctx, f, "app-1")
+		require.ErrorContains(t, err, "DBInstanceNotFound")
+
+		require.NoError(t, createInstance(ctx, f, nil))
+		_, err = describeInstance(ctx, f, "app-1")
+		require.NoError(t, err)
+		require.NoError(t, modifyInstance(&docdb.ModifyDBInstanceInput{PromotionTier: aws.Int32(2), ApplyImmediately: aws.Bool(true)})(ctx, f))
+		i, err := describeInstance(ctx, f, "app-1")
+		require.NoError(t, err)
+		require.Equal(t, "db.t3.medium", aws.ToString(i.DBInstanceClass))
+	})
+
+	t.Run("cluster", func(t *testing.T) {
+		ctx := t.Context()
+		f := newFakeAPI(awsfake.NewCloudControl())
+		require.NoError(t, onReadyCluster(nil, modifyCluster(&docdb.ModifyDBClusterInput{EngineVersion: aws.String("8.0.1")}))(ctx, f))
+		_, err := describeCluster(ctx, f, "app")
+		require.NoError(t, err)
+		require.NoError(t, deleteCluster(&docdb.DeleteDBClusterInput{SkipFinalSnapshot: aws.Bool(true)})(ctx, f))
+		_, err = describeCluster(ctx, f, "app")
+		require.NoError(t, err)
+		_, err = describeCluster(ctx, f, "app")
+		require.ErrorContains(t, err, "DBClusterNotFoundFault")
+
+		require.NoError(t, readyCluster(ctx, f, nil))
+		require.NoError(t, modifyCluster(&docdb.ModifyDBClusterInput{BackupRetentionPeriod: aws.Int32(7), ApplyImmediately: aws.Bool(true)})(ctx, f))
+		c, err := describeCluster(ctx, f, "app")
+		require.NoError(t, err)
+		require.Equal(t, "8.0.0", aws.ToString(c.EngineVersion))
+	})
+}
+
+// Test_Fake_RejectedModifyQueuesNothing checks that a modify the Failer rejects before it takes effect leaves no
+// change for the maintenance window.
+func Test_Fake_RejectedModifyQueuesNothing(t *testing.T) {
+	ctx := t.Context()
+	f := newFakeAPI(awsfake.NewCloudControl())
+	require.NoError(t, onReadyInstance(nil, func(context.Context, *fakeAPI) error { return nil })(ctx, f))
+
+	f.failer.FailOn(0, errors.New("throttled"), false)
+	require.ErrorContains(t, modifyCluster(&docdb.ModifyDBClusterInput{EngineVersion: aws.String("8.0.1")})(ctx, f), "throttled")
+	f.failer.FailOn(0, errors.New("throttled"), false)
+	require.ErrorContains(t, modifyInstance(&docdb.ModifyDBInstanceInput{DBInstanceClass: aws.String("db.r6g.large")})(ctx, f), "throttled")
+	require.Empty(t, f.pending)
+}
