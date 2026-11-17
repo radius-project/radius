@@ -859,6 +859,9 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 					options.RadiusInstalled = true
 					options.Radius.Reinstall = true
 					options.RadiusReleaseValues = map[string]any{}
+					if scenario.external {
+						require.NoError(t, unstructured.SetNestedField(options.RadiusReleaseValues, "external", "global", "rbac", "tls", "provider"))
+					}
 				}
 			} else {
 				options.RadiusReleaseValues = copyValues(fixture.values)
