@@ -17,6 +17,7 @@ const modules = [
     ".github/scripts/cloud-test-artifacts.mjs",
     ["capture", "select", "prepare", "publish", "testTypesRegistry"]
   ],
+  [".github/scripts/release-reconciliation.mjs", ["waitForState"]],
   [".github/scripts/azure-oidc-login.mjs", ["login"]]
 ];
 const registryAction = ".github/actions/create-local-registry";
@@ -94,6 +95,23 @@ async function checkDependencies(base) {
 
 test("prepared base loads helper exports and contains action and installer dependencies", async (t) => {
   await checkDependencies(await preparedBase(t));
+});
+
+test("sparse capture checkout loads without publisher-only dependencies", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "cloud-sparse-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const file = join(directory, "cloud-test-artifacts.mjs");
+  await cp(join(root, ".github/scripts/cloud-test-artifacts.mjs"), file);
+  execFileSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      `const { capture } = await import(${JSON.stringify(pathToFileURL(file).href)});
+       if (typeof capture !== "function") throw new Error("Missing capture");`
+    ],
+    { stdio: "pipe" }
+  );
 });
 
 for (const missing of [
