@@ -33,9 +33,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kafka"
 	kafkatypes "github.com/aws/aws-sdk-go-v2/service/kafka/types"
 	"github.com/aws/smithy-go"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -64,14 +66,47 @@ func loadAWSConfig(ctx context.Context, t *testing.T) aws.Config {
 	return cfg
 }
 
-// cleanupContext returns a context for cleanup that ends before the go test deadline. t.Context is canceled before
-// cleanup runs.
+// cleanupContext returns a context for cleanup that ends 30 seconds before the go test deadline. t.Context is canceled
+// before cleanup runs.
 func cleanupContext(t *testing.T) (context.Context, context.CancelFunc) {
+	return cleanupContextBefore(t, 30*time.Second)
+}
+
+// cleanupContextBefore returns a context for cleanup that ends margin before the go test deadline.
+func cleanupContextBefore(t *testing.T, margin time.Duration) (context.Context, context.CancelFunc) {
 	deadline := time.Now().Add(cleanupTimeout)
-	if testDeadline, ok := t.Deadline(); ok && testDeadline.Add(-30*time.Second).Before(deadline) {
-		deadline = testDeadline.Add(-30 * time.Second)
+	if testDeadline, ok := t.Deadline(); ok && testDeadline.Add(-margin).Before(deadline) {
+		deadline = testDeadline.Add(-margin)
 	}
 	return context.WithDeadline(context.Background(), deadline) //nolint:usetesting
+}
+
+// cleanupRadiusResources deletes the Radius resources a test deploys when it ends, in place of the framework's
+// teardown, which waits on each delete without a deadline when RADIUS_TEST_FAST_CLEANUP isn't set. A delete that hangs
+// there would use up the time the AWS cleanups need. This one ends cleanupReserve/2 before the go test deadline, so
+// the AWS cleanups registered before it still run. Register it last, so it runs first.
+func cleanupRadiusResources(t *testing.T, client clients.ApplicationsManagementClient, resources ...validation.RPResource) {
+	t.Cleanup(func() {
+		ctx, cancel := cleanupContextBefore(t, cleanupReserve/2)
+		defer cancel()
+
+		for _, resource := range resources {
+			t.Logf("deleting %s %s", resource.Type, resource.Name)
+			var err error
+			switch resource.Type {
+			case validation.ApplicationsResource:
+				_, err = client.DeleteApplication(ctx, resource.Name, false)
+			case validation.EnvironmentsResource:
+				_, err = client.DeleteEnvironment(ctx, resource.Name)
+			default:
+				// force deletes a resource left in a non-terminal state by a failed deploy.
+				_, err = client.DeleteResource(ctx, resource.Type, resource.Name, true)
+			}
+			if err != nil && !clients.Is404Error(err) {
+				t.Errorf("failed to delete %s %s: %v", resource.Type, resource.Name, err)
+			}
+		}
+	})
 }
 
 // beforeCleanup returns executor with a context that ends cleanupReserve before the go test deadline, so a slow

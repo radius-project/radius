@@ -114,13 +114,16 @@ func Test_AWSReadOnlyTypeWithExisting(t *testing.T) {
 	})
 	deployCreate.Description = "deploy testdata/aws-mechanics-image-create.bicep"
 
+	extender := validation.RPResource{Name: name, Type: validation.ExtendersResource}
 	var since time.Time
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: deployExisting,
 			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{{Name: name, Type: validation.ExtendersResource}},
+				Resources: []validation.RPResource{extender},
 			},
+			// The extender has no application to delete it with, so cleanupRadiusResources deletes it.
+			SkipResourceDeletion: true,
 			SkipObjectValidation: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				extender, err := ct.Options.ManagementClient.GetResource(ctx, validation.ExtendersResource, name)
@@ -142,7 +145,8 @@ func Test_AWSReadOnlyTypeWithExisting(t *testing.T) {
 		},
 	})
 
-	test.PreSetup = func(ctx context.Context, t *testing.T, _ rp.RPTest) {
+	test.PreSetup = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+		cleanupRadiusResources(t, ct.Options.ManagementClient, extender)
 		since = time.Now()
 		imageID = newestAmazonLinuxImage(ctx, t, newEC2Client(ctx, t))
 		imageARN = fmt.Sprintf("arn:aws:ec2:%s::image/%s", os.Getenv("AWS_REGION"), imageID)
@@ -174,13 +178,16 @@ func Test_AWSExtraReadPropertyRedeploySendsNothing(t *testing.T) {
 	})
 	deploy.Description = "deploy " + template
 
+	resourceSet := recipeResourceSet(name, appName, "AWS.MSK/ServerlessCluster", clusterName)
 	var clusterARN, brokers string
 	var since time.Time
 	var rpTest rp.RPTest
 	rpTest = rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:             beforeCleanup(deploy),
-			RPResources:          recipeResourceSet(name, appName, "AWS.MSK/ServerlessCluster", clusterName),
+			Executor:    beforeCleanup(deploy),
+			RPResources: resourceSet,
+			// cleanupRadiusResources deletes the application and environment within the test deadline.
+			SkipResourceDeletion: true,
 			SkipObjectValidation: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				requireAWSWrite(ctx, t, ct, clusterName, msgCreating)
@@ -213,10 +220,12 @@ func Test_AWSExtraReadPropertyRedeploySendsNothing(t *testing.T) {
 		},
 	})
 
-	rpTest.PreSetup = func(ctx context.Context, t *testing.T, _ rp.RPTest) {
+	rpTest.PreSetup = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 		subnetIDs = createTestNetwork(ctx, t, newEC2Client(ctx, t), clusterName, creationTimestamp)
-		// Registered last, so it runs first: the cluster must be gone before the network.
+		// Cleanups run in reverse order: Radius deletes the app, which deletes the cluster, then the test makes sure
+		// the cluster is gone, then deletes the network.
 		cleanupMSKClusters(t, newKafkaClient(ctx, t), clusterName)
+		cleanupRadiusResources(t, ct.Options.ManagementClient, validation.ResourcesInDeletionOrder(resourceSet)...)
 	}
 	rpTest.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAWS}
 	rpTest.Test(t)
