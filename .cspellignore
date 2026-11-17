@@ -989,6 +989,7 @@ persistentVolumes
 pfx
 pgvector
 pgvector's
+pg_trgm
 pkgs
 plaidResource
 plainHTTP
