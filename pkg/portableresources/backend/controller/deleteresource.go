@@ -76,9 +76,10 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 	}
 
 	recipeDataModel, supportsRecipes := any(data).(datamodel.RecipeDataModel)
-	// If we have a setup error (error before recipe and output resources are executed, we skip engine/driver deletion.
-	// If we have an execution error, we call engine/driver deletion.
-	if supportsRecipes && recipeDataModel.GetRecipe() != nil && recipeDataModel.GetRecipe().DeploymentStatus != util.RecipeSetupError {
+	// A setup error skips recipe deletion only when no earlier deployment left cleanup state.
+	pendingDeployments := data.ResourceMetadata().GetResourceStatus().PendingRecipeDeployments
+	if supportsRecipes && recipeDataModel.GetRecipe() != nil &&
+		(recipeDataModel.GetRecipe().DeploymentStatus != util.RecipeSetupError || len(data.OutputResources()) > 0 || len(pendingDeployments) > 0) {
 		resourceProperties, err := resourceutil.GetPropertiesFromResource(data)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -93,8 +94,9 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 		}
 
 		err = c.engine.Delete(ctx, engine.DeleteOptions{
-			Recipe:          recipeData,
-			OutputResources: data.OutputResources(),
+			Recipe:             recipeData,
+			OutputResources:    data.OutputResources(),
+			PendingDeployments: pendingDeployments,
 		})
 		if err != nil {
 			if recipeError, ok := err.(*recipes.RecipeError); ok {

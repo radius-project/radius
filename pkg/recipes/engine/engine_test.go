@@ -237,6 +237,60 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 	require.Equal(t, err.Error(), "failed to execute recipe")
 }
 
+func Test_Engine_Execute_RetainsPartialFailureOutput(t *testing.T) {
+	e, configLoader, driver, _, _ := setup(t)
+	metadata := recipes.ResourceMetadata{Name: "test-recipe"}
+	definition := &recipes.EnvironmentDefinition{Driver: recipes.TemplateKindBicep}
+	configLoader.EXPECT().LoadConfiguration(gomock.Any(), metadata).Return(&recipes.Configuration{}, nil)
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), &metadata).Return(definition, nil)
+	partial := &recipes.RecipeOutput{Resources: []string{"owned-resource"}, PendingDeploymentID: "pending-deployment"}
+	deploymentErr := errors.New("deployment failed")
+	driver.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(partial, deploymentErr)
+
+	output, err := e.Execute(t.Context(), ExecuteOptions{Recipe: metadata})
+	require.Same(t, partial, output)
+	require.ErrorIs(t, err, deploymentErr)
+}
+
+func Test_Engine_Delete_RejectsSkippingPendingDeployments(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		simulated bool
+		driver    string
+	}{
+		{name: "simulated environment", simulated: true},
+		{name: "driver changed", driver: recipes.TemplateKindTerraform},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			e, loader, _, _, _ := setup(t)
+			metadata := recipes.ResourceMetadata{Name: "test-recipe"}
+			loader.EXPECT().LoadConfiguration(gomock.Any(), metadata).Return(&recipes.Configuration{Simulated: tt.simulated}, nil)
+			if !tt.simulated {
+				loader.EXPECT().LoadRecipe(gomock.Any(), &metadata).Return(&recipes.EnvironmentDefinition{Driver: tt.driver}, nil)
+			}
+			require.Error(t, e.Delete(t.Context(), DeleteOptions{
+				Recipe: metadata, PendingDeployments: []string{"pending-deployment"},
+			}))
+		})
+	}
+}
+
+func Test_Engine_Delete_ForwardsPendingDeployments(t *testing.T) {
+	e, configLoader, driver, _, _ := setup(t)
+	metadata := recipes.ResourceMetadata{Name: "test-recipe"}
+	definition := &recipes.EnvironmentDefinition{Driver: recipes.TemplateKindBicep}
+	configLoader.EXPECT().LoadConfiguration(gomock.Any(), metadata).Return(&recipes.Configuration{}, nil)
+	configLoader.EXPECT().LoadRecipe(gomock.Any(), &metadata).Return(definition, nil)
+	driver.EXPECT().Delete(gomock.Any(), recipedriver.DeleteOptions{
+		BaseOptions:        recipedriver.BaseOptions{Recipe: metadata, Definition: *definition},
+		PendingDeployments: []string{"pending-deployment"},
+	}).Return(nil)
+
+	require.NoError(t, e.Delete(t.Context(), DeleteOptions{
+		Recipe: metadata, PendingDeployments: []string{"pending-deployment"},
+	}))
+}
+
 func Test_Engine_Terraform_Success(t *testing.T) {
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",

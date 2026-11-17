@@ -41,6 +41,7 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/crypto/encryption"
+	dynamicdm "github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources"
 	"github.com/radius-project/radius/pkg/portableresources/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -48,6 +49,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/controllerconfig"
 	"github.com/radius-project/radius/pkg/recipes/engine"
+	recipeutil "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -578,6 +580,136 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCreateOrUpdateResource_Run_RetainsFailedRecipeCleanupInventory(t *testing.T) {
+	for _, laterSetupFailure := range []bool{false, true} {
+		t.Run(fmt.Sprintf("later setup failure=%t", laterSetupFailure), func(t *testing.T) {
+			t.Parallel()
+			mctrl := gomock.NewController(t)
+			db := database.NewMockClient(mctrl)
+			eng := engine.NewMockEngine(mctrl)
+			cfg := configloader.NewMockConfigurationLoader(mctrl)
+			previous := rpv1.OutputResource{ID: resources.MustParse(oldOutputResourceResourceID), RadiusManaged: new(true)}
+			resource := &TestResource{
+				BaseResource: v1.BaseResource{ID: TestResourceID, Type: TestResourceType},
+				Properties: TestResourceProperties{
+					BasicResourceProperties: rpv1.BasicResourceProperties{
+						Environment: TestEnvironmentID,
+						Application: TestApplicationID,
+						Status: rpv1.ResourceStatus{
+							OutputResources:          []rpv1.OutputResource{previous},
+							PendingRecipeDeployments: []string{"earlier-deployment"},
+						},
+					},
+					Recipe: portableresources.ResourceRecipe{Name: "test-recipe"},
+				},
+			}
+			deploymentErr := recipes.NewRecipeError(recipes.RecipeDeploymentFailed, "deployment failed", recipeutil.ExecutionError)
+			partial := &recipes.RecipeOutput{
+				Resources:           []string{oldOutputResourceResourceID, newOutputResourceResourceID},
+				PendingDeploymentID: "latest-deployment",
+				Secrets:             map[string]any{"password": "do-not-persist"},
+				Values:              map[string]any{"host": "do-not-publish"},
+			}
+			db.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{Data: resource, ETag: "etag"}, nil)
+			cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil).Times(2)
+			eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(partial, deploymentErr)
+			var saved *TestResource
+			db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, object *database.Object, _ ...database.SaveOptions) error {
+					saved = object.Data.(*TestResource)
+					return nil
+				})
+			create, err := NewCreateOrUpdateResource(ctrl.Options{DatabaseClient: db}, successProcessorReference, eng, cfg)
+			require.NoError(t, err)
+			result, err := create.Run(t.Context(), &ctrl.Request{ResourceID: TestResourceID})
+			require.NoError(t, err)
+			require.Equal(t, v1.ProvisioningStateFailed, result.ProvisioningState())
+			require.Equal(t, deploymentErr.ErrorDetails, *result.Error)
+			require.NotNil(t, saved)
+			require.False(t, saved.Properties.IsProcessed)
+			require.Empty(t, saved.ComputedValues)
+			require.Empty(t, saved.SecretValues)
+			require.Equal(t, recipeutil.ExecutionError, saved.GetRecipe().DeploymentStatus)
+			require.Equal(t, []string{"earlier-deployment", "latest-deployment"}, saved.Properties.Status.PendingRecipeDeployments)
+			require.Len(t, saved.OutputResources(), 2)
+			require.Equal(t, previous, saved.OutputResources()[0])
+			require.True(t, saved.OutputResources()[1].IsRadiusManaged())
+
+			if laterSetupFailure {
+				saved.Properties.Recipe.DeploymentStatus = recipeutil.RecipeSetupError
+			}
+			db.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{Data: saved}, nil)
+			eng.EXPECT().Delete(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, opts engine.DeleteOptions) error {
+				require.Equal(t, saved.OutputResources(), opts.OutputResources)
+				require.Equal(t, saved.Properties.Status.PendingRecipeDeployments, opts.PendingDeployments)
+				return nil
+			})
+			db.EXPECT().Delete(gomock.Any(), TestResourceID).Return(nil)
+			remove, err := NewDeleteResource(ctrl.Options{DatabaseClient: db}, successProcessorReference, eng, cfg)
+			require.NoError(t, err)
+			_, err = remove.Run(t.Context(), &ctrl.Request{ResourceID: TestResourceID})
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestRetainFailedRecipeOutput_DynamicResource(t *testing.T) {
+	resource := &dynamicdm.DynamicResource{Properties: map[string]any{}}
+	output := &recipes.RecipeOutput{
+		Resources:           []string{newOutputResourceResourceID},
+		PendingDeploymentID: "pending-deployment",
+		Values:              map[string]any{"host": "do-not-publish"},
+		Secrets:             map[string]any{"password": "do-not-persist"},
+	}
+	require.NoError(t, retainFailedRecipeOutput(resource, output))
+	require.NoError(t, retainFailedRecipeOutput(resource, output))
+	raw, err := json.Marshal(resource)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), "do-not-")
+	var restored dynamicdm.DynamicResource
+	require.NoError(t, json.Unmarshal(raw, &restored))
+	require.Len(t, restored.OutputResources(), 1)
+	require.True(t, restored.OutputResources()[0].IsRadiusManaged())
+	require.Equal(t, []string{"pending-deployment"}, restored.ResourceMetadata().GetResourceStatus().PendingRecipeDeployments)
+}
+
+func TestCreateOrUpdateResource_Run_DynamicRecipeFailureStatus(t *testing.T) {
+	mctrl := gomock.NewController(t)
+	db := database.NewMockClient(mctrl)
+	eng := engine.NewMockEngine(mctrl)
+	cfg := configloader.NewMockConfigurationLoader(mctrl)
+	resource := &dynamicdm.DynamicResource{
+		BaseResource: v1.BaseResource{ID: TestResourceID, Type: TestResourceType},
+		Properties: map[string]any{
+			"environment": TestEnvironmentID,
+			"application": TestApplicationID,
+			"recipe":      map[string]any{"name": "test-recipe"},
+		},
+	}
+	db.EXPECT().Get(gomock.Any(), TestResourceID).Return(&database.Object{Data: resource, ETag: "etag"}, nil)
+	cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil)
+	deploymentErr := recipes.NewRecipeError(recipes.RecipeDeploymentFailed, "deployment failed", recipeutil.ExecutionError)
+	eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&recipes.RecipeOutput{
+		Resources: []string{newOutputResourceResourceID}, PendingDeploymentID: "pending-deployment",
+	}, deploymentErr)
+	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, object *database.Object, _ ...database.SaveOptions) error {
+			var restored dynamicdm.DynamicResource
+			require.NoError(t, object.As(&restored))
+			require.Equal(t, recipeutil.ExecutionError, restored.GetRecipe().DeploymentStatus)
+			require.Len(t, restored.OutputResources(), 1)
+			require.Equal(t, []string{"pending-deployment"}, restored.ResourceMetadata().GetResourceStatus().PendingRecipeDeployments)
+			return nil
+		})
+	create, err := NewCreateOrUpdateResource[*dynamicdm.DynamicResource, dynamicdm.DynamicResource](
+		ctrl.Options{DatabaseClient: db}, nil, eng, cfg)
+	require.NoError(t, err)
+	result, err := create.Run(t.Context(), &ctrl.Request{ResourceID: TestResourceID})
+	require.NoError(t, err)
+	require.Equal(t, v1.ProvisioningStateFailed, result.ProvisioningState())
+	require.Equal(t, deploymentErr.ErrorDetails, *result.Error)
 }
 
 func TestCreateOrUpdateResource_Run_RecipeErrorSurfacedWhenStatusSaveFails(t *testing.T) {

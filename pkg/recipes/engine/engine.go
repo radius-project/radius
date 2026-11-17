@@ -103,11 +103,7 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 		Secrets:       secrets,
 		PrevState:     prevState,
 	})
-	if err != nil {
-		return nil, definition, err
-	}
-
-	return res, definition, nil
+	return res, definition, err
 }
 
 // Delete calls the Delete method of the driver specified in the recipe definition to delete the output resources.
@@ -115,7 +111,7 @@ func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 	deletionStart := time.Now()
 	result := metrics.SuccessfulOperationState
 
-	definition, err := e.deleteCore(ctx, opts.Recipe, opts.OutputResources)
+	definition, err := e.deleteCore(ctx, opts.Recipe, opts.OutputResources, opts.PendingDeployments)
 	if err != nil {
 		result = metrics.FailedOperationState
 		if errorDetails := recipes.GetErrorDetails(err); errorDetails != nil {
@@ -132,7 +128,7 @@ func (e *engine) Delete(ctx context.Context, opts DeleteOptions) error {
 
 // deleteCore function is the core logic of the Delete function.
 // Any changes to the core logic of the Delete function should be made here.
-func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource) (*recipes.EnvironmentDefinition, error) {
+func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata, outputResources []rpv1.OutputResource, pendingDeployments []string) (*recipes.EnvironmentDefinition, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	configuration, err := e.options.ConfigurationLoader.LoadConfiguration(ctx, recipe)
 	if err != nil {
@@ -140,6 +136,9 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 	}
 
 	if configuration.Simulated {
+		if len(pendingDeployments) > 0 {
+			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, "cannot skip pending recipe deployment cleanup in a simulated environment", "", nil)
+		}
 		logger.Info("simulated environment enabled, skipping deleting resources")
 		return nil, nil
 	}
@@ -149,16 +148,21 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 		return nil, err
 	}
 
+	if len(pendingDeployments) > 0 && definition.Driver != recipes.TemplateKindBicep {
+		return definition, recipes.NewRecipeError(recipes.RecipeDeletionFailed, "pending Bicep deployment cleanup requires a Bicep recipe driver", "", nil)
+	}
+
 	secrets, err := e.getRecipeConfigSecrets(ctx, driver, configuration, definition)
 	if err != nil {
 		return nil, err
 	}
 	err = driver.Delete(ctx, recipedriver.DeleteOptions{
-		Configuration:   *configuration,
-		Recipe:          recipe,
-		Definition:      *definition,
-		Secrets:         secrets,
-		OutputResources: outputResources,
+		Configuration:      *configuration,
+		Recipe:             recipe,
+		Definition:         *definition,
+		Secrets:            secrets,
+		OutputResources:    outputResources,
+		PendingDeployments: pendingDeployments,
 	})
 	if err != nil {
 		return definition, err

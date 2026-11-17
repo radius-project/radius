@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -63,15 +64,21 @@ type deploymentClientSpy struct {
 	createOrUpdateCalls int
 	deployment          clients.Deployment
 	response            *clients.ClientCreateOrUpdateResponse
+	pollErr             error
+	getResponse         clients.ClientCreateOrUpdateResponse
+	getErr              error
+	getCalls            int
+	deploymentID        string
 }
 
 type deploymentPollerStub struct {
 	clients.Poller[clients.ClientCreateOrUpdateResponse]
 	response clients.ClientCreateOrUpdateResponse
+	err      error
 }
 
 func (p *deploymentPollerStub) PollUntilDone(context.Context, *clients.PollUntilDoneOptions) (clients.ClientCreateOrUpdateResponse, error) {
-	return p.response, nil
+	return p.response, p.err
 }
 
 type clusterAccessResolverStub struct {
@@ -91,13 +98,139 @@ func (s *clusterAccessResolverStub) ResolveKubeconfigSource(context.Context, *re
 	return clusteraccess.KubeconfigSource{}, errors.New("unexpected ResolveKubeconfigSource call")
 }
 
-func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, deployment clients.Deployment, _, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
+func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, deployment clients.Deployment, deploymentID, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
 	s.createOrUpdateCalls++
 	s.deployment = deployment
+	s.deploymentID = deploymentID
 	if s.response != nil {
-		return &deploymentPollerStub{response: *s.response}, nil
+		return &deploymentPollerStub{response: *s.response, err: s.pollErr}, nil
 	}
 	return nil, errors.New("unexpected deployment")
+}
+
+func (s *deploymentClientSpy) Get(_ context.Context, deploymentID, _ string) (clients.ClientCreateOrUpdateResponse, error) {
+	s.getCalls++
+	if deploymentID != s.deploymentID {
+		return clients.ClientCreateOrUpdateResponse{}, fmt.Errorf("unexpected deployment ID %q", deploymentID)
+	}
+	return s.getResponse, s.getErr
+}
+
+func Test_Bicep_Execute_PartialDeploymentCleanup(t *testing.T) {
+	const resourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.ContainerInstance/ngroups/test-group"
+	for _, tt := range []struct {
+		name       string
+		properties *armdeployments.DeploymentPropertiesExtended
+		getErr     error
+		pending    bool
+		resources  []string
+	}{
+		{name: "failed PUT retains owned target", properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateFailed),
+			OutputResources:   []*armdeployments.ResourceReference{{ID: new(resourceID)}},
+			Outputs:           map[string]any{"password": "do-not-persist"},
+		}, resources: []string{resourceID}},
+		{name: "canceled deployment", properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateCanceled), OutputResources: []*armdeployments.ResourceReference{{ID: new(resourceID)}},
+		}, resources: []string{resourceID}},
+		{name: "polling transport failure after success", properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateSucceeded), OutputResources: []*armdeployments.ResourceReference{{ID: new(resourceID)}},
+		}, resources: []string{resourceID}},
+		{name: "explicit empty inventory", properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateFailed), OutputResources: []*armdeployments.ResourceReference{},
+		}, resources: []string{}},
+		{name: "GET fails", getErr: errors.New("inventory unavailable"), pending: true},
+		{name: "missing properties", pending: true},
+		{name: "missing inventory", properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateFailed),
+		}, pending: true},
+		{name: "missing state", properties: &armdeployments.DeploymentPropertiesExtended{
+			OutputResources: []*armdeployments.ResourceReference{},
+		}, pending: true},
+		{name: "operation still active", properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateRunning), OutputResources: []*armdeployments.ResourceReference{{ID: new(resourceID)}},
+		}, pending: true},
+		{name: "invalid inventory entry", properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateFailed), OutputResources: []*armdeployments.ResourceReference{{ID: new(resourceID)}, {ID: new("invalid")}},
+		}, pending: true},
+		{name: "nil inventory entry", properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateFailed), OutputResources: []*armdeployments.ResourceReference{nil},
+		}, pending: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			ts := registrytest.NewFakeRegistryServer(t)
+			t.Cleanup(ts.CloseServer)
+			deploymentClient := &deploymentClientSpy{
+				response: &clients.ClientCreateOrUpdateResponse{},
+				pollErr: &azcore.ResponseError{ErrorCode: "ContainerGroupTransitioning", StatusCode: http.StatusBadRequest,
+					RawResponse: &http.Response{Body: io.NopCloser(strings.NewReader(`{"error":{"code":"ContainerGroupTransitioning","message":"container group is transitioning"}}`))}},
+				getResponse: clients.ClientCreateOrUpdateResponse{Properties: tt.properties},
+				getErr:      tt.getErr,
+			}
+			d, resourceClient, _, _ := setupDeleteInputs(t)
+			d.DeploymentClient = deploymentClient
+			d.RegistryClient = ts.TestServer.Client()
+			output, err := d.Execute(t.Context(), driver.ExecuteOptions{
+				Recipe: recipes.ResourceMetadata{
+					Name:          "test-resource",
+					ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/resources/test-resource",
+					EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/environments/env",
+				},
+				Definition: recipes.EnvironmentDefinition{Name: "test-recipe", TemplatePath: ts.TestImageURL},
+			})
+			var recipeErr *recipes.RecipeError
+			require.ErrorAs(t, err, &recipeErr)
+			require.Equal(t, recipes.RecipeDeploymentFailed, recipeErr.ErrorDetails.Code)
+			require.Equal(t, recipes_util.ExecutionError, recipeErr.DeploymentStatus)
+			require.Equal(t, "ContainerGroupTransitioning", recipeErr.ErrorDetails.Details[0].Code)
+			require.NotNil(t, output)
+			require.Equal(t, tt.resources, output.Resources)
+			require.Empty(t, output.Values)
+			require.Empty(t, output.Secrets)
+			require.Equal(t, 1, deploymentClient.getCalls)
+
+			deleteOptions := driver.DeleteOptions{}
+			if tt.pending {
+				require.Equal(t, deploymentClient.deploymentID, output.PendingDeploymentID)
+				deleteOptions.PendingDeployments = []string{output.PendingDeploymentID}
+			} else {
+				require.Empty(t, output.PendingDeploymentID)
+				deleteOptions.OutputResources, err = processors.GetOutputResourcesFromRecipe(output)
+				require.NoError(t, err)
+				if len(tt.resources) > 0 {
+					resourceClient.EXPECT().Delete(gomock.Any(), resourceID).Return(nil)
+				}
+			}
+			err = d.Delete(t.Context(), deleteOptions)
+			if tt.pending {
+				require.Error(t, err)
+				require.Equal(t, 2, deploymentClient.getCalls)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_Bicep_Delete_RecoversPendingDeploymentInventory(t *testing.T) {
+	const deploymentID = "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe1"
+	const resourceID = "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.ContainerInstance/ngroups/test-group"
+	d, resourceClient, _, _ := setupDeleteInputs(t)
+	d.DeploymentClient = &deploymentClientSpy{
+		deploymentID: deploymentID,
+		getResponse: clients.ClientCreateOrUpdateResponse{Properties: &armdeployments.DeploymentPropertiesExtended{
+			ProvisioningState: new(armdeployments.ProvisioningStateFailed),
+			OutputResources:   []*armdeployments.ResourceReference{{ID: new(resourceID)}},
+		}},
+	}
+	resourceClient.EXPECT().Delete(gomock.Any(), resourceID).Return(nil).Times(1)
+	require.NoError(t, d.Delete(t.Context(), driver.DeleteOptions{
+		PendingDeployments: []string{deploymentID},
+		OutputResources: []rpv1.OutputResource{
+			{ID: resources.MustParse(resourceID), RadiusManaged: new(true)},
+		},
+	}))
 }
 
 func Test_CreateRecipeParameters_NoContextParameter(t *testing.T) {
