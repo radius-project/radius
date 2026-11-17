@@ -196,6 +196,15 @@ func dimensions(dims []types.Dimension) []dimension {
 	return out
 }
 
+// optional returns s, or nil when s is empty: CloudWatch rejects an empty metric name or statistic, so a call leaves
+// out one the detector doesn't have.
+func optional(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return aws.String(s)
+}
+
 func sdkDimensions(dims []dimension) []types.Dimension {
 	out := []types.Dimension{}
 	for _, d := range dims {
@@ -324,7 +333,7 @@ func (h *AnomalyDetector) find(ctx context.Context, region string, id identity) 
 		input = &cloudwatch.DescribeAnomalyDetectorsInput{
 			AnomalyDetectorTypes: []types.AnomalyDetectorType{types.AnomalyDetectorTypeSingleMetric},
 			Namespace:            aws.String(id.Namespace),
-			MetricName:           aws.String(id.MetricName),
+			MetricName:           optional(id.MetricName),
 			Dimensions:           sdkDimensions(id.Dimensions),
 		}
 	}
@@ -626,9 +635,9 @@ func (h *AnomalyDetector) Delete(ctx context.Context, region string, identifier 
 	} else {
 		input.SingleMetricAnomalyDetector = &types.SingleMetricAnomalyDetector{
 			Namespace:  aws.String(id.Namespace),
-			MetricName: aws.String(id.MetricName),
+			MetricName: optional(id.MetricName),
 			Dimensions: sdkDimensions(id.Dimensions),
-			Stat:       aws.String(id.Stat),
+			Stat:       optional(id.Stat),
 		}
 		if id.AccountId != "" {
 			input.SingleMetricAnomalyDetector.AccountId = aws.String(id.AccountId)

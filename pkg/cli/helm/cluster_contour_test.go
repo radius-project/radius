@@ -182,8 +182,9 @@ func Test_Helm_InstallRadius_ExistingContourIsNotChecked(t *testing.T) {
 	client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(contourRelease, nil).Times(1)
 	radiusRelease := &releasev1.Release{Name: options.Radius.ReleaseName, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}}}
 	client.EXPECT().RunHelmGet(gomock.Any(), options.Radius.ReleaseName).Return(radiusRelease, nil).Times(1)
+	migration := expectControllerStrategyMigration(client, true)
 	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, true, gomock.Any()).
-		Return(radiusRelease, nil).Times(1)
+		Return(radiusRelease, nil).After(migration).Times(1)
 	// No Contour history, chart pull, install, or upgrade is expected.
 
 	gatewayCalls := &defaultContourGatewayCalls{}
@@ -233,6 +234,7 @@ func Test_Helm_UpgradeRadius_ReusesStoredContourValues(t *testing.T) {
 	expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
 	expectContourHistory(client, options, contourRelease)
 	expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
+	expectControllerStrategyMigration(client, true)
 	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, true, gomock.Any()).
 		Return(&releasev1.Release{}, nil).Times(1)
 	var contourValues map[string]any
@@ -304,6 +306,7 @@ func Test_Helm_UpgradeRadius_ContourValuesFromFlags(t *testing.T) {
 			expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
 			expectContourHistory(client, options, contourRelease)
 			expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
+			expectControllerStrategyMigration(client, !resetValues)
 			client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, !resetValues, gomock.Any()).
 				Return(&releasev1.Release{}, nil).Times(1)
 			var contourValues map[string]any
@@ -407,6 +410,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeBaseline(t *testing.T) {
 				expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
 			}
 			if tt.wantErr == "" {
+				expectControllerStrategyMigration(client, true)
 				client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true, true, gomock.Any()).
 					Return(&releasev1.Release{}, nil).Times(1)
 				client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, false, true, gomock.Any()).
@@ -669,6 +673,7 @@ func Test_Helm_UpgradeRadius_DownloadsContourChartOnce(t *testing.T) {
 	expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
 	client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(contourRelease, nil).Times(2)
 	client.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return([]*releasev1.Release{contourRelease}, nil).Times(2)
+	expectControllerStrategyMigration(client, true)
 	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(&releasev1.Release{}, nil).Times(1)
 	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
@@ -714,6 +719,7 @@ func Test_Helm_UpgradeRadius_WaitsForK3sOnce(t *testing.T) {
 		client.EXPECT().RunHelmGet(gomock.Any(), "traefik-crd").Return(nil, driver.ErrReleaseNotFound).Times(1)
 		client.EXPECT().RunHelmGet(gomock.Any(), options.Contour.ReleaseName).Return(contourRelease, nil).Times(2)
 		client.EXPECT().RunHelmHistory(gomock.Any(), options.Contour.ReleaseName).Return([]*releasev1.Release{contourRelease}, nil).Times(2)
+		expectControllerStrategyMigration(client, true)
 		client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Radius.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(&releasev1.Release{}, nil).Times(1)
 		client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
@@ -1023,6 +1029,9 @@ func recordHelmCalls(t *testing.T, options ClusterOptions, upgrade bool) []strin
 	var calls []string
 	contourRelease := &releasev1.Release{Name: contourReleaseName, Version: 1, Chart: newTestContourChart(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
 	client := NewMockHelmClient(gomock.NewController(t))
+	if upgrade {
+		expectControllerStrategyMigration(client, true)
+	}
 	client.EXPECT().RunHelmPull(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
 			pull := helm.NewPull(pullopts...)
