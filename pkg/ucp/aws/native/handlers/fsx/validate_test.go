@@ -440,10 +440,14 @@ func validateOntap(capacity *int32, c *types.CreateFileSystemOntapConfiguration,
 }
 
 // validOntapThroughput checks the throughput capacity of an ONTAP file system with the HA pairs, 1 to 12, given as
-// the total or per HA pair.
+// the total or per HA pair. A total must divide evenly by the HA pairs, since every capacity per HA pair is a whole
+// number.
 func validOntapThroughput(deployment string, pairs int32, total *int32, perPair *int32) error {
 	per := perPair
 	if per == nil && total != nil {
+		if *total%pairs != 0 {
+			return badRequest("ThroughputCapacity %d divided by %d HA pairs isn't valid for a %s file system.", *total, pairs, deployment)
+		}
 		per = aws.Int32(*total / pairs)
 	}
 	if per != nil && !slices.Contains(ontapThroughputPerPair[deployment], *per) {
@@ -506,15 +510,41 @@ func validateRestore(in *fsx.CreateFileSystemFromBackupInput, source *types.File
 		if err := validSchedule(c.AutomaticBackupRetentionDays, c.WeeklyMaintenanceStartTime, c.DailyAutomaticBackupStartTime); err != nil {
 			return err
 		}
+		deployment := c.DeploymentType
+		if source.LustreConfiguration != nil && deployment == "" {
+			deployment = source.LustreConfiguration.DeploymentType
+		}
+		storage := in.StorageType
+		if storage == "" {
+			storage = types.StorageTypeSsd
+		}
+		valid, ok := lustreThroughputPerTiB[string(deployment)+"/"+string(storage)]
+		if ok && c.PerUnitStorageThroughput != nil && !slices.Contains(valid, *c.PerUnitStorageThroughput) {
+			return fault("InvalidPerUnitStorageThroughput", fmt.Sprintf("PerUnitStorageThroughput %d isn't valid for %s %s storage.", *c.PerUnitStorageThroughput, deployment, storage))
+		}
 	}
 	if c := in.WindowsConfiguration; c != nil {
 		if err := validSchedule(c.AutomaticBackupRetentionDays, c.WeeklyMaintenanceStartTime, c.DailyAutomaticBackupStartTime); err != nil {
 			return err
 		}
+		if c.ThroughputCapacity != nil {
+			if err := validWindowsThroughput(*c.ThroughputCapacity); err != nil {
+				return err
+			}
+		}
 	}
 	if c := in.OpenZFSConfiguration; c != nil {
 		if err := validSchedule(c.AutomaticBackupRetentionDays, c.WeeklyMaintenanceStartTime, c.DailyAutomaticBackupStartTime); err != nil {
 			return err
+		}
+		deployment := c.DeploymentType
+		if source.OpenZFSConfiguration != nil && deployment == "" {
+			deployment = source.OpenZFSConfiguration.DeploymentType
+		}
+		if c.ThroughputCapacity != nil {
+			if err := validOpenZFSThroughput(deployment, *c.ThroughputCapacity); err != nil {
+				return err
+			}
 		}
 	}
 	backedUp := aws.ToInt32(source.StorageCapacity)

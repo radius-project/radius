@@ -98,7 +98,7 @@ type fakeAPI struct {
 	sources map[string]map[string]any
 
 	// increased holds the file systems whose storage capacity increased. changing maps a file system to the
-	// properties its running FILE_SYSTEM_UPDATE action changes.
+	// properties its running FILE_SYSTEM_UPDATE actions change, gathered from each update until a read completes them.
 	increased map[string]bool
 	changing  map[string][]string
 
@@ -606,7 +606,7 @@ func (f *fakeAPI) UpdateFileSystem(ctx context.Context, in *fsx.UpdateFileSystem
 		if capacity := in.StorageCapacity; capacity != nil && *capacity > aws.ToInt32(current.StorageCapacity) {
 			f.increased[id] = true
 		}
-		f.changing[id] = changing
+		f.changing[id] = append(f.changing[id], changing...)
 		f.next++
 		requested := aws.Time(time.Unix(1793865600+int64(f.next), 0))
 		action := types.AdministrativeAction{AdministrativeActionType: types.AdministrativeActionTypeFileSystemUpdate, Status: types.StatusInProgress, RequestTime: requested}

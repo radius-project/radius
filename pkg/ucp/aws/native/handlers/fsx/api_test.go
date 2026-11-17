@@ -92,6 +92,14 @@ func ontapInput() *fsx.CreateFileSystemInput {
 	}
 }
 
+// ontapPairsInput is an ONTAP file system with two HA pairs.
+func ontapPairsInput() *fsx.CreateFileSystemInput {
+	return &fsx.CreateFileSystemInput{
+		ClientRequestToken: aws.String("token-a"), FileSystemType: types.FileSystemTypeOntap, StorageCapacity: aws.Int32(2048), SubnetIds: []string{subnetA},
+		OntapConfiguration: &types.CreateFileSystemOntapConfiguration{DeploymentType: types.OntapDeploymentTypeSingleAz2, HAPairs: aws.Int32(2), ThroughputCapacityPerHAPair: aws.Int32(1536)},
+	}
+}
+
 func openZFSInput() *fsx.CreateFileSystemInput {
 	return &fsx.CreateFileSystemInput{
 		ClientRequestToken: aws.String("token-a"), FileSystemType: types.FileSystemTypeOpenzfs, StorageCapacity: aws.Int32(64), SubnetIds: []string{subnetA},
@@ -340,6 +348,56 @@ func restoreWindows(backedUp types.WindowsDeploymentType, deployment types.Windo
 	}
 }
 
+// windowsUpdates returns a Break that updates a Windows file system with each configuration in turn, with no read
+// between them, so FSx's actions for the earlier updates are still in progress.
+func windowsUpdates(configs ...*types.UpdateFileSystemWindowsConfiguration) func(ctx context.Context, store *awsfake.CloudControl) error {
+	return func(ctx context.Context, store *awsfake.CloudControl) error {
+		f := newFakeAPI(store)
+		id, err := available(ctx, f, windowsInput())
+		if err != nil {
+			return err
+		}
+		for _, c := range configs {
+			if _, err := f.UpdateFileSystem(ctx, &fsx.UpdateFileSystemInput{FileSystemId: aws.String(id), WindowsConfiguration: c}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func windowsThroughputUpdate(throughput int32) *types.UpdateFileSystemWindowsConfiguration {
+	return &types.UpdateFileSystemWindowsConfiguration{ThroughputCapacity: aws.Int32(throughput)}
+}
+
+func windowsRetentionUpdate(days int32) *types.UpdateFileSystemWindowsConfiguration {
+	return &types.UpdateFileSystemWindowsConfiguration{AutomaticBackupRetentionDays: aws.Int32(days)}
+}
+
+func windowsDirectoryUpdate(user string) *types.UpdateFileSystemWindowsConfiguration {
+	ad := &types.SelfManagedActiveDirectoryConfigurationUpdates{UserName: aws.String(user), Password: aws.String("secret")}
+	return &types.UpdateFileSystemWindowsConfiguration{SelfManagedActiveDirectoryConfiguration: ad}
+}
+
+// restoreBreak returns a Break that restores, with in, a backup of a file system with the properties.
+func restoreBreak(source map[string]any, in *fsx.CreateFileSystemFromBackupInput) func(ctx context.Context, store *awsfake.CloudControl) error {
+	return func(ctx context.Context, store *awsfake.CloudControl) error {
+		f := newFakeAPI(store)
+		f.sources["backup-0a1b2c3d4"] = source
+		in.BackupId = aws.String("backup-0a1b2c3d4")
+		_, err := f.CreateFileSystemFromBackup(ctx, in)
+		return err
+	}
+}
+
+// openZFSBackup returns the properties of a SINGLE_AZ_1 OpenZFS file system a backup is of.
+func openZFSBackup() map[string]any {
+	return map[string]any{
+		"FileSystemType": "OPENZFS", "StorageCapacity": 64.0,
+		"OpenZFSConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_1", "ThroughputCapacity": 64.0},
+	}
+}
+
 // expect returns an error naming what when got isn't want.
 func expect[T comparable](what string, got T, want T) error {
 	if got != want {
@@ -550,6 +608,14 @@ var fileSystemAPI = map[string]nativetest.Call{
 				Code:  "BadRequest",
 			},
 			{
+				Rule: "ONTAP: ThroughputCapacity divided by HAPairs is one of the throughput capacities per HA pair, so it divides evenly",
+				Doc:  createOntapDoc,
+				Break: createBreak(ontapPairsInput, func(in *fsx.CreateFileSystemInput) {
+					in.OntapConfiguration.ThroughputCapacity, in.OntapConfiguration.ThroughputCapacityPerHAPair = aws.Int32(3073), nil
+				}),
+				Code: "BadRequest",
+			},
+			{
 				Rule:  "ONTAP: StorageCapacity is 1024 to 524288 GiB per HA pair",
 				Break: createBreak(ontapInput, func(in *fsx.CreateFileSystemInput) { in.StorageCapacity = aws.Int32(1000) }),
 				Code:  "BadRequest",
@@ -748,6 +814,40 @@ var fileSystemAPI = map[string]nativetest.Call{
 				Code:  "BadRequest",
 			},
 			{
+				Rule: "Windows: ThroughputCapacity is 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, or 12288 MBps",
+				Doc:  windowsPerformance,
+				Break: restoreBreak(map[string]any{
+					"FileSystemType": "WINDOWS", "StorageCapacity": 32.0,
+					"WindowsConfiguration": map[string]any{"DeploymentType": "SINGLE_AZ_2", "ThroughputCapacity": 32.0},
+				}, &fsx.CreateFileSystemFromBackupInput{SubnetIds: []string{subnetA}, WindowsConfiguration: &types.CreateFileSystemWindowsConfiguration{ThroughputCapacity: aws.Int32(4096)}}),
+				Code: "BadRequest",
+			},
+			{
+				Rule: "OpenZFS: ThroughputCapacity is one of the values documented for the backed-up file system's deployment type",
+				Doc:  createOpenZFSDoc,
+				Break: restoreBreak(openZFSBackup(), &fsx.CreateFileSystemFromBackupInput{
+					SubnetIds: []string{subnetA}, OpenZFSConfiguration: &types.CreateFileSystemOpenZFSConfiguration{ThroughputCapacity: aws.Int32(160)},
+				}),
+				Code: "BadRequest",
+			},
+			{
+				Rule: "OpenZFS: ThroughputCapacity is one of the values documented for the deployment type the call sets",
+				Doc:  createOpenZFSDoc,
+				Break: restoreBreak(openZFSBackup(), &fsx.CreateFileSystemFromBackupInput{
+					SubnetIds: []string{subnetA}, OpenZFSConfiguration: &types.CreateFileSystemOpenZFSConfiguration{DeploymentType: types.OpenZFSDeploymentTypeSingleAz2, ThroughputCapacity: aws.Int32(64)},
+				}),
+				Code: "BadRequest",
+			},
+			{
+				Rule: "Lustre: PerUnitStorageThroughput is 50, 100, or 200 for PERSISTENT_1 SSD, and 125, 250, 500, or 1000 for PERSISTENT_2",
+				Doc:  createLustreDoc,
+				Break: restoreBreak(map[string]any{
+					"FileSystemType": "LUSTRE", "StorageCapacity": 1200.0,
+					"LustreConfiguration": map[string]any{"DeploymentType": "PERSISTENT_2", "PerUnitStorageThroughput": 125.0},
+				}, &fsx.CreateFileSystemFromBackupInput{SubnetIds: []string{subnetA}, LustreConfiguration: &types.CreateFileSystemLustreConfiguration{PerUnitStorageThroughput: aws.Int32(200)}}),
+				Code: "InvalidPerUnitStorageThroughput",
+			},
+			{
 				Rule: "StorageType defaults to SSD, and KmsKeyId to the FSx-managed key, not the backed-up file system's",
 				Check: func(ctx context.Context, store *awsfake.CloudControl) error {
 					f := newFakeAPI(store)
@@ -867,43 +967,28 @@ var fileSystemAPI = map[string]nativetest.Call{
 				Code: "BadRequest",
 			},
 			{
-				Rule: "Windows: a throughput capacity update can't start while another is in progress",
-				Doc:  updateWindowsDoc,
-				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
-					f := newFakeAPI(store)
-					id, err := available(ctx, f, windowsInput())
-					if err != nil {
-						return err
-					}
-					for _, throughput := range []int32{64, 128} {
-						in := &fsx.UpdateFileSystemInput{FileSystemId: aws.String(id), WindowsConfiguration: &types.UpdateFileSystemWindowsConfiguration{ThroughputCapacity: aws.Int32(throughput)}}
-						if _, err := f.UpdateFileSystem(ctx, in); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
-				Code: "BadRequest",
+				Rule:  "Windows: a throughput capacity update can't start while another is in progress",
+				Doc:   updateWindowsDoc,
+				Break: windowsUpdates(windowsThroughputUpdate(64), windowsThroughputUpdate(128)),
+				Code:  "BadRequest",
 			},
 			{
-				Rule: "Windows: a self-managed Active Directory update can't start while another is in progress",
-				Doc:  updateWindowsDoc,
-				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
-					f := newFakeAPI(store)
-					id, err := available(ctx, f, windowsInput())
-					if err != nil {
-						return err
-					}
-					for _, user := range []string{"one", "two"} {
-						ad := &types.SelfManagedActiveDirectoryConfigurationUpdates{UserName: aws.String(user), Password: aws.String("secret")}
-						in := &fsx.UpdateFileSystemInput{FileSystemId: aws.String(id), WindowsConfiguration: &types.UpdateFileSystemWindowsConfiguration{SelfManagedActiveDirectoryConfiguration: ad}}
-						if _, err := f.UpdateFileSystem(ctx, in); err != nil {
-							return err
-						}
-					}
-					return nil
-				},
-				Code: "BadRequest",
+				Rule:  "Windows: a throughput capacity update can't start while another is in progress, though an update of other values came between them",
+				Doc:   updateWindowsDoc,
+				Break: windowsUpdates(windowsThroughputUpdate(64), windowsRetentionUpdate(7), windowsThroughputUpdate(128)),
+				Code:  "BadRequest",
+			},
+			{
+				Rule:  "Windows: a self-managed Active Directory update can't start while another is in progress",
+				Doc:   updateWindowsDoc,
+				Break: windowsUpdates(windowsDirectoryUpdate("one"), windowsDirectoryUpdate("two")),
+				Code:  "BadRequest",
+			},
+			{
+				Rule:  "Windows: a self-managed Active Directory update can't start while another is in progress, though an update of other values came between them",
+				Doc:   updateWindowsDoc,
+				Break: windowsUpdates(windowsDirectoryUpdate("one"), windowsRetentionUpdate(7), windowsDirectoryUpdate("two")),
+				Code:  "BadRequest",
 			},
 			{
 				Rule: "OpenZFS: ThroughputCapacity is one of the values documented for the deployment type",
@@ -950,6 +1035,14 @@ var fileSystemAPI = map[string]nativetest.Call{
 				Doc:  updateOntapDoc,
 				Break: updateBreak(ontapInput, func(in *fsx.UpdateFileSystemInput) {
 					in.OntapConfiguration = &types.UpdateFileSystemOntapConfiguration{ThroughputCapacityPerHAPair: aws.Int32(384)}
+				}),
+				Code: "BadRequest",
+			},
+			{
+				Rule: "ONTAP: ThroughputCapacity divided by HAPairs is one of the throughput capacities per HA pair, so it divides evenly",
+				Doc:  updateOntapDoc,
+				Break: updateBreak(ontapPairsInput, func(in *fsx.UpdateFileSystemInput) {
+					in.OntapConfiguration = &types.UpdateFileSystemOntapConfiguration{ThroughputCapacity: aws.Int32(3073)}
 				}),
 				Code: "BadRequest",
 			},
