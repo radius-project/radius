@@ -757,6 +757,10 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 		{name: "reinstall omitted flags", operation: "reinstall"},
 		{name: "preflight-only", operation: "preflight-only"},
 		{name: "external aggregation-only", operation: "install", external: true},
+		{name: "issuer flags switch-on requires lifecycle", operation: "switch-on", err: "mode=issuerRef requires the certificate lifecycle"},
+		{name: "external issuer flags switch-on requires lifecycle", operation: "switch-on", external: true, err: "mode=issuerRef requires the certificate lifecycle"},
+		{name: "stored issuer switch-on upgrade requires lifecycle", operation: "switch-on upgrade", err: "mode=issuerRef requires the certificate lifecycle"},
+		{name: "stored issuer switch-on preflight requires lifecycle", operation: "switch-on preflight", err: "mode=issuerRef requires the certificate lifecycle"},
 		{name: "external ClusterIssuer upgrade", operation: "upgrade", external: true, clusterIssuer: true},
 		{name: "missing preprovisioned namespace", operation: "install", err: "live issuer-policy verification failed", edit: func(t *testing.T, f *issuerPolicyFixture) {
 			f.object("Namespace", RadiusSystemNamespace).SetName("absent")
@@ -820,8 +824,8 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 			if scenario.edit != nil {
 				scenario.edit(t, fixture)
 			}
-			install := scenario.operation == "install" || scenario.operation == "old chart"
-			if !install {
+			install := scenario.operation == "install" || scenario.operation == "old chart" || scenario.operation == "switch-on"
+			if !install || scenario.operation == "switch-on" {
 				fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
 					"apiVersion": "apiregistration.k8s.io/v1", "kind": "APIService",
 					"metadata": map[string]any{"name": radiusAPIService, "uid": "existing-aggregation", "resourceVersion": "1"},
@@ -858,6 +862,11 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 				}
 				options.RadiusInstalled = true
 				options.Radius.Reinstall = scenario.operation == "reinstall"
+				if strings.HasPrefix(scenario.operation, "switch-on") {
+					rbac := options.RadiusReleaseValues["global"].(map[string]any)["rbac"].(map[string]any)
+					rbac["enabled"], rbac["dryRun"] = false, false
+					options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
+				}
 			}
 			selected, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
 			require.NoError(t, err)
@@ -907,9 +916,9 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 				}
 			default:
 				switch scenario.operation {
-				case "install", "old chart", "reinstall":
+				case "install", "old chart", "reinstall", "switch-on":
 					err = impl.InstallRadius(t.Context(), options, kubeContext)
-				case "preflight-only":
+				case "preflight-only", "switch-on preflight":
 					err = impl.CheckRadiusCertificates(t.Context(), options, kubeContext)
 				default:
 					err = impl.UpgradeRadius(t.Context(), options, kubeContext)

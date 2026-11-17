@@ -98,7 +98,7 @@ func retainedUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface,
 	if err != nil {
 		return nil, fmt.Errorf("read retained aggregation trust: %w", err)
 	}
-	if secret.Annotations["radius.io/certificate-mode"] == "" {
+	if _, recorded := secret.Annotations["radius.io/certificate-mode"]; !recorded {
 		return nil, nil
 	}
 	if secret.Annotations["radius.io/certificate-mode"] != "selfSigned" ||

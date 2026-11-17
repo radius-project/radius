@@ -33,11 +33,13 @@ import (
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v4/pkg/chart/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -367,5 +369,238 @@ func TestSettleRetainsA8AggregationCopy(t *testing.T) {
 	require.Equal(t, signer, got)
 	for _, action := range client.Actions() {
 		require.Equal(t, "get", action.GetVerb())
+	}
+}
+
+func TestRetainedAggregationTrustIsNotTransient(t *testing.T) {
+	for _, mode := range []string{"selfSigned", "caSecret", "issuerRef", ""} {
+		t.Run(mode, func(t *testing.T) {
+			pin := retainedAggregationTrust(newTestCA(t, ucpAPIServerCASecretName))
+			pin.Annotations["radius.io/certificate-mode"] = mode
+			client := kubefake.NewSimpleClientset(pin)
+			logs := []string{}
+			impl := trustImpl(client, ucpAPIServiceDynamicClient())
+			impl.logger = func(format string, args ...any) { logs = append(logs, fmt.Sprintf(format, args...)) }
+			require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test", RadiusSystemNamespace))
+			require.Len(t, logs, 1)
+			require.Contains(t, logs[0], "Keeping certificate lifecycle public trust")
+			require.False(t, ownsUCPOffSecret(pin, ucpOffLeftoverSecrets[0]), "turning authorization off must not delete a lifecycle pin either")
+			_, err := writeUCPAPIServerTrust(t.Context(), client, RadiusSystemNamespace, nil)
+			require.ErrorContains(t, err, "preserve retained aggregation trust")
+			kept, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), pin.Name, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, pin, kept)
+			for _, action := range client.Actions() {
+				require.Equal(t, "get", action.GetVerb())
+			}
+		})
+	}
+
+}
+
+func TestRetainedSelfSignedTrustReinstallAfterUninstall(t *testing.T) {
+	for _, signerState := range []string{"kept", "deleted", "changed"} {
+		t.Run(signerState, func(t *testing.T) {
+			original := newTestCA(t, ucpAPIServerCASecretName)
+			pin := retainedAggregationTrust(original)
+			var objects []runtime.Object
+			objects = append(objects, pin)
+			switch signerState {
+			case "kept":
+				objects = append(objects, apiServerCASecret(original))
+			case "changed":
+				objects = append(objects, apiServerCASecret(newTestCA(t, ucpAPIServerCASecretName)))
+			}
+			client := kubefake.NewSimpleClientset(objects...)
+			impl := trustImpl(client, ucpAPIServiceDynamicClient())
+			impl.logger = func(string, ...any) {}
+			require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+			options := NewDefaultClusterOptions()
+			options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
+			err := impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, func(context.Context) (string, bool, error) {
+				t.Fatal("no prior APIService remains; staging must not issue or replace a signer")
+				return "", false, nil
+			})
+			switch signerState {
+			case "kept":
+				require.NoError(t, err, "the default kept signer must allow reinstall with its original key")
+			case "deleted":
+				require.ErrorContains(t, err, "exists without a usable radius-apiserver-ca signer")
+				require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system apply -f radius-apiserver-ca-backup.yaml`)
+				require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system delete secret radius-apiserver-trust`)
+			case "changed":
+				require.ErrorContains(t, err, "key or subject changed")
+			}
+			kept, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), pin.Name, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, pin, kept)
+			for _, action := range client.Actions() {
+				require.Equal(t, "get", action.GetVerb())
+			}
+		})
+	}
+}
+
+func TestBYOPublicTrustUninstallAndChartReinstall(t *testing.T) {
+	for _, mode := range []string{"caSecret", "issuerRef"} {
+		t.Run(mode, func(t *testing.T) {
+			f := newIssuerPolicyFixture(t)
+			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
+			if mode == "caSecret" {
+				rbac["certificates"] = map[string]any{"mode": mode, "caSecret": "operator-ca",
+					"caBundle": "-----BEGIN CERTIFICATE-----\ndGVzdA==\n-----END CERTIFICATE-----\n"}
+			}
+			certs := rbac["certificates"].(map[string]any)
+			pin := retainedAggregationTrust(testCA{pem: []byte(certs["caBundle"].(string))})
+			pin.Annotations["radius.io/certificate-mode"] = mode
+			client := kubefake.NewSimpleClientset(pin)
+			impl := trustImpl(client, ucpAPIServiceDynamicClient())
+			impl.logger = func(string, ...any) {}
+			require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test", RadiusSystemNamespace))
+			kept, err := client.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), pin.Name, metav1.GetOptions{})
+			require.NoError(t, err)
+			require.Equal(t, pin, kept)
+			data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(kept)
+			require.NoError(t, err)
+			data["apiVersion"], data["kind"] = "v1", "Secret"
+			f.objects = append(f.objects, &unstructured.Unstructured{Object: data})
+			_, err = f.renderChart(t)
+			require.NoError(t, err, "chart reinstall can reuse exactly the pinned operator CA")
+			certs["caBundle"] = "-----BEGIN CERTIFICATE-----\nb3RoZXI=\n-----END CERTIFICATE-----\n"
+			_, err = f.renderChart(t)
+			require.ErrorContains(t, err, "differs from the selected CA")
+			require.ErrorContains(t, err, "use the lifecycle command")
+		})
+	}
+}
+
+func TestAggregationTrustSelectionGuards(t *testing.T) {
+	for _, mode := range []string{"selfSigned", "caSecret", "issuerRef"} {
+		for _, invalid := range []string{"foreign", "empty"} {
+			t.Run(mode+"/"+invalid, func(t *testing.T) {
+				f := newIssuerPolicyFixture(t)
+				rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
+				if mode != "issuerRef" {
+					rbac["certificates"] = map[string]any{"mode": mode}
+					if mode == "caSecret" {
+						rbac["certificates"] = map[string]any{"mode": mode, "caSecret": "operator-ca",
+							"caBundle": "-----BEGIN CERTIFICATE-----\ndGVzdA==\n-----END CERTIFICATE-----\n"}
+					}
+				}
+				copy := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: ucpAPIServerTrustSecretName, Namespace: RadiusSystemNamespace},
+					Data: map[string][]byte{caCertificateKey: []byte("foreign"), "extra": []byte("do-not-trust")}}
+				if invalid == "empty" {
+					copy.Annotations = map[string]string{allowDirectInjectionAnnotation: "true"}
+					copy.Data = map[string][]byte{caCertificateKey: {}}
+				}
+				for _, secret := range []*corev1.Secret{copy, apiServerCASecret(newTestCA(t, ucpAPIServerCASecretName))} {
+					data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
+					require.NoError(t, err)
+					data["apiVersion"], data["kind"] = "v1", "Secret"
+					f.objects = append(f.objects, &unstructured.Unstructured{Object: data})
+				}
+				rendered, err := f.renderChart(t)
+				if mode != "selfSigned" {
+					require.ErrorContains(t, err, "certificate lifecycle prerequisite")
+					return
+				}
+				require.NoError(t, err)
+				for _, object := range chartObjects(t, rendered) {
+					if object.GetKind() == "APIService" {
+						require.Equal(t, RadiusSystemNamespace+"/"+ucpAPIServerCASecretName,
+							object.GetAnnotations()[injectCAFromSecretAnnotation], "an invalid transient source must not be used")
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestSelfSignedSwitchOnOverlapRender(t *testing.T) {
+	for _, provider := range []string{"radius", "external"} {
+		t.Run(provider, func(t *testing.T) {
+			c := newStageCluster(t, nil, true)
+			c.addOffAPIService(t, "off")
+			f := newIssuerPolicyFixture(t)
+			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
+			rbac["certificates"] = map[string]any{"mode": "selfSigned"}
+			rbac["tls"] = map[string]any{"provider": provider}
+			// Seed overlap as a rendering fixture. A10 does not authorize the
+			// observer-blocked switch-on entry point.
+			c.issueAPIServerCA(t)
+			_, err := writeUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace, []*x509.Certificate{c.ucpCA.cert, c.apiServerCA.cert})
+			require.NoError(t, err)
+			for _, name := range []string{ucpAPIServerTrustSecretName, ucpAPIServerCASecretName} {
+				secret, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), name, metav1.GetOptions{})
+				require.NoError(t, err)
+				if name == ucpAPIServerTrustSecretName {
+					require.NotContains(t, secret.Annotations, "radius.io/certificate-mode")
+				}
+				data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
+				require.NoError(t, err)
+				data["apiVersion"], data["kind"] = "v1", "Secret"
+				f.objects = append(f.objects, &unstructured.Unstructured{Object: data})
+			}
+			rendered, err := f.renderChart(t)
+			require.NoError(t, err)
+			found := false
+			for _, object := range chartObjects(t, rendered) {
+				if object.GetKind() != "APIService" {
+					continue
+				}
+				found = true
+				require.Equal(t, RadiusSystemNamespace+"/"+ucpAPIServerTrustSecretName, object.GetAnnotations()[injectCAFromSecretAnnotation])
+				encoded, _, err := unstructured.NestedString(object.Object, "spec", "caBundle")
+				require.NoError(t, err)
+				bundle, err := base64.StdEncoding.DecodeString(encoded)
+				require.NoError(t, err)
+				roots := x509.NewCertPool()
+				require.True(t, roots.AppendCertsFromPEM(bundle))
+				for _, ca := range []testCA{c.ucpCA, c.apiServerCA} {
+					leaf := mustParseCertificate(t, issueUCPCertificate(t, ca))
+					_, err := leaf.Verify(x509.VerifyOptions{Roots: roots, DNSName: "ucp." + RadiusSystemNamespace + ".svc"})
+					require.NoError(t, err, "Helm must trust both the still-running and new UCP certificate")
+				}
+			}
+			require.True(t, found)
+		})
+	}
+}
+
+func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
+	for _, mode := range []string{"caSecret", "issuerRef"} {
+		for _, provider := range []string{"radius", "external"} {
+			for _, source := range []string{"flags", "stored", "rollback"} {
+				t.Run(mode+"/"+provider+"/"+source, func(t *testing.T) {
+					options := NewDefaultClusterOptions()
+					options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=" + provider,
+						"global.rbac.certificates.mode=" + mode}
+					render := func(context.Context) (string, bool, error) {
+						t.Fatal("BYO switch-on must stop before rendering or staging trust")
+						return "", false, nil
+					}
+					impl := &Impl{newUCPAPIServerTrustClient: func(string) (kubernetes.Interface, error) {
+						t.Fatal("BYO switch-on must stop before connecting to the trust API")
+						return nil, nil
+					}}
+					target := map[string]any{"global": map[string]any{"rbac": map[string]any{
+						"enabled": true, "tls": map[string]any{"provider": provider}, "certificates": map[string]any{"mode": mode},
+					}}}
+					var err error
+					switch source {
+					case "flags":
+						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", nil, render)
+					case "stored":
+						options.Radius.SetArgs = nil
+						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", target, render)
+					case "rollback":
+						history := []*releasev1.Release{{Version: 1, Config: target}, {Version: 2, Config: map[string]any{}}}
+						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
+					}
+					require.ErrorContains(t, err, "requires the certificate lifecycle")
+					require.ErrorContains(t, err, "mode="+mode)
+				})
+			}
+		}
 	}
 }

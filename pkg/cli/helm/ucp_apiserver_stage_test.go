@@ -742,7 +742,7 @@ func (c *stageCluster) setUCPRolledOut(t *testing.T, rolledOut bool) {
 }
 
 func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
-	shortenUCPAPIServiceWait(t)
+	expireUCPAPIServiceWait(t)
 	u := newStageUpgrade(t, authzOnValues, "upgrade")
 	c := newStageCluster(t, nil, true)
 	c.onUCP(t)
@@ -868,7 +868,7 @@ func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T)
 	// A rollback retried after UCP did not finish moving to the staged ucp-cert waits for the rollout again, though the
 	// ucp Deployment template already mounts ucp-cert, and rolls back only once every pod serves it.
 	t.Run("retry with an incomplete rollout", func(t *testing.T) {
-		shortenUCPAPIServiceWait(t)
+		expireUCPAPIServiceWait(t)
 		c := newStageCluster(t, nil, true)
 		c.onUCP(t)
 		c.setUCPRolledOut(t, false)

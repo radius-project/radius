@@ -35,6 +35,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/util/retry"
 
 	"github.com/radius-project/radius/pkg/cli/output"
 )
@@ -109,9 +111,13 @@ func (i *Impl) reconcileLegacyUCPAPIServerTrust(ctx context.Context, kubeContext
 		}
 	}
 
-	trusted, overlap, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
+	trusted, trust, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
 	if err != nil {
 		return err
+	}
+	overlap := trust != nil && ownsUCPAPIServerTrust(trust)
+	if trust != nil && !overlap {
+		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
 	}
 	retained, err := retainedUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
 	if err != nil {
@@ -152,8 +158,8 @@ func (i *Impl) reconcileLegacyUCPAPIServerTrust(ctx context.Context, kubeContext
 		return err
 	}
 	if overlap {
-		if err := kubeClient.CoreV1().Secrets(radiusNamespace).Delete(ctx, ucpAPIServerTrustSecretName, metav1.DeleteOptions{}); err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
+		if err := i.deleteOwnedUCPAPIServerTrust(ctx, kubeContext, kubeClient, radiusNamespace); err != nil {
+			return err
 		}
 	}
 	if err := settleUCPAPIServerCA(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace); err != nil {
@@ -271,11 +277,80 @@ func (i *Impl) deleteUCPAPIServerTrust(ctx context.Context, kubeContext, radiusN
 	if err != nil {
 		return err
 	}
-	err = kubeClient.CoreV1().Secrets(radiusNamespace).Delete(ctx, ucpAPIServerTrustSecretName, metav1.DeleteOptions{})
-	if err != nil && !apierrors.IsNotFound(err) {
+	return i.deleteOwnedUCPAPIServerTrust(ctx, kubeContext, kubeClient, radiusNamespace)
+}
+
+// deleteOwnedUCPAPIServerTrust deletes the trust Secret if rad owns it, as ownsUCPAPIServerTrust decides, pinned to
+// the uid and resourceVersion rad read. It keeps a Secret that rad does not own, or that changed or was recreated
+// after rad read it, and warns about it.
+func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, radiusNamespace string) error {
+	secrets := kubeClient.CoreV1().Secrets(radiusNamespace)
+	read := func() (*corev1.Secret, error) {
+		secret, err := secrets.Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
+		}
+		return secret, nil
+	}
+	secret, err := read()
+	if err != nil || secret == nil {
+		return err
+	}
+	if _, retained := secret.Annotations["radius.io/certificate-mode"]; retained {
+		i.logInfo("Keeping certificate lifecycle public trust Secret %s/%s after uninstall or reconciliation; its Helm keep policy requires explicit lifecycle cleanup",
+			radiusNamespace, ucpAPIServerTrustSecretName)
+		return nil
+	}
+	if !ownsUCPAPIServerTrust(secret) {
+		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
+		return nil
+	}
+	err = secrets.Delete(ctx, ucpAPIServerTrustSecretName, metav1.DeleteOptions{Preconditions: secretPreconditions(secret)})
+	if err == nil {
+		return nil
+	}
+	if !apierrors.IsConflict(err) && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete Secret %s/%s: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
 	}
+	// The Secret changed between the read and the delete. Decide again from what is there now.
+	secret, err = read()
+	if err != nil || secret == nil {
+		return err
+	}
+	if _, retained := secret.Annotations["radius.io/certificate-mode"]; retained {
+		i.logInfo("Keeping certificate lifecycle public trust Secret %s/%s, which changed after rad read it",
+			radiusNamespace, ucpAPIServerTrustSecretName)
+		return nil
+	}
+	if !ownsUCPAPIServerTrust(secret) {
+		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
+		return nil
+	}
+	i.logInfo("Warning: rad did not delete Secret %s/%s, which changed after rad read it. Run the command again to delete it",
+		radiusNamespace, ucpAPIServerTrustSecretName)
 	return nil
+}
+
+// ownsUCPAPIServerTrust reports whether secret, the trust Secret, has the shape rad writes and the chart README's
+// plain-Helm steps create: only a non-empty ca.crt, with annotation cert-manager.io/allow-direct-injection=true. rad writes,
+// trusts and deletes only such a Secret; the chart renders the APIService from it only then too.
+func ownsUCPAPIServerTrust(secret *corev1.Secret) bool {
+	return len(secret.Data[caCertificateKey]) > 0 && len(secret.Data) == 1 && secret.Annotations[allowDirectInjectionAnnotation] == "true"
+}
+
+// foreignUCPAPIServerTrustProblem describes a trust Secret that rad does not own.
+func foreignUCPAPIServerTrustProblem(radiusNamespace string) string {
+	return fmt.Sprintf("Secret %s/%s does not hold only a non-empty %s with annotation %s=true as rad writes it",
+		radiusNamespace, ucpAPIServerTrustSecretName, caCertificateKey, allowDirectInjectionAnnotation)
+}
+
+// warnForeignUCPAPIServerTrust warns that rad left a trust Secret it does not own unchanged.
+func (i *Impl) warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace string) {
+	i.logInfo("Warning: %s, so rad did not use, change or delete it. If nothing else uses it, delete it with %s",
+		foreignUCPAPIServerTrustProblem(radiusNamespace), kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerTrustSecretName))
 }
 
 func (i *Impl) ucpAPIServerTrustKubeClient(kubeContext string) (kubernetes.Interface, error) {
@@ -428,27 +503,51 @@ func verifiesUCPCertificate(leaf, ca *x509.Certificate, radiusNamespace string) 
 	return err == nil
 }
 
-// readUCPAPIServerTrust returns the CA certificates in the trust Secret and whether the Secret exists.
-func readUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, radiusNamespace string) ([]*x509.Certificate, bool, error) {
+// readUCPAPIServerTrust returns the trust Secret, or nil if it does not exist, and, if rad owns it, the CA
+// certificates in it.
+func readUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, radiusNamespace string) ([]*x509.Certificate, *corev1.Secret, error) {
 	secret, err := client.CoreV1().Secrets(radiusNamespace).Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return nil, false, nil
+		return nil, nil, nil
 	}
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
+		return nil, nil, fmt.Errorf("failed to read Secret %s/%s: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
+	}
+	if !ownsUCPAPIServerTrust(secret) {
+		return nil, secret, nil
 	}
 	cas, err := caCertificates(secret.Data[caCertificateKey])
 	if err != nil {
-		return nil, true, fmt.Errorf("invalid Secret %s/%s ca.crt: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
+		return nil, secret, fmt.Errorf("invalid Secret %s/%s ca.crt: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
 	}
-	return cas, true, nil
+	return cas, secret, nil
 }
 
 // writeUCPAPIServerTrust stores the CA certificates in ca.crt of the trust Secret, which holds no other data. It
-// returns the PEM bundle.
+// returns the PEM bundle. It returns an error, and changes nothing, if a trust Secret that rad does not own exists.
 func writeUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, radiusNamespace string, cas []*x509.Certificate) ([]byte, error) {
 	bundle := encodeCertificates(cas)
 	secrets := client.CoreV1().Secrets(radiusNamespace)
+	var foreign bool
+	err := retry.OnError(retry.DefaultRetry, func(err error) bool {
+		return apierrors.IsConflict(err) || apierrors.IsAlreadyExists(err)
+	}, func() error {
+		var err error
+		foreign, err = writeUCPAPIServerTrustOnce(ctx, secrets, radiusNamespace, bundle)
+		return err
+	})
+	if foreign {
+		return nil, fmt.Errorf("%s, so rad does not change it", foreignUCPAPIServerTrustProblem(radiusNamespace))
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to write Secret %s/%s: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
+	}
+	return bundle, nil
+}
+
+// writeUCPAPIServerTrustOnce writes bundle to the trust Secret, or reports that rad does not own the Secret there. An
+// update carries the resourceVersion rad read, so it fails rather than overwrite a Secret that changed since.
+func writeUCPAPIServerTrustOnce(ctx context.Context, secrets typedcorev1.SecretInterface, radiusNamespace string, bundle []byte) (bool, error) {
 	secret, err := secrets.Get(ctx, ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		_, err = secrets.Create(ctx, &corev1.Secret{
@@ -461,24 +560,23 @@ func writeUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface, ra
 			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{caCertificateKey: bundle},
 		}, metav1.CreateOptions{})
-	} else if err == nil {
-		if secret.Annotations["radius.io/certificate-mode"] != "" {
-			return nil, fmt.Errorf("preserve retained aggregation trust Secret %s/%s; use the certificate lifecycle instead of overwriting its public CA", radiusNamespace, ucpAPIServerTrustSecretName)
-		}
-		if secret.Annotations[allowDirectInjectionAnnotation] == "true" && len(secret.Data) == 1 && bytes.Equal(secret.Data[caCertificateKey], bundle) {
-			return bundle, nil
-		}
-		if secret.Annotations == nil {
-			secret.Annotations = map[string]string{}
-		}
-		secret.Annotations[allowDirectInjectionAnnotation] = "true"
-		secret.Data = map[string][]byte{caCertificateKey: bundle}
-		_, err = secrets.Update(ctx, secret, metav1.UpdateOptions{})
+		return false, err
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to write Secret %s/%s: %w", radiusNamespace, ucpAPIServerTrustSecretName, err)
+		return false, err
 	}
-	return bundle, nil
+	if _, retained := secret.Annotations["radius.io/certificate-mode"]; retained {
+		return false, fmt.Errorf("preserve retained aggregation trust Secret %s/%s; use the certificate lifecycle instead of overwriting its public CA", radiusNamespace, ucpAPIServerTrustSecretName)
+	}
+	if !ownsUCPAPIServerTrust(secret) {
+		return true, nil
+	}
+	if bytes.Equal(secret.Data[caCertificateKey], bundle) {
+		return false, nil
+	}
+	secret.Data = map[string][]byte{caCertificateKey: bundle}
+	_, err = secrets.Update(ctx, secret, metav1.UpdateOptions{})
+	return false, err
 }
 
 // applyUCPAPIServerTrust writes cas to the trust Secret and to the APIService caBundle. cert-manager's cainjector

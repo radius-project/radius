@@ -101,6 +101,18 @@ func (i *Impl) stageLegacyUCPAPIServerCA(ctx context.Context, kubeContext, radiu
 	if err != nil {
 		return err
 	}
+	if current == nil {
+		retained, err := retainedUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
+		if err != nil {
+			return err
+		}
+		if retained != nil {
+			return fmt.Errorf("retained selfSigned aggregation trust Secret %s/%s exists without a usable %s signer. Restore the original signer from its backup with %s. For an intentional fresh install, first verify the previous release is removed and explicitly discard its historical pin with %s as certificate lifecycle cleanup. Helm has not changed Radius",
+				radiusNamespace, ucpAPIServerTrustSecretName, ucpAPIServerCASecretName,
+				kubectlCommand(kubeContext, radiusNamespace, "apply -f radius-apiserver-ca-backup.yaml"),
+				kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerTrustSecretName))
+		}
+	}
 
 	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
@@ -143,9 +155,15 @@ func (i *Impl) stageLegacyUCPAPIServerCA(ctx context.Context, kubeContext, radiu
 		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)
 	}
 
-	trusted, _, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
+	trusted, trust, err := readUCPAPIServerTrust(ctx, kubeClient, radiusNamespace)
 	if err != nil {
 		return err
+	}
+	if trust != nil && !ownsUCPAPIServerTrust(trust) {
+		return fmt.Errorf("%s, so rad cannot use it to keep the API server trusting UCP while UCP moves to %s. Helm has not changed Radius. "+
+			"If nothing else uses the Secret, delete it with %s, then run the command again",
+			foreignUCPAPIServerTrustProblem(radiusNamespace), ucpAPIServerCASecretName,
+			kubectlCommand(kubeContext, radiusNamespace, "delete secret "+ucpAPIServerTrustSecretName))
 	}
 	trusted = unionCertificates(trusted, live)
 	if _, err := writeUCPAPIServerTrust(ctx, kubeClient, radiusNamespace, trusted); err != nil {

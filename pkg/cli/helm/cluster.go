@@ -423,6 +423,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
 	if bootstrap == nil {
+		if err := target.checkTransition(clusterOptions.RadiusReleaseValues); err != nil {
+			return err
+		}
 		if err := i.checkAggregationBeforeDependencies(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
 			return err
 		}
@@ -676,6 +679,9 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, true); err != nil {
+		return err
+	}
+	if err := target.checkTransition(clusterOptions.RadiusReleaseValues); err != nil {
 		return err
 	}
 	if err := i.guardCertificateRotation(ctx, kubeContext, clusterOptions.Radius.Namespace, "upgrade", radiusHelmChart); err != nil {
