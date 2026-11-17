@@ -65,7 +65,8 @@ func addOption(ctx context.Context, f *fakeAPI, stream string) (string, error) {
 }
 
 // change makes a call that changes app-one's logging options with f. It sends version, or the application's current
-// version when version is nil, and edit, when set, changes the input's application name and conditional token.
+// version when version is nil. edit, when set, runs after any setup and right before the call, and can change the
+// input's application name and conditional token.
 type change func(ctx context.Context, f *fakeAPI, version *int64, edit func(name **string, token **string)) error
 
 // changeRules returns the rules AWS's API reference gives for every call that changes an application's logging
@@ -111,12 +112,14 @@ func changeRules(call change) []nativetest.Rule {
 			Rule: "AWS sets the application's version ID up each time it changes the logging options",
 			Check: func(ctx context.Context, store *awsfake.CloudControl) error {
 				f := newFakeAPI(store)
-				before, err := version(ctx, f, "app-one")
-				if err != nil {
+				// Read the version in edit, after the call's setup, so only the call itself counts.
+				var before int64
+				var beforeErr error
+				if err := call(ctx, f, nil, func(_ **string, _ **string) { before, beforeErr = version(ctx, f, "app-one") }); err != nil {
 					return err
 				}
-				if err := call(ctx, f, nil, nil); err != nil {
-					return err
+				if beforeErr != nil {
+					return beforeErr
 				}
 				after, err := version(ctx, f, "app-one")
 				if err != nil {
