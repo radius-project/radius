@@ -255,6 +255,7 @@ func Test_AWSExtraReadPropertyRedeploySendsNothing(t *testing.T) {
 		step.NewDeployExecutor(template,
 			"clusterName="+clusterName,
 			"subnetIds="+strings.Join(subnetIDs, ","),
+			"creationTimestamp="+creationTimestamp,
 			testutil.GetAWSAccountId(),
 			testutil.GetAWSRegion(),
 			testutil.GetBicepRecipeRegistry(),
@@ -277,7 +278,7 @@ func Test_AWSExtraReadPropertyRedeploySendsNothing(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				requireAWSWrite(ctx, t, ct, clusterName, msgCreating)
 				client := newKafkaClient(ctx, t)
-				clusterARN = requireOneMSKCluster(ctx, t, client, clusterName)
+				clusterARN = requireOneMSKCluster(ctx, t, client, clusterName, creationTimestamp)
 				brokers = mskBootstrapBrokers(ctx, t, client, clusterARN)
 				requireExtenderValue(ctx, t, ct, name, "bootstrapBrokers", brokers)
 				since = time.Now()
@@ -289,7 +290,7 @@ func Test_AWSExtraReadPropertyRedeploySendsNothing(t *testing.T) {
 			SkipObjectValidation:                   true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				requireNoAWSWrites(ctx, t, ct, since, clusterName)
-				require.Equal(t, clusterARN, requireOneMSKCluster(ctx, t, newKafkaClient(ctx, t), clusterName), "the redeploy replaced the cluster")
+				require.Equal(t, clusterARN, requireOneMSKCluster(ctx, t, newKafkaClient(ctx, t), clusterName, creationTimestamp), "the redeploy replaced the cluster")
 				requireExtenderValue(ctx, t, ct, name, "bootstrapBrokers", brokers)
 			},
 		},
