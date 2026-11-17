@@ -304,6 +304,11 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 	if err != nil || secret == nil {
 		return err
 	}
+	if _, retained := secret.Annotations["radius.io/certificate-mode"]; retained {
+		i.logInfo("Keeping certificate lifecycle public trust Secret %s/%s after uninstall or reconciliation; its Helm keep policy requires explicit lifecycle cleanup",
+			radiusNamespace, ucpAPIServerTrustSecretName)
+		return nil
+	}
 	if !ownsUCPAPIServerTrust(secret) {
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
 		return nil
@@ -319,6 +324,11 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 	secret, err = read()
 	if err != nil || secret == nil {
 		return err
+	}
+	if _, retained := secret.Annotations["radius.io/certificate-mode"]; retained {
+		i.logInfo("Keeping certificate lifecycle public trust Secret %s/%s, which changed after rad read it",
+			radiusNamespace, ucpAPIServerTrustSecretName)
+		return nil
 	}
 	if !ownsUCPAPIServerTrust(secret) {
 		i.warnForeignUCPAPIServerTrust(kubeContext, radiusNamespace)
@@ -560,7 +570,7 @@ func writeUCPAPIServerTrustOnce(ctx context.Context, secrets typedcorev1.SecretI
 	if err != nil {
 		return false, err
 	}
-	if secret.Annotations["radius.io/certificate-mode"] != "" {
+	if _, retained := secret.Annotations["radius.io/certificate-mode"]; retained {
 		return false, fmt.Errorf("preserve retained aggregation trust Secret %s/%s; use the certificate lifecycle instead of overwriting its public CA", radiusNamespace, ucpAPIServerTrustSecretName)
 	}
 	if !ownsUCPAPIServerTrust(secret) {

@@ -485,7 +485,7 @@ func Test_UCPAPIServerTrust_ForeignSecret(t *testing.T) {
 		ucpCA := newTestCA(t, "ucp-ca")
 		kubeClient := kubefake.NewSimpleClientset(foreignTrustSecret())
 
-		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, caCertificates(ucpCA.pem))
+		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, testCACertificates(t, ucpCA.pem))
 		require.ErrorContains(t, err, "radius-apiserver-trust")
 		requireForeignTrustSecretKept(t, kubeClient)
 	})
@@ -565,7 +565,7 @@ func Test_UCPAPIServerTrust_EmptyCACertificate(t *testing.T) {
 
 	t.Run("writer refuses it and keeps it", func(t *testing.T) {
 		kubeClient := kubefake.NewSimpleClientset(emptyTrustSecret())
-		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, caCertificates(newTestCA(t, "ucp-ca").pem))
+		_, err := writeUCPAPIServerTrust(t.Context(), kubeClient, RadiusSystemNamespace, testCACertificates(t, newTestCA(t, "ucp-ca").pem))
 		require.ErrorContains(t, err, "radius-apiserver-trust")
 		requireKept(t, kubeClient)
 	})
@@ -600,6 +600,10 @@ func Test_deleteUCPAPIServerTrust_Pinned(t *testing.T) {
 	for name, change := range map[string]func(*corev1.Secret){
 		"changed":   func(s *corev1.Secret) { s.ResourceVersion = "2" },
 		"recreated": func(s *corev1.Secret) { s.UID = "trust-2" },
+		"retained as a lifecycle pin": func(s *corev1.Secret) {
+			s.ResourceVersion = "2"
+			s.Annotations["radius.io/certificate-mode"] = "selfSigned"
+		},
 	} {
 		t.Run("keeps a Secret "+name+" after rad reads it", func(t *testing.T) {
 			c := newStageCluster(t, nil, false)
@@ -661,7 +665,7 @@ func Test_writeUCPAPIServerTrust_RetriesConflict(t *testing.T) {
 		return true, nil, apierrors.NewConflict(corev1.Resource("secrets"), ucpAPIServerTrustSecretName, errors.New("the object has been modified"))
 	})
 
-	_, err := writeUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace, caCertificates(append(append([]byte{}, c.ucpCA.pem...), apiServerCA.pem...)))
+	_, err := writeUCPAPIServerTrust(t.Context(), c.kube, RadiusSystemNamespace, testCACertificates(t, append(append([]byte{}, c.ucpCA.pem...), apiServerCA.pem...)))
 	require.NoError(t, err)
 	require.Equal(t, 1, conflicts)
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, trustedSubjects(t, c.kube))

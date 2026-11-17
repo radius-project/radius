@@ -163,7 +163,7 @@ tests:
           value: YXBpLWNh
         documentIndex: 1
 
-  - it: ignores an existing A8 public copy in selfSigned mode without deleting it
+  - it: keeps both CAs trusted during the transient switch-on overlap
     template: ucp/apiservice.yaml
     set:
       global.rbac.enabled: true
@@ -176,6 +176,49 @@ tests:
             namespace: radius-system
             annotations:
               cert-manager.io/allow-direct-injection: "true"
+          data:
+            ca.crt: dHJ1c3QtY2E=
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+            annotations:
+              cert-manager.io/certificate-name: radius-apiserver-ca
+              cert-manager.io/issuer-name: radius-selfsigned-bootstrap
+              cert-manager.io/issuer-kind: Issuer
+              cert-manager.io/issuer-group: cert-manager.io
+          type: kubernetes.io/tls
+          data:
+            ca.crt: YXBpLWNh
+            tls.crt: YXBpLWNh
+            tls.key: a2V5
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: radius-system/radius-apiserver-trust
+        documentIndex: 1
+      - equal:
+          path: spec.caBundle
+          value: dHJ1c3QtY2E=
+        documentIndex: 1
+
+  - it: ignores a retained A8 public copy in selfSigned mode
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-trust
+            namespace: radius-system
+            annotations:
+              cert-manager.io/allow-direct-injection: "true"
+              radius.io/certificate-mode: selfSigned
+              helm.sh/resource-policy: keep
+          type: Opaque
           data:
             ca.crt: dHJ1c3QtY2E=
         - apiVersion: v1
@@ -222,8 +265,16 @@ tests:
           metadata:
             name: radius-apiserver-ca
             namespace: radius-system
+            annotations:
+              cert-manager.io/certificate-name: radius-apiserver-ca
+              cert-manager.io/issuer-name: radius-selfsigned-bootstrap
+              cert-manager.io/issuer-kind: Issuer
+              cert-manager.io/issuer-group: cert-manager.io
+          type: kubernetes.io/tls
           data:
             ca.crt: YXBpLWNh
+            tls.crt: YXBpLWNh
+            tls.key: a2V5
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
@@ -254,8 +305,16 @@ tests:
           metadata:
             name: radius-apiserver-ca
             namespace: radius-system
+            annotations:
+              cert-manager.io/certificate-name: radius-apiserver-ca
+              cert-manager.io/issuer-name: radius-selfsigned-bootstrap
+              cert-manager.io/issuer-kind: Issuer
+              cert-manager.io/issuer-group: cert-manager.io
+          type: kubernetes.io/tls
           data:
             ca.crt: YXBpLWNh
+            tls.crt: YXBpLWNh
+            tls.key: a2V5
     asserts:
       - equal:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]

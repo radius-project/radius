@@ -287,6 +287,9 @@ func ownsUCPOffSecret(secret *corev1.Secret, leftover ucpOffLeftoverSecret) bool
 	if leftover.certificate != "" {
 		return secret.Annotations[certificateNameAnnotation] == leftover.certificate
 	}
+	if _, retained := secret.Annotations["radius.io/certificate-mode"]; retained {
+		return false
+	}
 	return ownsUCPAPIServerTrust(secret)
 }
 

@@ -31,6 +31,17 @@ spec:
 {{- $source := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") | fromJson }}
 {{- $caSource = $source.name }}
 {{- $caBundle = $source.bundle | b64enc }}
+{{- if eq (include "radius.authz.certificates.mode" .) "selfSigned" }}
+{{- $trust := lookup "v1" "Secret" .Release.Namespace "radius-apiserver-trust" }}
+{{- $trustData := dig "data" dict $trust }}
+{{- $trustOwned := and (eq (dig "metadata" "annotations" "cert-manager.io/allow-direct-injection" "" $trust) "true") (eq (len $trustData) 1) (dig "ca.crt" "" $trustData) }}
+{{- /* A transient overlap keeps the old serving CA trusted until UCP rolls out.
+Mode-annotated public sources are lifecycle pins, never transient overlap. */}}
+{{- if and $trustOwned (not (hasKey (dig "metadata" "annotations" dict $trust) "radius.io/certificate-mode")) }}
+{{- $caSource = "radius-apiserver-trust" }}
+{{- $caBundle = index $trustData "ca.crt" }}
+{{- end }}
+{{- end }}
 {{- else }}
 {{- $ca := genCA "ucp-ca" 3650 }}
 {{- $cn := printf "ucp" }}
