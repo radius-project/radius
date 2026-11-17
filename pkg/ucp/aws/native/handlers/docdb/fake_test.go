@@ -718,7 +718,7 @@ func (f *fakeAPI) DeleteDBCluster(ctx context.Context, in *docdb.DeleteDBCluster
 	r := rules{}
 	r.combination(!skip || in.FinalDBSnapshotIdentifier == nil)
 	r.combination(skip || in.FinalDBSnapshotIdentifier != nil)
-	r.value(optionalIdentifier(in.FinalDBSnapshotIdentifier, 255))
+	r.value(in.FinalDBSnapshotIdentifier == nil || validSnapshotName(*in.FinalDBSnapshotIdentifier))
 	if r.err != nil {
 		return nil, r.err
 	}
@@ -742,6 +742,14 @@ func (f *fakeAPI) DeleteDBCluster(ctx context.Context, in *docdb.DeleteDBCluster
 	}
 	f.status[statusKey(clusterType, id)] = "deleting"
 	return &docdb.DeleteDBClusterOutput{}, nil
+}
+
+// validSnapshotName is DocumentDB's rule for a cluster snapshot's name: 1 to 63 letters, numbers, or hyphens, starting
+// with a letter, with no two hyphens in a row and no hyphen at the end. The DeleteDBCluster reference allows 255
+// characters, but the CreateDBClusterSnapshot reference and the guide to deleting a cluster say 63, so the fake
+// enforces 63.
+func validSnapshotName(name string) bool {
+	return validIdentifier(name, 63)
 }
 
 func (f *fakeAPI) CreateDBInstance(ctx context.Context, in *docdb.CreateDBInstanceInput, _ ...func(*docdb.Options)) (*docdb.CreateDBInstanceOutput, error) {

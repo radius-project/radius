@@ -238,7 +238,7 @@ func manyTags(n int) []types.Tag {
 	return out
 }
 
-// tokenRules returns the rules FSx documents for the client request token of a create or delete, given a call that
+// tokenRules returns the rules FSx documents for the client request token of a create, update, or delete, given a call that
 // sends the token with a parameter of value, and returns what it made.
 func tokenRules(call func(ctx context.Context, f *fakeAPI, token string, value int32) (string, error)) []nativetest.Rule {
 	return []nativetest.Rule{
@@ -308,20 +308,39 @@ func restoreToken(ctx context.Context, f *fakeAPI, token string, value int32) (s
 	return aws.ToString(out.FileSystem.FileSystemId), nil
 }
 
+// oneFileSystem returns the ID of the file system the fake f has, after making an OpenZFS one if it has none.
+func oneFileSystem(ctx context.Context, f *fakeAPI) (string, error) {
+	if ids := f.store.List(fileSystemType); len(ids) > 0 {
+		return ids[0], nil
+	}
+	return available(ctx, f, openZFSInput())
+}
+
+// updateWithToken updates an OpenZFS file system, made once per fake, with the token, and a backup retention that
+// grows with value. It returns the file system and how many administrative actions it has.
+func updateWithToken(ctx context.Context, f *fakeAPI, token string, value int32) (string, error) {
+	id, err := oneFileSystem(ctx, f)
+	if err != nil {
+		return "", err
+	}
+	_, err = f.UpdateFileSystem(ctx, &fsx.UpdateFileSystemInput{
+		FileSystemId: aws.String(id), ClientRequestToken: aws.String(token),
+		OpenZFSConfiguration: &types.UpdateFileSystemOpenZFSConfiguration{AutomaticBackupRetentionDays: aws.Int32(7 + value)},
+	})
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s with %d actions", id, len(f.actions[id])), nil
+}
+
 // deleteToken deletes an OpenZFS file system, made once per fake, with the token. Its final backup is skipped when
 // value is set.
 func deleteToken(ctx context.Context, f *fakeAPI, token string, value int32) (string, error) {
-	ids := f.store.List(fileSystemType)
-	id := ""
-	if len(ids) > 0 {
-		id = ids[0]
-	} else {
-		var err error
-		if id, err = available(ctx, f, openZFSInput()); err != nil {
-			return "", err
-		}
+	id, err := oneFileSystem(ctx, f)
+	if err != nil {
+		return "", err
 	}
-	_, err := f.DeleteFileSystem(ctx, &fsx.DeleteFileSystemInput{
+	_, err = f.DeleteFileSystem(ctx, &fsx.DeleteFileSystemInput{
 		FileSystemId: aws.String(id), ClientRequestToken: aws.String(token),
 		OpenZFSConfiguration: &types.DeleteFileSystemOpenZFSConfiguration{SkipFinalBackup: aws.Bool(value != 0)},
 	})
@@ -882,7 +901,7 @@ var fileSystemAPI = map[string]nativetest.Call{
 	},
 	"UpdateFileSystem": {
 		Doc: apiReference + "API_UpdateFileSystem.html",
-		Rules: []nativetest.Rule{
+		Rules: append(tokenRules(updateWithToken), []nativetest.Rule{
 			{
 				Rule: "FileSystemId is 11 to 21 characters of the form fs-[0-9a-f]{8,}",
 				Doc:  commonErrors,
@@ -901,7 +920,7 @@ var fileSystemAPI = map[string]nativetest.Call{
 				Code: "FileSystemNotFound",
 			},
 			{
-				Rule: "ClientRequestToken is 1 to 63 characters of [A-za-z0-9_.-]",
+				Rule: "ClientRequestToken has only the characters [A-za-z0-9_.-]",
 				Doc:  commonErrors,
 				Break: updateBreak(windowsInput, func(in *fsx.UpdateFileSystemInput) {
 					in.ClientRequestToken = aws.String("not a token")
@@ -1082,16 +1101,15 @@ var fileSystemAPI = map[string]nativetest.Call{
 				}),
 				Code: "ValidationError",
 			},
-		},
+		}...),
 		Unclear: "The pages don't say which lifecycle states a file system takes an update in; the fake takes one in any " +
 			"state. They state the storage, throughput, version, and in-progress rules without an error code; the fake " +
 			"returns BadRequest, the call's generic client error. The fake has no clock: it treats its calls as within " +
 			"6 hours, so it rejects any second storage capacity increase of a file system. The page says NetworkType " +
 			"changes an OpenZFS file system and lists StorageType only for Windows, without saying what FSx does with " +
 			"either for another type; the fake applies both. It doesn't say what FSx does with another type's " +
-			"configuration, or with ONTAP HAPairs on a first-generation file system; the fake applies them. FSx's SDK " +
-			"fills in a new ClientRequestToken for each call the handler makes, so a resent update isn't the same " +
-			"request to FSx.",
+			"configuration, or with ONTAP HAPairs on a first-generation file system; the fake applies them. It doesn't say " +
+			"how long FSx keeps an update's client request token; the fake keeps it for its life.",
 	},
 	"DeleteFileSystem": {
 		Doc: deleteDoc,

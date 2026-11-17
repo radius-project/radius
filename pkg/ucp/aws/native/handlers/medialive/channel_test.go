@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -234,12 +235,41 @@ func Test_UpdateChannelClass(t *testing.T) {
 	require.Equal(t, native.OutcomeRejected, failure.Outcome)
 	require.Contains(t, failure.Message, "LogLevel")
 	require.Equal(t, "STANDARD", api.store.Resource(channelType, id)["ChannelClass"], "nothing changed")
+
+	// UpdateChannelClass can't remove the role, so a class change that also removes RoleArn is rejected too.
+	noRole := with(desired, map[string]any{"ChannelClass": "SINGLE_PIPELINE"})
+	delete(noRole, "RoleArn")
+	api.calls = nil
+	err = h.Update(t.Context(), native.UpdateRequest{
+		Region: region, Identifier: id, Current: current, Desired: noRole,
+		Patch: patch(t, `[{"op":"replace","path":"/ChannelClass","value":"SINGLE_PIPELINE"},{"op":"remove","path":"/RoleArn"}]`),
+	})
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, "RoleArn")
+	require.NotContains(t, api.calls, "UpdateChannelClass "+region, "nothing changed")
+	require.Equal(t, properties["RoleArn"], api.store.Resource(channelType, id)["RoleArn"], "the role stays")
 }
 
 // Test_UpdateKeepsRole checks that an update that doesn't change RoleArn sends it, because UpdateChannel removes the
 // role of a call that leaves it out.
+// channelUpdates is the fake MediaLive API, recording the input of each UpdateChannel call.
+type channelUpdates struct {
+	*fakeAPI
+	inputs []*medialive.UpdateChannelInput
+}
+
+func (c *channelUpdates) UpdateChannel(ctx context.Context, in *medialive.UpdateChannelInput, opts ...func(*medialive.Options)) (*medialive.UpdateChannelOutput, error) {
+	c.inputs = append(c.inputs, in)
+	return c.fakeAPI.UpdateChannel(ctx, in, opts...)
+}
+
+// Test_UpdateKeepsRole checks that an update that doesn't change RoleArn still sends it, because UpdateChannel removes
+// the channel's role when the call leaves out roleArn
+// (https://docs.aws.amazon.com/medialive/latest/apireference/channels-channelid.html).
 func Test_UpdateKeepsRole(t *testing.T) {
-	h, api := newChannel(t)
+	api := &channelUpdates{fakeAPI: newFakeAPI(awsfake.NewCloudControl())}
+	h := NewChannel(api)
 	properties := channel(t, outputGroups(t, "", ""))
 	id := created(t, h, properties)
 	current, err := h.Read(t.Context(), region, id)
@@ -250,7 +280,52 @@ func Test_UpdateKeepsRole(t *testing.T) {
 		Patch: patch(t, `[{"op":"replace","path":"/LogLevel","value":"DEBUG"}]`),
 	}))
 	settle(t, h, id, native.OperationUpdate)
+	require.Len(t, api.inputs, 1)
+	require.Equal(t, properties["RoleArn"], aws.ToString(api.inputs[0].RoleArn))
 	require.Equal(t, properties["RoleArn"], api.store.Resource(channelType, id)["RoleArn"])
+}
+
+// Test_UpdateKeepsUnmanagedRole checks that an update keeps a role the template doesn't manage, such as on a channel a
+// template took over by name without RoleArn. The patch doesn't remove RoleArn, so the update sends the channel's
+// current role, because UpdateChannel removes the role when the call leaves it out.
+func Test_UpdateKeepsUnmanagedRole(t *testing.T) {
+	api := &channelUpdates{fakeAPI: newFakeAPI(awsfake.NewCloudControl())}
+	h := NewChannel(api)
+	properties := channel(t, outputGroups(t, "", ""))
+	id := created(t, h, properties)
+	current, err := h.Read(t.Context(), region, id)
+	require.NoError(t, err)
+
+	adopted := maps.Clone(properties)
+	delete(adopted, "RoleArn")
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{
+		Region: region, Identifier: id, Current: current, Desired: with(adopted, map[string]any{"LogLevel": "DEBUG"}),
+		Patch: patch(t, `[{"op":"replace","path":"/LogLevel","value":"DEBUG"}]`),
+	}))
+	settle(t, h, id, native.OperationUpdate)
+	require.Len(t, api.inputs, 1)
+	require.Equal(t, properties["RoleArn"], aws.ToString(api.inputs[0].RoleArn))
+}
+
+// Test_UpdateRemovesRole checks that a template that removes only RoleArn makes an UpdateChannel call without a role,
+// which removes the channel's role.
+func Test_UpdateRemovesRole(t *testing.T) {
+	api := &channelUpdates{fakeAPI: newFakeAPI(awsfake.NewCloudControl())}
+	h := NewChannel(api)
+	properties := channel(t, outputGroups(t, "", ""))
+	id := created(t, h, properties)
+	current, err := h.Read(t.Context(), region, id)
+	require.NoError(t, err)
+
+	desired := maps.Clone(properties)
+	delete(desired, "RoleArn")
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{
+		Region: region, Identifier: id, Current: current, Desired: desired,
+		Patch: patch(t, `[{"op":"remove","path":"/RoleArn"}]`),
+	}))
+	settle(t, h, id, native.OperationUpdate)
+	require.Len(t, api.inputs, 1)
+	require.Nil(t, api.inputs[0].RoleArn)
 }
 
 func Test_UpdateRemoved(t *testing.T) {

@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"reflect"
 	"strconv"
@@ -35,9 +36,10 @@ import (
 // so items repeat, look alike, differ only by a scalar, or reorder, and nests some of them inside another list. AWS
 // holds the template's values, the last deploy's values that may remain, and defaults.
 //
-// For every case, after the patch: when the template's list differs from last-applied, or the path is unresolved,
-// AWS has exactly the template's list, so nothing Radius set and the template dropped remains. Otherwise, when AWS
-// holds every template value, the patch is empty.
+// For every case, after the patch: when the path is unresolved, AWS has exactly the template's list. When the
+// template's list differs from last-applied, AWS has the template's values, and inside the items only fields the last
+// deploy set nowhere in the list, such as AWS's Codec, beyond them, so nothing Radius set and the template dropped
+// remains. Otherwise, when AWS holds every template value, the patch is empty.
 func Test_GeneratePatchWithOptions_OwnershipAdversarial(t *testing.T) {
 	t.Parallel()
 
@@ -88,13 +90,62 @@ func Test_GeneratePatchWithOptions_OwnershipAdversarial(t *testing.T) {
 
 			changed := !reflect.DeepEqual(normalize(t, lastApplied["V"]), normalize(t, desired["V"]))
 			switch {
-			case changed || unresolved != nil:
+			case unresolved != nil:
 				require.Equal(t, normalize(t, desired["V"]), result["V"], describe)
+			case changed:
+				requireTemplateWithAWSFields(t, normalize(t, desired["V"]), result["V"], keysIn(normalize(t, lastApplied["V"])), describe)
 			case equivalent("V", normalize(t, desired["V"]), normalize(t, current["V"])):
 				require.Empty(t, patch, describe)
 			}
 		}
 	}
+}
+
+// requireTemplateWithAWSFields checks that got is template, except that an object inside it may have more fields,
+// none of them in owned.
+func requireTemplateWithAWSFields(t *testing.T, template any, got any, owned map[string]bool, describe string) {
+	t.Helper()
+	switch tv := template.(type) {
+	case []any:
+		gv, ok := got.([]any)
+		require.True(t, ok, describe)
+		require.Len(t, gv, len(tv), describe)
+		for i := range tv {
+			requireTemplateWithAWSFields(t, tv[i], gv[i], owned, describe)
+		}
+	case map[string]any:
+		gv, ok := got.(map[string]any)
+		require.True(t, ok, describe)
+		for k, v := range gv {
+			if tf, set := tv[k]; set {
+				requireTemplateWithAWSFields(t, tf, v, owned, describe)
+			} else {
+				require.False(t, owned[k], "%s: %s is left from the last deploy", describe, k)
+			}
+		}
+		for k := range tv {
+			require.Contains(t, gv, k, describe)
+		}
+	default:
+		require.Equal(t, template, got, describe)
+	}
+}
+
+// keysIn returns every object key in v.
+func keysIn(v any) map[string]bool {
+	out := map[string]bool{}
+	switch tv := v.(type) {
+	case []any:
+		for _, item := range tv {
+			maps.Copy(out, keysIn(item))
+		}
+	case map[string]any:
+		for k, item := range tv {
+			out[k] = true
+			maps.Copy(out, keysIn(item))
+		}
+	}
+	return out
 }
 
 // randomList returns a list of one to three items, each with a Name, and maybe a Sharpness and a Tint, from small sets,
