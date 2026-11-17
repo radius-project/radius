@@ -20,7 +20,9 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/docdb"
@@ -185,6 +187,15 @@ func Test_Cluster_Delete(t *testing.T) {
 		require.NoError(t, h.Delete(t.Context(), region, "app"))
 		require.Len(t, api.snapshots, 1)
 		require.Contains(t, api.snapshots[0], "app-final-")
+	})
+
+	t.Run("a 63-character identifier gets a snapshot name DocumentDB accepts", func(t *testing.T) {
+		h, api := newCluster(t)
+		identifier := "a" + strings.Repeat("b", 62)
+		deployed(t, h, map[string]any{"DBClusterIdentifier": identifier})
+		require.NoError(t, h.Delete(t.Context(), region, identifier))
+		require.Len(t, api.snapshots, 1)
+		require.Len(t, api.snapshots[0], 63)
 	})
 
 	t.Run("a snapshot name that exists fails the delete and keeps the cluster", func(t *testing.T) {
@@ -383,4 +394,57 @@ func Test_Instance_CertificateRotationRestart(t *testing.T) {
 		{Type: jsondiff.OperationAdd, Path: "/CACertificateIdentifier", Value: "rds-ca-rsa2048-g1"},
 	}}))
 	require.Nil(t, api.lastModifyInstance.CertificateRotationRestart, "a template without the flag leaves DocumentDB's default")
+}
+
+func Test_SnapshotName(t *testing.T) {
+	at := time.Date(2026, 11, 5, 5, 27, 51, 0, time.UTC)
+	h := NewCluster(nil)
+	h.now = func() time.Time { return at }
+	name := func(identifier string) string {
+		token, err := h.DeleteToken(t.Context(), "us-west-2", identifier)
+		require.NoError(t, err)
+		return token
+	}
+
+	require.Equal(t, "app-docdb-final-20261105-052751", name("app-docdb"), "a name that fits is unchanged")
+	fits := strings.Repeat("a", 41)
+	require.Equal(t, fits+"-final-20261105-052751", name(fits), "41 characters fit")
+
+	long := "a" + strings.Repeat("b", 62)
+	got := name(long)
+	require.Len(t, got, 63)
+	require.True(t, strings.HasPrefix(got, "a"+strings.Repeat("b", 31)+"-"))
+	require.True(t, strings.HasSuffix(got, "-final-20261105-052751"), "the time stays")
+	require.True(t, validSnapshotName(got))
+
+	other := "a" + strings.Repeat("b", 61) + "c"
+	require.NotEqual(t, got, name(other), "identifiers that start the same get different names")
+
+	hyphen := strings.Repeat("a", 31) + "-" + strings.Repeat("b", 31)
+	require.True(t, validSnapshotName(name(hyphen)), "a hyphen at the cut isn't doubled: %s", name(hyphen))
+
+	h.now = func() time.Time { return at.Add(time.Second) }
+	require.NotEqual(t, got, name(long), "each delete gets its own name")
+
+	saved := long + "-final-20261105-052751"
+	require.Equal(t, got, snapshotName(saved), "a long name an older version saved is shortened the same way")
+	require.Equal(t, got, snapshotName(got))
+}
+
+func Test_Fake_SnapshotNameRules(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		valid bool
+	}{
+		{"a", true},
+		{"app-final-1", true},
+		{strings.Repeat("a", 63), true},
+		{strings.Repeat("a", 64), false},
+		{"1app", false},
+		{"app--final", false},
+		{"app-", false},
+		{"app_final", false},
+	} {
+		require.Equal(t, tt.valid, validSnapshotName(tt.name), tt.name)
+	}
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -85,6 +86,10 @@ type HelmClient interface {
 	//
 	// A non-positive timeout falls back to DefaultInstallTimeout.
 	RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool, timeout time.Duration) (*releasev1.Release, error)
+
+	// MigrateControllerStrategy prepares an existing Radius controller for a Recreate upgrade.
+	// It renders the effective upgrade before changing the live Deployment, and does nothing for a new release.
+	MigrateControllerStrategy(ctx context.Context, helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, reuseValues bool) error
 
 	// RunHelmUninstall uninstalls the Helm chart.
 	RunHelmUninstall(helmConf *helm.Configuration, releaseName, namespace string, wait bool) (*release.UninstallReleaseResponse, error)
