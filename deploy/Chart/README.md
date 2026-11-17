@@ -135,6 +135,25 @@ When the gate is active, the chart removes the engine's legacy anonymous/plain-H
 
 Without the opt-in, the engine mounts no internal component credentials and keeps the published image's existing `https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3` endpoint, even in DryRun or Enforce. Explicitly enabled `de.ucpMTLS.enabled` is rejected with a migration diagnostic, not silently disabled. Select a compatible image and migrate during a maintenance window, since changing the provider or gate rolls UCP and the engine separately. UCP verifies aggregation-proxy credentials before trusting forwarded user headers, while its headerless engine compatibility path remains open pending verified migration. A component's TLS identity is not an aggregation-proxy credential. These settings alone do not complete execution authorization.
 
+### Upgrading the controller rollout strategy
+
+The controller now uses `Recreate` to prevent old and new dispatchers from running concurrently during an upgrade. Existing installations, including v0.62.0, used the API-defaulted `RollingUpdate` strategy. Helm 4 server-side apply cannot remove those defaulted fields merely by applying `rollingUpdate: null`, so an unprepared upgrade fails with `rollingUpdate: Forbidden: may not be specified when strategy type is Recreate`.
+
+The current `rad upgrade kubernetes` and `rad install kubernetes --reinstall` migrate the controller strategy automatically when the target chart requests `Recreate`. The migration preserves the Deployment, replica count, and pod template; `--preflight-only` does not perform it. A failed migration stops the upgrade, and retrying an already-migrated installation is safe.
+
+For plain Helm or older CLIs, select the intended cluster and release namespace, verify that `deployment/controller` belongs to the Radius release, and patch the strategy before upgrading to this chart:
+
+```sh
+CONTEXT=your-cluster
+NAMESPACE=radius-system
+kubectl --context "$CONTEXT" -n "$NAMESPACE" get deployment controller \
+  -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}{"\n"}{.metadata.annotations.meta\.helm\.sh/release-namespace}{"\n"}'
+kubectl --context "$CONTEXT" -n "$NAMESPACE" patch deployment controller \
+  --type=merge -p '{"spec":{"strategy":{"type":"Recreate","rollingUpdate":null}}}'
+```
+
+The ownership output must match your release name and namespace. This atomic patch does not change the pod template or restart the controller by itself. Then run the normal upgrade against the same cluster and namespace; `Recreate` stops the old controller before starting its replacement. Do not delete the Deployment, use force replacement, or revert to `RollingUpdate`. If a previous attempt left a failed Helm revision, apply the patch and retry the upgrade. This is a strategy migration, not a supported downgrade procedure for coordinator-managed workloads.
+
 ## Configuration Options
 
 ### In-Cluster Container Image Builds
