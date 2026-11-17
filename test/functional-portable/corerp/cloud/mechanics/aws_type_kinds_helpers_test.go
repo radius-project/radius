@@ -373,15 +373,16 @@ func listMSKClusters(ctx context.Context, client *kafka.Client, name string) ([]
 	return arns, nil
 }
 
-// requireOneMSKCluster requires that AWS has exactly one active MSK cluster named name, and returns its ARN. AWS
-// assigns the ARN, so the test finds the cluster by its name.
-func requireOneMSKCluster(ctx context.Context, t *testing.T, client *kafka.Client, name string) string {
+// requireOneMSKCluster requires that AWS has exactly one active MSK cluster named name, with the RadiusCreationTimestamp
+// tag set to creationTimestamp, and returns its ARN. AWS assigns the ARN, so the test finds the cluster by its name.
+func requireOneMSKCluster(ctx context.Context, t *testing.T, client *kafka.Client, name string, creationTimestamp string) string {
 	arns, err := listMSKClusters(ctx, client, name)
 	require.NoError(t, err)
 	require.Len(t, arns, 1, "want one MSK cluster named %s", name)
 	out, err := client.DescribeClusterV2(ctx, &kafka.DescribeClusterV2Input{ClusterArn: aws.String(arns[0])})
 	require.NoError(t, err)
 	require.Equal(t, kafkatypes.ClusterStateActive, out.ClusterInfo.State)
+	require.Equal(t, creationTimestamp, out.ClusterInfo.Tags["RadiusCreationTimestamp"], "the cluster doesn't have the template's tag")
 	return arns[0]
 }
 

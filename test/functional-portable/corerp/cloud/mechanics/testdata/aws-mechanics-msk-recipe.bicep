@@ -6,6 +6,9 @@ param clusterName string
 @description('Comma-separated subnets for the cluster, in at least two Availability Zones.')
 param subnetIds string
 
+@description('Unix time the test started, used by the job that purges leaked test resources.')
+param creationTimestamp string
+
 @description('AWS account the environment deploys to.')
 param awsAccountId string
 
@@ -67,6 +70,7 @@ resource extender 'Applications.Core/extenders@2023-10-01-preview' = {
       parameters: {
         clusterName: clusterName
         subnetIds: split(subnetIds, ',')
+        creationTimestamp: creationTimestamp
       }
     }
   }

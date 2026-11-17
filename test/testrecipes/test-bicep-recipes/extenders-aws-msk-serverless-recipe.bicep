@@ -6,9 +6,11 @@ param clusterName string
 @description('Subnets for the cluster, in at least two Availability Zones.')
 param subnetIds array
 
+@description('Unix time the test started, used by the job that purges leaked test resources and by the CI role policy.')
+param creationTimestamp string
+
 // MSK Serverless can only be created and deleted. UCP reads its broker addresses with an extra
-// GetBootstrapBrokers call, because AWS's schema doesn't return them. The cluster has no tags: the Bicep type of
-// its Tags map accepts no keys. The test deletes it by name instead.
+// GetBootstrapBrokers call, because AWS's schema doesn't return them.
 resource cluster 'AWS.MSK/ServerlessCluster@default' = {
   alias: clusterName
   properties: {
@@ -25,6 +27,9 @@ resource cluster 'AWS.MSK/ServerlessCluster@default' = {
         SubnetIds: subnetIds
       }
     ]
+    Tags: {
+      RadiusCreationTimestamp: creationTimestamp
+    }
   }
 }
 
