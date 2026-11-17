@@ -166,7 +166,8 @@ func Test_AWSNativeTypeRedeployAndDelete(t *testing.T) {
 	template := "testdata/aws-mechanics-docdb-recipe.bicep"
 	name := "corerp-mechanics-aws-docdb"
 	appName := name + "-app"
-	clusterIdentifier := "radiusfunctionaltest-" + uuid.New().String()
+	// A short identifier keeps the final snapshot's name within 63 characters, so UCP doesn't shorten it.
+	clusterIdentifier := "radiusfunctionaltest-" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
 	creationTimestamp := testutil.GetCreationTimestamp()
 	parameters := []string{
 		"clusterIdentifier=" + clusterIdentifier,
@@ -218,9 +219,11 @@ func Test_AWSNativeTypeRedeployAndDelete(t *testing.T) {
 				require.NoError(t, err)
 				require.False(t, exists, "the cluster %s is still in AWS", clusterIdentifier)
 
-				snapshots, err := docDBFinalSnapshots(ctx, client, clusterIdentifier)
+				snapshots, err := docDBSnapshots(ctx, client, clusterIdentifier)
 				require.NoError(t, err)
 				require.Len(t, snapshots, 1, "deleting the cluster must keep exactly one final snapshot")
+				require.True(t, strings.HasPrefix(aws.ToString(snapshots[0].DBClusterSnapshotIdentifier), clusterIdentifier+"-final-"),
+					"the final snapshot %s isn't named after the cluster", aws.ToString(snapshots[0].DBClusterSnapshotIdentifier))
 			},
 		},
 	})

@@ -417,9 +417,9 @@ func requireDocDBCluster(ctx context.Context, t *testing.T, client *docdb.Client
 	return cluster
 }
 
-// docDBFinalSnapshots returns the final snapshots UCP took when it deleted the cluster with the identifier. UCP names
-// them "<identifier>-final-<UTC time>".
-func docDBFinalSnapshots(ctx context.Context, client *docdb.Client, identifier string) ([]docdbtypes.DBClusterSnapshot, error) {
+// docDBSnapshots returns the manual snapshots of the cluster with the identifier. The identifier is unique to the test,
+// so these are the final snapshots UCP took when it deleted the cluster.
+func docDBSnapshots(ctx context.Context, client *docdb.Client, identifier string) ([]docdbtypes.DBClusterSnapshot, error) {
 	out, err := client.DescribeDBClusterSnapshots(ctx, &docdb.DescribeDBClusterSnapshotsInput{
 		DBClusterIdentifier: aws.String(identifier),
 		SnapshotType:        aws.String("manual"),
@@ -427,13 +427,11 @@ func docDBFinalSnapshots(ctx context.Context, client *docdb.Client, identifier s
 	if err != nil {
 		return nil, err
 	}
-	return slices.DeleteFunc(out.DBClusterSnapshots, func(s docdbtypes.DBClusterSnapshot) bool {
-		return !strings.HasPrefix(aws.ToString(s.DBClusterSnapshotIdentifier), identifier+"-final-")
-	}), nil
+	return out.DBClusterSnapshots, nil
 }
 
-// cleanupDocDBCluster deletes the cluster with the identifier, if the test left it, and then every final snapshot of
-// it, when the test ends. Radius never deletes a final snapshot, so the test must.
+// cleanupDocDBCluster deletes the cluster with the identifier, if the test left it, and then every snapshot of it, when
+// the test ends. Radius never deletes a final snapshot, so the test must.
 func cleanupDocDBCluster(t *testing.T, client *docdb.Client, identifier string) {
 	t.Cleanup(func() {
 		ctx, cancel := cleanupContext(t)
@@ -460,7 +458,7 @@ func cleanupDocDBCluster(t *testing.T, client *docdb.Client, identifier string) 
 		}
 
 		err = poll(ctx, 15*time.Second, func() (bool, error) {
-			snapshots, err := docDBFinalSnapshots(ctx, client, identifier)
+			snapshots, err := docDBSnapshots(ctx, client, identifier)
 			if err != nil {
 				return false, err
 			}
