@@ -17,10 +17,14 @@ limitations under the License.
 package ec2
 
 import (
+	"context"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/stretchr/testify/require"
+	"github.com/wI2L/jsondiff"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -63,24 +67,45 @@ func Test_ClientVpnEndpoint_CreateWithPolicy(t *testing.T) {
 	require.Equal(t, id, props["Id"])
 }
 
+// policyTokens is the fake EC2 API, recording the client token of each create and each policy call.
+type policyTokens struct {
+	*fakeAPI
+	creates  []string
+	policies []string
+}
+
+func (p *policyTokens) CreateClientVpnEndpoint(ctx context.Context, in *awsec2.CreateClientVpnEndpointInput, opts ...func(*awsec2.Options)) (*awsec2.CreateClientVpnEndpointOutput, error) {
+	p.creates = append(p.creates, aws.ToString(in.ClientToken))
+	return p.fakeAPI.CreateClientVpnEndpoint(ctx, in, opts...)
+}
+
+func (p *policyTokens) ModifyClientVpnEndpointAuthorizationPolicy(ctx context.Context, in *awsec2.ModifyClientVpnEndpointAuthorizationPolicyInput, opts ...func(*awsec2.Options)) (*awsec2.ModifyClientVpnEndpointAuthorizationPolicyOutput, error) {
+	p.policies = append(p.policies, aws.ToString(in.ClientToken))
+	return p.fakeAPI.ModifyClientVpnEndpointAuthorizationPolicy(ctx, in, opts...)
+}
+
 func Test_ClientVpnEndpoint_CreateWithPolicyToken(t *testing.T) {
-	api := newFakeAPI(awsfake.NewCloudControl())
+	api := &policyTokens{fakeAPI: newFakeAPI(awsfake.NewCloudControl())}
 	h := NewClientVpnEndpoint(api)
 	request := createRequest(with(endpointProperties(), map[string]any{"AuthorizationPolicy": testPolicy}))
 
-	// EC2 rejects a client token another request used, so the policy call can't take the create's token.
+	// EC2 fails a client token reused with other parameters, so the policy call can't take the create's token.
 	id, err := h.Create(t.Context(), request)
 	require.NoError(t, err)
-	policy, ok := api.tokens[testRegion+"/"+*policyToken(request.ClientToken)]
-	require.True(t, ok, "the policy call sends a token")
-	require.Equal(t, "ModifyClientVpnEndpointAuthorizationPolicy", policy.call)
-	require.NotEqual(t, request.ClientToken, *policyToken(request.ClientToken))
+	require.Equal(t, []string{request.ClientToken}, api.creates)
+	require.Len(t, api.policies, 1)
+	require.NotEmpty(t, api.policies[0], "the policy call sends a token")
+	require.NotEqual(t, request.ClientToken, api.policies[0])
+	require.Equal(t, "ModifyClientVpnEndpointAuthorizationPolicy", api.tokens[testRegion+"/"+api.policies[0]].call,
+		"EC2 keeps the policy call's token for that call")
+	require.Equal(t, "ModifyClientVpnEndpointAuthorizationPolicy", api.tokens[testRegion+"/"+api.policies[0]].call,
+		"EC2 keeps the policy call's token for that call")
 
-	api.calls = nil
 	again, err := h.Create(t.Context(), request)
 	require.NoError(t, err, "a create sent again sends the same tokens")
 	require.Equal(t, id, again)
-	require.Equal(t, []string{"CreateClientVpnEndpoint", "ModifyClientVpnEndpointAuthorizationPolicy"}, api.calls)
+	require.Equal(t, []string{request.ClientToken, request.ClientToken}, api.creates)
+	require.Equal(t, []string{api.policies[0], api.policies[0]}, api.policies)
 }
 
 func Test_ClientVpnEndpoint_UpdatePolicyDefaults(t *testing.T) {
@@ -97,6 +122,39 @@ func Test_ClientVpnEndpoint_UpdatePolicyDefaults(t *testing.T) {
 	props, err := h.Read(t.Context(), testRegion, id)
 	require.NoError(t, err)
 	require.Equal(t, with(document, map[string]any{"ShadowMode": "disabled"}), props["AuthorizationPolicy"])
+}
+
+// policyInputs is the fake EC2 API, recording the input of each policy call.
+type policyInputs struct {
+	*fakeAPI
+	inputs []*awsec2.ModifyClientVpnEndpointAuthorizationPolicyInput
+}
+
+func (p *policyInputs) ModifyClientVpnEndpointAuthorizationPolicy(ctx context.Context, in *awsec2.ModifyClientVpnEndpointAuthorizationPolicyInput, opts ...func(*awsec2.Options)) (*awsec2.ModifyClientVpnEndpointAuthorizationPolicyOutput, error) {
+	p.inputs = append(p.inputs, in)
+	return p.fakeAPI.ModifyClientVpnEndpointAuthorizationPolicy(ctx, in, opts...)
+}
+
+// Test_ClientVpnEndpoint_UpdatePolicyKeepsUnmanaged checks that a policy change resets only the values the template
+// removed: a value the template never set, which the patch doesn't remove, isn't sent, so AWS keeps it.
+func Test_ClientVpnEndpoint_UpdatePolicyKeepsUnmanaged(t *testing.T) {
+	api := &policyInputs{fakeAPI: newFakeAPI(awsfake.NewCloudControl())}
+	h := NewClientVpnEndpoint(api)
+	id, err := h.Create(t.Context(), createRequest(with(endpointProperties(), map[string]any{"AuthorizationPolicy": testPolicy})))
+	require.NoError(t, err)
+	current, err := h.Read(t.Context(), testRegion, id)
+	require.NoError(t, err)
+
+	document := map[string]any{"PolicyDocument": "permit(principal, action == Action::\"connect\", resource);"}
+	api.inputs = nil
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{
+		Region: testRegion, Identifier: id, Current: current, Desired: with(current, map[string]any{"AuthorizationPolicy": document}),
+		Patch: jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/AuthorizationPolicy/PolicyDocument", Value: document["PolicyDocument"]}},
+	}))
+	require.Len(t, api.inputs, 1)
+	require.Equal(t, document["PolicyDocument"], aws.ToString(api.inputs[0].PolicyDocument))
+	require.Empty(t, api.inputs[0].ShadowMode, "a ShadowMode the template never set keeps AWS's value")
+	require.Nil(t, api.inputs[0].Description, "a description the template never set keeps AWS's value")
 }
 
 func Test_ClientVpnEndpoint_CreateFails(t *testing.T) {
