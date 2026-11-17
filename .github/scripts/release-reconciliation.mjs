@@ -13,10 +13,8 @@ import { setTimeout } from "node:timers/promises";
  * @param {ReleaseReadOptions & {description: string}} options
  * @returns {Promise<T>}
  */
-export async function waitForReleaseState(
-  read,
-  { core, description, sleep = setTimeout, cause }
-) {
+export async function waitForReleaseState(read, options) {
+  const { cause, description } = options;
   if (
     typeof cause === "object" &&
     cause !== null &&
@@ -28,6 +26,22 @@ export async function waitForReleaseState(
   ) {
     throw cause;
   }
+  return waitForState(read, {
+    ...options,
+    failureMessage: `${description} was not visible after 5 attempts; preserve existing release state and resume after verification`
+  });
+}
+
+/**
+ * @template T
+ * @param {() => Promise<T | undefined>} read
+ * @param {ReleaseReadOptions & {description: string, failureMessage?: string}} options
+ * @returns {Promise<T>}
+ */
+export async function waitForState(
+  read,
+  { core, description, sleep = setTimeout, cause, failureMessage }
+) {
   const attempts = 5;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     const value = await read();
@@ -41,7 +55,8 @@ export async function waitForReleaseState(
     }
   }
   throw new Error(
-    `${description} was not visible after ${attempts} attempts; preserve existing release state and resume after verification`,
+    failureMessage ??
+      `${description} was not visible after ${attempts} attempts`,
     { cause }
   );
 }
