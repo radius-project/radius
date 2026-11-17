@@ -168,6 +168,8 @@ tests:
           metadata:
             name: radius-apiserver-trust
             namespace: radius-system
+            annotations:
+              cert-manager.io/allow-direct-injection: "true"
           data:
             ca.crt: dHJ1c3QtY2E=
         - apiVersion: v1
@@ -185,6 +187,69 @@ tests:
       - equal:
           path: spec.caBundle
           value: dHJ1c3QtY2E=
+        documentIndex: 1
+
+  - it: ignores a radius-apiserver-trust Secret that rad does not own
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-trust
+            namespace: radius-system
+          data:
+            ca.crt: dHJ1c3QtY2E=
+            unrelated-data: Zml4dHVyZQ==
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+          data:
+            ca.crt: YXBpLWNh
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: radius-system/radius-apiserver-ca
+        documentIndex: 1
+      - equal:
+          path: spec.caBundle
+          value: YXBpLWNh
+        documentIndex: 1
+
+  - it: ignores an annotated radius-apiserver-trust Secret with an empty ca.crt
+    template: ucp/apiservice.yaml
+    set:
+      global.rbac.enabled: true
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-trust
+            namespace: radius-system
+            annotations:
+              cert-manager.io/allow-direct-injection: "true"
+          data:
+            ca.crt: ""
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-apiserver-ca
+            namespace: radius-system
+          data:
+            ca.crt: YXBpLWNh
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
+          value: radius-system/radius-apiserver-ca
+        documentIndex: 1
+      - equal:
+          path: spec.caBundle
+          value: YXBpLWNh
         documentIndex: 1
 
   - it: does not copy the ca.crt of UCP's certificate Secrets into the caBundle
