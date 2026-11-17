@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 
 	"github.com/radius-project/radius/pkg/authz"
@@ -121,7 +122,29 @@ func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options Cluster
 	if err != nil {
 		return err
 	}
+	values, err := parseUserValuesFromCLI(&options.Radius)
+	if err != nil {
+		return fmt.Errorf("failed to parse Radius values: %w", err)
+	}
+	target := valuesutil.CoalesceTables(copyValues(values), copyValues(storedValues))
+	if err := checkUCPAPIServerCertificateTransition(current, mode, target); err != nil {
+		return err
+	}
 	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, current, mode, render)
+}
+
+func checkUCPAPIServerCertificateTransition(deployed, target authz.Mode, values map[string]any) error {
+	if deployed != authz.ModeOff || target == authz.ModeOff {
+		return nil
+	}
+	mode, found, err := unstructured.NestedString(values, "global", "rbac", "certificates", "mode")
+	if err != nil {
+		return fmt.Errorf("invalid global.rbac.certificates.mode: %w", err)
+	}
+	if !found || mode == "selfSigned" {
+		return nil
+	}
+	return fmt.Errorf("turning authorization on with global.rbac.certificates.mode=%s requires the certificate lifecycle to stage the selected issuer and overlapping public trust; this CLI only stages selfSigned aggregation. Helm has not changed Radius; use the paired certificate lifecycle instead of retrying or replacing radius-apiserver-trust", mode)
 }
 
 func installedAuthzMode(options ClusterOptions, storedValues map[string]any) (authz.Mode, error) {
@@ -154,6 +177,14 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 	}
 	if !found {
 		current = authz.ModeOff
+	}
+	for _, rel := range history {
+		if rel != nil && rel.Version == revision {
+			if err := checkUCPAPIServerCertificateTransition(current, mode, rel.Config); err != nil {
+				return err
+			}
+			break
+		}
 	}
 	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, current, mode, renderRadiusRollback(history, revision))
 }
