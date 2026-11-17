@@ -18,6 +18,7 @@ package docdb
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"regexp"
 	"slices"
@@ -120,6 +121,7 @@ func (f *fakeAPI) state(typeName string, id string) (string, bool) {
 		return "available", true
 	case "deleted-next":
 		delete(f.status, key)
+		delete(f.pending, key)
 		f.store.Remove(typeName, id)
 		return "", false
 	}
@@ -145,7 +147,10 @@ func (f *fakeAPI) create(typeName string, id string, props map[string]any) error
 		props["DBClusterIdentifier"] = id
 	} else {
 		props["DBInstanceIdentifier"] = id
+		delete(f.restarts, id)
 	}
+	// A deleted resource with the identifier may have been removed without a describe, so forget what it queued.
+	delete(f.pending, statusKey(typeName, id))
 	f.store.Put(typeName, id, props)
 	f.status[statusKey(typeName, id)] = "creating"
 	return nil
@@ -310,26 +315,43 @@ func (r *rules) windows(backup *string, maintenance *string, current map[string]
 }
 
 // defaultWindows sets the windows DocumentDB picks for a cluster or instance that leaves them out. AWS picks them at
-// random; the fake picks the first of a few that doesn't overlap the other window.
+// random; the fake picks the first 30-minute window that doesn't overlap the other window, in 30-minute steps from
+// 07:00 for a backup window and from sun:10:00 for a maintenance window.
 func defaultWindows(props map[string]any, backup bool) {
 	if backup && awsapi.String(props, "PreferredBackupWindow") == "" {
 		m, ok := maintenanceWindow(awsapi.String(props, "PreferredMaintenanceWindow"))
-		for _, candidate := range []string{"07:00-07:30", "19:00-19:30"} {
-			if b, _ := backupWindow(candidate); !ok || !b.overlaps(m) {
-				props["PreferredBackupWindow"] = candidate
-				break
-			}
+		if b, found := freeWindow(7*60, day, func(b window) bool { return !ok || !b.overlaps(m) }); found {
+			props["PreferredBackupWindow"] = clock(b.start) + "-" + clock(b.start+b.length)
 		}
 	}
 	if awsapi.String(props, "PreferredMaintenanceWindow") == "" {
 		b, ok := backupWindow(awsapi.String(props, "PreferredBackupWindow"))
-		for _, candidate := range []string{"sun:10:00-sun:10:30", "wed:22:00-wed:22:30"} {
-			if m, _ := maintenanceWindow(candidate); !ok || !b.overlaps(m) {
-				props["PreferredMaintenanceWindow"] = candidate
-				break
-			}
+		if m, found := freeWindow(slices.Index(days, "sun")*day+10*60, week, func(m window) bool { return !ok || !b.overlaps(m) }); found {
+			props["PreferredMaintenanceWindow"] = weekday(m.start) + "-" + weekday(m.start+m.length)
 		}
 	}
+}
+
+// freeWindow returns the first 30-minute window of a cycle, in 30-minute steps from start, that free accepts.
+func freeWindow(start int, cycle int, free func(window) bool) (window, bool) {
+	for offset := 0; offset < cycle; offset += 30 {
+		if w := (window{start: (start + offset) % cycle, length: 30, cycle: cycle}); free(w) {
+			return w, true
+		}
+	}
+	return window{}, false
+}
+
+// clock formats minutes from the start of a day as hh24:mi, wrapping at midnight.
+func clock(m int) string {
+	m %= day
+	return fmt.Sprintf("%02d:%02d", m/60, m%60)
+}
+
+// weekday formats minutes from the start of the week as ddd:hh24:mi, wrapping at the end of the week.
+func weekday(m int) string {
+	m %= week
+	return days[m/day] + ":" + clock(m)
 }
 
 // engineVersion returns the version DocumentDB creates a cluster with for version: the newest 8.0 minor version when
@@ -647,12 +669,11 @@ func (f *fakeAPI) ModifyDBCluster(ctx context.Context, in *docdb.ModifyDBCluster
 	for _, name := range []string{"DBClusterIdentifier", "ApplyImmediately", "AllowMajorVersionUpgrade", "CloudwatchLogsExportConfiguration", "RotateMasterUserPassword"} {
 		delete(values, name)
 	}
-	if !aws.ToBool(in.ApplyImmediately) {
-		f.hold(clusterType, id, values, func(name string) bool { return name == "MasterUserPassword" || name == "EngineVersion" })
-	}
 	err = f.change(clusterType, id, func(props map[string]any) {
 		if aws.ToBool(in.ApplyImmediately) {
 			maps.Copy(props, f.release(clusterType, id, values))
+		} else {
+			f.hold(clusterType, id, values, func(name string) bool { return name == "MasterUserPassword" || name == "EngineVersion" })
 		}
 		for k, v := range values {
 			props[k] = v
@@ -837,10 +858,16 @@ func (f *fakeAPI) ModifyDBInstance(ctx context.Context, in *docdb.ModifyDBInstan
 	for _, name := range []string{"DBInstanceIdentifier", "ApplyImmediately"} {
 		delete(values, name)
 	}
-	if !aws.ToBool(in.ApplyImmediately) {
-		f.hold(instanceType, id, values, func(name string) bool { return name != "PreferredMaintenanceWindow" })
-	}
 	err = f.change(instanceType, id, func(props map[string]any) {
+		if !aws.ToBool(in.ApplyImmediately) {
+			if _, ok := values["CACertificateIdentifier"]; ok {
+				// CertificateRotationRestart defaults to true, so a queued CA change without it replaces a queued false.
+				if _, ok := values["CertificateRotationRestart"]; !ok {
+					values["CertificateRotationRestart"] = true
+				}
+			}
+			f.hold(instanceType, id, values, func(name string) bool { return name != "PreferredMaintenanceWindow" })
+		}
 		changes := maps.Clone(values)
 		if aws.ToBool(in.ApplyImmediately) {
 			queued := f.release(instanceType, id, values)

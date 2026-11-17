@@ -163,6 +163,9 @@ func validCreate(in *dax.CreateClusterInput) error {
 	if err := validClusterName(aws.ToString(in.ClusterName)); err != nil {
 		return err
 	}
+	if in.ReplicationFactor < 1 {
+		return invalidValue()
+	}
 	if in.ReplicationFactor > maxNodes {
 		return fault("NodeQuotaForClusterExceededFault")
 	}
