@@ -57,6 +57,8 @@ external issuer, optionally with its unchanged public '--ca-bundle'. External is
 live verification of operator-managed controllers, admission, bounded request policies and
 RBAC on every invocation; Radius does not reconfigure those prerequisites.
 Mode, signing Secret, issuer and trust changes require coordinated CA migration.
+Turning authorization on with a dedicated CA or external issuer also requires the paired
+certificate lifecycle, even when the certificate flags confirm the stored selection.
 Certificate validation cannot be bypassed with '--skip-preflight'; '--preflight-only'
 performs the same live validation without changing resources or Helm history.
 Both TLS providers retain the selected CA: provider radius requires receiver SPIFFE URI and UCP

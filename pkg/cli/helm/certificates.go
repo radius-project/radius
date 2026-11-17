@@ -711,8 +711,12 @@ func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptio
 	if err != nil {
 		return err
 	}
-	if _, _, err := i.prepareSelectedCertificates(ctx, options, chart, current, kubeContext, true); err != nil {
+	target, _, err := i.prepareSelectedCertificates(ctx, options, chart, current, kubeContext, true)
+	if err != nil {
 		return err
 	}
-	return i.checkIssuerPolicy(ctx, options, chart, configuration, current, kubeContext, true)
+	if err := i.checkIssuerPolicy(ctx, options, chart, configuration, current, kubeContext, true); err != nil {
+		return err
+	}
+	return target.checkTransition(options.RadiusReleaseValues)
 }

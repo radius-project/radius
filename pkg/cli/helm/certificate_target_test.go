@@ -32,6 +32,7 @@ import (
 
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
@@ -273,6 +274,14 @@ func TestCASecretLivePreflight(t *testing.T) {
 					require.ErrorContains(t, err, "not an inspectable")
 				} else {
 					require.NoError(t, err)
+					helmClient := NewMockHelmClient(gomock.NewController(t))
+					helmClient.EXPECT().LoadChart("local-chart").Return(selected, nil)
+					impl.Helm = helmClient
+					options.Radius.ChartPath = "local-chart"
+					options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=" + provider}
+					options.Certificates.CASecret = "operator-ca"
+					err = impl.InstallRadius(t.Context(), options, kubeContext)
+					require.ErrorContains(t, err, "mode=caSecret requires the certificate lifecycle")
 				}
 				for _, action := range client.Actions() {
 					require.Contains(t, []string{"get", "list"}, action.GetVerb())
