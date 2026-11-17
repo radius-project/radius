@@ -128,9 +128,9 @@ func (c *AwaitController) Run(ctx context.Context, request *ctrl.Request) (ctrl.
 	stop := heartbeat(ctx, store, id, heartbeatInterval)
 	if rec.Properties.Handler == records.HandlerNative {
 		logger.Info("Waiting for the native AWS handler", "alias", id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier, "operation", op)
-		progress, err := c.waitNative(ctx, id, rec.Properties.AWSIdentifier, op)
+		progress, err := c.waitNative(ctx, id, rec.Properties.AWSIdentifier, op, rec.Properties.UpdateState)
 		stop()
-		return finishNative(ctx, store, id, request, op, progress, err)
+		return finishNative(ctx, store, id, request, op, progress, err, func() { c.cleanup(ctx, id, rec.Properties.AWSIdentifier, rec.Properties.ClientToken) })
 	}
 	logger.Info("Waiting for AWS Cloud Control", "alias", id.Name(), "awsIdentifier", rec.Properties.AWSIdentifier, "operation", op)
 	status, err := ucp_aws.WaitForRequest(ctx, c.clients.CloudControl, id.FindScope(resources_aws.ScopeRegions), requestToken)
