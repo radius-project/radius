@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -73,6 +74,7 @@ var inRegion = awsapi.InRegion[emr.Options]
 var (
 	_ native.Handler = (*Cluster)(nil)
 	_ native.Finder  = (*Cluster)(nil)
+	_ native.Cleaner = (*Cluster)(nil)
 )
 
 // activeStates are the states of a cluster that is starting or running.
@@ -444,6 +446,9 @@ func (h *Cluster) Create(ctx context.Context, request native.CreateRequest) (str
 	if err := awsapi.ReservedTags(request.Properties, awsapi.OperationTag); err != nil {
 		return "", err
 	}
+	if err := awsapi.TagLimit(request.Properties, maxTags, 1, "an EMR cluster"); err != nil {
+		return "", err
+	}
 	p := request.Properties
 	input := &emr.RunJobFlowInput{}
 	if err := decode(awsapi.Without(p, "Instances", "Tags", "AdditionalInfo"), input); err != nil {
@@ -584,6 +589,33 @@ func (h *Cluster) Find(ctx context.Context, request native.CreateRequest) (strin
 	return "", awsapi.Ambiguous("EMR clusters", found)
 }
 
+// maxTags is how many tags EMR allows on a cluster, as EC2 does on a resource.
+const maxTags = 50
+
+// operationTags returns 1 when tags has the operation tag, which Cleanup hasn't removed yet, and 0 otherwise.
+func operationTags(tags []types.Tag) int {
+	if slices.ContainsFunc(tags, func(t types.Tag) bool { return aws.ToString(t.Key) == awsapi.OperationTag }) {
+		return 1
+	}
+	return 0
+}
+
+// Cleanup removes the operation tag, which only Find needs, to find a create UCP lost, so the cluster carries no tag
+// of Radius's. It removes the tag only when it holds createToken, so never the tag of a create another alias lost.
+func (h *Cluster) Cleanup(ctx context.Context, region string, identifier string, createToken string) error {
+	cluster, err := h.active(ctx, region, identifier)
+	if err != nil {
+		return err
+	}
+	if createToken == "" || !slices.ContainsFunc(cluster.Tags, func(t types.Tag) bool {
+		return aws.ToString(t.Key) == awsapi.OperationTag && aws.ToString(t.Value) == createToken
+	}) {
+		return nil
+	}
+	_, err = h.api.RemoveTags(ctx, &emr.RemoveTagsInput{ResourceId: cluster.Id, TagKeys: []string{awsapi.OperationTag}}, inRegion(region))
+	return err
+}
+
 // unchangeable is the failure of an update that changes properties EMR can't change on a running cluster.
 func unchangeable(names []string) error {
 	slices.Sort(names)
@@ -601,7 +633,8 @@ func (h *Cluster) Update(ctx context.Context, request native.UpdateRequest) erro
 	if err := awsapi.ReservedTags(request.Desired, awsapi.OperationTag); err != nil {
 		return err
 	}
-	if _, err := h.active(ctx, request.Region, request.Identifier); err != nil {
+	cluster, err := h.active(ctx, request.Region, request.Identifier)
+	if err != nil {
 		return err
 	}
 	opt := inRegion(request.Region)
@@ -646,6 +679,9 @@ func (h *Cluster) Update(ctx context.Context, request native.UpdateRequest) erro
 			}
 			calls = append(calls, call)
 		case "Tags":
+			if err := awsapi.TagLimit(request.Desired, maxTags, operationTags(cluster.Tags), "an EMR cluster"); err != nil {
+				return err
+			}
 			calls = append(calls, h.tagCalls(ctx, request, opt)...)
 		default:
 			unsupported = append(unsupported, name)
@@ -698,20 +734,21 @@ func (h *Cluster) terminationCall(ctx context.Context, id *string, value any, op
 	}, nil
 }
 
-// tagCalls returns the calls that add and remove tags to go from the request's current tags to the desired ones.
-// The current tags never include the operation tag, so it stays.
+// tagCalls returns the calls that remove and add tags to go from the request's current tags to the desired ones.
+// Removals go first, so a change that replaces tags stays within EMR's tag limit. The current tags never include the
+// operation tag, so an update leaves it as it is.
 func (h *Cluster) tagCalls(ctx context.Context, request native.UpdateRequest, opt func(*emr.Options)) []func() error {
 	set, remove := awsapi.TagChanges(awsapi.Tags(request.Current), awsapi.Tags(request.Desired))
 	calls := []func() error{}
-	if len(set) > 0 {
-		calls = append(calls, func() error {
-			_, err := h.api.AddTags(ctx, &emr.AddTagsInput{ResourceId: aws.String(request.Identifier), Tags: awsapi.SDKTags[types.Tag](set)}, opt)
-			return err
-		})
-	}
 	if len(remove) > 0 {
 		calls = append(calls, func() error {
 			_, err := h.api.RemoveTags(ctx, &emr.RemoveTagsInput{ResourceId: aws.String(request.Identifier), TagKeys: remove}, opt)
+			return err
+		})
+	}
+	if len(set) > 0 {
+		calls = append(calls, func() error {
+			_, err := h.api.AddTags(ctx, &emr.AddTagsInput{ResourceId: aws.String(request.Identifier), Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 			return err
 		})
 	}
@@ -753,7 +790,7 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 				return err
 			})
 		case "CoreInstanceGroup", "TaskInstanceGroups":
-			if removesField(request.Patch, key, []string{"AutoScalingPolicy"}) {
+			if removesField(request.Patch, request.Current, key, []string{"AutoScalingPolicy"}) {
 				unsupported = append(unsupported, "Instances/"+key)
 				continue
 			}
@@ -771,7 +808,7 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 			resizes = append(resizes, changes.resizes...)
 			unscaled = append(unscaled, changes.unscaled...)
 		case "MasterInstanceFleet", "CoreInstanceFleet", "TaskInstanceFleets":
-			if !scaled || removesField(request.Patch, key, capacities) || !covers(without(desired[key], capacities...), without(current[key], capacities...), false) {
+			if !scaled || removesField(request.Patch, request.Current, key, capacities) || !covers(without(desired[key], capacities...), without(current[key], capacities...), false) {
 				unsupported = append(unsupported, "Instances/"+key)
 			}
 		default:
@@ -796,24 +833,56 @@ func (h *Cluster) instanceCalls(ctx context.Context, request native.UpdateReques
 
 // removesField reports whether the patch removes a property inside the Instances property key, other than those in
 // allowed, which the update handles. EMR has no call that clears any other, and the comparison with AWS only checks
-// the properties the template still sets, so a removal would otherwise count as applied.
-func removesField(patch jsondiff.Patch, key string, allowed []string) bool {
+// the properties the template still sets, so a removal would otherwise count as applied. A value EMR set because the
+// template leaves it out (see emrDefaults) isn't a removal: the patch removes it from a list item only because the
+// template's item doesn't have it.
+func removesField(patch jsondiff.Patch, current map[string]any, key string, allowed []string) bool {
 	prefix := "/Instances/" + key + "/"
 	for _, op := range patch {
 		if op.Type != jsondiff.OperationRemove || !strings.HasPrefix(op.Path, prefix) {
 			continue
 		}
 		segments := strings.Split(op.Path, "/")
-		if !slices.Contains(allowed, segments[len(segments)-1]) {
-			return true
+		name := segments[len(segments)-1]
+		if slices.Contains(allowed, name) {
+			continue
 		}
+		if value, ok := emrDefaults[name]; ok && value == valueAt(current, op.Path) {
+			continue
+		}
+		return true
 	}
 	return false
 }
 
+// emrDefaults are the values EMR gives an instance fleet's instance type configuration that leaves them out:
+// WeightedCapacity is 1, and BidPriceAsPercentageOfOnDemandPrice is 100 when BidPrice isn't set either.
+var emrDefaults = map[string]any{"WeightedCapacity": 1.0, "BidPriceAsPercentageOfOnDemandPrice": 100.0}
+
+// pointerSegment unescapes a segment of a JSON pointer.
+var pointerSegment = strings.NewReplacer("~1", "/", "~0", "~")
+
+// valueAt returns the value at pointer, a JSON pointer, in v, or nil when v has none.
+func valueAt(v any, pointer string) any {
+	for _, segment := range strings.Split(strings.TrimPrefix(pointer, "/"), "/") {
+		switch t := v.(type) {
+		case map[string]any:
+			v = t[pointerSegment.Replace(segment)]
+		case []any:
+			i, err := strconv.Atoi(segment)
+			if err != nil || i < 0 || i >= len(t) {
+				return nil
+			}
+			v = t[i]
+		default:
+			return nil
+		}
+	}
+	return v
+}
+
 // changedKeys returns the properties of Instances the patch changes, sorted.
 func changedKeys(patch jsondiff.Patch, current map[string]any, desired map[string]any) []string {
-	unescape := strings.NewReplacer("~1", "/", "~0", "~")
 	out := []string{}
 	add := func(key string) {
 		if !slices.Contains(out, key) {
@@ -826,7 +895,7 @@ func changedKeys(patch jsondiff.Patch, current map[string]any, desired map[strin
 			continue
 		}
 		if len(segments) > 1 {
-			add(unescape.Replace(segments[1]))
+			add(pointerSegment.Replace(segments[1]))
 			continue
 		}
 		for _, m := range []map[string]any{current, desired} {
