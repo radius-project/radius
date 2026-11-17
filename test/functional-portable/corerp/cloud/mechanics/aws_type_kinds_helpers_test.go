@@ -20,7 +20,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"net/http"
 	"slices"
 	"strings"
 	"testing"
@@ -36,6 +38,9 @@ import (
 	kafkatypes "github.com/aws/aws-sdk-go-v2/service/kafka/types"
 	"github.com/aws/smithy-go"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -124,6 +129,66 @@ func beforeCleanup(executor step.Executor) step.FuncExecutor {
 	})
 	wrapped.Description = executor.GetDescription()
 	return wrapped
+}
+
+// deleteDeployedAWSResource returns a step that deletes an AWS resource a template deployed with rad deploy, through
+// UCP's AWS plane. Radius has no command for this. The step sends the owner rad deploy sets for a template with no
+// application, and waits until UCP's operation succeeds.
+func deleteDeployedAWSResource(rpTest *rp.RPTest, resourceID string) step.FuncExecutor {
+	executor := step.NewFuncExecutor(func(ctx context.Context, t *testing.T, _ test.TestOptions) {
+		workspace := rpTest.Options.Workspace
+		env, err := rpTest.Options.ManagementClient.GetEnvironment(ctx, workspace.Environment)
+		require.NoError(t, err)
+		scope, err := resources.ParseScope(workspace.Scope)
+		require.NoError(t, err)
+		owner := sdkclients.AWSDeploymentOwner(scope.FindScope(resources_radius.ScopeResourceGroups), "", aws.ToString(env.ID))
+
+		client := rpTest.Options.Connection.Client()
+		request, err := http.NewRequestWithContext(ctx, http.MethodDelete, rpTest.Options.Connection.Endpoint()+resourceID+"?api-version=default", nil)
+		require.NoError(t, err)
+		request.Header.Set(sdkclients.AWSResourceOwnerHeader, owner)
+		response, err := client.Do(request)
+		require.NoError(t, err)
+		body, err := io.ReadAll(response.Body)
+		_ = response.Body.Close()
+		require.NoError(t, err)
+		require.Equal(t, http.StatusAccepted, response.StatusCode, "UCP didn't start the delete: %s", body)
+
+		statusURL := response.Header.Get("Azure-AsyncOperation")
+		require.NotEmpty(t, statusURL)
+		err = poll(ctx, 15*time.Second, func() (bool, error) {
+			request, err := http.NewRequestWithContext(ctx, http.MethodGet, statusURL, nil)
+			if err != nil {
+				return false, err
+			}
+			response, err := client.Do(request)
+			if err != nil {
+				return false, err
+			}
+			body, err := io.ReadAll(response.Body)
+			_ = response.Body.Close()
+			if err != nil {
+				return false, err
+			}
+			if response.StatusCode != http.StatusOK {
+				return false, fmt.Errorf("reading the delete operation returned %d: %s", response.StatusCode, body)
+			}
+			status := struct{ Status string }{}
+			if err := json.Unmarshal(body, &status); err != nil {
+				return false, err
+			}
+			switch status.Status {
+			case "Succeeded":
+				return true, nil
+			case "Failed", "Canceled":
+				return false, fmt.Errorf("the delete didn't succeed: %s", body)
+			}
+			return false, nil
+		})
+		require.NoError(t, err)
+	})
+	executor.Description = "delete " + resourceID
+	return executor
 }
 
 // awsWrites returns the messages UCP logged since the time since for calls that change the AWS resource of alias.

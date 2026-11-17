@@ -30,9 +30,3 @@ resource cluster 'AWS.DocDB/DBCluster@default' = {
     ]
   }
 }
-
-output result object = {
-  values: {
-    endpoint: cluster.properties.Endpoint
-  }
-}

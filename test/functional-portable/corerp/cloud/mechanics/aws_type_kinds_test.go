@@ -159,13 +159,12 @@ func Test_AWSReadOnlyTypeWithExisting(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_AWSNativeTypeRedeployAndDelete deploys a recipe with a DocumentDB cluster, which Cloud Control can't create, so
-// UCP's native handler serves it. The unchanged redeploy must send nothing to AWS, including the password AWS never
-// returns, and deleting the application must delete the cluster and keep a final snapshot.
+// Test_AWSNativeTypeRedeployAndDelete deploys a DocumentDB cluster, which Cloud Control can't create, so UCP's native
+// handler serves it. The unchanged redeploy must send nothing to AWS, including the password AWS never returns, and
+// deleting it through UCP must delete the cluster and keep a final snapshot. The template deploys the cluster directly,
+// not through a recipe: a recipe's parameters are readable on the extender, so they can't carry the password.
 func Test_AWSNativeTypeRedeployAndDelete(t *testing.T) {
-	template := "testdata/aws-mechanics-docdb-recipe.bicep"
-	name := "corerp-mechanics-aws-docdb"
-	appName := name + "-app"
+	template := "testdata/aws-mechanics-docdb.bicep"
 	// A short identifier keeps the final snapshot's name within 63 characters, so UCP doesn't shorten it.
 	clusterIdentifier := "radiusfunctionaltest-" + strings.ReplaceAll(uuid.New().String(), "-", "")[:12]
 	creationTimestamp := testutil.GetCreationTimestamp()
@@ -174,28 +173,22 @@ func Test_AWSNativeTypeRedeployAndDelete(t *testing.T) {
 		"subnetGroupName=" + clusterIdentifier,
 		"@" + passwordParameterFile(t),
 		"creationTimestamp=" + creationTimestamp,
-		testutil.GetAWSAccountId(),
-		testutil.GetAWSRegion(),
-		testutil.GetBicepRecipeRegistry(),
-		testutil.GetBicepRecipeVersion(),
 	}
-	resourceSet := recipeResourceSet(name, appName, "AWS.DocDB/DBCluster", clusterIdentifier)
+	resourceID := fmt.Sprintf("/planes/aws/aws/accounts/%s/regions/%s/providers/AWS.DocDB/DBCluster/%s",
+		os.Getenv("AWS_ACCOUNT_ID"), os.Getenv("AWS_REGION"), clusterIdentifier)
 
 	var clusterResourceID string
 	var since time.Time
 	var rpTest rp.RPTest
-	rpTest = rp.NewRPTest(t, name, []rp.TestStep{
+	rpTest = rp.NewRPTest(t, clusterIdentifier, []rp.TestStep{
 		{
-			Executor:    beforeCleanup(step.NewDeployExecutor(template, parameters...)),
-			RPResources: resourceSet,
-			// cleanupRadiusResources deletes the application and environment within the test deadline.
-			SkipResourceDeletion: true,
-			SkipObjectValidation: true,
+			Executor:                               beforeCleanup(step.NewDeployExecutor(template, parameters...)),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				requireAWSWrite(ctx, t, ct, clusterIdentifier, msgCreating)
 				cluster := requireDocDBCluster(ctx, t, newDocDBClient(ctx, t), clusterIdentifier)
 				clusterResourceID = aws.ToString(cluster.DbClusterResourceId)
-				requireExtenderValue(ctx, t, ct, name, "endpoint", aws.ToString(cluster.Endpoint))
 				since = time.Now()
 			},
 		},
@@ -210,7 +203,7 @@ func Test_AWSNativeTypeRedeployAndDelete(t *testing.T) {
 			},
 		},
 		{
-			Executor:                               beforeCleanup(deleteApplication(&rpTest, appName)),
+			Executor:                               beforeCleanup(deleteDeployedAWSResource(&rpTest, resourceID)),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
@@ -231,10 +224,9 @@ func Test_AWSNativeTypeRedeployAndDelete(t *testing.T) {
 	rpTest.PreSetup = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 		subnetIDs := createTestNetwork(ctx, t, newEC2Client(ctx, t), clusterIdentifier, creationTimestamp)
 		createDocDBSubnetGroup(ctx, t, newDocDBClient(ctx, t), clusterIdentifier, subnetIDs, creationTimestamp)
-		// Cleanups run in reverse order: Radius deletes the app, then the test deletes the cluster if it remains and
-		// its final snapshots, then the subnet group and network.
+		// Cleanups run in reverse order: the test deletes the cluster if it remains and its final snapshots, then the
+		// subnet group and network.
 		cleanupDocDBCluster(t, newDocDBClient(ctx, t), clusterIdentifier)
-		cleanupRadiusResources(t, ct.Options.ManagementClient, validation.ResourcesInDeletionOrder(resourceSet)...)
 	}
 	rpTest.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAWS}
 	rpTest.Test(t)
