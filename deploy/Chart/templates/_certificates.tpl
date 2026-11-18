@@ -94,7 +94,14 @@ sources stay pinned. Overlap and mode switching belong to the lifecycle.
 {{- $kind := "ConfigMap" -}}{{- $name := "radius-mtls-ca" -}}{{- $signing := "radius-ca" -}}
 {{- if eq .plane "aggregation" -}}
 {{- $kind = "Secret" -}}{{- $name = "radius-apiserver-trust" -}}{{- $signing = "radius-apiserver-ca" -}}
-{{- if eq $mode "selfSigned" -}}{{- $name = $signing -}}{{- end -}}
+{{- if eq $mode "selfSigned" -}}
+{{- $pin := lookup "v1" "Secret" $root.Release.Namespace $name -}}
+{{- $annotations := dig "metadata" "annotations" dict $pin -}}
+{{- if and (hasKey $annotations "radius.io/certificate-mode") (ne (index $annotations "radius.io/certificate-mode") $mode) -}}
+{{- fail "certificate lifecycle prerequisite: radius-apiserver-trust belongs to another certificate mode; use the lifecycle command before switching to selfSigned." -}}
+{{- end -}}
+{{- $name = $signing -}}
+{{- end -}}
 {{- end -}}
 {{- $existing := lookup "v1" $kind $root.Release.Namespace $name -}}
 {{- $observed := $existing -}}

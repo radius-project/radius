@@ -1,13 +1,13 @@
 {{- /*
 Keeps application workloads away from the Radius control plane: rejects (enforce) or warns and
 audits (dryRun) workloads in the control-plane namespace, naming the rule in the message.
-Rendered only when authorization is not off and the cluster serves ValidatingAdmissionPolicy
-(Kubernetes 1.30+).
+Required whenever authorization is not off.
 TODO(D7): bicep-de is bound to cluster-admin and can edit or delete this policy; scope it when
 the broker issues template identities.
 */ -}}
 {{- $mode := include "radius.authz.mode" . -}}
-{{- if and (ne $mode "off") (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") }}
+{{- if ne $mode "off" }}
+{{- include "radius.authz.requireAdmissionPolicyAPI" . }}
 {{- $name := "radius-control-plane-isolation" }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy

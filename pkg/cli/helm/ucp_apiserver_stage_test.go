@@ -175,7 +175,7 @@ func (c *stageCluster) impl(client HelmClient, certManagerControllerSA string) *
 	return &Impl{
 		Helm:           client,
 		logger:         func(string, ...any) {},
-		contourCluster: &fakeContourCluster{},
+		contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
 		newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 			kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 			return kubeClient, apiextClient, nil
@@ -240,7 +240,7 @@ func loadStageTestChart(t *testing.T) *chart.Chart {
 // renderStageTestManifest renders the Radius chart with values as a fresh install does.
 func renderStageTestManifest(t *testing.T, values map[string]any) string {
 	t.Helper()
-	install := helm.NewInstall(newTestRenderConfiguration(nil))
+	install := helm.NewInstall(newTestRenderConfiguration(capabilitiesWith(admissionPolicyAPI)))
 	install.DryRunStrategy = helm.DryRunServer
 	install.ReleaseName = "radius"
 	install.Namespace = RadiusSystemNamespace
@@ -486,7 +486,7 @@ func newStageUpgrade(t *testing.T, deployed map[string]any, command string) *sta
 		configuration: &helm.Configuration{
 			Releases:     storage.Init(driver.NewMemory()),
 			KubeClient:   &kubefakehelm.PrintingKubeClient{Out: io.Discard},
-			Capabilities: common.DefaultCapabilities,
+			Capabilities: capabilitiesWith(admissionPolicyAPI),
 		},
 		helmClient: NewHelmClient(),
 		command:    command,
@@ -633,6 +633,19 @@ func Test_UpgradeRadius_DoesNotStageUCPAPIServerCA(t *testing.T) {
 		require.NoError(t, u.run(t, c.impl(client, "cert-manager"), nil))
 		require.Zero(t, writesBefore)
 		c.requireNotStaged(t)
+	})
+
+	t.Run("retry before first injection", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		u := newStageUpgrade(t, authzOnValues, "install --reinstall")
+		c := newStageCluster(t, ucpAPIService("", "", ""), true)
+		client := u.mock(t, 1, func() {
+			c.requireNotStaged(t)
+			c.helmReissuesUCPCertificate(t)
+			require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, c.cainjectorAPIService(), ""))
+		})
+		require.NoError(t, u.run(t, c.impl(client, "cert-manager"), nil))
+		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
 	})
 
 	t.Run("fresh install", func(t *testing.T) {

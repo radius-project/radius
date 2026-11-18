@@ -46,6 +46,7 @@ type caInjectorConfigPin struct {
 	Kind, Namespace, Name, Key string
 	UID                        types.UID
 	ResourceVersion, SHA256    string
+	created                    metav1.Time
 }
 
 // caInjectorInstance is observed configuration/readiness evidence, not proof of
@@ -92,6 +93,8 @@ type caInjectorConfiguration struct {
 }
 
 var caInjectorImage = regexp.MustCompile(`(^|/)cert-manager-cainjector:v1\.(20|21)\.[0-9]+$`)
+
+const caInjectorSourcePinEnv = "RADIUS_CAINJECTOR_CONFIG_PIN"
 
 // inspectCAInjectorPrerequisites uses GET/LIST only. Unknown configuration,
 // partial rollouts, orphan writers and multiple eligible Deployments fail closed.
@@ -174,7 +177,15 @@ func inspectCAInjectorDeployment(ctx context.Context, client kubernetes.Interfac
 	if !caInjectorImage.MatchString(c.Image) || len(c.Command) > 1 || len(c.Command) == 1 && path.Base(c.Command[0]) != "cainjector" || len(c.EnvFrom) != 0 {
 		return result, fmt.Errorf("unsupported image, command or environment; expected cert-manager-cainjector v1.20/v1.21 with no wrapper")
 	}
+	var sourceRevision string
 	for _, e := range c.Env {
+		if e.Name == caInjectorSourcePinEnv {
+			if e.ValueFrom != nil || e.Value == "" || sourceRevision != "" {
+				return result, fmt.Errorf("%s must be a single literal source pin", caInjectorSourcePinEnv)
+			}
+			sourceRevision = e.Value
+			continue
+		}
 		if e.Name != "POD_NAMESPACE" || e.Value != "" || e.ValueFrom == nil || e.ValueFrom.FieldRef == nil || e.ValueFrom.FieldRef.FieldPath != "metadata.namespace" {
 			return result, fmt.Errorf("unsupported environment override %q", e.Name)
 		}
@@ -188,6 +199,11 @@ func inspectCAInjectorDeployment(ctx context.Context, client kubernetes.Interfac
 		data, pin, err := caInjectorConfigFile(ctx, client, d.Namespace, spec, c, filename)
 		if err != nil {
 			return result, err
+		}
+		// Containers' literal env is immutable on an existing Pod. A name and
+		// creation time alone cannot identify the revision selected at rollout.
+		if pin.ResourceVersion == "" || sourceRevision != string(pin.UID)+":"+pin.ResourceVersion {
+			return result, fmt.Errorf("cannot verify --config %s %s: set %s to the immutable source's UID:resourceVersion in the Pod template and roll out fresh Pods", pin.Kind, pin.Name, caInjectorSourcePinEnv)
 		}
 		if err := yaml.UnmarshalStrict(data, &cfg); err != nil {
 			return result, fmt.Errorf("unsupported --config format: %w", err)
@@ -275,6 +291,11 @@ func inspectCAInjectorDeployment(ctx context.Context, client kubernetes.Interfac
 		if pod.UID == "" || !ready || pod.DeletionTimestamp != nil || pod.Status.Phase != corev1.PodRunning ||
 			!caInjectorPodMatches(spec, pod.Spec) {
 			return result, fmt.Errorf("Pod %s is not Running/Ready with the pinned template configuration", pod.Name)
+		}
+		// Volumes reference names, not UIDs. Use API-server creation times rather
+		// than kubelet start times; equal timestamps cannot establish ordering.
+		if pin := result.Config; pin != nil && (pin.created.IsZero() || pod.CreationTimestamp.IsZero() || !pin.created.Before(&pod.CreationTimestamp)) {
+			return result, fmt.Errorf("cannot verify that --config %s %s predates Pod %s; roll out fresh Pods after creating the immutable source", pin.Kind, pin.Name, pod.Name)
 		}
 		result.PodUIDs = append(result.PodUIDs, pod.UID)
 	}
@@ -405,9 +426,10 @@ func caInjectorConfigFile(ctx context.Context, client kubernetes.Interface, name
 			if err != nil {
 				return nil, nil, fmt.Errorf("read cainjector --config ConfigMap: %w", err)
 			}
-			if cm.Immutable == nil || !*cm.Immutable || cm.UID == "" {
-				return nil, nil, fmt.Errorf("--config ConfigMap must be immutable with a live UID to pin the startup bytes")
+			if cm.Immutable == nil || !*cm.Immutable || cm.UID == "" || cm.DeletionTimestamp != nil {
+				return nil, nil, fmt.Errorf("--config ConfigMap must be immutable with a live UID")
 			}
+			pin.created = cm.CreationTimestamp
 			pin.Kind, pin.Name, pin.UID, pin.ResourceVersion = "ConfigMap", cm.Name, cm.UID, cm.ResourceVersion
 			data = map[string][]byte{}
 			for k, v := range cm.Data {
@@ -422,9 +444,10 @@ func caInjectorConfigFile(ctx context.Context, client kubernetes.Interface, name
 			if err != nil {
 				return nil, nil, fmt.Errorf("read cainjector --config Secret: %w", err)
 			}
-			if secret.Immutable == nil || !*secret.Immutable || secret.UID == "" {
-				return nil, nil, fmt.Errorf("--config Secret must be immutable with a live UID to pin the startup bytes")
+			if secret.Immutable == nil || !*secret.Immutable || secret.UID == "" || secret.DeletionTimestamp != nil {
+				return nil, nil, fmt.Errorf("--config Secret must be immutable with a live UID")
 			}
+			pin.created = secret.CreationTimestamp
 			pin.Kind, pin.Name, pin.UID, pin.ResourceVersion = "Secret", secret.Name, secret.UID, secret.ResourceVersion
 			data, items = secret.Data, volume.Secret.Items
 		default:

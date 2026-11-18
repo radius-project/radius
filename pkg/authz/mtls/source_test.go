@@ -233,6 +233,45 @@ func TestSource_CertificateExpiresAfterLoad(t *testing.T) {
 	requireCode(t, err, "CertificateExpired")
 }
 
+func TestServingPairReload(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	first := ca.issue(t, certOptions{})
+	second := newCA(t).issue(t, certOptions{})
+	dir := newKubeletDir(t, first, ca.pem)
+	require.NoError(t, os.Remove(filepath.Join(dir.root, CAFile)))
+	src, err := newSource(dir.root, "", servingPairOnly)
+	require.NoError(t, err)
+	config := src.ServerConfigFrom(nil)
+	before, err := config.GetConfigForClient(nil)
+	require.NoError(t, err)
+
+	// A mismatched key cannot displace the last known good pair.
+	key, err := os.ReadFile(filepath.Join(dir.root, KeyFile))
+	require.NoError(t, err)
+	dir.update(t, second, nil)
+	require.NoError(t, os.WriteFile(filepath.Join(dir.root, KeyFile), key, 0o600))
+	changed, err := src.Reload()
+	require.Error(t, err)
+	require.False(t, changed)
+	stillFirst, err := config.GetConfigForClient(nil)
+	require.NoError(t, err)
+	require.Equal(t, first.cert.Raw, stillFirst.Certificates[0].Leaf.Raw)
+
+	dir.update(t, second, nil)
+	changed, err = src.Reload()
+	require.NoError(t, err)
+	require.True(t, changed)
+	after, err := config.GetConfigForClient(nil)
+	require.NoError(t, err)
+	require.Equal(t, second.cert.Raw, after.Certificates[0].Leaf.Raw)
+	require.Equal(t, first.cert.Raw, before.Certificates[0].Leaf.Raw)
+
+	src.now = func() time.Time { return second.cert.NotAfter.Add(time.Second) }
+	_, err = config.GetConfigForClient(nil)
+	requireCode(t, err, "CertificateExpired")
+}
+
 func TestSource_Reload(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
