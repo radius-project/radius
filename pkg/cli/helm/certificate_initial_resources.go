@@ -180,7 +180,7 @@ func (b *initialCertificateInstaller) ensureRoot(ctx context.Context, desired *u
 	client := b.store.dynamic.Resource(resource).Namespace(b.store.namespace)
 	object, err := client.Get(ctx, expected.GetName(), metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		if err := b.checkMaterial(ctx); err != nil {
+		if err := b.check(ctx); err != nil {
 			return err
 		}
 		object, err = client.Create(ctx, expected, metav1.CreateOptions{FieldManager: FieldManager})

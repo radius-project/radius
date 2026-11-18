@@ -21,26 +21,18 @@ package helm
 import (
 	"context"
 	"crypto/x509"
-	"fmt"
-	"net/http"
-	"path"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	corev1 "k8s.io/api/core/v1"
-	extclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
@@ -49,7 +41,6 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 	store, config, _, _ := newRotationTestStore(t)
 	require.NoError(t, store.dynamic.Resource(apiServiceResource).Delete(t.Context(), radiusAPIService, metav1.DeleteOptions{}))
 	installRotationTestCRDs(t, store)
-	createCertificateRequestCRD(t, extclient.NewForConfigOrDie(config))
 	crds := store.dynamic.Resource(schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"})
 	crd, err := crds.Get(t.Context(), "certificates.cert-manager.io", metav1.GetOptions{})
 	require.NoError(t, err)
@@ -75,30 +66,6 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 		t.Run(provider, func(t *testing.T) {
 			local := *store
 			local.namespace = "initial-" + provider
-			var order []string
-			probeConfig := rest.CopyConfig(config)
-			probeConfig.Wrap(func(next http.RoundTripper) http.RoundTripper {
-				return bootstrapRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-					resource := path.Base(req.URL.Path)
-					if req.Method == http.MethodPost && resource == "certificaterequests" &&
-						(req.URL.Query().Get("dryRun") != metav1.DryRunAll || req.URL.Query().Get("fieldValidation") != metav1.FieldValidationStrict) {
-						return nil, fmt.Errorf("unsafe admission probe: %s", req.URL.Path)
-					}
-					res, err := next.RoundTrip(req)
-					if err == nil && req.Method == http.MethodPost {
-						switch resource {
-						case "validatingadmissionpolicies", "validatingadmissionpolicybindings", "issuers":
-							order = append(order, fmt.Sprintf("%s:%d", resource, res.StatusCode))
-						case "certificaterequests":
-							if res.StatusCode == http.StatusForbidden {
-								order = append(order, "dryRun=All:403")
-							}
-						}
-					}
-					return res, err
-				})
-			})
-			local.dynamic = dynamic.NewForConfigOrDie(probeConfig)
 			options := NewDefaultClusterOptions()
 			options.Radius.Namespace, options.Radius.Timeout = local.namespace, time.Minute
 			values := map[string]any{"global": map[string]any{
@@ -155,10 +122,6 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 					return len(fixtures) == 0, nil
 				})
 			}()
-			// Exercise Helm's actual adoption and removal of the admission pair.
-			// The rest of the full release is rendered, not installed.
-			admissionRelease := &helm.Configuration{}
-			require.NoError(t, admissionRelease.Init(&genericclioptions.ConfigFlags{KubeConfig: &kubeconfig, Namespace: &local.namespace}, local.namespace, "memory"))
 			b.applyFixture = func(ctx context.Context) error {
 				manifest, err := impl.renderBootstrapChart(ctx, selected, options, b.values, "fixture")
 				if err != nil {
@@ -176,12 +139,7 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 				_, err = impl.renderBootstrapChart(ctx, selected, options, b.values, "fixture")
 				require.ErrorContains(t, err, "Finish initial certificate public-source publication")
 				b.state.Phase = "published"
-				if err := b.save(ctx); err != nil {
-					return err
-				}
-				install := newInstallClient(admissionRelease, local.release, local.namespace, false, time.Minute)
-				install.CreateNamespace = false
-				_, err = install.RunWithContext(ctx, initialAdmissionChart(selected), copyValues(b.values))
+				err = b.save(ctx)
 				return err
 			}
 			b.verifyFixture = func(ctx context.Context) error { return b.checkMaterial(ctx) }
@@ -190,11 +148,6 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 			controllerErr := <-issued
 			require.NoError(t, controllerErr)
 			require.NoError(t, runErr)
-			require.Equal(t, []string{"validatingadmissionpolicies:201", "validatingadmissionpolicybindings:201", "dryRun=All:403", "issuers:201"}, order)
-			t.Logf("bootstrap admission order: %v", order)
-			probes, err := local.dynamic.Resource(certificateRequestsResource).Namespace(local.namespace).List(t.Context(), metav1.ListOptions{})
-			require.NoError(t, err)
-			require.Empty(t, probes.Items)
 			require.Equal(t, "complete", b.state.Phase)
 			source, err := local.kube.CoreV1().Secrets(local.namespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 			require.NoError(t, err)
@@ -219,15 +172,6 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 					require.NoError(t, err)
 					require.Equal(t, source, live)
 				})
-			}
-			removeAdmission := helm.NewUninstall(admissionRelease)
-			removeAdmission.WaitStrategy = waitStrategy(true)
-			removeAdmission.Timeout = time.Minute
-			_, err = removeAdmission.Run(local.release)
-			require.NoError(t, err)
-			for _, resource := range initialAdmissionResources {
-				_, err := local.dynamic.Resource(resource).Get(t.Context(), initialPolicyName, metav1.GetOptions{})
-				require.True(t, apierrors.IsNotFound(err), "%s: %v", resource, err)
 			}
 			initialUninstallFixture(t, b, nil)
 			uninstall := NewDefaultClusterOptions()

@@ -88,7 +88,6 @@ type initialCertificateInstaller struct {
 	state       initialCertificateState
 	journal     *corev1.ConfigMap
 	operation   *identityOperation
-	admission   map[string]aggregationBootstrapPin
 	// Only local controller fixtures replace these boundaries. Production uses
 	// the selected Helm chart and the ordinary exact-pod/APIService checks.
 	applyFixture  func(context.Context) error
@@ -269,17 +268,6 @@ func (b *initialCertificateInstaller) save(ctx context.Context) error {
 		return errors.New("initial certificate journal exceeds its size limit")
 	}
 	updated := b.journal.DeepCopy()
-	for kind, pin := range b.admission {
-		key := initialAdmissionUIDAnnotation(kind)
-		if updated.Annotations == nil {
-			updated.Annotations = map[string]string{}
-		}
-		if b.state.Phase == "complete" {
-			delete(updated.Annotations, key)
-		} else {
-			updated.Annotations[key] = string(pin.UID)
-		}
-	}
 	updated.Data = map[string]string{rotationJournalKey: string(data)}
 	persisted, err := b.store.kube.CoreV1().ConfigMaps(b.store.namespace).Update(ctx, updated, metav1.UpdateOptions{FieldManager: FieldManager})
 	if err == nil {
@@ -364,11 +352,6 @@ func (b *initialCertificateInstaller) run(ctx context.Context) error {
 		}
 		if err := b.checkMaterial(ctx); err != nil {
 			return err
-		}
-		if b.state.Mode == "selfSigned" {
-			if err := b.stageInitialAdmission(ctx); err != nil {
-				return fmt.Errorf("cannot verify requester admission for %s; inspect the radius-certificate-issuance policy and binding and CertificateRequest create permission in namespace %s, then retry with identical settings: %w", RadiusBootstrapIssuerName, b.store.namespace, err)
-			}
 		}
 		if b.state.Phase == "preparing" {
 			if err := b.prepareAnchors(ctx); err != nil {
@@ -494,9 +477,6 @@ func (b *initialCertificateInstaller) checkPrepared(ctx context.Context) error {
 }
 
 func (b *initialCertificateInstaller) checkObservedMaterial(ctx context.Context) error {
-	if err := b.checkInitialAdmissionPins(ctx); err != nil {
-		return err
-	}
 	for key, pin := range b.state.Roots {
 		resource, name, err := initialRootResource(key)
 		if err != nil {

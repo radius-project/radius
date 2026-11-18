@@ -41,12 +41,10 @@ import (
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
-	extclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
@@ -67,10 +65,7 @@ func initialControllerFixture(t *testing.T, mode, provider string) (*initialCert
 	}}}
 	options := NewDefaultClusterOptions()
 	options.Radius.Timeout = 2 * time.Second
-	store.dynamic.(*dynamicfake.FakeDynamicClient).PrependReactor("create", "certificaterequests", func(action k8stesting.Action) (bool, runtime.Object, error) {
-		return true, nil, fixtureAdmissionDenial(store.namespace)
-	})
-	impl := &Impl{contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
+	impl := &Impl{contourCluster: &fakeContourCluster{},
 		newRotationStore:     func(string, string) (*rotationStore, error) { return store, nil },
 		newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil }}
 	if mode != "selfSigned" {
@@ -305,12 +300,6 @@ func initialUninstallFixture(t *testing.T, b *initialCertificateInstaller, after
 	b.impl.removeDefaultContourGateway = (&defaultContourGatewayCalls{}).remove
 	client.EXPECT().RunHelmUninstall(gomock.Any(), radiusReleaseName, b.store.namespace, true).
 		DoAndReturn(func(*helm.Configuration, string, string, bool) (*release.UninstallReleaseResponse, error) {
-			if b.state.Mode == "selfSigned" {
-				for _, resource := range initialAdmissionResources {
-					err := b.store.dynamic.Resource(resource).Delete(t.Context(), initialPolicyName, metav1.DeleteOptions{})
-					require.True(t, err == nil || apierrors.IsNotFound(err), "%v", err)
-				}
-			}
 			for key := range b.state.Roots {
 				resource, name, err := initialRootResource(key)
 				require.NoError(t, err)
@@ -475,7 +464,7 @@ func TestInitialCertificateUninstallCancellation(t *testing.T) {
 }
 
 func TestInitialCertificateControllerFixtureRecovery(t *testing.T) {
-	for _, point := range []string{"namespace intent", "policy journal conflict", "binding journal conflict", "root journal conflict", "source journal conflict", "chart interruption"} {
+	for _, point := range []string{"namespace intent", "root journal conflict", "source journal conflict", "chart interruption"} {
 		t.Run(point, func(t *testing.T) {
 			b, retry := initialControllerFixture(t, "selfSigned", "radius")
 			injected := false
@@ -495,9 +484,7 @@ func TestInitialCertificateControllerFixtureRecovery(t *testing.T) {
 				}
 				var proposed initialCertificateState
 				require.NoError(t, json.Unmarshal([]byte(object.Data[rotationJournalKey]), &proposed))
-				if point == "policy journal conflict" && object.Annotations[initialAdmissionUIDAnnotation(initialPolicyKind)] != "" ||
-					point == "binding journal conflict" && object.Annotations[initialAdmissionUIDAnnotation(initialBindingKind)] != "" ||
-					point == "root journal conflict" && len(proposed.Roots) == 1 ||
+				if point == "root journal conflict" && len(proposed.Roots) == 1 ||
 					point == "source journal conflict" && len(proposed.Sources) == 1 {
 					injected = true
 					return true, nil, apierrors.NewConflict(corev1.Resource("configmaps"), object.Name, errors.New("fixture interruption"))
@@ -759,130 +746,36 @@ func TestUninstallExclusionBeforeHelm(t *testing.T) {
 	}
 }
 
-func fixtureAdmissionDenial(namespace string) *apierrors.StatusError {
-	cause := initialDenialPrefix(namespace) + "admin"
-	return &apierrors.StatusError{ErrStatus: metav1.Status{Code: 403, Reason: metav1.StatusReasonForbidden,
-		Message: fmt.Sprintf("certificaterequests.cert-manager.io %q is forbidden: %s", initialProbeName, cause),
-		Details: &metav1.StatusDetails{Group: "cert-manager.io", Kind: "certificaterequests", Name: initialProbeName,
-			Causes: []metav1.StatusCause{{Message: cause}}}}}
-}
-
-func TestInstallRadiusSelfSignedAdmission(t *testing.T) {
-	b, _ := initialControllerFixture(t, "selfSigned", "external")
-	client := NewMockHelmClient(gomock.NewController(t))
-	b.impl.Helm = client
-	options := NewDefaultClusterOptions()
-	options.Radius.ChartPath = "../../../deploy/Chart"
-	options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external"}
-	options.Contour.Disabled = true
-	client.EXPECT().LoadChart(options.Radius.ChartPath).Return(b.selected, nil)
-	client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
-	deps, crds := (fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}).clients()
-	b.impl.newCertManagerClients = func(string) (kubernetes.Interface, extclient.Interface, error) { return deps, crds, nil }
-	b.impl.newCSIDriverSPIFFEClient = func(string) (kubernetes.Interface, error) {
-		return withValidatingAdmissionPolicyAPI(deps.(*kubefake.Clientset)), nil
-	}
-	stop := errors.New("stop at public installer probe")
-	b.store.dynamic.(*dynamicfake.FakeDynamicClient).PrependReactor("create", "certificaterequests", func(k8stesting.Action) (bool, runtime.Object, error) {
-		return true, nil, stop
-	})
-	require.ErrorIs(t, b.impl.InstallRadius(t.Context(), options, "test-context"), stop)
-}
-
-func TestInitialAdmissionInterruptions(t *testing.T) {
-	order := []string{"validatingadmissionpolicies", "validatingadmissionpolicybindings", "certificaterequests", "issuers"}
-	for index, stop := range order {
-		t.Run(stop, func(t *testing.T) {
-			b, retry := initialControllerFixture(t, "selfSigned", "external")
-			client := b.store.dynamic.(*dynamicfake.FakeDynamicClient)
-			var creates []string
-			interrupt := true
-			client.PrependReactor("create", "*", func(a k8stesting.Action) (bool, runtime.Object, error) {
-				r := a.GetResource().Resource
-				creates = append(creates, r)
-				if interrupt && r == stop {
-					return true, nil, errors.New("interrupted stage")
-				}
-
-				return false, nil, nil
-			})
-			require.ErrorContains(t, b.run(t.Context()), "interrupted stage")
-			require.Equal(t, order[:index+1], creates)
-			interrupt, creates = false, nil
-			require.NoError(t, retry().run(t.Context()))
-			start := min(index, 2) // Every retry probes even when both objects already exist.
-			require.Equal(t, order[start:], creates[:len(order)-start])
-		})
-	}
-}
-
-func TestInitialAdmissionRequiresAttributedDenial(t *testing.T) {
-	tests := map[string]func(*metav1.Status){
-		"RBAC":           func(s *metav1.Status) { s.Details.Causes = nil },
-		"webhook":        func(s *metav1.Status) { s.Message = "admission webhook denied the request: " + s.Message },
-		"authentication": func(s *metav1.Status) { s.Code, s.Reason = 401, metav1.StatusReasonUnauthorized },
-		"schema":         func(s *metav1.Status) { s.Code, s.Reason = 422, metav1.StatusReasonInvalid },
-		"missing issuer": func(s *metav1.Status) { s.Code, s.Reason = 404, metav1.StatusReasonNotFound },
-		"other policy": func(s *metav1.Status) {
-			s.Details.Causes[0].Message = strings.Replace(s.Details.Causes[0].Message, initialPolicyName, "other", 1)
-		},
-		"other binding": func(s *metav1.Status) {
-			s.Details.Causes[0].Message = strings.Replace(s.Details.Causes[0].Message, "binding '"+initialPolicyName+"'", "binding 'other'", 1)
-		},
-		"other rule": func(s *metav1.Status) {
-			s.Details.Causes[0].Message = strings.Replace(s.Details.Causes[0].Message, "reserved-issuer", "leaf-only", 1)
-		},
-	}
-	for name, modify := range tests {
-		t.Run(name, func(t *testing.T) {
+func TestSelfSignedBootstrapStopsBeforeDependencies(t *testing.T) {
+	for _, interrupted := range []bool{false, true} {
+		t.Run(fmt.Sprintf("interrupted=%t", interrupted), func(t *testing.T) {
 			b, _ := initialControllerFixture(t, "selfSigned", "external")
-			status := fixtureAdmissionDenial(b.store.namespace)
-			modify(&status.ErrStatus)
-			b.store.dynamic.(*dynamicfake.FakeDynamicClient).PrependReactor("create", "certificaterequests", func(k8stesting.Action) (bool, runtime.Object, error) {
-				return true, nil, status
+			if interrupted {
+				// Model an old CLI that published roots but never installed the chart.
+				stop := errors.New("stop before full chart")
+				b.applyFixture = func(context.Context) error { return stop }
+				require.ErrorIs(t, b.run(t.Context()), stop)
+				require.Equal(t, "published", b.state.Phase)
+			}
+			kube := b.store.kube.(*kubefake.Clientset)
+			dynamic := b.store.dynamic.(interface {
+				Actions() []k8stesting.Action
+				ClearActions()
 			})
-			require.ErrorContains(t, b.run(t.Context()), "cannot verify requester admission")
-			_, err := b.store.dynamic.Resource(rotationIssuerResource).Namespace(b.store.namespace).Get(t.Context(), RadiusBootstrapIssuerName, metav1.GetOptions{})
-			require.True(t, apierrors.IsNotFound(err))
+			kube.ClearActions()
+			dynamic.ClearActions()
+			client := NewMockHelmClient(gomock.NewController(t))
+			b.impl.Helm = client
+			options := NewDefaultClusterOptions()
+			options.Radius.ChartPath = "../../../deploy/Chart"
+			options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external", "global.rbac.certificates.mode=selfSigned"}
+			options.Contour.Disabled = true
+			client.EXPECT().LoadChart(options.Radius.ChartPath).Return(b.selected, nil)
+			err := b.impl.InstallRadius(t.Context(), options, "test-context")
+			require.ErrorContains(t, err, "cannot verify requester admission")
+			for _, action := range append(kube.Actions(), dynamic.Actions()...) {
+				require.Contains(t, []string{"get", "list"}, action.GetVerb())
+			}
 		})
-	}
-}
-
-func TestInitialAdmissionAdoptsOnlyMatchingHelmObjects(t *testing.T) {
-	prior, _ := initialControllerFixture(t, "selfSigned", "external")
-	require.NoError(t, prior.run(t.Context()))
-	for _, kind := range []string{initialPolicyKind, initialBindingKind} {
-		resource := initialAdmissionResources[kind]
-		original, err := prior.store.dynamic.Resource(resource).Get(t.Context(), initialPolicyName, metav1.GetOptions{})
-		require.NoError(t, err)
-		for _, change := range []string{"none", "foreign", "different spec"} {
-			t.Run(kind+"/"+change, func(t *testing.T) {
-				b, _ := initialControllerFixture(t, "selfSigned", "external")
-				obj := original.DeepCopy()
-				meta := obj.GetAnnotations()
-				delete(meta, initialCertificateIntent)
-				if change == "foreign" {
-					meta[helmReleaseNamespaceAnnotation] = "other-namespace"
-				}
-				obj.SetAnnotations(meta)
-				if change == "different spec" {
-					obj.Object["spec"] = map[string]any{}
-				}
-				client := b.store.dynamic.Resource(resource)
-				seed, err := client.Create(t.Context(), obj, metav1.CreateOptions{})
-				require.NoError(t, err)
-				err = b.run(t.Context())
-				if change == "none" {
-					require.NoError(t, err)
-				} else {
-					require.ErrorContains(t, err, "preserving foreign or mismatched")
-					_, err := b.store.dynamic.Resource(rotationIssuerResource).Namespace(b.store.namespace).Get(t.Context(), RadiusBootstrapIssuerName, metav1.GetOptions{})
-					require.True(t, apierrors.IsNotFound(err))
-				}
-				got, err := client.Get(t.Context(), initialPolicyName, metav1.GetOptions{})
-				require.NoError(t, err)
-				require.Equal(t, seed, got)
-			})
-		}
 	}
 }
