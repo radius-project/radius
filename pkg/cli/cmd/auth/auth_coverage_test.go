@@ -254,7 +254,7 @@ func TestInspectionCommandsWithGeneratedHTTPClients(t *testing.T) {
 						require.Equal(t, "application/json", request.contentType)
 						var body api.AccessCheckRequest
 						require.NoError(t, json.Unmarshal(request.body, &body))
-						require.Equal(t, &api.Principal{Type: to.Ptr(api.PrincipalTypeGroup), Subject: to.Ptr("developers"), Issuer: to.Ptr("kubernetes:test")}, body.Principal)
+						require.Equal(t, &api.AccessCheckPrincipal{Type: to.Ptr(api.PrincipalTypeGroup), Subject: to.Ptr("developers"), Issuer: to.Ptr("kubernetes:test")}, body.Principal)
 						require.Equal(t, []*api.AccessCheck{
 							{Permission: to.Ptr("Radius.Core/applications/read"), Target: &scope},
 							{Permission: to.Ptr("Radius.Core/applications/write"), Target: to.Ptr(scope + "/denied")},
@@ -333,6 +333,100 @@ func TestGeneratedHTTPClientErrors(t *testing.T) {
 			requireInspectionRequest(t, requests, method, path)
 			require.Empty(t, requests, "authorization failures must not be retried")
 		})
+	}
+}
+
+func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
+	// Use the generated decoder: successful JSON decoding is not validation.
+	for _, operation := range []string{"whoami", "status", "check"} {
+		for _, format := range []string{"json", "table"} {
+			identity, err := (&testClient{}).whoAmI(t.Context())
+			require.NoError(t, err)
+			valid := any(identity)
+			if operation == "check" {
+				valid = api.CheckAccessResponse{
+					Principal: identity.Principal, Mode: identity.Mode, Generation: to.Ptr(int64(0)),
+					Checks: []*api.AccessCheckResult{
+						{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/"), Allowed: to.Ptr(false)},
+						{Permission: to.Ptr("Radius.Core/applications/write"), Target: to.Ptr("/"), Allowed: to.Ptr(true)},
+					},
+				}
+			}
+			tests := []struct {
+				name   string
+				mutate func(map[string]any)
+			}{
+				{"empty object", func(w map[string]any) { clear(w) }},
+				{"missing principal", func(w map[string]any) { delete(w, "principal") }},
+				{"empty principal", func(w map[string]any) { w["principal"] = map[string]any{} }},
+				{"missing type", func(w map[string]any) { delete(w["principal"].(map[string]any), "type") }},
+				{"invalid type", func(w map[string]any) { w["principal"].(map[string]any)["type"] = "unknown" }},
+				{"missing subject", func(w map[string]any) { delete(w["principal"].(map[string]any), "subject") }},
+				{"empty issuer", func(w map[string]any) { w["principal"].(map[string]any)["issuer"] = "" }},
+				{"missing mode", func(w map[string]any) { delete(w, "mode") }},
+				{"invalid mode", func(w map[string]any) { w["mode"] = "unknown" }},
+			}
+			if operation == "check" {
+				tests = append(tests, []struct {
+					name   string
+					mutate func(map[string]any)
+				}{
+					{"missing generation", func(w map[string]any) { delete(w, "generation") }},
+					{"negative generation", func(w map[string]any) { w["generation"] = -1 }},
+					{"missing checks", func(w map[string]any) { delete(w, "checks") }},
+					{"short batch", func(w map[string]any) { w["checks"] = w["checks"].([]any)[:1] }},
+					{"extra result", func(w map[string]any) { w["checks"] = append(w["checks"].([]any), w["checks"].([]any)[0]) }},
+					{"null result", func(w map[string]any) { w["checks"].([]any)[0] = nil }},
+					{"missing allowed", func(w map[string]any) { delete(w["checks"].([]any)[0].(map[string]any), "allowed") }},
+					{"null allowed", func(w map[string]any) { w["checks"].([]any)[0].(map[string]any)["allowed"] = nil }},
+					{"missing permission", func(w map[string]any) { delete(w["checks"].([]any)[0].(map[string]any), "permission") }},
+					{"missing target", func(w map[string]any) { delete(w["checks"].([]any)[0].(map[string]any), "target") }},
+					{"out of order", func(w map[string]any) {
+						checks := w["checks"].([]any)
+						checks[0], checks[1] = checks[1], checks[0]
+					}},
+				}...)
+			} else {
+				tests = append(tests, []struct {
+					name   string
+					mutate func(map[string]any)
+				}{
+					{"missing issuer", func(w map[string]any) { delete(w, "issuer") }},
+					{"mismatched issuer", func(w map[string]any) { w["issuer"] = "different" }},
+					{"missing admin", func(w map[string]any) { delete(w, "isRadiusAdministrator") }},
+					{"missing groups", func(w map[string]any) { delete(w, "groups") }},
+					{"null group", func(w map[string]any) { w["groups"] = []any{nil} }},
+					{"empty group", func(w map[string]any) { w["groups"] = []any{map[string]any{}} }},
+					{"wrong group type", func(w map[string]any) { w["groups"].([]any)[0].(map[string]any)["type"] = "user" }},
+				}...)
+			}
+			for _, tt := range tests {
+				t.Run(operation+"/"+format+"/"+tt.name, func(t *testing.T) {
+					data, err := json.Marshal(valid)
+					require.NoError(t, err)
+					var wire map[string]any
+					require.NoError(t, json.Unmarshal(data, &wire))
+					tt.mutate(wire)
+					server, _ := inspectionHTTPServer(t, http.StatusOK, wire)
+					config := radcli.LoadConfigWithWorkspace(t)
+					section, err := cli.ReadWorkspaceSection(config)
+					require.NoError(t, err)
+					workspace := section.Items[radcli.TestWorkspaceName]
+					workspace.Connection["overrides"] = map[string]any{"ucp": server.URL}
+					section.Items[radcli.TestWorkspaceName] = workspace
+					cli.UpdateWorkspaceSection(config, section)
+					writer := &output.MockOutput{}
+					cmd, _ := newTestCommand(&framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: config}, Output: writer}, operation)
+					args := []string{"--output", format}
+					if operation == "check" {
+						args = append(args, "--scope", "/", "--action", "Radius.Core/applications/read", "--action", "Radius.Core/applications/write")
+					}
+					cmd.SetArgs(args)
+					require.ErrorContains(t, cmd.ExecuteContext(t.Context()), "Radius returned an invalid")
+					require.Empty(t, writer.Writes, "malformed success response must not reach either formatter")
+				})
+			}
+		}
 	}
 }
 

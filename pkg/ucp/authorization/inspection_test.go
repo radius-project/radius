@@ -5,6 +5,8 @@ package authorization
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -67,17 +69,17 @@ func TestInspectionEveryMode(t *testing.T) {
 						require.Equal(t, checks[i].Permission, check.Permission)
 						require.Equal(t, checks[i].Target, check.Target)
 					}
-					self, err := runtime.CheckAccess(identity, "/", api.AccessCheckRequest{Checks: checks, Principal: &identity.Principal})
+					self, err := runtime.CheckAccess(identity, "/", api.AccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&identity.Principal)})
 					require.NoError(t, err)
 					require.Equal(t, result, self)
 				}
 				for _, principal := range []api.Principal{admin.Principal, admin.Groups[0]} {
-					_, err := runtime.CheckAccess(reader, "/", api.AccessCheckRequest{Checks: checks, Principal: &principal})
+					_, err := runtime.CheckAccess(reader, "/", api.AccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&principal)})
 					require.ErrorIs(t, err, ErrCheckAccessDenied)
 				}
-				_, err = runtime.CheckAccess(admin, "/", api.AccessCheckRequest{Checks: checks, Principal: &reader.Principal})
+				_, err = runtime.CheckAccess(admin, "/", api.AccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&reader.Principal)})
 				require.ErrorIs(t, err, ErrMembershipUnavailable)
-				otherGroup, err := runtime.CheckAccess(admin, "/", api.AccessCheckRequest{Checks: checks, Principal: &admin.Groups[0]})
+				otherGroup, err := runtime.CheckAccess(admin, "/", api.AccessCheckRequest{Checks: checks, Principal: (*api.AccessCheckPrincipal)(&admin.Groups[0])})
 				require.NoError(t, err)
 				require.True(t, *otherGroup.Checks[0].Allowed)
 				for _, request := range []api.AccessCheckRequest{
@@ -86,7 +88,7 @@ func TestInspectionEveryMode(t *testing.T) {
 					{Checks: []*api.AccessCheck{{}}},
 					{Checks: []*api.AccessCheck{{Permission: to.Ptr("not/a/permission"), Target: to.Ptr(appA)}}},
 					{Checks: []*api.AccessCheck{{Permission: checks[0].Permission, Target: to.Ptr(appA + "/../escape")}}},
-					{Checks: checks, Principal: &api.Principal{}},
+					{Checks: checks, Principal: &api.AccessCheckPrincipal{}},
 				} {
 					_, err := runtime.CheckAccess(admin, "/", request)
 					require.Error(t, err)
@@ -250,7 +252,7 @@ func TestInspectionInputLimits(t *testing.T) {
 		for _, above := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/above=%t", field.name, above), func(t *testing.T) {
 				request := api.AccessCheckRequest{
-					Principal: to.Ptr(testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-a", "other-group")),
+					Principal: to.Ptr(api.AccessCheckPrincipal(testPrincipal(api.PrincipalTypeGroup, "kubernetes:cluster-a", "other-group"))),
 					Checks:    []*api.AccessCheck{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")}},
 				}
 				scope, n := "/", field.limit
@@ -346,9 +348,9 @@ func TestInspectionContractLimits(t *testing.T) {
 		model, property string
 		limit           int
 	}{
-		{"Principal", "issuer", maxPrincipalIssuerLength},
-		{"Principal", "subject", maxPrincipalSubjectLength},
-		{"Principal", "displayName", maxPrincipalDisplayNameLength},
+		{"AccessCheckPrincipal", "issuer", maxPrincipalIssuerLength},
+		{"AccessCheckPrincipal", "subject", maxPrincipalSubjectLength},
+		{"AccessCheckPrincipal", "displayName", maxPrincipalDisplayNameLength},
 		{"AccessCheck", "target", maxAccessScopeLength},
 	} {
 		require.Equal(t, field.limit, document.Definitions[field.model].Properties[field.property].MaxLength, "%s.%s", field.model, field.property)
@@ -398,7 +400,8 @@ func TestInspectionHTTPValidation(t *testing.T) {
 			{"empty", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `{"checks":[]}`, 400},
 			{"null", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `null`, 400},
 			{"multiple", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", valid + valid, 400},
-			{"oversize", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `{"checks":[], "extra":"` + strings.Repeat("x", 1<<20) + `"}`, 400},
+			{"explicit null principal", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `{"principal":null,"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`, 400},
+			{"unknown principal field", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", `{"principal":{"type":"user","issuer":"kubernetes:cluster-a","subject":"alice","groups":[]},"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`, 400},
 			{"invalid JSON", "POST", "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", "{", 400},
 			{"missing version", "GET", "/providers/Radius.Core/whoAmI", "", 400},
 			{"wrong version", "GET", "/providers/Radius.Core/whoAmI?api-version=unknown", "", 400},
@@ -414,6 +417,10 @@ func TestInspectionHTTPValidation(t *testing.T) {
 				require.NoError(t, json.Unmarshal(response.Body.Bytes(), &wire))
 				if tt.status != 200 {
 					require.Contains(t, wire, "error")
+					require.NotContains(t, wire, "checks")
+					if tt.status == 400 && tt.method == "POST" {
+						require.Contains(t, response.Body.String(), "InvalidRequestContent")
+					}
 				} else {
 					require.NotContains(t, response.Body.String(), "assignment")
 					require.Contains(t, wire, "generation")
@@ -422,6 +429,104 @@ func TestInspectionHTTPValidation(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestInspectionBodyLimit(t *testing.T) {
+	for _, size := range []int{1 << 20, (1 << 20) + 1} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				runtime, _ := startPolicyRuntime(t, newTestPolicyStore(t, inmemory.NewClient(), true))
+				valid := `{"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`
+				body := valid + strings.Repeat(" ", size-len(valid))
+				require.Len(t, body, size)
+				request := httptest.NewRequest(http.MethodPost, "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", strings.NewReader(body))
+				request = request.WithContext(context.WithValue(request.Context(), identityContextKey{}, policyActor().Identity))
+				response := httptest.NewRecorder()
+				Inspection(runtime, "")(http.NotFoundHandler()).ServeHTTP(response, request)
+				if size == 1<<20 {
+					require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+					var result api.CheckAccessResponse
+					require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
+					require.Len(t, result.Checks, 1)
+					require.NotNil(t, result.Checks[0].Allowed)
+				} else {
+					require.Equal(t, http.StatusBadRequest, response.Code, response.Body.String())
+					require.Contains(t, response.Body.String(), "InvalidRequestContent")
+					require.NotContains(t, response.Body.String(), `"checks"`)
+					require.NotContains(t, response.Body.String(), `"allowed"`)
+				}
+			})
+		})
+	}
+}
+
+func TestInspectionPreservesVerifiedIdentity(t *testing.T) {
+	for _, field := range []string{"subject", "issuer"} {
+		t.Run(field, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				runtime, _ := startPolicyRuntime(t, newTestPolicyStore(t, inmemory.NewClient(), true))
+				pki := newProxyPKI(t)
+				certificate := pki.client(t, "front-proxy-client", x509.ExtKeyUsageClientAuth, false)
+				subject, issuer := "bob", "kubernetes:cluster-a"
+				if field == "subject" {
+					subject = strings.Repeat("s", maxPrincipalSubjectLength+1)
+				} else {
+					issuer = "kubernetes:" + strings.Repeat("i", maxPrincipalIssuerLength+1-len("kubernetes:"))
+				}
+				authenticator, err := NewRequestHeaderAuthenticator(&RequestHeaderOptions{
+					CAFile: pki.file, AllowedNames: []string{"front-proxy-client"}, KubernetesIssuer: issuer,
+				})
+				require.NoError(t, err)
+				group := strings.Repeat("g", maxPrincipalSubjectLength+1)
+				for _, operation := range []string{"whoAmI", "self", "explicit"} {
+					method, route, body := http.MethodGet, "whoAmI", ""
+					if operation != "whoAmI" {
+						method, route = http.MethodPost, "checkAccess"
+						request := api.AccessCheckRequest{Checks: []*api.AccessCheck{
+							{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/")},
+						}}
+						if operation == "explicit" {
+							request.Principal = &api.AccessCheckPrincipal{Type: to.Ptr(api.PrincipalTypeUser), Issuer: &issuer, Subject: &subject}
+						}
+						data, err := json.Marshal(request)
+						require.NoError(t, err)
+						body = string(data)
+					}
+					request := httptest.NewRequest(method, "/providers/Radius.Core/"+route+"?api-version=2025-08-01-preview", strings.NewReader(body))
+					request.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{certificate}}
+					request.Header.Set("X-Remote-User", subject)
+					request.Header.Set("X-Remote-Group", group)
+					response := httptest.NewRecorder()
+					authenticator.Middleware(Inspection(runtime, "")(http.NotFoundHandler())).ServeHTTP(response, request)
+					if operation == "explicit" {
+						require.Equal(t, http.StatusBadRequest, response.Code, response.Body.String())
+						require.Contains(t, response.Body.String(), "InvalidRequestContent")
+						require.Contains(t, response.Body.String(), "principal."+field)
+						require.NotContains(t, response.Body.String(), `"checks"`)
+						continue
+					}
+					require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+					if operation == "whoAmI" {
+						var result api.WhoAmIResult
+						require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
+						require.Equal(t, subject, *result.Principal.Subject)
+						require.Equal(t, issuer, *result.Principal.Issuer)
+						require.Equal(t, issuer, *result.Issuer)
+						require.Len(t, result.Groups, 1)
+						require.Equal(t, group, *result.Groups[0].Subject)
+						require.Equal(t, issuer, *result.Groups[0].Issuer)
+					} else {
+						var result api.CheckAccessResponse
+						require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
+						require.Equal(t, subject, *result.Principal.Subject)
+						require.Equal(t, issuer, *result.Principal.Issuer)
+						require.Len(t, result.Checks, 1)
+						require.False(t, *result.Checks[0].Allowed)
+					}
+				}
+			})
+		})
+	}
 }
 
 func TestInspectionUnicodeScope(t *testing.T) {
@@ -531,7 +636,7 @@ func TestInspectionInvalidCaller(t *testing.T) {
 			require.Error(t, err)
 			require.Nil(t, result.Checks)
 			result, err = runtime.CheckAccess(tt.identity, "/", api.AccessCheckRequest{
-				Checks: checks, Principal: to.Ptr(policyActor().Identity.Groups[0]),
+				Checks: checks, Principal: to.Ptr(api.AccessCheckPrincipal(policyActor().Identity.Groups[0])),
 			})
 			require.Error(t, err)
 			require.Nil(t, result.Checks)

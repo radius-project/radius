@@ -22,6 +22,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/sdk"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
+	"github.com/radius-project/radius/pkg/ucp/authorization"
 	"github.com/spf13/cobra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -104,8 +105,8 @@ func (r *runner) Validate(cmd *cobra.Command, _ []string) error {
 	if r.scope == "" {
 		r.scope = r.workspace.Scope
 	}
-	if r.scope == "" || !strings.HasPrefix(r.scope, "/") {
-		return fmt.Errorf("scope must be an absolute Radius scope ID")
+	if err := authorization.ValidateScope(r.scope); err != nil {
+		return fmt.Errorf("invalid inspection scope: %w", err)
 	}
 	if len(r.actions) == 0 {
 		return fmt.Errorf("at least one --action is required")
@@ -128,13 +129,13 @@ func (r *runner) Validate(cmd *cobra.Command, _ []string) error {
 	return err
 }
 
-func parsePrincipal(value, issuer string) (*api.Principal, error) {
+func parsePrincipal(value, issuer string) (*api.AccessCheckPrincipal, error) {
 	kind, subject, found := strings.Cut(value, ":")
 	typ := api.PrincipalType(kind)
 	if !found || subject == "" || (typ != api.PrincipalTypeUser && typ != api.PrincipalTypeGroup && typ != api.PrincipalTypeWorkload) {
 		return nil, fmt.Errorf("principal must be user:<subject>, group:<subject>, or workload:<subject>")
 	}
-	return &api.Principal{Type: &typ, Subject: &subject, Issuer: &issuer}, nil
+	return &api.AccessCheckPrincipal{Type: &typ, Subject: &subject, Issuer: &issuer}, nil
 }
 
 func (r *runner) Run(ctx context.Context) error {
@@ -145,6 +146,9 @@ func (r *runner) Run(ctx context.Context) error {
 	if r.operation != "check" {
 		result, err := client.whoAmI(ctx)
 		if err != nil {
+			return err
+		}
+		if err := validateIdentityResponse(result); err != nil {
 			return err
 		}
 		options := output.FormatterOptions{Columns: []output.Column{
@@ -173,6 +177,9 @@ func (r *runner) Run(ctx context.Context) error {
 			if current.Issuer == nil || *current.Issuer == "" {
 				return fmt.Errorf("Radius returned no verified issuer")
 			}
+			if err := validateIdentityResponse(current); err != nil {
+				return err
+			}
 			issuer = *current.Issuer
 		}
 		request.Principal, err = parsePrincipal(r.principal, issuer)
@@ -189,6 +196,9 @@ func (r *runner) Run(ctx context.Context) error {
 	}
 	result, err := client.checkAccess(ctx, r.scope, request)
 	if err != nil {
+		return err
+	}
+	if err := validateAccessResponse(result, request.Checks); err != nil {
 		return err
 	}
 	if r.format == "json" {
@@ -212,6 +222,58 @@ func (r *runner) Run(ctx context.Context) error {
 		{Heading: "TARGET", JSONPath: "{ .Target }"},
 		{Heading: "ALLOWED", JSONPath: "{ .Allowed }"},
 	}})
+}
+
+func validPrincipal(principal *api.Principal) bool {
+	if principal == nil || principal.Type == nil || principal.Issuer == nil || *principal.Issuer == "" ||
+		principal.Subject == nil || *principal.Subject == "" {
+		return false
+	}
+	switch *principal.Type {
+	case api.PrincipalTypeUser, api.PrincipalTypeGroup, api.PrincipalTypeWorkload:
+		return true
+	default:
+		return false
+	}
+}
+
+func validMode(mode *api.UserAuthorizationMode) bool {
+	if mode == nil {
+		return false
+	}
+	switch *mode {
+	case api.UserAuthorizationModeDisabled, api.UserAuthorizationModeDryRun, api.UserAuthorizationModeEnforce:
+		return true
+	default:
+		return false
+	}
+}
+
+func validateIdentityResponse(result api.WhoAmIResult) error {
+	if !validPrincipal(result.Principal) || result.Issuer == nil || *result.Issuer != *result.Principal.Issuer ||
+		!validMode(result.Mode) || result.IsRadiusAdministrator == nil || result.Groups == nil {
+		return fmt.Errorf("Radius returned an invalid identity response")
+	}
+	for _, group := range result.Groups {
+		if !validPrincipal(group) || *group.Type != api.PrincipalTypeGroup || *group.Issuer != *result.Issuer {
+			return fmt.Errorf("Radius returned an invalid group identity")
+		}
+	}
+	return nil
+}
+
+func validateAccessResponse(result api.CheckAccessResponse, checks []*api.AccessCheck) error {
+	if !validPrincipal(result.Principal) || !validMode(result.Mode) || result.Generation == nil || *result.Generation < 0 ||
+		len(result.Checks) != len(checks) {
+		return fmt.Errorf("Radius returned an invalid access-check response")
+	}
+	for i, check := range result.Checks {
+		if check == nil || check.Allowed == nil || check.Permission == nil || check.Target == nil ||
+			*check.Permission != *checks[i].Permission || *check.Target != *checks[i].Target {
+			return fmt.Errorf("Radius returned an invalid result for access check %d", i+1)
+		}
+	}
+	return nil
 }
 
 type apiClient struct {
