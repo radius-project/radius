@@ -635,6 +635,19 @@ func Test_UpgradeRadius_DoesNotStageUCPAPIServerCA(t *testing.T) {
 		c.requireNotStaged(t)
 	})
 
+	t.Run("retry before first injection", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		u := newStageUpgrade(t, authzOnValues, "install --reinstall")
+		c := newStageCluster(t, ucpAPIService("", "", ""), true)
+		client := u.mock(t, 1, func() {
+			c.requireNotStaged(t)
+			c.helmReissuesUCPCertificate(t)
+			require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, c.cainjectorAPIService(), ""))
+		})
+		require.NoError(t, u.run(t, c.impl(client, "cert-manager"), nil))
+		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
+	})
+
 	t.Run("fresh install", func(t *testing.T) {
 		shortenUCPAPIServiceWait(t)
 		u := newStageUpgrade(t, nil, "install")

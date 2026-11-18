@@ -605,6 +605,9 @@ func applyUCPAPIServerTrust(ctx context.Context, kubeClient kubernetes.Interface
 
 // caCertificates returns the CA certificates in a PEM bundle and drops anything else, such as leaf certificates.
 func caCertificates(bundle []byte) ([]*x509.Certificate, error) {
+	if len(bundle) == 0 {
+		return nil, nil // An APIService may still be waiting for its first injection.
+	}
 	certs, err := parseCertificateBundlePEM(bundle)
 	if err != nil {
 		return nil, err

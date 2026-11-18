@@ -226,14 +226,9 @@ func ucpOffTrustClean(apiService *unstructured.Unstructured, offCAs []*x509.Cert
 			return false, nil
 		}
 	}
-	encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
-	bundle, err := base64.StdEncoding.DecodeString(encoded)
+	live, err := ucpAPIServiceCAs(apiService)
 	if err != nil {
-		return false, fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
-	}
-	live, err := caCertificates(bundle)
-	if err != nil {
-		return false, fmt.Errorf("invalid APIService trust bundle: %w", err)
+		return false, err
 	}
 	return containsCertificates(live, offCAs) && containsCertificates(offCAs, live), nil
 }

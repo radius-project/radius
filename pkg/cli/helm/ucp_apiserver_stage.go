@@ -121,14 +121,9 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	if err != nil {
 		return fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
 	}
-	encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
-	bundle, err := base64.StdEncoding.DecodeString(encoded)
+	live, err := ucpAPIServiceCAs(apiService)
 	if err != nil {
-		return fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
-	}
-	live, err := caCertificates(bundle)
-	if err != nil {
-		return fmt.Errorf("invalid APIService %s caBundle: %w", ucpAPIServiceName, err)
+		return err
 	}
 	if len(live) == 0 {
 		return nil
@@ -205,14 +200,9 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		if err != nil {
 			return false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
 		}
-		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
-		bundle, err := base64.StdEncoding.DecodeString(encoded)
+		cas, err := ucpAPIServiceCAs(apiService)
 		if err != nil {
-			return false, fmt.Errorf("failed to decode APIService %s caBundle: %w", ucpAPIServiceName, err)
-		}
-		cas, err := caCertificates(bundle)
-		if err != nil {
-			return false, fmt.Errorf("invalid APIService %s caBundle: %w", ucpAPIServiceName, err)
+			return false, err
 		}
 		return containsCertificates(cas, trusted), nil
 	})
@@ -333,16 +323,24 @@ func readUCPAPIServiceCABundle(ctx context.Context, dynamicClient dynamic.Interf
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
 	}
-	encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
+	cas, err := ucpAPIServiceCAs(apiService)
+	return cas, len(cas) > 0, err
+}
+
+func ucpAPIServiceCAs(apiService *unstructured.Unstructured) ([]*x509.Certificate, error) {
+	encoded, _, err := unstructured.NestedString(apiService.Object, "spec", "caBundle")
+	if err != nil {
+		return nil, fmt.Errorf("invalid APIService caBundle: %w", err)
+	}
 	bundle, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
-		return nil, false, fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
+		return nil, fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
 	}
 	cas, err := caCertificates(bundle)
 	if err != nil {
-		return nil, false, fmt.Errorf("invalid APIService trust bundle: %w", err)
+		return nil, fmt.Errorf("invalid APIService trust bundle: %w", err)
 	}
-	return cas, len(cas) > 0, nil
+	return cas, nil
 }
 
 // trustUCPAPIServerCAs sets the caBundle of the UCP APIService to cas and waits until it has held them for
