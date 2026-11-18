@@ -53,6 +53,8 @@ Usage: prepare-release.sh --release-type <rc|final|patch> --channel <X.Y> \
     --backports-file <path> --sibling-repositories-file <path> \
     --output-dir <path> [file options]
 
+Final preparation requires RECIPE_SOURCE_COMMIT from contrib main.
+
 File options:
     --versions-file <path>
     --changelog-file <path>
@@ -64,8 +66,6 @@ File options:
 
 Modes:
     --version-only  Calculate the policy version without changing files.
-
-Final preparation requires RECIPE_SOURCE_COMMIT from contrib main.
 EOF
 }
 
@@ -682,9 +682,6 @@ main() {
     fi
 
     [[ -f "${BACKPORTS_FILE}" ]] || fail "backports file not found"
-    if [[ "${RELEASE_TYPE}" == final && ! "${RECIPE_SOURCE_COMMIT:-}" =~ ^[0-9a-f]{40}$ ]]; then
-        fail "final preparation requires a full RECIPE_SOURCE_COMMIT"
-    fi
     [[ -f "${SIBLING_REPOSITORIES_FILE}" ]] \
                                             || fail "sibling repositories file not found"
     [[ -f "${CHANGELOG_FILE}" ]] || fail "changelog file not found"
@@ -693,6 +690,9 @@ main() {
     fi
     [[ -f "${PATCH_NOTES_TEMPLATE}" ]] \
                                        || fail "patch notes template not found"
+    if [[ "${RELEASE_TYPE}" == final && ! "${RECIPE_SOURCE_COMMIT:-}" =~ ^[0-9a-f]{40}$ ]]; then
+        fail "final preparation requires a full RECIPE_SOURCE_COMMIT"
+    fi
     [[ -f "${TARGETS_FILE}" ]] || fail "release targets file not found"
     [[ -f "${CLIFF_CONFIG}" ]] || fail "git-cliff config not found"
     require_command jq

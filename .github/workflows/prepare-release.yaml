@@ -217,6 +217,29 @@ jobs:
           fi
           bash ./.github/scripts/verify-deployment-engine-tag.sh "${args[@]}"
 
+      - name: Freeze final Bicep recipe source
+        if: inputs.release-type == 'final'
+        id: recipe-source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.preflight.outputs.version }}
+          EXISTING: ${{ steps.preflight.outputs.existing }}
+          EXISTING_HEAD: ${{ steps.preflight.outputs.existing-head }}
+        run: |
+          args=(--capture)
+          if [[ "${EXISTING}" != false ]]; then
+            [[ "${EXISTING}" == true && "${EXISTING_HEAD}" =~ ^[0-9a-f]{40}$ ]] || {
+              echo "Cannot identify the existing final plan." >&2
+              exit 1
+            }
+            prior="${RUNNER_TEMP}/existing-final-plan.yaml"
+            gh api -H 'Accept: application/vnd.github.raw+json' \
+              "repos/${GITHUB_REPOSITORY}/contents/.github/release-plans/${VERSION}.yaml?ref=${EXISTING_HEAD}" >"${prior}"
+            args=(--plan "${prior}")
+          fi
+          commit="$(bash .github/scripts/resolve-recipe-source.sh "${args[@]}")"
+          echo "commit=${commit}" >>"${GITHUB_OUTPUT}"
+
       - name: Read curated notes from existing release pull request
         if: >-
           steps.preflight.outputs.existing == 'true' &&
@@ -270,29 +293,6 @@ jobs:
             gh pr edit "${pull_request}" --repo "${GITHUB_REPOSITORY}" \
               --add-label "${label}"
           done < <(jq -r '.[].source_pr' "${RUNNER_TEMP}/release-backports.json")
-
-      - name: Freeze final Bicep recipe source
-        if: inputs.release-type == 'final'
-        id: recipe-source
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.preflight.outputs.version }}
-          EXISTING: ${{ steps.preflight.outputs.existing }}
-          EXISTING_HEAD: ${{ steps.preflight.outputs.existing-head }}
-        run: |
-          args=(--capture)
-          if [[ "${EXISTING}" != false ]]; then
-            [[ "${EXISTING}" == true && "${EXISTING_HEAD}" =~ ^[0-9a-f]{40}$ ]] || {
-              echo "Cannot identify the existing final plan." >&2
-              exit 1
-            }
-            prior="${RUNNER_TEMP}/existing-final-plan.yaml"
-            gh api -H 'Accept: application/vnd.github.raw+json' \
-              "repos/${GITHUB_REPOSITORY}/contents/.github/release-plans/${VERSION}.yaml?ref=${EXISTING_HEAD}" >"${prior}"
-            args=(--plan "${prior}")
-          fi
-          commit="$(bash .github/scripts/resolve-recipe-source.sh "${args[@]}")"
-          echo "commit=${commit}" >>"${GITHUB_OUTPUT}"
 
       - name: Prepare release changes and plan
         id: prepare
