@@ -50,7 +50,7 @@ tests:
     set:
       global.rbac.dryRun: true
     asserts: &configured
-      # Servers present the csi-driver-spiffe certificate and no longer mount a client
+      # Servers present their <receiver>-spiffe certificate and no longer mount a client
       # certificate Secret.
       - notContains:
           path: spec.template.spec.volumes
@@ -70,7 +70,7 @@ tests:
             name: mtls
           any: true
         template: dynamic-rp/deployment.yaml
-      # csi-driver-spiffe writes no ca.crt, so every server mounts only ca.crt from radius-ca.
+      # The spiffe volume projects no ca.crt, so every server mounts only ca.crt from radius-ca.
       - contains:
           path: spec.template.spec.volumes
           content:
@@ -88,7 +88,7 @@ tests:
             mountPath: /var/run/radius/ca
             readOnly: true
         template: ucp/deployment.yaml
-      # csi-driver-spiffe writes no ca.crt, so every server mounts only ca.crt from radius-ca.
+      # The spiffe volume projects no ca.crt, so every server mounts only ca.crt from radius-ca.
       - contains:
           path: spec.template.spec.volumes
           content:
@@ -106,7 +106,7 @@ tests:
             mountPath: /var/run/radius/ca
             readOnly: true
         template: rp/deployment.yaml
-      # csi-driver-spiffe writes no ca.crt, so every server mounts only ca.crt from radius-ca.
+      # The spiffe volume projects no ca.crt, so every server mounts only ca.crt from radius-ca.
       - contains:
           path: spec.template.spec.volumes
           content:
