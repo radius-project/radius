@@ -146,8 +146,11 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 		return fmt.Errorf("failed to unmarshal output resources: %w", err)
 	}
 
+	// Replace both fields so values from an earlier deployment are not kept.
 	if len(outputResources) > 0 {
 		status["outputResources"] = outputResources
+	} else {
+		delete(status, "outputResources")
 	}
 
 	// Store computed values under status. Secret values are intentionally NOT stored here: recipe secret
@@ -158,6 +161,8 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 	maps.Copy(computedValues, deploymentOutput.ComputedValues)
 	if len(computedValues) > 0 {
 		status["computedValues"] = computedValues
+	} else {
+		delete(status, "computedValues")
 	}
 
 	return nil
