@@ -92,6 +92,24 @@ func TestPublicKeys_Errors(t *testing.T) {
 	require.ErrorContains(t, err, "more than one key")
 }
 
+// RFC 7517 section 4.5 allows keys of different types to share an ID. The result must not
+// depend on the order of the keys in the set.
+func TestPublicKeys_SharedIDWithUnsupportedKey(t *testing.T) {
+	supported := rsaJWK("shared", &rsaKey.PublicKey)
+	unsupported := jsonWebKey{Kty: "oct", Kid: "shared", Use: "sig"}
+	for name, set := range map[string][]jsonWebKey{
+		"supported first":   {supported, unsupported},
+		"unsupported first": {unsupported, supported},
+	} {
+		t.Run(name, func(t *testing.T) {
+			keys, err := jsonWebKeySet{Keys: set}.publicKeys()
+			require.NoError(t, err)
+			require.Len(t, keys, 1)
+			require.True(t, rsaKey.PublicKey.Equal(keys["shared"]))
+		})
+	}
+}
+
 // newAPIServer serves OIDC discovery with the given jwks_uri and the key set at /openid/v1/jwks.
 func newAPIServer(t *testing.T, jwksURI func(base string) string, jwks jsonWebKeySet) (*httptest.Server, *atomic.Int32) {
 	t.Helper()

@@ -194,20 +194,21 @@ type jsonWebKey struct {
 }
 
 // publicKeys returns the signing keys in the set by key ID. Keys without an ID, keys
-// for another use, and key types or sizes that Radius does not accept are skipped. A
-// set with no usable keys or with a repeated key ID is an error.
+// for another use, and key types or sizes that Radius does not accept are skipped, so an
+// unsupported key may share an ID with a usable one (RFC 7517 section 4.5). A set with no
+// usable keys or with two usable keys that share an ID is an error.
 func (s jsonWebKeySet) publicKeys() (map[string]crypto.PublicKey, error) {
 	keys := map[string]crypto.PublicKey{}
 	for _, k := range s.Keys {
 		if k.Kid == "" || (k.Use != "" && k.Use != "sig") {
 			continue
 		}
-		if _, ok := keys[k.Kid]; ok {
-			return nil, fmt.Errorf("key set has more than one key with ID %q", k.Kid)
-		}
 		key, err := k.publicKey()
 		if err != nil {
 			continue
+		}
+		if _, ok := keys[k.Kid]; ok {
+			return nil, fmt.Errorf("key set has more than one key with ID %q", k.Kid)
 		}
 		keys[k.Kid] = key
 	}
