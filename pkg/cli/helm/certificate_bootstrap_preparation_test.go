@@ -21,9 +21,46 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/client-go/kubernetes"
 	kubefake "k8s.io/client-go/kubernetes/fake"
 )
+
+func TestBootstrapInstallRejectsStaticValuesBeforeWrites(t *testing.T) {
+	for _, tt := range []struct{ override, want string }{
+		{"global.rbac.podSecurityLevel=typo", "global.rbac.podSecurityLevel"},
+		{"networkPolicies.enabled=true", "networkPolicies.controlPlaneCIDRs"},
+	} {
+		t.Run(tt.override, func(t *testing.T) {
+			store := bootstrapStoreFixture(t)
+			opts := NewDefaultClusterOptions()
+			opts.Radius.ChartPath, opts.CertManager.ChartPath, opts.Contour.Disabled = "chart", "cert-manager", true
+			opts.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external", tt.override}
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().LoadChart("chart").Return(certificateTestChart(t), nil)
+			client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound).AnyTimes()
+			client.EXPECT().LoadChart("cert-manager").Return(&chart.Chart{}, nil).AnyTimes()
+			client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), certManagerReleaseName,
+				gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			impl := &Impl{Helm: client, newRotationStore: func(string, string) (*rotationStore, error) { return store, nil },
+				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return sarClient(nil, nil), nil },
+				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+					k, e := (fakeCertManagerCluster{}).clients()
+					return k, e, nil
+				},
+			}
+			err := impl.InstallRadius(t.Context(), opts, "test")
+			require.ErrorContains(t, err, tt.want)
+			for _, action := range store.kube.(*kubefake.Clientset).Actions() {
+				require.Contains(t, []string{"get", "list"}, action.GetVerb(), "%s %s", action.GetVerb(), action.GetResource())
+			}
+		})
+	}
+}
 
 func TestBootstrapPreparationDoesNotWriteOrRequestObserverCredentials(t *testing.T) {
 	t.Parallel()

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/engine"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -419,6 +420,15 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if bootstrap != nil {
 		if err := i.checkIssuerPolicy(ctx, clusterOptions, initialCertificatePolicyChart(radiusHelmChart), radiusValues, kubeContext, history); err != nil {
 			return err
+		}
+		if target.Provider == "external" && target.Mode != "issuerRef" {
+			// A disconnected render cannot observe a preparing journal or prove
+			// workload selection. issuerRef needs live lookups; its policy render
+			// above also invokes the chart's shared workload value validators.
+			values := workloadRenderContext(target.Values, clusterOptions.Radius.Namespace, clusterOptions.Radius.ReleaseName)
+			if _, err := (engine.Engine{}).RenderWithContext(ctx, radiusHelmChart, values); err != nil {
+				return fmt.Errorf("invalid external bootstrap chart values: %w", err)
+			}
 		}
 		if target.Mode == "selfSigned" && target.Provider == "radius" {
 			// Fresh managed bootstrap plans the driver from the selected chart workloads.
