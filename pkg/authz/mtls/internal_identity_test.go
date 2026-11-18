@@ -61,14 +61,14 @@ func receiptServer(t *testing.T, ca testCA, options authz.Options, receiver stri
 	return listener.Addr().String(), dir
 }
 
-func receiptClient(t *testing.T, options authz.Options, receiver, token, address, caDir string) *http.Client {
+func receiptClient(t *testing.T, options authz.Options, receiver, authority, token, address, caDir string) *http.Client {
 	t.Helper()
 	dir := t.TempDir()
 	require.NoError(t, os.Mkdir(filepath.Join(dir, receiver), 0700))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, receiver, TokenFile), []byte(token), 0600))
 	options.TokenDirectory, options.CADirectory = dir, caDir
 	options.CertificateDirectory = caDir
-	transport, err := NewClientTransport(options, receiver)
+	transport, err := NewClientTransport(options, receiver, authority)
 	require.NoError(t, err)
 	dial := func(ctx context.Context, network, _ string) (net.Conn, error) {
 		return (&net.Dialer{}).DialContext(ctx, network, address)
@@ -98,13 +98,15 @@ func TestInternalIdentityCommonRequestPath(t *testing.T) {
 					scheme = "http"
 				}
 				ucpAddress, ucpCA := receiptServer(t, ca, options, "ucp", []string{"applications-rp"}, http.NotFoundHandler())
-				upstream := receiptClient(t, options, "ucp", mintToken(t, "applications-rp", "ucp"), ucpAddress, ucpCA)
-				handler, err := WithInternalIdentityClient(http.NotFoundHandler(), options, "applications-rp", upstream, scheme+"://ucp."+testNamespace+".svc:9444")
+				ucpHost := "ucp." + testNamespace + ".svc:9444"
+				upstream := receiptClient(t, options, "ucp", ucpHost, mintToken(t, "applications-rp", "ucp"), ucpAddress, ucpCA)
+				handler, err := WithInternalIdentityClient(http.NotFoundHandler(), options, "applications-rp", upstream, scheme+"://"+ucpHost)
 				require.NoError(t, err)
 				rpAddress, rpCA := receiptServer(t, ca, options, "applications-rp", []string{"ucp"}, handler)
-				client := receiptClient(t, options, "applications-rp", mintToken(t, "ucp", "applications-rp"), rpAddress, rpCA)
+				rpHost := "applications-rp." + testNamespace + ".svc:5443"
+				client := receiptClient(t, options, "applications-rp", rpHost, mintToken(t, "ucp", "applications-rp"), rpAddress, rpCA)
 				challenge := uuid.NewString()
-				endpoint := scheme + "://applications-rp." + testNamespace + ".svc:5443" + InternalIdentityPath + "?challenge=" + challenge
+				endpoint := scheme + "://" + rpHost + InternalIdentityPath + "?challenge=" + challenge
 				response, err := client.Get(endpoint)
 				require.NoError(t, err)
 				defer response.Body.Close()
@@ -130,7 +132,7 @@ func TestInternalIdentityCommonRequestPath(t *testing.T) {
 					status int
 				}{{"invalid", http.StatusUnauthorized}, {mintToken(t, "ucp", "ucp"), http.StatusUnauthorized},
 					{mintToken(t, "controller", "applications-rp"), http.StatusForbidden}} {
-					invalid := receiptClient(t, options, "applications-rp", invalidCase.token, rpAddress, rpCA)
+					invalid := receiptClient(t, options, "applications-rp", rpHost, invalidCase.token, rpAddress, rpCA)
 					request, err := http.NewRequest(http.MethodGet, endpoint, nil)
 					require.NoError(t, err)
 					request.Header.Set("X-Forwarded-Client-Cert", "trusted")
