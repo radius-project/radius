@@ -114,7 +114,11 @@ func Test_Suite_ClusterEndpoint(t *testing.T) {
 		OtherForm:          map[string]any{"StaticMembers": []any{"graph-2", "graph-1"}},
 		SameResource:       []map[string]any{with(endpoint, map[string]any{"DBClusterEndpointIdentifier": "Reads", "DBClusterIdentifier": "Graph"})},
 		SameResourceNames:  []string{"READS"},
-		Invalid:            []map[string]any{with(endpoint, map[string]any{"ExcludedMembers": []any{"graph-3"}})},
+		Invalid: []map[string]any{
+			with(endpoint, map[string]any{"ExcludedMembers": []any{"graph-3"}}),
+			with(endpoint, map[string]any{"StaticMembers": []any{"graph-1", 2}}),
+			with(endpoint, map[string]any{"ExcludedMembers": "graph-3", "StaticMembers": nil}),
+		},
 		OtherProduct: func(store *awsfake.CloudControl, identifier string) {
 			store.Put(endpointType, identifier, map[string]any{"DBClusterEndpointIdentifier": identifier, "DBClusterIdentifier": "aurora-app", "EndpointType": "ANY"})
 		},
@@ -441,4 +445,119 @@ func Test_EmptyMemberLists(t *testing.T) {
 	patch, err := awsoperations.GeneratePatch(current, desired, []byte(readFile(t, "aws-neptune-dbclusterendpoint.json")))
 	require.NoError(t, err)
 	require.Empty(t, patch, "a redeploy of a template with an empty list sends nothing")
+}
+
+// update reads the endpoint reads and sends an update to desired, with the patch UCP computes from the template and the
+// last deploy, lastApplied.
+func update(t *testing.T, h *ClusterEndpoint, lastApplied map[string]any, desired map[string]any) error {
+	current, err := h.Read(t.Context(), region, "reads")
+	require.NoError(t, err)
+	c, err := json.Marshal(current)
+	require.NoError(t, err)
+	d, err := json.Marshal(desired)
+	require.NoError(t, err)
+	removed := []string{}
+	for k := range lastApplied {
+		if _, ok := desired[k]; !ok {
+			removed = append(removed, k)
+		}
+	}
+	patch, err := awsoperations.GeneratePatchWithOptions(c, d, []byte(readFile(t, "aws-neptune-dbclusterendpoint.json")), awsoperations.PatchOptions{LastApplied: lastApplied, Removed: removed})
+	require.NoError(t, err)
+	return h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: "reads", Current: current, Desired: desired, Patch: patch})
+}
+
+// Test_UpdateMemberLists covers which member lists an update sends.
+func Test_UpdateMemberLists(t *testing.T) {
+	base := with(endpoint, map[string]any{"StaticMembers": nil, "Tags": nil})
+	tests := []struct {
+		name        string
+		aws         map[string]any
+		lastApplied map[string]any
+		desired     map[string]any
+		static      []string
+		excluded    []string
+		modify      bool
+	}{
+		{
+			name:        "removing a list that is already empty sends nothing and keeps the other list",
+			aws:         with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			lastApplied: with(base, map[string]any{"ExcludedMembers": []any{}}),
+			desired:     base,
+		},
+		{
+			name:        "removing the static list clears only it",
+			aws:         with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			lastApplied: with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			desired:     base,
+			static:      []string{},
+			modify:      true,
+		},
+		{
+			name:        "switching to an exclusion list clears the static list",
+			aws:         with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			lastApplied: with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			desired:     with(base, map[string]any{"ExcludedMembers": []any{"graph-3"}}),
+			static:      []string{},
+			excluded:    []string{"graph-3"},
+			modify:      true,
+		},
+		{
+			name:        "an exclusion list over a static list set outside Radius clears it, as Neptune requires",
+			aws:         with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			lastApplied: base,
+			desired:     with(base, map[string]any{"ExcludedMembers": []any{"graph-3"}}),
+			static:      []string{},
+			excluded:    []string{"graph-3"},
+			modify:      true,
+		},
+		{
+			name:        "a list in another case is the same list",
+			aws:         with(base, map[string]any{"StaticMembers": []any{"graph-1", "graph-2"}}),
+			lastApplied: with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			desired:     with(base, map[string]any{"StaticMembers": []any{"Graph-2", "GRAPH-1"}}),
+		},
+		{
+			name:        "a type change sends no member list",
+			aws:         with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			lastApplied: with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			desired:     with(base, map[string]any{"StaticMembers": []any{"graph-1"}, "EndpointType": "ANY"}),
+			modify:      true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h, api := newHandler()
+			created(t, h, tt.aws)
+			require.NoError(t, update(t, h, tt.lastApplied, tt.desired))
+			if !tt.modify {
+				require.Nil(t, api.lastModify)
+				return
+			}
+			require.NotNil(t, api.lastModify)
+			require.Equal(t, tt.static, api.lastModify.StaticMembers)
+			require.Equal(t, tt.excluded, api.lastModify.ExcludedMembers)
+		})
+	}
+}
+
+func Test_MemberListTypes(t *testing.T) {
+	h, _ := newHandler()
+	for _, properties := range []map[string]any{
+		with(endpoint, map[string]any{"StaticMembers": []any{"graph-1", 2}}),
+		with(endpoint, map[string]any{"StaticMembers": "graph-1"}),
+	} {
+		var failure *native.Failure
+		_, err := h.Identifier(properties)
+		require.ErrorAs(t, err, &failure)
+		require.Contains(t, failure.Message, "StaticMembers")
+		_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+		require.ErrorAs(t, err, &failure, "a create never sends a shorter list")
+		require.ErrorAs(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: "reads", Desired: properties}), &failure)
+	}
+	id, err := h.Identifier(with(endpoint, map[string]any{"StaticMembers": nil, "ExcludedMembers": nil}))
+	require.NoError(t, err, "a list set to null is left out")
+	require.Equal(t, "reads", id)
+	_, err = h.Identifier(with(endpoint, map[string]any{"StaticMembers": []any{}, "ExcludedMembers": []any{"graph-3"}}))
+	require.NoError(t, err, "an empty static list with an exclusion list sets one list")
 }

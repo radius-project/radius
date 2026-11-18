@@ -121,10 +121,10 @@ func sameMembers(path string, template any, current any) bool {
 }
 
 // Identifier returns DBClusterEndpointIdentifier in lowercase, as Neptune stores it. UCP calls it before any AWS call,
-// so a template that sets both member lists, which Neptune doesn't allow, is rejected here.
+// so a template whose member lists Neptune wouldn't take, such as both lists set, is rejected here.
 func (h *ClusterEndpoint) Identifier(properties map[string]any) (string, error) {
-	if setsBoth(properties) {
-		return "", bothMembers
+	if _, _, err := memberLists(properties); err != nil {
+		return "", err
 	}
 	return strings.ToLower(awsapi.String(properties, "DBClusterEndpointIdentifier")), nil
 }
@@ -216,15 +216,55 @@ var bothMembers = &native.Failure{
 	Outcome:     native.OutcomeRejected,
 }
 
-func setsBoth(properties map[string]any) bool {
-	return len(awsapi.Strings(properties, "StaticMembers")) > 0 && len(awsapi.Strings(properties, "ExcludedMembers")) > 0
+// memberList returns the member list name of properties, or nil when it is absent or empty. A value that isn't a list
+// of strings is a client failure, so it is never sent as a shorter list.
+func memberList(properties map[string]any, name string) ([]string, error) {
+	value, ok := properties[name]
+	if !ok || value == nil {
+		return nil, nil
+	}
+	list, ok := value.([]any)
+	out := []string{}
+	for _, v := range list {
+		s, isString := v.(string)
+		ok = ok && isString
+		out = append(out, s)
+	}
+	if !ok {
+		return nil, &native.Failure{
+			Message:     fmt.Sprintf("%s of an AWS::Neptune::DBClusterEndpoint must be a list of DB instance identifiers", name),
+			ClientError: true,
+			Outcome:     native.OutcomeRejected,
+		}
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+	return out, nil
+}
+
+// memberLists returns the static and excluded members of properties, and fails for a template that sets both.
+func memberLists(properties map[string]any) ([]string, []string, error) {
+	static, err := memberList(properties, "StaticMembers")
+	if err != nil {
+		return nil, nil, err
+	}
+	excluded, err := memberList(properties, "ExcludedMembers")
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(static) > 0 && len(excluded) > 0 {
+		return nil, nil, bothMembers
+	}
+	return static, excluded, nil
 }
 
 // Create creates the endpoint, after checking that DBClusterIdentifier names a Neptune cluster: the API would also
 // make an endpoint of an Aurora or DocumentDB cluster.
 func (h *ClusterEndpoint) Create(ctx context.Context, request native.CreateRequest) (string, error) {
-	if setsBoth(request.Properties) {
-		return "", bothMembers
+	static, excluded, err := memberLists(request.Properties)
+	if err != nil {
+		return "", err
 	}
 	clusterID := awsapi.String(request.Properties, "DBClusterIdentifier")
 	cluster, err := h.cluster(ctx, request.Region, clusterID)
@@ -244,8 +284,8 @@ func (h *ClusterEndpoint) Create(ctx context.Context, request native.CreateReque
 		DBClusterEndpointIdentifier: aws.String(awsapi.String(request.Properties, "DBClusterEndpointIdentifier")),
 		DBClusterIdentifier:         aws.String(clusterID),
 		EndpointType:                aws.String(awsapi.String(request.Properties, "EndpointType")),
-		StaticMembers:               members(request.Properties, "StaticMembers"),
-		ExcludedMembers:             members(request.Properties, "ExcludedMembers"),
+		StaticMembers:               static,
+		ExcludedMembers:             excluded,
 		Tags:                        awsapi.SDKTags[types.Tag](awsapi.Tags(request.Properties)),
 	}
 	if _, err := h.api.CreateDBClusterEndpoint(ctx, input, inRegion(request.Region)); err != nil {
@@ -269,19 +309,13 @@ func lostCreate(err error) error {
 	}
 }
 
-// members returns the member list name of properties, or nil when it has none, so a create leaves the list out.
-func members(properties map[string]any, name string) []string {
-	if list := awsapi.Strings(properties, name); len(list) > 0 {
-		return list
-	}
-	return nil
-}
-
-// Update changes the endpoint type and members with ModifyDBClusterEndpoint, then adds and removes tags. A change to
-// either member list sends both, with an empty list for the one the template doesn't set, so Neptune clears it.
+// Update changes the endpoint type and members with ModifyDBClusterEndpoint, then adds and removes tags. It sends a
+// member list only when the template changes what AWS has, and sends the other list empty only when Neptune must clear
+// it to take the new one, so a list the template leaves out keeps the members AWS has.
 func (h *ClusterEndpoint) Update(ctx context.Context, request native.UpdateRequest) error {
-	if setsBoth(request.Desired) {
-		return bothMembers
+	static, excluded, err := memberLists(request.Desired)
+	if err != nil {
+		return err
 	}
 	endpoint, err := h.describe(ctx, request.Region, request.Identifier)
 	if err != nil {
@@ -295,9 +329,14 @@ func (h *ClusterEndpoint) Update(ctx context.Context, request native.UpdateReque
 		input.EndpointType = aws.String(awsapi.String(request.Desired, "EndpointType"))
 		modify = true
 	}
-	if slices.Contains(changed, "StaticMembers") || slices.Contains(changed, "ExcludedMembers") {
-		input.StaticMembers = awsapi.Strings(request.Desired, "StaticMembers")
-		input.ExcludedMembers = awsapi.Strings(request.Desired, "ExcludedMembers")
+	setStatic := slices.Contains(changed, "StaticMembers") && !sameMembers("StaticMembers", anyList(static), anyList(endpoint.StaticMembers))
+	setExcluded := slices.Contains(changed, "ExcludedMembers") && !sameMembers("ExcludedMembers", anyList(excluded), anyList(endpoint.ExcludedMembers))
+	if setStatic || (setExcluded && len(excluded) > 0) {
+		input.StaticMembers = nonNil(static)
+		modify = true
+	}
+	if setExcluded || (setStatic && len(static) > 0) {
+		input.ExcludedMembers = nonNil(excluded)
 		modify = true
 	}
 	calls := []func() error{}
@@ -311,6 +350,23 @@ func (h *ClusterEndpoint) Update(ctx context.Context, request native.UpdateReque
 		calls = append(calls, h.tagCalls(ctx, endpoint.DBClusterEndpointArn, request, opt)...)
 	}
 	return awsapi.Calls(calls...)
+}
+
+// anyList returns list as a JSON list.
+func anyList(list []string) []any {
+	out := []any{}
+	for _, v := range list {
+		out = append(out, v)
+	}
+	return out
+}
+
+// nonNil returns list, or an empty list for nil, which the SDK sends as an empty list so Neptune clears it.
+func nonNil(list []string) []string {
+	if list == nil {
+		return []string{}
+	}
+	return list
 }
 
 // tagCalls returns the calls that add and remove tags to go from the request's current tags to the desired ones.

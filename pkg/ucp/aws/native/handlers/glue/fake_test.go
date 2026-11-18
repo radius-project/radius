@@ -170,10 +170,15 @@ func (f *fakeAPI) statusOf(id string) types.PartitionIndexStatus {
 	return types.PartitionIndexStatusActive
 }
 
+// tableOfIndex returns the catalog|database|table part of an index's identifier.
+func tableOfIndex(id string) string {
+	return id[:strings.LastIndex(id, "|")]
+}
+
 // fail marks the index FAILED, and removes the oldest failed index of its table when the table has more than maxFailed.
 func (f *fakeAPI) fail(id string) {
 	f.status[id] = types.PartitionIndexStatusFailed
-	table := id[:strings.LastIndex(id, "|")]
+	table := tableOfIndex(id)
 	f.failed[table] = append(f.failed[table], id)
 	if len(f.failed[table]) > maxFailed {
 		oldest := f.failed[table][0]
@@ -198,6 +203,8 @@ func (f *fakeAPI) reported(id string, t table) {
 	case types.PartitionIndexStatusDeleting:
 		delete(f.status, id)
 		f.store.Remove(partitionIndexType, id)
+		table := tableOfIndex(id)
+		f.failed[table] = slices.DeleteFunc(f.failed[table], func(failed string) bool { return failed == id })
 	}
 }
 
@@ -285,7 +292,8 @@ func (f *fakeAPI) GetPartitionIndexes(ctx context.Context, in *glue.GetPartition
 	start, _ := strconv.Atoi(aws.ToString(in.NextToken))
 	end := min(start+pageSize, len(ids))
 	out := &glue.GetPartitionIndexesOutput{PartitionIndexDescriptorList: []types.PartitionIndexDescriptor{}}
-	for _, id := range ids[min(start, end):end] {
+	page := ids[min(start, end):end]
+	for _, id := range page {
 		status := f.statusOf(id)
 		index, _ := f.store.Resource(partitionIndexType, id)["PartitionIndex"].(map[string]any)
 		d := types.PartitionIndexDescriptor{IndexName: aws.String(index["IndexName"].(string)), IndexStatus: status}
@@ -298,6 +306,9 @@ func (f *fakeAPI) GetPartitionIndexes(ctx context.Context, in *glue.GetPartition
 			d.BackfillErrors = []types.BackfillError{{Code: types.BackfillErrorCodeEncryptedPartitionError}}
 		}
 		out.PartitionIndexDescriptorList = append(out.PartitionIndexDescriptorList, d)
+	}
+	// The page is built before any status moves on, because a failure can remove another index of the page.
+	for _, id := range page {
 		f.reported(id, t)
 	}
 	if end < len(ids) {

@@ -73,6 +73,9 @@ type fakeAPI struct {
 	mu     sync.Mutex
 	status map[string]string
 
+	// lastModify is the input of the last ModifyDBClusterEndpoint call that reached the fake.
+	lastModify *neptune.ModifyDBClusterEndpointInput
+
 	// lastCreate is the input of the last CreateDBClusterEndpoint call.
 	lastCreate *neptune.CreateDBClusterEndpointInput
 
@@ -345,6 +348,7 @@ func (f *fakeAPI) ModifyDBClusterEndpoint(ctx context.Context, in *neptune.Modif
 	if err := f.errs["ModifyDBClusterEndpoint"]; err != nil {
 		return nil, err
 	}
+	f.lastModify = in
 	id := strings.ToLower(aws.ToString(in.DBClusterEndpointIdentifier))
 	props := f.store.Resource(endpointType, id)
 	if props == nil {

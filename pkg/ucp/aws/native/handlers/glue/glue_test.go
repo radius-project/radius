@@ -189,6 +189,12 @@ func Test_CreateFails(t *testing.T) {
 	require.True(t, progress.Failure.ClientError)
 	require.Equal(t, `AWS Glue failed to build the partition index "by_year" from the table's partitions (ENCRYPTED_PARTITION_ERROR). Fix the partitions, then delete the index and deploy it again`, progress.Failure.Message)
 
+	_, err = h.Read(t.Context(), region, identifier)
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure, "a deploy that finds a FAILED index fails")
+	require.True(t, failure.ClientError)
+	require.Contains(t, failure.Message, "ENCRYPTED_PARTITION_ERROR")
+
 	require.NoError(t, h.Delete(t.Context(), region, identifier), "a FAILED index can be deleted")
 }
 
@@ -267,4 +273,34 @@ func Test_CreateAlreadyExists(t *testing.T) {
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have made the index, so UCP keeps the record")
 	require.Contains(t, failure.Message, "AlreadyExistsException")
+}
+
+// Test_FailedHistory checks the fake's history of failed indexes: a page whose read fails an index that evicts another
+// index of the same page, and a failed index deleted and failed again.
+func Test_FailedHistory(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewPartitionIndex(api)
+	create := func(name string) {
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(partitionIndex(name, "year"), map[string]any{"TableName": "secret"})})
+		require.NoError(t, err)
+	}
+	read := func(name string) {
+		_, err := h.Progress(t.Context(), region, account+"|sales|secret|"+name, native.OperationCreate)
+		require.NoError(t, err)
+	}
+	create("a")
+	read("a")
+	require.NoError(t, h.Delete(t.Context(), region, account+"|sales|secret|a"))
+	_, err := h.Progress(t.Context(), region, account+"|sales|secret|a", native.OperationDelete)
+	require.NoError(t, err)
+	create("a")
+	read("a")
+	for i := range 9 {
+		name := "f" + string(rune('0'+i))
+		create(name)
+		read(name)
+	}
+	_, err = h.Progress(t.Context(), region, account+"|sales|secret|a", native.OperationCreate)
+	require.NoError(t, err, "the index failed again is one of the last 10 failures")
+	require.Len(t, api.failed[account+"|sales|secret"], 10)
 }

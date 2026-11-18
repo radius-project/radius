@@ -26,7 +26,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/require"
 
-	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 )
 
@@ -34,19 +33,11 @@ import (
 // for timeouts until their own change aligns them.
 var timeoutsOwnedElsewhere = []string{"AWS::EMR::Cluster"}
 
-// schemaOf returns the schema of a registered type, native or hand-written.
-func schemaOf(catalog schemas.Catalog, typeName string) string {
-	if schema, ok := catalog.Native[typeName]; ok {
-		return schema
-	}
-	return catalog.HandWritten[typeName]
-}
-
 // Test_SchemaHandlersMatchOptions checks that each registered handler's schema declares what the handler does: a list
 // handler only for a type the handler lists, one that takes a parent for a type listed under a parent, and each
 // operation's timeoutInMinutes, when set, as the handler's timeout.
 func Test_SchemaHandlersMatchOptions(t *testing.T) {
-	catalog, err := schemas.Load()
+	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	mismatches := []string{}
 	for _, h := range All(aws.Config{}) {
@@ -58,7 +49,7 @@ func Test_SchemaHandlersMatchOptions(t *testing.T) {
 				} `json:"handlerSchema"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(schemaOf(catalog, h.TypeName())), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(registry.Lookup(h.TypeName()).Schema), &schema), h.TypeName())
 		options := h.Options()
 
 		list := native.ListNone

@@ -160,7 +160,9 @@ func (h *PartitionIndex) describe(ctx context.Context, region string, id indexID
 	}
 }
 
-// Read returns the index's properties.
+// Read returns the index's properties. An index AWS failed to build is a client failure, so a deploy that finds one,
+// such as a redeploy after the create failed, or a take-over, fails instead of reporting an index that doesn't work.
+// A delete finds the index without Read, so it still deletes it.
 func (h *PartitionIndex) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
 	id, err := parseID(identifier)
 	if err != nil {
@@ -169,6 +171,9 @@ func (h *PartitionIndex) Read(ctx context.Context, region string, identifier str
 	index, err := h.describe(ctx, region, id)
 	if err != nil {
 		return nil, err
+	}
+	if index.IndexStatus == types.PartitionIndexStatusFailed {
+		return nil, &native.Failure{Message: backfillFailure(id.name, index.BackfillErrors), ClientError: true, Outcome: native.OutcomeRejected}
 	}
 	keys := []any{}
 	for _, k := range index.Keys {
