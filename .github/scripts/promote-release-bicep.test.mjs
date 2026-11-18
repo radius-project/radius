@@ -16,8 +16,11 @@ import {
   promoteExtensions,
   promotionTargets,
   releaseCopyRequests,
+  stageExtensionMirrors,
+  stageMirrors,
   finalizeExtensions
 } from "./promote-release-bicep.mjs";
+import { verifyMirrors } from "./collect-release-bicep.mjs";
 import { recoveryInputs, verifyPair } from "./stage-release-bicep.mjs";
 import { selectAliases } from "./publish-draft-release.mjs";
 import { mandatoryChecks } from "./publish-draft-release.mjs";
@@ -127,6 +130,18 @@ function remoteFixture(f) {
     monitor,
     run,
     directory,
+    stage: (overrides = {}) =>
+      stageExtensionMirrors({
+        github: {},
+        core: { info() {} },
+        plan: f.plan,
+        sourceSha,
+        lock: f.lock,
+        directory,
+        monitor,
+        run,
+        ...overrides
+      }),
     finalize: (channel = "true", latest = "true", overrides = {}) =>
       finalizeExtensions({
         github: {},
@@ -144,6 +159,152 @@ function remoteFixture(f) {
       })
   };
 }
+
+test("immutable mirror staging enables ACR consumption without stable aliases or final approval", async (t) => {
+  for (const version of ["v0.62.1", "v0.62.1-rc.2"]) {
+    const f = await fixture(t, version);
+    const remote = remoteFixture(f);
+    await assert.rejects(verifyMirrors(f.plan, sourceSha, f.lock, f.run));
+    const receipt = await remote.stage({ channel: "true", latest: "true" });
+    assert.equal(receipt.status, "complete");
+    assert.equal(receipt.copies.length, 2);
+    assert.deepEqual(receipt.promotions, []);
+    assert.equal(receipt.ghcr, undefined);
+    assert.equal(f.copies.length, 0);
+    assert.ok(remote.calls.every((request) => request.mode === "copy"));
+    await verifyMirrors(f.plan, sourceSha, f.lock, remote.run);
+    await remote.stage();
+    assert.equal(f.copies.length, 0);
+    const channel = version.includes("-rc.") ? "false" : "true";
+    await remote.finalize(channel, channel);
+    assert.equal(
+      remote.calls.filter((request) => !request.mode).length,
+      channel === "true" ? 2 : 0
+    );
+  }
+});
+
+test("mirror staging rejects substituted lock, failed private work and wrong readback", async (t) => {
+  for (const failure of ["source", "digest", "private", "readback"]) {
+    const f = await fixture(t);
+    const remote = remoteFixture(f);
+    const lock = structuredClone(f.lock);
+    let monitor = remote.monitor;
+    if (failure === "source") lock.artifacts[0].source.commit = sourceSha;
+    if (failure === "digest") lock.artifacts[0].digest = hash("wrong");
+    if (failure === "private")
+      monitor = async () => {
+        throw new Error("private operation failed");
+      };
+    if (failure === "readback")
+      monitor = async (args) => {
+        await remote.monitor(args);
+        f.store.set("biceptypes.azurecr.io/aws:0.62.1", "wrong bytes");
+      };
+    await assert.rejects(remote.stage({ lock, monitor }));
+    assert.equal(f.copies.length, 0);
+    const receipt = JSON.parse(
+      await readFile(join(remote.directory, "receipt.json"))
+    );
+    assert.notEqual(receipt.status, "complete");
+    assert.deepEqual(receipt.promotions, []);
+  }
+});
+
+test("mirror verification catches post-staging substitution and authorization failure without writes", async (t) => {
+  const f = await fixture(t);
+  const remote = remoteFixture(f);
+  await remote.stage();
+  const ref = "biceptypes.azurecr.io/radius:0.62.1";
+  const bytes = f.store.get(ref);
+  f.store.set(ref, `${bytes} `);
+  await assert.rejects(
+    verifyMirrors(f.plan, sourceSha, f.lock, remote.run),
+    /mirror digest mismatch/
+  );
+  f.store.set(ref, bytes);
+  await assert.rejects(
+    verifyMirrors(f.plan, sourceSha, f.lock, async () => {
+      throw new Error("unauthorized");
+    }),
+    /unauthorized/
+  );
+  assert.equal(f.copies.length, 0);
+});
+
+test("mirror staging entry rejects unapproved source before using private authority", async (t) => {
+  const f = await fixture(t);
+  const context = {
+    repo: { owner: "radius-project", repo: "radius" },
+    eventName: "push",
+    ref: `refs/tags/${f.plan.version}`,
+    sha: sourceSha,
+    runId: 123
+  };
+  const env = {
+    GITHUB_WORKFLOW_REF: `radius-project/radius/.github/workflows/build-release.yaml@${context.ref}`,
+    GITHUB_RUN_ATTEMPT: "1"
+  };
+  const github = {
+    rest: {
+      actions: {
+        getWorkflowRunAttempt: async () => ({
+          data: {
+            id: 123,
+            run_attempt: 1,
+            head_sha: sourceSha,
+            head_branch: f.plan.version,
+            path: ".github/workflows/build-release.yaml",
+            event: "push",
+            repository: { full_name: "radius-project/radius" },
+            head_repository: { full_name: "radius-project/radius" }
+          }
+        })
+      },
+      repos: { getCommit: async () => ({ data: { sha: sourceSha } }) },
+      pulls: { list() {} }
+    },
+    paginate: async () => [
+      {
+        number: 1,
+        head: {
+          ref: `automation/prepare-release-${f.plan.version.slice(1)}`,
+          repo: { full_name: "radius-project/radius" }
+        },
+        base: { ref: "main" },
+        merged_at: "2026-10-01",
+        merge_commit_sha: sourceSha
+      }
+    ]
+  };
+  let checked = false;
+  const run = async (args) => {
+    if (args[0] === "yq") return JSON.stringify(f.plan);
+    if (args[1] === "rev-parse") return sourceSha;
+    if (args[1] === "fetch" || args[1] === "show") return "";
+    if (args[0] === "bash") {
+      assert.equal(
+        args[1],
+        ".github/scripts/validate-release-controller-plan.sh"
+      );
+      checked = true;
+      throw new Error("plan not approved");
+    }
+    assert.fail(`Unexpected operation before approval: ${args}`);
+  };
+  await assert.rejects(
+    stageMirrors({
+      github,
+      core: { getInput: () => join(f.file, "../stage-entry") },
+      context,
+      publisherGithub: {},
+      env,
+      run
+    }),
+    /plan not approved/
+  );
+  assert.equal(checked, true);
+});
 
 async function fixture(t, version = "v0.62.1") {
   const directory = await mkdtemp(join(tmpdir(), "bicep-promotion-"));
@@ -739,6 +900,9 @@ test(
         ]);
       };
       const stable = !version.includes("-rc.");
+      await r.stage({ monitor, run });
+      assert.equal(copies.length, 0, "Staging cannot move GHCR aliases");
+      await verifyMirrors(f.plan, sourceSha, f.lock, run);
       await r.finalize(String(stable), String(stable), { monitor, run });
       await r.finalize(String(stable), String(stable), { monitor, run });
       assert.equal(copies.length, stable ? 4 : 0);

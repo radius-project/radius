@@ -133,8 +133,17 @@ test_publication_gate() {
         ."publish-radius-bicep-extension".uses == "./.github/workflows/__publish-release-bicep.yaml" and
         (."publish-legacy-bicep-types".if | contains("ghcr-bicep == '\''false'\''")) and
         (."publish-radius-bicep-extension".if | contains("ghcr-bicep == '\''true'\''")) and
-        ([."release-preflight", ."build-and-push-bicep-types"] |
-          all(.steps | all((.uses // "" | contains("create-github-app-token")) | not))) and
+        (."release-preflight".steps |
+          all((.uses // "" | contains("create-github-app-token")) | not)) and
+        (."build-and-push-bicep-types".steps |
+          map(select(.uses // "" | contains("create-github-app-token"))) |
+          length == 1 and all(.[]; .name == "Get immutable Bicep mirror token" and
+            (.if | contains("ghcr-bicep == '\''true'\''")) and
+            .with.owner == "azure-octo" and .with.repositories == "radius-publisher")) and
+        (."build-and-push-bicep-types".steps | map(.name) |
+          index("Authenticate and retain immutable extension pair") <
+          index("Stage immutable ACR mirrors before verification")) and
+        (."verify-release".needs | index("build-and-push-bicep-types") != null) and
         (."finalize-release".steps | map(select(
           .name == "Get Bicep promotion token" or .name == "Promote verified Bicep aliases")) |
           length == 2 and all(.[]; .if | contains("ghcr-bicep == '\''false'\''"))) and

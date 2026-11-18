@@ -233,6 +233,14 @@ main() {
         '(.jobs."build-and-push-remaining-images".steps[] | select(.run == "make docker-publish-bicep")).env.BICEP_RELEASE_PLAN = ""' \
         '(.jobs."build-and-push-remaining-images".steps[] | select(.run == "make docker-publish-bicep")).env.BICEP_EXTENSION_TAG = "latest"' \
         '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Authenticate and retain immutable extension pair")).if = "false"' \
+        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Stage immutable ACR mirrors before verification")).if = "false"' \
+        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Stage immutable ACR mirrors before verification"))."continue-on-error" = true' \
+        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Get immutable Bicep mirror token")).if = "true"' \
+        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Get immutable Bicep mirror token")).with.repositories = "other"' \
+        '.jobs."build-and-push-bicep-types".steps |= reverse' \
+        '.jobs."build-and-push-bicep-types".permissions."id-token" = "write"' \
+        '.jobs."build-and-push-bicep-types".permissions.packages = "write"' \
+        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Stage immutable ACR mirrors before verification")).with.script = "await finalize({github,core,context})"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Recheck RC prerequisites after approval")).if = "false"' \
         '.jobs."coordinate-release".if = "false"'; do
         write_pipeline

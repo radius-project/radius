@@ -33,7 +33,7 @@ const sourceSha = "a".repeat(40);
 const parentSha = "b".repeat(40);
 const digest = `sha256:${"c".repeat(64)}`;
 
-test("tagged Bicep image config follows the approved full-version contract", async (t) => {
+test("tagged Bicep image consumes full-version ACR for both publication contracts", async (t) => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "release-bicep-config-")
   );
@@ -59,17 +59,9 @@ test("tagged Bicep image config follows the approved full-version contract", asy
         actual,
         releaseBicepConfig(input.plan, sourceSha, version)
       );
-      assert.equal(
-        actual.experimentalFeaturesEnabled?.ociEnabled,
-        ghcr ? true : undefined
-      );
+      assert.equal(actual.experimentalFeaturesEnabled?.ociEnabled, undefined);
       for (const [name, ref] of Object.entries(actual.extensions)) {
-        assert.equal(
-          ref,
-          ghcr ?
-            `br:ghcr.io/radius-project/bicep-types-${name}:${version}`
-          : `br:biceptypes.azurecr.io/${name}:${version}`
-        );
+        assert.equal(ref, `br:biceptypes.azurecr.io/${name}:${version}`);
       }
     }
   }
