@@ -84,6 +84,7 @@ func TestBicepConsumerDefaultsAvoidProductionACR(t *testing.T) {
 		"bicepconfig.json", ".radius/bicepconfig.json",
 		"test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json",
 		"build/generate.mk", "build/scripts/generate-bicepconfig.sh",
+		"build/scripts/local-functional.sh", "build/scripts/sync-resource-types.sh",
 		".github/scripts/test-repo-radius-state-e2e.sh",
 		"docs/contributing/contributing-code/contributing-code-schema-changes/README.md",
 	}
@@ -137,23 +138,54 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 						require.NotContains(t, registry, "localhost", step.Name)
 						require.NotContains(t, registry, "LOCAL_REGISTRY_SERVER", step.Name)
 					}
-					if step.Name != "Generate test bicepconfig.json" && step.Name != "Point dynamicrp testresources extension to test ACR" {
+					if step.Name != "Generate test bicepconfig.json" && step.Name != "Configure released Bicep extension consumers" {
 						continue
 					}
 					count++
-					for _, channel := range []string{"edge", "test-ci-123"} {
+					channels := []string{"edge", "test-ci-123"}
+					if workflow == "long-running-azure" {
+						channels = []string{"latest", "0.62", "0.62.0", "0.62.0-rc.6", "@sha256:" + strings.Repeat("a", 64), "ghcr-latest", "custom"}
+					}
+					for _, channel := range channels {
 						t.Run(jobName+"/"+channel+"/"+step.Name, func(t *testing.T) {
 							dir := t.TempDir()
 							const resources = "test/functional-portable/dynamicrp/noncloud/resources"
 							require.NoError(t, os.MkdirAll(filepath.Join(dir, resources), 0o755))
 							path := filepath.Join(dir, "test/bicepconfig.json")
+							var expectedRadius, expectedAWS string
 							if workflow == "long-running-azure" {
 								path = filepath.Join(dir, resources, "bicepconfig.json")
-								require.NoError(t, os.WriteFile(path, []byte(`{
-									"experimentalFeaturesEnabled": {"symbolicNameCodegen": true},
-									"extensions": {"custom": "./custom.tgz"},
-									"formatting": {"indentSize": 4}
-								}`), 0o600))
+								suffix := ":" + channel
+								if strings.HasPrefix(channel, "@") {
+									suffix = channel
+								}
+								radius := "br:biceptypes.azurecr.io/radius" + suffix
+								aws := "br:biceptypes.azurecr.io/aws" + suffix
+								expectedRadius = "br:ghcr.io/radius-project/bicep-types-radius" + suffix
+								expectedAWS = "br:ghcr.io/radius-project/bicep-types-aws" + suffix
+								if channel == "latest" {
+									expectedRadius = "br:ghcr.io/radius-project/bicep-types-radius:edge"
+									expectedAWS = "br:ghcr.io/radius-project/bicep-types-aws:edge"
+								} else if channel == "custom" {
+									radius, aws = "br:custom.azurecr.io/radius:mine", "./aws.tgz"
+									expectedRadius, expectedAWS = radius, aws
+								} else if channel == "ghcr-latest" {
+									radius = "br:ghcr.io/radius-project/bicep-types-radius:latest"
+									aws = "br:ghcr.io/radius-project/bicep-types-aws:latest"
+									expectedRadius, expectedAWS = radius, aws
+								}
+								original, err := json.Marshal(map[string]any{
+									"experimentalFeaturesEnabled": map[string]bool{"symbolicNameCodegen": true},
+									"extensions": map[string]string{
+										"radius": radius, "aws": aws, "custom": "./custom.tgz",
+										"testresources": "./keep-root-testresources.tgz",
+									},
+									"formatting": map[string]int{"indentSize": 4},
+									"cloud":      map[string][]string{"credentialPrecedence": {"Environment"}},
+								})
+								require.NoError(t, err)
+								require.NoError(t, os.WriteFile(path, original, 0o600))
+								require.NoError(t, os.WriteFile(filepath.Join(dir, "bicepconfig.json"), original, 0o600))
 							}
 							cmd := exec.Command("bash", "-euo", "pipefail", "-c", step.Run)
 							cmd.Dir = dir
@@ -167,7 +199,9 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 							output, err := cmd.CombinedOutput()
 							require.NoError(t, err, "%s", output)
 							config := readConsumerConfig(t, path)
-							require.Equal(t, "br:ghcr.io/radius-project/bicep-types-aws:edge", config.Extensions["aws"])
+							if workflow != "long-running-azure" {
+								require.Equal(t, "br:ghcr.io/radius-project/bicep-types-aws:edge", config.Extensions["aws"])
+							}
 							switch workflow {
 							case "functional-test-noncloud":
 								tag := channel
@@ -189,7 +223,8 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 									require.Equal(t, "br:private-test.example/test/radius:"+tag, config.Extensions["radius"])
 								}
 							case "long-running-azure":
-								require.Equal(t, "br:ghcr.io/radius-project/bicep-types-radius:edge", config.Extensions["radius"])
+								require.Equal(t, expectedRadius, config.Extensions["radius"])
+								require.Equal(t, expectedAWS, config.Extensions["aws"])
 								require.Equal(t, "br:private-test.example/testresources:latest", config.Extensions["testresources"])
 								require.Equal(t, "./custom.tgz", config.Extensions["custom"])
 								require.True(t, config.ExperimentalFeaturesEnabled["symbolicNameCodegen"])
@@ -202,6 +237,18 @@ func TestWorkflowBicepConsumerConfigs(t *testing.T) {
 								require.NoError(t, json.Unmarshal(data, &preserved))
 								require.Equal(t, 4, preserved.Formatting.IndentSize)
 								require.Equal(t, []string{"AzureCLI", "Environment"}, preserved.Cloud.CredentialPrecedence)
+								rootPath := filepath.Join(dir, "bicepconfig.json")
+								root := readConsumerConfig(t, rootPath)
+								require.Equal(t, expectedRadius, root.Extensions["radius"])
+								require.Equal(t, expectedAWS, root.Extensions["aws"])
+								require.Equal(t, "./keep-root-testresources.tgz", root.Extensions["testresources"])
+								require.Equal(t, "./custom.tgz", root.Extensions["custom"])
+								require.True(t, root.ExperimentalFeaturesEnabled["symbolicNameCodegen"])
+								data, err = os.ReadFile(rootPath)
+								require.NoError(t, err)
+								require.NoError(t, json.Unmarshal(data, &preserved))
+								require.Equal(t, 4, preserved.Formatting.IndentSize)
+								require.Equal(t, []string{"Environment"}, preserved.Cloud.CredentialPrecedence)
 							}
 						})
 					}

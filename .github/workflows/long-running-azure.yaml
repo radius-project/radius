@@ -256,18 +256,37 @@ jobs:
         env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
-      - name: Point dynamicrp testresources extension to test ACR
+      - name: Configure released Bicep extension consumers
         run: |
           set -euo pipefail
 
-          BICEP_CONFIG_FILE="./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json"
-          TMP_FILE="$(mktemp)"
-          jq --arg radius "br:${BICEP_TYPES_REGISTRY}/bicep-types-radius:edge" \
-            --arg aws "br:${BICEP_TYPES_REGISTRY}/bicep-types-aws:edge" \
-            --arg testresources "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" \
-            '.experimentalFeaturesEnabled.ociEnabled = true | .extensions.radius = $radius | .extensions.aws = $aws | .extensions.testresources = $testresources | .cloud.credentialPrecedence = ["AzureCLI", "Environment"]' \
-            "${BICEP_CONFIG_FILE}" > "${TMP_FILE}"
-          mv "${TMP_FILE}" "${BICEP_CONFIG_FILE}"
+          DYNAMIC_CONFIG="./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json"
+          for BICEP_CONFIG_FILE in "./${RELEASE_DIR}/bicepconfig.json" "${DYNAMIC_CONFIG}"; do
+            TMP_FILE="$(mktemp)"
+            jq --arg legacy "biceptypes.azurecr.io" \
+              --arg registry "${BICEP_TYPES_REGISTRY}" \
+              --arg config "${BICEP_CONFIG_FILE}" --arg dynamic "${DYNAMIC_CONFIG}" \
+              --arg testresources "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" '
+                def migrate($name):
+                  ("br:" + $legacy + "/" + $name) as $prefix |
+                  if type != "string" then .
+                  elif startswith($prefix + ":") then
+                    ltrimstr($prefix + ":") |
+                    "br:" + $registry + "/bicep-types-" + $name + ":" +
+                      (if . == "latest" then "edge" else . end)
+                  elif startswith($prefix + "@") then
+                    "br:" + $registry + "/bicep-types-" + $name + "@" + ltrimstr($prefix + "@")
+                  else . end;
+                .experimentalFeaturesEnabled.ociEnabled = true |
+                .extensions.radius |= migrate("radius") |
+                .extensions.aws |= migrate("aws") |
+                if $config == $dynamic then
+                  .extensions.testresources = $testresources |
+                  .cloud.credentialPrecedence = ["AzureCLI", "Environment"]
+                else . end
+              ' "${BICEP_CONFIG_FILE}" > "${TMP_FILE}"
+            mv "${TMP_FILE}" "${BICEP_CONFIG_FILE}"
+          done
         env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
