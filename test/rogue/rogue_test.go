@@ -177,11 +177,11 @@ func Test_ClientArgs(t *testing.T) {
 
 // Test_ClientArgs_RejectsCredentials checks that a token can never be placed on the
 // rogue-client command line, which is sent in the pods/exec URL, and that the error does
-// not echo it.
+// not echo it. rogue-client trims header names, so padded names must be rejected too.
 func Test_ClientArgs_RejectsCredentials(t *testing.T) {
 	t.Parallel()
 	const sentinel = "rogue-test-sentinel-token"
-	for _, name := range []string{"Authorization", "authorization", "AUTHORIZATION"} {
+	for _, name := range []string{"Authorization", "authorization", "AUTHORIZATION", " Authorization", "Authorization ", "\tAuthorization\t"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			for _, req := range []Request{

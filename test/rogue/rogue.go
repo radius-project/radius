@@ -366,7 +366,8 @@ func clientArgs(req Request, hasTLS bool) ([]string, error) {
 		return nil, errors.New("rogue: TokenDirectory must be a relative path under TLSMountPath")
 	}
 	for k := range req.Headers {
-		if strings.EqualFold(k, "Authorization") {
+		// rogue-client trims header names, so compare the name it will send.
+		if strings.EqualFold(strings.TrimSpace(k), "Authorization") {
 			// The value is not echoed, so the error cannot leak the credential either.
 			return nil, errors.New("rogue: Authorization headers are not allowed because the command is sent in the exec request URL; send tokens with Receiver and a mounted token file")
 		}
