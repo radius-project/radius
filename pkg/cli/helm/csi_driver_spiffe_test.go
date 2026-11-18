@@ -26,9 +26,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/release"
@@ -1013,6 +1015,9 @@ func TestSelectedChartAuthPrerequisites(t *testing.T) {
 				}
 				selected, err := loader.Load(tc.path)
 				require.NoError(t, err)
+				if tc.stored != nil {
+					options.RadiusReleaseChart = selected
+				}
 				render := helm.NewInstall(&helm.Configuration{})
 				render.DryRunStrategy = helm.DryRunClient
 				render.Namespace, render.ReleaseName = options.Radius.Namespace, options.Radius.ReleaseName
@@ -1050,6 +1055,50 @@ func TestSelectedChartAuthPrerequisites(t *testing.T) {
 	}
 }
 
+func TestRenderedRequirementsUseSelectedChartAndReleaseContext(t *testing.T) {
+	const ns, name = "custom-ns", "custom-release"
+	selected := loadStageTestChart(t)
+	rbac := nestedValue(selected.Values, "global", "rbac").(map[string]any)
+	rbac["enabled"] = true
+	rbac["tls"].(map[string]any)["provider"] = "external"
+	selected.AddDependency(&chart.Chart{Metadata: &chart.Metadata{Name: "child"}, Values: map[string]any{"limit": 4}})
+	selected.Templates = append(selected.Templates, &common.File{Name: "templates/custom.yaml", Data: []byte(`
+{{- if and (eq .Release.Namespace "custom-ns") (eq .Release.Name "custom-release") }}
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      volumes:
+      - name: spiffe
+        csi:
+          driver: custom.csi.example
+{{- end }}`)})
+	current := map[string]any{"unrelated": "override"}
+	values, settings, err := resolveEffectiveChartValues(selected, ns, name, current, nil, false)
+	require.NoError(t, err)
+	require.Equal(t, authz.ModeEnforce, settings.mode)
+	require.Equal(t, authz.TLSProviderExternal, settings.provider)
+	require.NotNil(t, nestedValue(values, "child", "limit"))
+	require.Equal(t, map[string]any{"unrelated": "override"}, current)
+	req, err := renderedWorkloadRequirements(t.Context(), selected, values, ns, name)
+	require.NoError(t, err)
+	require.Equal(t, workloadRequirements{1, "custom.csi.example"}, req)
+	_, err = resolveRadiusAuthTarget(t.Context(), selected, ns, name, current, nil, false)
+	require.ErrorContains(t, err, "inconsistent with the selected authorization settings")
+
+	options := NewDefaultClusterOptions()
+	options.RadiusReleaseChart = selected
+	options.ResetValues = true
+	mode, err := installedAuthzMode(options)
+	require.NoError(t, err)
+	require.Equal(t, authz.ModeEnforce, mode)
+	mode, found, err := rolledBackAuthzMode([]*releasev1.Release{{Version: 7, Chart: selected, Name: name, Namespace: ns}}, 7)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, authz.ModeEnforce, mode)
+}
+
 // A foreign csi-driver-spiffe stops install and upgrade before they touch cert-manager or any release.
 func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
 	t.Parallel()
@@ -1059,7 +1108,7 @@ func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
 			t.Parallel()
 
 			client := NewMockHelmClient(gomock.NewController(t))
-			client.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{Metadata: &chart.Metadata{Name: "radius", Version: "0.1.0"}}, nil)
+			client.EXPECT().LoadChart(gomock.Any()).Return(loadStageTestChart(t), nil)
 			client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 
 			impl := &Impl{
@@ -1136,7 +1185,7 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Config: buildCertManagerValues(RadiusSystemNamespace)}
 	history := func(target map[string]any) []*releasev1.Release {
 		return []*releasev1.Release{
-			{Version: 1, Config: target, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Version: 1, Config: target, Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 			{Version: 2, Config: rbac(map[string]any{"enabled": true}), Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 		}
 	}

@@ -63,6 +63,7 @@ type ClusterOptions struct {
 	// Install (with Reinstall) and upgrade (without ResetValues) reuse them, so they count toward the
 	// authorization mode that decides whether cert-manager is required.
 	RadiusReleaseValues map[string]any
+	RadiusReleaseChart  *chart.Chart
 }
 
 // NewDefaultClusterOptions sets the default values for the ClusterOptions struct, using the chart version that matches
@@ -210,6 +211,7 @@ type InstallState struct {
 
 	// RadiusValues are the user-supplied values stored on the Radius release. Will be nil if Radius is not installed.
 	RadiusValues map[string]any
+	RadiusChart  *chart.Chart
 
 	// ContourStatus is the status of the latest revision of the Contour helm chart, such as deployed or failed. Will be
 	// blank if Contour is not installed.
@@ -386,6 +388,10 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
+	deployedMode, err := installedAuthzMode(clusterOptions)
+	if err != nil {
+		return err
+	}
 	spiffe, err := i.planCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, target)
 	if err != nil {
 		return err
@@ -423,7 +429,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 	// Install Radius
 	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
-	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, target.mode, render); err != nil {
+	if err := i.stageUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, clusterOptions.Radius.ReleaseName, deployedMode, target.mode, render); err != nil {
 		return err
 	}
 	if clusterOptions.Radius.Reinstall {
@@ -531,7 +537,7 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	helmAction := NewHelmAction(i.Helm)
 
 	// Check if Radius is installed
-	radiusInstalled, radiusVersion, radiusValues, err := helmAction.queryReleaseValues(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
+	radiusInstalled, radiusVersion, baseline, err := helmAction.queryReleaseBaseline(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
 	if err != nil {
 		return InstallState{}, fmt.Errorf("failed to check Radius installation (release: %s, namespace: %s, context: %s): %w",
 			clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, kubeContext, err)
@@ -566,7 +572,9 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	state := InstallState{
 		RadiusInstalled: radiusInstalled,
 		RadiusVersion:   radiusVersion,
-		RadiusValues:    radiusValues,
+	}
+	if baseline != nil {
+		state.RadiusValues, state.RadiusChart = baseline.Config, baseline.Chart
 	}
 	if contourRelease != nil {
 		state.ContourInstalled = true
@@ -612,6 +620,10 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
+	deployedMode, err := installedAuthzMode(clusterOptions)
+	if err != nil {
+		return err
+	}
 	spiffe, err := i.planCSIDriverSPIFFE(ctx, clusterOptions, kubeContext, target)
 	if err != nil {
 		return err
@@ -627,7 +639,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	setCertManagerRequesters(radiusValues, certManagerRequesters)
 
 	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
-	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, target.mode, render); err != nil {
+	if err := i.stageUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, clusterOptions.Radius.ReleaseName, deployedMode, target.mode, render); err != nil {
 		return err
 	}
 	if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues); err != nil {

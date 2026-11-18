@@ -99,13 +99,13 @@ func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, r
 		ucpAPIServiceDiagnostics(kubeContext, radiusNamespace, problem == ucpAPIServiceNoCABundle))
 }
 
-// stageInstalledUCPAPIServerCA keeps the deployed mode distinct from the target on reset.
-func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, mode authz.Mode, render renderRadiusManifest) error {
-	current, err := resolveAuthzMode(options.RadiusReleaseValues, nil)
-	if err != nil {
-		return err
+// installedAuthzMode uses the deployed chart even when resetting the target's values.
+func installedAuthzMode(options ClusterOptions) (authz.Mode, error) {
+	if options.RadiusReleaseChart == nil && options.RadiusReleaseValues == nil {
+		return authz.ModeOff, nil
 	}
-	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, current, mode, render)
+	_, settings, err := resolveEffectiveChartValues(options.RadiusReleaseChart, options.Radius.Namespace, options.Radius.ReleaseName, options.RadiusReleaseValues, nil, false)
+	return settings.mode, err
 }
 
 // waitForRolledBackUCPAPIService waits for the UCP APIService after rad rolls Radius back to revision of history.
@@ -150,8 +150,8 @@ func rolledBackAuthzMode(history []*releasev1.Release, revision int) (authz.Mode
 		if rel == nil || rel.Version != revision {
 			continue
 		}
-		mode, err := resolveAuthzMode(rel.Config, nil)
-		return mode, err == nil, err
+		_, settings, err := resolveEffectiveChartValues(rel.Chart, rel.Namespace, rel.Name, rel.Config, nil, false)
+		return settings.mode, err == nil, err
 	}
 	return "", false, nil
 }

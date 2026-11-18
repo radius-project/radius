@@ -731,6 +731,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				options.Radius.SetArgs = tt.setArgs
 				options.Contour.Disabled = true
 				options.RadiusReleaseValues = state.RadiusValues
+				options.RadiusReleaseChart = state.RadiusChart
 				if command == "upgrade" {
 					require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
 				} else {
