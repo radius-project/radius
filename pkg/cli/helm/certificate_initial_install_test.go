@@ -25,6 +25,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -588,6 +589,71 @@ func TestInitialCertificateCancellationAndLease(t *testing.T) {
 			_, state, err := readInitialCertificateJournal(t.Context(), b.store)
 			require.NoError(t, err)
 			require.Equal(t, "published", state.Phase)
+		})
+	}
+}
+
+type countedRequestBody struct {
+	io.Reader
+	closes int
+}
+
+func (b *countedRequestBody) Close() error {
+	b.closes++
+	return nil
+}
+
+type bootstrapRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f bootstrapRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func TestInitialCertificateTransportRequestBody(t *testing.T) {
+	guardErr := errors.New("mutation rejected")
+	for _, scenario := range []string{"request canceled before guard", "operation canceled before guard", "guard error",
+		"operation canceled in guard", "request canceled in guard", "delegated"} {
+		t.Run(scenario, func(t *testing.T) {
+			operation, cancelOperation := context.WithCancel(t.Context())
+			defer cancelOperation()
+			ctx, cancelRequest := context.WithCancel(t.Context())
+			defer cancelRequest()
+			switch scenario {
+			case "request canceled before guard":
+				cancelRequest()
+			case "operation canceled before guard":
+				cancelOperation()
+			}
+			body := &countedRequestBody{Reader: strings.NewReader("payload")}
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://kubernetes/", body)
+			require.NoError(t, err)
+			transport := initialCertificateTransport{ctx: operation, check: func(context.Context) error {
+				switch scenario {
+				case "guard error":
+					return guardErr
+				case "operation canceled in guard":
+					cancelOperation()
+				case "request canceled in guard":
+					cancelRequest()
+				}
+				return nil
+			}, next: bootstrapRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+				require.Equal(t, "delegated", scenario)
+				require.Zero(t, body.closes)
+				require.NoError(t, r.Body.Close())
+				return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody}, nil
+			})}
+			resp, err := transport.RoundTrip(req)
+			switch scenario {
+			case "delegated":
+				require.NoError(t, err)
+				require.NoError(t, resp.Body.Close())
+			case "guard error":
+				require.ErrorIs(t, err, guardErr)
+			default:
+				require.ErrorIs(t, err, context.Canceled)
+			}
+			require.Equal(t, 1, body.closes)
 		})
 	}
 }

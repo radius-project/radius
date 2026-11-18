@@ -276,22 +276,28 @@ type initialCertificateTransport struct {
 }
 
 func (t initialCertificateTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	if err := request.Context().Err(); err != nil {
+	reject := func(err error) (*http.Response, error) {
+		if request.Body != nil {
+			_ = request.Body.Close()
+		}
 		return nil, err
 	}
+	if err := request.Context().Err(); err != nil {
+		return reject(err)
+	}
 	if err := t.ctx.Err(); err != nil {
-		return nil, err
+		return reject(err)
 	}
 	if request.Method != http.MethodGet && request.Method != http.MethodHead {
 		if err := t.check(t.ctx); err != nil {
-			return nil, err
+			return reject(err)
 		}
 	}
 	if err := t.ctx.Err(); err != nil {
-		return nil, err
+		return reject(err)
 	}
 	if err := request.Context().Err(); err != nil {
-		return nil, err
+		return reject(err)
 	}
 	ctx, cancel := context.WithCancel(request.Context())
 	stop := context.AfterFunc(t.ctx, cancel)

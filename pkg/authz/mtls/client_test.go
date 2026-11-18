@@ -376,6 +376,29 @@ func TestClientTransport_RefusesPlainHTTP(t *testing.T) {
 	require.Empty(t, srv.seen)
 }
 
+type countedRequestBody struct {
+	io.Reader
+	closes int
+}
+
+func (b *countedRequestBody) Close() error {
+	b.closes++
+	return nil
+}
+
+func TestClientTransport_ClosesBodyOnTrustLoadError(t *testing.T) {
+	options := clientOptions(t, newCA(t).pem, authz.ModeEnforce)
+	transport, err := newClientTransport(options, "applications-rp")
+	require.NoError(t, err)
+	require.NoError(t, os.Remove(filepath.Join(options.CADirectory, CAFile)))
+	body := &countedRequestBody{Reader: strings.NewReader("payload")}
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://applications-rp/", body)
+	require.NoError(t, err)
+	_, err = transport.RoundTrip(req)
+	require.ErrorIs(t, err, fs.ErrNotExist)
+	require.Equal(t, 1, body.closes)
+}
+
 // TestClientTransport_TokenRotation replaces the projected token, as the kubelet does, and
 // checks that the next request sends the new token.
 func TestClientTransport_TokenRotation(t *testing.T) {

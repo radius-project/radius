@@ -289,6 +289,9 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	current, err := t.source.load()
 	pool := t.transportForRequest(current)
 	if err != nil {
+		if req.Body != nil {
+			_ = req.Body.Close()
+		}
 		return nil, err
 	}
 
