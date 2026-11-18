@@ -36,7 +36,7 @@ import (
 // awsfake store keyed by the API ID, in the schema type's property format, so the suite's Cloud Control sees the same
 // resources and removing the entry removes the API. StartSchemaCreation accepts the API IDs in apis, the APIs that
 // exist. A schema creation is PROCESSING for one read, then SUCCESS, or FAILED for a definition that contains
-// "invalid".
+// "invalid". objects maps bucket/key to an object's body, and a bucket exists when it holds an object.
 type fakeAPI struct {
 	store  *awsfake.CloudControl
 	failer nativetest.Failer
@@ -87,6 +87,9 @@ func (f *fakeAPI) StartSchemaCreation(ctx context.Context, in *appsync.StartSche
 	defer f.mu.Unlock()
 	if err := f.call("StartSchemaCreation", appsyncRegion(optFns)); err != nil {
 		return nil, err
+	}
+	if in.Definition == nil {
+		return nil, fault("BadRequestException")
 	}
 	id := aws.ToString(in.ApiId)
 	if !f.apis[id] {
@@ -150,9 +153,23 @@ func (f *fakeAPI) GetObject(ctx context.Context, in *s3.GetObjectInput, optFns .
 	if err := f.call("GetObject", o.Region); err != nil {
 		return nil, err
 	}
-	body, ok := f.objects[aws.ToString(in.Bucket)+"/"+aws.ToString(in.Key)]
+	bucket := aws.ToString(in.Bucket)
+	body, ok := f.objects[bucket+"/"+aws.ToString(in.Key)]
+	if !ok && !f.hasBucket(bucket) {
+		return nil, fault("NoSuchBucket")
+	}
 	if !ok {
 		return nil, fault("NoSuchKey")
 	}
 	return &s3.GetObjectOutput{Body: io.NopCloser(strings.NewReader(body))}, nil
+}
+
+// hasBucket reports whether the bucket holds an object.
+func (f *fakeAPI) hasBucket(bucket string) bool {
+	for name := range f.objects {
+		if strings.HasPrefix(name, bucket+"/") {
+			return true
+		}
+	}
+	return false
 }
