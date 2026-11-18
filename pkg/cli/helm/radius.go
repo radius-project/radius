@@ -18,14 +18,25 @@ package helm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"strings"
 
+	"github.com/radius-project/radius/pkg/authz"
 	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/strvals"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -38,6 +49,202 @@ const (
 
 type RadiusChartOptions struct {
 	ChartOptions
+}
+
+// radiusAuthTarget describes the selected chart's component authorization prerequisites.
+// Never pass coalesced defaults as user overrides to a Helm action.
+type radiusAuthTarget struct {
+	chartAuthSettings
+	workloadRequirements
+}
+
+type chartAuthSettings struct {
+	mode     authz.Mode
+	provider authz.TLSProvider
+	spiffe   spiffeSettings
+}
+
+func resolveRadiusAuthTarget(ctx context.Context, selected *chart.Chart, namespace, release string, current, stored map[string]any, reset bool) (radiusAuthTarget, error) {
+	return resolveRadiusAuthTransition(ctx, selected, namespace, release, current, stored, reset, "")
+}
+
+func resolveRadiusAuthTransition(ctx context.Context, selected *chart.Chart, namespace, release string, current, stored map[string]any, reset bool, deployed authz.Mode) (radiusAuthTarget, error) {
+	values, settings, err := resolveEffectiveChartValues(selected, namespace, release, current, stored, reset)
+	if err != nil {
+		return radiusAuthTarget{}, err
+	}
+	if err := checkUCPAPIServerCertificateTransition(deployed, settings.mode, values); err != nil {
+		return radiusAuthTarget{}, err
+	}
+	req, err := renderedWorkloadRequirements(ctx, selected, values, namespace, release)
+	if err != nil {
+		return radiusAuthTarget{}, err
+	}
+	if req.ManagedCSIVolumes > 0 && (settings.mode == authz.ModeOff || settings.provider != authz.TLSProviderRadius || settings.spiffe.CSIDriverName != req.CSIDriverName) {
+		return radiusAuthTarget{}, fmt.Errorf("rendered workload requires managed CSI driver %q, inconsistent with the selected authorization settings", req.CSIDriverName)
+	}
+	return radiusAuthTarget{settings, req}, nil
+}
+
+func resolveEffectiveChartValues(selected *chart.Chart, namespace, release string, current, stored map[string]any, reset bool) (map[string]any, chartAuthSettings, error) {
+	if selected == nil || selected.Metadata == nil {
+		return nil, chartAuthSettings{}, fmt.Errorf("missing target Radius chart or metadata")
+	}
+	if reset {
+		stored = nil
+	}
+	values, err := valuesutil.CoalesceValues(selected, helmValues(current, stored))
+	if err != nil {
+		return nil, chartAuthSettings{}, err
+	}
+	settings, err := selectedAuthSettings(selected, values, namespace, release)
+	return values, settings, err
+}
+
+func selectedAuthSettings(selected *chart.Chart, values map[string]any, namespace, release string) (chartAuthSettings, error) {
+	var target chartAuthSettings
+	if nestedValue(selected.Values, "global", "rbac", "tls", "provider") != nil {
+		return renderRadiusAuthTarget(selected, values, namespace, release)
+	}
+	// Legacy charts have no provider switch. Helm accepts unknown overrides;
+	// do not silently treat an ignored setting as a supported configuration.
+	rbac, _ := nestedValue(values, "global", "rbac").(map[string]any)
+	var err error
+	target.mode, err = authzModeFromRBAC(rbac)
+	if err != nil {
+		return target, err
+	}
+	for _, key := range []string{"mtls", "tlsProvider"} {
+		if _, ok := rbac[key]; ok {
+			return target, fmt.Errorf("global.rbac.%s is not supported; use global.rbac.tls.provider", key)
+		}
+	}
+	target.provider = authz.TLSProviderRadius
+	if _, ok := rbac["tls"]; ok {
+		return target, fmt.Errorf("selected Radius chart does not support global.rbac.tls.provider")
+	}
+	for _, legacy := range []string{"ucpMTLS", "externalIdentity"} {
+		if isTrue(nestedValue(values, "de", legacy, "enabled")) {
+			return target, fmt.Errorf("de.%s.enabled is retired; use de.internalAuth.enabled", legacy)
+		}
+	}
+	if nestedValue(values, "de", "internalAuth") != nil {
+		return target, fmt.Errorf("selected Radius chart does not support de.internalAuth.enabled")
+	}
+	target.spiffe = resolveSPIFFESettings(nil, values)
+	return target, nil
+}
+
+// Evaluate the same helpers as the workloads without rendering Secrets, executing hooks,
+// or looking up cluster objects. The gate helper validates the engine selection too.
+func renderRadiusAuthTarget(selected *chart.Chart, values map[string]any, namespace, release string) (chartAuthSettings, error) {
+	var target chartAuthSettings
+	c := &chart.Chart{Metadata: selected.Metadata}
+	for _, file := range selected.Templates {
+		if filepath.Ext(file.Name) == ".tpl" {
+			c.Templates = append(c.Templates, file)
+		}
+	}
+	const name = "templates/auth-target.json"
+	const probe = `{{- $_ := include "radius.de.internalAuth.enabled" . -}}
+{{ dict "Mode" (include "radius.authz.mode" .) "Provider" (include "radius.authz.tls.provider" .) "TrustDomain" (include "radius.authz.spiffe.trustDomain" .) "CSIDriverName" (include "radius.authz.spiffe.csiDriverName" .) | toJson }}`
+	c.Templates = append(c.Templates, &common.File{Name: name, Data: []byte(probe)})
+	result, err := engine.Render(c, workloadRenderContext(values, namespace, release))
+	if err != nil {
+		return target, fmt.Errorf("invalid selected Radius chart authorization settings: %w", err)
+	}
+	var rendered struct {
+		Mode     authz.Mode
+		Provider authz.TLSProvider
+		spiffeSettings
+	}
+	if err := json.Unmarshal([]byte(result[c.Name()+"/"+name]), &rendered); err != nil {
+		return target, err
+	}
+	switch rendered.Mode {
+	case authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce:
+	default:
+		return target, fmt.Errorf("unsupported selected Radius chart authorization mode %q", rendered.Mode)
+	}
+	if rendered.Provider != authz.TLSProviderRadius && rendered.Provider != authz.TLSProviderExternal {
+		return target, fmt.Errorf("unsupported selected Radius chart TLS provider %q", rendered.Provider)
+	}
+	return chartAuthSettings{rendered.Mode, rendered.Provider, rendered.spiffeSettings}, nil
+}
+
+type workloadRequirements struct {
+	ManagedCSIVolumes int
+	CSIDriverName     string
+}
+
+func workloadRenderContext(values map[string]any, namespace, release string) common.Values {
+	caps := common.DefaultCapabilities.Copy()
+	caps.APIVersions = append(slices.Clone(caps.APIVersions), "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy")
+	return common.Values{
+		"Values": copyValues(values), "Capabilities": caps,
+		"Release": map[string]any{"Namespace": namespace, "Name": release, "Service": "Helm", "Revision": 1, "IsInstall": true, "IsUpgrade": false},
+	}
+}
+
+// renderedWorkloadRequirements inspects pod templates, not a chart's declaration of
+// provider support. This offline render cannot verify connected issuer policy;
+// callers preparing raw values should use resolveEffectiveChartValues instead.
+func renderedWorkloadRequirements(ctx context.Context, selected *chart.Chart, values map[string]any, namespace, release string) (workloadRequirements, error) {
+	rendered, err := (engine.Engine{}).RenderWithContext(ctx, selected, workloadRenderContext(values, namespace, release))
+	if err != nil {
+		return workloadRequirements{}, fmt.Errorf("render Radius workloads: %w", err)
+	}
+	configuredDriver, _ := nestedValue(values, "global", "rbac", "spiffe", "csiDriverName").(string)
+	var manifest strings.Builder
+	for _, name := range slices.Sorted(maps.Keys(rendered)) {
+		if filepath.Base(name) == "NOTES.txt" {
+			continue
+		}
+		manifest.WriteString("---\n")
+		manifest.WriteString(rendered[name])
+		manifest.WriteByte('\n')
+	}
+	return workloadRequirementsFromManifest(manifest.String(), configuredDriver)
+}
+
+// workloadRequirementsFromManifest inspects already-rendered workloads without rendering or performing lookups.
+func workloadRequirementsFromManifest(manifest string, configuredDriver string) (workloadRequirements, error) {
+	var req workloadRequirements
+	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
+	for {
+		var obj struct {
+			Kind string
+			Spec struct{ Template corev1.PodTemplateSpec }
+		}
+		err := decoder.Decode(&obj)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return req, fmt.Errorf("inspect workload manifest: %w", err)
+		}
+		switch obj.Kind {
+		case "Deployment", "DaemonSet", "StatefulSet", "Job", "ReplicaSet":
+		default:
+			continue
+		}
+		for _, vol := range obj.Spec.Template.Spec.Volumes {
+			if vol.CSI == nil {
+				continue
+			}
+			// Recognize the managed driver under any volume name. Keep the
+			// historical spiffe slot visible even when its driver is inconsistent.
+			if vol.Name != "spiffe" && vol.CSI.Driver != SPIFFECSIDriverNameDefault && (configuredDriver == "" || vol.CSI.Driver != configuredDriver) {
+				continue
+			}
+			if req.ManagedCSIVolumes > 0 && req.CSIDriverName != vol.CSI.Driver {
+				return req, fmt.Errorf("rendered SPIFFE volumes require different CSI drivers")
+			}
+			req.ManagedCSIVolumes++
+			req.CSIDriverName = vol.CSI.Driver
+		}
+	}
+	return req, nil
 }
 
 // prepareRadiusChart prepares the Helm chart for Radius and returns the user-supplied

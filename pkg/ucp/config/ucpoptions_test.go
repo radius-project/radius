@@ -44,6 +44,62 @@ import (
 
 const testToken = "test-token"
 
+func TestExternalSDKRedirectStaysAtConfiguredOrigin(t *testing.T) {
+	_, tokenDir, _ := writeCertificate(t, "ucp")
+	other := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("unconfigured listener was contacted")
+	}))
+	defer other.Close()
+	configured := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "Bearer "+testToken, r.Header.Get("Authorization"))
+		switch r.URL.Path {
+		case "/start":
+			http.Redirect(w, r, "/next", http.StatusFound)
+		case "/absolute":
+			http.Redirect(w, r, other.URL+"/next", http.StatusFound)
+		case "/scheme-relative":
+			w.Header().Set("Location", "//"+other.Listener.Addr().String()+"/x")
+			w.WriteHeader(http.StatusTemporaryRedirect)
+		case "/async":
+			w.Header().Set("Location", other.URL+"/result")
+			w.Header().Set("Azure-AsyncOperation", other.URL+"/status")
+			w.WriteHeader(http.StatusAccepted)
+		}
+	}))
+	defer configured.Close()
+	options := UCPOptions{Kind: UCPConnectionKindDirect, Direct: &UCPDirectConnectionOptions{Endpoint: configured.URL}}
+	conn, err := NewConnectionFromUCPConfig(&options, nil, authz.Options{Mode: authz.ModeEnforce, TLSProvider: authz.TLSProviderExternal, Namespace: "custom-ns", TokenDirectory: tokenDir})
+	require.NoError(t, err)
+	client := conn.Client()
+	defer client.CloseIdleConnections()
+	response, err := client.Get(configured.URL + "/start")
+	require.NoError(t, err)
+	require.Equal(t, "/next", response.Request.URL.Path)
+	require.NoError(t, response.Body.Close())
+
+	response, err = client.Get(configured.URL + "/absolute")
+	require.NoError(t, err)
+	require.Equal(t, configured.URL+"/next", response.Request.URL.String())
+	require.NoError(t, response.Body.Close())
+
+	response, err = client.Get(configured.URL + "/async")
+	require.NoError(t, err)
+	require.NoError(t, response.Body.Close())
+	require.Equal(t, http.StatusAccepted, response.StatusCode)
+	for header, path := range map[string]string{"Location": "/result", "Azure-AsyncOperation": "/status"} {
+		target := response.Header.Get(header)
+		require.Equal(t, configured.URL+path, target)
+		poll, err := client.Get(target)
+		require.NoError(t, err)
+		require.NoError(t, poll.Body.Close())
+	}
+
+	// Require a transport rejection, not a dial error, without a receiver for the token.
+	other.Close()
+	_, err = client.Get(configured.URL + "/scheme-relative")
+	require.ErrorContains(t, err, "external token transport refuses unconfigured destination")
+}
+
 // writeCertificate writes a self-signed certificate, key, and CA to a new directory, and a
 // projected token for UCP to a new token directory. The certificate carries the SPIFFE ID
 // of serviceAccount as its only SAN, as csi-driver-spiffe issues it, so only the CA and SPIFFE

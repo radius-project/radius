@@ -341,9 +341,7 @@ func TestRetainedSelfSignedTrustReinstallAfterUninstall(t *testing.T) {
 			impl := trustImpl(client, ucpAPIServiceDynamicClient())
 			impl.logger = func(string, ...any) {}
 			require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
-			options := NewDefaultClusterOptions()
-			options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
-			err := impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, func(context.Context) (string, bool, error) {
+			err := impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeEnforce, func(context.Context) (string, bool, error) {
 				t.Fatal("no prior APIService remains; staging must not issue or replace a signer")
 				return "", false, nil
 			})
@@ -510,10 +508,7 @@ func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
 					options := NewDefaultClusterOptions()
 					options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=" + provider,
 						"global.rbac.certificates.mode=" + mode}
-					render := func(context.Context) (string, bool, error) {
-						t.Fatal("BYO switch-on must stop before rendering or staging trust")
-						return "", false, nil
-					}
+					chart := loadStageTestChart(t)
 					impl := &Impl{newUCPAPIServerTrustClient: func(string) (kubernetes.Interface, error) {
 						t.Fatal("BYO switch-on must stop before connecting to the trust API")
 						return nil, nil
@@ -524,12 +519,13 @@ func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
 					var err error
 					switch source {
 					case "flags":
-						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", nil, render)
+						values, parseErr := parseUserValuesFromCLI(&options.Radius)
+						require.NoError(t, parseErr)
+						_, err = resolveRadiusAuthTransition(t.Context(), chart, RadiusSystemNamespace, "radius", values, nil, false, authz.ModeOff)
 					case "stored":
-						options.Radius.SetArgs = nil
-						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", target, render)
+						_, err = resolveRadiusAuthTransition(t.Context(), chart, RadiusSystemNamespace, "radius", nil, target, false, authz.ModeOff)
 					case "rollback":
-						history := []*releasev1.Release{{Version: 1, Config: target}, {Version: 2, Config: map[string]any{}}}
+						history := []*releasev1.Release{{Version: 1, Chart: chart, Config: target}, {Version: 2, Chart: chart}}
 						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
 					}
 					require.ErrorContains(t, err, "requires the certificate lifecycle")

@@ -168,7 +168,7 @@ func (i *Impl) getReleaseOwnership(options ChartOptions, kubeContext string) (*r
 
 // csiDriverSPIFFEPlan is the checked state that applyCSIDriverSPIFFE installs or upgrades from.
 type csiDriverSPIFFEPlan struct {
-	external     bool
+	manageDriver bool
 	chartOptions ChartOptions
 	values       map[string]any
 	release      *releasev1.Release
@@ -182,27 +182,17 @@ type csiDriverSPIFFEPlan struct {
 // before any dependency changes the cluster. It also fails when the cluster does not serve ValidatingAdmissionPolicy,
 // which the Radius chart's certificate issuance policy needs. It returns nil, without contacting the cluster, when
 // authorization is off.
-func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any) (*csiDriverSPIFFEPlan, error) {
-	currentValues, err := parseUserValuesFromCLI(&options.Radius)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse Radius values: %w", err)
-	}
-	rbac := mergedRBACValues(storedValues, currentValues)
-	mode, err := authzModeFromRBAC(rbac)
-	if err != nil {
-		return nil, err
-	}
-	if mode == authz.ModeOff {
+func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, target radiusAuthTarget) (*csiDriverSPIFFEPlan, error) {
+	if target.mode == authz.ModeOff {
 		return nil, nil
 	}
 
-	tls, _ := rbac["tls"].(map[string]any)
 	plan := &csiDriverSPIFFEPlan{
 		namespace:    options.Radius.Namespace,
-		external:     tls["provider"] == string(authz.TLSProviderExternal),
+		manageDriver: target.ManagedCSIVolumes > 0,
 		chartOptions: options.CSIDriverSPIFFE.ChartOptions,
 	}
-	if !plan.external {
+	if plan.manageDriver {
 		rel, owned, err := i.getReleaseOwnership(plan.chartOptions, kubeContext)
 		if err != nil {
 			return nil, err
@@ -214,12 +204,13 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 		plan.release = rel
 	}
 
+	var err error
 	plan.kubeClient, err = i.csiDriverSPIFFEClient(kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes clients: %w", err)
 	}
-	if !plan.external {
-		settings := resolveSPIFFESettings(storedValues, currentValues)
+	if plan.manageDriver {
+		settings := target.spiffe
 		if err := checkForeignCSIDriverSPIFFE(ctx, plan.kubeClient, plan.chartOptions, settings.CSIDriverName, kubeContext); err != nil {
 			return nil, err
 		}
@@ -228,6 +219,9 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 	// Aggregation issuers still need admission policy and requester discovery with external TLS.
 	if err := checkValidatingAdmissionPolicyServed(plan.kubeClient); err != nil {
 		return nil, err
+	}
+	if target.provider == authz.TLSProviderExternal {
+		i.logInfo("Warning: the external TLS provider sends receiver tokens over HTTP. Configure authenticated encryption between components before enabling it.")
 	}
 	return plan, nil
 }
@@ -245,7 +239,7 @@ func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPl
 	// Only Radius's csi-driver-spiffe approver may approve requests for the Radius CA issuer. A cert-manager default
 	// approver that can approve them would sign any SPIFFE ID. At this point rad has changed at most cert-manager, so
 	// it stops before it installs or upgrades csi-driver-spiffe and Radius.
-	if !plan.external {
+	if plan.manageDriver {
 		var conflict *defaultApproverConflictError
 		if err := checkCertManagerDefaultApprover(ctx, plan.kubeClient, plan.namespace, kubeContext); errors.As(err, &conflict) {
 			return nil, clierrors.Message("Radius stopped before it installed or upgraded csi-driver-spiffe and Radius because %s", conflict.Error())
@@ -264,7 +258,7 @@ func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPl
 			strings.Join(missing, ", "))
 	}
 
-	if plan.external {
+	if !plan.manageDriver {
 		return requesters, nil
 	}
 	chartOptions := plan.chartOptions

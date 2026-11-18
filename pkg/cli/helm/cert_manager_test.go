@@ -227,7 +227,7 @@ func Test_resolveAuthzMode(t *testing.T) {
 			t.Parallel()
 
 			stored, current := copyValues(tt.stored), copyValues(tt.current)
-			got, err := resolveAuthzMode(tt.stored, tt.current)
+			_, got, err := resolveEffectiveChartValues(loadStageTestChart(t), RadiusSystemNamespace, radiusReleaseName, tt.current, tt.stored, false)
 			require.Equal(t, stored, copyValues(tt.stored), "stored values must not be mutated")
 			require.Equal(t, current, copyValues(tt.current), "current values must not be mutated")
 			if tt.wantErr != "" {
@@ -235,7 +235,7 @@ func Test_resolveAuthzMode(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.want, got.mode)
 		})
 	}
 }
@@ -268,9 +268,9 @@ func Test_resolveAuthzMode_FromCLIArgs(t *testing.T) {
 
 			current, err := parseUserValuesFromCLI(&tt.options)
 			require.NoError(t, err)
-			got, err := resolveAuthzMode(tt.stored, current)
+			_, got, err := resolveEffectiveChartValues(loadStageTestChart(t), RadiusSystemNamespace, radiusReleaseName, current, tt.stored, false)
 			require.NoError(t, err)
-			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.want, got.mode)
 		})
 	}
 }
@@ -513,7 +513,7 @@ func Test_ensureCertManager(t *testing.T) {
 
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
-			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.stored, tt.upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", testAuthTarget(t, options, tt.stored).mode, tt.upgrade)
 			switch {
 			case tt.wantErr != "":
 				require.ErrorContains(t, err, tt.wantErr)
@@ -582,7 +582,7 @@ func Test_ensureCertManager_RBACWarning(t *testing.T) {
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
 			options.Radius.SetFileArgs = tt.setFileArgs
-			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.stored, tt.upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", testAuthTarget(t, options, tt.stored).mode, tt.upgrade)
 			if !tt.wantWarning {
 				require.NoError(t, err)
 				require.Empty(t, logs)
@@ -604,7 +604,7 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 	// csi-driver-spiffe is checked, without changing the cluster, before cert-manager.
 	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
-	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(&chart.Chart{}, nil)
+	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(loadStageTestChart(t), nil)
 
 	impl := &Impl{
 		Helm: mockHelmClient,
@@ -645,6 +645,7 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
 						} else {
 							options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+							options.RadiusReleaseChart = loadStageTestChart(t)
 							options.Radius.Reinstall = command == "install --reinstall"
 						}
 						release := &releasev1.Release{
@@ -656,7 +657,7 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							release.Labels = radManagedByLabels()
 						}
 						client := NewMockHelmClient(gomock.NewController(t))
-						client.EXPECT().LoadChart(options.Radius.ChartPath).Return(&chart.Chart{}, nil)
+						client.EXPECT().LoadChart(options.Radius.ChartPath).Return(loadStageTestChart(t), nil)
 						client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 						client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(release, nil)
 						impl := &Impl{
@@ -730,7 +731,7 @@ func Test_ensureCertManager_ReleaseLookupErrorDoesNotRepair(t *testing.T) {
 			impl := &Impl{Helm: client}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", authz.ModeDryRun, upgrade)
 			require.ErrorIs(t, err, failure)
 			require.ErrorContains(t, err, "failed to run helm get")
 			require.NotContains(t, err.Error(), "rollback")
@@ -760,7 +761,7 @@ func Test_ensureCertManager_NewerOwnedRelease(t *testing.T) {
 				}}
 				options := NewDefaultClusterOptions()
 				options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-				err := impl.ensureCertManager(t.Context(), options, "test-context", nil, upgrade)
+				err := impl.ensureCertManager(t.Context(), options, "test-context", authz.ModeDryRun, upgrade)
 				if healthy {
 					require.NoError(t, err)
 				} else {
@@ -794,7 +795,7 @@ func Test_ensureCertManager_DetectionFailureDoesNotRepair(t *testing.T) {
 			}}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, false)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", authz.ModeDryRun, false)
 			require.ErrorIs(t, err, failure)
 		})
 	}
@@ -908,7 +909,7 @@ func Test_ensureCertManager_UnreadyWebhookIsNotReused(t *testing.T) {
 			}}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err = impl.ensureCertManager(t.Context(), options, "test-context", nil, version == "v1.22.1")
+			err = impl.ensureCertManager(t.Context(), options, "test-context", authz.ModeDryRun, version == "v1.22.1")
 			require.ErrorContains(t, err, "cert-manager webhook Deployment")
 			require.ErrorContains(t, err, "is not ready")
 		})

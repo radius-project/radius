@@ -543,6 +543,7 @@ func (u *stageUpgrade) run(t *testing.T, impl *Impl, setArgs []string) error {
 	options.Radius.SetArgs = setArgs
 	options.Contour.Disabled = true
 	options.RadiusReleaseValues = state.RadiusValues
+	options.RadiusReleaseChart = state.RadiusChart
 	switch u.command {
 	case "upgrade":
 		return impl.UpgradeRadius(t.Context(), options, "test-context")
@@ -835,8 +836,10 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 		issuerSignerName(RadiusSystemNamespace, RadiusAPIServerIssuerName): true,
 	}
 	history := func(targetManifest string) []*releasev1.Release {
+		targetChart := loadStageTestChart(t)
+		targetChart.Metadata.Version = "0.45.0"
 		return []*releasev1.Release{
-			{Version: 1, Config: authzOnValues, Manifest: targetManifest, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Version: 1, Config: authzOnValues, Manifest: targetManifest, Chart: targetChart, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 			{Version: 2, Config: map[string]any{}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 		}
 	}

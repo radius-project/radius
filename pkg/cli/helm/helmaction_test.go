@@ -1952,11 +1952,11 @@ func Test_queryReleaseValues_ReleaseSelection(t *testing.T) {
 				client.EXPECT().RunHelmHistory(gomock.Any(), "radius").Return(tt.history, nil)
 			}
 
-			installed, version, values, err := NewHelmAction(client).queryReleaseValues("test-context", "radius", "radius-system")
+			installed, version, baseline, err := NewHelmAction(client).queryReleaseBaseline("test-context", "radius", "radius-system")
 			require.NoError(t, err)
 			require.True(t, installed)
 			require.Equal(t, "0.1.0", version)
-			require.Equal(t, tt.want.Config, values)
+			require.Same(t, tt.want, baseline)
 		})
 	}
 }

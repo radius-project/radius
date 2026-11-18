@@ -1185,6 +1185,9 @@ func radiusChartRef(options ClusterOptions) string {
 func expectChartPull(t *testing.T, client *MockHelmClient, chartRef string, loaded *chart.Chart) {
 	t.Helper()
 
+	if loaded.Metadata == nil {
+		loaded.Metadata = &chart.Metadata{Name: path.Base(chartRef), Version: "0.1.0"}
+	}
 	fileName := path.Base(chartRef) + ".tgz"
 	client.EXPECT().RunHelmPull(gomock.Any(), chartRef).
 		DoAndReturn(func(pullopts []helm.PullOpt, _ string) (string, error) {

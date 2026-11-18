@@ -447,7 +447,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 		}).Times(1)
 
 	// Mock Helm Chart Load for Radius
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(loadStageTestChart(t), nil).Times(1)
 
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 
@@ -529,7 +529,7 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 		}).Times(1)
 
 	// Mock Helm Chart Load for Radius
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(loadStageTestChart(t), nil).Times(1)
 
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 
@@ -674,7 +674,7 @@ func Test_Helm_UpgradeRadius_RadiusUpgradeError(t *testing.T) {
 		}).Times(1)
 
 	// Mock Helm Chart Load for Radius
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(loadStageTestChart(t), nil).Times(1)
 
 	// Contour is not installed, so it is not checked or upgraded.
 	mockHelmClient.EXPECT().
@@ -724,7 +724,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 		}).Times(1)
 
 	// Mock Helm Chart Load for Radius
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(loadStageTestChart(t), nil).Times(1)
 
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 
@@ -790,7 +790,7 @@ func Test_Helm_UpgradeRadius_CheckInstallError(t *testing.T) {
 		}).Times(1)
 
 	// Mock Helm Chart Load for Radius
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(loadStageTestChart(t), nil).Times(1)
 
 	// Checking the Contour release fails, so nothing is upgraded.
 	mockHelmClient.EXPECT().
@@ -834,7 +834,7 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 			require.NoError(t, err)
 			return "Pulled", nil
 		}).Times(1)
-	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil).Times(1)
+	mockHelmClient.EXPECT().LoadChart(gomock.Any()).Return(loadStageTestChart(t), nil).Times(1)
 
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 
