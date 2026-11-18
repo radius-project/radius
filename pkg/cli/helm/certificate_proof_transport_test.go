@@ -34,9 +34,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/httpstream"
-	streamspdy "k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/client-go/rest"
+	"k8s.io/streaming/pkg/httpstream"
+	streamspdy "k8s.io/streaming/pkg/httpstream/spdy"
 )
 
 // Exercise the real client-go SPDY exchange rather than replacing the dialer.
@@ -75,9 +75,15 @@ func servePodProofForward(t *testing.T, w http.ResponseWriter, r *http.Request, 
 		}()
 		return nil
 	})
+	waitForProofDisconnect(connection)
+}
+
+func waitForProofDisconnect(connection httpstream.Connection) {
 	if connection != nil {
-		defer connection.Close()
 		<-connection.CloseChan()
+		// The peer has already disconnected; sending the final SPDY
+		// shutdown frame may return EOF or a socket write error.
+		_ = connection.Close()
 	}
 }
 
@@ -138,10 +144,7 @@ func TestPodProofPortForward(t *testing.T) {
 						t.Error("must not open streams for an unnegotiated protocol")
 						return nil
 					})
-					if connection != nil {
-						defer connection.Close()
-						<-connection.CloseChan()
-					}
+					waitForProofDisconnect(connection)
 					return
 				}
 				servePodProofForward(t, w, r, receiver.Listener.Addr().String(), target.Port)

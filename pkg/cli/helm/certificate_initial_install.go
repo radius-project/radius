@@ -382,7 +382,7 @@ func (b *initialCertificateInstaller) run(ctx context.Context) error {
 		if b.verifyFixture != nil {
 			err = b.verifyFixture(ctx)
 		} else {
-			err = b.impl.waitForInstalledUCPAPIService(ctx, b.options, b.kubeContext, b.options.RadiusReleaseValues)
+			err = b.impl.waitForUCPAPIService(ctx, b.kubeContext, b.store.namespace, b.target.mode)
 		}
 		if err != nil {
 			return err

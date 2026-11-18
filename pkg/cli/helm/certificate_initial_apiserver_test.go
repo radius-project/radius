@@ -22,19 +22,27 @@ import (
 	"context"
 	"crypto/x509"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"helm.sh/helm/v4/pkg/chart/common"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	chartutil "helm.sh/helm/v4/pkg/chart/v2/util"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
+	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"sigs.k8s.io/yaml"
 )
 
 func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
@@ -62,10 +70,11 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 	t.Setenv("KUBECONFIG", kubeconfig)
 	selected, err := loader.Load("../../../deploy/Chart")
 	require.NoError(t, err)
-	for _, provider := range []string{"radius", "external"} {
-		t.Run(provider, func(t *testing.T) {
+	for _, name := range []string{"radius", "external", "external-workload"} {
+		t.Run(name, func(t *testing.T) {
+			provider, _, _ := strings.Cut(name, "-")
 			local := *store
-			local.namespace = "initial-" + provider
+			local.namespace = "initial-" + name
 			options := NewDefaultClusterOptions()
 			options.Radius.Namespace, options.Radius.Timeout = local.namespace, time.Minute
 			values := map[string]any{"global": map[string]any{
@@ -89,6 +98,9 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 				secret.Annotations = map[string]string{"cert-manager.io/certificate-name": name,
 					"cert-manager.io/issuer-name": "radius-selfsigned-bootstrap", "cert-manager.io/issuer-kind": "Issuer",
 					"cert-manager.io/issuer-group": "cert-manager.io"}
+				if plane == "aggregation" {
+					secret.Annotations[allowDirectInjectionAnnotation] = "true"
+				}
 				fixtures[name] = secret
 			}
 			ctx, cancel := context.WithCancel(t.Context())
@@ -122,6 +134,11 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 					return len(fixtures) == 0, nil
 				})
 			}()
+			if name == "external-workload" {
+				checkExternalBootstrapRetry(t, &local, kubeconfig)
+				require.NoError(t, <-issued)
+				return
+			}
 			b.applyFixture = func(ctx context.Context) error {
 				manifest, err := impl.renderBootstrapChart(ctx, selected, options, b.values, "fixture")
 				if err != nil {
@@ -188,4 +205,82 @@ func TestInitialCertificateNativeControllerFixtures(t *testing.T) {
 			require.NoError(t, fresh.checkFresh(t.Context()))
 		})
 	}
+}
+
+// Exercise the command boundary with live lookups, release storage and CRDs. Only
+// issuance and dependency discovery are fixtures; no controller runs workloads.
+func checkExternalBootstrapRetry(t *testing.T, store *rotationStore, kubeconfig string) {
+	t.Helper()
+	ctx := t.Context()
+	selected := certificateTestChart(t)
+	// No worker nodes are present to run readiness hooks.
+	selected.Templates = slices.DeleteFunc(selected.Templates, func(f *common.File) bool {
+		return strings.HasPrefix(f.Name, "templates/control-plane-readiness/") || strings.HasPrefix(f.Name, "templates/pre-upgrade/")
+	})
+	selected.Templates = append(selected.Templates, &common.File{Name: "templates/injected-workload.yaml", Data: []byte(`{{ if lookup "v1" "ConfigMap" "default" "inject-volume" }}
+apiVersion: v1
+kind: Pod
+metadata: {name: injected-workload}
+spec:
+  containers: [{name: app, image: example.invalid/app}]
+  volumes: [{name: serving, csi: {driver: spiffe.csi.radapp.io}}]
+{{ end }}`)})
+	archive, err := chartutil.Save(selected, t.TempDir())
+	require.NoError(t, err)
+	requests := store.kube.CoreV1().ConfigMaps("default")
+	inject := func() {
+		_, err := requests.Create(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "inject-volume"}}, metav1.CreateOptions{})
+		require.NoError(t, err)
+	}
+	inject()
+	options := NewDefaultClusterOptions()
+	options.Contour.Disabled = true
+	options.Radius.Namespace = store.namespace
+	options.Radius.ChartPath = archive
+	options.Radius.Wait = false
+	options.Radius.Timeout = time.Minute
+	options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external"}
+	controller := certManagerControllerWithServiceAccount(certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, ""), "cert-manager")
+	impl := &Impl{Helm: NewHelmClient(), newRotationStore: func(string, string) (*rotationStore, error) { return store, nil }, newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return sarClient(nil, nil, controller), nil }, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+		k, e := (fakeCertManagerCluster{crd: true, controller: controller}).clients()
+		return k, e, nil
+	}}
+	configuration := newTestHelmConfiguration(t, kubeconfig, store.namespace)
+	reject := func() {
+		err := impl.InstallRadius(ctx, options, "fixture")
+		require.ErrorContains(t, err, "requires managed CSI driver")
+		require.ErrorContains(t, err, "dependencies may remain installed")
+		require.ErrorContains(t, err, "retry identical install settings")
+	}
+	reject()
+	journal, state, err := readInitialCertificateJournal(ctx, store)
+	require.NoError(t, err)
+	require.Equal(t, "published", state.Phase)
+	require.NotEmpty(t, state.Roots)
+	_, err = configuration.Releases.Last(store.release)
+	require.ErrorIs(t, err, driver.ErrReleaseNotFound)
+	crds := store.dynamic.Resource(schema.GroupVersionResource{Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"})
+	for _, file := range selected.CRDObjects() {
+		var crd unstructured.Unstructured
+		require.NoError(t, yaml.Unmarshal(file.File.Data, &crd))
+		_, err = crds.Get(ctx, crd.GetName(), metav1.GetOptions{})
+		require.True(t, apierrors.IsNotFound(err), "%s: %v", crd.GetName(), err)
+	}
+	require.NoError(t, requests.Delete(ctx, "inject-volume", metav1.DeleteOptions{}))
+	expireUCPAPIServiceWait(t)
+	require.ErrorContains(t, impl.InstallRadius(ctx, options, "fixture"), "aggregation deployment has not converged")
+	recorded, err := impl.Helm.RunHelmGet(configuration, store.release)
+	require.NoError(t, err)
+	require.Equal(t, 1, recorded.Version)
+	options.RadiusInstalled, options.Radius.Reinstall, options.RadiusReleaseValues = true, true, recorded.Config
+	inject()
+	reject()
+	after, err := impl.Helm.RunHelmGet(configuration, store.release)
+	require.NoError(t, err)
+	require.Equal(t, recorded, after)
+	resumed, again, err := readInitialCertificateJournal(ctx, store)
+	require.NoError(t, err)
+	require.Equal(t, journal.UID, resumed.UID)
+	require.Equal(t, state.ID, again.ID)
+	require.Equal(t, "published", again.Phase)
 }

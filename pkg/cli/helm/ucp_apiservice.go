@@ -28,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 
-	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 
 	"github.com/radius-project/radius/pkg/authz"
@@ -108,54 +107,11 @@ func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, r
 		ucpAPIServiceDiagnostics(kubeContext, radiusNamespace, problem == ucpAPIServiceNoCABundle))
 }
 
-// waitForInstalledUCPAPIService waits for the UCP APIService after rad installs or upgrades Radius with the values of
-// options merged over storedValues.
-func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any) error {
-	mode, err := installedAuthzMode(options, storedValues)
-	if err != nil {
-		return err
-	}
-	return i.waitForUCPAPIService(ctx, kubeContext, options.Radius.Namespace, mode)
-}
-
-// stageInstalledUCPAPIServerCA stages radius-apiserver-ca before rad installs or upgrades Radius with the values of
-// options merged over storedValues. render returns the manifest that Helm applies.
-func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, render renderRadiusManifest) error {
-	mode, err := installedAuthzMode(options, storedValues)
-	if err != nil {
-		return err
-	}
-	// storedValues is nil with --reset-values, but the deployed release keeps the values it was installed with.
-	current, err := resolveAuthzMode(options.RadiusReleaseValues, nil)
-	if err != nil {
-		return err
-	}
-	values, err := parseUserValuesFromCLI(&options.Radius)
-	if err != nil {
-		return fmt.Errorf("failed to parse Radius values: %w", err)
-	}
-	target := valuesutil.CoalesceTables(copyValues(values), copyValues(storedValues))
-	if err := checkUCPAPIServerCertificateTransition(current, mode, target); err != nil {
-		return err
-	}
-	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, current, mode, render)
-}
-
-func (i *Impl) checkAggregationBeforeDependencies(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, render renderRadiusManifest) error {
-	mode, err := installedAuthzMode(options, storedValues)
-	if err != nil {
-		return err
-	}
-	if mode == authz.ModeOff {
+func (i *Impl) checkAggregationBeforeDependencies(ctx context.Context, options ClusterOptions, kubeContext string, target *certificateTarget, render renderRadiusManifest) error {
+	if target.mode == authz.ModeOff {
 		return i.clearAggregationInjection(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName)
 	}
-	// Active-mode staging is read-only while lifecycle execution is blocked.
-	// Diagnose an unsupported transition before changing shared dependencies.
-	current, err := resolveAuthzMode(options.RadiusReleaseValues, nil)
-	if err != nil {
-		return err
-	}
-	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, current, mode, render)
+	return i.stageInstalledUCPAPIServerCA(ctx, options, kubeContext, target, render)
 }
 
 func checkUCPAPIServerCertificateTransition(deployed, target authz.Mode, values map[string]any) error {
@@ -172,46 +128,41 @@ func checkUCPAPIServerCertificateTransition(deployed, target authz.Mode, values 
 	return fmt.Errorf("turning authorization on with global.rbac.certificates.mode=%s requires the certificate lifecycle to stage the selected issuer and overlapping public trust; this CLI only stages selfSigned aggregation. Helm has not changed Radius; use the paired certificate lifecycle instead of retrying or replacing radius-apiserver-trust", mode)
 }
 
-func installedAuthzMode(options ClusterOptions, storedValues map[string]any) (authz.Mode, error) {
-	currentValues, err := parseUserValuesFromCLI(&options.Radius)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse Radius values: %w", err)
+// stageInstalledUCPAPIServerCA keeps the deployed mode distinct from the target on reset.
+func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, target *certificateTarget, render renderRadiusManifest) error {
+	if err := target.checkTransition(target.deployedMode); err != nil {
+		return err
 	}
-	return resolveAuthzMode(storedValues, currentValues)
+	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, target.deployedMode, target.mode, render)
 }
 
 // waitForRolledBackUCPAPIService waits for the UCP APIService after rad rolls Radius back to revision of history.
 func (i *Impl) waitForRolledBackUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
-	mode, found, err := rolledBackAuthzMode(history, revision)
-	if err != nil || !found {
+	values, target, err := rollbackChartValues(history, revision)
+	if err != nil || values == nil {
 		return err
 	}
-	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode)
+	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, target.mode)
 }
 
 // stageRolledBackUCPAPIServerCA stages radius-apiserver-ca from the manifest of revision of history before rad rolls
 // Radius back to it.
 func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
-	mode, found, err := rolledBackAuthzMode(history, revision)
-	if err != nil || !found {
+	values, target, err := rollbackChartValues(history, revision)
+	if err != nil || values == nil {
 		return err
 	}
-	current, found, err := rolledBackAuthzMode(history, latestRevision(history))
+	currentValues, current, err := rollbackChartValues(history, latestRevision(history))
 	if err != nil {
 		return err
 	}
-	if !found {
-		current = authz.ModeOff
+	if currentValues == nil {
+		current.mode = authz.ModeOff
 	}
-	for _, rel := range history {
-		if rel != nil && rel.Version == revision {
-			if err := checkUCPAPIServerCertificateTransition(current, mode, rel.Config); err != nil {
-				return err
-			}
-			break
-		}
+	if err := checkUCPAPIServerCertificateTransition(current.mode, target.mode, values); err != nil {
+		return err
 	}
-	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, current, mode, renderRadiusRollback(history, revision))
+	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, current.mode, target.mode, renderRadiusRollback(history, revision))
 }
 
 // latestRevision returns the newest revision of history, which is the release Helm rolls back from.
@@ -225,15 +176,15 @@ func latestRevision(history []*releasev1.Release) int {
 	return latest
 }
 
-func rolledBackAuthzMode(history []*releasev1.Release, revision int) (authz.Mode, bool, error) {
+// rollbackChartValues returns nil values when history has no matching revision.
+func rollbackChartValues(history []*releasev1.Release, revision int) (map[string]any, chartAuthSettings, error) {
 	for _, rel := range history {
 		if rel == nil || rel.Version != revision {
 			continue
 		}
-		mode, err := resolveAuthzMode(rel.Config, nil)
-		return mode, err == nil, err
+		return resolveEffectiveChartValues(rel.Chart, rel.Namespace, rel.Name, rel.Config, nil, historicalAuthSettings)
 	}
-	return "", false, nil
+	return nil, chartAuthSettings{}, nil
 }
 
 const ucpAPIServiceNoCABundle = "it has no CA bundle"

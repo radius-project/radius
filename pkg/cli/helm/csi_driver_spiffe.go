@@ -170,6 +170,7 @@ func (i *Impl) getReleaseOwnership(options ChartOptions, kubeContext string) (*r
 type csiDriverSPIFFEPlan struct {
 	manageDriver bool
 	issuerRef    bool
+	requesters   []string
 	chartOptions ChartOptions
 	values       map[string]any
 	release      *releasev1.Release
@@ -178,7 +179,17 @@ type csiDriverSPIFFEPlan struct {
 }
 
 func (i *Impl) planSelectedCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, target *certificateTarget) (*csiDriverSPIFFEPlan, error) {
-	plan, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, target.Values, target.Provider, target.Mode)
+	manage := target.ManagedCSIVolumes > 0
+	// A configured-CA bootstrap still stages the managed driver for the
+	// selected chart's internal receivers. issuerRef leaves it operator-owned.
+	if target.Mode == "caSecret" && target.provider == authz.TLSProviderRadius && len(target.Receivers) > 0 {
+		manage = true
+	}
+	plan, err := i.planCSIDriverForSettings(ctx, options, kubeContext, target.chartAuthSettings, manage)
+	if plan != nil {
+		plan.issuerRef = target.Mode == "issuerRef"
+		plan.requesters = target.requesters
+	}
 	if err != nil || plan == nil || !plan.manageDriver {
 		return plan, err
 	}
@@ -202,19 +213,18 @@ func (i *Impl) planSelectedCSIDriverSPIFFE(ctx context.Context, options ClusterO
 // before any dependency changes the cluster. It also fails when the cluster does not serve ValidatingAdmissionPolicy,
 // which the Radius chart's certificate issuance policy needs. It returns nil, without contacting the cluster, when
 // authorization is off.
-func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, values map[string]any, provider, certMode string) (*csiDriverSPIFFEPlan, error) {
-	mode, err := resolveAuthzMode(nil, values)
-	if err != nil {
-		return nil, err
-	}
-	if mode == authz.ModeOff {
+func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, target radiusAuthTarget) (*csiDriverSPIFFEPlan, error) {
+	return i.planCSIDriverForSettings(ctx, options, kubeContext, target.chartAuthSettings, target.ManagedCSIVolumes > 0)
+}
+
+func (i *Impl) planCSIDriverForSettings(ctx context.Context, options ClusterOptions, kubeContext string, target chartAuthSettings, manage bool) (*csiDriverSPIFFEPlan, error) {
+	if target.mode == authz.ModeOff {
 		return nil, nil
 	}
 
 	plan := &csiDriverSPIFFEPlan{
 		namespace:    options.Radius.Namespace,
-		manageDriver: provider != string(authz.TLSProviderExternal) && certMode != "issuerRef",
-		issuerRef:    certMode == "issuerRef",
+		manageDriver: manage,
 		chartOptions: options.CSIDriverSPIFFE.ChartOptions,
 	}
 	if plan.manageDriver {
@@ -229,12 +239,13 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 		plan.release = rel
 	}
 
+	var err error
 	plan.kubeClient, err = i.csiDriverSPIFFEClient(kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes clients: %w", err)
 	}
 	if plan.manageDriver {
-		settings := resolveSPIFFESettings(nil, values)
+		settings := target.spiffe
 		if err := checkForeignCSIDriverSPIFFE(ctx, plan.kubeClient, plan.chartOptions, settings.CSIDriverName, kubeContext); err != nil {
 			return nil, err
 		}
@@ -243,6 +254,9 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 	// Aggregation issuers still need admission policy and requester discovery with external TLS.
 	if err := checkValidatingAdmissionPolicyServed(plan.kubeClient); err != nil {
 		return nil, err
+	}
+	if target.provider == authz.TLSProviderExternal {
+		i.logInfo("Warning: the external TLS provider sends receiver tokens over HTTP. Configure authenticated encryption between components before enabling it.")
 	}
 	return plan, nil
 }
@@ -271,6 +285,9 @@ func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPl
 	requesters, err := certManagerControllerUsers(ctx, plan.kubeClient)
 	if err != nil {
 		return nil, err
+	}
+	if plan.requesters != nil && !slices.Equal(requesters, plan.requesters) {
+		return nil, fmt.Errorf("cert-manager controller requesters differ from the validated Radius values; check the installation before retrying")
 	}
 	if plan.issuerRef {
 		// The connected issuer-policy verifier checks the selected signer's approvers;

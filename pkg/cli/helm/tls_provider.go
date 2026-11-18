@@ -124,7 +124,8 @@ func (i *Impl) prepareTLSProvider(options ClusterOptions, defaults, current map[
 	if installed && old != provider {
 		return errProviderObservationUnavailable
 	}
-	mode, err := resolveAuthzMode(nil, merged)
+	rbac, _ := nestedValue(merged, "global", "rbac").(map[string]any)
+	mode, err := authzModeFromRBAC(rbac)
 	if err != nil {
 		return err
 	}

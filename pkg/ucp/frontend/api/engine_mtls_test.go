@@ -133,7 +133,7 @@ func TestInternalServer_DeploymentEngineTokenIdentity(t *testing.T) {
 				clientOptions.TokenDirectory = engineTokenDirectory(t, "ucp", keys.mint(t, namespace, "bicep-de", "ucp"))
 				// A caller needs only public trust and a receiver token, never its own TLS material.
 				clientOptions.CertificateDirectory = filepath.Join(t.TempDir(), "no-client-certificate")
-				transport, err := mtls.NewClientTransport(clientOptions, "ucp")
+				transport, err := mtls.NewClientTransport(clientOptions, "ucp", listener.Addr().String())
 				require.NoError(t, err)
 				client := &http.Client{Transport: transport, Timeout: 5 * time.Second}
 				t.Cleanup(client.CloseIdleConnections)

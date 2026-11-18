@@ -40,7 +40,9 @@ func TestCertificatePreparationSelectedChart(t *testing.T) {
 			for _, object := range []runtime.Object{deployment, replicaSet, pod} {
 				require.NoError(t, b.store.kube.(*kubefake.Clientset).Tracker().Add(object))
 			}
-			target, err := certificateProfilePlan(b.selected, b.values, b.store.namespace)
+			settings, err := selectedAuthSettings(b.selected, b.values, b.store.namespace, b.store.release)
+			require.NoError(t, err)
+			target, err := certificateProfilePlan(b.selected, b.values, b.store.namespace, settings)
 			require.NoError(t, err)
 			for name, plane := range target.Planes {
 				signingSecret := "radius-ca"

@@ -37,12 +37,24 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 	if apierrors.IsNotFound(err) {
 		ns, err := store.kube.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 		if apierrors.IsNotFound(err) {
-			return i.uninstallHelmRelease("Radius", radiusReleaseName, namespace, kubeContext)
+			// Helm release records are namespaced. Do not race a new
+			// installation by calling Helm without an operation Lease.
+			return nil
 		}
 		if err != nil {
 			return err
 		}
 		return withIdentityOperation(ctx, store.kube, namespace, func(operation *identityOperation) error {
+			if err := store.excludeCertificateOffTransition(ctx); err != nil {
+				return err
+			}
+			current, err := store.kube.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+			if ns.UID == "" || current.UID != ns.UID || current.DeletionTimestamp != nil {
+				return errors.New("uninstall namespace was replaced or is terminating")
+			}
 			if err := operation.check(ctx); err != nil {
 				return err
 			}

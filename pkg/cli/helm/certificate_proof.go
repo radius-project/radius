@@ -56,8 +56,8 @@ func decodeCertificateProof(data []byte, evidence any, required []string) error 
 	if len(data) == 0 || len(data) > 8192 {
 		return errors.New("TLS proof is empty or exceeds its size limit")
 	}
-	// A map detects duplicate top-level names before typed decoding. Duplicate names
-	// could otherwise let different clients disagree about ready or identity.
+	// Typed decoding accepts case variants and lets later values overwrite earlier
+	// ones. Require canonical, unique names before decoding the evidence.
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	token, err := decoder.Token()
 	if err != nil || token != json.Delim('{') {

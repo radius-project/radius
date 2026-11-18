@@ -39,6 +39,7 @@ import (
 	helm "helm.sh/helm/v4/pkg/action"
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -66,7 +67,7 @@ func (o *CertificateOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.CASecret, "ca-secret", "", "Existing operator-owned TLS signing Secret in radius-system; never adopted or overwritten")
 	flags.StringVar(&o.CertIssuer, "cert-issuer", "", "Existing cert-manager.io Issuer/name or ClusterIssuer/name; requires dedicated public --ca-bundle on fresh install and live request-policy verification")
 	flags.StringVar(&o.CABundle, "ca-bundle", "", "Path to exactly one public dedicated signing CA PEM for --cert-issuer; never a private key or parent chain")
-	flags.StringVar(&o.RotationPhase, "ca-rotation-phase", "", "Run publish, adopt, issue, retire, or recover on installed Radius; recover performs an outage-capable new-only CA cutover")
+	flags.StringVar(&o.RotationPhase, "ca-rotation-phase", "", "CA rotation phase (blocked pending authenticated consumer observation; CA recovery is unsupported)")
 	flags.BoolVar(&o.RotateCA, "rotate-ca", false, "Replace both Radius-owned CAs (aggregation only with external TLS); currently blocked pending authenticated consumer observation")
 }
 
@@ -77,10 +78,10 @@ func (o CertificateOptions) Validate() error {
 	}
 	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "adopt" &&
 		o.RotationPhase != "issue" && o.RotationPhase != "retire" && o.RotationPhase != "recover" {
-		return fmt.Errorf("--ca-rotation-phase must be publish, adopt, issue, retire, or recover")
+		return fmt.Errorf("unrecognized --ca-rotation-phase; this CLI cannot rotate or recover a CA")
 	}
 	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "recover" && o.Specified() {
-		return fmt.Errorf("select the target CA only in publish or explicit incident recovery; subsequent phases use the persisted rotation")
+		return fmt.Errorf("cannot select a target CA during the %s phase", o.RotationPhase)
 	}
 	if (o.CACert == "") != (o.CAKey == "") {
 		return fmt.Errorf("--ca-cert and --ca-key must be supplied together")
@@ -340,7 +341,8 @@ func stringValue(value any) string {
 }
 
 // prepareCertificateSelection validates the desired selection without authorizing a transition.
-func (i *Impl) prepareCertificateSelection(ctx context.Context, options ClusterOptions, defaults, current map[string]any, kubeContext string) (*certificatePlan, error) {
+func (i *Impl) prepareCertificateSelection(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string) (*certificatePlan, error) {
+	defaults := selected.Values
 	o := options.Certificates
 	if err := o.Validate(); err != nil {
 		return nil, err
@@ -436,11 +438,11 @@ func (i *Impl) prepareCertificateSelection(ctx context.Context, options ClusterO
 		}
 		return nil, nil
 	}
-	authzMode, err := resolveAuthzMode(nil, merged)
+	_, authSettings, err := resolveEffectiveChartValues(selected, options.Radius.Namespace, options.Radius.ReleaseName, merged, nil, selectedAuthSettings)
 	if err != nil {
 		return nil, err
 	}
-	if authzMode == authz.ModeOff {
+	if authSettings.mode == authz.ModeOff {
 		return nil, fmt.Errorf("dedicated CA certificates require global.rbac.dryRun=true or global.rbac.enabled=true")
 	}
 	if mode == "issuerRef" {
@@ -555,7 +557,7 @@ func (i *Impl) prepareIssuerCertificates(settings, current map[string]any) error
 
 // checkIssuerPolicy renders the actual selected chart with live lookups, but no resource or release writes.
 // The chart, not a second CLI policy evaluator, verifies the operator-managed issuer prerequisites.
-func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) error {
+func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, history []*releasev1.Release) error {
 	mode := certificateMode(current)
 	if mode == "selfSigned" {
 		return nil
@@ -597,52 +599,179 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 			return fmt.Errorf("live issuer-policy verification failed: %w", err)
 		}
 	}
+	return i.renderCertificatePolicy(ctx, options, selected, current, kubeContext, history)
+}
+
+func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool, render renderRadiusManifest) (*certificateTarget, *certificatePlan, error) {
+	target, plan, history, err := i.selectActionCertificates(ctx, &options, selected, source, current, kubeContext, installed)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := i.checkOrdinaryCertificateAction(ctx, target, options, selected, current, kubeContext, history, render); err != nil {
+		return nil, nil, err
+	}
+	return target, plan, nil
+}
+
+func (i *Impl) selectActionCertificates(ctx context.Context, options *ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, []*releasev1.Release, error) {
 	var history []*releasev1.Release
+	var deployed map[string]any
+	mode := authz.ModeOff
 	if installed {
+		var err error
 		history, err = i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
 		if err != nil {
-			return fmt.Errorf("cannot read Radius history for live issuer-policy verification: %w", err)
+			return nil, nil, nil, fmt.Errorf("cannot read Radius history for certificate selection: %w", err)
 		}
-		baseline, err := certificatePolicyBaseline(options, history)
+		baseline, err := certificatePolicyBaseline(*options, history)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		options.RadiusReleaseChart, options.RadiusReleaseValues = baseline.Chart, baseline.Config
+		values, settings, err := installedAuthzSettings(*options)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		deployed, mode = values, settings.mode
+	}
+	effective, settings, err := selectedCertificateValues(*options, selected, current)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	var requesters []string
+	if settings.mode != authz.ModeOff {
+		client, err := i.csiDriverSPIFFEClient(kubeContext)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("cannot discover cert-manager requesters: %w", err)
+		}
+		requesters, err = certManagerControllerUsers(ctx, client)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if len(requesters) == 0 {
+			if options.Certificates.CertIssuer != "" || certificateMode(effective) == "issuerRef" {
+				return nil, nil, nil, fmt.Errorf("cannot discover the operator-managed cert-manager controller for issuerRef")
+			}
+			// A fresh rad-managed install creates this controller. Validate its
+			// intended identity now and verify discovery after cert-manager is ready.
+			requesters = []string{"system:serviceaccount:" + options.CertManager.Namespace + ":" + options.CertManager.ReleaseName}
+		}
+		setCertManagerRequesters(current, requesters)
+	}
+	target, plan, err := i.prepareSelectedCertificates(ctx, *options, selected, current, kubeContext, deployed)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	target.deployedMode = mode
+	target.requesters = requesters
+	return target, plan, history, nil
+}
+
+func (i *Impl) checkOrdinaryCertificateAction(ctx context.Context, target *certificateTarget, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, history []*releasev1.Release, render renderRadiusManifest) error {
+	if err := i.checkIssuerPolicy(ctx, options, selected, current, kubeContext, history); err != nil {
+		return err
+	}
+	if target.Mode == "selfSigned" && target.provider == authz.TLSProviderExternal && target.mode != authz.ModeOff {
+		// In particular, .Release.IsUpgrade and live lookups may change Pod volumes.
+		// Check the selected action, rather than assuming an offline install render is identical.
+		manifest, err := i.renderCertificateManifest(ctx, options, selected, current, kubeContext, history, 0)
 		if err != nil {
 			return err
 		}
-		previous := valuesutil.CoalesceTables(copyValues(baseline.Config), copyValues(baseline.Chart.Values))
-		if err := unchangedCertificateSelection(previous, current); err != nil {
-			return fmt.Errorf("the installed chart selects different certificate settings; changing issuers requires coordinated CA migration: %w", err)
+		if err := checkExternalWorkloadManifest(manifest, target.chartAuthSettings); err != nil {
+			return err
 		}
+	} else if target.Mode == "selfSigned" {
+		resolved, err := resolveRadiusActionTarget(ctx, selected, options.Radius.Namespace, options.Radius.ReleaseName, current, options.RadiusReleaseValues, options.ResetValues, target.deployedMode, render)
+		if err != nil {
+			return err
+		}
+		target.radiusAuthTarget = resolved
 	}
-	return i.renderCertificatePolicy(ctx, options, selected, current, kubeContext, history)
+	return nil
+}
+
+func selectedCertificateValues(options ClusterOptions, selected *chart.Chart, current map[string]any) (map[string]any, chartAuthSettings, error) {
+	stored := options.RadiusReleaseValues
+	if options.ResetValues {
+		stored = nil
+	}
+	return resolveEffectiveChartValues(selected, options.Radius.Namespace, options.Radius.ReleaseName, current, stored, selectedAuthSettings)
+}
+
+// installedAuthzSettings always uses the deployed chart, even when resetting the target.
+func installedAuthzSettings(options ClusterOptions) (map[string]any, chartAuthSettings, error) {
+	return resolveEffectiveChartValues(options.RadiusReleaseChart, options.Radius.Namespace, options.Radius.ReleaseName, options.RadiusReleaseValues, nil, historicalAuthSettings)
 }
 
 // renderCertificatePolicy proves the chosen target against live chart policy and a
 // baseline history snapshot. It never authorizes or applies a target transition.
 func (i *Impl) renderCertificatePolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, history []*releasev1.Release) error {
-	configuration, err := i.cluster().RenderConfiguration(kubeContext, options.Radius.Namespace)
-	if err != nil {
-		return fmt.Errorf("cannot configure live issuer-policy verification: %w", err)
-	}
-	renderedChart := cloneChart(selected)
 	if history != nil {
 		if _, err := certificatePolicyBaseline(options, history); err != nil {
 			return err
 		}
-		configuration.Releases, err = releaseHistoryStorage(history)
-		if err != nil {
-			return fmt.Errorf("cannot copy Radius history for read-only issuer verification: %w", err)
-		}
-		upgrade := newUpgradeClient(configuration, options.Radius.Namespace, false, !options.ResetValues, options.Radius.Timeout, usesServerSideApply(configuration, options.Radius.ReleaseName))
-		upgrade.DryRunStrategy = helm.DryRunServer
-		_, err = upgrade.RunWithContext(ctx, options.Radius.ReleaseName, renderedChart, copyValues(current))
-	} else {
-		install := newInstallClient(configuration, options.Radius.ReleaseName, options.Radius.Namespace, false, options.Radius.Timeout)
-		install.DryRunStrategy = helm.DryRunServer
-		_, err = install.RunWithContext(ctx, renderedChart, copyValues(current))
 	}
+	manifest, err := i.renderCertificateManifest(ctx, options, selected, current, kubeContext, history, 0)
 	if err != nil {
 		return fmt.Errorf("live issuer-policy verification failed; provision the Radius namespace and supported operator-managed issuer, controllers, admission, policies and RBAC before retrying: %w", err)
 	}
+	_, settings, err := selectedCertificateValues(options, selected, current)
+	if err != nil {
+		return err
+	}
+	return checkExternalWorkloadManifest(manifest, settings)
+}
+
+// checkExternalWorkloadManifest takes the caller's completed render and effective
+// authorization values from resolveEffectiveChartValues. It needs no Helm action or cluster.
+func checkExternalWorkloadManifest(manifest string, effective chartAuthSettings) error {
+	if effective.provider != authz.TLSProviderExternal {
+		return nil
+	}
+	req, err := workloadRequirementsFromManifest(manifest, effective.spiffe.CSIDriverName)
+	if err != nil {
+		return err
+	}
+	if req.ManagedCSIVolumes != 0 {
+		return fmt.Errorf("rendered workload requires managed CSI driver %q, inconsistent with the external TLS provider", req.CSIDriverName)
+	}
 	return nil
+}
+
+func (i *Impl) renderCertificateManifest(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, history []*releasev1.Release, rollbackRevision int) (string, error) {
+	configuration, err := i.cluster().RenderConfiguration(kubeContext, options.Radius.Namespace)
+	if err != nil {
+		return "", fmt.Errorf("cannot configure connected Radius chart render: %w", err)
+	}
+	renderedChart := cloneChart(selected)
+	var rel release.Releaser
+	if history != nil {
+		configuration.Releases, err = releaseHistoryStorage(history)
+		if err != nil {
+			return "", fmt.Errorf("cannot copy Radius history for read-only chart render: %w", err)
+		}
+		upgrade := newUpgradeClient(configuration, options.Radius.Namespace, false, !options.ResetValues, options.Radius.Timeout, usesServerSideApply(configuration, options.Radius.ReleaseName))
+		if rollbackRevision != 0 {
+			upgrade = newRollbackClient(configuration, options.Radius.Namespace, rollbackRevision, false, usesServerSideApply(configuration, options.Radius.ReleaseName))
+		}
+		upgrade.DryRunStrategy = helm.DryRunServer
+		rel, err = upgrade.RunWithContext(ctx, options.Radius.ReleaseName, renderedChart, copyValues(current))
+	} else {
+		install := newInstallClient(configuration, options.Radius.ReleaseName, options.Radius.Namespace, false, options.Radius.Timeout)
+		install.DryRunStrategy = helm.DryRunServer
+		rel, err = install.RunWithContext(ctx, renderedChart, copyValues(current))
+	}
+	if err != nil {
+		return "", fmt.Errorf("connected Radius chart render failed: %w", err)
+	}
+	rendered, err := asRelease(rel)
+	if err != nil {
+		return "", err
+	}
+	render := renderRadiusRelease(func(context.Context) (*releasev1.Release, error) { return rendered, nil })
+	manifest, _, err := render.manifest(rollbackRevision == 0)(ctx)
+	return manifest, err
 }
 
 func certificatePolicyBaseline(options ClusterOptions, history []*releasev1.Release) (*releasev1.Release, error) {
@@ -662,11 +791,21 @@ func certificatePolicyBaseline(options ClusterOptions, history []*releasev1.Rele
 		return nil, fmt.Errorf("Radius release history is empty; recover the installed release before issuer-policy verification")
 	}
 	baseline := history[latest]
-	if revisionStatus(baseline) != releasecommon.StatusDeployed && deployed >= 0 {
-		baseline = history[deployed]
+	if revisionStatus(baseline).IsPending() {
+		return nil, fmt.Errorf("live issuer-policy verification failed: another operation is in progress on the Radius release")
+	}
+	if status := revisionStatus(baseline); status != releasecommon.StatusDeployed {
+		if deployed >= 0 {
+			baseline = history[deployed]
+		} else if status != releasecommon.StatusFailed && status != releasecommon.StatusSuperseded {
+			return nil, fmt.Errorf("no deployed Radius revision is available for certificate selection")
+		}
 	}
 	if !reflect.DeepEqual(copyValues(baseline.Config), copyValues(options.RadiusReleaseValues)) {
 		return nil, fmt.Errorf("stored Radius settings changed since preflight; retry to validate the current issuer, trust and policy scope")
+	}
+	if options.RadiusReleaseChart != nil && !reflect.DeepEqual(options.RadiusReleaseChart, baseline.Chart) {
+		return nil, fmt.Errorf("stored Radius chart changed since preflight; retry to validate the current issuer, trust and policy scope")
 	}
 	if baseline.Chart == nil {
 		return nil, fmt.Errorf("stored Radius chart is missing; recover the installed issuer settings before upgrading")
@@ -732,12 +871,14 @@ func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptio
 	if err != nil {
 		return err
 	}
-	target, _, err := i.prepareSelectedCertificates(ctx, options, chart, current, kubeContext, true)
+	render := i.renderRadiusUpgradeRelease(kubeContext, configuration, chart, current, options.Radius.ReleaseName, options.Radius.Namespace, !options.ResetValues)
+	target, _, err := i.prepareOrdinaryCertificates(ctx, options, chart, configuration, current, kubeContext, true, render.manifest(true))
 	if err != nil {
 		return err
 	}
-	if err := i.checkIssuerPolicy(ctx, options, chart, configuration, current, kubeContext, true); err != nil {
+	if err := target.checkTransition(target.deployedMode); err != nil {
 		return err
 	}
-	return target.checkTransition(options.RadiusReleaseValues)
+	_, err = i.planSelectedCSIDriverSPIFFE(ctx, options, kubeContext, target)
+	return err
 }

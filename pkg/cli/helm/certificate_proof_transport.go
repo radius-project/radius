@@ -30,12 +30,12 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/util/httpstream"
-	streamspdy "k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
+	"k8s.io/streaming/pkg/httpstream"
+	streamspdy "k8s.io/streaming/pkg/httpstream/spdy"
 )
 
 type proofForwardDialer struct {
@@ -128,7 +128,7 @@ func openPodProofPortForward(ctx context.Context, config *rest.Config, target TL
 	ready := make(chan struct{})
 	// The forwarder otherwise logs raw remote error-stream contents globally.
 	// Surface only the sanitized tunnel/observation errors returned to the caller.
-	forwarder, err := portforward.NewOnAddressesWithContext(logr.NewContext(ctx, logr.Discard()),
+	forwarder, err := portforward.NewOnAddressesForStreamingWithContext(logr.NewContext(ctx, logr.Discard()),
 		dialer, []string{"127.0.0.1"}, []string{"0:" + strconv.Itoa(int(target.Port))}, ready, io.Discard, io.Discard)
 	if err != nil {
 		cancel()

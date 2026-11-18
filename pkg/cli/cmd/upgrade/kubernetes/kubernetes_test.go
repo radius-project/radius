@@ -41,6 +41,16 @@ func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
 }
 
+func TestCertificateRotationHelp(t *testing.T) {
+	cmd, _ := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+	var help strings.Builder
+	cmd.SetOut(&help)
+	require.NoError(t, cmd.Help())
+	assert.Contains(t, help.String(), "Replacing component images does not enable CA rotation or recovery in this CLI.")
+	assert.NotContains(t, help.String(), "--ca-rotation-phase recover")
+	assert.NotContains(t, help.String(), "recover performs")
+}
+
 func Test_Validate(t *testing.T) {
 	t.Parallel()
 	testcases := []radcli.ValidateInput{
@@ -205,6 +215,20 @@ func TestNewCommand(t *testing.T) {
 	require.NotNil(t, runner)
 	assert.Equal(t, "kubernetes", cmd.Use)
 	assert.Equal(t, "Upgrades Radius on a Kubernetes cluster", cmd.Short)
+}
+
+func TestPreflightOnlyReturnsCertificatePrerequisiteError(t *testing.T) {
+	t.Parallel()
+	cmd, r := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+	runner := r.(*Runner)
+	require.NoError(t, cmd.ParseFlags([]string{"--preflight-only", "--version=0.47.0"}))
+	require.NoError(t, runner.Validate(cmd, nil))
+	mock := helm.NewMockInterface(gomock.NewController(t))
+	runner.Helm = mock
+	mock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0"}, nil)
+	missing := errors.New("cluster does not serve ValidatingAdmissionPolicy")
+	mock.EXPECT().CheckRadiusCertificates(gomock.Any(), gomock.Any(), "").Return(missing)
+	require.ErrorIs(t, runner.Run(t.Context()), missing)
 }
 
 func TestRunner_Validate(t *testing.T) {

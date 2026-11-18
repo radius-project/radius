@@ -110,7 +110,7 @@ func TestTLSProviderSelectedChartAndRotationReject(t *testing.T) {
 	options := ClusterOptions{TLS: TLSProviderOptions{Provider: "external"}}
 	current := map[string]any{}
 	require.NoError(t, unstructured.SetNestedField(current, true, "global", "rbac", "enabled"))
-	_, _, err := (&Impl{}).prepareSelectedCertificates(t.Context(), options, chart, current, "", false)
+	_, _, err := (&Impl{}).prepareSelectedCertificates(t.Context(), options, chart, current, "", nil)
 	require.ErrorContains(t, err, "selected chart")
 	options.Certificates.RotateCA = true
 	_, _, err = (&Impl{}).prepareCertificateTarget(t.Context(), options, chart, current, "")

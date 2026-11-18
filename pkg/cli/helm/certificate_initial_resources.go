@@ -24,9 +24,11 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/authz"
 	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
 	"helm.sh/helm/v4/pkg/release"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -276,22 +278,28 @@ type initialCertificateTransport struct {
 }
 
 func (t initialCertificateTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	if err := request.Context().Err(); err != nil {
+	reject := func(err error) (*http.Response, error) {
+		if request.Body != nil {
+			_ = request.Body.Close()
+		}
 		return nil, err
 	}
+	if err := request.Context().Err(); err != nil {
+		return reject(err)
+	}
 	if err := t.ctx.Err(); err != nil {
-		return nil, err
+		return reject(err)
 	}
 	if request.Method != http.MethodGet && request.Method != http.MethodHead {
 		if err := t.check(t.ctx); err != nil {
-			return nil, err
+			return reject(err)
 		}
 	}
 	if err := t.ctx.Err(); err != nil {
-		return nil, err
+		return reject(err)
 	}
 	if err := request.Context().Err(); err != nil {
-		return nil, err
+		return reject(err)
 	}
 	ctx, cancel := context.WithCancel(request.Context())
 	stop := context.AfterFunc(t.ctx, cancel)
@@ -330,11 +338,13 @@ func (b *initialCertificateInstaller) applyChart(ctx context.Context) error {
 	}
 	recorded, err := configuration.Releases.Last(b.store.release)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		install := newInstallClient(configuration, b.store.release, b.store.namespace, b.options.Radius.Wait, b.options.Radius.Timeout)
-		install.CreateNamespace = false
-		install.Labels = map[string]string{initialCertificateIntent: b.state.ID}
-		_, err = install.RunWithContext(ctx, cloneChart(b.selected), copyValues(b.values))
-		return err
+		return b.runPublishedAction(ctx, configuration, func(configuration *helm.Configuration, strategy helm.DryRunStrategy) (release.Releaser, error) {
+			install := newInstallClient(configuration, b.store.release, b.store.namespace, b.options.Radius.Wait, b.options.Radius.Timeout)
+			install.CreateNamespace = false
+			install.Labels = map[string]string{initialCertificateIntent: b.state.ID}
+			install.DryRunStrategy = strategy
+			return install.RunWithContext(ctx, cloneChart(b.selected), copyValues(b.values))
+		})
 	}
 	if err != nil {
 		return err
@@ -354,9 +364,37 @@ func (b *initialCertificateInstaller) applyChart(ctx context.Context) error {
 	if err != nil || digest != b.state.ValuesSHA256 {
 		return errors.New("recorded bootstrap Helm values changed")
 	}
-	upgrade := newUpgradeClient(configuration, b.store.namespace, b.options.Radius.Wait, false, b.options.Radius.Timeout,
-		usesServerSideApply(configuration, b.store.release))
-	upgrade.Labels = map[string]string{initialCertificateIntent: b.state.ID}
-	_, err = upgrade.RunWithContext(ctx, b.store.release, cloneChart(b.selected), copyValues(b.values))
+	ssa := usesServerSideApply(configuration, b.store.release)
+	return b.runPublishedAction(ctx, configuration, func(configuration *helm.Configuration, strategy helm.DryRunStrategy) (release.Releaser, error) {
+		upgrade := newUpgradeClient(configuration, b.store.namespace, b.options.Radius.Wait, false, b.options.Radius.Timeout, ssa)
+		upgrade.Labels = map[string]string{initialCertificateIntent: b.state.ID}
+		upgrade.DryRunStrategy = strategy
+		return upgrade.RunWithContext(ctx, b.store.release, cloneChart(b.selected), copyValues(b.values))
+	})
+}
+
+func (b *initialCertificateInstaller) runPublishedAction(ctx context.Context, configuration *helm.Configuration, run func(*helm.Configuration, helm.DryRunStrategy) (release.Releaser, error)) error {
+	if b.target.Mode == "selfSigned" && b.target.provider == authz.TLSProviderExternal {
+		preview := renderRadiusRelease(func(context.Context) (*releasev1.Release, error) {
+			// Keep live discovery, template lookups and release history. Do not build or apply resources: install may not yet have registered the chart CRDs.
+			readOnly := &helm.Configuration{RESTClientGetter: configuration.RESTClientGetter, Releases: configuration.Releases, KubeClient: &kubefake.PrintingKubeClient{Out: io.Discard}}
+			rel, err := run(readOnly, helm.DryRunServer)
+			if err != nil {
+				return nil, err
+			}
+			return asRelease(rel)
+		})
+		manifest, _, err := preview.manifest(true)(ctx)
+		if err == nil {
+			err = checkExternalWorkloadManifest(manifest, b.target.chartAuthSettings)
+		}
+		if err != nil {
+			return fmt.Errorf("external workload validation failed before applying the Radius chart; dependencies may remain installed: %w", err)
+		}
+		if err := b.checkMaterial(ctx); err != nil {
+			return err
+		}
+	}
+	_, err := run(configuration, helm.DryRunNone)
 	return err
 }

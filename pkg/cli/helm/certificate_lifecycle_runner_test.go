@@ -52,7 +52,9 @@ func TestCertificateSelectedPhaseRendering(t *testing.T) {
 		"enabled": true, "tls": map[string]any{"provider": "radius"},
 		"certificates": map[string]any{"mode": "selfSigned"},
 	}}}
-	target, err := certificateProfilePlan(selected, values, w.store.namespace)
+	settings, err := selectedAuthSettings(selected, values, w.store.namespace, w.store.release)
+	require.NoError(t, err)
+	target, err := certificateProfilePlan(selected, values, w.store.namespace, settings)
 	require.NoError(t, err)
 	w.state.Execution.ChartSHA256, err = bootstrapDigest(selected)
 	require.NoError(t, err)

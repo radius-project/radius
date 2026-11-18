@@ -26,8 +26,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -86,8 +89,9 @@ func reloadContext() context.Context {
 // receiver's SPIFFE ID, and only then sends the projected ServiceAccount token read from
 // <options.TokenDirectory>/<receiver>/token as "Authorization: Bearer". The external provider
 // instead requires HTTP under operator encryption, without loading certificate material.
-// Both providers replace any Authorization header on the request.
-func NewClientTransport(options authz.Options, receiver string) (http.RoundTripper, error) {
+// Both providers replace any Authorization header on the request. External HTTP
+// accepts only the configured authorities (host including port); an empty list denies all.
+func NewClientTransport(options authz.Options, receiver string, authorities ...string) (http.RoundTripper, error) {
 	if err := options.ValidateTLSProvider(); err != nil {
 		return nil, err
 	}
@@ -101,23 +105,37 @@ func NewClientTransport(options authz.Options, receiver string) (http.RoundTripp
 		}
 		transport := http.DefaultTransport.(*http.Transport).Clone()
 		transport.Proxy = nil
-		return &externalTransport{Transport: transport, token: token}, nil
+		return &externalTransport{Transport: transport, token: token, authorities: slices.Clone(authorities)}, nil
 	}
 	return newClientTransport(options, receiver)
 }
 
 type externalTransport struct {
 	*http.Transport
-	token *tokenFile
+	token       *tokenFile
+	authorities []string
+}
+
+// rejectRequest releases the body when the request never reaches the underlying transport.
+func rejectRequest(req *http.Request, err error) (*http.Response, error) {
+	if req.Body != nil {
+		_ = req.Body.Close()
+	}
+	return nil, err
 }
 
 func (t *externalTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.URL.Scheme != "http" {
-		return nil, fmt.Errorf("external token transport requires http, got %q", req.URL.Scheme)
+		return rejectRequest(req, fmt.Errorf("external token transport requires http, got %q", req.URL.Scheme))
+	}
+	if req.URL.Hostname() == "" || req.URL.Opaque != "" || req.URL.User != nil ||
+		(req.Host != "" && !strings.EqualFold(req.Host, req.URL.Host)) ||
+		!slices.ContainsFunc(t.authorities, func(host string) bool { return strings.EqualFold(host, req.URL.Host) }) {
+		return rejectRequest(req, errors.New("external token transport refuses unconfigured destination"))
 	}
 	value, err := t.token.Token()
 	if err != nil {
-		return nil, err
+		return rejectRequest(req, err)
 	}
 	req = req.WithContext(req.Context())
 	req.Header = req.Header.Clone()
@@ -289,6 +307,9 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	current, err := t.source.load()
 	pool := t.transportForRequest(current)
 	if err != nil {
+		if req.Body != nil {
+			_ = req.Body.Close()
+		}
 		return nil, err
 	}
 
@@ -437,7 +458,7 @@ func (f *tokenFile) Token() (string, error) {
 // an http URL to https with the Radius provider, and sends all other requests through plain.
 // The external provider requires HTTP and never silently downgrades HTTPS. A component matches by any
 // of its DNS names: <component>, <component>.<namespace>, or <component>.<namespace>.svc.
-func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, components []string) (http.RoundTripper, error) {
+func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, components []string, endpoints ...string) (http.RoundTripper, error) {
 	if err := options.ValidateTLSProvider(); err != nil {
 		return nil, err
 	}
@@ -447,14 +468,31 @@ func NewUpgradeTransport(options authz.Options, plain http.RoundTripper, compone
 
 	secure := map[string]http.RoundTripper{}
 	for _, c := range components {
-		transport, err := NewClientTransport(options, c)
+		aliases := []string{c, c + "." + options.Namespace, c + "." + options.Namespace + ".svc"}
+		var authorities []string
+		if options.EffectiveTLSProvider() == authz.TLSProviderExternal {
+			for _, endpoint := range endpoints {
+				u, err := url.Parse(endpoint)
+				if err != nil || u.Scheme != "http" || !slices.Contains(aliases, u.Hostname()) {
+					continue
+				}
+				for _, alias := range aliases {
+					host := alias
+					if u.Port() != "" {
+						host = net.JoinHostPort(alias, u.Port())
+					}
+					authorities = append(authorities, host)
+				}
+			}
+		}
+		transport, err := NewClientTransport(options, c, authorities...)
 		if err != nil {
 			return nil, err
 		}
 
-		secure[c] = transport
-		secure[c+"."+options.Namespace] = transport
-		secure[c+"."+options.Namespace+".svc"] = transport
+		for _, alias := range aliases {
+			secure[alias] = transport
+		}
 	}
 	return &upgradeTransport{plain: plain, secure: secure, external: options.EffectiveTLSProvider() == authz.TLSProviderExternal}, nil
 }
