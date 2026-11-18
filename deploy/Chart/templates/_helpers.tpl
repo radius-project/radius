@@ -176,9 +176,11 @@ off
 
 {{/* Explicit compatible-engine gate; retired enabled settings must never become Off. */}}
 {{- define "radius.de.internalAuth.enabled" -}}
-{{- $legacy := .Values.de.ucpMTLS | default dict -}}
+{{- range $gate := list "ucpMTLS" "externalIdentity" -}}
+{{- $legacy := index $.Values.de $gate | default dict -}}
 {{- if $legacy.enabled -}}
-{{- fail "de.ucpMTLS.enabled is retired; select a token-capable engine image and migrate explicitly to de.internalAuth.enabled" -}}
+{{- fail (printf "de.%s.enabled is retired; select a token-capable engine image and migrate explicitly to de.internalAuth.enabled" $gate) -}}
+{{- end -}}
 {{- end -}}
 {{- $settings := .Values.de.internalAuth | default dict -}}
 {{- $enabled := false -}}
