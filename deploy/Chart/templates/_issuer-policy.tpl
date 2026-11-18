@@ -305,6 +305,11 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- if not (hasKey $found $name) -}}{{- fail "issuerRef prerequisite: install all expected Ready Radius CertificateRequestPolicies before installing Radius." -}}{{- end -}}
 {{- end -}}
 {{- $bindings := concat ((lookup "rbac.authorization.k8s.io/v1" "ClusterRoleBinding" "" "").items | default list) ((lookup "rbac.authorization.k8s.io/v1" "RoleBinding" "" "").items | default list) -}}
+{{- /* cert-manager asks for either of these literal names on the cluster-scoped signers resource. */ -}}
+{{- $signerType := printf "%ss.%s" (lower $issuer.kind) $issuer.group -}}
+{{- $signerName := $issuer.name -}}
+{{- if $issuerNamespace -}}{{- $signerName = printf "%s.%s" $issuerNamespace $issuer.name -}}{{- end -}}
+{{- $signers := list (printf "%s/%s" $signerType $signerName) (printf "%s/*" $signerType) -}}
 {{- $usable := dict -}}
 {{- $approverPermissions := dict -}}
 {{- $spiffePermissions := dict -}}
@@ -346,11 +351,9 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- end -}}
 {{- end -}}
 {{- end -}}
-{{- $signerName := $issuer.name -}}
-{{- if eq $issuer.kind "Issuer" -}}{{- $signerName = printf "%s.%s" $root.Release.Namespace $issuer.name -}}{{- end -}}
-{{- $signer := printf "%ss.cert-manager.io/%s" (lower $issuer.kind) $signerName -}}
-{{- $canApprove := include "radius.authz.policyRuleMatches" (dict "rule" $rule "group" "cert-manager.io" "resource" "signers" "verb" "approve" "name" $signer) -}}
-{{- if and (eq $binding.kind "ClusterRoleBinding") (or $canApprove (and (or (has "cert-manager.io" $rule.apiGroups) (has "*" $rule.apiGroups)) (or (has "signers" $rule.resources) (has "*" $rule.resources)) (or (has "approve" $rule.verbs) (has "*" $rule.verbs)) (or (has (printf "%ss.cert-manager.io/*" (lower $issuer.kind)) $rule.resourceNames) (has (printf "%ss.cert-manager.io/%s" (lower $issuer.kind) $issuer.name) $rule.resourceNames)))) -}}
+{{- if eq $binding.kind "ClusterRoleBinding" -}}
+{{- range $signer := $signers -}}
+{{- if include "radius.authz.policyRuleMatches" (dict "rule" $rule "group" "cert-manager.io" "resource" "signers" "verb" "approve" "name" $signer) -}}
 {{- $exactAP := and (eq $subject.kind "ServiceAccount") (eq $subject.name $ap.name) (eq $subject.namespace $ap.namespace) -}}
 {{- $exactSPIFFE := and $isSPIFFE (eq $subject.kind "ServiceAccount") (eq $subject.name $spiffe.name) (eq $subject.namespace $spiffe.namespace) -}}
 {{- if and (ne $binding.roleRef.name "cluster-admin") (not (or $exactAP $exactSPIFFE)) -}}
@@ -358,6 +361,9 @@ policy even when both controllers and their RBAC are otherwise correct.
 {{- end -}}
 {{- if $isAP -}}{{- $_ := set $approverPermissions "signer" true -}}{{- end -}}
 {{- if $isSPIFFE -}}{{- $_ := set $spiffePermissions "signer" true -}}{{- end -}}
+{{- break -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- if and $isSPIFFE (eq $binding.kind "ClusterRoleBinding") -}}
 {{- range $permission := list
