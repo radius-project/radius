@@ -239,6 +239,24 @@ func TestCertificateTargetTransitionAndLease(t *testing.T) {
 	require.ErrorContains(t, unchangedCertificateSelection(options.RadiusReleaseValues, current), "mode changes")
 }
 
+func TestCertificateTargetResetValues(t *testing.T) {
+	options := NewDefaultClusterOptions()
+	options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true, "tls": map[string]any{"provider": "external"}}}}
+	selected := certificateTestChart(t)
+	impl := &Impl{}
+
+	target, _, err := impl.prepareCertificateTarget(t.Context(), options, selected, map[string]any{}, "context")
+	require.NoError(t, err)
+	require.Equal(t, "external", target.Provider, "omitted settings must survive an ordinary upgrade")
+
+	options.ResetValues = true
+	current := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}
+	target, _, err = impl.prepareCertificateTarget(t.Context(), options, selected, current, "context")
+	require.NoError(t, err)
+	require.Equal(t, "radius", target.Provider, "reset must use the selected chart's provider default")
+	require.Equal(t, false, nestedValue(target.Values, "global", "rbac", "dryRun"))
+}
+
 func TestCASecretLivePreflight(t *testing.T) {
 	for _, provider := range []string{"radius", "external"} {
 		for _, invalidInjector := range []bool{false, true} {
@@ -268,6 +286,7 @@ func TestCASecretLivePreflight(t *testing.T) {
 				selected := certificateTestChart(t)
 				target, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, kubeContext, false)
 				require.NoError(t, err)
+				require.ErrorContains(t, target.checkTransition(current), "maintaining global.rbac.certificates.mode=caSecret")
 				err = impl.checkIssuerPolicy(t.Context(), options, selected, nil, current, kubeContext, false)
 				if invalidInjector {
 					require.ErrorContains(t, err, "not an inspectable")

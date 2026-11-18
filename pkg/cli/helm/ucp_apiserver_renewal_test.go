@@ -470,6 +470,15 @@ func TestBYOPublicTrustUninstallAndChartReinstall(t *testing.T) {
 			_, err = f.renderChart(t)
 			require.ErrorContains(t, err, "differs from the selected CA")
 			require.ErrorContains(t, err, "use the lifecycle command")
+			rbac["certificates"] = map[string]any{"mode": "selfSigned"}
+			rbac["tls"] = map[string]any{"provider": "external"}
+			_, err = f.renderChart(t)
+			require.ErrorContains(t, err, "radius-apiserver-trust belongs to another certificate mode")
+			err = impl.stageUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, "radius", authz.ModeEnforce, authz.ModeEnforce, nil)
+			require.ErrorContains(t, err, "use the certificate lifecycle before switching to selfSigned")
+			for _, action := range client.Actions() {
+				require.Equal(t, "get", action.GetVerb())
+			}
 		})
 	}
 }

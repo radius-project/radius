@@ -144,6 +144,17 @@ func (c *stageCluster) requireOffAPIService(t *testing.T) {
 func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 	shortenUCPAPIServiceWait(t)
 
+	t.Run("populate an uninjected APIService", func(t *testing.T) {
+		c := newOffAfterOnCluster(t)
+		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, ucpAPIService("", "True", "Passed"), ""))
+		live, found, err := readUCPAPIServiceCABundle(t.Context(), c.dynamic)
+		require.NoError(t, err)
+		require.False(t, found)
+		require.Empty(t, live)
+		require.NoError(t, c.impl(nil, "").ReconcileUCPOffAPIServerTrust(t.Context(), "test", RadiusSystemNamespace))
+		c.requireOffTrust(t)
+	})
+
 	for _, plainHelm := range []bool{false, true} {
 		t.Run(fmt.Sprintf("removes the trust authorization on left, then changes nothing (plain Helm trust Secret %t)", plainHelm), func(t *testing.T) {
 			c := newOffAfterOnCluster(t)

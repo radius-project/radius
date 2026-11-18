@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v4/pkg/action"
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/release"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
@@ -118,6 +119,8 @@ func sarClient(allowed map[string]bool, reviews *[]authorizationv1.SubjectAccess
 	})
 	return client
 }
+
+const admissionPolicyAPI = "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy"
 
 // withValidatingAdmissionPolicyAPI makes client's discovery serve ValidatingAdmissionPolicy, as Kubernetes 1.30 and
 // later do.
@@ -463,6 +466,17 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 				Return(&releasev1.Release{}, nil)
 		}
 	}
+	external := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true, "tls": map[string]any{"provider": "external"}}}}
+	externalObjects := []runtime.Object{
+		certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "custom"),
+		csiDriver(SPIFFECSIDriverNameDefault, nil),
+	}
+	unrestricted := map[string]bool{
+		radiusCAIssuerSignerName(RadiusSystemNamespace):                    true,
+		issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+		issuerSignerName(RadiusSystemNamespace, RadiusAPIServerIssuerName): true,
+	}
+	noHelm := func(*testing.T, *MockHelmClient) {}
 	approver := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
 	disabledApprover := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
 	disabledApprover.Spec.Template.Spec.Containers[0].Args = []string{"--controllers=*,-certificaterequests-approver"}
@@ -483,6 +497,28 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 		wantRequesters []string
 	}{
 		{name: "mode off makes no calls", expect: func(*testing.T, *MockHelmClient) {}},
+		{
+			name:    "external install discovers requesters without managing CSI",
+			setArgs: []string{"global.rbac.dryRun=true", "global.rbac.tls.provider=external"},
+			objects: externalObjects, allowed: unrestricted, expect: noHelm, wantClient: true,
+			wantRequesters: []string{"system:serviceaccount:security:custom"},
+		},
+		{
+			name:   "stored external upgrade discovers requesters without managing CSI",
+			stored: external, upgrade: true, objects: externalObjects, allowed: unrestricted, expect: noHelm, wantClient: true,
+			wantRequesters: []string{"system:serviceaccount:security:custom"},
+		},
+		{
+			name:   "current radius provider supersedes stored external",
+			stored: external, setArgs: []string{"global.rbac.tls.provider=radius"},
+			expect: expectInstall(wantValues), wantClient: true,
+		},
+		{
+			name:     "external still requires admission API",
+			setArgs:  []string{"global.rbac.dryRun=true", "global.rbac.tls.provider=external"},
+			noVAPAPI: true, expect: func(*testing.T, *MockHelmClient) {}, wantClient: true,
+			wantErr: "does not serve ValidatingAdmissionPolicy",
+		},
 		{
 			name:       "installs when absent",
 			setArgs:    dryRun,
@@ -555,12 +591,10 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			wantErr:    "Limit the default approver to other signers",
 		},
 		{
-			name:     "cluster without ValidatingAdmissionPolicy fails before installing",
-			setArgs:  dryRun,
-			noVAPAPI: true,
-			expect: func(_ *testing.T, m *MockHelmClient) {
-				expectGet(nil)(m)
-			},
+			name:       "cluster without ValidatingAdmissionPolicy fails before installing",
+			setArgs:    dryRun,
+			noVAPAPI:   true,
+			expect:     func(_ *testing.T, m *MockHelmClient) { expectGet(nil)(m) },
 			wantClient: true,
 			wantErr:    "Radius stopped before changing the cluster because the cluster does not serve ValidatingAdmissionPolicy (admissionregistration.k8s.io/v1).",
 		},
@@ -669,7 +703,11 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
 			var requesters []string
-			plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", tt.stored)
+			current, err := parseUserValuesFromCLI(&options.Radius)
+			require.NoError(t, err)
+			values := valuesutil.CoalesceTables(current, copyValues(tt.stored))
+			provider := stringValue(nestedValue(values, "global", "rbac", "tls", "provider"))
+			plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", values, provider, certificateMode(values))
 			if err == nil {
 				requesters, err = impl.applyCSIDriverSPIFFE(t.Context(), plan, "test-context", tt.upgrade)
 			}
@@ -697,14 +735,13 @@ func Test_planSelectedCSIDriverSPIFFE(t *testing.T) {
 	for _, provider := range []string{"radius", "external"} {
 		for _, mode := range []string{"selfSigned", "caSecret", "issuerRef"} {
 			t.Run(provider+"/"+mode, func(t *testing.T) {
-				wantPlan := provider == "radius" && mode != "issuerRef"
+				managed := provider == "radius" && mode != "issuerRef"
 				client := withValidatingAdmissionPolicyAPI(k8sfake.NewClientset())
 				mockHelm := NewMockHelmClient(gomock.NewController(t))
-				if wantPlan {
+				if managed {
 					mockHelm.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 				}
 				impl := &Impl{Helm: mockHelm, newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
-					require.True(t, wantPlan, "operator-managed or external CSI must remain untouched")
 					return client, nil
 				}}
 				selected := certificateIssuerReference{Group: "cert-manager.io", Kind: "Issuer", Name: "selected-internal"}
@@ -717,9 +754,10 @@ func Test_planSelectedCSIDriverSPIFFE(t *testing.T) {
 				}
 				plan, err := impl.planSelectedCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "context", target)
 				require.NoError(t, err)
-				if !wantPlan {
-					require.Nil(t, plan)
-					require.Empty(t, client.Actions())
+				require.NotNil(t, plan)
+				if !managed {
+					require.Nil(t, plan.values)
+					require.False(t, plan.manageDriver)
 					return
 				}
 				require.Equal(t, "selected-internal", nestedValue(plan.values, "app", "issuer", "name"))
@@ -742,10 +780,104 @@ func Test_planCSIDriverSPIFFE_ClientError(t *testing.T) {
 		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return nil, errors.New("no kubeconfig") },
 	}
 	options := NewDefaultClusterOptions()
-	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-	plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", nil)
+	values := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+	plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", values, "radius", "selfSigned")
 	require.EqualError(t, err, "failed to create Kubernetes clients: no kubeconfig")
 	require.Nil(t, plan)
+}
+
+func TestExternalCertificatePrerequisites(t *testing.T) {
+	for _, command := range []string{"install", "upgrade"} {
+		for _, served := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/VAP=%t", command, served), func(t *testing.T) {
+				controller := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "custom")
+				kube := sarClient(map[string]bool{radiusCAIssuerSignerName(RadiusSystemNamespace): true}, nil, controller, csiDriver(SPIFFECSIDriverNameDefault, nil))
+				if !served {
+					kube.Resources = nil
+				}
+				m := NewMockHelmClient(gomock.NewController(t))
+				selected := certificateTestChart(t)
+				setValue(selected.Values, "external", "global", "rbac", "tls", "provider")
+				m.EXPECT().LoadChart(gomock.Any()).Return(selected, nil)
+				impl := withoutUCPAPIService(&Impl{
+					Helm:                     m,
+					newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return kube, nil },
+					newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+						k, ext := fakeCertManagerCluster{crd: true, controller: controller}.clients()
+						return k, ext, nil
+					},
+				})
+				options := NewDefaultClusterOptions()
+				options.Contour.Disabled = true
+				options.Radius.ChartPath = "chart"
+				options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
+				if command == "upgrade" {
+					options.ResetValues = true
+					options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true, "tls": map[string]any{"provider": "radius"}}}}
+				}
+				stop := errors.New("stop at final Helm call")
+				if served {
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
+					requesters := gomock.Cond(func(v map[string]any) bool {
+						users, ok := nestedValue(v, "global", "rbac", "certManager", "requesters").([]any)
+						return ok && len(users) == 1 && users[0] == "system:serviceaccount:security:custom"
+					})
+					if command == "install" {
+						m.EXPECT().RunHelmGet(gomock.Any(), radiusReleaseName).Return(nil, driver.ErrReleaseNotFound)
+						m.EXPECT().RunHelmInstall(gomock.Any(), selected, requesters, radiusReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, nil).Return(nil, stop)
+					} else {
+						gomock.InOrder(
+							m.EXPECT().MigrateControllerStrategy(gomock.Any(), gomock.Any(), selected, requesters, radiusReleaseName, RadiusSystemNamespace, false).Return(nil),
+							m.EXPECT().RunHelmUpgrade(gomock.Any(), selected, requesters, radiusReleaseName, RadiusSystemNamespace, true, false, DefaultInstallTimeout).Return(nil, stop),
+						)
+					}
+				}
+				run := impl.InstallRadius
+				if command == "upgrade" {
+					run = impl.UpgradeRadius
+				}
+				err := run(t.Context(), options, "test-context")
+				if !served {
+					require.ErrorContains(t, err, "does not serve ValidatingAdmissionPolicy")
+				} else {
+					require.ErrorIs(t, err, stop)
+				}
+			})
+		}
+	}
+}
+
+// Ordinary commands reject issuerRef transitions. Exercise their common selected-target
+// seam directly, without installing cert-manager or relaxing that lifecycle guard.
+func TestIssuerRefCertificatePrerequisites(t *testing.T) {
+	for _, upgrade := range []bool{false, true} {
+		for _, provider := range []string{"external", "radius"} {
+			for _, served := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/upgrade=%t/VAP=%t", provider, upgrade, served), func(t *testing.T) {
+					controller := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "custom")
+					var reviews []authorizationv1.SubjectAccessReviewSpec
+					client := sarClient(nil, &reviews, controller, csiDriver(SPIFFECSIDriverNameDefault, nil))
+					if !served {
+						client.Resources = nil
+					}
+					impl := &Impl{Helm: NewMockHelmClient(gomock.NewController(t)), newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return client, nil }}
+					values := issuerReleaseValues(mustTestCA("issuer").pem)
+					target := &certificateTarget{Provider: provider, Mode: "issuerRef", Values: values}
+					plan, err := impl.planSelectedCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "test-context", target)
+					if !served {
+						require.ErrorContains(t, err, "does not serve ValidatingAdmissionPolicy")
+						return
+					}
+					require.NoError(t, err)
+					require.Nil(t, plan.values)
+					users, err := impl.applyCSIDriverSPIFFE(t.Context(), plan, "test-context", upgrade)
+					require.NoError(t, err)
+					require.Equal(t, []string{"system:serviceaccount:security:custom"}, users)
+					require.Empty(t, reviews, "issuerRef uses its connected policy verifier, not selfSigned signer checks")
+				})
+			}
+		}
+	}
 }
 
 func certManagerControllerWithServiceAccount(controller *appsv1.Deployment, serviceAccount string) *appsv1.Deployment {
@@ -1089,6 +1221,21 @@ func Test_RollbackDependencies_ReconcileCSIDriverSPIFFE(t *testing.T) {
 			target: nil,
 			expect: func(_ *testing.T, m *MockHelmClient) {
 			},
+		},
+		{
+			name:    "external revision does not reconcile a foreign driver",
+			target:  rbac(map[string]any{"enabled": true, "tls": map[string]any{"provider": "external"}}),
+			objects: []runtime.Object{csiDriver(SPIFFECSIDriverNameDefault, nil)},
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil)
+				m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil)
+			},
+		},
+		{
+			name:    "issuerRef revision requires lifecycle before dependency writes",
+			target:  rbac(map[string]any{"enabled": true, "certificates": map[string]any{"mode": "issuerRef"}}),
+			expect:  func(*testing.T, *MockHelmClient) {},
+			wantErr: "mode=issuerRef requires the certificate lifecycle",
 		},
 		{
 			name:    "foreign driver stops before rolling back",

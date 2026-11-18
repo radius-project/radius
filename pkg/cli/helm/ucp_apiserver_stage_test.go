@@ -231,7 +231,7 @@ func (c *stageCluster) impl(client HelmClient, certManagerControllerSA string) *
 	return &Impl{
 		Helm:           client,
 		logger:         func(string, ...any) {},
-		contourCluster: &fakeContourCluster{},
+		contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
 		newRotationStore: func(string, string) (*rotationStore, error) {
 			return &rotationStore{kube: c.kube, dynamic: c.dynamic, namespace: RadiusSystemNamespace, release: radiusReleaseName, now: time.Now}, nil
 		},
@@ -319,7 +319,7 @@ func loadStageTestChart(t *testing.T) *chart.Chart {
 // renderStageTestManifest renders the Radius chart with values as a fresh install does.
 func renderStageTestManifest(t *testing.T, values map[string]any) string {
 	t.Helper()
-	install := helm.NewInstall(newTestRenderConfiguration(nil))
+	install := helm.NewInstall(newTestRenderConfiguration(capabilitiesWith(admissionPolicyAPI)))
 	install.DryRunStrategy = helm.DryRunServer
 	install.ReleaseName = "radius"
 	install.Namespace = RadiusSystemNamespace
@@ -565,7 +565,7 @@ func newStageUpgrade(t *testing.T, deployed map[string]any, command string) *sta
 		configuration: &helm.Configuration{
 			Releases:     storage.Init(driver.NewMemory()),
 			KubeClient:   &kubefakehelm.PrintingKubeClient{Out: io.Discard},
-			Capabilities: common.DefaultCapabilities,
+			Capabilities: capabilitiesWith(admissionPolicyAPI),
 		},
 		helmClient: NewHelmClient(),
 		command:    command,
@@ -705,6 +705,14 @@ func Test_UpgradeRadius_RequiresIndependentPublicSource(t *testing.T) {
 		c.requireNotStaged(t)
 	})
 
+	t.Run("retry before first injection", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		u := newStageUpgrade(t, authzOnValues, "install --reinstall")
+		c := newStageCluster(t, ucpAPIService("", "", ""), true)
+		client := u.mock(t, 0, func() { t.Fatal("missing observation must stop Helm") })
+		require.ErrorIs(t, u.run(t, c.impl(client, "cert-manager"), nil), errCertificateObserverUnavailable)
+		c.requireNotStaged(t)
+	})
 }
 
 // Without --reinstall, rad install leaves an installed release unchanged, so the authorization mode in the values it

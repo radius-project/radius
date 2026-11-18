@@ -100,6 +100,10 @@ func (s *Service) configureAggregationServing(server *http.Server) (*mtls.Source
 	server.TLSConfig = source.ServingConfig(server.TLSConfig)
 	source.GuardServingGeneration(server)
 	s.aggregationSource = source
+	return source, s.configureAggregationIdentity(server)
+}
+
+func (s *Service) configureAggregationIdentity(server *http.Server) error {
 	podUID := s.aggregationPodUID
 	if podUID == "" && os.Getenv("UCP_MTLS_STARTUP_PROOF_ENABLED") == "true" {
 		// Preserve the original managed rotation header until chart integration
@@ -107,11 +111,11 @@ func (s *Service) configureAggregationServing(server *http.Server) (*mtls.Source
 		podUID = os.Getenv("UCP_MTLS_POD_UID")
 		id, err := uuid.Parse(podUID)
 		if err != nil || id == uuid.Nil || id.String() != podUID {
-			return nil, errors.New("aggregation rotation evidence requires a canonical pod UID")
+			return errors.New("aggregation rotation evidence requires a canonical pod UID")
 		}
 	}
 	if podUID != "" {
 		server.Handler = withAggregationPodUID(server.Handler, podUID)
 	}
-	return source, nil
+	return nil
 }

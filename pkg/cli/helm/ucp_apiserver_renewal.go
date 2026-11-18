@@ -98,11 +98,14 @@ func retainedUCPAPIServerTrust(ctx context.Context, client kubernetes.Interface,
 	if err != nil {
 		return nil, fmt.Errorf("read retained aggregation trust: %w", err)
 	}
-	if _, recorded := secret.Annotations["radius.io/certificate-mode"]; !recorded {
+	mode, recorded := secret.Annotations["radius.io/certificate-mode"]
+	if !recorded {
 		return nil, nil
 	}
-	if secret.Annotations["radius.io/certificate-mode"] != "selfSigned" ||
-		secret.Type != corev1.SecretTypeOpaque ||
+	if mode != "selfSigned" {
+		return nil, fmt.Errorf("retained aggregation trust Secret %s/%s records certificate mode %q; preserve it and use the certificate lifecycle before switching to selfSigned", namespace, secret.Name, mode)
+	}
+	if secret.Type != corev1.SecretTypeOpaque ||
 		secret.Labels["app.kubernetes.io/managed-by"] != "Helm" ||
 		secret.Annotations["helm.sh/resource-policy"] != "keep" ||
 		secret.Annotations["meta.helm.sh/release-name"] == "" ||

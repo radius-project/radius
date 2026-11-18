@@ -260,10 +260,17 @@ func (s *Service) listenAndServe(ctx context.Context, service *http.Server) erro
 		return service.ListenAndServeTLS(dir+"/"+mtls.CertFile, dir+"/"+mtls.KeyFile)
 	}
 
-	if s.aggregationSource == nil {
-		if _, err := s.configureAggregationServing(service); err != nil {
-			return err
-		}
+	// Only the serving key pair rotates here. The authenticator owns client trust.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	config, source, err := mtls.NewServingConfig(ctx, dir, service.TLSConfig)
+	if err != nil {
+		return fmt.Errorf("failed to initialize aggregation serving certificate: %w", err)
+	}
+	service.TLSConfig = config
+	source.GuardServingGeneration(service)
+	if err := s.configureAggregationIdentity(service); err != nil {
+		return err
 	}
 	return service.ListenAndServeTLS("", "")
 }
@@ -282,15 +289,6 @@ func (s *Service) Run(ctx context.Context) error {
 
 	internalErr := make(chan error, 1)
 	if s.options.Config.Authorization.EffectiveMode() != authz.ModeOff {
-		source, err := s.configureAggregationServing(service)
-		if err != nil {
-			return err
-		}
-		if source != nil {
-			sourceCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			go source.Start(sourceCtx, mtls.DefaultPollInterval)
-		}
 		if s.options.Config.Server.InternalPort == 0 {
 			return errors.New("server.internalPort is required when the authorization mode is not off")
 		}

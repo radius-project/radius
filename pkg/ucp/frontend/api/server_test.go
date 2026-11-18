@@ -461,6 +461,7 @@ func Test_listenAndServe_ServesCertificateFromDirectory(t *testing.T) {
 		t.Run(string(mode), func(t *testing.T) {
 			dir := t.TempDir()
 			leaf := writeServingCert(t, dir)
+			require.NoError(t, os.Remove(filepath.Join(dir, "ca.crt"))) // Only the serving key pair is required.
 
 			addr := "127.0.0.1:" + strconv.Itoa(freePort(t))
 			server := &http.Server{Addr: addr, Handler: http.NotFoundHandler(), ReadHeaderTimeout: time.Second}

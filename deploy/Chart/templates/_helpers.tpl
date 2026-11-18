@@ -184,9 +184,11 @@ off
 
 {{/* Explicit compatible-engine gate; retired enabled settings must never become Off. */}}
 {{- define "radius.de.internalAuth.enabled" -}}
-{{- $legacy := .Values.de.ucpMTLS | default dict -}}
+{{- range $gate := list "ucpMTLS" "externalIdentity" -}}
+{{- $legacy := index $.Values.de $gate | default dict -}}
 {{- if $legacy.enabled -}}
-{{- fail "de.ucpMTLS.enabled is retired; select a token-capable engine image and migrate explicitly to de.internalAuth.enabled" -}}
+{{- fail (printf "de.%s.enabled is retired; select a token-capable engine image and migrate explicitly to de.internalAuth.enabled" $gate) -}}
+{{- end -}}
 {{- end -}}
 {{- $settings := .Values.de.internalAuth | default dict -}}
 {{- $enabled := false -}}
@@ -200,6 +202,15 @@ off
 {{- fail "de.internalAuth.enabled requires global.rbac.dryRun=true or global.rbac.enabled=true" -}}
 {{- end -}}
 {{- $enabled -}}
+{{- end -}}
+
+{{/*
+Non-off authorization relies on both admission policies being installed.
+*/}}
+{{- define "radius.authz.requireAdmissionPolicyAPI" -}}
+{{- if not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") -}}
+{{- fail "Radius authorization requires admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy (Kubernetes 1.30 or later). Upgrade the cluster or install with authorization off." -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
