@@ -40,8 +40,26 @@ func BearerToken(r *http.Request) (string, error) {
 	}
 	// RFC 6750 section 2.1 allows one or more ASCII spaces after the scheme.
 	token = strings.TrimLeft(token, " ")
-	if token == "" || strings.ContainsAny(token, " \t") {
+	if !isB64Token(token) {
 		return "", invalid("malformed bearer token", nil)
 	}
 	return token, nil
+}
+
+// isB64Token reports whether s matches RFC 6750's
+// b64token = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"=".
+func isB64Token(s string) bool {
+	body := strings.TrimRight(s, "=")
+	if body == "" {
+		return false
+	}
+	for _, c := range []byte(body) {
+		switch {
+		case 'a' <= c && c <= 'z', 'A' <= c && c <= 'Z', '0' <= c && c <= '9':
+		case c == '-', c == '.', c == '_', c == '~', c == '+', c == '/':
+		default:
+			return false
+		}
+	}
+	return true
 }
