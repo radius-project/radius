@@ -344,6 +344,15 @@ func Test_ensureCertManager(t *testing.T) {
 	// An older rad installed cert-manager with only the CRD values, so its default approver may approve every Issuer.
 	radOwnedUnconfigured := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: radOwned.Chart, Config: map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}}
 	healthy := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}
+	withSigners := func(extra ...any) *releasev1.Release {
+		rel := *radOwned
+		values := buildCertManagerValues(RadiusSystemNamespace)
+		values["approveSignerNames"] = append(values["approveSignerNames"].([]any), extra...)
+		rel.Config = values
+		return &rel
+	}
+	userSigner := "issuers.cert-manager.io/apps.app-issuer"
+	radOwnedUserSigner := withSigners(userSigner)
 	userOwned := &releasev1.Release{Name: certManagerReleaseName}
 
 	expectGet := func(rel *releasev1.Release) func(*MockHelmClient) {
@@ -442,6 +451,49 @@ func Test_ensureCertManager(t *testing.T) {
 				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
 					Return(&releasev1.Release{}, nil)
 			},
+		},
+		{
+			name:    "rad-owned release upgrade keeps the user's signers",
+			stored:  storedDryRun,
+			upgrade: true,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(radOwnedUserSigner)(m)
+				expectPull(t, m)
+				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), radOwnedUserSigner.Config, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
+					Return(&releasev1.Release{}, nil)
+			},
+		},
+		{
+			name:    "rad-owned release with the user's signers is reused on install",
+			setArgs: dryRun,
+			cluster: healthy,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(radOwnedUserSigner)(m)
+			},
+			wantDetect: true,
+		},
+		{
+			name:    "rad-owned release approving every Issuer fails before changing cert-manager",
+			stored:  storedDryRun,
+			upgrade: true,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(withSigners(userSigner, "issuers.cert-manager.io/*"))(m)
+			},
+			wantErrParts: []string{
+				"Radius stopped before changing the cluster",
+				"lets its default approver approve issuers.cert-manager.io/*",
+				"-n cert-manager upgrade cert-manager cert-manager --repo",
+				"approveSignerNames={" + strings.Join(certManagerApproveSignerNames(RadiusSystemNamespace), ",") + "," + userSigner + "}",
+			},
+		},
+		{
+			name:    "rad-owned release approving the Radius CA issuer fails on install",
+			setArgs: dryRun,
+			cluster: healthy,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				expectGet(withSigners(radiusCAIssuerSignerName(RadiusSystemNamespace)))(m)
+			},
+			wantErrParts: []string{"lets its default approver approve " + radiusCAIssuerSignerName(RadiusSystemNamespace)},
 		},
 		{
 			name:    "rad-owned release is reused on install",
