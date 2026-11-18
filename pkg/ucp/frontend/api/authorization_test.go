@@ -249,7 +249,12 @@ func TestServiceDryRunRequests(t *testing.T) {
 	require.NotContains(t, string(encodedLogs), "probe=unchanged")
 	code, _, body = call(http.MethodPost, deployment.String()+"/write-policy?api-version=2025-01-01", "bob", protectedDeploymentBody)
 	require.Equal(t, http.StatusServiceUnavailable, code, body)
-	require.Equal(t, http.StatusUnauthorized, <-policyAttempts)
+	select {
+	case status := <-policyAttempts:
+		require.Equal(t, http.StatusUnauthorized, status)
+	default:
+		t.Fatal("deployment fixture did not attempt the protected policy request")
+	}
 	require.Equal(t, int32(4), downstreamCalls.Load())
 	logs.TakeAll()
 	code, _, body = call(http.MethodGet, group+"/providers/Example.Test/widgets/a?api-version=2025-01-01", "bob", "")
