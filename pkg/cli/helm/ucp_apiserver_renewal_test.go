@@ -521,17 +521,55 @@ func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
 					case "flags":
 						values, parseErr := parseUserValuesFromCLI(&options.Radius)
 						require.NoError(t, parseErr)
-						_, err = resolveRadiusAuthTransition(t.Context(), chart, RadiusSystemNamespace, "radius", values, nil, false, authz.ModeOff)
+						_, err = resolveRadiusActionTarget(t.Context(), chart, RadiusSystemNamespace, "radius", values, nil, false, authz.ModeOff, nil)
 					case "stored":
-						_, err = resolveRadiusAuthTransition(t.Context(), chart, RadiusSystemNamespace, "radius", nil, target, false, authz.ModeOff)
+						_, err = resolveRadiusActionTarget(t.Context(), chart, RadiusSystemNamespace, "radius", nil, target, false, authz.ModeOff, nil)
 					case "rollback":
 						history := []*releasev1.Release{{Version: 1, Chart: chart, Config: target}, {Version: 2, Chart: chart}}
 						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
 					}
+
 					require.ErrorContains(t, err, "requires the certificate lifecycle")
 					require.ErrorContains(t, err, "mode="+mode)
 				})
 			}
 		}
+	}
+}
+
+func TestRollbackCertificateModeBeforeStaging(t *testing.T) {
+	for _, tt := range []struct {
+		name, chartMode, override, refusedMode string
+	}{
+		{"chart CA secret", "caSecret", "", "caSecret"},
+		{"chart issuer reference", "issuerRef", "", "issuerRef"},
+		{"saved issuer overrides CA secret", "caSecret", "issuerRef", "issuerRef"},
+		{"saved self-signed overrides CA secret", "caSecret", "selfSigned", ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			target := loadStageTestChart(t)
+			target.Values["global"].(map[string]any)["rbac"].(map[string]any)["certificates"] = map[string]any{"mode": tt.chartMode}
+			rbac := map[string]any{"enabled": true}
+			if tt.override != "" {
+				rbac["certificates"] = map[string]any{"mode": tt.override}
+			}
+			history := []*releasev1.Release{
+				{Version: 1, Chart: target, Config: map[string]any{"global": map[string]any{"rbac": rbac}}},
+				{Version: 2, Chart: loadStageTestChart(t)},
+			}
+			called := false
+			impl := &Impl{newUCPAPIServerTrustClient: func(string) (kubernetes.Interface, error) {
+				called = true
+				return nil, fmt.Errorf("stage attempted trust client")
+			}}
+			err := impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
+			if tt.refusedMode == "" {
+				require.True(t, called)
+				require.ErrorContains(t, err, "stage attempted trust client")
+				return
+			}
+			require.ErrorContains(t, err, "mode="+tt.refusedMode+" requires the certificate lifecycle")
+			require.False(t, called)
+		})
 	}
 }

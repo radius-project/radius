@@ -1080,6 +1080,7 @@ func recordHelmCalls(t *testing.T, options ClusterOptions, upgrade bool) []strin
 	})
 	if upgrade {
 		expectRadiusBaseline(t, client, options)
+		expectRadiusPlanningReads(impl, client, newTestContourChart(), nil, false, true)
 		require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
 	} else {
 		require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))

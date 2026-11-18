@@ -386,7 +386,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	target, certificates, err := i.prepareOrdinaryCertificates(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil)
+	var planRender renderRadiusManifest
+	if clusterOptions.Radius.Reinstall {
+		planRender = i.renderRadiusInstallRelease(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions).manifest(true)
+	}
+	target, certificates, err := i.prepareOrdinaryCertificates(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil, planRender)
 	if err != nil {
 		return err
 	}
@@ -620,7 +624,8 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	target, certificates, err := i.prepareOrdinaryCertificates(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, true)
+	planRender := i.renderRadiusUpgradeRelease(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
+	target, certificates, err := i.prepareOrdinaryCertificates(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, true, planRender.manifest(true))
 	if err != nil {
 		return err
 	}
@@ -953,7 +958,7 @@ func (i *Impl) reconcileRollbackDependencies(ctx context.Context, kubeContext st
 	if targetRelease.Name != "" {
 		options.Radius.ReleaseName = targetRelease.Name
 	}
-	values, settings, err := resolveEffectiveChartValues(targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, false)
+	values, settings, err := resolveEffectiveChartValues(targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, selectedAuthSettings)
 	if err != nil {
 		return err
 	}
@@ -974,10 +979,19 @@ func (i *Impl) reconcileRollbackDependencies(ctx context.Context, kubeContext st
 			return err
 		}
 	} else {
-		target, err = resolveRadiusAuthTarget(ctx, targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, false)
+		_, current, err := rollbackChartValues(history, latestRevision(history))
 		if err != nil {
 			return err
 		}
+		render := func(ctx context.Context) (string, bool, error) {
+			manifest, err := i.renderCertificateManifest(ctx, options, targetRelease.Chart, targetRelease.Config, kubeContext, history, revision)
+			return manifest, err == nil, err
+		}
+		actionTarget, err := resolveRadiusActionTarget(ctx, targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, false, current.mode, render)
+		if err != nil {
+			return err
+		}
+		target = actionTarget
 	}
 	spiffe, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, target)
 	if err != nil {

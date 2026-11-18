@@ -906,7 +906,7 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 				// staging/convergence is paired lifecycle work, not mocked issuance.
 				selectedChart, configuration, current, prepareErr := prepareRadiusChart(t.Context(), NewHelmAction(client), options.Radius, kubeContext)
 				require.NoError(t, prepareErr)
-				_, _, err = impl.prepareOrdinaryCertificates(t.Context(), options, selectedChart, configuration, current, kubeContext, !install)
+				_, _, err = impl.prepareOrdinaryCertificates(t.Context(), options, selectedChart, configuration, current, kubeContext, !install, nil)
 			} else {
 				switch scenario.operation {
 				case "install", "old chart", "reinstall", "switch-on":

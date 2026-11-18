@@ -107,7 +107,7 @@ func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOpti
 	if plan != nil && plan.secret != nil {
 		plan.requiresLease = options.RadiusInstalled || options.RadiusReleaseValues != nil
 	}
-	effective, settings, err := resolveEffectiveChartValues(selected, options.Radius.Namespace, options.Radius.ReleaseName, current, options.RadiusReleaseValues, options.ResetValues)
+	effective, settings, err := selectedCertificateValues(options, selected, current)
 	if err != nil {
 		return nil, nil, err
 	}

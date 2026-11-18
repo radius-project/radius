@@ -423,7 +423,7 @@ func (i *Impl) prepareCertificateSelection(ctx context.Context, options ClusterO
 		}
 		return nil, nil
 	}
-	_, authSettings, err := resolveEffectiveChartValues(selected, options.Radius.Namespace, options.Radius.ReleaseName, merged, nil, false)
+	_, authSettings, err := resolveEffectiveChartValues(selected, options.Radius.Namespace, options.Radius.ReleaseName, merged, nil, selectedAuthSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -587,7 +587,7 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 	return i.renderCertificatePolicy(ctx, options, selected, current, kubeContext, history)
 }
 
-func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, error) {
+func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool, render renderRadiusManifest) (*certificateTarget, *certificatePlan, error) {
 	var history []*releasev1.Release
 	var deployed map[string]any
 	mode := authz.ModeOff
@@ -608,7 +608,7 @@ func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterO
 		}
 		deployed, mode = values, settings.mode
 	}
-	effective, settings, err := resolveEffectiveChartValues(selected, options.Radius.Namespace, options.Radius.ReleaseName, current, options.RadiusReleaseValues, options.ResetValues)
+	effective, settings, err := selectedCertificateValues(options, selected, current)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -652,7 +652,7 @@ func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterO
 			return nil, nil, err
 		}
 	} else if target.Mode == "selfSigned" {
-		target.radiusAuthTarget, err = resolveRadiusAuthTarget(ctx, selected, options.Radius.Namespace, options.Radius.ReleaseName, current, options.RadiusReleaseValues, options.ResetValues)
+		target.radiusAuthTarget, err = resolveRadiusActionTarget(ctx, selected, options.Radius.Namespace, options.Radius.ReleaseName, current, options.RadiusReleaseValues, options.ResetValues, mode, render)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -660,9 +660,17 @@ func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterO
 	return target, plan, nil
 }
 
+func selectedCertificateValues(options ClusterOptions, selected *chart.Chart, current map[string]any) (map[string]any, chartAuthSettings, error) {
+	stored := options.RadiusReleaseValues
+	if options.ResetValues {
+		stored = nil
+	}
+	return resolveEffectiveChartValues(selected, options.Radius.Namespace, options.Radius.ReleaseName, current, stored, selectedAuthSettings)
+}
+
 // installedAuthzSettings always uses the deployed chart, even when resetting the target.
 func installedAuthzSettings(options ClusterOptions) (map[string]any, chartAuthSettings, error) {
-	return resolveEffectiveChartValues(options.RadiusReleaseChart, options.Radius.Namespace, options.Radius.ReleaseName, options.RadiusReleaseValues, nil, false)
+	return resolveEffectiveChartValues(options.RadiusReleaseChart, options.Radius.Namespace, options.Radius.ReleaseName, options.RadiusReleaseValues, nil, historicalAuthSettings)
 }
 
 // renderCertificatePolicy proves the chosen target against live chart policy and a
@@ -677,7 +685,7 @@ func (i *Impl) renderCertificatePolicy(ctx context.Context, options ClusterOptio
 	if err != nil {
 		return fmt.Errorf("live issuer-policy verification failed; provision the Radius namespace and supported operator-managed issuer, controllers, admission, policies and RBAC before retrying: %w", err)
 	}
-	_, settings, err := resolveEffectiveChartValues(selected, options.Radius.Namespace, options.Radius.ReleaseName, current, options.RadiusReleaseValues, options.ResetValues)
+	_, settings, err := selectedCertificateValues(options, selected, current)
 	if err != nil {
 		return err
 	}
@@ -730,7 +738,9 @@ func (i *Impl) renderCertificateManifest(ctx context.Context, options ClusterOpt
 	if err != nil {
 		return "", err
 	}
-	return rendered.Manifest, nil
+	render := renderRadiusRelease(func(context.Context) (*releasev1.Release, error) { return rendered, nil })
+	manifest, _, err := render.manifest(rollbackRevision == 0)(ctx)
+	return manifest, err
 }
 
 func certificatePolicyBaseline(options ClusterOptions, history []*releasev1.Release) (*releasev1.Release, error) {
@@ -824,7 +834,8 @@ func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptio
 	if err != nil {
 		return err
 	}
-	target, _, err := i.prepareOrdinaryCertificates(ctx, options, chart, configuration, current, kubeContext, true)
+	render := i.renderRadiusUpgradeRelease(kubeContext, configuration, chart, current, options.Radius.ReleaseName, options.Radius.Namespace, !options.ResetValues)
+	target, _, err := i.prepareOrdinaryCertificates(ctx, options, chart, configuration, current, kubeContext, true, render.manifest(true))
 	if err != nil {
 		return err
 	}
