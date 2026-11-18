@@ -119,6 +119,8 @@ func sarClient(allowed map[string]bool, reviews *[]authorizationv1.SubjectAccess
 	return client
 }
 
+const admissionPolicyAPI = "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy"
+
 // withValidatingAdmissionPolicyAPI makes client's discovery serve ValidatingAdmissionPolicy, as Kubernetes 1.30 and
 // later do.
 func withValidatingAdmissionPolicyAPI(client *k8sfake.Clientset) *k8sfake.Clientset {

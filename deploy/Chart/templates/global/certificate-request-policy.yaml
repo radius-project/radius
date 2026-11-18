@@ -8,7 +8,8 @@ UCP APIService.
 Denies in dryRun and enforce: legitimate requests never match a rule.
 */ -}}
 {{- $mode := include "radius.authz.mode" . -}}
-{{- if and (ne $mode "off") (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") }}
+{{- if ne $mode "off" }}
+{{- include "radius.authz.requireAdmissionPolicyAPI" . }}
 {{- $name := "radius-certificate-issuance" }}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
