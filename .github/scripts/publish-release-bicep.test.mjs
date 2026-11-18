@@ -822,7 +822,7 @@ test(
       await mkdir(restore);
       await mkdir(join(restore, "docker"));
       await writeFile(join(restore, "docker/config.json"), "{}");
-      // Private transport fixture: preserve canonical bytes at the consumer destination.
+      // Compatibility copies remain required after the consumer moves to GHCR.
       const mirror = `${registry}/release-mirror:${target.version}`;
       await tool([
         "oras",
@@ -845,16 +845,19 @@ test(
         source.commit,
         target.version
       );
+      assert.equal(imageConfig.experimentalFeaturesEnabled.ociEnabled, true);
+      assert.equal(
+        imageConfig.extensions.radius,
+        `br:ghcr.io/radius-project/bicep-types-radius:${target.version}`
+      );
       imageConfig.extensions.radius = imageConfig.extensions.radius.replace(
-        "biceptypes.azurecr.io/radius",
-        `${registry}/release-mirror`
+        "ghcr.io/radius-project/bicep-types-radius",
+        `${registry}/release-radius`
       );
       await writeFile(
         join(restore, "bicepconfig.json"),
         JSON.stringify({
           ...imageConfig,
-          // The disposable generic registry needs OCI; the shipped ACR config does not.
-          experimentalFeaturesEnabled: { ociEnabled: true },
           cacheRootDirectory: join(restore, "cache")
         })
       );

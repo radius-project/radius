@@ -171,6 +171,8 @@ Keep the consumer cutover draft until all gates are satisfied:
 
 Keep ACR resources and the compatibility mirror. Remaining production ACR references in main/release publisher code are mirror destinations; release parity baselines, design inventories and historical release verification are intentionally retained. Private `TEST_BICEP_TYPES_REGISTRY`/`test/radius`, `testresources`, and unrelated recipe/image registries are not part of this cutover.
 
+Publishing and consumer configuration land separately. The publishing-only release layer keeps containers on verified full-version ACR mirrors for both contracts. This later consumer cutover changes only approved `ghcr-v1` container configs to GHCR with OCI enabled; legacy container configs remain on ACR. Immutable ACR staging before verification, same-lock anonymous mirror readback and final approval-gated alias promotion remain required after the consumer switch.
+
 The secure CI registry certificate already covers `localhost` and `radius-registry`. Native Bicep OCI publication treats loopback names as HTTP, so Bicep extension and recipe targets use `radius-registry:5000`; Docker/ORAS capture retains `localhost:5000`. The secure Kind action adds the registry's network address to CoreDNS because Docker's alias alone is not visible to pods; workloads retain the existing `global.rootCA.cert` trust mount. Exercise native `bicep publish-extension`, `rad bicep publish-extension`, restore/build and recipe publication with isolated certificates; JSON checks alone do not verify transport. A failed loopback publication does not imply loopback restore fails. Local generic OCI success is not proof that the public GHCR packages or AWS release artifacts exist.
 
 ## Verification
