@@ -41,6 +41,9 @@ const (
 	// maxIndexes is the most partition indexes a table can have.
 	maxIndexes = 3
 
+	// maxFailed is how many failed indexes a table keeps.
+	maxFailed = 10
+
 	// pageSize is how many indexes a GetPartitionIndexes page has. AWS doesn't document its page size.
 	pageSize = 2
 
@@ -94,6 +97,9 @@ type fakeAPI struct {
 	// deletes counts the DeletePartitionIndex calls that reached the fake.
 	deletes int
 
+	// failed are the failed indexes of each table, oldest first.
+	failed map[string][]string
+
 	// holdCreating keeps a new index CREATING, as for a table with many partitions.
 	holdCreating bool
 
@@ -104,7 +110,7 @@ type fakeAPI struct {
 var _ API = (*fakeAPI)(nil)
 
 func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
-	return &fakeAPI{store: store, status: map[string]types.PartitionIndexStatus{}, errs: map[string]error{}}
+	return &fakeAPI{store: store, status: map[string]types.PartitionIndexStatus{}, failed: map[string][]string{}, errs: map[string]error{}}
 }
 
 func fault(code string) error {
@@ -164,6 +170,19 @@ func (f *fakeAPI) statusOf(id string) types.PartitionIndexStatus {
 	return types.PartitionIndexStatusActive
 }
 
+// fail marks the index FAILED, and removes the oldest failed index of its table when the table has more than maxFailed.
+func (f *fakeAPI) fail(id string) {
+	f.status[id] = types.PartitionIndexStatusFailed
+	table := id[:strings.LastIndex(id, "|")]
+	f.failed[table] = append(f.failed[table], id)
+	if len(f.failed[table]) > maxFailed {
+		oldest := f.failed[table][0]
+		f.failed[table] = f.failed[table][1:]
+		delete(f.status, oldest)
+		f.store.Remove(partitionIndexType, oldest)
+	}
+}
+
 // reported moves the status of an index a read returned on: a create finishes, ACTIVE, or FAILED on a table with
 // encrypted partitions, and a delete removes the index. An index stays CREATING while holdCreating is set.
 func (f *fakeAPI) reported(id string, t table) {
@@ -172,7 +191,7 @@ func (f *fakeAPI) reported(id string, t table) {
 		switch {
 		case f.holdCreating:
 		case t.encrypted:
-			f.status[id] = types.PartitionIndexStatusFailed
+			f.fail(id)
 		default:
 			delete(f.status, id)
 		}

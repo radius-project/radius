@@ -184,7 +184,7 @@ func (h *ClusterEndpoint) properties(ctx context.Context, region string, e *type
 	if err != nil {
 		return nil, err
 	}
-	return awsapi.EncodeObject(map[string]any{
+	properties, err := awsapi.EncodeObject(map[string]any{
 		"DBClusterEndpointIdentifier":         e.DBClusterEndpointIdentifier,
 		"DBClusterIdentifier":                 e.DBClusterIdentifier,
 		"EndpointType":                        e.CustomEndpointType,
@@ -196,6 +196,17 @@ func (h *ClusterEndpoint) properties(ctx context.Context, region string, e *type
 		"Endpoint":                            e.Endpoint,
 		"Status":                              e.Status,
 	})
+	if err != nil {
+		return nil, err
+	}
+	// An endpoint always has both lists, so a template that sets one to [] matches AWS instead of sending a change,
+	// which would make the endpoint unusable until Neptune finishes it.
+	for _, name := range []string{"StaticMembers", "ExcludedMembers"} {
+		if _, ok := properties[name]; !ok {
+			properties[name] = []any{}
+		}
+	}
+	return properties, nil
 }
 
 // bothMembers is the failure for a template that sets StaticMembers and ExcludedMembers, which Neptune doesn't allow.
@@ -227,15 +238,43 @@ func (h *ClusterEndpoint) Create(ctx context.Context, request native.CreateReque
 			Outcome:     native.OutcomeRejected,
 		}
 	}
-	input := &neptune.CreateDBClusterEndpointInput{}
-	if err := awsapi.Decode(awsapi.Without(request.Properties, "Tags"), input); err != nil {
-		return "", err
+	// The input reads each property by its exact name, as the check above does, so a key in another case, which a
+	// case-insensitive decode would also take, can't send the create to another cluster.
+	input := &neptune.CreateDBClusterEndpointInput{
+		DBClusterEndpointIdentifier: aws.String(awsapi.String(request.Properties, "DBClusterEndpointIdentifier")),
+		DBClusterIdentifier:         aws.String(clusterID),
+		EndpointType:                aws.String(awsapi.String(request.Properties, "EndpointType")),
+		StaticMembers:               members(request.Properties, "StaticMembers"),
+		ExcludedMembers:             members(request.Properties, "ExcludedMembers"),
+		Tags:                        awsapi.SDKTags[types.Tag](awsapi.Tags(request.Properties)),
 	}
-	input.Tags = awsapi.SDKTags[types.Tag](awsapi.Tags(request.Properties))
 	if _, err := h.api.CreateDBClusterEndpoint(ctx, input, inRegion(request.Region)); err != nil {
-		return "", err
+		return "", lostCreate(err)
 	}
 	return h.Identifier(request.Properties)
+}
+
+// lostCreate returns err, unless it says the endpoint already exists. UCP reads AWS by the identifier before it creates
+// an endpoint, so that endpoint may be the one an earlier attempt of this create made, such as when the SDK retried a
+// call whose response was lost. The outcome is then unknown, so UCP keeps the record and the next deploy finds the
+// endpoint by its identifier, instead of dropping it and leaving an endpoint no record manages.
+func lostCreate(err error) error {
+	if !awsapi.HasCode(err, "DBClusterEndpointAlreadyExistsFault") {
+		return err
+	}
+	return &native.Failure{
+		Message:     "AWS already has a Neptune custom endpoint with the DBClusterEndpointIdentifier, which an earlier attempt of this deploy may have created. Deploy again to manage it, or choose another name: " + err.Error(),
+		ClientError: true,
+		Outcome:     native.OutcomeUnknown,
+	}
+}
+
+// members returns the member list name of properties, or nil when it has none, so a create leaves the list out.
+func members(properties map[string]any, name string) []string {
+	if list := awsapi.Strings(properties, name); len(list) > 0 {
+		return list
+	}
+	return nil
 }
 
 // Update changes the endpoint type and members with ModifyDBClusterEndpoint, then adds and removes tags. A change to

@@ -73,6 +73,9 @@ type fakeAPI struct {
 	mu     sync.Mutex
 	status map[string]string
 
+	// lastCreate is the input of the last CreateDBClusterEndpoint call.
+	lastCreate *neptune.CreateDBClusterEndpointInput
+
 	// busy are the clusters and instances that aren't available, by identifier.
 	busy map[string]bool
 
@@ -204,6 +207,7 @@ func (f *fakeAPI) CreateDBClusterEndpoint(ctx context.Context, in *neptune.Creat
 	if err := f.errs["CreateDBClusterEndpoint"]; err != nil {
 		return nil, err
 	}
+	f.lastCreate = in
 	id := strings.ToLower(aws.ToString(in.DBClusterEndpointIdentifier))
 	clusterID := strings.ToLower(aws.ToString(in.DBClusterIdentifier))
 	r := &rules{}
@@ -349,6 +353,7 @@ func (f *fakeAPI) ModifyDBClusterEndpoint(ctx context.Context, in *neptune.Modif
 	r := &rules{}
 	r.check(in.EndpointType == nil || slices.Contains(endpointTypes, aws.ToString(in.EndpointType)), "InvalidParameterValue")
 	r.check(f.status[id] == "", "InvalidDBClusterEndpointStateFault")
+	r.check(!f.busy[awsapi.String(props, "DBClusterIdentifier")], "InvalidDBClusterStateFault")
 	static, excluded := awsapi.Strings(props, "StaticMembers"), awsapi.Strings(props, "ExcludedMembers")
 	if in.StaticMembers != nil {
 		static = in.StaticMembers
@@ -389,6 +394,9 @@ func (f *fakeAPI) DeleteDBClusterEndpoint(ctx context.Context, in *neptune.Delet
 	}
 	if f.status[id] != "" {
 		return nil, fault("InvalidDBClusterEndpointStateFault")
+	}
+	if f.busy[awsapi.String(f.store.Resource(endpointType, id), "DBClusterIdentifier")] {
+		return nil, fault("InvalidDBClusterStateFault")
 	}
 	return &neptune.DeleteDBClusterEndpointOutput{}, f.change(func() error {
 		f.status[id] = "deleting"

@@ -18,6 +18,7 @@ package neptune
 
 import (
 	"context"
+	"encoding/json"
 	"maps"
 	"os"
 	"sync"
@@ -28,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
@@ -199,6 +201,29 @@ func Test_Create(t *testing.T) {
 
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(endpoint, map[string]any{"ExcludedMembers": []any{"graph-3"}})})
 	require.ErrorIs(t, err, bothMembers)
+
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(endpoint, map[string]any{"DBClusterEndpointIdentifier": "any", "StaticMembers": nil})})
+	require.NoError(t, err)
+	require.Nil(t, api.lastCreate.StaticMembers, "a create without members sends no member list")
+	require.Nil(t, api.lastCreate.ExcludedMembers)
+}
+
+// Test_CreateIgnoresOtherCaseKeys checks that a key in another case, such as dbClusterIdentifier, can't send the
+// create to another cluster than the one the product check read.
+func Test_CreateIgnoresOtherCaseKeys(t *testing.T) {
+	h, api := newHandler()
+	properties := with(endpoint, map[string]any{
+		"dbClusterIdentifier":         "aurora-app",
+		"dbClusterEndpointIdentifier": "other",
+		"staticMembers":               []any{"aurora-1"},
+	})
+	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	require.NoError(t, err)
+	require.Equal(t, "reads", id)
+	stored := api.store.Resource(endpointType, "reads")
+	require.Equal(t, "graph", stored["DBClusterIdentifier"])
+	require.Equal(t, []any{"graph-1", "graph-2"}, stored["StaticMembers"])
+	require.Nil(t, api.store.Resource(endpointType, "other"))
 }
 
 func Test_ReadOtherProduct(t *testing.T) {
@@ -368,7 +393,7 @@ func (e *emptyClusters) DeleteDBClusterEndpoint(ctx context.Context, in *neptune
 func Test_ErrorPaths(t *testing.T) {
 	h, api := newHandler()
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(endpoint, map[string]any{"EndpointType": 5})})
-	require.ErrorContains(t, err, "failed to read the properties", "a value of the wrong type isn't sent")
+	require.ErrorContains(t, err, "InvalidParameterValue", "a value of the wrong type isn't sent as the type")
 
 	api.errs["CreateDBClusterEndpoint"] = fault("DBClusterEndpointAlreadyExistsFault")
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: endpoint})
@@ -387,4 +412,33 @@ func Test_ErrorPaths(t *testing.T) {
 
 	created(t, h, endpoint)
 	require.ErrorContains(t, h.Delete(t.Context(), region, "reads"), "ThrottlingException", "the describe after a rejected delete fails")
+}
+
+func Test_CreateAlreadyExists(t *testing.T) {
+	h, api := newHandler()
+	api.errs["CreateDBClusterEndpoint"] = fault("DBClusterEndpointAlreadyExistsFault")
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: endpoint})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have made the endpoint, so UCP keeps the record")
+	require.Contains(t, failure.Message, "DBClusterEndpointAlreadyExistsFault")
+}
+
+// Test_EmptyMemberLists checks that a template that sets a member list to [] matches AWS, so a redeploy changes
+// nothing, and that Read reports both lists.
+func Test_EmptyMemberLists(t *testing.T) {
+	h, _ := newHandler()
+	created(t, h, endpoint)
+	properties, err := h.Read(t.Context(), region, "reads")
+	require.NoError(t, err)
+	require.Equal(t, []any{}, properties["ExcludedMembers"])
+	require.Equal(t, []any{"graph-1", "graph-2"}, properties["StaticMembers"])
+
+	current, err := json.Marshal(properties)
+	require.NoError(t, err)
+	desired, err := json.Marshal(with(endpoint, map[string]any{"ExcludedMembers": []any{}}))
+	require.NoError(t, err)
+	patch, err := awsoperations.GeneratePatch(current, desired, []byte(readFile(t, "aws-neptune-dbclusterendpoint.json")))
+	require.NoError(t, err)
+	require.Empty(t, patch, "a redeploy of a template with an empty list sends nothing")
 }

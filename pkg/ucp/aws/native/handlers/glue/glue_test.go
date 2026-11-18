@@ -257,3 +257,14 @@ func Test_ReadFails(t *testing.T) {
 	require.ErrorContains(t, err, "ThrottlingException")
 	require.NotErrorIs(t, err, native.ErrNotFound)
 }
+
+func Test_CreateAlreadyExists(t *testing.T) {
+	h := NewPartitionIndex(newFakeAPI(awsfake.NewCloudControl()))
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
+	require.NoError(t, err)
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have made the index, so UCP keeps the record")
+	require.Contains(t, failure.Message, "AlreadyExistsException")
+}

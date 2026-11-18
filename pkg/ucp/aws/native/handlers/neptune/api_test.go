@@ -329,7 +329,8 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 			"covers, or whether a member of another cluster gets DBInstanceNotFound; the fake takes only an available " +
 			"cluster, and only its own instances. The page lists DBClusterEndpointQuotaExceededFault without the limit " +
 			"it applies, so the fake has none. The call takes no idempotency token: a create sent again gets " +
-			"DBClusterEndpointAlreadyExistsFault, and the handler reads the endpoint by its name before it creates one." + tagsUnclear,
+			"DBClusterEndpointAlreadyExistsFault. The handler reads the endpoint by its name before it creates one, and " +
+			"reports that error as an unknown outcome, because an SDK retry of a create whose response was lost gets it." + tagsUnclear,
 	},
 	"DescribeDBClusterEndpoints": {
 		Doc: apiReference + "API_DescribeDBClusterEndpoints.html",
@@ -417,6 +418,11 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 				Code:  "InvalidDBClusterEndpointStateFault",
 			},
 			{
+				Rule:  "the cluster is in a valid state",
+				Break: against(createEndpoint(), ready, busy("graph"), modify(&neptune.ModifyDBClusterEndpointInput{EndpointType: aws.String("ANY")})),
+				Code:  "InvalidDBClusterStateFault",
+			},
+			{
 				Rule:  "EndpointType is READER, WRITER, or ANY",
 				Doc:   commonErrors,
 				Break: against(createEndpoint(), ready, modify(&neptune.ModifyDBClusterEndpointInput{EndpointType: aws.String("CUSTOM")})),
@@ -459,7 +465,8 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 		},
 		Unclear: codesUnclear + " The page doesn't say what an empty member list does; the fake clears the list, as " +
 			"the handler sends it to switch lists or remove one. It doesn't say which endpoint states " +
-			"InvalidDBClusterEndpointStateFault covers; the fake takes a change only while the endpoint is available.",
+			"InvalidDBClusterEndpointStateFault or InvalidDBClusterStateFault covers; the fake takes a change only while the " +
+			"endpoint and its cluster are available.",
 	},
 	"DeleteDBClusterEndpoint": {
 		Doc: apiReference + "API_DeleteDBClusterEndpoint.html",
@@ -475,6 +482,11 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 				Code:  "InvalidDBClusterEndpointStateFault",
 			},
 			{
+				Rule:  "the cluster is in a valid state",
+				Break: against(createEndpoint(), ready, busy("graph"), deleteEndpoint),
+				Code:  "InvalidDBClusterStateFault",
+			},
+			{
 				Rule: "a deleted endpoint is deleting, then gone",
 				Doc:  apiReference + "API_DBClusterEndpoint.html",
 				Check: against(createEndpoint(), ready, deleteEndpoint, expectStatus("deleting"), func(ctx context.Context, f *fakeAPI) error {
@@ -485,8 +497,9 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 				}),
 			},
 		},
-		Unclear: "The page doesn't say which endpoint states InvalidDBClusterEndpointStateFault covers; the fake " +
-			"deletes only an available endpoint, and the handler treats an endpoint already deleting as deleted.",
+		Unclear: "The page doesn't say which endpoint or cluster states InvalidDBClusterEndpointStateFault and " +
+			"InvalidDBClusterStateFault cover; the fake deletes only an available endpoint of an available cluster, and " +
+			"the handler treats an endpoint already deleting as deleted.",
 	},
 	"DescribeDBClusters": {
 		Doc: apiReference + "API_DescribeDBClusters.html",

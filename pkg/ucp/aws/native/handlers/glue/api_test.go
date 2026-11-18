@@ -19,6 +19,7 @@ package glue
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -292,6 +293,32 @@ var partitionIndexAPI = map[string]nativetest.Call{
 					return fmt.Errorf("the index never failed")
 				}),
 			},
+			{
+				Rule: "a table keeps its last 10 failed indexes",
+				Doc:  indexGuide,
+				Check: against(func(ctx context.Context, f *fakeAPI) error {
+					in := &glue.GetPartitionIndexesInput{DatabaseName: aws.String("sales"), TableName: aws.String("secret")}
+					for i := range 11 {
+						if err := createIndex(named("f"+strconv.Itoa(i)), func(c *glue.CreatePartitionIndexInput) {
+							c.TableName = in.TableName
+							c.PartitionIndex.Keys = []string{"year"}
+						})(ctx, f); err != nil {
+							return err
+						}
+						if _, err := getIndexes(ctx, f, &glue.GetPartitionIndexesInput{DatabaseName: in.DatabaseName, TableName: in.TableName}); err != nil {
+							return err
+						}
+					}
+					indexes, err := getIndexes(ctx, f, in)
+					if err != nil {
+						return err
+					}
+					if len(indexes) != 10 || aws.ToString(indexes[0].IndexName) == "f0" {
+						return fmt.Errorf("the table keeps %d failed indexes, starting with %s", len(indexes), aws.ToString(indexes[0].IndexName))
+					}
+					return nil
+				}),
+			},
 		},
 		Unclear: "The guide limits a table to 3 indexes without saying whether FAILED ones count; the fake doesn't " +
 			"count them. It says a key must be a partition key of a supported type, without naming the error, or whether " +
@@ -300,7 +327,8 @@ var partitionIndexAPI = map[string]nativetest.Call{
 			"again; the fake returns AlreadyExistsException, as for any index the table lists. They don't say whether " +
 			"key names are compared ignoring case; the fake compares them as they are, and returns them as the call sent " +
 			"them. The page takes one index per call and has no idempotency token, so a create sent again gets " +
-			"AlreadyExistsException; the handler reads the index before it creates one." + constraintNote,
+			"AlreadyExistsException. The handler reads the index before it creates one, and reports that error as an " +
+			"unknown outcome, because an SDK retry of a create whose response was lost gets it." + constraintNote,
 	},
 	"GetPartitionIndexes": {
 		Doc: apiReference + "API_GetPartitionIndexes.html",

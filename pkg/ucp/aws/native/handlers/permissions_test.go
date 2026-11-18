@@ -124,8 +124,14 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 			"dms:AddTagsToResource", "rds:AddTagsToResource", "fsx:TagResource", "dax:TagResource", "elasticmapreduce:AddTags",
 			// Tags sent in the create call itself: TagSpecifications, or Tags.
 			"ec2:CreateTags", "medialive:CreateTags", "sagemaker:AddTags",
+			// AWS authorizes CreatePartitionIndex with glue:UpdateTable on the table.
+			"glue:UpdateTable",
 		},
-		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
+		"delete": {
+			"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource",
+			// AWS authorizes DeletePartitionIndex with glue:UpdateTable on the table.
+			"glue:UpdateTable",
+		},
 	}
 	catalog, err := schemas.Load()
 	require.NoError(t, err)

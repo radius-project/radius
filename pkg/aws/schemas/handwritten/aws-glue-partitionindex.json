@@ -77,7 +77,11 @@
   },
   "handlers": {
     "create": {
-      "permissions": ["glue:CreatePartitionIndex", "glue:GetPartitionIndexes"]
+      "permissions": [
+        "glue:CreatePartitionIndex",
+        "glue:UpdateTable",
+        "glue:GetPartitionIndexes"
+      ]
     },
     "read": {
       "permissions": ["glue:GetPartitionIndexes"]
@@ -86,7 +90,11 @@
       "permissions": ["glue:GetPartitionIndexes"]
     },
     "delete": {
-      "permissions": ["glue:DeletePartitionIndex", "glue:GetPartitionIndexes"]
+      "permissions": [
+        "glue:DeletePartitionIndex",
+        "glue:UpdateTable",
+        "glue:GetPartitionIndexes"
+      ]
     }
   }
 }
