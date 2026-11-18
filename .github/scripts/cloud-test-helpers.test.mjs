@@ -3,7 +3,14 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -52,6 +59,7 @@ const save = (file, value) => writeFile(file, JSON.stringify(value));
 const core = (inputs) => ({
   getInput: (name) => inputs[name] ?? "",
   setOutput() {},
+  info() {},
   summary: {
     addCodeBlock() {
       return this;
@@ -620,6 +628,387 @@ function payload() {
   return { roots, manifests };
 }
 
+async function importManifests(directory, manifests) {
+  const blobs = join(directory, "layout", "blobs", "sha256");
+  await mkdir(blobs, { recursive: true });
+  for (const [digest, raw] of manifests)
+    await writeFile(join(blobs, digest.slice(7)), raw);
+}
+
+function httpTrace(events) {
+  return events
+    .map(
+      ({ method, url, status }, id) => `
+[2026-11-16T00:00:00Z][DEBUG]: --> Request #${id}
+> Request URL: ${JSON.stringify(url)}
+> Request method: ${JSON.stringify(method)}
+> Request headers:
+   "Authorization": ${JSON.stringify(["Bearer", "private-fixture-value"].join(" "))}
+
+[2026-11-16T00:00:00Z][DEBUG]: <-- Response #${id}
+< Response Status: "${status} Fixture"
+< Response headers:
+   "X-Github-Request-Id": "ABCD:1234:5678:9ABC"
+   "X-Ms-Request-Id": "12345678-1234-1234-1234-123456789abc"
+   "X-Ms-Correlation-Request-Id": "private-fixture-value"
+   "Location": "https://signed.invalid/private-fixture-value?signature=private-fixture-value"
+< Response body:
+{"token":"private-fixture-value"}
+`
+    )
+    .join("\n");
+}
+
+async function publisherFixture(t, eventName = context.eventName) {
+  const directory = await temporary(t);
+  const { roots, manifests } = payload();
+  await importManifests(directory, manifests);
+  const current = { ...context, eventName };
+  const receiptPath = join(directory, "receipt.json");
+  await save(receiptPath, {
+    source: bundle.sourceIdentity(current, env, 1),
+    tag: env.REL_VERSION,
+    roots,
+    published: []
+  });
+  const messages = [],
+    delays = [];
+  const api = core({ directory, destination: "ghcr" });
+  api.info = (message) => messages.push(message);
+  const args = {
+    context: current,
+    core: api,
+    sleep: async (delay) => {
+      delays.push(delay);
+    }
+  };
+  const targets = bundle
+    .destinations(roots, env.REL_VERSION, env)
+    .filter((entry) => entry.kind !== "types");
+  const first = targets[0];
+  const manifestURL = "https://ghcr.io/v2/radius-project/dev/ucpd/manifests";
+  const tagURL = `${manifestURL}/${env.REL_VERSION}`;
+  const digestURL = `${manifestURL}/${first.digest}`;
+  const put = { method: "PUT", url: tagURL, status: 201 };
+  const missing = { method: "GET", url: digestURL, status: 404 };
+  const fail = (options, events, overrides = {}) => {
+    const stderr = httpTrace(events);
+    options.onStderr(stderr);
+    throw Object.assign(new Error(`private-fixture-value ${stderr}`), {
+      code: 1,
+      stderr,
+      ...overrides
+    });
+  };
+  return {
+    directory,
+    receiptPath,
+    roots,
+    manifests,
+    messages,
+    delays,
+    args,
+    targets,
+    first,
+    put,
+    missing,
+    tagURL,
+    digestURL,
+    fail
+  };
+}
+
+test("registry diagnostics redact credentials, bodies, signed URLs and untrusted paths", () => {
+  const entry = bundle.destinations(payload().roots, env.REL_VERSION, env)[0];
+  const path = `/v2/radius-project/dev/ucpd/manifests/${entry.digest}`;
+  const credentialURL = new URL(`https://ghcr.io${path}`);
+  credentialURL.username = "fixture";
+  credentialURL.password = "private-fixture-value";
+  const responses = bundle.registryResponses(
+    httpTrace([
+      {
+        method: "GET",
+        url: `https://ghcr.io${path}?signature=private-fixture-value`,
+        status: 404
+      },
+      {
+        method: "PUT",
+        url: "https://ghcr.io/v2/radius-project/dev/ucpd/blobs/uploads/private-fixture-value?signature=private-fixture-value",
+        status: 201
+      },
+      {
+        method: "GET",
+        url: `https://signed.invalid/private-fixture-value`,
+        status: 403
+      },
+      { method: "GET", url: credentialURL.href, status: 401 },
+      { method: "GET", url: `http://ghcr.io${path}`, status: 404 }
+    ]),
+    entry
+  );
+  assert.deepEqual(responses[0], {
+    method: "GET",
+    path,
+    status: 404,
+    requestIDs: {
+      "x-github-request-id": "ABCD:1234:5678:9ABC",
+      "x-ms-request-id": "12345678-1234-1234-1234-123456789abc"
+    }
+  });
+  assert.equal(
+    responses[1].path,
+    "/v2/radius-project/dev/ucpd/blobs/uploads/[redacted]"
+  );
+  for (const response of responses.slice(2)) {
+    assert.equal(response.path, "[redacted]");
+    assert.deepEqual(response.requestIDs, {});
+  }
+  assert.doesNotMatch(
+    JSON.stringify(responses),
+    /private-fixture-value|signed.invalid|Authorization|signature|token|Location/
+  );
+  assert.deepEqual(
+    bundle.registryResponses("unrecognized trace private-fixture-value", entry),
+    []
+  );
+  const unfinished = bundle.registryResponses(
+    httpTrace([
+      {
+        method: "PUT",
+        url: `https://ghcr.io/v2/radius-project/dev/ucpd/manifests/${env.REL_VERSION}`,
+        status: 201
+      },
+      { method: "GET", url: `https://ghcr.io${path}`, status: 404 }
+    ]) +
+      `
+[2026-11-16T00:00:00Z][DEBUG]: --> Request #2
+> Request URL: "https://signed.invalid/private-fixture-value"
+> Request method: "GET"
+`,
+    entry
+  );
+  assert.deepEqual(unfinished.at(-1), {
+    method: "GET",
+    path: "[redacted]",
+    status: null,
+    requestIDs: {}
+  });
+});
+
+for (const mutation of [
+  "missing",
+  "corrupt",
+  "size",
+  "media type",
+  "symlink"
+]) {
+  test(`publisher rejects ${mutation} imported roots before network access`, async (t) => {
+    const state = await publisherFixture(t);
+    const file = join(
+      state.directory,
+      "layout/blobs/sha256",
+      state.first.digest.slice(7)
+    );
+    if (mutation === "missing" || mutation === "symlink") {
+      await rm(file);
+      if (mutation === "symlink") {
+        const other = join(state.directory, "other-manifest");
+        await writeFile(other, state.manifests.get(state.first.digest));
+        await symlink(other, file);
+      }
+    } else if (mutation === "corrupt") {
+      await writeFile(
+        file,
+        state.manifests
+          .get(state.first.digest)
+          .replace('"schemaVersion":2', '"schemaVersion":3')
+      );
+    } else {
+      const receipt = JSON.parse(await readFile(state.receiptPath));
+      if (mutation === "size") receipt.roots[0].size++;
+      else
+        receipt.roots[0].mediaType =
+          "application/vnd.docker.distribution.manifest.v2+json";
+      await save(state.receiptPath, receipt);
+    }
+    let calls = 0;
+    await assert.rejects(
+      bundle.publish(state.args, env, async () => {
+        calls++;
+      }),
+      /ENOENT|Imported root|Manifest digest mismatch/
+    );
+    assert.equal(calls, 0);
+    assert.deepEqual(
+      JSON.parse(await readFile(state.receiptPath)).published,
+      []
+    );
+  });
+}
+
+for (const event of [
+  "pull_request_target",
+  "merge_group",
+  "repository_dispatch"
+]) {
+  test(`${event} recovers only proven post-copy visibility without uploading again`, async (t) => {
+    const state = await publisherFixture(t, event);
+    const copies = [],
+      reads = [];
+    let hidden = 2;
+    await bundle.publish(state.args, env, async (command, options) => {
+      const reference = command.at(-1);
+      if (command[1] === "cp") {
+        copies.push(reference);
+        if (reference === state.first.reference)
+          state.fail(options, [state.put, state.missing]);
+        return "";
+      }
+      assert.equal(options.timeout, 10_000);
+      reads.push(reference);
+      if (reference.endsWith(`@${state.first.digest}`) && hidden-- > 0)
+        state.fail(options, [state.missing]);
+      return state.manifests.get(
+        state.targets.find((entry) => entry.reference === reference)?.digest ??
+          reference.split("@")[1]
+      );
+    });
+    assert.deepEqual(
+      copies,
+      state.targets.map(({ reference }) => reference)
+    );
+    assert.equal(reads.length, state.targets.length * 2 + 2);
+    assert.deepEqual(state.delays, [1000, 2000]);
+    assert.deepEqual(
+      JSON.parse(await readFile(state.receiptPath)).published,
+      copies
+    );
+    assert.ok(
+      state.messages.some((message) =>
+        message.includes("ORAS post-copy destination read failed")
+      )
+    );
+    assert.doesNotMatch(state.messages.join("\n"), /private-fixture-value/);
+  });
+}
+
+for (const failure of [
+  "no successful PUT",
+  "rejected PUT",
+  "wrong PUT",
+  "wrong GET",
+  "forbidden GET",
+  "intervening failed upload",
+  "intervening authorization failure",
+  "intervening unrelated read",
+  "unknown trace",
+  "timeout"
+]) {
+  test(`publisher does not recover copy failure with ${failure}`, async (t) => {
+    const state = await publisherFixture(t);
+    let events = [state.put, state.missing],
+      overrides = {};
+    if (failure === "no successful PUT") events = [state.missing];
+    if (failure === "rejected PUT") events[0] = { ...state.put, status: 403 };
+    if (failure === "wrong PUT")
+      events[0] = { ...state.put, url: state.digestURL };
+    if (failure === "wrong GET")
+      events[1] = { ...state.missing, url: state.tagURL };
+    if (failure === "forbidden GET")
+      events[1] = { ...state.missing, status: 403 };
+    if (failure === "intervening failed upload")
+      events.splice(1, 0, { ...state.put, status: 400 });
+    if (failure === "intervening authorization failure")
+      events.splice(1, 0, { ...state.missing, status: 403 });
+    if (failure === "intervening unrelated read")
+      events.splice(1, 0, { ...state.missing, url: state.tagURL });
+    if (failure === "unknown trace") events = [];
+    if (failure === "timeout") overrides = { killed: true, signal: "SIGTERM" };
+    let copies = 0;
+    await assert.rejects(
+      bundle.publish(state.args, env, async (command, options) => {
+        assert.equal(command[1], "cp");
+        copies++;
+        state.fail(options, events, overrides);
+      }),
+      (error) => {
+        assert.match(error.message, /Registry copy failed/);
+        assert.doesNotMatch(
+          `${error.stack}\n${JSON.stringify(error)}`,
+          /private-fixture-value|Authorization|signature/
+        );
+        return true;
+      }
+    );
+    assert.equal(copies, 1);
+    assert.deepEqual(state.delays, []);
+    assert.deepEqual(
+      JSON.parse(await readFile(state.receiptPath)).published,
+      []
+    );
+  });
+}
+
+for (const phase of ["digest", "tag"]) {
+  for (const status of [
+    401,
+    403,
+    404,
+    429,
+    500,
+    "mismatch",
+    "untraced",
+    "wrong path",
+    "timeout"
+  ]) {
+    test(`publisher fails closed on ${phase} readback ${status}`, async (t) => {
+      const state = await publisherFixture(t);
+      let copies = 0,
+        failures = 0;
+      await assert.rejects(
+        bundle.publish(state.args, env, async (command, options) => {
+          if (command[1] === "cp") {
+            copies++;
+            return "";
+          }
+          const byDigest = command.at(-1).includes("@");
+          if (byDigest !== (phase === "digest"))
+            return state.manifests.get(state.first.digest);
+          failures++;
+          if (status === "mismatch") return "{}";
+          const event = {
+            method: "GET",
+            url:
+              status === "wrong path" ? "https://ghcr.io/unrelated"
+              : phase === "digest" ? state.digestURL
+              : state.tagURL,
+            status: typeof status === "number" ? status : 404
+          };
+          state.fail(
+            options,
+            status === "untraced" ? [] : [event],
+            status === "timeout" ? { killed: true } : {}
+          );
+        }),
+        status === "mismatch" ? /Published digest changed/
+        : status === 404 ? /not visible after 5 attempts/
+        : /Registry .*readback failed/
+      );
+      assert.equal(copies, 1);
+      assert.equal(failures, status === 404 ? 5 : 1);
+      assert.deepEqual(
+        state.delays,
+        status === 404 ? [1000, 2000, 4000, 8000] : []
+      );
+      assert.deepEqual(
+        JSON.parse(await readFile(state.receiptPath)).published,
+        []
+      );
+      assert.doesNotMatch(state.messages.join("\n"), /private-fixture-value/);
+    });
+  }
+}
+
 test("closed targets/media types preserve images and underscore recipes, excluding foreign/executable data", () => {
   const { roots, manifests } = payload();
   const targets = bundle.destinations(roots, env.REL_VERSION, env);
@@ -790,6 +1179,7 @@ test("preparation rejects mismatched sources before writes and publication recor
   );
   assert.equal(calls.filter((cmd) => cmd[1] === "cp").length, 0);
   await bundle.prepare(args, env, run);
+  await importManifests(directory, manifests);
   assert.ok(
     calls
       .filter((cmd) => cmd[1] === "cp")
@@ -871,6 +1261,7 @@ for (const destination of ["ghcr", "acr"]) {
           ];
       const directory = await temporary(t);
       const { roots, manifests } = payload();
+      await importManifests(directory, manifests);
       const receiptPath = join(directory, "receipt.json");
       const receipt = {
         source,
@@ -893,7 +1284,11 @@ for (const destination of ["ghcr", "acr"]) {
       await bundle.publish(args, settings, async (command) => {
         calls.push(command);
         if (command[1] === "cp") return "";
-        const index = targets.indexOf(command.at(-1));
+        const index = targets.findIndex((reference, index) =>
+          [reference, `${paths[index]}@${selected[index].digest}`].includes(
+            command.at(-1)
+          )
+        );
         assert.notEqual(
           index,
           -1,
@@ -909,9 +1304,17 @@ for (const destination of ["ghcr", "acr"]) {
             "cp",
             "--from-oci-layout",
             `${join(directory, "layout")}@${selected[index].digest}`,
+            "--debug",
             reference
           ],
-          ["oras", "manifest", "fetch", reference]
+          [
+            "oras",
+            "manifest",
+            "fetch",
+            "--debug",
+            `${paths[index]}@${selected[index].digest}`
+          ],
+          ["oras", "manifest", "fetch", "--debug", reference]
         ])
       );
       assert.deepEqual(JSON.parse(await readFile(receiptPath)), {
@@ -1057,6 +1460,7 @@ test("uploads retain the authenticated producer tag across full and downstream-o
           return manifests.get(target?.digest ?? cmd.at(-1).split("@")[1]);
         };
         await bundle.prepare(args, settings, run);
+        await importManifests(directory, manifests);
         for (const destination of ["ghcr", "acr"]) {
           args.core = core({ directory, destination });
           await bundle.publish(args, settings, run);
