@@ -346,6 +346,13 @@ func TestVerifyRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ucp."+testNamespace+".svc", id.String())
 
+	// RFC 6750 section 2.1 allows one or more spaces after the scheme.
+	r = httptest.NewRequest(http.MethodGet, "/", nil)
+	r.Header.Set("Authorization", "Bearer   "+sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", start)))
+	id, err = v.VerifyRequest(r)
+	require.NoError(t, err)
+	require.Equal(t, "ucp."+testNamespace+".svc", id.String())
+
 	_, err = v.VerifyRequest(httptest.NewRequest(http.MethodGet, "/", nil))
 	requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
 }

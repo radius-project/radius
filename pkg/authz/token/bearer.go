@@ -38,6 +38,8 @@ func BearerToken(r *http.Request) (string, error) {
 	if !ok || !strings.EqualFold(scheme, "Bearer") {
 		return "", invalid("Authorization header is not a bearer token", nil)
 	}
+	// RFC 6750 section 2.1 allows one or more ASCII spaces after the scheme.
+	token = strings.TrimLeft(token, " ")
 	if token == "" || strings.ContainsAny(token, " \t") {
 		return "", invalid("malformed bearer token", nil)
 	}
