@@ -412,10 +412,57 @@ func (f *issuerPolicyFixture) renderChart(t *testing.T, extraTemplates ...*commo
 	eng := engine.New(&rest.Config{Host: server.URL})
 	caps := common.DefaultCapabilities.Copy()
 	caps.APIVersions = append(caps.APIVersions, "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy")
-	return eng.Render(chart, common.Values{
+	return eng.RenderWithContext(t.Context(), chart, common.Values{
 		"Values": values, "Capabilities": caps,
 		"Release": map[string]any{"Name": "radius", "Namespace": "radius-system", "Service": "Helm"},
 	})
+}
+
+func TestIssuerPolicyChartSignerGrants(t *testing.T) {
+	for _, tc := range []struct {
+		kind, resourceName string
+		matches            bool
+	}{
+		{"Issuer", "issuers.cert-manager.io/radius-system.external-ca", true},
+		{"Issuer", "issuers.cert-manager.io/*", true},
+		{"Issuer", "issuers.cert-manager.io/external-ca", false},
+		{"Issuer", "issuers.cert-manager.io/other.external-ca", false},
+		{"Issuer", "*", false},
+		{"ClusterIssuer", "clusterissuers.cert-manager.io/external-ca", true},
+		{"ClusterIssuer", "clusterissuers.cert-manager.io/*", true},
+		{"ClusterIssuer", "clusterissuers.cert-manager.io/radius-system.external-ca", false},
+		{"ClusterIssuer", "issuers.cert-manager.io/*", false},
+	} {
+		for _, holder := range []string{"approver", "other"} {
+			t.Run(tc.kind+"/"+tc.resourceName+"/"+holder, func(t *testing.T) {
+				f := newIssuerPolicyFixture(t)
+				if tc.kind == "ClusterIssuer" {
+					f.useClusterIssuer(t)
+				}
+				role := f.object("ClusterRole", "approver")
+				if holder == "other" {
+					role = role.DeepCopy()
+					role.SetName("other")
+					role.Object["rules"] = role.Object["rules"].([]any)[:1]
+					binding := f.object("ClusterRoleBinding", "approver").DeepCopy()
+					binding.SetName("other")
+					binding.Object["roleRef"].(map[string]any)["name"] = "other"
+					binding.Object["subjects"].([]any)[0].(map[string]any)["name"] = "other"
+					f.objects = append(f.objects, role, binding)
+				}
+				role.Object["rules"].([]any)[0].(map[string]any)["resourceNames"] = []any{tc.resourceName}
+				_, err := f.renderChart(t)
+				switch {
+				case holder == "approver" && !tc.matches:
+					require.ErrorContains(t, err, "lacks required cluster-wide signer approval")
+				case holder == "other" && tc.matches:
+					require.ErrorContains(t, err, "binding other permits another subject")
+				default:
+					require.NoError(t, err)
+				}
+			})
+		}
+	}
 }
 
 func TestIssuerPolicyChart(t *testing.T) {

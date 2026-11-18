@@ -789,7 +789,7 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 		{name: "missing policy-use RBAC", operation: "install", err: "live issuer-policy verification failed", edit: func(t *testing.T, f *issuerPolicyFixture) {
 			f.object("ClusterRole", "radius-policy-use").Object["rules"] = []any{}
 		}},
-		{name: "chart without verifier", operation: "old chart", err: "selected chart cannot resolve certificate profiles"},
+		{name: "chart without verifier", operation: "old chart", err: "invalid selected Radius chart authorization settings"},
 		{name: "concurrent stored settings change", operation: "concurrent upgrade", err: "changed since preflight"},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {

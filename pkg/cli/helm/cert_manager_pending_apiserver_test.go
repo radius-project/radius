@@ -40,7 +40,7 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 	}
 	kubeconfig, kubeClient := startTestAPIServer(t)
 	t.Setenv("KUBECONFIG", kubeconfig)
-	for _, namespace := range []string{CertManagerNamespace, "other-workload"} {
+	for _, namespace := range []string{CertManagerNamespace, RadiusSystemNamespace, "other-workload"} {
 		_, err := kubeClient.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: namespace},
 		}, metav1.CreateOptions{})
@@ -60,6 +60,11 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 	require.NoError(t, err)
 	helmClient := NewHelmClient()
 	configuration := newTestHelmConfiguration(t, kubeconfig, CertManagerNamespace)
+	radiusConf := newTestHelmConfiguration(t, kubeconfig, RadiusSystemNamespace)
+	require.NoError(t, radiusConf.Releases.Create(&releasev1.Release{
+		Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 1,
+		Chart: chart, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+	}))
 
 	for _, status := range []releasecommon.Status{
 		releasecommon.StatusPendingInstall, releasecommon.StatusPendingUpgrade, releasecommon.StatusPendingRollback,

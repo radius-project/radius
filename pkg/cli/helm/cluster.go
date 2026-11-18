@@ -66,6 +66,7 @@ type ClusterOptions struct {
 	// Install (with Reinstall) and upgrade (without ResetValues) reuse them, so they count toward the
 	// authorization mode that decides whether cert-manager is required.
 	RadiusReleaseValues map[string]any
+	RadiusReleaseChart  *chart.Chart
 
 	// RadiusInstalled distinguishes a reinstall from --reinstall on a fresh cluster.
 	RadiusInstalled bool
@@ -217,6 +218,7 @@ type InstallState struct {
 
 	// RadiusValues are the user-supplied values stored on the Radius release. Will be nil if Radius is not installed.
 	RadiusValues map[string]any
+	RadiusChart  *chart.Chart
 
 	// ContourStatus is the status of the latest revision of the Contour helm chart, such as deployed or failed. Will be
 	// blank if Contour is not installed.
@@ -550,7 +552,7 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	helmAction := NewHelmAction(i.Helm)
 
 	// Check if Radius is installed
-	radiusInstalled, radiusVersion, radiusValues, err := helmAction.queryReleaseValues(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
+	radiusInstalled, radiusVersion, baseline, err := helmAction.queryReleaseBaseline(kubeContext, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace)
 	if err != nil {
 		return InstallState{}, fmt.Errorf("failed to check Radius installation (release: %s, namespace: %s, context: %s): %w",
 			clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, kubeContext, err)
@@ -585,7 +587,9 @@ func (i *Impl) CheckRadiusInstall(kubeContext string) (InstallState, error) {
 	state := InstallState{
 		RadiusInstalled: radiusInstalled,
 		RadiusVersion:   radiusVersion,
-		RadiusValues:    radiusValues,
+	}
+	if baseline != nil {
+		state.RadiusValues, state.RadiusChart = baseline.Config, baseline.Chart
 	}
 	if contourRelease != nil {
 		state.ContourInstalled = true
@@ -961,9 +965,23 @@ func (i *Impl) reconcileRollbackDependencies(ctx context.Context, kubeContext st
 	if settings.mode != authz.ModeOff && certMode != "selfSigned" {
 		return fmt.Errorf("rolling back to global.rbac.certificates.mode=%s requires the certificate lifecycle; Helm has not changed Radius", certMode)
 	}
-	target, err := resolveRadiusAuthTarget(ctx, targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, false)
-	if err != nil {
-		return err
+	target := radiusAuthTarget{chartAuthSettings: settings}
+	if settings.mode != authz.ModeOff && settings.provider == authz.TLSProviderExternal {
+		if err := checkExternalWorkloadManifest(targetRelease.Manifest, settings.spiffe.CSIDriverName); err != nil {
+			return err
+		}
+		manifest, err := i.renderCertificateManifest(ctx, options, targetRelease.Chart, targetRelease.Config, kubeContext, history, revision)
+		if err != nil {
+			return err
+		}
+		if err := checkExternalWorkloadManifest(manifest, settings.spiffe.CSIDriverName); err != nil {
+			return err
+		}
+	} else {
+		target, err = resolveRadiusAuthTarget(ctx, targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, false)
+		if err != nil {
+			return err
+		}
 	}
 	spiffe, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, target)
 	if err != nil {

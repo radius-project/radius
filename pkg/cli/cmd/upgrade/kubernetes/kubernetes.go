@@ -245,6 +245,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 	clusterOptions.RadiusReleaseValues = state.RadiusValues
+	clusterOptions.RadiusReleaseChart = state.RadiusChart
 	if r.PreflightOnly {
 		if err := r.Helm.CheckRadiusCertificates(ctx, clusterOptions, r.KubeContext); err != nil {
 			return err

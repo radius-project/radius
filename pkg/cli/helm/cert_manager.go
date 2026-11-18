@@ -94,13 +94,6 @@ func newCertManagerClients(kubeContext string) (kubernetes.Interface, apiextclie
 	return kubeClient, apiextClient, nil
 }
 
-// resolveAuthzMode returns the authorization mode the Radius chart will render from global.rbac. Values from the
-// current invocation are merged over the stored release values with Helm's own CoalesceTables, the merge Helm
-// upgrade applies for ResetThenReuseValues, so null or non-map replacements clear stored flags like Helm does.
-func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
-	return authzModeFromRBAC(mergedRBACValues(stored, current))
-}
-
 func authzModeFromRBAC(rbac map[string]any) (authz.Mode, error) {
 	enabled, dryRun := isTrue(rbac["enabled"]), isTrue(rbac["dryRun"])
 

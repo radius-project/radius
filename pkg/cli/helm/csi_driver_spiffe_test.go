@@ -30,8 +30,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/release"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
@@ -816,6 +818,7 @@ func TestExternalCertificatePrerequisites(t *testing.T) {
 				m.EXPECT().LoadChart(gomock.Any()).Return(selected, nil)
 				impl := withoutUCPAPIService(&Impl{
 					Helm:                     m,
+					contourCluster:           &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
 					newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return kube, nil },
 					newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 						k, ext := fakeCertManagerCluster{crd: true, controller: controller}.clients()
@@ -1158,6 +1161,9 @@ func TestSelectedChartAuthPrerequisites(t *testing.T) {
 				}
 				selected, err := loader.Load(tc.path)
 				require.NoError(t, err)
+				if tc.stored != nil {
+					options.RadiusReleaseChart = selected
+				}
 				render := helm.NewInstall(&helm.Configuration{})
 				render.DryRunStrategy = helm.DryRunClient
 				render.Namespace, render.ReleaseName = options.Radius.Namespace, options.Radius.ReleaseName
@@ -1178,7 +1184,7 @@ func TestSelectedChartAuthPrerequisites(t *testing.T) {
 				if command == "upgrade" || options.Radius.Reinstall {
 					expectRadiusBaseline(t, client, options)
 				}
-				impl := &Impl{Helm: client}
+				impl := &Impl{Helm: client, contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)}}
 				switch tc.want {
 				case "external admission check":
 					impl.newCSIDriverSPIFFEClient = func(string) (kubernetes.Interface, error) {
@@ -1196,6 +1202,105 @@ func TestSelectedChartAuthPrerequisites(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestWorkloadRequirementsFromUpgradeManifest(t *testing.T) {
+	const template = "templates/workloads.yaml"
+	selected := &chart.Chart{Metadata: &chart.Metadata{Name: "fixture"}, Templates: []*common.File{{Name: template, Data: []byte(`
+apiVersion: v1
+kind: ConfigMap
+{{ if .Release.IsUpgrade }}
+---
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      volumes:
+      - name: local-serving
+        csi:
+          driver: custom.csi.example
+{{ end }}`)}}}
+	ctx := workloadRenderContext(nil, RadiusSystemNamespace, radiusReleaseName)
+	ctx["Release"] = map[string]any{"IsUpgrade": true, "IsInstall": false, "Revision": 2}
+	rendered, err := (engine.Engine{}).RenderWithContext(t.Context(), selected, ctx)
+	require.NoError(t, err)
+	req, err := workloadRequirementsFromManifest(rendered["fixture/"+template], "custom.csi.example")
+	require.NoError(t, err)
+	require.Equal(t, workloadRequirements{1, "custom.csi.example"}, req)
+}
+
+func TestRenderedRequirementsRecognizeDriverUnderAnyVolumeName(t *testing.T) {
+	selected := loadStageTestChart(t)
+	selected.Templates = append(selected.Templates, &common.File{Name: "templates/local-serving.yaml", Data: []byte(`
+kind: Deployment
+spec:
+  template:
+    spec:
+      volumes:
+      - name: local-serving
+        csi:
+          driver: {{ .Values.global.rbac.spiffe.csiDriverName }}
+      - name: other
+        csi:
+          driver: unrelated.csi.example
+`)})
+	for _, driver := range []string{SPIFFECSIDriverNameDefault, "custom.spiffe.example"} {
+		t.Run(driver, func(t *testing.T) {
+			overrides := map[string]any{"global": map[string]any{"rbac": map[string]any{
+				"spiffe": map[string]any{"csiDriverName": driver},
+			}}}
+			values, _, err := resolveEffectiveChartValues(selected, RadiusSystemNamespace, radiusReleaseName, overrides, nil, false)
+			require.NoError(t, err)
+			req, err := renderedWorkloadRequirements(t.Context(), selected, values, RadiusSystemNamespace, radiusReleaseName)
+			require.NoError(t, err)
+			require.Equal(t, workloadRequirements{1, driver}, req)
+		})
+	}
+}
+
+func TestRenderedRequirementsUseSelectedChartAndReleaseContext(t *testing.T) {
+	const ns, name = "custom-ns", "custom-release"
+	selected := loadStageTestChart(t)
+	rbac := nestedValue(selected.Values, "global", "rbac").(map[string]any)
+	rbac["enabled"] = true
+	rbac["tls"].(map[string]any)["provider"] = "external"
+	selected.AddDependency(&chart.Chart{Metadata: &chart.Metadata{Name: "child"}, Values: map[string]any{"limit": 4}})
+	selected.Templates = append(selected.Templates, &common.File{Name: "templates/custom.yaml", Data: []byte(`
+{{- if and (eq .Release.Namespace "custom-ns") (eq .Release.Name "custom-release") }}
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      volumes:
+      - name: spiffe
+        csi:
+          driver: custom.csi.example
+{{- end }}`)})
+	current := map[string]any{"unrelated": "override"}
+	values, settings, err := resolveEffectiveChartValues(selected, ns, name, current, nil, false)
+	require.NoError(t, err)
+	require.Equal(t, authz.ModeEnforce, settings.mode)
+	require.Equal(t, authz.TLSProviderExternal, settings.provider)
+	require.NotNil(t, nestedValue(values, "child", "limit"))
+	require.Equal(t, map[string]any{"unrelated": "override"}, current)
+	req, err := renderedWorkloadRequirements(t.Context(), selected, values, ns, name)
+	require.NoError(t, err)
+	require.Equal(t, workloadRequirements{1, "custom.csi.example"}, req)
+	_, err = resolveRadiusAuthTarget(t.Context(), selected, ns, name, current, nil, false)
+	require.ErrorContains(t, err, "inconsistent with the selected authorization settings")
+
+	options := NewDefaultClusterOptions()
+	options.RadiusReleaseChart = selected
+	options.ResetValues = true
+	_, deployed, err := installedAuthzSettings(options)
+	require.NoError(t, err)
+	require.Equal(t, authz.ModeEnforce, deployed.mode)
+	mode, found, err := rolledBackAuthzMode([]*releasev1.Release{{Version: 7, Chart: selected, Name: name, Namespace: ns}}, 7)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, authz.ModeEnforce, mode)
 }
 
 // A foreign csi-driver-spiffe stops install and upgrade before they touch cert-manager or any release.
@@ -1287,7 +1392,7 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Config: buildCertManagerValues(RadiusSystemNamespace)}
 	history := func(target map[string]any) []*releasev1.Release {
 		return []*releasev1.Release{
-			{Version: 1, Config: target, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Version: 1, Config: target, Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 			{Version: 2, Config: rbac(map[string]any{"enabled": true}), Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 		}
 	}

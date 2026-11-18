@@ -475,9 +475,10 @@ func renderedOffCertificate(t *testing.T, manifest string) (*corev1.Secret, []by
 // stageUpgrade is rad upgrade kubernetes, or rad install kubernetes --reinstall, from a deployed release with values
 // deployed, with Helm storage in memory.
 type stageUpgrade struct {
-	configuration *helm.Configuration
-	helmClient    HelmClient
-	command       string
+	defaultEnabled bool
+	configuration  *helm.Configuration
+	helmClient     HelmClient
+	command        string
 }
 
 func newStageUpgrade(t *testing.T, deployed map[string]any, command string) *stageUpgrade {
@@ -512,7 +513,13 @@ func (u *stageUpgrade) mock(t *testing.T, upgrades int, beforeHelm func()) *Mock
 			return u.helmClient.RunHelmHistory(u.configuration, name)
 		})
 	client.EXPECT().LoadChart(gomock.Any()).AnyTimes().
-		DoAndReturn(func(string) (*chart.Chart, error) { return loadStageTestChart(t), nil })
+		DoAndReturn(func(string) (*chart.Chart, error) {
+			chart := loadStageTestChart(t)
+			if u.defaultEnabled {
+				setValue(chart.Values, true, "global", "rbac", "enabled")
+			}
+			return chart, nil
+		})
 	// rad installs csi-driver-spiffe only when authorization will be on.
 	expectCSIDriverSPIFFEPull(t, client).AnyTimes()
 	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, radManagedByLabels()).
@@ -543,6 +550,8 @@ func (u *stageUpgrade) run(t *testing.T, impl *Impl, setArgs []string) error {
 	options.Radius.SetArgs = setArgs
 	options.Contour.Disabled = true
 	options.RadiusReleaseValues = state.RadiusValues
+	options.RadiusReleaseChart = state.RadiusChart
+	options.RadiusInstalled = state.RadiusInstalled
 	switch u.command {
 	case "upgrade":
 		return impl.UpgradeRadius(t.Context(), options, "test-context")
@@ -561,6 +570,26 @@ func (u *stageUpgrade) run(t *testing.T, impl *Impl, setArgs []string) error {
 // owned by the Radius release, and makes the API server trust it together with ucp-ca before Helm reissues ucp-cert.
 func Test_UpgradeRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 	rendered := renderedStagedCA(t, renderStageTestManifest(t, authzOnValues))
+	for _, command := range []string{"install", "upgrade", "install --reinstall"} {
+		t.Run(command+"/selected chart defaults on", func(t *testing.T) {
+			shortenUCPAPIServiceWait(t)
+			stored := map[string]any{}
+			if command == "install" {
+				stored = nil
+			}
+			u := newStageUpgrade(t, stored, command)
+			u.defaultEnabled = true
+			c := newStageCluster(t, nil, true)
+			c.addOffAPIService(t, "off")
+			client := u.mock(t, 1, func() {
+				c.requireStagedCA(t, rendered)
+				c.helmReissuesUCPCertificate(t)
+			})
+			require.NoError(t, u.run(t, c.impl(client, "cert-manager"), nil))
+			require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
+			requireNoTrustSecret(t, c.kube)
+		})
+	}
 	for _, command := range []string{"upgrade", "install --reinstall"} {
 		for _, variant := range offAPIServiceVariants {
 			t.Run(command+"/"+variant, func(t *testing.T) {
@@ -835,8 +864,10 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 		issuerSignerName(RadiusSystemNamespace, RadiusAPIServerIssuerName): true,
 	}
 	history := func(targetManifest string) []*releasev1.Release {
+		targetChart := loadStageTestChart(t)
+		targetChart.Metadata.Version = "0.45.0"
 		return []*releasev1.Release{
-			{Version: 1, Config: authzOnValues, Manifest: targetManifest, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Version: 1, Config: authzOnValues, Manifest: targetManifest, Chart: targetChart, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 			{Version: 2, Config: map[string]any{}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 		}
 	}

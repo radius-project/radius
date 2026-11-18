@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/test/k8sutil"
@@ -58,9 +59,13 @@ func certificateTestChart(t *testing.T) *chart.Chart {
 
 func expectRadiusBaseline(t *testing.T, client *MockHelmClient, options ClusterOptions) {
 	t.Helper()
+	c := options.RadiusReleaseChart
+	if c == nil {
+		c = certificateTestChart(t)
+	}
 	client.EXPECT().RunHelmHistory(gomock.Any(), options.Radius.ReleaseName).Return([]*releasev1.Release{{
 		Name: options.Radius.ReleaseName, Namespace: options.Radius.Namespace, Version: 1,
-		Chart: certificateTestChart(t), Config: options.RadiusReleaseValues, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+		Chart: c, Config: options.RadiusReleaseValues, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
 	}}, nil)
 }
 
@@ -90,6 +95,61 @@ func TestInstalledChartDefaultsCannotSwitchIssuer(t *testing.T) {
 		require.NoError(t, err)
 		require.Contains(t, rendered[c.Name()+"/templates/ucp/apiservice.yaml"], "name: "+issuer)
 	}
+
+	runInstalledChartSwitchCommands(t, old, selected, stored, kubeContext)
+}
+
+func TestExternalChartCannotRequireManagedVolume(t *testing.T) {
+	for _, command := range []string{"install", "upgrade", "preflight-only", "rollback"} {
+		t.Run(command, func(t *testing.T) {
+			selected := certificateTestChart(t)
+			setValue(selected.Values, true, "global", "rbac", "enabled")
+			setValue(selected.Values, "external", "global", "rbac", "tls", "provider")
+			match := `{{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}`
+			// The historical manifest and the offline install render both omit the
+			// volume in the upgrade-only cases. Check what Helm actually reapplies.
+			volume := "- name: local-serving\n          csi:\n            driver: spiffe.csi.radapp.io"
+			if command != "install" {
+				volume = "{{- if .Release.IsUpgrade }}\n        " + volume + "\n        {{- end }}"
+			}
+			for _, file := range selected.Templates {
+				if file.Name == "templates/ucp/deployment.yaml" {
+					require.Contains(t, string(file.Data), match)
+					file.Data = []byte(strings.Replace(string(file.Data), match, volume, 1))
+				}
+			}
+			options := NewDefaultClusterOptions()
+			options.Radius.ChartPath = "chart"
+			history := []*releasev1.Release{{
+				Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 1, Chart: selected,
+				Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+			}}
+			h := NewMockHelmClient(gomock.NewController(t))
+			i := &Impl{Helm: h, contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)}}
+			var err error
+			if command == "rollback" {
+				err = i.reconcileRollbackDependencies(t.Context(), "test", history, 1)
+			} else {
+				h.EXPECT().LoadChart("chart").Return(selected, nil)
+				if command != "install" {
+					h.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
+				}
+				run := i.InstallRadius
+				switch command {
+				case "preflight-only":
+					run = i.CheckRadiusCertificates
+				case "upgrade":
+					run = i.UpgradeRadius
+				}
+				err = run(t.Context(), options, "test")
+			}
+			require.ErrorContains(t, err, `requires managed CSI driver "spiffe.csi.radapp.io"`)
+		})
+	}
+}
+
+func runInstalledChartSwitchCommands(t *testing.T, old, selected *chart.Chart, stored map[string]any, kubeContext string) {
+	t.Helper()
 	for _, command := range []string{"reinstall", "upgrade", "preflight-only"} {
 		t.Run(command, func(t *testing.T) {
 			client := NewMockHelmClient(gomock.NewController(t))

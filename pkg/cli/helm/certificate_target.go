@@ -99,7 +99,7 @@ func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterO
 // prepareCertificateTarget runs before the ordinary anti-switch guard so the lifecycle
 // can compare a validated target with its journal. The import handle never enters target.
 func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string) (*certificateTarget, *certificatePlan, error) {
-	plan, err := i.prepareCertificateSelection(ctx, options, selected.Values, current, kubeContext)
+	plan, err := i.prepareCertificateSelection(ctx, options, selected, current, kubeContext)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -115,11 +115,6 @@ func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOpti
 		return nil, nil, err
 	}
 	if target.Mode == "selfSigned" {
-		authTarget, err := resolveRadiusAuthTarget(ctx, selected, options.Radius.Namespace, options.Radius.ReleaseName, current, options.RadiusReleaseValues, options.ResetValues)
-		if err != nil {
-			return nil, nil, err
-		}
-		target.radiusAuthTarget = authTarget
 		return target, plan, nil
 	}
 	ca, err := validatePublicCA([]byte(stringValue(certificateValues(effective)["caBundle"])), time.Now())

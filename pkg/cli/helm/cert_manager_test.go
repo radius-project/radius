@@ -227,7 +227,7 @@ func Test_resolveAuthzMode(t *testing.T) {
 			t.Parallel()
 
 			stored, current := copyValues(tt.stored), copyValues(tt.current)
-			got, err := resolveAuthzMode(tt.stored, tt.current)
+			_, got, err := resolveEffectiveChartValues(loadStageTestChart(t), RadiusSystemNamespace, radiusReleaseName, tt.current, tt.stored, false)
 			require.Equal(t, stored, copyValues(tt.stored), "stored values must not be mutated")
 			require.Equal(t, current, copyValues(tt.current), "current values must not be mutated")
 			if tt.wantErr != "" {
@@ -235,7 +235,7 @@ func Test_resolveAuthzMode(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.want, got.mode)
 		})
 	}
 }
@@ -268,9 +268,9 @@ func Test_resolveAuthzMode_FromCLIArgs(t *testing.T) {
 
 			current, err := parseUserValuesFromCLI(&tt.options)
 			require.NoError(t, err)
-			got, err := resolveAuthzMode(tt.stored, current)
+			_, got, err := resolveEffectiveChartValues(loadStageTestChart(t), RadiusSystemNamespace, radiusReleaseName, current, tt.stored, false)
 			require.NoError(t, err)
-			require.Equal(t, tt.want, got)
+			require.Equal(t, tt.want, got.mode)
 		})
 	}
 }
@@ -645,6 +645,7 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
 						} else {
 							options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+							options.RadiusReleaseChart = loadStageTestChart(t)
 							options.Radius.Reinstall = command == "install --reinstall"
 						}
 						release := &releasev1.Release{
