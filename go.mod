@@ -40,11 +40,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.63.7
 	github.com/aws/aws-sdk-go-v2/service/emr v1.71.0
 	github.com/aws/aws-sdk-go-v2/service/fsx v1.74.9
+	github.com/aws/aws-sdk-go-v2/service/glue v1.172.3
 	github.com/aws/aws-sdk-go-v2/service/iam v1.64.7
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.65.9
 	github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.47.9
 	github.com/aws/aws-sdk-go-v2/service/lakeformation v1.57.2
 	github.com/aws/aws-sdk-go-v2/service/medialive v1.114.2
+	github.com/aws/aws-sdk-go-v2/service/neptune v1.53.7
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.7
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.286.1
 	github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.49.3

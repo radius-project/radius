@@ -43,10 +43,12 @@ var iamPrefixes = map[string]string{
 	"elasticloadbalancingv2":   "elasticloadbalancing",
 	"emr":                      "elasticmapreduce",
 	"fsx":                      "fsx",
+	"glue":                     "glue",
 	"iam":                      "iam",
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
+	"neptune":                  "rds",
 	"s3":                       "s3",
 	"sagemaker":                "sagemaker",
 	"servicecatalog":           "servicecatalog",
@@ -95,7 +97,7 @@ func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(schemaOf(catalog, h.TypeName())), &schema), h.TypeName())
 		for method, ops := range operationsOf {
 			for _, call := range src.Calls(typ.Name(), method) {
 				action := src.iam[call] + ":" + call
@@ -154,7 +156,7 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(schemaOf(catalog, h.TypeName())), &schema), h.TypeName())
 		for op, handler := range schema.Handlers {
 			for _, action := range handler.Permissions {
 				service, _, _ := strings.Cut(action, ":")

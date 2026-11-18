@@ -1,0 +1,259 @@
+/*
+Copyright 2023 The Radius Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package glue
+
+import (
+	"maps"
+	"os"
+	"testing"
+
+	"github.com/aws/aws-sdk-go-v2/service/glue"
+	"github.com/aws/aws-sdk-go-v2/service/glue/types"
+	"github.com/stretchr/testify/require"
+
+	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
+)
+
+const region = "us-west-2"
+
+func readFile(t *testing.T, file string) string {
+	b, err := os.ReadFile("../../../../../aws/schemas/handwritten/" + file)
+	require.NoError(t, err)
+	return string(b)
+}
+
+// partitionIndex returns a template for an index named name on sales.orders over keys.
+func partitionIndex(name string, keys ...any) map[string]any {
+	return map[string]any{
+		"CatalogId":      account,
+		"DatabaseName":   "sales",
+		"TableName":      "orders",
+		"PartitionIndex": map[string]any{"IndexName": name, "Keys": keys},
+	}
+}
+
+func with(properties map[string]any, changes map[string]any) map[string]any {
+	out := maps.Clone(properties)
+	maps.Copy(out, changes)
+	return out
+}
+
+func Test_Suite_PartitionIndex(t *testing.T) {
+	properties := partitionIndex("by_date", "year", "month")
+	nativetest.Run(t, nativetest.Suite{
+		TypeName:    partitionIndexType,
+		Schema:      readFile(t, "aws-glue-partitionindex.json"),
+		Metadata:    readFile(t, "aws-glue-partitionindex.metadata.json"),
+		HandWritten: true,
+		NewHandler: func(store *awsfake.CloudControl) native.Handler {
+			return NewPartitionIndex(newFakeAPI(store))
+		},
+		Properties: properties,
+		Identifier: account + "|sales|orders|by_date",
+		// Every property is create-only, so a deploy of the same template is the only update.
+		Changed:          properties,
+		CreateOnlyChange: partitionIndex("by_date", "year"),
+		SameResource: []map[string]any{
+			with(properties, map[string]any{"DatabaseName": "Sales", "TableName": "ORDERS"}),
+		},
+		SameResourceNames: []string{account + "|SALES|Orders|by_date"},
+		Invalid: []map[string]any{
+			partitionIndex("by|date", "year"),
+			with(properties, map[string]any{"TableName": "orders|archive"}),
+		},
+		IdentifierProperties: func(identifier string) map[string]any {
+			id, err := parseID(identifier)
+			require.NoError(t, err)
+			return map[string]any{
+				"CatalogId":      id.catalog,
+				"DatabaseName":   id.database,
+				"TableName":      id.table,
+				"PartitionIndex": map[string]any{"IndexName": id.name, "Keys": []any{"year", "month"}},
+			}
+		},
+		API: partitionIndexAPI,
+	})
+}
+
+func Test_InRegion(t *testing.T) {
+	opts := glue.Options{}
+	inRegion("eu-west-2")(&opts)
+	require.Equal(t, "eu-west-2", opts.Region)
+}
+
+func Test_Identifier(t *testing.T) {
+	h := NewPartitionIndex(newFakeAPI(awsfake.NewCloudControl()))
+	id, err := h.Identifier(with(partitionIndex("By_Date", "year"), map[string]any{"DatabaseName": "Sales", "TableName": "Orders"}))
+	require.NoError(t, err)
+	require.Equal(t, account+"|sales|orders|By_Date", id, "Glue stores database and table names in lowercase, and not the index name")
+
+	id, err = h.Identifier(map[string]any{"CatalogId": account, "DatabaseName": "sales", "TableName": "orders"})
+	require.NoError(t, err)
+	require.Empty(t, id, "an index without a name has no identifier")
+
+	_, err = h.Identifier(partitionIndex("a|b", "year"))
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"CatalogId": account}})
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("a|b", "year")})
+	require.ErrorIs(t, err, badName)
+}
+
+func Test_CreateRejected(t *testing.T) {
+	h := NewPartitionIndex(newFakeAPI(awsfake.NewCloudControl()))
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_price", "price")})
+	require.ErrorContains(t, err, invalidInputCode, "AWS's error is returned")
+}
+
+func Test_ResolveIdentifier(t *testing.T) {
+	h := NewPartitionIndex(newFakeAPI(awsfake.NewCloudControl()))
+	id, err := h.ResolveIdentifier(t.Context(), region, account+"|Sales|ORDERS|By_Date")
+	require.NoError(t, err)
+	require.Equal(t, account+"|sales|orders|By_Date", id)
+	_, err = h.ResolveIdentifier(t.Context(), region, "sales|orders")
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+}
+
+func Test_BadIdentifier(t *testing.T) {
+	h := NewPartitionIndex(newFakeAPI(awsfake.NewCloudControl()))
+	for _, identifier := range []string{"sales|orders|by_date", "a|b|c|d|e", account + "||orders|by_date"} {
+		_, err := h.Read(t.Context(), region, identifier)
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure, identifier)
+		require.True(t, failure.ClientError)
+		require.ErrorAs(t, h.Delete(t.Context(), region, identifier), &failure)
+		_, err = h.Progress(t.Context(), region, identifier, native.OperationCreate)
+		require.ErrorAs(t, err, &failure)
+	}
+}
+
+func Test_ReadPages(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewPartitionIndex(api)
+	for i, key := range []string{"year", "month", "region"} {
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("i"+string(rune('0'+i)), key)})
+		require.NoError(t, err)
+	}
+	properties, err := h.Read(t.Context(), region, account+"|sales|orders|i2")
+	require.NoError(t, err, "the third index is on the second page")
+	require.Equal(t, map[string]any{"IndexName": "i2", "Keys": []any{"region"}}, properties["PartitionIndex"])
+	require.Equal(t, "CREATING", properties["IndexStatus"])
+
+	_, err = h.Read(t.Context(), region, account+"|sales|orders|missing")
+	require.ErrorIs(t, err, native.ErrNotFound)
+	_, err = h.Read(t.Context(), region, account+"|sales|gone|i0")
+	require.ErrorIs(t, err, native.ErrNotFound, "a table that doesn't exist has no index")
+
+	resources, err := h.List(t.Context(), region)
+	require.NoError(t, err)
+	require.Empty(t, resources)
+}
+
+func Test_CreateFails(t *testing.T) {
+	h := NewPartitionIndex(newFakeAPI(awsfake.NewCloudControl()))
+	identifier := account + "|sales|secret|by_year"
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(partitionIndex("by_year", "year"), map[string]any{"TableName": "secret"})})
+	require.NoError(t, err)
+
+	progress, err := h.Progress(t.Context(), region, identifier, native.OperationCreate)
+	require.NoError(t, err)
+	require.False(t, progress.Done)
+	require.Equal(t, "ACTIVE", progress.Waiting)
+
+	progress, err = h.Progress(t.Context(), region, identifier, native.OperationCreate)
+	require.NoError(t, err)
+	require.True(t, progress.Done)
+	require.NotNil(t, progress.Failure)
+	require.True(t, progress.Failure.ClientError)
+	require.Equal(t, `AWS Glue failed to build the partition index "by_year" from the table's partitions (ENCRYPTED_PARTITION_ERROR). Fix the partitions, then delete the index and deploy it again`, progress.Failure.Message)
+
+	require.NoError(t, h.Delete(t.Context(), region, identifier), "a FAILED index can be deleted")
+}
+
+func Test_backfillFailure(t *testing.T) {
+	require.Equal(t, `AWS Glue failed to build the partition index "i" from the table's partitions. Fix the partitions, then delete the index and deploy it again`, backfillFailure("i", nil))
+	require.Equal(t, `AWS Glue failed to build the partition index "i" from the table's partitions (MISSING_PARTITION_VALUE_ERROR, INTERNAL_ERROR). Fix the partitions, then delete the index and deploy it again`,
+		backfillFailure("i", []types.BackfillError{
+			{Code: types.BackfillErrorCodeMissingPartitionValueError},
+			{Code: types.BackfillErrorCodeInternalError},
+			{Code: types.BackfillErrorCodeMissingPartitionValueError},
+			{},
+		}), "each code once, in order")
+}
+
+func Test_Delete(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewPartitionIndex(api)
+	identifier := account + "|sales|orders|by_date"
+	require.ErrorIs(t, h.Delete(t.Context(), region, identifier), native.ErrNotFound)
+
+	api.holdCreating = true
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("by_date", "year")})
+	require.NoError(t, err)
+	require.ErrorContains(t, h.Delete(t.Context(), region, identifier), invalidInputCode, "AWS doesn't delete an index it is creating")
+
+	api.holdCreating = false
+	_, err = h.Read(t.Context(), region, identifier)
+	require.NoError(t, err)
+	require.NoError(t, h.Delete(t.Context(), region, identifier))
+	progress, err := h.Progress(t.Context(), region, identifier, native.OperationDelete)
+	require.NoError(t, err)
+	require.Equal(t, native.Progress{State: "DELETING", Waiting: "deleted"}, progress)
+	_, err = h.Progress(t.Context(), region, identifier, native.OperationDelete)
+	require.ErrorIs(t, err, native.ErrNotFound)
+
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("other", "year")})
+	require.NoError(t, err)
+	_, err = h.Read(t.Context(), region, account+"|sales|orders|other")
+	require.NoError(t, err)
+	require.NoError(t, api.deleteDirect("other"))
+	calls := api.deletes
+	require.NoError(t, h.Delete(t.Context(), region, account+"|sales|orders|other"), "an index AWS is deleting had a delete reach AWS")
+	require.Equal(t, calls, api.deletes, "no delete is sent for an index AWS is deleting")
+
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("third", "year")})
+	require.NoError(t, err)
+	_, err = h.Read(t.Context(), region, account+"|sales|orders|third")
+	require.NoError(t, err)
+	api.errs["DeletePartitionIndex"] = fault("EntityNotFoundException")
+	require.ErrorIs(t, h.Delete(t.Context(), region, account+"|sales|orders|third"), native.ErrNotFound, "an index deleted since the read is not found")
+}
+
+func Test_Update(t *testing.T) {
+	h := NewPartitionIndex(newFakeAPI(awsfake.NewCloudControl()))
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: region}))
+	progress, err := h.Progress(t.Context(), region, "anything", native.OperationUpdate)
+	require.NoError(t, err)
+	require.True(t, progress.Done)
+}
+
+func Test_ReadFails(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewPartitionIndex(api)
+	api.errs["GetPartitionIndexes"] = fault("ThrottlingException")
+	_, err := h.Read(t.Context(), region, account+"|sales|orders|by_date")
+	require.ErrorContains(t, err, "ThrottlingException")
+	require.NotErrorIs(t, err, native.ErrNotFound)
+}

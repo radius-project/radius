@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::Glue::PartitionIndex",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": ""
+}
