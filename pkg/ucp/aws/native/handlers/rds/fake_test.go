@@ -51,6 +51,9 @@ const (
 	// document, small so the handler's paging runs.
 	clusterPageSize = 100
 	tenantPageSize  = 2
+
+	// maxTags is how many tags an RDS resource can have.
+	maxTags = 50
 )
 
 // fakeAPI is an in-memory RDS API for activity streams and tenant databases. It keeps them in an awsfake store, in
@@ -464,6 +467,7 @@ func (f *fakeAPI) CreateTenantDatabase(ctx context.Context, in *rds.CreateTenant
 	r.check(len(name) <= 8 && !strings.EqualFold(name, "null"), "InvalidParameterValue")
 	r.password(in.MasterUserPassword)
 	r.tags(in.Tags)
+	r.check(len(in.Tags) <= maxTags, "InvalidParameterValue")
 	r.check(!(aws.ToBool(in.ManageMasterUserPassword) && in.MasterUserPassword != nil), "InvalidParameterCombination")
 	r.check(in.MasterUserSecretKmsKeyId == nil || aws.ToBool(in.ManageMasterUserPassword), "InvalidParameterCombination")
 	if r.err != nil {
@@ -695,15 +699,18 @@ func (f *fakeAPI) AddTagsToResource(ctx context.Context, in *rds.AddTagsToResour
 	if err != nil {
 		return nil, err
 	}
+	t := f.store.Resource(tenantDatabaseType, key)
+	tags := map[string]string{}
+	for _, tag := range awsapi.Tags(t) {
+		tags[tag.Key] = tag.Value
+	}
+	for _, tag := range in.Tags {
+		tags[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
+	}
+	if len(tags) > maxTags {
+		return nil, fault("InvalidParameterValue")
+	}
 	return &rds.AddTagsToResourceOutput{}, f.change(func() error {
-		t := f.store.Resource(tenantDatabaseType, key)
-		tags := map[string]string{}
-		for _, tag := range awsapi.Tags(t) {
-			tags[tag.Key] = tag.Value
-		}
-		for _, tag := range in.Tags {
-			tags[aws.ToString(tag.Key)] = aws.ToString(tag.Value)
-		}
 		t["Tags"] = awsapi.TagList(tags)
 		f.store.Put(tenantDatabaseType, key, t)
 		return nil

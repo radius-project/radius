@@ -44,6 +44,7 @@ const (
 	modifyTenantGuide = userGuide + "oracle-cdb-configuring.modifying.pdb.html"
 	deleteTenantGuide = userGuide + "oracle-cdb-configuring.deleting.pdb.html"
 	secretsGuide      = userGuide + "rds-secrets-manager.html"
+	tagGuide          = userGuide + "USER_Tagging.html"
 
 	// codesUnclear is what every call's page leaves unclear: the error code of a missing parameter, a value out of
 	// its limits, or parameters that can't be combined.
@@ -167,7 +168,9 @@ var activityStreamAPI = map[string]nativetest.Call{
 			"ID, alias ARN, or alias name, but not in which form DescribeDBClusters returns it, and the guide's example " +
 			"shows a key ID; the fake returns it as the call sent it, and the suite's other-form cases cover the rest. " +
 			"The page also takes a DB instance's ARN, for RDS for Oracle and SQL Server, which the type doesn't serve, " +
-			"so the handler rejects it before any call.",
+			"so the handler rejects it before any call. The response's Status is starting, but the pages don't say " +
+			"whether DescribeDBClusters can still show stopped right after the call; the fake shows starting at once. " +
+			"If it lagged, the create would fail as not found, and the next deploy would read the stream and wait for it.",
 	},
 	"StopActivityStream": {
 		Doc: apiReference + "API_StopActivityStream.html",
@@ -468,7 +471,8 @@ var tenantDatabaseAPI = map[string]nativetest.Call{
 			"fake returns it for an instance that isn't available. It doesn't say what AWS does when neither " +
 			"MasterUserPassword nor ManageMasterUserPassword is set, or for an instance without the multi-tenant " +
 			"configuration; the fake accepts the first and has only multi-tenant instances. DBName's rules give no " +
-			"character set for an Oracle name; the fake checks only the length and null. The page doesn't name the " +
+			"character set for an Oracle name; the fake checks only the length and null. Both pages forbid a reserved " +
+			"word as MasterUsername or TenantDBName without listing Oracle's reserved words; the fake rejects only null. The page doesn't name the " +
 			"tenant database's statuses; the fake reports creating, as the guide's examples report modifying and " +
 			"deleting, then available.",
 	},
@@ -658,9 +662,30 @@ var tenantDatabaseAPI = map[string]nativetest.Call{
 				Rule:  "the tenant database exists",
 				Break: against(addTags(tenantArn, tag("team", "a"))),
 				Code:  "TenantDatabaseNotFound",
+			},
+			nativetest.Rule{
+				Rule: "a resource has at most 50 tags",
+				Doc:  tagGuide,
+				Check: against(func(ctx context.Context, f *fakeAPI) error {
+					tags := []types.Tag{}
+					for i := range maxTags {
+						tags = append(tags, tag(fmt.Sprintf("key-%02d", i), "v"))
+					}
+					if err := readyTenant(func(in *rds.CreateTenantDatabaseInput) { in.Tags = tags })(ctx, f); err != nil {
+						return err
+					}
+					if err := addTags(tenantArn, tag("key-00", "w"))(ctx, f); err != nil {
+						return fmt.Errorf("replacing a value of 50 tags failed: %w", err)
+					}
+					if addTags(tenantArn, tag("extra", "v"))(ctx, f) == nil {
+						return fmt.Errorf("the fake accepts a 51st tag")
+					}
+					return nil
+				}),
 			}),
 		Unclear: codesUnclear + " The Tag page says a value is optional and also 1 to 256 characters; the fake accepts " +
-			"an empty value.",
+			"an empty value. The tagging guide limits a resource to 50 tags without naming the error; the fake returns " +
+			"InvalidParameterValue, for this call and CreateTenantDatabase.",
 	},
 	"RemoveTagsFromResource": {
 		Doc: apiReference + "API_RemoveTagsFromResource.html",

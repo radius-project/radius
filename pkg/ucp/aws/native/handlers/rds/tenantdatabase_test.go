@@ -18,6 +18,8 @@ package rds
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"testing"
 	"time"
@@ -179,6 +181,52 @@ func Test_TenantDatabase_Update(t *testing.T) {
 		require.Empty(t, rec.modifies)
 	})
 
+	t.Run("a key sent again after RDS started managing the password needs no call", func(t *testing.T) {
+		managed := with(tenant, map[string]any{"MasterUserPassword": nil, "ManageMasterUserPassword": true, "MasterUserSecretKmsKeyId": keyID})
+		h, api := newTenant(t, managed)
+		rec := &recordingAPI{API: api}
+		h.api = rec
+		for _, key := range []string{keyID, keyArn, "alias/app-secret"} {
+			require.NoError(t, update(t, h, with(managed, map[string]any{"MasterUserSecretKmsKeyId": key}), replace("MasterUserSecretKmsKeyId", key)), key)
+		}
+		require.Empty(t, rec.modifies, "AWS already uses the key, and can't take it again")
+
+		err := update(t, h, with(managed, map[string]any{"MasterUserSecretKmsKeyId": "other-key"}), replace("MasterUserSecretKmsKeyId", "other-key"))
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure)
+		require.True(t, failure.ClientError)
+		require.Contains(t, failure.Message, keyID, "the message names the key AWS uses")
+		require.Empty(t, rec.modifies)
+	})
+
+	t.Run("a key without RDS's management is sent, so AWS rejects it", func(t *testing.T) {
+		h, _ := newTenant(t, tenant)
+		err := update(t, h, with(tenant, map[string]any{"MasterUserSecretKmsKeyId": keyID}), replace("MasterUserSecretKmsKeyId", keyID))
+		require.ErrorContains(t, err, "InvalidParameterCombination")
+	})
+
+	t.Run("turning management off doesn't send the key", func(t *testing.T) {
+		managed := with(tenant, map[string]any{"MasterUserPassword": nil, "ManageMasterUserPassword": true, "MasterUserSecretKmsKeyId": keyID})
+		h, api := newTenant(t, managed)
+		rec := &recordingAPI{API: api}
+		h.api = rec
+		desired := with(tenant, map[string]any{"ManageMasterUserPassword": false, "MasterUserSecretKmsKeyId": "other-key"})
+		require.NoError(t, update(t, h, desired, replace("ManageMasterUserPassword", false), replace("MasterUserSecretKmsKeyId", "other-key")))
+		require.Nil(t, rec.modifies[0].MasterUserSecretKmsKeyId)
+	})
+
+	t.Run("replacing a tag of 50 removes the old key first", func(t *testing.T) {
+		many := []any{}
+		for i := range maxTags {
+			many = append(many, map[string]any{"Key": fmt.Sprintf("key-%02d", i), "Value": "v"})
+		}
+		h, api := newTenant(t, with(tenant, map[string]any{"Tags": many}))
+		replaced := append([]any{map[string]any{"Key": "new-key", "Value": "v"}}, many[1:]...)
+		require.NoError(t, update(t, h, with(tenant, map[string]any{"Tags": replaced}), replace("Tags", replaced)))
+		stored := api.store.Resource(tenantDatabaseType, tenantID)
+		require.Len(t, stored["Tags"], maxTags)
+	})
+
 	t.Run("a tenant database that is gone is not found", func(t *testing.T) {
 		h, api := newTenant(t, tenant)
 		current, err := h.Read(t.Context(), region, tenantID)
@@ -192,19 +240,33 @@ func Test_TenantDatabase_Update(t *testing.T) {
 func Test_TenantDatabase_DeleteToken(t *testing.T) {
 	h := NewTenantDatabase(newFakeAPI(awsfake.NewCloudControl()))
 	h.now = func() time.Time { return time.Date(2026, 11, 4, 21, 27, 51, 0, time.FixedZone("PST", -8*3600)) }
+	hash := func(identifier string) string {
+		sum := sha256.Sum256([]byte(identifier))
+		return hex.EncodeToString(sum[:4])
+	}
 	for identifier, want := range map[string]string{
-		tenantID:           "app-cdb-pdb1-final-20261105-052751",
-		"app-cdb|pdb_1":    "app-cdb-pdb-1-final-20261105-052751",
-		"app-cdb|_p$#d_":   "app-cdb-p-d-final-20261105-052751",
-		"app-cdb|$_":       "app-cdb-final-20261105-052751",
-		"app-cdb|PDB1":     "app-cdb-pdb1-final-20261105-052751",
-		"app-cdb|pdb--two": "app-cdb-pdb-two-final-20261105-052751",
+		tenantID:           "app-cdb-pdb1-final-20261105-052751-" + hash(tenantID),
+		"app-cdb|PDB1":     "app-cdb-pdb1-final-20261105-052751-" + hash(tenantID),
+		"app-cdb|pdb_1":    "app-cdb-pdb-1-final-20261105-052751-" + hash("app-cdb|pdb_1"),
+		"app-cdb|_p$#d_":   "app-cdb-p-d-final-20261105-052751-" + hash("app-cdb|_p$#d_"),
+		"app-cdb|$_":       "app-cdb-final-20261105-052751-" + hash("app-cdb|$_"),
+		"app-cdb|pdb--two": "app-cdb-pdb-two-final-20261105-052751-" + hash("app-cdb|pdb--two"),
 	} {
 		token, err := h.DeleteToken(t.Context(), region, identifier)
 		require.NoError(t, err)
 		require.Equal(t, want, token, identifier)
 		require.True(t, validSnapshotID(token), token)
 	}
+
+	// Names that read the same once sanitized and joined still get different snapshots.
+	tokens := map[string]bool{}
+	for _, identifier := range []string{"app-cdb|pdb", "app|cdb-pdb", "app-cdb|pdb_1", "app-cdb|pdb-1"} {
+		token, err := h.DeleteToken(t.Context(), region, identifier)
+		require.NoError(t, err)
+		require.False(t, tokens[token], identifier)
+		tokens[token] = true
+	}
+
 	_, err := h.DeleteToken(t.Context(), region, "app-cdb")
 	require.Error(t, err)
 }

@@ -18,6 +18,8 @@ package rds
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"slices"
@@ -189,7 +191,7 @@ func only(properties map[string]any, names []string) map[string]any {
 	return out
 }
 
-// Update sets the master user password, or whether RDS manages it, with ModifyTenantDatabase, then adds and removes
+// Update sets the master user password, or whether RDS manages it, with ModifyTenantDatabase, then removes and adds
 // tags. Removing ManageMasterUserPassword turns RDS's management off, AWS's default, which takes MasterUserPassword in
 // the same call. A removed password or key stays as AWS has it, because AWS can't clear either.
 func (h *TenantDatabase) Update(ctx context.Context, request native.UpdateRequest) error {
@@ -200,7 +202,11 @@ func (h *TenantDatabase) Update(ctx context.Context, request native.UpdateReques
 	opt := inRegion(request.Region)
 	changed := awsapi.Changed(request)
 	calls := []func() error{}
-	if input := modifyInput(request, changed); input != nil {
+	input, err := modifyInput(request, changed, tenant.MasterUserSecret)
+	if err != nil {
+		return err
+	}
+	if input != nil {
 		input.DBInstanceIdentifier, input.TenantDBName = tenant.DBInstanceIdentifier, tenant.TenantDBName
 		calls = append(calls, func() error {
 			_, err := h.api.ModifyTenantDatabase(ctx, input, opt)
@@ -210,15 +216,16 @@ func (h *TenantDatabase) Update(ctx context.Context, request native.UpdateReques
 	if slices.Contains(changed, "Tags") {
 		set, remove := awsapi.TagChanges(awsapi.Tags(request.Current), awsapi.Tags(request.Desired))
 		arn := tenant.TenantDatabaseARN
-		if len(set) > 0 {
-			calls = append(calls, func() error {
-				_, err := h.api.AddTagsToResource(ctx, &rds.AddTagsToResourceInput{ResourceName: arn, Tags: awsapi.SDKTags[types.Tag](set)}, opt)
-				return err
-			})
-		}
+		// Removing first keeps the tag set within RDS's 50 tags when the template replaces some.
 		if len(remove) > 0 {
 			calls = append(calls, func() error {
 				_, err := h.api.RemoveTagsFromResource(ctx, &rds.RemoveTagsFromResourceInput{ResourceName: arn, TagKeys: remove}, opt)
+				return err
+			})
+		}
+		if len(set) > 0 {
+			calls = append(calls, func() error {
+				_, err := h.api.AddTagsToResource(ctx, &rds.AddTagsToResourceInput{ResourceName: arn, Tags: awsapi.SDKTags[types.Tag](set)}, opt)
 				return err
 			})
 		}
@@ -227,7 +234,8 @@ func (h *TenantDatabase) Update(ctx context.Context, request native.UpdateReques
 }
 
 // modifyInput returns the ModifyTenantDatabase input for the changed properties, or nil when none needs the call.
-func modifyInput(request native.UpdateRequest, changed []string) *rds.ModifyTenantDatabaseInput {
+// secret is the secret RDS manages for the password, or nil when it doesn't manage it.
+func modifyInput(request native.UpdateRequest, changed []string, secret *types.MasterUserSecret) (*rds.ModifyTenantDatabaseInput, error) {
 	input := &rds.ModifyTenantDatabaseInput{}
 	send := false
 	manage, manageSet := request.Desired["ManageMasterUserPassword"].(bool)
@@ -239,15 +247,44 @@ func modifyInput(request native.UpdateRequest, changed []string) *rds.ModifyTena
 		input.MasterUserPassword = aws.String(password)
 		send = true
 	}
-	// The key applies only when RDS starts managing the password, and can't change once it does.
-	if key, ok := request.Desired["MasterUserSecretKmsKeyId"].(string); ok && (slices.Contains(changed, "MasterUserSecretKmsKeyId") || aws.ToBool(input.ManageMasterUserPassword)) {
+	key, ok := request.Desired["MasterUserSecretKmsKeyId"].(string)
+	switch {
+	case !ok, input.ManageMasterUserPassword != nil && !*input.ManageMasterUserPassword:
+		// A call that turns off RDS's management of the password deletes the secret, so the key doesn't apply.
+	case aws.ToBool(input.ManageMasterUserPassword) && secret == nil:
+		// The key applies only to the call that turns on RDS's management of the password.
+		input.MasterUserSecretKmsKeyId = aws.String(key)
+		send = true
+	case slices.Contains(changed, "MasterUserSecretKmsKeyId") && secret != nil:
+		// AWS can't change the key once RDS manages the password. UCP sends a key it has no fingerprint of, such
+		// as after an update whose response was lost, so the key AWS reports stands in for it.
+		if err := sameSecretKey(key, aws.ToString(secret.KmsKeyId)); err != nil {
+			return nil, err
+		}
+	case slices.Contains(changed, "MasterUserSecretKmsKeyId"):
+		// RDS doesn't manage the password and the call doesn't turn it on, so AWS rejects the key with its error.
 		input.MasterUserSecretKmsKeyId = aws.String(key)
 		send = true
 	}
 	if !send {
+		return nil, nil
+	}
+	return input, nil
+}
+
+// sameSecretKey returns nil when key, the template's MasterUserSecretKmsKeyId, can be the key current names, the key
+// of the secret RDS manages, and a rejected failure otherwise. An alias can't be told from another key without asking
+// KMS, so it is taken as the same.
+func sameSecretKey(key string, current string) error {
+	if key == current || strings.HasSuffix(current, ":key/"+key) || strings.HasSuffix(key, ":key/"+current) ||
+		strings.HasPrefix(key, "alias/") || strings.Contains(key, ":alias/") {
 		return nil
 	}
-	return input
+	return &native.Failure{
+		Message:     fmt.Sprintf("RDS already manages the master user password with the KMS key %q, and AWS can't change it. Set MasterUserSecretKmsKeyId to that key, or turn off ManageMasterUserPassword first.", current),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
 }
 
 // Delete deletes the tenant database with a final snapshot named by DeleteToken. UCP calls DeleteWithToken instead,
@@ -263,18 +300,20 @@ func (h *TenantDatabase) Delete(ctx context.Context, region string, identifier s
 // nonSnapshotCharacters are the characters a DB snapshot identifier can't have.
 var nonSnapshotCharacters = regexp.MustCompile(`[^a-z0-9]+`)
 
-// DeleteToken returns the name of the final snapshot: the instance, the tenant database name, "-final-", and the UTC
-// time, such as app-cdb-pdb1-final-20261104-212751. A tenant database name can have characters a snapshot identifier
-// can't, such as _, so each run of them becomes one hyphen. The name starts with the instance's identifier, which
-// starts with a letter, and fits a snapshot identifier's 255 characters, because an instance identifier has at most
-// 63 and a tenant database name at most 8.
+// DeleteToken returns the name of the final snapshot: the instance, the tenant database name, "-final-", the UTC time,
+// and a hash of the identifier, such as app-cdb-pdb1-final-20261104-212751-1a2b3c4d. A tenant database name can have
+// characters a snapshot identifier can't, such as _, so each run of them becomes one hyphen, and the hash keeps the
+// names of two tenant databases deleted in the same second apart, such as pdb_1 and pdb-1. The name starts with the
+// instance's identifier, which starts with a letter, and fits a snapshot identifier's 255 characters, because an
+// instance identifier has at most 63 and a tenant database name at most 8.
 func (h *TenantDatabase) DeleteToken(ctx context.Context, region string, identifier string) (string, error) {
 	instance, name, err := splitTenant(identifier)
 	if err != nil {
 		return "", err
 	}
+	sum := sha256.Sum256([]byte(strings.ToLower(identifier)))
 	parts := []string{}
-	for _, part := range []string{instance, name, "final", h.now().UTC().Format("20060102-150405")} {
+	for _, part := range []string{instance, name, "final", h.now().UTC().Format("20060102-150405"), hex.EncodeToString(sum[:4])} {
 		if part = strings.Trim(nonSnapshotCharacters.ReplaceAllString(strings.ToLower(part), "-"), "-"); part != "" {
 			parts = append(parts, part)
 		}

@@ -94,6 +94,8 @@
     },
     "Tags": {
       "type": "array",
+      "description": "The tags of the tenant database. An RDS resource has at most 50 tags.",
+      "maxItems": 50,
       "uniqueItems": false,
       "insertionOrder": false,
       "items": {
