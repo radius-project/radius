@@ -180,6 +180,7 @@ func renderUCPAPIServerTrustObjects(t *testing.T, helmBinary string) (*unstructu
 	t.Helper()
 	output, err := exec.CommandContext(t.Context(), helmBinary, "template", "radius", filepath.Join("..", "..", "..", "deploy", "Chart"),
 		"--namespace", RadiusSystemNamespace, "--set", "global.rbac.enabled=true",
+		"--api-versions", admissionPolicyAPI,
 		"--show-only", "templates/global/certificates.yaml", "--show-only", "templates/ucp/apiservice.yaml").CombinedOutput()
 	require.NoError(t, err, string(output))
 

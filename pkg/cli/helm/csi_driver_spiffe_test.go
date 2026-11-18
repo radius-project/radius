@@ -119,6 +119,8 @@ func sarClient(allowed map[string]bool, reviews *[]authorizationv1.SubjectAccess
 	return client
 }
 
+const admissionPolicyAPI = "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy"
+
 // withValidatingAdmissionPolicyAPI makes client's discovery serve ValidatingAdmissionPolicy, as Kubernetes 1.30 and
 // later do.
 func withValidatingAdmissionPolicyAPI(client *k8sfake.Clientset) *k8sfake.Clientset {
@@ -463,6 +465,17 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 				Return(&releasev1.Release{}, nil)
 		}
 	}
+	external := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true, "tls": map[string]any{"provider": "external"}}}}
+	externalObjects := []runtime.Object{
+		certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "custom"),
+		csiDriver(SPIFFECSIDriverNameDefault, nil),
+	}
+	unrestricted := map[string]bool{
+		radiusCAIssuerSignerName(RadiusSystemNamespace):                    true,
+		issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+		issuerSignerName(RadiusSystemNamespace, RadiusAPIServerIssuerName): true,
+	}
+	noHelm := func(*testing.T, *MockHelmClient) {}
 	approver := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
 	disabledApprover := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
 	disabledApprover.Spec.Template.Spec.Containers[0].Args = []string{"--controllers=*,-certificaterequests-approver"}
@@ -483,6 +496,28 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 		wantRequesters []string
 	}{
 		{name: "mode off makes no calls", expect: func(*testing.T, *MockHelmClient) {}},
+		{
+			name:    "external install discovers requesters without managing CSI",
+			setArgs: []string{"global.rbac.dryRun=true", "global.rbac.tls.provider=external"},
+			objects: externalObjects, allowed: unrestricted, expect: noHelm, wantClient: true,
+			wantRequesters: []string{"system:serviceaccount:security:custom"},
+		},
+		{
+			name:   "stored external upgrade discovers requesters without managing CSI",
+			stored: external, upgrade: true, objects: externalObjects, allowed: unrestricted, expect: noHelm, wantClient: true,
+			wantRequesters: []string{"system:serviceaccount:security:custom"},
+		},
+		{
+			name:   "current radius provider supersedes stored external",
+			stored: external, setArgs: []string{"global.rbac.tls.provider=radius"},
+			expect: expectInstall(wantValues), wantClient: true,
+		},
+		{
+			name:     "external still requires admission API",
+			setArgs:  []string{"global.rbac.dryRun=true", "global.rbac.tls.provider=external"},
+			noVAPAPI: true, expect: func(*testing.T, *MockHelmClient) {}, wantClient: true,
+			wantErr: "does not serve ValidatingAdmissionPolicy",
+		},
 		{
 			name:       "installs when absent",
 			setArgs:    dryRun,
@@ -555,12 +590,10 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			wantErr:    "Limit the default approver to other signers",
 		},
 		{
-			name:     "cluster without ValidatingAdmissionPolicy fails before installing",
-			setArgs:  dryRun,
-			noVAPAPI: true,
-			expect: func(_ *testing.T, m *MockHelmClient) {
-				expectGet(nil)(m)
-			},
+			name:       "cluster without ValidatingAdmissionPolicy fails before installing",
+			setArgs:    dryRun,
+			noVAPAPI:   true,
+			expect:     func(_ *testing.T, m *MockHelmClient) { expectGet(nil)(m) },
 			wantClient: true,
 			wantErr:    "Radius stopped before changing the cluster because the cluster does not serve ValidatingAdmissionPolicy (admissionregistration.k8s.io/v1).",
 		},

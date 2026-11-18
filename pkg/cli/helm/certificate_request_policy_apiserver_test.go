@@ -164,7 +164,7 @@ func createRenderedIssuancePolicy(t *testing.T, helmBinary string, config *rest.
 	t.Helper()
 
 	args := []string{"template", "radius", filepath.Join("..", "..", "..", "deploy", "Chart"), "--namespace", RadiusSystemNamespace,
-		"--api-versions", "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy", "--show-only", "templates/global/certificate-request-policy.yaml"}
+		"--api-versions", admissionPolicyAPI, "--show-only", "templates/global/certificate-request-policy.yaml"}
 	for _, s := range set {
 		args = append(args, "--set", s)
 	}

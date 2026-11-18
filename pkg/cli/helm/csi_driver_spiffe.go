@@ -26,7 +26,6 @@ import (
 	"strings"
 	"time"
 
-	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -96,12 +95,8 @@ type spiffeSettings struct {
 	CSIDriverName string
 }
 
-// resolveSPIFFESettings returns the SPIFFE settings the Radius chart will render, merging the current invocation's
-// values over the stored release values like resolveAuthzMode.
 func resolveSPIFFESettings(stored, current map[string]any) spiffeSettings {
-	merged := valuesutil.CoalesceTables(copyValues(current), copyValues(stored))
-	global, _ := merged["global"].(map[string]any)
-	rbac, _ := global["rbac"].(map[string]any)
+	rbac := mergedRBACValues(stored, current)
 	spiffe, _ := rbac["spiffe"].(map[string]any)
 
 	settings := spiffeSettings{TrustDomain: SPIFFETrustDomainDefault, CSIDriverName: SPIFFECSIDriverNameDefault}
@@ -173,6 +168,7 @@ func (i *Impl) getReleaseOwnership(options ChartOptions, kubeContext string) (*r
 
 // csiDriverSPIFFEPlan is the checked state that applyCSIDriverSPIFFE installs or upgrades from.
 type csiDriverSPIFFEPlan struct {
+	external     bool
 	chartOptions ChartOptions
 	values       map[string]any
 	release      *releasev1.Release
@@ -191,7 +187,8 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Radius values: %w", err)
 	}
-	mode, err := resolveAuthzMode(storedValues, currentValues)
+	rbac := mergedRBACValues(storedValues, currentValues)
+	mode, err := authzModeFromRBAC(rbac)
 	if err != nil {
 		return nil, err
 	}
@@ -199,36 +196,40 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 		return nil, nil
 	}
 
-	chartOptions := options.CSIDriverSPIFFE.ChartOptions
-	settings := resolveSPIFFESettings(storedValues, currentValues)
-
-	rel, owned, err := i.getReleaseOwnership(chartOptions, kubeContext)
-	if err != nil {
-		return nil, err
+	tls, _ := rbac["tls"].(map[string]any)
+	plan := &csiDriverSPIFFEPlan{
+		namespace:    options.Radius.Namespace,
+		external:     tls["provider"] == string(authz.TLSProviderExternal),
+		chartOptions: options.CSIDriverSPIFFE.ChartOptions,
 	}
-	if rel != nil && !owned {
-		return nil, clierrors.Message("Radius stopped before changing the cluster because Helm release %q in namespace %q was not installed by rad. Radius installs and manages its own csi-driver-spiffe. Remove that release, for example with %s, and then run the command again.",
-			chartOptions.ReleaseName, chartOptions.Namespace, helmCommand(kubeContext, chartOptions.Namespace, "uninstall "+chartOptions.ReleaseName))
+	if !plan.external {
+		rel, owned, err := i.getReleaseOwnership(plan.chartOptions, kubeContext)
+		if err != nil {
+			return nil, err
+		}
+		if rel != nil && !owned {
+			return nil, clierrors.Message("Radius stopped before changing the cluster because Helm release %q in namespace %q was not installed by rad. Radius installs and manages its own csi-driver-spiffe. Remove that release, for example with %s, and then run the command again.",
+				plan.chartOptions.ReleaseName, plan.chartOptions.Namespace, helmCommand(kubeContext, plan.chartOptions.Namespace, "uninstall "+plan.chartOptions.ReleaseName))
+		}
+		plan.release = rel
 	}
 
-	kubeClient, err := i.csiDriverSPIFFEClient(kubeContext)
+	plan.kubeClient, err = i.csiDriverSPIFFEClient(kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes clients: %w", err)
 	}
-	if err := checkForeignCSIDriverSPIFFE(ctx, kubeClient, chartOptions, settings.CSIDriverName, kubeContext); err != nil {
+	if !plan.external {
+		settings := resolveSPIFFESettings(storedValues, currentValues)
+		if err := checkForeignCSIDriverSPIFFE(ctx, plan.kubeClient, plan.chartOptions, settings.CSIDriverName, kubeContext); err != nil {
+			return nil, err
+		}
+		plan.values = buildCSIDriverSPIFFEValues(plan.namespace, settings)
+	}
+	// Aggregation issuers still need admission policy and requester discovery with external TLS.
+	if err := checkValidatingAdmissionPolicyServed(plan.kubeClient); err != nil {
 		return nil, err
 	}
-	if err := checkValidatingAdmissionPolicyServed(kubeClient); err != nil {
-		return nil, err
-	}
-
-	return &csiDriverSPIFFEPlan{
-		chartOptions: chartOptions,
-		values:       buildCSIDriverSPIFFEValues(options.Radius.Namespace, settings),
-		release:      rel,
-		kubeClient:   kubeClient,
-		namespace:    options.Radius.Namespace,
-	}, nil
+	return plan, nil
 }
 
 // applyCSIDriverSPIFFE installs or upgrades Radius's csi-driver-spiffe instance from a plan made by
@@ -241,16 +242,16 @@ func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPl
 	if plan == nil {
 		return nil, nil
 	}
-	chartOptions := plan.chartOptions
-
 	// Only Radius's csi-driver-spiffe approver may approve requests for the Radius CA issuer. A cert-manager default
 	// approver that can approve them would sign any SPIFFE ID. At this point rad has changed at most cert-manager, so
 	// it stops before it installs or upgrades csi-driver-spiffe and Radius.
-	var conflict *defaultApproverConflictError
-	if err := checkCertManagerDefaultApprover(ctx, plan.kubeClient, plan.namespace, kubeContext); errors.As(err, &conflict) {
-		return nil, clierrors.Message("Radius stopped before it installed or upgraded csi-driver-spiffe and Radius because %s", conflict.Error())
-	} else if err != nil {
-		return nil, err
+	if !plan.external {
+		var conflict *defaultApproverConflictError
+		if err := checkCertManagerDefaultApprover(ctx, plan.kubeClient, plan.namespace, kubeContext); errors.As(err, &conflict) {
+			return nil, clierrors.Message("Radius stopped before it installed or upgraded csi-driver-spiffe and Radius because %s", conflict.Error())
+		} else if err != nil {
+			return nil, err
+		}
 	}
 	requesters, err := certManagerControllerUsers(ctx, plan.kubeClient)
 	if err != nil {
@@ -263,6 +264,10 @@ func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPl
 			strings.Join(missing, ", "))
 	}
 
+	if plan.external {
+		return requesters, nil
+	}
+	chartOptions := plan.chartOptions
 	helmAction := NewHelmAction(i.Helm)
 	if rel := plan.release; rel != nil {
 		deployed := rel.Info != nil && rel.Info.Status == releasecommon.StatusDeployed
