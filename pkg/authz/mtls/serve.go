@@ -230,25 +230,13 @@ type server struct {
 //
 // The caller's identity is attached only to requests that arrived over TLS while the
 // receiver's own serving certificate is valid. A connection can outlive that certificate,
-// so its validity is checked on every request, not only at the handshake.
+// so its validity is checked on every request, not only at the handshake. Stale signing
+// keys take precedence: such requests are rejected with AuthorizationUnavailable in every
+// mode, whatever the state of the serving certificate.
 func (s *server) authorizeCaller(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		decision := authz.Decision{Allowed: true, Action: r.Method, Target: r.URL.Path}
-
-		// Plain HTTP in dryRun is logged once per connection by the listener.
-		trusted := r.TLS != nil
-		if trusted {
-			if _, err := s.source.load(); err != nil {
-				logServingFailure(ctx, s.mode, r.RemoteAddr, err)
-				if s.mode == authz.ModeEnforce {
-					w.Header().Set("Connection", "close")
-					writeDenied(ctx, w, r, &authz.DeniedError{Code: v1.CodeInvalidAuthenticationInfo, Action: decision.Action, Target: decision.Target})
-					return
-				}
-				trusted = false
-			}
-		}
 
 		logger := ucplog.FromContextOrDiscard(ctx).WithValues(LogFieldPeerAddress, r.RemoteAddr)
 
@@ -275,6 +263,24 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 		if decision.Code == v1.CodeAuthorizationUnavailable {
 			mode = authz.ModeEnforce
 		}
+
+		// Plain HTTP in dryRun is logged once per connection by the listener. A request that
+		// stale keys reject is not checked further, so it always gets the 503.
+		trusted := r.TLS != nil
+		if trusted && decision.Code != v1.CodeAuthorizationUnavailable {
+			if _, err := s.source.load(); err != nil {
+				// The request context's logger has no token fields, so the log shows only
+				// the certificate failure.
+				logServingFailure(r.Context(), s.mode, r.RemoteAddr, err)
+				if s.mode == authz.ModeEnforce {
+					w.Header().Set("Connection", "close")
+					writeDenied(r.Context(), w, r, &authz.DeniedError{Code: v1.CodeInvalidAuthenticationInfo, Action: decision.Action, Target: decision.Target})
+					return
+				}
+				trusted = false
+			}
+		}
+
 		if err := authz.Apply(ctx, mode, decision); err != nil {
 			writeDenied(ctx, w, r, err)
 			return
