@@ -787,7 +787,7 @@ func Test_planCSIDriverSPIFFE_ClientError(t *testing.T) {
 }
 
 func TestExternalCertificatePrerequisites(t *testing.T) {
-	for _, command := range []string{"install", "upgrade"} {
+	for _, command := range []string{"install", "upgrade", "preflight-only"} {
 		for _, served := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/VAP=%t", command, served), func(t *testing.T) {
 				controller := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "custom")
@@ -811,12 +811,12 @@ func TestExternalCertificatePrerequisites(t *testing.T) {
 				options.Contour.Disabled = true
 				options.Radius.ChartPath = "chart"
 				options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
-				if command == "upgrade" {
+				if command != "install" {
 					options.ResetValues = true
 					options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true, "tls": map[string]any{"provider": "radius"}}}}
 				}
 				stop := errors.New("stop at final Helm call")
-				if served {
+				if served && command != "preflight-only" {
 					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
 					requesters := gomock.Cond(func(v map[string]any) bool {
 						users, ok := nestedValue(v, "global", "rbac", "certManager", "requesters").([]any)
@@ -835,10 +835,14 @@ func TestExternalCertificatePrerequisites(t *testing.T) {
 				run := impl.InstallRadius
 				if command == "upgrade" {
 					run = impl.UpgradeRadius
+				} else if command == "preflight-only" {
+					run = impl.CheckRadiusCertificates
 				}
 				err := run(t.Context(), options, "test-context")
 				if !served {
 					require.ErrorContains(t, err, "does not serve ValidatingAdmissionPolicy")
+				} else if command == "preflight-only" {
+					require.NoError(t, err)
 				} else {
 					require.ErrorIs(t, err, stop)
 				}

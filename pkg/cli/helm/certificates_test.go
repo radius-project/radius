@@ -897,8 +897,7 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 				client.EXPECT().RunHelmHistory(gomock.Any(), "radius").Return(history, nil)
 			}
 			impl := &Impl{Helm: client}
-			switch {
-			case scenario.err == "":
+			if scenario.err == "" {
 				// Exercise the real selected-chart preflight only. Permanent public trust
 				// staging/convergence is paired lifecycle work, not mocked issuance.
 				selectedChart, configuration, current, prepareErr := prepareRadiusChart(t.Context(), NewHelmAction(client), options.Radius, kubeContext)
@@ -907,7 +906,7 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 				if err == nil {
 					err = impl.checkIssuerPolicy(t.Context(), options, selectedChart, configuration, current, kubeContext, !install)
 				}
-			default:
+			} else {
 				switch scenario.operation {
 				case "install", "old chart", "reinstall", "switch-on":
 					err = impl.InstallRadius(t.Context(), options, kubeContext)

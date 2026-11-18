@@ -718,5 +718,9 @@ func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptio
 	if err := i.checkIssuerPolicy(ctx, options, chart, configuration, current, kubeContext, true); err != nil {
 		return err
 	}
-	return target.checkTransition(options.RadiusReleaseValues)
+	if err := target.checkTransition(options.RadiusReleaseValues); err != nil {
+		return err
+	}
+	_, err = i.planSelectedCSIDriverSPIFFE(ctx, options, kubeContext, target)
+	return err
 }
