@@ -45,6 +45,7 @@ import (
 type certificateTarget struct {
 	radiusAuthTarget
 	deployedMode   authz.Mode
+	requesters     []string
 	Mode, Provider string
 	TrustDomain    string
 	Receivers      []string

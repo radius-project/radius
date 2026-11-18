@@ -608,11 +608,36 @@ func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterO
 		}
 		deployed, mode = values, settings.mode
 	}
+	effective, settings, err := resolveEffectiveChartValues(selected, options.Radius.Namespace, options.Radius.ReleaseName, current, options.RadiusReleaseValues, options.ResetValues)
+	if err != nil {
+		return nil, nil, err
+	}
+	var requesters []string
+	if settings.mode != authz.ModeOff {
+		client, err := i.csiDriverSPIFFEClient(kubeContext)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot discover cert-manager requesters: %w", err)
+		}
+		requesters, err = certManagerControllerUsers(ctx, client)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(requesters) == 0 {
+			if options.Certificates.CertIssuer != "" || certificateMode(effective) == "issuerRef" {
+				return nil, nil, fmt.Errorf("cannot discover the operator-managed cert-manager controller for issuerRef")
+			}
+			// A fresh rad-managed install creates this controller. Validate its
+			// intended identity now and verify discovery after cert-manager is ready.
+			requesters = []string{"system:serviceaccount:" + options.CertManager.Namespace + ":" + options.CertManager.ReleaseName}
+		}
+		setCertManagerRequesters(current, requesters)
+	}
 	target, plan, err := i.prepareSelectedCertificates(ctx, options, selected, current, kubeContext, deployed)
 	if err != nil {
 		return nil, nil, err
 	}
 	target.deployedMode = mode
+	target.requesters = requesters
 	if err := i.checkIssuerPolicy(ctx, options, selected, current, kubeContext, history); err != nil {
 		return nil, nil, err
 	}
@@ -623,7 +648,7 @@ func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterO
 		if err != nil {
 			return nil, nil, err
 		}
-		if err := checkExternalWorkloadManifest(manifest, target.spiffe.CSIDriverName); err != nil {
+		if err := checkExternalWorkloadManifest(manifest, target.chartAuthSettings); err != nil {
 			return nil, nil, err
 		}
 	} else if target.Mode == "selfSigned" {
@@ -656,14 +681,16 @@ func (i *Impl) renderCertificatePolicy(ctx context.Context, options ClusterOptio
 	if err != nil {
 		return err
 	}
-	if settings.provider == authz.TLSProviderExternal {
-		return checkExternalWorkloadManifest(manifest, settings.spiffe.CSIDriverName)
-	}
-	return nil
+	return checkExternalWorkloadManifest(manifest, settings)
 }
 
-func checkExternalWorkloadManifest(manifest, driver string) error {
-	req, err := workloadRequirementsFromManifest(manifest, driver)
+// checkExternalWorkloadManifest takes the caller's completed render and effective
+// authorization values from resolveEffectiveChartValues. It needs no Helm action or cluster.
+func checkExternalWorkloadManifest(manifest string, effective chartAuthSettings) error {
+	if effective.provider != authz.TLSProviderExternal {
+		return nil
+	}
+	req, err := workloadRequirementsFromManifest(manifest, effective.spiffe.CSIDriverName)
 	if err != nil {
 		return err
 	}

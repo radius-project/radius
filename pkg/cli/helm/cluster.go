@@ -412,11 +412,9 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 			return err
 		}
 	}
-	certManagerRequesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, clusterOptions.Radius.Reinstall)
-	if err != nil {
+	if _, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, clusterOptions.Radius.Reinstall); err != nil {
 		return err
 	}
-	setCertManagerRequesters(radiusValues, certManagerRequesters)
 
 	// Install Contour before Radius. The Contour checks then see the cluster seconds before Contour is installed
 	// rather than after the wait for Radius, during which a k3s cluster that just started can install the Gateway API
@@ -649,11 +647,9 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 			return err
 		}
 	}
-	certManagerRequesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, true)
-	if err != nil {
+	if _, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, true); err != nil {
 		return err
 	}
-	setCertManagerRequesters(radiusValues, certManagerRequesters)
 
 	if err := i.applyCertificatePlan(ctx, certificates); err != nil {
 		return err
@@ -967,14 +963,14 @@ func (i *Impl) reconcileRollbackDependencies(ctx context.Context, kubeContext st
 	}
 	target := radiusAuthTarget{chartAuthSettings: settings}
 	if settings.mode != authz.ModeOff && settings.provider == authz.TLSProviderExternal {
-		if err := checkExternalWorkloadManifest(targetRelease.Manifest, settings.spiffe.CSIDriverName); err != nil {
+		if err := checkExternalWorkloadManifest(targetRelease.Manifest, settings); err != nil {
 			return err
 		}
 		manifest, err := i.renderCertificateManifest(ctx, options, targetRelease.Chart, targetRelease.Config, kubeContext, history, revision)
 		if err != nil {
 			return err
 		}
-		if err := checkExternalWorkloadManifest(manifest, settings.spiffe.CSIDriverName); err != nil {
+		if err := checkExternalWorkloadManifest(manifest, settings); err != nil {
 			return err
 		}
 	} else {

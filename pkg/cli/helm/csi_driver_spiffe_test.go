@@ -1191,6 +1191,7 @@ func TestSelectedChartAuthPrerequisites(t *testing.T) {
 						return nil, errors.New(tc.want)
 					}
 				case "managed CSI check":
+					impl.newCSIDriverSPIFFEClient = func(string) (kubernetes.Interface, error) { return k8sfake.NewClientset(), nil }
 					client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, errors.New(tc.want))
 				}
 				if command == "install" {

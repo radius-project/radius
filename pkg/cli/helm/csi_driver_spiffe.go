@@ -170,6 +170,7 @@ func (i *Impl) getReleaseOwnership(options ChartOptions, kubeContext string) (*r
 type csiDriverSPIFFEPlan struct {
 	manageDriver bool
 	issuerRef    bool
+	requesters   []string
 	chartOptions ChartOptions
 	values       map[string]any
 	release      *releasev1.Release
@@ -181,6 +182,7 @@ func (i *Impl) planSelectedCSIDriverSPIFFE(ctx context.Context, options ClusterO
 	plan, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, target.radiusAuthTarget)
 	if plan != nil {
 		plan.issuerRef = target.Mode == "issuerRef"
+		plan.requesters = target.requesters
 	}
 	if err != nil || plan == nil || !plan.manageDriver {
 		return plan, err
@@ -273,6 +275,9 @@ func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPl
 	requesters, err := certManagerControllerUsers(ctx, plan.kubeClient)
 	if err != nil {
 		return nil, err
+	}
+	if plan.requesters != nil && !slices.Equal(requesters, plan.requesters) {
+		return nil, fmt.Errorf("cert-manager controller requesters differ from the validated Radius values; check the installation before retrying")
 	}
 	if plan.issuerRef {
 		// The connected issuer-policy verifier checks the selected signer's approvers;

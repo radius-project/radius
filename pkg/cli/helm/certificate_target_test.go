@@ -130,6 +130,7 @@ func TestExternalChartCannotRequireManagedVolume(t *testing.T) {
 			if command == "rollback" {
 				err = i.reconcileRollbackDependencies(t.Context(), "test", history, 1)
 			} else {
+				i.newCSIDriverSPIFFEClient = func(string) (kubernetes.Interface, error) { return fake.NewClientset(), nil }
 				h.EXPECT().LoadChart("chart").Return(selected, nil)
 				if command != "install" {
 					h.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
@@ -146,6 +147,63 @@ func TestExternalChartCannotRequireManagedVolume(t *testing.T) {
 			require.ErrorContains(t, err, `requires managed CSI driver "spiffe.csi.radapp.io"`)
 		})
 	}
+}
+
+func TestExternalChartUsesFinalRequesters(t *testing.T) {
+	for _, command := range []string{"preflight-only", "install", "upgrade", "reinstall", "fresh-cert-manager"} {
+		t.Run(command, func(t *testing.T) {
+			selected := certificateTestChart(t)
+			setValue(selected.Values, true, "global", "rbac", "enabled")
+			setValue(selected.Values, "external", "global", "rbac", "tls", "provider")
+			selected.Templates = append(selected.Templates, &common.File{Name: "templates/requester-workload.yaml", Data: []byte(`
+{{- if or (has "system:serviceaccount:security:custom" .Values.global.rbac.certManager.requesters) (has "system:serviceaccount:cert-manager:cert-manager" .Values.global.rbac.certManager.requesters) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: requester-workload}
+spec:
+  template:
+    spec:
+      volumes:
+      - name: local-serving
+        csi: {driver: spiffe.csi.radapp.io}
+{{- end }}`)})
+			ctrl := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "custom")
+			kube := sarClient(nil, nil, ctrl)
+			if command == "fresh-cert-manager" {
+				kube = sarClient(nil, nil)
+			}
+			h := NewMockHelmClient(gomock.NewController(t))
+			h.EXPECT().LoadChart("chart").Return(selected, nil)
+			i := &Impl{Helm: h, contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
+				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return kube, nil }}
+			options := NewDefaultClusterOptions()
+			options.Radius.ChartPath, options.Contour.Disabled = "chart", true
+			run := i.InstallRadius
+			if command != "install" && command != "fresh-cert-manager" {
+				options.RadiusInstalled, options.RadiusReleaseChart = true, selected
+				expectRadiusBaseline(t, h, options)
+				switch command {
+				case "preflight-only":
+					run = i.CheckRadiusCertificates
+				case "upgrade":
+					run = i.UpgradeRadius
+				case "reinstall":
+					options.Radius.Reinstall = true
+				}
+			}
+			require.ErrorContains(t, run(t.Context(), options, "test"), `requires managed CSI driver "spiffe.csi.radapp.io"`)
+		})
+	}
+}
+
+func TestChangedRequestersStopBeforeDependencyApply(t *testing.T) {
+	ctrl := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "changed")
+	plan := &csiDriverSPIFFEPlan{
+		kubeClient: sarClient(nil, nil, ctrl),
+		requesters: []string{"system:serviceaccount:security:custom"},
+	}
+	_, err := (&Impl{}).applyCSIDriverSPIFFE(t.Context(), plan, "test", true)
+	require.ErrorContains(t, err, "requesters differ from the validated Radius values")
 }
 
 func runInstalledChartSwitchCommands(t *testing.T, old, selected *chart.Chart, stored map[string]any, kubeContext string) {
