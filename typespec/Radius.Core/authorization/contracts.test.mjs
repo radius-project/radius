@@ -10,6 +10,40 @@ const examples = readdirSync(examplesDir)
   .filter((file) => file.endsWith(".json"))
   .map((file) => ({ file, ...json(new URL(file, examplesDir)) }));
 
+test("access-check input bounds do not constrain verified identity output", () => {
+  const { definitions } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  assert.equal(
+    definitions.AccessCheckRequest.properties.principal.$ref,
+    "#/definitions/AccessCheckPrincipal"
+  );
+  for (const [field, maximum] of [
+    ["issuer", 256],
+    ["subject", 512],
+    ["displayName", 128]
+  ]) {
+    assert.equal(
+      definitions.AccessCheckPrincipal.properties[field].maxLength,
+      maximum
+    );
+    assert.equal(definitions.Principal.properties[field].maxLength, undefined);
+  }
+  for (const model of ["WhoAmIResult", "CheckAccessResponse"]) {
+    assert.equal(
+      definitions[model].properties.principal.$ref,
+      "#/definitions/Principal"
+    );
+  }
+  assert.equal(
+    definitions.WhoAmIResult.properties.groups.items.$ref,
+    "#/definitions/Principal"
+  );
+});
+
 test("examples preserve the requested role and assignment shapes", async (t) => {
   assert.equal(examples.length, 3);
   for (const example of examples) {

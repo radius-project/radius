@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
@@ -53,7 +54,7 @@ func (c *testClient) whoAmI(context.Context) (api.WhoAmIResult, error) {
 func (c *testClient) checkAccess(_ context.Context, scope string, request api.AccessCheckRequest) (api.CheckAccessResponse, error) {
 	c.scope, c.request = scope, request
 	result := api.CheckAccessResponse{
-		Principal: request.Principal, Generation: to.Ptr(int64(7)), Mode: to.Ptr(api.UserAuthorizationModeDryRun),
+		Principal: (*api.Principal)(request.Principal), Generation: to.Ptr(int64(7)), Mode: to.Ptr(api.UserAuthorizationModeDryRun),
 	}
 	if result.Principal == nil {
 		result.Principal = &api.Principal{Type: to.Ptr(api.PrincipalTypeUser), Issuer: to.Ptr("kubernetes:test"), Subject: to.Ptr("alice")}
@@ -175,6 +176,56 @@ func TestInspectionCommandErrors(t *testing.T) {
 			}
 			require.ErrorIs(t, cmd.ExecuteContext(t.Context()), failure)
 			require.Empty(t, factory.Output.(*output.MockOutput).Writes)
+		}
+	}
+}
+
+func TestCheckResolvedScopeBeforeConnection(t *testing.T) {
+	t.Parallel()
+	for _, scope := range []string{
+		"/planes/radius/local/resourceGroups/team?query=value",
+		"/planes/radius/local/resourceGroups/team#fragment",
+		"/planes/radius/local/resourceGroups/.",
+		"/planes/radius/local/resourceGroups/..",
+		"/planes/radius/local/resourceGroups/%2e%2e",
+		"/planes/radius/local/resourceGroups/team/",
+		"/",
+		"/planes/radius/local/resourceGroups/team",
+	} {
+		for _, explicit := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/explicit=%t", scope, explicit), func(t *testing.T) {
+				t.Parallel()
+				config := radcli.LoadConfigWithWorkspace(t)
+				section, err := cli.ReadWorkspaceSection(config)
+				require.NoError(t, err)
+				workspace := section.Items[radcli.TestWorkspaceName]
+				workspace.Scope = scope
+				section.Items[radcli.TestWorkspaceName] = workspace
+				cli.UpdateWorkspaceSection(config, section)
+				writer := &output.MockOutput{}
+				cmd, r := newTestCommand(&framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: config}, Output: writer}, "check")
+				connected := false
+				client := &testClient{}
+				r.connect = func(context.Context, workspaces.Workspace) (inspectionClient, error) {
+					connected = true
+					return client, nil
+				}
+				args := []string{"--action", "Radius.Core/applications/read"}
+				if explicit {
+					args = append(args, "--scope", scope)
+				}
+				cmd.SetArgs(args)
+				err = cmd.ExecuteContext(t.Context())
+				valid := scope == "/" || scope == "/planes/radius/local/resourceGroups/team"
+				require.Equal(t, valid, connected)
+				if valid {
+					require.NoError(t, err)
+					require.Equal(t, scope, client.scope)
+				} else {
+					require.ErrorContains(t, err, "invalid inspection scope")
+					require.Empty(t, writer.Writes)
+				}
+			})
 		}
 	}
 }

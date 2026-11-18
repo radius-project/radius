@@ -18,22 +18,28 @@ model Principal {
   @visibility(Lifecycle.Read, Lifecycle.Create)
   type: PrincipalType;
 
-  @doc("The trusted identity system, including its trust domain, up to 256 characters. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.")
+  @doc("The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.")
   @minLength(1)
-  @maxLength(256)
   @visibility(Lifecycle.Read, Lifecycle.Create)
   issuer: string;
 
-  @doc("The identity within the issuer, up to 512 characters to accommodate Kubernetes service-account names and namespaces. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.")
+  @doc("The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.")
   @minLength(1)
-  @maxLength(512)
   @visibility(Lifecycle.Read, Lifecycle.Create)
   subject: string;
 
-  @doc("An optional mutable label, up to 128 characters, that is never used to match principals.")
-  @maxLength(128)
+  @doc("An optional mutable label that is never used to match principals.")
   displayName?: string;
 }
+
+@doc("An explicitly supplied access-check principal. Input limits do not truncate verified identities returned by inspection or used by omitted-principal self checks.")
+model AccessCheckPrincipal {
+  ...Principal;
+}
+
+@@maxLength(AccessCheckPrincipal.issuer, 256);
+@@maxLength(AccessCheckPrincipal.subject, 512);
+@@maxLength(AccessCheckPrincipal.displayName, 128);
 
 @doc("User-facing principal kinds, distinct from internal component identities.")
 enum PrincipalType {
@@ -352,7 +358,7 @@ model AccessCheck {
 @doc("Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.")
 model AccessCheckRequest {
   @doc("The principal to check, or the authenticated caller when omitted.")
-  principal?: Principal;
+  principal?: AccessCheckPrincipal;
 
   @doc("The checks to evaluate, between 1 and 100 items. Larger batches must be split into separate requests, each with its own policy generation.")
   @minItems(1)

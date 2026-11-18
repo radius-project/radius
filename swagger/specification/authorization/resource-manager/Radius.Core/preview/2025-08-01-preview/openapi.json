@@ -1284,12 +1284,56 @@
         "target"
       ]
     },
+    "AccessCheckPrincipal": {
+      "type": "object",
+      "description": "An explicitly supplied access-check principal. Input limits do not truncate verified identities returned by inspection or used by omitted-principal self checks.",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/PrincipalType",
+          "description": "The kind of principal.",
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "issuer": {
+          "type": "string",
+          "description": "The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.",
+          "minLength": 1,
+          "maxLength": 256,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "subject": {
+          "type": "string",
+          "description": "The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.",
+          "minLength": 1,
+          "maxLength": 512,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        },
+        "displayName": {
+          "type": "string",
+          "description": "An optional mutable label that is never used to match principals.",
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "type",
+        "issuer",
+        "subject"
+      ]
+    },
     "AccessCheckRequest": {
       "type": "object",
       "description": "Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action. Group membership is resolved from trusted identity context, not caller-provided groups.",
       "properties": {
         "principal": {
-          "$ref": "#/definitions/Principal",
+          "$ref": "#/definitions/AccessCheckPrincipal",
           "description": "The principal to check, or the authenticated caller when omitted."
         },
         "checks": {
@@ -1757,9 +1801,8 @@
         },
         "issuer": {
           "type": "string",
-          "description": "The trusted identity system, including its trust domain, up to 256 characters. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.",
+          "description": "The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller namespace principals use radius-controller.",
           "minLength": 1,
-          "maxLength": 256,
           "x-ms-mutability": [
             "read",
             "create"
@@ -1767,9 +1810,8 @@
         },
         "subject": {
           "type": "string",
-          "description": "The identity within the issuer, up to 512 characters to accommodate Kubernetes service-account names and namespaces. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.",
+          "description": "The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.",
           "minLength": 1,
-          "maxLength": 512,
           "x-ms-mutability": [
             "read",
             "create"
@@ -1777,8 +1819,7 @@
         },
         "displayName": {
           "type": "string",
-          "description": "An optional mutable label, up to 128 characters, that is never used to match principals.",
-          "maxLength": 128
+          "description": "An optional mutable label that is never used to match principals."
         }
       },
       "required": [

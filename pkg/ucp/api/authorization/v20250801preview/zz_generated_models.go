@@ -64,6 +64,23 @@ type AccessCheck struct {
 	Target *string
 }
 
+// AccessCheckPrincipal - An explicitly supplied access-check principal. Input limits do not truncate verified identities
+// returned by inspection or used by omitted-principal self checks.
+type AccessCheckPrincipal struct {
+	// REQUIRED; The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller
+	// namespace principals use radius-controller.
+	Issuer *string
+
+	// REQUIRED; The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.
+	Subject *string
+
+	// REQUIRED; The kind of principal.
+	Type *PrincipalType
+
+	// An optional mutable label that is never used to match principals.
+	DisplayName *string
+}
+
 // AccessCheckRequest - Access-check input. Omitting principal checks the caller. Checking another principal requires Radius.Core/checkAccess/action.
 // Group membership is resolved from trusted identity context, not caller-provided groups.
 type AccessCheckRequest struct {
@@ -72,7 +89,7 @@ type AccessCheckRequest struct {
 	Checks []*AccessCheck
 
 	// The principal to check, or the authenticated caller when omitted.
-	Principal *Principal
+	Principal *AccessCheckPrincipal
 }
 
 // AccessCheckResult - The policy evaluation, independent of whether the current mode blocks requests.
@@ -316,18 +333,17 @@ type PolicySnapshot struct {
 // Principal - A stable principal identity. Equality uses type, issuer, and subject, never displayName. Group membership is
 // resolved by UCP, not supplied by an access-check caller.
 type Principal struct {
-	// REQUIRED; The trusted identity system, including its trust domain, up to 256 characters. Kubernetes issuers use kubernetes:<cluster-id>;
-	// controller namespace principals use radius-controller.
+	// REQUIRED; The trusted identity system, including its trust domain. Kubernetes issuers use kubernetes:<cluster-id>; controller
+	// namespace principals use radius-controller.
 	Issuer *string
 
-	// REQUIRED; The identity within the issuer, up to 512 characters to accommodate Kubernetes service-account names and namespaces.
-	// Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.
+	// REQUIRED; The identity within the issuer. Kubernetes service accounts use system:serviceaccount:<namespace>:<name>.
 	Subject *string
 
 	// REQUIRED; The kind of principal.
 	Type *PrincipalType
 
-	// An optional mutable label, up to 128 characters, that is never used to match principals.
+	// An optional mutable label that is never used to match principals.
 	DisplayName *string
 }
 
@@ -340,9 +356,8 @@ type RoleAssignmentProperties struct {
 	// REQUIRED; The immutable full role definition ID. The assignment scope must be covered by the role's assignableScopes.
 	RoleDefinitionID *string
 
-	// READ-ONLY; Server-owned provenance. Only the same GitOps source may modify its assignments unless an authorized deletion
-	// explicitly takes ownership. Bootstrap assignments are managed through installation settings.
-	ManagedBy *AssignmentManagement
+	// READ-ONLY; Server-owned canonical scope derived from the assignment ID, including / for installation assignments.
+	Scope *string
 
 	// An optional description of why access was granted.
 	Description *string
@@ -351,8 +366,9 @@ type RoleAssignmentProperties struct {
 	// identity.
 	CreatedBy *string
 
-	// READ-ONLY; Server-owned canonical scope derived from the assignment ID, including / for installation assignments.
-	Scope *string
+	// READ-ONLY; Server-owned provenance. Only the same GitOps source may modify its assignments unless an authorized deletion
+	// explicitly takes ownership. Bootstrap assignments are managed through installation settings.
+	ManagedBy *AssignmentManagement
 }
 
 // RoleAssignmentResource - An ARM-style extension assignment whose ID ends with /providers/Radius.Core/roleAssignments/<name>.

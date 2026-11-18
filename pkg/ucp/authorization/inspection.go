@@ -119,7 +119,8 @@ func (r *PolicyRuntime) CheckAccess(caller Identity, scope string, request api.A
 	err = r.inspectPolicy(func(snapshot *PolicySnapshot) error {
 		identity := caller
 		if request.Principal != nil {
-			subject, err := key(request.Principal)
+			principal := api.Principal(*request.Principal)
+			subject, err := key(&principal)
 			if err != nil {
 				return err
 			}
@@ -138,7 +139,7 @@ func (r *PolicyRuntime) CheckAccess(caller Identity, scope string, request api.A
 				if subject.typ != api.PrincipalTypeGroup {
 					return ErrMembershipUnavailable
 				}
-				identity = Identity{Principal: *request.Principal}
+				identity = Identity{Principal: principal}
 			}
 		}
 		decisions, err := snapshot.Evaluate(identity, checks)
@@ -190,7 +191,8 @@ func validateAccessCheck(scope string, request api.AccessCheckRequest) ([]Check,
 			}
 		}
 		// The closed enum also rejects arbitrarily long type strings.
-		if _, err := key(p); err != nil {
+		principal := api.Principal(*p)
+		if _, err := key(&principal); err != nil {
 			return nil, err
 		}
 	}
