@@ -681,17 +681,35 @@ func TestUninstallExclusionBeforeHelm(t *testing.T) {
 }
 
 func TestSelfSignedBootstrapStopsBeforeDependencies(t *testing.T) {
-	b, _ := initialControllerFixture(t, "selfSigned", "external")
-	client := NewMockHelmClient(gomock.NewController(t))
-	b.impl.Helm = client
-	options := NewDefaultClusterOptions()
-	options.Radius.ChartPath = "../../../deploy/Chart"
-	options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external"}
-	options.Contour.Disabled = true
-	client.EXPECT().LoadChart(options.Radius.ChartPath).Return(b.selected, nil)
-	err := b.impl.InstallRadius(t.Context(), options, "test-context")
-	require.ErrorContains(t, err, "cannot verify requester admission")
-	for _, action := range b.store.kube.(*kubefake.Clientset).Actions() {
-		require.Contains(t, []string{"get", "list"}, action.GetVerb())
+	for _, interrupted := range []bool{false, true} {
+		t.Run(fmt.Sprintf("interrupted=%t", interrupted), func(t *testing.T) {
+			b, _ := initialControllerFixture(t, "selfSigned", "external")
+			if interrupted {
+				// Model an old CLI that published roots but never installed the chart.
+				stop := errors.New("stop before full chart")
+				b.applyFixture = func(context.Context) error { return stop }
+				require.ErrorIs(t, b.run(t.Context()), stop)
+				require.Equal(t, "published", b.state.Phase)
+			}
+			kube := b.store.kube.(*kubefake.Clientset)
+			dynamic := b.store.dynamic.(interface {
+				Actions() []k8stesting.Action
+				ClearActions()
+			})
+			kube.ClearActions()
+			dynamic.ClearActions()
+			client := NewMockHelmClient(gomock.NewController(t))
+			b.impl.Helm = client
+			options := NewDefaultClusterOptions()
+			options.Radius.ChartPath = "../../../deploy/Chart"
+			options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external", "global.rbac.certificates.mode=selfSigned"}
+			options.Contour.Disabled = true
+			client.EXPECT().LoadChart(options.Radius.ChartPath).Return(b.selected, nil)
+			err := b.impl.InstallRadius(t.Context(), options, "test-context")
+			require.ErrorContains(t, err, "cannot verify requester admission")
+			for _, action := range append(kube.Actions(), dynamic.Actions()...) {
+				require.Contains(t, []string{"get", "list"}, action.GetVerb())
+			}
+		})
 	}
 }
