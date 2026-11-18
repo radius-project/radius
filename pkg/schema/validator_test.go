@@ -2002,6 +2002,24 @@ func TestValidator_ValidateSchema_MultipleErrors(t *testing.T) {
 func TestValidateResourceAgainstSchema(t *testing.T) {
 	ctx := t.Context()
 
+	t.Run("ignores the reserved status property", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{"type": "string"},
+			},
+			"additionalProperties": false,
+		}
+		properties := map[string]any{
+			"name":   "test",
+			"status": map[string]any{"outputResources": []any{}},
+		}
+
+		require.NoError(t, ValidateResourceAgainstSchema(ctx, map[string]any{"properties": properties}, schema))
+		require.NoError(t, ValidateResourceRequestAgainstSchema(ctx, map[string]any{"properties": properties}, schema))
+		require.Contains(t, properties, "status")
+	})
+
 	t.Run("nil schema returns nil", func(t *testing.T) {
 		resourceData := map[string]any{
 			"properties": map[string]any{

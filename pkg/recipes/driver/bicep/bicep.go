@@ -243,18 +243,25 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	garbageCollectionStartTime := time.Now()
 	diff, err := d.getGCOutputResources(recipeResponse.Resources, opts.PrevState)
 	if err != nil {
-		return nil, err
+		// Nothing was deleted, so keep tracking every previous resource the new output does not contain.
+		for _, previous := range opts.PrevState {
+			if !slices.Contains(recipeResponse.Resources, previous) {
+				recipeResponse.UndeletedResources = append(recipeResponse.UndeletedResources, previous)
+			}
+		}
+		return recipeResponse, err
 	}
 
 	// Deleting obsolete output resources.
-	err = d.Delete(ctx, driver.DeleteOptions{
+	recipeResponse.UndeletedResources, err = d.deleteOutputResources(ctx, driver.DeleteOptions{
 		BaseOptions:     opts.BaseOptions,
 		OutputResources: diff,
 	})
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeGarbageCollectionDuration(ctx, garbageCollectionStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationGC, opts.Recipe.Name, &opts.Definition, metrics.FailedOperationState))
-		return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
+		// The deployment succeeded, so return its output for the caller to keep tracking the new resources.
+		return recipeResponse, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeGarbageCollectionDuration(ctx, garbageCollectionStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationGC, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
@@ -267,14 +274,22 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 // We don't have context on the dependency ordering here, so we need to try to delete them
 // all in parallel. Since some resources may depend on others, we may need to retry.
 func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
+	_, err := d.deleteOutputResources(ctx, opts)
+	return err
+}
+
+// deleteOutputResources deletes the output resources like Delete. When deletion fails, it also returns the IDs of the
+// output resources that may still exist: each one whose delete failed, its duplicates, and a Key Vault secret whose
+// parent vault failed to delete.
+func (d *bicepDriver) deleteOutputResources(ctx context.Context, opts driver.DeleteOptions) ([]string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	resourceClient, err := d.resourceClientForDelete(ctx, opts)
 	if err != nil {
-		return err
+		return undeletedOutputResources(opts.OutputResources, nil), err
 	}
 	if resourceClient == nil {
-		return nil
+		return nil, nil
 	}
 
 	// UCP deletes an AWS resource only for the owner that deployed it.
@@ -284,6 +299,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	failures := []error{}
+	failedKeys := map[string]struct{}{}
 	deleting := map[string]struct{}{}
 
 	for i := range opts.OutputResources {
@@ -302,10 +318,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 
 		// Explicit recipe outputs and deployment inventory can contain the same resource.
 		// Deduplicate here so saved state and redeploy garbage collection are covered too.
-		key := outputResource.ID.String()
-		if path := azureResourcePath(outputResource.ID); path != "" {
-			key = strings.ToLower(path)
-		}
+		key := outputResourceKey(outputResource.ID)
 		if _, exists := deleting[key]; exists {
 			continue
 		}
@@ -352,18 +365,41 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 			mu.Lock()
 			defer mu.Unlock()
 			failures = append(failures, fmt.Errorf("failed to delete resource %q after %d attempt(s), last error: %w", id, attempts, err))
+			failedKeys[key] = struct{}{}
 		})
 	}
 	wg.Wait()
 
 	if len(failures) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// Sort so the error is the same no matter which delete finished first.
 	slices.SortFunc(failures, func(a, b error) int { return strings.Compare(a.Error(), b.Error()) })
 	deletionErr := errors.Join(failures...)
-	return recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetErrorDetails(deletionErr))
+	return undeletedOutputResources(opts.OutputResources, failedKeys), recipes.NewRecipeError(recipes.RecipeDeletionFailed, deletionErr.Error(), "", recipes.GetErrorDetails(deletionErr))
+}
+
+// undeletedOutputResources returns the IDs of the Radius-managed output resources that may still exist after a failed
+// delete. failedKeys holds the outputResourceKey of each failed delete; nil means no delete was attempted.
+func undeletedOutputResources(outputResources []rpv1.OutputResource, failedKeys map[string]struct{}) []string {
+	undeleted := []string{}
+	for _, outputResource := range outputResources {
+		if !outputResource.IsRadiusManaged() {
+			continue
+		}
+
+		key := outputResourceKey(outputResource.ID)
+		if deletingKeyVaultParent(outputResource.ID, outputResources) {
+			// The secret was deleted with its vault, so it remains only if the vault does.
+			key = outputResourceKey(outputResource.ID.Truncate())
+		}
+		_, failed := failedKeys[key]
+		if id := outputResource.ID.String(); (failed || failedKeys == nil) && !slices.Contains(undeleted, id) {
+			undeleted = append(undeleted, id)
+		}
+	}
+	return undeleted
 }
 
 // permanentDeleteErrorCodes are ARM error codes that a later attempt cannot fix.
@@ -419,6 +455,15 @@ func deletingKeyVaultParent(id resources.ID, outputResources []rpv1.OutputResour
 	}
 
 	return false
+}
+
+// outputResourceKey identifies the resource that an output resource ID refers to. Azure IDs match without case and
+// with or without an Azure plane prefix. Other resource IDs match exactly.
+func outputResourceKey(id resources.ID) string {
+	if path := azureResourcePath(id); path != "" {
+		return strings.ToLower(path)
+	}
+	return id.String()
 }
 
 func azureResourcePath(id resources.ID) string {
@@ -833,24 +878,36 @@ func wrapARMParameters(params map[string]any) map[string]any {
 
 // getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and
 // returns a slice of OutputResources that contains the elements that are in the "previous" slice but not in the "current".
+// IDs are compared with outputResourceKey.
 func (d *bicepDriver) getGCOutputResources(current []string, previous []string) ([]rpv1.OutputResource, error) {
-	// We can easily determine which resources have changed via a brute-force search comparing IDs.
-	// The lists of resources we work with are small, so this is fine.
+	currentKeys := make(map[string]struct{}, len(current))
+	for _, currentResourceID := range current {
+		key := currentResourceID
+		if id, err := resources.Parse(currentResourceID); err == nil {
+			key = outputResourceKey(id)
+		}
+		currentKeys[key] = struct{}{}
+	}
+
 	diff := []rpv1.OutputResource{}
 	for _, prevResourceId := range previous {
-		found := slices.Contains(current, prevResourceId)
-
-		if !found {
-			id, err := resources.Parse(prevResourceId)
-			if err != nil {
-				return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
-			}
-
-			diff = append(diff, rpv1.OutputResource{
-				ID:            id,
-				RadiusManaged: new(!resources_aws.IsReadOnlyResource(id)),
-			})
+		if slices.Contains(current, prevResourceId) {
+			continue
 		}
+
+		id, err := resources.Parse(prevResourceId)
+		if err != nil {
+			return nil, recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, err.Error(), recipes_util.ExecutionError, nil)
+		}
+		// A redeploy can return the same Azure resource with different casing. Deleting it would delete the live resource.
+		if _, found := currentKeys[outputResourceKey(id)]; found {
+			continue
+		}
+
+		diff = append(diff, rpv1.OutputResource{
+			ID:            id,
+			RadiusManaged: new(!resources_aws.IsReadOnlyResource(id)),
+		})
 	}
 
 	return diff, nil
