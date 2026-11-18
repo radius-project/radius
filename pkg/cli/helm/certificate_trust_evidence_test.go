@@ -38,7 +38,7 @@ import (
 func TestOutboundTrustEvidenceSourceBoundFixture(t *testing.T) {
 	t.Parallel()
 	for _, scenario := range []string{
-		"valid", "legacy", "unknown leaf", "null handshake", "missing handshake", "duplicate ready",
+		"valid", "legacy", "unknown leaf", "null handshake", "missing handshake", "duplicate ready", "case-folded ready",
 		"wrong pod", "wrong UCP identity", "wrong bounds", "restarted", "replaced", "predates container",
 		"oversized", "expired", "duplicate anchors", "changed namespace",
 	} {
@@ -113,6 +113,8 @@ func TestOutboundTrustEvidenceSourceBoundFixture(t *testing.T) {
 				require.NoError(t, err)
 			case "duplicate ready":
 				data = bytes.Replace(data, []byte(`"ready":true`), []byte(`"ready":true,"ready":true`), 1)
+			case "case-folded ready":
+				data = bytes.Replace(data, []byte(`"ready":true`), []byte(`"ready":false,"Ready":true`), 1)
 			case "oversized":
 				data = append(bytes.Repeat([]byte(" "), 8192), data...)
 			}

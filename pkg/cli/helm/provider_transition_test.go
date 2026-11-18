@@ -75,6 +75,15 @@ func TestProviderJournalReadOnlyCompatibility(t *testing.T) {
 		{"duplicate escaped phase", func(cm *corev1.ConfigMap) {
 			cm.Data[identityProviderStateKey] = strings.Replace(cm.Data[identityProviderStateKey], `"phase":`, `"\u0070hase":"stopping","phase":`, 1)
 		}, "invalid"},
+		{"case-folded phase", func(cm *corev1.ConfigMap) {
+			cm.Data[identityProviderStateKey] = strings.Replace(cm.Data[identityProviderStateKey], `"phase":`, `"phase":"stopping","Phase":`, 1)
+		}, "duplicate"},
+		{"case-folded version", func(cm *corev1.ConfigMap) {
+			cm.Data[identityProviderStateKey] = strings.Replace(cm.Data[identityProviderStateKey], `"version":`, `"version":1,"Version":`, 1)
+		}, "duplicate"},
+		{"folded workload digest inside array", func(cm *corev1.ConfigMap) {
+			cm.Data[identityProviderStateKey] = strings.Replace(cm.Data[identityProviderStateKey], `"sourceSHA256":`, `"sourceSHA256":"","\u017fourceSHA256":`, 1)
+		}, "duplicate"},
 		{"trailing JSON", func(cm *corev1.ConfigMap) { cm.Data[identityProviderStateKey] += "{}" }, "trailing"},
 		{"unknown fields", func(cm *corev1.ConfigMap) {
 			cm.Data[identityProviderStateKey] = strings.Replace(cm.Data[identityProviderStateKey], `"version":`, `"unknown":true,"version":`, 1)

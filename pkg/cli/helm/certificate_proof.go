@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,7 +70,10 @@ func decodeCertificateProof(data []byte, evidence any, required []string) error 
 			return errors.New("invalid TLS startup proof response")
 		}
 		name, ok := token.(string)
-		if !ok || names[name] {
+		if !ok || !slices.Contains(required, name) {
+			return errors.New("unknown TLS startup proof field")
+		}
+		if names[name] {
 			return errors.New("duplicate TLS startup proof field")
 		}
 		names[name] = true
