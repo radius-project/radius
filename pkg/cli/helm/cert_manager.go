@@ -254,7 +254,12 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		if err != nil {
 			return fmt.Errorf("invalid cert-manager target chart version: %w", err)
 		}
-		existingSigners, hasSigners := ownedRelease.Config["approveSignerNames"]
+		// The upgrade reuses the values of the revision Helm starts from, which is not the latest one after a failure.
+		baseline, err := NewHelmAction(i.Helm).upgradeBaseline(kubeContext, chartOptions.ReleaseName, chartOptions.Namespace, ownedRelease)
+		if err != nil {
+			return err
+		}
+		existingSigners, hasSigners := baseline.Config["approveSignerNames"]
 		signers, err := mergeApproveSignerNames(existingSigners, hasSigners, options.Radius.Namespace, chartOptions, ownedRelease.Chart.Metadata.Version, kubeContext)
 		if err != nil {
 			return err

@@ -517,7 +517,13 @@ func (i *Impl) planCertManagerRequesters(ctx context.Context, options ClusterOpt
 		return nil, err
 	}
 	if owned != nil {
-		users, err := certManagerControllerUsersInManifest(owned.Manifest, chartOptions.Namespace)
+		// rad upgrades an owned cert-manager whose latest revision is not deployed, and Helm renders that upgrade from
+		// the revision it starts from, so a failed revision's controller does not decide the requesters.
+		baseline, err := NewHelmAction(i.Helm).upgradeBaseline(kubeContext, chartOptions.ReleaseName, chartOptions.Namespace, owned)
+		if err != nil {
+			return nil, err
+		}
+		users, err := certManagerControllerUsersInManifest(baseline.Manifest, chartOptions.Namespace)
 		if err != nil {
 			return nil, fmt.Errorf("could not read the cert-manager controller from Helm release %q in namespace %q: %w", chartOptions.ReleaseName, chartOptions.Namespace, err)
 		}
