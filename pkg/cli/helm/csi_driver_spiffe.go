@@ -388,25 +388,49 @@ func releaseNameOf(meta metav1.ObjectMeta) string {
 }
 
 // certManagerApproverDisabled reports whether the cert-manager controller runs without its default approver, either
-// with --controllers=...,-certificaterequests-approver or with the chart value disableAutoApproval.
+// with --controllers=...,-certificaterequests-approver or with the chart value disableAutoApproval. Only the controller
+// container's flags count: the chart renders extraContainers next to it, and their flags do not configure the
+// controller. When rad cannot tell which container is the controller, it reports the approver as enabled, so the
+// caller checks what the approver may approve.
 func certManagerApproverDisabled(deployment *appsv1.Deployment) bool {
-	for _, c := range deployment.Spec.Template.Spec.Containers {
-		for idx, arg := range c.Args {
-			var value string
-			switch {
-			case strings.HasPrefix(arg, "--controllers="):
-				value = strings.TrimPrefix(arg, "--controllers=")
-			case arg == "--controllers" && idx+1 < len(c.Args):
-				value = c.Args[idx+1]
-			default:
-				continue
-			}
-			if slices.Contains(strings.Split(value, ","), "-certificaterequests-approver") {
-				return true
-			}
+	c := certManagerControllerContainer(deployment)
+	if c == nil {
+		return false
+	}
+	for idx, arg := range c.Args {
+		var value string
+		switch {
+		case strings.HasPrefix(arg, "--controllers="):
+			value = strings.TrimPrefix(arg, "--controllers=")
+		case arg == "--controllers" && idx+1 < len(c.Args):
+			value = c.Args[idx+1]
+		default:
+			continue
+		}
+		if slices.Contains(strings.Split(value, ","), "-certificaterequests-approver") {
+			return true
 		}
 	}
 	return false
+}
+
+// certManagerControllerContainerName is the controller container's name in the cert-manager chart, which renders it
+// as "{{ .Chart.Name }}-controller". nameOverride does not change it.
+const certManagerControllerContainerName = "cert-manager-controller"
+
+// certManagerControllerContainer returns the cert-manager controller container of a controller Deployment: the
+// container with the chart's controller name, or the only container. It returns nil when it cannot tell.
+func certManagerControllerContainer(deployment *appsv1.Deployment) *corev1.Container {
+	containers := deployment.Spec.Template.Spec.Containers
+	for idx := range containers {
+		if containers[idx].Name == certManagerControllerContainerName {
+			return &containers[idx]
+		}
+	}
+	if len(containers) == 1 {
+		return &containers[0]
+	}
+	return nil
 }
 
 // checkCertManagerDefaultApprover returns an error when cert-manager's default approver can approve

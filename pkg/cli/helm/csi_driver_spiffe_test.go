@@ -272,6 +272,46 @@ func Test_certManagerApproverDisabled(t *testing.T) {
 	}
 }
 
+// The upstream chart renders extraContainers next to the cert-manager-controller container. Only the controller's
+// own flags decide whether its default approver runs.
+func Test_certManagerApproverDisabled_ControllerContainerOnly(t *testing.T) {
+	t.Parallel()
+
+	disabled := []string{"--controllers=*,-certificaterequests-approver"}
+	tests := []struct {
+		name       string
+		containers []corev1.Container
+		want       bool
+	}{
+		{
+			name:       "sidecar disables the approver, controller does not",
+			containers: []corev1.Container{{Name: "cert-manager-controller"}, {Name: "sidecar", Args: disabled}},
+		},
+		{
+			name:       "controller disables the approver next to a sidecar",
+			containers: []corev1.Container{{Name: "sidecar"}, {Name: "cert-manager-controller", Args: disabled}},
+			want:       true,
+		},
+		{
+			name:       "single container with another name",
+			containers: []corev1.Container{{Name: "controller", Args: disabled}},
+			want:       true,
+		},
+		{
+			name:       "several containers and none is the controller",
+			containers: []corev1.Container{{Name: "a", Args: disabled}, {Name: "b", Args: disabled}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			deployment := certManagerController(CertManagerNamespace, "", "")
+			deployment.Spec.Template.Spec.Containers = tt.containers
+			require.Equal(t, tt.want, certManagerApproverDisabled(deployment))
+		})
+	}
+}
+
 func Test_checkCertManagerDefaultApprover(t *testing.T) {
 	t.Parallel()
 
