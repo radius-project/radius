@@ -88,7 +88,7 @@ type Options struct {
 	TargetClusterIsDistinct bool `yaml:"-" json:"-"`
 
 	// CertificateDirectory is the directory that holds, for components that receive internal
-	// calls, the server certificate and key (tls.crt and tls.key) issued by csi-driver-spiffe.
+	// calls, the server certificate and key (tls.crt and tls.key) from its <component>-spiffe Secret.
 	// It also holds the Radius CA bundle (ca.crt) when CADirectory is unset. It is required
 	// when the mode is not off.
 	CertificateDirectory string `yaml:"certificateDirectory,omitempty"`
