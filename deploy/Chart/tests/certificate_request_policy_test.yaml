@@ -13,12 +13,24 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: renders nothing when the cluster has no ValidatingAdmissionPolicy API
-    set:
-      global.rbac.enabled: true
+  - it: allows off mode without the ValidatingAdmissionPolicy API
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: refuses dryRun without the ValidatingAdmissionPolicy API
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - failedTemplate:
+          errorMessage: &requiresPolicy "Radius authorization requires admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy (Kubernetes 1.30 or later). Upgrade the cluster or install with authorization off."
+
+  - it: refuses enforce without the ValidatingAdmissionPolicy API
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: *requiresPolicy
 
   - it: denies in dryRun because legitimate requests never match a rule
     capabilities: *vap

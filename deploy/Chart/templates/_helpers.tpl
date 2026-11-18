@@ -197,6 +197,15 @@ off
 {{- end -}}
 
 {{/*
+Non-off authorization relies on both admission policies being installed.
+*/}}
+{{- define "radius.authz.requireAdmissionPolicyAPI" -}}
+{{- if not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") -}}
+{{- fail "Radius authorization requires admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy (Kubernetes 1.30 or later). Upgrade the cluster or install with authorization off." -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Returns the Pod Security Admission level (baseline or restricted) from global.rbac.podSecurityLevel.
 An empty value defaults to baseline. Fails rendering for any other value.
 */}}

@@ -150,6 +150,7 @@ func Test_unapprovedIssuerCertificates_CurrentChart(t *testing.T) {
 			require.NoError(t, err)
 			install := helm.NewInstall(&helm.Configuration{})
 			install.DryRunStrategy = helm.DryRunClient
+			install.APIVersions = []string{admissionPolicyAPI}
 			install.ReleaseName = "radius"
 			install.Namespace = "radius-system"
 			rendered, err := install.RunWithContext(t.Context(), loaded, map[string]any{"global": map[string]any{"rbac": tt.rbac}})

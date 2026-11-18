@@ -257,14 +257,14 @@ func (s *Service) listenAndServe(ctx context.Context, service *http.Server) erro
 		return service.ListenAndServeTLS(dir+"/"+mtls.CertFile, dir+"/"+mtls.KeyFile)
 	}
 
-	source, err := mtls.NewSource(dir)
+	// Only the serving key pair rotates here. The authenticator owns client trust.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	config, err := mtls.NewServingConfig(ctx, dir, service.TLSConfig)
 	if err != nil {
 		return fmt.Errorf("failed to load the API server certificate: %w", err)
 	}
-	go source.Start(ctx, mtls.DefaultPollInterval)
-	// Keep any client-certificate settings already on the server, such as the request-header
-	// proxy's RequestClientCert and ClientCAs, and take only the rotating certificate from source.
-	service.TLSConfig = source.ServerConfigFrom(service.TLSConfig)
+	service.TLSConfig = config
 	return service.ListenAndServeTLS("", "")
 }
 
