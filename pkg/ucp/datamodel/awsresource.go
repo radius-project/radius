@@ -16,40 +16,135 @@ limitations under the License.
 
 package datamodel
 
-import v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+import (
+	"time"
 
-// AWSResource represents any AWS Resource.
-// AWSResource is not a tracked resource, so it does not implement ResourceDataModel.
-// However need to implement the methods to satisfy the interface.
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+)
+
+// AWSResource is UCP's record of one AWS resource it deploys. It is stored under the resource ID that ends in the
+// alias the template sets, for example /planes/aws/aws/accounts/{account}/regions/{region}/providers/AWS.EC2/VPC/app-vpc.
+//
+// The record is internal to UCP. A GET on the resource still reads the resource from AWS.
 type AWSResource struct {
+	// ID, name (the alias), type, and provisioningState. Provisioning, Updating, and Deleting mean an operation is in
+	// progress. Accepted means UCP saved the record before calling AWS, and nothing is polling the operation yet.
+	v1.BaseResource
+
+	// Properties are the properties of the record.
+	Properties AWSResourceProperties `json:"properties"`
 }
 
-// GetSystemData is not implemented for AWS proxy resource.
-func (a *AWSResource) GetSystemData() *v1.SystemData {
-	return nil
+// AWSResourceProperties are the properties of an AWS resource record.
+type AWSResourceProperties struct {
+	// AWSIdentifier is what Cloud Control finds the resource by, such as vpc-0a1b2c3d. A native handler stores the
+	// same value, so a record works with either handler. It is saved before the create when the properties give it,
+	// such as BucketName, and when the create finishes otherwise.
+	AWSIdentifier string `json:"awsIdentifier,omitempty"`
+
+	// Owner is who deploys this alias. A PUT or DELETE from a different owner fails.
+	Owner string `json:"owner"`
+
+	// LastApplied is the properties from the last successful deploy, without write-only values. A property in it
+	// that the template no longer sets is cleared in AWS. It is nil until a deploy succeeds, including after UCP takes
+	// over a resource, and it is saved without omitempty so an empty map stays distinct from nil.
+	LastApplied map[string]any `json:"lastApplied"`
+
+	// PendingLastApplied holds the new last-applied properties, without write-only values, while an operation is in
+	// progress. UCP saves it before it calls AWS. It becomes LastApplied when AWS succeeds, and is dropped when AWS
+	// fails, so the previous LastApplied stays.
+	PendingLastApplied map[string]any `json:"pendingLastApplied"`
+
+	// UnresolvedPaths are paths of LastApplied, like the keys of FlattenProperties in pkg/aws/operations, whose value
+	// isn't confirmed in AWS: an operation that changed them failed partway, or UCP can't tell how it ended, and its
+	// values were kept as possibly applied. AWS may still hold values LastApplied no longer has at these paths, such
+	// as a field inside a list item. A deploy sends the template's value at them, and they are cleared once a deploy
+	// succeeds.
+	UnresolvedPaths []string `json:"unresolvedPaths,omitempty"`
+
+	// Fingerprints are the fingerprints of the write-only values of the last successful deploy. UCP compares them
+	// with the template's values, because AWS never returns write-only values, so an unchanged value is not sent.
+	Fingerprints *AWSFingerprints `json:"fingerprints,omitempty"`
+
+	// PendingFingerprints holds the new fingerprints while an operation is in progress, like PendingLastApplied.
+	PendingFingerprints *AWSFingerprints `json:"pendingFingerprints,omitempty"`
+
+	// PendingOperation is the operation in progress: CREATE, UPDATE, or DELETE. The async worker sets
+	// provisioningState to Updating for every operation, so the state alone cannot tell them apart.
+	PendingOperation string `json:"pendingOperation,omitempty"`
+
+	// ClientToken is a UUID that UCP generates before the first create and sends with every attempt to create the
+	// resource, so Cloud Control treats a retry as the same request. It is cleared when the create succeeds, so a
+	// record that has one has a first create that has not finished. A failed create removes the record.
+	ClientToken string `json:"clientToken,omitempty"`
+
+	// RequestToken is the token Cloud Control returns when it accepts a create, update, or delete. UCP polls the
+	// request with it, and uses it as the operation ID. For an operation a native handler serves, it is the operation
+	// ID UCP makes, and the worker polls the handler instead.
+	RequestToken string `json:"requestToken,omitempty"`
+
+	// Handler is what serves the operation in progress, or served the last one: "native" for a native handler, and
+	// empty for Cloud Control. An operation finishes with the handler that started it, even when the region has since
+	// gained or lost Cloud Control support for the type.
+	Handler string `json:"handler,omitempty"`
+
+	// DeleteToken is the value a native handler sends with every attempt to delete the resource, such as the name of a
+	// final snapshot (see native.DeletePreparer). UCP saves it before the first delete call, so a retried delete never
+	// takes a second copy. It is cleared when a create or update starts, and when the delete's progress reports that
+	// it failed. A delete call that returns an error, a timeout, or an error while waiting keeps it.
+	DeleteToken string `json:"deleteToken,omitempty"`
+
+	// UpdateToken is a UUID UCP makes before the first call of a native update. UCP sends it with every attempt of
+	// that update (native.UpdateRequest.Token). A request that resumes an update UCP reserved but never tracked, or a
+	// deploy after an update call whose outcome UCP can't tell or that UCP stopped waiting for, sends it again. It is
+	// cleared when the update finishes in AWS, when AWS rejects its first attempt, and when another operation starts.
+	// Each attempt has its own operation ID, so a resend of an update that timed out isn't taken as the one that
+	// finished.
+	UpdateToken string `json:"updateToken,omitempty"`
+
+	// UpdateIntent is a hash of the values the update UpdateToken names applies, its last-applied properties and
+	// fingerprints. A deploy sends the update token again only when it applies the same values, so a token never
+	// covers two different updates.
+	UpdateIntent string `json:"updateIntent,omitempty"`
+
+	// UpdateState is the state a native handler keeps for the update UpdateToken names (see native.UpdatePreparer).
+	// UCP saves and clears it with UpdateToken. It never holds a secret.
+	UpdateState string `json:"updateState,omitempty"`
+
+	// CreateToken is the client token of the create that made the resource, kept after the create finished until the
+	// native handler cleaned the resource up (native.Cleaner), so the handler removes only this create's marks. It is
+	// empty for a resource UCP took over.
+	CreateToken string `json:"createToken,omitempty"`
+
+	// CleanedUpAt is when the native handler removed what it put on the resource only for a while (native.Cleaner),
+	// or nil until then. While it is nil, each deploy of the record asks the handler again.
+	CleanedUpAt *time.Time `json:"cleanedUpAt,omitempty"`
+
+	// LastRequestToken is the request token of the last operation that finished, and LastRequestError is its error,
+	// or nil when it succeeded. A redelivered operation that already finished reports this result instead of polling
+	// AWS again.
+	LastRequestToken string           `json:"lastRequestToken,omitempty"`
+	LastRequestError *v1.ErrorDetails `json:"lastRequestError,omitempty"`
 }
 
-// GetBaseResource is not implemented for AWS proxy resource.
-func (a *AWSResource) GetBaseResource() *v1.BaseResource {
-	return nil
+// AWSFingerprints are keyed fingerprints of write-only property values, such as passwords. The values themselves are
+// never stored.
+type AWSFingerprints struct {
+	// KeyID is the ID of the HMAC key that made every digest. A digest made with a different key cannot be checked.
+	KeyID string `json:"keyId"`
+
+	// Digests maps each write-only property path, such as MasterUserPassword, to the HMAC-SHA-256 of its value, made
+	// by ucp_aws.FingerprintKey.Fingerprint. A write-only property inside array items, such as Users/*/Password, is
+	// covered by a digest of the whole array, Users.
+	Digests map[string]string `json:"digests"`
+
+	// Partial means the digests may not cover every write-only value the resource has: UCP took the resource over, or
+	// the record is older than fingerprints. A path with no digest then has an unknown value. Otherwise a path with no
+	// digest was not set by the last deploy.
+	Partial bool `json:"partial,omitempty"`
 }
 
-// ProvisioningState is not implemented for AWS proxy resource.
-func (a *AWSResource) ProvisioningState() v1.ProvisioningState {
-	return v1.ProvisioningState("")
-}
-
-// SetProvisioningState is not implemented for AWS proxy resource.
-func (a *AWSResource) SetProvisioningState(state v1.ProvisioningState) {
-
-}
-
-// UpdateMetadata is not implemented for AWS proxy resource.
-func (a *AWSResource) UpdateMetadata(ctx *v1.ARMRequestContext, oldResource *v1.BaseResource) {
-
-}
-
-// ResourceTypeName returns the resource type name.
+// ResourceTypeName returns the resource type of the record, such as AWS.EC2/VPC.
 func (a *AWSResource) ResourceTypeName() string {
-	return "UCP/AWSResource"
+	return a.Type
 }

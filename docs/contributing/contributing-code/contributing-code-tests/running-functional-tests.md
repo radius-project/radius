@@ -24,7 +24,7 @@ Install these tools and make sure each command is available on `PATH`:
 - Helm
 - OpenSSL 1.1.1 or later
 - jq
-- Python 3
+- zip
 - envsubst (provided by gettext)
 - curl 7.71.0 or later
 - Flux CLI 2.6.4
@@ -280,6 +280,8 @@ To run functional tests against an existing environment:
    make publish-test-terraform-recipes
    ```
 
+   The publisher uses Bash, `zip`, and `kubectl`; Python is not required for recipe publishing. Run `make test-publish-recipes` to check both recipe publishers without a registry or cluster (`zip` and `unzip` are required).
+
    Set `TF_RECIPE_MODULE_SERVER_URL` to the URL that test deployments can reach. CI and the local runner use `http://tf-module-server.radius-test-tf-module-server.svc.cluster.local`; direct local tests default to `http://localhost:8999`.
 
 7. Make packages published for the tests publicly readable.
@@ -316,7 +318,7 @@ make test-functional-all-noncloud
 
 The supported groups, including `authz`, and variants are defined in [`build/test.mk`](../../../../build/test.mk).
 
-The `authz` group (`make test-functional-authz-noncloud`) covers internal component authorization. Its smoke test reads the installed Helm values and checks that every Radius component logs the matching `authz mode=<mode>`, so it passes on any install. The `authz-noncloud` CI leg installs Radius with `--set global.rbac.dryRun=true` so the test checks a non-default mode; to reproduce that locally, run `rad install kubernetes --reinstall --set global.rbac.dryRun=true` before the tests.
+The `authz` group (`make test-functional-authz-noncloud`) covers internal component authorization. Its startup-log smoke test reads the installed Helm values and checks that every Radius component logs the matching `authz mode=<mode>`. This check requires startup messages to remain available in the current pod logs; use a fresh installation because log rotation can remove those messages from long-running pods. The `authz-noncloud` CI leg installs Radius with `--set global.rbac.dryRun=true` so the test checks a non-default mode; to reproduce that locally, run `rad install kubernetes --reinstall --set global.rbac.dryRun=true` before the tests. The leg then switches the same installation to enforce with `rad install kubernetes --reinstall --chart "${RADIUS_CHART_LOCATION}" --set global.rbac.dryRun=false --set global.rbac.enabled=true` and reruns only the mTLS boundary tests that call applications-rp directly from rogue pods, with `AUTHZ_EXPECTED_MODE=enforce`. Use the same chart and `rad` installer for both modes: reinstall preserves stored image and registry values and retains the `rad` server-side apply field manager; switching with the Helm CLI causes ownership conflicts. Other tests are not rerun in enforce because, until clients present certificates, enforce breaks UCP-to-resource-provider calls.
 
 Tests that use the rogue client helper (`test/rogue`) run a pod from the `rogue-client` image, which is built from source like `magpiego` and `testrp` and resolved from `DOCKER_REGISTRY` and `REL_VERSION`. It is never published to `ghcr.io/radius-project`: `make docker-build` and `make docker-push` include it, but the GoReleaser publish configuration excludes it, so it exists only in CI and local registries. To use it locally, build and push it to a registry your cluster can pull from, for example `make docker-build-rogue-client docker-push-rogue-client DOCKER_REGISTRY=<registry> DOCKER_TAG_VERSION=<tag>`, then run the tests with the same `DOCKER_REGISTRY` and `REL_VERSION=<tag>`.
 
@@ -333,13 +335,15 @@ Tests that use the rogue client helper (`test/rogue`) run a pod from the `rogue-
 
 The local runner provisions dedicated clusters for these groups. When running them manually, do not use a shared development cluster.
 
+The upgrade group includes `Test_RadUpgradeFromReleasedVersion`, which downloads the published v0.62.0 CLI for the host platform, verifies its release SHA-256 checksum, installs its actual chart and images, and upgrades to the build under test. It requires access to GitHub release assets and the published Helm chart and images. Before installing the baseline, it removes the two controller CRDs left by earlier installs, refusing to proceed if either still has instances; use a dedicated cluster. This covers the SSA-installed `RollingUpdate` to `Recreate` migration, release status, Deployment identity, and controller readiness. Keep the baseline pinned to a release with the old strategy while this compatibility path is supported. `Test_RadUpgradeKubernetes` separately exercises flags and value preservation using copies of the current chart with changed version metadata; those copies do not provide released-version compatibility coverage.
+
 For database tests, install Radius into a fresh cluster with `--set database.enabled=true`.
 
 For multicluster tests, create a `target-kubeconfig` Secret in `radius-system`, install Radius with `global.targetCluster.enabled=true`, and set `RADIUS_TEST_EXTERNAL_KUBECONFIG` to the host-side kubeconfig.
 
 ### Check for authorization dry-run would-deny logs
 
-CI runs the `corerp`, `dynamicrp`, `kubernetes`, and `ucp` non-cloud groups a second time with Radius installed with `--set global.rbac.dryRun=true`, then fails the leg if any component logged that an authorization check would deny a request (`authzWouldDeny=true`). Under enforcement those requests would be rejected, so this catches false positives before enforcement is turned on. To run the same check locally, install Radius with the dry run enabled, run the tests, then check the current kube context:
+When authorization-related paths change, and in every full run, CI runs the `corerp`, `dynamicrp`, `kubernetes`, and `ucp` non-cloud groups a second time with Radius installed with `--set global.rbac.dryRun=true`, then fails the leg if any component logged that an authorization check would deny a request (`authzWouldDeny=true`). Under enforcement those requests would be rejected, so this catches false positives before enforcement is turned on. To run the same check locally, install Radius with the dry run enabled, run the tests, then check the current kube context:
 
 ```bash
 rad install kubernetes --set global.rbac.dryRun=true
@@ -349,17 +353,15 @@ make authz-would-deny-check
 
 The check reads current and previous container logs from every pod in `radius-system`. Set `AUTHZ_NAMESPACE` to read another namespace, or pass extra arguments with `AUTHZ_WOULD_DENY_ARGS`, such as `AUTHZ_WOULD_DENY_ARGS="--cluster --logs-dir ./dist/authz-logs"` to also scan saved logs. Known would-deny lines that are tracked by an issue can be listed in [`.github/scripts/authz-would-deny-allowlist.txt`](../../../../.github/scripts/authz-would-deny-allowlist.txt); each entry must start with the issue reference.
 
-CI wraps the entire functional-test command with [`.github/scripts/run-with-authz-logs.py`](../../../../.github/scripts/run-with-authz-logs.py), which requires Python 3.9+ and `kubectl`. It watches pods from the initial inventory's resource version, follows each container incarnation, and retains logs for replaced pods until the command finishes. The collector uses a separate directory containing only `radius-system` logs; the test-owned `dist/container_logs` streams can stop when their first test ends and are not reliable gate evidence. Collection failures, including an interrupted watch, fail the job. CI requires the collector's `complete` marker before scanning its files and uploads the files even on failure. To collect the same evidence locally, use a new directory for each run:
+CI wraps the entire functional-test command with [`.github/scripts/run-with-authz-logs.sh`](../../../../.github/scripts/run-with-authz-logs.sh), which requires Bash (including macOS Bash 3.2), `jq`, `kubectl`, and Perl. It watches pods from the initial inventory's resource version, follows each container incarnation, and retains logs for replaced pods until the command finishes. Perl bounds each raw watch object to 16 MiB before `jq` parses it, including incomplete objects. The collector uses a separate directory containing only `radius-system` logs; the test-owned `dist/container_logs` streams can stop when their first test ends and are not reliable gate evidence. Collection failures, including an interrupted watch, fail the job. CI requires the collector's `complete` marker before scanning its files and uploads the files even on failure. The collector's process-level tests remain in Python and run alongside the gate's shell tests with `make test-authz-would-deny-check`. To collect the same evidence locally, use a new directory for each run:
 
 ```bash
 AUTHZ_LOG_DIR=./dist/authz-logs-run1 \
-  python3 .github/scripts/run-with-authz-logs.py make test-functional-corerp-noncloud
+  bash .github/scripts/run-with-authz-logs.sh make test-functional-corerp-noncloud
 make authz-would-deny-check AUTHZ_WOULD_DENY_ARGS="--collector-dir ./dist/authz-logs-run1"
 ```
 
 The Make target also passes `--require-dry-run`: it requires startup logs reporting `authz mode=dryRun` from `ucp`, `applications-rp`, `dynamic-rp`, and `controller`, checking every current replica. With `--collector-dir DIR`, the check requires the collector's `complete` marker and reads startup evidence only from `<pod>.<uid>.<container>.<restart>.log` files matching the live pod UID and container restart count. This preserves startup evidence after kubelet log rotation without accepting logs from replaced pods or earlier container restarts. All retained collector logs are still scanned for would-deny lines, including replaced pods. Without `--collector-dir`, startup verification reads live container logs; arbitrary `--logs-dir` files and previous-container logs cannot substitute for startup evidence. Missing components, missing matching collector files or startup messages, and other modes fail the check. Pod-listing failures, unreadable current or previous logs, file traversal/read errors, and empty saved-log directories also fail rather than reporting a clean run. An allowlist cannot bypass these errors. To scan saved logs without accessing a cluster or verifying startup modes, invoke the script directly with `--logs-dir DIR`.
-
-To check authorization trust boundaries by hand on a local kind cluster, for example when reviewing a pull request that adds one, use the manual test kit in [`hack/authz`](../../../../hack/authz/README.md).
 
 ### Configure test execution
 
@@ -392,6 +394,14 @@ Set `go.testTimeout` to `60m` and add `-v` to `go.testFlags`. Set `RAD_PATH` in 
 
 The `functional-test-noncloud.yaml` and `functional-test-cloud.yaml` workflows build Radius, publish test assets, create isolated infrastructure, run each selected group, capture diagnostics, and remove the test infrastructure.
 
+For PRs targeting `main` or `features/*` and the `main` merge queue, changes matching the `authz` paths in [`.github/workflows/__changes.yml`](../../../../.github/workflows/__changes.yml) run all 18 non-cloud jobs. Unrelated changes run 10, omitting `daprrp-noncloud`, `datastoresrp-noncloud`, `msgrp-noncloud`, `authz-noncloud`, and the four dry-run variants. Missing change-detection results retain all jobs. Cloud coverage is unchanged.
+
+Default jobs test existing behavior with authorization off; `corerp-noncloud` also verifies each component's startup mode. Coverage includes internal authorization Off and DryRun, not Enforce or user-facing RBAC. Add future modes as variants in [the matrix selector](../../../../.github/scripts/functional-test-matrix.mjs), update the `authz` paths, and preserve explicit both-disabled coverage when user-facing RBAC lands.
+
+The Dapr Redis-helper unit tests still run on every PR through `make test-dapr-helpers`. `make test` checks the legacy suites' inventory so new tests require a coverage decision.
+
+Scheduled runs (01:00, 13:00, and 19:00 UTC), release PRs, deployment-engine dispatches, and manual runs retain full coverage. Manual runs lack a comparison base, so even `test-profile: pr` runs all jobs. Regressions outside the `authz` paths may escape reduced PR coverage until a scheduled run. Local Make targets still run their complete groups.
+
 The scheduled purge workflows remove cloud resources left by cancelled or timed-out runs. The `long-running-azure.yaml` workflow uses published Radius artifacts while running diagnostics from the `main` workflow checkout.
 
 Download the `all_container_logs` artifact to investigate a run. Treat downloaded logs as potentially sensitive.
@@ -412,7 +422,9 @@ To collect the same summary locally, use a Linux host with Bash, `kubectl`, `jq`
 
 The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Releases do not publish test images, so the workflow builds the Magpie test image from that test source and pushes it to the functional-test registry under a run-specific `test-` tag. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
 
-The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version IRSA reconciliation. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
+LRT excludes only `Test_AuthzMode_LoggedByEveryComponent` from authorization coverage because persistent pods can outlive startup-log retention ([#13558](https://github.com/radius-project/radius/issues/13558)). Before running the cloud and non-cloud aggregates, it checks rollout readiness for `ucp`, `applications-rp`, `dynamic-rp`, and `controller` in `radius-system`, with a 120-second rollout timeout per deployment and diagnostics enabled. Each deployment must also have at least one ready replica; a completed rollout scaled to zero does not pass. A readiness failure stops the run without restarting pods. Other authorization tests remain selected, and fresh-install CI still requires the startup-mode message. These readiness checks do not verify the effective authorization mode; LRT no longer performs that startup-log assertion.
+
+The LRT setup script [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) defines the required Helm overrides in `REQUIRED_CHART_VALUES`, shared by fresh installs, upgrades, and existing same-version reconciliation. These include a `1Gi` memory limit for `dynamic-rp` to avoid Terraform AWS provider startup stalls caused by memory reclaim. For matching versions, setup checks both AWS IRSA token volumes and the `dynamic-rp` memory limit, reconciles missing or outdated settings through a Helm upgrade, and verifies both settings afterward. Keep LRT-specific configuration in that array rather than changing global chart defaults or using `kubectl set resources`, which can cause field-ownership conflicts on later upgrades.
 
 Download the `all_container_logs` artifact from a successful or failed run. Alongside the released test harness's logs, it contains:
 
@@ -447,7 +459,7 @@ Run `make test-cluster-diagnostics` to exercise collection, limits, failures, co
 
 The cloud CI workflows - `functional-test-cloud.yaml`, the long-running test `long-running-azure.yaml` ("LRT"), and the two scheduled purge jobs - authenticate to Azure and AWS with **federated identity only**. No static cloud secrets (service-principal passwords or AWS access keys) are stored in GitHub; every credential is a short-lived token minted from an OIDC trust. Two distinct trusts are in play:
 
-- **Runner -> cloud.** The GitHub Actions runner gets tokens from GitHub's OIDC provider (`token.actions.githubusercontent.com`), and Azure CLI / `aws-actions/configure-aws-credentials` exchange them for short-lived credentials that the test and purge code use to verify and delete cloud resources. Every such job sets `permissions: id-token: write`. The cloud functional workflow uses [`.github/scripts/azure-oidc-login.mjs`](../../../../.github/scripts/azure-oidc-login.mjs) for Azure login. Both jobs load this script in a separate checkout from `github.repository` at `github.sha`, so older PR branches do not need to contain it. Builds and tests still use the PR checkout. It retries only GitHub token request timeouts, selected connection errors, and HTTP 408, 429, 500, 502, 503, and 504 responses, with at most three requests, a 30-second limit per request, and two- and four-second delays. Permission, certificate, invalid-response, Azure login, and subscription errors fail without retry. Each job clears the Azure CLI account cache after cleanup. Run `make test-azure-oidc-login` to check this path locally without cloud access.
+- **Runner -> cloud.** The GitHub Actions runner gets tokens from GitHub's OIDC provider (`token.actions.githubusercontent.com`), and Azure CLI / `aws-actions/configure-aws-credentials` exchange them for short-lived credentials that the test and purge code use to verify and delete cloud resources. Every such job sets `permissions: id-token: write`. The cloud functional workflow uses [`.github/scripts/azure-oidc-login.mjs`](../../../../.github/scripts/azure-oidc-login.mjs) for Azure login. The Test ACR uploader loads this script from `github.repository` at `needs.setup.outputs.TRUSTED_SHA`; candidate test jobs load it from `github.repository` at `github.sha`. Both use a separate helper checkout, so older PR branches do not need to contain it. The build job runs candidate code without Azure login; the trusted uploader does not execute candidate code. The helper retries only GitHub token request timeouts, selected connection errors, and HTTP 408, 429, 500, 502, 503, and 504 responses, with at most three requests, a 30-second limit per request, and two- and four-second delays. Permission, certificate, invalid-response, Azure login, and subscription errors fail without retry. Each Azure-authenticated job clears the Azure CLI account cache after cleanup. Run `make test-azure-oidc-login` to check this path locally without cloud access.
 - **Radius control plane -> cloud.** The Radius pods (service accounts `ucp`, `applications-rp`, and `dynamic-rp` in `radius-system`) assume a cloud identity through the *cluster's own* OIDC issuer - Azure Workload Identity on Azure, IRSA on AWS - using a projected service-account token (audience `sts.amazonaws.com` for AWS). Radius reads the target identity from the credential registered with `rad credential register azure wi` and `rad credential register aws irsa`; enabling it requires installing the chart with `--set global.azureWorkloadIdentity.enabled=true` and `--set global.aws.irsa.enabled=true` (the LRT does this in [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh)).
 
 The identities are carried in repository secrets rather than in the workflow files:

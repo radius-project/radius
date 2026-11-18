@@ -30,7 +30,7 @@ import (
 	"time"
 	"uuid"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 

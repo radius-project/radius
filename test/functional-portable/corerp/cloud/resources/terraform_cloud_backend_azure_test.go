@@ -41,7 +41,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v2"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"

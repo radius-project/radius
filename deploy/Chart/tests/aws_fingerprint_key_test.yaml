@@ -1,0 +1,115 @@
+suite: AWS fingerprint key
+templates:
+  - ucp/aws-fingerprint-key.yaml
+  - ucp/deployment.yaml
+release:
+  namespace: radius-system
+  upgrade: true
+kubernetesProvider:
+  scheme:
+    "v1/Secret":
+      gvr:
+        version: v1
+        resource: secrets
+      namespaced: true
+tests:
+  - it: should generate a 32-byte key for a new install
+    template: ucp/aws-fingerprint-key.yaml
+    asserts:
+      - isKind:
+          of: Secret
+      - equal:
+          path: metadata.name
+          value: radius-aws-fingerprint-key
+      - equal:
+          path: metadata.namespace
+          value: radius-system
+      - matchRegex:
+          path: data.key
+          pattern: '^[A-Za-z0-9+/]{43}=$'
+      - notExists:
+          path: metadata.resourceVersion
+      - equal:
+          path: immutable
+          value: true
+
+  - it: should keep the existing key across upgrades
+    template: ucp/aws-fingerprint-key.yaml
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-aws-fingerprint-key
+            namespace: radius-system
+          data:
+            key: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+    asserts:
+      - equal:
+          path: data.key
+          value: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+
+  - it: should require the Secret to be unchanged since it was read
+    template: ucp/aws-fingerprint-key.yaml
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-aws-fingerprint-key
+            namespace: radius-system
+            resourceVersion: "42"
+          data:
+            key: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+    asserts:
+      - equal:
+          path: metadata.resourceVersion
+          value: "42"
+
+  - it: should refuse to replace an existing Secret without a key
+    template: ucp/aws-fingerprint-key.yaml
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-aws-fingerprint-key
+            namespace: radius-system
+          data:
+            other: AAAA
+    asserts:
+      - failedTemplate:
+          errorMessage: "existing Secret radius-aws-fingerprint-key has no key; delete the Secret to generate a new key"
+
+  - it: should refuse to replace an existing Secret with an empty key
+    template: ucp/aws-fingerprint-key.yaml
+    kubernetesProvider:
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: radius-aws-fingerprint-key
+            namespace: radius-system
+          data:
+            key: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "existing Secret radius-aws-fingerprint-key has no key; delete the Secret to generate a new key"
+
+  - it: should mount the key read-only into UCP without requiring the Secret
+    template: ucp/deployment.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: aws-fingerprint-key
+            mountPath: /var/secrets/aws-fingerprint
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: aws-fingerprint-key
+            secret:
+              secretName: radius-aws-fingerprint-key
+              defaultMode: 0444
+              optional: true

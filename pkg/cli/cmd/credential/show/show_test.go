@@ -17,6 +17,9 @@ limitations under the License.
 package show
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -93,6 +96,108 @@ func Test_Validate(t *testing.T) {
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
+func Test_Command_JSON(t *testing.T) {
+	t.Parallel()
+
+	getErr := errors.New("failed to get credentials")
+	testcases := []struct {
+		name        string
+		kind        string
+		provider    cli_credential.ProviderCredentialConfiguration
+		clientErr   error
+		expectedErr error
+	}{
+		{
+			name: "azure service principal",
+			kind: "azure",
+			provider: cli_credential.ProviderCredentialConfiguration{
+				Name:    "azure",
+				Enabled: true,
+				AzureCredentials: &cli_credential.AzureCredentialProperties{
+					Kind: new("ServicePrincipal"),
+				},
+			},
+		},
+		{
+			name: "azure workload identity",
+			kind: "azure",
+			provider: cli_credential.ProviderCredentialConfiguration{
+				Name:    "azure",
+				Enabled: true,
+				AzureCredentials: &cli_credential.AzureCredentialProperties{
+					Kind: new("WorkloadIdentity"),
+				},
+			},
+		},
+		{
+			name: "aws access key",
+			kind: "aws",
+			provider: cli_credential.ProviderCredentialConfiguration{
+				Name:    "aws",
+				Enabled: true,
+				AWSCredentials: &cli_credential.AWSCredentialProperties{
+					Kind: new("AccessKey"),
+				},
+			},
+		},
+		{
+			name: "aws irsa",
+			kind: "aws",
+			provider: cli_credential.ProviderCredentialConfiguration{
+				Name:    "aws",
+				Enabled: true,
+				AWSCredentials: &cli_credential.AWSCredentialProperties{
+					Kind: new("IRSA"),
+				},
+			},
+		},
+		{
+			name:        "not found",
+			kind:        "azure",
+			expectedErr: clierrors.Message("The credentials for cloud provider %q could not be found.", "azure"),
+		},
+		{
+			name:        "client error",
+			kind:        "azure",
+			clientErr:   getErr,
+			expectedErr: getErr,
+		},
+	}
+
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			client := cli_credential.NewMockCredentialManagementClient(ctrl)
+			client.EXPECT().Get(gomock.Any(), tt.kind).Return(tt.provider, tt.clientErr)
+
+			var stdout, stderr bytes.Buffer
+			cmd, _ := NewCommand(&framework.Impl{
+				ConfigHolder:      &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)},
+				ConnectionFactory: &connections.MockFactory{CredentialManagementClient: client},
+				Output:            &output.OutputWriter{Writer: &stdout},
+			})
+			cmd.SetOut(&stdout)
+			cmd.SetErr(&stderr)
+			cmd.SilenceUsage = true
+			cmd.SetArgs([]string{tt.kind, "--output", "json"})
+
+			err := cmd.ExecuteContext(t.Context())
+			if tt.expectedErr != nil {
+				require.Equal(t, tt.expectedErr, err)
+				require.Empty(t, stdout.String())
+				return
+			}
+			require.NoError(t, err)
+
+			var actual cli_credential.ProviderCredentialConfiguration
+			require.NoError(t, json.Unmarshal(stdout.Bytes(), &actual))
+			require.Equal(t, tt.provider, actual)
+		})
+	}
 }
 
 func Test_Run(t *testing.T) {

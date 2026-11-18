@@ -27,7 +27,8 @@ import { fileURLToPath } from "node:url";
 import {
   invalidCommits,
   validateBackportBase,
-  validateGeneratedBackport
+  validateGeneratedBackport,
+  validateMergedBackportSource
 } from "./validate-conventional-commits.mjs";
 
 const commit = (sha, message) => ({ sha, commit: { message } });
@@ -207,6 +208,134 @@ test("rejects generated backport without exact source trailer", () => {
           `fix: malformed\n\ntext (cherry picked from commit ${source})`
         )
       ]),
+    /missing exact trailer/
+  );
+});
+
+function backportFixture() {
+  const base = "a".repeat(40);
+  const sha = "b".repeat(40);
+  const pull = {
+    number: 123,
+    merged: true,
+    merged_at: "2026-10-23T00:00:00Z",
+    base: { ref: "main", repo: { full_name: "radius-project/radius" } },
+    merge_commit_sha: sha
+  };
+  const comparison = { status: "ahead" };
+  const options = {
+    context: { repo: { owner: "radius-project", repo: "radius" } },
+    commits: [
+      commit("head", `fix: backport\n\n(cherry picked from commit ${sha})`)
+    ],
+    body: [
+      "<!-- radius-backport-source: #123 -->",
+      `<!-- radius-backport-base: ${base} -->`,
+      `<!-- radius-backport-commit: ${sha} -->`
+    ].join("\n"),
+    baseSha: base,
+    headRef: "manual-backport",
+    github: {
+      rest: {
+        pulls: {
+          get: async ({ pull_number }) => {
+            assert.equal(pull_number, 123);
+            return { data: pull };
+          }
+        },
+        repos: {
+          compareCommitsWithBasehead: async ({ basehead, per_page }) => {
+            assert.equal(basehead, `${sha}...main`);
+            assert.equal(per_page, 1);
+            return { data: comparison };
+          }
+        }
+      }
+    }
+  };
+  return { options, pull, comparison };
+}
+
+test("accepts a manual backport with a verified merged-main source", async () => {
+  const { options } = backportFixture();
+  await validateMergedBackportSource(options);
+});
+
+test("retains earlier provenance already carried by the merged source", async () => {
+  const { options } = backportFixture();
+  options.commits[0].commit.message = options.commits[0].commit.message.replace(
+    "\n\n",
+    `\n\n(cherry picked from commit ${"c".repeat(40)})\n\n`
+  );
+  await validateMergedBackportSource(options);
+});
+
+test("a non-automation branch cannot bypass source validation", async () => {
+  const { options } = backportFixture();
+  options.body = "";
+  await assert.rejects(validateMergedBackportSource(options), /source marker/);
+});
+
+test("rejects unmerged, wrong-base, wrong-repository and mismatched sources", async () => {
+  for (const change of [
+    (pull) => {
+      pull.merged = false;
+    },
+    (pull) => {
+      pull.merged_at = null;
+    },
+    (pull) => {
+      pull.base.ref = "release/0.62";
+    },
+    (pull) => {
+      pull.base.repo.full_name = "another/radius";
+    },
+    (pull) => {
+      pull.merge_commit_sha = "c".repeat(40);
+    },
+    (pull) => {
+      pull.number = 456;
+    }
+  ]) {
+    const { options, pull } = backportFixture();
+    change(pull);
+    await assert.rejects(
+      validateMergedBackportSource(options),
+      /matching PR merged into main/
+    );
+  }
+});
+
+test("rejects sources that are no longer on main and preserves API failures", async () => {
+  for (const status of ["behind", "diverged", "unknown"]) {
+    const { options, comparison } = backportFixture();
+    comparison.status = status;
+    await assert.rejects(
+      validateMergedBackportSource(options),
+      /not reachable from main/
+    );
+  }
+  const { options } = backportFixture();
+  options.github.rest.pulls.get = async () => {
+    throw new Error("GitHub unavailable");
+  };
+  await assert.rejects(
+    validateMergedBackportSource(options),
+    /GitHub unavailable/
+  );
+});
+
+test("rejects extra release-only commits and multiple source trailers", async () => {
+  const { options } = backportFixture();
+  options.commits.push(commit("extra", "fix: release-only change"));
+  await assert.rejects(
+    validateMergedBackportSource(options),
+    /exactly one non-merge commit/
+  );
+  options.commits.pop();
+  options.commits[0].commit.message += `\n(cherry picked from commit ${"c".repeat(40)})`;
+  await assert.rejects(
+    validateMergedBackportSource(options),
     /missing exact trailer/
   );
 });

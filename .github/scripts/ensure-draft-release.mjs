@@ -2,22 +2,20 @@
 
 import { readFile } from "node:fs/promises";
 
-/** @param {any} github @param {string} owner @param {string} repo @param {string} tag */
-async function findRelease(github, owner, repo, tag) {
-  const releases = await github.paginate(github.rest.repos.listReleases, {
-    owner,
-    repo,
-    per_page: 100
-  });
-  const matches = releases.filter((release) => release.tag_name === tag);
-  if (matches.length > 1) {
-    throw new Error(`Multiple releases found for ${tag}`);
-  }
-  return matches[0];
-}
+import {
+  findRelease,
+  listReleases,
+  waitForRelease
+} from "./release-reconciliation.mjs";
 
 function verifyRelease(release, tag, notes, prerelease) {
-  if (!release?.draft) {
+  if (!release) {
+    throw new Error(`Release ${tag} was not returned by GitHub`);
+  }
+  if (release.tag_name !== tag) {
+    throw new Error(`Release ${release.id} does not match tag ${tag}`);
+  }
+  if (!release.draft) {
     throw new Error(`Release ${tag} is not a draft`);
   }
   if (release.name !== `Radius ${tag}`) {
@@ -31,8 +29,8 @@ function verifyRelease(release, tag, notes, prerelease) {
   }
 }
 
-/** @param {{github: any, core: any}} options */
-export default async function ensureDraftRelease({ github, core }) {
+/** @param {{github: any} & import("./release-reconciliation.mjs").ReleaseReadOptions} options */
+export default async function ensureDraftRelease({ github, core, sleep }) {
   const owner = core.getInput("OWNER", { required: true });
   const repo = core.getInput("REPO", { required: true });
   const tag = core.getInput("TAG", { required: true });
@@ -43,11 +41,11 @@ export default async function ensureDraftRelease({ github, core }) {
   if (!/^[0-9a-f]{40}$/.test(sourceSha)) {
     throw new Error("SOURCE_SHA must be a full commit SHA");
   }
-  let release = await findRelease(github, owner, repo, tag);
+  let release = findRelease(await listReleases(github, owner, repo), tag);
 
   if (!release) {
     try {
-      await github.rest.repos.createRelease({
+      const response = await github.rest.repos.createRelease({
         owner,
         repo,
         tag_name: tag,
@@ -56,15 +54,17 @@ export default async function ensureDraftRelease({ github, core }) {
         body: notes,
         draft: true,
         prerelease,
-        make_latest: "false"
+        make_latest: "false",
+        request: { retries: 0 }
       });
+      release = response.data;
     } catch (error) {
-      release = await findRelease(github, owner, repo, tag);
-      if (!release) {
-        throw error;
-      }
+      release = await waitForRelease(github, owner, repo, tag, {
+        core,
+        sleep,
+        cause: error
+      });
     }
-    release = await findRelease(github, owner, repo, tag);
   }
   verifyRelease(release, tag, notes, prerelease);
   core.setOutput("release_id", String(release.id));

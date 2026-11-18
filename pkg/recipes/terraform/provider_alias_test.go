@@ -288,7 +288,7 @@ func TestProviderConfigurationAliasesWithTerraform(t *testing.T) {
 			// and then adds the full provider configuration.
 			tf, err := Install(t.Context(), install.NewInstaller(), InstallOptions{RootDir: options.RootDir})
 			require.NoError(t, err)
-			_, err = e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, requireValidOutputMappings)
+			_, err = e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, requireValidOutputMappings, strictParameterResolution)
 			require.NoError(t, err)
 
 			content, err := os.ReadFile(filepath.Join(tf.WorkingDir(), "main.tf.json"))

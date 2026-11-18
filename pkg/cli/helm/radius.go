@@ -82,28 +82,42 @@ func prepareRadiusChart(ctx context.Context, helmAction HelmAction, options Radi
 // the release.
 func parseUserValuesFromCLI(options *RadiusChartOptions) (map[string]any, error) {
 	values := map[string]any{}
+	if err := parseSetValuesInto(values, options.SetArgs, options.SetFileArgs); err != nil {
+		return nil, err
+	}
 
-	// Parse --set arguments in order so that the last one wins.
-	for _, arg := range options.SetArgs {
+	return values, nil
+}
+
+// parseSetValuesInto parses --set style arguments and then --set-file style arguments into values, in order, so
+// that the last one wins. Like Helm's --set, each argument overrides any value already in the map.
+func parseSetValuesInto(values map[string]any, setArgs []string, setFileArgs []string) error {
+	for _, arg := range setArgs {
 		if err := strvals.ParseInto(arg, values); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	for _, arg := range options.SetFileArgs {
-		if runtime.GOOS == "windows" {
-			arg = filepath.ToSlash(arg)
-		}
-
+	for _, arg := range setFileArgs {
 		reader := func(rs []rune) (any, error) {
 			data, err := os.ReadFile(string(rs))
 			return string(data), err
 		}
 
-		if err := strvals.ParseIntoFile(arg, values, reader); err != nil {
-			return nil, err
+		if err := strvals.ParseIntoFile(setFileArg(arg), values, reader); err != nil {
+			return err
 		}
 	}
 
-	return values, nil
+	return nil
+}
+
+// setFileArg returns a --set-file style argument as strvals parses it. strvals reads a backslash as an escape
+// character, so the argument uses forward slashes in Windows paths.
+func setFileArg(arg string) string {
+	if runtime.GOOS == "windows" {
+		return filepath.ToSlash(arg)
+	}
+
+	return arg
 }

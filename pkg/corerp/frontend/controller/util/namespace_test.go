@@ -127,16 +127,6 @@ func Test_FindEnvironmentNamespaceConflict(t *testing.T) {
 		require.Equal(t, envInOtherGroup, conflict)
 	})
 
-	t.Run("ignores ACI environments", func(t *testing.T) {
-		// ACI environments run on Azure Container Instances and occupy no Kubernetes namespace.
-		client := database.NewMockClient(gomock.NewController(t))
-		expectQueries(client, []database.Object{legacyEnvironment(legacyEnvID, "shared", rpv1.ACIComputeKind)}, nil)
-
-		conflict, err := FindEnvironmentNamespaceConflict(t.Context(), client, testPlaneScope, "shared", envInOtherGroup)
-		require.NoError(t, err)
-		require.Empty(t, conflict)
-	})
-
 	t.Run("returns no conflict when the namespace is free", func(t *testing.T) {
 		client := database.NewMockClient(gomock.NewController(t))
 		expectQueries(client, nil, nil)

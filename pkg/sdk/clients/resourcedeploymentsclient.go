@@ -26,8 +26,8 @@ import (
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v4"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -64,6 +64,10 @@ type DeploymentProperties struct {
 
 type Value struct {
 	Scope string `json:"scope,omitempty"`
+
+	// Owner identifies who deploys the AWS resources, for the AWS provider only. UCP uses it to check that only the
+	// owner of an alias changes it. See AWSRecipeOwner and AWSDeploymentOwner.
+	Owner string `json:"owner,omitempty"`
 }
 
 type Radius struct {
@@ -96,6 +100,7 @@ type ProviderConfig struct {
 // ResourceDeploymentsClient is a deployments client for Azure Resource Manager.
 // It is used by both Azure and UCP clients.
 type ResourceDeploymentsClient interface {
+	Get(ctx context.Context, resourceID, apiVersion string) (ClientCreateOrUpdateResponse, error)
 	CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (Poller[ClientCreateOrUpdateResponse], error)
 	ContinueCreateOperation(ctx context.Context, resumeToken string) (Poller[ClientCreateOrUpdateResponse], error)
 	Delete(ctx context.Context, resourceID, apiVersion string) (Poller[ClientDeleteResponse], error)
@@ -143,6 +148,30 @@ type ClientCreateOrUpdateResponse struct {
 // ClientDeleteResponse contains the response from method Client.Delete.
 type ClientDeleteResponse struct {
 	armdeployments.DeploymentExtended
+}
+
+// Get reads a deployment, including outputs retained after a failed operation.
+func (client *ResourceDeploymentsClientImpl) Get(ctx context.Context, resourceID, apiVersion string) (ClientCreateOrUpdateResponse, error) {
+	var result ClientCreateOrUpdateResponse
+	if _, err := resources.ParseResource(resourceID); err != nil {
+		return result, fmt.Errorf("invalid deployment resourceID: %w", err)
+	}
+	req, err := runtime.NewRequest(ctx, http.MethodGet, DeploymentEngineURL(client.baseURI, resourceID))
+	if err != nil {
+		return result, err
+	}
+	query := req.Raw().URL.Query()
+	query.Set("api-version", apiVersion)
+	req.Raw().URL.RawQuery = query.Encode()
+	resp, err := client.pipeline.Do(req)
+	if err != nil {
+		return result, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return result, runtime.NewResponseError(resp)
+	}
+	err = runtime.UnmarshalAsJSON(resp, &result)
+	return result, err
 }
 
 // CreateOrUpdate creates a request to create or update a deployment and returns a poller to

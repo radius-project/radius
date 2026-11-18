@@ -1,0 +1,64 @@
+{
+  "title": "Assign environment deployer on one environment only",
+  "operationId": "ScopedRoleAssignments_CreateOrUpdate",
+  "parameters": {
+    "api-version": "2025-08-01-preview",
+    "scope": "planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging",
+    "roleAssignmentName": "team-a-staging-deployer",
+    "resource": {
+      "properties": {
+        "roleDefinitionId": "/providers/Radius.Core/roleDefinitions/environment-deployer",
+        "principal": {
+          "type": "group",
+          "issuer": "kubernetes:6c1e9a8e-1c21-4774-a261-d760b21ad530",
+          "subject": "team-a-devs"
+        },
+        "description": "Use staging without gaining access to production or referenced Recipe Packs."
+      }
+    }
+  },
+  "responses": {
+    "200": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging/providers/Radius.Core/roleAssignments/team-a-staging-deployer",
+        "name": "team-a-staging-deployer",
+        "type": "Radius.Core/roleAssignments",
+        "properties": {
+          "roleDefinitionId": "/providers/Radius.Core/roleDefinitions/environment-deployer",
+          "principal": {
+            "type": "group",
+            "issuer": "kubernetes:6c1e9a8e-1c21-4774-a261-d760b21ad530",
+            "subject": "team-a-devs"
+          },
+          "description": "Use staging without gaining access to production or referenced Recipe Packs.",
+          "scope": "/planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging",
+          "managedBy": {
+            "kind": "Imperative"
+          },
+          "createdBy": "user:kubernetes:6c1e9a8e-1c21-4774-a261-d760b21ad530:alice"
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging/providers/Radius.Core/roleAssignments/team-a-staging-deployer",
+        "name": "team-a-staging-deployer",
+        "type": "Radius.Core/roleAssignments",
+        "properties": {
+          "roleDefinitionId": "/providers/Radius.Core/roleDefinitions/environment-deployer",
+          "principal": {
+            "type": "group",
+            "issuer": "kubernetes:6c1e9a8e-1c21-4774-a261-d760b21ad530",
+            "subject": "team-a-devs"
+          },
+          "description": "Use staging without gaining access to production or referenced Recipe Packs.",
+          "scope": "/planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging",
+          "managedBy": {
+            "kind": "Imperative"
+          },
+          "createdBy": "user:kubernetes:6c1e9a8e-1c21-4774-a261-d760b21ad530:alice"
+        }
+      }
+    }
+  }
+}

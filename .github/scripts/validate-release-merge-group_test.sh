@@ -169,6 +169,7 @@ test_selects_release_pr_on_advanced_base() {
 test_accepts_group_without_release_pr() {
     local file="${1:-other.txt}"
     local expects_plan="${2:-false}"
+    local with_changelog="${3:-false}"
     local group_sha output status=0
 
     git -C "${REPO}" checkout -q main
@@ -176,10 +177,15 @@ test_accepts_group_without_release_pr() {
     mkdir -p "$(dirname "${REPO}/${file}")"
     printf 'changed\n' > "${REPO}/${file}"
     git -C "${REPO}" add "${file}"
+    if [[ "${with_changelog}" == true ]]; then
+        printf '# Corrected historical changelog\n' >"${REPO}/CHANGELOG.md"
+        git -C "${REPO}" add CHANGELOG.md
+    fi
     git -C "${REPO}" commit -q -m "fix: unrelated change"
     printf '[]\n' > "${REPO}/candidates.json"
     GROUP_BASE_SHA="${BASE_SHA}"
     group_sha="$(git -C "${REPO}" rev-parse HEAD)"
+    GROUP_SHA="${group_sha}"
     output="$(run_validator "${group_sha}" 2>&1)" || status=$?
     if [[ "${expects_plan}" == "true" ]]; then
         if [[ "${status}" == 0 || "${output}" != *"release metadata changed without a matching release plan"* ]]; then
@@ -191,6 +197,18 @@ test_accepts_group_without_release_pr() {
             fail_test "expected ordinary change ${file} to pass without a plan: ${output}"
             return
         fi
+    fi
+    git -C "${REPO}" checkout -q --detach "${GROUP_BASE_SHA}"
+    status=0
+    output="$(run_workflow_selector 2>&1)" || status=$?
+    if [[ "${expects_plan}" == true ]]; then
+        if [[ "${status}" == 0 || "${output}" != *"release metadata changed without a matching release plan"* ]]; then
+            fail_test "trusted workflow must reject metadata ${file}: ${output}"
+            return
+        fi
+    elif [[ "${status}" != 0 ]] || ! grep -Fxq 'number=' "${TEST_ROOT}/workflow/github-output"; then
+        fail_test "trusted workflow must accept documentation ${file}: ${output}"
+        return
     fi
     ((++PASS))
 }
@@ -214,6 +232,7 @@ run_workflow_selector() {
 test_workflow_bootstrap() {
     local file="$1"
     local expects_failure="$2"
+    local with_changelog="${3:-false}"
     local output status=0
 
     setup_repo
@@ -223,6 +242,10 @@ test_workflow_bootstrap() {
     printf '#!/bin/bash\ntouch queued-validator-executed\nexit 99\n' \
         > "${REPO}/.github/scripts/validate-release-merge-group.sh"
     git -C "${REPO}" add "${file}" .github/scripts/validate-release-merge-group.sh
+    if [[ "${with_changelog}" == true ]]; then
+        printf '# Corrected historical changelog\n' >"${REPO}/CHANGELOG.md"
+        git -C "${REPO}" add CHANGELOG.md
+    fi
     git -C "${REPO}" commit -q -m "ci: introduce release validation"
     GROUP_SHA="$(git -C "${REPO}" rev-parse HEAD)"
     GROUP_BASE_SHA="${BASE_SHA}"
@@ -263,8 +286,49 @@ test_workflow_uses_existing_trusted_validator() {
     ((++PASS))
 }
 
+test_rejects_changed_release_content() {
+    local file="$1"
+
+    setup_repo true
+    create_squash_group false
+    printf 'unexpected content\n' >>"${REPO}/${file}"
+    git -C "${REPO}" add "${file}"
+    git -C "${REPO}" commit -q -m "test: mismatched release content"
+    GROUP_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    git -C "${REPO}" checkout -q --detach "${GROUP_BASE_SHA}"
+    if run_workflow_selector >/dev/null 2>&1; then
+        fail_test "generated release content mismatch ${file} must fail"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rejects_metadata_removal() {
+    local file="$1"
+    local operation="$2"
+
+    setup_repo true
+    GROUP_BASE_SHA="${RELEASE_SHA}"
+    if [[ "${operation}" == rename ]]; then
+        git -C "${REPO}" mv "${file}" ordinary.txt
+    else
+        git -C "${REPO}" rm -q "${file}"
+    fi
+    printf '# Corrected historical changelog\n' >"${REPO}/CHANGELOG.md"
+    git -C "${REPO}" add CHANGELOG.md
+    git -C "${REPO}" commit -q -m "test: ${operation} release metadata"
+    GROUP_SHA="$(git -C "${REPO}" rev-parse HEAD)"
+    git -C "${REPO}" checkout -q --detach "${GROUP_BASE_SHA}"
+    printf '[]\n' >"${REPO}/candidates.json"
+    if run_workflow_selector >/dev/null 2>&1; then
+        fail_test "metadata ${operation} ${file} with changelog must fail"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
-    local file
+    local file with_changelog
 
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/release-merge-group-XXXXXX")"
     WORKFLOW_SELECTOR="$(yq -r '.jobs."validate-merge-group".steps[] | select(.id == "select") | .run' "${WORKFLOW}")"
@@ -275,25 +339,36 @@ main() {
     test_rejects_group_with_extra_changes
     setup_repo
     test_selects_release_pr_on_advanced_base
-    for file in other.txt docs/release-notes/README.md \
+    for file in CHANGELOG.md other.txt docs/release-notes/README.md \
         docs/release-notes/template.md docs/release-notes/template_patch.md; do
-        setup_repo
+        setup_repo true
         test_accepts_group_without_release_pr "${file}"
     done
-    for file in CHANGELOG.md versions.yaml docs/release-notes/v0.61.0.md \
-        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md \
-        .github/release-plans/v0.61.0-rc.1.yaml; do
-        setup_repo
-        test_accepts_group_without_release_pr "${file}" true
-    done
-    for file in other.txt docs/release-notes/README.md \
+    setup_repo true
+    test_accepts_group_without_release_pr other.txt false true
+    for file in CHANGELOG.md other.txt docs/release-notes/README.md \
         docs/release-notes/template.md docs/release-notes/template_patch.md; do
         test_workflow_bootstrap "${file}" false
     done
-    for file in CHANGELOG.md versions.yaml docs/release-notes/v0.61.0.md \
-        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md \
-        .github/release-plans/v0.61.0-rc.1.yaml; do
-        test_workflow_bootstrap "${file}" true
+    test_workflow_bootstrap other.txt false true
+    for with_changelog in false true; do
+        for file in versions.yaml docs/release-notes/v0.61.0.md \
+            docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md \
+            .github/release-plans/v0.61.0-rc.1.yaml; do
+            setup_repo true
+            test_accepts_group_without_release_pr "${file}" true "${with_changelog}"
+            test_workflow_bootstrap "${file}" true "${with_changelog}"
+        done
+    done
+    for file in CHANGELOG.md versions.yaml \
+        .github/release-plans/v0.61.0-rc.1.yaml \
+        docs/release-notes/v0.61.0-rc.1.md; do
+        test_rejects_changed_release_content "${file}"
+    done
+    for file in versions.yaml .github/release-plans/v0.61.0-rc.1.yaml \
+        docs/release-notes/v0.61.0-rc.1.md; do
+        test_rejects_metadata_removal "${file}" rename
+        test_rejects_metadata_removal "${file}" delete
     done
     test_workflow_uses_existing_trusted_validator
 

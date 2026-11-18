@@ -190,8 +190,12 @@ jobs:
             ${{ steps.plan.outputs.source-resolved == 'false' &&
             steps.plan.outputs.product-commit || steps.plan.outputs.release-commit }}
         run: |
+          args=("${RELEASE_COMMIT}")
+          if [[ "$(yq -r '.changelogPolicy' "${RUNNER_TEMP}/release-plan.yaml")" == stable-only ]]; then
+            args+=(--require-sibling-releases)
+          fi
           bash ./.github/scripts/verify-release-build-contract.sh \
-            "${RELEASE_COMMIT}"
+            "${args[@]}"
 
       # The approve job below is the only human gate before mutation. An
       # environment without required reviewers lets that job pass immediately.
@@ -234,6 +238,20 @@ jobs:
           path: controller-siblings/bicep-types-aws
           fetch-depth: 0
           persist-credentials: false
+
+      # Merging the release PR doesn't guarantee its plan check passed, so
+      # check the frozen pin again before approval and any mutation.
+      - name: Verify bicep-types-aws Radius pin
+        if: steps.plan.outputs.ready == 'true'
+        env:
+          BICEP_TYPES_AWS_COMMIT: >-
+            ${{ steps.plan.outputs.bicep-types-aws-commit }}
+        run: |
+          product_commit="$(yq -r '.source.productCommit' \
+            "${RUNNER_TEMP}/release-plan.yaml")"
+          bash "${GITHUB_WORKSPACE}/.github/scripts/verify-bicep-types-aws-radius-pin.sh" \
+            controller-siblings/bicep-types-aws "${BICEP_TYPES_AWS_COMMIT}" \
+            "${product_commit}"
 
       - name: Preflight every release repository
         if: steps.plan.outputs.ready == 'true'

@@ -1,0 +1,118 @@
+{
+  "source": "recorded",
+  "inputs": {
+    "RADIUS_REC_RUN": "rc899e"
+  },
+  "interactions": [
+    {
+      "service": "SageMaker",
+      "operation": "CreateTrialComponent",
+      "request": "{\"DisplayName\":\"radius-recording\",\"MetadataProperties\":{\"ProjectId\":\"radius-rec\"},\"StartTime\":1767323045,\"Status\":{\"PrimaryStatus\":\"InProgress\"},\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"}],\"TrialComponentName\":\"radius-rec-rc899e-tc\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"TrialComponentArn\":\"arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc\"}"
+    },
+    {
+      "service": "SageMaker",
+      "operation": "DescribeTrialComponent",
+      "request": "{\"TrialComponentName\":\"radius-rec-rc899e-tc\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"CreatedBy\":{},\"CreationTime\":1.793859865396E9,\"DisplayName\":\"radius-recording\",\"InputArtifacts\":{},\"LastModifiedBy\":{},\"LastModifiedTime\":1.793859865396E9,\"LineageGroupArn\":\"arn:aws:sagemaker:us-west-2:123456789012:lineage-group/sagemaker-default-lineage-group\",\"MetadataProperties\":{\"ProjectId\":\"radius-rec\"},\"Metrics\":[],\"OutputArtifacts\":{},\"Parameters\":{},\"Sources\":[],\"StartTime\":1.767323045E9,\"Status\":{\"PrimaryStatus\":\"InProgress\"},\"TrialComponentArn\":\"arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc\",\"TrialComponentName\":\"radius-rec-rc899e-tc\"}"
+    },
+    {
+      "service": "SageMaker",
+      "operation": "ListTags",
+      "request": "{\"ResourceArn\":\"arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"}]}"
+    },
+    {
+      "service": "SageMaker",
+      "operation": "DescribeTrialComponent",
+      "request": "{\"TrialComponentName\":\"radius-rec-rc899e-tc\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"CreatedBy\":{},\"CreationTime\":1.793859865396E9,\"DisplayName\":\"radius-recording\",\"InputArtifacts\":{},\"LastModifiedBy\":{},\"LastModifiedTime\":1.793859865396E9,\"LineageGroupArn\":\"arn:aws:sagemaker:us-west-2:123456789012:lineage-group/sagemaker-default-lineage-group\",\"MetadataProperties\":{\"ProjectId\":\"radius-rec\"},\"Metrics\":[],\"OutputArtifacts\":{},\"Parameters\":{},\"Sources\":[],\"StartTime\":1.767323045E9,\"Status\":{\"PrimaryStatus\":\"InProgress\"},\"TrialComponentArn\":\"arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc\",\"TrialComponentName\":\"radius-rec-rc899e-tc\"}"
+    },
+    {
+      "service": "SageMaker",
+      "operation": "UpdateTrialComponent",
+      "request": "{\"DisplayName\":\"radius-recording-updated\",\"EndTime\":1767326645,\"Status\":{\"PrimaryStatus\":\"Completed\"},\"TrialComponentName\":\"radius-rec-rc899e-tc\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"TrialComponentArn\":\"arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc\"}"
+    },
+    {
+      "service": "SageMaker",
+      "operation": "AddTags",
+      "request": "{\"ResourceArn\":\"arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc\",\"Tags\":[{\"Key\":\"step\",\"Value\":\"update\"}]}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Tags\":[{\"Key\":\"step\",\"Value\":\"update\"}]}"
+    },
+    {
+      "service": "SageMaker",
+      "operation": "DescribeTrialComponent",
+      "request": "{\"TrialComponentName\":\"radius-rec-rc899e-tc\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"CreatedBy\":{},\"CreationTime\":1.793859865396E9,\"DisplayName\":\"radius-recording-updated\",\"EndTime\":1.767326645E9,\"InputArtifacts\":{},\"LastModifiedBy\":{},\"LastModifiedTime\":1.793859865679E9,\"LineageGroupArn\":\"arn:aws:sagemaker:us-west-2:123456789012:lineage-group/sagemaker-default-lineage-group\",\"MetadataProperties\":{\"ProjectId\":\"radius-rec\"},\"Metrics\":[],\"OutputArtifacts\":{},\"Parameters\":{},\"Sources\":[],\"StartTime\":1.767323045E9,\"Status\":{\"PrimaryStatus\":\"Completed\"},\"TrialComponentArn\":\"arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc\",\"TrialComponentName\":\"radius-rec-rc899e-tc\"}"
+    },
+    {
+      "service": "SageMaker",
+      "operation": "ListTags",
+      "request": "{\"ResourceArn\":\"arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"Tags\":[{\"Key\":\"radius-recording\",\"Value\":\"rc899e\"},{\"Key\":\"step\",\"Value\":\"update\"}]}"
+    },
+    {
+      "service": "SageMaker",
+      "operation": "DeleteTrialComponent",
+      "request": "{\"TrialComponentName\":\"radius-rec-rc899e-tc\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"TrialComponentArn\":\"arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc\"}"
+    },
+    {
+      "service": "SageMaker",
+      "operation": "DescribeTrialComponent",
+      "request": "{\"TrialComponentName\":\"radius-rec-rc899e-tc\"}",
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"CreatedBy\":{},\"CreationTime\":1.793859865396E9,\"DisplayName\":\"radius-recording-updated\",\"EndTime\":1.767326645E9,\"InputArtifacts\":{},\"LastModifiedBy\":{},\"LastModifiedTime\":1.793859866059E9,\"LineageGroupArn\":\"arn:aws:sagemaker:us-west-2:123456789012:lineage-group/sagemaker-default-lineage-group\",\"MetadataProperties\":{\"ProjectId\":\"radius-rec\"},\"Metrics\":[],\"OutputArtifacts\":{},\"Parameters\":{},\"Sources\":[],\"StartTime\":1.767323045E9,\"Status\":{\"Message\":\"Deletion of metrics associated to TrialComponent is in progress\",\"PrimaryStatus\":\"Deleting\"},\"TrialComponentArn\":\"arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc\",\"TrialComponentName\":\"radius-rec-rc899e-tc\"}"
+    },
+    {
+      "service": "SageMaker",
+      "operation": "DescribeTrialComponent",
+      "request": "{\"TrialComponentName\":\"radius-rec-rc899e-tc\"}",
+      "status": 400,
+      "headers": {
+        "Content-Type": "application/x-amz-json-1.1"
+      },
+      "body": "{\"__type\":\"ResourceNotFound\",\"Message\":\"Trial component 'arn:aws:sagemaker:us-west-2:123456789012:experiment-trial-component/radius-rec-rc899e-tc' does not exist.\"}"
+    }
+  ]
+}

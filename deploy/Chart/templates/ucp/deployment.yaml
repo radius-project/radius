@@ -24,6 +24,7 @@ spec:
         {{- end }}
       annotations:
         checksum/authz-config: {{ include "radius.authz.mode" . | sha256sum }}
+        checksum/caller-authentication: {{ .Values.ucp.kubernetesIssuer | default "kubernetes:local" | sha256sum }}
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
@@ -77,6 +78,11 @@ spec:
         - containerPort: 9443
           name: ucp
           protocol: TCP
+        {{- if ne (include "radius.authz.mode" .) "off" }}
+        - containerPort: 9444
+          name: internal
+          protocol: TCP
+        {{- end }}
         {{- if eq .Values.global.prometheus.enabled true }}
         - containerPort: {{ .Values.global.prometheus.port }}
           name: metrics
@@ -131,6 +137,10 @@ spec:
         - name: encryption-secret
           mountPath: /var/secrets/encryption
           readOnly: true
+        - name: aws-fingerprint-key
+          mountPath: /var/secrets/aws-fingerprint
+          readOnly: true
+        {{- with include "radius.authz.mtls.volumeMount" . | trim }}{{ . | nindent 8 }}{{- end }}
       volumes:
         - name: config-volume
           configMap:
@@ -162,3 +172,11 @@ spec:
           secret:
             secretName: radius-encryption-key
             defaultMode: 0400
+        # UCP runs as a non-root user, and Secret files are owned by root, so the key must be readable by others.
+        # The Secret is optional so UCP still starts without it; only AWS operations that need the key fail.
+        - name: aws-fingerprint-key
+          secret:
+            secretName: radius-aws-fingerprint-key
+            defaultMode: 0444
+            optional: true
+        {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "ucp") | trim }}{{ . | nindent 8 }}{{- end }}

@@ -140,7 +140,7 @@ corepack enable pnpm
 pnpm -C typespec install
 ```
 
-> 📝 **Note** — `mockgen` and `controller-gen` are managed as Go tool dependencies (the `tool` directives in [go.mod](../../../../go.mod)) and are invoked via `go tool mockgen` and `go tool controller-gen`, so they do not require a separate `go install`. `autorest` and `oav` are devDependencies in [typespec/package.json](../../../../typespec/package.json) and are invoked via `pnpm -C typespec exec`. No global installation is needed.
+> 📝 **Note** — `mockgen` and `controller-gen` are managed as Go tool dependencies (the `tool` directives in [go.mod](../../../../go.mod)) and are invoked via `go tool mockgen` and `go tool controller-gen`, so they do not require a separate `go install`.
 
 ## Verification
 

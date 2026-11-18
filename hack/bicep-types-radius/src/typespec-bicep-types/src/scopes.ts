@@ -24,17 +24,10 @@ import { ScopeType } from "./bicep.js";
  * subscription/resource-group hierarchy, so they resolve to `ScopeType.None` -
  * which is exactly what the AutoRest path emitted (`readableScopes`/
  * `writableScopes` of `0`) because the Radius routing paths never matched the
- * Azure scope patterns. Extension resources keep `Extension` scope.
- *
- * Phase 2 refines this using each resource's operation paths for any
- * non-Radius/Azure-style scopes; this mapping covers the Radius namespaces that
- * currently flow through the AutoRest path.
+ * Azure scope patterns. This includes ARM-style extension resources: marking
+ * them as Azure extensions prevents deployment at the Radius resource group.
+ * Individual-resource `scope:` needs separate Bicep/deployment-engine support.
  */
-export function armResourceKindToScopeType(kind: ArmResourceKind): ScopeType {
-  switch (kind) {
-    case "Extension":
-      return ScopeType.Extension;
-    default:
-      return ScopeType.None;
-  }
+export function armResourceKindToScopeType(_kind: ArmResourceKind): ScopeType {
+  return ScopeType.None;
 }

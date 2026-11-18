@@ -592,11 +592,6 @@ func toRuntimePropertiesDataModel(runtime *RuntimesProperties) *datamodel.Runtim
 			r.Kubernetes.Pod = string(serialiedPodPatch)
 		}
 	}
-	if runtime.Aci != nil {
-		r.ACI = &datamodel.ACIRuntime{
-			GatewayID: to.String(runtime.Aci.GatewayID),
-		}
-	}
 	return r
 }
 
@@ -615,11 +610,6 @@ func fromRuntimePropertiesDataModel(runtime *datamodel.RuntimeProperties) *Runti
 				return nil
 			}
 			r.Kubernetes.Pod = &KubernetesPodSpec{AdditionalProperties: podPatch}
-		}
-	}
-	if runtime.ACI != nil {
-		r.Aci = &ACIRuntimeProperties{
-			GatewayID: new(runtime.ACI.GatewayID),
 		}
 	}
 	return r

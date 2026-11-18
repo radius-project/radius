@@ -19,8 +19,13 @@
 # explicitly with --rcfile.
 SHELLCHECK_RCFILE := ./.github/linters/.shellcheckrc
 
+# Windows architectures for lint-go-windows. The repo has no architecture-specific
+# Go files, so amd64 alone covers Windows-only compile and vet errors. Set
+# WINDOWS_VET_ARCHS="amd64 arm64" to check both.
+WINDOWS_VET_ARCHS ?= amd64
+
 .PHONY: lint
-lint: lint-go lint-shell spellcheck format-check ## Runs all linters (Go, shell, spelling, and formatting).
+lint: lint-go lint-go-windows lint-shell spellcheck format-check ## Runs all linters (Go, shell, spelling, and formatting).
 
 .PHONY: lint-go
 lint-go: ## Runs golangci-lint
@@ -33,6 +38,15 @@ lint-go: ## Runs golangci-lint
 	@echo ""
 	@golangci-lint version
 	@golangci-lint run --timeout 10m
+
+# Unit tests run on Linux only, so this catches Go code and tests that do not
+# compile or vet on Windows. Files tagged //go:build !windows are excluded.
+.PHONY: lint-go-windows
+lint-go-windows: ## Compiles and vets Go code, including tests, for Windows (GOOS=windows)
+	@for arch in $(WINDOWS_VET_ARCHS); do \
+		echo "$(ARROW) Running go vet for windows/$$arch..."; \
+		GOOS=windows GOARCH=$$arch go vet ./... || exit 1; \
+	done
 
 .PHONY: lint-shell
 lint-shell: ## Runs shellcheck static analysis on all tracked shell scripts.

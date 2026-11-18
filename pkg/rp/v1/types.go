@@ -30,8 +30,6 @@ const (
 	UnknownComputeKind EnvironmentComputeKind = "unknown"
 	// KubernetesComputeKind represents kubernetes compute resource type.
 	KubernetesComputeKind EnvironmentComputeKind = "kubernetes"
-	// ACIComputeKind represents ACI compute resource type.
-	ACIComputeKind EnvironmentComputeKind = "aci"
 )
 
 // BasicDaprResourceProperties is the basic resource properties for dapr resources.
@@ -103,6 +101,9 @@ type ResourceStatus struct {
 	// OutputResources represents the output resources associated with the radius resource.
 	OutputResources []OutputResource `json:"outputResources,omitempty"`
 	Recipe          *RecipeStatus    `json:"recipe,omitempty"`
+
+	// PendingRecipeDeployments identifies Bicep deployments whose cleanup inventory must be recovered before deletion.
+	PendingRecipeDeployments []string `json:"pendingRecipeDeployments,omitempty"`
 }
 
 // DeepCopyRecipeStatus creates a copy of ResourceStatus.
@@ -127,7 +128,6 @@ func (original ResourceStatus) DeepCopyRecipeStatus() ResourceStatus {
 type EnvironmentCompute struct {
 	Kind              EnvironmentComputeKind      `json:"kind"`
 	KubernetesCompute KubernetesComputeProperties `json:"kubernetes"`
-	ACICompute        ACIComputeProperties        `json:"aci"`
 
 	// Environment-level identity that can be used by any resource in the environment.
 	// Resources can specify its own identities and they will override the environment-level identity.
@@ -141,10 +141,6 @@ type KubernetesComputeProperties struct {
 
 	// Namespace represents Kubernetes namespace.
 	Namespace string `json:"namespace"`
-}
-
-type ACIComputeProperties struct {
-	ResourceGroup string `json:"resourceGroup"`
 }
 
 // RadiusResourceModel represents the interface of radius resource type.

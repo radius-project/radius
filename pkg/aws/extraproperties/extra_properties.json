@@ -1,0 +1,70 @@
+{
+  "AWS::MSK::Cluster": {
+    "BootstrapBrokerString": {
+      "type": "string",
+      "description": "The plaintext broker addresses, as host:port pairs separated by commas."
+    },
+    "BootstrapBrokerStringIpv6": {
+      "type": "string",
+      "description": "The plaintext broker addresses for IPv6 connectivity."
+    },
+    "BootstrapBrokerStringPublicSaslIam": {
+      "type": "string",
+      "description": "The SASL/IAM broker addresses for public access."
+    },
+    "BootstrapBrokerStringPublicSaslScram": {
+      "type": "string",
+      "description": "The SASL/SCRAM broker addresses for public access."
+    },
+    "BootstrapBrokerStringPublicTls": {
+      "type": "string",
+      "description": "The TLS broker addresses for public access."
+    },
+    "BootstrapBrokerStringSaslIam": {
+      "type": "string",
+      "description": "The SASL/IAM broker addresses."
+    },
+    "BootstrapBrokerStringSaslIamIpv6": {
+      "type": "string",
+      "description": "The SASL/IAM broker addresses for IPv6 connectivity."
+    },
+    "BootstrapBrokerStringSaslScram": {
+      "type": "string",
+      "description": "The SASL/SCRAM broker addresses."
+    },
+    "BootstrapBrokerStringSaslScramIpv6": {
+      "type": "string",
+      "description": "The SASL/SCRAM broker addresses for IPv6 connectivity."
+    },
+    "BootstrapBrokerStringTls": {
+      "type": "string",
+      "description": "The TLS broker addresses."
+    },
+    "BootstrapBrokerStringTlsIpv6": {
+      "type": "string",
+      "description": "The TLS broker addresses for IPv6 connectivity."
+    },
+    "BootstrapBrokerStringVpcConnectivitySaslIam": {
+      "type": "string",
+      "description": "The SASL/IAM broker addresses for multi-VPC private connectivity."
+    },
+    "BootstrapBrokerStringVpcConnectivitySaslScram": {
+      "type": "string",
+      "description": "The SASL/SCRAM broker addresses for multi-VPC private connectivity."
+    },
+    "BootstrapBrokerStringVpcConnectivityTls": {
+      "type": "string",
+      "description": "The TLS broker addresses for multi-VPC private connectivity."
+    }
+  },
+  "AWS::MSK::ServerlessCluster": {
+    "BootstrapBrokerStringSaslIam": {
+      "type": "string",
+      "description": "The SASL/IAM broker addresses."
+    },
+    "BootstrapBrokerStringSaslIamIpv6": {
+      "type": "string",
+      "description": "The SASL/IAM broker addresses for IPv6 connectivity."
+    }
+  }
+}

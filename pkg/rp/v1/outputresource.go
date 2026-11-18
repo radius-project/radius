@@ -41,6 +41,11 @@ type OutputResource struct {
 	// RadiusManaged determines whether Radius manages the lifecycle of the underlying resource.
 	RadiusManaged *bool `json:"radiusManaged"`
 
+	// ProviderResourceID is the provider-native ID of the underlying resource, such as the ARN of an AWS
+	// resource. It is empty when Radius cannot determine it. Output resources with different IDs can refer to
+	// the same provider resource, for example when one recipe driver creates a resource and another references it.
+	ProviderResourceID string `json:"providerResourceId,omitempty"`
+
 	AdditionalProperties map[string]string `json:"additionalProperties,omitempty"`
 
 	// CreateResource describes data that will be used to create a resource. This is never saved to the database.

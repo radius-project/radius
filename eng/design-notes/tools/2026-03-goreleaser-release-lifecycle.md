@@ -326,7 +326,7 @@ Radius historically tagged RCs as `-rc1`, `-rc2`, and SemVer compares those alph
 
 #### Common changelog output contract
 
-Regardless of the selected input method, Radius should maintain a portable `CHANGELOG.md` and render the current release section into the GitHub Release notes. The output should follow Keep a Changelog conventions:
+Regardless of the selected input method, Radius should maintain a portable `CHANGELOG.md` for finals and patches and render the current release's change list into its GitHub Release notes. RC change lists live only in their release-note files and GitHub Releases, not the root changelog. The output should follow Keep a Changelog conventions:
 
 - Describe notable user-facing changes rather than dumping a git log.
 - Keep an `Unreleased` section and list released versions in reverse chronological order with ISO 8601 dates.
@@ -378,6 +378,10 @@ The trade-off is ongoing release-engineer effort, possible merge conflicts in a 
 
 **Decision**: the team selected Conventional Commits, enforced on squash-merge pull request titles, combined with a fixed version policy: while Radius is `0.x`, every scheduled full release bumps the minor version regardless of commit signals - including breaking changes - and patch releases bump the patch version. Commit types therefore drive changelog grouping and breaking-change callouts, never version selection. [git-cliff](https://git-cliff.org/) renders the canonical `CHANGELOG.md` and the release-note input for GoReleaser; Release Please was rejected because versioning-by-commit adds no value under the fixed policy and its release-PR model works against the RC and release-branch flow. Radius also adopts dotted `-rc.N` prerelease identifiers for correct SemVer ordering. Manual curation remains the override and recovery path.
 
+Entries within each category follow newest-first merge history using git-cliff's native topological ordering. RC.1 and final notes cover the new version since its stable baseline; later RCs cover only the preceding RC to the frozen product SHA, and patches cover the preceding stable tag in the same channel to that SHA. Schema-v2 plans record `changelogPolicy: stable-only`: RC metadata has three changed files, while final/patch metadata also changes `CHANGELOG.md`. Previously approved plans without the marker retain their four-file contract for recovery; their published notes and tags are not rewritten.
+
+Every commit in the selected range is retained. Documentation and maintenance types, other parsed conventional types without a specialized group, and nonconventional or malformed subjects use **Others**, the last change group before contributor sections. Breaking commits appear once under Breaking changes instead of their normal group; dependency and revert groups remain specialized. Others is a Radius extension to Keep a Changelog, not an inferred user-facing category.
+
 #### Capability ownership
 
 The migration should use GoReleaser directly where it has a native release primitive and keep lifecycle orchestration outside it. Hooks are not a substitute for a resumable controller because a failed hook has no durable cross-repository state.
@@ -408,7 +412,7 @@ Each release executes the following stages. Re-running the workflow always start
 5. **Stage non-Go artifacts**: Package and publish the Helm chart, build the Bicep image, and dispatch Bicep type publication with the release identifier. These jobs can run in parallel after the Radius tag exists, but each must verify its destination state.
 6. **Verify**: Compare GoReleaser's artifact metadata and a generated release manifest against the expected asset names, checksums, image platforms and digests, Helm chart version, external images, release notes, and binary linker metadata. Run the installation verification with the staged local `rad` binary so validation does not require a public GitHub Release.
 7. **Finalize**: Promote the mutable aliases - release-channel tags and `latest` - to the verified immutable digests and publish the draft GitHub Release. Finalization requires the release environment approval for final and patch releases. RC publication can follow the same gate without an additional approval if repository policy permits it.
-8. **Coordinate**: Trigger docs and samples workflows, verify or synchronize `versions.yaml` metadata, and record links and conclusions. These tasks are independently retryable and do not mutate immutable release artifacts.
+8. **Coordinate**: After Radius is public, publish source-bound GitHub Release entries for the three sibling repositories and Deployment Engine using GitHub-generated notes. RCs are prereleases; only the newest stable final/patch becomes GitHub's Latest, without changing registry `latest` semantics. Independently trigger docs and samples workflows, verify or synchronize `versions.yaml` metadata, and record links and conclusions. These tasks are retryable and do not mutate immutable release artifacts.
 
 No stage deletes an existing tag or published release as part of automatic recovery. If a published immutable artifact is wrong, Radius publishes a corrected version rather than rewriting history.
 
@@ -480,7 +484,7 @@ The controller therefore creates the tag itself, inside the release approval it 
 
 #### Supply-chain and provenance readiness
 
-A standard release tool makes artifact and container signing, SBOM generation, provenance attestations, and richer OCI labels and metadata incremental configuration instead of architectural work. None of these are required on day one; the Security section lists the post-baseline evaluation items.
+A standard release tool makes artifact and container signing, SBOM generation, provenance attestations, and richer OCI labels and metadata incremental configuration instead of architectural work. None of these were required on day one. SBOMs and build provenance are now in place: GoReleaser and Syft generate the CLI and image SBOMs, and a dedicated `attest-release` job uses `actions/attest` to sign one SLSA build provenance attestation for the CLI assets, Radius-built image indexes, and Helm chart. The publication gate verifies that provenance against the release workflow, tag, source commit, and GitHub-hosted runner. Artifacts built by other repositories are not attested by Radius. The Security section lists the remaining evaluation items.
 
 #### Makefile reduction
 
@@ -531,6 +535,8 @@ The merged main PR is the immutable **metadata approval**, not the release sourc
 Plans retain schema v2: existing tag-side publication readers already verify that the release commit's parent equals `source.productCommit`. The tag still runs `build-release.yaml` and helpers from the frozen product, not the newer controller checkout. Preparation checks that source's build contract and fails clearly when unsupported; it never copies new product or build files into the four-file overlay. An open legacy `productRef: HEAD` plan requires one supported re-preparation and renewed review to adopt freezing, retaining the old cutoff and PM curation. Already merged legacy plans retain their exact-main-squash semantics.
 
 For later RCs, final releases, and patches, automation still opens or updates a backport PR against the existing release branch instead of asking a release engineer to copy commit hashes and run `git cherry-pick`. Its approved release-branch product SHA must remain the tip through preparation/queue validation, and the metadata backport must have that exact parent. A final still requires the last validated RC at that tip. Only resume of an already resolved release allows the branch to advance while the approved release commit remains reachable.
+
+Only PRs merged into the repository's `main` are eligible for backport. Pending sources follow main's first-parent merge history, oldest first, regardless of input/API order or PR number. Automation retains one source commit per backport PR, with exact provenance and a pinned release-branch base; a required check validates the source PR and main ancestry, including for manually named branches. Already shipped history is never reordered when an older fix is selected later.
 
 The version-preparation workflow does not build release artifacts or create the GitHub Release. It hands the approved plan to the tag-driven boundary. This avoids coupling GoReleaser configuration to the selected input model and prevents two tools from racing to create or overwrite the same GitHub Release.
 
@@ -593,7 +599,7 @@ The migration should be validated in phases.
 - Capture a parity manifest from the current workflow containing all raw CLI asset names, sidecar checksums, Go version fields, production and test image names, platforms and tags, Helm metadata, release-note behavior, and downstream outputs. Treat an unexplained difference as a migration failure.
 - Replay a representative historical release through each shortlisted versioning approach and compare the proposed bump, included notable changes, category accuracy, and required manual corrections.
 - Test patch, minor, breaking, no-release, revert, prerelease, and manual-override cases, including the documented mapping for Radius `0.x` releases.
-- Verify that `CHANGELOG.md` retains an `Unreleased` section, expected Keep a Changelog categories, release dates, and comparison links, and that the same release section appears in the GitHub Release notes.
+- Verify that `CHANGELOG.md` retains an `Unreleased` section, stable release dates and comparison links, and remains unchanged during RC preparation. Verify newest-first category ordering, incremental later-RC/patch ranges, full final notes, and compatibility with already approved metadata contracts.
 - Run `goreleaser check` and `goreleaser release --snapshot --clean` locally and in CI to validate configuration, raw asset layout, and image definitions.
 - Verify that release metadata injected into binaries still reports the expected version, channel, commit, and chart version fields.
 - Verify that published container images preserve runtime behavior, base-image assumptions, and required files.
@@ -615,11 +621,9 @@ This design improves security posture indirectly by reducing custom release code
 
 The workflow should continue to use least-privilege GitHub permissions. Release creation and package publication require elevated scopes, but downstream coordination should prefer GitHub App tokens or narrowly scoped automation identities.
 
-GoReleaser adoption also creates a better foundation for future supply-chain controls. After the baseline migration, Radius should evaluate:
+GoReleaser adoption also creates a better foundation for supply-chain controls. SBOM generation and signed build provenance are implemented. After the baseline migration, Radius should still evaluate:
 
-- artifact and container signing,
-- SBOM generation,
-- provenance attestations,
+- separate artifact and container signatures, if consumers need them beyond build provenance,
 - stronger release metadata standards,
 - removal or reduction of long-lived personal access tokens where possible.
 
@@ -707,9 +711,9 @@ The work should be delivered in phases.
 - Remove superseded production Go build, image, checksum, and GitHub Release paths from Make, Python, shell, and `build.yaml`.
 - Retain developer, Bicep, and separate-module test targets that still have owners and consumers.
 - Replace the manual release checklist with approval, monitoring, resume, and break-glass procedures.
-- Adopt and enforce the selected changelog input policy, including an explicit exemption for changes that do not need release notes.
+- Adopt and enforce the selected changelog input policy, retaining all selected commits in their applicable groups, including Others for documentation and maintenance.
 - Add automatic version proposals only after the team validates the `0.x`, release-branch, RC, revert, and override behavior.
-- Evaluate signing, SBOM, and attestation additions.
+- Evaluate separate artifact signing beyond the implemented SBOMs and build provenance.
 - Revisit any remaining non-Go publication steps for future simplification.
 
 ## Open Questions
@@ -718,6 +722,7 @@ All previously open questions are resolved. The change-input, version-policy, RC
 
 - **SBOM generation**: added in a dedicated follow-up PR immediately after the GoReleaser cutover proves parity, using GoReleaser's native syft support. Not bundled into the cutover itself and not deferred to a later supply-chain initiative.
 - **Publication gates**: the mandatory output set (production images, CLI assets and checksums, Helm chart, dashboard, Deployment Engine, Bicep outputs, release notes, install verification) is identical for every release type. Final and patch releases additionally require the release-environment approval; RCs publish automatically once the gate passes.
+- **Edge reference documentation**: only `main` may synchronize the shared edge reference-doc PR, including opted-in manual runs. Release-branch pushes retain preview generation and CI without writing edge documentation. Explicit final docs/samples publication remains a separate workflow.
 - **Test-module images**: `testrp` and `magpiego` move to test-specific immutable tags published from test workflows once the consumer inventory confirms nothing pulls their channel tags; release-channel tags for them stop at that point.
 - **Helm chart**: remains a dedicated idempotent job under the publication gate permanently. Revisited only if GoReleaser gains native Helm support.
 - **Bicep image**: remains a dedicated non-Go build permanently, under the same gate and digest-verification contract as the Helm job.

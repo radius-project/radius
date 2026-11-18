@@ -20,6 +20,8 @@ package storetest
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"sync"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/components/database"
@@ -189,6 +191,51 @@ func CompareObjectLists(t *testing.T, expected []database.Object, actual []datab
 // different IDs and scopes, and checks the results of various query scenarios with different filters and scopes. It also
 // checks that the expected objects are returned.
 func RunTest(t *testing.T, client database.Client, clear func(t *testing.T)) {
+	t.Run("atomic_create_only", func(t *testing.T) {
+		clear(t)
+		ctx := t.Context()
+		id := Resource1ID.String()
+		start := make(chan struct{})
+		results := make(chan error, 8)
+		var workers sync.WaitGroup
+		for n := range 8 {
+			workers.Go(func() {
+				<-start
+				obj := &database.Object{Metadata: database.Metadata{ID: id}, Data: map[string]any{"winner": n}}
+				results <- client.Save(ctx, obj, database.WithCreateOnly())
+			})
+		}
+		close(start)
+		workers.Wait()
+		close(results)
+		successes := 0
+		for err := range results {
+			if err == nil {
+				successes++
+				continue
+			}
+			var conflict *database.ErrConcurrency
+			require.True(t, errors.As(err, &conflict), "expected concurrency error, got %v", err)
+		}
+		require.Equal(t, 1, successes)
+		existing, err := client.Get(ctx, id)
+		require.NoError(t, err)
+		require.NotEmpty(t, existing.ETag)
+		for _, options := range [][]database.SaveOptions{
+			{database.WithCreateOnly(), database.WithETag(existing.ETag)},
+			{database.WithETag(existing.ETag), database.WithCreateOnly()},
+		} {
+			err := client.Save(ctx, existing, options...)
+			var invalid *database.ErrInvalid
+			require.ErrorAs(t, err, &invalid)
+		}
+		// Ordinary unconditional Save retains its upsert behavior.
+		existing.Data = map[string]any{"replacement": true}
+		require.NoError(t, client.Save(ctx, existing))
+		existing.Data = map[string]any{"conditional": true}
+		require.NoError(t, client.Save(ctx, existing, database.WithETag(existing.ETag)))
+	})
+
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
@@ -339,6 +386,43 @@ func RunTest(t *testing.T, client database.Client, clear func(t *testing.T)) {
 		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.ErrorIs(t, err, &database.ErrNotFound{ID: Resource1ID.String()})
 		require.Nil(t, obj1Get)
+	})
+
+	t.Run("save_create_only_creates_missing_resource", func(t *testing.T) {
+		clear(t)
+
+		obj1 := createObject(Resource1ID, Data1)
+		err := client.Save(ctx, &obj1, database.WithCreateOnly())
+		require.NoError(t, err)
+		require.NotEmpty(t, obj1.ETag)
+
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
+		require.NoError(t, err)
+		compareObjects(t, &obj1, obj1Get)
+	})
+
+	t.Run("save_create_only_cannot_replace_existing_resource", func(t *testing.T) {
+		clear(t)
+
+		obj1 := createObject(Resource1ID, Data1)
+		err := client.Save(ctx, &obj1)
+		require.NoError(t, err)
+
+		obj2 := createObject(Resource1ID, Data2)
+		err = client.Save(ctx, &obj2, database.WithCreateOnly())
+		require.ErrorIs(t, err, &database.ErrConcurrency{})
+
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
+		require.NoError(t, err)
+		compareObjects(t, &obj1, obj1Get)
+	})
+
+	t.Run("save_create_only_cannot_combine_with_etag", func(t *testing.T) {
+		clear(t)
+
+		obj1 := createObject(Resource1ID, Data1)
+		err := client.Save(ctx, &obj1, database.WithCreateOnly(), database.WithETag("abc"))
+		require.ErrorIs(t, err, &database.ErrInvalid{Message: "invalid argument. 'CreateOnly' cannot be combined with an ETag"})
 	})
 
 	t.Run("save_and_get_scope_only", func(t *testing.T) {

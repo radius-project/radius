@@ -913,12 +913,12 @@ test_waits_for_external_image_publisher() {
 }
 
 test_promotes_external_images_from_their_own_source_locks() {
-    local digest latest_digest external_source
+    local digest latest_digest external_source observed
     setup_fixture
     stage_cli
     write_image_lock
     digest="sha256:$(digest_for dashboard)"
-    latest_digest="sha256:$(digest_for dashboard-edge)"
+    latest_digest="sha256:$(digest_for dashboard-newer-release)"
     external_source=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
     jq '.images += [{name:"dashboard",radiusBuild:false,category:"downstream",
         requiredPlatforms:["linux/amd64"]}]' "${TEST_ROOT}/targets.json" \
@@ -941,23 +941,42 @@ test_promotes_external_images_from_their_own_source_locks() {
         example.test/radius/dashboard:latest "${latest_digest}" \
         >>"${TEST_ROOT}/registry-state"
 
+    # An older stable channel keeps the newer release's external latest.
+    FAKE_IMAGE_INSPECTION="${TEST_ROOT}/inspection.json" \
+        RELEASE_PROMOTE_LATEST=false run_script promote --version 0.61.0 \
+        --channel 0.61 --image-lock "${TEST_ROOT}/image-lock.json" \
+        --cli-lock "${TEST_ROOT}/cli-lock.json"
+    if ! grep -Fxq "oras tag example.test/radius/dashboard@${digest} 0.61" \
+        "${TEST_ROOT}/calls"; then
+        fail_test "external promotion did not move its stable channel"
+        return
+    fi
+    observed="$(awk -F '\t' '$1 == "example.test/radius/dashboard:latest" {
+        value=$2 } END { print value }' "${TEST_ROOT}/registry-state")"
+    if [[ "${observed}" != "${latest_digest}" ]]; then
+        fail_test "an older stable channel moved external latest"
+        return
+    fi
+
+    # The newest stable release moves external latest with its channel.
+    : > "${TEST_ROOT}/calls"
     FAKE_IMAGE_INSPECTION="${TEST_ROOT}/inspection.json" \
         run_script promote --version 0.61.0 --channel 0.61 \
         --image-lock "${TEST_ROOT}/image-lock.json" \
         --cli-lock "${TEST_ROOT}/cli-lock.json"
-    if ! grep -Fq "oras tag example.test/radius/dashboard@${digest} 0.61" \
-        "${TEST_ROOT}/calls" ||
-        grep -E 'imagetools create .*dashboard|oras tag .*dashboard.* latest' \
-            "${TEST_ROOT}/calls"; then
-        fail_test "external promotion rebuilt the index or moved its edge alias"
+    if ! grep -Fxq \
+        "oras tag example.test/radius/dashboard@${digest} 0.61 latest" \
+        "${TEST_ROOT}/calls" \
+        || grep -E 'imagetools create .*dashboard' "${TEST_ROOT}/calls"; then
+        fail_test "external promotion rebuilt the index or skipped latest"
         return
     fi
-    [[ "$(awk -F '\t' '$1 == "example.test/radius/dashboard:latest" {
-        value=$2 } END { print value }' "${TEST_ROOT}/registry-state")" \
-        == "${latest_digest}" ]] || {
-        fail_test "external latest changed during stable publication"
+    observed="$(awk -F '\t' '$1 == "example.test/radius/dashboard:latest" {
+        value=$2 } END { print value }' "${TEST_ROOT}/registry-state")"
+    if [[ "${observed}" != "${digest}" ]]; then
+        fail_test "external latest does not name the newest stable release"
         return
-    }
+    fi
 
     : >"${TEST_ROOT}/calls"
     jq '.image.config.Labels."org.opencontainers.image.revision" =

@@ -26,8 +26,8 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 func Test_GetControlPlaneVersion_WorkspaceTarget(t *testing.T) {
@@ -79,7 +79,6 @@ users: []
 
 func useTestKubeconfig(t *testing.T, path string) {
 	t.Helper()
-	previous := clientcmd.RecommendedHomeFile
-	clientcmd.RecommendedHomeFile = path
-	t.Cleanup(func() { clientcmd.RecommendedHomeFile = previous })
+	k8sutil.IsolateKubeconfig(t)
+	t.Setenv("KUBECONFIG", path)
 }

@@ -178,9 +178,7 @@ async function verifyUpmerge({ call, context, task, run, status, record }) {
       `Pull request #${number} closed without merging`,
       url
     );
-    throw new Error(
-      `${task.repo} upmerge pull request ${url} closed without merging; reconcile the receipt before resuming`
-    );
+    return false;
   }
   await record(
     "in_progress",
@@ -319,7 +317,7 @@ export async function coordinateTask({
   }
   const latest = await latestStatus(github, context, deployment);
   // An explicitly rejected dispatch created no run, so resume may dispatch again.
-  const status =
+  let status =
     latest?.description?.startsWith("Dispatch rejected with HTTP ") ?
       undefined
     : latest;
@@ -331,26 +329,14 @@ export async function coordinateTask({
       auto_inactive: false,
       log_url: logUrl,
       description,
-      ...(environmentUrl ? { environment_url: environmentUrl } : {})
+      environment_url: environmentUrl ?? ""
     });
   const ref = deployment.payload.ref;
   const { data: workflow } = await call(
     "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}",
     { workflow_id: task.workflow }
   );
-  let runID;
-  if (status) {
-    const prefix = `${context.serverUrl ?? "https://github.com"}/${context.repo.owner}/${task.repo}/actions/runs/`;
-    if (
-      !status.log_url?.startsWith(prefix) ||
-      !/^\d+$/.test(status.log_url.slice(prefix.length))
-    ) {
-      throw new Error(
-        `Dispatch outcome unknown for deployment ${deployment.id}; bind its exact remote run URL before resuming. No duplicate was dispatched.`
-      );
-    }
-    runID = Number(status.log_url.slice(prefix.length));
-  } else {
+  const dispatchRun = async () => {
     await record(
       "queued",
       "",
@@ -378,7 +364,7 @@ export async function coordinateTask({
       }
       throw error;
     }
-    runID = data.workflow_run_id;
+    const runID = data.workflow_run_id;
     if (!Number.isSafeInteger(runID) || runID < 1)
       throw new Error(
         "Workflow dispatch returned no run ID; do not redispatch"
@@ -388,6 +374,22 @@ export async function coordinateTask({
       `${context.serverUrl ?? "https://github.com"}/${context.repo.owner}/${task.repo}/actions/runs/${runID}`,
       "Monitoring exact dispatched run"
     );
+    return runID;
+  };
+  let runID;
+  if (status) {
+    const prefix = `${context.serverUrl ?? "https://github.com"}/${context.repo.owner}/${task.repo}/actions/runs/`;
+    if (
+      !status.log_url?.startsWith(prefix) ||
+      !/^\d+$/.test(status.log_url.slice(prefix.length))
+    ) {
+      throw new Error(
+        `Dispatch outcome unknown for deployment ${deployment.id}; bind its exact remote run URL before resuming. No duplicate was dispatched.`
+      );
+    }
+    runID = Number(status.log_url.slice(prefix.length));
+  } else {
+    runID = await dispatchRun();
   }
   const getRun = async () => {
     const { data } = await call(
@@ -403,6 +405,8 @@ export async function coordinateTask({
         `Run ${runID} does not match the recorded workflow and ref`
       );
     }
+    if (task.id === "sample-tests" && !/^[a-f0-9]{40}$/.test(data.head_sha))
+      throw new Error(`Sample-test run ${runID} has no valid source commit`);
     return data;
   };
   let run = await getRun();
@@ -411,11 +415,41 @@ export async function coordinateTask({
       Number(status.description.slice(20)) + 1
     : 0;
   if (
+    task.id === "sample-tests" &&
     status &&
     status.state !== "success" &&
     run.status === "completed" &&
     run.conclusion !== "success" &&
+    (!requiredAttempt || run.run_attempt >= requiredAttempt)
+  ) {
+    // Reruns retain old workflow code; dispatch once per resume to refresh edge.
+    runID = await dispatchRun();
+    status = undefined;
+    requiredAttempt = 0;
+    run = await getRun();
+  }
+  let pullRequest;
+  if (
+    task.workflow === "upmerge.yaml" &&
+    run.status === "completed" &&
+    run.conclusion === "success" &&
     !requiredAttempt
+  ) {
+    pullRequest = await verifyUpmerge({
+      call,
+      context,
+      task,
+      run,
+      status,
+      record
+    });
+  }
+  const replaceClosedUpmerge = pullRequest === false;
+  if (
+    run.status === "completed" &&
+    !requiredAttempt &&
+    (replaceClosedUpmerge ||
+      (status && status.state !== "success" && run.conclusion !== "success"))
   ) {
     requiredAttempt = run.run_attempt + 1;
     await record(
@@ -425,17 +459,20 @@ export async function coordinateTask({
     );
     try {
       await call(
-        "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs",
+        replaceClosedUpmerge ?
+          "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun"
+        : "POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs",
         { run_id: runID }
       );
     } catch (error) {
       // A 4xx response proves no attempt was created; keep the marker otherwise.
-      const status = Number(error?.status ?? error?.response?.status ?? 0);
-      if (status >= 400 && status < 500) {
+      const httpStatus = Number(error?.status ?? error?.response?.status ?? 0);
+      if (httpStatus >= 400 && httpStatus < 500) {
         await record(
           "failure",
           run.html_url,
-          `Rerun rejected with HTTP ${status}; resume to retry`
+          `Rerun rejected with HTTP ${httpStatus}; resume to retry`,
+          status?.environment_url
         );
       }
       throw error;
@@ -455,18 +492,29 @@ export async function coordinateTask({
       run.html_url,
       `Remote workflow concluded ${run.conclusion}`
     );
-    throw new Error(`${task.id} failed: ${run.html_url}`);
+    throw new Error(
+      `${task.id} failed: ${run.html_url}` +
+        (task.id === "sample-tests" ? ` (samples commit ${run.head_sha})` : "")
+    );
   }
-  let pullRequest = null;
-  if (task.workflow === "upmerge.yaml") {
+  if (
+    task.workflow === "upmerge.yaml" &&
+    (pullRequest === undefined || requiredAttempt)
+  ) {
     pullRequest = await verifyUpmerge({
       call,
       context,
       task,
       run,
-      status,
+      // A new attempt creates its own PR; never reuse the old attempt's binding.
+      status: requiredAttempt ? undefined : status,
       record
     });
+  }
+  if (pullRequest === false) {
+    throw new Error(
+      `${task.repo} replacement upmerge PR closed without merging; resume to create another pull request`
+    );
   }
   if (task.workflow === "release.yaml") {
     const channel = `v${version.slice(1).split(".").slice(0, 2).join(".")}`;
@@ -488,6 +536,7 @@ export async function coordinateTask({
     state: "success",
     runId: runID,
     url: run.html_url,
+    ...(task.id === "sample-tests" ? { samplesCommit: run.head_sha } : {}),
     ...(pullRequest ? { pullRequest } : {}),
     deploymentId: deployment.id
   };

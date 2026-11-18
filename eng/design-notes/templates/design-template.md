@@ -1,35 +1,71 @@
 # Title
 
-* **Author**: Your name (@YourGitHubUserName)
+- **Author**: Your name (@YourGitHubUserName)
+- **Status**: Draft | In review | Approved | Superseded by <!-- link -->
+- **Feature spec**: <!-- link, or N/A -->
+- **Issue**: <!-- link, or N/A -->
+- **Authoring notes**: <!-- Which sections were AI-drafted, and what you verified by hand (code paths read, commands run, APIs checked). List any claim you have not verified. -->
+
+<!--
+How to use this template
+- Write for a reviewer who has 30 minutes. Sections go from "what we decide" to "how we build it".
+- Tier 1 (Review guide through User Experience) is the agenda. It states the problem, the proposed direction, and the decisions being asked for, and links to the details reviewers need to approve each one.
+- Tier 2 (Design through Alternatives considered) holds the decision details, data flow, and contracts. Reviewers read the Decision details for each decision they approve and skim the rest.
+- Tier 3 (Appendix) holds the lowest-level detail: long code, full schemas, exhaustive tables, and per-file change lists. Reviewers read it only when needed.
+- Be complete. Concise means fewer words, not fewer facts. If a detail is too low-level for a section, move it down a tier; do not delete it.
+- Keep every `##` and `###` heading. The `####` component and user story headings are examples; delete or add them as needed. If a section does not apply, write one sentence saying why (for example, "No CLI changes."). Do not pad it.
+- Short sentences. Bullets and tables over paragraphs. Link to code instead of describing it.
+- Writing guide: docs/contributing/contributing-code/contributing-code-design/README.md (repository root path). Agents can use the radius-author-design-note skill.
+-->
+
+## Review guide
+
+<!--
+Tell reviewers what you need from them. Example:
+"Approve decisions D1–D3. D4 is informational. Security and Compatibility need a sign-off from @owner."
+-->
+
+## Decisions for review
+
+<!--
+This table is the review meeting agenda. The author walks through each row, and the meeting ends when every row has an outcome.
+- One row per decision that a reviewer could reasonably disagree with. Typically 2–6 rows.
+- Link each row to its section under "Decision details".
+- Use short option names (for example "Postgres / etcd / in-memory"), not letters, so the table reads on its own.
+- After review, update the Status column (Accepted, Rejected, Deferred, or Superseded) and the Outcome line in the matching Decision details subsection.
+-->
+
+| #  | Decision                    | Options considered          | Recommendation | Risk if wrong   | Status |
+|----|-----------------------------|-----------------------------|----------------|-----------------|--------|
+| D1 | [Short question](#d1-title) | Postgres / etcd / in-memory | Postgres       | One-line impact | Open   |
 
 ## Overview
 
 <!--
-Provide a succinct high-level description of the component or feature and 
-where/how it fits in the big picture. The overview should be one to three 
-paragraphs long and should be understandable by someone outside the Radius
-team. Do not provide the design details in this, section - there is a
-dedicated section for that later in the document.
+One to three short paragraphs that someone outside the Radius team can understand. Cover:
+- The problem, in about three sentences.
+- The proposal, in up to five bullets.
+- What changes for users, and anything that breaks.
+Leave design details for the Design section.
 -->
 
 ## Terms and definitions
 
 <!--
-Include any terms, definitions, or acronyms that are used in
-this design document to assist the reader. They may or may not
-be part of the user-facing experience once implemented, and can
-be specific to this design context.
+Terms, definitions, or acronyms used in this document. Use a two-column table. Delete rows for terms every Radius contributor already knows.
 -->
+
+| Term | Definition |
+|------|------------|
+|      |            |
 
 ## Objectives
 
 <!--
-Describe goals/non-goals and user-scenario of this feature to understand
-the end-user goals.
-* If the feature shares the same objectives of the existing design, link
-  to the existing doc and section rather than repeat the same context.
-* If the feature has a scenario, UX, or other product feature design doc,
-  link it here and summarize the important parts.
+Why we are doing this work and how we judge success.
+- If the feature shares objectives with an existing design, link to it instead of repeating it.
+- If a feature spec or UX doc exists, link it and summarize only what this design depends on.
+- If this design diverges from the feature spec, list each divergence and why.
 -->
 
 > **Issue Reference:** <!-- (If appropriate) Reference an existing issue that describes the feature or bug. -->
@@ -37,27 +73,19 @@ the end-user goals.
 ### Goals
 
 <!--
-Describe goals to define why we are doing this work, how we will make
-priority decisions, and how we will determine success.
+Bulleted, measurable where possible. These drive priority decisions.
 -->
 
 ### Non goals
 
 <!--
-Describe non-goals to identify something that we won’t be focusing on 
-immediately. We won’t be expending any effort on these matters. If there
-will be follow-ups after this work, list them here. If there are things
-we plan to do in the future, but are out of scope of this design, list
-them here. Provide a brief explanation on why this is a non-goal.
+What we will not do in this design, with a one-line reason each. List planned follow-ups here.
 -->
 
 ### User scenarios (optional)
 
 <!--
-Describe the user scenarios for this design. Ensure that you define the
-roles and personas in these user scenarios when it requires API design.
-If you have an existing issue that describes the user scenarios, please
-link to that issue instead.
+Name the persona (for example, application developer or platform engineer) in each story. Link to an existing issue instead of repeating it.
 -->
 
 #### User story 1
@@ -65,204 +93,192 @@ link to that issue instead.
 #### User story 2
 
 ## User Experience (if applicable)
-<!--
-If the change impacts the user experience, provide expected interaction 
-flow we aim to achieve through this proposal.
 
-When users interact with Radius through the CLI, include sample 
-input commands and their corresponding output. Include a bicep/helm code 
-sample, if this proposal involves updates to that experience.
+<!--
+Show the expected interaction. Prefer real input and output over prose. Write "No user-facing change." if none.
 -->
 
 **Sample Input:**
+
 <!--
-Provide a sample CLI command input and/or bicep/helm code.
+A sample CLI command and/or Bicep or Helm code.
 -->
 
 **Sample Output:**
+
 <!--
-Provide a sample output for the inputs provided above.
+Sample output for the input above.
 -->
 
 **Sample Recipe Contract:**
+
 <!--
-Provide a sample of updated recipe contract, if this proposal 
-updates recipe contract (input parameters, outputs schema, etc)
+Updated recipe contract (input parameters, output schema), if this proposal changes it.
 -->
 
 ## Design
 
 ### High Level Design
-<!--
-High level overview of the data flow and key components.
 
-Provide a high-level description, using diagrams as appropriate, and top-level
-explanations to convey the architectural/design overview. Don’t go into a lot
-of details yet but provide enough information about the relationship between
-these components and other components. Call out or highlight new components
-that are not part of this feature (dependencies). This diagram generally
-treats the components as black boxes. Provide a pointer to a more detailed
-design document, if one exists. 
+<!--
+Components as black boxes and how they relate. Highlight new components and new dependencies. Keep it to a few bullets plus the diagram below.
 -->
 
 ### Architecture Diagram
-<!--
-Provide a diagram of the system architecture, illustrating how different
-components interact with each other in the context of this proposal.
 
-Include separate high level architecture diagram and component specific diagrams, wherever appropriate.
+<!--
+A Mermaid diagram of the components touched by this proposal. Mark new components clearly. Add component-specific diagrams only where they help.
 -->
+
+```mermaid
+flowchart LR
+    A[Existing component] --> B[New component]
+```
+
+### Data flow and sequence
+
+<!--
+Show the main request or reconcile path step by step. Use a Mermaid sequence diagram, then a numbered list that explains only the non-obvious steps. Include the main failure path if it differs.
+-->
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI as rad CLI
+    participant UCP
+    User->>CLI: command
+    CLI->>UCP: request
+    UCP-->>CLI: response
+```
 
 ### Detailed Design
 
 <!--
-This section should be detailed and thorough enough that another developer
-could implement your design and provide enough detail to get a high confidence
-estimate of the cost to implement the feature but isn’t as detailed as the 
-code. Be sure to also consider testability in your design.
-
-For each change, give each "change" in the proposal its own section and
-describe it in enough detail that someone else could implement it. Cover
-ALL of the important decisions like names. Your goal is to get an agreement
-to proceed with coding and PRs.
-
-If there are alternatives you are considering please include that in the open
-questions section. If the product has a layered architecture, it's good to
-align these sections with the product's layers. This will help readers use
-their current understanding to understand your ideas.
-
-Discuss the rationale behind architectural choices and alternative options 
-considered during the design process.
+Enough detail that another developer could implement the design and estimate its cost, without restating the code. Cover every important decision, including names. Align subsections with Radius layers where possible. Consider testability.
 -->
 
-#### Advantages (of each option considered)
+#### Decision details
+
 <!--
-Describe what's good about this plan relative to other options. 
-Provides better user experience? Does it feel easy to implement? 
-Provides flexibility for future work?
+One subsection per row in "Decisions for review", using the same ID. Keep each to about one screen.
 -->
 
-#### Disadvantages (of each option considered)
-<!--
-Describe what's not ideal about this plan. Does it lock us into a 
-particular design for future changes or is it flexible if we were to 
-pivot in the future. This is a good place to cover risks.
--->
+##### D1: Title
 
-#### Proposed Option
-<!--
-Describe the recommended option and provide reasoning behind it.
--->
+**Context:** <!-- What forces this decision. Two or three sentences. -->
+
+**Options:**
+
+| Option   | Advantages | Disadvantages |
+|----------|------------|---------------|
+| Postgres |            |               |
+| etcd     |            |               |
+
+**Proposed Option:** <!-- The recommended option and the deciding reason. -->
+
+**Consequences:** <!-- What changes if we adopt this option: good, bad, and follow-up work. -->
+
+**How we'll know it's right:** <!-- Test, metric, or rollback signal. -->
+
+**Outcome:** <!-- Fill in after review: Accepted | Rejected, chose <option> because ... | Deferred to <link> | Superseded by <link>. Add the date and who decided. -->
 
 ### API design (if applicable)
 
 <!--
-Include if applicable – any design that changes our public REST API, CLI
-arguments/commands, or Go APIs for shared components should provide this
-section. Write N/A here if not applicable.
-- Describe the REST APIs in detail for new resource types or updates to
-  existing resource types. E.g. API Path and Sample request and response.
-- Describe new commands in the CLI or changes to existing CLI commands.
-- Describe the new or modified Go APIs for any shared components.
+Changes to the public REST API, TypeSpec, or Go APIs of shared components. Write "No API changes." if none.
+- REST: resource type, API path, and a short sample request and response. Put full schemas in the Appendix.
+- Go: new or changed exported interfaces and types.
 -->
 
 ### CLI Design (if applicable)
+
 <!--
-Include if applicable – any design that changes Radius CLI
-arguments/commands. Write N/A here if not applicable.
-- Describe new commands in the CLI or changes to existing CLI commands.
+New or changed rad commands and flags. Show the command, its flags, and sample output. Write "No CLI changes." if none.
 -->
 
 ### Implementation Details
+
 <!--
-High level description of updates to each component. Provide information on 
-the specific sub-components that will be updated, for example, controller, processor, renderer,
-recipe engine, driver, to name a few.
+Which sub-components change and how (for example controller, processor, renderer, recipe engine, driver). For each component, name the packages and types that change, and cover whichever of these apply: data model and storage, state transitions, concurrency and idempotency, retries and timeouts, caching, configuration, and performance limits. Start each component with a one-line summary, then the detail. Put per-file change lists and long code in the Appendix. Delete component headings that this design does not touch, and add others as needed (for example Dynamic RP or Controller).
 -->
 
 #### UCP (if applicable)
+
 #### Bicep (if applicable)
+
 #### Deployment Engine (if applicable)
+
 #### Core RP (if applicable)
+
 #### Portable Resources / Recipes RP (if applicable)
 
 ### Error Handling
+
 <!--
-Describe the error scenarios that may occur and the corresponding recovery/error handling and user experience.
+A table of error scenario, detection, user-visible behavior, and recovery.
 -->
+
+| Scenario | Detection | User sees | Recovery |
+|----------|-----------|-----------|----------|
+|          |           |           |          |
 
 ## Test plan
 
 <!--
-Include the test plan to validate the features including the areas that
-need functional tests.
-
-Describe any functionality that will create new testing challenges:
-- New dependencies
-- External assets that tests need to access
-- Features that do I/O or change OS state and are thus hard to unit test
+Unit, functional, and end-to-end coverage per change. Call out new testing challenges:
+- New dependencies.
+- External assets tests need to access.
+- Features that do I/O or change OS state and are hard to unit test.
 -->
 
 ## Security
 
 <!--
-Describe any changes to the existing security model of Radius or security 
-challenges of the features. For each challenge describe the security threat 
-and its mitigation with this design. 
-
-Examples include:
-- Authentication 
-- Storing secrets and credentials
-- Using cryptography
-
-If this feature has no new challenges or changes to the security model
-then describe how the feature will use existing security features of Radius.
+Required. Describe changes to the Radius security model. For each threat, give the threat and its mitigation, for example in a table. Topics include authentication, authorization, storing secrets and credentials, and cryptography.
+If nothing changes, say which existing Radius security features the design relies on. For larger changes, link a threat model based on eng/design-notes/templates/threat-model-template.md (repository root path).
 -->
 
-## Compatibility (optional)
+## Compatibility
 
 <!--
-Describe potential compatibility issues with other components, such as
-incompatibility with older CLIs, and include any breaking changes to
-behaviors or APIs.
+Breaking changes to APIs, CLI, Bicep, or behavior; compatibility with older CLIs or control planes; and upgrade or migration steps. Write "No compatibility impact." if none.
 -->
 
 ## Monitoring and Logging
 
 <!--
-Include the list of instrumentation such as metric, log, and trace to 
-diagnose this new feature. It also describes how to troubleshoot this feature
-with the instrumentation. 
+Metrics, logs, and traces added, and how an operator uses them to troubleshoot this feature.
 -->
 
 ## Development plan
 
 <!--
-Describe how you will deliver your features. This includes aligning work items
-to features, scenarios, or requirements, defining what deliverable will be
-checked in at each point in the product and estimating the cost of each work
-item. Don’t forget to include the Unit Test and functional test in your
-estimates.
+How the work is delivered: a table of work items or PRs with scope, dependencies, and estimate. Include unit and functional tests in estimates.
 -->
 
 ## Open Questions
 
 <!--
-Describe (Q&A format) the important unknowns or things you're not sure about. 
-Use the discussion to answer these with experts after people digest the 
-overall design.
+Unknowns that are not yet ready to be decisions, in Q&A format. When a question needs a reviewer's choice, move it to "Decisions for review".
 -->
 
 ## Alternatives considered
 
 <!--
-Describe the alternative designs that were considered or should be considered.
-Give a justification for why alternative approaches should be rejected if
-possible. 
+Alternatives to the whole approach, with a one-line reason each was rejected. Per-decision alternatives belong in "Decision details".
+-->
+
+## Appendix (optional)
+
+<!--
+Low-level implementation detail: long code samples, full schemas, per-file change lists, scripts, exhaustive tables, and background research. Link to these from the sections above.
 -->
 
 ## Design Review Notes
 
 <!--
-Update this section with the decisions made during the design review meeting. This should be updated before the design is merged.
+Update after each review meeting and before merge:
+- Date and attendees.
+- A summary of the meeting. Record each decision's result in its Outcome line, with an owner for any follow-up.
+- Changes made to the document as a result.
 -->

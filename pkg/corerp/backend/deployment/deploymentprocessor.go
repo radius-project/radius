@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/authz"
 	rp_util "github.com/radius-project/radius/pkg/rp/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
@@ -61,8 +62,8 @@ type DeploymentProcessor interface {
 }
 
 // NewDeploymentProcessor creates a new instance of the DeploymentProcessor struct with the given parameters.
-func NewDeploymentProcessor(appmodel model.ApplicationModel, databaseClient database.Client, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
-	return &deploymentProcessor{appmodel: appmodel, databaseClient: databaseClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
+func NewDeploymentProcessor(appmodel model.ApplicationModel, databaseClient database.Client, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface, controlPlaneClient controller_runtime.Client, authorization authz.Options) DeploymentProcessor {
+	return &deploymentProcessor{appmodel: appmodel, databaseClient: databaseClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet, controlPlaneClient: controlPlaneClient, authorization: authorization}
 }
 
 // NewFailedDeploymentProcessor returns a DeploymentProcessor whose operations all
@@ -105,6 +106,10 @@ type deploymentProcessor struct {
 	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
 	k8sClientSet kubernetes.Interface
+	// controlPlaneClient identifies the cluster hosting Radius, independently of the deployment target.
+	controlPlaneClient controller_runtime.Client
+	// authorization selects the admission checks applied to output resources before they are deployed.
+	authorization authz.Options
 }
 
 type ResourceData struct {
@@ -300,6 +305,11 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		}, nil
 	}
 
+	// Check every output resource before applying any of them.
+	if err := dp.admitOutputResources(ctx, id, rendererOutput.Resources); err != nil {
+		return rpv1.DeploymentOutput{}, err
+	}
+
 	// Deploy
 	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()))
 
@@ -432,16 +442,6 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 			return renderers.EnvironmentOptions{}, errors.New("kubernetes' namespace is not specified")
 		}
 		envOpts.Namespace = kubeProp.Namespace
-
-	case rpv1.ACIComputeKind:
-		c := &env.Properties.Compute.ACICompute
-		if c.ResourceGroup == "" {
-			c.ResourceGroup = env.Properties.Providers.Azure.Scope
-		}
-		if c.ResourceGroup == "" {
-			return renderers.EnvironmentOptions{}, errors.New("resource group is not specified")
-		}
-		envOpts.Compute = &env.Properties.Compute
 
 	default:
 		return renderers.EnvironmentOptions{}, fmt.Errorf("%s is unsupported", env.Properties.Compute.Kind)
