@@ -46,10 +46,7 @@ const testToken = "test-token"
 
 // writeCertificate writes a self-signed certificate, key, and CA to a new directory, and a
 // projected token for UCP to a new token directory. The certificate carries the SPIFFE ID
-// of serviceAccount as its only SAN, as csi-driver-spiffe issues it, so only the CA and SPIFFE
-// ID decide whether a client trusts a server that presents it.
-// writeCertificate writes a self-signed certificate with serviceAccount's SPIFFE ID as its
-// own CA bundle. ips are added as IP SANs.
+// of serviceAccount as its URI SAN, as the chart issues it, plus ips as IP SANs.
 func writeCertificate(t *testing.T, serviceAccount string, ips ...net.IP) (string, string, tls.Certificate) {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

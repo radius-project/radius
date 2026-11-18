@@ -73,8 +73,8 @@ func peerError(reason string, err error) *Error {
 	return &Error{Code: authz.CodePeerCertificateInvalid, Reason: reason, Err: err}
 }
 
-// SPIFFEID returns the SPIFFE ID that csi-driver-spiffe puts in the server certificate of
-// the pod running as serviceAccount in namespace: spiffe://<trustDomain>/ns/<namespace>/sa/<serviceAccount>.
+// SPIFFEID returns the SPIFFE ID that the Radius chart puts in the server certificate of
+// the receiver running as serviceAccount in namespace: spiffe://<trustDomain>/ns/<namespace>/sa/<serviceAccount>.
 func SPIFFEID(trustDomain, namespace, serviceAccount string) string {
 	return (&url.URL{Scheme: "spiffe", Host: trustDomain, Path: "/ns/" + namespace + "/sa/" + serviceAccount}).String()
 }
