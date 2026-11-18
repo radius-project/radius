@@ -198,7 +198,7 @@ func (r *runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := validateAccessResponse(result, request.Checks); err != nil {
+	if err := validateAccessResponse(result, request); err != nil {
 		return err
 	}
 	if r.format == "json" {
@@ -262,14 +262,18 @@ func validateIdentityResponse(result api.WhoAmIResult) error {
 	return nil
 }
 
-func validateAccessResponse(result api.CheckAccessResponse, checks []*api.AccessCheck) error {
+func validateAccessResponse(result api.CheckAccessResponse, request api.AccessCheckRequest) error {
 	if !validPrincipal(result.Principal) || !validMode(result.Mode) || result.Generation == nil || *result.Generation < 0 ||
-		len(result.Checks) != len(checks) {
+		len(result.Checks) != len(request.Checks) {
 		return fmt.Errorf("Radius returned an invalid access-check response")
+	}
+	if principal := request.Principal; principal != nil &&
+		(*result.Principal.Type != *principal.Type || *result.Principal.Issuer != *principal.Issuer || *result.Principal.Subject != *principal.Subject) {
+		return fmt.Errorf("Radius returned an invalid access-check response: principal does not match the request")
 	}
 	for i, check := range result.Checks {
 		if check == nil || check.Allowed == nil || check.Permission == nil || check.Target == nil ||
-			*check.Permission != *checks[i].Permission || *check.Target != *checks[i].Target {
+			*check.Permission != *request.Checks[i].Permission || *check.Target != *request.Checks[i].Target {
 			return fmt.Errorf("Radius returned an invalid result for access check %d", i+1)
 		}
 	}
