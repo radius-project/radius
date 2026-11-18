@@ -150,9 +150,10 @@ func Test_waitForRolledBackUCPAPIService(t *testing.T) {
 	t.Cleanup(func() { ucpAPIServiceTimeout, ucpAPIServicePollInterval = timeout, interval })
 
 	history := []*releasev1.Release{
-		{Version: 1, Config: map[string]any{}},
-		{Version: 2, Config: map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}},
+		{Version: 1, Chart: certificateTestChart(t)},
+		{Version: 2, Chart: certificateTestChart(t)},
 	}
+	setValue(history[1].Chart.Values, true, "global", "rbac", "enabled")
 	cluster := newStageCluster(t, nil, false)
 	require.NoError(t, cluster.dynamic.Tracker().Add(ucpAPIService("", "", "")))
 	impl := cluster.impl(nil, "")

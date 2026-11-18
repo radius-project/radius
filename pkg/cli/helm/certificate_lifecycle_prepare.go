@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,11 +44,11 @@ func (s *rotationStore) planCertificateLifecycle(ctx context.Context, installed 
 	if installed == nil || installed.Chart == nil || installed.Version < 1 || selected == nil || target == nil {
 		return state, errors.New("certificate planning requires the installed release and selected target")
 	}
-	effective, err := valuesutil.CoalesceValues(installed.Chart, copyValues(installed.Config))
+	effective, settings, err := resolveEffectiveChartValues(installed.Chart, s.namespace, s.release, installed.Config, nil, historicalAuthSettings)
 	if err != nil {
 		return state, err
 	}
-	baseline, err := certificateProfilePlan(installed.Chart, effective, s.namespace)
+	baseline, err := certificateProfilePlan(installed.Chart, effective, s.namespace, settings)
 	if err != nil {
 		return state, err
 	}

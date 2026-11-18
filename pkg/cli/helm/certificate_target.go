@@ -43,6 +43,9 @@ import (
 // certificateTarget contains public desired state only. It does not authorize writes,
 // approve a transition, or prove that an external issuer can actually issue a leaf.
 type certificateTarget struct {
+	radiusAuthTarget
+	deployedMode   authz.Mode
+	requesters     []string
 	Mode, Provider string
 	TrustDomain    string
 	Receivers      []string
@@ -71,29 +74,21 @@ type certificatePublicSource struct {
 	Issuer                              certificateIssuerReference
 }
 
-func (t *certificateTarget) checkTransition(stored map[string]any) error {
-	deployed, err := resolveAuthzMode(stored, nil)
-	if err != nil {
-		return err
-	}
-	target, err := resolveAuthzMode(nil, t.Values)
-	if err != nil {
-		return err
-	}
-	if deployed != authz.ModeOff && target != authz.ModeOff && t.Mode != "selfSigned" {
+func (t *certificateTarget) checkTransition(deployed authz.Mode) error {
+	if deployed != authz.ModeOff && t.mode != authz.ModeOff && t.Mode != "selfSigned" {
 		return fmt.Errorf("maintaining global.rbac.certificates.mode=%s requires the certificate lifecycle; ordinary upgrades and reinstalls only stage selfSigned aggregation trust. Helm has not changed Radius", t.Mode)
 	}
-	return checkUCPAPIServerCertificateTransition(deployed, target, t.Values)
+	return checkUCPAPIServerCertificateTransition(deployed, t.mode, t.Values)
 }
 
-func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, error) {
+func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, deployed map[string]any) (*certificateTarget, *certificatePlan, error) {
 	target, plan, err := i.prepareCertificateTarget(ctx, options, selected, current, kubeContext)
 	if err != nil {
 		return nil, nil, err
 	}
-	if installed {
-		if err := unchangedCertificateSelection(options.RadiusReleaseValues, current); err != nil {
-			return nil, nil, fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
+	if deployed != nil {
+		if err := unchangedCertificateSelection(deployed, target.Values); err != nil {
+			return nil, nil, fmt.Errorf("%w: the installed chart selects different certificate settings; changing issuers requires coordinated CA migration: %w", errCertificateObserverUnavailable, err)
 		}
 		if plan != nil && plan.secret != nil {
 			return nil, nil, fmt.Errorf("an installed signing Secret is missing; recover it or use coordinated CA migration")
@@ -105,19 +100,18 @@ func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterO
 // prepareCertificateTarget runs before the ordinary anti-switch guard so the lifecycle
 // can compare a validated target with its journal. The import handle never enters target.
 func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string) (*certificateTarget, *certificatePlan, error) {
-	plan, err := i.prepareCertificateSelection(ctx, options, selected.Values, current, kubeContext)
+	plan, err := i.prepareCertificateSelection(ctx, options, selected, current, kubeContext)
 	if err != nil {
 		return nil, nil, err
 	}
 	if plan != nil && plan.secret != nil {
 		plan.requiresLease = options.RadiusInstalled || options.RadiusReleaseValues != nil
 	}
-	effective := copyValues(current)
-	if !options.ResetValues {
-		effective = valuesutil.CoalesceTables(effective, copyValues(options.RadiusReleaseValues))
+	effective, settings, err := selectedCertificateValues(options, selected, current)
+	if err != nil {
+		return nil, nil, err
 	}
-	effective = valuesutil.CoalesceTables(effective, copyValues(selected.Values))
-	target, err := certificateProfilePlan(selected, effective, options.Radius.Namespace)
+	target, err := certificateProfilePlan(selected, effective, options.Radius.Namespace, settings)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -154,16 +148,13 @@ func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOpti
 
 // certificateProfilePlan consumes the selected chart's shared issuer/receiver helpers,
 // rather than maintaining a second component inventory or policy evaluator in Go.
-func certificateProfilePlan(selected *chart.Chart, effective map[string]any, namespace string) (*certificateTarget, error) {
-	mode, err := resolveAuthzMode(nil, effective)
-	if err != nil {
-		return nil, err
-	}
+func certificateProfilePlan(selected *chart.Chart, effective map[string]any, namespace string, settings chartAuthSettings) (*certificateTarget, error) {
 	target := &certificateTarget{
-		Mode: certificateMode(effective), Values: copyValues(effective),
+		radiusAuthTarget: radiusAuthTarget{chartAuthSettings: settings},
+		Mode:             certificateMode(effective), Values: copyValues(effective),
 		Planes: map[string]certificatePlaneTarget{},
 	}
-	if mode == authz.ModeOff {
+	if settings.mode == authz.ModeOff {
 		return target, nil
 	}
 	if selected.Metadata == nil {

@@ -17,7 +17,9 @@ limitations under the License.
 package helm
 
 import (
+	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -26,9 +28,71 @@ import (
 	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/release"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
+
+func TestRadiusChartInstallCapabilities(t *testing.T) {
+	selected := certificateTestChart(t)
+	groups := map[string]bool{}
+	for _, file := range selected.CRDObjects() {
+		decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(string(file.File.Data)), 4096)
+		for {
+			var crd apiextv1.CustomResourceDefinition
+			err := decoder.Decode(&crd)
+			if err == io.EOF {
+				break
+			}
+			require.NoError(t, err)
+			require.NotEmpty(t, crd.Spec.Group)
+			groups[crd.Spec.Group] = true
+		}
+	}
+	require.NotEmpty(t, groups)
+	// Require literal capability arguments so every group can be compared.
+	argument := regexp.MustCompile("^\\s*[\"`]([^\"`]+)[\"`]")
+	for _, file := range selected.Templates {
+		for _, tail := range strings.Split(string(file.Data), ".Capabilities.APIVersions.Has")[1:] {
+			match := argument.FindStringSubmatch(tail)
+			require.NotNil(t, match, "%s: capability checks must name a literal API", file.Name)
+			group, _, _ := strings.Cut(match[1], "/")
+			require.False(t, groups[group], "%s: install registers %s after preview", file.Name, group)
+		}
+	}
+}
+
+func TestExternalWorkloadCapabilities(t *testing.T) {
+	selected := certificateTestChart(t)
+	options := NewDefaultClusterOptions()
+	values := map[string]any{}
+	setValue(values, true, "global", "rbac", "enabled")
+	setValue(values, "external", "global", "rbac", "tls", "provider")
+	setValue(values, true, "dynamicrp", "buildkit", "enabled")
+	_, settings, err := selectedCertificateValues(options, selected, values)
+	require.NoError(t, err)
+	for _, version := range []string{"v1.29.0", "v1.30.0"} {
+		for _, vap := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/VAP=%t", version, vap), func(t *testing.T) {
+				caps := capabilitiesWith()
+				caps.KubeVersion.Version = version
+				if vap {
+					caps.APIVersions = append(caps.APIVersions, admissionPolicyAPI)
+				}
+				impl := &Impl{contourCluster: &fakeContourCluster{capabilities: caps}}
+				manifest, err := impl.renderCertificateManifest(t.Context(), options, selected, values, "", nil, 0)
+				if !vap {
+					require.ErrorContains(t, err, "requires admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy")
+					return
+				}
+				require.NoError(t, err)
+				require.Equal(t, version == "v1.29.0", strings.Contains(manifest, "container.apparmor.security.beta.kubernetes.io/buildkitd:"))
+				require.Equal(t, version == "v1.30.0", strings.Contains(manifest, "appArmorProfile:"))
+				require.NoError(t, checkExternalWorkloadManifest(manifest, settings))
+			})
+		}
+	}
+}
 
 func TestRadiusChart_ControllerResources(t *testing.T) {
 	t.Parallel()

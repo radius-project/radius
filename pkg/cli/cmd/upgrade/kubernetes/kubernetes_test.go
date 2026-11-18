@@ -217,6 +217,20 @@ func TestNewCommand(t *testing.T) {
 	assert.Equal(t, "Upgrades Radius on a Kubernetes cluster", cmd.Short)
 }
 
+func TestPreflightOnlyReturnsCertificatePrerequisiteError(t *testing.T) {
+	t.Parallel()
+	cmd, r := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+	runner := r.(*Runner)
+	require.NoError(t, cmd.ParseFlags([]string{"--preflight-only", "--version=0.47.0"}))
+	require.NoError(t, runner.Validate(cmd, nil))
+	mock := helm.NewMockInterface(gomock.NewController(t))
+	runner.Helm = mock
+	mock.EXPECT().CheckRadiusInstall("").Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "0.46.0"}, nil)
+	missing := errors.New("cluster does not serve ValidatingAdmissionPolicy")
+	mock.EXPECT().CheckRadiusCertificates(gomock.Any(), gomock.Any(), "").Return(missing)
+	require.ErrorIs(t, runner.Run(t.Context()), missing)
+}
+
 func TestRunner_Validate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

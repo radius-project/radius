@@ -122,7 +122,7 @@ func TestNewUpgradeTransport_EngineProviders(t *testing.T) {
 				options.TokenDirectory = t.TempDir()
 				writeToken(t, options.TokenDirectory, "bicep-de", mintToken(t, "ucp", "bicep-de"))
 				plain := &recordingTransport{}
-				rt, err := NewUpgradeTransport(options, plain, []string{"bicep-de"})
+				rt, err := NewUpgradeTransport(options, plain, []string{"bicep-de"}, "http://bicep-de."+testNamespace+".svc:6443")
 				require.NoError(t, err)
 				upgraded := rt.(*upgradeTransport)
 				var transport *http.Transport
@@ -167,7 +167,7 @@ func TestExternalClientTransport_RotationAndErrors(t *testing.T) {
 		got = append(got, r.Header.Get("Authorization"))
 	}))
 	defer srv.Close()
-	rt, err := NewClientTransport(options, "ucp")
+	rt, err := NewClientTransport(options, "ucp", srv.Listener.Addr().String())
 	require.NoError(t, err, "external must not read CSI or CA material")
 	c := &http.Client{Transport: rt}
 	defer c.CloseIdleConnections()
@@ -177,6 +177,7 @@ func TestExternalClientTransport_RotationAndErrors(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, response.Body.Close())
 	}
+
 	require.Equal(t, []string{"Bearer first-token", "Bearer rotated-token-with-different-length"}, got)
 	require.NoError(t, os.Remove(filepath.Join(options.TokenDirectory, "ucp", TokenFile)))
 	_, err = c.Get(srv.URL)
@@ -187,6 +188,33 @@ func TestExternalClientTransport_RotationAndErrors(t *testing.T) {
 	options.TLSProvider = "typo"
 	_, err = NewClientTransport(options, "ucp")
 	require.ErrorContains(t, err, "invalid TLS provider")
+}
+
+func TestTokenTransportRejectClosesBody(t *testing.T) {
+	const authority = "ucp.custom.svc:12345"
+	token := newTokenFile(filepath.Join(t.TempDir(), "missing"))
+	external := &externalTransport{token: token, authorities: []string{authority}}
+	for _, tt := range []struct {
+		rt              http.RoundTripper
+		url, host, want string
+	}{
+		{external, "https://" + authority, "", "requires http"},
+		{external, "http://ucp.custom.svc:12346", "", "unconfigured destination"},
+		{external, "http://elsewhere:12345", "", "unconfigured destination"},
+		{external, "http://" + authority, "elsewhere", "unconfigured destination"},
+		{external, "http://" + authority, "", "failed to read ServiceAccount token"},
+	} {
+		pr, pw := io.Pipe()
+		req, err := http.NewRequest(http.MethodPut, tt.url, pr)
+		require.NoError(t, err)
+		req.Host = tt.host
+		_, err = tt.rt.RoundTrip(req)
+		require.ErrorContains(t, err, tt.want)
+		// Close the writer so a leak returns EOF rather than blocking.
+		require.NoError(t, pw.Close())
+		_, err = pr.Read(make([]byte, 1))
+		require.ErrorIs(t, err, io.ErrClosedPipe)
+	}
 }
 
 func TestNewClientTransport_ConfigErrors(t *testing.T) {

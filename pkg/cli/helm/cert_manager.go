@@ -94,13 +94,6 @@ func newCertManagerClients(kubeContext string) (kubernetes.Interface, apiextclie
 	return kubeClient, apiextClient, nil
 }
 
-// resolveAuthzMode returns the authorization mode the Radius chart will render from global.rbac. Values from the
-// current invocation are merged over the stored release values with Helm's own CoalesceTables, the merge Helm
-// upgrade applies for ResetThenReuseValues, so null or non-map replacements clear stored flags like Helm does.
-func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
-	return authzModeFromRBAC(mergedRBACValues(stored, current))
-}
-
 func authzModeFromRBAC(rbac map[string]any) (authz.Mode, error) {
 	enabled, dryRun := isTrue(rbac["enabled"]), isTrue(rbac["dryRun"])
 
@@ -257,15 +250,7 @@ func imageTag(image string) string {
 // without approveSignerNames), refuses pending Helm operations, reuses a supported
 // installation it did not install, and fails when that installation is older than CertManagerMinimumVersion.
 // With authorization off it returns without contacting the cluster.
-func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, upgrade bool) error {
-	currentValues, err := parseUserValuesFromCLI(&options.Radius)
-	if err != nil {
-		return fmt.Errorf("failed to parse Radius values: %w", err)
-	}
-	mode, err := resolveAuthzMode(storedValues, currentValues)
-	if err != nil {
-		return err
-	}
+func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, mode authz.Mode, upgrade bool) error {
 	if mode == authz.ModeOff {
 		return nil
 	}

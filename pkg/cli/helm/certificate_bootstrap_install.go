@@ -23,7 +23,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/authz"
 	helm "helm.sh/helm/v4/pkg/action"
-	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,9 +38,7 @@ func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterO
 	if readErr != nil {
 		return nil, readErr
 	}
-	effective := valuesutil.CoalesceTables(copyValues(values), copyValues(options.RadiusReleaseValues))
-	effective = valuesutil.CoalesceTables(effective, copyValues(selected.Values))
-	mode, err := resolveAuthzMode(nil, effective)
+	effective, settings, err := selectedCertificateValues(options, selected, values)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +60,7 @@ func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterO
 			namespaceIntent = &intent
 		}
 	}
-	if mode == authz.ModeOff {
+	if settings.mode == authz.ModeOff {
 		if found || namespaceIntent != nil || initialErr == nil && initial.Phase != "complete" {
 			return nil, errors.New("unfinished bootstrap cannot be bypassed by disabling authorization; resume the identical install")
 		}

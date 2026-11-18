@@ -28,12 +28,18 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	"helm.sh/helm/v4/pkg/chart/common"
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/engine"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -42,6 +48,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
 )
 
 func certificateTestChart(t *testing.T) *chart.Chart {
@@ -49,6 +56,219 @@ func certificateTestChart(t *testing.T) *chart.Chart {
 	c, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
 	require.NoError(t, err)
 	return c
+}
+
+func expectRadiusBaseline(t *testing.T, client *MockHelmClient, options ClusterOptions) {
+	t.Helper()
+	c := options.RadiusReleaseChart
+	if c == nil {
+		c = certificateTestChart(t)
+	}
+	client.EXPECT().RunHelmHistory(gomock.Any(), options.Radius.ReleaseName).Return([]*releasev1.Release{{
+		Name: options.Radius.ReleaseName, Namespace: options.Radius.Namespace, Version: 1,
+		Chart: c, Config: options.RadiusReleaseValues, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+	}}, nil)
+}
+
+func TestInstalledChartDefaultsCannotSwitchIssuer(t *testing.T) {
+	fixture := newIssuerPolicyFixture(t)
+	server := fixture.server(t)
+	kubeContext := useTargetKubeconfig(t, server.URL, k8sutil.NewForbiddenAPIServer(t).URL, true)
+	ca, _, _ := testSigningCA(t, nil, nil, nil, nil)
+	certificateValues(fixture.values)["caBundle"] = string(ca)
+	old, selected := certificateTestChart(t), certificateTestChart(t)
+	old.Values = valuesutil.CoalesceTables(copyValues(fixture.values), old.Values)
+	stored := map[string]any{}
+	setValue(stored, true, "global", "rbac", "enabled")
+
+	// Render both complete charts using identical stored overrides. The issuer change
+	// is in the actual UCP Certificate, not just in a synthetic values comparison.
+	renderer := engine.New(&rest.Config{Host: server.URL})
+	caps := common.DefaultCapabilities.Copy()
+	caps.APIVersions = append(caps.APIVersions, admissionPolicyAPI)
+	for c, issuer := range map[*chart.Chart]string{old: "external-ca", selected: "radius-apiserver-issuer"} {
+		values, err := valuesutil.CoalesceValues(c, stored)
+		require.NoError(t, err)
+		rendered, err := renderer.RenderWithContext(t.Context(), c, common.Values{
+			"Values": values, "Capabilities": caps,
+			"Release": map[string]any{"Name": radiusReleaseName, "Namespace": RadiusSystemNamespace, "Service": "Helm"},
+		})
+		require.NoError(t, err)
+		require.Contains(t, rendered[c.Name()+"/templates/ucp/apiservice.yaml"], "name: "+issuer)
+	}
+
+	runInstalledChartSwitchCommands(t, old, selected, stored, kubeContext)
+}
+
+func TestExternalChartCannotRequireManagedVolume(t *testing.T) {
+	for _, command := range []string{"install", "upgrade", "preflight-only", "rollback"} {
+		t.Run(command, func(t *testing.T) {
+			selected := certificateTestChart(t)
+			setValue(selected.Values, true, "global", "rbac", "enabled")
+			setValue(selected.Values, "external", "global", "rbac", "tls", "provider")
+			match := `{{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}`
+			// The historical manifest and the offline install render both omit the
+			// volume in the upgrade-only cases. Check what Helm actually reapplies.
+			volume := "- name: local-serving\n          csi:\n            driver: spiffe.csi.radapp.io"
+			if command != "install" {
+				volume = "{{- if .Release.IsUpgrade }}\n        " + volume + "\n        {{- end }}"
+			}
+			for _, file := range selected.Templates {
+				if file.Name == "templates/ucp/deployment.yaml" {
+					require.Contains(t, string(file.Data), match)
+					file.Data = []byte(strings.Replace(string(file.Data), match, volume, 1))
+				}
+			}
+			options := NewDefaultClusterOptions()
+			options.Radius.ChartPath = "chart"
+			history := []*releasev1.Release{{
+				Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 1, Chart: selected,
+				Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+			}}
+			h := NewMockHelmClient(gomock.NewController(t))
+			i := &Impl{Helm: h, newRotationStore: emptyRotationTestStore, contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)}}
+			var err error
+			if command == "rollback" {
+				err = i.reconcileRollbackDependencies(t.Context(), "test", history, 1)
+			} else {
+				i.newCSIDriverSPIFFEClient = func(string) (kubernetes.Interface, error) { return fake.NewClientset(), nil }
+				if command == "install" {
+					_, _, err = i.prepareOrdinaryCertificates(t.Context(), options, selected, nil, map[string]any{}, "test", false, nil)
+					require.ErrorContains(t, err, `requires managed CSI driver "spiffe.csi.radapp.io"`)
+					return
+				}
+				h.EXPECT().LoadChart("chart").Return(selected, nil)
+				h.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
+				run := i.InstallRadius
+				switch command {
+				case "preflight-only":
+					run = i.CheckRadiusCertificates
+				case "upgrade":
+					run = i.UpgradeRadius
+				}
+				err = run(t.Context(), options, "test")
+			}
+			require.ErrorContains(t, err, `requires managed CSI driver "spiffe.csi.radapp.io"`)
+		})
+	}
+}
+
+func TestExternalChartUsesFinalRequesters(t *testing.T) {
+	for _, command := range []string{"preflight-only", "install", "upgrade", "reinstall", "fresh-cert-manager"} {
+		t.Run(command, func(t *testing.T) {
+			selected := certificateTestChart(t)
+			setValue(selected.Values, true, "global", "rbac", "enabled")
+			setValue(selected.Values, "external", "global", "rbac", "tls", "provider")
+			selected.Templates = append(selected.Templates, &common.File{Name: "templates/requester-workload.yaml", Data: []byte(`
+{{- if or (has "system:serviceaccount:security:custom" .Values.global.rbac.certManager.requesters) (has "system:serviceaccount:cert-manager:cert-manager" .Values.global.rbac.certManager.requesters) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: requester-workload}
+spec:
+  template:
+    spec:
+      volumes:
+      - name: local-serving
+        csi: {driver: spiffe.csi.radapp.io}
+{{- end }}`)})
+			ctrl := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "custom")
+			kube := sarClient(nil, nil, ctrl)
+			if command == "fresh-cert-manager" {
+				kube = sarClient(nil, nil)
+			}
+			h := NewMockHelmClient(gomock.NewController(t))
+			i := &Impl{Helm: h, newRotationStore: emptyRotationTestStore, contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
+				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return kube, nil }}
+			options := NewDefaultClusterOptions()
+			options.Radius.ChartPath, options.Contour.Disabled = "chart", true
+			if command == "install" || command == "fresh-cert-manager" {
+				_, _, err := i.prepareOrdinaryCertificates(t.Context(), options, selected, nil, map[string]any{}, "test", false, nil)
+				require.ErrorContains(t, err, `requires managed CSI driver "spiffe.csi.radapp.io"`)
+				return
+			}
+			h.EXPECT().LoadChart("chart").Return(selected, nil)
+			run := i.InstallRadius
+			options.RadiusInstalled, options.RadiusReleaseChart = true, selected
+			expectRadiusBaseline(t, h, options)
+			switch command {
+			case "preflight-only":
+				run = i.CheckRadiusCertificates
+			case "upgrade":
+				run = i.UpgradeRadius
+			case "reinstall":
+				options.Radius.Reinstall = true
+			}
+			require.ErrorContains(t, run(t.Context(), options, "test"), `requires managed CSI driver "spiffe.csi.radapp.io"`)
+		})
+	}
+}
+
+func TestChangedRequestersStopBeforeDependencyApply(t *testing.T) {
+	ctrl := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "changed")
+	plan := &csiDriverSPIFFEPlan{
+		kubeClient: sarClient(nil, nil, ctrl),
+		requesters: []string{"system:serviceaccount:security:custom"},
+	}
+	_, err := (&Impl{}).applyCSIDriverSPIFFE(t.Context(), plan, "test", true)
+	require.ErrorContains(t, err, "requesters differ from the validated Radius values")
+}
+
+func TestExternalPreflightRejectsStandalonePod(t *testing.T) {
+	const pod = `
+apiVersion: v1
+kind: Pod
+metadata: {name: serving}
+spec:
+  containers: [{name: app, image: example.invalid/app}]
+  volumes: [{name: local-serving, csi: {driver: spiffe.csi.radapp.io}}]
+`
+	for _, conditional := range []bool{false, true} {
+		t.Run(fmt.Sprintf("requesterConditional=%t", conditional), func(t *testing.T) {
+			selected := certificateTestChart(t)
+			setValue(selected.Values, true, "global", "rbac", "enabled")
+			setValue(selected.Values, "external", "global", "rbac", "tls", "provider")
+			template := pod
+			if conditional {
+				template = `{{ if has "system:serviceaccount:security:custom" .Values.global.rbac.certManager.requesters }}` + pod + `{{ end }}`
+			}
+			selected.Templates = append(selected.Templates, &common.File{Name: "templates/serving-pod.yaml", Data: []byte(template)})
+			options := NewDefaultClusterOptions()
+			options.Radius.ChartPath, options.RadiusReleaseChart = "chart", selected
+			h := NewMockHelmClient(gomock.NewController(t))
+			h.EXPECT().LoadChart("chart").Return(selected, nil)
+			expectRadiusBaseline(t, h, options)
+			ctrl := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "custom")
+			kube := sarClient(nil, nil, ctrl)
+			i := &Impl{Helm: h, newRotationStore: emptyRotationTestStore, contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
+				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return kube, nil }}
+			require.ErrorContains(t, i.CheckRadiusCertificates(t.Context(), options, "test"), `requires managed CSI driver "spiffe.csi.radapp.io"`)
+		})
+	}
+}
+
+func runInstalledChartSwitchCommands(t *testing.T, old, selected *chart.Chart, stored map[string]any, kubeContext string) {
+	t.Helper()
+	for _, command := range []string{"reinstall", "upgrade", "preflight-only"} {
+		t.Run(command, func(t *testing.T) {
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().LoadChart("chart").Return(selected, nil)
+			client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
+				{Chart: selected, Version: 2, Info: &releasev1.Info{Status: releasecommon.StatusFailed}},
+				{Chart: old, Config: stored, Version: 1, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+			}, nil)
+			i := &Impl{Helm: client}
+			opts := NewDefaultClusterOptions()
+			opts.Radius.ChartPath, opts.RadiusInstalled, opts.RadiusReleaseValues = "chart", true, stored
+			run := i.UpgradeRadius
+			switch command {
+			case "reinstall":
+				opts.Radius.Reinstall, run = true, i.InstallRadius
+			case "preflight-only":
+				run = i.CheckRadiusCertificates
+			}
+			require.ErrorContains(t, run(t.Context(), opts, kubeContext), "coordinated CA migration")
+		})
+	}
 }
 
 func TestCertificateTargetProfiles(t *testing.T) {
@@ -284,17 +504,17 @@ func TestCASecretLivePreflight(t *testing.T) {
 				options := NewDefaultClusterOptions()
 				current := copyValues(fixture.values)
 				selected := certificateTestChart(t)
-				target, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, kubeContext, false)
+				target, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, kubeContext, nil)
 				require.NoError(t, err)
-				require.ErrorContains(t, target.checkTransition(current), "maintaining global.rbac.certificates.mode=caSecret")
-				err = impl.checkIssuerPolicy(t.Context(), options, selected, nil, current, kubeContext, false)
+				require.ErrorContains(t, target.checkTransition(target.mode), "maintaining global.rbac.certificates.mode=caSecret")
+				err = impl.checkIssuerPolicy(t.Context(), options, selected, current, kubeContext, nil)
 				if invalidInjector {
 					require.ErrorContains(t, err, "not an inspectable")
 				} else {
 					require.NoError(t, err)
 					// Fresh A10 installs use bootstrap, not the lower switch-on
 					// path. Its deployed-release transition gate stays closed.
-					err = target.checkTransition(map[string]any{})
+					err = target.checkTransition(authz.ModeOff)
 					require.ErrorContains(t, err, "mode=caSecret requires the certificate lifecycle")
 				}
 				for _, action := range client.Actions() {

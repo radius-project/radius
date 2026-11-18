@@ -479,9 +479,10 @@ func renderedOffCertificate(t *testing.T, manifest string) (*corev1.Secret, []by
 // stageUpgrade is rad upgrade kubernetes, or rad install kubernetes --reinstall, from a deployed release with values
 // deployed, with Helm storage in memory.
 type stageUpgrade struct {
-	configuration *helm.Configuration
-	helmClient    HelmClient
-	command       string
+	defaultEnabled bool
+	configuration  *helm.Configuration
+	helmClient     HelmClient
+	command        string
 }
 
 func newStageUpgrade(t *testing.T, deployed map[string]any, command string) *stageUpgrade {
@@ -516,7 +517,13 @@ func (u *stageUpgrade) mock(t *testing.T, upgrades int, beforeHelm func()) *Mock
 			return u.helmClient.RunHelmHistory(u.configuration, name)
 		})
 	client.EXPECT().LoadChart(gomock.Any()).AnyTimes().
-		DoAndReturn(func(string) (*chart.Chart, error) { return loadStageTestChart(t), nil })
+		DoAndReturn(func(string) (*chart.Chart, error) {
+			chart := loadStageTestChart(t)
+			if u.defaultEnabled {
+				setValue(chart.Values, true, "global", "rbac", "enabled")
+			}
+			return chart, nil
+		})
 	// rad installs csi-driver-spiffe only when authorization will be on.
 	expectCSIDriverSPIFFEPull(t, client).AnyTimes()
 	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, radManagedByLabels()).
@@ -547,6 +554,8 @@ func (u *stageUpgrade) run(t *testing.T, impl *Impl, setArgs []string) error {
 	options.Radius.SetArgs = setArgs
 	options.Contour.Disabled = true
 	options.RadiusReleaseValues = state.RadiusValues
+	options.RadiusReleaseChart = state.RadiusChart
+	options.RadiusInstalled = state.RadiusInstalled
 	switch u.command {
 	case "upgrade":
 		return impl.UpgradeRadius(t.Context(), options, "test-context")
@@ -799,9 +808,11 @@ func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
 func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T) {
 	manifest := renderStageTestManifest(t, authzOnValues)
 	history := func(targetManifest string) []*releasev1.Release {
+		targetChart := loadStageTestChart(t)
+		targetChart.Metadata.Version = "0.45.0"
 		return []*releasev1.Release{
-			{Version: 1, Config: authzOnValues, Manifest: targetManifest, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
-			{Version: 2, Config: map[string]any{}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+			{Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 1, Config: authzOnValues, Manifest: targetManifest, Chart: targetChart, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 2, Config: map[string]any{}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 		}
 	}
 	impl := func(c *stageCluster, m *MockHelmClient) *Impl {

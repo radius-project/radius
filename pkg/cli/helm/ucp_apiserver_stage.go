@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"slices"
 	"strings"
 
 	helm "helm.sh/helm/v4/pkg/action"
@@ -446,51 +447,59 @@ func containsCertificates(certs, want []*x509.Certificate) bool {
 // renderRadiusUpgrade renders the Radius upgrade that RunHelmUpgrade applies with values and reuseValues, as a
 // server-side dry run against a copy of the release history, so lookups and capabilities match the real upgrade.
 func (i *Impl) renderRadiusUpgrade(kubeContext string, helmConf *helm.Configuration, helmChart *chart.Chart, values map[string]any, releaseName, namespace string, reuseValues bool) renderRadiusManifest {
-	return func(ctx context.Context) (string, bool, error) {
+	return i.renderRadiusUpgradeRelease(kubeContext, helmConf, helmChart, values, releaseName, namespace, reuseValues).manifest(false)
+}
+
+func (i *Impl) renderRadiusUpgradeRelease(kubeContext string, helmConf *helm.Configuration, helmChart *chart.Chart, values map[string]any, releaseName, namespace string, reuseValues bool) renderRadiusRelease {
+	return func(ctx context.Context) (*releasev1.Release, error) {
 		history, err := i.Helm.RunHelmHistory(helmConf, releaseName)
 		if err != nil {
-			return "", false, err
+			return nil, err
 		}
-		configuration, err := i.cluster().RenderConfiguration(kubeContext, namespace)
-		if err != nil {
-			return "", false, err
-		}
-		releases, err := releaseHistoryStorage(history)
-		if err != nil {
-			return "", false, err
-		}
-		configuration.Releases = releases
-		client := newUpgradeClient(configuration, namespace, false, reuseValues, 0, usesServerSideApply(configuration, releaseName))
-		client.DryRunStrategy = helm.DryRunServer
-		upgraded, err := client.RunWithContext(ctx, releaseName, cloneChart(helmChart), copyValues(values))
-		if err != nil {
-			return "", false, err
-		}
-		rendered, err := asRelease(upgraded)
-		if err != nil {
-			return "", false, err
-		}
-		return rendered.Manifest, true, nil
+		return i.renderUpgradeFromHistory(ctx, kubeContext, history, helmChart, values, releaseName, namespace, reuseValues)
 	}
+}
+
+func (i *Impl) renderUpgradeFromHistory(ctx context.Context, kubeContext string, history []*releasev1.Release, helmChart *chart.Chart, values map[string]any, releaseName, namespace string, reuseValues bool) (*releasev1.Release, error) {
+	configuration, err := i.cluster().RenderConfiguration(kubeContext, namespace)
+	if err != nil {
+		return nil, err
+	}
+	releases, err := releaseHistoryStorage(history)
+	if err != nil {
+		return nil, err
+	}
+	configuration.Releases = releases
+	client := newUpgradeClient(configuration, namespace, false, reuseValues, 0, usesServerSideApply(configuration, releaseName))
+	client.DryRunStrategy = helm.DryRunServer
+	upgraded, err := client.RunWithContext(ctx, releaseName, cloneChart(helmChart), copyValues(values))
+	if err != nil {
+		return nil, err
+	}
+	return asRelease(upgraded)
 }
 
 // renderRadiusInstall renders what ApplyHelmChart applies: a fresh install, or with Reinstall an upgrade that reuses
 // the stored values. An installed release without Reinstall is left unchanged, so nothing is rendered.
 func (i *Impl) renderRadiusInstall(kubeContext string, helmAction HelmAction, helmConf *helm.Configuration, helmChart *chart.Chart, values map[string]any, options ChartOptions) renderRadiusManifest {
-	return func(ctx context.Context) (string, bool, error) {
+	return i.renderRadiusInstallRelease(kubeContext, helmAction, helmConf, helmChart, values, options).manifest(false)
+}
+
+func (i *Impl) renderRadiusInstallRelease(kubeContext string, helmAction HelmAction, helmConf *helm.Configuration, helmChart *chart.Chart, values map[string]any, options ChartOptions) renderRadiusRelease {
+	return func(ctx context.Context) (*releasev1.Release, error) {
 		installed, _, err := helmAction.QueryRelease(kubeContext, options.ReleaseName, options.Namespace)
 		if err != nil {
-			return "", false, err
+			return nil, err
 		}
 		if installed {
 			if !options.Reinstall {
-				return "", false, nil
+				return nil, nil
 			}
-			return i.renderRadiusUpgrade(kubeContext, helmConf, helmChart, values, options.ReleaseName, options.Namespace, true)(ctx)
+			return i.renderRadiusUpgradeRelease(kubeContext, helmConf, helmChart, values, options.ReleaseName, options.Namespace, true)(ctx)
 		}
 		configuration, err := i.cluster().RenderConfiguration(kubeContext, options.Namespace)
 		if err != nil {
-			return "", false, err
+			return nil, err
 		}
 		install := helm.NewInstall(configuration)
 		install.DryRunStrategy = helm.DryRunServer
@@ -498,17 +507,39 @@ func (i *Impl) renderRadiusInstall(kubeContext string, helmAction HelmAction, he
 		install.Namespace = options.Namespace
 		installedRelease, err := install.RunWithContext(ctx, cloneChart(helmChart), copyValues(values))
 		if err != nil {
-			return "", false, err
+			return nil, err
 		}
-		rendered, err := asRelease(installedRelease)
-		if err != nil {
-			return "", false, err
-		}
-		return rendered.Manifest, true, nil
+		return asRelease(installedRelease)
 	}
 }
 
-// renderRadiusRollback returns the manifest of revision in history, which Helm's rollback applies.
+type renderRadiusRelease func(context.Context) (*releasev1.Release, error)
+
+func (render renderRadiusRelease) manifest(includeWorkloadHooks bool) renderRadiusManifest {
+	return func(ctx context.Context) (string, bool, error) {
+		rel, err := render(ctx)
+		if err != nil || rel == nil {
+			return "", false, err
+		}
+		if !includeWorkloadHooks {
+			return rel.Manifest, true, nil
+		}
+		// Helm stores hook Pods and Jobs separately from the workload manifest.
+		pre, post := releasev1.HookPreUpgrade, releasev1.HookPostUpgrade
+		if rel.Version == 1 {
+			pre, post = releasev1.HookPreInstall, releasev1.HookPostInstall
+		}
+		documents := []string{rel.Manifest}
+		for _, hook := range rel.Hooks {
+			if slices.Contains(hook.Events, pre) || slices.Contains(hook.Events, post) {
+				documents = append(documents, hook.Manifest)
+			}
+		}
+		return strings.Join(documents, "\n---\n"), true, nil
+	}
+}
+
+// renderRadiusRollback returns the saved manifest used for historical CA staging.
 func renderRadiusRollback(history []*releasev1.Release, revision int) renderRadiusManifest {
 	return func(context.Context) (string, bool, error) {
 		for _, rel := range history {
