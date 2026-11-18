@@ -66,7 +66,7 @@ func TestCertificateSelectedPhaseRendering(t *testing.T) {
 	options.RadiusInstalled, options.RadiusReleaseValues = true, copyValues(values)
 	history := []*releasev1.Release{{Name: w.store.release, Namespace: w.store.namespace, Version: 1,
 		Chart: selected, Config: copyValues(values), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}}
-	impl := &Impl{contourCluster: &fakeContourCluster{}}
+	impl := &Impl{contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)}}
 	// This uses the real selected templates and in-memory Helm history. It is
 	// not controller issuance, dry-run API admission, or authenticated evidence.
 	w.observeLoaded = func(ctx context.Context, _ certificateLifecycle) error { return ctx.Err() }

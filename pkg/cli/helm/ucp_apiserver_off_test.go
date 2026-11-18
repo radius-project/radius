@@ -151,7 +151,9 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, found)
 		require.Empty(t, live)
-		require.NoError(t, c.impl(nil, "").ReconcileUCPOffAPIServerTrust(t.Context(), "test", RadiusSystemNamespace))
+		impl := c.impl(nil, "")
+		require.ErrorContains(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test", RadiusSystemNamespace), "post-Helm operation scope")
+		require.NoError(t, impl.reconcileUCPOffAPIServerTrust(t.Context(), "test", RadiusSystemNamespace))
 		c.requireOffTrust(t)
 	})
 

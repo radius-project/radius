@@ -798,7 +798,6 @@ func TestExternalCertificatePrerequisites(t *testing.T) {
 				m := NewMockHelmClient(gomock.NewController(t))
 				selected := certificateTestChart(t)
 				setValue(selected.Values, "external", "global", "rbac", "tls", "provider")
-				m.EXPECT().LoadChart(gomock.Any()).Return(selected, nil)
 				impl := withoutUCPAPIService(&Impl{
 					Helm:                     m,
 					newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return kube, nil },
@@ -815,33 +814,25 @@ func TestExternalCertificatePrerequisites(t *testing.T) {
 					options.ResetValues = true
 					options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true, "tls": map[string]any{"provider": "radius"}}}}
 				}
-				stop := errors.New("stop at final Helm call")
-				if served {
-					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
-					requesters := gomock.Cond(func(v map[string]any) bool {
-						users, ok := nestedValue(v, "global", "rbac", "certManager", "requesters").([]any)
-						return ok && len(users) == 1 && users[0] == "system:serviceaccount:security:custom"
-					})
-					if command == "install" {
-						m.EXPECT().RunHelmGet(gomock.Any(), radiusReleaseName).Return(nil, driver.ErrReleaseNotFound)
-						m.EXPECT().RunHelmInstall(gomock.Any(), selected, requesters, radiusReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, nil).Return(nil, stop)
-					} else {
-						gomock.InOrder(
-							m.EXPECT().MigrateControllerStrategy(gomock.Any(), gomock.Any(), selected, requesters, radiusReleaseName, RadiusSystemNamespace, false).Return(nil),
-							m.EXPECT().RunHelmUpgrade(gomock.Any(), selected, requesters, radiusReleaseName, RadiusSystemNamespace, true, false, DefaultInstallTimeout).Return(nil, stop),
-						)
-					}
-				}
-				run := impl.InstallRadius
-				if command == "upgrade" {
-					run = impl.UpgradeRadius
-				}
-				err := run(t.Context(), options, "test-context")
+				// Exercise the selected dependency plan without bypassing bootstrap or rotation gates.
+				current, err := parseUserValuesFromCLI(&options.Radius)
+				require.NoError(t, err)
+				target, _, err := impl.prepareCertificateTarget(t.Context(), options, selected, current, "test-context")
+				require.NoError(t, err)
+				require.Equal(t, "external", target.Provider)
+				plan, err := impl.planSelectedCSIDriverSPIFFE(t.Context(), options, "test-context", target)
 				if !served {
 					require.ErrorContains(t, err, "does not serve ValidatingAdmissionPolicy")
-				} else {
-					require.ErrorIs(t, err, stop)
+					return
 				}
+				require.NoError(t, err)
+				require.False(t, plan.manageDriver)
+				m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
+				require.NoError(t, impl.ensureCertManager(t.Context(), options, "test-context", target.Values, command == "upgrade"))
+				users, err := impl.applyCSIDriverSPIFFE(t.Context(), plan, "test-context", command == "upgrade")
+				require.NoError(t, err)
+				setCertManagerRequesters(current, users)
+				require.Equal(t, []any{"system:serviceaccount:security:custom"}, nestedValue(current, "global", "rbac", "certManager", "requesters"))
 			})
 		}
 	}
@@ -1121,7 +1112,9 @@ func Test_ForeignCSIDriverSPIFFE_FailsDuringReadOnlyPlanning(t *testing.T) {
 			options.Contour.Disabled = true
 
 			options.Radius.Reinstall = command == "upgrade"
-			_, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", nil)
+			values, err := parseUserValuesFromCLI(&options.Radius)
+			require.NoError(t, err)
+			_, err = impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", values, "radius", certificateMode(values))
 			require.ErrorContains(t, err, "Radius stopped before changing the cluster because another csi-driver-spiffe (DaemonSet identity/workload-identity-node) runs on it.")
 		})
 	}
@@ -1228,7 +1221,6 @@ func Test_RollbackDependencies_ReconcileCSIDriverSPIFFE(t *testing.T) {
 			objects: []runtime.Object{csiDriver(SPIFFECSIDriverNameDefault, nil)},
 			expect: func(_ *testing.T, m *MockHelmClient) {
 				m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil)
-				m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil)
 			},
 		},
 		{
