@@ -28,6 +28,7 @@ import (
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3control"
 	"github.com/aws/aws-sdk-go-v2/service/s3control/types"
+	"github.com/aws/smithy-go"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -72,7 +73,7 @@ var (
 // resources.
 //
 // Every bucket exists, except those named with missingPrefix, and is owned by the caller, except those named with
-// otherOwnerPrefix. A bucket with no entry has S3's default payer, BucketOwner.
+// otherOwnerPrefix, which is account. A bucket with no entry has S3's default payer, BucketOwner.
 //
 // Every Multi-Region Access Point in the fake's account exists, except those whose alias starts with missingPrefix.
 // One whose alias starts with singlePrefix has one bucket, and the others have three (see buckets). One with no entry
@@ -106,12 +107,26 @@ func (f *fakeAPI) begin(method string) error {
 	return f.errs[method]
 }
 
-// bucketError returns the error S3 returns for a call on a bucket the caller doesn't own or AWS doesn't have.
-func bucketError(bucket string) error {
+// missing returns the error the SDK returns, before it sends anything, for a call without a required parameter.
+func missing(operation string, parameter string) error {
+	err := smithy.InvalidParamsError{Context: operation}
+	err.Add(smithy.NewErrParamRequired(parameter))
+	return err
+}
+
+// bucketError returns the error S3 returns for a call on a bucket the caller doesn't own or AWS doesn't have, or that
+// expects another owner.
+func bucketError(bucket *string, expectedOwner *string, operation string) error {
 	switch {
-	case strings.HasPrefix(bucket, missingPrefix):
+	case bucket == nil:
+		return missing(operation, "Bucket")
+	case expectedOwner != nil && *expectedOwner != account:
+		return fault(accessDeniedCode)
+	}
+	switch name := *bucket; {
+	case strings.HasPrefix(name, missingPrefix):
 		return fault(noSuchBucketCode)
-	case strings.HasPrefix(bucket, otherOwnerPrefix):
+	case strings.HasPrefix(name, otherOwnerPrefix):
 		return fault(accessDeniedCode)
 	}
 	return nil
@@ -123,11 +138,10 @@ func (f *fakeAPI) GetBucketRequestPayment(ctx context.Context, in *s3.GetBucketR
 	if err := f.begin("GetBucketRequestPayment"); err != nil {
 		return nil, err
 	}
-	bucket := aws.ToString(in.Bucket)
-	if err := bucketError(bucket); err != nil {
+	if err := bucketError(in.Bucket, in.ExpectedBucketOwner, "GetBucketRequestPaymentInput"); err != nil {
 		return nil, err
 	}
-	payer, _ := payerOf(f.store.Resource(bucketRequestPaymentType, bucket))
+	payer, _ := payerOf(f.store.Resource(bucketRequestPaymentType, *in.Bucket))
 	if payer == "" {
 		payer = string(s3types.PayerBucketOwner)
 	}
@@ -140,13 +154,16 @@ func (f *fakeAPI) PutBucketRequestPayment(ctx context.Context, in *s3.PutBucketR
 	if err := f.begin("PutBucketRequestPayment"); err != nil {
 		return nil, err
 	}
+	if in.Bucket == nil {
+		return nil, missing("PutBucketRequestPaymentInput", "Bucket")
+	}
 	if in.RequestPaymentConfiguration == nil || !slices.Contains(s3types.Payer("").Values(), in.RequestPaymentConfiguration.Payer) {
 		return nil, fault(malformedXMLCode)
 	}
-	bucket := aws.ToString(in.Bucket)
-	if err := bucketError(bucket); err != nil {
+	if err := bucketError(in.Bucket, in.ExpectedBucketOwner, "PutBucketRequestPaymentInput"); err != nil {
 		return nil, err
 	}
+	bucket := *in.Bucket
 	f.store.Put(bucketRequestPaymentType, bucket, map[string]any{
 		"Bucket":                      bucket,
 		"RequestPaymentConfiguration": map[string]any{"Payer": string(in.RequestPaymentConfiguration.Payer)},
@@ -235,6 +252,9 @@ func (f *fakeAPI) SubmitMultiRegionAccessPointRoutes(ctx context.Context, in *s3
 	defer f.mu.Unlock()
 	if err := f.begin("SubmitMultiRegionAccessPointRoutes"); err != nil {
 		return nil, err
+	}
+	if in.RouteUpdates == nil {
+		return nil, missing("SubmitMultiRegionAccessPointRoutesInput", "RouteUpdates")
 	}
 	current, err := f.routes(in.AccountId, in.Mrap, optFns)
 	if err != nil {

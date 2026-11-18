@@ -21,7 +21,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3tables"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -129,6 +131,37 @@ func Test_Create_RejectsAMissingConfiguration(t *testing.T) {
 	require.ErrorAs(t, err, &failure)
 	require.Contains(t, failure.Message, "Configuration")
 	require.Empty(t, api.calls, "nothing reaches AWS")
+}
+
+func Test_Fake_RequiredParameters(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	ctx := t.Context()
+	var params smithy.InvalidParamsError
+	_, err := api.GetTableReplication(ctx, &s3tables.GetTableReplicationInput{})
+	require.ErrorAs(t, err, &params)
+	_, err = api.PutTableReplication(ctx, &s3tables.PutTableReplicationInput{TableArn: aws.String(tableArn)})
+	require.ErrorAs(t, err, &params)
+	_, err = api.DeleteTableReplication(ctx, &s3tables.DeleteTableReplicationInput{TableArn: aws.String(tableArn)})
+	require.ErrorAs(t, err, &params)
+}
+
+func Test_Update_ConfigurationWithoutRequiredValues(t *testing.T) {
+	ctx := t.Context()
+	for name, configuration := range map[string]map[string]any{
+		"no role":         {"Rules": []any{map[string]any{"Destinations": []any{map[string]any{"DestinationTableBucketARN": destination1}}}}},
+		"no rules":        {"Role": role},
+		"no destinations": {"Role": role, "Rules": []any{map[string]any{}}},
+		"no bucket ARN":   {"Role": role, "Rules": []any{map[string]any{"Destinations": []any{map[string]any{}}}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := NewTableReplication(newFakeAPI(awsfake.NewCloudControl()))
+			_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: map[string]any{"TableArn": tableArn, "Configuration": configuration}})
+			var failure *native.Failure
+			require.ErrorAs(t, err, &failure)
+			require.True(t, failure.ClientError)
+			require.Equal(t, native.OutcomeRejected, failure.Outcome)
+		})
+	}
 }
 
 func Test_NotFound(t *testing.T) {

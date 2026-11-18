@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3tables"
 	"github.com/aws/aws-sdk-go-v2/service/s3tables/types"
+	"github.com/aws/smithy-go"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -110,13 +111,45 @@ func (f *fakeAPI) checkVersion(arn string, token *string) error {
 	return nil
 }
 
+// missing returns the error the SDK returns, before it sends anything, for a call without the required parameters
+// named.
+func missing(operation string, parameters ...string) error {
+	if len(parameters) == 0 {
+		return nil
+	}
+	err := smithy.InvalidParamsError{Context: operation}
+	for _, p := range parameters {
+		err.Add(smithy.NewErrParamRequired(p))
+	}
+	return err
+}
+
+// missingInConfiguration returns the required values of a configuration the SDK checks that c leaves out.
+func missingInConfiguration(c *types.TableReplicationConfiguration) []string {
+	out := []string{}
+	if c.Role == nil {
+		out = append(out, "Configuration.Role")
+	}
+	if c.Rules == nil {
+		out = append(out, "Configuration.Rules")
+	}
+	for _, r := range c.Rules {
+		if r.Destinations == nil {
+			out = append(out, "Configuration.Rules.Destinations")
+		}
+		for _, d := range r.Destinations {
+			if d.DestinationTableBucketARN == nil {
+				out = append(out, "Configuration.Rules.Destinations.DestinationTableBucketARN")
+			}
+		}
+	}
+	return out
+}
+
 // validConfiguration returns BadRequestException for a configuration outside the limits S3 Tables' API reference
 // gives: a role of 20 to 2048 characters that matches its pattern, exactly one rule, and one to five destinations
 // that match the table bucket ARN pattern.
 func validConfiguration(c *types.TableReplicationConfiguration) error {
-	if c == nil {
-		return fault(badRequestCode)
-	}
 	role := aws.ToString(c.Role)
 	if len(role) < 20 || len(role) > 2048 || !roleArnPattern.MatchString(role) || len(c.Rules) != 1 {
 		return fault(badRequestCode)
@@ -139,6 +172,9 @@ func (f *fakeAPI) GetTableReplication(ctx context.Context, in *s3tables.GetTable
 	if err := f.begin("GetTableReplication"); err != nil {
 		return nil, err
 	}
+	if in.TableArn == nil {
+		return nil, missing("GetTableReplicationInput", "TableArn")
+	}
 	arn := aws.ToString(in.TableArn)
 	if err := table(arn); err != nil {
 		return nil, err
@@ -158,6 +194,15 @@ func (f *fakeAPI) PutTableReplication(ctx context.Context, in *s3tables.PutTable
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if err := f.begin("PutTableReplication"); err != nil {
+		return nil, err
+	}
+	switch {
+	case in.TableArn == nil:
+		return nil, missing("PutTableReplicationInput", "TableArn")
+	case in.Configuration == nil:
+		return nil, missing("PutTableReplicationInput", "Configuration")
+	}
+	if err := missing("PutTableReplicationInput", missingInConfiguration(in.Configuration)...); err != nil {
 		return nil, err
 	}
 	arn := aws.ToString(in.TableArn)
@@ -187,12 +232,12 @@ func (f *fakeAPI) DeleteTableReplication(ctx context.Context, in *s3tables.Delet
 	if err := f.begin("DeleteTableReplication"); err != nil {
 		return nil, err
 	}
+	if in.TableArn == nil || in.VersionToken == nil {
+		return nil, missing("DeleteTableReplicationInput", "TableArn", "VersionToken")
+	}
 	arn := aws.ToString(in.TableArn)
 	if err := table(arn); err != nil {
 		return nil, err
-	}
-	if in.VersionToken == nil {
-		return nil, fault(badRequestCode)
 	}
 	if f.store.Resource(tableReplicationType, arn) == nil {
 		return nil, fault(notFoundCode)

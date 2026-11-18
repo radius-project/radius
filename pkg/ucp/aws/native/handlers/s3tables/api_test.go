@@ -48,7 +48,7 @@ func deleteReplication(ctx context.Context, store *awsfake.CloudControl, arn str
 
 // sdkConfiguration returns a configuration with role and a rule with destinations.
 func sdkConfiguration(role string, destinations ...string) *types.TableReplicationConfiguration {
-	rule := types.TableReplicationRule{}
+	rule := types.TableReplicationRule{Destinations: []types.ReplicationDestination{}}
 	for _, d := range destinations {
 		rule.Destinations = append(rule.Destinations, types.ReplicationDestination{DestinationTableBucketARN: aws.String(d)})
 	}
@@ -121,20 +121,14 @@ var tableReplicationAPI = map[string]nativetest.Call{
 		}),
 		Unclear: "The page doesn't say what the call returns for a table with no table-level configuration, or one " +
 			"that only its table bucket's configuration replicates; the fake returns NotFoundException, and the handler " +
-			"treats it as no configuration. TableArn's pattern has no anchors; the fake applies it to the whole ARN.",
+			"treats it as no configuration. TableArn's pattern has no anchors; the fake applies it to the whole ARN. The " +
+			"SDK rejects a call without tableArn before it sends it, and so does the fake.",
 	},
 	"PutTableReplication": {
 		Doc: apiReference + "API_s3Buckets_PutTableReplication.html",
 		Rules: append(tableArnRules(func(ctx context.Context, store *awsfake.CloudControl, arn string) error {
 			return putReplication(ctx, store, arn, validPut(), nil)
 		}),
-			nativetest.Rule{
-				Rule: "configuration is required",
-				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
-					return putReplication(ctx, store, tableArn, nil, nil)
-				},
-				Code: badRequestCode,
-			},
 			nativetest.Rule{
 				Rule: "role is 20 to 2048 characters",
 				Doc:  apiReference + "API_s3Buckets_TableReplicationConfiguration.html",
@@ -226,7 +220,9 @@ var tableReplicationAPI = map[string]nativetest.Call{
 			"configuration exists; the fake replaces it, and the handler sends one whenever it updates. The page names " +
 			"s3tables:GetTableMaintenanceConfig and s3tables:PutTableMaintenanceConfig, which the schema lists by their " +
 			"IAM action names, GetTableMaintenanceConfiguration and PutTableMaintenanceConfiguration. The patterns have " +
-			"no anchors; the fake applies them to the whole value.",
+			"no anchors; the fake applies them to the whole value. The SDK rejects a call without tableArn, " +
+			"configuration, role, rules, destinations, or destinationTableBucketARN before it sends it, and so does the " +
+			"fake.",
 	},
 	"DeleteTableReplication": {
 		Doc: apiReference + "API_s3Buckets_DeleteTableReplication.html",
@@ -237,16 +233,6 @@ var tableReplicationAPI = map[string]nativetest.Call{
 			}
 			return deleteReplication(ctx, store, arn, version)
 		}),
-			nativetest.Rule{
-				Rule: "versionToken is required",
-				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
-					if _, err := putThenGet(ctx, store); err != nil {
-						return err
-					}
-					return deleteReplication(ctx, store, tableArn, nil)
-				},
-				Code: badRequestCode,
-			},
 			nativetest.Rule{
 				Rule: "a version token from an earlier GetTableReplication call is rejected once the configuration changed",
 				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
@@ -287,6 +273,7 @@ var tableReplicationAPI = map[string]nativetest.Call{
 		),
 		Unclear: "The page doesn't name the error for a table with no configuration, or for a version token of an " +
 			"older configuration; the fake returns NotFoundException and ConflictException. Replicas already made stay " +
-			"in their table buckets, so the fake keeps nothing about them.",
+			"in their table buckets, so the fake keeps nothing about them. The SDK rejects a call without tableArn or " +
+			"versionToken before it sends it, and so does the fake.",
 	},
 }

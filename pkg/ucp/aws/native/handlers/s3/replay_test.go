@@ -17,12 +17,15 @@ limitations under the License.
 package s3
 
 import (
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3control"
+	"github.com/stretchr/testify/require"
 
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
@@ -64,4 +67,36 @@ func Test_Replay_MultiRegionAccessPointRoutes(t *testing.T) {
 		WantUpdated: routes(0, 100, true),
 		Poll:        time.Second,
 	}.Run(t)
+}
+
+// Test_Replay_S3Errors checks how the handlers report S3's errors, which the SDK reads without a fault: a 4xx is a
+// request S3 rejected and applied none of, a not found error on a read or a reset means AWS has no such resource, and
+// a 5xx leaves the outcome unknown.
+func Test_Replay_S3Errors(t *testing.T) {
+	s := awsreplay.New(t, "testdata/errors.json")
+	cfg := s.Config(t.Context())
+	payments := NewBucketRequestPayment(s3.NewFromConfig(cfg))
+	routes := NewMultiRegionAccessPointRoutes(s3control.NewFromConfig(cfg))
+	bucket, mrap := s.Input("RADIUS_REC_S3_BUCKET"), s.Input("RADIUS_REC_S3_MRAP_ARN")
+	ctx := t.Context()
+
+	_, err := payments.Create(ctx, native.CreateRequest{Region: awsreplay.Region, Properties: payment(bucket, "Requester")})
+	requireRejected(t, err, "AccessDenied")
+
+	_, err = payments.Read(ctx, awsreplay.Region, bucket)
+	require.ErrorIs(t, err, native.ErrNotFound)
+
+	err = payments.Update(ctx, native.UpdateRequest{Region: awsreplay.Region, Identifier: bucket, Desired: payment(bucket, "Requester")})
+	var failure *native.Failure
+	require.Error(t, err)
+	require.False(t, errors.As(err, &failure), "a server error leaves the outcome unknown")
+
+	err = routes.Update(ctx, native.UpdateRequest{Region: awsreplay.Region, Identifier: mrap, Desired: map[string]any{"Mrap": mrap, "Routes": []any{
+		map[string]any{"Bucket": s.Input("RADIUS_REC_S3_MRAP_BUCKET_US_WEST_2"), "TrafficDialPercentage": 0},
+		map[string]any{"Bucket": s.Input("RADIUS_REC_S3_MRAP_BUCKET_US_EAST_1"), "TrafficDialPercentage": 0},
+	}}})
+	requireRejected(t, err, "InvalidRequest")
+
+	_, err = routes.Read(ctx, awsreplay.Region, mrap)
+	require.ErrorIs(t, err, native.ErrNotFound)
 }

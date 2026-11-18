@@ -21,11 +21,13 @@ package s3tables
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3tables"
 	"github.com/aws/aws-sdk-go-v2/service/s3tables/types"
+	"github.com/aws/smithy-go"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -121,6 +123,11 @@ func (h *TableReplication) put(ctx context.Context, region string, table string,
 		Configuration: configuration,
 		VersionToken:  version,
 	}, inRegion(region))
+	// The SDK checks the configuration's required values, such as Role, before it sends anything.
+	var params smithy.InvalidParamsError
+	if errors.As(err, &params) {
+		return &native.Failure{Message: "Configuration doesn't have the form S3 Tables takes: " + err.Error(), ClientError: true, Outcome: native.OutcomeRejected}
+	}
 	return err
 }
 

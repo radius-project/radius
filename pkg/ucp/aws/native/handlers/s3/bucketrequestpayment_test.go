@@ -20,7 +20,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/s3control"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
@@ -121,4 +125,15 @@ func Test_ListAndProgress(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, progress.Done)
 	}
+}
+
+func Test_Fake_RequiredParameters(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	var params smithy.InvalidParamsError
+	_, err := api.GetBucketRequestPayment(t.Context(), &s3.GetBucketRequestPaymentInput{})
+	require.ErrorAs(t, err, &params)
+	_, err = api.PutBucketRequestPayment(t.Context(), &s3.PutBucketRequestPaymentInput{RequestPaymentConfiguration: &s3types.RequestPaymentConfiguration{Payer: s3types.PayerRequester}})
+	require.ErrorAs(t, err, &params)
+	_, err = api.SubmitMultiRegionAccessPointRoutes(t.Context(), &s3control.SubmitMultiRegionAccessPointRoutesInput{AccountId: aws.String(account), Mrap: aws.String(mrapARN(testMrap))}, func(o *s3control.Options) { o.Region = region })
+	require.ErrorAs(t, err, &params)
 }

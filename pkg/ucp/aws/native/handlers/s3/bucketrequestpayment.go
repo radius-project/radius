@@ -84,7 +84,7 @@ func (h *BucketRequestPayment) Identifier(properties map[string]any) (string, er
 func (h *BucketRequestPayment) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
 	out, err := h.api.GetBucketRequestPayment(ctx, &s3.GetBucketRequestPaymentInput{Bucket: aws.String(identifier)}, inRegion(region))
 	if err != nil {
-		return nil, awsapi.NotFound(err, noSuchBucketCode)
+		return nil, notFoundOrRejected(err, noSuchBucketCode)
 	}
 	properties := map[string]any{"Bucket": identifier}
 	if out.Payer != "" {
@@ -118,7 +118,7 @@ func (h *BucketRequestPayment) Create(ctx context.Context, request native.Create
 		return "", err
 	}
 	if err := h.put(ctx, request.Region, bucket, payer); err != nil {
-		return "", err
+		return "", rejectedByS3(err)
 	}
 	return bucket, nil
 }
@@ -129,13 +129,13 @@ func (h *BucketRequestPayment) Update(ctx context.Context, request native.Update
 	if err != nil {
 		return err
 	}
-	return h.put(ctx, request.Region, request.Identifier, payer)
+	return rejectedByS3(h.put(ctx, request.Region, request.Identifier, payer))
 }
 
 // Reset sets the payer of the bucket back to BucketOwner, S3's default. It returns ErrNotFound when S3 has no such
 // bucket.
 func (h *BucketRequestPayment) Reset(ctx context.Context, region string, identifier string) error {
-	return awsapi.NotFound(h.put(ctx, region, identifier, types.PayerBucketOwner), noSuchBucketCode)
+	return notFoundOrRejected(h.put(ctx, region, identifier, types.PayerBucketOwner), noSuchBucketCode)
 }
 
 // Delete resets the setting, as Reset does. The type's metadata makes UCP call Reset.

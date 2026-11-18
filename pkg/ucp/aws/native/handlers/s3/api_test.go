@@ -96,10 +96,20 @@ var bucketRequestPaymentAPI = map[string]nativetest.Call{
 				},
 				Code: noSuchBucketCode,
 			},
+			{
+				Rule: "a call whose ExpectedBucketOwner isn't the bucket's owner fails with 403 Forbidden",
+				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
+					_, err := newFakeAPI(store).GetBucketRequestPayment(ctx, &s3.GetBucketRequestPaymentInput{Bucket: aws.String("app-bucket"), ExpectedBucketOwner: aws.String("210987654321")})
+					return err
+				},
+				Code: accessDeniedCode,
+			},
 		},
 		Unclear: "The page says only the bucket owner can call it, without naming the error; the fake returns " +
-			"AccessDenied, the code S3's error list gives for 403 Forbidden. It isn't supported for directory buckets, " +
-			"without an error named; the fake has none. ExpectedBucketOwner isn't sent.",
+			"AccessDenied, the code S3's error list gives for 403 Forbidden, as for an ExpectedBucketOwner that isn't the " +
+			"owner. It isn't supported for directory buckets, without an error named; the fake has none. The handler " +
+			"doesn't send ExpectedBucketOwner. The SDK rejects a call without Bucket before it sends it, and so does the " +
+			"fake.",
 	},
 	"PutBucketRequestPayment": {
 		Doc: apiReference + "API_PutBucketRequestPayment.html",
@@ -134,6 +144,21 @@ var bucketRequestPaymentAPI = map[string]nativetest.Call{
 				Code: noSuchBucketCode,
 			},
 			{
+				Rule: "a call whose ExpectedBucketOwner isn't the bucket's owner fails with 403 Forbidden, and changes nothing",
+				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
+					_, err := newFakeAPI(store).PutBucketRequestPayment(ctx, &s3.PutBucketRequestPaymentInput{
+						Bucket:                      aws.String("app-bucket"),
+						ExpectedBucketOwner:         aws.String("210987654321"),
+						RequestPaymentConfiguration: &s3types.RequestPaymentConfiguration{Payer: s3types.PayerRequester},
+					})
+					if payer, _ := getPayer(ctx, store, "app-bucket"); payer != s3types.PayerBucketOwner {
+						return fmt.Errorf("the rejected call set the payer to %q", payer)
+					}
+					return err
+				},
+				Code: accessDeniedCode,
+			},
+			{
 				Rule: "the call replaces the payer, so setting BucketOwner again turns Requester Pays off",
 				Check: func(ctx context.Context, store *awsfake.CloudControl) error {
 					for _, payer := range []s3types.Payer{s3types.PayerRequester, s3types.PayerBucketOwner} {
@@ -156,7 +181,9 @@ var bucketRequestPaymentAPI = map[string]nativetest.Call{
 			"a body that doesn't validate against its schema. It says only the bucket owner can set the payer, without " +
 			"naming the error; the fake returns AccessDenied. Requester Pays buckets can't be a logging target, or log " +
 			"to one, but the page doesn't say that PutBucketRequestPayment checks it, so the fake doesn't. It isn't " +
-			"supported for directory buckets, without an error named; the fake has none.",
+			"supported for directory buckets, without an error named; the fake has none. The page gives 403 Forbidden for " +
+			"an ExpectedBucketOwner that isn't the owner; the fake returns AccessDenied. The SDK rejects a call without " +
+			"Bucket before it sends it, and so does the fake.",
 	},
 }
 
@@ -377,6 +404,7 @@ var routesAPI = map[string]nativetest.Call{
 			"the code; the fake returns MethodNotAllowed, S3's code for 405, for any route update of one. It gives 409 " +
 			"for two updates of one Multi-Region Access Point at once without naming the code; the fake handles one call " +
 			"at a time, and the handler sends one call per change. AWS can take up to 2 minutes to route by a new " +
-			"configuration; the fake reads it back at once.",
+			"configuration; the fake reads it back at once. The SDK rejects a call without RouteUpdates before it sends " +
+			"it, and so does the fake.",
 	},
 }
