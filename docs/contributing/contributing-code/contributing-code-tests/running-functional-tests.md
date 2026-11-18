@@ -236,6 +236,8 @@ Newly installed Gateway API resources may not appear immediately in Kubernetes A
 
 The runner uses its existing certificate-covered `radius-local-registry` alias for Bicep extension and recipe publication and consumption. With OCI enabled in the root config, native Bicep publication treats `localhost` as HTTP; using the alias keeps the TLS-only registry working without disabling certificate validation. Docker image pushes and the HTTPS readiness probe retain their localhost endpoints.
 
+Temporary test configs also enable OCI and read the public AWS extension from `br:ghcr.io/radius-project/bicep-types-aws:edge`. Radius and `testresources` continue to use the locally built extensions; recipe/image registries and caller-provided configs restored after the run are unchanged.
+
 If this preparation fails, inspect the restore/build error and confirm that the setup completed and the local registry is running. Tests do not start after a failed extension preparation. Keep the same checkout commit between setup and test commands, because the published extension tags are derived from that commit.
 
 ### An older runner left a fixture lock

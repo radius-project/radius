@@ -124,6 +124,9 @@ yq)
 bicep)
     case "${1:-}" in
     restore)
+        grep -F '"ociEnabled": true' test/bicepconfig.json >/dev/null
+        grep -F '"aws": "br:ghcr.io/radius-project/bicep-types-aws:edge"' \
+            test/bicepconfig.json >/dev/null
         grep -F '"radius": "br:radius-local-registry:5443/radius:deadbeef1"' \
             test/bicepconfig.json >/dev/null
         grep -F '"testresources": "br:radius-local-registry:5443/testresources:deadbeef1"' \
@@ -251,6 +254,10 @@ make)
             echo "recipes published without the fixture lock" >&2
             exit 1
         }
+        grep -F '"ociEnabled": true' \
+            test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json >/dev/null
+        grep -F '"aws": "br:ghcr.io/radius-project/bicep-types-aws:edge"' \
+            test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json >/dev/null
         grep -F '"radius": "br:radius-local-registry:5443/radius:deadbeef1"' \
             test/bicepconfig.json >/dev/null
         grep -F '"testresources": "br:radius-local-registry:5443/testresources:deadbeef1"' \

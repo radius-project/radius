@@ -543,9 +543,12 @@ prepare_configs() {
         fi
         cat >"${config}" <<EOF
 {
+  "experimentalFeaturesEnabled": {
+    "ociEnabled": true
+  },
   "extensions": {
     "radius": "br:${REGISTRY}:${REGISTRY_PORT}/radius:${TAG}",
-    "aws": "br:biceptypes.azurecr.io/aws:latest",
+    "aws": "br:ghcr.io/radius-project/bicep-types-aws:edge",
     "testresources": "br:${REGISTRY}:${REGISTRY_PORT}/testresources:${TAG}"
   }
 }
