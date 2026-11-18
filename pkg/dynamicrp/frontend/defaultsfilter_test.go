@@ -93,6 +93,7 @@ func TestMakeUpdateFilters_DefaultsBeforeEncryption(t *testing.T) {
 	resource := &datamodel.DynamicResource{}
 	filters := makeUpdateFilters(
 		makeDefaultsFilter(ucpClient),
+		makeStatusFilter(),
 		makeValidationFilter(ucpClient),
 		makeEncryptionFilter(ucpClient, createTestHandler(t)),
 	)

@@ -160,6 +160,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 
 	// Clone existing output resources so we can diff them later.
 	previousOutputResources := c.copyOutputResources(resource)
+	previousOutputs := slices.Clone(resource.OutputResources())
 
 	// Load configuration
 	metadata := recipes.ResourceMetadata{EnvironmentID: resource.ResourceMetadata().EnvironmentID(), ApplicationID: resource.ResourceMetadata().ApplicationID(), ResourceID: resource.GetBaseResource().ID}
@@ -174,9 +175,14 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	// Now we're ready to process recipes (if needed).
 	recipeDataModel, supportsRecipes := any(resource).(datamodel.RecipeDataModel)
 	var recipeOutput *recipes.RecipeOutput
+	// cleanupErr is set when the recipe deployed but deleting resources from the previous deployment failed.
+	// The new output is still saved, and the operation fails after the save.
+	var cleanupErr *recipes.RecipeError
 	if supportsRecipes && recipeDataModel.GetRecipe() != nil {
 		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated, recipeProperties)
-		if err != nil {
+		if recipeErr, ok := errors.AsType[*recipes.RecipeError](err); ok && recipeOutput != nil && recipeErr.ErrorDetails.Code == recipes.RecipeGarbageCollectionFailed {
+			cleanupErr = recipeErr
+		} else if err != nil {
 			if recipeOutput != nil {
 				if inventoryErr := retainFailedRecipeOutput(resource, recipeOutput); inventoryErr != nil {
 					return ctrl.Result{}, fmt.Errorf("failed to retain cleanup inventory after recipe failure (%v): %w", err, inventoryErr)
@@ -192,6 +198,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		// Now we're ready to process the resource. This will handle the updates to any user-visible state.
 		err = c.processor.Process(ctx, resource, processors.Options{RecipeOutput: recipeOutput, RuntimeConfiguration: config.Runtime, UcpClient: c.BaseController.UcpClient()})
 		if err != nil {
+			if recipeOutput != nil {
+				c.saveRecipeOutputResources(ctx, resource, recipeDataModel, recipeOutput, previousOutputs, cleanupErr != nil, req.ResourceID, currentETag, logger)
+			}
 			if redactionCompleted {
 				return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 			}
@@ -203,10 +212,16 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		recipeData := recipeDataModel.GetRecipe()
 		if recipeData != nil {
 			recipeData.DeploymentStatus = util.Success
+			if cleanupErr != nil {
+				recipeData.DeploymentStatus = util.RecipeDeploymentStatus(cleanupErr.DeploymentStatus)
+			}
 			recipeDataModel.SetRecipe(recipeData)
 		}
 		if recipeOutput != nil && recipeOutput.Status != nil {
 			setRecipeStatus(resource, *recipeOutput.Status)
+		}
+		if cleanupErr != nil {
+			keepUndeletedOutputResources(resource, previousOutputs, recipeOutput.UndeletedResources)
 		}
 	}
 
@@ -220,6 +235,11 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 			return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 		}
 		return ctrl.Result{}, err
+	}
+
+	if cleanupErr != nil {
+		logger.Error(cleanupErr, "failed to delete output resources that the recipe no longer returns")
+		return ctrl.NewFailedResult(cleanupErr.ErrorDetails), nil
 	}
 
 	return ctrl.Result{}, err
@@ -451,5 +471,60 @@ func setRecipeStatus[P rpv1.RadiusResourceModel](data P, recipeStatus rpv1.Recip
 	rm := data.ResourceMetadata()
 	status := rm.GetResourceStatus().DeepCopyRecipeStatus()
 	status.Recipe = &recipeStatus
+	rm.SetResourceStatus(status)
+}
+
+// saveRecipeOutputResources saves the output resources of a recipe that deployed when processing its output failed,
+// so a later deployment or delete still finds them. When cleanupFailed is true, the previous output resources that
+// the recipe failed to delete are kept too. Saving is best effort: the caller returns the processing error either way.
+func (c *CreateOrUpdateResource[P, T]) saveRecipeOutputResources(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, output *recipes.RecipeOutput, previous []rpv1.OutputResource, cleanupFailed bool, resourceID string, etag string, logger logr.Logger) {
+	// Parse each ID on its own: processing may have failed on an invalid ID, and the valid ones must still be kept.
+	outputResources := []rpv1.OutputResource{}
+	for _, id := range output.Resources {
+		single := &recipes.RecipeOutput{Resources: []string{id}, ProviderResourceIDs: output.ProviderResourceIDs}
+		parsed, err := processors.GetOutputResourcesFromRecipe(single)
+		if err != nil {
+			logger.Error(err, "skipping an invalid output resource of the recipe")
+			continue
+		}
+		outputResources = append(outputResources, parsed...)
+	}
+
+	rm := resource.ResourceMetadata()
+	status := rm.GetResourceStatus()
+	status.OutputResources = outputResources
+	rm.SetResourceStatus(status)
+	if cleanupFailed {
+		keepUndeletedOutputResources(resource, previous, output.UndeletedResources)
+	}
+
+	// Delete skips the recipe for a setup error, so record an execution error.
+	recipe := recipeDataModel.GetRecipe()
+	recipe.DeploymentStatus = util.ExecutionError
+	recipeDataModel.SetRecipe(recipe)
+
+	if err := c.DatabaseClient().Save(ctx, &database.Object{ID: resourceID, Data: resource}, database.WithETag(etag)); err != nil {
+		logger.Error(err, "failed to save the output resources of the recipe")
+	}
+}
+
+// keepUndeletedOutputResources adds the previous output resources that the recipe failed to delete, so a later
+// deployment or delete retries deleting them. Previous output resources that were deleted are not kept, so a later
+// delete can't remove an unrelated resource created with the same ID.
+func keepUndeletedOutputResources[P rpv1.RadiusResourceModel](data P, previous []rpv1.OutputResource, undeleted []string) {
+	rm := data.ResourceMetadata()
+	status := rm.GetResourceStatus()
+	for _, output := range previous {
+		id := output.ID.String()
+		if !slices.Contains(undeleted, id) {
+			continue
+		}
+		kept := slices.ContainsFunc(status.OutputResources, func(current rpv1.OutputResource) bool {
+			return current.ID.String() == id
+		})
+		if !kept {
+			status.OutputResources = append(status.OutputResources, output)
+		}
+	}
 	rm.SetResourceStatus(status)
 }
