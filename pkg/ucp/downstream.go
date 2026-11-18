@@ -42,7 +42,13 @@ func NewDownstreamTransport(config *Config) (http.RoundTripper, error) {
 		}
 		components = append(components, "bicep-de")
 	}
-	transport, err := mtls.NewUpgradeTransport(config.Authorization, http.DefaultTransport, components)
+	endpoints := []string{config.Routing.DefaultDownstreamEndpoint}
+	for _, plane := range config.Initialization.Planes {
+		for _, endpoint := range plane.Properties.ResourceProviders {
+			endpoints = append(endpoints, endpoint)
+		}
+	}
+	transport, err := mtls.NewUpgradeTransport(config.Authorization, http.DefaultTransport, components, endpoints...)
 	if err != nil {
 		return nil, err
 	}
