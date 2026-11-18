@@ -982,7 +982,7 @@ jobs:
         (needs.publish-radius-bicep-extension.result == 'success' ||
          needs.release-preflight.outputs.bicep-locked == 'true')))
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       contents: write
       actions: read
@@ -1010,6 +1010,39 @@ jobs:
           script: |
             const {default: stage} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/stage-release-bicep.mjs`)
             await stage({github, context, core})
+
+      - name: Get immutable Bicep mirror token
+        if: needs.release-preflight.outputs.ghcr-bicep == 'true'
+        id: mirror-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          owner: azure-octo
+          repositories: radius-publisher
+          permission-actions: read
+          permission-contents: write
+
+      - name: Stage immutable ACR mirrors before verification
+        if: needs.release-preflight.outputs.ghcr-bicep == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-mirror-staging
+          PUBLISHER_TOKEN: ${{ steps.mirror-token.outputs.token }}
+        with:
+          script: |
+            const {stageMirrors} = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/promote-release-bicep.mjs`)
+            await stageMirrors({github, core, context,
+              publisherGithub: getOctokit(process.env.PUBLISHER_TOKEN)})
+
+      - name: Retain immutable mirror staging receipt
+        if: always() && needs.release-preflight.outputs.ghcr-bicep == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bicep-mirror-staging-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/bicep-mirror-staging/receipt.json
+          if-no-files-found: warn
+          retention-days: 90
 
   verify-release:
     name: Verify release manifest and staged installation

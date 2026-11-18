@@ -103,18 +103,23 @@ export function releaseBicepConfig(plan, sourceSha, version) {
       })),
       "Invalid legacy Bicep target pair"
     );
-    return {
-      extensions: {
-        radius: `br:biceptypes.azurecr.io/radius:${version}`,
-        aws: `br:biceptypes.azurecr.io/aws:${version}`
-      }
-    };
+  } else {
+    plannedBicepExtensions(plan, sourceSha);
   }
-  const [aws, radius] = plannedBicepExtensions(plan, sourceSha);
   return {
-    experimentalFeaturesEnabled: { ociEnabled: true },
-    extensions: { radius: `br:${radius.reference}`, aws: `br:${aws.reference}` }
+    extensions: {
+      radius: `br:biceptypes.azurecr.io/radius:${version}`,
+      aws: `br:biceptypes.azurecr.io/aws:${version}`
+    }
   };
+}
+
+export function bicepExtensionMirrors(plan, sourceSha, lock) {
+  validateBicepExtensionLock(plan, sourceSha, lock);
+  return lock.artifacts.map((record) => ({
+    ...record,
+    reference: `biceptypes.azurecr.io/${record.name === "aws-bicep-types" ? "aws" : "radius"}:${record.version}`
+  }));
 }
 
 export function validateBicepExtensionLock(plan, sourceSha, lock) {

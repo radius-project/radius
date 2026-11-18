@@ -259,6 +259,8 @@ verify_bicep_contract() {
             [.steps[] | select(.name == $name)] |
             length == 1 and all(.[]; exact_if($condition));
         .jobs as $jobs |
+        $jobs."build-and-push-bicep-types" as $staging |
+        ($staging.steps | map(.name)) as $stageSteps |
         $jobs."finalize-release" as $finalize |
         ($finalize.steps | map(.name)) as $steps |
         "needs.release-preflight.outputs.ghcr-bicep == '\''true'\''" as $ghcr |
@@ -312,7 +314,24 @@ verify_bicep_contract() {
             length == 1 and all(.[]; .env.BICEP_EXTENSION_TAG == "${{ env.REL_VERSION }}" and
                 .env.BICEP_RELEASE_PLAN == ".github/release-plans/${{ github.ref_name }}.yaml")) and
         ($jobs."build-and-push-bicep-types" | step(
-            "Authenticate and retain immutable extension pair"; $ghcr))
+            "Authenticate and retain immutable extension pair"; $ghcr)) and
+        ($staging | step("Get immutable Bicep mirror token"; $ghcr)) and
+        ($staging | step("Stage immutable ACR mirrors before verification"; $ghcr)) and
+        ($staging.steps | any(.name == "Get immutable Bicep mirror token" and
+            .with.owner == "azure-octo" and .with.repositories == "radius-publisher" and
+            .with."permission-actions" == "read" and .with."permission-contents" == "write")) and
+        $staging.permissions."id-token" == null and
+        $staging.permissions.packages == "read" and
+        ($staging | tojson | test("BICEPTYPES_|azure/login|azure-oidc-login|az acr|oras cp") | not) and
+        ($stageSteps | index("Authenticate and retain immutable extension pair")) <
+            ($stageSteps | index("Get immutable Bicep mirror token")) and
+        ($stageSteps | index("Get immutable Bicep mirror token")) <
+            ($stageSteps | index("Stage immutable ACR mirrors before verification")) and
+        ($staging.steps | any(.name == "Stage immutable ACR mirrors before verification" and
+            (.with.script | contains("stageMirrors({github, core, context,")) and
+            (.with.script | contains("publisherGithub: getOctokit(process.env.PUBLISHER_TOKEN)")) and
+            .env.PUBLISHER_TOKEN == "${{ steps.mirror-token.outputs.token }}" and
+            .env.INPUT_DIRECTORY == "${{ runner.temp }}/bicep-mirror-staging"))
     ' >/dev/null || reject "does not enforce the publication gate for both Bicep contracts"
 }
 

@@ -6,7 +6,9 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { tool } from "./bicep-types.mjs";
-import { existingManifest } from "./publish-release-bicep.mjs";
+import { approvedRelease, existingManifest } from "./publish-release-bicep.mjs";
+import { readBicepExtensionLock } from "./release-assets.mjs";
+import { readAwsEvidence } from "./collect-release-bicep.mjs";
 import { verifyBicepExtensionOutput } from "./release-bicep-extensions.mjs";
 import { verifyPair } from "./stage-release-bicep.mjs";
 import monitorRemoteWorkflow from "./monitor-remote-workflow.mjs";
@@ -214,20 +216,34 @@ export function releaseCopyRequests(plan, sourceSha, lock) {
   });
 }
 
-export async function finalizeExtensions({
-  github,
-  core,
-  plan,
-  sourceSha,
-  lock,
-  manifest,
-  channel,
-  latest,
-  directory,
-  monitor = monitorRemoteWorkflow,
-  run = tool,
-  now = Date.now
-}) {
+export function finalizeExtensions(options) {
+  return publishExtensions(options, true);
+}
+
+export function stageExtensionMirrors(options) {
+  return publishExtensions(
+    { ...options, channel: "false", latest: "false" },
+    false
+  );
+}
+
+async function publishExtensions(
+  {
+    github,
+    core,
+    plan,
+    sourceSha,
+    lock,
+    manifest,
+    channel,
+    latest,
+    directory,
+    monitor = monitorRemoteWorkflow,
+    run = tool,
+    now = Date.now
+  },
+  finalize
+) {
   const deadline = now() + 24 * 60_000;
   const remaining = () => {
     const milliseconds = deadline - now();
@@ -314,20 +330,22 @@ export async function finalizeExtensions({
     );
   };
   try {
-    validatePublicationManifest(manifest, plan.version, sourceSha);
-    assert.equal(manifest.releaseType, plan.releaseType);
-    assert.equal(manifest.channel, plan.channel);
-    assert.deepEqual(
-      manifest.observed?.downstream?.bicepExtensionLock,
-      lock,
-      "Approved manifest and paired lock differ"
-    );
-    verifyBicepExtensionOutputs(
-      plan,
-      sourceSha,
-      lock,
-      manifest.observed.downstream.ociArtifacts
-    );
+    if (finalize) {
+      validatePublicationManifest(manifest, plan.version, sourceSha);
+      assert.equal(manifest.releaseType, plan.releaseType);
+      assert.equal(manifest.channel, plan.channel);
+      assert.deepEqual(
+        manifest.observed?.downstream?.bicepExtensionLock,
+        lock,
+        "Approved manifest and paired lock differ"
+      );
+      verifyBicepExtensionOutputs(
+        plan,
+        sourceSha,
+        lock,
+        manifest.observed.downstream.ociArtifacts
+      );
+    }
     promotionTargets(plan, lock, channel, latest);
     await verifyPair(plan, sourceSha, lock, (args) => execute(args));
     await writeFile(registryConfig, JSON.stringify({ auths: {} }));
@@ -364,6 +382,10 @@ export async function finalizeExtensions({
       await readback(destination, record.digest);
       entry.status = "verified";
       await save();
+    }
+    if (!finalize) {
+      receipt.status = "complete";
+      return receipt;
     }
     if (channel === "true") {
       for (const request of promotionRequests(
@@ -404,6 +426,51 @@ export async function finalizeExtensions({
   } finally {
     await save();
   }
+}
+
+export async function stageMirrors({
+  github,
+  core,
+  context,
+  publisherGithub,
+  env = process.env,
+  run = tool
+}) {
+  assert.ok(publisherGithub, "Private publisher client is required");
+  const directory = core.getInput("DIRECTORY", { required: true });
+  await mkdir(directory, { recursive: true });
+  const { source } = await approvedRelease(
+    { github, context },
+    directory,
+    env,
+    run
+  );
+  const plan = JSON.parse(
+    await run([
+      "yq",
+      "-o=json",
+      ".",
+      `.github/release-plans/${context.ref.slice("refs/tags/".length)}.yaml`
+    ])
+  );
+  const lock = await readBicepExtensionLock(github, plan.version, { core });
+  assert.ok(lock, "Immutable Bicep pair is required before mirror staging");
+  const aws = await readAwsEvidence(github, plan, source.commit);
+  assert.ok(aws, "Trusted AWS evidence is required before mirror staging");
+  assert.deepEqual(
+    lock.artifacts[0],
+    aws.artifact,
+    "Paired AWS lock differs from controller evidence"
+  );
+  return stageExtensionMirrors({
+    github: publisherGithub,
+    core,
+    plan,
+    sourceSha: source.commit,
+    lock,
+    directory,
+    run
+  });
 }
 
 export default async function finalize({ github, core, context }) {
