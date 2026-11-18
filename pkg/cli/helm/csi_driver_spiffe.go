@@ -224,7 +224,11 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 		return nil, err
 	}
 	if rel != nil {
-		if err := checkCSIDriverRename(ctx, kubeClient, csiDriverNameOf(rel), settings.CSIDriverName); err != nil {
+		installed, err := i.csiDriverSPIFFENames(ctx, kubeClient, rel, chartOptions, kubeContext)
+		if err != nil {
+			return nil, err
+		}
+		if err := checkCSIDriverRename(ctx, kubeClient, installed, settings.CSIDriverName); err != nil {
 			return nil, err
 		}
 	}
@@ -734,8 +738,13 @@ func (i *Impl) uninstallCSIDriverSPIFFE(ctx context.Context, options ClusterOpti
 
 	kept.DriverName = csiDriverNameOf(rel)
 	kubeClient, err := i.csiDriverSPIFFEClient(kubeContext)
+	var names []string
 	if err == nil {
-		kept.Pods, err = i.waitForCSIDriverSPIFFEPods(ctx, kubeClient, kept.DriverName)
+		names, err = i.csiDriverSPIFFENames(ctx, kubeClient, rel, chartOptions, kubeContext)
+	}
+	if err == nil {
+		kept.DriverName = strings.Join(names, ", ")
+		kept.Pods, err = i.waitForCSIDriverSPIFFEPods(ctx, kubeClient, names)
 	}
 	if err != nil {
 		kept.Reason = fmt.Sprintf("could not check for Pods that use csi-driver-spiffe: %v", err)
@@ -760,9 +769,33 @@ func csiDriverNameOf(rel *releasev1.Release) string {
 	return SPIFFECSIDriverNameDefault
 }
 
-// waitForCSIDriverSPIFFEPods waits until no Pod in the cluster mounts a volume from CSI driver driverName, and returns
-// the namespace/name of the Pods that still do when the wait times out.
-func (i *Impl) waitForCSIDriverSPIFFEPods(ctx context.Context, kubeClient kubernetes.Interface, driverName string) ([]string, error) {
+// csiDriverSPIFFENames returns, sorted, every CSI driver name that the csi-driver-spiffe release rel may still serve:
+// the name on its latest revision, the name on the revision a Helm upgrade starts from when the latest revision is
+// not deployed, and the name of each CSIDriver object the release created. A failed upgrade can record a new name
+// while the driver still runs under the old one, so the latest revision alone can hide Pods that need the driver.
+func (i *Impl) csiDriverSPIFFENames(ctx context.Context, kubeClient kubernetes.Interface, rel *releasev1.Release, chartOptions ChartOptions, kubeContext string) ([]string, error) {
+	names := []string{csiDriverNameOf(rel)}
+	baseline, err := NewHelmAction(i.Helm).upgradeBaseline(kubeContext, chartOptions.ReleaseName, chartOptions.Namespace, rel)
+	if err != nil {
+		return nil, err
+	}
+	names = append(names, csiDriverNameOf(baseline))
+	drivers, err := kubeClient.StorageV1().CSIDrivers().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list CSIDrivers: %w", err)
+	}
+	for idx := range drivers.Items {
+		if isOwnedByRelease(drivers.Items[idx].ObjectMeta, chartOptions) {
+			names = append(names, drivers.Items[idx].Name)
+		}
+	}
+	slices.Sort(names)
+	return slices.Compact(names), nil
+}
+
+// waitForCSIDriverSPIFFEPods waits until no Pod in the cluster mounts a volume from any of the CSI drivers
+// driverNames, and returns the namespace/name of the Pods that still do when the wait times out.
+func (i *Impl) waitForCSIDriverSPIFFEPods(ctx context.Context, kubeClient kubernetes.Interface, driverNames []string) ([]string, error) {
 	timeout := i.csiDriverSPIFFEPodWaitTimeout
 	if timeout == 0 {
 		timeout = csiDriverSPIFFEPodWaitTimeoutDefault
@@ -781,7 +814,7 @@ func (i *Impl) waitForCSIDriverSPIFFEPods(ctx context.Context, kubeClient kubern
 		}
 		remaining = remaining[:0]
 		for idx := range pods.Items {
-			if podUsesCSIDriver(&pods.Items[idx], driverName) {
+			if podUsesCSIDriver(&pods.Items[idx], driverNames...) {
 				remaining = append(remaining, pods.Items[idx].Namespace+"/"+pods.Items[idx].Name)
 			}
 		}
@@ -797,33 +830,41 @@ func (i *Impl) waitForCSIDriverSPIFFEPods(ctx context.Context, kubeClient kubern
 	return remaining, err
 }
 
-// checkCSIDriverRename fails when the planned CSI driver name differs from the installed one while Pods still mount
-// volumes from the installed driver. Renaming re-registers the driver under the new name, so kubelet could no longer
+// checkCSIDriverRename fails when the planned CSI driver name differs from a name the driver is installed under while
+// Pods still mount volumes from it. Renaming re-registers the driver under the new name, so kubelet could no longer
 // unmount those volumes and the Pods would stay Terminating.
-func checkCSIDriverRename(ctx context.Context, kubeClient kubernetes.Interface, installed, planned string) error {
-	if installed == planned {
+func checkCSIDriverRename(ctx context.Context, kubeClient kubernetes.Interface, installed []string, planned string) error {
+	var renamed []string
+	for _, name := range installed {
+		if name != planned {
+			renamed = append(renamed, name)
+		}
+	}
+	if len(renamed) == 0 {
 		return nil
 	}
 	pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to list Pods that use CSI driver %s: %w", installed, err)
+		return fmt.Errorf("failed to list Pods that use CSI driver %s: %w", strings.Join(renamed, ", "), err)
 	}
-	var using []string
-	for idx := range pods.Items {
-		if podUsesCSIDriver(&pods.Items[idx], installed) {
-			using = append(using, pods.Items[idx].Namespace+"/"+pods.Items[idx].Name)
+	for _, name := range renamed {
+		var using []string
+		for idx := range pods.Items {
+			if podUsesCSIDriver(&pods.Items[idx], name) {
+				using = append(using, pods.Items[idx].Namespace+"/"+pods.Items[idx].Name)
+			}
+		}
+		if len(using) > 0 {
+			return clierrors.Message("Radius stopped before changing the cluster because it would rename CSI driver %s to %s while %d Pods still mount volumes from it (e.g. %s). Kubelet could not unmount those volumes after the rename. Keep global.rbac.spiffe.csiDriverName set to %q, or uninstall Radius first so that no Pod uses the driver, and then run the command again.",
+				name, planned, len(using), using[0], name)
 		}
 	}
-	if len(using) == 0 {
-		return nil
-	}
-	return clierrors.Message("Radius stopped before changing the cluster because it would rename CSI driver %s to %s while %d Pods still mount volumes from it (e.g. %s). Kubelet could not unmount those volumes after the rename. Keep global.rbac.spiffe.csiDriverName set to %q, or uninstall Radius first so that no Pod uses the driver, and then run the command again.",
-		installed, planned, len(using), using[0], installed)
+	return nil
 }
 
-func podUsesCSIDriver(pod *corev1.Pod, driverName string) bool {
+func podUsesCSIDriver(pod *corev1.Pod, driverNames ...string) bool {
 	for _, volume := range pod.Spec.Volumes {
-		if volume.CSI != nil && volume.CSI.Driver == driverName {
+		if volume.CSI != nil && slices.Contains(driverNames, volume.CSI.Driver) {
 			return true
 		}
 	}
