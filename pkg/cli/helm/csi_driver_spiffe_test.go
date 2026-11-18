@@ -1149,10 +1149,10 @@ spec:
 	mode, err := installedAuthzMode(options)
 	require.NoError(t, err)
 	require.Equal(t, authz.ModeEnforce, mode)
-	mode, found, err := rolledBackAuthzMode([]*releasev1.Release{{Version: 7, Chart: selected, Name: name, Namespace: ns}}, 7)
+	historicalValues, historicalSettings, err := rollbackChartValues([]*releasev1.Release{{Version: 7, Chart: selected, Name: name, Namespace: ns}}, 7)
 	require.NoError(t, err)
-	require.True(t, found)
-	require.Equal(t, authz.ModeEnforce, mode)
+	require.NotNil(t, historicalValues)
+	require.Equal(t, authz.ModeEnforce, historicalSettings.mode)
 }
 
 // A foreign csi-driver-spiffe stops install and upgrade before they touch cert-manager or any release.

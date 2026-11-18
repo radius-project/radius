@@ -124,36 +124,31 @@ func installedAuthzMode(options ClusterOptions) (authz.Mode, error) {
 
 // waitForRolledBackUCPAPIService waits for the UCP APIService after rad rolls Radius back to revision of history.
 func (i *Impl) waitForRolledBackUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
-	mode, found, err := rolledBackAuthzMode(history, revision)
-	if err != nil || !found {
+	values, target, err := rollbackChartValues(history, revision)
+	if err != nil || values == nil {
 		return err
 	}
-	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode)
+	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, target.mode)
 }
 
 // stageRolledBackUCPAPIServerCA stages radius-apiserver-ca from the manifest of revision of history before rad rolls
 // Radius back to it.
 func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
-	mode, found, err := rolledBackAuthzMode(history, revision)
-	if err != nil || !found {
+	values, target, err := rollbackChartValues(history, revision)
+	if err != nil || values == nil {
 		return err
 	}
-	current, found, err := rolledBackAuthzMode(history, latestRevision(history))
+	currentValues, current, err := rollbackChartValues(history, latestRevision(history))
 	if err != nil {
 		return err
 	}
-	if !found {
-		current = authz.ModeOff
+	if currentValues == nil {
+		current.mode = authz.ModeOff
 	}
-	for _, rel := range history {
-		if rel != nil && rel.Version == revision {
-			if err := checkUCPAPIServerCertificateTransition(current, mode, rel.Config); err != nil {
-				return err
-			}
-			break
-		}
+	if err := checkUCPAPIServerCertificateTransition(current.mode, target.mode, values); err != nil {
+		return err
 	}
-	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, current, mode, renderRadiusRollback(history, revision))
+	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, current.mode, target.mode, renderRadiusRollback(history, revision))
 }
 
 // latestRevision returns the newest revision of history, which is the release Helm rolls back from.
@@ -167,15 +162,15 @@ func latestRevision(history []*releasev1.Release) int {
 	return latest
 }
 
-func rolledBackAuthzMode(history []*releasev1.Release, revision int) (authz.Mode, bool, error) {
+// rollbackChartValues returns nil values when history has no matching revision.
+func rollbackChartValues(history []*releasev1.Release, revision int) (map[string]any, chartAuthSettings, error) {
 	for _, rel := range history {
 		if rel == nil || rel.Version != revision {
 			continue
 		}
-		_, settings, err := resolveEffectiveChartValues(rel.Chart, rel.Namespace, rel.Name, rel.Config, nil, false)
-		return settings.mode, err == nil, err
+		return resolveEffectiveChartValues(rel.Chart, rel.Namespace, rel.Name, rel.Config, nil, false)
 	}
-	return "", false, nil
+	return nil, chartAuthSettings{}, nil
 }
 
 const ucpAPIServiceNoCABundle = "it has no CA bundle"
