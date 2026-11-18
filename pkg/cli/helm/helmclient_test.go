@@ -638,6 +638,11 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 	t.Parallel()
 
 	dryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
+	// The cert-manager in namespace security was not installed by rad, so the operator chose its controller's user.
+	dryRunWithRequesters := map[string]any{"global": map[string]any{"rbac": map[string]any{
+		"dryRun":      true,
+		"certManager": map[string]any{"requesters": []any{"system:serviceaccount:security:cert-manager"}},
+	}}}
 	tests := []struct {
 		name     string
 		deployed map[string]any
@@ -645,7 +650,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 		setArgs  []string
 		want     string
 	}{
-		{name: "deployed dry run with failed off", deployed: dryRun, failed: map[string]any{}, want: "dryRun"},
+		{name: "deployed dry run with failed off", deployed: dryRunWithRequesters, failed: map[string]any{}, want: "dryRun"},
 		{name: "deployed off with failed dry run", deployed: map[string]any{}, failed: dryRun, want: "off"},
 		{name: "--set global.rbac=false clears stored dry run", deployed: dryRun, setArgs: []string{"global.rbac=false"}, want: "off"},
 		{name: "--set global.rbac=0 clears stored dry run", deployed: dryRun, setArgs: []string{"global.rbac=0"}, want: "off"},
@@ -752,7 +757,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				} else {
 					require.Equal(t, 1, detectCalls)
 					require.Equal(t, 1, spiffeInstalls)
-					// The issuance policy allows the detected cert-manager controller, not the chart default.
+					// The issuance policy keeps allowing the cert-manager controller the operator chose.
 					require.Equal(t, []any{"system:serviceaccount:security:cert-manager"}, requesters)
 				}
 			})
