@@ -65,19 +65,6 @@ var (
 	stagedIssuersResource      = schema.GroupVersionResource{Group: "cert-manager.io", Version: "v1", Resource: "issuers"}
 )
 
-// stagedCAObject is an object of the radius-apiserver-ca chain that rad must apply before Helm reissues ucp-cert.
-type stagedCAObject struct {
-	resource schema.GroupVersionResource
-	kind     string
-	name     string
-}
-
-var stagedCAObjects = []stagedCAObject{
-	{resource: stagedIssuersResource, kind: "Issuer", name: RadiusBootstrapIssuerName},
-	{resource: stagedCertificatesResource, kind: "Certificate", name: ucpAPIServerCASecretName},
-	{resource: stagedIssuersResource, kind: "Issuer", name: RadiusAPIServerIssuerName},
-}
-
 // stageCluster is a cluster where UCP serves a certificate from the Helm-generated ucp-ca, and where cert-manager
 // issues radius-apiserver-ca when its Certificate is created, if issueCA is set.
 type stageCluster struct {
@@ -185,18 +172,6 @@ func (c *stageCluster) issueAPIServerCA(t *testing.T) {
 	}
 }
 
-// helmReissuesUCPCertificate does what Helm and cert-manager do once Helm applies the chart with authorization on:
-// cert-manager issues radius-apiserver-ca, reissues ucp-cert from radius-apiserver-issuer, and UCP rolls out.
-func (c *stageCluster) helmReissuesUCPCertificate(t *testing.T) {
-	t.Helper()
-	c.issueAPIServerCA(t)
-	secrets := c.kube.CoreV1().Secrets(RadiusSystemNamespace)
-	_, err := secrets.Create(t.Context(), apiServerTLSSecret(t, c.apiServerCA), metav1.CreateOptions{})
-	require.NoError(t, err)
-	_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Create(t.Context(), ucpDeployment(true), metav1.CreateOptions{})
-	require.NoError(t, err)
-}
-
 // offAPIServiceVariants are the APIServices an upgrade or rollback to authorization on can find while UCP serves a
 // certificate from ucp-ca. After an earlier on→off cycle that stopped before ReconcileUCPOffAPIServerTrust, or that an
 // older rad ran, Helm's off release keeps the inject-ca-from-secret annotation rad set, and cainjector may already have
@@ -280,26 +255,6 @@ func (c *stageCluster) certManagerWrites() []string {
 	return writes
 }
 
-// requireStagedCA checks, before Helm changes the release, that rad applied the radius-apiserver-ca chain as the
-// chart renders it, owned by the Radius release so Helm adopts it, and that the API server trusts both ucp-ca, which
-// the running UCP pods serve, and radius-apiserver-ca, which UCP serves once Helm reissues ucp-cert.
-func (c *stageCluster) requireStagedCA(t *testing.T, rendered map[string]map[string]any) {
-	t.Helper()
-	for _, object := range stagedCAObjects {
-		staged, err := c.dynamic.Resource(object.resource).Namespace(RadiusSystemNamespace).Get(t.Context(), object.name, metav1.GetOptions{})
-		require.NoError(t, err, "rad must apply %s %s before Helm reissues ucp-cert", object.kind, object.name)
-		require.Equal(t, "Helm", staged.GetLabels()["app.kubernetes.io/managed-by"], "%s %s", object.kind, object.name)
-		require.Equal(t, "radius", staged.GetAnnotations()["meta.helm.sh/release-name"], "%s %s", object.kind, object.name)
-		require.Equal(t, RadiusSystemNamespace, staged.GetAnnotations()["meta.helm.sh/release-namespace"], "%s %s", object.kind, object.name)
-		require.Equal(t, rendered[object.kind+"/"+object.name], staged.Object["spec"], "%s %s must match the rendered chart", object.kind, object.name)
-		for key, value := range rendered[object.kind+"/"+object.name+"#labels"] {
-			require.Equal(t, value, staged.GetLabels()[key], "%s %s label %s", object.kind, object.name, key)
-		}
-	}
-	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, trustedSubjects(t, c.kube))
-	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
-}
-
 func (c *stageCluster) requireNotStaged(t *testing.T) {
 	t.Helper()
 	require.Empty(t, c.certManagerWrites(), "rad must not stage cert-manager objects")
@@ -328,36 +283,6 @@ func renderStageTestManifest(t *testing.T, values map[string]any) string {
 	accessor, err := release.NewAccessor(rendered)
 	require.NoError(t, err)
 	return accessor.Manifest()
-}
-
-// renderedStagedCA returns the spec, by kind/name, and the labels, by kind/name#labels, of each object of the
-// radius-apiserver-ca chain in manifest.
-func renderedStagedCA(t *testing.T, manifest string) map[string]map[string]any {
-	t.Helper()
-	result := map[string]map[string]any{}
-	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
-	for {
-		object := &unstructured.Unstructured{}
-		err := decoder.Decode(&object.Object)
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		require.NoError(t, err)
-		for _, staged := range stagedCAObjects {
-			if object.GetKind() == staged.kind && object.GetName() == staged.name {
-				result[staged.kind+"/"+staged.name] = object.Object["spec"].(map[string]any)
-				labels := map[string]any{}
-				for key, value := range object.GetLabels() {
-					labels[key] = value
-				}
-				result[staged.kind+"/"+staged.name+"#labels"] = labels
-			}
-		}
-	}
-	for _, staged := range stagedCAObjects {
-		require.Contains(t, result, staged.kind+"/"+staged.name)
-	}
-	return result
 }
 
 var authzOnValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}

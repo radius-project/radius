@@ -21,7 +21,6 @@ package helm
 import (
 	"encoding/base64"
 	"encoding/json"
-	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -92,10 +91,4 @@ func newRotationTestStore(t *testing.T) (*rotationStore, *rest.Config, []byte, [
 	require.NoError(t, err)
 	return &rotationStore{kube: kube, dynamic: client, namespace: RadiusSystemNamespace, release: radiusReleaseName,
 		now: time.Now}, config, old, next
-}
-
-type rotationRoundTripper func(*http.Request) (*http.Response, error)
-
-func (f rotationRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
-	return f(request)
 }

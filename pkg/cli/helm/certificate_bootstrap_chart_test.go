@@ -40,7 +40,7 @@ func TestBootstrapNamespaceIntentBlocksDirectHelm(t *testing.T) {
 			require.NoError(t, err)
 			server := fixture.server(t)
 			renderer := engine.New(&rest.Config{Host: server.URL})
-			_, err = renderer.Render(selected, common.Values{"Values": selected.Values, "Chart": selected.Metadata,
+			_, err = renderer.RenderWithContext(t.Context(), selected, common.Values{"Values": selected.Values, "Chart": selected.Metadata,
 				"Capabilities": common.DefaultCapabilities,
 				"Release":      map[string]any{"Name": radiusReleaseName, "Namespace": RadiusSystemNamespace, "Service": "Helm", "IsInstall": true}})
 			require.ErrorContains(t, err, "bootstrap intent without its journal")
@@ -88,7 +88,7 @@ func TestLegacyBootstrapJournalRejectedBySelectedChart(t *testing.T) {
 				server := fixture.server(t)
 				renderer := engine.New(&rest.Config{Host: server.URL})
 				render := func() (map[string]string, error) {
-					return renderer.Render(selected, common.Values{"Values": values, "Chart": selected.Metadata,
+					return renderer.RenderWithContext(t.Context(), selected, common.Values{"Values": values, "Chart": selected.Metadata,
 						"Capabilities": common.DefaultCapabilities,
 						"Release":      map[string]any{"Name": s.release, "Namespace": s.namespace, "Service": "Helm", "IsInstall": true}})
 				}

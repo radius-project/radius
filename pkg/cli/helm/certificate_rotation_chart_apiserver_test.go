@@ -163,7 +163,7 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 		Data: []byte(`{{ include "radius.lifecycleSnapshot" . }}`)})
 	renderer := engine.New(config)
 	render := func() (map[string]map[string]any, error) {
-		output, renderErr := renderer.Render(selected, common.Values{"Values": selected.Values, "Chart": selected.Metadata,
+		output, renderErr := renderer.RenderWithContext(t.Context(), selected, common.Values{"Values": selected.Values, "Chart": selected.Metadata,
 			"Release": map[string]any{"Name": state.Release, "Namespace": state.Namespace}})
 		if renderErr != nil {
 			return nil, renderErr

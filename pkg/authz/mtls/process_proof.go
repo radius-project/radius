@@ -74,25 +74,3 @@ func (s *Source) bindProofNamespace(namespace string) error {
 func (s *Source) validateProofIdentity(m *material, namespace string) error {
 	return errors.New("legacy client-certificate startup identity is not supported by server-only TLS")
 }
-
-func clientSource(options authz.Options) (*Source, error) {
-	proof, err := configuredStartupProof(options)
-	if err != nil {
-		return nil, err
-	}
-	if proof != nil {
-		return proof.source, nil
-	}
-	return sharedTrustSource(options.EffectiveCADirectory())
-}
-
-func listenerSource(options authz.Options) (*Source, error) {
-	proof, err := configuredStartupProof(options)
-	if err != nil {
-		return nil, err
-	}
-	if proof != nil {
-		return proof.source, nil
-	}
-	return NewSourceWithCA(options.CertificateDirectory, options.EffectiveCADirectory())
-}

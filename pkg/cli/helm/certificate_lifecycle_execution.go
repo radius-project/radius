@@ -43,7 +43,7 @@ import (
 
 const (
 	certificatePrepare        rotationPhase = "prepare"
-	certificateExecutionOwner               = "radius.io/certificate-lifecycle"
+	certificateExecutionOwner string        = "radius.io/certificate-lifecycle"
 )
 
 // Intent contains public identities and hashes, never private imports, arbitrary
@@ -578,9 +578,9 @@ func (w *certificateExecutionWriter) applyIssuer(ctx context.Context, index int)
 		object.SetAnnotations(annotations)
 		client := w.store.dynamic.Resource(rotationIssuerResource).Namespace(w.store.namespace)
 		if missing {
-			object, err = client.Create(ctx, object, metav1.CreateOptions{FieldManager: FieldManager})
+			_, err = client.Create(ctx, object, metav1.CreateOptions{FieldManager: FieldManager})
 		} else {
-			object, err = client.Update(ctx, object, metav1.UpdateOptions{FieldManager: FieldManager})
+			_, err = client.Update(ctx, object, metav1.UpdateOptions{FieldManager: FieldManager})
 		}
 		if err != nil {
 			return err

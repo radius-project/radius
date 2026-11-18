@@ -37,15 +37,10 @@ func bootstrapStoreFixture(t *testing.T) *rotationStore {
 	client := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
 	version := 0
 	metadata := func(action k8stesting.Action) (bool, runtime.Object, error) {
-		var object runtime.Object
-		switch action := action.(type) {
-		case k8stesting.CreateAction:
-			object = action.GetObject()
-		case k8stesting.UpdateAction:
-			object = action.GetObject()
-		default:
+		if action.GetVerb() != "create" && action.GetVerb() != "update" {
 			return false, nil, nil
 		}
+		object := action.(interface{ GetObject() runtime.Object }).GetObject()
 		accessor, err := meta.Accessor(object)
 		require.NoError(t, err)
 		if accessor.GetUID() == "" {
