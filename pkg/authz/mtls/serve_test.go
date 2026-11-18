@@ -631,6 +631,52 @@ func writeToken(t *testing.T, dir, receiver, tok string) {
 // TestServe_StaleSigningKeysFailClosed checks that once the signing keys are MaxKeyAge old,
 // every request is rejected with AuthorizationUnavailable in every enforcing mode, whatever
 // credentials it carries, and never reaches the handler.
+// TestServe_ExpiredServingLeafAndStaleKeys checks that stale signing keys take precedence over
+// an expired serving certificate on a reused connection: the request fails with 503 in every
+// mode and never reaches the handler.
+func TestServe_ExpiredServingLeafAndStaleKeys(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			now := time.Now().UTC().Truncate(time.Second)
+			ca := newCA(t)
+			leaf := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: now.Add(time.Hour)})
+			var expired atomic.Bool
+			srv := startRecordingServer(t, ca, mode, serverSetup{
+				leaf: &leaf,
+				certNow: func() time.Time {
+					if expired.Load() {
+						return now.Add(2 * time.Hour)
+					}
+					return now
+				},
+			})
+			c := client(t, ca)
+			tok := "Bearer " + mintToken(t, "ucp", "applications-rp")
+			require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, tok))
+			<-srv.seen
+
+			srv.keys.unavailable.Store(true)
+			srv.clock.Advance(token.DefaultMaxKeyAge)
+			expired.Store(true)
+
+			var reused bool
+			trace := &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused }}
+			req, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), trace), http.MethodGet, "https://"+srv.url, nil)
+			require.NoError(t, err)
+			req.Header.Set("Authorization", tok)
+			resp, err := c.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			require.True(t, reused, "the request must reuse the connection opened before the certificate expired")
+			require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+			requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
+			require.Empty(t, srv.seen, "requests must not reach the handler while the signing keys are stale")
+		})
+	}
+}
+
 func TestServe_StaleSigningKeysFailClosed(t *testing.T) {
 	t.Parallel()
 	credentials := map[string]string{
