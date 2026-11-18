@@ -84,6 +84,12 @@ function fixture(releaseType = "final", version = "v0.62.0") {
           }))
         },
         repos: {
+          getContent: operation("getContent", () => ({
+            data: {
+              encoding: "base64",
+              content: Buffer.from("name: Build\n").toString("base64")
+            }
+          })),
           listReleases: operation("listReleases", (store) =>
             structuredClone(store.releases)
           ),
@@ -169,6 +175,246 @@ function fixture(releaseType = "final", version = "v0.62.0") {
   };
   return { options, one, calls, stores, outputs, sleeps };
 }
+
+function dashboardFixture() {
+  const state = fixture();
+  const { one, calls, stores } = state;
+  one.target = releaseTargets(
+    state.options.plan,
+    state.options.manifest,
+    state.options.context.sha
+  )[1];
+  const archive = `radius-backstage-plugin-${one.plan.version}.tar.gz`;
+  const bundle = Buffer.from("the exact tested plugin bundle");
+  state.files = {
+    [archive]: bundle,
+    [`${archive}.sha256`]: `${createHash("sha256").update(bundle).digest("hex")}  ${archive}\n`,
+    [`radius-backstage-plugin-${one.plan.version}.qualification.json`]:
+      JSON.stringify({
+        stage: "installed-external-frontend",
+        bundle: { source: { revision: one.target.sha, dirty: false } }
+      })
+  };
+  state.runs = [
+    {
+      id: 7,
+      head_sha: one.target.sha,
+      head_branch: one.plan.version,
+      event: "push",
+      status: "completed",
+      conclusion: "success",
+      repository: { full_name: "radius-project/dashboard" }
+    }
+  ];
+  state.artifacts = [
+    { id: 8, name: "radius-plugin-release-assets", expired: false }
+  ];
+  state.assets = [];
+  one.github.rest.repos.getContent = async (request) => {
+    assert.equal(request.ref, one.target.sha);
+    assert.equal(request.path, ".github/workflows/build.yaml");
+    return {
+      data: {
+        encoding: "base64",
+        content: Buffer.from("name: radius-plugin-release-assets\n").toString(
+          "base64"
+        )
+      }
+    };
+  };
+  one.github.auth = async () => ({ token: "sibling-token" });
+  one.github.rest.actions = {
+    listWorkflowRuns: async (request) => {
+      calls.push({ method: "listWorkflowRuns", ...request });
+      assert.equal(request.workflow_id, "build.yaml");
+      assert.equal(request.head_sha, one.target.sha);
+      assert.equal(request.event, "push");
+      assert.equal(request.status, "success");
+      return state.runs;
+    },
+    listWorkflowRunArtifacts: async (request) => {
+      assert.equal(request.run_id, 7);
+      return state.artifacts;
+    }
+  };
+  one.github.rest.repos.listReleaseAssets = async () => state.assets;
+  one.execute = async (command, args, options) => {
+    assert.equal(command, "gh");
+    assert.equal(options.env.GH_TOKEN, "sibling-token");
+    assert.equal(args[args.indexOf("--repo") + 1], "radius-project/dashboard");
+    calls.push({ method: args[0], args });
+    if (args[0] === "run") {
+      assert.deepEqual(args.slice(0, 4), ["run", "download", "7", "--repo"]);
+      assert.equal(
+        args[args.indexOf("--name") + 1],
+        "radius-plugin-release-assets"
+      );
+      state.directory = args.at(-1);
+      for (const [name, data] of Object.entries(state.files)) {
+        await writeFile(path.join(state.directory, name), data);
+      }
+    } else {
+      assert.deepEqual(args.slice(0, 3), [
+        "release",
+        "upload",
+        one.plan.version
+      ]);
+      assert.ok(args.includes("--clobber"));
+      for (const name of Object.keys(state.files)) {
+        const file = path.join(state.directory, name);
+        assert.ok(args.includes(file));
+        assert.deepEqual(await readFile(file), Buffer.from(state.files[name]));
+      }
+      state.assets = Object.keys(state.files).map((name) => ({
+        name,
+        state: "uploaded",
+        size: Buffer.byteLength(state.files[name])
+      }));
+    }
+  };
+  const update = one.github.rest.repos.updateRelease;
+  one.github.rest.repos.updateRelease = async (request) => {
+    assert.equal(
+      state.assets.length,
+      3,
+      "all assets must be attached before publication"
+    );
+    return update(request);
+  };
+  state.store = stores.get("radius-project/dashboard");
+  return state;
+}
+
+test("attaches the exact qualified Dashboard bundle after draft creation and before publication", async () => {
+  const state = dashboardFixture();
+  await publishRepositoryRelease(state.one);
+  const methods = state.calls.map((call) => call.method);
+  assert.ok(methods.indexOf("createRelease") < methods.indexOf("run"));
+  assert.ok(methods.indexOf("release") < methods.indexOf("updateRelease"));
+  await assert.rejects(
+    readFile(path.join(state.directory, Object.keys(state.files)[0])),
+    { code: "ENOENT" }
+  );
+  // Published releases remain resumable after the workflow artifact expires.
+  state.artifacts = [];
+  await publishRepositoryRelease(state.one);
+  assert.equal(state.calls.filter((call) => call.method === "run").length, 1);
+});
+
+test("resumes a Dashboard draft after a failed upload without publishing or replacing notes", async () => {
+  const state = dashboardFixture();
+  const execute = state.one.execute;
+  state.one.execute = async (command, args, options) => {
+    if (args[0] === "release") throw new Error("upload failed");
+    return execute(command, args, options);
+  };
+  await assert.rejects(publishRepositoryRelease(state.one), /upload failed/);
+  assert.equal(state.store.releases[1].draft, true);
+  assert.equal(
+    state.calls.some((call) => call.method === "updateRelease"),
+    false
+  );
+  await assert.rejects(
+    readFile(path.join(state.directory, Object.keys(state.files)[0])),
+    { code: "ENOENT" }
+  );
+  state.one.execute = execute;
+  await publishRepositoryRelease(state.one);
+  assert.equal(state.store.releases[1].draft, false);
+  assert.equal(
+    state.calls.filter((call) => call.method === "createRelease").length,
+    1
+  );
+  assert.equal(
+    state.calls.filter((call) => call.method === "generateReleaseNotes").length,
+    1
+  );
+});
+
+test("Dashboard never publishes with missing, expired, ambiguous, or unqualified producer evidence", async () => {
+  for (const change of [
+    (state) => {
+      state.runs = [];
+    },
+    (state) => {
+      state.runs[0].head_sha = "f".repeat(40);
+    },
+    (state) => {
+      state.runs[0].head_branch = "main";
+    },
+    (state) => {
+      state.runs[0].event = "pull_request";
+    },
+    (state) => {
+      state.runs[0].conclusion = "failure";
+    },
+    (state) => {
+      state.runs[0].status = "in_progress";
+    },
+    (state) => {
+      state.runs[0].repository.full_name = "fork/dashboard";
+    },
+    (state) => {
+      state.artifacts = [];
+    },
+    (state) => {
+      state.artifacts[0].expired = true;
+    },
+    (state) => {
+      state.artifacts.push({ ...state.artifacts[0], id: 9 });
+    },
+    (state) => {
+      delete state.files[Object.keys(state.files)[0]];
+    },
+    (state) => {
+      state.files["unexpected.txt"] = "extra";
+    },
+    (state) => {
+      state.files[Object.keys(state.files)[1]] = "wrong checksum";
+    },
+    ...[
+      (receipt) => {
+        receipt.stage = "build";
+      },
+      (receipt) => {
+        receipt.bundle.source.revision = "f".repeat(40);
+      },
+      (receipt) => {
+        receipt.bundle.source.dirty = true;
+      }
+    ].map((changeReceipt) => (state) => {
+      const name = Object.keys(state.files)[2];
+      const receipt = JSON.parse(state.files[name]);
+      changeReceipt(receipt);
+      state.files[name] = JSON.stringify(receipt);
+    })
+  ]) {
+    const state = dashboardFixture();
+    change(state);
+    await assert.rejects(publishRepositoryRelease(state.one));
+    assert.equal(state.store.releases[1].draft, true);
+    assert.equal(
+      state.calls.some((call) =>
+        ["release", "updateRelease"].includes(call.method)
+      ),
+      false
+    );
+  }
+});
+
+test("a published bundle-capable Dashboard release cannot silently omit assets", async () => {
+  const state = dashboardFixture();
+  await publishRepositoryRelease(state.one);
+  state.assets.pop();
+  await assert.rejects(
+    publishRepositoryRelease(state.one),
+    /missing plugin bundle assets/
+  );
+  assert.equal(
+    state.calls.filter((call) => call.method === "release").length,
+    1
+  );
+});
 
 for (const [type, version, latest] of [
   ["rc", "v0.62.0-rc.2", "false"],
@@ -557,6 +803,10 @@ test("workflow uses independently authenticated sibling and DE clients", async (
       "utf8"
     )
   ).replace(/\r\n/g, "\n");
+  assert.match(
+    workflow,
+    /repositories: recipes,dashboard,bicep-types-aws\n\s+permission-actions: read/
+  );
   const step = workflow.match(
     /      - name: Reconcile sibling release entries\n[\s\S]*?          script: \|\n([\s\S]*?)(?=\n      - name:)/
   );

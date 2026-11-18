@@ -1277,6 +1277,7 @@ jobs:
           private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
           owner: radius-project
           repositories: recipes,dashboard,bicep-types-aws
+          permission-actions: read
           permission-contents: write
           permission-workflows: write
 

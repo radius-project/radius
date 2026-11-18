@@ -2,7 +2,11 @@
 // Licensed under the Apache License, Version 2.0.
 
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { promisify } from "node:util";
 
 import { tagCommit } from "./coordinate-release.mjs";
 import {
@@ -120,12 +124,166 @@ function verifyEntry(release, plan, target) {
   }
 }
 
+async function attachDashboardBundle(github, plan, target, release, execute) {
+  const repository = { owner: target.owner, repo: target.repo };
+  const artifactName = "radius-plugin-release-assets";
+  const { data: workflow } = await github.rest.repos.getContent({
+    ...repository,
+    path: ".github/workflows/build.yaml",
+    ref: target.sha
+  });
+  if (workflow.encoding !== "base64" || typeof workflow.content !== "string") {
+    throw new Error("Cannot read the approved Dashboard build workflow");
+  }
+  // Older release sources predate the bundle producer.
+  if (
+    !Buffer.from(workflow.content, "base64")
+      .toString("utf8")
+      .includes(artifactName)
+  ) {
+    return;
+  }
+  const archive = `radius-backstage-plugin-${plan.version}.tar.gz`;
+  const names = [
+    archive,
+    `${archive}.sha256`,
+    `radius-backstage-plugin-${plan.version}.qualification.json`
+  ];
+  if (!release.draft) {
+    const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
+      ...repository,
+      release_id: release.id,
+      per_page: 100
+    });
+    if (
+      !names.every(
+        (name) =>
+          assets.filter(
+            (asset) =>
+              asset.name === name &&
+              asset.state === "uploaded" &&
+              asset.size > 0
+          ).length === 1
+      )
+    ) {
+      throw new Error(
+        "Published Dashboard release is missing plugin bundle assets"
+      );
+    }
+    return;
+  }
+  const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+    ...repository,
+    workflow_id: "build.yaml",
+    head_sha: target.sha,
+    event: "push",
+    status: "success",
+    per_page: 100
+  });
+  const run = runs
+    .filter(
+      (entry) =>
+        entry.head_sha === target.sha &&
+        entry.head_branch === plan.version &&
+        entry.event === "push" &&
+        entry.status === "completed" &&
+        entry.conclusion === "success" &&
+        entry.repository.full_name === `${target.owner}/${target.repo}`
+    )
+    .sort((left, right) => right.id - left.id)[0];
+  if (!run) {
+    throw new Error(
+      "No successful Dashboard tag build for the approved source; resume after it succeeds"
+    );
+  }
+  const artifacts = await github.paginate(
+    github.rest.actions.listWorkflowRunArtifacts,
+    {
+      ...repository,
+      run_id: run.id,
+      per_page: 100
+    }
+  );
+  const matches = artifacts.filter(
+    (artifact) => artifact.name === artifactName
+  );
+  if (matches.length !== 1 || matches[0].expired) {
+    throw new Error(
+      "Dashboard tag build requires one retained radius-plugin-release-assets artifact"
+    );
+  }
+  const directory = await mkdtemp(path.join(os.tmpdir(), "dashboard-release-"));
+  try {
+    const options = {
+      env: { ...process.env, GH_TOKEN: (await github.auth()).token }
+    };
+    await execute(
+      "gh",
+      [
+        "run",
+        "download",
+        String(run.id),
+        "--repo",
+        `${target.owner}/${target.repo}`,
+        "--name",
+        artifactName,
+        "--dir",
+        directory
+      ],
+      options
+    );
+    if (
+      JSON.stringify((await readdir(directory)).sort()) !==
+      JSON.stringify([...names].sort())
+    ) {
+      throw new Error(
+        "Dashboard plugin artifact must contain exactly the three release assets"
+      );
+    }
+    const data = await readFile(path.join(directory, archive));
+    const checksum = await readFile(
+      path.join(directory, `${archive}.sha256`),
+      "utf8"
+    );
+    const receipt = JSON.parse(
+      await readFile(path.join(directory, names[2]), "utf8")
+    );
+    if (
+      checksum.trim() !==
+        `${createHash("sha256").update(data).digest("hex")}  ${archive}` ||
+      receipt.stage !== "installed-external-frontend" ||
+      receipt.bundle?.source?.revision !== target.sha ||
+      receipt.bundle?.source?.dirty !== false
+    ) {
+      throw new Error(
+        "Dashboard plugin bundle checksum or qualification source is invalid"
+      );
+    }
+    await execute(
+      "gh",
+      [
+        "release",
+        "upload",
+        plan.version,
+        "--repo",
+        `${target.owner}/${target.repo}`,
+        "--clobber",
+        ...names.map((name) => path.join(directory, name))
+      ],
+      options
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
 export async function publishRepositoryRelease({
   github,
   core,
   plan,
   target,
-  sleep
+  sleep,
+  execute = promisify(execFile)
 }) {
   const repository = { owner: target.owner, repo: target.repo };
   const verifyTag = async () => {
@@ -188,6 +346,9 @@ export async function publishRepositoryRelease({
     }
   }
   verifyEntry(release, plan, target);
+  if (target.owner === "radius-project" && target.repo === "dashboard") {
+    await attachDashboardBundle(github, plan, target, release, execute);
+  }
   const releaseID = release.id;
   const latest =
     plan.releaseType === "rc" ?
