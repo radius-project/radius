@@ -1038,7 +1038,7 @@ func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testin
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
 		newUCPAPIServerTrustClient:  uninstallTrustClient,
-		newRotationStore:            emptyRotationTestStore,
+		newRotationStore:            uninstallTestStore(t),
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))

@@ -413,6 +413,12 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 	policyChart := radiusHelmChart
 	if bootstrap != nil {
+		// The full chart binds the requester policy after the bootstrap
+		// issuer would be created. Neither rendering nor reading a binding
+		// proves admission is enforcing it on the target API servers.
+		if bootstrap.state.Mode == "selfSigned" {
+			return errors.New("selfSigned bootstrap cannot verify requester admission before creating its reserved issuer; for a fresh installation use a supported BYO certificate mode, or preserve existing bootstrap state and wait for a supported resume")
+		}
 		policyChart = initialCertificatePolicyChart(radiusHelmChart)
 	}
 	policyInstalled := clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil

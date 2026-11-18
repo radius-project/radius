@@ -84,6 +84,7 @@ func initialControllerFixture(t *testing.T, mode, provider string) (*initialCert
 			}, metav1.CreateOptions{})
 			require.NoError(t, err)
 		}
+
 	}
 	kube.PrependReactor("get", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		name := action.(k8stesting.GetAction).GetName()
@@ -638,5 +639,59 @@ func TestInitialCertificateTransportCancellation(t *testing.T) {
 			}
 			require.ErrorIs(t, <-finished, context.Canceled)
 		})
+	}
+}
+
+func uninstallTestStore(t *testing.T) func(string, string) (*rotationStore, error) {
+	t.Helper()
+	store := bootstrapStoreFixture(t)
+	_, err := store.kube.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: store.namespace}}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	return func(_ string, namespace string) (*rotationStore, error) {
+		require.Equal(t, store.namespace, namespace)
+		return store, nil
+	}
+}
+
+func TestUninstallExclusionBeforeHelm(t *testing.T) {
+	for _, late := range []bool{false, true} {
+		t.Run(fmt.Sprintf("provider-after-lease=%t", late), func(t *testing.T) {
+			b, _ := initialControllerFixture(t, "selfSigned", "radius")
+			kube := b.store.kube.(*kubefake.Clientset)
+			namespace := b.store.namespace
+			_, err := kube.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+			require.NoError(t, err)
+			journal := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: identityProviderJournal, Namespace: namespace}}
+			if late {
+				kube.PrependReactor("create", "leases", func(k8stesting.Action) (bool, runtime.Object, error) {
+					return false, nil, kube.Tracker().Add(journal)
+				})
+			} else {
+				require.NoError(t, kube.Tracker().Add(journal))
+			}
+			client := NewMockHelmClient(gomock.NewController(t))
+			b.impl.Helm = client
+			stop := errors.New("Helm reached before provider journal rejection")
+			client.EXPECT().RunHelmUninstall(gomock.Any(), radiusReleaseName, namespace, true).Return(nil, stop).AnyTimes()
+			err = b.impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context")
+			require.NotErrorIs(t, err, stop)
+			require.ErrorContains(t, err, identityProviderJournal)
+		})
+	}
+}
+
+func TestSelfSignedBootstrapStopsBeforeDependencies(t *testing.T) {
+	b, _ := initialControllerFixture(t, "selfSigned", "external")
+	client := NewMockHelmClient(gomock.NewController(t))
+	b.impl.Helm = client
+	options := NewDefaultClusterOptions()
+	options.Radius.ChartPath = "../../../deploy/Chart"
+	options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external"}
+	options.Contour.Disabled = true
+	client.EXPECT().LoadChart(options.Radius.ChartPath).Return(b.selected, nil)
+	err := b.impl.InstallRadius(t.Context(), options, "test-context")
+	require.ErrorContains(t, err, "cannot verify requester admission")
+	for _, action := range b.store.kube.(*kubefake.Clientset).Actions() {
+		require.Contains(t, []string{"get", "list"}, action.GetVerb())
 	}
 }

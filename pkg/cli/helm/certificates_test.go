@@ -484,7 +484,7 @@ func TestRadiusCertificateImportRetainedAfterUninstall(t *testing.T) {
 		Helm:                        client,
 		newCertificateClient:        func(string) (kubernetes.Interface, error) { return kube, nil },
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kube, nil },
-		removeDefaultContourGateway: func(context.Context, string) error { return nil }, newRotationStore: emptyRotationTestStore,
+		removeDefaultContourGateway: func(context.Context, string) error { return nil }, newRotationStore: uninstallTestStore(t),
 	}
 	options := NewDefaultClusterOptions()
 	options.Contour.Disabled = true
