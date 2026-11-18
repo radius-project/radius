@@ -19,6 +19,7 @@ package neptune
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"maps"
 	"os"
 	"sync"
@@ -118,6 +119,7 @@ func Test_Suite_ClusterEndpoint(t *testing.T) {
 			with(endpoint, map[string]any{"ExcludedMembers": []any{"graph-3"}}),
 			with(endpoint, map[string]any{"StaticMembers": []any{"graph-1", 2}}),
 			with(endpoint, map[string]any{"ExcludedMembers": "graph-3", "StaticMembers": nil}),
+			with(endpoint, map[string]any{"DBClusterIdentifier": 5}),
 		},
 		OtherProduct: func(store *awsfake.CloudControl, identifier string) {
 			store.Put(endpointType, identifier, map[string]any{"DBClusterEndpointIdentifier": identifier, "DBClusterIdentifier": "aurora-app", "EndpointType": "ANY"})
@@ -397,7 +399,7 @@ func (e *emptyClusters) DeleteDBClusterEndpoint(ctx context.Context, in *neptune
 func Test_ErrorPaths(t *testing.T) {
 	h, api := newHandler()
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(endpoint, map[string]any{"EndpointType": 5})})
-	require.ErrorContains(t, err, "InvalidParameterValue", "a value of the wrong type isn't sent as the type")
+	require.ErrorContains(t, err, "EndpointType of an AWS::Neptune::DBClusterEndpoint must be a string", "a value of the wrong type isn't sent")
 
 	api.errs["CreateDBClusterEndpoint"] = fault("DBClusterEndpointAlreadyExistsFault")
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: endpoint})
@@ -426,6 +428,10 @@ func Test_CreateAlreadyExists(t *testing.T) {
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have made the endpoint, so UCP keeps the record")
 	require.Contains(t, failure.Message, "DBClusterEndpointAlreadyExistsFault")
+	api.errs["CreateDBClusterEndpoint"] = fault("DBClusterEndpointQuotaExceededFault")
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: endpoint})
+	require.False(t, errors.As(err, &failure), "any other error is returned as AWS gave it")
+	require.ErrorContains(t, err, "DBClusterEndpointQuotaExceededFault")
 }
 
 // Test_EmptyMemberLists checks that a template that sets a member list to [] matches AWS, so a redeploy changes
@@ -560,4 +566,32 @@ func Test_MemberListTypes(t *testing.T) {
 	require.Equal(t, "reads", id)
 	_, err = h.Identifier(with(endpoint, map[string]any{"StaticMembers": []any{}, "ExcludedMembers": []any{"graph-3"}}))
 	require.NoError(t, err, "an empty static list with an exclusion list sets one list")
+}
+
+// Test_ValueTypes checks that a value of the wrong type is rejected before any AWS call, instead of being sent as an
+// empty value or left out.
+func Test_ValueTypes(t *testing.T) {
+	h, api := newHandler()
+	for name, properties := range map[string]map[string]any{
+		"a cluster that isn't a string":        with(endpoint, map[string]any{"DBClusterIdentifier": 5}),
+		"an endpoint name that isn't a string": with(endpoint, map[string]any{"DBClusterEndpointIdentifier": 5}),
+		"a type that isn't a string":           with(endpoint, map[string]any{"EndpointType": []any{"READER"}}),
+		"tags that aren't a list":              with(endpoint, map[string]any{"Tags": map[string]any{"team": "a"}}),
+		"a tag that isn't an object":           with(endpoint, map[string]any{"Tags": []any{"team"}}),
+		"a tag key that isn't a string":        with(endpoint, map[string]any{"Tags": []any{map[string]any{"Key": 1, "Value": "a"}}}),
+		"a tag value that isn't a string":      with(endpoint, map[string]any{"Tags": []any{map[string]any{"Key": "team", "Value": 1}}}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			var failure *native.Failure
+			_, err := h.Identifier(properties)
+			require.ErrorAs(t, err, &failure)
+			require.True(t, failure.ClientError)
+			_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+			require.ErrorAs(t, err, &failure)
+			require.Nil(t, api.lastCreate, "nothing is sent")
+			require.ErrorAs(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: "reads", Desired: properties}), &failure)
+		})
+	}
+	_, err := h.Identifier(with(endpoint, map[string]any{"Tags": []any{map[string]any{"Key": "team"}}}))
+	require.NoError(t, err, "a tag without a value is a tag with an empty value")
 }

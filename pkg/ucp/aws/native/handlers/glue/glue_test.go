@@ -76,6 +76,7 @@ func Test_Suite_PartitionIndex(t *testing.T) {
 		Invalid: []map[string]any{
 			partitionIndex("by|date", "year"),
 			with(properties, map[string]any{"TableName": "orders|archive"}),
+			partitionIndex("by_date", "year", 42, "month"),
 		},
 		IdentifierProperties: func(identifier string) map[string]any {
 			id, err := parseID(identifier)
@@ -303,4 +304,30 @@ func Test_FailedHistory(t *testing.T) {
 	_, err = h.Progress(t.Context(), region, account+"|sales|secret|a", native.OperationCreate)
 	require.NoError(t, err, "the index failed again is one of the last 10 failures")
 	require.Len(t, api.failed[account+"|sales|secret"], 10)
+}
+
+// Test_ValueTypes checks that a value of the wrong type is rejected before any AWS call, instead of being sent as a
+// shorter list or an empty name.
+func Test_ValueTypes(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewPartitionIndex(api)
+	for name, properties := range map[string]map[string]any{
+		"a key that isn't a string":         partitionIndex("by_date", "year", 42, "month"),
+		"keys that aren't a list":           with(partitionIndex("by_date"), map[string]any{"PartitionIndex": map[string]any{"IndexName": "by_date", "Keys": "year"}}),
+		"an index that isn't an object":     with(partitionIndex("by_date", "year"), map[string]any{"PartitionIndex": "by_date"}),
+		"an index name that isn't a string": with(partitionIndex("by_date", "year"), map[string]any{"PartitionIndex": map[string]any{"IndexName": 7, "Keys": []any{"year"}}}),
+		"a catalog that isn't a string":     with(partitionIndex("by_date", "year"), map[string]any{"CatalogId": 123456789012}),
+		"a database that isn't a string":    with(partitionIndex("by_date", "year"), map[string]any{"DatabaseName": true}),
+		"a table that isn't a string":       with(partitionIndex("by_date", "year"), map[string]any{"TableName": []any{"orders"}}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			var failure *native.Failure
+			_, err := h.Identifier(properties)
+			require.ErrorAs(t, err, &failure)
+			require.True(t, failure.ClientError)
+			_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+			require.ErrorAs(t, err, &failure)
+			require.Zero(t, api.store.Count(partitionIndexType), "nothing is created")
+		})
+	}
 }

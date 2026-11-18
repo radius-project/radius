@@ -91,21 +91,80 @@ var badName = &native.Failure{
 	Outcome:     native.OutcomeRejected,
 }
 
-// idOf returns the index the properties name, with the database and table names in lowercase, and false when they
-// don't name all of it.
-func idOf(properties map[string]any) (indexID, bool, error) {
-	index, _ := properties["PartitionIndex"].(map[string]any)
-	id := indexID{
-		catalog:  awsapi.String(properties, "CatalogId"),
-		database: strings.ToLower(awsapi.String(properties, "DatabaseName")),
-		table:    strings.ToLower(awsapi.String(properties, "TableName")),
-		name:     awsapi.String(index, "IndexName"),
+// wrongType is the failure for a property whose value has the wrong type, so it is never sent as an empty or shorter
+// value.
+func wrongType(path string, want string) error {
+	return &native.Failure{
+		Message:     fmt.Sprintf("%s of an AWS::Glue::PartitionIndex must be %s", path, want),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
 	}
+}
+
+// stringOf returns the string property name of properties, or "" when it is absent.
+func stringOf(properties map[string]any, name string, path string) (string, error) {
+	value, ok := properties[name]
+	if !ok || value == nil {
+		return "", nil
+	}
+	s, ok := value.(string)
+	if !ok {
+		return "", wrongType(path, "a string")
+	}
+	return s, nil
+}
+
+// keysOf returns the partition keys of the index, or nil when it has none.
+func keysOf(index map[string]any) ([]string, error) {
+	value, ok := index["Keys"]
+	if !ok || value == nil {
+		return nil, nil
+	}
+	list, ok := value.([]any)
+	keys := []string{}
+	for _, v := range list {
+		key, isString := v.(string)
+		ok = ok && isString
+		keys = append(keys, key)
+	}
+	if !ok {
+		return nil, wrongType("PartitionIndex.Keys", "a list of partition key names")
+	}
+	return keys, nil
+}
+
+// parse returns the index the properties name, with the database and table names in lowercase, and its keys. ok is
+// false when they don't name all of it.
+func parse(properties map[string]any) (id indexID, keys []string, ok bool, err error) {
+	var index map[string]any
+	if value := properties["PartitionIndex"]; value != nil {
+		if index, ok = value.(map[string]any); !ok {
+			return indexID{}, nil, false, wrongType("PartitionIndex", "an object with IndexName and Keys")
+		}
+	}
+	for _, field := range []struct {
+		properties map[string]any
+		name, path string
+		value      *string
+	}{
+		{properties, "CatalogId", "CatalogId", &id.catalog},
+		{properties, "DatabaseName", "DatabaseName", &id.database},
+		{properties, "TableName", "TableName", &id.table},
+		{index, "IndexName", "PartitionIndex.IndexName", &id.name},
+	} {
+		if *field.value, err = stringOf(field.properties, field.name, field.path); err != nil {
+			return indexID{}, nil, false, err
+		}
+	}
+	if keys, err = keysOf(index); err != nil {
+		return indexID{}, nil, false, err
+	}
+	id.database, id.table = strings.ToLower(id.database), strings.ToLower(id.table)
 	parts := []string{id.catalog, id.database, id.table, id.name}
 	if slices.ContainsFunc(parts, func(v string) bool { return strings.Contains(v, "|") }) {
-		return indexID{}, false, badName
+		return indexID{}, nil, false, badName
 	}
-	return id, !slices.Contains(parts, ""), nil
+	return id, keys, !slices.Contains(parts, ""), nil
 }
 
 // parseID returns the index an identifier names.
@@ -122,9 +181,10 @@ func parseID(identifier string) (indexID, error) {
 }
 
 // Identifier returns CatalogId|DatabaseName|TableName|IndexName, with the database and table names in lowercase, or ""
-// when the properties don't give all four.
+// when the properties don't give all four. UCP calls it before any AWS call, so a value of the wrong type, such as a
+// key that isn't a string, is rejected here.
 func (h *PartitionIndex) Identifier(properties map[string]any) (string, error) {
-	id, ok, err := idOf(properties)
+	id, _, ok, err := parse(properties)
 	if !ok || err != nil {
 		return "", err
 	}
@@ -190,7 +250,7 @@ func (h *PartitionIndex) Read(ctx context.Context, region string, identifier str
 
 // Create starts creating the index. AWS builds it from the table's partitions in the background.
 func (h *PartitionIndex) Create(ctx context.Context, request native.CreateRequest) (string, error) {
-	id, ok, err := idOf(request.Properties)
+	id, keys, ok, err := parse(request.Properties)
 	if err != nil {
 		return "", err
 	}
@@ -201,12 +261,11 @@ func (h *PartitionIndex) Create(ctx context.Context, request native.CreateReques
 			Outcome:     native.OutcomeRejected,
 		}
 	}
-	index, _ := request.Properties["PartitionIndex"].(map[string]any)
 	_, err = h.api.CreatePartitionIndex(ctx, &glue.CreatePartitionIndexInput{
 		CatalogId:      aws.String(id.catalog),
 		DatabaseName:   aws.String(id.database),
 		TableName:      aws.String(id.table),
-		PartitionIndex: &types.PartitionIndex{IndexName: aws.String(id.name), Keys: awsapi.Strings(index, "Keys")},
+		PartitionIndex: &types.PartitionIndex{IndexName: aws.String(id.name), Keys: keys},
 	}, inRegion(request.Region))
 	if awsapi.HasCode(err, "AlreadyExistsException") {
 		// UCP reads AWS by the identifier before it creates an index, so this index may be the one an earlier attempt

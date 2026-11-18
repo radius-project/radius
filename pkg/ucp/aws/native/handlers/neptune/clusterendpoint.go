@@ -121,8 +121,11 @@ func sameMembers(path string, template any, current any) bool {
 }
 
 // Identifier returns DBClusterEndpointIdentifier in lowercase, as Neptune stores it. UCP calls it before any AWS call,
-// so a template whose member lists Neptune wouldn't take, such as both lists set, is rejected here.
+// so a template with a value of the wrong type, or whose member lists Neptune wouldn't take, is rejected here.
 func (h *ClusterEndpoint) Identifier(properties map[string]any) (string, error) {
+	if err := validate(properties); err != nil {
+		return "", err
+	}
 	if _, _, err := memberLists(properties); err != nil {
 		return "", err
 	}
@@ -209,6 +212,49 @@ func (h *ClusterEndpoint) properties(ctx context.Context, region string, e *type
 	return properties, nil
 }
 
+// wrongType is the failure for a property whose value has the wrong type, so it is never sent as an empty value or left
+// out.
+func wrongType(path string, want string) error {
+	return &native.Failure{
+		Message:     fmt.Sprintf("%s of an AWS::Neptune::DBClusterEndpoint must be %s", path, want),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
+}
+
+// validate checks that each value of the template other than the member lists, which memberLists checks, has its
+// schema's type.
+func validate(properties map[string]any) error {
+	for _, name := range []string{"DBClusterEndpointIdentifier", "DBClusterIdentifier", "EndpointType"} {
+		if value, ok := properties[name]; ok && value != nil {
+			if _, ok := value.(string); !ok {
+				return wrongType(name, "a string")
+			}
+		}
+	}
+	if value, ok := properties["Tags"]; ok && value != nil {
+		tags, ok := value.([]any)
+		if !ok {
+			return wrongType("Tags", "a list of tags")
+		}
+		for _, item := range tags {
+			tag, ok := item.(map[string]any)
+			if !ok {
+				return wrongType("Tags", "a list of tags")
+			}
+			if _, ok := tag["Key"].(string); !ok {
+				return wrongType("Each tag's Key", "a string")
+			}
+			if value, ok := tag["Value"]; ok && value != nil {
+				if _, ok := value.(string); !ok {
+					return wrongType("Each tag's Value", "a string")
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // bothMembers is the failure for a template that sets StaticMembers and ExcludedMembers, which Neptune doesn't allow.
 var bothMembers = &native.Failure{
 	Message:     "an AWS::Neptune::DBClusterEndpoint can set StaticMembers or ExcludedMembers, not both",
@@ -262,6 +308,9 @@ func memberLists(properties map[string]any) ([]string, []string, error) {
 // Create creates the endpoint, after checking that DBClusterIdentifier names a Neptune cluster: the API would also
 // make an endpoint of an Aurora or DocumentDB cluster.
 func (h *ClusterEndpoint) Create(ctx context.Context, request native.CreateRequest) (string, error) {
+	if err := validate(request.Properties); err != nil {
+		return "", err
+	}
 	static, excluded, err := memberLists(request.Properties)
 	if err != nil {
 		return "", err
@@ -313,6 +362,9 @@ func lostCreate(err error) error {
 // member list only when the template changes what AWS has, and sends the other list empty only when Neptune must clear
 // it to take the new one, so a list the template leaves out keeps the members AWS has.
 func (h *ClusterEndpoint) Update(ctx context.Context, request native.UpdateRequest) error {
+	if err := validate(request.Desired); err != nil {
+		return err
+	}
 	static, excluded, err := memberLists(request.Desired)
 	if err != nil {
 		return err
