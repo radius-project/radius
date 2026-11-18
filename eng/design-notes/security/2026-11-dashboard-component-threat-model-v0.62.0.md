@@ -1,8 +1,7 @@
 # Radius Dashboard Component Threat Model: v0.62.0
 
-- **Author**: AI-assisted revision; human review pending.
 - **Historical author**: @nithyatsu.
-- **Status**: Draft, not a security approval.
+- **Status**: Draft; security review pending.
 - **Baselines**: Radius v0.62.0 at `37a8cbd33e990886460f4fd1987d6a4fefd901c5`; Dashboard v0.62.0 at `b2b8934c2fb70724c48511cb606be244dcf20a79`.
 - **Prior model**: [August 2024 Dashboard model](2024-08-dashboard-component-threat-model.md). The original document and both images remain unchanged.
 
@@ -10,7 +9,7 @@
 
 Dashboard displays Radius resources through Backstage and the Kubernetes backend plugin. Its UI issues read requests, but its shared Kubernetes service account has broader Radius API permissions. Read-only screens are not a backend authorization boundary.
 
-The released chart enables Dashboard by default, sets `NODE_ENV=development`, and uses guest authentication. The model must therefore not assume user login, per-user permissions, or HTTPS. This document describes risks, not a tested public exposure or demonstrated proxy exploit.
+The released chart enables Dashboard by default, sets `NODE_ENV=development`, and uses guest authentication. Per-user access checks and HTTPS require operator configuration. The scenarios below describe risks; no public exposure or proxy exploit was tested.
 
 ## Terms and Definitions
 
@@ -26,7 +25,7 @@ The released chart enables Dashboard by default, sets `NODE_ENV=development`, an
 
 The [frontend Radius API client][api] uses Backstage's Kubernetes API proxy. It lists resources and types and fetches individual resources; it is not limited to the old model's application-graph description.
 
-The [backend entry point][backend] loads the app, proxy, auth, guest auth, catalog and Kubernetes backend modules. A separate Radius backend router exists in the source tree, but it is not registered by this entry point. Its presence must not be used to describe the actual data path.
+The [backend entry point][backend] loads the app, proxy, auth, guest auth, catalog and Kubernetes backend modules. It does not register the separate Radius backend router found in the source tree.
 
 Assets include application/environment/resource metadata, relationships and schema content, backend tokens, and the Kubernetes service-account authority. Browser users, operators, resource authors and in-cluster clients have different capabilities.
 
@@ -42,7 +41,7 @@ The chart's [role][rbac] grants wildcard verbs on wildcard `api.ucp.dev` resourc
 
 **Is there any use of cryptography?**
 
-Yes. Backstage authentication/token machinery and Kubernetes TLS are dependencies. However, the supplied Kubernetes configuration disables certificate verification and browser/backend URLs are HTTP. Do not equate TLS encryption with server authentication under `skipTLSVerify`.
+Yes. Backstage uses authentication tokens and the Kubernetes connection uses TLS. The supplied configuration disables API certificate verification, so that connection does not verify the API server's identity. Browser/backend URLs use HTTP.
 
 **Does the component store secrets?**
 
@@ -66,13 +65,13 @@ Browsers are intended clients. In-cluster callers or users reaching a forwarded/
 | Resource author to browser display | Resource properties and schemas enter UI components.                     | Metadata is untrusted display input, not trusted UI code.    |
 | Operator to plugins/configuration  | Operator selects deployment and integrations.                            | Adding plugins changes the process trust surface.            |
 
-The [UCP model](2026-11-ucp-component-threat-model-v0.62.0.md) owns shared network defaults. Optional namespace ingress policies allow all same-namespace sources and do not authenticate Dashboard users.
+The [UCP model](2026-11-ucp-component-threat-model-v0.62.0.md) lists shared network defaults. Optional namespace ingress policies allow all same-namespace sources and do not authenticate Dashboard users.
 
 ## Assumptions
 
-The default installation is for trusted access, not an Internet-facing multi-tenant portal. Operators control port forwarding, ingress and network policy. These are required deployment decisions, not verified protections.
+The default installation is for trusted access, not an Internet-facing multi-tenant portal. Operators control port forwarding, ingress and network policy. Their installed settings were not tested.
 
-Do not assume HTTPS, a configured production auth provider, Backstage permission policies, or meaningful separation among guest users. Kubernetes port-forward authorizes the person opening the tunnel; it does not provide application-level login to everyone who can reach that local port.
+Operators must configure HTTPS, a production auth provider and Backstage permissions for shared remote access. Guest users do not have separate cluster identities. Kubernetes port-forward authorizes the person opening the tunnel; it does not provide application-level login to everyone who can reach that local port.
 
 ## Data Flows
 
@@ -112,19 +111,19 @@ F1-F3 reach a backend with a shared identity. F5-F7 retrieve data using that ide
 
 **Impact:** Resource, environment, schema and relationship information may be disclosed without an individual login.
 
-**Mitigation:** Restrict network/port-forward access. Configure a real auth provider and appropriate Backstage authorization before broader use; disable Dashboard where not needed.
+**Mitigation:** Restrict network/port-forward access. Configure a production auth provider and Backstage permissions before broader use. Verify that an unauthorized user cannot read resource data; disable Dashboard where not needed.
 
 **Status:** Dashboard and the supplied guest setup are enabled by default. Per-user production auth and authorization are operator configuration, not active default controls.
 
-### DASH-02: Backend authority exceeds the UI's read-only intent
+### DASH-02: A stolen backend credential grants broad Radius authority
 
-**Description:** An actor controlling or able to misuse the backend identity attempts Radius operations beyond the frontend's GET methods.
+**Description:** An attacker obtains the Dashboard service-account token and calls the Kubernetes API with it. The chart grants that identity wildcard verbs on wildcard `api.ucp.dev` resources, beyond the frontend's GET requests.
 
 **Impact:** Broad Radius operations under the Dashboard service account, potentially affecting infrastructure.
 
-**Mitigation:** Narrow backend/API permissions and validate allowed proxy methods/routes; restrict access to the backend and its credentials.
+**Mitigation:** Restrict access to the Pod and service-account token. Reduce the role to the resources and methods the Dashboard needs, after checking the backend plugin's requirements.
 
-**Status:** The Radius client uses GET, but the chart role is wildcard. The exact upstream proxy restrictions and a concrete write-capable route were not validated; this is a privilege-boundary risk, not a claimed exploit.
+**Status:** The chart role confirms the token's broad authority. This scenario requires access to the token; guest access alone is not evidence that an attacker has it. Whether a guest can trigger writes through the Backstage proxy is a separate, untested question.
 
 ### DASH-03: A network actor reads traffic or spoofs the Kubernetes endpoint
 
@@ -134,7 +133,7 @@ F1-F3 reach a backend with a shared identity. F5-F7 retrieve data using that ide
 
 **Mitigation:** Provide browser-side TLS for remote access, keep certificate verification enabled with the correct API trust configuration, and restrict network paths.
 
-**Status:** HTTP and `skipTLSVerify: true` are source defaults. HTTPS/authenticated API transport must not be listed as an existing complete mitigation.
+**Status:** Browser/backend HTTP and `skipTLSVerify: true` are source defaults. Remote TLS termination and verified API certificate trust require operator configuration.
 
 ### DASH-04: Stored resource data attacks the display boundary
 
@@ -144,7 +143,7 @@ F1-F3 reach a backend with a shared identity. F5-F7 retrieve data using that ide
 
 **Mitigation:** Keep framework escaping, validate links and render paths, and test hostile/large resource values.
 
-**Status:** No exploitable rendering sink was demonstrated. A general framework dependency does not prove every component handles hostile data safely.
+**Status:** The render paths were not tested with hostile values. Script execution remains a conditional risk, not a confirmed rendering flaw.
 
 ### DASH-05: Repeated list requests exhaust shared capacity
 
@@ -154,7 +153,7 @@ F1-F3 reach a backend with a shared identity. F5-F7 retrieve data using that ide
 
 **Mitigation:** Restrict access, monitor expensive routes, and apply resource/request limits at the appropriate boundary.
 
-**Status:** The API client's list implementation can fan out into per-resource requests; chart memory settings exist. No universal per-user rate limit or budget is verified.
+**Status:** The API client can turn one list operation into multiple resource fetches. The chart sets Pod memory resources. Per-user request limits in the pinned Backstage dependencies were not assessed.
 
 ### DASH-06: Credentials or shared identity hide the initiating user
 
@@ -164,23 +163,25 @@ F1-F3 reach a backend with a shared identity. F5-F7 retrieve data using that ide
 
 **Mitigation:** Protect Pod/Secret/service-account access, minimize identity grants, and correlate backend logs with external access and Kubernetes audit records.
 
-**Status:** Kubernetes RBAC is available to operators. Complete per-user audit identity and retention are not provided merely by enabling Backstage.
+**Status:** Kubernetes records the shared service-account identity. Whether backend/access logs can identify the originating user and how long they are retained were not checked in a running installation.
 
 ## Open Questions
 
 - What exact proxy routes and methods can each configured backend caller use in the pinned Backstage dependencies?
-- Which real auth and permission policies are required before shared or remote access?
+- Which auth provider and permission rules must an operator configure before shared or remote access?
 - Which stored property displays and link handlers need hostile-input regression tests?
 
 ## Action Items
 
-1. Operators: keep the default guest setup private; decide whether Dashboard is needed.
-2. Maintainers: review service-account least privilege against actual proxy and UI requirements.
-3. Maintainers/operators: validate API certificate trust, remote TLS, per-user access and audit controls.
+| Owner       | Follow-up and completion criteria                                                                                                                                                        | Tracking  |
+|-------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| Operators   | Keep guest access within the approved network or disable Dashboard. Before remote use, test that unauthorized users cannot read data and that both TLS paths verify the intended server. | Untracked |
+| Maintainers | List the Kubernetes plugin's required methods/resources and test guest access to proxy routes. Reduce the role where possible; record any writes that must remain and why.               | Untracked |
+| Operators   | Trace a browser request through backend/access logs to a Kubernetes audit record. Record which users remain indistinguishable and set an audit retention policy.                         | Untracked |
 
 ## Review Notes
 
-This AI-assisted draft uses both pinned repositories. Human review is pending; no browser, cluster, proxy exploitation or dependency vulnerability scan was performed.
+Review covers both pinned repositories. Security review is pending. No browser, cluster, proxy exploitation or dependency vulnerability tests were run.
 
 The [published Radius release manifest][manifest] records Dashboard image `ghcr.io/radius-project/dashboard:0.62.0`, digest `sha256:9ad5f18a465f5aac1406a81cd9c50a14fd4695eeca0ff0cd83bcf401d91ac643`, and source `b2b8934c2fb70724c48511cb606be244dcf20a79`. It also records chart/app version `0.62.0`. This is release metadata evidence, not an independent image rebuild.
 

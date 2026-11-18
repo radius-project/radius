@@ -1,8 +1,7 @@
 # Radius Applications RP Component Threat Model: v0.62.0
 
-- **Author**: AI-assisted revision; human review pending.
 - **Historical author**: @nithyatsu.
-- **Status**: Draft, not a security approval.
+- **Status**: Draft; security review pending.
 - **Baseline**: Radius v0.62.0, commit `37a8cbd33e990886460f4fd1987d6a4fefd901c5`.
 - **Prior model**: [August 2024 Applications RP model](2024-08-applications-rp-component-threat-model.md). The original document and both images remain unchanged.
 
@@ -10,7 +9,7 @@
 
 Applications RP manages core and portable application resources under the permissions of the Radius installation. An application definition can therefore cause Kubernetes and cloud actions beyond the submitting user's direct permissions.
 
-This revision retains the original model's workload, credential, recipe and identity concerns, but updates transport, storage and execution assumptions to the stable release. It does not claim that generic Dynamic RP encryption also protects every portable resource. Risks below are not demonstrated vulnerabilities.
+The main risks are untrusted workload code, misuse of shared deployment identities, and exposure of application secrets. Dynamic RP's field encryption does not establish protection for the separate portable APIs. The scenarios below describe risks, not confirmed exploits.
 
 ## Terms and Definitions
 
@@ -24,7 +23,7 @@ This revision retains the original model's workload, credential, recipe and iden
 
 ## System Description
 
-The [Applications RP process][root] hosts core and portable providers. Its [UCP routes][ucp] include `Applications.Core`, `Radius.Core`, `Applications.Dapr`, `Applications.Datastores`, and `Applications.Messaging`. Do not describe this process as the owner of all current resource types; [Dynamic RP](2026-11-dynamic-rp-component-threat-model-v0.62.0.md) owns generic types.
+The [Applications RP process][root] hosts core and portable providers. Its [UCP routes][ucp] include `Applications.Core`, `Radius.Core`, `Applications.Dapr`, `Applications.Datastores`, and `Applications.Messaging`. [Dynamic RP](2026-11-dynamic-rp-component-threat-model-v0.62.0.md) handles generic types in a separate process.
 
 Assets include application definitions, workload manifests, connection values, TLS materials, cloud credentials, managed identities, operation records, and Kubernetes/cloud permissions. Actors include application authors, trusted recipe publishers, operators, and neighboring workloads.
 
@@ -42,9 +41,11 @@ Yes. Kubernetes/cloud client transports use their configured credentials and tru
 
 **Does the component store secrets?**
 
-Yes. Cloud credentials are accessed through shared providers. [Core secret stores][secretstore] support Kubernetes-backed data and validate types/encodings. Their namespace is resolved from application or environment state; do not assume one fixed namespace for every secret.
+Yes. The RP reads cloud credentials through shared providers. [Core secret stores][secretstore] support Kubernetes-backed data and validate types/encodings. When a reference omits the namespace, the handler resolves it from the application or environment.
 
-Values can also exist in resource definitions, rendered objects, recipe inputs/outputs, Terraform state and diagnostics. Kubernetes Secret access control and at-rest encryption are separate operator concerns. The old blanket claim that datastore secrets are all plaintext, or that a future feature will remove all inline values, is not asserted for this release.
+For `Applications.Core/secretStores`, `properties.resource` names a Kubernetes Secret as `namespace/name` or `name`. For example, an application-scoped store can refer to an existing Secret with `properties.resource: 'team-a/db-credentials'` and select its `password` key with `properties.data.password: {}`. These are property fragments, not a complete deployment. The handler checks that the referenced Secret and selected key exist. It rejects `properties.data.<key>.valueFrom`; that field is reserved for other secret-store implementations.
+
+Values can also enter resource definitions, rendered objects, recipe inputs/outputs, Terraform state and diagnostics. Operators must protect Secret access and configure storage encryption. This source review did not inventory every inline secret field or read/error path in the portable APIs.
 
 **Does the component process untrusted data or does the component parse any custom formats?**
 
@@ -154,9 +155,9 @@ F1-F4 convert desired state into worker actions. F5-F8 cross privileged service 
 
 **Impact:** Application credential disclosure or use of cloud/registry permissions.
 
-**Mitigation:** Use supported secret references, restrict Secret/state/log access, enable cluster storage encryption, and minimize stored plaintext.
+**Mitigation:** For core secret stores, reference an existing Kubernetes Secret through `properties.resource` and select the needed entries in `properties.data`. Restrict access to that Secret, resource state and logs. Configure cluster storage encryption. Check each portable type's own secret contract before supplying credentials.
 
-**Status:** Kubernetes-backed secret stores are implemented. Their backing Secrets and authorized retrieval paths still need protection. No encryption/redaction guarantee for every portable field or error path is established.
+**Status:** The core secret-store handler checks references and removes supplied secret values before saving its metadata. That finding applies to this handler, not every portable field. The portable API and diagnostic paths listed in Open Questions still need review.
 
 ### APP-06: Target selection or gateway settings cross an unintended boundary
 
@@ -176,7 +177,7 @@ F1-F4 convert desired state into worker actions. F5-F8 cross privileged service 
 
 **Mitigation:** Restrict API access, set budgets and quotas, monitor operations, and bound workload/recipe resources.
 
-**Status:** The chart configures worker concurrency/retry settings and memory resources. These are not per-user quotas or proof that all external execution is bounded.
+**Status:** The chart configures worker concurrency/retry settings and memory resources. These settings limit shared workers; they do not assign each user a quota. External execution costs and installation-specific limits were not tested.
 
 ## Open Questions
 
@@ -186,17 +187,19 @@ F1-F4 convert desired state into worker actions. F5-F8 cross privileged service 
 
 ## Action Items
 
-1. Operators: review recipe publishers, cloud roles, target kubeconfig access, workload admission and ingress exposure.
-2. Maintainers: verify sensitive-value handling across the portable APIs instead of extending Dynamic RP guarantees by assumption.
-3. Maintainers: address shared direct-entry and internal transport controls tracked by the UCP model.
+| Owner       | Follow-up and completion criteria                                                                                                                                        | Tracking  |
+|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| Operators   | Record approved recipe publishers, cloud roles, target namespaces and gateway exposure. Verify that workload admission rejects an image or manifest outside that policy. | Untracked |
+| Maintainers | Inventory sensitive fields in the portable APIs. For each field, record its write, storage, read and error paths, with tests for any claimed redaction.                  | Untracked |
+| Maintainers | Review APP-01/APP-02 with the UCP follow-ups. Record allowed callers and verify that rejected callers cannot submit operations through direct RP access.                 | Untracked |
 
 ## Review Notes
 
-This is a fixed-release, AI-assisted source review. No live environment or exploit was tested; human review is pending.
+Review covers the cited release source. No live cluster or exploit tests were run. Security review is pending.
 
 The two old RP impersonation threats and arbitrary-API threat are consolidated into APP-01/APP-04. Sniffing remains APP-02. Recipe escalation and managed-identity misuse remain APP-04. Malicious containers remain APP-03. Secrets, external targeting, gateway exposure and capacity are explicit APP-05 through APP-07 risks.
 
-Detailed OCI/Terraform execution threats move to the shared recipe model. The old Terraform latest-version and proposed-containerization statements are not current controls. Old SHA-1 and secret-store claims are corrected or explicitly left as evidence questions. Historical review/action items are not treated as approval of this revision.
+The shared recipe model covers OCI/Terraform execution. It replaces the old latest-version download and proposed-containerization account with the released behavior. The cryptography and secret-store sections distinguish current controls from portable API paths that still need review. The historical review does not approve this revision.
 
 ## References
 

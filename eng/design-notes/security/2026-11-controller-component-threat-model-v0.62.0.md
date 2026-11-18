@@ -1,8 +1,7 @@
 # Radius Controller Component Threat Model: v0.62.0
 
-- **Author**: AI-assisted revision; human review pending.
 - **Historical author**: ytimocin.
-- **Status**: Draft, not a security approval.
+- **Status**: Draft; security review pending.
 - **Baseline**: Radius v0.62.0, commit `37a8cbd33e990886460f4fd1987d6a4fefd901c5`.
 - **Prior model**: [August 2024 Controller model](2024-08-controller-component-threat-model.md). The original document and both images remain unchanged.
 
@@ -10,7 +9,7 @@
 
 The controller turns Kubernetes objects and Flux source artifacts into Radius deployments. Permission to submit those inputs can cause actions under the controller's broader service identity.
 
-The released controller no longer matches the original model's Recipe/Deployment reconciler and validating-webhook topology. This revision models the registered DeploymentTemplate, DeploymentResource, and Flux reconcilers. It describes source-based risks, not demonstrated vulnerabilities.
+The released controller registers DeploymentTemplate, DeploymentResource and Flux reconcilers. The original model's Recipe/Deployment reconcilers and validating webhook no longer describe this service. The scenarios below describe risks, not confirmed exploits.
 
 ## Terms and Definitions
 
@@ -38,7 +37,7 @@ The other reconcilers coordinate Radius operations through UCP and update Kubern
 
 **Is there any use of cryptography?**
 
-Yes, through Kubernetes client authentication/TLS and artifact digest verification delegated to the Flux archive fetcher. A digest ties downloaded bytes to the supplied digest, not to an independently trusted author. Do not reuse the original model's SHA-1 configuration/secret-hash account for removed reconcilers.
+Yes, through Kubernetes client authentication/TLS and artifact digest verification delegated to the Flux archive fetcher. A matching digest confirms the bytes named in Flux status; it does not independently authenticate their author. The old SHA-1 configuration/secret hashes belonged to the removed reconcilers.
 
 **Does the component store secrets?**
 
@@ -62,13 +61,13 @@ Kubernetes users and automation submit watched objects through the API. Flux Sou
 | Controller to UCP                       | SDK connection configured from the installation.                  | Radius authorization mode settings do not supply user-level checks.                        |
 | Controller to output namespaces         | ClusterRole grants enable writes.                                 | Namespace selection is not evidence that a source author is authorized for that namespace. |
 
-The [UCP model](2026-11-ucp-component-threat-model-v0.62.0.md) owns shared transport and network defaults. The old webhook diagram's mTLS claim must not be used as a control for this release.
+The [UCP model](2026-11-ucp-component-threat-model-v0.62.0.md) lists shared transport and network defaults. The removed webhook's mTLS connection does not protect the current controller-to-UCP path.
 
 ## Assumptions
 
 The Kubernetes API and approved Flux Source Controller are trust anchors. Operators protect the controller image, service account, configuration, and approved source selection.
 
-Do not assume all namespace users are trusted source authors, all GitRepository writers are cluster administrators, or a source artifact is safe merely because its digest matches. Application source review and target-scope policy remain separate requirements.
+Namespace users, source contributors and cluster administrators are separate trust roles. A matching digest does not make an artifact safe to compile or deploy. Operators must review source changes and permitted deployment targets.
 
 ## Data Flows
 
@@ -120,7 +119,7 @@ F1 admits desired state under the submitting user's Kubernetes permissions. F2-F
 
 **Mitigation:** Treat approved source configuration as privileged, validate permitted targets through operator policy, and separate sources by trust group.
 
-**Status:** Target selection and namespace creation are implemented. An authorization check tying each source author to each selected target is not established by this review.
+**Status:** The reconciler selects targets and can create namespaces. This review did not trace every downstream check that could restrict those targets. Source-author-to-target authorization remains an open review item.
 
 ### CTRL-03: An artifact source is substituted
 
@@ -138,9 +137,9 @@ F1 admits desired state under the submitting user's Kubernetes permissions. F2-F
 
 **Impact:** Controller memory, disk or CPU exhaustion and delayed reconciliation for other applications.
 
-**Mitigation:** Apply source admission and cluster resource limits. Add explicit artifact/expansion limits and compilation budgets as future defenses.
+**Mitigation:** Restrict approved source writers and review artifact contents. Set `controller.resources.requests.memory` and `controller.resources.limits.memory` for the expected workload. Download-byte, extracted-byte and compilation-time limits require further product work.
 
-**Status:** Chart memory settings exist. Fetcher size limits are explicitly unlimited. No malformed-archive exploit or universal request budget was tested.
+**Status:** The [chart defaults][values] request `60Mi` of memory and limit the controller to `300Mi`. These Pod settings do not cap archive download or expansion size. The fetcher explicitly sets both size limits to unlimited and exposes no finite limit through this constructor. No malformed-archive exploit was tested.
 
 ### CTRL-05: Configuration or network changes spoof a dependency
 
@@ -150,7 +149,7 @@ F1 admits desired state under the submitting user's Kubernetes permissions. F2-F
 
 **Mitigation:** Protect configuration and credentials, preserve Kubernetes TLS verification, and restrict network access using the shared installation controls.
 
-**Status:** Standard Kubernetes client security is used. It is not proof that all internal UCP/RP paths use mutual TLS; see the UCP model.
+**Status:** Kubernetes client security applies to API-server calls. The chart's UCP-to-RP connections still use HTTP; see the UCP model for those separate paths.
 
 ### CTRL-06: Deployment data leaks through Kubernetes state or diagnostics
 
@@ -160,7 +159,7 @@ F1 admits desired state under the submitting user's Kubernetes permissions. F2-F
 
 **Mitigation:** Use references rather than inline secrets where supported, limit read access, and review diagnostic sinks and retention.
 
-**Status:** Access restrictions are operator duties. No universal redaction of arbitrary template content or all error paths is claimed.
+**Status:** Operators control reads of generated objects and diagnostics. This review did not check every template field or error path for redaction.
 
 ### CTRL-07: Reconciliation is misattributed
 
@@ -170,7 +169,7 @@ F1 admits desired state under the submitting user's Kubernetes permissions. F2-F
 
 **Mitigation:** Retain Git review/revision history, Kubernetes audit, and correlated Radius logs.
 
-**Status:** Reconciliation logs/events exist. Complete author-to-cloud attribution and audit retention are not verified.
+**Status:** The controller emits reconciliation logs/events. Linking a source author to a cloud action and retaining that history require installation-specific audit checks; those checks were not run.
 
 ## Open Questions
 
@@ -180,13 +179,15 @@ F1 admits desired state under the submitting user's Kubernetes permissions. F2-F
 
 ## Action Items
 
-1. Operators: review CRD/source write grants and approved repository contributors as deployment privileges.
-2. Maintainers: evaluate target-scope checks and bounded artifact/compile processing.
-3. Operators: restrict diagnostics and retain revision-to-deployment audit evidence.
+| Owner       | Follow-up and completion criteria                                                                                                                                                                     | Tracking  |
+|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| Operators   | List approved CRD/source writers and target namespaces/resource groups. Verify that object grants and source review rules match that list.                                                            | Untracked |
+| Maintainers | Define permitted source-to-target mappings and finite download, extraction and compile limits. Add tests that reject disallowed targets and inputs over each approved limit.                          | Untracked |
+| Operators   | Restrict template/status/log readers and record a source revision, Kubernetes change and Radius operation for one deployment. Complete when the records can be joined without exposing secret values. | Untracked |
 
 ## Review Notes
 
-This AI-assisted draft is based on released source, not a running controller. Human review is pending.
+Review covers the released source. No live controller tests were run. Security review is pending.
 
 The old spoofed UCP/API-server threats are corrected and retained in CTRL-05. The old webhook spoofing threat is retired for this model because that webhook is not registered. Invalid-input denial of service becomes CTRL-04. Secret disclosure becomes CTRL-06 without assuming payloads contain no secrets. Kubernetes privilege delegation becomes CTRL-01/CTRL-02.
 
@@ -203,6 +204,7 @@ Old SHA-1 deployment-hash migration work does not apply to the removed reconcile
 [service]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/controller/service.go
 [rbac]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/controller/rbac.yaml
 [deployment]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/controller/deployment.yaml
+[values]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/values.yaml
 [flux]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/controller/reconciler/flux_controller.go
 [fetcher]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/controller/reconciler/archivefetcher.go
 [template]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/controller/reconciler/deploymenttemplate_reconciler.go

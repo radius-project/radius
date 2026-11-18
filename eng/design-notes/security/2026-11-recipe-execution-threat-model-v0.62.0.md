@@ -1,7 +1,6 @@
 # Radius Recipe Execution Threat Model: v0.62.0
 
-- **Author**: AI-assisted draft; human review pending.
-- **Status**: Draft, not a security approval.
+- **Status**: Draft; security review pending.
 - **Baseline**: Radius v0.62.0, commit `37a8cbd33e990886460f4fd1987d6a4fefd901c5`.
 - **Related models**: [Applications RP](2026-11-applications-rp-component-threat-model-v0.62.0.md), [Dynamic RP](2026-11-dynamic-rp-component-threat-model-v0.62.0.md), and [UCP](2026-11-ucp-component-threat-model-v0.62.0.md).
 
@@ -9,7 +8,7 @@
 
 Recipe execution turns registered infrastructure artifacts and resource parameters into actions under Radius-held identities. A recipe, Terraform provider or build script is executable infrastructure content, not harmless application metadata.
 
-This model covers the shared execution path used by Applications RP and Dynamic RP, including opt-in image builds. It does not create a separate model or internal assessment for DE. Threats are source-based risk scenarios, not demonstrated vulnerabilities.
+Applications RP and Dynamic RP share this execution path. Dynamic RP also supports opt-in image builds. DE is an external deployment dependency; its internals are outside this model. The scenarios below describe risks, not confirmed exploits.
 
 ## Terms and Definitions
 
@@ -33,7 +32,7 @@ The [Terraform executor][execute] prepares the process environment and backend s
 
 The [installer][install] uses a shared Terraform binary and per-execution working directories. Chart startup pre-download is enabled by default and pins Terraform `1.16.5`; a custom download URL can override that source. This replaces the old model's unqualified latest-version download statement, not the need to trust downloaded tools.
 
-The [cluster resolver][cluster] prefers `RADIUS_TARGET_KUBECONFIG`, otherwise the local/control-plane strategy. Invalid injected target configuration is not permission to silently use another cluster. Terraform's default Kubernetes state backend remains a separate control-plane concern.
+The [cluster resolver][cluster] uses `RADIUS_TARGET_KUBECONFIG` when supplied, otherwise the local/control-plane strategy. An invalid injected kubeconfig returns an error instead of falling back to another cluster. Terraform's default Kubernetes state backend remains in the control plane.
 
 ### Implementation Details
 
@@ -73,11 +72,19 @@ The [Bicep image hook][imagehook] applies only to `Radius.Compute/containerImage
 
 The sidecar uses Unconfined seccomp/AppArmor profiles, `allowPrivilegeEscalation: true`, and `--oci-worker-no-process-sandbox`. It therefore needs admission settings that permit those choices. Rootless execution and loopback access are useful limits, not per-build tenant isolation.
 
+| Process                          | Files and credentials available through the reviewed code/chart                                                                                                                                                                                                                                                                                                               |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Terraform and its providers      | Inherit the RP environment plus recipe overrides/secrets. They run with the RP container's file permissions and use the selected cloud, Kubernetes and state-backend credentials.                                                                                                                                                                                             |
+| Image-build script in Dynamic RP | Inherits the Dynamic RP environment except that `DOCKER_CONFIG` and `RADIUS_EXEC_OUTPUT` are replaced. It shares the container's file access, including `/var/secrets/encryption`, an injected target kubeconfig, and the optional read-only `/var/radius/build-contexts` mount. The driver writes selected registry credentials to a temporary Docker config for the script. |
+| BuildKit daemon                  | The chart mounts read-only `/etc/radius/buildkit` and writable `/home/user/.local/share/buildkit`. It does not mount the encryption Secret or local-context PVC into this container. The script sends build context and any requested session data through `buildctl`.                                                                                                        |
+
+These are separate processes with different mounts. They still share Pod networking. Check the rendered Pod for service-account tokens or other injected volumes and the API permissions those credentials grant. This review did not test which session credentials a hostile build step could obtain.
+
 ## Assumptions
 
 Operators approve recipe/pack publishers, tool sources, cloud IAM, state backends, target credentials and registry destinations. Cluster/cloud/registry services are dependencies, not systems evaluated internally here.
 
-Do not assume approved resource authors can safely supply arbitrary recipes, Terraform providers are sandboxed, all downloads use an independently verified digest, or rootless image builds are suitable for mutually untrusted tenants. External target credentials and their refresh lifecycle are operator-managed.
+Resource authors are not automatically trusted recipe publishers. Terraform providers and rootless image builds do not provide isolation between mutually untrusted tenants. Operators must approve artifact sources and manage external target credentials, including refresh and revocation.
 
 ## Data Flows
 
@@ -122,7 +129,7 @@ F1-F3 select executable content and authority. F4 uses the external template-dep
 
 **Mitigation:** Restrict registration, approve publishers/revisions, pin artifacts where supported, and constrain IAM/network access.
 
-**Status:** Artifact selection is implemented. Universal signature verification, immutable content selection and publisher approval are not established for all source kinds.
+**Status:** The engine resolves registered artifacts. This review did not assess signature verification or immutable reference support for every source kind. Publisher approval remains an operator policy.
 
 ### RECIPE-02: Valid parameters misuse shared infrastructure authority
 
@@ -132,17 +139,17 @@ F1-F3 select executable content and authority. F4 uses the external template-dep
 
 **Mitigation:** Constrain recipe interfaces and deployment identities; validate scopes and keep operator-only parameters out of developer overrides.
 
-**Status:** Parameter/schema handling exists. Image registry settings are explicitly registration-owned, but that is not proof that all parameters in all recipes enforce least privilege.
+**Status:** Image registry and credential-Secret settings come from recipe registration. Other recipe parameters depend on each recipe's schema and implementation; their scope constraints were not all reviewed.
 
 ### RECIPE-03: Executable content reaches process credentials and files
 
-**Description:** A malicious module/provider or image script uses the network, environment or files available to its execution process.
+**Description:** A malicious Terraform module/provider or image-build script reads the environment and files of the RP container where it runs.
 
 **Impact:** Cloud, Kubernetes or registry credential disclosure and lateral actions.
 
 **Mitigation:** Limit trusted publishers, identities and environment variables; separate untrusted execution and apply egress policy.
 
-**Status:** Terraform is launched as a process and the image script runs in Dynamic RP. Bundled policies do not restrict egress. Per-recipe isolation is not provided by a temporary directory.
+**Status:** The executor and image hook confirm the inherited environment and shared container file access listed above. Temporary working directories do not change those permissions. Bundled NetworkPolicies leave egress open. Actual credential use was not tested.
 
 ### RECIPE-04: State leaks, is replaced, or is lost
 
@@ -166,13 +173,13 @@ F1-F3 select executable content and authority. F4 uses the external template-dep
 
 ### RECIPE-06: Image builds cross a stronger trust boundary than expected
 
-**Description:** An approved build source or recipe runs hostile build steps against the shared BuildKit sidecar at F8-F10.
+**Description:** A build source supplies hostile steps to the shared BuildKit daemon at F9. Unlike the script in RECIPE-03, those steps run inside the builder's execution environment.
 
-**Impact:** Shared builder interference, resource exhaustion or access to data reachable within that build/process boundary.
+**Impact:** Hostile steps could interfere with other builds or builder state, consume daemon memory/disk, or expose build/session data supplied to the daemon.
 
 **Mitigation:** Keep BuildKit disabled unless needed; approve sources/recipes; separate trust groups; restrict registry identity and local context PVC contents.
 
-**Status:** Rootless builder, loopback endpoint, read-only local contexts and registration-owned registry settings are implemented when configured. Unconfined profiles, privilege escalation and disabled process sandbox remain explicit limitations; no escape was demonstrated.
+**Status:** The chart runs a rootless daemon with the mounts listed above and a loopback listener. The RP, not the daemon, mounts local build contexts read-only. Registry settings come from recipe registration. Unconfined profiles, privilege escalation and disabled process sandbox remain limitations; no escape or build-step credential access was tested.
 
 ### RECIPE-07: Concurrent execution exhausts shared capacity
 
@@ -182,7 +189,7 @@ F1-F3 select executable content and authority. F4 uses the external template-dep
 
 **Mitigation:** Budget concurrency and resource use, monitor state/queues, and restrict submitters.
 
-**Status:** Worker limits and memory settings exist. BuildKit `maxParallelism` defaults to one worker step, but it is not per-build isolation or a universal memory bound.
+**Status:** BuildKit `maxParallelism` defaults to one worker step. The chart separately sets `dynamicrp.buildkit.resources.limits.memory` to `4Gi`. These are shared worker/daemon limits, not per-user quotas or isolation between builds.
 
 ### RECIPE-08: Outputs and diagnostics disclose secrets or obscure actions
 
@@ -192,7 +199,7 @@ F1-F3 select executable content and authority. F4 uses the external template-dep
 
 **Mitigation:** Use declared secret outputs/references, review recipe diagnostics, and correlate operation, source revision and cloud audit records.
 
-**Status:** Managed output-secret handling is implemented for opted-in dynamic types. Complete log redaction and end-user attribution across every driver/backend are unverified.
+**Status:** Opted-in dynamic types use managed secret outputs. The image hook caps log lines and stderr tails at 4096 bytes; truncation does not redact secret text. Other log paths and end-user attribution across drivers/backends were not fully reviewed.
 
 ## Open Questions
 
@@ -202,15 +209,17 @@ F1-F3 select executable content and authority. F4 uses the external template-dep
 
 ## Action Items
 
-1. Operators: approve executable artifacts and separate recipe publishers from resource authors.
-2. Operators: scope execution/state/registry identities and keep optional BuildKit off unless its security trade-offs are accepted.
-3. Maintainers: evaluate bounded execution, stronger isolation and end-to-end secret-safe diagnostics.
+| Owner       | Follow-up and completion criteria                                                                                                                                                            | Tracking  |
+|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| Operators   | Record approved artifact publishers/revisions and who can register recipes. Verify that resource authors cannot change operator-owned registry settings.                                     | Untracked |
+| Operators   | Inventory RP/script/builder mounts, injected tokens and cloud/state/registry permissions. Keep BuildKit off unless those permissions and its admission requirements are accepted.            | Untracked |
+| Maintainers | Define execution limits and isolation requirements for each trust group. Add over-limit execution and secret-output/log tests, and record which actor an operation's audit trail identifies. | Untracked |
 
 ## Review Notes
 
-This new AI-assisted model consolidates recipe risks formerly embedded in Applications RP. Human review is pending. No recipe, Terraform provider, build step or cloud operation was executed during this review.
+Recipe risks previously embedded in Applications RP are collected here. Security review is pending. No recipe, Terraform provider, build step or cloud operation was run during this review.
 
-The source establishes the shared process execution, environment handling, target selection, image-hook restrictions and sidecar settings. An upstream tool's security claims or an operator's hardening policy are not marked active without evidence.
+The cited source defines process execution, inherited environment, target selection, image-hook restrictions and sidecar mounts. Source-kind verification, build-session exposure and live access policies remain review gaps, not confirmed flaws.
 
 ## References
 

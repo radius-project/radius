@@ -1,8 +1,7 @@
 # Radius UCP Component Threat Model: v0.62.0
 
-- **Author**: AI-assisted revision; human review pending.
 - **Historical author**: ytimocin.
-- **Status**: Draft, not a security approval.
+- **Status**: Draft; security review pending.
 - **Baseline**: Radius v0.62.0, commit `37a8cbd33e990886460f4fd1987d6a4fefd901c5`, released 2026-10-27.
 - **Prior model**: [November 2024 UCP model](2024-11-ucp-component-threat-model.md). That document and its images remain unchanged.
 
@@ -10,7 +9,7 @@
 
 UCP routes Radius API requests and uses service identities and cloud credentials to act on a caller's behalf. Protecting the Kubernetes API path alone does not protect direct access to UCP or its downstream services.
 
-This revision models the stable release, not current `main`. It separates released controls from operator duties and proposed controls. Threats below are risk scenarios derived from source; no exploit or affected live installation was tested.
+The baseline is the stable release, not current `main`. The scenarios below describe risks, not confirmed exploits. The shared control matrix distinguishes release defaults from settings an operator must supply.
 
 ## Terms and Definitions
 
@@ -30,9 +29,17 @@ Assets include provider endpoints and schemas, resource records, pending operati
 
 ### Architecture
 
-UCP exposes an HTTPS listener for Kubernetes aggregation. Its [APIService configuration][apiservice] supplies a CA bundle. The [server implementation][server] installs request context, logging, and tracing middleware; it does not establish a separate per-user or per-component authorization boundary.
+The `ucp` [Service][service] exposes port `443` and forwards to UCP's HTTPS listener on Pod port `9443`. The API path starts with `/apis/api.ucp.dev/v1alpha3`. Its [APIService configuration][apiservice] supplies a CA bundle. The [server][server] adds request context, logs and tracing but does not check each user's or component's permissions.
 
-Outbound provider URLs in the chart use HTTP. Requests to Kubernetes and cloud APIs use their respective client identities and transport settings. A service's TLS port or an `AnonymousCredential` type alone is not proof of the complete connection's identity behavior.
+Outbound provider URLs in the chart use HTTP. Requests to Kubernetes and cloud APIs use their respective client identities and transport settings.
+
+| Endpoint | Released setting                   | Intended access to verify at installation                                            |
+|----------|------------------------------------|--------------------------------------------------------------------------------------|
+| UCP API  | Service `443` to Pod `9443`, HTTPS | Kubernetes API aggregation and required Radius peers; deny untrusted direct callers. |
+| Metrics  | Pod `9090`, HTTP `/metrics`        | Approved collectors only.                                                            |
+| Profiler | Pod `6060`, HTTP profiler listener | Restricted operator diagnostics; deny untrusted workloads.                           |
+
+The [configuration][config] enables metrics and profiling. The [profiler service][profiler] binds to all interfaces on its configured port. The UCP Service exposes only the API port; that does not prevent direct Pod access to the other listeners.
 
 ### Implementation Details
 
@@ -75,7 +82,7 @@ Namespaces group resources; they do not by themselves deny traffic. A managed Ku
 | Egress restriction                 | Operator responsibility                    | Bundled policies restrict ingress only.                                                                                                  |
 | At-rest protection for all Secrets | Operator responsibility                    | Kubernetes Secret encoding is not encryption at rest.                                                                                    |
 | Cloud federation                   | Opt-in                                     | Azure workload identity and AWS IRSA switches default to false.                                                                          |
-| Metrics/profiling exposure         | Enabled in service configuration           | The chart configures metrics and profiling; access must be restricted.                                                                   |
+| Metrics/profiling exposure         | Enabled in service configuration           | Pod ports `9090` and `6060`; operators must restrict collectors and diagnostic users.                                                    |
 | PostgreSQL                         | Opt-in                                     | `database.enabled=false`; chart database URLs use `sslmode=disable` when selected.                                                       |
 
 ### Model coverage
@@ -96,7 +103,7 @@ DE is covered only as an external request/callback dependency. No DE threat mode
 
 Cluster administrators and Radius operators are trusted to install approved code and protect control-plane configuration. Kubernetes and cloud control planes are external trust anchors, not systems evaluated here.
 
-Do not assume other cluster workloads are trusted, every Radius user is an operator, a CNI enforces policy, or the environment has audit logging, ingress TLS, or encrypted storage. These must be checked by the operator. A compromised cluster administrator is outside the prevention boundary, but ordinary access to a workload namespace is not equivalent to that privilege.
+Other cluster workloads and ordinary Radius users are not trusted as operators. Operators must check CNI policy enforcement, audit collection, ingress TLS and storage encryption. A compromised cluster administrator is outside the prevention boundary; access to an ordinary workload namespace is a lower-privilege threat.
 
 ## Data Flows
 
@@ -136,7 +143,7 @@ F1-F2 are the normal aggregated path. F3 is a distinct network entry point and m
 
 **Impact:** The workload could invoke resource operations under Radius service authority without the Kubernetes API checks expected by the operator.
 
-**Mitigation:** Restrict control-plane ingress and access to the release namespace. Use the bundled NetworkPolicies only with an enforcing CNI; add tighter policies where needed.
+**Mitigation:** Restrict control-plane ingress and access to the release namespace. Use the bundled NetworkPolicies with an enforcing CNI for namespace-level restrictions. For tighter same-namespace isolation, replace the broad internal allow with operator-managed rules.
 
 **Status:** Policies are opt-in. Namespace and network access controls are operator duties. Internal authorization switches are reserved, not an active mitigation.
 
@@ -148,7 +155,7 @@ F1-F2 are the normal aggregated path. F3 is a distinct network entry point and m
 
 **Mitigation:** Restrict registration and store/configuration writes to trusted operators. Review endpoint changes and protect service discovery. Authenticated internal channels remain a proposed defense.
 
-**Status:** Kubernetes access control can protect configuration, but its grants are operator-managed. Do not list sensitive request payloads as a mitigation; they increase impact.
+**Status:** Kubernetes grants can restrict configuration writes. The grants applied by a particular installation were not checked. Sensitive request payloads increase the impact of redirection; they offer no protection.
 
 ### UCP-03: Internal traffic is read or changed
 
@@ -186,9 +193,9 @@ F1-F2 are the normal aggregated path. F3 is a distinct network entry point and m
 
 **Impact:** CPU/memory or queue pressure, delayed operations, and operational information disclosure.
 
-**Mitigation:** Limit endpoint access and apply resource budgets, monitoring, and request controls appropriate to the environment.
+**Mitigation:** Restrict Pod ports `9443`, `9090` and `6060` to the callers listed above. For bundled ingress rules, set `networkPolicies.enabled` and `networkPolicies.controlPlaneCIDRs` with an enforcing CNI. Use an operator-managed policy set for narrower peer/collector access; it must replace the broad same-namespace allow, since additional allow rules cannot remove that access. Per-user API throttling would require a separate control.
 
-**Status:** Chart resource settings and service observability configuration exist. No universal per-user quota, rate limit, or protected profiler boundary is established by this review.
+**Status:** Bundled policies are off by default. When enabled they allow the entire release namespace, not just approved collectors or operators. UCP's chart memory limit is `300Mi`; it is not a request quota. This review did not audit every route for throttling or test an installation's listener access.
 
 ### UCP-07: Shared service identities weaken attribution
 
@@ -198,7 +205,7 @@ F1-F2 are the normal aggregated path. F3 is a distinct network entry point and m
 
 **Mitigation:** Correlate Radius request logs with Kubernetes audit and cloud activity records. Avoid logging sensitive bodies.
 
-**Status:** Logging/tracing support is implemented; external collection, audit retention, and complete end-user attribution are not verified controls.
+**Status:** UCP emits logs/traces. Whether external audit records retain the original user and how long those records survive were not checked in a running installation.
 
 ## Open Questions
 
@@ -208,15 +215,17 @@ F1-F2 are the normal aggregated path. F3 is a distinct network entry point and m
 
 ## Action Items
 
-1. Operators: verify direct-service reachability, policy enforcement, Secret access, cloud IAM, and auxiliary endpoint exposure.
-2. Maintainers: design and implement internal identity and authorization checks; do not treat mode logging as completion.
-3. Maintainers: evaluate encrypted internal transport and secure optional database connections.
+| Owner       | Follow-up and completion criteria                                                                                                                                                                               | Tracking  |
+|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| Operators   | Record allowed sources for API `9443`, metrics `9090` and profiler `6060`, plus Secret and cloud IAM grants. Test allowed and denied sources, including same-namespace callers, against the installed policies. | Untracked |
+| Maintainers | Define user and service identities and permission checks at each API entry path. Complete when tests reject an unauthorized direct caller and preserve authorized aggregated/internal calls.                    | Untracked |
+| Maintainers | Select authenticated internal transport and optional database TLS settings. Add tests that reject an untrusted peer or server certificate and verify successful calls with the intended trust roots.            | Untracked |
 
-These are recommendations, not changes made by this documentation update.
+These follow-ups propose work; they do not record completed controls. No tracking issues have been linked to them here.
 
 ## Review Notes
 
-This AI-assisted draft uses fixed-release source and published release metadata. Human security review is pending. No runtime, exploit, or infrastructure validation was performed.
+Review covers the cited release source and published metadata. Security review is pending. No live infrastructure or exploit tests were run. Installation-specific access and audit checks remain open.
 
 The old spoofed-provider threat is retained as UCP-02. Secret disclosure is retained as UCP-04. Unauthenticated communication is split into direct-entry and transport risks, UCP-01/UCP-03. Old RBAC and secure-channel action items remain open where the release lacks checks; the new optional NetworkPolicies are no longer described as wholly absent. Unsupported old datastore listings are replaced with the current factories.
 
@@ -231,6 +240,8 @@ The [release lock][lock] records the core image source SHA; the [release manifes
 [config]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/ucp/configmaps.yaml
 [apiservice]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/ucp/apiservice.yaml
 [server]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/ucp/frontend/api/server.go
+[service]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/ucp/service.yaml
+[profiler]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/components/profiler/profilerservice/service.go
 [values]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/values.yaml
 [network]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/networkpolicies.yaml
 [providers]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/components/database/databaseprovider/storageprovider.go

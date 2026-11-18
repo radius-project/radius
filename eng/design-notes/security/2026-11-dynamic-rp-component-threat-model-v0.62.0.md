@@ -1,7 +1,6 @@
 # Radius Dynamic RP Component Threat Model: v0.62.0
 
-- **Author**: AI-assisted draft; human review pending.
-- **Status**: Draft, not a security approval.
+- **Status**: Draft; security review pending.
 - **Baseline**: Radius v0.62.0, commit `37a8cbd33e990886460f4fd1987d6a4fefd901c5`.
 - **Related models**: [UCP](2026-11-ucp-component-threat-model-v0.62.0.md) and [recipe execution](2026-11-recipe-execution-threat-model-v0.62.0.md).
 
@@ -9,7 +8,7 @@
 
 Dynamic RP implements resource lifecycle operations for registered Radius types. Type schemas and recipe configuration control how user data is validated, protected, and turned into infrastructure actions. Their authors are therefore part of the security boundary.
 
-The original four component models did not cover this generic provider. This model describes the released frontend, worker, sensitive-field handling and managed secret outputs. It does not claim that every property or artifact is secret-free, or that a tested vulnerability exists.
+The frontend encrypts schema-marked inputs; the worker reads them for execution and removes them from stored resource properties. Managed secret outputs follow a separate path. These controls cover specific fields, not every property or artifact. The scenarios below describe risks, not confirmed exploits.
 
 ## Terms and Definitions
 
@@ -29,7 +28,7 @@ Assets include schemas, desired resource state, protected inputs awaiting execut
 
 ### Architecture
 
-The [route setup][routes] applies defaults, plaintext validation, then encryption before asynchronous PUT persistence. GET and LIST have [redaction controllers][get]. Schema/handler failures produce errors rather than intentionally falling back to exposing sensitive values.
+The [route setup][routes] applies defaults, validates plaintext, then encrypts marked fields before asynchronous PUT persistence. GET and LIST have [redaction controllers][get]. Schema lookup or handler failures return errors instead of exposing sensitive values.
 
 The worker uses shared [recipe-resource processing][worker]. For resources with schema-sensitive inputs, it decrypts an execution copy and persists a redacted resource before recipe execution. Failure after that redaction is handled as terminal where retry would require removed inputs. An empty/redacted input is not a retained encrypted secret that callers can recover later.
 
@@ -41,7 +40,9 @@ The worker uses shared [recipe-resource processing][worker]. For resources with 
 
 Yes. The [encryptor][crypto] uses ChaCha20-Poly1305 with 32-byte keys and random nonces. The [field handler][sensitive] binds associated data to the resource ID and field path. Versioned keys come from `radius-encryption-key` through a [Kubernetes key provider][keyprovider]. Ciphertext authentication is not caller authorization.
 
-The chart enables the [rotation CronJob][rotation] by default. It adds a key version and removes sufficiently old versions while retaining the current and previous versions. The job updates the key Secret; it does not sweep resource records to re-encrypt old ciphertext.
+The chart enables the [rotation CronJob][rotation] by default. Its [settings][values] are `encryption.rotation.schedule: "0 0 1 */3 *"`, `intervalDays: 90`, and `gracePeriodDays: 1`. The schedule runs at midnight on the first day of every third month in the CronJob's effective time zone. Each run creates a new key with an expiry 90 days later; expiry alone does not trigger a run.
+
+When more than two versions exist, the job drops an older version once its expiry is at least one day in the past. It always retains the current and immediately previous versions. Pruning happens only when the job runs, so these settings do not imply an exact 91-day retention period. The job patches the key Secret; it does not re-encrypt resource records.
 
 **Does the component store secrets?**
 
@@ -74,7 +75,7 @@ The in-process frontend and worker are not separate tenant sandboxes. A cluster 
 
 Operators protect type/recipe registration, worker configuration, key access and backing Secrets. Standard Kubernetes and cloud identities are external trust dependencies.
 
-Do not assume every schema is correct, every computed output is nonsensitive, all operations complete before rotation, or old ciphertext never exists in backups. Resource users and schema publishers are separate trust roles even when the current authorization model cannot fully enforce that separation.
+Schema annotations and output declarations can be wrong. Pending operations and backups can outlive a key version. Resource users and schema publishers are separate trust roles even where the current authorization checks cannot enforce that separation.
 
 ## Data Flows
 
@@ -150,7 +151,7 @@ F1 defines the protection rules for F2-F7. F8 is the handoff to executable infra
 
 **Mitigation:** Preserve required key versions with matching recovery data; monitor pending work and rotation; validate recovery before removing keys.
 
-**Status:** Version lookup and automatic rotation exist. The rotation job retains at least the current/previous versions but performs no re-encryption sweep. Safe lifetime alignment is not established for every pending record or backup.
+**Status:** Version lookup, scheduled rotation and the pruning rule above are implemented. The job does not check pending operations or backups before pruning. This review did not establish the oldest key version needed by those records, so the safe recovery window remains unresolved.
 
 ### DYN-05: Output handling stores or discloses an unexpected secret
 
@@ -170,7 +171,7 @@ F1 defines the protection rules for F2-F7. F8 is the handoff to executable infra
 
 **Mitigation:** Keep schema-based API redaction and graph-specific sanitization, restrict consumers, and test each read surface.
 
-**Status:** GET/LIST controllers are implemented. The [graph helper][graph] removes environment maps for `Radius.Compute/containers`; this is a scoped rule, not a universal secret classifier.
+**Status:** GET/LIST use schema-based redaction. The [graph helper][graph] removes container environment maps for `Radius.Compute/containers` and leaves other resource types/properties unchanged. Other graph fields still need a secret-handling review.
 
 ### DYN-07: Hostile inputs or retries consume shared capacity
 
@@ -190,15 +191,17 @@ F1 defines the protection rules for F2-F7. F8 is the handoff to executable infra
 
 ## Action Items
 
-1. Operators: protect schema/recipe registration, keys and backing Secrets as separate privileges.
-2. Maintainers: verify rotation, pending-operation and recovery lifetimes together.
-3. Maintainers: test read and output paths with malformed schema, nested sensitive values, failures and extra recipe secret outputs.
+| Owner       | Follow-up and completion criteria                                                                                                                                                                     | Tracking  |
+|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| Operators   | Record who can change schemas/recipes, read encryption keys and read backing Secrets. Verify that each grant matches its intended role.                                                               | Untracked |
+| Maintainers | Identify the oldest key needed by pending operations and supported backups. Test recovery across rotation/pruning and define a retention policy that preserves every required version.                | Untracked |
+| Maintainers | Test malformed schemas, nested sensitive fields, execution failures and extra recipe secret outputs. Complete when expected API/graph output omits secrets and required backing values remain usable. | Untracked |
 
 ## Review Notes
 
-This is a new AI-assisted model for the stable release. Human review is pending. No runtime exploit or cluster control was tested.
+Security review is pending. No runtime exploit or cluster access-control tests were run.
 
-Evidence includes the route filter order, fail-closed read controllers, consume/redact worker path, key provider/rotation code, and managed secret contract. Retained keys, encryption and redaction are described only for those paths. External recipes without review and arbitrary metadata are not assumed safe.
+The cited source defines the filter order, read redaction, worker input handling, key rotation and managed secret outputs. Remaining questions concern schema changes, recovery lifetimes and read paths outside those controls. External recipes and arbitrary metadata require their own review.
 
 ## References
 
@@ -219,6 +222,7 @@ Evidence includes the route filter order, fail-closed read controllers, consume/
 [sensitive]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/crypto/encryption/sensitive.go
 [keyprovider]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/crypto/encryption/keyprovider.go
 [rotation]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/encryption-rotation-cronjob.yaml
+[values]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/values.yaml
 [graph]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/graph/sanitization/properties.go
 [ucp]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/ucp/configmaps.yaml
 [config]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/dynamic-rp/configmaps.yaml
