@@ -41,6 +41,16 @@ func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
 }
 
+func TestCertificateRotationHelp(t *testing.T) {
+	cmd, _ := NewCommand(&framework.Impl{Output: &output.MockOutput{}})
+	var help strings.Builder
+	cmd.SetOut(&help)
+	require.NoError(t, cmd.Help())
+	assert.Contains(t, help.String(), "Replacing component images does not enable CA rotation or recovery in this CLI.")
+	assert.NotContains(t, help.String(), "--ca-rotation-phase recover")
+	assert.NotContains(t, help.String(), "recover performs")
+}
+
 func Test_Validate(t *testing.T) {
 	t.Parallel()
 	testcases := []radcli.ValidateInput{

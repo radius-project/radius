@@ -66,7 +66,7 @@ func (o *CertificateOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.CASecret, "ca-secret", "", "Existing operator-owned TLS signing Secret in radius-system; never adopted or overwritten")
 	flags.StringVar(&o.CertIssuer, "cert-issuer", "", "Existing cert-manager.io Issuer/name or ClusterIssuer/name; requires dedicated public --ca-bundle on fresh install and live request-policy verification")
 	flags.StringVar(&o.CABundle, "ca-bundle", "", "Path to exactly one public dedicated signing CA PEM for --cert-issuer; never a private key or parent chain")
-	flags.StringVar(&o.RotationPhase, "ca-rotation-phase", "", "Run publish, adopt, issue, retire, or recover on installed Radius; recover performs an outage-capable new-only CA cutover")
+	flags.StringVar(&o.RotationPhase, "ca-rotation-phase", "", "CA rotation phase (blocked pending authenticated consumer observation; CA recovery is unsupported)")
 	flags.BoolVar(&o.RotateCA, "rotate-ca", false, "Replace both Radius-owned CAs (aggregation only with external TLS); currently blocked pending authenticated consumer observation")
 }
 
@@ -77,10 +77,10 @@ func (o CertificateOptions) Validate() error {
 	}
 	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "adopt" &&
 		o.RotationPhase != "issue" && o.RotationPhase != "retire" && o.RotationPhase != "recover" {
-		return fmt.Errorf("--ca-rotation-phase must be publish, adopt, issue, retire, or recover")
+		return fmt.Errorf("unrecognized --ca-rotation-phase; this CLI cannot rotate or recover a CA")
 	}
 	if o.RotationPhase != "" && o.RotationPhase != "publish" && o.RotationPhase != "recover" && o.Specified() {
-		return fmt.Errorf("select the target CA only in publish or explicit incident recovery; subsequent phases use the persisted rotation")
+		return fmt.Errorf("cannot select a target CA during the %s phase", o.RotationPhase)
 	}
 	if (o.CACert == "") != (o.CAKey == "") {
 		return fmt.Errorf("--ca-cert and --ca-key must be supplied together")

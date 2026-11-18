@@ -66,13 +66,10 @@ aggregation DNS profiles; external requires aggregation DNS only. Local CA feasi
 proof of issuance by an external backend. Public trust staging and convergence require the
 paired certificate lifecycle implementation.
 
-For an installed chart and all five component images supporting loaded-trust evidence, use
-'--ca-rotation-phase publish' to select a target CA, then run separate 'adopt', 'issue' and 'retire'
-phases. Omit target flags in publish to migrate legacy aggregation to the installed component CA.
-Issuance stops before retirement; old trust is removed only after an explicit retire request.
-Do not combine rotation with chart, version, values, Contour or authorization changes.
-'--ca-rotation-phase recover' explicitly permits an outage to establish new-only trust after
-expiry or compromise; select a fresh CA with '--ca-secret' or '--ca-cert' and '--ca-key'.
+Replacing component images does not enable CA rotation or recovery in this CLI.
+Rotation is blocked before any changes because the CLI cannot verify which trust
+bundles the running components have loaded. Recovery after CA expiry or compromise
+is not supported.
 
 Warning: Radius RBAC is a work in progress. Full functionality is not guaranteed.
 The 'global.rbac.enabled' and 'global.rbac.dryRun' Helm settings are experimental,
