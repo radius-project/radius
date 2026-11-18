@@ -632,17 +632,11 @@ func TestHelmClientImpl_RunHelmPull_RepoURLUnsupportedOptions(t *testing.T) {
 }
 
 // Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm runs rad upgrade and rad install --reinstall against real
-// Helm storage and checks that the cert-manager and csi-driver-spiffe decisions match the authorization mode Helm
-// renders.
+// Helm storage and checks that the cert-manager decision matches the authorization mode Helm renders.
 func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 	t.Parallel()
 
 	dryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-	// The cert-manager in namespace security was not installed by rad, so the operator chose its controller's user.
-	dryRunWithRequesters := map[string]any{"global": map[string]any{"rbac": map[string]any{
-		"dryRun":      true,
-		"certManager": map[string]any{"requesters": []any{"system:serviceaccount:security:cert-manager"}},
-	}}}
 	tests := []struct {
 		name     string
 		deployed map[string]any
@@ -650,7 +644,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 		setArgs  []string
 		want     string
 	}{
-		{name: "deployed dry run with failed off", deployed: dryRunWithRequesters, failed: map[string]any{}, want: "dryRun"},
+		{name: "deployed dry run with failed off", deployed: dryRun, failed: map[string]any{}, want: "dryRun"},
 		{name: "deployed off with failed dry run", deployed: map[string]any{}, failed: dryRun, want: "off"},
 		{name: "--set global.rbac=false clears stored dry run", deployed: dryRun, setArgs: []string{"global.rbac=false"}, want: "off"},
 		{name: "--set global.rbac=0 clears stored dry run", deployed: dryRun, setArgs: []string{"global.rbac=0"}, want: "off"},
@@ -671,14 +665,10 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 			t.Run(tt.name+"/"+command, func(t *testing.T) {
 				t.Parallel()
 
-				// The chart's certificate issuance policy needs the ValidatingAdmissionPolicy API in the
-				// authorization modes other than off.
-				capabilities := common.DefaultCapabilities.Copy()
-				capabilities.APIVersions = append(capabilities.APIVersions, "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy")
 				configuration := &helm.Configuration{
 					Releases:     storage.Init(driver.NewMemory()),
 					KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
-					Capabilities: capabilities,
+					Capabilities: common.DefaultCapabilities,
 				}
 				helmClient := NewHelmClient()
 				installed, err := helmClient.RunHelmInstall(configuration, loadChart(t), tt.deployed, "radius", "radius-system", false, DefaultInstallTimeout, nil)
@@ -706,15 +696,6 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 					DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, wait, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
 						return helmClient.RunHelmUpgrade(configuration, c, vals, name, namespace, false, reuse, timeout)
 					})
-				spiffeInstalls := 0
-				if tt.want != "off" {
-					expectCSIDriverSPIFFEPull(t, client)
-					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, radManagedByLabels()).
-						DoAndReturn(func(*helm.Configuration, *chart.Chart, map[string]any, string, string, bool, time.Duration, map[string]string) (*releasev1.Release, error) {
-							spiffeInstalls++
-							return &releasev1.Release{}, nil
-						})
-				}
 
 				detectCalls := 0
 				impl := &Impl{
@@ -723,10 +704,6 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 						detectCalls++
 						kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 						return kubeClient, apiextClient, nil
-					},
-					newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
-						controller := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "cert-manager")
-						return sarClient(nil, nil, controller), nil
 					},
 				}
 
@@ -748,16 +725,10 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				require.NoError(t, err)
 				sum := sha256.Sum256([]byte(tt.want))
 				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+hex.EncodeToString(sum[:]))
-				requesters := nestedValue(upgraded.Config, "global", "rbac", "certManager", "requesters")
 				if tt.want == "off" {
 					require.Zero(t, detectCalls)
-					require.Zero(t, spiffeInstalls)
-					require.Nil(t, requesters)
 				} else {
 					require.Equal(t, 1, detectCalls)
-					require.Equal(t, 1, spiffeInstalls)
-					// The issuance policy keeps allowing the cert-manager controller the operator chose.
-					require.Equal(t, []any{"system:serviceaccount:security:cert-manager"}, requesters)
 				}
 			})
 		}
