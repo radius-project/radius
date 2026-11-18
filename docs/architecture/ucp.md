@@ -77,8 +77,8 @@ using the `ucp-cert` certificate) is unchanged by internal authorization. When
 the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
 on a separate internal port, 9444 (Service port name `internal`, config
 `server.internalPort`), for traffic from other Radius components. That endpoint
-uses `mtls.ListenAndServe` with UCP's csi-driver-spiffe certificate, requires a
-ServiceAccount token with audience `ucp`, accepts any Radius component identity,
+uses `mtls.ListenAndServe` with UCP's `ucp-spiffe` server certificate, requires
+a ServiceAccount token with audience `ucp`, accepts any Radius component identity,
 and reloads certificates without a restart. See
 [Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization).
 

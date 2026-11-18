@@ -219,14 +219,13 @@ func TestSource_ReloadKeepsChanging(t *testing.T) {
 	require.Same(t, before, after)
 }
 
-// TestNewSourceWithCA covers the csi-driver-spiffe volume contract: without a configured
-// source CA bundle the driver writes only tls.crt and tls.key, so the Radius CA bundle comes
-// from a separate directory.
+// TestNewSourceWithCA covers the <receiver>-spiffe volume contract: it projects only tls.crt
+// and tls.key, so the Radius CA bundle comes from a separate directory.
 func TestNewSourceWithCA(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
 
-	writeCSIVolume := func(t *testing.T, cert testCert) string {
+	writeServerVolume := func(t *testing.T, cert testCert) string {
 		dir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(dir, CertFile), cert.certPEM, 0o600))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, KeyFile), cert.keyPEM, 0o600))
@@ -238,15 +237,15 @@ func TestNewSourceWithCA(t *testing.T) {
 		return dir
 	}
 
-	t.Run("CSI volume without ca.crt cannot be loaded alone", func(t *testing.T) {
+	t.Run("server volume without ca.crt cannot be loaded alone", func(t *testing.T) {
 		t.Parallel()
-		_, err := NewSource(writeCSIVolume(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")})))
+		_, err := NewSource(writeServerVolume(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")})))
 		require.ErrorContains(t, err, "failed to read ca.crt")
 	})
 
 	t.Run("loads the certificate and the separate CA bundle", func(t *testing.T) {
 		t.Parallel()
-		certDir := writeCSIVolume(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")}))
+		certDir := writeServerVolume(t, ca.issue(t, certOptions{uris: spiffeURIs("ucp")}))
 		src, err := NewSourceWithCA(certDir, writeCADir(t, ca.pem))
 		require.NoError(t, err)
 		m, err := src.load()
@@ -256,7 +255,7 @@ func TestNewSourceWithCA(t *testing.T) {
 
 	t.Run("certificate from another CA is rejected", func(t *testing.T) {
 		t.Parallel()
-		certDir := writeCSIVolume(t, newCA(t).issue(t, certOptions{uris: spiffeURIs("ucp")}))
+		certDir := writeServerVolume(t, newCA(t).issue(t, certOptions{uris: spiffeURIs("ucp")}))
 		_, err := NewSourceWithCA(certDir, writeCADir(t, ca.pem))
 		require.ErrorContains(t, err, "not issued by the CA bundle")
 	})
@@ -264,7 +263,7 @@ func TestNewSourceWithCA(t *testing.T) {
 	t.Run("reloads a renewed CA bundle with the same key", func(t *testing.T) {
 		t.Parallel()
 		leaf := ca.issue(t, certOptions{uris: spiffeURIs("ucp")})
-		certDir := writeCSIVolume(t, leaf)
+		certDir := writeServerVolume(t, leaf)
 		caDir := writeCADir(t, ca.pem)
 		src, err := NewSourceWithCA(certDir, caDir)
 		require.NoError(t, err)
