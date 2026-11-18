@@ -46,6 +46,7 @@ type caInjectorConfigPin struct {
 	Kind, Namespace, Name, Key string
 	UID                        types.UID
 	ResourceVersion, SHA256    string
+	created                    metav1.Time
 }
 
 // caInjectorInstance is observed configuration/readiness evidence, not proof of
@@ -276,6 +277,11 @@ func inspectCAInjectorDeployment(ctx context.Context, client kubernetes.Interfac
 			!caInjectorPodMatches(spec, pod.Spec) {
 			return result, fmt.Errorf("Pod %s is not Running/Ready with the pinned template configuration", pod.Name)
 		}
+		// Volumes reference names, not UIDs. Use API-server creation times rather
+		// than kubelet start times; equal timestamps cannot establish ordering.
+		if pin := result.Config; pin != nil && (pin.created.IsZero() || pod.CreationTimestamp.IsZero() || !pin.created.Before(&pod.CreationTimestamp)) {
+			return result, fmt.Errorf("cannot verify that --config %s %s predates Pod %s; roll out fresh Pods after creating the immutable source", pin.Kind, pin.Name, pod.Name)
+		}
 		result.PodUIDs = append(result.PodUIDs, pod.UID)
 	}
 	if int32(len(result.PodUIDs)) != replicas {
@@ -405,9 +411,10 @@ func caInjectorConfigFile(ctx context.Context, client kubernetes.Interface, name
 			if err != nil {
 				return nil, nil, fmt.Errorf("read cainjector --config ConfigMap: %w", err)
 			}
-			if cm.Immutable == nil || !*cm.Immutable || cm.UID == "" {
-				return nil, nil, fmt.Errorf("--config ConfigMap must be immutable with a live UID to pin the startup bytes")
+			if cm.Immutable == nil || !*cm.Immutable || cm.UID == "" || cm.DeletionTimestamp != nil {
+				return nil, nil, fmt.Errorf("--config ConfigMap must be immutable with a live UID")
 			}
+			pin.created = cm.CreationTimestamp
 			pin.Kind, pin.Name, pin.UID, pin.ResourceVersion = "ConfigMap", cm.Name, cm.UID, cm.ResourceVersion
 			data = map[string][]byte{}
 			for k, v := range cm.Data {
@@ -422,9 +429,10 @@ func caInjectorConfigFile(ctx context.Context, client kubernetes.Interface, name
 			if err != nil {
 				return nil, nil, fmt.Errorf("read cainjector --config Secret: %w", err)
 			}
-			if secret.Immutable == nil || !*secret.Immutable || secret.UID == "" {
-				return nil, nil, fmt.Errorf("--config Secret must be immutable with a live UID to pin the startup bytes")
+			if secret.Immutable == nil || !*secret.Immutable || secret.UID == "" || secret.DeletionTimestamp != nil {
+				return nil, nil, fmt.Errorf("--config Secret must be immutable with a live UID")
 			}
+			pin.created = secret.CreationTimestamp
 			pin.Kind, pin.Name, pin.UID, pin.ResourceVersion = "Secret", secret.Name, secret.UID, secret.ResourceVersion
 			data, items = secret.Data, volume.Secret.Items
 		default:

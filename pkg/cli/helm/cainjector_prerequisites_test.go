@@ -19,6 +19,7 @@ package helm
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -135,6 +136,7 @@ func TestInspectCAInjectorConfig(t *testing.T) {
 		mutable      bool
 		secret       bool
 		override     bool
+		podTime      *metav1.Time
 		err          string
 	}{
 		{name: "immutable ConfigMap", config: "namespace: radius-system"},
@@ -147,16 +149,19 @@ func TestInspectCAInjectorConfig(t *testing.T) {
 		{name: "duplicate YAML key", config: "namespace: other\nnamespace: radius-system", err: "unsupported --config"},
 		{name: "multiple YAML documents", config: "namespace: radius-system\n---\nnamespace: other", err: "exactly one configuration document"},
 		{name: "mutable config cannot prove startup", mutable: true, err: "must be immutable"},
+		{name: "unknown Pod creation time", podTime: &metav1.Time{}, err: "cannot verify"},
+		{name: "ambiguous creation order", podTime: &metav1.Time{Time: time.Unix(1, 0)}, err: "cannot verify"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			d, rs, pod := injectorFixture("cm-cainjector", "--config=/config/injector.yaml")
 			immutable := !tt.mutable
 			text := "apiVersion: cainjector.config.cert-manager.io/v1alpha1\nkind: CAInjectorConfiguration\n" + tt.config + "\n"
 			volume := corev1.Volume{Name: "config", VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: "injector-config"}}}}
-			var source runtime.Object = &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "injector-config", Namespace: "security", UID: "config-uid", ResourceVersion: "1"}, Immutable: &immutable, Data: map[string]string{"injector.yaml": text}}
+			meta := metav1.ObjectMeta{Name: "injector-config", Namespace: "security", UID: "config-uid", ResourceVersion: "1", CreationTimestamp: metav1.NewTime(time.Unix(1, 0))}
+			var source runtime.Object = &corev1.ConfigMap{ObjectMeta: meta, Immutable: &immutable, Data: map[string]string{"injector.yaml": text}}
 			if tt.secret {
 				volume.VolumeSource = corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "injector-config"}}
-				source = &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "injector-config", Namespace: "security", UID: "config-uid", ResourceVersion: "1"}, Immutable: &immutable, Data: map[string][]byte{"injector.yaml": []byte(text)}}
+				source = &corev1.Secret{ObjectMeta: meta, Immutable: &immutable, Data: map[string][]byte{"injector.yaml": []byte(text)}}
 			}
 			d.Spec.Template.Spec.Volumes = []corev1.Volume{volume}
 			d.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{{Name: "config", MountPath: "/config", ReadOnly: true}}
@@ -164,6 +169,10 @@ func TestInspectCAInjectorConfig(t *testing.T) {
 				d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, "--namespace=radius-system", "--enable-apiservices-injectable=true")
 			}
 			pod.Spec = *d.Spec.Template.Spec.DeepCopy()
+			pod.CreationTimestamp = metav1.NewTime(time.Unix(2, 0))
+			if tt.podTime != nil {
+				pod.CreationTimestamp = *tt.podTime
+			}
 			client := fake.NewClientset(d, rs, pod, source)
 			instances, err := inspectCAInjectorPrerequisites(t.Context(), client, "radius-system")
 			if tt.err != "" {
@@ -173,6 +182,31 @@ func TestInspectCAInjectorConfig(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "config-uid", string(instances[0].Config.UID))
 			require.Len(t, instances[0].Config.SHA256, 64)
+			if tt.override {
+				return
+			}
+			// Recreate the mounted source under its original name while the old
+			// Pod remains Ready. Even a second Pod started afterwards is not enough.
+			resource := corev1.SchemeGroupVersion.WithResource("configmaps")
+			if tt.secret {
+				resource.Resource = "secrets"
+			}
+			require.NoError(t, client.Tracker().Delete(resource, meta.Namespace, meta.Name))
+			replacement := source.DeepCopyObject()
+			replacement.(metav1.Object).SetUID("replacement")
+			replacement.(metav1.Object).SetCreationTimestamp(metav1.NewTime(time.Unix(3, 0)))
+			require.NoError(t, client.Tracker().Create(resource, replacement, meta.Namespace))
+			_, err = inspectCAInjectorPrerequisites(t.Context(), client, "radius-system")
+			require.ErrorContains(t, err, "cannot verify")
+			newPod := pod.DeepCopy()
+			newPod.Name, newPod.UID, newPod.CreationTimestamp = "new-injector", "new-pod", metav1.NewTime(time.Unix(4, 0))
+			require.NoError(t, client.Tracker().Add(newPod))
+			*d.Spec.Replicas = 2
+			d.Status.Replicas, d.Status.UpdatedReplicas, d.Status.ReadyReplicas, d.Status.AvailableReplicas = 2, 2, 2, 2
+			_, err = client.AppsV1().Deployments(d.Namespace).Update(t.Context(), d, metav1.UpdateOptions{})
+			require.NoError(t, err)
+			_, err = inspectCAInjectorPrerequisites(t.Context(), client, "radius-system")
+			require.ErrorContains(t, err, "cannot verify")
 		})
 	}
 	t.Run("forbidden cluster inventory", func(t *testing.T) {
