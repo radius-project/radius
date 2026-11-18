@@ -17,7 +17,6 @@ limitations under the License.
 package emr
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -173,6 +172,7 @@ func Test_Suite_Cluster(t *testing.T) {
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: clusterAPI,
 		RecordedForm: &nativetest.RecordedForm{
 			Property: "Configurations",
 			Template: []any{sparkDefaults(map[string]any{"spark.executor.memory": "4g"})},
@@ -388,9 +388,10 @@ func Test_Update(t *testing.T) {
 			calls: []string{"ModifyInstanceGroups"},
 		},
 		{
+			// EMR turns unhealthy node replacement on when RunJobFlow leaves it out, so the update turns it off.
 			name: "termination protection and unhealthy node replacement",
 			desired: with(base, map[string]any{"Instances": instances(1, map[string]any{
-				"TaskInstanceGroups": tasks, "TerminationProtected": true, "UnhealthyNodeReplacement": true,
+				"TaskInstanceGroups": tasks, "TerminationProtected": true, "UnhealthyNodeReplacement": false,
 			})}),
 			calls: []string{"SetTerminationProtection", "SetUnhealthyNodeReplacement"},
 		},
@@ -991,7 +992,7 @@ func Test_FleetDefaults(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			api := newFakeAPI(awsfake.NewCloudControl())
-			h := NewCluster(fleetDefaults{api})
+			h := NewCluster(api)
 			base := with(clusterProperties(), map[string]any{"ManagedScalingPolicy": scaling, "Instances": fleets(tt.weight)})
 			id := create(t, h, base)
 			setInstances(api, id, func(inst map[string]any) {
@@ -1167,30 +1168,4 @@ func Test_ValueAt(t *testing.T) {
 			require.Equal(t, tt.want, valueAt(v, tt.pointer))
 		})
 	}
-}
-
-// fleetDefaults is the fake EMR API, reporting the values EMR gives an instance type of a fleet that leaves them out:
-// WeightedCapacity 1, and BidPriceAsPercentageOfOnDemandPrice 100 when BidPrice isn't set either
-// (https://docs.aws.amazon.com/emr/latest/APIReference/API_InstanceTypeConfig.html).
-type fleetDefaults struct {
-	*fakeAPI
-}
-
-func (f fleetDefaults) ListInstanceFleets(ctx context.Context, in *emr.ListInstanceFleetsInput, opts ...func(*emr.Options)) (*emr.ListInstanceFleetsOutput, error) {
-	out, err := f.fakeAPI.ListInstanceFleets(ctx, in, opts...)
-	if err != nil {
-		return nil, err
-	}
-	for i := range out.InstanceFleets {
-		specs := out.InstanceFleets[i].InstanceTypeSpecifications
-		for j := range specs {
-			if specs[j].WeightedCapacity == nil {
-				specs[j].WeightedCapacity = aws.Int32(1)
-			}
-			if specs[j].BidPrice == nil && specs[j].BidPriceAsPercentageOfOnDemandPrice == nil {
-				specs[j].BidPriceAsPercentageOfOnDemandPrice = aws.Float64(100)
-			}
-		}
-	}
-	return out, nil
 }
