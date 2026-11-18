@@ -52,11 +52,7 @@ Stop if the update is missing or incomplete. Publishing namespaces and recipe pa
 
 ### Pin Radius in bicep-types-aws
 
-Prepare Release sets the `radius` submodule to the **Radius product commit**, not the AWS repository's commit or the later Radius metadata commit. If the captured AWS source already pins that commit, nothing is written. Otherwise the release App opens or adopts a signed, pin-only PR against AWS `release/X.Y`, creating the branch from the captured AWS `main` commit if needed. The workflow waits for branch protections before merging. GitHub can rewrite signatures on rebase merges, so preparation verifies the signed proposal and checks that the landed commit has the identical tree and parent. It records that landed SHA, never a later branch tip.
-
-Before enabling automation, require **Validate release plan** from GitHub Actions on Radius `main` and **Build and test** from GitHub Actions on each applicable AWS `release/X.Y`. Install the AWS release-branch build workflow on existing channels **before** requiring that check; allow initial channel branch creation without a new status check. Give the release App Contents and Pull requests write access and Checks read access to `bicep-types-aws`, not administration privileges or a ruleset bypass. Preparation checks the effective rules and the build result at the exact proposal SHA; it cannot change the rules. Keep the existing release environment approvals.
-
-To resume an interrupted pin, rerun the **failed jobs** in the same Prepare Release run. The successful source-capture job supplies the original sibling SHAs. The workflow verifies an existing proposal or landed pin rather than opening another PR. A closed unmerged pin PR, modified proposal, conflicting channel head, or missing permission stops preparation. Inspect the reported PR or rule; do not hand-edit a gitlink or generated plan. Both the release PR and the controller independently recheck the frozen AWS commit. A removed or malformed submodule fails; a historical source where the submodule never existed passes with a notice.
+The AWS types must use the Radius product commit, not the later release metadata commit. A legacy plan without a pin intent must already reference a matching AWS commit. Rerunning a frozen first RC cannot replace its selected sibling. Never repair a merged plan by editing it or moving a tag.
 
 ### Approve the plan
 
@@ -103,6 +99,18 @@ Resume revalidates the committed plan and source, verifies Deployment Engine aga
 Use [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) with the same approved version and source only when the automatic merge event did not start reconciliation. If there is no controller summary, [get the inputs from the merged PRs](#controller-never-started-after-merge). Both gateways dispatch the default-branch controller, and neither accepts a replacement plan. Neither gateway holds release credentials, so running one from another branch cannot change the controller code that uses them. This protects the controller code path, not the credentials: the release and publisher App keys are repository secrets, so any workflow a writer pushes can still read them.
 
 ## Verification
+
+### Verify the approved AWS source
+
+Prepare Release does **not** write to the AWS repository. The plan records the frozen AWS base (`sourceCommit`), the raw Radius `source.productCommit` that the `radius` submodule must point to, and the expected AWS Git tree after that single change. The release PR and controller independently recompute the tree. Review it in the controller summary before approving the `release` environment. A final must preserve the product code and AWS generator inputs tested by its last RC; a change beyond generated release metadata or an equivalent schema pin requires another RC.
+
+Only after approval does the release App create a missing `release/X.Y` from the reviewed base, then open or reuse a signed pin-only PR when needed. It verifies the actual AWS build at the proposal SHA, waits for the protected rebase merge, and checks the landed tree and parent. An already matching base needs no pin commit. Before tagging, the controller creates a signed record in Radius at `automation/release-state-aws-<version-without-v>`, bound to the committed plan blob. The tag, AWS types publisher, manifest and sibling release all use the recorded SHA, not a later branch tip.
+
+Before rollout, backport the receipt-aware tagged workflows to existing Radius release branches and the AWS build workflow to applicable AWS branches. Require **Validate release plan** on Radius `main` and **Build and test** on the applicable AWS `release/X.Y`, both from GitHub Actions. Allow initial channel creation without a status check. Protect `automation/release-state-aws-*` in Radius against updates and deletions, allowing the release App to create records. Give the App Contents and Pull requests write and Checks read on `bicep-types-aws`, not administration or branch-protection bypass.
+
+Resume the same version and source after an interruption. If a merge succeeded but its response was lost, the controller can adopt only the exact signed proposal and matching landed tree and parent. If a concurrent backport changed that parent, the pin may already have landed, but no receipt or tag is authorized: stop and follow [break-glass recovery](#break-glass-recovery) with a newly reviewed base. A removed or malformed submodule fails; a historical source that never had it passes with a notice.
+
+### Verify release outputs
 
 - The summary identifies the approved version/source, every mandatory stage, elapsed duration, expected and observed outputs, downstream run URLs, and the exact resume command. Keep the summary and release-thread links as the release record.
 - The manifest binds the approved plan to binaries, checksums, Go/linker metadata, SBOMs, image digests and platforms, full-version chart references, and downstream outputs. The isolated kind installation uses the staged CLI and chart with digest overrides. Its same-version upgrade disables only the version-transition check; it is not evidence of a cross-version upgrade.

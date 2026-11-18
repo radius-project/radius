@@ -442,7 +442,11 @@ export function recheckPublication(report, approved) {
   validatePublicationManifest(report, report.tag, report.sourceSha);
 }
 
-async function main(directory, mode) {
+async function main(
+  directory,
+  mode,
+  planFile = path.join(directory, "plan.json")
+) {
   const load = async (name) =>
     JSON.parse(await readFile(path.join(directory, name), "utf8"));
   const observed = await load("observed.json");
@@ -454,7 +458,7 @@ async function main(directory, mode) {
   }
   const report = verifyReleaseManifest({
     ...(await load("context.json")),
-    plan: await load("plan.json"),
+    plan: JSON.parse(await readFile(planFile, "utf8")),
     versions: await load("versions.json"),
     targets: await load("targets.json"),
     observed,
@@ -488,5 +492,5 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  await main(process.argv[2], process.argv[3]);
+  await main(process.argv[2], process.argv[3], process.argv[4]);
 }

@@ -5,7 +5,8 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { reconcile, resolvePin } from "./prepare-aws-release-pin.mjs";
+import { capture, verifyIntent } from "./aws-pin-plan.mjs";
+import { reconcile } from "./reconcile-aws-release-pin.mjs";
 
 const product = "b934a5984d5a6798f52643c8c4d0ad47bf535962";
 const wrong = "6816fbfe9e9aeb84f7aba1046967061ce90f76c0";
@@ -210,31 +211,54 @@ function fixture(t, state = "wrong") {
       }
     }
   };
-  const run = (input = siblings) =>
-    resolvePin({
-      siblings: input,
+  const plan = () =>
+    capture(
+      {
+        channel,
+        source: { productCommit: product },
+        siblingRepositories: structuredClone(siblings)
+      },
+      dir
+    );
+  const approve = async (input = plan()) => {
+    const source = input[2];
+    verifyIntent(dir, source, product);
+    if (!source.radiusPin) return source.sourceCommit;
+    return reconcile({
+      github,
+      base,
+      baseTree: git("rev-parse", `${base}^{tree}`),
+      product,
+      tree: source.radiusPin.expectedTree,
       channel,
       version,
-      product,
-      remote: dir,
-      writePin: (args) =>
-        reconcile({ ...args, github, log() {}, wait: async () => {} })
+      sourceRef: source.sourceRef,
+      log() {},
+      wait: async () => {}
     });
-  return { run, config, calls, git, siblings, base };
+  };
+  return { plan, approve, config, calls, git, siblings, base };
 }
 
 test("first RC corrects the wrong-repository SHA; replay adopts the exact rebase result", async (t) => {
   const f = fixture(t);
   f.config.dropResponse = true;
   f.config.blockedPolls = 2;
-  const frozen = await f.run();
-  const landed = frozen[2].sourceCommit;
+  const frozen = f.plan();
+  assert.equal(frozen[2].sourceCommit, f.base);
+  assert.equal(frozen[2].radiusPin.productCommit, product);
+  assert.deepEqual(f.calls, []);
+  const landed = await f.approve(frozen);
   assert.equal(landed, f.git("rev-parse", target));
   assert.equal(f.git("rev-parse", `${landed}:radius`), product);
   assert.equal(f.git("rev-parse", `${landed}^`), f.base);
   assert.equal(f.git("diff", "--name-only", f.base, landed), "radius");
   assert.deepEqual(frozen.slice(0, 2), f.siblings.slice(0, 2));
-  assert.equal(frozen[2].sourceRef, target);
+  assert.equal(frozen[2].sourceRef, "main");
+  assert.equal(
+    frozen[2].radiusPin.expectedTree,
+    f.git("rev-parse", `${landed}^{tree}`)
+  );
   // The PR head may have been deleted, and the protected branch may have
   // legitimately advanced after merge. Neither changes the approved tree.
   f.git(
@@ -251,15 +275,24 @@ test("first RC corrects the wrong-repository SHA; replay adopts the exact rebase
     "later change"
   );
   f.git("update-ref", `refs/heads/${target}`, next);
-  assert.deepEqual(await f.run(), frozen);
+  assert.equal(await f.approve(frozen), landed);
   assert.deepEqual(f.calls, ["ref", "commit", "ref", "pr", "merge"]);
 });
 
 for (const state of ["match", "legacy", "file", "removed"]) {
   test(`frozen ${state} source cannot trigger an AWS write`, async (t) => {
     const f = fixture(t, state);
-    if (state === "file" || state === "removed") await assert.rejects(f.run());
-    else assert.deepEqual(await f.run(), f.siblings);
+    if (state === "file" || state === "removed") assert.throws(f.plan);
+    else {
+      const frozen = f.plan();
+      assert.equal(frozen[2].sourceCommit, f.base);
+      if (state === "legacy") assert.equal(frozen[2].radiusPin, undefined);
+      else {
+        assert.deepEqual(f.calls, []);
+        f.git("branch", target, f.base);
+        assert.equal(await f.approve(frozen), f.base);
+      }
+    }
     assert.deepEqual(f.calls, []);
   });
 }
@@ -285,12 +318,36 @@ for (const [description, options, failure] of [
   ],
   ["landed tree differs", { badMerge: true }, /exactly the planned pin/]
 ]) {
-  test(`no release plan on ${description}`, async (t) => {
+  test(`no tagged AWS source on ${description}`, async (t) => {
     const f = fixture(t);
     Object.assign(f.config, options);
-    await assert.rejects(f.run(), failure);
+    await assert.rejects(f.approve(), failure);
     assert.equal(f.siblings[2].sourceCommit, f.base);
     if (!options.badMerge) assert.ok(!f.calls.includes("merge"));
     if (options.rules === false) assert.deepEqual(f.calls, []);
   });
 }
+
+test("tampered product or expected tree and intervening backports cannot cause a pin write", async (t) => {
+  const f = fixture(t);
+  const frozen = f.plan();
+  for (const key of ["productCommit", "expectedTree"]) {
+    const edited = structuredClone(frozen);
+    edited[2].radiusPin[key] = "e".repeat(40);
+    await assert.rejects(f.approve(edited), /approved AWS pin intent/);
+  }
+  const later = f.git(
+    "commit-tree",
+    `${f.base}^{tree}`,
+    "-p",
+    f.base,
+    "-m",
+    "backport"
+  );
+  f.git("branch", target, later);
+  await assert.rejects(
+    f.approve(frozen),
+    /changed since its source was captured/
+  );
+  assert.deepEqual(f.calls, []);
+});

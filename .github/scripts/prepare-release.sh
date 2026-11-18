@@ -63,8 +63,7 @@ File options:
     --release-date <YYYY-MM-DD>
 
 Modes:
-    --version-only  Resolve the version and product cutoff without changing tracked files.
-                    Validate backports when --backports-file is supplied.
+    --version-only  Calculate the policy version without changing files.
 EOF
 }
 
@@ -500,6 +499,7 @@ generate_release_notes() {
 }
 
 write_release_plan() {
+    local siblings_file="${SIBLING_REPOSITORIES_FILE}"
     local version="$1"
     local previous_version="$2"
     local source_ref="$3"
@@ -515,13 +515,23 @@ write_release_plan() {
         release_commit_resolution+=" on release/${CHANNEL}"
     fi
 
+    if [[ "${PLAN_AWS_PIN:-false}" == true ]]; then
+        siblings_file="${OUTPUT_DIR}/planned-siblings.json"
+        cp "${SIBLING_REPOSITORIES_FILE}" "${siblings_file}"
+        node "${SCRIPT_DIR}/aws-pin-plan.mjs" capture "${siblings_file}" \
+            "${source_commit}" "${CHANNEL}"
+        if jq -e 'any(.[]; has("radiusPin"))' "${siblings_file}" >/dev/null; then
+            bash "${SCRIPT_DIR}/verify-aws-pin-readers.sh" "${source_commit}"
+        fi
+    fi
+
     VERSION="${version}" RELEASE_TYPE="${RELEASE_TYPE}" \
         CHANNEL="${CHANNEL}" RELEASE_DATE="${RELEASE_DATE}" \
         PREVIOUS_VERSION="${previous_version}" \
         SOURCE_REF="${source_ref}" SOURCE_COMMIT="${source_commit}" \
         RELEASE_COMMIT_RESOLUTION="${release_commit_resolution}" \
         TARGETS_FILE="${TARGETS_FILE}" BACKPORTS_FILE="${BACKPORTS_FILE}" \
-        SIBLINGS_FILE="${SIBLING_REPOSITORIES_FILE}" \
+        SIBLINGS_FILE="${siblings_file}" \
         TRACKED_PLAN_FILE="${tracked_plan_file}" \
         yq -n '
             {
@@ -582,7 +592,7 @@ write_release_plan() {
 }
 
 main() {
-    local version branch_ref source_ref source_commit
+    local version branch_ref
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -663,24 +673,17 @@ main() {
     branch_ref="$(release_branch_ref || true)"
     version="$(calculate_version)"
     validate_completed_releases
-    source_ref="${branch_ref:-HEAD}"
-    source_commit="$(git rev-parse "${source_ref}^{commit}")"
     mkdir -p "${OUTPUT_DIR}"
     printf '%s\n' "${version}" > "${OUTPUT_DIR}/version.txt"
-    printf '%s\n' "${source_commit}" > "${OUTPUT_DIR}/product-commit.txt"
     printf 'automation/prepare-release-%s\n' "${version#v}" \
         > "${OUTPUT_DIR}/pr-branch.txt"
-    if [[ -n "${BACKPORTS_FILE}" || "${VERSION_ONLY}" != true ]]; then
-        [[ -f "${BACKPORTS_FILE}" ]] || fail "backports file not found"
-        require_command jq
-        validate_backports "${branch_ref}"
-    fi
     if [[ "${VERSION_ONLY}" == "true" ]]; then
         printf 'Selected %s (%s) for release/%s.\n' \
             "${version}" "${RELEASE_TYPE}" "${CHANNEL}"
         return
     fi
 
+    [[ -f "${BACKPORTS_FILE}" ]] || fail "backports file not found"
     [[ -f "${SIBLING_REPOSITORIES_FILE}" ]] \
                                             || fail "sibling repositories file not found"
     [[ -f "${CHANGELOG_FILE}" ]] || fail "changelog file not found"
@@ -693,9 +696,10 @@ main() {
     [[ -f "${CLIFF_CONFIG}" ]] || fail "git-cliff config not found"
     require_command jq
     require_command "${GIT_CLIFF}"
+    validate_backports "${branch_ref}"
     validate_sibling_repositories
 
-    local current previous_version requires_backport
+    local current previous_version source_ref source_commit requires_backport
     local changelog_base_version changelog_body notes_file
     current="$(channel_version)"
     previous_version="${current:-$(latest_supported_version)}"
@@ -707,6 +711,8 @@ main() {
             fail "no stable Radius release tag was found"
         fi
     fi
+    source_ref="${branch_ref:-HEAD}"
+    source_commit="$(git rev-parse "${source_ref}^{commit}")"
     requires_backport="false"
     [[ -z "${branch_ref}" ]] || requires_backport="true"
     changelog_body="${OUTPUT_DIR}/changelog-section.md"

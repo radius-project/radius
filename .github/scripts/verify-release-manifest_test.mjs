@@ -455,8 +455,8 @@ test("the manifest command verifies files and rejects a changed approved snapsho
     const script = fileURLToPath(
       new URL("./verify-release-manifest.mjs", import.meta.url)
     );
-    const execute = (mode) =>
-      spawnSync(process.execPath, [script, directory, mode], {
+    const execute = (mode, ...planFiles) =>
+      spawnSync(process.execPath, [script, directory, mode, ...planFiles], {
         encoding: "utf8",
         env: {
           ...process.env,
@@ -479,6 +479,27 @@ test("the manifest command verifies files and rejects a changed approved snapsho
     );
     result = execute("recheck");
     assert.equal(result.status, 0, result.stderr);
+    // Both passes must read the effective input, not a stale plan in the
+    // verification evidence (which still records the approved AWS base).
+    const effective = path.join(directory, "effective.json");
+    const basePlan = structuredClone(input.plan);
+    basePlan.siblingRepositories.find(
+      (s) => s.name === "bicep-types-aws"
+    ).sourceCommit = parentSha;
+    await writeFile(
+      path.join(directory, "plan.json"),
+      JSON.stringify(basePlan)
+    );
+    await writeFile(effective, JSON.stringify(input.plan));
+    assert.match(execute("verify").stderr, /bicep-types-aws tag commit/);
+    for (const mode of ["verify", "recheck"]) {
+      result = execute(mode, effective);
+      assert.equal(result.status, 0, result.stderr);
+    }
+    await writeFile(
+      path.join(directory, "plan.json"),
+      JSON.stringify(input.plan)
+    );
     const replacedLock = structuredClone(input.cliLock);
     replacedLock.artifacts[0].digest = `sha256:${"d".repeat(64)}`;
     replacedLock.artifacts[0].immutableReference = `${replacedLock.artifacts[0].repository}@${replacedLock.artifacts[0].digest}`;

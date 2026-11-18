@@ -1,10 +1,10 @@
 // Copyright 2026 The Radius Authors. Licensed under the Apache License, Version 2.0.
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { awsSource, git, requireCheck, verifyIntent } from "./aws-pin-plan.mjs";
+import { readReceipt, writeReceipt } from "./aws-pin-receipt.mjs";
 
 const owner = "radius-project";
 const repo = "bicep-types-aws";
@@ -13,32 +13,9 @@ const bot = "radius-release[bot]";
 const actionsApp = 15368;
 const buildCheck = "Build and test";
 const sha = /^[a-f0-9]{40}$/;
-const number = "(?:0|[1-9][0-9]*)";
-const verifier = fileURLToPath(
-  new URL("./verify-bicep-types-aws-radius-pin.sh", import.meta.url)
-);
 
 function assert(ok, message) {
   if (!ok) throw new Error(message);
-}
-
-function git(directory, ...args) {
-  return execFileSync("git", ["-C", directory, ...args], {
-    encoding: "utf8"
-  }).trim();
-}
-
-function fetchSource(directory, remote, ref, commit) {
-  git(directory, "fetch", "--quiet", "--no-tags", remote, `refs/heads/${ref}`);
-  git(directory, "merge-base", "--is-ancestor", commit, "FETCH_HEAD");
-}
-
-// Derive the entire intended tree independently of the write API. No sibling
-// code, hooks, filters, or submodules are checked out or executed.
-export function expectedTree(directory, base, product) {
-  git(directory, "read-tree", base);
-  git(directory, "update-index", "--cacheinfo", `160000,${product},radius`);
-  return git(directory, "write-tree");
 }
 
 async function getRef(github, branch) {
@@ -189,29 +166,6 @@ async function ensurePull(github, branch, target, head, product, version) {
   return pull.number;
 }
 
-export async function requireCheck(github, targetRepo, branch, name) {
-  const rules = await github.paginate(
-    "GET /repos/{owner}/{repo}/rules/branches/{branch}",
-    {
-      owner,
-      repo: targetRepo,
-      branch,
-      per_page: 100
-    }
-  );
-  assert(
-    rules.some(
-      (rule) =>
-        rule.type === "required_status_checks" &&
-        rule.parameters.required_status_checks.some(
-          (check) =>
-            check.context === name && check.integration_id === actionsApp
-        )
-    ),
-    `Require the GitHub Actions check "${name}" on ${owner}/${targetRepo}:${branch} before release preparation`
-  );
-}
-
 async function buildPassed(github, head) {
   const { data } = await github.rest.checks.listForRef({
     owner,
@@ -326,6 +280,7 @@ export async function reconcile({
     verifyProposal(await commitAt(github, prior.head.sha), base, tree);
     return land(github, prior.number, prior.head.sha, target, base, tree, wait);
   }
+  if (baseTree === tree) return base;
   const head = await signedProposal(
     github,
     branch,
@@ -340,83 +295,149 @@ export async function reconcile({
   return land(github, pr, head, target, base, tree, wait);
 }
 
-export async function resolvePin({
-  siblings,
-  product,
-  channel,
-  version,
-  remote = `https://github.com/${repository}.git`,
-  writePin
-}) {
-  assert(
-    new RegExp(`^${number}\\.${number}$`).test(channel) &&
-      new RegExp(
-        `^v${number}\\.${number}\\.${number}(?:-rc\\.[1-9][0-9]*)?$`
-      ).test(version) &&
-      version.startsWith(`v${channel}.`) &&
-      sha.test(product),
-    "Invalid Radius release identity"
+function parsePlan(raw) {
+  return JSON.parse(
+    execFileSync("yq", ["-o=json", ".", "-"], { input: raw, encoding: "utf8" })
   );
-  const matches = siblings.filter((item) => item.name === repo);
-  const source = matches[0];
-  assert(
-    matches.length === 1 &&
-      source.repository === repository &&
-      ["main", `release/${channel}`].includes(source.sourceRef) &&
-      sha.test(source.sourceCommit),
-    "Invalid captured AWS source"
-  );
-  const directory = mkdtempSync(join(tmpdir(), "radius-aws-pin-"));
-  try {
-    git(directory, "init", "--quiet");
-    let { sourceCommit: base, sourceRef } = source;
-    fetchSource(directory, remote, sourceRef, base);
-    const entry = git(directory, "ls-tree", base, "--", "radius");
-    const link = /^160000 commit ([a-f0-9]{40})\tradius$/.exec(entry);
-    if (link && link[1] !== product) {
-      const tree = expectedTree(directory, base, product);
-      base = await writePin({
-        base,
-        baseTree: git(directory, "rev-parse", `${base}^{tree}`),
-        product,
-        tree,
-        channel,
-        version,
-        sourceRef
-      });
-      assert(sha.test(base), "Invalid landed AWS commit");
-      sourceRef = `release/${channel}`;
-      fetchSource(directory, remote, sourceRef, base);
-    }
-    // Same independent check as PR validation and the release controller,
-    // including the historical never-existed vs removed-submodule distinction.
-    execFileSync("bash", [verifier, directory, base, product], {
-      stdio: "inherit"
-    });
-    return siblings.map((item) =>
-      item === source ? { ...source, sourceRef, sourceCommit: base } : item
-    );
-  } finally {
-    rmSync(directory, { recursive: true, force: true });
-  }
 }
 
-export default async function prepare({ github, core, context }) {
+function blob(raw) {
+  return execFileSync("git", ["hash-object", "--stdin"], {
+    input: raw,
+    encoding: "utf8"
+  }).trim();
+}
+
+async function finalParity(github, plan, checkout) {
+  const rc = plan.previousVersion;
   assert(
-    context.repo.owner === owner &&
-      context.repo.repo === "radius" &&
-      context.ref === "refs/heads/main" &&
-      context.eventName === "workflow_dispatch" &&
-      core.getInput("APP_SLUG") === "radius-release",
-    "Unexpected pin workflow identity"
+    /^v\d+\.\d+\.0-rc\.[1-9]\d*$/.test(rc) && rc.split("-")[0] === plan.version,
+    "Final release does not reference its last validated RC"
   );
-  const file = core.getInput("SIBLINGS_FILE", { required: true });
-  const result = await resolvePin({
-    siblings: JSON.parse(readFileSync(file, "utf8")),
-    channel: core.getInput("CHANNEL"),
-    version: core.getInput("VERSION"),
-    product: core.getInput("PRODUCT_COMMIT"),
-    writePin: (inputs) => reconcile({ ...inputs, github, log: core.info })
-  });
-  writeFileSync(file, `${JSON.stringify(result, null, 2)}\n`);
+  const path = `.github/release-plans/${rc}.yaml`;
+  const raw = execFileSync("git", ["show", `refs/tags/${rc}:${path}`]);
+  const previous = parsePlan(raw);
+  assert(
+    previous.version === rc && previous.releaseType === "rc",
+    "Wrong RC plan at its tag"
+  );
+  const prior = awsSource(previous);
+  const lock =
+    prior.radiusPin && (await readReceipt(github, previous, blob(raw)));
+  assert(
+    !prior.radiusPin || lock,
+    "Last RC is missing its approved AWS pin receipt"
+  );
+  const landed = lock ? lock.landedCommit : prior.sourceCommit;
+  assert(
+    git(checkout, "rev-parse", `refs/tags/${rc}^{commit}`) === landed,
+    "The AWS RC tag no longer identifies its validated inputs"
+  );
+  execFileSync(
+    "bash",
+    [
+      fileURLToPath(new URL("./verify-aws-final-inputs.sh", import.meta.url)),
+      ".",
+      checkout,
+      previous.source.productCommit,
+      plan.source.productCommit,
+      landed,
+      awsSource(plan).sourceCommit,
+      rc
+    ],
+    { stdio: "inherit" }
+  );
+}
+
+export default async function controller({ github, core, context }) {
+  const mode = core.getInput("MODE", { required: true });
+  assert(
+    context.repo.owner === owner && context.repo.repo === "radius",
+    "Unexpected release repository"
+  );
+  const raw = readFileSync(core.getInput("PLAN_FILE", { required: true }));
+  const plan = parsePlan(raw),
+    planBlob = blob(raw);
+  const aws = awsSource(plan),
+    base = aws.sourceCommit,
+    product = plan.source.productCommit;
+  const checkout = core.getInput("AWS_CHECKOUT");
+  if (!Object.hasOwn(aws, "radiusPin")) {
+    assert(mode === "inspect", "Legacy plans cannot create an AWS pin record");
+    core.setOutput("commit", base);
+    return;
+  }
+  assert(
+    /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-rc\.[1-9]\d*)?$/.test(
+      plan.version
+    ) && plan.version.startsWith(`v${plan.channel}.`),
+    "Invalid release version"
+  );
+  const branch = `automation/release-state-aws-${plan.version.slice(1)}`;
+  if (mode === "inspect") {
+    verifyIntent(checkout, aws, product);
+    const rules = await github.paginate(
+      "GET /repos/{owner}/{repo}/rules/branches/{branch}",
+      { owner, repo: "radius", branch, per_page: 100 }
+    );
+    assert(
+      ["update", "deletion"].every((type) =>
+        rules.some((rule) => rule.type === type)
+      ),
+      `Protect ${branch} against updates and deletion before releasing`
+    );
+    await requireCheck(github, repo, `release/${plan.channel}`, buildCheck);
+    const record = await readReceipt(github, plan, planBlob);
+    if (!record) {
+      try {
+        await github.rest.git.getRef({
+          owner,
+          repo,
+          ref: `tags/${plan.version}`
+        });
+        throw new Error(
+          "AWS tag exists without its approved pin receipt; refusing to adopt it"
+        );
+      } catch (error) {
+        if (error.status !== 404) throw error;
+      }
+    }
+    if (plan.releaseType === "final") await finalParity(github, plan, checkout);
+    core.setOutput("planned", "true");
+    core.setOutput("locked", String(Boolean(record)));
+    core.setOutput("commit", record?.landedCommit ?? base);
+    await core.summary
+      .addRaw(
+        `AWS ${plan.version}: base \`${base}\`, Radius product \`${product}\`, expected tree \`${aws.radiusPin.expectedTree}\`, receipt \`${branch}\`.`
+      )
+      .write();
+    return;
+  }
+  assert(
+    core.getInput("APP_SLUG") === "radius-release",
+    "Unexpected release App identity"
+  );
+  if (mode === "pin") {
+    verifyIntent(checkout, aws, product);
+    const commit = await reconcile({
+      github,
+      base,
+      baseTree: git(checkout, "rev-parse", `${base}^{tree}`),
+      product,
+      tree: aws.radiusPin.expectedTree,
+      channel: plan.channel,
+      version: plan.version,
+      sourceRef: aws.sourceRef,
+      log: core.info
+    });
+    core.setOutput("commit", commit);
+  } else if (mode === "lock") {
+    const record = await writeReceipt(
+      github,
+      plan,
+      planBlob,
+      core.getInput("LANDED_COMMIT", { required: true })
+    );
+    core.setOutput("commit", record.landedCommit);
+  } else throw new Error(`Unknown AWS pin mode: ${mode}`);
 }
