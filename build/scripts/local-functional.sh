@@ -333,13 +333,14 @@ fixtures() (
     ) &
     fixture_pids+=("$!")
     make publish-test-terraform-recipes
+    # Native Bicep OCI publishing treats loopback registry names as HTTP.
     bicep publish-extension hack/bicep-types-radius/generated/index.json \
-        --target "br:localhost:${REGISTRY_PORT}/radius:${TAG}" --force
+        --target "br:${REGISTRY}:${REGISTRY_PORT}/radius:${TAG}" --force
     rad bicep publish-extension \
         -f test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml \
-        --target "br:localhost:${REGISTRY_PORT}/testresources:${TAG}" --force
+        --target "br:${REGISTRY}:${REGISTRY_PORT}/testresources:${TAG}" --force
     BICEP_RECIPE_PUBLISH_PARALLELISM=4 make publish-test-bicep-recipes \
-        BICEP_RECIPE_REGISTRY="localhost:${REGISTRY_PORT}"
+        BICEP_RECIPE_REGISTRY="${REGISTRY}:${REGISTRY_PORT}"
     if [[ ! -d "${STATE}/samples/.git" ]]; then
         git clone --depth 1 --branch edge \
             https://github.com/radius-project/samples.git "${STATE}/samples"
@@ -543,9 +544,9 @@ prepare_configs() {
         cat >"${config}" <<EOF
 {
   "extensions": {
-    "radius": "br:localhost:${REGISTRY_PORT}/radius:${TAG}",
+    "radius": "br:${REGISTRY}:${REGISTRY_PORT}/radius:${TAG}",
     "aws": "br:biceptypes.azurecr.io/aws:latest",
-    "testresources": "br:localhost:${REGISTRY_PORT}/testresources:${TAG}"
+    "testresources": "br:${REGISTRY}:${REGISTRY_PORT}/testresources:${TAG}"
   }
 }
 EOF

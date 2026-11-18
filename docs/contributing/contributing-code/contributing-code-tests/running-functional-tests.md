@@ -232,7 +232,9 @@ Newly installed Gateway API resources may not appear immediately in Kubernetes A
 
 ### Bicep reports that a local extension has not been restored
 
-`BCP190` for `br:localhost:5443/radius:<tag>` or `br:localhost:5443/testresources:<tag>` is a local extension-cache error, not a deployed-resource failure. The runner restores both extensions serially in the selected suite's isolated HOME and verifies a template with `--no-restore` before launching the tests. This avoids relying on concurrent builds to populate a shared cold cache.
+`BCP190` for `br:radius-local-registry:5443/radius:<tag>` or `br:radius-local-registry:5443/testresources:<tag>` is a local extension-cache error, not a deployed-resource failure. The runner restores both extensions serially in the selected suite's isolated HOME and verifies a template with `--no-restore` before launching the tests. This avoids relying on concurrent builds to populate a shared cold cache.
+
+The runner uses its existing certificate-covered `radius-local-registry` alias for Bicep extension and recipe publication and consumption. With OCI enabled in the root config, native Bicep publication treats `localhost` as HTTP; using the alias keeps the TLS-only registry working without disabling certificate validation. Docker image pushes and the HTTPS readiness probe retain their localhost endpoints.
 
 If this preparation fails, inspect the restore/build error and confirm that the setup completed and the local registry is running. Tests do not start after a failed extension preparation. Keep the same checkout commit between setup and test commands, because the published extension tags are derived from that commit.
 
