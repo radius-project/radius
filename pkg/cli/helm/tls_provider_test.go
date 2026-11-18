@@ -22,6 +22,8 @@ import (
 
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -57,7 +59,8 @@ func providerTestValues(provider string) map[string]any {
 }
 
 func TestTLSProviderSelection(t *testing.T) {
-	defaults := providerTestValues("radius")
+	defaults := certificateTestChart(t)
+	require.NoError(t, unstructured.SetNestedField(defaults.Values, true, "global", "rbac", "enabled"))
 	for _, tt := range []struct {
 		name    string
 		options ClusterOptions
@@ -84,7 +87,8 @@ func TestTLSProviderSelection(t *testing.T) {
 			before := copyValues(tt.options.RadiusReleaseValues)
 			var logs []string
 			impl := &Impl{logger: func(message string, _ ...any) { logs = append(logs, message) }}
-			err := impl.prepareTLSProvider(tt.options, defaults, tt.current, tt.options.RadiusReleaseValues != nil)
+			tt.options.RadiusReleaseChart = defaults
+			err := testProviderSelection(impl, tt.options, defaults, tt.current, tt.options.RadiusReleaseValues != nil)
 			if tt.options.RadiusReleaseValues != nil {
 				require.Equal(t, before, tt.options.RadiusReleaseValues)
 			}
@@ -110,7 +114,7 @@ func TestTLSProviderSelectedChartAndRotationReject(t *testing.T) {
 	options := ClusterOptions{TLS: TLSProviderOptions{Provider: "external"}}
 	current := map[string]any{}
 	require.NoError(t, unstructured.SetNestedField(current, true, "global", "rbac", "enabled"))
-	_, _, err := (&Impl{}).prepareSelectedCertificates(t.Context(), options, chart, current, "", nil)
+	err := testProviderSelection(&Impl{}, options, chart, current, false)
 	require.ErrorContains(t, err, "selected chart")
 	options.Certificates.RotateCA = true
 	_, _, err = (&Impl{}).prepareCertificateTarget(t.Context(), options, chart, current, "")
@@ -127,9 +131,63 @@ func TestTLSProviderDeferredValues(t *testing.T) {
 			if stored {
 				options.RadiusReleaseValues, current = values, map[string]any{}
 			}
-			err := (&Impl{}).prepareTLSProvider(options, providerTestValues("radius"), current, stored)
+			err := testProviderSelection(&Impl{}, options, certificateTestChart(t), current, stored)
 			require.ErrorIs(t, err, errProviderObservationUnavailable)
 			require.Equal(t, before, values)
 		}
 	}
+}
+
+func TestProviderHistoryMaintenance(t *testing.T) {
+	for _, tt := range []struct {
+		name, old, next, stored, current string
+		reset, blocked                   bool
+	}{
+		{name: "external default unchanged", old: "external", next: "external"},
+		{name: "external default to radius", old: "external", next: "radius", blocked: true},
+		{name: "radius default to external", old: "radius", next: "external", blocked: true},
+		{name: "stored provider wins on both charts", old: "radius", next: "radius", stored: "external"},
+		{name: "current provider matches deployed default", old: "external", next: "radius", current: "external"},
+		{name: "reset compares installed default", old: "external", next: "radius", reset: true, blocked: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			installed := providerHistoryRevision(t, 1, "0.45.0", releasecommon.StatusDeployed, tt.old)
+			if tt.stored != "" {
+				installed.Config = providerTestValues(tt.stored)
+			}
+			selected := providerHistoryRevision(t, 2, "0.46.0", releasecommon.StatusPendingUpgrade, tt.next).Chart
+			current := map[string]any{}
+			if tt.current != "" {
+				current = providerTestValues(tt.current)
+			}
+			options := NewDefaultClusterOptions()
+			options.RadiusReleaseChart = installed.Chart
+			options.RadiusReleaseValues = installed.Config
+			options.ResetValues = tt.reset
+			before := copyValues(installed.Config)
+			err := testProviderSelection(&Impl{}, options, selected, current, true)
+			require.Equal(t, before, installed.Config)
+			if tt.blocked {
+				require.ErrorIs(t, err, errProviderObservationUnavailable)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func testProviderSelection(i *Impl, options ClusterOptions, selected *chart.Chart, current map[string]any, installed bool) error {
+	var baseline *chartAuthSettings
+	if installed {
+		if _, _, err := providerValue(options.RadiusReleaseValues); err != nil {
+			return err
+		}
+		_, settings, err := installedAuthzSettings(options)
+		if err != nil {
+			return err
+		}
+		baseline = &settings
+	}
+	_, _, err := i.prepareTLSProvider(options, selected, current, baseline)
+	return err
 }

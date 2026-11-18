@@ -83,15 +83,6 @@ func (t *certificateTarget) checkTransition(deployed authz.Mode) error {
 }
 
 func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, deployed map[string]any) (*certificateTarget, *certificatePlan, error) {
-	if err := i.prepareTLSProvider(options, selected.Values, current, deployed != nil); err != nil {
-		return nil, nil, err
-	}
-	_, currentProvider, _ := providerValue(current)
-	_, storedProvider, _ := providerValue(options.RadiusReleaseValues)
-	if (currentProvider || storedProvider) && (selected.Metadata == nil ||
-		selected.Metadata.Annotations["radius.io/provider-transition-protocol"] != "2") {
-		return nil, nil, errors.New("selected chart does not support token/CSI TLS provider protocol v2")
-	}
 	target, plan, err := i.prepareCertificateTarget(ctx, options, selected, current, kubeContext)
 	if err != nil {
 		return nil, nil, err

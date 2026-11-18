@@ -948,11 +948,11 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	if err := checkRollbackCertificateIssuers(history, targetRevision); err != nil {
 		return err
 	}
-	_, settings, err := rollbackChartValues(history, targetRevision)
+	mode, err := rollbackProviderMode(history, targetRevision)
 	if err != nil {
 		return err
 	}
-	return i.withCertificateOffOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, settings.mode, func(ctx context.Context) error {
+	return i.withCertificateOffOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, mode, func(ctx context.Context) error {
 		if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, targetRevision); err != nil {
 			return err
 		}
@@ -1021,11 +1021,11 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 	if err := checkRollbackCertificateIssuers(history, revision); err != nil {
 		return err
 	}
-	_, settings, err := rollbackChartValues(history, revision)
+	mode, err := rollbackProviderMode(history, revision)
 	if err != nil {
 		return err
 	}
-	return i.withCertificateOffOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, settings.mode, func(ctx context.Context) error {
+	return i.withCertificateOffOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, mode, func(ctx context.Context) error {
 
 		if err := i.stageRolledBackUCPAPIServerCA(ctx, kubeContext, clusterOptions.Radius.Namespace, history, revision); err != nil {
 			return err

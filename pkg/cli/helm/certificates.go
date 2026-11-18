@@ -616,6 +616,7 @@ func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterO
 func (i *Impl) selectActionCertificates(ctx context.Context, options *ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, []*releasev1.Release, error) {
 	var history []*releasev1.Release
 	var deployed map[string]any
+	var prior *chartAuthSettings
 	mode := authz.ModeOff
 	if installed {
 		var err error
@@ -627,14 +628,20 @@ func (i *Impl) selectActionCertificates(ctx context.Context, options *ClusterOpt
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		if revisionStatus(baseline) != releasecommon.StatusDeployed {
+			return nil, nil, nil, fmt.Errorf("cannot establish deployed TLS provider: no deployed Radius revision")
+		}
+		if err := validateProviderRevision(baseline); err != nil {
+			return nil, nil, nil, err
+		}
 		options.RadiusReleaseChart, options.RadiusReleaseValues = baseline.Chart, baseline.Config
 		values, settings, err := installedAuthzSettings(*options)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		deployed, mode = values, settings.mode
+		deployed, mode, prior = values, settings.mode, &settings
 	}
-	effective, settings, err := selectedCertificateValues(*options, selected, current)
+	effective, settings, err := i.prepareTLSProvider(*options, selected, current, prior)
 	if err != nil {
 		return nil, nil, nil, err
 	}

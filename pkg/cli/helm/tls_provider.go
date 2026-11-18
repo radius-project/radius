@@ -22,7 +22,9 @@ import (
 
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/spf13/pflag"
-	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -91,60 +93,114 @@ func providerValue(values map[string]any) (string, bool, error) {
 	return value, true, nil
 }
 
-func (i *Impl) prepareTLSProvider(options ClusterOptions, defaults, current map[string]any, installed bool) error {
+func (i *Impl) prepareTLSProvider(options ClusterOptions, selected *chart.Chart, current map[string]any, baseline *chartAuthSettings) (map[string]any, chartAuthSettings, error) {
 	if err := options.TLS.ValidateFlags(nil); err != nil {
-		return err
+		return nil, chartAuthSettings{}, err
 	}
-	old, stored, err := providerValue(options.RadiusReleaseValues)
+	_, stored, err := providerValue(options.RadiusReleaseValues)
 	if err != nil {
-		return err
+		return nil, chartAuthSettings{}, err
 	}
 	_, explicit, err := providerValue(current)
 	if err != nil {
-		return err
+		return nil, chartAuthSettings{}, err
 	}
-	if _, _, err := providerValue(defaults); err != nil {
-		return err
+	if selected == nil {
+		return nil, chartAuthSettings{}, errors.New("missing target Radius chart")
+	}
+	if _, _, err := providerValue(selected.Values); err != nil {
+		return nil, chartAuthSettings{}, err
 	}
 	if options.TLS.Provider != "" && explicit {
-		return errors.New("--tls-provider cannot be combined with global.rbac.tls.provider overrides")
+		return nil, chartAuthSettings{}, errors.New("--tls-provider cannot be combined with global.rbac.tls.provider overrides")
 	}
 	if options.ResetValues && stored {
-		return errors.New("--reset-values cannot discard stored TLS provider settings")
+		return nil, chartAuthSettings{}, errors.New("--reset-values cannot discard stored TLS provider settings")
 	}
-	merged := valuesutil.CoalesceTables(copyValues(current), copyValues(options.RadiusReleaseValues))
-	merged = valuesutil.CoalesceTables(merged, copyValues(defaults))
-	provider, _, err := providerValue(merged)
-	if err != nil {
-		return err
-	}
+	overrides := current
 	if options.TLS.Provider != "" {
-		provider = options.TLS.Provider
+		overrides = copyValues(current)
+		if err := unstructured.SetNestedField(overrides, options.TLS.Provider, "global", "rbac", "tls", "provider"); err != nil {
+			return nil, chartAuthSettings{}, err
+		}
 	}
-	if installed && old != provider {
-		return errProviderObservationUnavailable
-	}
-	rbac, _ := nestedValue(merged, "global", "rbac").(map[string]any)
-	mode, err := authzModeFromRBAC(rbac)
+	merged, target, err := selectedCertificateValues(options, selected, overrides)
 	if err != nil {
-		return err
+		return nil, chartAuthSettings{}, err
 	}
-	if mode == authz.ModeOff && (options.TLS.Provider != "" || explicit && provider == "external") {
-		return errors.New("--tls-provider requires active authorization; Off is not a transition bridge")
+	if baseline != nil && baseline.provider != target.provider {
+		return nil, chartAuthSettings{}, errProviderObservationUnavailable
 	}
+	if (explicit || stored || options.TLS.Provider != "") && (selected.Metadata == nil || selected.Metadata.Annotations["radius.io/provider-transition-protocol"] != "2") {
+		return nil, chartAuthSettings{}, errors.New("selected chart does not support token/CSI TLS provider protocol v2")
+	}
+	if target.mode == authz.ModeOff && (options.TLS.Provider != "" || explicit && target.provider == authz.TLSProviderExternal) {
+		return nil, chartAuthSettings{}, errors.New("--tls-provider requires active authorization; Off is not a transition bridge")
+	}
+	// Retain the strict retired-engine flag diagnostics even for chart helpers that accept falsy scalars.
 	for _, name := range []string{"ucpMTLS", "externalIdentity"} {
 		enabled, _, err := unstructured.NestedBool(merged, "de", name, "enabled")
 		if err != nil || enabled {
-			return fmt.Errorf("de.%s.enabled is unsupported; a paired token-capable engine uses de.internalAuth.enabled", name)
+			return nil, chartAuthSettings{}, fmt.Errorf("de.%s.enabled is unsupported; a paired token-capable engine uses de.internalAuth.enabled", name)
 		}
 	}
 	if options.TLS.Provider != "" {
-		if err := unstructured.SetNestedField(current, provider, "global", "rbac", "tls", "provider"); err != nil {
-			return err
+		if err := unstructured.SetNestedField(current, options.TLS.Provider, "global", "rbac", "tls", "provider"); err != nil {
+			return nil, chartAuthSettings{}, err
 		}
 	}
-	if provider == "external" && mode != authz.ModeOff {
+	if target.provider == authz.TLSProviderExternal && target.mode != authz.ModeOff {
 		i.logInfo("Warning: external TLS requires operator encryption and integrity for EVERY connection, including storage and queues. Radius cannot verify this protection.")
 	}
-	return nil
+	return merged, target, nil
+}
+
+// rollbackProviderMode compares the deployed and requested revisions before any operation lease.
+func rollbackProviderMode(history []*releasev1.Release, revision int) (authz.Mode, error) {
+	var deployed, target *releasev1.Release
+	for _, rel := range history {
+		if rel == nil {
+			continue
+		}
+		if revisionStatus(rel) == releasecommon.StatusDeployed && (deployed == nil || rel.Version > deployed.Version) {
+			deployed = rel
+		}
+		if rel.Version == revision {
+			target = rel
+		}
+	}
+	if deployed == nil {
+		return "", errors.New("cannot establish deployed TLS provider: no deployed Radius revision")
+	}
+	if target == nil {
+		return "", fmt.Errorf("rollback revision %d not found", revision)
+	}
+	for _, rel := range []*releasev1.Release{deployed, target} {
+		if err := validateProviderRevision(rel); err != nil {
+			return "", err
+		}
+	}
+	_, old, err := rollbackChartValues(history, deployed.Version)
+	if err != nil {
+		return "", err
+	}
+	_, next, err := rollbackChartValues(history, target.Version)
+	if err != nil {
+		return "", err
+	}
+	if old.provider != next.provider {
+		return "", errProviderObservationUnavailable
+	}
+	return next.mode, nil
+}
+
+func validateProviderRevision(rel *releasev1.Release) error {
+	if rel.Chart == nil {
+		return errors.New("cannot establish TLS provider: missing Radius chart")
+	}
+	if _, _, err := providerValue(rel.Chart.Values); err != nil {
+		return err
+	}
+	_, _, err := providerValue(rel.Config)
+	return err
 }
