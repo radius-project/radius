@@ -20,9 +20,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/authz"
 	helm "helm.sh/helm/v4/pkg/action"
@@ -31,6 +34,8 @@ import (
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/strvals"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -48,20 +53,50 @@ type RadiusChartOptions struct {
 // radiusAuthTarget describes the selected chart's component authorization prerequisites.
 // Never pass coalesced defaults as user overrides to a Helm action.
 type radiusAuthTarget struct {
+	chartAuthSettings
+	workloadRequirements
+}
+
+type chartAuthSettings struct {
 	mode     authz.Mode
 	provider authz.TLSProvider
 	spiffe   spiffeSettings
 }
 
-func resolveRadiusAuthTarget(selected *chart.Chart, stored, current map[string]any) (radiusAuthTarget, error) {
-	var target radiusAuthTarget
-	if selected == nil {
-		return target, fmt.Errorf("missing target Radius chart")
+func resolveRadiusAuthTarget(ctx context.Context, selected *chart.Chart, namespace, release string, current, stored map[string]any, reset bool) (radiusAuthTarget, error) {
+	values, settings, err := resolveEffectiveChartValues(selected, namespace, release, current, stored, reset)
+	if err != nil {
+		return radiusAuthTarget{}, err
 	}
-	// All authorization settings belong to the root chart, not its dependencies.
-	values := valuesutil.CoalesceTables(helmValues(current, stored), copyValues(selected.Values))
+	req, err := renderedWorkloadRequirements(ctx, selected, values, namespace, release)
+	if err != nil {
+		return radiusAuthTarget{}, err
+	}
+	if req.ManagedCSIVolumes > 0 && (settings.mode == authz.ModeOff || settings.provider != authz.TLSProviderRadius || settings.spiffe.CSIDriverName != req.CSIDriverName) {
+		return radiusAuthTarget{}, fmt.Errorf("rendered workload requires managed CSI driver %q, inconsistent with the selected authorization settings", req.CSIDriverName)
+	}
+	return radiusAuthTarget{settings, req}, nil
+}
+
+func resolveEffectiveChartValues(selected *chart.Chart, namespace, release string, current, stored map[string]any, reset bool) (map[string]any, chartAuthSettings, error) {
+	if selected == nil || selected.Metadata == nil {
+		return nil, chartAuthSettings{}, fmt.Errorf("missing target Radius chart or metadata")
+	}
+	if reset {
+		stored = nil
+	}
+	values, err := valuesutil.CoalesceValues(selected, helmValues(current, stored))
+	if err != nil {
+		return nil, chartAuthSettings{}, err
+	}
+	settings, err := selectedAuthSettings(selected, values, namespace, release)
+	return values, settings, err
+}
+
+func selectedAuthSettings(selected *chart.Chart, values map[string]any, namespace, release string) (chartAuthSettings, error) {
+	var target chartAuthSettings
 	if nestedValue(selected.Values, "global", "rbac", "tls", "provider") != nil {
-		return renderRadiusAuthTarget(selected, values)
+		return renderRadiusAuthTarget(selected, values, namespace, release)
 	}
 	// Legacy charts have no provider switch. Helm accepts unknown overrides;
 	// do not silently treat an ignored setting as a supported configuration.
@@ -94,11 +129,8 @@ func resolveRadiusAuthTarget(selected *chart.Chart, stored, current map[string]a
 
 // Evaluate the same helpers as the workloads without rendering Secrets, executing hooks,
 // or looking up cluster objects. The gate helper validates the engine selection too.
-func renderRadiusAuthTarget(selected *chart.Chart, values map[string]any) (radiusAuthTarget, error) {
-	var target radiusAuthTarget
-	if selected.Metadata == nil {
-		return target, fmt.Errorf("selected Radius chart is missing metadata")
-	}
+func renderRadiusAuthTarget(selected *chart.Chart, values map[string]any, namespace, release string) (chartAuthSettings, error) {
+	var target chartAuthSettings
 	c := &chart.Chart{Metadata: selected.Metadata}
 	for _, file := range selected.Templates {
 		if filepath.Ext(file.Name) == ".tpl" {
@@ -109,7 +141,7 @@ func renderRadiusAuthTarget(selected *chart.Chart, values map[string]any) (radiu
 	const probe = `{{- $_ := include "radius.de.internalAuth.enabled" . -}}
 {{ dict "Mode" (include "radius.authz.mode" .) "Provider" (include "radius.authz.tls.provider" .) "TrustDomain" (include "radius.authz.spiffe.trustDomain" .) "CSIDriverName" (include "radius.authz.spiffe.csiDriverName" .) | toJson }}`
 	c.Templates = append(c.Templates, &common.File{Name: name, Data: []byte(probe)})
-	result, err := engine.Render(c, common.Values{"Values": values})
+	result, err := engine.Render(c, workloadRenderContext(values, namespace, release))
 	if err != nil {
 		return target, fmt.Errorf("invalid selected Radius chart authorization settings: %w", err)
 	}
@@ -129,7 +161,66 @@ func renderRadiusAuthTarget(selected *chart.Chart, values map[string]any) (radiu
 	if rendered.Provider != authz.TLSProviderRadius && rendered.Provider != authz.TLSProviderExternal {
 		return target, fmt.Errorf("unsupported selected Radius chart TLS provider %q", rendered.Provider)
 	}
-	return radiusAuthTarget{rendered.Mode, rendered.Provider, rendered.spiffeSettings}, nil
+	return chartAuthSettings{rendered.Mode, rendered.Provider, rendered.spiffeSettings}, nil
+}
+
+type workloadRequirements struct {
+	ManagedCSIVolumes int
+	CSIDriverName     string
+}
+
+func workloadRenderContext(values map[string]any, namespace, release string) common.Values {
+	caps := common.DefaultCapabilities.Copy()
+	caps.APIVersions = append(slices.Clone(caps.APIVersions), "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy")
+	return common.Values{
+		"Values": copyValues(values), "Capabilities": caps,
+		"Release": map[string]any{"Namespace": namespace, "Name": release, "Service": "Helm", "Revision": 1, "IsInstall": true, "IsUpgrade": false},
+	}
+}
+
+// renderedWorkloadRequirements inspects pod templates, not a chart's declaration of
+// provider support. The zero-value engine has no cluster client for lookup or hooks.
+func renderedWorkloadRequirements(ctx context.Context, selected *chart.Chart, values map[string]any, namespace, release string) (workloadRequirements, error) {
+	var req workloadRequirements
+	rendered, err := (engine.Engine{}).RenderWithContext(ctx, selected, workloadRenderContext(values, namespace, release))
+	if err != nil {
+		return req, fmt.Errorf("render Radius workloads: %w", err)
+	}
+	for name, manifest := range rendered {
+		if filepath.Base(name) == "NOTES.txt" {
+			continue
+		}
+		decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
+		for {
+			var obj struct {
+				Kind string
+				Spec struct{ Template corev1.PodTemplateSpec }
+			}
+			err := decoder.Decode(&obj)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return req, fmt.Errorf("inspect %s: %w", name, err)
+			}
+			switch obj.Kind {
+			case "Deployment", "DaemonSet", "StatefulSet", "Job", "ReplicaSet":
+			default:
+				continue
+			}
+			for _, vol := range obj.Spec.Template.Spec.Volumes {
+				if vol.CSI == nil || vol.Name != "spiffe" {
+					continue
+				}
+				if req.ManagedCSIVolumes > 0 && req.CSIDriverName != vol.CSI.Driver {
+					return req, fmt.Errorf("rendered SPIFFE volumes require different CSI drivers")
+				}
+				req.ManagedCSIVolumes++
+				req.CSIDriverName = vol.CSI.Driver
+			}
+		}
+	}
+	return req, nil
 }
 
 // prepareRadiusChart prepares the Helm chart for Radius and returns the user-supplied

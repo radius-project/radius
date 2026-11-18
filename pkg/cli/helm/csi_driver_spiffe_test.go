@@ -438,7 +438,7 @@ func testAuthTarget(t *testing.T, options ClusterOptions, stored map[string]any)
 	require.NoError(t, err)
 	current, err := parseUserValuesFromCLI(&options.Radius)
 	require.NoError(t, err)
-	target, err := resolveRadiusAuthTarget(selected, stored, current)
+	target, err := resolveRadiusAuthTarget(t.Context(), selected, options.Radius.Namespace, options.Radius.ReleaseName, current, stored, false)
 	require.NoError(t, err)
 	return target
 }

@@ -382,7 +382,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 			return err
 		}
 	}
-	target, err := resolveRadiusAuthTarget(radiusHelmChart, clusterOptions.RadiusReleaseValues, radiusValues)
+	target, err := resolveRadiusAuthTarget(ctx, radiusHelmChart, clusterOptions.Radius.Namespace, clusterOptions.Radius.ReleaseName, radiusValues, clusterOptions.RadiusReleaseValues, false)
 	if err != nil {
 		return err
 	}
@@ -593,10 +593,6 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	// `global.azureWorkloadIdentity.enabled=true` don't silently revert on upgrade.
 	reuseValues := !clusterOptions.ResetValues
 
-	storedValues := clusterOptions.RadiusReleaseValues
-	if !reuseValues {
-		storedValues = nil
-	}
 	output.LogInfo("Upgrading Radius...")
 	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(ctx, helmAction, clusterOptions.Radius, kubeContext)
 	if err != nil {
@@ -612,7 +608,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 			return err
 		}
 	}
-	target, err := resolveRadiusAuthTarget(radiusHelmChart, storedValues, radiusValues)
+	target, err := resolveRadiusAuthTarget(ctx, radiusHelmChart, clusterOptions.Radius.Namespace, clusterOptions.Radius.ReleaseName, radiusValues, clusterOptions.RadiusReleaseValues, !reuseValues)
 	if err != nil {
 		return err
 	}
@@ -923,7 +919,13 @@ func (i *Impl) reconcileRollbackDependencies(ctx context.Context, kubeContext st
 	if targetRelease == nil {
 		return fmt.Errorf("revision %d not found in release history", revision)
 	}
-	target, err := resolveRadiusAuthTarget(targetRelease.Chart, nil, targetRelease.Config)
+	if targetRelease.Namespace != "" {
+		options.Radius.Namespace = targetRelease.Namespace
+	}
+	if targetRelease.Name != "" {
+		options.Radius.ReleaseName = targetRelease.Name
+	}
+	target, err := resolveRadiusAuthTarget(ctx, targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, false)
 	if err != nil {
 		return err
 	}
