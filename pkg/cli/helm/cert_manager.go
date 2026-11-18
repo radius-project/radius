@@ -257,15 +257,7 @@ func imageTag(image string) string {
 // without approveSignerNames), refuses pending Helm operations, reuses a supported
 // installation it did not install, and fails when that installation is older than CertManagerMinimumVersion.
 // With authorization off it returns without contacting the cluster.
-func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, upgrade bool) error {
-	currentValues, err := parseUserValuesFromCLI(&options.Radius)
-	if err != nil {
-		return fmt.Errorf("failed to parse Radius values: %w", err)
-	}
-	mode, err := resolveAuthzMode(storedValues, currentValues)
-	if err != nil {
-		return err
-	}
+func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, mode authz.Mode, upgrade bool) error {
 	if mode == authz.ModeOff {
 		return nil
 	}

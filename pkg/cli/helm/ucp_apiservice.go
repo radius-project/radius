@@ -99,37 +99,13 @@ func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, r
 		ucpAPIServiceDiagnostics(kubeContext, radiusNamespace, problem == ucpAPIServiceNoCABundle))
 }
 
-// waitForInstalledUCPAPIService waits for the UCP APIService after rad installs or upgrades Radius with the values of
-// options merged over storedValues.
-func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any) error {
-	mode, err := installedAuthzMode(options, storedValues)
-	if err != nil {
-		return err
-	}
-	return i.waitForUCPAPIService(ctx, kubeContext, options.Radius.Namespace, mode)
-}
-
-// stageInstalledUCPAPIServerCA stages radius-apiserver-ca before rad installs or upgrades Radius with the values of
-// options merged over storedValues. render returns the manifest that Helm applies.
-func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, render renderRadiusManifest) error {
-	mode, err := installedAuthzMode(options, storedValues)
-	if err != nil {
-		return err
-	}
-	// storedValues is nil with --reset-values, but the deployed release keeps the values it was installed with.
+// stageInstalledUCPAPIServerCA keeps the deployed mode distinct from the target on reset.
+func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, mode authz.Mode, render renderRadiusManifest) error {
 	current, err := resolveAuthzMode(options.RadiusReleaseValues, nil)
 	if err != nil {
 		return err
 	}
 	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, current, mode, render)
-}
-
-func installedAuthzMode(options ClusterOptions, storedValues map[string]any) (authz.Mode, error) {
-	currentValues, err := parseUserValuesFromCLI(&options.Radius)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse Radius values: %w", err)
-	}
-	return resolveAuthzMode(storedValues, currentValues)
 }
 
 // waitForRolledBackUCPAPIService waits for the UCP APIService after rad rolls Radius back to revision of history.

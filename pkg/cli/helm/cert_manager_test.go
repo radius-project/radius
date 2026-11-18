@@ -513,7 +513,7 @@ func Test_ensureCertManager(t *testing.T) {
 
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
-			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.stored, tt.upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", testAuthTarget(t, options, tt.stored).mode, tt.upgrade)
 			switch {
 			case tt.wantErr != "":
 				require.ErrorContains(t, err, tt.wantErr)
@@ -582,7 +582,7 @@ func Test_ensureCertManager_RBACWarning(t *testing.T) {
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
 			options.Radius.SetFileArgs = tt.setFileArgs
-			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.stored, tt.upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", testAuthTarget(t, options, tt.stored).mode, tt.upgrade)
 			if !tt.wantWarning {
 				require.NoError(t, err)
 				require.Empty(t, logs)
@@ -730,7 +730,7 @@ func Test_ensureCertManager_ReleaseLookupErrorDoesNotRepair(t *testing.T) {
 			impl := &Impl{Helm: client}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", authz.ModeDryRun, upgrade)
 			require.ErrorIs(t, err, failure)
 			require.ErrorContains(t, err, "failed to run helm get")
 			require.NotContains(t, err.Error(), "rollback")
@@ -760,7 +760,7 @@ func Test_ensureCertManager_NewerOwnedRelease(t *testing.T) {
 				}}
 				options := NewDefaultClusterOptions()
 				options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-				err := impl.ensureCertManager(t.Context(), options, "test-context", nil, upgrade)
+				err := impl.ensureCertManager(t.Context(), options, "test-context", authz.ModeDryRun, upgrade)
 				if healthy {
 					require.NoError(t, err)
 				} else {
@@ -794,7 +794,7 @@ func Test_ensureCertManager_DetectionFailureDoesNotRepair(t *testing.T) {
 			}}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, false)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", authz.ModeDryRun, false)
 			require.ErrorIs(t, err, failure)
 		})
 	}
@@ -908,7 +908,7 @@ func Test_ensureCertManager_UnreadyWebhookIsNotReused(t *testing.T) {
 			}}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err = impl.ensureCertManager(t.Context(), options, "test-context", nil, version == "v1.22.1")
+			err = impl.ensureCertManager(t.Context(), options, "test-context", authz.ModeDryRun, version == "v1.22.1")
 			require.ErrorContains(t, err, "cert-manager webhook Deployment")
 			require.ErrorContains(t, err, "is not ready")
 		})
