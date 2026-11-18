@@ -73,6 +73,9 @@ func Test_Replay_MultiRegionAccessPointRoutes(t *testing.T) {
 // request S3 rejected and applied none of, a not found error on a read or a reset means AWS has no such resource, and
 // a 5xx leaves the outcome unknown.
 func Test_Replay_S3Errors(t *testing.T) {
+	if awsreplay.Recording() {
+		t.Skip("the cassette is written by hand from S3's error list; recording it would change the real resources")
+	}
 	s := awsreplay.New(t, "testdata/errors.json")
 	cfg := s.Config(t.Context())
 	payments := NewBucketRequestPayment(s3.NewFromConfig(cfg))
