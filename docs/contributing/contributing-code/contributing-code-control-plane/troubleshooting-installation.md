@@ -158,7 +158,7 @@ kubectl get secret -n cert-manager -l owner=helm,name=cert-manager --show-labels
 
 `rad` only upgrades a release it owns, and repairs an owned release that is not `deployed`, whose controller is missing, or that lacks the `approveSignerNames` setting, for example because an older `rad` installed it. It never downgrades a release whose chart version is newer than its target pin: a healthy newer installation is reused, and an unhealthy newer installation must be repaired at its current version. Kubernetes API errors are reported rather than silently triggering a repair.
 
-When `rad` changes an owned release, it keeps the signers you added to `approveSignerNames` for your own Issuers, because Helm replaces the whole list. It stops before changing the cluster if the list contains `issuers.cert-manager.io/*` or the `radius-ca-issuer` signer, because either lets the default approver approve requests to `radius-ca-issuer`, and prints a `helm upgrade` command that lists the safe signers instead.
+When `rad` changes an owned release, it keeps the signers already in `approveSignerNames`, because Helm replaces the whole list, and adds only the bootstrap and mTLS Issuers. It doesn't add ClusterIssuers back if you removed them. An empty or null list renders no `resourceNames`, which lets the default approver approve every signer, so `rad` stops before changing the cluster and prints a `helm upgrade` command that sets a list. It also stops before changing the cluster if the list contains `issuers.cert-manager.io/*` or the `radius-ca-issuer` signer, because either lets the default approver approve requests to `radius-ca-issuer`, and prints a `helm upgrade` command that lists the safe signers instead.
 
 ### Uninstall
 
