@@ -237,6 +237,30 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 	require.Equal(t, err.Error(), "failed to execute recipe")
 }
 
+func Test_Engine_Execute_GarbageCollectionFailureReturnsOutput(t *testing.T) {
+	recipeMetadata := recipes.ResourceMetadata{
+		Name:          "mongo-azure",
+		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Microsoft.Resources/deployments/recipe",
+	}
+	recipeDefinition := &recipes.EnvironmentDefinition{
+		Driver:       recipes.TemplateKindBicep,
+		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
+		ResourceType: "Applications.Datastores/mongoDatabases",
+	}
+	output := &recipes.RecipeOutput{Resources: []string{"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/new"}}
+	gcErr := recipes.NewRecipeError(recipes.RecipeGarbageCollectionFailed, "failed to delete", "", nil)
+	ctx := t.Context()
+	engine, configLoader, driver, _, _ := setup(t)
+	configLoader.EXPECT().LoadConfiguration(ctx, recipeMetadata).Return(&recipes.Configuration{}, nil)
+	configLoader.EXPECT().LoadRecipe(ctx, &recipeMetadata).Return(recipeDefinition, nil)
+	driver.EXPECT().Execute(ctx, gomock.Any()).Return(output, gcErr)
+
+	result, err := engine.Execute(ctx, ExecuteOptions{Recipe: recipeMetadata})
+	require.Same(t, output, result)
+	require.ErrorIs(t, err, gcErr)
+}
+
 func Test_Engine_Terraform_Success(t *testing.T) {
 	recipeMetadata := recipes.ResourceMetadata{
 		Name:          "mongo-azure",

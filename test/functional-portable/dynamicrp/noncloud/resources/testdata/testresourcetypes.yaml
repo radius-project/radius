@@ -149,3 +149,14 @@ types:
               type: string
               description: The name of the Kubernetes secret created by the recipe.
               readOnly: true
+  renamableConfigMaps:
+    apiVersions:
+      "2025-01-01-preview":
+        schema:
+          type: "object"
+          properties:
+            physicalName:
+              type: string
+              description: The name of the ConfigMap the recipe creates.
+          required:
+            - physicalName
