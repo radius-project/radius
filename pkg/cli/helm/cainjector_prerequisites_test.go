@@ -136,6 +136,7 @@ func TestInspectCAInjectorConfig(t *testing.T) {
 		mutable      bool
 		secret       bool
 		override     bool
+		unpinned     bool
 		podTime      *metav1.Time
 		err          string
 	}{
@@ -149,6 +150,7 @@ func TestInspectCAInjectorConfig(t *testing.T) {
 		{name: "duplicate YAML key", config: "namespace: other\nnamespace: radius-system", err: "unsupported --config"},
 		{name: "multiple YAML documents", config: "namespace: radius-system\n---\nnamespace: other", err: "exactly one configuration document"},
 		{name: "mutable config cannot prove startup", mutable: true, err: "must be immutable"},
+		{name: "name and timestamps alone are insufficient", unpinned: true, err: "cannot verify"},
 		{name: "unknown Pod creation time", podTime: &metav1.Time{}, err: "cannot verify"},
 		{name: "ambiguous creation order", podTime: &metav1.Time{Time: time.Unix(1, 0)}, err: "cannot verify"},
 	} {
@@ -164,6 +166,10 @@ func TestInspectCAInjectorConfig(t *testing.T) {
 				source = &corev1.Secret{ObjectMeta: meta, Immutable: &immutable, Data: map[string][]byte{"injector.yaml": []byte(text)}}
 			}
 			d.Spec.Template.Spec.Volumes = []corev1.Volume{volume}
+			if !tt.unpinned {
+				container := &d.Spec.Template.Spec.Containers[0]
+				container.Env = append(container.Env, corev1.EnvVar{Name: caInjectorSourcePinEnv, Value: "config-uid:1"})
+			}
 			d.Spec.Template.Spec.Containers[0].VolumeMounts = []corev1.VolumeMount{{Name: "config", MountPath: "/config", ReadOnly: true}}
 			if tt.override {
 				d.Spec.Template.Spec.Containers[0].Args = append(d.Spec.Template.Spec.Containers[0].Args, "--namespace=radius-system", "--enable-apiservices-injectable=true")
@@ -194,17 +200,32 @@ func TestInspectCAInjectorConfig(t *testing.T) {
 			require.NoError(t, client.Tracker().Delete(resource, meta.Namespace, meta.Name))
 			replacement := source.DeepCopyObject()
 			replacement.(metav1.Object).SetUID("replacement")
-			replacement.(metav1.Object).SetCreationTimestamp(metav1.NewTime(time.Unix(3, 0)))
+			// Even an apparently older creation time cannot bless a different UID.
+			replacement.(metav1.Object).SetCreationTimestamp(meta.CreationTimestamp)
 			require.NoError(t, client.Tracker().Create(resource, replacement, meta.Namespace))
 			_, err = inspectCAInjectorPrerequisites(t.Context(), client, "radius-system")
 			require.ErrorContains(t, err, "cannot verify")
 			newPod := pod.DeepCopy()
 			newPod.Name, newPod.UID, newPod.CreationTimestamp = "new-injector", "new-pod", metav1.NewTime(time.Unix(4, 0))
+			env := d.Spec.Template.Spec.Containers[0].Env
+			env[len(env)-1].Value = "replacement:1"
+			newPod.Spec = *d.Spec.Template.Spec.DeepCopy()
 			require.NoError(t, client.Tracker().Add(newPod))
 			*d.Spec.Replicas = 2
 			d.Status.Replicas, d.Status.UpdatedReplicas, d.Status.ReadyReplicas, d.Status.AvailableReplicas = 2, 2, 2, 2
 			_, err = client.AppsV1().Deployments(d.Namespace).Update(t.Context(), d, metav1.UpdateOptions{})
 			require.NoError(t, err)
+			_, err = inspectCAInjectorPrerequisites(t.Context(), client, "radius-system")
+			require.ErrorContains(t, err, "pinned template configuration")
+			require.NoError(t, client.Tracker().Delete(corev1.SchemeGroupVersion.WithResource("pods"), pod.Namespace, pod.Name))
+			*d.Spec.Replicas = 1
+			d.Status.Replicas, d.Status.UpdatedReplicas, d.Status.ReadyReplicas, d.Status.AvailableReplicas = 1, 1, 1, 1
+			_, err = client.AppsV1().Deployments(d.Namespace).Update(t.Context(), d, metav1.UpdateOptions{})
+			require.NoError(t, err)
+			_, err = inspectCAInjectorPrerequisites(t.Context(), client, "radius-system")
+			require.NoError(t, err)
+			replacement.(metav1.Object).SetResourceVersion("2")
+			require.NoError(t, client.Tracker().Update(resource, replacement, meta.Namespace))
 			_, err = inspectCAInjectorPrerequisites(t.Context(), client, "radius-system")
 			require.ErrorContains(t, err, "cannot verify")
 		})
