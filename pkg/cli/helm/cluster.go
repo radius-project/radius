@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +34,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/version"
 )
@@ -772,6 +774,9 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 		}
 	}
 
+	if err := checkRollbackCertificateIssuers(history, targetRevision); err != nil {
+		return err
+	}
 	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, targetRevision); err != nil {
 		return err
 	}
@@ -825,6 +830,9 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 		return fmt.Errorf("revision %d not found in release history", revision)
 	}
 
+	if err := checkRollbackCertificateIssuers(history, revision); err != nil {
+		return err
+	}
 	if err := i.reconcileRollbackDependencies(ctx, kubeContext, history, revision); err != nil {
 		return err
 	}
@@ -872,8 +880,44 @@ func (i *Impl) reconcileRollbackDependencies(ctx context.Context, kubeContext st
 	}
 	// Like an install, this changes cert-manager and the driver only when they are missing, unhealthy, or configured
 	// differently, and keeps their chart versions.
-	_, err = i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, false)
-	return err
+	requesters, err := i.applyCSIDriverSPIFFE(ctx, spiffe, kubeContext, false)
+	if err != nil {
+		return err
+	}
+	return checkRollbackCertManagerRequesters(targetValues, requesters, revision)
+}
+
+// defaultCertManagerRequester is the user the Radius chart allows to request certificates from the Radius bootstrap
+// and mTLS issuers when global.rbac.certManager.requesters is empty.
+const defaultCertManagerRequester = "system:serviceaccount:cert-manager:cert-manager"
+
+// checkRollbackCertManagerRequesters fails when the target revision's certificate issuance policy would allow other
+// users to request certificates from the Radius bootstrap and mTLS issuers than the cert-manager controllers on the
+// cluster now run as. A rollback renders the target revision with the values stored in it, and rad cannot change them,
+// so the policy would deny the current controllers, or allow users that no longer run cert-manager. It does nothing
+// when rad found no cert-manager controller.
+func checkRollbackCertManagerRequesters(targetValues map[string]any, current []string, revision int) error {
+	if len(current) == 0 {
+		return nil
+	}
+	var target []string
+	if values, ok := nestedValue(targetValues, "global", "rbac", "certManager", "requesters").([]any); ok {
+		for _, value := range values {
+			if user, ok := value.(string); ok {
+				target = append(target, user)
+			}
+		}
+	}
+	if len(target) == 0 {
+		target = []string{defaultCertManagerRequester}
+	}
+	want := slices.Compact(slices.Sorted(slices.Values(current)))
+	got := slices.Compact(slices.Sorted(slices.Values(target)))
+	if slices.Equal(want, got) {
+		return nil
+	}
+	return clierrors.Message("Radius stopped before rolling back to revision %d because that revision lets %s request certificates from the Radius bootstrap and mTLS issuers, but the cert-manager controllers now run as %s. A rollback reuses the values stored in the revision, so the Radius certificate issuance policy would not match cert-manager. Roll back to a revision that lists the current users, or keep the current revision and change it with rad upgrade kubernetes.",
+		revision, strings.Join(got, ", "), strings.Join(want, ", "))
 }
 
 // GetRadiusRevisions returns information about all available revisions of the Radius installation.

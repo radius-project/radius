@@ -174,6 +174,9 @@ type csiDriverSPIFFEPlan struct {
 	release      *releasev1.Release
 	kubeClient   kubernetes.Interface
 	namespace    string
+	// explicitRequesters is true when the user set global.rbac.certManager.requesters on the command line. rad then
+	// uses that allowlist and does not discover cert-manager controllers.
+	explicitRequesters bool
 }
 
 // planCSIDriverSPIFFE checks, without changing the cluster, that Radius's csi-driver-spiffe instance can be
@@ -217,13 +220,19 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 	if err := checkValidatingAdmissionPolicyServed(kubeClient); err != nil {
 		return nil, err
 	}
+	if rel != nil {
+		if err := checkCSIDriverRename(ctx, kubeClient, csiDriverNameOf(rel), settings.CSIDriverName); err != nil {
+			return nil, err
+		}
+	}
 
 	return &csiDriverSPIFFEPlan{
-		chartOptions: chartOptions,
-		values:       buildCSIDriverSPIFFEValues(options.Radius.Namespace, settings),
-		release:      rel,
-		kubeClient:   kubeClient,
-		namespace:    options.Radius.Namespace,
+		chartOptions:       chartOptions,
+		values:             buildCSIDriverSPIFFEValues(options.Radius.Namespace, settings),
+		release:            rel,
+		kubeClient:         kubeClient,
+		namespace:          options.Radius.Namespace,
+		explicitRequesters: nestedValue(currentValues, "global", "rbac", "certManager", "requesters") != nil,
 	}, nil
 }
 
@@ -248,9 +257,18 @@ func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPl
 	} else if err != nil {
 		return nil, err
 	}
-	requesters, err := certManagerControllerUsers(ctx, plan.kubeClient)
-	if err != nil {
-		return nil, err
+	var requesters []string
+	if !plan.explicitRequesters {
+		var untrusted []string
+		var err error
+		requesters, untrusted, err = certManagerControllerUsers(ctx, plan.kubeClient, plan.namespace)
+		if err != nil {
+			return nil, err
+		}
+		if len(untrusted) > 0 {
+			i.logInfo("Warning: not allowing %s to request certificates from the Radius bootstrap and mTLS issuers: the Deployment looks like a cert-manager controller, but its ServiceAccount may not update cert-manager Certificate status in namespace %s. If it is a cert-manager controller, set global.rbac.certManager.requesters to the users your cert-manager controllers run as.",
+				strings.Join(untrusted, ", "), plan.namespace)
+		}
 	}
 	if missing, err := missingApprovableRadiusSigners(ctx, plan.kubeClient, plan.namespace); err != nil {
 		i.logInfo("Warning: %v", err)
@@ -462,17 +480,43 @@ func missingApprovableRadiusSigners(ctx context.Context, kubeClient kubernetes.I
 
 // certManagerControllerUsers returns the sorted users the cert-manager controller deployments run as. The controller
 // creates the CertificateRequests of Certificate resources, such as the Radius CA and the component certificates.
-func certManagerControllerUsers(ctx context.Context, kubeClient kubernetes.Interface) ([]string, error) {
+//
+// Labels and serviceAccountName are set by whoever creates the Deployment, so a Deployment counts as a cert-manager
+// controller only when its ServiceAccount may also update the status of cert-manager Certificates in radiusNamespace:
+// cert-manager's controller needs that permission, and only a cluster administrator can grant it. It returns the
+// users of the other Deployments, as namespace/name (user), in untrusted.
+func certManagerControllerUsers(ctx context.Context, kubeClient kubernetes.Interface, radiusNamespace string) (users []string, untrusted []string, err error) {
 	deployments, err := kubeClient.AppsV1().Deployments(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: certManagerControllerSelector})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list cert-manager deployments: %w", err)
+		return nil, nil, fmt.Errorf("failed to list cert-manager deployments: %w", err)
 	}
-	var users []string
 	for idx := range deployments.Items {
-		users = append(users, defaultApproverUser(&deployments.Items[idx]))
+		controller := &deployments.Items[idx]
+		user := defaultApproverUser(controller)
+		review := &authorizationv1.SubjectAccessReview{Spec: authorizationv1.SubjectAccessReviewSpec{
+			User:   user,
+			Groups: []string{"system:serviceaccounts", "system:serviceaccounts:" + controller.Namespace, "system:authenticated"},
+			ResourceAttributes: &authorizationv1.ResourceAttributes{
+				Namespace:   radiusNamespace,
+				Group:       "cert-manager.io",
+				Resource:    "certificates",
+				Subresource: "status",
+				Verb:        "update",
+			},
+		}}
+		result, err := kubeClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, review, metav1.CreateOptions{})
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not check cert-manager controller %s/%s: %w", controller.Namespace, controller.Name, err)
+		}
+		if result.Status.Allowed {
+			users = append(users, user)
+		} else {
+			untrusted = append(untrusted, fmt.Sprintf("%s/%s (%s)", controller.Namespace, controller.Name, user))
+		}
 	}
 	slices.Sort(users)
-	return slices.Compact(users), nil
+	slices.Sort(untrusted)
+	return slices.Compact(users), untrusted, nil
 }
 
 // checkValidatingAdmissionPolicyServed fails when the cluster does not serve ValidatingAdmissionPolicy. The Radius
@@ -671,6 +715,30 @@ func (i *Impl) waitForCSIDriverSPIFFEPods(ctx context.Context, kubeClient kubern
 		return remaining, nil
 	}
 	return remaining, err
+}
+
+// checkCSIDriverRename fails when the planned CSI driver name differs from the installed one while Pods still mount
+// volumes from the installed driver. Renaming re-registers the driver under the new name, so kubelet could no longer
+// unmount those volumes and the Pods would stay Terminating.
+func checkCSIDriverRename(ctx context.Context, kubeClient kubernetes.Interface, installed, planned string) error {
+	if installed == planned {
+		return nil
+	}
+	pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list Pods that use CSI driver %s: %w", installed, err)
+	}
+	var using []string
+	for idx := range pods.Items {
+		if podUsesCSIDriver(&pods.Items[idx], installed) {
+			using = append(using, pods.Items[idx].Namespace+"/"+pods.Items[idx].Name)
+		}
+	}
+	if len(using) == 0 {
+		return nil
+	}
+	return clierrors.Message("Radius stopped before changing the cluster because it would rename CSI driver %s to %s while %d Pods still mount volumes from it (e.g. %s). Kubelet could not unmount those volumes after the rename. Keep global.rbac.spiffe.csiDriverName set to %q, or uninstall Radius first so that no Pod uses the driver, and then run the command again.",
+		installed, planned, len(using), using[0], installed)
 }
 
 func podUsesCSIDriver(pod *corev1.Pod, driverName string) bool {

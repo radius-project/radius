@@ -13,9 +13,21 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: renders nothing when the cluster has no ValidatingAdmissionPolicy API
+  - it: fails in enforce when the cluster has no ValidatingAdmissionPolicy API
     set:
       global.rbac.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: 'mode "enforce" requires the admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy API'
+
+  - it: fails in dryRun when the cluster has no ValidatingAdmissionPolicy API
+    set:
+      global.rbac.dryRun: true
+    asserts:
+      - failedTemplate:
+          errorPattern: 'mode "dryRun" requires the admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy API'
+
+  - it: renders nothing when authorization is off and the cluster has no ValidatingAdmissionPolicy API
     asserts:
       - hasDocuments:
           count: 0

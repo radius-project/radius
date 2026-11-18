@@ -666,10 +666,14 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 			t.Run(tt.name+"/"+command, func(t *testing.T) {
 				t.Parallel()
 
+				// The chart's certificate issuance policy needs the ValidatingAdmissionPolicy API in the
+				// authorization modes other than off.
+				capabilities := common.DefaultCapabilities.Copy()
+				capabilities.APIVersions = append(capabilities.APIVersions, "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy")
 				configuration := &helm.Configuration{
 					Releases:     storage.Init(driver.NewMemory()),
 					KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
-					Capabilities: common.DefaultCapabilities,
+					Capabilities: capabilities,
 				}
 				helmClient := NewHelmClient()
 				installed, err := helmClient.RunHelmInstall(configuration, loadChart(t), tt.deployed, "radius", "radius-system", false, DefaultInstallTimeout, nil)
