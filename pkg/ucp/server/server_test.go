@@ -47,6 +47,7 @@ func Test_NewServer(t *testing.T) {
 }
 
 func TestNewServerPolicyRuntime(t *testing.T) {
+	t.Setenv("AWS_PROFILE", "radius-test-profile-that-does-not-exist")
 	catalog, err := authorization.NewCatalog(nil)
 	require.NoError(t, err)
 	store, err := authorization.NewPolicyStore(inmemory.NewClient(), catalog, nil, nil)
@@ -72,6 +73,7 @@ func TestNewServerPolicyRuntime(t *testing.T) {
 				AWSClients: ucp_aws.Clients{
 					CloudControl:   ucp_aws.NewMockAWSCloudControlClient(gomock.NewController(t)),
 					CloudFormation: ucp_aws.NewMockAWSCloudFormationClient(gomock.NewController(t)),
+					Kafka:          ucp_aws.NewMockAWSKafkaClient(gomock.NewController(t)),
 				},
 			}
 			host, err := NewServer(t.Context(), options)

@@ -188,21 +188,27 @@ func NewPolicyCache(source PolicySource, clk clock.WithTicker) (*PolicyCache, er
 }
 
 // Refresh serializes local reloads without preventing cancellation while waiting.
+// Each attempt has a five-second deadline, including time waiting for the gate.
 // The timestamp is from before I/O: a slow read cannot extend the stale window.
 // Deadline failures, including gate waits, record only the standard context
 // error. Caller cancellation leaves the shared diagnostic unchanged.
 func (c *PolicyCache) Refresh(ctx context.Context) (err error) {
+	ctx, cancel := context.WithTimeout(ctx, PolicyRefreshInterval)
+	defer cancel()
 	acquired := false
 	defer func() {
 		if acquired {
 			// Publish diagnostics before allowing the next refresh to run.
 			defer func() { <-c.gate }()
 		}
-		if errors.Is(err, context.Canceled) {
+		diagnostic := ctx.Err()
+		if diagnostic == nil {
+			diagnostic = err
+		}
+		if errors.Is(diagnostic, context.Canceled) {
 			return
 		}
-		diagnostic := err
-		if errors.Is(err, context.DeadlineExceeded) {
+		if errors.Is(diagnostic, context.DeadlineExceeded) {
 			diagnostic = context.DeadlineExceeded
 		}
 		c.mu.Lock()
@@ -277,9 +283,7 @@ func (c *PolicyCache) Run(ctx context.Context, report func(error)) error {
 	ticker := c.clock.NewTicker(PolicyRefreshInterval)
 	defer ticker.Stop()
 	for {
-		attempt, cancel := context.WithTimeout(ctx, PolicyRefreshInterval)
-		err := c.Refresh(attempt)
-		cancel()
+		err := c.Refresh(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()

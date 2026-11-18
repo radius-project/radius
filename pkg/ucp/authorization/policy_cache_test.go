@@ -298,6 +298,74 @@ func TestPolicyCacheCancelledLoadPreservesDiagnostic(t *testing.T) {
 
 }
 
+func TestPolicyCacheAttemptContextDiagnostic(t *testing.T) {
+	for _, cancelled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("cancelled=%t", cancelled), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				caller, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				previous := errors.New("previous failure")
+				driverError := errors.New("private driver detail")
+				cache, err := NewPolicyCache(policySourceFunc(func(ctx context.Context, _ int64) (*PolicySnapshot, error) {
+					if cancelled {
+						cancel()
+					}
+					<-ctx.Done()
+					return nil, driverError
+				}), nil)
+				require.NoError(t, err)
+				cache.lastError = previous
+				require.ErrorIs(t, cache.Refresh(caller), driverError)
+				if cancelled {
+					require.Same(t, previous, cache.lastError)
+				} else {
+					require.Equal(t, context.DeadlineExceeded, cache.lastError)
+					require.NoError(t, caller.Err())
+				}
+			})
+		})
+	}
+}
+
+func TestPolicyCacheRefreshAttemptBound(t *testing.T) {
+	for _, tt := range []struct {
+		gate     bool
+		deadline time.Duration
+	}{
+		{gate: false},
+		{gate: true},
+		{gate: false, deadline: time.Second},
+		{gate: true, deadline: time.Second},
+	} {
+		t.Run(fmt.Sprintf("gate=%t/deadline=%s", tt.gate, tt.deadline), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				cache, err := NewPolicyCache(policySourceFunc(func(ctx context.Context, _ int64) (*PolicySnapshot, error) {
+					require.False(t, tt.gate, "a blocked gate must not reach the source")
+					<-ctx.Done()
+					return nil, ctx.Err()
+				}), nil)
+				require.NoError(t, err)
+				if tt.gate {
+					cache.gate <- struct{}{}
+					defer func() { <-cache.gate }()
+				}
+				caller, expected := t.Context(), PolicyRefreshInterval
+				if tt.deadline != 0 {
+					var cancel context.CancelFunc
+					caller, cancel = context.WithTimeout(caller, tt.deadline)
+					defer cancel()
+					expected = tt.deadline
+				}
+				started := time.Now()
+				require.ErrorIs(t, cache.Refresh(caller), context.DeadlineExceeded)
+				require.Equal(t, expected, time.Since(started))
+				require.Equal(t, context.DeadlineExceeded, cache.lastError)
+				require.NoError(t, t.Context().Err())
+			})
+		})
+	}
+}
+
 func TestPolicyCacheDeadlineDiagnosticRedacted(t *testing.T) {
 	cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
 		return nil, fmt.Errorf("private backend details: %w", context.DeadlineExceeded)

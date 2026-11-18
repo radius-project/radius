@@ -334,6 +334,71 @@ func TestPolicyRuntimeCancellationAndDeadline(t *testing.T) {
 	}
 }
 
+func TestPolicyRuntimeLocalRefreshTimeoutRecoversOnPoll(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		db := &runtimeDatabase{Client: inmemory.NewClient()}
+		store := newTestPolicyStore(t, db, true)
+		runtime, stop := startPolicyRuntime(t, store)
+		defer stop()
+		_, err := store.Mutate(t.Context(), policyActor(), readerMutation())
+		require.NoError(t, err)
+		db.setGet(func(ctx context.Context, _ string) error {
+			<-ctx.Done()
+			return ctx.Err()
+		})
+		started := time.Now()
+		require.ErrorIs(t, runtime.Refresh(t.Context()), context.DeadlineExceeded)
+		require.Equal(t, PolicyRefreshInterval, time.Since(started))
+		require.NoError(t, t.Context().Err())
+		require.Equal(t, int64(0), runtime.State().Generation)
+		db.setGet(nil)
+		time.Sleep(2 * PolicyRefreshInterval)
+		synctest.Wait()
+		require.Equal(t, int64(1), runtime.State().Generation)
+		require.Nil(t, runtime.State().LastError)
+		require.NoError(t, runtime.Ready())
+	})
+}
+
+func TestPolicyRuntimePostCommitRefreshTimeout(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		db := &runtimeDatabase{Client: inmemory.NewClient()}
+		writes := &policyHookClient{Client: db}
+		store := newTestPolicyStore(t, writes, true)
+		runtime, stop := startPolicyRuntime(t, store)
+		defer stop()
+		var anchorReads atomic.Int32
+		writes.after = func(ctx context.Context, obj *database.Object) error {
+			if saveStage(obj) == "finalize" {
+				_, bounded := ctx.Deadline()
+				require.False(t, bounded, "the refresh deadline must not bound the mutation")
+				db.setGet(func(ctx context.Context, id string) error {
+					if id == accessVersionID && anchorReads.Add(1) > 1 {
+						<-ctx.Done()
+						return ctx.Err()
+					}
+					return nil
+				})
+			}
+			return nil
+		}
+		err := runtime.Mutate(t.Context(), policyActor(), readerMutation())
+		require.ErrorIs(t, err, ErrAuthorizationUnavailable)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+		require.ErrorContains(t, err, "policy committed")
+		require.NoError(t, t.Context().Err())
+		require.Equal(t, int64(0), runtime.State().Generation)
+		db.setGet(nil)
+		time.Sleep(2 * PolicyRefreshInterval)
+		synctest.Wait()
+		require.Equal(t, int64(1), runtime.State().Generation)
+		require.Nil(t, runtime.State().LastError)
+		event, err := store.AccessChange(t.Context(), 1)
+		require.NoError(t, err)
+		require.NotNil(t, event.Properties.PolicyChange.After.RoleAssignment)
+	})
+}
+
 func TestPolicyRuntimeCancelsLocalRefresh(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		db := &runtimeDatabase{Client: inmemory.NewClient()}
