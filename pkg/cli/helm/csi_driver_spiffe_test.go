@@ -572,6 +572,8 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 		wantLog    string
 		// certManager is the cert-manager release that planning finds.
 		certManager *releasev1.Release
+		// certManagerHistory is the history of that release, read when its latest revision is not deployed.
+		certManagerHistory []*releasev1.Release
 		// noCertManagerGet is set when planning stops before it looks for cert-manager.
 		noCertManagerGet bool
 		// wantRequesters are the cert-manager controller users returned for the Radius chart.
@@ -723,6 +725,30 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			wantRequesters: []string{"system:serviceaccount:cert-manager:custom"},
 		},
 		{
+			// rad upgrades cert-manager from its deployed revision, so a failed revision's controller is not a requester.
+			name:    "cert-manager installed by rad uses the revision Helm upgrades from",
+			setArgs: dryRun,
+			allowed: map[string]bool{
+				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+			},
+			certManager: func() *releasev1.Release {
+				rel := ownedCertManager("attacker")
+				rel.Version, rel.Info = 2, &releasev1.Info{Status: releasecommon.StatusFailed}
+				return rel
+			}(),
+			certManagerHistory: func() []*releasev1.Release {
+				deployed := ownedCertManager("custom")
+				deployed.Version = 1
+				failed := ownedCertManager("attacker")
+				failed.Version, failed.Info = 2, &releasev1.Info{Status: releasecommon.StatusFailed}
+				return []*releasev1.Release{deployed, failed}
+			}(),
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantRequesters: []string{"system:serviceaccount:cert-manager:custom"},
+		},
+		{
 			name:        "cert-manager installed by rad without a controller fails",
 			setArgs:     dryRun,
 			certManager: &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Manifest: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: x\n"},
@@ -813,6 +839,9 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			tt.expect(t, mockHelmClient)
 			if !tt.noCertManagerGet {
 				expectCertManagerGet(mockHelmClient, tt.certManager)
+				if tt.certManagerHistory != nil {
+					mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), certManagerReleaseName).Return(tt.certManagerHistory, nil)
+				}
 			}
 
 			clientCalls := 0
