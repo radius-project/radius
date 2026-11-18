@@ -86,16 +86,16 @@ main() {
     write_pipeline
     expect pass "current release pipeline beside non-publishing push workflows"
     expect pass "new preparations require sibling publication" HEAD --require-sibling-releases
-    expect pass "new finals require the recipe coordinator" HEAD --require-bicep-recipes
+    REQUIRE_BICEP_RECIPES=true expect pass "new finals require the recipe coordinator" HEAD --require-sibling-releases
 
     rm "${REPO}/.github/scripts/coordinate-release.mjs"
-    expect "does not coordinate the Bicep recipe publisher" \
-        "new final cannot use an old coordination script" HEAD --require-bicep-recipes
+    REQUIRE_BICEP_RECIPES=true expect "does not coordinate the Bicep recipe publisher" \
+        "new final cannot use an old coordination script"
     yq -i 'del(.jobs."coordinate-release".steps[].env.RECIPE_TOKEN)' \
         "${WORKFLOWS}/build-release.yaml"
     expect pass "existing plans need no recipe coordinator"
-    expect "has no final Bicep recipe coordinator" \
-        "new final cannot use an old tagged workflow" HEAD --require-bicep-recipes
+    REQUIRE_BICEP_RECIPES=true expect "has no final Bicep recipe coordinator" \
+        "new final cannot use an old tagged workflow"
 
     write_pipeline
     yq -i 'del(.jobs."publish-sibling-releases") |

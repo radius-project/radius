@@ -25,7 +25,6 @@ RELEASE_COMMIT=""
 TRIGGER=""
 OUTPUT_DIR=""
 TEMP_DIR=""
-RECIPE_SOURCE_COMMIT=""
 
 cleanup() {
     if [[ -n "${TEMP_DIR}" && -d "${TEMP_DIR}" ]]; then
@@ -169,6 +168,13 @@ write_outputs() {
     local de_source_tag="${VERSION#v}"
     local recipes_commit dashboard_commit aws_commit previous_version
     local resolved_plan="${OUTPUT_DIR}/release-plan.yaml"
+    local recipe_commit=""
+
+    # Merged plans without the field keep their original publication contract.
+    if [[ "$(plan_value 'has("recipeSourceCommit")')" == true ]]; then
+        recipe_commit="$(bash "$(dirname "${BASH_SOURCE[0]}")/resolve-recipe-source.sh" \
+            --plan "${TEMP_DIR}/release-plan.yaml")"
+    fi
 
     mkdir -p "${OUTPUT_DIR}"
     if [[ "${ready}" == "true" ]]; then
@@ -223,11 +229,11 @@ write_outputs() {
             echo "release-identifier=${VERSION}-${RELEASE_COMMIT}"
             echo "de-image-tag=${de_image_tag}"
             echo "de-source-tag=${de_source_tag}"
+            echo "recipe-source-commit=${recipe_commit}"
             echo "recipes-commit=${recipes_commit}"
             echo "dashboard-commit=${dashboard_commit}"
             echo "bicep-types-aws-commit=${aws_commit}"
             echo "previous-version=${previous_version}"
-            echo "recipe-source-commit=${RECIPE_SOURCE_COMMIT}"
         } >> "${GITHUB_OUTPUT}"
     fi
 }
@@ -246,11 +252,6 @@ validate_plan_fields() {
         null | stable-only) ;;
         *) fail "unsupported changelog policy" ;;
     esac
-    # Merged plans without the field keep their original publication contract.
-    if [[ "$(plan_value 'has("recipeSourceCommit")')" == true ]]; then
-        RECIPE_SOURCE_COMMIT="$(bash "$(dirname "${BASH_SOURCE[0]}")/resolve-recipe-source.sh" \
-            --plan "${TEMP_DIR}/release-plan.yaml")"
-    fi
     canonical_version_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
     canonical_version_pattern+='\.(0|[1-9][0-9]*)(-rc\.[1-9][0-9]*)?$'
     [[ "${version}" =~ ${canonical_version_pattern} ]] \

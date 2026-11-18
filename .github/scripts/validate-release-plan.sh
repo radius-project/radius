@@ -191,18 +191,11 @@ regenerate_release() {
     local backports_file="$4"
     local siblings_file="$5"
     local output_dir="${TEMP_DIR}/generated-output"
-    local recipe_commit=""
-
-    if [[ "${release_type}" == final ]]; then
-        recipe_commit="$(bash "${SCRIPT_DIR}/resolve-recipe-source.sh" \
-            --plan "${TEMP_DIR}/release-plan.yaml")"
-    fi
 
     GENERATED_WORKTREE="${TEMP_DIR}/generated-worktree"
     git worktree add --quiet --detach "${GENERATED_WORKTREE}" "${BASE_SHA}"
     pushd "${GENERATED_WORKTREE}" > /dev/null
-    RECIPE_SOURCE_COMMIT="${recipe_commit}" \
-        GITHUB_TOKEN="${GITHUB_TOKEN:-}" GITHUB_REPO="${REPOSITORY}" \
+    GITHUB_TOKEN="${GITHUB_TOKEN:-}" GITHUB_REPO="${REPOSITORY}" \
         bash "${PREPARE_RELEASE_SCRIPT}" \
         --release-type "${release_type}" --channel "${channel}" \
         --release-date "${release_date}" \
@@ -219,6 +212,7 @@ validate_generated_contents() {
     local release_date="$4"
     local plan_path="$5"
     local expected_backports planned_siblings expected_notes actual_notes
+    local recipe_commit=""
 
     expected_backports="${BACKPORTS_FILE}"
     canonical_json "${TEMP_DIR}/release-plan.yaml" '.includedBackports' \
@@ -234,7 +228,12 @@ validate_generated_contents() {
         '.siblingRepositories' "${planned_siblings}"
     verify_planned_siblings "${channel}" "${planned_siblings}"
 
-    regenerate_release "${release_type}" "${channel}" "${release_date}" \
+    if [[ "${release_type}" == final ]]; then
+        recipe_commit="$(bash "${SCRIPT_DIR}/resolve-recipe-source.sh" \
+            --plan "${TEMP_DIR}/release-plan.yaml")"
+    fi
+    RECIPE_SOURCE_COMMIT="${recipe_commit}" regenerate_release \
+        "${release_type}" "${channel}" "${release_date}" \
         "${expected_backports}" "${planned_siblings}"
 
     canonical_json "${TEMP_DIR}/release-plan.yaml" '.' \

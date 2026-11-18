@@ -167,15 +167,13 @@ jobs:
         if: steps.plan.outputs.ready == 'true'
         env:
           RELEASE_COMMIT: ${{ inputs.source-commit }}
-          RECIPE_SOURCE_COMMIT: ${{ steps.plan.outputs.recipe-source-commit }}
         run: |
           args=("${RELEASE_COMMIT}")
           if [[ "$(yq -r '.changelogPolicy' "${RUNNER_TEMP}/release-plan.yaml")" == stable-only ]]; then
             args+=(--require-sibling-releases)
           fi
-          if [[ -n "${RECIPE_SOURCE_COMMIT}" ]]; then
-            args+=(--require-bicep-recipes)
-          fi
+          REQUIRE_BICEP_RECIPES="$(yq -r 'has("recipeSourceCommit")' "${RUNNER_TEMP}/release-plan.yaml")"
+          export REQUIRE_BICEP_RECIPES
           bash ./.github/scripts/verify-release-build-contract.sh \
             "${args[@]}"
 
@@ -319,13 +317,13 @@ jobs:
         env:
           READY: ${{ steps.plan.outputs.ready }}
           VERSION: ${{ steps.plan.outputs.version }}
-          RECIPE_SOURCE_COMMIT: ${{ steps.plan.outputs.recipe-source-commit }}
           SOURCE_COMMIT: ${{ inputs.source-commit }}
           SOURCE_PR: ${{ inputs.source-pr-number }}
           RELEASE_BRANCH: ${{ steps.plan.outputs.release-branch }}
           DE_COMMIT: ${{ steps.de-tag.outputs.commit }}
           DE_STATE: ${{ steps.de-tag.outputs.state }}
           DE_IMAGE_TAG: ${{ steps.plan.outputs.de-image-tag }}
+          RECIPE_SOURCE_COMMIT: ${{ steps.plan.outputs.recipe-source-commit }}
           RECIPES_COMMIT: ${{ steps.plan.outputs.recipes-commit }}
           DASHBOARD_COMMIT: ${{ steps.plan.outputs.dashboard-commit }}
           BICEP_TYPES_AWS_COMMIT: >-

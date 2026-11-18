@@ -108,6 +108,7 @@ jobs:
       - name: Validate release prerequisites
         id: preflight
         env:
+          REQUIRE_BICEP_RECIPES: ${{ inputs.release-type == 'final' }}
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
@@ -125,12 +126,8 @@ jobs:
           release_ref="refs/remotes/origin/release/${CHANNEL}"
           git rev-parse --verify --quiet "${release_ref}^{commit}" \
             >/dev/null || release_ref=HEAD
-          contract=(--require-sibling-releases)
-          if [[ "${RELEASE_TYPE}" == "final" ]]; then
-            contract+=(--require-bicep-recipes)
-          fi
           bash ./.github/scripts/verify-release-build-contract.sh \
-            "${release_ref}" "${contract[@]}"
+            "${release_ref}" --require-sibling-releases
 
           # A final promotes the channel's last release candidate.
           release_candidate=""
