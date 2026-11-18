@@ -18,6 +18,8 @@ package token
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"errors"
 	"fmt"
 	"net/http"
@@ -52,6 +54,9 @@ const (
 
 // signingMethods are the algorithms accepted for the keys publicKey allows.
 var signingMethods = []string{"RS256", "ES256", "ES384"}
+
+// curveForMethod is the curve each ECDSA signing method requires.
+var curveForMethod = map[string]elliptic.Curve{"ES256": elliptic.P256(), "ES384": elliptic.P384()}
 
 // serviceForAccount maps each Radius ServiceAccount allowed to call another component to
 // the Kubernetes Service name used in its canonical identity. The chart gives each
@@ -314,6 +319,13 @@ func (v *Verifier) parse(token string) (claims *serviceAccountClaims, unknownKey
 		if !ok {
 			unknownKey = true
 			return nil, errors.New("unknown key ID")
+		}
+		// RFC 7518 section 3.4 binds ES256 to P-256 and ES384 to P-384; the JWT library checks
+		// only the signature length.
+		if ecKey, ok := key.(*ecdsa.PublicKey); ok {
+			if want := curveForMethod[t.Method.Alg()]; want == nil || ecKey.Curve != want {
+				return nil, fmt.Errorf("key %q does not use the curve that %s requires", kid, t.Method.Alg())
+			}
 		}
 		return key, nil
 	})
