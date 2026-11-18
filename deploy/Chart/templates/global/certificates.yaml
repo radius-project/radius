@@ -59,8 +59,9 @@ spec:
 ---
 # Server certificate for internal calls to {{ $receiver }}. Its only SAN is the SPIFFE ID of the
 # {{ $receiver }} ServiceAccount, which callers verify. The pod mounts Secret {{ $receiver }}-spiffe
-# read-only and reloads it after each renewal. No Radius workload may create CertificateRequests:
-# only cert-manager requests these certificates.
+# read-only. cert-manager requests these certificates; the earlier receiver CertificateRequest
+# grant is removed. Existing privileges (bicep-de's cluster-admin and UCP/RP Secret access)
+# remain until the control-plane isolation work.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
