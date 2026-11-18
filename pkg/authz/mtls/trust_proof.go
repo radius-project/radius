@@ -63,7 +63,7 @@ type TrustProof struct {
 
 // NewTrustProof pins only a trust-only authority, never a CSI leaf source.
 func NewTrustProof(source *Source, podUID, expectedTrust, serverID string) (*TrustProof, error) {
-	if source == nil || !source.trustOnly || !validProofUUID(podUID) ||
+	if source == nil || source.kind != trustOnly || !validProofUUID(podUID) ||
 		!validFingerprint(expectedTrust) || serverID == "" {
 		return nil, errors.New("invalid trust-only proof configuration")
 	}

@@ -282,7 +282,20 @@ func (s *Source) parse(raw [][]byte) (*material, error) {
 		return nil, err
 	}
 	if s.kind == servingPairOnly {
-		return &material{cert: &cert, notBefore: cert.Leaf.NotBefore, notAfter: cert.Leaf.NotAfter}, nil
+		m := &material{cert: &cert, notBefore: cert.Leaf.NotBefore, notAfter: cert.Leaf.NotAfter}
+		for _, der := range cert.Certificate[1:] {
+			intermediate, err := x509.ParseCertificate(der)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse presented certificate: %w", err)
+			}
+			if intermediate.NotAfter.Before(m.notAfter) {
+				m.notAfter = intermediate.NotAfter
+			}
+			if intermediate.NotBefore.After(m.notBefore) {
+				m.notBefore = intermediate.NotBefore
+			}
+		}
+		return m, s.checkMaterial(m)
 	}
 
 	// The certificate must chain to the CA bundle it is loaded with, so peers that trust

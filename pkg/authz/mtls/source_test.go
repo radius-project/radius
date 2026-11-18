@@ -246,7 +246,7 @@ func TestServingPairReload(t *testing.T) {
 	before, err := config.GetConfigForClient(nil)
 	require.NoError(t, err)
 
-	// A mismatched key cannot displace the last known good pair.
+	// A mismatched projection invalidates new handshakes until the pair recovers.
 	key, err := os.ReadFile(filepath.Join(dir.root, KeyFile))
 	require.NoError(t, err)
 	dir.update(t, second, nil)
@@ -254,9 +254,8 @@ func TestServingPairReload(t *testing.T) {
 	changed, err := src.Reload()
 	require.Error(t, err)
 	require.False(t, changed)
-	stillFirst, err := config.GetConfigForClient(nil)
-	require.NoError(t, err)
-	require.Equal(t, first.cert.Raw, stillFirst.Certificates[0].Leaf.Raw)
+	_, err = config.GetConfigForClient(nil)
+	require.Error(t, err)
 
 	dir.update(t, second, nil)
 	changed, err = src.Reload()
