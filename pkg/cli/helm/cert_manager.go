@@ -98,9 +98,11 @@ func newCertManagerClients(kubeContext string) (kubernetes.Interface, apiextclie
 // current invocation are merged over the stored release values with Helm's own CoalesceTables, the merge Helm
 // upgrade applies for ResetThenReuseValues, so null or non-map replacements clear stored flags like Helm does.
 func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
-	// CoalesceTables mutates both arguments, so merge copies.
-	merged := valuesutil.CoalesceTables(copyValues(current), copyValues(stored))
-	enabled, dryRun := rbacFlag(merged, "enabled"), rbacFlag(merged, "dryRun")
+	return authzModeFromRBAC(mergedRBACValues(stored, current))
+}
+
+func authzModeFromRBAC(rbac map[string]any) (authz.Mode, error) {
+	enabled, dryRun := isTrue(rbac["enabled"]), isTrue(rbac["dryRun"])
 
 	switch {
 	case enabled && dryRun:
@@ -114,10 +116,12 @@ func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
 	}
 }
 
-func rbacFlag(values map[string]any, key string) bool {
+func mergedRBACValues(stored, current map[string]any) map[string]any {
+	// CoalesceTables mutates both arguments, so merge copies.
+	values := valuesutil.CoalesceTables(copyValues(current), copyValues(stored))
 	global, _ := values["global"].(map[string]any)
 	rbac, _ := global["rbac"].(map[string]any)
-	return isTrue(rbac[key])
+	return rbac
 }
 
 // detectCertManager finds cert-manager by its Certificate CRD and controller Deployment in any namespace.

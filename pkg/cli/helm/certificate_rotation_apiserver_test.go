@@ -20,6 +20,7 @@ package helm
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"os"
 	"testing"
@@ -30,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -38,18 +40,20 @@ import (
 
 // A serialized legacy marker tests rejection without retaining a retired writer.
 func newLegacyRotationTest(t *testing.T) (*rotationStore, *rest.Config, *corev1.ConfigMap) {
+	t.Helper()
 	s, config, _, _ := newRotationTestStore(t)
 	journal, err := s.kube.CoreV1().ConfigMaps(s.namespace).Create(t.Context(), &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: rotationJournalName, Namespace: s.namespace, Labels: map[string]string{rotationOwner: s.release}},
 		Data:       map[string]string{rotationJournalKey: `{"schemaVersion":1,"phase":"publish"}`},
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
-	api, err := s.dynamic.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
+	// The aggregation controller updates status on this APIService. Set only
+	// the fixture's two markers without racing those resourceVersion changes.
+	patch, err := json.Marshal(map[string]any{"metadata": map[string]any{"annotations": map[string]string{
+		rotationJournalUID: string(journal.UID), rotationRevision: "legacy/publish",
+	}}})
 	require.NoError(t, err)
-	annotations := api.GetAnnotations()
-	annotations[rotationJournalUID], annotations[rotationRevision] = string(journal.UID), "legacy/publish"
-	api.SetAnnotations(annotations)
-	_, err = s.dynamic.Resource(apiServiceResource).Update(t.Context(), api, metav1.UpdateOptions{})
+	_, err = s.dynamic.Resource(apiServiceResource).Patch(t.Context(), radiusAPIService, types.MergePatchType, patch, metav1.PatchOptions{})
 	require.NoError(t, err)
 	return s, config, journal
 }

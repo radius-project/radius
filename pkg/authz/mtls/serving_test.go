@@ -38,7 +38,7 @@ import (
 func TestServingGenerationRejectsStalePooledHandshake(t *testing.T) {
 	t.Parallel()
 	for _, h2 := range []bool{false, true} {
-		for _, scenario := range []string{"leaf expiry", "intermediate expiry", "anchor retirement", "invalid projection"} {
+		for _, scenario := range []string{"leaf expiry", "intermediate expiry", "anchor retirement", "invalid projection", "pair replacement"} {
 			t.Run(fmt.Sprintf("%t/%s", h2, scenario), func(t *testing.T) {
 				t.Parallel()
 				now := time.Now().UTC().Truncate(time.Second)
@@ -53,7 +53,12 @@ func TestServingGenerationRejectsStalePooledHandshake(t *testing.T) {
 					oldLeaf.certPEM = append(oldLeaf.certPEM, issuer.pem...)
 				}
 				dir := newKubeletDir(t, oldLeaf, root.pem)
-				source, err := NewSource(dir.root)
+				kind := certAndTrust
+				if scenario == "pair replacement" {
+					require.NoError(t, os.Remove(filepath.Join(dir.root, CAFile)))
+					kind = servingPairOnly
+				}
+				source, err := newSource(dir.root, dir.root, kind)
 				require.NoError(t, err)
 				var clock atomic.Int64
 				clock.Store(now.UnixNano())
@@ -96,6 +101,15 @@ func TestServingGenerationRejectsStalePooledHandshake(t *testing.T) {
 				request(http.StatusNoContent, false)
 				renewed := root.issue(t, certOptions{dnsNames: []string{ucpServerName}, notAfter: now.Add(2 * time.Hour)})
 				dir.update(t, renewed, root.pem)
+				if scenario == "pair replacement" {
+					request(http.StatusServiceUnavailable, true)
+					dir.update(t, oldLeaf, root.pem)
+					request(http.StatusServiceUnavailable, true)
+					transport.CloseIdleConnections()
+					request(http.StatusNoContent, false)
+					require.EqualValues(t, 2, served.Load())
+					return
+				}
 				request(http.StatusNoContent, true)
 				switch scenario {
 				case "leaf expiry", "intermediate expiry":

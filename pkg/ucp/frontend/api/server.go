@@ -260,10 +260,17 @@ func (s *Service) listenAndServe(ctx context.Context, service *http.Server) erro
 		return service.ListenAndServeTLS(dir+"/"+mtls.CertFile, dir+"/"+mtls.KeyFile)
 	}
 
-	if s.aggregationSource == nil {
-		if _, err := s.configureAggregationServing(service); err != nil {
-			return err
-		}
+	// Only the serving key pair rotates here. The authenticator owns client trust.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	config, source, err := mtls.NewServingConfig(ctx, dir, service.TLSConfig)
+	if err != nil {
+		return fmt.Errorf("failed to initialize aggregation serving certificate: %w", err)
+	}
+	service.TLSConfig = config
+	source.GuardServingGeneration(service)
+	if err := s.configureAggregationIdentity(service); err != nil {
+		return err
 	}
 	return service.ListenAndServeTLS("", "")
 }
@@ -279,22 +286,6 @@ func (s *Service) Run(ctx context.Context) error {
 	// Capture shared routes before adding aggregation-only identity headers or
 	// TLS policy. Internal component traffic must not attest the API-server route.
 	internal := s.internalServer(service)
-	source, err := s.configureAggregationServing(service)
-	if err != nil {
-		return err
-	}
-	if source != nil {
-		sourceCtx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		go source.Start(sourceCtx, mtls.DefaultPollInterval)
-	}
-
-	// Handle shutdown based on the context
-	go func() {
-		<-ctx.Done()
-		// We don't care about shutdown errors
-		_ = service.Shutdown(ctx)
-	}()
 
 	internalErr := make(chan error, 1)
 	if s.options.Config.Authorization.EffectiveMode() != authz.ModeOff {
@@ -315,6 +306,10 @@ func (s *Service) Run(ctx context.Context) error {
 		}()
 	}
 
+	go func() {
+		<-ctx.Done()
+		_ = service.Shutdown(ctx)
+	}()
 	logger.Info(fmt.Sprintf("listening on: '%s'...", s.options.Config.Server.Address()))
 	err = s.listenAndServe(ctx, service)
 

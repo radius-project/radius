@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
@@ -34,6 +35,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/version"
 )
@@ -454,8 +456,8 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	installDependencies := func(ctx context.Context) error {
-		if certificateMode(radiusValues) != "issuerRef" {
-			if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+		if target.Mode != "issuerRef" {
+			if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, target.Values, clusterOptions.Radius.Reinstall); err != nil {
 				return err
 			}
 		}
@@ -734,8 +736,8 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 	return i.withCertificateOffOperation(ctx, kubeContext, clusterOptions.Radius.Namespace, mode, func(ctx context.Context) error {
-		if certificateMode(radiusValues) != "issuerRef" {
-			if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
+		if target.Mode != "issuerRef" {
+			if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, target.Values, true); err != nil {
 				return err
 			}
 		}
@@ -1057,14 +1059,28 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 func (i *Impl) reconcileRollbackDependencies(ctx context.Context, kubeContext string, history []*releasev1.Release, revision int) error {
 	var targetValues map[string]any
 	for _, release := range history {
-		if release.Version == revision {
-			targetValues = release.Config
+		if release != nil && release.Version == revision {
+			targetValues = copyValues(release.Config)
+			if release.Chart != nil {
+				targetValues = valuesutil.CoalesceTables(targetValues, copyValues(release.Chart.Values))
+			}
 			break
 		}
 	}
 
 	options := NewDefaultClusterOptions()
-	spiffe, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, targetValues)
+	// Rollback replays the historical manifest. It cannot verify a new BYO policy
+	// or stage BYO trust, so reject those active targets before changing dependencies.
+	active, err := resolveAuthzMode(nil, targetValues)
+	if err != nil {
+		return err
+	}
+	certMode := certificateMode(targetValues)
+	if active != authz.ModeOff && certMode != "selfSigned" {
+		return fmt.Errorf("rolling back to global.rbac.certificates.mode=%s requires the certificate lifecycle; Helm has not changed Radius", certMode)
+	}
+	provider := stringValue(nestedValue(targetValues, "global", "rbac", "tls", "provider"))
+	spiffe, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, targetValues, provider, certMode)
 	if err != nil {
 		return err
 	}

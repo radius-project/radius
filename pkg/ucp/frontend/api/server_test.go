@@ -418,33 +418,76 @@ func newTestService(dir string, mode authz.Mode) *Service {
 	}}}
 }
 
+func TestRunOffServesCertificateAndKeyWithoutCAFile(t *testing.T) {
+	dir := t.TempDir()
+	leaf := writeServingCert(t, dir)
+	ca, err := os.ReadFile(filepath.Join(dir, "ca.crt"))
+	require.NoError(t, err)
+	roots := x509.NewCertPool()
+	require.True(t, roots.AppendCertsFromPEM(ca))
+	require.NoError(t, os.Remove(filepath.Join(dir, "ca.crt")))
+
+	config := &ucp.Config{
+		Authorization: authz.Options{Mode: authz.ModeOff},
+		Server:        hostoptions.ServerOptions{Host: "127.0.0.1", Port: freePort(t), TLSCertificateDirectory: dir},
+	}
+	service := NewService(identityTestOptions(t, config, http.NotFoundHandler()))
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- service.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case err := <-done:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatal("Run did not stop after cancellation")
+		}
+	})
+	require.Eventually(t, func() bool {
+		conn, err := tls.Dial("tcp", config.Server.Address(), &tls.Config{
+			RootCAs: roots, ServerName: leaf.DNSNames[0], MinVersion: tls.VersionTLS12,
+		})
+		if err != nil {
+			return false
+		}
+		defer conn.Close()
+		return leaf.Equal(conn.ConnectionState().PeerCertificates[0])
+	}, 5*time.Second, 10*time.Millisecond)
+}
+
 func Test_listenAndServe_ServesCertificateFromDirectory(t *testing.T) {
 	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
-		t.Run(string(mode), func(t *testing.T) {
-			dir := t.TempDir()
-			leaf := writeServingCert(t, dir)
+		for _, provider := range []authz.TLSProvider{authz.TLSProviderRadius, authz.TLSProviderExternal} {
+			t.Run(string(mode)+"/"+string(provider), func(t *testing.T) {
+				dir := t.TempDir()
+				leaf := writeServingCert(t, dir)
+				require.NoError(t, os.Remove(filepath.Join(dir, "ca.crt"))) // Only the serving key pair is required.
 
-			addr := "127.0.0.1:" + strconv.Itoa(freePort(t))
-			server := &http.Server{Addr: addr, Handler: http.NotFoundHandler(), ReadHeaderTimeout: time.Second}
-			errs := make(chan error, 1)
-			go func() { errs <- newTestService(dir, mode).listenAndServe(t.Context(), server) }()
-			t.Cleanup(func() {
-				_ = server.Close()
-				require.ErrorIs(t, <-errs, http.ErrServerClosed)
+				addr := "127.0.0.1:" + strconv.Itoa(freePort(t))
+				server := &http.Server{Addr: addr, Handler: http.NotFoundHandler(), ReadHeaderTimeout: time.Second}
+				errs := make(chan error, 1)
+				svc := newTestService(dir, mode)
+				svc.options.Config.Authorization.TLSProvider = provider
+				go func() { errs <- svc.listenAndServe(t.Context(), server) }()
+				t.Cleanup(func() {
+					_ = server.Close()
+					require.ErrorIs(t, <-errs, http.ErrServerClosed)
+				})
+
+				var state tls.ConnectionState
+				require.Eventually(t, func() bool {
+					conn, err := tls.Dial("tcp", addr, &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12}) //nolint:gosec // The test checks which certificate is served.
+					if err != nil {
+						return false
+					}
+					defer conn.Close()
+					state = conn.ConnectionState()
+					return true
+				}, 5*time.Second, 10*time.Millisecond)
+				require.Equal(t, leaf.Raw, state.PeerCertificates[0].Raw)
 			})
-
-			var state tls.ConnectionState
-			require.Eventually(t, func() bool {
-				conn, err := tls.Dial("tcp", addr, &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12}) //nolint:gosec // The test checks which certificate is served.
-				if err != nil {
-					return false
-				}
-				defer conn.Close()
-				state = conn.ConnectionState()
-				return true
-			}, 5*time.Second, 10*time.Millisecond)
-			require.Equal(t, leaf.Raw, state.PeerCertificates[0].Raw)
-		})
+		}
 	}
 }
 

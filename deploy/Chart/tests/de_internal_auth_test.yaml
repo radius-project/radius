@@ -63,6 +63,16 @@ tests:
           errorMessage: de.ucpMTLS.enabled is retired; select a token-capable engine image and migrate explicitly to de.internalAuth.enabled
         template: ucp/deployment.yaml
 
+  - it: rejects the obsolete external identity gate instead of silently using the legacy engine path
+    set:
+      global.rbac.enabled: true
+      global.rbac.tls.provider: external
+      de.externalIdentity.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: de.externalIdentity.enabled is retired; select a token-capable engine image and migrate explicitly to de.internalAuth.enabled
+        template: ucp/deployment.yaml
+
   - it: rejects opt-in while authentication is off
     set:
       de.internalAuth.enabled: true

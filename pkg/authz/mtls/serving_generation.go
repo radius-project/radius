@@ -31,13 +31,22 @@ type servingConnectionKey struct{}
 func (s *Source) retireServingGenerations(current *material) {
 	s.serving.Range(func(key, value any) bool {
 		handshake := value.(*material)
-		if _, err := handshake.cert.Leaf.Verify(x509.VerifyOptions{Roots: current.pool,
-			Intermediates: handshake.intermediates, CurrentTime: s.now(),
-			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}); err != nil {
+		if !s.acceptsHandshake(handshake, current) {
 			s.serving.Delete(key)
 		}
 		return true
 	})
+}
+
+func (s *Source) acceptsHandshake(handshake, current *material) bool {
+	if s.kind == servingPairOnly {
+		// No local trust anchors: only the generation actually presented is current.
+		return handshake == current
+	}
+	_, err := handshake.cert.Leaf.Verify(x509.VerifyOptions{Roots: current.pool,
+		Intermediates: handshake.intermediates, CurrentTime: s.now(),
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}})
+	return err == nil
 }
 
 // GuardServingGeneration checks the actual handshake's own chain on every request,
@@ -95,9 +104,7 @@ func (s *Source) GuardServingGeneration(server *http.Server) {
 			return
 		}
 
-		if _, err := handshake.cert.Leaf.Verify(x509.VerifyOptions{Roots: current.pool,
-			Intermediates: handshake.intermediates, CurrentTime: s.now(),
-			KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}); err != nil {
+		if !s.acceptsHandshake(handshake, current) {
 			http.Error(w, "TLS serving generation retired", http.StatusServiceUnavailable)
 			return
 		}

@@ -674,7 +674,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				configuration := &helm.Configuration{
 					Releases:     storage.Init(driver.NewMemory()),
 					KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
-					Capabilities: common.DefaultCapabilities,
+					Capabilities: capabilitiesWith(admissionPolicyAPI),
 				}
 				helmClient := NewHelmClient()
 				installed, err := helmClient.RunHelmInstall(configuration, loadChart(t), tt.deployed, "radius", "radius-system", false, DefaultInstallTimeout, nil)
@@ -711,7 +711,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				impl := &Impl{
 					Helm:             client,
 					newRotationStore: emptyRotationTestStore,
-					contourCluster:   &fakeContourCluster{},
+					contourCluster:   &fakeContourCluster{capabilities: configuration.Capabilities},
 					newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 						detectCalls++
 						kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()

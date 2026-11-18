@@ -81,6 +81,9 @@ func (t *certificateTarget) checkTransition(stored map[string]any) error {
 	if err != nil {
 		return err
 	}
+	if deployed != authz.ModeOff && target != authz.ModeOff && t.Mode != "selfSigned" {
+		return fmt.Errorf("maintaining global.rbac.certificates.mode=%s requires the certificate lifecycle; ordinary upgrades and reinstalls only stage selfSigned aggregation trust. Helm has not changed Radius", t.Mode)
+	}
 	return checkUCPAPIServerCertificateTransition(deployed, target, t.Values)
 }
 
@@ -122,7 +125,10 @@ func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOpti
 	if plan != nil && plan.secret != nil {
 		plan.requiresLease = options.RadiusInstalled || options.RadiusReleaseValues != nil
 	}
-	effective := valuesutil.CoalesceTables(copyValues(current), copyValues(options.RadiusReleaseValues))
+	effective := copyValues(current)
+	if !options.ResetValues {
+		effective = valuesutil.CoalesceTables(effective, copyValues(options.RadiusReleaseValues))
+	}
 	effective = valuesutil.CoalesceTables(effective, copyValues(selected.Values))
 	target, err := certificateProfilePlan(selected, effective, options.Radius.Namespace)
 	if err != nil {

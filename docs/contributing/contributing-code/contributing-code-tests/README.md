@@ -35,6 +35,8 @@ make test
 
 `make test` runs the Go unit tests under `./pkg/...` and the Helm chart unit tests. We require unit tests for new code and for fixes or refactors of existing code; as a rule, every PR should add or change some tests. Unit tests must run with only the [basic prerequisites](../contributing-code-prerequisites/) installed — do not add external dependencies for a unit test; write an integration test instead.
 
+The Go test timeout is 15 minutes per package so Helm tests can start isolated API servers under the race detector. To override it locally, set `UNIT_TEST_TIMEOUT` when running `make test`.
+
 To compile every test without running them, use `make test-compile`.
 
 Unit tests run on Linux in CI. To check that Go code and tests also compile and pass `go vet` on Windows, run `make lint-go-windows`. It runs `GOOS=windows go vet ./...` for amd64; set `WINDOWS_VET_ARCHS="amd64 arm64"` to add arm64. Files that cannot build on Windows, such as envtest-based tests, use `//go:build !windows`. This check catches compile errors only, not runtime bugs such as using `path` instead of `path/filepath` on OS paths.
