@@ -57,6 +57,9 @@ func TestExternalSDKRedirectStaysAtConfiguredOrigin(t *testing.T) {
 			http.Redirect(w, r, "/next", http.StatusFound)
 		case "/absolute":
 			http.Redirect(w, r, other.URL+"/next", http.StatusFound)
+		case "/scheme-relative":
+			w.Header().Set("Location", "//"+other.Listener.Addr().String()+"/x")
+			w.WriteHeader(http.StatusTemporaryRedirect)
 		case "/async":
 			w.Header().Set("Location", other.URL+"/result")
 			w.Header().Set("Azure-AsyncOperation", other.URL+"/status")
@@ -91,17 +94,10 @@ func TestExternalSDKRedirectStaysAtConfiguredOrigin(t *testing.T) {
 		require.NoError(t, poll.Body.Close())
 	}
 
-	// Exercise the SDK's redirected request independently of its Location rewriting.
-	dest, err := url.Parse(other.URL)
-	require.NoError(t, err)
-	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		require.Len(t, via, 1)
-		req.URL = dest
-		req.Host = dest.Host
-		return nil
-	}
-	_, err = client.Get(configured.URL + "/start")
-	require.ErrorContains(t, err, "unconfigured destination")
+	// Require a transport rejection, not a dial error, without a receiver for the token.
+	other.Close()
+	_, err = client.Get(configured.URL + "/scheme-relative")
+	require.ErrorContains(t, err, "external token transport refuses unconfigured destination")
 }
 
 // writeCertificate writes a self-signed certificate, key, and CA to a new directory, and a

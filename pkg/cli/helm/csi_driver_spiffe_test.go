@@ -33,6 +33,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/engine"
 	"helm.sh/helm/v4/pkg/release"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
@@ -1053,6 +1054,32 @@ func TestSelectedChartAuthPrerequisites(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestWorkloadRequirementsFromUpgradeManifest(t *testing.T) {
+	const template = "templates/workloads.yaml"
+	selected := &chart.Chart{Metadata: &chart.Metadata{Name: "fixture"}, Templates: []*common.File{{Name: template, Data: []byte(`
+apiVersion: v1
+kind: ConfigMap
+{{ if .Release.IsUpgrade }}
+---
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      volumes:
+      - name: local-serving
+        csi:
+          driver: custom.csi.example
+{{ end }}`)}}}
+	ctx := workloadRenderContext(nil, RadiusSystemNamespace, radiusReleaseName)
+	ctx["Release"] = map[string]any{"IsUpgrade": true, "IsInstall": false, "Revision": 2}
+	rendered, err := (engine.Engine{}).RenderWithContext(t.Context(), selected, ctx)
+	require.NoError(t, err)
+	req, err := workloadRequirementsFromManifest(rendered["fixture/"+template], "custom.csi.example")
+	require.NoError(t, err)
+	require.Equal(t, workloadRequirements{1, "custom.csi.example"}, req)
 }
 
 func TestRenderedRequirementsRecognizeDriverUnderAnyVolumeName(t *testing.T) {

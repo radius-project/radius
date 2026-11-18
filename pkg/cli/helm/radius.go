@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -182,49 +183,58 @@ func workloadRenderContext(values map[string]any, namespace, release string) com
 // provider support. This offline render cannot verify connected issuer policy;
 // callers preparing raw values should use resolveEffectiveChartValues instead.
 func renderedWorkloadRequirements(ctx context.Context, selected *chart.Chart, values map[string]any, namespace, release string) (workloadRequirements, error) {
-	var req workloadRequirements
 	rendered, err := (engine.Engine{}).RenderWithContext(ctx, selected, workloadRenderContext(values, namespace, release))
 	if err != nil {
-		return req, fmt.Errorf("render Radius workloads: %w", err)
+		return workloadRequirements{}, fmt.Errorf("render Radius workloads: %w", err)
 	}
 	configuredDriver, _ := nestedValue(values, "global", "rbac", "spiffe", "csiDriverName").(string)
-	for name, manifest := range rendered {
+	var manifest strings.Builder
+	for _, name := range slices.Sorted(maps.Keys(rendered)) {
 		if filepath.Base(name) == "NOTES.txt" {
 			continue
 		}
-		decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
-		for {
-			var obj struct {
-				Kind string
-				Spec struct{ Template corev1.PodTemplateSpec }
-			}
-			err := decoder.Decode(&obj)
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return req, fmt.Errorf("inspect %s: %w", name, err)
-			}
-			switch obj.Kind {
-			case "Deployment", "DaemonSet", "StatefulSet", "Job", "ReplicaSet":
-			default:
+		manifest.WriteString("---\n")
+		manifest.WriteString(rendered[name])
+		manifest.WriteByte('\n')
+	}
+	return workloadRequirementsFromManifest(manifest.String(), configuredDriver)
+}
+
+// workloadRequirementsFromManifest inspects already-rendered workloads without rendering or performing lookups.
+func workloadRequirementsFromManifest(manifest string, configuredDriver string) (workloadRequirements, error) {
+	var req workloadRequirements
+	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
+	for {
+		var obj struct {
+			Kind string
+			Spec struct{ Template corev1.PodTemplateSpec }
+		}
+		err := decoder.Decode(&obj)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return req, fmt.Errorf("inspect workload manifest: %w", err)
+		}
+		switch obj.Kind {
+		case "Deployment", "DaemonSet", "StatefulSet", "Job", "ReplicaSet":
+		default:
+			continue
+		}
+		for _, vol := range obj.Spec.Template.Spec.Volumes {
+			if vol.CSI == nil {
 				continue
 			}
-			for _, vol := range obj.Spec.Template.Spec.Volumes {
-				if vol.CSI == nil {
-					continue
-				}
-				// Recognize the managed driver under any volume name. Keep the
-				// historical spiffe slot visible even when its driver is inconsistent.
-				if vol.Name != "spiffe" && vol.CSI.Driver != SPIFFECSIDriverNameDefault && (configuredDriver == "" || vol.CSI.Driver != configuredDriver) {
-					continue
-				}
-				if req.ManagedCSIVolumes > 0 && req.CSIDriverName != vol.CSI.Driver {
-					return req, fmt.Errorf("rendered SPIFFE volumes require different CSI drivers")
-				}
-				req.ManagedCSIVolumes++
-				req.CSIDriverName = vol.CSI.Driver
+			// Recognize the managed driver under any volume name. Keep the
+			// historical spiffe slot visible even when its driver is inconsistent.
+			if vol.Name != "spiffe" && vol.CSI.Driver != SPIFFECSIDriverNameDefault && (configuredDriver == "" || vol.CSI.Driver != configuredDriver) {
+				continue
 			}
+			if req.ManagedCSIVolumes > 0 && req.CSIDriverName != vol.CSI.Driver {
+				return req, fmt.Errorf("rendered SPIFFE volumes require different CSI drivers")
+			}
+			req.ManagedCSIVolumes++
+			req.CSIDriverName = vol.CSI.Driver
 		}
 	}
 	return req, nil
