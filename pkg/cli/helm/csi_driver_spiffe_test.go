@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -113,7 +114,13 @@ func sarClient(allowed map[string]bool, reviews *[]authorizationv1.SubjectAccess
 		if reviews != nil {
 			*reviews = append(*reviews, review.Spec)
 		}
-		review.Status.Allowed = allowed[review.Spec.ResourceAttributes.Name]
+		attributes := review.Spec.ResourceAttributes
+		if attributes.Subresource == "status" {
+			// Certificate status updates are allowed unless denied for the user, as cert-manager's controller is.
+			review.Status.Allowed = !allowed["deny-status:"+review.Spec.User]
+		} else {
+			review.Status.Allowed = allowed[attributes.Name]
+		}
 		return true, review, nil
 	})
 	return client
@@ -597,6 +604,37 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
 		},
 		{
+			name:    "ignores a labeled Deployment whose ServiceAccount cannot update Certificate status",
+			setArgs: dryRun,
+			objects: []runtime.Object{
+				approver,
+				certManagerControllerWithServiceAccount(certManagerController("attacker", CertManagerChartDefaultVersion, ""), "spoof"),
+			},
+			allowed: map[string]bool{
+				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+				"deny-status:system:serviceaccount:attacker:spoof":                 true,
+			},
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantLog:        "Warning: not allowing attacker/cert-manager (system:serviceaccount:attacker:spoof) to request certificates from the Radius bootstrap and mTLS issuers: the Deployment looks like a cert-manager controller, but its ServiceAccount may not update cert-manager Certificate status in namespace radius-system. If it is a cert-manager controller, set global.rbac.certManager.requesters to the users your cert-manager controllers run as.",
+			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
+		},
+		{
+			name:    "explicit requesters skip discovery",
+			setArgs: append(slices.Clone(dryRun), "global.rbac.certManager.requesters={system:serviceaccount:security:cert-manager}"),
+			objects: []runtime.Object{
+				approver,
+				certManagerControllerWithServiceAccount(certManagerController("attacker", CertManagerChartDefaultVersion, ""), "spoof"),
+			},
+			allowed: map[string]bool{
+				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+			},
+			expect:     expectInstall(wantValues),
+			wantClient: true,
+		},
+		{
 			name:           "approver that cannot approve the mTLS issuer is a warning",
 			setArgs:        dryRun,
 			objects:        []runtime.Object{approver},
@@ -706,6 +744,62 @@ func Test_planCSIDriverSPIFFE_ClientError(t *testing.T) {
 	plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", nil)
 	require.EqualError(t, err, "failed to create Kubernetes clients: no kubeconfig")
 	require.Nil(t, plan)
+}
+
+func Test_planCSIDriverSPIFFE_Rename(t *testing.T) {
+	t.Parallel()
+
+	allowed := map[string]bool{
+		issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+		issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+	}
+	installed := &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+		Config: buildCSIDriverSPIFFEValues(RadiusSystemNamespace, spiffeSettings{TrustDomain: SPIFFETrustDomainDefault, CSIDriverName: SPIFFECSIDriverNameDefault})}
+
+	tests := []struct {
+		name    string
+		setArgs []string
+		objects []runtime.Object
+		wantErr string
+	}{
+		{
+			name:    "rename while Pods mount the installed driver",
+			setArgs: []string{"global.rbac.enabled=true", "global.rbac.spiffe.csiDriverName=renamed.example"},
+			objects: []runtime.Object{spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)},
+			wantErr: "Radius stopped before changing the cluster because it would rename CSI driver spiffe.csi.radapp.io to renamed.example while 1 Pods still mount volumes from it (e.g. radius-system/ucp-0).",
+		},
+		{
+			name:    "rename when no Pod mounts the installed driver",
+			setArgs: []string{"global.rbac.enabled=true", "global.rbac.spiffe.csiDriverName=renamed.example"},
+			objects: []runtime.Object{spiffePod("default", "app", "csi.cert-manager.io")},
+		},
+		{
+			name:    "same name with Pods",
+			setArgs: []string{"global.rbac.enabled=true"},
+			objects: []runtime.Object{spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			m := NewMockHelmClient(gomock.NewController(t))
+			m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil)
+			impl := &Impl{
+				Helm:                     m,
+				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return sarClient(allowed, nil, tt.objects...), nil },
+			}
+			options := NewDefaultClusterOptions()
+			options.Radius.SetArgs = tt.setArgs
+			plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", nil)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.Nil(t, plan)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, plan)
+		})
+	}
 }
 
 func certManagerControllerWithServiceAccount(controller *appsv1.Deployment, serviceAccount string) *appsv1.Deployment {
@@ -993,7 +1087,9 @@ func Test_UninstallRadius_KeepsCertManagerWhenCSIDriverSPIFFEIsKept(t *testing.T
 func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 	t.Parallel()
 
-	rbac := func(rbac map[string]any) map[string]any { return map[string]any{"global": map[string]any{"rbac": rbac}} }
+	rbac := func(rbac map[string]any) map[string]any {
+		return map[string]any{"global": map[string]any{"rbac": rbac}}
+	}
 	targetValues := rbac(map[string]any{"enabled": true, "spiffe": map[string]any{"trustDomain": "rollback.example"}})
 	installedValues := buildCSIDriverSPIFFEValues(RadiusSystemNamespace, spiffeSettings{TrustDomain: SPIFFETrustDomainDefault, CSIDriverName: SPIFFECSIDriverNameDefault})
 	wantValues := buildCSIDriverSPIFFEValues(RadiusSystemNamespace, spiffeSettings{TrustDomain: "rollback.example", CSIDriverName: SPIFFECSIDriverNameDefault})
@@ -1062,11 +1158,42 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 			},
 		},
 		{
+			name:   "target allowing other cert-manager users stops before rolling back Radius",
+			target: rbac(map[string]any{"enabled": true, "certManager": map[string]any{"requesters": []any{"system:serviceaccount:security:cert-manager"}}}),
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				gomock.InOrder(
+					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
+				)
+			},
+			wantErr: "Radius stopped before rolling back to revision 1 because that revision lets system:serviceaccount:security:cert-manager request certificates from the Radius bootstrap and mTLS issuers, but the cert-manager controllers now run as system:serviceaccount:cert-manager:cert-manager.",
+		},
+		{
+			name:   "target listing the current cert-manager user rolls back",
+			target: rbac(map[string]any{"enabled": true, "certManager": map[string]any{"requesters": []any{"system:serviceaccount:cert-manager:cert-manager"}}}),
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				gomock.InOrder(
+					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
+					m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil),
+				)
+			},
+		},
+		{
 			name:   "authorization off in the target changes nothing else",
 			target: nil,
 			expect: func(_ *testing.T, m *MockHelmClient) {
 				m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil)
 			},
+		},
+		{
+			name:    "renaming the driver while Pods use it stops before changing the cluster",
+			target:  rbac(map[string]any{"enabled": true, "spiffe": map[string]any{"csiDriverName": "renamed.example"}}),
+			objects: []runtime.Object{spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)},
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil)
+			},
+			wantErr: "Radius stopped before changing the cluster because it would rename CSI driver spiffe.csi.radapp.io to renamed.example",
 		},
 		{
 			name:    "foreign driver stops before rolling back",
@@ -1086,7 +1213,7 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history(tt.target), nil)
 			tt.expect(t, m)
 
-			objects := append([]runtime.Object{certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}, tt.objects...)
+			objects := append([]runtime.Object{certManagerControllerWithServiceAccount(certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, ""), "cert-manager")}, tt.objects...)
 			impl := &Impl{
 				Helm:   m,
 				logger: func(string, ...any) {},
