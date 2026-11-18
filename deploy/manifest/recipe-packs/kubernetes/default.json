@@ -5,7 +5,7 @@
   "imports": {
     "radius": {
       "provider": "Radius",
-      "version": "latest"
+      "version": "edge"
     }
   },
   "resources": {

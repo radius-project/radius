@@ -276,9 +276,6 @@ func Run(t *testing.T, s Suite) {
 	t.Run("update interrupted before its first call", func(t *testing.T) { s.interruptedScopedUpdate(t) })
 	t.Run("delete again after the response is lost", func(t *testing.T) { s.deleteTokenRetry(t) })
 	t.Run("the fake follows AWS's documented API rules", func(t *testing.T) {
-		if s.API == nil {
-			t.Skip("the handler has no record of its AWS calls yet")
-		}
 		requireAPIRules(t, s.API, s.NewHandler(awsfake.NewCloudControl()))
 	})
 	nameProperty := s.NewHandler(awsfake.NewCloudControl()).Options().NameProperty
