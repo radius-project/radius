@@ -104,8 +104,7 @@ func installedAuthzMode(options ClusterOptions) (authz.Mode, error) {
 	if options.RadiusReleaseChart == nil && options.RadiusReleaseValues == nil {
 		return authz.ModeOff, nil
 	}
-	_, settings, err := resolveEffectiveChartValues(options.RadiusReleaseChart, options.Radius.Namespace, options.Radius.ReleaseName, options.RadiusReleaseValues, nil, false)
-	return settings.mode, err
+	return historicalAuthzMode(options.RadiusReleaseChart, options.Radius.Namespace, options.Radius.ReleaseName, options.RadiusReleaseValues)
 }
 
 // waitForRolledBackUCPAPIService waits for the UCP APIService after rad rolls Radius back to revision of history.
@@ -150,8 +149,8 @@ func rolledBackAuthzMode(history []*releasev1.Release, revision int) (authz.Mode
 		if rel == nil || rel.Version != revision {
 			continue
 		}
-		_, settings, err := resolveEffectiveChartValues(rel.Chart, rel.Namespace, rel.Name, rel.Config, nil, false)
-		return settings.mode, err == nil, err
+		mode, err := historicalAuthzMode(rel.Chart, rel.Namespace, rel.Name, rel.Config)
+		return mode, err == nil, err
 	}
 	return "", false, nil
 }

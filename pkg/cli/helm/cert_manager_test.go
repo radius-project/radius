@@ -671,6 +671,7 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							},
 						}
 						var err error
+						expectRadiusPlanningReads(impl, client, options.RadiusReleaseChart, options.RadiusReleaseValues, options.Radius.Reinstall, command != "install")
 						if command == "upgrade" {
 							err = impl.UpgradeRadius(t.Context(), options, kubeContext)
 						} else {
