@@ -191,11 +191,18 @@ regenerate_release() {
     local backports_file="$4"
     local siblings_file="$5"
     local output_dir="${TEMP_DIR}/generated-output"
+    local recipe_commit=""
+
+    if [[ "${release_type}" == final ]]; then
+        recipe_commit="$(bash "${SCRIPT_DIR}/resolve-recipe-source.sh" \
+            --plan "${TEMP_DIR}/release-plan.yaml")"
+    fi
 
     GENERATED_WORKTREE="${TEMP_DIR}/generated-worktree"
     git worktree add --quiet --detach "${GENERATED_WORKTREE}" "${BASE_SHA}"
     pushd "${GENERATED_WORKTREE}" > /dev/null
-    GITHUB_TOKEN="${GITHUB_TOKEN:-}" GITHUB_REPO="${REPOSITORY}" \
+    RECIPE_SOURCE_COMMIT="${recipe_commit}" \
+        GITHUB_TOKEN="${GITHUB_TOKEN:-}" GITHUB_REPO="${REPOSITORY}" \
         bash "${PREPARE_RELEASE_SCRIPT}" \
         --release-type "${release_type}" --channel "${channel}" \
         --release-date "${release_date}" \

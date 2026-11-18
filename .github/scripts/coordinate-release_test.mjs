@@ -45,7 +45,7 @@ for (const [releaseType, version, expected] of [
   });
 }
 
-test("workflow uses the App client remotely and the job client for receipts", async (t) => {
+async function coordinationStep() {
   const workflow = (
     await readFile(
       new URL("../workflows/build-release.yaml", import.meta.url),
@@ -58,7 +58,7 @@ test("workflow uses the App client remotely and the job client for receipts", as
   assert.ok(step, "the downstream coordination step must exist");
   assert.match(step[0], /          retries: 5\n/);
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-  const runStep = new AsyncFunction(
+  return new AsyncFunction(
     "github",
     "getOctokit",
     "context",
@@ -66,7 +66,10 @@ test("workflow uses the App client remotely and the job client for receipts", as
     "process",
     step[1].replace(/^            /gm, "")
   );
+}
 
+test("workflow uses the App client remotely and the job client for receipts", async (t) => {
+  const runStep = await coordinationStep();
   const state = fixture();
   const version = "v0.62.1";
   state.run.head_branch = "edge";
@@ -129,6 +132,123 @@ test("workflow uses the App client remotely and the job client for receipts", as
   assert.equal(JSON.parse(outputs.results)[0].state, "success");
 });
 
+test("only a pinned public final coordinates the exact recipe run with its isolated token", async (t) => {
+  const runStep = await coordinationStep();
+  const state = fixture();
+  const version = "v0.62.0";
+  const identifier = `${version}-${state.sourceSha}`;
+  const recipeSource = "b".repeat(40);
+  const release = {
+    tag_name: version,
+    draft: false,
+    prerelease: false,
+    published_at: "2026-09-10T10:00:00Z"
+  };
+  state.github.rest.repos.listReleases = async () => [release];
+  state.context.ref = `refs/tags/${version}`;
+  const directory = await mkdtemp(path.join(os.tmpdir(), "recipe-final-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const planFile = path.join(directory, "plan.json");
+  const plan = { version, releaseType: "final" };
+  const results = [];
+  const core = {
+    getInput: (key) =>
+      ({ PLAN_FILE: planFile, SOURCE_SHA: state.sourceSha })[key] ?? "",
+    setOutput: (_, json) => results.push(JSON.parse(json))
+  };
+  let title = `bicep-recipes / ${identifier}`;
+  let loseResponse = false;
+  const recipeDispatches = [];
+  const getOctokit = (token) => ({
+    request: async (route, request) => {
+      const recipe = request.repo === "resource-types-contrib";
+      assert.equal(token, recipe ? "recipe-only" : "docs-samples");
+      if (recipe && route.endsWith("/dispatches")) {
+        recipeDispatches.push(request);
+        if (loseResponse) throw new Error("lost dispatch response");
+      }
+      if (route === "GET /repos/{owner}/{repo}")
+        return { data: { default_branch: "v0.62" } };
+      if (route.endsWith("/{run_id}")) {
+        return {
+          data: {
+            ...state.run,
+            head_branch: recipe ? "main" : "edge",
+            display_title: recipe ? title : "Release",
+            html_url: `https://github.com/radius-project/${request.repo}/actions/runs/77`
+          }
+        };
+      }
+      return state.remote(route, request);
+    }
+  });
+  const run = async () => {
+    await writeFile(planFile, JSON.stringify(plan));
+    await runStep(state.github, getOctokit, state.context, core, {
+      env: {
+        COORDINATION_TOKEN: "docs-samples",
+        RECIPE_TOKEN:
+          Object.hasOwn(plan, "recipeSourceCommit") ? "recipe-only" : "",
+        GITHUB_WORKSPACE: new URL("../../", import.meta.url).href.replace(
+          /\/$/,
+          ""
+        )
+      }
+    });
+  };
+
+  await run(); // Replay of an already approved, unpinned final.
+  assert.equal(results.at(-1).length, 3);
+  plan.recipeSourceCommit = recipeSource;
+  release.draft = true;
+  await assert.rejects(run, /not a published release/);
+  release.draft = false;
+  release.prerelease = true;
+  await assert.rejects(run, /public final tag/);
+  release.prerelease = false;
+  plan.releaseType = "patch";
+  await assert.rejects(run, /public final tag/);
+  plan.releaseType = "final";
+  assert.deepEqual(recipeDispatches, []);
+
+  loseResponse = true;
+  await assert.rejects(run, /lost dispatch response/);
+  loseResponse = false;
+  await assert.rejects(run, /Dispatch outcome unknown/);
+  assert.equal(recipeDispatches.length, 1);
+  const [dispatch] = recipeDispatches;
+  assert.equal(dispatch.workflow_id, "publish-bicep-recipes.yaml");
+  assert.equal(dispatch.ref, "main");
+  assert.deepEqual(dispatch.inputs, {
+    release_version: "0.62.0",
+    recipe_source_commit: recipeSource,
+    release_identifier: identifier
+  });
+  const receipt = state.deployments.find(({ task }) =>
+    task.endsWith(":bicep-recipes")
+  );
+  assert.equal(receipt.sha, state.sourceSha);
+  assert.deepEqual(receipt.payload.task.inputs, dispatch.inputs);
+  const url =
+    "https://github.com/radius-project/resource-types-contrib/actions/runs/77";
+  await state.github.rest.repos.createDeploymentStatus({
+    deployment_id: receipt.id,
+    state: "in_progress",
+    log_url: url
+  });
+  title = `bicep-recipes / ${version}-${"c".repeat(40)}`;
+  await assert.rejects(run, /does not match 'bicep-recipes/);
+  title = `bicep-recipes / ${identifier}`;
+  await run();
+  assert.equal(
+    results.at(-1).find(({ name }) => name === "bicep-recipes").url,
+    url
+  );
+  plan.recipeSourceCommit = "d".repeat(40);
+  await assert.rejects(run, /Conflicting coordination payload/);
+  assert.equal(recipeDispatches.length, 1);
+});
+
 function fixture() {
   const sourceSha = "a".repeat(40);
   const task = coordinationTasks("rc", "v0.61.0-rc.1")[0];
@@ -183,7 +303,11 @@ function fixture() {
               entry.task === request.task
           ),
         createDeployment: async (request) => {
-          const deployment = { ...request, sha: request.ref, id: 12 };
+          const deployment = {
+            ...request,
+            sha: request.ref,
+            id: 12 + deployments.length
+          };
           deployments.push(deployment);
           return { data: deployment };
         },

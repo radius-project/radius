@@ -25,6 +25,7 @@ RELEASE_COMMIT=""
 TRIGGER=""
 OUTPUT_DIR=""
 TEMP_DIR=""
+RECIPE_SOURCE_COMMIT=""
 
 cleanup() {
     if [[ -n "${TEMP_DIR}" && -d "${TEMP_DIR}" ]]; then
@@ -226,6 +227,7 @@ write_outputs() {
             echo "dashboard-commit=${dashboard_commit}"
             echo "bicep-types-aws-commit=${aws_commit}"
             echo "previous-version=${previous_version}"
+            echo "recipe-source-commit=${RECIPE_SOURCE_COMMIT}"
         } >> "${GITHUB_OUTPUT}"
     fi
 }
@@ -244,6 +246,11 @@ validate_plan_fields() {
         null | stable-only) ;;
         *) fail "unsupported changelog policy" ;;
     esac
+    # Merged plans without the field keep their original publication contract.
+    if [[ "$(plan_value 'has("recipeSourceCommit")')" == true ]]; then
+        RECIPE_SOURCE_COMMIT="$(bash "$(dirname "${BASH_SOURCE[0]}")/resolve-recipe-source.sh" \
+            --plan "${TEMP_DIR}/release-plan.yaml")"
+    fi
     canonical_version_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
     canonical_version_pattern+='\.(0|[1-9][0-9]*)(-rc\.[1-9][0-9]*)?$'
     [[ "${version}" =~ ${canonical_version_pattern} ]] \

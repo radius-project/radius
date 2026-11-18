@@ -64,6 +64,8 @@ File options:
 
 Modes:
     --version-only  Calculate the policy version without changing files.
+
+Final preparation requires RECIPE_SOURCE_COMMIT from contrib main.
 EOF
 }
 
@@ -547,6 +549,10 @@ write_release_plan() {
             } | ... style = ""
         ' > "${plan_file}"
 
+    if [[ "${RELEASE_TYPE}" == final ]]; then
+        yq -i '.recipeSourceCommit = strenv(RECIPE_SOURCE_COMMIT)' \
+            "${plan_file}"
+    fi
     mkdir -p "$(dirname "${tracked_plan_file}")"
     cp "${plan_file}" "${tracked_plan_file}"
 
@@ -567,6 +573,9 @@ write_release_plan() {
         echo "- [ ] Curate Highlights in the generated release notes."
         echo "- [ ] Review and update the Upgrading guidance."
         echo "- [ ] Verify the source commit and included backports."
+        if [[ "${RELEASE_TYPE}" == final ]]; then
+            echo "- [ ] Review the [Bicep recipe source](https://github.com/radius-project/resource-types-contrib/commit/${RECIPE_SOURCE_COMMIT}) and its signed recipe inventory."
+        fi
         if [[ "${requires_backport}" == "true" ]]; then
             echo "- [ ] Rebase-merge this PR's generated backport after merge."
         fi
@@ -673,6 +682,9 @@ main() {
     fi
 
     [[ -f "${BACKPORTS_FILE}" ]] || fail "backports file not found"
+    if [[ "${RELEASE_TYPE}" == final && ! "${RECIPE_SOURCE_COMMIT:-}" =~ ^[0-9a-f]{40}$ ]]; then
+        fail "final preparation requires a full RECIPE_SOURCE_COMMIT"
+    fi
     [[ -f "${SIBLING_REPOSITORIES_FILE}" ]] \
                                             || fail "sibling repositories file not found"
     [[ -f "${CHANGELOG_FILE}" ]] || fail "changelog file not found"

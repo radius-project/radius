@@ -28,6 +28,7 @@ readonly -a REQUIRED_JOBS=(
 )
 COMMIT=""
 REQUIRE_SIBLING_RELEASES=false
+REQUIRE_BICEP_RECIPES=false
 
 fail() {
     echo "Error: $*" >&2
@@ -175,15 +176,21 @@ verify_sibling_publication_gate() {
 }
 
 main() {
-    local job name
+    local job name option
 
-    [[ $# -eq 1 || ($# -eq 2 && "$2" == --require-sibling-releases) ]] \
-                                                                       || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases]"
-    [[ $# -eq 1 ]] || REQUIRE_SIBLING_RELEASES=true
+    [[ $# -ge 1 ]] || fail "usage: verify-release-build-contract.sh <commit> [--require-sibling-releases] [--require-bicep-recipes]"
     command -v yq > /dev/null || fail "required command not found: yq"
     command -v jq > /dev/null || fail "required command not found: jq"
     COMMIT="$(git rev-parse --verify --quiet "$1^{commit}")" \
                                                              || fail "release commit does not exist: $1"
+    shift
+    for option in "$@"; do
+        case "${option}" in
+            --require-sibling-releases) REQUIRE_SIBLING_RELEASES=true ;;
+            --require-bicep-recipes) REQUIRE_BICEP_RECIPES=true ;;
+            *) fail "unknown option: ${option}" ;;
+        esac
+    done
 
     git cat-file -e "${COMMIT}:.goreleaser.yaml" 2> /dev/null \
                                                              || reject "has no .goreleaser.yaml"
@@ -201,6 +208,18 @@ main() {
                                                                    || reject "does not stage a draft GoReleaser release"
     verify_publication_gate
     verify_sibling_publication_gate
+    if [[ "${REQUIRE_BICEP_RECIPES}" == true ]]; then
+        yq_true "${BUILD_WORKFLOW}" '
+            [.jobs."coordinate-release".steps[] |
+                select(.id == "coordinate" and .if == null and
+                    .env.RECIPE_TOKEN != null and
+                    (."continue-on-error" // false) == false)] |
+                length == 1' || reject "has no final Bicep recipe coordinator"
+        if ! git grep -q -F 'publish-bicep-recipes.yaml' "${COMMIT}" -- \
+            .github/scripts/coordinate-release.mjs; then
+            reject "does not coordinate the Bicep recipe publisher"
+        fi
+    fi
 
     # Path-only push triggers also run for tags; only a tag filter marks a publisher.
     while IFS= read -r name; do
