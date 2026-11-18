@@ -24,7 +24,6 @@ import (
 	"sync"
 	"time"
 
-	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
@@ -385,14 +384,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	target, certificates, err := i.prepareSelectedCertificates(ctx, clusterOptions, radiusHelmChart, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil)
+	target, certificates, err := i.prepareOrdinaryCertificates(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil)
 	if err != nil {
 		return err
 	}
-	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, clusterOptions.RadiusInstalled || clusterOptions.RadiusReleaseValues != nil); err != nil {
-		return err
-	}
-	if err := target.checkTransition(clusterOptions.RadiusReleaseValues); err != nil {
+	if err := target.checkTransition(target.deployedMode); err != nil {
 		return err
 	}
 
@@ -410,7 +406,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	if target.Mode != "issuerRef" {
-		if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, target.Values, clusterOptions.Radius.Reinstall); err != nil {
+		if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, target.mode, clusterOptions.Radius.Reinstall); err != nil {
 			return err
 		}
 	}
@@ -446,7 +442,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
-	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, render); err != nil {
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, target, render); err != nil {
 		return err
 	}
 	if clusterOptions.Radius.Reinstall {
@@ -461,7 +457,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	// When Helm left an installed release unchanged, the authorization mode of radiusValues did not take effect, so
 	// there is no APIService change to wait for or reconcile.
 	if applied {
-		if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues); err != nil {
+		if err := i.waitForUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, target.mode); err != nil {
 			return err
 		}
 	}
@@ -616,24 +612,17 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	// `global.azureWorkloadIdentity.enabled=true` don't silently revert on upgrade.
 	reuseValues := !clusterOptions.ResetValues
 
-	storedValues := clusterOptions.RadiusReleaseValues
-	if !reuseValues {
-		storedValues = nil
-	}
 	output.LogInfo("Upgrading Radius...")
 	radiusHelmChart, radiusHelmConf, radiusValues, err := prepareRadiusChart(ctx, helmAction, clusterOptions.Radius, kubeContext)
 	if err != nil {
 		return fmt.Errorf("failed to prepare Radius Helm chart, err: %w", err)
 	}
 
-	target, certificates, err := i.prepareSelectedCertificates(ctx, clusterOptions, radiusHelmChart, radiusValues, kubeContext, true)
+	target, certificates, err := i.prepareOrdinaryCertificates(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, true)
 	if err != nil {
 		return err
 	}
-	if err := i.checkIssuerPolicy(ctx, clusterOptions, radiusHelmChart, radiusHelmConf, radiusValues, kubeContext, true); err != nil {
-		return err
-	}
-	if err := target.checkTransition(clusterOptions.RadiusReleaseValues); err != nil {
+	if err := target.checkTransition(target.deployedMode); err != nil {
 		return err
 	}
 
@@ -652,7 +641,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	if target.Mode != "issuerRef" {
-		if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, target.Values, true); err != nil {
+		if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, target.mode, true); err != nil {
 			return err
 		}
 	}
@@ -666,7 +655,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
-	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, storedValues, render); err != nil {
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, target, render); err != nil {
 		return err
 	}
 	if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues); err != nil {
@@ -677,7 +666,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
 	}
-	if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, storedValues); err != nil {
+	if err := i.waitForUCPAPIService(ctx, kubeContext, clusterOptions.Radius.Namespace, target.mode); err != nil {
 		return err
 	}
 	output.LogInfo("Radius upgrade complete")
@@ -946,37 +935,44 @@ func (i *Impl) RollbackRadiusToRevision(ctx context.Context, kubeContext string,
 // It runs the same checks, in the same order, as an upgrade: the csi-driver-spiffe checks fail before it changes the
 // cluster. With authorization off in the target, it changes nothing and leaves an installed driver in place, unused.
 func (i *Impl) reconcileRollbackDependencies(ctx context.Context, kubeContext string, history []*releasev1.Release, revision int) error {
-	var targetValues map[string]any
+	var targetRelease *releasev1.Release
 	for _, release := range history {
 		if release != nil && release.Version == revision {
-			targetValues = copyValues(release.Config)
-			if release.Chart != nil {
-				targetValues = valuesutil.CoalesceTables(targetValues, copyValues(release.Chart.Values))
-			}
+			targetRelease = release
 			break
 		}
 	}
 
 	options := NewDefaultClusterOptions()
-	// Rollback replays the historical manifest. It cannot verify a new BYO policy
-	// or stage BYO trust, so reject those active targets before changing dependencies.
-	active, err := resolveAuthzMode(nil, targetValues)
+	if targetRelease == nil {
+		return fmt.Errorf("revision %d not found in release history", revision)
+	}
+	if targetRelease.Namespace != "" {
+		options.Radius.Namespace = targetRelease.Namespace
+	}
+	if targetRelease.Name != "" {
+		options.Radius.ReleaseName = targetRelease.Name
+	}
+	values, settings, err := resolveEffectiveChartValues(targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, false)
 	if err != nil {
 		return err
 	}
-	certMode := certificateMode(targetValues)
-	if active != authz.ModeOff && certMode != "selfSigned" {
+	certMode := certificateMode(values)
+	if settings.mode != authz.ModeOff && certMode != "selfSigned" {
 		return fmt.Errorf("rolling back to global.rbac.certificates.mode=%s requires the certificate lifecycle; Helm has not changed Radius", certMode)
 	}
-	provider := stringValue(nestedValue(targetValues, "global", "rbac", "tls", "provider"))
-	spiffe, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, targetValues, provider, certMode)
+	target, err := resolveRadiusAuthTarget(ctx, targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, false)
+	if err != nil {
+		return err
+	}
+	spiffe, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, target)
 	if err != nil {
 		return err
 	}
 	if spiffe == nil {
 		return nil
 	}
-	if err := i.ensureCertManager(ctx, options, kubeContext, targetValues, false); err != nil {
+	if err := i.ensureCertManager(ctx, options, kubeContext, target.mode, false); err != nil {
 		return err
 	}
 	// Like an install, this changes cert-manager and the driver only when they are missing, unhealthy, or configured

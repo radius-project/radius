@@ -134,6 +134,7 @@ func TestRadiusControllerMigrationFailureStopsUpgrade(t *testing.T) {
 			if reinstall {
 				err = impl.InstallRadius(t.Context(), options, "test-context")
 			} else {
+				expectRadiusBaseline(t, client, options)
 				err = impl.UpgradeRadius(t.Context(), options, "test-context")
 			}
 			require.ErrorIs(t, err, failure)

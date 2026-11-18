@@ -21,15 +21,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/radius-project/radius/pkg/authz"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v4/pkg/action"
-	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/release"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
@@ -431,6 +433,17 @@ func Test_checkForeignCSIDriverSPIFFE(t *testing.T) {
 	}
 }
 
+func testAuthTarget(t *testing.T, options ClusterOptions, stored map[string]any) radiusAuthTarget {
+	t.Helper()
+	selected, err := loader.Load("../../../deploy/Chart")
+	require.NoError(t, err)
+	current, err := parseUserValuesFromCLI(&options.Radius)
+	require.NoError(t, err)
+	target, err := resolveRadiusAuthTarget(t.Context(), selected, options.Radius.Namespace, options.Radius.ReleaseName, current, stored, false)
+	require.NoError(t, err)
+	return target
+}
+
 func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 	t.Parallel()
 
@@ -502,11 +515,13 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			setArgs: []string{"global.rbac.dryRun=true", "global.rbac.tls.provider=external"},
 			objects: externalObjects, allowed: unrestricted, expect: noHelm, wantClient: true,
 			wantRequesters: []string{"system:serviceaccount:security:custom"},
+			wantLog:        "Warning: the external TLS provider sends receiver tokens over HTTP. Configure authenticated encryption between components before enabling it.",
 		},
 		{
 			name:   "stored external upgrade discovers requesters without managing CSI",
 			stored: external, upgrade: true, objects: externalObjects, allowed: unrestricted, expect: noHelm, wantClient: true,
 			wantRequesters: []string{"system:serviceaccount:security:custom"},
+			wantLog:        "Warning: the external TLS provider sends receiver tokens over HTTP. Configure authenticated encryption between components before enabling it.",
 		},
 		{
 			name:   "current radius provider supersedes stored external",
@@ -703,11 +718,7 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
 			var requesters []string
-			current, err := parseUserValuesFromCLI(&options.Radius)
-			require.NoError(t, err)
-			values := valuesutil.CoalesceTables(current, copyValues(tt.stored))
-			provider := stringValue(nestedValue(values, "global", "rbac", "tls", "provider"))
-			plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", values, provider, certificateMode(values))
+			plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", testAuthTarget(t, options, tt.stored))
 			if err == nil {
 				requesters, err = impl.applyCSIDriverSPIFFE(t.Context(), plan, "test-context", tt.upgrade)
 			}
@@ -746,11 +757,15 @@ func Test_planSelectedCSIDriverSPIFFE(t *testing.T) {
 				}}
 				selected := certificateIssuerReference{Group: "cert-manager.io", Kind: "Issuer", Name: "selected-internal"}
 				target := &certificateTarget{
-					Mode: mode, Provider: provider,
+					radiusAuthTarget: radiusAuthTarget{chartAuthSettings: chartAuthSettings{mode: authz.ModeEnforce, provider: authz.TLSProvider(provider), spiffe: spiffeSettings{TrustDomain: "custom.example"}}},
+					Mode:             mode, Provider: provider,
 					Values: map[string]any{"global": map[string]any{"rbac": map[string]any{
 						"enabled": true, "spiffe": map[string]any{"trustDomain": "custom.example"},
 					}}},
 					Planes: map[string]certificatePlaneTarget{"internal": {Issuer: selected}},
+				}
+				if managed {
+					target.ManagedCSIVolumes = 1
 				}
 				plan, err := impl.planSelectedCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "context", target)
 				require.NoError(t, err)
@@ -780,8 +795,8 @@ func Test_planCSIDriverSPIFFE_ClientError(t *testing.T) {
 		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return nil, errors.New("no kubeconfig") },
 	}
 	options := NewDefaultClusterOptions()
-	values := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-	plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", values, "radius", "selfSigned")
+	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
+	plan, err := impl.planCSIDriverSPIFFE(t.Context(), options, "test-context", testAuthTarget(t, options, nil))
 	require.EqualError(t, err, "failed to create Kubernetes clients: no kubeconfig")
 	require.Nil(t, plan)
 }
@@ -814,6 +829,7 @@ func TestExternalCertificatePrerequisites(t *testing.T) {
 				if command != "install" {
 					options.ResetValues = true
 					options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true, "tls": map[string]any{"provider": "radius"}}}}
+					expectRadiusBaseline(t, m, options)
 				}
 				stop := errors.New("stop at final Helm call")
 				if served && command != "preflight-only" {
@@ -867,6 +883,7 @@ func TestIssuerRefCertificatePrerequisites(t *testing.T) {
 					impl := &Impl{Helm: NewMockHelmClient(gomock.NewController(t)), newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return client, nil }}
 					values := issuerReleaseValues(mustTestCA("issuer").pem)
 					target := &certificateTarget{Provider: provider, Mode: "issuerRef", Values: values}
+					target.mode, target.provider = authz.ModeEnforce, authz.TLSProvider(provider)
 					plan, err := impl.planSelectedCSIDriverSPIFFE(t.Context(), NewDefaultClusterOptions(), "test-context", target)
 					if !served {
 						require.ErrorContains(t, err, "does not serve ValidatingAdmissionPolicy")
@@ -1096,6 +1113,91 @@ func Test_UninstallCertManager_RemovesCSIDriverSPIFFEFirst(t *testing.T) {
 	require.NoError(t, impl.UninstallCertManager(t.Context(), NewDefaultClusterOptions(), "test-context"))
 }
 
+// The A6 fixture is an archive of the unmodified Chart.yaml, values.yaml, _helpers.tpl,
+// rp/ucp/dynamic-rp deployment templates and dynamic-rp/buildkit-config.yaml from
+// 1e3d853:deploy/Chart. Keep the actual workload templates, not a simulated provider switch.
+func TestSelectedChartAuthPrerequisites(t *testing.T) {
+	const oldChart = "testdata/a6-auth-workloads.tgz"
+	const currentChart = "../../../deploy/Chart"
+	const external = "global.rbac.enabled=true,global.rbac.tls.provider=external"
+	stored := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true, "tls": map[string]any{"provider": "external"}}}}
+	for _, command := range []string{"install", "upgrade"} {
+		for _, tc := range []struct {
+			name, path, set, want string
+			stored                map[string]any
+			reset                 bool
+			mounts                int // -1 when rendering is expected to fail
+		}{
+			{"legacy chart ignores external", oldChart, external, "does not support global.rbac.tls.provider", nil, false, 3},
+			{"current chart external", currentChart, external, "external admission check", nil, false, 0},
+			{"invalid provider even when off", currentChart, "global.rbac.tls.provider=typo", "must be radius or external", nil, false, -1},
+			{"retired gate", currentChart, "de.externalIdentity.enabled=true", "is retired", nil, false, -1},
+			{"legacy chart ignores engine gate", oldChart, "global.rbac.enabled=true,de.internalAuth.enabled=true", "does not support de.internalAuth.enabled", nil, false, 3},
+			{"reuse stored external", currentChart, "", "external admission check", stored, false, 0},
+			{"current overrides stored external", currentChart, "global.rbac.tls.provider=radius", "managed CSI check", stored, false, 3},
+			{"reset discards stored external", currentChart, "global.rbac.enabled=true", "managed CSI check", stored, true, 3},
+		} {
+			if command == "install" && tc.reset {
+				continue // --reset-values is an upgrade option.
+			}
+			t.Run(command+"/"+tc.name, func(t *testing.T) {
+				options := NewDefaultClusterOptions()
+				options.Contour.Disabled = true
+				options.Radius.ChartPath = tc.path
+				options.RadiusReleaseValues = tc.stored
+				options.Radius.Reinstall = tc.stored != nil
+				options.ResetValues = tc.reset
+				if tc.set != "" {
+					options.Radius.SetArgs = []string{tc.set}
+				}
+				current, err := parseUserValuesFromCLI(&options.Radius)
+				require.NoError(t, err)
+				reused := tc.stored
+				if tc.reset {
+					reused = nil
+				}
+				selected, err := loader.Load(tc.path)
+				require.NoError(t, err)
+				render := helm.NewInstall(&helm.Configuration{})
+				render.DryRunStrategy = helm.DryRunClient
+				render.Namespace, render.ReleaseName = options.Radius.Namespace, options.Radius.ReleaseName
+				render.IsUpgrade = command == "upgrade"
+				render.APIVersions = []string{"admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy"}
+				rel, err := render.RunWithContext(t.Context(), selected, helmValues(current, reused))
+				if tc.mounts < 0 {
+					require.ErrorContains(t, err, tc.want)
+				} else {
+					require.NoError(t, err)
+					a, err := release.NewAccessor(rel)
+					require.NoError(t, err)
+					require.Equal(t, tc.mounts, strings.Count(a.Manifest(), "driver: spiffe.csi.radapp.io"))
+				}
+				// Stop at the first read of the chosen prerequisite. No write is expected.
+				client := NewMockHelmClient(gomock.NewController(t))
+				client.EXPECT().LoadChart(tc.path).DoAndReturn(loader.Load)
+				if command == "upgrade" || options.Radius.Reinstall {
+					expectRadiusBaseline(t, client, options)
+				}
+				impl := &Impl{Helm: client}
+				switch tc.want {
+				case "external admission check":
+					impl.newCSIDriverSPIFFEClient = func(string) (kubernetes.Interface, error) {
+						return nil, errors.New(tc.want)
+					}
+				case "managed CSI check":
+					client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, errors.New(tc.want))
+				}
+				if command == "install" {
+					err = impl.InstallRadius(t.Context(), options, "test-context")
+				} else {
+					err = impl.UpgradeRadius(t.Context(), options, "test-context")
+				}
+				require.ErrorContains(t, err, tc.want)
+			})
+		}
+	}
+}
+
 // A foreign csi-driver-spiffe stops install and upgrade before they touch cert-manager or any release.
 func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
 	t.Parallel()
@@ -1122,6 +1224,9 @@ func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
 			options.Radius.ChartPath = "chart"
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 			options.Contour.Disabled = true
+			if command == "upgrade" {
+				expectRadiusBaseline(t, client, options)
+			}
 
 			var err error
 			if command == "install" {

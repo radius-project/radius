@@ -229,7 +229,7 @@ func TestCertificateExpiryWarning(t *testing.T) {
 				newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil },
 				logger:               func(format string, values ...any) { fmt.Fprintf(&logs, format, values...) },
 			}
-			_, _, err := impl.prepareSelectedCertificates(t.Context(), NewDefaultClusterOptions(), certificateTestChart(t), caReleaseValues("operator-ca", cert), "", false)
+			_, _, err := impl.prepareSelectedCertificates(t.Context(), NewDefaultClusterOptions(), certificateTestChart(t), caReleaseValues("operator-ca", cert), "", nil)
 			require.NoError(t, err)
 			require.Equal(t, days <= 30, strings.Contains(logs.String(), "within 30 days"))
 		})
@@ -255,7 +255,7 @@ func TestCertificateSecretValidationErrors(t *testing.T) {
 				})
 			}
 			impl := &Impl{newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil }}
-			_, _, err := impl.prepareSelectedCertificates(t.Context(), NewDefaultClusterOptions(), certificateTestChart(t), caReleaseValues("operator-ca", cert), "", false)
+			_, _, err := impl.prepareSelectedCertificates(t.Context(), NewDefaultClusterOptions(), certificateTestChart(t), caReleaseValues("operator-ca", cert), "", nil)
 			require.Error(t, err)
 			require.NotContains(t, err.Error(), "private-key-sentinel")
 			for _, action := range kube.Actions() {
@@ -452,7 +452,11 @@ func TestPrepareSelectedCertificates(t *testing.T) {
 			}}
 			selected := certificateTestChart(t)
 			selected.Values = valuesutil.CoalesceTables(copyValues(tt.defaults), selected.Values)
-			_, plan, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, "selected-cluster", tt.installed)
+			var deployed map[string]any
+			if tt.installed {
+				deployed = copyValues(tt.stored)
+			}
+			_, plan, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, "selected-cluster", deployed)
 			require.Equal(t, storedBefore, copyValues(tt.stored))
 			for _, action := range kube.Actions() {
 				require.Equal(t, "get", action.GetVerb(), "preparation must be read only")
@@ -550,7 +554,7 @@ func TestCertificateImportLifecycle(t *testing.T) {
 				})
 			}
 			current := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-			_, plan, err := impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), current, "context", false)
+			_, plan, err := impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), current, "context", nil)
 			if scenario == "missing key file" || scenario == "malformed files" {
 				require.Error(t, err)
 				require.Empty(t, kube.Actions())
@@ -574,7 +578,7 @@ func TestCertificateImportLifecycle(t *testing.T) {
 				require.NoError(t, err)
 				require.Contains(t, logs.String(), "retained on failure and uninstall")
 				retryValues := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-				_, retryPlan, err := impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), retryValues, "context", false)
+				_, retryPlan, err := impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), retryValues, "context", nil)
 				require.NoError(t, err)
 				require.Nil(t, retryPlan.secret)
 				require.Equal(t, current, retryValues)
@@ -584,7 +588,7 @@ func TestCertificateImportLifecycle(t *testing.T) {
 				require.NoError(t, err)
 				existing.Data[corev1.TLSPrivateKeyKey] = []byte("private-key-sentinel")
 				require.NoError(t, kube.Tracker().Update(corev1.SchemeGroupVersion.WithResource("secrets"), existing, RadiusSystemNamespace))
-				_, _, err = impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}, "context", false)
+				_, _, err = impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}, "context", nil)
 				require.ErrorContains(t, err, "will not be overwritten")
 			}
 			for _, action := range kube.Actions() {
@@ -630,7 +634,7 @@ func TestRadiusCertificateHelmValues(t *testing.T) {
 			}
 			current, err := parseUserValuesFromCLI(&options.Radius)
 			require.NoError(t, err)
-			target, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, "selected-context", operation != "install")
+			target, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, "selected-context", options.RadiusReleaseValues)
 			if strings.HasPrefix(operation, "blocked") {
 				require.Error(t, err)
 			} else {
@@ -719,7 +723,7 @@ func TestPrepareIssuerCertificates(t *testing.T) {
 				t.Fatal("external issuer mode must never read a private signing Secret")
 				return nil, nil
 			}}
-			_, plan, err := impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), current, "context", options.RadiusInstalled)
+			_, plan, err := impl.prepareSelectedCertificates(t.Context(), options, certificateTestChart(t), current, "context", options.RadiusReleaseValues)
 			require.Equal(t, before, copyValues(options.RadiusReleaseValues))
 			require.Nil(t, plan, "issuer prerequisites are operator-owned")
 			if tt.err != "" {
@@ -902,10 +906,7 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 				// staging/convergence is paired lifecycle work, not mocked issuance.
 				selectedChart, configuration, current, prepareErr := prepareRadiusChart(t.Context(), NewHelmAction(client), options.Radius, kubeContext)
 				require.NoError(t, prepareErr)
-				_, _, err = impl.prepareSelectedCertificates(t.Context(), options, selectedChart, current, kubeContext, !install)
-				if err == nil {
-					err = impl.checkIssuerPolicy(t.Context(), options, selectedChart, configuration, current, kubeContext, !install)
-				}
+				_, _, err = impl.prepareOrdinaryCertificates(t.Context(), options, selectedChart, configuration, current, kubeContext, !install)
 			} else {
 				switch scenario.operation {
 				case "install", "old chart", "reinstall", "switch-on":

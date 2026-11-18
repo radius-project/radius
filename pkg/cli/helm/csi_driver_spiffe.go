@@ -178,7 +178,10 @@ type csiDriverSPIFFEPlan struct {
 }
 
 func (i *Impl) planSelectedCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, target *certificateTarget) (*csiDriverSPIFFEPlan, error) {
-	plan, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, target.Values, target.Provider, target.Mode)
+	plan, err := i.planCSIDriverSPIFFE(ctx, options, kubeContext, target.radiusAuthTarget)
+	if plan != nil {
+		plan.issuerRef = target.Mode == "issuerRef"
+	}
 	if err != nil || plan == nil || !plan.manageDriver {
 		return plan, err
 	}
@@ -202,19 +205,14 @@ func (i *Impl) planSelectedCSIDriverSPIFFE(ctx context.Context, options ClusterO
 // before any dependency changes the cluster. It also fails when the cluster does not serve ValidatingAdmissionPolicy,
 // which the Radius chart's certificate issuance policy needs. It returns nil, without contacting the cluster, when
 // authorization is off.
-func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, values map[string]any, provider, certMode string) (*csiDriverSPIFFEPlan, error) {
-	mode, err := resolveAuthzMode(nil, values)
-	if err != nil {
-		return nil, err
-	}
-	if mode == authz.ModeOff {
+func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, kubeContext string, target radiusAuthTarget) (*csiDriverSPIFFEPlan, error) {
+	if target.mode == authz.ModeOff {
 		return nil, nil
 	}
 
 	plan := &csiDriverSPIFFEPlan{
 		namespace:    options.Radius.Namespace,
-		manageDriver: provider != string(authz.TLSProviderExternal) && certMode != "issuerRef",
-		issuerRef:    certMode == "issuerRef",
+		manageDriver: target.ManagedCSIVolumes > 0,
 		chartOptions: options.CSIDriverSPIFFE.ChartOptions,
 	}
 	if plan.manageDriver {
@@ -229,12 +227,13 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 		plan.release = rel
 	}
 
+	var err error
 	plan.kubeClient, err = i.csiDriverSPIFFEClient(kubeContext)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kubernetes clients: %w", err)
 	}
 	if plan.manageDriver {
-		settings := resolveSPIFFESettings(nil, values)
+		settings := target.spiffe
 		if err := checkForeignCSIDriverSPIFFE(ctx, plan.kubeClient, plan.chartOptions, settings.CSIDriverName, kubeContext); err != nil {
 			return nil, err
 		}
@@ -243,6 +242,9 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 	// Aggregation issuers still need admission policy and requester discovery with external TLS.
 	if err := checkValidatingAdmissionPolicyServed(plan.kubeClient); err != nil {
 		return nil, err
+	}
+	if target.provider == authz.TLSProviderExternal {
+		i.logInfo("Warning: the external TLS provider sends receiver tokens over HTTP. Configure authenticated encryption between components before enabling it.")
 	}
 	return plan, nil
 }

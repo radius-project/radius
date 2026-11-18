@@ -540,7 +540,7 @@ func (i *Impl) prepareIssuerCertificates(settings, current map[string]any) error
 
 // checkIssuerPolicy renders the actual selected chart with live lookups, but no resource or release writes.
 // The chart, not a second CLI policy evaluator, verifies the operator-managed issuer prerequisites.
-func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) error {
+func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, history []*releasev1.Release) error {
 	mode := certificateMode(current)
 	if mode == "selfSigned" {
 		return nil
@@ -582,22 +582,38 @@ func (i *Impl) checkIssuerPolicy(ctx context.Context, options ClusterOptions, se
 			return fmt.Errorf("live issuer-policy verification failed: %w", err)
 		}
 	}
+	return i.renderCertificatePolicy(ctx, options, selected, current, kubeContext, history)
+}
+
+func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, error) {
 	var history []*releasev1.Release
+	var deployed map[string]any
+	mode := authz.ModeOff
 	if installed {
+		var err error
 		history, err = i.Helm.RunHelmHistory(source, options.Radius.ReleaseName)
 		if err != nil {
-			return fmt.Errorf("cannot read Radius history for live issuer-policy verification: %w", err)
+			return nil, nil, fmt.Errorf("cannot read Radius history for certificate selection: %w", err)
 		}
 		baseline, err := certificatePolicyBaseline(options, history)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
-		previous := valuesutil.CoalesceTables(copyValues(baseline.Config), copyValues(baseline.Chart.Values))
-		if err := unchangedCertificateSelection(previous, current); err != nil {
-			return fmt.Errorf("the installed chart selects different certificate settings; changing issuers requires coordinated CA migration: %w", err)
+		values, settings, err := resolveEffectiveChartValues(baseline.Chart, options.Radius.Namespace, options.Radius.ReleaseName, baseline.Config, nil, false)
+		if err != nil {
+			return nil, nil, err
 		}
+		deployed, mode = values, settings.mode
 	}
-	return i.renderCertificatePolicy(ctx, options, selected, current, kubeContext, history)
+	target, plan, err := i.prepareSelectedCertificates(ctx, options, selected, current, kubeContext, deployed)
+	if err != nil {
+		return nil, nil, err
+	}
+	target.deployedMode = mode
+	if err := i.checkIssuerPolicy(ctx, options, selected, current, kubeContext, history); err != nil {
+		return nil, nil, err
+	}
+	return target, plan, nil
 }
 
 // renderCertificatePolicy proves the chosen target against live chart policy and a
@@ -647,6 +663,9 @@ func certificatePolicyBaseline(options ClusterOptions, history []*releasev1.Rele
 		return nil, fmt.Errorf("Radius release history is empty; recover the installed release before issuer-policy verification")
 	}
 	baseline := history[latest]
+	if revisionStatus(baseline).IsPending() {
+		return nil, fmt.Errorf("live issuer-policy verification failed: another operation is in progress on the Radius release")
+	}
 	if revisionStatus(baseline) != releasecommon.StatusDeployed && deployed >= 0 {
 		baseline = history[deployed]
 	}
@@ -711,14 +730,11 @@ func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptio
 	if err != nil {
 		return err
 	}
-	target, _, err := i.prepareSelectedCertificates(ctx, options, chart, current, kubeContext, true)
+	target, _, err := i.prepareOrdinaryCertificates(ctx, options, chart, configuration, current, kubeContext, true)
 	if err != nil {
 		return err
 	}
-	if err := i.checkIssuerPolicy(ctx, options, chart, configuration, current, kubeContext, true); err != nil {
-		return err
-	}
-	if err := target.checkTransition(options.RadiusReleaseValues); err != nil {
+	if err := target.checkTransition(target.deployedMode); err != nil {
 		return err
 	}
 	_, err = i.planSelectedCSIDriverSPIFFE(ctx, options, kubeContext, target)

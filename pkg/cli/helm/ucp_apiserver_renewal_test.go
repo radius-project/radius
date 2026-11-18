@@ -343,7 +343,8 @@ func TestRetainedSelfSignedTrustReinstallAfterUninstall(t *testing.T) {
 			require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
-			err := impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, func(context.Context) (string, bool, error) {
+			target := &certificateTarget{deployedMode: authz.ModeOff, radiusAuthTarget: radiusAuthTarget{chartAuthSettings: chartAuthSettings{mode: authz.ModeEnforce}}}
+			err := impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", target, func(context.Context) (string, bool, error) {
 				t.Fatal("no prior APIService remains; staging must not issue or replace a signer")
 				return "", false, nil
 			})
@@ -523,13 +524,11 @@ func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
 					}}}
 					var err error
 					switch source {
-					case "flags":
-						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", nil, render)
-					case "stored":
-						options.Radius.SetArgs = nil
-						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", target, render)
+					case "flags", "stored":
+						resolved := &certificateTarget{Mode: mode, Values: target, deployedMode: authz.ModeOff, radiusAuthTarget: radiusAuthTarget{chartAuthSettings: chartAuthSettings{mode: authz.ModeEnforce}}}
+						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", resolved, render)
 					case "rollback":
-						history := []*releasev1.Release{{Version: 1, Config: target}, {Version: 2, Config: map[string]any{}}}
+						history := []*releasev1.Release{{Version: 1, Chart: certificateTestChart(t), Config: target}, {Version: 2, Chart: certificateTestChart(t)}}
 						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
 					}
 					require.ErrorContains(t, err, "requires the certificate lifecycle")

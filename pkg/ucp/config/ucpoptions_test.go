@@ -44,6 +44,42 @@ import (
 
 const testToken = "test-token"
 
+func TestExternalSDKRedirectStaysAtConfiguredOrigin(t *testing.T) {
+	_, tokenDir, _ := writeCertificate(t, "ucp")
+	other := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("unconfigured listener was contacted")
+	}))
+	defer other.Close()
+	configured := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "Bearer "+testToken, r.Header.Get("Authorization"))
+		if r.URL.Path == "/start" {
+			http.Redirect(w, r, "/next", http.StatusFound)
+		}
+	}))
+	defer configured.Close()
+	options := UCPOptions{Kind: UCPConnectionKindDirect, Direct: &UCPDirectConnectionOptions{Endpoint: configured.URL}}
+	conn, err := NewConnectionFromUCPConfig(&options, nil, authz.Options{Mode: authz.ModeEnforce, TLSProvider: authz.TLSProviderExternal, Namespace: "custom-ns", TokenDirectory: tokenDir})
+	require.NoError(t, err)
+	client := conn.Client()
+	defer client.CloseIdleConnections()
+	response, err := client.Get(configured.URL + "/start")
+	require.NoError(t, err)
+	require.Equal(t, "/next", response.Request.URL.Path)
+	require.NoError(t, response.Body.Close())
+
+	// Exercise the SDK's redirected request independently of its Location rewriting.
+	dest, err := url.Parse(other.URL)
+	require.NoError(t, err)
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		require.Len(t, via, 1)
+		req.URL = dest
+		req.Host = dest.Host
+		return nil
+	}
+	_, err = client.Get(configured.URL + "/start")
+	require.ErrorContains(t, err, "unconfigured destination")
+}
+
 // writeCertificate writes a self-signed certificate, key, and CA to a new directory, and a
 // projected token for UCP to a new token directory. The certificate carries the SPIFFE ID
 // of serviceAccount as its only SAN, as csi-driver-spiffe issues it, so only the CA and SPIFFE

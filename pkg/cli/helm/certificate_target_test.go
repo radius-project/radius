@@ -33,8 +33,11 @@ import (
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"helm.sh/helm/v4/pkg/chart/common"
+	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	"helm.sh/helm/v4/pkg/engine"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -43,6 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/rest"
 )
 
 func certificateTestChart(t *testing.T) *chart.Chart {
@@ -50,6 +54,63 @@ func certificateTestChart(t *testing.T) *chart.Chart {
 	c, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
 	require.NoError(t, err)
 	return c
+}
+
+func expectRadiusBaseline(t *testing.T, client *MockHelmClient, options ClusterOptions) {
+	t.Helper()
+	client.EXPECT().RunHelmHistory(gomock.Any(), options.Radius.ReleaseName).Return([]*releasev1.Release{{
+		Name: options.Radius.ReleaseName, Namespace: options.Radius.Namespace, Version: 1,
+		Chart: certificateTestChart(t), Config: options.RadiusReleaseValues, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+	}}, nil)
+}
+
+func TestInstalledChartDefaultsCannotSwitchIssuer(t *testing.T) {
+	fixture := newIssuerPolicyFixture(t)
+	server := fixture.server(t)
+	kubeContext := useTargetKubeconfig(t, server.URL, k8sutil.NewForbiddenAPIServer(t).URL, true)
+	ca, _, _ := testSigningCA(t, nil, nil, nil, nil)
+	certificateValues(fixture.values)["caBundle"] = string(ca)
+	old, selected := certificateTestChart(t), certificateTestChart(t)
+	old.Values = valuesutil.CoalesceTables(copyValues(fixture.values), old.Values)
+	stored := map[string]any{}
+	setValue(stored, true, "global", "rbac", "enabled")
+
+	// Render both complete charts using identical stored overrides. The issuer change
+	// is in the actual UCP Certificate, not just in a synthetic values comparison.
+	renderer := engine.New(&rest.Config{Host: server.URL})
+	caps := common.DefaultCapabilities.Copy()
+	caps.APIVersions = append(caps.APIVersions, admissionPolicyAPI)
+	for c, issuer := range map[*chart.Chart]string{old: "external-ca", selected: "radius-apiserver-issuer"} {
+		values, err := valuesutil.CoalesceValues(c, stored)
+		require.NoError(t, err)
+		rendered, err := renderer.RenderWithContext(t.Context(), c, common.Values{
+			"Values": values, "Capabilities": caps,
+			"Release": map[string]any{"Name": radiusReleaseName, "Namespace": RadiusSystemNamespace, "Service": "Helm"},
+		})
+		require.NoError(t, err)
+		require.Contains(t, rendered[c.Name()+"/templates/ucp/apiservice.yaml"], "name: "+issuer)
+	}
+	for _, command := range []string{"reinstall", "upgrade", "preflight-only"} {
+		t.Run(command, func(t *testing.T) {
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().LoadChart("chart").Return(selected, nil)
+			client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
+				{Chart: selected, Version: 2, Info: &releasev1.Info{Status: releasecommon.StatusFailed}},
+				{Chart: old, Config: stored, Version: 1, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+			}, nil)
+			i := &Impl{Helm: client}
+			opts := NewDefaultClusterOptions()
+			opts.Radius.ChartPath, opts.RadiusInstalled, opts.RadiusReleaseValues = "chart", true, stored
+			run := i.UpgradeRadius
+			switch command {
+			case "reinstall":
+				opts.Radius.Reinstall, run = true, i.InstallRadius
+			case "preflight-only":
+				run = i.CheckRadiusCertificates
+			}
+			require.ErrorContains(t, run(t.Context(), opts, kubeContext), "coordinated CA migration")
+		})
+	}
 }
 
 func TestCertificateTargetProfiles(t *testing.T) {
@@ -285,10 +346,10 @@ func TestCASecretLivePreflight(t *testing.T) {
 				options := NewDefaultClusterOptions()
 				current := copyValues(fixture.values)
 				selected := certificateTestChart(t)
-				target, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, kubeContext, false)
+				target, _, err := impl.prepareSelectedCertificates(t.Context(), options, selected, current, kubeContext, nil)
 				require.NoError(t, err)
-				require.ErrorContains(t, target.checkTransition(current), "maintaining global.rbac.certificates.mode=caSecret")
-				err = impl.checkIssuerPolicy(t.Context(), options, selected, nil, current, kubeContext, false)
+				require.ErrorContains(t, target.checkTransition(target.mode), "maintaining global.rbac.certificates.mode=caSecret")
+				err = impl.checkIssuerPolicy(t.Context(), options, selected, current, kubeContext, nil)
 				if invalidInjector {
 					require.ErrorContains(t, err, "not an inspectable")
 				} else {

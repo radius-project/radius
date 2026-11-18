@@ -87,7 +87,7 @@ func NewConnectionFromUCPConfig(option *UCPOptions, k8sConfig *rest.Config, auth
 			}
 			return nil, fmt.Errorf("the property .ucp.direct.endpoint must use https when the authorization mode is %q", authorization.EffectiveMode())
 		}
-		transport, err := mtls.NewClientTransport(authorization, "ucp")
+		transport, err := mtls.NewClientTransport(authorization, "ucp", endpoint.Host)
 		if err != nil {
 			return nil, err
 		}
