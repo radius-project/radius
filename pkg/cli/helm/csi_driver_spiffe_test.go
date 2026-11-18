@@ -822,9 +822,13 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			wantRequesters: installedRequester,
 		},
 		{
-			name:           "failed release is repaired",
-			setArgs:        dryRun,
-			expect:         expectUpgrade(owned(releasecommon.StatusFailed, wantValues)),
+			name:    "failed release is repaired",
+			setArgs: dryRun,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				failed := owned(releasecommon.StatusFailed, wantValues)
+				m.EXPECT().RunHelmHistory(gomock.Any(), csiDriverSPIFFEReleaseName).Return([]*releasev1.Release{failed}, nil)
+				expectUpgrade(failed)(t, m)
+			},
 			wantClient:     true,
 			wantRequesters: installedRequester,
 		},
@@ -916,12 +920,39 @@ func Test_planCSIDriverSPIFFE_Rename(t *testing.T) {
 	installed := &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
 		Config: buildCSIDriverSPIFFEValues(RadiusSystemNamespace, spiffeSettings{TrustDomain: SPIFFETrustDomainDefault, CSIDriverName: SPIFFECSIDriverNameDefault})}
 
+	renamedValues := buildCSIDriverSPIFFEValues(RadiusSystemNamespace, spiffeSettings{TrustDomain: SPIFFETrustDomainDefault, CSIDriverName: "renamed.example"})
+	// failedRename is a rename that Helm recorded as failed, so the driver still runs under the installed name.
+	failedRename := &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels(), Version: 2, Info: &releasev1.Info{Status: releasecommon.StatusFailed}, Config: renamedValues}
+	deployed := *installed
+	deployed.Version = 1
+	ownedDriver := &storagev1.CSIDriver{ObjectMeta: metav1.ObjectMeta{Name: SPIFFECSIDriverNameDefault, Annotations: map[string]string{
+		"meta.helm.sh/release-name": csiDriverSPIFFEReleaseName, "meta.helm.sh/release-namespace": RadiusSystemNamespace}}}
+
 	tests := []struct {
 		name    string
 		setArgs []string
 		objects []runtime.Object
+		// release is the latest csi-driver-spiffe revision, installed when nil.
+		release *releasev1.Release
+		// history is read when release is not deployed.
+		history []*releasev1.Release
 		wantErr string
 	}{
+		{
+			name:    "retry of a failed rename while Pods mount the deployed driver",
+			setArgs: []string{"global.rbac.enabled=true", "global.rbac.spiffe.csiDriverName=renamed.example"},
+			objects: []runtime.Object{spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)},
+			release: failedRename,
+			history: []*releasev1.Release{&deployed, failedRename},
+			wantErr: "it would rename CSI driver spiffe.csi.radapp.io to renamed.example while 1 Pods still mount volumes from it",
+		},
+		{
+			name:    "rename while Pods mount a CSIDriver the release still owns",
+			setArgs: []string{"global.rbac.enabled=true", "global.rbac.spiffe.csiDriverName=renamed.example"},
+			objects: []runtime.Object{ownedDriver, spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)},
+			release: &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Config: renamedValues},
+			wantErr: "it would rename CSI driver spiffe.csi.radapp.io to renamed.example",
+		},
 		{
 			name:    "rename while Pods mount the installed driver",
 			setArgs: []string{"global.rbac.enabled=true", "global.rbac.spiffe.csiDriverName=renamed.example"},
@@ -943,7 +974,14 @@ func Test_planCSIDriverSPIFFE_Rename(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			m := NewMockHelmClient(gomock.NewController(t))
-			m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil)
+			rel := tt.release
+			if rel == nil {
+				rel = installed
+			}
+			m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(rel, nil)
+			if tt.history != nil {
+				m.EXPECT().RunHelmHistory(gomock.Any(), csiDriverSPIFFEReleaseName).Return(tt.history, nil)
+			}
 			if tt.wantErr == "" {
 				expectCertManagerGet(m, nil)
 			}
@@ -974,9 +1012,14 @@ func Test_uninstallCSIDriverSPIFFE(t *testing.T) {
 	t.Parallel()
 
 	owned := &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels()}
+	// failedRename recorded a new driver name, but the driver still serves the deployed revision's name.
+	failedRename := &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels(), Version: 2, Info: &releasev1.Info{Status: releasecommon.StatusFailed},
+		Config: map[string]any{"app": map[string]any{"name": "renamed.example"}}}
+	deployedOwned := &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels(), Version: 1, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
 	tests := []struct {
 		name          string
 		release       *releasev1.Release
+		history       []*releasev1.Release
 		getErr        error
 		objects       []runtime.Object
 		clientErr     error
@@ -1009,6 +1052,14 @@ func Test_uninstallCSIDriverSPIFFE(t *testing.T) {
 			wantKept: true,
 			wantLog:  "Keeping csi-driver-spiffe and cert-manager: 1 Pods still mount volumes from CSI driver spiffe.example.org",
 		},
+		{
+			name:     "pods of the deployed driver keep it after a failed rename",
+			release:  failedRename,
+			history:  []*releasev1.Release{deployedOwned, failedRename},
+			objects:  []runtime.Object{spiffePod(RadiusSystemNamespace, "ucp-0", SPIFFECSIDriverNameDefault)},
+			wantKept: true,
+			wantLog:  "Keeping csi-driver-spiffe and cert-manager: 1 Pods still mount volumes from CSI driver renamed.example, spiffe.csi.radapp.io",
+		},
 		{name: "get error keeps the release", getErr: errors.New("boom"), wantKept: true, wantLog: "Keeping csi-driver-spiffe and cert-manager: could not check whether rad installed it: failed to run helm get for release cert-manager-csi-driver-spiffe in namespace radius-system (context: test-context): boom"},
 		{name: "client error keeps the release", release: owned, clientErr: errors.New("no kubeconfig"), wantKept: true, wantLog: "Keeping csi-driver-spiffe and cert-manager: could not check for Pods that use csi-driver-spiffe: no kubeconfig"},
 		{name: "list error keeps the release", release: owned, listErr: errors.New("forbidden"), wantKept: true, wantLog: "Keeping csi-driver-spiffe and cert-manager: could not check for Pods that use csi-driver-spiffe: forbidden"},
@@ -1018,6 +1069,9 @@ func Test_uninstallCSIDriverSPIFFE(t *testing.T) {
 			t.Parallel()
 			mockHelmClient := NewMockHelmClient(gomock.NewController(t))
 			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(tt.release, tt.getErr)
+			if tt.history != nil {
+				mockHelmClient.EXPECT().RunHelmHistory(gomock.Any(), csiDriverSPIFFEReleaseName).Return(tt.history, nil)
+			}
 			if tt.wantUninstall {
 				mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true).
 					Return(&release.UninstallReleaseResponse{}, nil)
