@@ -63,7 +63,8 @@ File options:
     --release-date <YYYY-MM-DD>
 
 Modes:
-    --version-only  Calculate the policy version without changing files.
+    --version-only  Resolve the version and product cutoff without changing tracked files.
+                    Validate backports when --backports-file is supplied.
 EOF
 }
 
@@ -581,7 +582,7 @@ write_release_plan() {
 }
 
 main() {
-    local version branch_ref
+    local version branch_ref source_ref source_commit
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -662,17 +663,24 @@ main() {
     branch_ref="$(release_branch_ref || true)"
     version="$(calculate_version)"
     validate_completed_releases
+    source_ref="${branch_ref:-HEAD}"
+    source_commit="$(git rev-parse "${source_ref}^{commit}")"
     mkdir -p "${OUTPUT_DIR}"
     printf '%s\n' "${version}" > "${OUTPUT_DIR}/version.txt"
+    printf '%s\n' "${source_commit}" > "${OUTPUT_DIR}/product-commit.txt"
     printf 'automation/prepare-release-%s\n' "${version#v}" \
         > "${OUTPUT_DIR}/pr-branch.txt"
+    if [[ -n "${BACKPORTS_FILE}" || "${VERSION_ONLY}" != true ]]; then
+        [[ -f "${BACKPORTS_FILE}" ]] || fail "backports file not found"
+        require_command jq
+        validate_backports "${branch_ref}"
+    fi
     if [[ "${VERSION_ONLY}" == "true" ]]; then
         printf 'Selected %s (%s) for release/%s.\n' \
             "${version}" "${RELEASE_TYPE}" "${CHANNEL}"
         return
     fi
 
-    [[ -f "${BACKPORTS_FILE}" ]] || fail "backports file not found"
     [[ -f "${SIBLING_REPOSITORIES_FILE}" ]] \
                                             || fail "sibling repositories file not found"
     [[ -f "${CHANGELOG_FILE}" ]] || fail "changelog file not found"
@@ -685,10 +693,9 @@ main() {
     [[ -f "${CLIFF_CONFIG}" ]] || fail "git-cliff config not found"
     require_command jq
     require_command "${GIT_CLIFF}"
-    validate_backports "${branch_ref}"
     validate_sibling_repositories
 
-    local current previous_version source_ref source_commit requires_backport
+    local current previous_version requires_backport
     local changelog_base_version changelog_body notes_file
     current="$(channel_version)"
     previous_version="${current:-$(latest_supported_version)}"
@@ -700,8 +707,6 @@ main() {
             fail "no stable Radius release tag was found"
         fi
     fi
-    source_ref="${branch_ref:-HEAD}"
-    source_commit="$(git rev-parse "${source_ref}^{commit}")"
     requires_backport="false"
     [[ -z "${branch_ref}" ]] || requires_backport="true"
     changelog_body="${OUTPUT_DIR}/changelog-section.md"

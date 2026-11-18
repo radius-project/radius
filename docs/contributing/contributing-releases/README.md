@@ -52,22 +52,11 @@ Stop if the update is missing or incomplete. Publishing namespaces and recipe pa
 
 ### Pin Radius in bicep-types-aws
 
-`bicep-types-aws` builds the AWS Bicep extension from the Radius schemas at the commit its `radius` submodule pins. Release plan validation fails unless the `radius` submodule at the planned `bicep-types-aws` commit pins the plan's `source.productCommit`. The release controller runs the same check before approval, so nothing is tagged on a mismatch even if the release PR merged without a passing plan check. In that case the merged plan can't change: follow [break-glass recovery](#break-glass-recovery). A `bicep-types-aws` commit from before the submodule was added passes both checks with a notice. Nothing sets the pin automatically yet, so set it by hand:
+Prepare Release sets the `radius` submodule to the **Radius product commit**, not the AWS repository's commit or the later Radius metadata commit. If the captured AWS source already pins that commit, nothing is written. Otherwise the release App opens or adopts a signed, pin-only PR against AWS `release/X.Y`, creating the branch from the captured AWS `main` commit if needed. The workflow waits for branch protections before merging. GitHub can rewrite signatures on rebase merges, so preparation verifies the signed proposal and checks that the landed commit has the identical tree and parent. It records that landed SHA, never a later branch tip.
 
-1. Find the product commit. For a later RC, a final, or a patch, it's the head of Radius `release/X.Y` after its backports merge, so you can set the pin before preparation. For a first RC, it's the `main` commit that preparation freezes: run Prepare Release, then read `source.productCommit` from the release PR's plan.
-2. In `radius-project/bicep-types-aws`, create `release/X.Y` from `main` if it doesn't exist (`git push origin origin/main:refs/heads/release/X.Y` after the clone below). Then set the `radius` submodule on `release/X.Y` to the product commit through a pull request, and merge it:
+Before enabling automation, require **Validate release plan** from GitHub Actions on Radius `main` and **Build and test** from GitHub Actions on each applicable AWS `release/X.Y`. Install the AWS release-branch build workflow on existing channels **before** requiring that check; allow initial channel branch creation without a new status check. Give the release App Contents and Pull requests write access and Checks read access to `bicep-types-aws`, not administration privileges or a ruleset bypass. Preparation checks the effective rules and the build result at the exact proposal SHA; it cannot change the rules. Keep the existing release environment approvals.
 
-   ```bash
-   git clone https://github.com/radius-project/bicep-types-aws.git
-   cd bicep-types-aws
-   git switch -c pin-radius-X.Y origin/release/X.Y
-   git update-index --cacheinfo "160000,<product-commit>,radius"
-   git commit -s -m "chore: pin Radius to <product-commit>"
-   git push origin pin-radius-X.Y
-   gh pr create --repo radius-project/bicep-types-aws --base release/X.Y --fill
-   ```
-
-3. Rerun Prepare Release with the same inputs. Preparation captures `bicep-types-aws` from `release/X.Y`. For a first RC, if Radius `main` moved since the last run, the new plan freezes a newer commit and the check fails again. Repeat these steps with the new product commit.
+To resume an interrupted pin, rerun the **failed jobs** in the same Prepare Release run. The successful source-capture job supplies the original sibling SHAs. The workflow verifies an existing proposal or landed pin rather than opening another PR. A closed unmerged pin PR, modified proposal, conflicting channel head, or missing permission stops preparation. Inspect the reported PR or rule; do not hand-edit a gitlink or generated plan. Both the release PR and the controller independently recheck the frozen AWS commit. A removed or malformed submodule fails; a historical source where the submodule never existed passes with a notice.
 
 ### Approve the plan
 

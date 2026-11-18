@@ -45,10 +45,66 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  sources:
+    name: Freeze preparation inputs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: read
+    outputs:
+      product: ${{ steps.freeze.outputs.product }}
+      siblings: ${{ steps.freeze.outputs.siblings }}
+    steps:
+      - name: Require a main-branch dispatch
+        run: |
+          [[ "${GITHUB_REF}" == refs/heads/main ]] || {
+            echo "::error::Prepare Release must be dispatched from main."
+            exit 1
+          }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check release protections before preparing a candidate
+        if: github.repository == 'radius-project/radius'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_ENVIRONMENT: release
+        with:
+          script: |
+            const { requireCheck } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/prepare-aws-release-pin.mjs`)
+            const { default: verifyEnvironment } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/verify-release-environment.mjs`)
+            await requireCheck(github, 'radius', 'main', 'Validate release plan')
+            await verifyEnvironment({ github, core, context })
+
+      - name: Install source capture tools
+        run: make install-yq install-jq
+
+      - name: Capture the Radius cutoff and sibling refs
+        id: freeze
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+        run: |
+          output="${RUNNER_TEMP}/release-inputs"
+          bash .github/scripts/prepare-release.sh --version-only \
+            --release-type "${RELEASE_TYPE}" --channel "${CHANNEL}" --output-dir "${output}"
+          bash .github/scripts/capture-release-sibling-commits.sh \
+            --channel "${CHANNEL}" --output "${output}/siblings.json"
+          {
+            echo "product=$(<"${output}/product-commit.txt")"
+            echo "siblings=$(jq -ce . "${output}/siblings.json")"
+          } >> "${GITHUB_OUTPUT}"
+
   prepare:
     name: Prepare ${{ inputs.release-type }} for ${{ inputs.channel }}
+    needs: sources
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 45
     permissions:
       contents: read
       pull-requests: read
@@ -57,7 +113,7 @@ jobs:
       - name: Checkout main with release history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -111,6 +167,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
+          CAPTURED_PRODUCT: ${{ needs.sources.outputs.product }}
         run: |
           output_dir="${RUNNER_TEMP}/release-preflight"
           bash ./.github/scripts/prepare-release.sh \
@@ -120,6 +177,11 @@ jobs:
             --version-only
           version="$(<"${output_dir}/version.txt")"
           branch="$(<"${output_dir}/pr-branch.txt")"
+          product="$(<"${output_dir}/product-commit.txt")"
+          [[ "${product}" == "${CAPTURED_PRODUCT}" ]] || {
+            echo "::error::Radius release branch changed after source capture."
+            exit 1
+          }
 
           # The release tag will run the release branch's workflows, not main's.
           release_ref="refs/remotes/origin/release/${CHANNEL}"
@@ -175,6 +237,7 @@ jobs:
             echo "existing-url=${existing_url}"
             echo "existing-head=${existing_head}"
             echo "version=${version}"
+            echo "product-commit=${product}"
             echo "branch=${branch}"
             echo "release-candidate=${release_candidate}"
           } >> "${GITHUB_OUTPUT}"
@@ -236,13 +299,11 @@ jobs:
           explicit-prs: ${{ inputs.backport-pr-numbers }}
           output-file: ${{ runner.temp }}/release-backports.json
 
-      - name: Capture sibling repository commits
+      - name: Restore captured sibling commits
         env:
-          CHANNEL: ${{ inputs.channel }}
+          SIBLINGS: ${{ needs.sources.outputs.siblings }}
         run: |
-          bash ./.github/scripts/capture-release-sibling-commits.sh \
-            --channel "${CHANNEL}" \
-            --output "${RUNNER_TEMP}/release-siblings.json"
+          printf '%s\n' "${SIBLINGS}" > "${RUNNER_TEMP}/release-siblings.json"
 
       - name: Request incomplete explicit backports
         if: >-
@@ -267,6 +328,59 @@ jobs:
               --add-label "${label}"
           done < <(jq -r '.[].source_pr' "${RUNNER_TEMP}/release-backports.json")
 
+      - name: Confirm selected backports before updating AWS
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+        run: |
+          bash .github/scripts/prepare-release.sh --version-only \
+            --release-type "${RELEASE_TYPE}" --channel "${CHANNEL}" \
+            --backports-file "${RUNNER_TEMP}/release-backports.json" \
+            --output-dir "${RUNNER_TEMP}/release-preflight"
+
+      - name: Require validated RC coordination before a final
+        if: inputs.release-type == 'final'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          VERSION: ${{ steps.preflight.outputs.version }}
+          RELEASE_CANDIDATE: ${{ steps.preflight.outputs.release-candidate }}
+        with:
+          retries: 5
+          script: |
+            const { checkReleaseCandidate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
+            await checkReleaseCandidate({ github, context, plan: {
+              releaseType: 'final', version: process.env.VERSION,
+              previousVersion: process.env.RELEASE_CANDIDATE,
+            } })
+
+      - name: Create AWS pin App token
+        if: github.repository == 'radius-project/radius'
+        id: aws-pin-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: radius-project
+          repositories: bicep-types-aws
+          permission-contents: write
+          permission-pull-requests: write
+          permission-checks: read
+
+      - name: Reconcile AWS pin before recording the plan
+        if: github.repository == 'radius-project/radius'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_APP_SLUG: ${{ steps.aws-pin-token.outputs.app-slug }}
+          INPUT_CHANNEL: ${{ inputs.channel }}
+          INPUT_VERSION: ${{ steps.preflight.outputs.version }}
+          INPUT_PRODUCT_COMMIT: ${{ steps.preflight.outputs.product-commit }}
+          INPUT_SIBLINGS_FILE: ${{ runner.temp }}/release-siblings.json
+        with:
+          github-token: ${{ steps.aws-pin-token.outputs.token }}
+          script: |
+            const { default: prepare } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/prepare-aws-release-pin.mjs`)
+            await prepare({ github, core, context })
+
       - name: Prepare release changes and plan
         id: prepare
         env:
@@ -275,6 +389,7 @@ jobs:
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
           PREFLIGHT_VERSION: ${{ steps.preflight.outputs.version }}
+          PREFLIGHT_PRODUCT: ${{ steps.preflight.outputs.product-commit }}
         run: |
           output_dir="${RUNNER_TEMP}/release-preparation"
           bash ./.github/scripts/prepare-release.sh \
@@ -298,23 +413,11 @@ jobs:
             echo "backport-label=${backport_label}"
           } >> "${GITHUB_OUTPUT}"
 
-          [[ "${version}" == "${PREFLIGHT_VERSION}" ]] || {
+          [[ "${version}" == "${PREFLIGHT_VERSION}" &&
+            "$(yq -r '.source.productCommit' "${output_dir}/release-plan.yaml")" == "${PREFLIGHT_PRODUCT}" ]] || {
             echo "Release state changed after preflight." >&2
             exit 1
           }
-          yq -o=json '.' "${output_dir}/release-plan.yaml" >"${output_dir}/plan.json"
-
-      - name: Require validated RC coordination before a final
-        if: inputs.release-type == 'final'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          INPUT_MODE: check-rc
-          INPUT_PLAN_FILE: ${{ runner.temp }}/release-preparation/plan.json
-        with:
-          retries: 5
-          script: |
-            const { default: coordinate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
-            await coordinate({ github, context, core })
 
       - name: Preserve curated release note sections
         if: >-

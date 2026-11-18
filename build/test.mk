@@ -155,6 +155,7 @@ test-changelog-config: install-git-cliff install-jq ## Tests the git-cliff confi
 test-prepare-release: install-git-cliff ## Tests release version, changelog, notes, and plan preparation
 	@bash ./.github/scripts/prepare-release_test.sh
 	@bash ./.github/scripts/verify-deployment-engine-tag_test.sh
+	@node --test ./.github/scripts/prepare-aws-release-pin_test.mjs
 
 .PHONY: test-release-plan
 test-release-plan: install-git-cliff ## Tests release plan schema, policy, source, and file validation

@@ -439,6 +439,13 @@ test_changelog_pins_product_commit() {
         commit "feat: main-only change"
     fi
     product_commit="$(git -C "${REPO}" rev-parse "${source_ref}^{commit}")"
+    (cd "${REPO}" && bash "${SCRIPT}" --release-type "${release_type}" \
+        --channel "${channel}" --output-dir "${REPO}/preflight" --version-only) \
+        || { fail_test "source preflight failed"; return; }
+    if [[ "$(<"${REPO}/preflight/product-commit.txt")" != "${product_commit}" ]]; then
+        fail_test "AWS pin preflight selected the wrong ${release_type} product"
+        return
+    fi
 
     GITHUB_TOKEN="fixture-token" run_prepare "${release_type}" "${channel}" \
         "${REPO}/fake-git-cliff" "${SCRIPT_DIR}/changelog-range.sh"
