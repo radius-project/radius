@@ -254,7 +254,8 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		if err != nil {
 			return fmt.Errorf("invalid cert-manager target chart version: %w", err)
 		}
-		signers, err := mergeApproveSignerNames(ownedRelease.Config["approveSignerNames"], options.Radius.Namespace, chartOptions, ownedRelease.Chart.Metadata.Version, kubeContext)
+		existingSigners, hasSigners := ownedRelease.Config["approveSignerNames"]
+		signers, err := mergeApproveSignerNames(existingSigners, hasSigners, options.Radius.Namespace, chartOptions, ownedRelease.Chart.Metadata.Version, kubeContext)
 		if err != nil {
 			return err
 		}
@@ -464,24 +465,51 @@ func buildCertManagerValues(radiusNamespace string) map[string]any {
 	}
 }
 
-// mergeApproveSignerNames returns the approveSignerNames for an upgrade of the cert-manager that rad installed: the
-// signers rad needs, then the other signers already on the release. Helm replaces a list value instead of merging it,
-// so without this an upgrade would remove signers the user added for their own Issuers. It fails, before rad changes
-// the cluster, when an existing signer lets the default approver approve requests for the Radius CA issuer: the
-// signer of every namespaced Issuer, or that issuer's own signer. RBAC resourceNames do not match patterns, so no
-// other entry covers it. The command it suggests keeps installedVersion, so it never downgrades cert-manager.
-func mergeApproveSignerNames(existing any, radiusNamespace string, chartOptions ChartOptions, installedVersion, kubeContext string) ([]any, error) {
-	required := certManagerApproveSignerNames(radiusNamespace)
-	merged := make([]any, 0, len(required))
-	for _, name := range required {
-		merged = append(merged, name)
+// mergeApproveSignerNames returns the approveSignerNames for an upgrade of the cert-manager that rad installed. Helm
+// replaces a list value instead of merging it, so without this an upgrade would remove signers the user chose.
+//
+//   - When the release has no approveSignerNames, an older rad installed it with the chart's default list, and rad
+//     replaces it with certManagerApproveSignerNames.
+//   - When the release has a list, rad keeps the user's entries and adds only the Radius bootstrap and mTLS signers. It
+//     does not add every ClusterIssuer back if the user removed them.
+//   - An empty or null list makes the chart render no resourceNames, so the default approver may approve every
+//     signer. rad fails rather than choose a list for the user.
+//
+// It fails, before rad changes the cluster, when an existing signer lets the default approver approve requests for the
+// Radius CA issuer: the signer of every namespaced Issuer, or that issuer's own signer. RBAC resourceNames do not match
+// patterns, so no other entry covers it. The command it suggests keeps installedVersion, so it never downgrades
+// cert-manager.
+func mergeApproveSignerNames(existing any, present bool, radiusNamespace string, chartOptions ChartOptions, installedVersion, kubeContext string) ([]any, error) {
+	if !present {
+		required := certManagerApproveSignerNames(radiusNamespace)
+		merged := make([]any, 0, len(required))
+		for _, name := range required {
+			merged = append(merged, name)
+		}
+		return merged, nil
 	}
-	entries, _ := existing.([]any)
+
+	suggest := func(safe []string) string {
+		args := "upgrade " + chartOptions.ReleaseName + " cert-manager --repo " + certManagerHelmRepo + " --version " + installedVersion +
+			" --reuse-values --set " + QuoteFlagValue("approveSignerNames={"+strings.Join(safe, ",")+"}")
+		return helmCommand(kubeContext, chartOptions.Namespace, args)
+	}
 	caSigner := radiusCAIssuerSignerName(radiusNamespace)
+
+	entries, ok := existing.([]any)
+	if !ok || len(entries) == 0 {
+		return nil, clierrors.Message("Radius stopped before changing the cluster because the cert-manager that rad installed in namespace %s has an empty approveSignerNames value, which lets its default approver approve every signer, including the Radius CA issuer signer %s. Only Radius's csi-driver-spiffe approver may approve those requests. Set approveSignerNames to the signers of the Issuers that need the default approver, for example with %s, and then run the command again.",
+			chartOptions.Namespace, caSigner, suggest(certManagerApproveSignerNames(radiusNamespace)))
+	}
+
+	merged := make([]any, 0, len(entries)+2)
+	for _, issuer := range defaultApprovedRadiusIssuers() {
+		merged = append(merged, issuerSignerName(radiusNamespace, issuer))
+	}
 	var unsafe []string
 	for _, entry := range entries {
 		name, ok := entry.(string)
-		if !ok || slices.Contains(required, name) || slices.Contains(merged, any(name)) {
+		if !ok || slices.Contains(merged, any(name)) {
 			continue
 		}
 		if name == caSigner || name == "issuers.cert-manager.io/*" {
@@ -497,10 +525,8 @@ func mergeApproveSignerNames(existing any, radiusNamespace string, chartOptions 
 	for _, name := range merged {
 		safe = append(safe, name.(string))
 	}
-	args := "upgrade " + chartOptions.ReleaseName + " cert-manager --repo " + certManagerHelmRepo + " --version " + installedVersion +
-		" --reuse-values --set " + QuoteFlagValue("approveSignerNames={"+strings.Join(safe, ",")+"}")
 	return nil, clierrors.Message("Radius stopped before changing the cluster because the cert-manager that rad installed in namespace %s lets its default approver approve %s, which includes CertificateRequests for the Radius CA issuer signer %s. Only Radius's csi-driver-spiffe approver may approve them. Replace %s with the signers of the Issuers that need the default approver, for example with %s, and then run the command again.",
-		chartOptions.Namespace, strings.Join(unsafe, ", "), caSigner, strings.Join(unsafe, ", "), helmCommand(kubeContext, chartOptions.Namespace, args))
+		chartOptions.Namespace, strings.Join(unsafe, ", "), caSigner, strings.Join(unsafe, ", "), suggest(safe))
 }
 
 // certManagerApproveSignerNames returns the signers cert-manager's default approver may approve when rad installs
