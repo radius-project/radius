@@ -508,6 +508,23 @@ func Test_ensureCertManager(t *testing.T) {
 			wantErrParts: []string{"lets its default approver approve " + radiusCAIssuerSignerName(RadiusSystemNamespace)},
 		},
 		{
+			// Helm upgrades from the deployed revision, so the signers of a failed later revision are not kept.
+			name:    "failed rad-owned release keeps the deployed revision's signers",
+			setArgs: dryRun,
+			cluster: healthy,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				failed := withSigners("issuers.cert-manager.io/apps.failed-issuer")
+				failed.Version, failed.Info = 2, &releasev1.Info{Status: releasecommon.StatusFailed}
+				deployed := withSigners(userSigner)
+				deployed.Version = 1
+				expectGet(failed)(m)
+				m.EXPECT().RunHelmHistory(gomock.Any(), certManagerReleaseName).Return([]*releasev1.Release{deployed, failed}, nil)
+				expectPull(t, m)
+				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), deployed.Config, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
+					Return(&releasev1.Release{}, nil)
+			},
+		},
+		{
 			// The user removed every ClusterIssuer from the list, so rad must not add them back.
 			name:    "rad-owned release with a restricted list stays restricted",
 			stored:  storedDryRun,
@@ -589,6 +606,7 @@ func Test_ensureCertManager(t *testing.T) {
 			cluster: healthy,
 			expect: func(t *testing.T, m *MockHelmClient) {
 				expectGet(radOwnedFailed)(m)
+				m.EXPECT().RunHelmHistory(gomock.Any(), certManagerReleaseName).Return([]*releasev1.Release{radOwnedFailed}, nil)
 				expectPull(t, m)
 				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
 					Return(&releasev1.Release{}, nil)
@@ -740,11 +758,15 @@ func Test_ensureCertManager_NewerOwnedRelease(t *testing.T) {
 				if healthy {
 					status = releasecommon.StatusDeployed
 				}
-				client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(&releasev1.Release{
+				rel := &releasev1.Release{
 					Name: certManagerReleaseName, Labels: radManagedByLabels(),
 					Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "v1.22.1"}},
 					Info:  &releasev1.Info{Status: status},
-				}, nil)
+				}
+				client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(rel, nil)
+				if !healthy {
+					client.EXPECT().RunHelmHistory(gomock.Any(), certManagerReleaseName).Return([]*releasev1.Release{rel}, nil)
+				}
 				impl := &Impl{Helm: client, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 					k, a := (fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, "v1.22.1", "")}).clients()
 					return k, a, nil
