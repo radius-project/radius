@@ -135,8 +135,8 @@ func (ca testCA) issue(t *testing.T, opts certOptions) testCert {
 		opts.notAfter = time.Now().Add(time.Hour)
 	}
 	if opts.extKeyUsage == nil {
-		// csi-driver-spiffe requests both usages.
-		opts.extKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
+		// The chart's <receiver>-spiffe Certificates request only server auth.
+		opts.extKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
 	}
 	var uris []*url.URL
 	for _, u := range opts.uris {
@@ -175,12 +175,12 @@ func (ca testCA) issue(t *testing.T, opts certOptions) testCert {
 	}
 }
 
-// spiffeID returns the SPIFFE ID csi-driver-spiffe issues to component in the test namespace.
+// spiffeID returns the SPIFFE ID the chart issues to component in the test namespace.
 func spiffeID(component string) string {
 	return SPIFFEID(DefaultTrustDomain, testNamespace, component)
 }
 
-// spiffeURIs returns the URI SANs csi-driver-spiffe issues to component.
+// spiffeURIs returns the URI SANs the chart issues to component.
 func spiffeURIs(component string) []string {
 	return []string{spiffeID(component)}
 }
