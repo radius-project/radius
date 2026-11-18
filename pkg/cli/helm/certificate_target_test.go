@@ -206,6 +206,39 @@ func TestChangedRequestersStopBeforeDependencyApply(t *testing.T) {
 	require.ErrorContains(t, err, "requesters differ from the validated Radius values")
 }
 
+func TestExternalPreflightRejectsStandalonePod(t *testing.T) {
+	const pod = `
+apiVersion: v1
+kind: Pod
+metadata: {name: serving}
+spec:
+  containers: [{name: app, image: example.invalid/app}]
+  volumes: [{name: local-serving, csi: {driver: spiffe.csi.radapp.io}}]
+`
+	for _, conditional := range []bool{false, true} {
+		t.Run(fmt.Sprintf("requesterConditional=%t", conditional), func(t *testing.T) {
+			selected := certificateTestChart(t)
+			setValue(selected.Values, true, "global", "rbac", "enabled")
+			setValue(selected.Values, "external", "global", "rbac", "tls", "provider")
+			template := pod
+			if conditional {
+				template = `{{ if has "system:serviceaccount:security:custom" .Values.global.rbac.certManager.requesters }}` + pod + `{{ end }}`
+			}
+			selected.Templates = append(selected.Templates, &common.File{Name: "templates/serving-pod.yaml", Data: []byte(template)})
+			options := NewDefaultClusterOptions()
+			options.Radius.ChartPath, options.RadiusReleaseChart = "chart", selected
+			h := NewMockHelmClient(gomock.NewController(t))
+			h.EXPECT().LoadChart("chart").Return(selected, nil)
+			expectRadiusBaseline(t, h, options)
+			ctrl := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "custom")
+			kube := sarClient(nil, nil, ctrl)
+			i := &Impl{Helm: h, contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
+				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return kube, nil }}
+			require.ErrorContains(t, i.CheckRadiusCertificates(t.Context(), options, "test"), `requires managed CSI driver "spiffe.csi.radapp.io"`)
+		})
+	}
+}
+
 func runInstalledChartSwitchCommands(t *testing.T, old, selected *chart.Chart, stored map[string]any, kubeContext string) {
 	t.Helper()
 	for _, command := range []string{"reinstall", "upgrade", "preflight-only"} {
