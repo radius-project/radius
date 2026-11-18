@@ -212,13 +212,21 @@ func Test_Run_RadiusReceiver(t *testing.T) {
 	require.Equal(t, ExitOK, code, stderr)
 	require.Equal(t, "Bearer token-for-applications-rp"+StatusMarker+"200", stdout)
 
+	// --radius-token-dir selects another mounted token for the same receiver.
+	other := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(other, "applications-rp"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(other, "applications-rp", "token"), []byte("other-token"), 0o600))
+	code, stdout, stderr = run(t, "request", "--radius-receiver", "applications-rp", "--radius-dir", dir, "--radius-token-dir", other, "--radius-namespace", "radius-system", server.URL)
+	require.Equal(t, ExitOK, code, stderr)
+	require.Equal(t, "Bearer other-token"+StatusMarker+"200", stdout)
+
 	// The server's SPIFFE ID is applications-rp's, so a client for dynamic-rp refuses it and
 	// sends no request.
 	code, stdout, stderr = request("dynamic-rp")
 	require.Equal(t, ExitTransport, code)
 	require.Equal(t, StatusMarker+"0", stdout)
 	require.Contains(t, stderr, "PeerCertificateInvalid")
-	require.Equal(t, int32(1), requests.Load())
+	require.Equal(t, int32(2), requests.Load())
 }
 
 func Test_Run_UsageErrors(t *testing.T) {
@@ -238,6 +246,7 @@ func Test_Run_UsageErrors(t *testing.T) {
 		{name: "missing CA file", args: []string{"request", "--cacert", "/does/not/exist", "http://x"}, wantErr: "reading CA"},
 		{name: "receiver without directory", args: []string{"request", "--radius-receiver", "ucp", "--radius-namespace", "ns", "https://x"}, wantErr: "--radius-dir"},
 		{name: "receiver with -k", args: []string{"request", "--radius-receiver", "ucp", "--radius-dir", "/d", "--radius-namespace", "ns", "-k", "https://x"}, wantErr: "cannot be combined"},
+		{name: "token directory without receiver", args: []string{"request", "--radius-token-dir", "/t", "https://x"}, wantErr: "--radius-token-dir requires --radius-receiver"},
 		{name: "receiver without CA bundle", args: []string{"request", "--radius-receiver", "ucp", "--radius-dir", "/does/not/exist", "--radius-namespace", "ns", "https://x"}, wantErr: "Radius client transport"},
 	}
 
