@@ -487,6 +487,18 @@ func Test_ensureCertManager(t *testing.T) {
 			},
 		},
 		{
+			// A newer cert-manager that rad installed is kept, so the suggested command must not downgrade it.
+			name:    "newer rad-owned release approving every Issuer suggests its own version",
+			stored:  storedDryRun,
+			upgrade: true,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				rel := withSigners("issuers.cert-manager.io/*")
+				rel.Chart = &chart.Chart{Metadata: &chart.Metadata{Version: "v1.99.0"}}
+				expectGet(rel)(m)
+			},
+			wantErrParts: []string{"lets its default approver approve issuers.cert-manager.io/*", "--version v1.99.0 --reuse-values"},
+		},
+		{
 			name:    "rad-owned release approving the Radius CA issuer fails on install",
 			setArgs: dryRun,
 			cluster: healthy,
@@ -649,9 +661,10 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	mockHelmClient := NewMockHelmClient(ctrl)
-	// csi-driver-spiffe is checked, without changing the cluster, before cert-manager.
+	// csi-driver-spiffe is checked, without changing the cluster, before cert-manager. That check and cert-manager
+	// both look up the cert-manager release.
 	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
-	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
+	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(2)
 	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(&chart.Chart{}, nil)
 
 	impl := &Impl{

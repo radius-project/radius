@@ -105,6 +105,50 @@ func spiffePod(namespace, name, driver string) *corev1.Pod {
 	}
 }
 
+// certManagerManifest returns a cert-manager release manifest whose controller Deployment runs as serviceAccount in
+// namespace, next to a webhook Deployment that is not a controller.
+func certManagerManifest(namespace, serviceAccount string) string {
+	return `apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ` + serviceAccount + `
+  namespace: ` + namespace + `
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cert-manager-webhook
+  namespace: ` + namespace + `
+  labels:
+    app.kubernetes.io/component: webhook
+spec:
+  template:
+    spec:
+      serviceAccountName: cert-manager-webhook
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cert-manager
+  namespace: ` + namespace + `
+  labels:
+    app.kubernetes.io/component: controller
+spec:
+  template:
+    spec:
+      serviceAccountName: ` + serviceAccount + `
+`
+}
+
+// expectCertManagerGet expects a lookup of the cert-manager release, which returns rel, or no release when rel is nil.
+func expectCertManagerGet(m *MockHelmClient, rel *releasev1.Release) {
+	if rel == nil {
+		m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
+		return
+	}
+	m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(rel, nil)
+}
+
 // sarClient returns a fake client whose SubjectAccessReviews allow the signer names in allowed and records the
 // reviews in reviews.
 func sarClient(allowed map[string]bool, reviews *[]authorizationv1.SubjectAccessReviewSpec, objects ...runtime.Object) *k8sfake.Clientset {
@@ -114,13 +158,7 @@ func sarClient(allowed map[string]bool, reviews *[]authorizationv1.SubjectAccess
 		if reviews != nil {
 			*reviews = append(*reviews, review.Spec)
 		}
-		attributes := review.Spec.ResourceAttributes
-		if attributes.Subresource == "status" {
-			// Certificate status updates are allowed unless denied for the user, as cert-manager's controller is.
-			review.Status.Allowed = !allowed["deny-status:"+review.Spec.User]
-		} else {
-			review.Status.Allowed = allowed[attributes.Name]
-		}
+		review.Status.Allowed = allowed[review.Spec.ResourceAttributes.Name]
 		return true, review, nil
 	})
 	return client
@@ -470,9 +508,15 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 				Return(&releasev1.Release{}, nil)
 		}
 	}
-	approver := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
-	disabledApprover := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
+	// approver is an unmanaged cert-manager whose controller runs as the chart's default requester.
+	approver := certManagerControllerWithServiceAccount(certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, ""), "cert-manager")
+	disabledApprover := certManagerControllerWithServiceAccount(certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, ""), "cert-manager")
 	disabledApprover.Spec.Template.Spec.Containers[0].Args = []string{"--controllers=*,-certificaterequests-approver"}
+	ownedCertManager := func(serviceAccount string) *releasev1.Release {
+		return &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+			Manifest: certManagerManifest(CertManagerNamespace, serviceAccount)}
+	}
+	installedRequester := []string{defaultCertManagerRequester}
 
 	tests := []struct {
 		name       string
@@ -486,15 +530,20 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 		noVAPAPI   bool
 		wantErr    string
 		wantLog    string
+		// certManager is the cert-manager release that planning finds.
+		certManager *releasev1.Release
+		// noCertManagerGet is set when planning stops before it looks for cert-manager.
+		noCertManagerGet bool
 		// wantRequesters are the cert-manager controller users returned for the Radius chart.
 		wantRequesters []string
 	}{
-		{name: "mode off makes no calls", expect: func(*testing.T, *MockHelmClient) {}},
+		{name: "mode off makes no calls", expect: func(*testing.T, *MockHelmClient) {}, noCertManagerGet: true},
 		{
-			name:       "installs when absent",
-			setArgs:    dryRun,
-			expect:     expectInstall(wantValues),
-			wantClient: true,
+			name:           "installs when absent",
+			setArgs:        dryRun,
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantRequesters: installedRequester,
 		},
 		{
 			name:    "installs with the chart's SPIFFE values",
@@ -502,13 +551,15 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			stored:  map[string]any{"global": map[string]any{"rbac": map[string]any{"spiffe": map[string]any{"csiDriverName": "spiffe.example.org"}}}},
 			expect: expectInstall(buildCSIDriverSPIFFEValues(RadiusSystemNamespace,
 				spiffeSettings{TrustDomain: "example.org", CSIDriverName: "spiffe.example.org"})),
-			wantClient: true,
+			wantClient:     true,
+			wantRequesters: installedRequester,
 		},
 		{
-			name:       "mode from stored values",
-			stored:     map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}},
-			expect:     expectInstall(wantValues),
-			wantClient: true,
+			name:           "mode from stored values",
+			stored:         map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}},
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantRequesters: installedRequester,
 		},
 		{
 			name:    "user-owned release fails",
@@ -516,7 +567,8 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			expect: func(_ *testing.T, m *MockHelmClient) {
 				expectGet(&releasev1.Release{Name: csiDriverSPIFFEReleaseName})(m)
 			},
-			wantErr: "Helm release \"cert-manager-csi-driver-spiffe\" in namespace \"radius-system\" was not installed by rad. Radius installs and manages its own csi-driver-spiffe. Remove that release, for example with helm --kube-context \"test-context\" -n radius-system uninstall cert-manager-csi-driver-spiffe",
+			noCertManagerGet: true,
+			wantErr:          "Helm release \"cert-manager-csi-driver-spiffe\" in namespace \"radius-system\" was not installed by rad. Radius installs and manages its own csi-driver-spiffe. Remove that release, for example with helm --kube-context \"test-context\" -n radius-system uninstall cert-manager-csi-driver-spiffe",
 		},
 		{
 			name:    "renamed foreign installation fails before installing",
@@ -525,8 +577,9 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			expect: func(_ *testing.T, m *MockHelmClient) {
 				expectGet(nil)(m)
 			},
-			wantClient: true,
-			wantErr:    "another csi-driver-spiffe (DaemonSet identity/workload-identity-node)",
+			wantClient:       true,
+			noCertManagerGet: true,
+			wantErr:          "another csi-driver-spiffe (DaemonSet identity/workload-identity-node)",
 		},
 		{
 			name:    "foreign installation fails before installing",
@@ -535,8 +588,9 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			expect: func(_ *testing.T, m *MockHelmClient) {
 				expectGet(nil)(m)
 			},
-			wantClient: true,
-			wantErr:    "another csi-driver-spiffe (DaemonSet cert-manager/csi-driver-spiffe-driver)",
+			wantClient:       true,
+			noCertManagerGet: true,
+			wantErr:          "another csi-driver-spiffe (DaemonSet cert-manager/csi-driver-spiffe-driver)",
 		},
 		{
 			name:    "default approver conflict fails before installing",
@@ -547,7 +601,7 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 				expectGet(nil)(m)
 			},
 			wantClient: true,
-			wantErr:    "Radius stopped before it installed or upgraded csi-driver-spiffe and Radius because cert-manager's default approver (system:serviceaccount:cert-manager:default) can approve CertificateRequests for the Radius CA issuer signer issuers.cert-manager.io/radius-system.radius-ca-issuer. Only Radius's csi-driver-spiffe approver may approve them. Limit the default approver to other signers, for example with helm --kube-context \"test-context\" -n cert-manager upgrade cert-manager cert-manager --repo https://charts.jetstack.io --version " + CertManagerChartDefaultVersion + " " + "--reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-mtls-issuer,clusterissuers.cert-manager.io/*}\"" + ".",
+			wantErr:    "Radius stopped before it installed or upgraded csi-driver-spiffe and Radius because cert-manager's default approver (system:serviceaccount:cert-manager:cert-manager) can approve CertificateRequests for the Radius CA issuer signer issuers.cert-manager.io/radius-system.radius-ca-issuer. Only Radius's csi-driver-spiffe approver may approve them. Limit the default approver to other signers, for example with helm --kube-context \"test-context\" -n cert-manager upgrade cert-manager cert-manager --repo https://charts.jetstack.io --version " + CertManagerChartDefaultVersion + " " + "--reuse-values --set \"approveSignerNames={issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap,issuers.cert-manager.io/radius-system.radius-mtls-issuer,clusterissuers.cert-manager.io/*}\"" + ".",
 		},
 		{
 			name:    "default approver conflict on upgrade fails before upgrading",
@@ -568,16 +622,41 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			expect: func(_ *testing.T, m *MockHelmClient) {
 				expectGet(nil)(m)
 			},
-			wantClient: true,
-			wantErr:    "Radius stopped before changing the cluster because the cluster does not serve ValidatingAdmissionPolicy (admissionregistration.k8s.io/v1).",
+			wantClient:       true,
+			noCertManagerGet: true,
+			wantErr:          "Radius stopped before changing the cluster because the cluster does not serve ValidatingAdmissionPolicy (admissionregistration.k8s.io/v1).",
 		},
 		{
-			name:    "returns each cert-manager controller's user",
+			name:    "unmanaged cert-manager with other controller users fails before changing the cluster",
 			setArgs: dryRun,
 			objects: []runtime.Object{
 				approver,
 				certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "cert-manager"),
-				certManagerControllerWithServiceAccount(certManagerController("other", CertManagerChartDefaultVersion, ""), "controller"),
+			},
+			expect:     func(_ *testing.T, m *MockHelmClient) { expectGet(nil)(m) },
+			wantClient: true,
+			wantErr:    "Radius stopped before changing the cluster because it found Deployments labeled as cert-manager controllers, running as system:serviceaccount:cert-manager:cert-manager, system:serviceaccount:security:cert-manager, in a cert-manager that rad did not install.",
+		},
+		{
+			// The ServiceAccount of a namespace editor may update Certificate status, because cert-manager's
+			// cert-manager-edit role aggregates into edit. Labels and that permission do not make it cert-manager.
+			name:    "unmanaged cert-manager with a labeled Deployment of a namespace editor fails",
+			setArgs: dryRun,
+			objects: []runtime.Object{
+				approver,
+				certManagerControllerWithServiceAccount(certManagerController(RadiusSystemNamespace, CertManagerChartDefaultVersion, ""), "editor"),
+			},
+			allowed:    map[string]bool{"certificates": true},
+			expect:     func(_ *testing.T, m *MockHelmClient) { expectGet(nil)(m) },
+			wantClient: true,
+			wantErr:    "running as system:serviceaccount:cert-manager:cert-manager, system:serviceaccount:radius-system:editor, in a cert-manager that rad did not install",
+		},
+		{
+			name:    "unmanaged cert-manager keeps the requesters stored in Radius",
+			setArgs: dryRun,
+			stored:  map[string]any{"global": map[string]any{"rbac": map[string]any{"certManager": map[string]any{"requesters": []any{"system:serviceaccount:security:cert-manager"}}}}},
+			objects: []runtime.Object{
+				certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "cert-manager"),
 			},
 			allowed: map[string]bool{
 				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
@@ -585,11 +664,31 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			},
 			expect:     expectInstall(wantValues),
 			wantClient: true,
-			wantRequesters: []string{
-				"system:serviceaccount:cert-manager:default",
-				"system:serviceaccount:other:controller",
-				"system:serviceaccount:security:cert-manager",
+		},
+		{
+			name:    "cert-manager installed by rad allows only its release's controller",
+			setArgs: dryRun,
+			objects: []runtime.Object{
+				certManagerControllerWithServiceAccount(certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, ""), "custom"),
+				certManagerControllerWithServiceAccount(certManagerController(RadiusSystemNamespace, CertManagerChartDefaultVersion, ""), "editor"),
 			},
+			allowed: map[string]bool{
+				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
+				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
+				"certificates": true,
+			},
+			certManager:    ownedCertManager("custom"),
+			expect:         expectInstall(wantValues),
+			wantClient:     true,
+			wantRequesters: []string{"system:serviceaccount:cert-manager:custom"},
+		},
+		{
+			name:        "cert-manager installed by rad without a controller fails",
+			setArgs:     dryRun,
+			certManager: &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Manifest: "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: x\n"},
+			expect:      func(_ *testing.T, m *MockHelmClient) { expectGet(nil)(m) },
+			wantClient:  true,
+			wantErr:     "the cert-manager Helm release \"cert-manager\" that rad installed in namespace \"cert-manager\" has no controller Deployment",
 		},
 		{
 			name:    "approver limited to the Radius bootstrap and mTLS issuers installs quietly",
@@ -599,26 +698,8 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
 				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
 			},
-			expect:         expectInstall(wantValues),
-			wantClient:     true,
-			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
-		},
-		{
-			name:    "ignores a labeled Deployment whose ServiceAccount cannot update Certificate status",
-			setArgs: dryRun,
-			objects: []runtime.Object{
-				approver,
-				certManagerControllerWithServiceAccount(certManagerController("attacker", CertManagerChartDefaultVersion, ""), "spoof"),
-			},
-			allowed: map[string]bool{
-				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
-				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
-				"deny-status:system:serviceaccount:attacker:spoof":                 true,
-			},
-			expect:         expectInstall(wantValues),
-			wantClient:     true,
-			wantLog:        "Warning: not allowing attacker/cert-manager (system:serviceaccount:attacker:spoof) to request certificates from the Radius bootstrap and mTLS issuers: the Deployment looks like a cert-manager controller, but its ServiceAccount may not update cert-manager Certificate status in namespace radius-system. If it is a cert-manager controller, set global.rbac.certManager.requesters to the users your cert-manager controllers run as.",
-			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
+			expect:     expectInstall(wantValues),
+			wantClient: true,
 		},
 		{
 			name:    "explicit requesters skip discovery",
@@ -631,52 +712,55 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 				issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true,
 				issuerSignerName(RadiusSystemNamespace, RadiusMTLSIssuerName):      true,
 			},
+			expect:           expectInstall(wantValues),
+			wantClient:       true,
+			noCertManagerGet: true,
+		},
+		{
+			name:       "approver that cannot approve the mTLS issuer is a warning",
+			setArgs:    dryRun,
+			objects:    []runtime.Object{approver},
+			allowed:    map[string]bool{issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true},
 			expect:     expectInstall(wantValues),
 			wantClient: true,
+			wantLog:    "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-mtls-issuer. The Radius CA and the component certificates are issued only if another approver approves them.",
 		},
 		{
-			name:           "approver that cannot approve the mTLS issuer is a warning",
+			name:       "disabled approver is a warning",
+			setArgs:    dryRun,
+			objects:    []runtime.Object{disabledApprover},
+			expect:     expectInstall(wantValues),
+			wantClient: true,
+			wantLog:    "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap, issuers.cert-manager.io/radius-system.radius-mtls-issuer. The Radius CA and the component certificates are issued only if another approver approves them.",
+		},
+		{
+			name:           "unchanged deployed release is reused",
 			setArgs:        dryRun,
-			objects:        []runtime.Object{approver},
-			allowed:        map[string]bool{issuerSignerName(RadiusSystemNamespace, RadiusBootstrapIssuerName): true},
-			expect:         expectInstall(wantValues),
+			expect:         func(_ *testing.T, m *MockHelmClient) { expectGet(owned(releasecommon.StatusDeployed, wantValues))(m) },
 			wantClient:     true,
-			wantLog:        "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-mtls-issuer. The Radius CA and the component certificates are issued only if another approver approves them.",
-			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
+			wantRequesters: installedRequester,
 		},
 		{
-			name:           "disabled approver is a warning",
+			name:           "deployed release is upgraded on upgrade",
 			setArgs:        dryRun,
-			objects:        []runtime.Object{disabledApprover},
-			expect:         expectInstall(wantValues),
+			upgrade:        true,
+			expect:         expectUpgrade(owned(releasecommon.StatusDeployed, wantValues)),
 			wantClient:     true,
-			wantLog:        "Warning: cert-manager's default approver cannot approve CertificateRequests for issuers.cert-manager.io/radius-system.radius-selfsigned-bootstrap, issuers.cert-manager.io/radius-system.radius-mtls-issuer. The Radius CA and the component certificates are issued only if another approver approves them.",
-			wantRequesters: []string{"system:serviceaccount:cert-manager:default"},
+			wantRequesters: installedRequester,
 		},
 		{
-			name:       "unchanged deployed release is reused",
-			setArgs:    dryRun,
-			expect:     func(_ *testing.T, m *MockHelmClient) { expectGet(owned(releasecommon.StatusDeployed, wantValues))(m) },
-			wantClient: true,
+			name:           "changed values are upgraded",
+			setArgs:        dryRun,
+			expect:         expectUpgrade(owned(releasecommon.StatusDeployed, map[string]any{"app": map[string]any{"trustDomain": "old.example"}})),
+			wantClient:     true,
+			wantRequesters: installedRequester,
 		},
 		{
-			name:       "deployed release is upgraded on upgrade",
-			setArgs:    dryRun,
-			upgrade:    true,
-			expect:     expectUpgrade(owned(releasecommon.StatusDeployed, wantValues)),
-			wantClient: true,
-		},
-		{
-			name:       "changed values are upgraded",
-			setArgs:    dryRun,
-			expect:     expectUpgrade(owned(releasecommon.StatusDeployed, map[string]any{"app": map[string]any{"trustDomain": "old.example"}})),
-			wantClient: true,
-		},
-		{
-			name:       "failed release is repaired",
-			setArgs:    dryRun,
-			expect:     expectUpgrade(owned(releasecommon.StatusFailed, wantValues)),
-			wantClient: true,
+			name:           "failed release is repaired",
+			setArgs:        dryRun,
+			expect:         expectUpgrade(owned(releasecommon.StatusFailed, wantValues)),
+			wantClient:     true,
+			wantRequesters: installedRequester,
 		},
 	}
 
@@ -687,15 +771,19 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			mockHelmClient := NewMockHelmClient(ctrl)
 			tt.expect(t, mockHelmClient)
+			if !tt.noCertManagerGet {
+				expectCertManagerGet(mockHelmClient, tt.certManager)
+			}
 
 			clientCalls := 0
+			var reviews []authorizationv1.SubjectAccessReviewSpec
 			var logs []string
 			impl := &Impl{
 				Helm: mockHelmClient,
 				newCSIDriverSPIFFEClient: func(kubeContext string) (kubernetes.Interface, error) {
 					require.Equal(t, "test-context", kubeContext)
 					clientCalls++
-					client := sarClient(tt.allowed, nil, tt.objects...)
+					client := sarClient(tt.allowed, &reviews, tt.objects...)
 					if tt.noVAPAPI {
 						client.Resources = nil
 					}
@@ -717,6 +805,9 @@ func Test_planAndApplyCSIDriverSPIFFE(t *testing.T) {
 				require.NoError(t, err)
 			}
 			require.Equal(t, tt.wantRequesters, requesters)
+			for _, review := range reviews {
+				require.NotEqual(t, "certificates", review.ResourceAttributes.Resource, "permissions must not decide which users are cert-manager")
+			}
 			if tt.wantClient {
 				require.Equal(t, 1, clientCalls)
 			} else {
@@ -784,6 +875,9 @@ func Test_planCSIDriverSPIFFE_Rename(t *testing.T) {
 			t.Parallel()
 			m := NewMockHelmClient(gomock.NewController(t))
 			m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil)
+			if tt.wantErr == "" {
+				expectCertManagerGet(m, nil)
+			}
 			impl := &Impl{
 				Helm:                     m,
 				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return sarClient(allowed, nil, tt.objects...), nil },
@@ -1095,7 +1189,8 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 	wantValues := buildCSIDriverSPIFFEValues(RadiusSystemNamespace, spiffeSettings{TrustDomain: "rollback.example", CSIDriverName: SPIFFECSIDriverNameDefault})
 	installed := &releasev1.Release{Name: csiDriverSPIFFEReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Config: installedValues}
 	certManager := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
-		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Config: buildCertManagerValues(RadiusSystemNamespace)}
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Config: buildCertManagerValues(RadiusSystemNamespace),
+		Manifest: certManagerManifest(CertManagerNamespace, "cert-manager")}
 	history := func(target map[string]any) []*releasev1.Release {
 		return []*releasev1.Release{
 			{Version: 1, Config: target, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
@@ -1112,8 +1207,10 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 		toRevision bool
 		target     map[string]any
 		objects    []runtime.Object
-		expect     func(*testing.T, *MockHelmClient)
-		wantErr    string
+		// noCertManager is set when rad did not install cert-manager.
+		noCertManager bool
+		expect        func(*testing.T, *MockHelmClient)
+		wantErr       string
 	}{
 		{
 			name:   "different trust domain upgrades the driver before rolling back",
@@ -1121,6 +1218,7 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 			expect: func(t *testing.T, m *MockHelmClient) {
 				gomock.InOrder(
 					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
 					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
 					m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, false, DefaultInstallTimeout).
 						Return(&releasev1.Release{}, nil),
@@ -1138,6 +1236,7 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
 					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
 					m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, false, DefaultInstallTimeout).
 						Return(&releasev1.Release{}, nil),
 					m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil),
@@ -1153,6 +1252,7 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 				gomock.InOrder(
 					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
 					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
 					m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil),
 				)
 			},
@@ -1166,7 +1266,34 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
 				)
 			},
-			wantErr: "Radius stopped before rolling back to revision 1 because that revision lets system:serviceaccount:security:cert-manager request certificates from the Radius bootstrap and mTLS issuers, but the cert-manager controllers now run as system:serviceaccount:cert-manager:cert-manager.",
+			wantErr: "Radius stopped before changing the cluster because revision 1 lets system:serviceaccount:security:cert-manager request certificates from the Radius bootstrap and mTLS issuers, but Radius now allows system:serviceaccount:cert-manager:cert-manager, the users its cert-manager controllers run as.",
+		},
+		{
+			// The target also has another trust domain. Refusing after the driver upgrade would leave the current
+			// Radius workloads on a driver they do not match, so rad must refuse before it changes any dependency.
+			name: "target allowing other cert-manager users and another trust domain changes nothing",
+			target: rbac(map[string]any{
+				"enabled":     true,
+				"spiffe":      map[string]any{"trustDomain": "rollback.example"},
+				"certManager": map[string]any{"requesters": []any{"system:serviceaccount:security:cert-manager"}},
+			}),
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				gomock.InOrder(
+					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
+				)
+			},
+			wantErr: "Radius stopped before changing the cluster because revision 1 lets system:serviceaccount:security:cert-manager request",
+		},
+		{
+			// rad did not install cert-manager, so the deployed revision's requesters are the ones the operator chose.
+			name:          "unmanaged cert-manager and a target with other requesters than the deployed revision",
+			target:        rbac(map[string]any{"enabled": true, "certManager": map[string]any{"requesters": []any{"system:serviceaccount:security:cert-manager"}}}),
+			noCertManager: true,
+			expect: func(_ *testing.T, m *MockHelmClient) {
+				m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil)
+			},
+			wantErr: "revision 1 lets system:serviceaccount:security:cert-manager request certificates from the Radius bootstrap and mTLS issuers, but Radius now allows system:serviceaccount:cert-manager:cert-manager",
 		},
 		{
 			name:   "target listing the current cert-manager user rolls back",
@@ -1174,6 +1301,7 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 			expect: func(_ *testing.T, m *MockHelmClient) {
 				gomock.InOrder(
 					m.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(installed, nil),
+					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
 					m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(certManager, nil),
 					m.EXPECT().RunHelmRollback(gomock.Any(), radiusReleaseName, 1, true).Return(nil),
 				)
@@ -1212,6 +1340,9 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 			m := NewMockHelmClient(gomock.NewController(t))
 			m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history(tt.target), nil)
 			tt.expect(t, m)
+			if tt.noCertManager {
+				m.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound).AnyTimes()
+			}
 
 			objects := append([]runtime.Object{certManagerControllerWithServiceAccount(certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, ""), "cert-manager")}, tt.objects...)
 			impl := &Impl{
