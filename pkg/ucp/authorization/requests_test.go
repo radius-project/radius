@@ -106,6 +106,68 @@ func TestObserveRequests(t *testing.T) {
 	}
 }
 
+func TestObserveRequestsMappingTargets(t *testing.T) {
+	deployment := teamA + "/providers/Microsoft.Resources/deployments/test"
+	shrinkingGroup := plane + "/resourceGroups/" + strings.Repeat("\u0130", 40)
+	growingGroup := plane + "/resourceGroups/" + strings.Repeat("\u023a", 40)
+	for _, tt := range []struct {
+		name, path, subject, result, permission, target string
+	}{
+		{"shrinking Unicode collection parent", shrinkingGroup + "/providers/Radius.Core/applications", "alice", "allow", "Radius.Core/applications/read", shrinkingGroup},
+		{"growing Unicode collection parent", growingGroup + "/providers/Radius.Core/applications", "alice", "allow", "Radius.Core/applications/read", growingGroup},
+		{"known deployment extension", deployment + "/providers/Radius.Core/applications/app", "bob", "wouldDeny", "Radius.Core/applications/read", deployment + "/providers/Radius.Core/applications/app"},
+		{"unknown deployment extension", deployment + "/providers/Example.Test/widgets/a", "bob", "indeterminate", "", ""},
+		{"operations collection", deployment + "/operations", "bob", "allow", "Microsoft.Resources/deployments/read", deployment},
+		{"operation item", deployment + "/operations/0123", "bob", "allow", "Microsoft.Resources/deployments/read", deployment},
+		{"operation status", deployment + "/operationStatuses/0123", "bob", "allow", "Microsoft.Resources/deployments/read", deployment},
+		{"extension under operation", deployment + "/operations/0123/providers/Radius.Core/applications/app", "bob", "wouldDeny", "Radius.Core/applications/read", deployment + "/operations/0123/providers/Radius.Core/applications/app"},
+		{"unknown operation descendant", deployment + "/operations/0123/unknown/child", "bob", "indeterminate", "", ""},
+		{"unsupported deployment subroute", deployment + "/unknown/child", "bob", "indeterminate", "", ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				runtime, _, stop := requestRuntime(t, api.UserAuthorizationModeDryRun)
+				defer stop()
+				role := customRole(teamA+"/providers/Radius.Core/roleDefinitions/deployment-reader", "Microsoft.Resources/deployments/read")
+				require.NoError(t, runtime.Mutate(t.Context(), policyActor(), PolicyMutation{Target: *role.ID, Role: role.Properties}))
+				require.NoError(t, runtime.Mutate(t.Context(), policyActor(), assignmentMutation("deployment-reader", *role.ID, teamA, "bob")))
+				core, logs := observer.New(zap.InfoLevel)
+				request := httptest.NewRequest(http.MethodGet, tt.path+"?api-version=unchanged", nil)
+				identity := testIdentity()
+				identity.Principal.Subject = &tt.subject
+				ctx := context.WithValue(request.Context(), identityContextKey{}, identity)
+				request = request.WithContext(logr.NewContext(ctx, zapr.NewLogger(zap.New(core))))
+				response := httptest.NewRecorder()
+				calls := 0
+				ObserveRequests(runtime, "")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					calls++
+					require.Equal(t, tt.path, r.URL.Path)
+					require.Equal(t, "api-version=unchanged", r.URL.RawQuery)
+					w.Header().Set("X-Downstream", "preserved")
+					w.WriteHeader(http.StatusAccepted)
+					_, err := w.Write([]byte("original response"))
+					require.NoError(t, err)
+				})).ServeHTTP(response, request)
+				require.Equal(t, 1, calls)
+				require.Equal(t, http.StatusAccepted, response.Code)
+				require.Equal(t, "original response", response.Body.String())
+				require.Equal(t, "preserved", response.Header().Get("X-Downstream"))
+				entries := logs.FilterMessage("User authorization request").All()
+				require.Len(t, entries, 1)
+				fields := entries[0].ContextMap()
+				require.Equal(t, tt.result, fields["result"])
+				if tt.permission == "" {
+					require.NotContains(t, fields, "permission")
+					require.NotContains(t, fields, "target")
+				} else {
+					require.Equal(t, tt.permission, fields["permission"])
+					require.Equal(t, strings.ToLower(tt.target), fields["target"])
+				}
+			})
+		})
+	}
+}
+
 func TestObserveRequestsAvailability(t *testing.T) {
 	for _, mode := range []api.UserAuthorizationMode{
 		api.UserAuthorizationModeDisabled, api.UserAuthorizationModeDryRun, api.UserAuthorizationModeEnforce,

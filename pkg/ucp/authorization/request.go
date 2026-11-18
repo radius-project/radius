@@ -151,12 +151,14 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 			return c.mapping(ResourceRequest, "System.Resources/resourceProviders/resourceTypes/read", "/"+strings.Join(parts[:9], "/"))
 		}
 	}
-	// Deployment engine sub-routes, such as the operations rad deploy polls,
-	// read the parent deployment.
+	// Only deployment operation collection/item routes read the parent.
+	// Extension resources must retain their own permission and target.
 	if method == http.MethodGet {
 		for i := 0; i+4 < len(parts); i++ {
 			if strings.EqualFold(parts[i], "providers") && strings.EqualFold(parts[i+1], "Microsoft.Resources") &&
-				strings.EqualFold(parts[i+2], "deployments") {
+				strings.EqualFold(parts[i+2], "deployments") &&
+				((len(parts) == i+5 && strings.EqualFold(parts[i+4], "operations")) ||
+					(len(parts) == i+6 && containsFold([]string{"operations", "operationStatuses"}, parts[i+4]))) {
 				return c.mapping(ResourceRequest, "Microsoft.Resources/deployments/read", "/"+strings.Join(parts[:i+4], "/"))
 			}
 		}
@@ -188,8 +190,11 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 		target = target[:strings.LastIndex(target, "/")]
 		// Removing a collection's type leaves /providers/namespace, not its
 		// containing scope. Nested child collections retain their parent resource.
-		if strings.HasSuffix(strings.ToLower(target), "/providers/"+strings.ToLower(id.ProviderNamespace())) {
-			target = target[:strings.LastIndex(strings.ToLower(target), "/providers/")]
+		parent := strings.ToLower(target)
+		if strings.HasSuffix(parent, "/providers/"+strings.ToLower(id.ProviderNamespace())) {
+			// Unicode case conversion can change byte lengths. The offset and
+			// the sliced string must use the same representation.
+			target = parent[:strings.LastIndex(parent, "/providers/")]
 		}
 		if target == "" {
 			target = "/"
