@@ -111,9 +111,8 @@ func (s *Service) initialize(ctx context.Context) (*http.Server, error) {
 	// TODO: This is the workaround to fix the high cardinality of otelhttp.
 	// Remove this once otelhttp middleware is fixed - https://github.com/open-telemetry/opentelemetry-go-contrib/issues/3765
 	app = middleware.RemoveRemoteAddr(app)
-	if s.options.Config.Authorization.EffectiveMode() != authz.ModeOff && s.options.UCP != nil {
-		app, err = mtls.WithInternalIdentityClient(app, s.options.Config.Authorization, "dynamic-rp",
-			s.options.UCP.Client(), s.options.UCP.Endpoint())
+	if s.options.Config.Authorization.EffectiveMode() != authz.ModeOff {
+		app, err = s.options.Config.UCP.WithRPIdentityHandler(app, s.options.Config.Authorization, "dynamic-rp", s.options.UCP)
 		if err != nil {
 			return nil, err
 		}

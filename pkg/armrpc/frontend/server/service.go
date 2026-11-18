@@ -98,9 +98,8 @@ func (s *Service) Start(ctx context.Context, opt Options) error {
 	if err != nil {
 		return err
 	}
-	if s.Options.Config.Authorization.EffectiveMode() != authz.ModeOff && s.Options.UCPConnection != nil {
-		server.Handler, err = mtls.WithInternalIdentityClient(server.Handler, s.Options.Config.Authorization, opt.ReceiverName,
-			s.Options.UCPConnection.Client(), s.Options.UCPConnection.Endpoint())
+	if s.Options.Config.Authorization.EffectiveMode() != authz.ModeOff {
+		server.Handler, err = s.Options.Config.UCP.WithRPIdentityHandler(server.Handler, s.Options.Config.Authorization, opt.ReceiverName, s.Options.UCPConnection)
 		if err != nil {
 			return err
 		}

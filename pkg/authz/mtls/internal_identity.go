@@ -85,14 +85,14 @@ func WithInternalIdentityClient(next http.Handler, options authz.Options, compon
 		scheme = "http"
 	}
 	parsed, err := url.Parse(endpoint)
-	if err != nil || client == nil || parsed.Scheme != scheme || parsed.User != nil ||
-		parsed.Host != "ucp."+options.Namespace+".svc:9444" || parsed.RawQuery != "" || parsed.Fragment != "" {
-		return nil, errors.New("internal identity evidence requires the configured canonical UCP client")
-	}
 	if next == nil {
 		next = http.DefaultServeMux
 	}
-	return WithInternalIdentityHandler(&internalIdentityClient{Handler: next, client: client, origin: scheme + "://" + parsed.Host}, options, component), nil
+	if err == nil && client != nil && parsed.Scheme == scheme && parsed.User == nil &&
+		parsed.Host == "ucp."+options.Namespace+".svc:9444" && parsed.RawQuery == "" && parsed.Fragment == "" {
+		next = &internalIdentityClient{Handler: next, client: client, origin: scheme + "://" + parsed.Host}
+	}
+	return WithInternalIdentityHandler(next, options, component), nil
 }
 
 // WithInternalIdentityHandler belongs inside the listener's existing trust boundary.
