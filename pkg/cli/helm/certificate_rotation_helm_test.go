@@ -69,6 +69,9 @@ func TestLegacyRotationHelmPreservesRecoveryJournal(t *testing.T) {
 				require.NoError(t, err)
 				before, err := store.dynamic.Resource(apiServiceResource).Get(t.Context(), radiusAPIService, metav1.GetOptions{})
 				require.NoError(t, err)
+				require.Equal(t, string(journal.UID), before.GetAnnotations()[rotationJournalUID])
+				require.Equal(t, "legacy/publish", before.GetAnnotations()[rotationRevision])
+				require.Equal(t, radiusReleaseName, before.GetAnnotations()[helmReleaseNameAnnotation])
 				install := newInstallClient(configuration, radiusReleaseName, namespace, false, time.Minute)
 				install.ServerSideApply = ssa
 				_, err = install.Run(selected, map[string]any{})
