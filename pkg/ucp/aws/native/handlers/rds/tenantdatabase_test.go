@@ -186,16 +186,18 @@ func Test_TenantDatabase_Update(t *testing.T) {
 		h, api := newTenant(t, managed)
 		rec := &recordingAPI{API: api}
 		h.api = rec
-		for _, key := range []string{keyID, keyArn, "alias/app-secret"} {
+		for _, key := range []string{keyID, keyArn} {
 			require.NoError(t, update(t, h, with(managed, map[string]any{"MasterUserSecretKmsKeyId": key}), replace("MasterUserSecretKmsKeyId", key)), key)
 		}
 		require.Empty(t, rec.modifies, "AWS already uses the key, and can't take it again")
 
-		err := update(t, h, with(managed, map[string]any{"MasterUserSecretKmsKeyId": "other-key"}), replace("MasterUserSecretKmsKeyId", "other-key"))
-		var failure *native.Failure
-		require.ErrorAs(t, err, &failure)
-		require.True(t, failure.ClientError)
-		require.Contains(t, failure.Message, keyID, "the message names the key AWS uses")
+		for _, key := range []string{"other-key", "alias/app-secret"} {
+			err := update(t, h, with(managed, map[string]any{"MasterUserSecretKmsKeyId": key}), replace("MasterUserSecretKmsKeyId", key))
+			var failure *native.Failure
+			require.ErrorAs(t, err, &failure, key)
+			require.True(t, failure.ClientError)
+			require.Contains(t, failure.Message, keyID, "the message names the key AWS uses")
+		}
 		require.Empty(t, rec.modifies)
 	})
 

@@ -256,8 +256,8 @@ func modifyInput(request native.UpdateRequest, changed []string, secret *types.M
 		input.MasterUserSecretKmsKeyId = aws.String(key)
 		send = true
 	case slices.Contains(changed, "MasterUserSecretKmsKeyId") && secret != nil:
-		// AWS can't change the key once RDS manages the password. UCP sends a key it has no fingerprint of, such
-		// as after an update whose response was lost, so the key AWS reports stands in for it.
+		// AWS can't change the key once RDS manages the password. UCP also sends a key it has no fingerprint of,
+		// such as after an update whose response was lost, so the key AWS reports decides.
 		if err := sameSecretKey(key, aws.ToString(secret.KmsKeyId)); err != nil {
 			return nil, err
 		}
@@ -272,16 +272,16 @@ func modifyInput(request native.UpdateRequest, changed []string, secret *types.M
 	return input, nil
 }
 
-// sameSecretKey returns nil when key, the template's MasterUserSecretKmsKeyId, can be the key current names, the key
-// of the secret RDS manages, and a rejected failure otherwise. An alias can't be told from another key without asking
-// KMS, so it is taken as the same.
+// sameSecretKey returns nil when key, the template's MasterUserSecretKmsKeyId, names current, the key of the secret RDS
+// manages, by its ID or ARN, and a rejected failure otherwise. An alias can't be told from another key without asking
+// KMS, so it fails too, and the message names the key to set instead.
 func sameSecretKey(key string, current string) error {
-	if key == current || strings.HasSuffix(current, ":key/"+key) || strings.HasSuffix(key, ":key/"+current) ||
-		strings.HasPrefix(key, "alias/") || strings.Contains(key, ":alias/") {
+	if key == current || strings.HasSuffix(current, ":key/"+key) || strings.HasSuffix(key, ":key/"+current) {
 		return nil
 	}
 	return &native.Failure{
-		Message:     fmt.Sprintf("RDS already manages the master user password with the KMS key %q, and AWS can't change it. Set MasterUserSecretKmsKeyId to that key, or turn off ManageMasterUserPassword first.", current),
+		Message: fmt.Sprintf("RDS already manages the master user password with the KMS key %q, and AWS can't change it. "+
+			"Set MasterUserSecretKmsKeyId to that key's ID or ARN, or turn off ManageMasterUserPassword first.", current),
 		ClientError: true,
 		Outcome:     native.OutcomeRejected,
 	}
