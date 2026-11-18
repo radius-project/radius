@@ -46,6 +46,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/lakeformation v1.57.2
 	github.com/aws/aws-sdk-go-v2/service/medialive v1.114.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.7
+	github.com/aws/aws-sdk-go-v2/service/s3control v1.79.7
+	github.com/aws/aws-sdk-go-v2/service/s3tables v1.25.0
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.286.1
 	github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.49.3
 	github.com/aws/aws-sdk-go-v2/service/sts v1.51.7
@@ -160,8 +162,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.11.10 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.20.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3control v1.79.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3tables v1.25.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.12.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.39.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.44.2 // indirect
