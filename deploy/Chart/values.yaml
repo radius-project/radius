@@ -146,8 +146,9 @@ global:
       # Usernames that may request certificates from Issuers "radius-selfsigned-bootstrap" and
       # "radius-mtls-issuer": the cert-manager controller's ServiceAccount. Empty defaults to
       # ["system:serviceaccount:cert-manager:cert-manager"]. Unless you set it, rad install/upgrade
-      # sets it to the cert-manager controllers it finds whose ServiceAccount may update Certificate
-      # status in the release namespace. The radius-certificate-issuance ValidatingAdmissionPolicy
+      # sets it to the controller of the cert-manager release that rad installed. For a cert-manager
+      # that rad did not install, rad keeps the stored list, and fails when the controllers it finds
+      # run as other users until you set it. The radius-certificate-issuance ValidatingAdmissionPolicy
       # denies other requesters, and limits Radius service accounts to Issuer "radius-ca-issuer".
       # The policy needs Kubernetes 1.30 or later; with the mode not off, the chart fails to
       # render when the cluster does not serve admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy.
