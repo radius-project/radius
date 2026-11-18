@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"path"
 	"reflect"
 	"slices"
@@ -34,7 +35,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/authz"
@@ -174,9 +177,9 @@ type csiDriverSPIFFEPlan struct {
 	release      *releasev1.Release
 	kubeClient   kubernetes.Interface
 	namespace    string
-	// explicitRequesters is true when the user set global.rbac.certManager.requesters on the command line. rad then
-	// uses that allowlist and does not discover cert-manager controllers.
-	explicitRequesters bool
+	// requesters are the users the cert-manager controllers run as, when rad knows them from a source it trusts.
+	// rad sets them in global.rbac.certManager.requesters. They are nil when the Radius values decide the list.
+	requesters []string
 }
 
 // planCSIDriverSPIFFE checks, without changing the cluster, that Radius's csi-driver-spiffe instance can be
@@ -225,23 +228,26 @@ func (i *Impl) planCSIDriverSPIFFE(ctx context.Context, options ClusterOptions, 
 			return nil, err
 		}
 	}
+	requesters, err := i.planCertManagerRequesters(ctx, options, kubeContext, kubeClient, storedValues, currentValues)
+	if err != nil {
+		return nil, err
+	}
 
 	return &csiDriverSPIFFEPlan{
-		chartOptions:       chartOptions,
-		values:             buildCSIDriverSPIFFEValues(options.Radius.Namespace, settings),
-		release:            rel,
-		kubeClient:         kubeClient,
-		namespace:          options.Radius.Namespace,
-		explicitRequesters: nestedValue(currentValues, "global", "rbac", "certManager", "requesters") != nil,
+		chartOptions: chartOptions,
+		values:       buildCSIDriverSPIFFEValues(options.Radius.Namespace, settings),
+		release:      rel,
+		kubeClient:   kubeClient,
+		namespace:    options.Radius.Namespace,
+		requesters:   requesters,
 	}, nil
 }
 
 // applyCSIDriverSPIFFE installs or upgrades Radius's csi-driver-spiffe instance from a plan made by
 // planCSIDriverSPIFFE. It runs after cert-manager is ready. A nil plan does nothing.
 //
-// It returns the users the cert-manager controllers run as, which the Radius chart's certificate issuance policy
-// allows to request certificates from the Radius bootstrap and mTLS issuers. It returns none for a nil plan or when
-// it finds no cert-manager controller.
+// It returns the plan's requesters, which the Radius chart's certificate issuance policy allows to request
+// certificates from the Radius bootstrap and mTLS issuers. It returns none for a nil plan.
 func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPlan, kubeContext string, upgrade bool) ([]string, error) {
 	if plan == nil {
 		return nil, nil
@@ -257,19 +263,7 @@ func (i *Impl) applyCSIDriverSPIFFE(ctx context.Context, plan *csiDriverSPIFFEPl
 	} else if err != nil {
 		return nil, err
 	}
-	var requesters []string
-	if !plan.explicitRequesters {
-		var untrusted []string
-		var err error
-		requesters, untrusted, err = certManagerControllerUsers(ctx, plan.kubeClient, plan.namespace)
-		if err != nil {
-			return nil, err
-		}
-		if len(untrusted) > 0 {
-			i.logInfo("Warning: not allowing %s to request certificates from the Radius bootstrap and mTLS issuers: the Deployment looks like a cert-manager controller, but its ServiceAccount may not update cert-manager Certificate status in namespace %s. If it is a cert-manager controller, set global.rbac.certManager.requesters to the users your cert-manager controllers run as.",
-				strings.Join(untrusted, ", "), plan.namespace)
-		}
-	}
+	requesters := plan.requesters
 	if missing, err := missingApprovableRadiusSigners(ctx, plan.kubeClient, plan.namespace); err != nil {
 		i.logInfo("Warning: %v", err)
 	} else if len(missing) > 0 {
@@ -478,45 +472,101 @@ func missingApprovableRadiusSigners(ctx context.Context, kubeClient kubernetes.I
 	return missing, nil
 }
 
-// certManagerControllerUsers returns the sorted users the cert-manager controller deployments run as. The controller
-// creates the CertificateRequests of Certificate resources, such as the Radius CA and the component certificates.
+// planCertManagerRequesters returns the users the cert-manager controllers run as, for
+// global.rbac.certManager.requesters, from a source that rad trusts. Labels and serviceAccountName are set by whoever
+// creates a Deployment, and cert-manager's chart lets every namespace editor update Certificate status, so neither a
+// Deployment nor RBAC shows which ServiceAccount is cert-manager's controller. rad trusts only what it installs:
 //
-// Labels and serviceAccountName are set by whoever creates the Deployment, so a Deployment counts as a cert-manager
-// controller only when its ServiceAccount may also update the status of cert-manager Certificates in radiusNamespace:
-// cert-manager's controller needs that permission, and only a cluster administrator can grant it. It returns the
-// users of the other Deployments, as namespace/name (user), in untrusted.
-func certManagerControllerUsers(ctx context.Context, kubeClient kubernetes.Interface, radiusNamespace string) (users []string, untrusted []string, err error) {
+//   - When the user sets the requesters on the command line, it returns nil, so their list applies.
+//   - When rad installed cert-manager, it returns the controller's user from the manifest of that Helm release.
+//   - When no cert-manager controller runs, rad installs cert-manager, and it returns the user that chart runs as.
+//   - When a cert-manager that rad did not install runs, it returns nil, so the requesters stored in the Radius release
+//     or the chart default apply. It fails before rad changes the cluster when neither is stored and a Deployment
+//     labeled as a cert-manager controller runs as another user, because rad cannot tell whether it is cert-manager.
+func (i *Impl) planCertManagerRequesters(ctx context.Context, options ClusterOptions, kubeContext string, kubeClient kubernetes.Interface, storedValues, currentValues map[string]any) ([]string, error) {
+	if nestedValue(currentValues, "global", "rbac", "certManager", "requesters") != nil {
+		return nil, nil
+	}
+	chartOptions := options.CertManager.ChartOptions
+	owned, err := i.radOwnedCertManagerRelease(chartOptions, kubeContext)
+	if err != nil {
+		return nil, err
+	}
+	if owned != nil {
+		users, err := certManagerControllerUsersInManifest(owned.Manifest, chartOptions.Namespace)
+		if err != nil {
+			return nil, fmt.Errorf("could not read the cert-manager controller from Helm release %q in namespace %q: %w", chartOptions.ReleaseName, chartOptions.Namespace, err)
+		}
+		if len(users) == 0 {
+			return nil, fmt.Errorf("the cert-manager Helm release %q that rad installed in namespace %q has no controller Deployment; repair or uninstall it and retry", chartOptions.ReleaseName, chartOptions.Namespace)
+		}
+		return users, nil
+	}
+
 	deployments, err := kubeClient.AppsV1().Deployments(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: certManagerControllerSelector})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to list cert-manager deployments: %w", err)
+		return nil, fmt.Errorf("failed to list cert-manager deployments: %w", err)
 	}
+	if len(deployments.Items) == 0 {
+		return []string{installedCertManagerUser(chartOptions)}, nil
+	}
+	if stored, ok := nestedValue(storedValues, "global", "rbac", "certManager", "requesters").([]any); ok && len(stored) > 0 {
+		return nil, nil
+	}
+	var users []string
 	for idx := range deployments.Items {
-		controller := &deployments.Items[idx]
-		user := defaultApproverUser(controller)
-		review := &authorizationv1.SubjectAccessReview{Spec: authorizationv1.SubjectAccessReviewSpec{
-			User:   user,
-			Groups: []string{"system:serviceaccounts", "system:serviceaccounts:" + controller.Namespace, "system:authenticated"},
-			ResourceAttributes: &authorizationv1.ResourceAttributes{
-				Namespace:   radiusNamespace,
-				Group:       "cert-manager.io",
-				Resource:    "certificates",
-				Subresource: "status",
-				Verb:        "update",
-			},
-		}}
-		result, err := kubeClient.AuthorizationV1().SubjectAccessReviews().Create(ctx, review, metav1.CreateOptions{})
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not check cert-manager controller %s/%s: %w", controller.Namespace, controller.Name, err)
-		}
-		if result.Status.Allowed {
-			users = append(users, user)
-		} else {
-			untrusted = append(untrusted, fmt.Sprintf("%s/%s (%s)", controller.Namespace, controller.Name, user))
-		}
+		users = append(users, defaultApproverUser(&deployments.Items[idx]))
 	}
 	slices.Sort(users)
-	slices.Sort(untrusted)
-	return slices.Compact(users), untrusted, nil
+	users = slices.Compact(users)
+	if slices.Equal(users, []string{defaultCertManagerRequester}) {
+		return nil, nil
+	}
+	return nil, clierrors.Message("Radius stopped before changing the cluster because it found Deployments labeled as cert-manager controllers, running as %s, in a cert-manager that rad did not install. Radius lets only the users in global.rbac.certManager.requesters request certificates from its bootstrap and mTLS issuers, and labels do not show which Deployment is cert-manager. Confirm the users your cert-manager controllers run as, and then run the command again with --set %s.",
+		strings.Join(users, ", "), QuoteFlagValue("global.rbac.certManager.requesters={system:serviceaccount:<namespace>:<serviceaccount>}"))
+}
+
+// installedCertManagerUser returns the user the controller of the cert-manager chart that rad installs runs as: the
+// chart's full name in the release namespace.
+func installedCertManagerUser(chartOptions ChartOptions) string {
+	name := chartOptions.ReleaseName
+	if !strings.Contains(name, certManagerReleaseName) {
+		name += "-" + certManagerReleaseName
+	}
+	return "system:serviceaccount:" + chartOptions.Namespace + ":" + name
+}
+
+// certManagerControllerUsersInManifest returns the sorted users of the cert-manager controller Deployments in a
+// cert-manager release manifest. Objects without a namespace are in releaseNamespace.
+func certManagerControllerUsersInManifest(manifest, releaseNamespace string) ([]string, error) {
+	var users []string
+	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
+	for {
+		var document map[string]any
+		err := decoder.Decode(&document)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		object := unstructured.Unstructured{Object: document}
+		if document == nil || object.GetKind() != "Deployment" || object.GroupVersionKind().Group != "apps" ||
+			object.GetLabels()["app.kubernetes.io/component"] != "controller" {
+			continue
+		}
+		namespace := object.GetNamespace()
+		if namespace == "" {
+			namespace = releaseNamespace
+		}
+		serviceAccount, _, _ := unstructured.NestedString(object.Object, "spec", "template", "spec", "serviceAccountName")
+		if serviceAccount == "" {
+			serviceAccount = "default"
+		}
+		users = append(users, "system:serviceaccount:"+namespace+":"+serviceAccount)
+	}
+	slices.Sort(users)
+	return slices.Compact(users), nil
 }
 
 // checkValidatingAdmissionPolicyServed fails when the cluster does not serve ValidatingAdmissionPolicy. The Radius
