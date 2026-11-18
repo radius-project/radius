@@ -39,7 +39,7 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 	}
 	kubeconfig, kubeClient := startTestAPIServer(t)
 	t.Setenv("KUBECONFIG", kubeconfig)
-	for _, namespace := range []string{CertManagerNamespace, "other-workload"} {
+	for _, namespace := range []string{RadiusSystemNamespace, CertManagerNamespace, "other-workload"} {
 		_, err := kubeClient.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: namespace},
 		}, metav1.CreateOptions{})
@@ -100,6 +100,12 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 					options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 					impl := &Impl{Helm: helmClient}
 					if command == "upgrade" {
+						radius := newTestHelmConfiguration(t, kubeconfig, RadiusSystemNamespace)
+						require.NoError(t, radius.Releases.Create(planningRevision(1, chart, nil)))
+						t.Cleanup(func() {
+							_, err := radius.Releases.Delete(radiusReleaseName, 1)
+							require.NoError(t, err)
+						})
 						err = impl.UpgradeRadius(t.Context(), options, testKubeContext)
 					} else {
 						options.Radius.Reinstall = command == "install --reinstall"
@@ -117,7 +123,11 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 					stillForeign, err := foreignSecrets.Get(t.Context(), foreign.Name, metav1.GetOptions{})
 					require.NoError(t, err)
 					require.Equal(t, foreign, stillForeign)
-					requireNoRelease(t, kubeconfig, radiusReleaseName)
+					if command == "upgrade" {
+						require.Equal(t, 1, getTestRelease(t, kubeconfig, radiusReleaseName).Version)
+					} else {
+						requireNoRelease(t, kubeconfig, radiusReleaseName)
+					}
 				})
 			}
 		}

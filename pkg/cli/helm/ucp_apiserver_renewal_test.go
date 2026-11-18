@@ -521,9 +521,9 @@ func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
 					case "flags":
 						values, parseErr := parseUserValuesFromCLI(&options.Radius)
 						require.NoError(t, parseErr)
-						_, err = resolveRadiusAuthTransition(t.Context(), chart, RadiusSystemNamespace, "radius", values, nil, false, authz.ModeOff)
+						_, err = resolveRadiusActionTarget(t.Context(), chart, RadiusSystemNamespace, "radius", values, nil, false, authz.ModeOff, nil)
 					case "stored":
-						_, err = resolveRadiusAuthTransition(t.Context(), chart, RadiusSystemNamespace, "radius", nil, target, false, authz.ModeOff)
+						_, err = resolveRadiusActionTarget(t.Context(), chart, RadiusSystemNamespace, "radius", nil, target, false, authz.ModeOff, nil)
 					case "rollback":
 						history := []*releasev1.Release{{Version: 1, Chart: chart, Config: target}, {Version: 2, Chart: chart}}
 						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)

@@ -227,7 +227,7 @@ func Test_resolveAuthzMode(t *testing.T) {
 			t.Parallel()
 
 			stored, current := copyValues(tt.stored), copyValues(tt.current)
-			_, got, err := resolveEffectiveChartValues(loadStageTestChart(t), RadiusSystemNamespace, radiusReleaseName, tt.current, tt.stored, false)
+			_, got, err := resolveEffectiveChartValues(loadStageTestChart(t), RadiusSystemNamespace, radiusReleaseName, tt.current, tt.stored, selectedAuthSettings)
 			require.Equal(t, stored, copyValues(tt.stored), "stored values must not be mutated")
 			require.Equal(t, current, copyValues(tt.current), "current values must not be mutated")
 			if tt.wantErr != "" {
@@ -268,7 +268,7 @@ func Test_resolveAuthzMode_FromCLIArgs(t *testing.T) {
 
 			current, err := parseUserValuesFromCLI(&tt.options)
 			require.NoError(t, err)
-			_, got, err := resolveEffectiveChartValues(loadStageTestChart(t), RadiusSystemNamespace, radiusReleaseName, current, tt.stored, false)
+			_, got, err := resolveEffectiveChartValues(loadStageTestChart(t), RadiusSystemNamespace, radiusReleaseName, current, tt.stored, selectedAuthSettings)
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got.mode)
 		})
@@ -671,6 +671,7 @@ func Test_CertManagerPendingRelease_StopsBeforeChanges(t *testing.T) {
 							},
 						}
 						var err error
+						expectRadiusPlanningReads(impl, client, options.RadiusReleaseChart, options.RadiusReleaseValues, options.Radius.Reinstall, command != "install")
 						if command == "upgrade" {
 							err = impl.UpgradeRadius(t.Context(), options, kubeContext)
 						} else {

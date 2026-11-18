@@ -839,8 +839,8 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 		targetChart := loadStageTestChart(t)
 		targetChart.Metadata.Version = "0.45.0"
 		return []*releasev1.Release{
-			{Version: 1, Config: authzOnValues, Manifest: targetManifest, Chart: targetChart, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
-			{Version: 2, Config: map[string]any{}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+			{Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 1, Config: authzOnValues, Manifest: targetManifest, Chart: targetChart, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 2, Config: map[string]any{}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 		}
 	}
 	impl := func(c *stageCluster, m *MockHelmClient) *Impl {

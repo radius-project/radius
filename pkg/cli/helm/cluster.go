@@ -388,7 +388,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
-	target, err := resolveRadiusAuthTransition(ctx, radiusHelmChart, clusterOptions.Radius.Namespace, clusterOptions.Radius.ReleaseName, radiusValues, clusterOptions.RadiusReleaseValues, false, deployedMode)
+	var planRender renderRadiusManifest
+	if clusterOptions.Radius.Reinstall {
+		planRender = i.renderRadiusInstallRelease(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions).manifest(true)
+	}
+	target, err := resolveRadiusActionTarget(ctx, radiusHelmChart, clusterOptions.Radius.Namespace, clusterOptions.Radius.ReleaseName, radiusValues, clusterOptions.RadiusReleaseValues, false, deployedMode, planRender)
 	if err != nil {
 		return err
 	}
@@ -620,7 +624,8 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return err
 	}
-	target, err := resolveRadiusAuthTransition(ctx, radiusHelmChart, clusterOptions.Radius.Namespace, clusterOptions.Radius.ReleaseName, radiusValues, clusterOptions.RadiusReleaseValues, !reuseValues, deployedMode)
+	planRender := i.renderRadiusUpgradeRelease(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
+	target, err := resolveRadiusActionTarget(ctx, radiusHelmChart, clusterOptions.Radius.Namespace, clusterOptions.Radius.ReleaseName, radiusValues, clusterOptions.RadiusReleaseValues, !reuseValues, deployedMode, planRender.manifest(true))
 	if err != nil {
 		return err
 	}
@@ -937,7 +942,16 @@ func (i *Impl) reconcileRollbackDependencies(ctx context.Context, kubeContext st
 	if targetRelease.Name != "" {
 		options.Radius.ReleaseName = targetRelease.Name
 	}
-	target, err := resolveRadiusAuthTarget(ctx, targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, false)
+	// RunHelmRollback upgrades to the historical chart with reset values. Its
+	// new revision can render different workloads than the stored manifest.
+	var render renderRadiusRelease = func(ctx context.Context) (*releasev1.Release, error) {
+		return i.renderUpgradeFromHistory(ctx, kubeContext, history, targetRelease.Chart, targetRelease.Config, options.Radius.ReleaseName, options.Radius.Namespace, false)
+	}
+	_, current, err := rollbackChartValues(history, latestRevision(history))
+	if err != nil {
+		return err
+	}
+	target, err := resolveRadiusActionTarget(ctx, targetRelease.Chart, options.Radius.Namespace, options.Radius.ReleaseName, targetRelease.Config, nil, false, current.mode, render.manifest(false))
 	if err != nil {
 		return err
 	}

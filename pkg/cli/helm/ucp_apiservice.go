@@ -118,7 +118,7 @@ func installedAuthzMode(options ClusterOptions) (authz.Mode, error) {
 	if options.RadiusReleaseChart == nil && options.RadiusReleaseValues == nil {
 		return authz.ModeOff, nil
 	}
-	_, settings, err := resolveEffectiveChartValues(options.RadiusReleaseChart, options.Radius.Namespace, options.Radius.ReleaseName, options.RadiusReleaseValues, nil, false)
+	_, settings, err := resolveEffectiveChartValues(options.RadiusReleaseChart, options.Radius.Namespace, options.Radius.ReleaseName, options.RadiusReleaseValues, nil, historicalAuthSettings)
 	return settings.mode, err
 }
 
@@ -168,7 +168,7 @@ func rollbackChartValues(history []*releasev1.Release, revision int) (map[string
 		if rel == nil || rel.Version != revision {
 			continue
 		}
-		return resolveEffectiveChartValues(rel.Chart, rel.Namespace, rel.Name, rel.Config, nil, false)
+		return resolveEffectiveChartValues(rel.Chart, rel.Namespace, rel.Name, rel.Config, nil, historicalAuthSettings)
 	}
 	return nil, chartAuthSettings{}, nil
 }

@@ -1037,6 +1037,9 @@ func TestSelectedChartAuthPrerequisites(t *testing.T) {
 				client := NewMockHelmClient(gomock.NewController(t))
 				client.EXPECT().LoadChart(tc.path).DoAndReturn(loader.Load)
 				impl := &Impl{Helm: client}
+				if tc.want == "external admission check" || tc.want == "managed CSI check" {
+					expectRadiusPlanningReads(impl, client, selected, tc.stored, command == "install" && options.Radius.Reinstall, command == "upgrade" || options.Radius.Reinstall)
+				}
 				switch tc.want {
 				case "external admission check":
 					impl.newCSIDriverSPIFFEClient = func(string) (kubernetes.Interface, error) {
@@ -1053,6 +1056,109 @@ func TestSelectedChartAuthPrerequisites(t *testing.T) {
 				require.ErrorContains(t, err, tc.want)
 			})
 		}
+	}
+}
+
+func planningRevision(version int, selected *chart.Chart, config map[string]any) *releasev1.Release {
+	return &releasev1.Release{Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: version,
+		Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: selected, Config: config}
+}
+
+// Provide the same release baseline and cluster capabilities to the Helm dry run.
+func expectRadiusPlanningReads(impl *Impl, client *MockHelmClient, selected *chart.Chart, config map[string]any, reinstall, upgrade bool) {
+	if !upgrade {
+		return
+	}
+	if impl.contourCluster == nil {
+		impl.contourCluster = &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)}
+	}
+	rev := planningRevision(1, selected, config)
+	if reinstall {
+		client.EXPECT().RunHelmGet(gomock.Any(), radiusReleaseName).Return(rev, nil)
+	}
+	client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{rev}, nil)
+}
+
+func TestUpgradeResetIgnoredLegacyProvider(t *testing.T) {
+	options := NewDefaultClusterOptions()
+	options.Contour.Disabled, options.ResetValues = true, true
+	options.Radius.ChartPath = "../../../deploy/Chart"
+	legacy, err := loader.Load("testdata/a6-auth-workloads.tgz")
+	require.NoError(t, err)
+	options.RadiusReleaseChart = legacy
+	options.RadiusReleaseValues = map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true, "tls": map[string]any{"provider": "external"}}}}
+	client := NewMockHelmClient(gomock.NewController(t))
+	client.EXPECT().LoadChart(options.Radius.ChartPath).DoAndReturn(loader.Load)
+	client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).AnyTimes().Return([]*releasev1.Release{planningRevision(1, legacy, options.RadiusReleaseValues)}, nil)
+	expectControllerStrategyMigration(client, false)
+	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), map[string]any{}, radiusReleaseName, RadiusSystemNamespace, true, false, options.Radius.Timeout)
+	impl := newStageCluster(t, nil, false).impl(client, "cert-manager")
+	require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
+}
+
+func TestActionSpecificWorkloadPlan(t *testing.T) {
+	for _, action := range []string{"upgrade", "upgrade hook", "reinstall", "rollback"} {
+		t.Run(action, func(t *testing.T) {
+			selected := loadStageTestChart(t)
+			workload := `
+{{ if and .Release.IsUpgrade (eq .Release.Revision 5) (.Capabilities.APIVersions.Has "test.example/v1") }}
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: local-serving}
+spec:
+  template:
+    spec:
+      volumes:
+      - name: local-serving
+        csi: {driver: spiffe.csi.radapp.io}
+{{ end }}`
+			if action == "upgrade hook" {
+				workload = strings.Replace(workload, "name: local-serving}", `name: local-serving, annotations: {"helm.sh/hook": pre-upgrade}}`, 1)
+			}
+			selected.Templates = append(selected.Templates, &common.File{Name: "templates/on-upgrade.yaml", Data: []byte(workload)})
+			external := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true, "tls": map[string]any{"provider": "external"}}}}
+			history := []*releasev1.Release{planningRevision(1, selected, external), planningRevision(4, selected, external)}
+			history[0].Info.Status = releasecommon.StatusSuperseded
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).AnyTimes().Return(history, nil)
+			impl := &Impl{Helm: client, contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI, "test.example/v1")},
+				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
+					return nil, errors.New("already reached prerequisite checks")
+				}}
+			options := NewDefaultClusterOptions()
+			options.Radius.ChartPath, options.Contour.Disabled = "chart", true
+			options.RadiusReleaseChart, options.RadiusReleaseValues = selected, external
+			var err error
+			if action == "rollback" {
+				err = impl.RollbackRadiusToRevision(t.Context(), "test-context", 1)
+			} else {
+				client.EXPECT().LoadChart("chart").Return(selected, nil)
+				if action == "reinstall" {
+					options.Radius.Reinstall = true
+					client.EXPECT().RunHelmGet(gomock.Any(), radiusReleaseName).AnyTimes().Return(history[1], nil)
+					err = impl.InstallRadius(t.Context(), options, "test-context")
+				} else {
+					err = impl.UpgradeRadius(t.Context(), options, "test-context")
+				}
+			}
+			require.ErrorContains(t, err, "inconsistent with the selected authorization settings")
+		})
+	}
+}
+
+func TestWorkloadRequirementsPodBearingKinds(t *testing.T) {
+	const pod = `{"kind":"Pod","spec":{"volumes":[{"name":"serving","csi":{"driver":"spiffe.csi.radapp.io"}}]}}`
+	for kind, manifest := range map[string]string{
+		"Pod": pod, "List": `{"kind":"List","items":[` + pod + `]}`,
+		"CronJob":               `{"kind":"CronJob","spec":{"jobTemplate":{"spec":{"template":` + pod + `}}}}`,
+		"ReplicationController": `{"kind":"ReplicationController","spec":{"template":` + pod + `}}`,
+		"PodTemplate":           `{"kind":"PodTemplate","template":` + pod + `}`,
+	} {
+		t.Run(kind, func(t *testing.T) {
+			req, err := workloadRequirementsFromManifest(manifest, "")
+			require.NoError(t, err)
+			require.Equal(t, workloadRequirements{1, SPIFFECSIDriverNameDefault}, req)
+		})
 	}
 }
 
@@ -1102,7 +1208,7 @@ spec:
 			overrides := map[string]any{"global": map[string]any{"rbac": map[string]any{
 				"spiffe": map[string]any{"csiDriverName": driver},
 			}}}
-			values, _, err := resolveEffectiveChartValues(selected, RadiusSystemNamespace, radiusReleaseName, overrides, nil, false)
+			values, _, err := resolveEffectiveChartValues(selected, RadiusSystemNamespace, radiusReleaseName, overrides, nil, selectedAuthSettings)
 			require.NoError(t, err)
 			req, err := renderedWorkloadRequirements(t.Context(), selected, values, RadiusSystemNamespace, radiusReleaseName)
 			require.NoError(t, err)
@@ -1131,7 +1237,7 @@ spec:
           driver: custom.csi.example
 {{- end }}`)})
 	current := map[string]any{"unrelated": "override"}
-	values, settings, err := resolveEffectiveChartValues(selected, ns, name, current, nil, false)
+	values, settings, err := resolveEffectiveChartValues(selected, ns, name, current, nil, selectedAuthSettings)
 	require.NoError(t, err)
 	require.Equal(t, authz.ModeEnforce, settings.mode)
 	require.Equal(t, authz.TLSProviderExternal, settings.provider)
@@ -1186,6 +1292,7 @@ func Test_ForeignCSIDriverSPIFFE_FailsBeforeChangingCluster(t *testing.T) {
 			if command == "install" {
 				err = impl.InstallRadius(t.Context(), options, "test-context")
 			} else {
+				expectRadiusPlanningReads(impl, client, loadStageTestChart(t), nil, false, true)
 				err = impl.UpgradeRadius(t.Context(), options, "test-context")
 			}
 			require.ErrorContains(t, err, "Radius stopped before changing the cluster because another csi-driver-spiffe (DaemonSet identity/workload-identity-node) runs on it.")
@@ -1241,8 +1348,8 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Config: buildCertManagerValues(RadiusSystemNamespace)}
 	history := func(target map[string]any) []*releasev1.Release {
 		return []*releasev1.Release{
-			{Version: 1, Config: target, Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
-			{Version: 2, Config: rbac(map[string]any{"enabled": true}), Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+			{Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 1, Config: target, Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 2, Config: rbac(map[string]any{"enabled": true}), Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 		}
 	}
 	allowed := map[string]bool{
@@ -1327,8 +1434,9 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 
 			objects := append([]runtime.Object{certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}, tt.objects...)
 			impl := &Impl{
-				Helm:   m,
-				logger: func(string, ...any) {},
+				Helm:           m,
+				logger:         func(string, ...any) {},
+				contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
 				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 					kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 					return kubeClient, apiextClient, nil
