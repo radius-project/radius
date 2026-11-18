@@ -31,6 +31,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -46,8 +48,21 @@ const testToken = "test-token"
 
 func TestExternalSDKRedirectStaysAtConfiguredOrigin(t *testing.T) {
 	_, tokenDir, _ := writeCertificate(t, "ucp")
-	other := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		t.Error("unconfigured listener was contacted")
+	var otherHits atomic.Int32
+	var sawAuthorization, sawToken atomic.Bool
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		otherHits.Add(1)
+		if _, ok := r.Header["Authorization"]; ok {
+			sawAuthorization.Store(true)
+		}
+		for _, values := range r.Header {
+			for _, value := range values {
+				if strings.Contains(value, testToken) {
+					sawToken.Store(true)
+				}
+			}
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer other.Close()
 	configured := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -94,9 +109,13 @@ func TestExternalSDKRedirectStaysAtConfiguredOrigin(t *testing.T) {
 		require.NoError(t, poll.Body.Close())
 	}
 
-	// Require a transport rejection, not a dial error, without a receiver for the token.
-	other.Close()
-	_, err = client.Get(configured.URL + "/scheme-relative")
+	response, err = client.Get(configured.URL + "/scheme-relative")
+	if response != nil {
+		require.NoError(t, response.Body.Close())
+	}
+	require.Zero(t, otherHits.Load())
+	require.False(t, sawAuthorization.Load())
+	require.False(t, sawToken.Load())
 	require.ErrorContains(t, err, "external token transport refuses unconfigured destination")
 }
 
