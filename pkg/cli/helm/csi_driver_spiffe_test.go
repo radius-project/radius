@@ -1055,6 +1055,35 @@ func TestSelectedChartAuthPrerequisites(t *testing.T) {
 	}
 }
 
+func TestRenderedRequirementsRecognizeDriverUnderAnyVolumeName(t *testing.T) {
+	selected := loadStageTestChart(t)
+	selected.Templates = append(selected.Templates, &common.File{Name: "templates/local-serving.yaml", Data: []byte(`
+kind: Deployment
+spec:
+  template:
+    spec:
+      volumes:
+      - name: local-serving
+        csi:
+          driver: {{ .Values.global.rbac.spiffe.csiDriverName }}
+      - name: other
+        csi:
+          driver: unrelated.csi.example
+`)})
+	for _, driver := range []string{SPIFFECSIDriverNameDefault, "custom.spiffe.example"} {
+		t.Run(driver, func(t *testing.T) {
+			overrides := map[string]any{"global": map[string]any{"rbac": map[string]any{
+				"spiffe": map[string]any{"csiDriverName": driver},
+			}}}
+			values, _, err := resolveEffectiveChartValues(selected, RadiusSystemNamespace, radiusReleaseName, overrides, nil, false)
+			require.NoError(t, err)
+			req, err := renderedWorkloadRequirements(t.Context(), selected, values, RadiusSystemNamespace, radiusReleaseName)
+			require.NoError(t, err)
+			require.Equal(t, workloadRequirements{1, driver}, req)
+		})
+	}
+}
+
 func TestRenderedRequirementsUseSelectedChartAndReleaseContext(t *testing.T) {
 	const ns, name = "custom-ns", "custom-release"
 	selected := loadStageTestChart(t)

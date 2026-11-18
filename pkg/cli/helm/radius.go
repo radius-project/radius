@@ -179,13 +179,15 @@ func workloadRenderContext(values map[string]any, namespace, release string) com
 }
 
 // renderedWorkloadRequirements inspects pod templates, not a chart's declaration of
-// provider support. The zero-value engine has no cluster client for lookup or hooks.
+// provider support. This offline render cannot verify connected issuer policy;
+// callers preparing raw values should use resolveEffectiveChartValues instead.
 func renderedWorkloadRequirements(ctx context.Context, selected *chart.Chart, values map[string]any, namespace, release string) (workloadRequirements, error) {
 	var req workloadRequirements
 	rendered, err := (engine.Engine{}).RenderWithContext(ctx, selected, workloadRenderContext(values, namespace, release))
 	if err != nil {
 		return req, fmt.Errorf("render Radius workloads: %w", err)
 	}
+	configuredDriver, _ := nestedValue(values, "global", "rbac", "spiffe", "csiDriverName").(string)
 	for name, manifest := range rendered {
 		if filepath.Base(name) == "NOTES.txt" {
 			continue
@@ -209,7 +211,12 @@ func renderedWorkloadRequirements(ctx context.Context, selected *chart.Chart, va
 				continue
 			}
 			for _, vol := range obj.Spec.Template.Spec.Volumes {
-				if vol.CSI == nil || vol.Name != "spiffe" {
+				if vol.CSI == nil {
+					continue
+				}
+				// Recognize the managed driver under any volume name. Keep the
+				// historical spiffe slot visible even when its driver is inconsistent.
+				if vol.Name != "spiffe" && vol.CSI.Driver != SPIFFECSIDriverNameDefault && (configuredDriver == "" || vol.CSI.Driver != configuredDriver) {
 					continue
 				}
 				if req.ManagedCSIVolumes > 0 && req.CSIDriverName != vol.CSI.Driver {

@@ -52,8 +52,15 @@ func TestExternalSDKRedirectStaysAtConfiguredOrigin(t *testing.T) {
 	defer other.Close()
 	configured := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "Bearer "+testToken, r.Header.Get("Authorization"))
-		if r.URL.Path == "/start" {
+		switch r.URL.Path {
+		case "/start":
 			http.Redirect(w, r, "/next", http.StatusFound)
+		case "/absolute":
+			http.Redirect(w, r, other.URL+"/next", http.StatusFound)
+		case "/async":
+			w.Header().Set("Location", other.URL+"/result")
+			w.Header().Set("Azure-AsyncOperation", other.URL+"/status")
+			w.WriteHeader(http.StatusAccepted)
 		}
 	}))
 	defer configured.Close()
@@ -66,6 +73,23 @@ func TestExternalSDKRedirectStaysAtConfiguredOrigin(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "/next", response.Request.URL.Path)
 	require.NoError(t, response.Body.Close())
+
+	response, err = client.Get(configured.URL + "/absolute")
+	require.NoError(t, err)
+	require.Equal(t, configured.URL+"/next", response.Request.URL.String())
+	require.NoError(t, response.Body.Close())
+
+	response, err = client.Get(configured.URL + "/async")
+	require.NoError(t, err)
+	require.NoError(t, response.Body.Close())
+	require.Equal(t, http.StatusAccepted, response.StatusCode)
+	for header, path := range map[string]string{"Location": "/result", "Azure-AsyncOperation": "/status"} {
+		target := response.Header.Get(header)
+		require.Equal(t, configured.URL+path, target)
+		poll, err := client.Get(target)
+		require.NoError(t, err)
+		require.NoError(t, poll.Body.Close())
+	}
 
 	// Exercise the SDK's redirected request independently of its Location rewriting.
 	dest, err := url.Parse(other.URL)
