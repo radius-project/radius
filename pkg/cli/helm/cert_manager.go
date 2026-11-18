@@ -20,8 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
-	"slices"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -37,7 +35,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/pkg/authz"
-	"github.com/radius-project/radius/pkg/cli/clierrors"
 	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
 )
@@ -199,9 +196,8 @@ func imageTag(image string) string {
 }
 
 // ensureCertManager makes cert-manager available when Radius authorization is enabled. It installs a pinned
-// version when none exists, upgrades a release rad installed when upgrade is true, when that release is
-// not deployed or its controller is missing, or when it lacks the values rad sets (an older rad installed it
-// without approveSignerNames), reuses a supported
+// version when none exists, upgrades a release rad installed when upgrade is true or when that release is
+// not deployed or its controller is missing, reuses a supported
 // installation it did not install, and fails when that installation is older than CertManagerMinimumVersion.
 // With authorization off it returns without contacting the cluster.
 func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, storedValues map[string]any, upgrade bool) error {
@@ -221,7 +217,6 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 
 	helmAction := NewHelmAction(i.Helm)
 	chartOptions := options.CertManager.ChartOptions
-	values := buildCertManagerValues(options.Radius.Namespace)
 	ownedRelease, err := i.radOwnedCertManagerRelease(chartOptions, kubeContext)
 	if err != nil {
 		return err
@@ -254,17 +249,6 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		if err != nil {
 			return fmt.Errorf("invalid cert-manager target chart version: %w", err)
 		}
-		// The upgrade reuses the values of the revision Helm starts from, which is not the latest one after a failure.
-		baseline, err := NewHelmAction(i.Helm).upgradeBaseline(kubeContext, chartOptions.ReleaseName, chartOptions.Namespace, ownedRelease)
-		if err != nil {
-			return err
-		}
-		existingSigners, hasSigners := baseline.Config["approveSignerNames"]
-		signers, err := mergeApproveSignerNames(existingSigners, hasSigners, options.Radius.Namespace, chartOptions, ownedRelease.Chart.Metadata.Version, kubeContext)
-		if err != nil {
-			return err
-		}
-		values["approveSignerNames"] = signers
 		newer := installedVersion.GreaterThan(targetVersion)
 		if !upgrade || newer {
 			healthy := ownedRelease.Info != nil && ownedRelease.Info.Status == releasecommon.StatusDeployed
@@ -280,19 +264,14 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 					}
 				}
 			}
-			configured := releaseHasValues(ownedRelease.Config, values)
-			if healthy && (configured || newer) {
+			if healthy {
 				output.LogInfo("Using cert-manager installed by rad in namespace %s", chartOptions.Namespace)
 				return nil
 			}
 			if newer {
 				return fmt.Errorf("rad-owned cert-manager v%s is newer than target v%s but is not healthy. Repair it at its current version and retry; rad will not downgrade it", installedVersion, targetVersion)
 			}
-			if healthy {
-				output.LogInfo("Configuring cert-manager installed by rad...")
-			} else {
-				output.LogInfo("Repairing cert-manager installed by rad...")
-			}
+			output.LogInfo("Repairing cert-manager installed by rad...")
 		} else {
 			output.LogInfo("Upgrading cert-manager...")
 		}
@@ -300,7 +279,7 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		if err != nil {
 			return fmt.Errorf("failed to prepare cert-manager Helm chart, err: %w", err)
 		}
-		if _, err := i.Helm.RunHelmUpgrade(helmConf, helmChart, values, chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, true, chartOptions.Timeout); err != nil {
+		if _, err := i.Helm.RunHelmUpgrade(helmConf, helmChart, buildCertManagerValues(), chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, true, chartOptions.Timeout); err != nil {
 			return fmt.Errorf("failed to upgrade cert-manager, err: %w", err)
 		}
 		return nil
@@ -328,7 +307,7 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 	if err != nil {
 		return fmt.Errorf("failed to prepare cert-manager Helm chart, err: %w", err)
 	}
-	if _, err := i.Helm.RunHelmInstall(helmConf, helmChart, values, chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, chartOptions.Timeout, radManagedByLabels()); err != nil {
+	if _, err := i.Helm.RunHelmInstall(helmConf, helmChart, buildCertManagerValues(), chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, chartOptions.Timeout, radManagedByLabels()); err != nil {
 		return fmt.Errorf("failed to install cert-manager, err: %w", err)
 	}
 	return nil
@@ -435,114 +414,14 @@ func (i *Impl) uninstallCertManager(ctx context.Context, options ClusterOptions,
 	return i.uninstallHelmRelease("cert-manager", chartOptions.ReleaseName, chartOptions.Namespace, kubeContext)
 }
 
-// UninstallCertManager removes csi-driver-spiffe and cert-manager on their own, with the same ownership and
-// other-workload checks that UninstallRadius applies. It does not touch the Radius or Contour releases. When it keeps
-// csi-driver-spiffe, it keeps cert-manager too and returns a *CSIDriverSPIFFEKeptError.
+// UninstallCertManager removes cert-manager on its own, with the same ownership and other-workload checks
+// that UninstallRadius applies. It does not touch the Radius or Contour releases.
 func (i *Impl) UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
-	if err := i.uninstallCSIDriverSPIFFE(ctx, clusterOptions, kubeContext); err != nil {
-		return err
-	}
 	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
 }
 
-// releaseHasValues reports whether every value in want is set to the same value in a release's stored config.
-func releaseHasValues(config map[string]any, want map[string]any) bool {
-	for key, value := range want {
-		if !reflect.DeepEqual(config[key], value) {
-			return false
-		}
-	}
-	return true
-}
-
 // buildCertManagerValues installs the CRDs with the release and removes them on uninstall, so a later
-// install does not find CRDs without a controller. It also limits cert-manager's default approver to the signers
-// in certManagerApproveSignerNames, so it never approves requests for the Radius CA issuer.
-func buildCertManagerValues(radiusNamespace string) map[string]any {
-	// []any matches the release config Helm stores, so releaseHasValues can compare them.
-	var approveSignerNames []any
-	for _, name := range certManagerApproveSignerNames(radiusNamespace) {
-		approveSignerNames = append(approveSignerNames, name)
-	}
-	return map[string]any{
-		"crds":               map[string]any{"enabled": true, "keep": false},
-		"approveSignerNames": approveSignerNames,
-	}
-}
-
-// mergeApproveSignerNames returns the approveSignerNames for an upgrade of the cert-manager that rad installed. Helm
-// replaces a list value instead of merging it, so without this an upgrade would remove signers the user chose.
-//
-//   - When the release has no approveSignerNames, an older rad installed it with the chart's default list, and rad
-//     replaces it with certManagerApproveSignerNames.
-//   - When the release has a list, rad keeps the user's entries and adds only the Radius bootstrap and mTLS signers. It
-//     does not add every ClusterIssuer back if the user removed them.
-//   - An empty or null list makes the chart render no resourceNames, so the default approver may approve every
-//     signer. rad fails rather than choose a list for the user.
-//
-// It fails, before rad changes the cluster, when an existing signer lets the default approver approve requests for the
-// Radius CA issuer: the signer of every namespaced Issuer, or that issuer's own signer. RBAC resourceNames do not match
-// patterns, so no other entry covers it. The command it suggests keeps installedVersion, so it never downgrades
-// cert-manager.
-func mergeApproveSignerNames(existing any, present bool, radiusNamespace string, chartOptions ChartOptions, installedVersion, kubeContext string) ([]any, error) {
-	if !present {
-		required := certManagerApproveSignerNames(radiusNamespace)
-		merged := make([]any, 0, len(required))
-		for _, name := range required {
-			merged = append(merged, name)
-		}
-		return merged, nil
-	}
-
-	suggest := func(safe []string) string {
-		args := "upgrade " + chartOptions.ReleaseName + " cert-manager --repo " + certManagerHelmRepo + " --version " + installedVersion +
-			" --reuse-values --set " + QuoteFlagValue("approveSignerNames={"+strings.Join(safe, ",")+"}")
-		return helmCommand(kubeContext, chartOptions.Namespace, args)
-	}
-	caSigner := radiusCAIssuerSignerName(radiusNamespace)
-
-	entries, ok := existing.([]any)
-	if !ok || len(entries) == 0 {
-		return nil, clierrors.Message("Radius stopped before changing the cluster because the cert-manager that rad installed in namespace %s has an empty approveSignerNames value, which lets its default approver approve every signer, including the Radius CA issuer signer %s. Only Radius's csi-driver-spiffe approver may approve those requests. Set approveSignerNames to the signers of the Issuers that need the default approver, for example with %s, and then run the command again.",
-			chartOptions.Namespace, caSigner, suggest(certManagerApproveSignerNames(radiusNamespace)))
-	}
-
-	merged := make([]any, 0, len(entries)+2)
-	for _, issuer := range defaultApprovedRadiusIssuers() {
-		merged = append(merged, issuerSignerName(radiusNamespace, issuer))
-	}
-	var unsafe []string
-	for _, entry := range entries {
-		name, ok := entry.(string)
-		if !ok || slices.Contains(merged, any(name)) {
-			continue
-		}
-		if name == caSigner || name == "issuers.cert-manager.io/*" {
-			unsafe = append(unsafe, name)
-			continue
-		}
-		merged = append(merged, name)
-	}
-	if len(unsafe) == 0 {
-		return merged, nil
-	}
-	safe := make([]string, 0, len(merged))
-	for _, name := range merged {
-		safe = append(safe, name.(string))
-	}
-	return nil, clierrors.Message("Radius stopped before changing the cluster because the cert-manager that rad installed in namespace %s lets its default approver approve %s, which includes CertificateRequests for the Radius CA issuer signer %s. Only Radius's csi-driver-spiffe approver may approve them. Replace %s with the signers of the Issuers that need the default approver, for example with %s, and then run the command again.",
-		chartOptions.Namespace, strings.Join(unsafe, ", "), caSigner, strings.Join(unsafe, ", "), suggest(safe))
-}
-
-// certManagerApproveSignerNames returns the signers cert-manager's default approver may approve when rad installs
-// cert-manager: the Radius bootstrap and mTLS issuers, and every ClusterIssuer. The chart turns the list into the
-// resourceNames of the approver's ClusterRole; cert-manager has no --approve-signers flag. The Radius CA issuer is
-// left out so that only Radius's csi-driver-spiffe approver approves its requests. Namespaced Issuers in other
-// namespaces are left out too, because a wildcard would include the Radius CA issuer.
-func certManagerApproveSignerNames(radiusNamespace string) []string {
-	names := make([]string, 0, 3)
-	for _, issuer := range defaultApprovedRadiusIssuers() {
-		names = append(names, issuerSignerName(radiusNamespace, issuer))
-	}
-	return append(names, "clusterissuers.cert-manager.io/*")
+// install does not find CRDs without a controller.
+func buildCertManagerValues() map[string]any {
+	return map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}
 }

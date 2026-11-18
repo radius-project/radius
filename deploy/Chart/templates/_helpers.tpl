@@ -177,7 +177,11 @@ serviceaccount.yaml templates and the Secrets the chart creates.
 {{- end -}}
 
 {{- define "radius.authz.controlPlaneSecrets" -}}
-{{- list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName | uniq | toJson -}}
+{{- $spiffe := list -}}
+{{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- $spiffe = append $spiffe (printf "%s-spiffe" .) -}}
+{{- end -}}
+{{- concat (list "database-secret" "radius-encryption-key" "radius-aws-fingerprint-key" "ucp-cert" .Values.global.rootCA.secretName .Values.global.targetCluster.secretName) $spiffe | uniq | toJson -}}
 {{- end -}}
 
 {{/*
@@ -188,16 +192,6 @@ TODO(D7): default to the application-template identity once the broker issues it
 {{- $admission := (.Values.global.rbac | default dict).admission | default dict -}}
 {{- $identities := $admission.applicationIdentities | default (list (printf "system:serviceaccount:%s:applications-rp" .Release.Namespace)) -}}
 {{- $identities | toJson -}}
-{{- end -}}
-
-{{/*
-Usernames of the cert-manager controller that may request certificates from the Radius bootstrap and
-mTLS issuers. Empty defaults to cert-manager's default installation; rad install/upgrade sets the
-ServiceAccount of the cert-manager it installs or reuses.
-*/}}
-{{- define "radius.authz.certManagerRequesters" -}}
-{{- $certManager := (.Values.global.rbac | default dict).certManager | default dict -}}
-{{- $certManager.requesters | default (list "system:serviceaccount:cert-manager:cert-manager") | toJson -}}
 {{- end -}}
 
 {{/*
@@ -262,23 +256,30 @@ Call with (dict "root" $ "component" "<component>").
 {{- end -}}
 
 {{/*
-Path where a receiver's csi-driver-spiffe server certificate (tls.crt, tls.key, ca.crt) is mounted.
+Path where a receiver's server certificate Secret (<receiver>-spiffe: tls.crt, tls.key) is mounted.
 */}}
 {{- define "radius.authz.spiffe.mountPath" -}}
 /var/run/radius/spiffe
 {{- end -}}
 
 {{/*
-Name of the CSIDriver that Radius's csi-driver-spiffe instance registers.
+SPIFFE trust domain of the Radius server certificates.
 */}}
-{{- define "radius.authz.spiffe.csiDriverName" -}}
+{{- define "radius.authz.spiffe.trustDomain" -}}
 {{- $spiffe := (.Values.global.rbac | default dict).spiffe | default dict -}}
-{{- $spiffe.csiDriverName | default "spiffe.csi.radapp.io" -}}
+{{- $spiffe.trustDomain | default "radius.internal" -}}
 {{- end -}}
 
 {{/*
-Renders the csi-driver-spiffe server certificate volume mount for a receiver container when the
-authorization mode is not off.
+Components that receive internal calls and get a SPIFFE server certificate, as a JSON list.
+*/}}
+{{- define "radius.authz.spiffe.receivers" -}}
+{{- list "ucp" "applications-rp" "dynamic-rp" | toJson -}}
+{{- end -}}
+
+{{/*
+Renders the server certificate volume mount for a receiver container when the authorization mode
+is not off.
 */}}
 {{- define "radius.authz.spiffe.volumeMount" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
@@ -289,19 +290,21 @@ authorization mode is not off.
 {{- end -}}
 
 {{/*
-Renders the csi-driver-spiffe server certificate volume for a receiver when the authorization mode
-is not off. The driver requests the certificate with the pod's ServiceAccount token, so the
-certificate carries the SPIFFE ID spiffe://<trust domain>/ns/<namespace>/sa/<service account>.
-Files are group-readable by gid 65532, the user Radius containers run as.
+Renders the server certificate Secret volume for a receiver when the authorization mode is not off.
+cert-manager issues Secret <receiver>-spiffe from Certificate <receiver>-spiffe (certificates.yaml).
+Only tls.crt and tls.key are projected; the CA bundle comes from radius-ca.
+Call with (dict "root" $ "component" "<receiver>").
 */}}
 {{- define "radius.authz.spiffe.volume" -}}
-{{- if ne (include "radius.authz.mode" .) "off" }}
+{{- if ne (include "radius.authz.mode" .root) "off" }}
 - name: spiffe
-  csi:
-    driver: {{ include "radius.authz.spiffe.csiDriverName" . }}
-    readOnly: true
-    volumeAttributes:
-      spiffe.csi.cert-manager.io/fs-group: "65532"
+  secret:
+    secretName: {{ .component }}-spiffe
+    items:
+      - key: tls.crt
+        path: tls.crt
+      - key: tls.key
+        path: tls.key
 {{- end }}
 {{- end -}}
 

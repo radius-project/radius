@@ -338,21 +338,9 @@ func Test_ensureCertManager(t *testing.T) {
 
 	dryRun := []string{"global.rbac.dryRun=true"}
 	storedDryRun := map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}
-	wantValues := buildCertManagerValues(RadiusSystemNamespace)
-	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Config: wantValues}
+	radOwned := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}}
 	radOwnedFailed := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusFailed}, Chart: radOwned.Chart}
-	// An older rad installed cert-manager with only the CRD values, so its default approver may approve every Issuer.
-	radOwnedUnconfigured := &releasev1.Release{Name: certManagerReleaseName, Labels: radManagedByLabels(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Chart: radOwned.Chart, Config: map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}}
 	healthy := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}
-	withSigners := func(extra ...any) *releasev1.Release {
-		rel := *radOwned
-		values := buildCertManagerValues(RadiusSystemNamespace)
-		values["approveSignerNames"] = append(values["approveSignerNames"].([]any), extra...)
-		rel.Config = values
-		return &rel
-	}
-	userSigner := "issuers.cert-manager.io/apps.app-issuer"
-	radOwnedUserSigner := withSigners(userSigner)
 	userOwned := &releasev1.Release{Name: certManagerReleaseName}
 
 	expectGet := func(rel *releasev1.Release) func(*MockHelmClient) {
@@ -375,6 +363,7 @@ func Test_ensureCertManager(t *testing.T) {
 			})
 		m.EXPECT().LoadChart(gomock.Any()).Return(&chart.Chart{}, nil)
 	}
+	wantValues := map[string]any{"crds": map[string]any{"enabled": true, "keep": false}}
 
 	tests := []struct {
 		name         string
@@ -453,138 +442,11 @@ func Test_ensureCertManager(t *testing.T) {
 			},
 		},
 		{
-			name:    "rad-owned release upgrade keeps the user's signers",
-			stored:  storedDryRun,
-			upgrade: true,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				expectGet(radOwnedUserSigner)(m)
-				expectPull(t, m)
-				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), radOwnedUserSigner.Config, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
-					Return(&releasev1.Release{}, nil)
-			},
-		},
-		{
-			name:    "rad-owned release with the user's signers is reused on install",
-			setArgs: dryRun,
-			cluster: healthy,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				expectGet(radOwnedUserSigner)(m)
-			},
-			wantDetect: true,
-		},
-		{
-			name:    "rad-owned release approving every Issuer fails before changing cert-manager",
-			stored:  storedDryRun,
-			upgrade: true,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				expectGet(withSigners(userSigner, "issuers.cert-manager.io/*"))(m)
-			},
-			wantErrParts: []string{
-				"Radius stopped before changing the cluster",
-				"lets its default approver approve issuers.cert-manager.io/*",
-				"-n cert-manager upgrade cert-manager cert-manager --repo",
-				"approveSignerNames={" + strings.Join(certManagerApproveSignerNames(RadiusSystemNamespace), ",") + "," + userSigner + "}",
-			},
-		},
-		{
-			// A newer cert-manager that rad installed is kept, so the suggested command must not downgrade it.
-			name:    "newer rad-owned release approving every Issuer suggests its own version",
-			stored:  storedDryRun,
-			upgrade: true,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				rel := withSigners("issuers.cert-manager.io/*")
-				rel.Chart = &chart.Chart{Metadata: &chart.Metadata{Version: "v1.99.0"}}
-				expectGet(rel)(m)
-			},
-			wantErrParts: []string{"lets its default approver approve issuers.cert-manager.io/*", "--version v1.99.0 --reuse-values"},
-		},
-		{
-			name:    "rad-owned release approving the Radius CA issuer fails on install",
-			setArgs: dryRun,
-			cluster: healthy,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				expectGet(withSigners(radiusCAIssuerSignerName(RadiusSystemNamespace)))(m)
-			},
-			wantErrParts: []string{"lets its default approver approve " + radiusCAIssuerSignerName(RadiusSystemNamespace)},
-		},
-		{
-			// Helm upgrades from the deployed revision, so the signers of a failed later revision are not kept.
-			name:    "failed rad-owned release keeps the deployed revision's signers",
-			setArgs: dryRun,
-			cluster: healthy,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				failed := withSigners("issuers.cert-manager.io/apps.failed-issuer")
-				failed.Version, failed.Info = 2, &releasev1.Info{Status: releasecommon.StatusFailed}
-				deployed := withSigners(userSigner)
-				deployed.Version = 1
-				expectGet(failed)(m)
-				m.EXPECT().RunHelmHistory(gomock.Any(), certManagerReleaseName).Return([]*releasev1.Release{deployed, failed}, nil)
-				expectPull(t, m)
-				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), deployed.Config, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
-					Return(&releasev1.Release{}, nil)
-			},
-		},
-		{
-			// The user removed every ClusterIssuer from the list, so rad must not add them back.
-			name:    "rad-owned release with a restricted list stays restricted",
-			stored:  storedDryRun,
-			upgrade: true,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				rel := *radOwned
-				rel.Config = map[string]any{"crds": wantValues["crds"], "approveSignerNames": []any{userSigner}}
-				expectGet(&rel)(m)
-				expectPull(t, m)
-				signers := []any{}
-				for _, issuer := range defaultApprovedRadiusIssuers() {
-					signers = append(signers, issuerSignerName(RadiusSystemNamespace, issuer))
-				}
-				want := map[string]any{"crds": wantValues["crds"], "approveSignerNames": append(signers, userSigner)}
-				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), want, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
-					Return(&releasev1.Release{}, nil)
-			},
-		},
-		{
-			// The cert-manager chart renders no resourceNames for an empty list, so the approver may approve every signer.
-			name:    "rad-owned release with an empty list fails before changing cert-manager",
-			stored:  storedDryRun,
-			upgrade: true,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				rel := *radOwned
-				rel.Config = map[string]any{"crds": wantValues["crds"], "approveSignerNames": []any{}}
-				expectGet(&rel)(m)
-			},
-			wantErrParts: []string{"Radius stopped before changing the cluster", "lets its default approver approve every signer", "approveSignerNames={" + strings.Join(certManagerApproveSignerNames(RadiusSystemNamespace), ",") + "}"},
-		},
-		{
-			// null removes the chart's default list, which also leaves the approver unrestricted.
-			name:    "rad-owned release with a null list fails before changing cert-manager",
-			stored:  storedDryRun,
-			upgrade: true,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				rel := *radOwned
-				rel.Config = map[string]any{"crds": wantValues["crds"], "approveSignerNames": nil}
-				expectGet(&rel)(m)
-			},
-			wantErrParts: []string{"lets its default approver approve every signer"},
-		},
-		{
 			name:    "rad-owned release is reused on install",
 			setArgs: dryRun,
 			cluster: healthy,
 			expect: func(t *testing.T, m *MockHelmClient) {
 				expectGet(radOwned)(m)
-			},
-			wantDetect: true,
-		},
-		{
-			name:    "rad-owned release without approveSignerNames is reconfigured on install",
-			setArgs: dryRun,
-			cluster: healthy,
-			expect: func(t *testing.T, m *MockHelmClient) {
-				expectGet(radOwnedUnconfigured)(m)
-				expectPull(t, m)
-				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
-					Return(&releasev1.Release{}, nil)
 			},
 			wantDetect: true,
 		},
@@ -606,7 +468,6 @@ func Test_ensureCertManager(t *testing.T) {
 			cluster: healthy,
 			expect: func(t *testing.T, m *MockHelmClient) {
 				expectGet(radOwnedFailed)(m)
-				m.EXPECT().RunHelmHistory(gomock.Any(), certManagerReleaseName).Return([]*releasev1.Release{radOwnedFailed}, nil)
 				expectPull(t, m)
 				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), wantValues, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
 					Return(&releasev1.Release{}, nil)
@@ -722,10 +583,7 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	mockHelmClient := NewMockHelmClient(ctrl)
-	// csi-driver-spiffe is checked, without changing the cluster, before cert-manager. That check and cert-manager
-	// both look up the cert-manager release.
-	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
-	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound).Times(2)
+	mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
 	mockHelmClient.EXPECT().LoadChart("radius-chart").Return(&chart.Chart{}, nil)
 
 	impl := &Impl{
@@ -733,9 +591,6 @@ func Test_Helm_InstallRadius_CertManagerTooOld_StopsBeforeRadius(t *testing.T) {
 		newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 			kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController("cert-manager", "v1.18.0", "")}.clients()
 			return kubeClient, apiextClient, nil
-		},
-		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
-			return withValidatingAdmissionPolicyAPI(k8sfake.NewClientset()), nil
 		},
 	}
 
@@ -758,15 +613,11 @@ func Test_ensureCertManager_NewerOwnedRelease(t *testing.T) {
 				if healthy {
 					status = releasecommon.StatusDeployed
 				}
-				rel := &releasev1.Release{
+				client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(&releasev1.Release{
 					Name: certManagerReleaseName, Labels: radManagedByLabels(),
 					Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "v1.22.1"}},
 					Info:  &releasev1.Info{Status: status},
-				}
-				client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(rel, nil)
-				if !healthy {
-					client.EXPECT().RunHelmHistory(gomock.Any(), certManagerReleaseName).Return([]*releasev1.Release{rel}, nil)
-				}
+				}, nil)
 				impl := &Impl{Helm: client, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 					k, a := (fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, "v1.22.1", "")}).clients()
 					return k, a, nil
@@ -975,7 +826,6 @@ func Test_UninstallCertManager(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			mockHelmClient := NewMockHelmClient(ctrl)
-			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(tt.release, tt.getErr)
 			if tt.wantUninstall {
 				mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), certManagerReleaseName, CertManagerNamespace, true).
@@ -1012,7 +862,6 @@ func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testin
 	for _, name := range []string{radiusReleaseName, contourReleaseName} {
 		client.EXPECT().RunHelmUninstall(gomock.Any(), name, RadiusSystemNamespace, true).Return(&release.UninstallReleaseResponse{}, nil)
 	}
-	client.EXPECT().RunHelmGet(gomock.Any(), csiDriverSPIFFEReleaseName).Return(nil, driver.ErrReleaseNotFound)
 	client.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, errors.New("release storage unavailable"))
 	var logs []string
 	impl := &Impl{

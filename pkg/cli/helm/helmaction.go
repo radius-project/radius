@@ -351,39 +351,31 @@ func (helmAction *HelmActionImpl) queryReleaseValues(kubeContext, releaseName, n
 		return false, "", nil, err
 	}
 
-	baseline, err := helmAction.upgradeBaseline(kubeContext, releaseName, namespace, release)
-	if err != nil {
-		return false, "", nil, err
-	}
-	return true, version, baseline.Config, nil
-}
-
-// upgradeBaseline returns the revision whose values and manifest a Helm upgrade of the release starts from: latest
-// when it is deployed, otherwise the latest deployed revision, falling back to latest when none is deployed. A nil
-// Info is treated as deployed so the history lookup only happens after a failed or pending revision.
-func (helmAction *HelmActionImpl) upgradeBaseline(kubeContext, releaseName, namespace string, latest *releasev1.Release) (*releasev1.Release, error) {
-	if latest.Info == nil || latest.Info.Status == releasecommon.StatusDeployed {
-		return latest, nil
+	// Helm upgrade reuses the latest revision's values when it is deployed. Otherwise it reuses the latest
+	// deployed revision, falling back to the latest revision when none is deployed. A nil Info is treated as
+	// deployed so the history lookup only happens after a failed or pending revision.
+	if release.Info == nil || release.Info.Status == releasecommon.StatusDeployed {
+		return true, version, release.Config, nil
 	}
 	helmConf, err := initHelmConfig(&genericclioptions.ConfigFlags{Namespace: &namespace, Context: &kubeContext})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get helm config, err: %w", err)
+		return false, "", nil, fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 	history, err := helmAction.HelmClient.RunHelmHistory(helmConf, releaseName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get helm history for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
+		return false, "", nil, fmt.Errorf("failed to get helm history for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
 	}
-	return upgradeBaselineRevision(latest, history), nil
+	return true, version, reusedReleaseValues(release, history), nil
 }
 
-// upgradeBaselineRevision applies Helm upgrade's release selection to history, which is in ascending revision order.
-func upgradeBaselineRevision(latest *releasev1.Release, history []*releasev1.Release) *releasev1.Release {
+// reusedReleaseValues applies Helm upgrade's release selection to history, which is in ascending revision order.
+func reusedReleaseValues(latest *releasev1.Release, history []*releasev1.Release) map[string]any {
 	for _, rel := range slices.Backward(history) {
-		if rel != nil && rel.Info != nil && rel.Info.Status == releasecommon.StatusDeployed {
-			return rel
+		if rel.Info != nil && rel.Info.Status == releasecommon.StatusDeployed {
+			return rel.Config
 		}
 	}
-	return latest
+	return latest.Config
 }
 
 func releaseAppVersion(release *releasev1.Release) (string, error) {
