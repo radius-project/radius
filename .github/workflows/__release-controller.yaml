@@ -385,7 +385,7 @@ jobs:
             fi
           } >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: Upload resolved release plan
+      - name: Upload validated release plan
         id: upload-plan
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -490,8 +490,12 @@ jobs:
             echo "The approved release source is still unresolved." >&2
             exit 1
           }
+          args=("${RELEASE_COMMIT}")
+          if [[ "$(yq -r '.changelogPolicy' "${RUNNER_TEMP}/release-plan.yaml")" == stable-only ]]; then
+            args+=(--require-sibling-releases)
+          fi
           bash ./.github/scripts/verify-release-build-contract.sh \
-            "${RELEASE_COMMIT}"
+            "${args[@]}"
 
       - name: Upload resolved release plan
         id: upload-plan

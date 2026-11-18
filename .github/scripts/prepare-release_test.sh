@@ -440,7 +440,7 @@ test_changelog_pins_product_commit() {
     if [[ "${release_type}" != final ]]; then
         commit "fix: selected source change"
     fi
-    if [[ "${source_ref}" != HEAD ]]; then
+    if [[ "${source_ref}" != refs/heads/main ]]; then
         git -C "${REPO}" update-ref "${source_ref}" HEAD
         commit "feat: main-only change"
     fi
@@ -883,7 +883,7 @@ test_first_rc_rerun_preserves_curated_sections() {
     git -C "${REPO}" checkout -- versions.yaml CHANGELOG.md
     rm -rf "${REPO}/out" "${notes}"
     git -C "${REPO}" commit -q --allow-empty -m "fix: advance main"
-    jq '.[0].sourceCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
+    jq '.[2].sourceCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
         "${REPO}/siblings.json" >"${REPO}/siblings-new.json"
     mv "${REPO}/siblings-new.json" "${REPO}/siblings.json"
     PREPARATION_OPTIONS=(--existing-plan "${existing_plan}"
@@ -965,6 +965,7 @@ test_first_rc_rejects_invalid_cutoff() {
 
 test_first_rc_legacy_adoption() {
     local existing_plan="${TEST_ROOT}/legacy-plan.yaml"
+    local policy="${1:-stable-only}"
     local cutoff
 
     setup_repo "v0.60.0"
@@ -975,6 +976,9 @@ test_first_rc_legacy_adoption() {
     yq '.source.productRef = "HEAD" | .source.releaseCommitResolution =
         "release PR squash commit on main"' \
         "${REPO}/out/release-plan.yaml" >"${existing_plan}"
+    if [[ "${policy}" == legacy ]]; then
+        yq -i 'del(.changelogPolicy)' "${existing_plan}"
+    fi
     git -C "${REPO}" checkout -- versions.yaml CHANGELOG.md
     commit "fix: advance main after legacy preparation"
     PREPARATION_OPTIONS=(--existing-plan "${existing_plan}")
@@ -982,6 +986,8 @@ test_first_rc_legacy_adoption() {
     assert_version v0.61.0-rc.1 || return
     assert_yq_value "${REPO}/out/release-plan.yaml" \
         '.source.productCommit' "${cutoff}" || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.changelogPolicy' 'stable-only' || return
     git -C "${REPO}" checkout -- versions.yaml CHANGELOG.md
     PREPARATION_OPTIONS+=(--product-commit "$(git -C "${REPO}" rev-parse HEAD)")
     run_prepare rc 0.61
@@ -1067,7 +1073,7 @@ main() {
     test_pending_supported_release_blocks_preparation v0.60.0
     test_pending_supported_release_blocks_preparation v0.59.1
     test_subsequent_rc
-    test_changelog_pins_product_commit rc 0.61 v0.60.0 v0.61.0-rc.1 HEAD
+    test_changelog_pins_product_commit rc 0.61 v0.60.0 v0.61.0-rc.1 refs/heads/main
     test_changelog_pins_product_commit rc 0.60 v0.60.0-rc.1 \
         v0.60.0-rc.2 refs/remotes/origin/release/0.60
     test_changelog_pins_product_commit final 0.60 v0.60.0-rc.1 \
@@ -1096,6 +1102,7 @@ main() {
         test_first_rc_rejects_invalid_cutoff "${variant}"
     done
     test_first_rc_legacy_adoption
+    test_first_rc_legacy_adoption legacy
     test_rerun_rejects_tampered_aliased_plan
     for variant in rc final patch; do
         test_existing_channel_rejects_main_cutoff "${variant}"

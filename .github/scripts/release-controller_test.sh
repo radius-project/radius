@@ -407,15 +407,17 @@ test_unknown_dispatch_summary() {
 }
 
 test_release_build_contract() {
-    assert_yq "${CONTROLLER}" \
-        '.jobs.validate.steps[] | select((.run // "") |
+    assert_json "${CONTROLLER}" \
+        '[.jobs.validate.steps[] | select((.run // "") |
         contains("verify-release-build-contract.sh")) |
-        ((.env.RELEASE_COMMIT | contains("steps.plan.outputs.product-commit")) and
-        (.env.RELEASE_COMMIT | contains("steps.plan.outputs.release-commit")))' \
+        [.if, .env.RELEASE_COMMIT, (.run | contains("--require-sibling-releases"))]]' \
+        "[[\"steps.plan.outputs.ready == 'true'\",\"\${{ steps.plan.outputs.source-resolved == 'false' && steps.plan.outputs.product-commit || steps.plan.outputs.release-commit }}\",true]]" \
         "validation must check frozen product tooling, never later main tooling"
-    assert_contains "${WORKFLOWS}/prepare-release.yaml" \
-        'verify-release-build-contract.sh' \
-        "Prepare Release must reject an unmigrated release branch before opening a pull request"
+    # shellcheck disable=SC2016 # Assert the workflow's literal shell expression.
+    assert_yq "${WORKFLOWS}/prepare-release.yaml" \
+        '.jobs.prepare.steps[] | select(.id == "preflight") |
+        (.run | contains("\"${product_commit}\" --require-sibling-releases"))' \
+        "Prepare Release must check sibling publication at the authoritative product cutoff"
 }
 
 publish_step_index() {

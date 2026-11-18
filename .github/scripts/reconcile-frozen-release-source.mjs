@@ -35,7 +35,6 @@ function verifyAppToken(core) {
 function metadataFiles(version) {
   return [
     "versions.yaml",
-    "CHANGELOG.md",
     `docs/release-notes/${version}.md`,
     `.github/release-plans/${version}.yaml`
   ];
@@ -131,7 +130,12 @@ export async function updateFrozenPreparation({ github, context, core }) {
     );
   }
   const additions = [];
-  for (const file of metadataFiles(version)) {
+  const files = metadataFiles(version);
+  // A pre-stable-only PR may have an RC changelog entry. Restore the base
+  // copy during migration so its squash has just the three approved paths.
+  if (core.getInput("MIGRATE_LEGACY_PLAN") === "true")
+    files.push("CHANGELOG.md");
+  for (const file of files) {
     const contents = (await readFile(path.join(workspace, file))).toString(
       "base64"
     );

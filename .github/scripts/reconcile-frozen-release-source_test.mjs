@@ -17,6 +17,7 @@ import reconcileSource, {
 } from "./reconcile-frozen-release-source.mjs";
 import reconcileLock from "./reconcile-release-controller-lock.mjs";
 import { resumeReleasePublication } from "./dispatch-release-controller.mjs";
+import { checkReleaseCandidate } from "./coordinate-release.mjs";
 
 const product = "a".repeat(40);
 const metadata = "b".repeat(40);
@@ -26,7 +27,6 @@ const version = "v0.61.0-rc.1";
 const branch = "automation/release-source-0.61.0-rc.1";
 const metadataFiles = [
   "versions.yaml",
-  "CHANGELOG.md",
   `docs/release-notes/${version}.md`,
   `.github/release-plans/${version}.yaml`
 ];
@@ -104,12 +104,20 @@ function fixture() {
         getCommit: async ({ ref }) => ({
           data:
             ref === metadata ?
-              { commit: { verification: { verified: state.metadataVerified } } }
+              {
+                commit: {
+                  verification: { verified: state.metadataVerified }
+                }
+              }
             : structuredClone(state.commit)
         }),
         getContent: async ({ ref, path: file }) => {
           assert.equal(ref, metadata);
-          assert.ok(metadataFiles.includes(file));
+          assert.ok(
+            metadataFiles.includes(file) ||
+              (core.inputs.MIGRATE_LEGACY_PLAN === "true" &&
+                file === "CHANGELOG.md")
+          );
           return {
             data: {
               type: "file",
@@ -155,7 +163,7 @@ test("rejects the wrong App before any source mutation", async () => {
   assert.equal(f.state.mutations.length, 0);
 });
 
-test("creates one four-file App commit with a frozen-parent CAS; resume is a no-op", async () => {
+test("creates one three-file App commit with a frozen-parent CAS; resume is a no-op", async () => {
   const f = fixture();
   await f.run();
   assert.equal(f.core.outputs["release-commit"], release);
@@ -284,6 +292,7 @@ test("rejects an unresolved explicit release SHA and invalid source input", asyn
 
 for (const scenario of [
   "update",
+  "legacy changelog",
   "unchanged",
   "PM edit",
   "unsigned",
@@ -304,6 +313,13 @@ for (const scenario of [
       path.join(temp, "release-pr-body.md"),
       "approved frozen plan"
     );
+    if (scenario === "legacy changelog") {
+      f.core.inputs.MIGRATE_LEGACY_PLAN = "true";
+      writeFileSync(
+        path.join(temp, "CHANGELOG.md"),
+        "root changelog at cutoff\n"
+      );
+    }
     Object.assign(f.core.inputs, {
       HEAD_SHA: metadata,
       PR_NUMBER: "123",
@@ -356,6 +372,12 @@ for (const scenario of [
         "https://example.test/pull/123"
       );
       assert.equal(bodyWrites, 1);
+      if (scenario === "legacy changelog") {
+        assert.deepEqual(f.state.mutations[0].fileChanges.additions.at(-1), {
+          path: "CHANGELOG.md",
+          contents: Buffer.from("root changelog at cutoff\n").toString("base64")
+        });
+      }
     }
     if (["unchanged", "PM edit", "closed"].includes(scenario)) {
       assert.equal(f.state.mutations.length, 0);
@@ -370,7 +392,6 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   const releaseBranch = `release/${channel}`;
   const metadataFiles = [
     "versions.yaml",
-    "CHANGELOG.md",
     `docs/release-notes/${version}.md`,
     `.github/release-plans/${version}.yaml`
   ];
@@ -421,6 +442,7 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
     ".github/scripts/verify-release-manifest.mjs",
     ".github/scripts/publish-draft-release.mjs",
     ".github/scripts/release-assets.mjs",
+    ".github/scripts/release-reconciliation.mjs",
     ".github/scripts/verify-release-publication.sh",
     ".github/release-parity/targets.json",
     "cliff.toml",
@@ -469,7 +491,7 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
 
   const siblingsRoot = path.join(temp, "siblings");
   mkdirSync(siblingsRoot);
-  const siblings = ["recipes", "dashboard", "bicep-types-aws"].map((name) => {
+  for (const name of ["recipes", "dashboard", "bicep-types-aws"]) {
     const remote = path.join(siblingsRoot, `${name}.git`);
     git("init", "-q", "--bare", "--initial-branch=main", remote);
     const emptyTree = run("git", ["mktree"], { input: "" });
@@ -480,17 +502,17 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
       `Initial ${name}`
     );
     git("push", "-q", remote, `${siblingCommit}:refs/heads/main`);
-    return {
-      name,
-      repository: `radius-project/${name}`,
-      sourceRef: "main",
-      sourceCommit: siblingCommit
-    };
-  });
+  }
   const backports = path.join(temp, "backports.json");
   const siblingsFile = path.join(temp, "siblings.json");
   writeFileSync(backports, "[]\n");
-  writeFileSync(siblingsFile, JSON.stringify(siblings));
+  const captureSiblings = () =>
+    bash(
+      "capture-release-sibling-commits.sh",
+      ["--channel", channel, "--output", siblingsFile],
+      { SIBLING_REPOSITORY_ROOT: siblingsRoot }
+    );
+  captureSiblings();
   const prepared = path.join(temp, "prepared");
   const prepareArgs = [
     "--release-type",
@@ -506,15 +528,38 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
     "--output-dir",
     prepared
   ];
-  bash("verify-release-build-contract.sh", [a]);
+  bash("verify-release-build-contract.sh", [a, "--require-sibling-releases"]);
+  bash("prepare-release.sh", [...prepareArgs, "--version-only"]);
+  const preflightProduct = read(path.join(prepared, "product-commit.txt"));
+  assert.equal(preflightProduct, a);
+
+  // A resolver can finalize a sibling between capture and the first visible plan.
+  const siblings = JSON.parse(read(siblingsFile));
+  const aws = siblings.find((sibling) => sibling.name === "bicep-types-aws");
+  const awsRemote = path.join(siblingsRoot, "bicep-types-aws.git");
+  const pin = (product, parent) => {
+    const tree = run("git", ["mktree"], {
+      input: `160000 commit ${product}\tradius\n`
+    });
+    const commit = git("commit-tree", tree, "-p", parent, "-m", "Pin Radius");
+    git("push", "-q", awsRemote, `${commit}:refs/heads/${releaseBranch}`);
+    return commit;
+  };
+  aws.sourceCommit = pin(preflightProduct, aws.sourceCommit);
+  aws.sourceRef = releaseBranch;
+  writeFileSync(siblingsFile, JSON.stringify(siblings));
   bash("prepare-release.sh", prepareArgs);
   const originalPlan = path.join(temp, "original-plan.yaml");
   cpSync(path.join(prepared, "release-plan.yaml"), originalPlan);
+  assert.deepEqual(
+    JSON.parse(run("yq", ["-o=json", ".siblingRepositories", originalPlan])),
+    siblings
+  );
   const body = path.join(temp, "body.md");
   cpSync(path.join(prepared, "release-pr-body.md"), body);
   git("switch", "-qc", "preparation");
   commit(`chore(release): prepare ${version}`);
-  const notesFile = metadataFiles[2];
+  const notesFile = `docs/release-notes/${version}.md`;
   write(
     notesFile,
     read(path.join(repo, notesFile))
@@ -526,7 +571,8 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   );
   const prHead = commit("docs: curate release highlights and upgrading");
   const reviewed = path.join(temp, "reviewed");
-  for (const file of metadataFiles) {
+  // The PR snapshot reads the unchanged changelog without listing it as changed.
+  for (const file of [...metadataFiles, "CHANGELOG.md"]) {
     mkdirSync(path.dirname(path.join(reviewed, file)), { recursive: true });
     cpSync(path.join(repo, file), path.join(reviewed, file));
   }
@@ -535,26 +581,20 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   write("after-cutoff.txt", "must not be released\n");
   const b = commit("feat: excluded after cutoff B");
   git("push", "-q", "origin", "main");
-  const advancedSibling = git(
-    "commit-tree",
-    git("rev-parse", `${siblings[0].sourceCommit}^{tree}`),
-    "-p",
-    siblings[0].sourceCommit,
-    "-m",
-    "Later recipes change"
+  const newerAws = pin(b, aws.sourceCommit);
+  captureSiblings();
+  assert.equal(
+    JSON.parse(read(siblingsFile)).find((s) => s.name === aws.name)
+      .sourceCommit,
+    newerAws
   );
-  git(
-    "push",
-    "-q",
-    path.join(siblingsRoot, "recipes.git"),
-    `${advancedSibling}:refs/heads/main`
-  );
-  writeFileSync(
-    siblingsFile,
-    JSON.stringify(
-      siblings.map((sibling) => ({ ...sibling, sourceCommit: advancedSibling }))
-    )
-  );
+  bash("prepare-release.sh", [
+    ...prepareArgs,
+    "--existing-plan",
+    originalPlan,
+    "--version-only"
+  ]);
+  assert.equal(read(path.join(prepared, "product-commit.txt")), a);
   bash("prepare-release.sh", [...prepareArgs, "--existing-plan", originalPlan]);
   bash("preserve-release-note-sections.sh", [
     notesFile,
@@ -587,10 +627,11 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
     "--head-dir",
     reviewed,
     "--repository",
-    "radius-project/radius"
+    "radius-project/radius",
+    "--backports-file",
+    backports
   ];
   bash("validate-release-plan.sh", validatorArgs, {
-    EXPECTED_BACKPORTS_FILE: backports,
     SIBLING_REPOSITORY_ROOT: siblingsRoot
   });
   git("switch", "-qc", "merge-queue", b);
@@ -773,6 +814,10 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   assert.notEqual(c, a);
   assert.notEqual(c, m);
   assert.equal(git("rev-parse", `${c}^`), a);
+  assert.equal(
+    git("rev-parse", `${c}:CHANGELOG.md`),
+    git("rev-parse", `${a}:CHANGELOG.md`)
+  );
   assert.equal(git("rev-parse", `${c}^{tree}`), expectedTree);
   assert.deepEqual(
     git("diff", "--no-renames", "--name-only", a, c).split("\n").sort(),
@@ -789,7 +834,7 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   }
   validateController(c);
   assert.equal(read(path.join(controllerOutput, "release-commit.txt")), c);
-  bash("verify-release-build-contract.sh", [c]);
+  bash("verify-release-build-contract.sh", [c, "--require-sibling-releases"]);
 
   const lockCore = coreFixture({
     MODE: "create",
@@ -823,6 +868,46 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
   });
   await reconcileLock({ github, context, core: rcCore });
   assert.equal(rcCore.outputs["de-source-commit"], "e".repeat(40));
+  // Final readiness reads the coordination receipts for the signed tag, not
+  // receipts for the product cutoff or the approved squash on main.
+  let receiptSha = c;
+  const receipts = [];
+  const receiptGithub = {
+    rest: {
+      git: github.rest.git,
+      repos: {
+        listReleases: () => [{ tag_name: version, draft: false }],
+        listDeployments: ({ task }) => {
+          const id = task.split(":").at(-1);
+          receipts.push(id);
+          return [
+            {
+              id: 1,
+              sha: receiptSha,
+              payload: { version, sourceSha: receiptSha, task: { id } }
+            }
+          ];
+        },
+        listDeploymentStatuses: () => [{ id: 1, state: "success" }]
+      }
+    },
+    paginate: (fn, args) => fn(args)
+  };
+  const checkFinal = () =>
+    checkReleaseCandidate({
+      github: receiptGithub,
+      context,
+      plan: {
+        version: `v${channel}.0`,
+        releaseType: "final",
+        previousVersion: version
+      }
+    });
+  await checkFinal();
+  assert.equal(new Set(receipts).size, 3);
+  for (receiptSha of [a, m]) {
+    await assert.rejects(checkFinal(), /Conflicting coordination receipt/);
+  }
   const publicationCore = coreFixture({ VERSION: version, SOURCE_SHA: c });
   const runs = async (query) => {
     assert.equal(query.head_sha, c);

@@ -114,6 +114,7 @@ main() {
         if [[ -n "${plan_path}" && "${plan_path}" != *$'\n'* ]] &&
             [[ "$(git show "${candidate_sha}:${plan_path}" |
                 yq -r '.schemaVersion == 2 and .releaseType == "rc" and
+                    .changelogPolicy == "stable-only" and
                     .version == ("v" + .channel + ".0-rc.1") and
                     .source.productRef == "refs/heads/main"')" == true ]]; then
             comparison_files="${candidate_files}.metadata"
