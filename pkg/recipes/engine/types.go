@@ -59,6 +59,12 @@ type DeleteOptions struct {
 
 	// OutputResources is the list of output resources for the recipe.
 	OutputResources []rpv1.OutputResource
+
+	// PendingDeployments identifies Bicep deployments whose output inventory must be recovered before deletion.
+	PendingDeployments []string
+
+	// PersistCleanup saves recovered inventory before any infrastructure is deleted.
+	PersistCleanup func(context.Context, []rpv1.OutputResource, []string) error
 }
 
 type GetRecipeMetadataOptions struct {

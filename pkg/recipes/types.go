@@ -124,6 +124,10 @@ var (
 
 // RecipeOutput represents recipe deployment output.
 type RecipeOutput struct {
+	// PendingDeploymentID identifies a Bicep deployment whose cleanup inventory could not be read.
+	// It is driver bookkeeping, not a template output.
+	PendingDeploymentID string `json:"-"`
+
 	// Resources represents the list of output resources deployed recipe.
 	Resources []string
 

@@ -99,7 +99,7 @@ type bicepDriver struct {
 // Execute fetches recipe contents from container registry, creates a deployment ID, a recipe context parameter, recipe parameters,
 // a provider config, and deploys a bicep template for the recipe using UCP deployment client, then polls until the deployment
 // is done and prepares the recipe response.
-func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (output *recipes.RecipeOutput, err error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", opts.Definition.Name, opts.Definition.TemplatePath))
 
@@ -118,7 +118,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		registryClient = authClient
 	}
 
-	err := util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
+	err = util.ReadFromRegistry(ctx, opts.Definition, &recipeData, registryClient)
 	if err != nil {
 		metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 			metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, recipes.RecipeDownloadFailed))
@@ -178,6 +178,46 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		logger.Info("using Azure provider", "deploymentID", deploymentID, "scope", providerConfig.Az.Value.Scope)
 	}
 
+	var knownOutput *recipes.RecipeOutput
+	var completedDeployment *clients.ClientCreateOrUpdateResponse
+	submissionRejected := false
+	defer func() {
+		if err == nil || submissionRejected {
+			return
+		}
+		// Successful deployment outputs remain valid when only old-resource cleanup fails.
+		if recipeErr, ok := errors.AsType[*recipes.RecipeError](err); ok && output != nil && recipeErr.ErrorDetails.Code == recipes.RecipeGarbageCollectionFailed {
+			return
+		}
+
+		output = &recipes.RecipeOutput{PendingDeploymentID: deploymentID.String()}
+		if knownOutput != nil {
+			output.Resources = slices.Clone(knownOutput.Resources)
+			output.ProviderResourceIDs = knownOutput.ProviderResourceIDs
+		}
+		var ids []string
+		var inventoryErr error
+		if completedDeployment != nil {
+			ids, inventoryErr = deploymentOutputResourceIDs(completedDeployment.Properties)
+		}
+		if completedDeployment == nil || inventoryErr != nil {
+			ids, inventoryErr = d.deploymentOutputResources(ctx, deploymentID.String())
+		}
+		if inventoryErr != nil {
+			logger.Error(inventoryErr, "Failed to recover recipe cleanup inventory; retaining deployment ID for deletion", "deploymentID", deploymentID.String())
+			return
+		}
+		if output.Resources == nil {
+			output.Resources = ids
+		}
+		for _, id := range ids {
+			if !slices.Contains(output.Resources, id) {
+				output.Resources = append(output.Resources, id)
+			}
+		}
+		output.PendingDeploymentID = ""
+	}()
+
 	poller, err := d.DeploymentClient.CreateOrUpdate(
 		ctx,
 		clients.Deployment{
@@ -193,6 +233,10 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	)
 
 	if err != nil {
+		if responseErr, ok := errors.AsType[*azcore.ResponseError](err); ok {
+			submissionRejected = responseErr.StatusCode >= 400 && responseErr.StatusCode < 500 &&
+				responseErr.StatusCode != http.StatusRequestTimeout && responseErr.StatusCode != http.StatusTooManyRequests
+		}
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
@@ -200,6 +244,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
+	completedDeployment = &resp
 
 	// Log only IDs, not output values, which can contain credentials.
 	outputResourceIDs := make([]string, 0, len(resp.Properties.OutputResources))
@@ -215,6 +260,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		"outputResourceIDs", outputResourceIDs)
 
 	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
+	knownOutput = recipeResponse
 	if err != nil {
 		if _, ok := errors.AsType[*recipes_util.MissingOutputValuesError](err); ok {
 			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
@@ -268,12 +314,69 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	return recipeResponse, nil
 }
 
+func (d *bicepDriver) deploymentOutputResources(ctx context.Context, deploymentID string) ([]string, error) {
+	response, err := d.DeploymentClient.Get(ctx, deploymentID, clients.DeploymentsClientAPIVersion)
+	if err != nil {
+		return nil, err
+	}
+	return deploymentOutputResourceIDs(response.Properties)
+}
+
+func deploymentOutputResourceIDs(properties *armdeployments.DeploymentPropertiesExtended) ([]string, error) {
+	if properties == nil || properties.ProvisioningState == nil {
+		return nil, fmt.Errorf("deployment has no provisioning state")
+	}
+	switch strings.ToLower(string(*properties.ProvisioningState)) {
+	case "succeeded", "failed", "canceled":
+	default:
+		return nil, fmt.Errorf("deployment is still in progress: %s", *properties.ProvisioningState)
+	}
+	if properties.OutputResources == nil {
+		return nil, fmt.Errorf("deployment output resource inventory is unavailable")
+	}
+
+	ids := make([]string, 0, len(properties.OutputResources))
+	for _, ref := range properties.OutputResources {
+		if ref == nil || ref.ID == nil {
+			return nil, fmt.Errorf("deployment output resource inventory contains a missing resource ID")
+		}
+		if _, err := resources.ParseResource(*ref.ID); err != nil {
+			return nil, fmt.Errorf("invalid deployment output resource ID %q: %w", *ref.ID, err)
+		}
+		ids = append(ids, *ref.ID)
+	}
+	return ids, nil
+}
+
 // Delete deletes all of the output resources that are marked as managed by Radius.
 // It will create a goroutine for each resource to be deleted and wait for them to finish,
 // retrying if necessary.
 // We don't have context on the dependency ordering here, so we need to try to delete them
 // all in parallel. Since some resources may depend on others, we may need to retry.
 func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
+	for i, deploymentID := range opts.PendingDeployments {
+		ids, err := d.deploymentOutputResources(ctx, deploymentID)
+		if err != nil {
+			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, fmt.Sprintf("failed to recover cleanup inventory for deployment %q: %v", deploymentID, err), "", recipes.GetErrorDetails(err))
+		}
+		recovered, err := processors.GetOutputResourcesFromRecipe(&recipes.RecipeOutput{Resources: ids})
+		if err != nil {
+			return recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
+		for _, outputResource := range recovered {
+			if !slices.ContainsFunc(opts.OutputResources, func(existing rpv1.OutputResource) bool {
+				return existing.ID.String() == outputResource.ID.String()
+			}) {
+				opts.OutputResources = append(opts.OutputResources, outputResource)
+			}
+		}
+		if opts.PersistCleanup != nil {
+			if err := opts.PersistCleanup(ctx, opts.OutputResources, opts.PendingDeployments[i+1:]); err != nil {
+				return fmt.Errorf("failed to persist recovered recipe cleanup inventory: %w", err)
+			}
+		}
+	}
+
 	_, err := d.deleteOutputResources(ctx, opts)
 	return err
 }

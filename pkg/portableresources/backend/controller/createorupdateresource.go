@@ -183,6 +183,11 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		if recipeErr, ok := errors.AsType[*recipes.RecipeError](err); ok && recipeOutput != nil && recipeErr.ErrorDetails.Code == recipes.RecipeGarbageCollectionFailed {
 			cleanupErr = recipeErr
 		} else if err != nil {
+			if recipeOutput != nil {
+				if inventoryErr := retainFailedRecipeOutput(resource, recipeOutput); inventoryErr != nil {
+					return ctrl.Result{}, fmt.Errorf("failed to retain cleanup inventory after recipe failure (%v): %w", err, inventoryErr)
+				}
+			}
 			return c.handleRecipeError(ctx, err, recipeDataModel, req.ResourceID, currentETag, logger, redactionCompleted)
 		}
 	}
@@ -240,6 +245,28 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	return ctrl.Result{}, err
 }
 
+func retainFailedRecipeOutput(resource rpv1.RadiusResourceModel, output *recipes.RecipeOutput) error {
+	outputResources, err := processors.GetOutputResourcesFromRecipe(output)
+	if err != nil {
+		return err
+	}
+
+	metadata := resource.ResourceMetadata()
+	status := metadata.GetResourceStatus()
+	for _, outputResource := range outputResources {
+		if !slices.ContainsFunc(status.OutputResources, func(existing rpv1.OutputResource) bool {
+			return existing.ID.String() == outputResource.ID.String()
+		}) {
+			status.OutputResources = append(status.OutputResources, outputResource)
+		}
+	}
+	if output.PendingDeploymentID != "" && !slices.Contains(status.PendingRecipeDeployments, output.PendingDeploymentID) {
+		status.PendingRecipeDeployments = append(status.PendingRecipeDeployments, output.PendingDeploymentID)
+	}
+	metadata.SetResourceStatus(status)
+	return nil
+}
+
 // handleRecipeError handles recipe execution errors: logs, updates status, persists, and returns the appropriate result.
 // A RecipeError is always terminal and returns NewFailedResult with the recipe's error details, even if the
 // best-effort status persistence fails, so the real recipe failure is never masked. For non-RecipeError failures,
@@ -250,7 +277,9 @@ func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, er
 		logger.Error(recipeErr, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeErr.ErrorDetails.Target))
 
 		// Set the deployment status to the recipe error code
-		recipeDataModel.GetRecipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeErr.DeploymentStatus)
+		recipe := recipeDataModel.GetRecipe()
+		recipe.DeploymentStatus = util.RecipeDeploymentStatus(recipeErr.DeploymentStatus)
+		recipeDataModel.SetRecipe(recipe)
 		update := &database.Object{
 			ID:   resourceID,
 			Data: recipeDataModel.(rpv1.RadiusResourceModel),

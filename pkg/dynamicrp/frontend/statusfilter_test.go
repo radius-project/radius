@@ -134,6 +134,7 @@ func TestStatusFilter(t *testing.T) {
 
 func TestMakeUpdateFilters_ScopeCheckUsesDefaults(t *testing.T) {
 	const application = "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/applications/default-app"
+	const pendingDeployment = "/planes/radius/local/resourceGroups/test-group/providers/Microsoft.Resources/deployments/pending"
 	ucpClient, err := createFakeUCPClientFactory(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -143,7 +144,8 @@ func TestMakeUpdateFilters_ScopeCheckUsesDefaults(t *testing.T) {
 	require.NoError(t, err)
 
 	storedStatus := map[string]any{
-		"outputResources": []any{map[string]any{"id": "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/stored"}},
+		"outputResources":          []any{map[string]any{"id": "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/stored"}},
+		"pendingRecipeDeployments": []any{pendingDeployment},
 	}
 	oldResource := &datamodel.DynamicResource{Properties: map[string]any{"application": application, "status": storedStatus}}
 	newResource := &datamodel.DynamicResource{Properties: map[string]any{}}
@@ -162,4 +164,8 @@ func TestMakeUpdateFilters_ScopeCheckUsesDefaults(t *testing.T) {
 
 	require.Equal(t, application, newResource.Properties["application"])
 	require.Equal(t, storedStatus, newResource.Properties["status"])
+	require.Len(t, newResource.OutputResources(), 1)
+	require.Len(t, oldResource.OutputResources(), 1)
+	require.Equal(t, []string{pendingDeployment}, newResource.ResourceMetadata().GetResourceStatus().PendingRecipeDeployments)
+	require.Equal(t, []string{pendingDeployment}, oldResource.ResourceMetadata().GetResourceStatus().PendingRecipeDeployments)
 }
