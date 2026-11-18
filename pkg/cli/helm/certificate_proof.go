@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"slices"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -55,8 +56,8 @@ func decodeCertificateProof(data []byte, evidence any, required []string) error 
 	if len(data) == 0 || len(data) > 8192 {
 		return errors.New("TLS proof is empty or exceeds its size limit")
 	}
-	// A map detects duplicate top-level names before typed decoding. Duplicate names
-	// could otherwise let different clients disagree about ready or identity.
+	// Typed decoding accepts case variants and lets later values overwrite earlier
+	// ones. Require canonical, unique names before decoding the evidence.
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	token, err := decoder.Token()
 	if err != nil || token != json.Delim('{') {
@@ -71,6 +72,9 @@ func decodeCertificateProof(data []byte, evidence any, required []string) error 
 		name, ok := token.(string)
 		if !ok || names[name] {
 			return errors.New("duplicate TLS startup proof field")
+		}
+		if !slices.Contains(required, name) {
+			return errors.New("unknown TLS startup proof field")
 		}
 		names[name] = true
 		var value json.RawMessage
