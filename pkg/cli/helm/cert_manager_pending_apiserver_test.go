@@ -61,10 +61,6 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 	helmClient := NewHelmClient()
 	configuration := newTestHelmConfiguration(t, kubeconfig, CertManagerNamespace)
 	radiusConf := newTestHelmConfiguration(t, kubeconfig, RadiusSystemNamespace)
-	require.NoError(t, radiusConf.Releases.Create(&releasev1.Release{
-		Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 1,
-		Chart: chart, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
-	}))
 
 	for _, status := range []releasecommon.Status{
 		releasecommon.StatusPendingInstall, releasecommon.StatusPendingUpgrade, releasecommon.StatusPendingRollback,
@@ -105,7 +101,18 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 					options.CertManager.ReleaseName = name
 					options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
 					impl := &Impl{Helm: helmClient}
+					var radiusHistory []*releasev1.Release
 					if command == "upgrade" {
+						require.NoError(t, radiusConf.Releases.Create(&releasev1.Release{
+							Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 1,
+							Chart: chart, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+						}))
+						t.Cleanup(func() {
+							_, err := radiusConf.Releases.Delete(radiusReleaseName, 1)
+							require.NoError(t, err)
+						})
+						radiusHistory, err = helmClient.RunHelmHistory(radiusConf, radiusReleaseName)
+						require.NoError(t, err)
 						err = impl.UpgradeRadius(t.Context(), options, testKubeContext)
 					} else {
 						options.Radius.Reinstall = command == "install --reinstall"
@@ -123,7 +130,13 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 					stillForeign, err := foreignSecrets.Get(t.Context(), foreign.Name, metav1.GetOptions{})
 					require.NoError(t, err)
 					require.Equal(t, foreign, stillForeign)
-					requireNoRelease(t, kubeconfig, radiusReleaseName)
+					if command == "upgrade" {
+						after, err := helmClient.RunHelmHistory(radiusConf, radiusReleaseName)
+						require.NoError(t, err)
+						require.Equal(t, radiusHistory, after)
+					} else {
+						requireNoRelease(t, kubeconfig, radiusReleaseName)
+					}
 				})
 			}
 		}

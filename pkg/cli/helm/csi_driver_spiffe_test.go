@@ -1392,8 +1392,8 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: CertManagerChartDefaultVersion}}, Config: buildCertManagerValues(RadiusSystemNamespace)}
 	history := func(target map[string]any) []*releasev1.Release {
 		return []*releasev1.Release{
-			{Version: 1, Config: target, Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
-			{Version: 2, Config: rbac(map[string]any{"enabled": true}), Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+			{Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 1, Config: target, Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Name: radiusReleaseName, Namespace: RadiusSystemNamespace, Version: 2, Config: rbac(map[string]any{"enabled": true}), Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 		}
 	}
 	allowed := map[string]bool{
@@ -1493,8 +1493,9 @@ func Test_RollbackRadius_ReconcilesCSIDriverSPIFFE(t *testing.T) {
 
 			objects := append([]runtime.Object{certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}, tt.objects...)
 			impl := &Impl{
-				Helm:   m,
-				logger: func(string, ...any) {},
+				contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
+				Helm:           m,
+				logger:         func(string, ...any) {},
 				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 					kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 					return kubeClient, apiextClient, nil
