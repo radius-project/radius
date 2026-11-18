@@ -748,6 +748,7 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 		intermediate         bool
 		explicitContext      bool
 		external             bool
+		override             string
 		edit                 func(*testing.T, *issuerPolicyFixture)
 	}{
 		{name: "Issuer install isolated config", operation: "install"},
@@ -761,6 +762,7 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 		{name: "reinstall omitted flags", operation: "reinstall", err: "maintaining global.rbac.certificates.mode=issuerRef requires the certificate lifecycle"},
 		{name: "preflight-only", operation: "preflight-only", err: "maintaining global.rbac.certificates.mode=issuerRef requires the certificate lifecycle"},
 		{name: "external aggregation-only", operation: "install", external: true},
+		{name: "external issuer bootstrap rejects invalid workload values", operation: "install", external: true, override: "networkPolicies.enabled=true", err: "networkPolicies.controlPlaneCIDRs"},
 		{name: "issuer flags switch-on requires lifecycle", operation: "switch-on", err: "certificate mode changes require coordinated CA migration"},
 		{name: "external issuer flags switch-on requires lifecycle", operation: "switch-on", external: true, err: "certificate mode changes require coordinated CA migration"},
 		{name: "stored issuer switch-on upgrade requires lifecycle", operation: "switch-on upgrade", err: "mode=issuerRef requires the certificate lifecycle"},
@@ -858,6 +860,9 @@ func TestRadiusIssuerLivePreflight(t *testing.T) {
 				options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.certificates.requestPolicy.spiffe.namespace=cert-manager"}
 				if scenario.external {
 					options.Radius.SetArgs = append(options.Radius.SetArgs, "global.rbac.tls.provider=external")
+				}
+				if scenario.override != "" {
+					options.Radius.SetArgs = append(options.Radius.SetArgs, scenario.override)
 				}
 				if scenario.operation == "switch-on" {
 					options.RadiusInstalled = true

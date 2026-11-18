@@ -1,7 +1,5 @@
 {{- $appversion := include "radius.versiontag" . }}
-{{- if ne .Values.rp.terraform.path "/terraform" }}
-{{- fail "rp.terraform.path must be \"/terraform\" -- the runtime configmap (deploy/Chart/templates/rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching." }}
-{{- end }}
+{{- include "radius.validateTerraformPath" (dict "root" . "component" "rp" "directory" "rp") }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

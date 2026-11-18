@@ -72,6 +72,9 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- if ($c.issuerRef | default dict).name -}}{{- fail "caSecret must not specify issuerRef.name." -}}{{- end -}}
 {{- else -}}
 {{- if $c.caSecret -}}{{- fail "issuerRef must not specify caSecret; its private key stays with the existing issuer." -}}{{- end -}}
+{{- if eq (include "radius.authz.tls.provider" .) "external" -}}
+{{- include "radius.validateExternalWorkloadValues" . -}}
+{{- end -}}
 {{- include "radius.authz.issuerPolicy.validate" . -}}
 {{- end -}}
 {{- end -}}
