@@ -160,18 +160,36 @@ func TestInternalIdentityCommonRequestPath(t *testing.T) {
 }
 
 func TestInternalIdentityTimestampWirePrecision(t *testing.T) {
-	for _, timestamp := range []string{"2026-11-13T21:15:22.123456700Z", "2026-11-13T21:15:22.1234567Z"} {
-		body := `{"schemaVersion":1,"provider":"radius","mode":"enforce","component":"ucp","namespace":"radius-system","podUID":"` + uuid.NewString() + `","bootID":"` + uuid.NewString() + `","caller":"system:serviceaccount:radius-system:bicep-de","challenge":"` + uuid.NewString() + `","observedAt":"` + timestamp + `"}`
-		receipt, err := DecodeInternalIdentityReceipt([]byte(body))
-		require.NoError(t, err)
-		encoded, err := marshalInternalIdentityReceipt(receipt)
-		require.NoError(t, err)
-		require.Contains(t, string(encoded), `"observedAt":"`+timestamp+`"`)
-		_, err = DecodeInternalIdentityReceipt([]byte(strings.ReplaceAll(body, "Z\"", "+00:00\"")))
-		require.Error(t, err)
-		_, err = DecodeInternalIdentityReceipt([]byte(strings.Replace(body, `"schemaVersion":1`, `"schemaVersion":1,"schemaVersion":1`, 1)))
-		require.Error(t, err)
+	body := `{"schemaVersion":1,"provider":"radius","mode":"enforce","component":"ucp","namespace":"radius-system","podUID":"` + uuid.NewString() + `","bootID":"` + uuid.NewString() + `","caller":"system:serviceaccount:radius-system:bicep-de","challenge":"` + uuid.NewString() + `","observedAt":`
+	for _, tc := range []struct {
+		timestamp string
+		valid     bool
+	}{
+		{"2026-11-13T21:15:22Z", true},
+		{"2026-11-13T21:15:22.1Z", true},
+		{"2026-11-13T21:15:22.123456700Z", true},
+		{"2026-11-13T21:15:22,123Z", false},
+		{"2026-11-13T21:15:22.1234567890Z", false},
+		{"2026-11-13T21:15:22Z\n", false},
+		{"2026-11-13T21:15:22+00:00", false},
+		{"2026-11-31T21:15:22Z", false},
+	} {
+		t.Run(tc.timestamp, func(t *testing.T) {
+			wire, err := json.Marshal(tc.timestamp)
+			require.NoError(t, err)
+			receipt, err := DecodeInternalIdentityReceipt([]byte(body + string(wire) + "}"))
+			if !tc.valid {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			encoded, err := marshalInternalIdentityReceipt(receipt)
+			require.NoError(t, err)
+			require.Contains(t, string(encoded), `"observedAt":`+string(wire))
+		})
 	}
+	_, err := DecodeInternalIdentityReceipt([]byte(body + `"2026-11-13T21:15:22Z","schemaVersion":1}`))
+	require.Error(t, err)
 }
 
 func TestInternalIdentityUnavailableWithoutUpstreamOrPod(t *testing.T) {

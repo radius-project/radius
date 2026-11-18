@@ -25,8 +25,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/authz"
@@ -36,6 +36,9 @@ import (
 // InternalIdentityPath returns a fresh, authenticated receiver assertion. Its
 // authenticity requires the provider-selected transport and a verified caller token.
 const InternalIdentityPath = "/healthz/internal-identity"
+
+// time.Time checks the calendar but also accepts comma fractions and truncates excess digits.
+var receiptTimestampPattern = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z\z`)
 
 // InternalIdentityReceipt binds a verified caller and challenge to one receiver
 // process. It contains no token material and does not attest outbound client use.
@@ -173,7 +176,7 @@ func DecodeInternalIdentityReceipt(data []byte) (InternalIdentityReceipt, error)
 			return InternalIdentityReceipt{}, fail
 		}
 		if name == "observedAt" {
-			if json.Unmarshal(raw, &timestamp) != nil || !strings.HasSuffix(timestamp, "Z") {
+			if json.Unmarshal(raw, &timestamp) != nil || !receiptTimestampPattern.MatchString(timestamp) {
 				return InternalIdentityReceipt{}, fail
 			}
 		}
