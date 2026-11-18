@@ -45,6 +45,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.47.9
 	github.com/aws/aws-sdk-go-v2/service/lakeformation v1.57.2
 	github.com/aws/aws-sdk-go-v2/service/medialive v1.114.2
+	github.com/aws/aws-sdk-go-v2/service/rds v1.132.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.7
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.286.1
 	github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.49.3

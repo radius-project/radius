@@ -47,6 +47,7 @@ var iamPrefixes = map[string]string{
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
+	"rds":                      "rds",
 	"s3":                       "s3",
 	"sagemaker":                "sagemaker",
 	"servicecatalog":           "servicecatalog",
@@ -95,7 +96,7 @@ func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(schemaOf(catalog, h.TypeName())), &schema), h.TypeName())
 		for method, ops := range operationsOf {
 			for _, call := range src.Calls(typ.Name(), method) {
 				action := src.iam[call] + ":" + call
@@ -123,7 +124,7 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 			// Tags sent in the create call itself: TagSpecifications, or Tags.
 			"ec2:CreateTags", "medialive:CreateTags", "sagemaker:AddTags",
 		},
-		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
+		"delete": {"rds:CreateDBClusterSnapshot", "rds:CreateDBSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}
 	catalog, err := schemas.Load()
 	require.NoError(t, err)
@@ -154,7 +155,7 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(schemaOf(catalog, h.TypeName())), &schema), h.TypeName())
 		for op, handler := range schema.Handlers {
 			for _, action := range handler.Permissions {
 				service, _, _ := strings.Cut(action, ":")
@@ -184,4 +185,12 @@ func parseHandlerSource(t *testing.T, dir string) handlerSource {
 		src.iam[method] = prefix
 	}
 	return src
+}
+
+// schemaOf returns the schema of typeName, a native or a hand-written type.
+func schemaOf(catalog schemas.Catalog, typeName string) string {
+	if schema, ok := catalog.Native[typeName]; ok {
+		return schema
+	}
+	return catalog.HandWritten[typeName]
 }

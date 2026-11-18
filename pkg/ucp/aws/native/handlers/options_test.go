@@ -50,7 +50,7 @@ func Test_SchemaHandlersMatchOptions(t *testing.T) {
 				} `json:"handlerSchema"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(schemaOf(catalog, h.TypeName())), &schema), h.TypeName())
 		options := h.Options()
 
 		list := native.ListNone
