@@ -33,6 +33,7 @@ mkdir -p "${work_dir}/build/scripts" "${work_dir}/bin" \
     "${work_dir}/hack/bicep-types-radius/generated" \
     "${work_dir}/.github/actions/install-git-http-backend"
 cp "${SCRIPT_DIR}/local-functional.sh" "${work_dir}/build/scripts/"
+cp "${SCRIPT_DIR}/../../bicepconfig.json" "${work_dir}/bicepconfig.json"
 extension_fixture="test/functional-portable/dynamicrp/noncloud/resources/testdata/testResourceSchema-validAny.bicep"
 cp "${SCRIPT_DIR}/../../${extension_fixture}" "${work_dir}/${extension_fixture}"
 runner="${work_dir}/build/scripts/local-functional.sh"
@@ -123,9 +124,9 @@ yq)
 bicep)
     case "${1:-}" in
     restore)
-        grep -F '"radius": "br:localhost:5443/radius:deadbeef1"' \
+        grep -F '"radius": "br:radius-local-registry:5443/radius:deadbeef1"' \
             test/bicepconfig.json >/dev/null
-        grep -F '"testresources": "br:localhost:5443/testresources:deadbeef1"' \
+        grep -F '"testresources": "br:radius-local-registry:5443/testresources:deadbeef1"' \
             test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json >/dev/null
         mkdir -p "${HOME}/.bicep/br"
         touch "${HOME}/.bicep/br/extensions-ready"
@@ -250,9 +251,9 @@ make)
             echo "recipes published without the fixture lock" >&2
             exit 1
         }
-        grep -F '"radius": "br:localhost:5443/radius:deadbeef1"' \
+        grep -F '"radius": "br:radius-local-registry:5443/radius:deadbeef1"' \
             test/bicepconfig.json >/dev/null
-        grep -F '"testresources": "br:localhost:5443/testresources:deadbeef1"' \
+        grep -F '"testresources": "br:radius-local-registry:5443/testresources:deadbeef1"' \
             test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json >/dev/null
         ;;
     test-functional-*)
@@ -410,6 +411,8 @@ for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
     fi
     assert_contains "${calls}" \
         "127.0.0.1 radius-local-registry # radius-local-functional"
+    assert_contains "${calls}" \
+        "subjectAltName=DNS:localhost,DNS:radius-local-registry"
     assert_contains "${calls}" "DOCKER_BUILD_ARCH=${LOCAL_FUNCTIONAL_HOST_ARCH}"
     [[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" ]] ||
         fail "${platform} setup did not restore existing config"
@@ -464,6 +467,15 @@ export MOCK_FAILURE=""
 [[ -d "${state}/samples/.git" ]] || fail "samples were not cloned"
 run_runner 0 fixtures
 assert_contains "${calls}" "git -C ${state}/samples pull --ff-only origin edge"
+# Publishers run at the repository root, not beside the temporary test configs.
+assert_contains "$(<"${work_dir}/bicepconfig.json")" '"ociEnabled": true'
+assert_contains "${calls}" \
+    "bicep publish-extension hack/bicep-types-radius/generated/index.json --target br:radius-local-registry:5443/radius:deadbeef1 --force"
+assert_contains "${calls}" \
+    "rad bicep publish-extension -f test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target br:radius-local-registry:5443/testresources:deadbeef1 --force"
+assert_contains "${calls}" \
+    "make publish-test-bicep-recipes BICEP_RECIPE_REGISTRY=radius-local-registry:5443"
+assert_not_contains "${calls}" "--target br:localhost:5443/"
 export MOCK_PULL_STATUS=77
 run_runner 77 fixtures
 export MOCK_PULL_STATUS=0
@@ -489,7 +501,7 @@ for outcome in success failure signal; do
         fail "${outcome} fixture publication leaked fixtures or a lock"
 done
 export MOCK_FIXTURE_CONCURRENCY="" MOCK_FIXTURE_TEST_STATUS=0 MOCK_FIXTURE_SIGNAL=""
-export MOCK_FAILURE="make publish-test-bicep-recipes BICEP_RECIPE_REGISTRY=localhost:5443"
+export MOCK_FAILURE="make publish-test-bicep-recipes BICEP_RECIPE_REGISTRY=radius-local-registry:5443"
 run_runner 1 fixtures
 assert_contains "${output}" "mock failure: ${MOCK_FAILURE}"
 [[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" ]] ||
@@ -571,7 +583,7 @@ for outcome in success failure signal; do
     assert_contains "${calls}" "bicep restore ${extension_fixture} --force"
     assert_contains "${calls}" \
         "bicep build ${extension_fixture} --stdout --no-restore"
-    assert_contains "${calls}" '"radius": "br:localhost:5443/radius:deadbeef1"'
+    assert_contains "${calls}" '"radius": "br:radius-local-registry:5443/radius:deadbeef1"'
     [[ "$(<"${work_dir}/test/bicepconfig.json")" == "original config" ]] ||
         fail "${outcome} did not restore existing config"
     [[ ! -e "${dynamic_config}" ]] || fail "${outcome} did not restore absent config"
