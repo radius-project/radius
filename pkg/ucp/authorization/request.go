@@ -125,10 +125,14 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 			}
 			return c.mapping(ResourceRequest, "System."+planeType+"/credentials/use/action", plane)
 		}
-		// UCP-owned namespaces keep their resource permissions on cloud planes.
-		if strings.EqualFold(planeType, "azure") && len(parts) > 5 && strings.EqualFold(parts[3], "providers") &&
-			!containsFold([]string{"System.Azure", "System.Resources", "Radius.Core"}, parts[4]) {
-			return c.mapping(ResourceRequest, "System.Azure/credentials/use/action", plane)
+		// The Azure router serves only credential collections/items locally
+		// beneath providers; all other namespaces and descendants use its proxy.
+		if strings.EqualFold(planeType, "azure") && len(parts) > 3 && strings.EqualFold(parts[3], "providers") {
+			localCredential := (len(parts) == 6 || len(parts) == 7) &&
+				strings.EqualFold(parts[4], "System.Azure") && strings.EqualFold(parts[5], "credentials")
+			if !localCredential {
+				return c.mapping(ResourceRequest, "System.Azure/credentials/use/action", plane)
+			}
 		}
 		if method == http.MethodGet && len(parts) >= 8 &&
 			strings.EqualFold(parts[len(parts)-4], "locations") &&
@@ -147,7 +151,10 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 		if len(parts) == 6 && strings.EqualFold(parts[3], "resourcegroups") && strings.EqualFold(parts[5], "resources") && method == http.MethodGet {
 			return c.mapping(MixedResourceListRequest, "System.Resources/resources/read", "/"+strings.Join(parts[:5], "/"))
 		}
-		if len(parts) == 11 && strings.EqualFold(parts[9], "icons") && method == http.MethodGet {
+		if len(parts) == 11 && strings.EqualFold(planeType, "radius") &&
+			strings.EqualFold(parts[3], "providers") && strings.EqualFold(parts[4], "System.Resources") &&
+			strings.EqualFold(parts[5], "resourceproviders") && strings.EqualFold(parts[7], "resourcetypes") &&
+			strings.EqualFold(parts[9], "icons") && method == http.MethodGet {
 			return c.mapping(ResourceRequest, "System.Resources/resourceProviders/resourceTypes/read", "/"+strings.Join(parts[:9], "/"))
 		}
 	}

@@ -61,7 +61,7 @@ func TestRequestMapping(t *testing.T) {
 		{"PUT", "/planes/aws/local/accounts/123/regions/us-west-2/providers/AWS.S3/locations/global/operationStatuses/token", "System.AWS/credentials/use/action", "/planes/aws/local", ResourceRequest},
 		{"GET", "/planes/azure/local/subscriptions/123/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/test", "System.Azure/credentials/use/action", "/planes/azure/local", ResourceRequest},
 		{"GET", "/planes/azure/local/providers/Microsoft.Authorization/roleAssignments/grant", "System.Azure/credentials/use/action", "/planes/azure/local", ResourceRequest},
-		{"GET", "/planes/azure/local/providers/System.Resources/locations/global/operationStatuses/123", "", "", OperationStatusRequest},
+		{"GET", "/planes/azure/local/providers/System.Resources/locations/global/operationStatuses/123", "System.Azure/credentials/use/action", "/planes/azure/local", ResourceRequest},
 	} {
 		t.Run(tt.method+tt.path, func(t *testing.T) {
 			result, err := catalog.MapRequest(tt.method, tt.path)
@@ -85,6 +85,49 @@ func TestRequestMapping(t *testing.T) {
 	}
 }
 
+func TestRequestMappingRouteShortcuts(t *testing.T) {
+	t.Parallel()
+	catalog, err := NewCatalog([]Registration{{Type: "Foo.Bar/things/icons"}})
+	require.NoError(t, err)
+	const azure = "/planes/azure/local"
+	iconParent := plane + "/providers/System.Resources/resourceproviders/Foo.Bar/resourcetypes/things"
+	child := teamA + "/providers/Foo.Bar/things/x/icons/y"
+	for _, tt := range []struct {
+		name, path, permission, target string
+		kind                           RequestKind
+	}{
+		{"registered icon route", iconParent + "/icons/hash", "System.Resources/resourceProviders/resourceTypes/read", iconParent, ResourceRequest},
+		{"case-insensitive icon route", strings.ToUpper(iconParent + "/icons/hash"), "System.Resources/resourceProviders/resourceTypes/read", iconParent, ResourceRequest},
+		{"resource-group child named icons", child, "Foo.Bar/things/icons/read", child, ResourceRequest},
+		{"Azure Radius.Core proxy", azure + "/providers/Radius.Core/applications/app", "System.Azure/credentials/use/action", azure, ResourceRequest},
+		{"Azure provider collection proxy", azure + "/providers", "System.Azure/credentials/use/action", azure, ResourceRequest},
+		{"Azure provider namespace proxy", azure + "/providers/System.Resources", "System.Azure/credentials/use/action", azure, ResourceRequest},
+		{"Azure System.Resources proxy", azure + "/providers/System.Resources/resourcegroups/rg", "System.Azure/credentials/use/action", azure, ResourceRequest},
+		{"Azure operation status proxy", azure + "/providers/System.Resources/locations/global/operationStatuses/123", "System.Azure/credentials/use/action", azure, ResourceRequest},
+		{"Azure icon proxy", strings.Replace(iconParent, plane, azure, 1) + "/icons/hash", "System.Azure/credentials/use/action", azure, ResourceRequest},
+		{"Azure credential item local", azure + "/providers/System.Azure/credentials/default", "System.Azure/credentials/read", azure + "/providers/System.Azure/credentials/default", ResourceRequest},
+		{"Azure credential collection local", azure + "/providers/System.Azure/credentials", "System.Azure/credentials/read", azure, ListRequest},
+		{"Azure credential case", azure + "/providers/SYSTEM.AZURE/CREDENTIALS/default", "System.Azure/credentials/read", azure + "/providers/System.Azure/credentials/default", ResourceRequest},
+		{"Azure unknown System.Azure type proxy", azure + "/providers/System.Azure/widgets/a", "System.Azure/credentials/use/action", azure, ResourceRequest},
+		{"Azure credential descendant proxy", azure + "/providers/System.Azure/credentials/default/children/a", "System.Azure/credentials/use/action", azure, ResourceRequest},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			mapping, err := catalog.MapRequest(http.MethodGet, tt.path)
+			require.NoError(t, err)
+			require.Equal(t, RequestMapping{Kind: tt.kind, Checks: []Check{{tt.permission, strings.ToLower(tt.target)}}}, mapping)
+		})
+	}
+	for _, path := range []string{
+		plane + "/providers/Foo.Bar/resourceproviders/rp/resourcetypes/things/icons/hash",
+		plane + "/providers/System.Resources/other/rp/resourcetypes/things/icons/hash",
+		plane + "/providers/System.Resources/resourceproviders/rp/other/things/icons/hash",
+		strings.Replace(iconParent, "/radius/", "/aws/", 1) + "/icons/hash",
+	} {
+		_, err := catalog.MapRequest(http.MethodGet, path)
+		require.Error(t, err, path)
+	}
+}
+
 func TestCloudPlaneAccessManagement(t *testing.T) {
 	catalog, err := NewCatalog(nil)
 	require.NoError(t, err)
@@ -99,12 +142,21 @@ func TestCloudPlaneAccessManagement(t *testing.T) {
 					mapping, err := catalog.MapRequest(method, target)
 					require.NoError(t, err)
 					require.Equal(t, ResourceRequest, mapping.Kind)
-					require.Equal(t, []Check{{"Radius.Core/" + typ + "/" + operation, strings.ToLower(target)}}, mapping.Checks)
+					expected := []Check{{"Radius.Core/" + typ + "/" + operation, strings.ToLower(target)}}
+					if plane == "/planes/azure/local" {
+						expected = []Check{{"System.Azure/credentials/use/action", plane}}
+					}
+					require.Equal(t, expected, mapping.Checks)
 					if method == "GET" {
 						mapping, err = catalog.MapRequest(method, collection)
 						require.NoError(t, err)
-						require.Equal(t, ListRequest, mapping.Kind)
-						require.Equal(t, []Check{{"Radius.Core/" + typ + "/read", plane}}, mapping.Checks)
+						if plane == "/planes/azure/local" {
+							require.Equal(t, ResourceRequest, mapping.Kind)
+							require.Equal(t, expected, mapping.Checks)
+						} else {
+							require.Equal(t, ListRequest, mapping.Kind)
+							require.Equal(t, []Check{{"Radius.Core/" + typ + "/read", plane}}, mapping.Checks)
+						}
 					}
 					for _, role := range []string{"platform-administrator", "access-administrator"} {
 						evaluator, err := NewEvaluator(catalog, nil, []api.RoleAssignmentResource{
@@ -114,7 +166,11 @@ func TestCloudPlaneAccessManagement(t *testing.T) {
 						results, err := evaluator.Evaluate(identity, mapping.Checks)
 						require.NoError(t, err)
 						require.Len(t, results, 1)
-						require.Equal(t, role == "access-administrator", results[0].Allowed, role)
+						wantAllowed := role == "access-administrator"
+						if plane == "/planes/azure/local" {
+							wantAllowed = role == "platform-administrator"
+						}
+						require.Equal(t, wantAllowed, results[0].Allowed, role)
 					}
 				})
 			}
@@ -142,7 +198,11 @@ func TestSwaggerOperationsMap(t *testing.T) {
 					require.NotEmpty(t, mapping.Checks)
 				}
 				if mapping.Kind != SelfAccessRequest {
-					require.Equal(t, strings.ToLower(route.Permission), strings.ToLower(mapping.Checks[0].Permission))
+					expected := route.Permission
+					if strings.HasPrefix(path, "/planes/azure/") && strings.Contains(path, "/providers/Radius.Core/role") {
+						expected = "System.Azure/credentials/use/action"
+					}
+					require.Equal(t, strings.ToLower(expected), strings.ToLower(mapping.Checks[0].Permission))
 				}
 			})
 		}

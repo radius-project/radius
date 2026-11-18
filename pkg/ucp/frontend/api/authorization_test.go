@@ -170,6 +170,84 @@ func TestServiceDryRunRequests(t *testing.T) {
 		require.Equal(t, allowedBody, deniedBody)
 	}
 
+	t.Run("route shortcut observations preserve responses", func(t *testing.T) {
+		const azure = "/planes/azure/local"
+		const icon = `<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>`
+		const iconHash = "7f9d93106668218aa422f68b0570c4d8676fb271a89d27a7e561da7517f3d9f5"
+		const iconParent = "/planes/radius/local/providers/System.Resources/resourceproviders/Foo.Bar/resourcetypes/things"
+		child := group + "/providers/Foo.Bar/things/x/icons/y"
+		var calls atomic.Int32
+		proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			calls.Add(1)
+			require.Equal(t, http.MethodGet, r.Method)
+			w.Header().Set("X-Downstream", "preserved")
+			w.WriteHeader(http.StatusAccepted)
+			_, err := w.Write([]byte("original proxy response"))
+			require.NoError(t, err)
+		}))
+		defer proxy.Close()
+		require.NoError(t, db.Save(t.Context(), &database.Object{
+			Metadata: database.Metadata{ID: azure},
+			Data: &datamodel.AzurePlane{
+				BaseResource: v1.BaseResource{ID: azure, Type: datamodel.AzurePlaneResourceType},
+				Properties:   datamodel.AzurePlaneProperties{URL: proxy.URL},
+			},
+		}))
+		require.NoError(t, db.Save(t.Context(), &database.Object{
+			Metadata: database.Metadata{ID: iconParent},
+			Data: &datamodel.ResourceType{ID: iconParent, Name: "things", Properties: datamodel.ResourceTypeProperties{
+				Icon: to.Ptr(icon), IconHash: to.Ptr(iconHash),
+			}},
+		}))
+		for _, tt := range []struct {
+			name, path, permission, target, result string
+			proxied                                bool
+		}{
+			{"real icon", iconParent + "/icons/" + iconHash, "System.Resources/resourceProviders/resourceTypes/read", iconParent, "wouldDeny", false},
+			{"child named icons", child, "", "", "indeterminate", false},
+			{"Azure Radius.Core proxy", azure + "/providers/Radius.Core/applications/app", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure System.Resources proxy", azure + "/providers/System.Resources/resourcegroups/rg", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure credentials local", azure + "/providers/System.Azure/credentials/default", "System.Azure/credentials/read", azure + "/providers/System.Azure/credentials/default", "wouldDeny", false},
+		} {
+			t.Run(tt.name, func(t *testing.T) {
+				before := calls.Load()
+				allowed, allowedHeaders, allowedBody := call(http.MethodGet, tt.path+"?api-version=2023-10-01-preview", "alice", "")
+				logs.TakeAll()
+				denied, deniedHeaders, deniedBody := call(http.MethodGet, tt.path+"?api-version=2023-10-01-preview", "bob", "")
+				require.Equal(t, allowed, denied)
+				require.Equal(t, allowedBody, deniedBody)
+				if tt.proxied {
+					require.Equal(t, http.StatusAccepted, denied, deniedBody)
+					require.Equal(t, "original proxy response", deniedBody)
+					require.Equal(t, "preserved", allowedHeaders.Get("X-Downstream"))
+					require.Equal(t, "preserved", deniedHeaders.Get("X-Downstream"))
+					require.Equal(t, before+2, calls.Load())
+				} else {
+					require.Equal(t, before, calls.Load(), "local routes must not reach the Azure proxy")
+					if tt.name == "real icon" {
+						require.Equal(t, http.StatusOK, denied, deniedBody)
+						require.Equal(t, icon, deniedBody)
+					} else if tt.name == "Azure credentials local" {
+						require.Equal(t, http.StatusNotFound, denied, deniedBody)
+					} else {
+						require.GreaterOrEqual(t, denied, http.StatusBadRequest, "unregistered child retains its routing error")
+					}
+				}
+				events := logs.FilterMessage("User authorization request").All()
+				require.Len(t, events, 1)
+				fields := events[0].ContextMap()
+				require.Equal(t, tt.result, fields["result"])
+				if tt.permission == "" {
+					require.NotContains(t, fields, "permission")
+					require.NotContains(t, fields, "target")
+				} else {
+					require.Equal(t, tt.permission, fields["permission"])
+					require.Equal(t, strings.ToLower(tt.target), fields["target"])
+				}
+			})
+		}
+	})
+
 	var downstreamCalls atomic.Int32
 	deploymentBody := `{"properties":{"template":{"resources":[]},"parameters":{"secret":{"value":"do-not-log"}}}}`
 	protectedDeploymentBody := `{"properties":{"template":{"resources":[{"type":"Radius.Core/roleAssignments","name":"attacker","properties":{}}]}}}`
