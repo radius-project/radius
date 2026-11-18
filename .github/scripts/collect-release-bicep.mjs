@@ -101,17 +101,17 @@ export async function verifyMirrors(plan, sourceSha, lock, run = tool) {
   }
 }
 
-async function validateAncestry(github, commit, main) {
+async function validateAncestry(github, commit, head, ref) {
   assert.match(commit, /^[a-f0-9]{40}$/);
   const { data: comparison } = await github.rest.repos.compareCommits({
     ...aws,
     base: commit,
-    head: main,
+    head,
     request: request()
   });
   assert.ok(
     ["identical", "ahead"].includes(comparison.status),
-    "AWS source or controller is not an ancestor of main"
+    `AWS source or controller is not an ancestor of ${ref}`
   );
 }
 
@@ -125,6 +125,34 @@ async function mainCommit(github) {
   return data.sha;
 }
 
+async function validatePlannedSource(github, plan, expected) {
+  const sibling = plan.siblingRepositories.find(
+    (entry) => entry.repository === expected.source.repository
+  );
+  const channel = plan.version.slice(1).split(".").slice(0, 2).join(".");
+  assert.equal(
+    plan.channel,
+    channel,
+    "AWS source channel differs from release version"
+  );
+  assert.ok(
+    sibling.sourceRef === "main" || sibling.sourceRef === `release/${channel}`,
+    "Invalid approved AWS sourceRef"
+  );
+  const { data: branch } = await github.rest.repos.getCommit({
+    ...aws,
+    ref: `refs/heads/${sibling.sourceRef}`,
+    request: request()
+  });
+  assert.match(branch.sha, /^[a-f0-9]{40}$/);
+  await validateAncestry(
+    github,
+    expected.source.commit,
+    branch.sha,
+    sibling.sourceRef
+  );
+}
+
 async function validateRun(github, run, expected, attempt, main) {
   assert.ok(positive(run.id) && positive(attempt));
   assert.equal(run.run_attempt, attempt);
@@ -133,7 +161,7 @@ async function validateRun(github, run, expected, attempt, main) {
   assert.equal(run.head_branch, "main");
   assert.equal(run.path, awsWorkflow);
   assert.equal(run.event, "repository_dispatch");
-  await validateAncestry(github, run.head_sha, main);
+  await validateAncestry(github, run.head_sha, main, "main");
 }
 
 function validateArtifact(artifact, run, name, maxSize) {
@@ -172,8 +200,7 @@ export async function selectAwsPublication(
     expected.source.commit,
     "AWS tag differs from frozen source"
   );
-  const main = await mainCommit(github);
-  await validateAncestry(github, expected.source.commit, main);
+  await validatePlannedSource(github, plan, expected);
   const deadline = now() + 600_000;
   let firstDiscovery = true;
   while (true) {
@@ -196,6 +223,7 @@ export async function selectAwsPublication(
         run.display_title ===
         `Publish AWS ${plan.version} at ${expected.source.commit}`
     );
+    const main = await mainCommit(github);
     for (const run of matching)
       await validateRun(github, run, expected, run.run_attempt, main);
     const successful = matching.filter(
@@ -291,7 +319,7 @@ export async function authenticateAwsGeneration(
   assert.equal(run.id, generation.runId, "AWS generation run ID mismatch");
   const main = await mainCommit(github);
   await validateRun(github, run, expected, generation.runAttempt, main);
-  await validateAncestry(github, expected.source.commit, main);
+  await validatePlannedSource(github, plan, expected);
   const { data: tag } = await github.rest.repos.getCommit({
     ...aws,
     ref: `refs/tags/${plan.version}`,

@@ -1552,6 +1552,8 @@ jobs:
       - build-and-push-remaining-images
       - build-and-push-helm-chart
       - build-and-push-bicep-types
+      - publish-radius-bicep-extension
+      - publish-legacy-bicep-types
       - attest-release
       - finalize-release
       - verify-release
@@ -1595,6 +1597,8 @@ jobs:
             ${{ needs.build-and-push-remaining-images.result }}
           HELM_RESULT: ${{ needs.build-and-push-helm-chart.result }}
           BICEP_RESULT: ${{ needs.build-and-push-bicep-types.result }}
+          RADIUS_BICEP_RESULT: ${{ needs.publish-radius-bicep-extension.result }}
+          LEGACY_BICEP_RESULT: ${{ needs.publish-legacy-bicep-types.result }}
           ATTESTATION_RESULT: ${{ needs.attest-release.result }}
           FINALIZE_RESULT: ${{ needs.finalize-release.result }}
           VERIFY_RESULT: ${{ needs.verify-release.result }}
@@ -1608,6 +1612,8 @@ jobs:
             "remaining-images:${REMAINING_IMAGES_RESULT}" \
             "build-and-push-helm-chart:${HELM_RESULT}" \
             "build-and-push-bicep-types:${BICEP_RESULT}" \
+            "publish-radius-bicep-extension:${RADIUS_BICEP_RESULT}" \
+            "publish-legacy-bicep-types:${LEGACY_BICEP_RESULT}" \
             "attest-release:${ATTESTATION_RESULT}" \
             "verify-release:${VERIFY_RESULT}" \
             "approve-publication:${APPROVAL_RESULT}" \

@@ -33,6 +33,7 @@ const digest = `sha256:${"c".repeat(64)}`;
 const plan = {
   schemaVersion: 2,
   version: "v0.62.0-rc.1",
+  channel: "0.62",
   releaseType: "rc",
   expectedOutputs: {
     repository: "radius-project/radius",
@@ -43,6 +44,7 @@ const plan = {
     {
       name: "bicep-types-aws",
       repository: "radius-project/bicep-types-aws",
+      sourceRef: "main",
       sourceCommit: awsSha
     }
   ]
@@ -755,4 +757,127 @@ test("incomplete or over-budget discovery cannot authorize a dispatch", async ()
     );
     assert.equal(dispatched, false);
   }
+});
+
+test("frozen release-branch source is independent of trusted-main controller ancestry", async () => {
+  const f = fixture();
+  const releasePlan = structuredClone(plan);
+  releasePlan.siblingRepositories[0].sourceRef = "release/0.62";
+  const releaseHead = "d".repeat(40);
+  const getCommit = f.github.rest.repos.getCommit;
+  f.github.rest.repos.getCommit = async (args) =>
+    args.ref === "refs/heads/release/0.62" ?
+      { data: { sha: releaseHead } }
+    : getCommit(args);
+  f.github.rest.repos.compareCommits = async ({ base, head }) => ({
+    data: {
+      status:
+        (
+          (base === awsSha && head === releaseHead) ||
+          (base === controllerSha && head === controllerSha)
+        ) ?
+          "ahead"
+        : "diverged"
+    }
+  });
+  await selectAwsPublication(f.github, releasePlan, sourceSha);
+  await authenticateAwsGeneration(f.github, releasePlan, sourceSha, f.record);
+  f.run.head_sha = awsSha;
+  await assert.rejects(
+    selectAwsPublication(f.github, releasePlan, sourceSha),
+    /ancestor/
+  );
+  await assert.rejects(
+    authenticateAwsGeneration(f.github, releasePlan, sourceSha, f.record),
+    /ancestor/
+  );
+});
+
+test("invalid or unreachable planned AWS source refs fail without dispatch", async () => {
+  for (const ref of [
+    undefined,
+    "",
+    "release/0.63",
+    "feature/source",
+    "refs/heads/main",
+    "release/0.62"
+  ]) {
+    const f = fixture();
+    const input = structuredClone(plan);
+    input.siblingRepositories[0].sourceRef = ref;
+    let dispatched = false;
+    const getCommit = f.github.rest.repos.getCommit;
+    f.github.rest.repos.getCommit = async (args) =>
+      args.ref === "refs/heads/release/0.62" ?
+        { data: { sha: controllerSha } }
+      : getCommit(args);
+    f.github.rest.repos.compareCommits = async () => ({
+      data: { status: ref === "release/0.62" ? "diverged" : "ahead" }
+    });
+    await assert.rejects(
+      selectAwsPublication(f.github, input, sourceSha, {
+        dispatch: async () => {
+          dispatched = true;
+        }
+      })
+    );
+    await assert.rejects(
+      authenticateAwsGeneration(f.github, input, sourceSha, f.record)
+    );
+    assert.equal(dispatched, false);
+  }
+});
+
+test("discovery refreshes main after dispatch and before validating a newer controller", async () => {
+  const f = fixture();
+  const newer = "d".repeat(40);
+  let main = controllerSha;
+  let dispatched = false;
+  const getCommit = f.github.rest.repos.getCommit;
+  f.github.rest.repos.getCommit = async (args) =>
+    args.ref === "refs/heads/main" ? { data: { sha: main } } : getCommit(args);
+  const runs = f.github.rest.actions.listWorkflowRuns;
+  f.github.rest.actions.listWorkflowRuns = async () =>
+    dispatched ? (await runs()).map((r) => ({ ...r, head_sha: newer })) : [];
+  const artifacts = f.github.rest.actions.listWorkflowRunArtifacts;
+  f.github.rest.actions.listWorkflowRunArtifacts = async () =>
+    (await artifacts()).map((a) => ({
+      ...a,
+      workflow_run: { ...a.workflow_run, head_sha: newer }
+    }));
+  f.github.rest.repos.compareCommits = async ({ base, head }) => ({
+    data: { status: base === awsSha || base === head ? "ahead" : "diverged" }
+  });
+  const result = await selectAwsPublication(f.github, plan, sourceSha, {
+    dispatch: async () => {
+      dispatched = true;
+      main = newer;
+    },
+    sleep: async () => {}
+  });
+  assert.equal(result.runId, 11);
+});
+
+test("main refresh read failure cannot accept a discovered run or redispatch", async () => {
+  const f = fixture();
+  const getCommit = f.github.rest.repos.getCommit;
+  let dispatches = 0;
+  f.github.rest.repos.getCommit = async (args) => {
+    if (args.ref === "refs/heads/main" && dispatches)
+      throw Object.assign(new Error("main read forbidden"), { status: 403 });
+    return getCommit(args);
+  };
+  const runs = f.github.rest.actions.listWorkflowRuns;
+  f.github.rest.actions.listWorkflowRuns = async () =>
+    dispatches ? runs() : [];
+  await assert.rejects(
+    selectAwsPublication(f.github, plan, sourceSha, {
+      dispatch: async () => {
+        dispatches++;
+      },
+      sleep: async () => {}
+    }),
+    /main read forbidden/
+  );
+  assert.equal(dispatches, 1);
 });
