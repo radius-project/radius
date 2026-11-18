@@ -181,5 +181,5 @@ spec:
             defaultMode: 0444
             optional: true
         {{- with include "radius.authz.mtls.volume" (dict "root" . "component" "ucp") | trim }}{{ . | nindent 8 }}{{- end }}
-        {{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.spiffe.volume" (dict "root" . "component" "ucp") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "applications-rp" "dynamic-rp")) | trim }}{{ . | nindent 8 }}{{- end }}
