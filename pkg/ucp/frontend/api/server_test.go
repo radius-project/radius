@@ -418,6 +418,44 @@ func newTestService(dir string, mode authz.Mode) *Service {
 	}}}
 }
 
+func TestRunOffServesCertificateAndKeyWithoutCAFile(t *testing.T) {
+	dir := t.TempDir()
+	leaf := writeServingCert(t, dir)
+	ca, err := os.ReadFile(filepath.Join(dir, "ca.crt"))
+	require.NoError(t, err)
+	roots := x509.NewCertPool()
+	require.True(t, roots.AppendCertsFromPEM(ca))
+	require.NoError(t, os.Remove(filepath.Join(dir, "ca.crt")))
+
+	config := &ucp.Config{
+		Authorization: authz.Options{Mode: authz.ModeOff},
+		Server:        hostoptions.ServerOptions{Host: "127.0.0.1", Port: freePort(t), TLSCertificateDirectory: dir},
+	}
+	service := NewService(identityTestOptions(t, config, http.NotFoundHandler()))
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- service.Run(ctx) }()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case err := <-done:
+			require.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatal("Run did not stop after cancellation")
+		}
+	})
+	require.Eventually(t, func() bool {
+		conn, err := tls.Dial("tcp", config.Server.Address(), &tls.Config{
+			RootCAs: roots, ServerName: leaf.DNSNames[0], MinVersion: tls.VersionTLS12,
+		})
+		if err != nil {
+			return false
+		}
+		defer conn.Close()
+		return leaf.Equal(conn.ConnectionState().PeerCertificates[0])
+	}, 5*time.Second, 10*time.Millisecond)
+}
+
 func Test_listenAndServe_ServesCertificateFromDirectory(t *testing.T) {
 	for _, mode := range []authz.Mode{authz.ModeOff, authz.ModeDryRun, authz.ModeEnforce} {
 		t.Run(string(mode), func(t *testing.T) {

@@ -279,25 +279,18 @@ func (s *Service) Run(ctx context.Context) error {
 	// Capture shared routes before adding aggregation-only identity headers or
 	// TLS policy. Internal component traffic must not attest the API-server route.
 	internal := s.internalServer(service)
-	source, err := s.configureAggregationServing(service)
-	if err != nil {
-		return err
-	}
-	if source != nil {
-		sourceCtx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		go source.Start(sourceCtx, mtls.DefaultPollInterval)
-	}
-
-	// Handle shutdown based on the context
-	go func() {
-		<-ctx.Done()
-		// We don't care about shutdown errors
-		_ = service.Shutdown(ctx)
-	}()
 
 	internalErr := make(chan error, 1)
 	if s.options.Config.Authorization.EffectiveMode() != authz.ModeOff {
+		source, err := s.configureAggregationServing(service)
+		if err != nil {
+			return err
+		}
+		if source != nil {
+			sourceCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			go source.Start(sourceCtx, mtls.DefaultPollInterval)
+		}
 		if s.options.Config.Server.InternalPort == 0 {
 			return errors.New("server.internalPort is required when the authorization mode is not off")
 		}
@@ -315,6 +308,10 @@ func (s *Service) Run(ctx context.Context) error {
 		}()
 	}
 
+	go func() {
+		<-ctx.Done()
+		_ = service.Shutdown(ctx)
+	}()
 	logger.Info(fmt.Sprintf("listening on: '%s'...", s.options.Config.Server.Address()))
 	err = s.listenAndServe(ctx, service)
 
