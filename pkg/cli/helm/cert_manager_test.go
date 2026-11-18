@@ -508,6 +508,49 @@ func Test_ensureCertManager(t *testing.T) {
 			wantErrParts: []string{"lets its default approver approve " + radiusCAIssuerSignerName(RadiusSystemNamespace)},
 		},
 		{
+			// The user removed every ClusterIssuer from the list, so rad must not add them back.
+			name:    "rad-owned release with a restricted list stays restricted",
+			stored:  storedDryRun,
+			upgrade: true,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				rel := *radOwned
+				rel.Config = map[string]any{"crds": wantValues["crds"], "approveSignerNames": []any{userSigner}}
+				expectGet(&rel)(m)
+				expectPull(t, m)
+				signers := []any{}
+				for _, issuer := range defaultApprovedRadiusIssuers() {
+					signers = append(signers, issuerSignerName(RadiusSystemNamespace, issuer))
+				}
+				want := map[string]any{"crds": wantValues["crds"], "approveSignerNames": append(signers, userSigner)}
+				m.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), want, certManagerReleaseName, CertManagerNamespace, true, true, DefaultInstallTimeout).
+					Return(&releasev1.Release{}, nil)
+			},
+		},
+		{
+			// The cert-manager chart renders no resourceNames for an empty list, so the approver may approve every signer.
+			name:    "rad-owned release with an empty list fails before changing cert-manager",
+			stored:  storedDryRun,
+			upgrade: true,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				rel := *radOwned
+				rel.Config = map[string]any{"crds": wantValues["crds"], "approveSignerNames": []any{}}
+				expectGet(&rel)(m)
+			},
+			wantErrParts: []string{"Radius stopped before changing the cluster", "lets its default approver approve every signer", "approveSignerNames={" + strings.Join(certManagerApproveSignerNames(RadiusSystemNamespace), ",") + "}"},
+		},
+		{
+			// null removes the chart's default list, which also leaves the approver unrestricted.
+			name:    "rad-owned release with a null list fails before changing cert-manager",
+			stored:  storedDryRun,
+			upgrade: true,
+			expect: func(t *testing.T, m *MockHelmClient) {
+				rel := *radOwned
+				rel.Config = map[string]any{"crds": wantValues["crds"], "approveSignerNames": nil}
+				expectGet(&rel)(m)
+			},
+			wantErrParts: []string{"lets its default approver approve every signer"},
+		},
+		{
 			name:    "rad-owned release is reused on install",
 			setArgs: dryRun,
 			cluster: healthy,
