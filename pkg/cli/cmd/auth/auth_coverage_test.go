@@ -430,6 +430,82 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 	}
 }
 
+func TestCheckResponsePrincipalMatchesExplicitRequest(t *testing.T) {
+	for _, format := range []string{"json", "table"} {
+		for _, tt := range []struct {
+			name      string
+			principal api.Principal
+			omit      bool
+			wantError bool
+		}{
+			{
+				name: "matching identity ignores display name",
+				principal: api.Principal{
+					Type: to.Ptr(api.PrincipalTypeGroup), Issuer: to.Ptr("kubernetes:test"),
+					Subject: to.Ptr("developers"), DisplayName: to.Ptr("Development team"),
+				},
+			},
+			{
+				name: "different type", wantError: true,
+				principal: api.Principal{Type: to.Ptr(api.PrincipalTypeUser), Issuer: to.Ptr("kubernetes:test"), Subject: to.Ptr("developers")},
+			},
+			{
+				name: "different issuer", wantError: true,
+				principal: api.Principal{Type: to.Ptr(api.PrincipalTypeGroup), Issuer: to.Ptr("kubernetes:other"), Subject: to.Ptr("developers")},
+			},
+			{
+				name: "different subject", wantError: true,
+				principal: api.Principal{Type: to.Ptr(api.PrincipalTypeGroup), Issuer: to.Ptr("kubernetes:test"), Subject: to.Ptr("Developers")},
+			},
+			{
+				name: "omitted principal uses returned identity", omit: true,
+				principal: api.Principal{Type: to.Ptr(api.PrincipalTypeUser), Issuer: to.Ptr("kubernetes:other"), Subject: to.Ptr("alice")},
+			},
+		} {
+			t.Run(format+"/"+tt.name, func(t *testing.T) {
+				response := api.CheckAccessResponse{
+					Principal: &tt.principal, Mode: to.Ptr(api.UserAuthorizationModeDryRun), Generation: to.Ptr(int64(0)),
+					Checks: []*api.AccessCheckResult{{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/"), Allowed: to.Ptr(false)}},
+				}
+				server, requests := inspectionHTTPServer(t, http.StatusOK, response)
+				config := radcli.LoadConfigWithWorkspace(t)
+				section, err := cli.ReadWorkspaceSection(config)
+				require.NoError(t, err)
+				workspace := section.Items[radcli.TestWorkspaceName]
+				workspace.Connection["overrides"] = map[string]any{"ucp": server.URL}
+				section.Items[radcli.TestWorkspaceName] = workspace
+				cli.UpdateWorkspaceSection(config, section)
+				writer := &output.MockOutput{}
+				cmd, _ := newTestCommand(&framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: config}, Output: writer}, "check")
+				args := []string{"--output", format, "--scope", "/", "--action", "Radius.Core/applications/read"}
+				if !tt.omit {
+					args = append(args, "--principal", "group:developers", "--issuer", "kubernetes:test")
+				}
+				cmd.SetArgs(args)
+				err = cmd.ExecuteContext(t.Context())
+				if tt.wantError {
+					require.EqualError(t, err, "Radius returned an invalid access-check response: principal does not match the request")
+					require.Empty(t, writer.Writes, "mismatched principal must not reach either formatter")
+				} else {
+					require.NoError(t, err)
+					require.Len(t, writer.Writes, 1)
+				}
+				request := requireInspectionRequest(t, requests, http.MethodPost, "/providers/Radius.Core/checkAccess")
+				var body api.AccessCheckRequest
+				require.NoError(t, json.Unmarshal(request.body, &body))
+				if tt.omit {
+					require.Nil(t, body.Principal)
+				} else {
+					require.Equal(t, &api.AccessCheckPrincipal{
+						Type: to.Ptr(api.PrincipalTypeGroup), Issuer: to.Ptr("kubernetes:test"), Subject: to.Ptr("developers"),
+					}, body.Principal)
+				}
+				require.Empty(t, requests)
+			})
+		}
+	}
+}
+
 func TestGeneratedWhoAmIMalformedResponse(t *testing.T) {
 	for _, test := range []struct {
 		name     string
