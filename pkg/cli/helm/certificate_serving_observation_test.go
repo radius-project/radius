@@ -138,7 +138,7 @@ func TestAggregationServingInventory(t *testing.T) {
 func TestObserveServingCertificate(t *testing.T) {
 	t.Parallel()
 	for _, profile := range []string{"DNS", "SPIFFE"} {
-		for _, scenario := range []string{"success", "wrong CA", "wrong SAN", "not ready", "SA replaced", "workload replaced", "restarted", "cancel TLS", "driver replaced", "not mounted"} {
+		for _, scenario := range []string{"success", "wrong CA", "wrong SAN", "client-only EKU", "not ready", "SA replaced", "workload replaced", "restarted", "cancel TLS", "driver replaced", "not mounted"} {
 			if profile == "DNS" && (scenario == "driver replaced" || scenario == "not mounted") {
 				continue
 			}
@@ -166,7 +166,14 @@ func TestObserveServingCertificate(t *testing.T) {
 					leaf.URIs, leaf.DNSNames = []*url.URL{identity}, nil
 				}
 				if scenario == "wrong SAN" {
-					leaf.DNSNames, leaf.URIs = []string{"other.radius-system.svc"}, nil
+					if profile == "SPIFFE" {
+						leaf.URIs[0].Path += "-other"
+					} else {
+						leaf.DNSNames = []string{"other.radius-system.svc"}
+					}
+				}
+				if scenario == "client-only EKU" {
+					leaf.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
 				}
 				key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 				require.NoError(t, err)
