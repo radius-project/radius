@@ -288,11 +288,11 @@ func chainValidity(chain []*x509.Certificate) connectionValidity {
 // current CA bundle.
 func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.URL.Scheme != "https" {
-		return rejectRequest(req, fmt.Errorf("refusing to send a ServiceAccount token over %q; the URL must use https", req.URL.Scheme))
+		return nil, fmt.Errorf("refusing to send a ServiceAccount token over %q; the URL must use https", req.URL.Scheme)
 	}
 	token, err := t.token.Token()
 	if err != nil {
-		return rejectRequest(req, err)
+		return nil, err
 	}
 	pool := t.transportForRequest()
 

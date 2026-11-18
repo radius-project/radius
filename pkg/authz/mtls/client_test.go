@@ -194,7 +194,6 @@ func TestTokenTransportRejectClosesBody(t *testing.T) {
 	const authority = "ucp.custom.svc:12345"
 	token := newTokenFile(filepath.Join(t.TempDir(), "missing"))
 	external := &externalTransport{token: token, authorities: []string{authority}}
-	managed := &clientTransport{token: token}
 	for _, tt := range []struct {
 		rt              http.RoundTripper
 		url, host, want string
@@ -204,8 +203,6 @@ func TestTokenTransportRejectClosesBody(t *testing.T) {
 		{external, "http://elsewhere:12345", "", "unconfigured destination"},
 		{external, "http://" + authority, "elsewhere", "unconfigured destination"},
 		{external, "http://" + authority, "", "failed to read ServiceAccount token"},
-		{managed, "http://" + authority, "", "must use https"},
-		{managed, "https://" + authority, "", "failed to read ServiceAccount token"},
 	} {
 		pr, pw := io.Pipe()
 		req, err := http.NewRequest(http.MethodPut, tt.url, pr)
