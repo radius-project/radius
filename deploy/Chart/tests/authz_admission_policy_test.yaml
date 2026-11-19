@@ -13,12 +13,12 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: refuses enforce without the ValidatingAdmissionPolicy API
+  - it: renders nothing when the cluster has no ValidatingAdmissionPolicy API
     set:
       global.rbac.enabled: true
     asserts:
-      - failedTemplate:
-          errorMessage: "Radius authorization requires admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy (Kubernetes 1.30 or later). Upgrade the cluster or install with authorization off."
+      - hasDocuments:
+          count: 0
 
   - it: warns and audits in dryRun
     capabilities: *vap
@@ -100,7 +100,7 @@ tests:
           path: spec.variables
           content:
             name: controlPlaneSecrets
-            expression: '["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","ucp-apiserver-tls","radius-ca","radius-apiserver-ca","radius-apiserver-trust","my-root-ca","target-kubeconfig"]'
+            expression: '["database-secret","radius-encryption-key","radius-aws-fingerprint-key","ucp-cert","ucp-apiserver-tls","radius-ca","radius-apiserver-ca","radius-apiserver-trust","my-root-ca","target-kubeconfig","ucp-spiffe","applications-rp-spiffe","dynamic-rp-spiffe"]'
         documentIndex: 0
 
   - it: safely quotes an identity containing an apostrophe, double quote, and backslash

@@ -21,7 +21,6 @@
 *.jpg binary
 *.jpeg binary
 *.png binary
-pkg/cli/helm/testdata/a6-auth-workloads.tgz binary
 
 # Microsoft Office documents
 *.pptx binary

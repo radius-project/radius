@@ -140,9 +140,10 @@ The Helm setting `global.rbac.tls.provider` renders `authorization.tlsProvider` 
   the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
   and `dynamic-rp` allow only the `ucp` identity.
 
-Each receiver presents the csi-driver-spiffe certificate mounted at
-`/var/run/radius/spiffe` (`tls.crt`, `tls.key`), whose only SAN is the
-URI `spiffe://<trustDomain>/ns/<namespace>/sa/<service account>`. It requests no
+Each receiver presents the certificate that cert-manager issues to it in Secret
+`<receiver>-spiffe`, mounted at `/var/run/radius/spiffe` (`tls.crt`,
+`tls.key`), whose only SAN is the URI
+`spiffe://<trustDomain>/ns/<namespace>/sa/<service account>`. It requests no
 client certificate. It verifies the `Authorization: Bearer` token offline with
 [pkg/authz/token](../../pkg/authz/token/verifier.go), requiring the receiver's
 name as the audience, maps the ServiceAccount to the caller's
@@ -151,14 +152,12 @@ handler. Probes and metrics stay on their plain ports.
 
 Callers build transports with `mtls.NewClientTransport` and
 `mtls.NewUpgradeTransport` in [pkg/authz/mtls/client.go](../../pkg/authz/mtls/client.go).
-They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and require exactly
-one SAN, a URI SAN with the receiver's SPIFFE ID, instead of matching DNS
-names; a certificate with any DNS, IP, email, or other SAN is rejected. Only
-after the server is verified do they send the token from
+They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and
+require exactly one SAN, a URI SAN with the receiver's SPIFFE ID, instead of
+matching DNS names; a certificate with any DNS, IP, email, or other SAN is
+rejected. Only after the server is verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
-Internal public trust is mounted separately at `/var/run/radius/ca`, never with a CA signing key. BYO uses ConfigMap `radius-mtls-ca`; only selfSigned bootstrap projects `radius-ca/ca.crt` until an independent source is staged. In selfSigned mode aggregation retains a separate CA. In caSecret mode distinct internal and aggregation Issuers share the operator's signing Secret; issuerRef selects the existing issuer for both request profiles. UCP's ordinary DNS Certificate and internal own-Pod SPIFFE CSI requests have separate approval restrictions, even under the same CA. Runtime callers never present component client certificates; pinned CSI's client-auth EKU is not caller authorization.
-
-In selfSigned mode the APIService follows public `ca.crt` of the cert-manager-owned `radius-apiserver-ca` Secret through cainjector, including same-key, same-subject renewal without another Helm run. BYO modes retain the pinned public-only `radius-apiserver-trust` source, never a leaf Secret or organization root. Existing A8 selfSigned public copies remain unused for injection and retained as `rad` continuity pins. Connected Helm checks signer ownership/profile structurally; `rad` also compares subject public key info and encoded subject with retained trust at command boundaries. Neither blocks changes between commands. The chart guards public sources and rotation journals against unvalidated overwrite; lifecycle operations requiring newly generated anchor pins must stage issuance before a connected render. Journal-aware convergence remains paired lifecycle work: cainjector merging alone does not establish exact retirement of old anchors. See the [certificate-mode contract](../../deploy/Chart/README.md#internal-service-certificate-modes).
+UCP, Applications RP, Dynamic RP, and the controller project only public `ca.crt` to `/var/run/radius/ca`. In `selfSigned` mode, it comes from the `radius-ca` Secret. UCP's aggregated API uses a separate `radius-apiserver-ca` Secret, whose `ca.crt` cainjector copies to the APIService. In `caSecret` and `issuerRef` modes, component trust comes from ConfigMap `radius-mtls-ca` and aggregation trust from Secret `radius-apiserver-trust`. Both contain the selected dedicated signing CA, not the organization root. The serving volume contains the receiver's key and certificate, never the CA's key.
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Before each request, a client

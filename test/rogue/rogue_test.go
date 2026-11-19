@@ -17,10 +17,14 @@ limitations under the License.
 package rogue
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	"github.com/radius-project/radius/test/rogue/rogueclient"
 )
@@ -100,6 +104,29 @@ func Test_ClientArgs(t *testing.T) {
 				"https://x"),
 		},
 		{
+			name:   "Radius client transport with a token directory",
+			req:    Request{URL: "https://x", Receiver: "applications-rp", ReceiverNamespace: "ns", TokenDirectory: "wrong-caller"},
+			hasTLS: true,
+			want: with(
+				"-X", "GET",
+				"--radius-receiver", "applications-rp",
+				"--radius-dir", TLSMountPath,
+				"--radius-namespace", "ns",
+				"--radius-token-dir", TLSMountPath+"/wrong-caller",
+				"https://x"),
+		},
+		{
+			name:    "token directory requires a receiver",
+			req:     Request{URL: "https://x", Insecure: true, TokenDirectory: "tokens"},
+			wantErr: "TokenDirectory requires Receiver",
+		},
+		{
+			name:    "token directory must stay under the mount",
+			req:     Request{URL: "https://x", Receiver: "ucp", ReceiverNamespace: "ns", TokenDirectory: "../etc"},
+			hasTLS:  true,
+			wantErr: "relative path under TLSMountPath",
+		},
+		{
 			name:    "receiver requires a TLS secret",
 			req:     Request{URL: "https://x", Receiver: "ucp", ReceiverNamespace: "ns"},
 			wantErr: "TLSSecretName",
@@ -146,6 +173,81 @@ func Test_ClientArgs(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+// Test_ClientArgs_RejectsCredentials checks that a token can never be placed on the
+// rogue-client command line, which is sent in the pods/exec URL, and that the error does
+// not echo it. rogue-client trims header names, so padded names must be rejected too.
+func Test_ClientArgs_RejectsCredentials(t *testing.T) {
+	t.Parallel()
+	const sentinel = "rogue-test-sentinel-token"
+	for _, name := range []string{"Authorization", "authorization", "AUTHORIZATION", " Authorization", "Authorization ", "\tAuthorization\t"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			for _, req := range []Request{
+				{URL: "https://x", Insecure: true, Headers: map[string]string{name: "Bearer " + sentinel}},
+				{URL: "https://x", Receiver: "ucp", ReceiverNamespace: "ns", Headers: map[string]string{name: "Bearer " + sentinel}},
+			} {
+				args, err := clientArgs(req, true)
+				require.ErrorContains(t, err, "Authorization headers are not allowed")
+				require.NotContains(t, err.Error(), sentinel)
+				require.Nil(t, args)
+			}
+		})
+	}
+}
+
+// Test_ClientArgs_RejectsInvalidHeaderNames checks that a header name rogue-client would
+// split differently, such as one containing a colon, cannot smuggle a credential into argv.
+func Test_ClientArgs_RejectsInvalidHeaderNames(t *testing.T) {
+	t.Parallel()
+	const sentinel = "rogue-test-sentinel-token"
+	for _, name := range []string{
+		"Authorization: Bearer " + sentinel,
+		"Authorization:",
+		"X-Test:Authorization",
+		"X Test",
+		"X-Test\n" + sentinel,
+		" ",
+		"",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			args, err := clientArgs(Request{URL: "https://x", Insecure: true, Headers: map[string]string{name: "Bearer " + sentinel}}, true)
+			require.Error(t, err)
+			require.NotContains(t, err.Error(), sentinel)
+			require.Nil(t, args)
+		})
+	}
+}
+
+// Test_ExecURL_HasNoToken checks that a request that sends a token from a mounted file puts
+// only the token's path, never the token, in the pods/exec URL.
+func Test_ExecURL_HasNoToken(t *testing.T) {
+	t.Parallel()
+	const sentinel = "rogue-test-sentinel-token"
+	k8s, err := kubernetes.NewForConfig(&rest.Config{Host: "https://example.invalid"})
+	require.NoError(t, err)
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "authz-boundary-x", Name: "rogue"}}
+
+	args, err := clientArgs(Request{
+		URL:               "https://applications-rp.radius-system.svc:5443/",
+		Receiver:          "applications-rp",
+		ReceiverNamespace: "radius-system",
+		TokenDirectory:    "allowed",
+	}, true)
+	require.NoError(t, err)
+	u := execURL(k8s, pod, args)
+
+	require.Equal(t, "/api/v1/namespaces/authz-boundary-x/pods/rogue/exec", u.Path)
+	require.Equal(t, args, u.Query()["command"])
+	require.Contains(t, u.Query()["command"], TLSMountPath+"/allowed")
+	for _, arg := range args {
+		require.NotContains(t, arg, sentinel)
+		require.NotContains(t, strings.ToLower(arg), "authorization")
+		require.NotContains(t, strings.ToLower(arg), "bearer")
+	}
+	require.NotContains(t, u.String(), sentinel)
 }
 
 func Test_ParseOutput(t *testing.T) {

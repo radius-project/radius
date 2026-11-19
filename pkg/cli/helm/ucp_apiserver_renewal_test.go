@@ -149,7 +149,7 @@ func TestSelfSignedAggregationRenewalGuards(t *testing.T) {
 					return "", false, nil
 				}
 				require.ErrorContains(t, impl.stageUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace,
-					"radius", authz.ModeDryRun, authz.ModeDryRun, render), tt.want)
+					"radius", deployedMode(authz.ModeDryRun), authz.ModeDryRun, render), tt.want)
 				require.ErrorContains(t, impl.reconcileUCPAPIServerTrust(t.Context(), "test", RadiusSystemNamespace), tt.want)
 				got, err := dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 				require.NoError(t, err)
@@ -164,7 +164,7 @@ func TestSelfSignedAggregationSourceAndRenewal(t *testing.T) {
 	renewed := reissueTestCA(t, old, time.Now().Add(2*time.Hour))
 	for _, provider := range []string{"radius", "external"} {
 		t.Run(provider, func(t *testing.T) {
-			f := newIssuerPolicyFixture(t)
+			f := newCertificateChartFixture(t)
 			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 			rbac["certificates"] = map[string]any{"mode": "selfSigned"}
 			rbac["tls"] = map[string]any{"provider": provider}
@@ -194,7 +194,7 @@ func TestSelfSignedAggregationSourceAndRenewal(t *testing.T) {
 			require.Equal(t, fmt.Sprintf("%x", sha256.Sum256(old.pem)), source.ContentDigest)
 			require.NotEmpty(t, source.IssuerDigest)
 			require.NotEmpty(t, source.Digest)
-			require.Equal(t, RadiusAPIServerIssuerName, source.Issuer["name"])
+			require.Equal(t, radiusAPIServerIssuerName, source.Issuer["name"])
 			delete(manifests, "radius/templates/source-contract.json")
 			var api *unstructured.Unstructured
 			for _, obj := range chartObjects(t, manifests) {
@@ -252,7 +252,7 @@ func TestSelfSignedAggregationStructuralGuards(t *testing.T) {
 		for _, field := range []string{"type", certificateNameAnnotation, "cert-manager.io/issuer-name",
 			"cert-manager.io/issuer-kind", "cert-manager.io/issuer-group", "tls.crt", "tls.key", "ca.crt"} {
 			t.Run(provider+"/"+field, func(t *testing.T) {
-				f := newIssuerPolicyFixture(t)
+				f := newCertificateChartFixture(t)
 				rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 				rbac["certificates"] = map[string]any{"mode": "selfSigned"}
 				rbac["tls"] = map[string]any{"provider": provider}
@@ -341,7 +341,7 @@ func TestRetainedSelfSignedTrustReinstallAfterUninstall(t *testing.T) {
 			impl := trustImpl(client, ucpAPIServiceDynamicClient())
 			impl.logger = func(string, ...any) {}
 			require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
-			err := impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeEnforce, func(context.Context) (string, bool, error) {
+			err := impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", deployedMode(authz.ModeOff), authz.ModeEnforce, func(context.Context) (string, bool, error) {
 				t.Fatal("no prior APIService remains; staging must not issue or replace a signer")
 				return "", false, nil
 			})
@@ -368,7 +368,7 @@ func TestRetainedSelfSignedTrustReinstallAfterUninstall(t *testing.T) {
 func TestBYOPublicTrustUninstallAndChartReinstall(t *testing.T) {
 	for _, mode := range []string{"caSecret", "issuerRef"} {
 		t.Run(mode, func(t *testing.T) {
-			f := newIssuerPolicyFixture(t)
+			f := newCertificateChartFixture(t)
 			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 			if mode == "caSecret" {
 				rbac["certificates"] = map[string]any{"mode": mode, "caSecret": "operator-ca",
@@ -398,7 +398,7 @@ func TestBYOPublicTrustUninstallAndChartReinstall(t *testing.T) {
 			rbac["tls"] = map[string]any{"provider": "external"}
 			_, err = f.renderChart(t)
 			require.ErrorContains(t, err, "radius-apiserver-trust belongs to another certificate mode")
-			err = impl.stageUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, "radius", authz.ModeEnforce, authz.ModeEnforce, nil)
+			err = impl.stageUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, "radius", deployedMode(authz.ModeEnforce), authz.ModeEnforce, nil)
 			require.ErrorContains(t, err, "use the certificate lifecycle before switching to selfSigned")
 			for _, action := range client.Actions() {
 				require.Equal(t, "get", action.GetVerb())
@@ -411,7 +411,7 @@ func TestAggregationTrustSelectionGuards(t *testing.T) {
 	for _, mode := range []string{"selfSigned", "caSecret", "issuerRef"} {
 		for _, invalid := range []string{"foreign", "empty"} {
 			t.Run(mode+"/"+invalid, func(t *testing.T) {
-				f := newIssuerPolicyFixture(t)
+				f := newCertificateChartFixture(t)
 				rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 				if mode != "issuerRef" {
 					rbac["certificates"] = map[string]any{"mode": mode}
@@ -454,13 +454,13 @@ func TestSelfSignedSwitchOnOverlapRender(t *testing.T) {
 		t.Run(provider, func(t *testing.T) {
 			c := newStageCluster(t, nil, true)
 			c.addOffAPIService(t, "off")
-			impl := c.impl(nil, "")
-			f := newIssuerPolicyFixture(t)
+			impl := c.impl(nil)
+			f := newCertificateChartFixture(t)
 			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 			rbac["certificates"] = map[string]any{"mode": "selfSigned"}
 			rbac["tls"] = map[string]any{"provider": provider}
 			require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace,
-				"radius", authz.ModeOff, authz.ModeEnforce, func(context.Context) (string, bool, error) {
+				"radius", deployedMode(authz.ModeOff), authz.ModeEnforce, func(context.Context) (string, bool, error) {
 					return renderStageTestManifest(t, f.values), true, nil
 				}))
 			for _, name := range []string{ucpAPIServerTrustSecretName, ucpAPIServerCASecretName} {
@@ -518,12 +518,13 @@ func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
 					}}}
 					var err error
 					switch source {
-					case "flags":
-						values, parseErr := parseUserValuesFromCLI(&options.Radius)
-						require.NoError(t, parseErr)
-						_, err = resolveRadiusActionTarget(t.Context(), chart, RadiusSystemNamespace, "radius", values, nil, false, authz.ModeOff, nil)
-					case "stored":
-						_, err = resolveRadiusActionTarget(t.Context(), chart, RadiusSystemNamespace, "radius", nil, target, false, authz.ModeOff, nil)
+					case "flags", "stored":
+						var stored map[string]any
+						if source == "stored" {
+							stored = target
+							options.Radius.SetArgs = nil
+						}
+						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", nil, chart.Values, stored, false, nil)
 					case "rollback":
 						history := []*releasev1.Release{{Version: 1, Chart: chart, Config: target}, {Version: 2, Chart: chart}}
 						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
@@ -558,10 +559,11 @@ func TestRollbackCertificateModeBeforeStaging(t *testing.T) {
 				{Version: 2, Chart: loadStageTestChart(t)},
 			}
 			called := false
-			impl := &Impl{newUCPAPIServerTrustClient: func(string) (kubernetes.Interface, error) {
+			impl := newStageCluster(t, nil, false).impl(nil)
+			impl.newUCPAPIServerTrustClient = func(string) (kubernetes.Interface, error) {
 				called = true
 				return nil, fmt.Errorf("stage attempted trust client")
-			}}
+			}
 			err := impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
 			if tt.refusedMode == "" {
 				require.True(t, called)

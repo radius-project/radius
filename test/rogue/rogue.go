@@ -26,7 +26,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"path"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -34,6 +36,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/http/httpguts"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -96,8 +99,11 @@ type Options struct {
 // Request is an HTTP request sent from the rogue pod.
 type Request struct {
 	// Method defaults to GET.
-	Method  string
-	URL     string
+	Method string
+	URL    string
+	// Headers are sent with the request. They must not include Authorization: the command
+	// line is part of the exec request URL, so credentials there would be logged by the API
+	// server and proxies. Send tokens with Receiver and a mounted token file instead.
 	Headers map[string]string
 	Body    string
 
@@ -113,11 +119,15 @@ type Request struct {
 	// Receiver sends the request with the Radius component client transport for this
 	// receiver, such as "applications-rp", instead of a plain HTTP client. The transport
 	// verifies the server against ca.crt from the mounted Secret and the receiver's SPIFFE ID,
-	// then sends the token at tokens/<Receiver>/token. ReceiverNamespace is the Radius
-	// namespace in the SPIFFE ID; TrustDomain defaults to the Radius default.
+	// then sends the token at <TokenDirectory>/<Receiver>/token. ReceiverNamespace is the
+	// Radius namespace in the SPIFFE ID; TrustDomain defaults to the Radius default.
 	Receiver          string
 	ReceiverNamespace string
 	TrustDomain       string
+
+	// TokenDirectory is the directory under TLSMountPath that holds <Receiver>/token, so one
+	// pod can mount several tokens. It defaults to "tokens".
+	TokenDirectory string
 }
 
 // Response is the result of a Request.
@@ -203,19 +213,7 @@ func (c *Client) Do(ctx context.Context, req Request) (Response, error) {
 		return Response{}, err
 	}
 
-	execReq := c.k8s.CoreV1().RESTClient().Post().
-		Resource("pods").
-		Namespace(c.pod.Namespace).
-		Name(c.pod.Name).
-		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			Container: containerName,
-			Command:   args,
-			Stdout:    true,
-			Stderr:    true,
-		}, scheme.ParameterCodec)
-
-	executor, err := remotecommand.NewSPDYExecutor(c.config, http.MethodPost, execReq.URL())
+	executor, err := remotecommand.NewSPDYExecutor(c.config, http.MethodPost, execURL(c.k8s, c.pod, args))
 	if err != nil {
 		return Response{}, fmt.Errorf("rogue: creating exec stream: %w", err)
 	}
@@ -239,6 +237,23 @@ func (c *Client) Do(ctx context.Context, req Request) (Response, error) {
 		return resp, nil
 	}
 	return resp, err
+}
+
+// execURL returns the pods/exec URL that runs args in the rogue container of pod. args are
+// encoded in the URL's query.
+func execURL(k8s kubernetes.Interface, pod *corev1.Pod, args []string) *url.URL {
+	return k8s.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Namespace(pod.Namespace).
+		Name(pod.Name).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: containerName,
+			Command:   args,
+			Stdout:    true,
+			Stderr:    true,
+		}, scheme.ParameterCodec).
+		URL()
 }
 
 // newPod builds the rogue pod spec.
@@ -345,6 +360,26 @@ func clientArgs(req Request, hasTLS bool) ([]string, error) {
 	if req.Receiver != "" && req.ReceiverNamespace == "" {
 		return nil, errors.New("rogue: Receiver requires ReceiverNamespace")
 	}
+	if req.TokenDirectory != "" && req.Receiver == "" {
+		return nil, errors.New("rogue: TokenDirectory requires Receiver")
+	}
+	if req.TokenDirectory != "" && !filepath.IsLocal(req.TokenDirectory) {
+		return nil, errors.New("rogue: TokenDirectory must be a relative path under TLSMountPath")
+	}
+	for k := range req.Headers {
+		// rogue-client trims header names, so compare the name it will send.
+		name := strings.TrimSpace(k)
+		if strings.EqualFold(name, "Authorization") {
+			// The value is not echoed, so the error cannot leak the credential either.
+			return nil, errors.New("rogue: Authorization headers are not allowed because the command is sent in the exec request URL; send tokens with Receiver and a mounted token file")
+		}
+		// rogue-client splits each header at its first colon, so a name containing one
+		// could send a different header than the one checked above. The name is not
+		// echoed because it could contain a credential.
+		if !httpguts.ValidHeaderFieldName(name) {
+			return nil, errors.New("rogue: header names must be valid HTTP field names")
+		}
+	}
 
 	method := req.Method
 	if method == "" {
@@ -378,6 +413,9 @@ func clientArgs(req Request, hasTLS bool) ([]string, error) {
 		args = append(args, "--radius-receiver", req.Receiver, "--radius-dir", TLSMountPath, "--radius-namespace", req.ReceiverNamespace)
 		if req.TrustDomain != "" {
 			args = append(args, "--radius-trust-domain", req.TrustDomain)
+		}
+		if req.TokenDirectory != "" {
+			args = append(args, "--radius-token-dir", path.Join(TLSMountPath, req.TokenDirectory))
 		}
 	}
 

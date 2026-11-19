@@ -127,10 +127,10 @@ func TestRadiusControllerMigrationFailureStopsUpgrade(t *testing.T) {
 			options.Contour.Disabled = true
 			options.Radius.Reinstall = reinstall
 			expectChartPull(t, client, radiusChartRef(options), newTestContourChart())
+			expectNoRadiusHistory(client)
 			failure := errors.New("controller patch denied")
 			client.EXPECT().MigrateControllerStrategy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "radius", "radius-system", true).Return(failure)
 			impl := &Impl{Helm: client}
-			expectRadiusPlanningReads(impl, client, newTestContourChart(), nil, reinstall, true)
 			var err error
 			if reinstall {
 				err = impl.InstallRadius(t.Context(), options, "test-context")

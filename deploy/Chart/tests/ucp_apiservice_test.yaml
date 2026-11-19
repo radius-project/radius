@@ -2,6 +2,7 @@ suite: test UCP aggregated API certificate
 templates:
   - ucp/apiservice.yaml
   - ucp/deployment.yaml
+  - de/deployment.yaml
 release:
   name: radius
   namespace: radius-system
@@ -365,6 +366,33 @@ tests:
           path: metadata.annotations["cert-manager.io/inject-ca-from-secret"]
           value: custom-ns/radius-apiserver-ca
         documentIndex: 1
+
+  # The deployment engine calls UCP back at RADIUSBACKENDURL, so its host must be the ucp.<namespace>.svc SAN above.
+  - it: points the deployment engine at the SAN of ucp-cert in the release namespace
+    template: de/deployment.yaml
+    release:
+      namespace: custom-ns
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUSBACKENDURL
+            value: https://ucp.custom-ns.svc:443/apis/api.ucp.dev/v1alpha3
+
+  # With authorization off, the URL earlier charts render is unchanged, a SAN of the Helm-generated certificate, so an
+  # upgrade does not restart the deployment engine.
+  - it: keeps the deployment engine URL of earlier charts when authorization is off
+    template: de/deployment.yaml
+    release:
+      namespace: custom-ns
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: RADIUSBACKENDURL
+            value: https://ucp.custom-ns:443/apis/api.ucp.dev/v1alpha3
 
   - it: mounts the cert-manager Secret when authorization is on
     template: ucp/deployment.yaml
