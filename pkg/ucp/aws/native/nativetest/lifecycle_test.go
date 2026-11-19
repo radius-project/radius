@@ -323,36 +323,23 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 	})
 }
 
-// Test_Lifecycle_ReadTypes checks that a run's reads have the types the schema built into Radius gives, for a
-// hand-written type too, such as AWS::RDS::TenantDatabase, whose TenantDBName is a string.
+// Test_Lifecycle_ReadTypes checks that a replay fails when Read returns a value whose type doesn't match the schema of
+// a hand-written type, as it does for a native one.
 func Test_Lifecycle_ReadTypes(t *testing.T) {
 	const typeName = "AWS::RDS::TenantDatabase"
-	for _, tt := range []struct {
-		name   string
-		value  any
-		failed bool
-	}{
-		{"a value of the schema's type", "pdb1", false},
-		{"a value of another type", 5, true},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv(awsreplay.RecordEnv, "")
-			file := filepath.Join(t.TempDir(), "cassette.json")
-			require.NoError(t, os.WriteFile(file, []byte(`{"source": "api-reference", "interactions": []}`), 0o600))
-			store := awsfake.NewCloudControl()
-			store.Identifiers[typeName] = "DBInstanceIdentifier"
-			l := Lifecycle{
-				Handler:    nativefake.New(typeName, store),
-				Session:    awsreplay.New(t, file),
-				Properties: map[string]any{"DBInstanceIdentifier": "app-cdb", "TenantDBName": tt.value},
-				Poll:       time.Millisecond,
-			}
-			f := newFakeTB(t)
-			f.run(func() { l.Run(f) })
-			require.Equal(t, tt.failed, f.failed, f.errors)
-			if tt.failed {
-				require.Contains(t, fmt.Sprint(f.errors), "/TenantDBName: integer, but the schema says string")
-			}
-		})
-	}
+	t.Setenv(awsreplay.RecordEnv, "")
+	file := filepath.Join(t.TempDir(), "cassette.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{"source": "recorded", "interactions": []}`), 0o600))
+	store := awsfake.NewCloudControl()
+	store.Identifiers[typeName] = "TenantDBName"
+	h := nativefake.New(typeName, store)
+	l := Lifecycle{Handler: h, Session: awsreplay.New(t, file), Poll: time.Millisecond}
+
+	store.Put(typeName, "pdb1", map[string]any{"TenantDBName": "pdb1", "MasterUsername": "admin"})
+	l.read(t, t.Context(), "pdb1")
+
+	store.Put(typeName, "pdb1", map[string]any{"TenantDBName": "pdb1", "MasterUsername": 5})
+	f := newFakeTB(t)
+	f.run(func() { l.read(f, f.Context(), "pdb1") })
+	require.True(t, f.failed, "MasterUsername is a string in the hand-written schema")
 }
