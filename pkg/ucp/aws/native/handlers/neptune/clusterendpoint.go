@@ -187,27 +187,24 @@ func (h *ClusterEndpoint) properties(ctx context.Context, region string, e *type
 	if err != nil {
 		return nil, err
 	}
-	properties, err := awsapi.EncodeObject(map[string]any{
+	// An endpoint always has both lists, so a template that sets one to [] matches AWS instead of sending a change,
+	// which would make the endpoint unusable until Neptune finishes it.
+	properties := map[string]any{"StaticMembers": anyList(e.StaticMembers), "ExcludedMembers": anyList(e.ExcludedMembers)}
+	for name, value := range map[string]*string{
 		"DBClusterEndpointIdentifier":         e.DBClusterEndpointIdentifier,
 		"DBClusterIdentifier":                 e.DBClusterIdentifier,
 		"EndpointType":                        e.CustomEndpointType,
-		"StaticMembers":                       e.StaticMembers,
-		"ExcludedMembers":                     e.ExcludedMembers,
-		"Tags":                                awsapi.TagListOf(tags.TagList),
 		"DBClusterEndpointArn":                e.DBClusterEndpointArn,
 		"DBClusterEndpointResourceIdentifier": e.DBClusterEndpointResourceIdentifier,
 		"Endpoint":                            e.Endpoint,
 		"Status":                              e.Status,
-	})
-	if err != nil {
-		return nil, err
-	}
-	// An endpoint always has both lists, so a template that sets one to [] matches AWS instead of sending a change,
-	// which would make the endpoint unusable until Neptune finishes it.
-	for _, name := range []string{"StaticMembers", "ExcludedMembers"} {
-		if _, ok := properties[name]; !ok {
-			properties[name] = []any{}
+	} {
+		if v := aws.ToString(value); v != "" {
+			properties[name] = v
 		}
+	}
+	if list := awsapi.TagListOf(tags.TagList); len(list) > 0 {
+		properties["Tags"] = list
 	}
 	return properties, nil
 }
