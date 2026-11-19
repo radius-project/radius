@@ -161,7 +161,8 @@ global:
     # projected ServiceAccount tokens at /var/run/radius/tokens/<receiver>/token, with the
     # receiver's name as the audience. Mounted for a later release; components do not read them yet.
     spiffe:
-      # SPIFFE trust domain of the Radius server certificates.
+      # SPIFFE trust domain of the Radius server certificates: lowercase letters, digits, '.', '-'
+      # and '_', at most 255 characters. Rendering fails for any other value when the mode is not off.
       trustDomain: radius.internal
 
 controller:

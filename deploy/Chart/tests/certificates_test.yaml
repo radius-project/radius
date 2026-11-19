@@ -325,6 +325,35 @@ tests:
       - notExists:
           path: spec.dnsNames
 
+  - it: fails for a trust domain with a path segment
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org/team
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got \"example.org/team\""
+
+  - it: fails for a trust domain with uppercase letters or a scheme in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rbac.spiffe.trustDomain: spiffe://Example.org
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got \"spiffe://Example.org\""
+
+  - it: fails for a trust domain longer than 255 characters
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    asserts:
+      - failedTemplate: {}
+
+  - it: does not validate the trust domain when the mode is off
+    set:
+      global.rbac.spiffe.trustDomain: example.org/team
+    asserts:
+      - notFailedTemplate: {}
+
   - it: issues no certificate to the bootstrap issuer except the Radius CA
     set:
       global.rbac.enabled: true
