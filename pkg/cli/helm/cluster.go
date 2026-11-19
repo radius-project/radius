@@ -435,23 +435,27 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 		return err
 	}
 	// rad stages objects before the Helm upgrade that adopts them, and cert-manager issues Secrets that Helm does not
-	// own; an interrupted upgrade or the uninstall itself can leave them outside the release.
-	if err := i.deleteUCPAPIServerLeftovers(ctx, kubeContext, clusterOptions.Radius.Namespace); err != nil {
-		return err
+	// own; an interrupted upgrade or the uninstall itself can leave them outside the release. A retried uninstall finds
+	// no Radius release and resumes only this cleanup, so a failure here still removes Contour, and keeps cert-manager,
+	// which the cleanup needs, before returning the error.
+	if cleanupErr := i.deleteUCPAPIServerLeftovers(ctx, kubeContext, clusterOptions.Radius.Namespace); cleanupErr != nil {
+		return errors.Join(cleanupErr, i.uninstallContour(ctx, clusterOptions, kubeContext))
 	}
-
-	output.LogInfo("Deleting Radius Contour Gateway...")
-	if err := i.removeContourGateway(ctx, kubeContext); err != nil {
-		return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
-	}
-
-	// Uninstall Contour
-	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Contour.Namespace, kubeContext); err != nil {
+	if err := i.uninstallContour(ctx, clusterOptions, kubeContext); err != nil {
 		return err
 	}
 
 	// Uninstall cert-manager only if rad installed it.
 	return i.uninstallCertManager(ctx, clusterOptions, kubeContext)
+}
+
+// uninstallContour deletes the Radius Contour Gateway and uninstalls the Contour release.
+func (i *Impl) uninstallContour(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
+	output.LogInfo("Deleting Radius Contour Gateway...")
+	if err := i.removeContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
+	}
+	return i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Contour.Namespace, kubeContext)
 }
 
 func (i *Impl) uninstallHelmRelease(componentName, releaseName, namespace, kubeContext string) error {
