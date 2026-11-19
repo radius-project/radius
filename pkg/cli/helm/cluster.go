@@ -257,6 +257,13 @@ type Interface interface {
 	// UninstallCertManager uninstalls cert-manager only when rad installed it and no other workload uses it.
 	UninstallCertManager(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
 
+	// RadiusUninstallLeftovers lists the objects that UninstallRadius deletes after Helm uninstalls Radius and that
+	// remain, for example because that cleanup failed. It only reads the cluster.
+	RadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) ([]string, error)
+
+	// DeleteRadiusUninstallLeftovers deletes the objects that RadiusUninstallLeftovers lists.
+	DeleteRadiusUninstallLeftovers(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error
+
 	// RollbackRadius rolls back the Radius installation to the previous revision.
 	RollbackRadius(ctx context.Context, kubeContext string) error
 

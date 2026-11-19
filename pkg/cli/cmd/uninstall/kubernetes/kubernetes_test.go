@@ -712,6 +712,7 @@ func Test_Run_RadiusNotInstalled(t *testing.T) {
 			}
 
 			helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, nil)
+			helmMock.EXPECT().RadiusUninstallLeftovers(ctx, helm.NewDefaultClusterOptions(), "test-context").Return(nil, nil)
 			helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(tt.owned, tt.ownedErr)
 			if tt.promptAnswer != "" {
 				promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).
@@ -729,6 +730,76 @@ func Test_Run_RadiusNotInstalled(t *testing.T) {
 				require.NoError(t, err)
 			}
 			require.Equal(t, tt.wantWrites, outputMock.Writes)
+		})
+	}
+}
+
+// A retried uninstall finds no Radius release when the previous uninstall failed after Helm removed it. It must resume
+// that cleanup rather than report success.
+func Test_Run_NotInstalled_ResumesUninstallCleanup(t *testing.T) {
+	leftovers := []string{"Secret radius-system/radius-apiserver-trust", "Secret radius-system/ucp-apiserver-tls"}
+	deleteErr := errors.New("delete failed")
+	tests := []struct {
+		name         string
+		assumeYes    bool
+		promptAnswer string
+		leftoversErr error
+		deleteErr    error
+		wantDelete   bool
+		wantCertMgr  bool
+		wantErr      string
+		wantLastLog  string
+	}{
+		{name: "resumes with --yes", assumeYes: true, wantDelete: true, wantCertMgr: true, wantLastLog: "Finished the previous Radius uninstall."},
+		{name: "resumes after confirmation", promptAnswer: prompt.ConfirmYes, wantDelete: true, wantCertMgr: true, wantLastLog: "Finished the previous Radius uninstall."},
+		{name: "cancelled", promptAnswer: prompt.ConfirmNo, wantLastLog: "Uninstall cancelled."},
+		{name: "delete fails", assumeYes: true, deleteErr: deleteErr, wantDelete: true, wantErr: "delete failed"},
+		{name: "check fails", assumeYes: true, leftoversErr: errors.New("forbidden"), wantErr: "failed to check for objects that a previous Radius uninstall left: forbidden"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			helmMock := helm.NewMockInterface(ctrl)
+			promptMock := prompt.NewMockInterface(ctrl)
+			outputMock := &output.MockOutput{}
+			ctx := t.Context()
+			runner := &Runner{
+				Helm:        helmMock,
+				Output:      outputMock,
+				Kubernetes:  kubernetes.NewMockInterface(ctrl),
+				Connections: &connections.MockFactory{},
+				Prompter:    promptMock,
+				KubeContext: "test-context",
+				AssumeYes:   tt.assumeYes,
+			}
+
+			helmMock.EXPECT().CheckRadiusInstall("test-context").Return(helm.InstallState{}, nil)
+			found := leftovers
+			if tt.leftoversErr != nil {
+				found = nil
+			}
+			helmMock.EXPECT().RadiusUninstallLeftovers(ctx, helm.NewDefaultClusterOptions(), "test-context").Return(found, tt.leftoversErr)
+			if tt.promptAnswer != "" {
+				promptMock.EXPECT().GetListInput([]string{prompt.ConfirmNo, prompt.ConfirmYes}, gomock.Any()).Return(tt.promptAnswer, nil)
+			}
+			if tt.wantDelete {
+				helmMock.EXPECT().DeleteRadiusUninstallLeftovers(ctx, helm.NewDefaultClusterOptions(), "test-context").Return(tt.deleteErr)
+			}
+			if tt.wantCertMgr {
+				helmMock.EXPECT().CertManagerInstalledByRad("test-context").Return(false, nil)
+			}
+
+			err := runner.Run(ctx)
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			writes := outputMock.Writes
+			require.Contains(t, writes, output.LogOutput{Format: "- %s", Params: []any{leftovers[0]}})
+			require.Equal(t, output.LogOutput{Format: tt.wantLastLog}, writes[len(writes)-1])
 		})
 	}
 }
