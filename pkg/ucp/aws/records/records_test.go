@@ -553,6 +553,18 @@ func Test_StartFailed(t *testing.T) {
 		require.Empty(t, rec.Properties.PendingOperation)
 		require.True(t, StartFailed(withOperation(OperationDelete), OperationDelete, native.OutcomeApplied, "", false))
 	})
+
+	t.Run("a failed delete keeps its token, and a dropped waiting one clears it", func(t *testing.T) {
+		rec := withOperation(OperationDelete)
+		rec.Properties.DeleteToken = "final-1"
+		StartFailed(rec, OperationDelete, native.OutcomeRejected, "", false)
+		require.Equal(t, "final-1", rec.Properties.DeleteToken, "an earlier attempt may have taken it")
+
+		rec = withOperation(OperationDelete)
+		rec.Properties.DeleteToken = "final-1"
+		require.False(t, DropWaiting(rec))
+		require.Empty(t, rec.Properties.DeleteToken)
+	})
 }
 
 func Test_FailStart(t *testing.T) {

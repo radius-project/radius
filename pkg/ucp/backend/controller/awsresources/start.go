@@ -56,10 +56,12 @@ import (
 // at the request does (records.StartFailed). When the timeout passes, nothing reached AWS, so the operation fails and
 // the record is settled as rejected.
 //
-// A worker that finds the call may have been in flight when an earlier run stopped can't tell whether AWS took it: a
-// create or update fails with an unknown outcome, and the next deploy finds it as after any interrupted call. A delete
-// is sent again, which is safe, with the same delete token. A stop while waiting leaves the record waiting, and the
-// redelivered operation waits again.
+// A worker that finds the call may have been in flight when an earlier run stopped can't tell whether AWS took it, so
+// the operation fails with an unknown outcome, and the next request continues as after any interrupted call: it finds
+// a create by the handler's Recovery, sends an update again with its token, and sends a delete again with its delete
+// token. The worker never sends that call itself, because a call AWS may have must never go back to waiting, where a
+// new request could replace it. A stop while waiting leaves the record waiting, and the redelivered operation waits
+// again.
 func (c *AwaitController) sendStart(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, op string) (*datamodel.AWSResource, ctrl.Result, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	typeName := resources_aws.ToAWSResourceType(id)
@@ -70,11 +72,14 @@ func (c *AwaitController) sendStart(ctx context.Context, store *records.Store, i
 	} else if rec == nil || !sameRequest(rec.Properties.RequestToken, request.OperationID) {
 		return nil, superseded(id), nil
 	}
-	if t == nil {
+	if t == nil && records.IsWaiting(rec) {
+		message := fmt.Sprintf("A native handler started the operation on the AWS resource %q, but UCP has no native handler for %s. Nothing was sent to AWS. Deploy again.", id.Name(), typeName)
+		return nil, endWaiting(ctx, store, id, request, message), nil
+	} else if t == nil {
 		message := fmt.Sprintf("A native handler started the operation on the AWS resource %q, but UCP has no native handler for %s. Deploy again.", id.Name(), typeName)
-		return nil, endStart(ctx, store, id, request, op, startOutcome(rec), "", v1.ErrorDetails{Code: v1.CodeInternal, Message: message}), nil
+		return nil, endStart(ctx, store, id, request, op, native.OutcomeUnknown, "", v1.ErrorDetails{Code: v1.CodeInternal, Message: message}), nil
 	}
-	if rec.Properties.StartState == records.StartSending && op != records.OperationDelete {
+	if rec.Properties.StartState == records.StartSending {
 		message := fmt.Sprintf("UCP stopped while it sent the %s of the AWS resource %q, so it can't tell whether AWS took it. Deploy again to continue.", strings.ToLower(op), id.Name())
 		return nil, endStart(ctx, store, id, request, op, native.OutcomeUnknown, "", v1.ErrorDetails{Code: v1.CodeInternal, Message: message}), nil
 	}
@@ -86,7 +91,7 @@ func (c *AwaitController) sendStart(ctx context.Context, store *records.Store, i
 	for {
 		if !now().Before(deadline) {
 			message := fmt.Sprintf("UCP waited %s for AWS to take the %s of the AWS resource %q, because %s. Nothing was sent to AWS. Deploy again.", timeout, strings.ToLower(op), id.Name(), rec.Properties.StartReason)
-			return nil, endStart(ctx, store, id, request, op, native.OutcomeRejected, "", v1.ErrorDetails{Code: v1.CodeInternal, Message: message}), nil
+			return nil, endWaiting(ctx, store, id, request, message), nil
 		}
 
 		rec, err = saveStart(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) {
@@ -184,12 +189,10 @@ func send(ctx context.Context, t *native.Type, region string, rec *datamodel.AWS
 
 // saveStart applies change to the record of the operation operationID and saves it, checking the ETag, and returns
 // the record as saved. It returns errSuperseded when the record no longer shows the operation, including when a new
-// request removed it.
+// request removed it, even after an attempt that lost the race to it.
 func saveStart(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, change func(rec *datamodel.AWSResource)) (*datamodel.AWSResource, error) {
-	var saved *datamodel.AWSResource
-	err := update(ctx, store, id, operationID, func(rec *datamodel.AWSResource) bool {
+	saved, err := updateFound(ctx, store, id, operationID, func(rec *datamodel.AWSResource) bool {
 		change(rec)
-		saved = rec
 		return false
 	})
 	if err == nil && saved == nil {
@@ -202,9 +205,17 @@ func saveStart(ctx context.Context, store *records.Store, id resources.ID, opera
 // settles the record by outcome, as when the call fails at the request (records.StartFailed): a first create AWS
 // rejected, and a delete AWS fully applied, remove the record. created is the identifier a failed create returned.
 func endStart(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, op string, outcome native.Outcome, created string, failure v1.ErrorDetails) ctrl.Result {
+	return endWith(ctx, store, id, request, failure, func(rec *datamodel.AWSResource) bool {
+		return records.StartFailed(rec, op, outcome, created, false)
+	})
+}
+
+// endWith fails the operation with failure, after settle sets the record's values. When settle returns true, the
+// record is removed.
+func endWith(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, failure v1.ErrorDetails, settle func(rec *datamodel.AWSResource) bool) ctrl.Result {
 	failure.Target = request.ResourceID
 	err := update(ctx, store, id, request.OperationID, func(rec *datamodel.AWSResource) bool {
-		if records.StartFailed(rec, op, outcome, created, false) {
+		if settle(rec) {
 			return true
 		}
 		records.FailStart(rec, &failure)
@@ -229,13 +240,10 @@ func startError(err error) v1.ErrorDetails {
 	return v1.ErrorDetails{Code: code, Message: err.Error()}
 }
 
-// startOutcome returns how much of rec's waiting first call AWS may have: nothing while it waits, and unknown once the
-// worker may have sent it.
-func startOutcome(rec *datamodel.AWSResource) native.Outcome {
-	if records.IsWaiting(rec) {
-		return native.OutcomeRejected
-	}
-	return native.OutcomeUnknown
+// endWaiting fails the operation, which waits and sent nothing to AWS, with message, and settles the record as if AWS
+// rejected the call (records.DropWaiting): a first create removes the record.
+func endWaiting(ctx context.Context, store *records.Store, id resources.ID, request *ctrl.Request, message string) ctrl.Result {
+	return endWith(ctx, store, id, request, v1.ErrorDetails{Code: v1.CodeInternal, Message: message}, records.DropWaiting)
 }
 
 // isGone reports whether err means a delete has nothing of its type to delete: AWS has no such resource, or the

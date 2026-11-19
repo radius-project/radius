@@ -505,3 +505,29 @@ func (r racingSave) Save(ctx context.Context, obj *database.Object, options ...d
 	r.before()
 	return r.Client.Save(ctx, obj, options...)
 }
+
+// removeBeforeSave is a data store where a request removes the record just before the first save, so that save loses
+// the race and the retry finds no record.
+type removeBeforeSave struct {
+	database.Client
+	once *atomic.Bool
+}
+
+func (r removeBeforeSave) Save(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
+	if r.once.CompareAndSwap(false, true) {
+		if err := r.Client.Delete(ctx, obj.ID); err != nil {
+			return err
+		}
+	}
+	return r.Client.Save(ctx, obj, options...)
+}
+
+func Test_SendStart_RecordRemovedDuringSave(t *testing.T) {
+	f := newStartFixture(t, records.OperationCreate)
+	rec, result, err := f.send(t.Context(), removeBeforeSave{Client: f.db, once: &atomic.Bool{}}, records.OperationCreate)
+	require.NoError(t, err)
+	require.Nil(t, rec)
+	require.Equal(t, v1.ProvisioningStateCanceled, result.ProvisioningState())
+	require.Empty(t, f.fake.Calls(), "the worker never sends a create whose record a request removed")
+	require.Nil(t, f.record())
+}

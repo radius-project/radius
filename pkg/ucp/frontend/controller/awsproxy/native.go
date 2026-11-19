@@ -178,8 +178,8 @@ func operationTimeout(r *request, rec *datamodel.AWSResource, op string) time.Du
 // canWait reports whether UCP waits for AWS to take a start call of r that failed with err, instead of failing the
 // request: the handler reported that something the resource depends on is busy (native.NotReady), it sets
 // Options.ReadyTimeout, and eligible is true. A caller sets eligible only for the first attempt of an operation whose
-// call carries no write-only or secret value, because UCP never stores them, and a call that sends again an operation
-// AWS may have is settled by values UCP doesn't keep while it waits.
+// call carries no write-only or secret value, because UCP never stores them. A call that sends again an operation AWS
+// may have never waits, because a new request could replace a waiting operation.
 func canWait(r *request, err error, eligible bool) bool {
 	var notReady *native.NotReady
 	return eligible && errors.As(err, &notReady) && r.handler != nil && r.handler.Options().ReadyTimeout > 0

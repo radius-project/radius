@@ -552,8 +552,12 @@ func StartFailed(rec *datamodel.AWSResource, op string, outcome native.Outcome, 
 
 // DropWaiting ends the record's waiting operation (see IsWaiting) as if AWS rejected its first call, because nothing
 // of it reached AWS: a waiting first create returns true, and the caller removes the record; an update drops its values
-// and token; a delete drops its values. It leaves the provisioning state and the request token to the caller.
+// and token; a delete drops its values and its delete token, which no call took, so the next delete is a new one. It
+// leaves the provisioning state and the request token to the caller.
 func DropWaiting(rec *datamodel.AWSResource) bool {
+	if PendingOperation(rec) == OperationDelete {
+		rec.Properties.DeleteToken = ""
+	}
 	return StartFailed(rec, PendingOperation(rec), native.OutcomeRejected, "", false)
 }
 

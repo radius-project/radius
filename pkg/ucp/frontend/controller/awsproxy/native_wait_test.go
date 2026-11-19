@@ -261,19 +261,26 @@ func Test_Native_Wait_Timeout(t *testing.T) {
 
 	t.Run("delete", func(t *testing.T) {
 		h := newWaitHarness(t)
+		registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}, h.fake.DeleteTokens())
+		require.NoError(t, err)
+		h.native = registry
 		h.deploy(nativePath, nativeProperties(1))
 		h.fake.Opts.ReadyTimeout = time.Nanosecond
 		h.fake.SetBusy(-1)
 		require.Equal(t, http.StatusAccepted, h.delete(nativePath, testOwner).status)
 		results := h.finish()
 		require.Equal(t, timedOut("delete"), results[0].Error.Message)
-		h.requireDone(nativePath, v1.ProvisioningStateFailed)
+		rec := h.requireDone(nativePath, v1.ProvisioningStateFailed)
+		require.Empty(t, rec.Properties.DeleteToken, "no attempt took the token")
 		require.NotNil(t, h.cc.Resource(nativeType, "app-native"))
 
-		h.fake.SetBusy(0)
+		// The next delete is a new one, so it waits too.
+		h.fake.Opts.ReadyTimeout = time.Hour
+		h.fake.SetBusy(1)
 		require.Equal(t, http.StatusAccepted, h.delete(nativePath, testOwner).status)
 		h.finish()
 		require.Nil(t, h.record(nativePath))
+		require.Equal(t, 1, h.fake.Copies())
 	})
 }
 
@@ -342,6 +349,42 @@ func Test_Native_Wait_NotEligible(t *testing.T) {
 		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
 		rec := h.requireDone(nativePath, v1.ProvisioningStateSucceeded)
 		require.Equal(t, token, rec.Properties.UpdateToken, "AWS may have the earlier attempt")
+		require.Empty(t, h.finish())
+	})
+
+	t.Run("delete sent again with its delete token", func(t *testing.T) {
+		h := newWaitHarness(t)
+		registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}, h.fake.DeleteTokens())
+		require.NoError(t, err)
+		h.native = registry
+		h.deploy(nativePath, nativeProperties(1))
+		h.fake.Errors["Delete"] = nativefake.ServerError("InternalFailure", "unavailable")
+		require.Equal(t, http.StatusInternalServerError, h.delete(nativePath, testOwner).status)
+		delete(h.fake.Errors, "Delete")
+		token := h.record(nativePath).Properties.DeleteToken
+		require.NotEmpty(t, token, "AWS may have the delete")
+
+		h.fake.SetBusy(-1)
+		resp := h.delete(nativePath, testOwner)
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		rec := h.requireDone(nativePath, v1.ProvisioningStateSucceeded)
+		require.Equal(t, token, rec.Properties.DeleteToken)
+		require.Empty(t, h.finish())
+	})
+
+	t.Run("resumed delete", func(t *testing.T) {
+		h := newWaitHarness(t)
+		h.deploy(nativePath, nativeProperties(1))
+		h.saveRecord(nativePath, func(rec *datamodel.AWSResource) {
+			rec.Properties.PendingOperation = records.OperationDelete
+			rec.SetProvisioningState(v1.ProvisioningStateDeleting)
+		})
+		records.Now = func() time.Time { return time.Now().Add(records.StaleAfter + time.Minute) }
+		t.Cleanup(func() { records.Now = time.Now })
+		h.fake.SetBusy(-1)
+		resp := h.delete(nativePath, testOwner)
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Empty(t, h.record(nativePath).Properties.StartState)
 		require.Empty(t, h.finish())
 	})
 
@@ -466,6 +509,9 @@ func Test_Native_Wait_Replaced(t *testing.T) {
 
 	t.Run("PUT replaces a waiting delete", func(t *testing.T) {
 		h := newWaitHarness(t)
+		registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}, h.fake.DeleteTokens())
+		require.NoError(t, err)
+		h.native = registry
 		h.deploy(nativePath, nativeProperties(1))
 		h.fake.SetBusy(1)
 		require.Equal(t, http.StatusAccepted, h.delete(nativePath, testOwner).status)
@@ -479,7 +525,7 @@ func Test_Native_Wait_Replaced(t *testing.T) {
 		require.Empty(t, writes(h.fake.Calls()))
 		require.NotNil(t, h.cc.Resource(nativeType, "app-native"))
 		// The worker picked up the replaced delete after the PUT, and marked the record Updating as it did.
-		h.requireDone(nativePath, v1.ProvisioningStateCanceled)
+		require.Empty(t, h.requireDone(nativePath, v1.ProvisioningStateCanceled).Properties.DeleteToken)
 		require.Equal(t, http.StatusOK, h.put(nativePath, nativeProperties(1)).status, "the record isn't busy")
 	})
 
@@ -701,13 +747,28 @@ func Test_Native_Wait_WorkerStops(t *testing.T) {
 
 	t.Run("delete in flight", func(t *testing.T) {
 		h := newWaitHarness(t)
+		registry, err := native.NewRegistry(schemas.Catalog{Native: map[string]string{nativeType: nativeSchemas[nativeType]}}, h.fake.DeleteTokens())
+		require.NoError(t, err)
+		h.native = registry
 		h.deploy(nativePath, nativeProperties(1))
 		h.fake.SetBusy(1)
 		require.Equal(t, http.StatusAccepted, h.delete(nativePath, testOwner).status)
+		token := h.record(nativePath).Properties.DeleteToken
 		h.saveRecord(nativePath, func(rec *datamodel.AWSResource) { rec.Properties.StartState = records.StartSending })
+		h.fake.SetBusy(-1)
+		h.fake.Calls()
+
 		results := h.finish()
-		require.Nil(t, results[0].Error, "a delete is safe to send again")
+		require.Equal(t, `UCP stopped while it sent the delete of the AWS resource "app-native", so it can't tell whether AWS took it. Deploy again to continue.`, results[0].Error.Message)
+		require.Empty(t, writes(h.fake.Calls()), "a delete AWS may have is never put back to waiting, where a PUT could replace it")
+		rec := h.requireDone(nativePath, v1.ProvisioningStateFailed)
+		require.Equal(t, token, rec.Properties.DeleteToken)
+
+		h.fake.SetBusy(0)
+		require.Equal(t, http.StatusAccepted, h.delete(nativePath, testOwner).status)
+		h.finish()
 		require.Nil(t, h.record(nativePath))
+		require.Equal(t, 1, h.fake.Copies(), "the next delete sends the same delete token")
 	})
 }
 

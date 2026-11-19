@@ -309,18 +309,24 @@ func superseded(id resources.ID) ctrl.Result {
 }
 
 // update reads the record, applies change, and saves it. When change returns true, it removes the record instead. It
-// returns errSuperseded, and changes nothing, when the record no longer shows the operation operationID. A save or
-// delete that loses a race with another write, such as the heartbeat, is tried again.
+// returns errSuperseded, and changes nothing, when the record no longer shows the operation operationID, and nil when
+// the record is gone. A save or delete that loses a race with another write, such as the heartbeat, is tried again.
 func update(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, change func(rec *datamodel.AWSResource) bool) error {
+	_, err := updateFound(ctx, store, id, operationID, change)
+	return err
+}
+
+// updateFound is update, and also returns the record it saved, or nil when the record was gone.
+func updateFound(ctx context.Context, store *records.Store, id resources.ID, operationID uuid.UUID, change func(rec *datamodel.AWSResource) bool) (*datamodel.AWSResource, error) {
 	for range maxSaveAttempts {
 		rec, etag, err := store.Get(ctx, id)
 		if err != nil {
-			return err
+			return nil, err
 		} else if rec == nil {
-			return nil
+			return nil, nil
 		}
 		if !sameRequest(rec.Properties.RequestToken, operationID) {
-			return errSuperseded
+			return nil, errSuperseded
 		}
 		if change(rec) {
 			err = store.DeleteIfUnchanged(ctx, id, etag)
@@ -330,9 +336,9 @@ func update(ctx context.Context, store *records.Store, id resources.ID, operatio
 		if errors.Is(err, &database.ErrConcurrency{}) {
 			continue
 		}
-		return err
+		return rec, err
 	}
-	return errors.New("the record kept changing")
+	return nil, errors.New("the record kept changing")
 }
 
 // releaseDequeued sets a record that has no operation in progress back to Canceled when the async worker marked it

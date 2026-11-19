@@ -1042,6 +1042,9 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 		return e.removeRecord(ctx, r, etag)
 	}
 
+	// A delete whose earlier attempt may have reached AWS keeps its delete token, or its reservation, which a resumed
+	// delete finds. Sending it again never waits (see canWait).
+	resend := rec.Properties.DeleteToken != "" || rec.Properties.PendingOperation == records.OperationDelete
 	// A resumed delete finds the record still marked in progress; if AWS rejects the delete, it is released as Failed.
 	prior := rec.ProvisioningState()
 	if records.IsRunning(rec) {
@@ -1084,7 +1087,7 @@ func (e *engine) startDelete(ctx context.Context, r *request, rec *datamodel.AWS
 	}
 	logger.Info("Deleting AWS resource", "alias", r.id.Name(), "awsIdentifier", identifier, "handler", handlerName(r))
 	requestToken, err := e.startDeleteCall(ctx, r, identifier, rec.Properties.DeleteToken)
-	if canWait(r, err, true) {
+	if canWait(r, err, !resend) {
 		requestToken, err = waitToStart(ctx, r, rec, err), nil
 	}
 	if isGoneForDelete(err) {
