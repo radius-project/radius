@@ -130,13 +130,19 @@ presents a client certificate.
 - `dryRun`: the same port accepts TLS and plain HTTP. Plain HTTP, missing or
   invalid tokens, and disallowed callers are logged as would-deny
   (`InvalidAuthenticationInfo`, `AuthorizationFailed`), and the request is
-  served. Signing keys that could not be refreshed are the exception: every
-  request gets `503 AuthorizationUnavailable`, as in `enforce`.
+  served. Unavailable signing keys are the exception: every request gets
+  `503 AuthorizationUnavailable`, as in `enforce`.
 - `enforce`: TLS is required (plain HTTP gets `400`). A missing, invalid, or
-  wrong-audience token gets `401 InvalidAuthenticationInfo`; signing keys that
-  could not be refreshed give `503 AuthorizationUnavailable`; and callers not in
-  the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
-  and `dynamic-rp` allow only the `ucp` identity.
+  wrong-audience token gets `401 InvalidAuthenticationInfo`; unavailable
+  signing keys give `503 AuthorizationUnavailable`; and callers not in the
+  server's allowed list get `403 AuthorizationFailed`. `applications-rp` and
+  `dynamic-rp` allow only the `ucp` identity.
+
+Signing keys are unavailable when none have loaded yet, when 15 minutes have
+passed since the last successful fetch, or when the last successful fetch
+returned no usable key. A failed refresh alone does not cause a `503`: the
+receiver keeps verifying tokens with the keys it already has until that
+15-minute limit.
 
 Each receiver presents the certificate that cert-manager issues to it in Secret
 `<receiver>-spiffe`, mounted at `/var/run/radius/spiffe` (`tls.crt`,
