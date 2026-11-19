@@ -522,8 +522,8 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //     keeps it (see identifierToKeep), and the request fails.
 //
 // Find and reading AWS change nothing, so they run before a reservation. Every later call that can change AWS comes
-// after a reservation with the ETag this request read, so a DELETE that changed the record meanwhile makes the PUT
-// get 409 before it calls AWS.
+// after a reservation with the record's ETag as this request last read or saved it, so a DELETE that changed the
+// record since makes the PUT get 409 before it calls AWS.
 //
 // When UCP reads the resource, it continues by what AWS shows:
 //
