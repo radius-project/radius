@@ -22,6 +22,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -595,6 +597,35 @@ func (u *stageUpgrade) run(t *testing.T, impl *Impl, setArgs []string) error {
 	default:
 		return impl.InstallRadius(t.Context(), options, "test-context")
 	}
+}
+
+// rad reads --set-file inputs once, when it prepares the chart, so a file that changes or disappears while Helm runs
+// does not change the mode in which rad stages trust before Helm and waits for the APIService after it.
+func Test_UpgradeRadius_ReadsSetFileOnce(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	enabledFile := filepath.Join(t.TempDir(), "enabled")
+	require.NoError(t, os.WriteFile(enabledFile, []byte("true"), 0o600))
+	u := newStageUpgrade(t, map[string]any{}, "upgrade")
+	c := newStageCluster(t, nil, true)
+	c.addOffAPIService(t, offAPIServiceVariants[0])
+	rendered := renderedStagedCA(t, renderStageTestManifest(t, authzOnValues))
+
+	client := u.mock(t, 1, func() {
+		c.requireStagedCA(t, rendered)
+		c.helmReissuesUCPCertificate(t)
+		require.NoError(t, os.Remove(enabledFile))
+	})
+	impl := c.impl(client)
+	state, err := impl.CheckRadiusInstall("test-context")
+	require.NoError(t, err)
+	options := NewDefaultClusterOptions()
+	options.Radius.ChartPath = "chart"
+	options.Radius.SetFileArgs = []string{"global.rbac.enabled=" + enabledFile}
+	options.Contour.Disabled = true
+	options.RadiusReleaseValues = state.RadiusValues
+
+	require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
+	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
 }
 
 // (a) and (c): when an upgrade turns authorization on, rad stages radius-apiserver-ca, as the chart renders it and
