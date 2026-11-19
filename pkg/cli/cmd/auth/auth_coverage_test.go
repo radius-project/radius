@@ -338,17 +338,21 @@ func TestGeneratedHTTPClientErrors(t *testing.T) {
 
 func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 	// Use the generated decoder: successful JSON decoding is not validation.
-	for _, operation := range []string{"whoami", "status", "check"} {
+	for _, operation := range []string{"whoami", "status", "check", "scoped check"} {
+		commandOperation, scope := operation, "/"
+		if operation == "scoped check" {
+			commandOperation, scope = "check", "/planes/radius/local"
+		}
 		for _, format := range []string{"json", "table"} {
 			identity, err := (&testClient{}).whoAmI(t.Context())
 			require.NoError(t, err)
 			valid := any(identity)
-			if operation == "check" {
+			if commandOperation == "check" {
 				valid = api.CheckAccessResponse{
 					Principal: identity.Principal, Mode: identity.Mode, Generation: to.Ptr(int64(0)),
 					Checks: []*api.AccessCheckResult{
-						{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr("/"), Allowed: to.Ptr(false)},
-						{Permission: to.Ptr("Radius.Core/applications/write"), Target: to.Ptr("/"), Allowed: to.Ptr(true)},
+						{Permission: to.Ptr("Radius.Core/applications/read"), Target: to.Ptr(scope), Allowed: to.Ptr(false)},
+						{Permission: to.Ptr("Radius.Core/applications/write"), Target: to.Ptr(scope), Allowed: to.Ptr(true)},
 					},
 				}
 			}
@@ -362,15 +366,19 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 				{"missing type", func(w map[string]any) { delete(w["principal"].(map[string]any), "type") }},
 				{"invalid type", func(w map[string]any) { w["principal"].(map[string]any)["type"] = "unknown" }},
 				{"missing subject", func(w map[string]any) { delete(w["principal"].(map[string]any), "subject") }},
+				{"anonymous principal", func(w map[string]any) { w["principal"].(map[string]any)["subject"] = "system:anonymous" }},
+				{"unauthenticated principal", func(w map[string]any) { w["principal"].(map[string]any)["subject"] = "system:unauthenticated" }},
+				{"null display name", func(w map[string]any) { w["principal"].(map[string]any)["displayName"] = nil }},
 				{"empty issuer", func(w map[string]any) { w["principal"].(map[string]any)["issuer"] = "" }},
 				{"missing mode", func(w map[string]any) { delete(w, "mode") }},
 				{"invalid mode", func(w map[string]any) { w["mode"] = "unknown" }},
 			}
-			if operation == "check" {
+			if commandOperation == "check" {
 				tests = append(tests, []struct {
 					name   string
 					mutate func(map[string]any)
 				}{
+					{"implicit group caller", func(w map[string]any) { w["principal"].(map[string]any)["type"] = "group" }},
 					{"missing generation", func(w map[string]any) { delete(w, "generation") }},
 					{"negative generation", func(w map[string]any) { w["generation"] = -1 }},
 					{"missing checks", func(w map[string]any) { delete(w, "checks") }},
@@ -393,6 +401,9 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 				}{
 					{"group caller", func(w map[string]any) { w["principal"].(map[string]any)["type"] = "group" }},
 					{"null warning", func(w map[string]any) { w["warnings"] = []any{nil} }},
+					{"null warnings", func(w map[string]any) { w["warnings"] = nil }},
+					{"anonymous group", func(w map[string]any) { w["groups"].([]any)[0].(map[string]any)["subject"] = "system:anonymous" }},
+					{"unauthenticated group", func(w map[string]any) { w["groups"].([]any)[0].(map[string]any)["subject"] = "system:unauthenticated" }},
 					{"missing issuer", func(w map[string]any) { delete(w, "issuer") }},
 					{"mismatched issuer", func(w map[string]any) { w["issuer"] = "different" }},
 					{"missing admin", func(w map[string]any) { delete(w, "isRadiusAdministrator") }},
@@ -418,10 +429,10 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 					section.Items[radcli.TestWorkspaceName] = workspace
 					cli.UpdateWorkspaceSection(config, section)
 					writer := &output.MockOutput{}
-					cmd, _ := newTestCommand(&framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: config}, Output: writer}, operation)
+					cmd, _ := newTestCommand(&framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: config}, Output: writer}, commandOperation)
 					args := []string{"--output", format}
-					if operation == "check" {
-						args = append(args, "--scope", "/", "--action", "Radius.Core/applications/read", "--action", "Radius.Core/applications/write")
+					if commandOperation == "check" {
+						args = append(args, "--scope", scope, "--action", "Radius.Core/applications/read", "--action", "Radius.Core/applications/write")
 					}
 					cmd.SetArgs(args)
 					require.ErrorContains(t, cmd.ExecuteContext(t.Context()), "Radius returned an invalid")
@@ -435,28 +446,37 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 func TestIdentityResponseWithoutWarnings(t *testing.T) {
 	for _, operation := range []string{"whoami", "status"} {
 		for _, format := range []string{"json", "table"} {
-			t.Run(operation+"/"+format, func(t *testing.T) {
-				identity, err := (&testClient{}).whoAmI(t.Context())
-				require.NoError(t, err)
-				identity.Principal.Type = to.Ptr(api.PrincipalTypeWorkload)
-				identity.Warnings = nil
-				data, err := json.Marshal(identity)
-				require.NoError(t, err)
-				require.NotContains(t, string(data), `"warnings"`)
-				server, _ := inspectionHTTPServer(t, http.StatusOK, identity)
-				config := radcli.LoadConfigWithWorkspace(t)
-				section, err := cli.ReadWorkspaceSection(config)
-				require.NoError(t, err)
-				workspace := section.Items[radcli.TestWorkspaceName]
-				workspace.Connection["overrides"] = map[string]any{"ucp": server.URL}
-				section.Items[radcli.TestWorkspaceName] = workspace
-				cli.UpdateWorkspaceSection(config, section)
-				writer := &output.MockOutput{}
-				cmd, _ := newTestCommand(&framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: config}, Output: writer}, operation)
-				cmd.SetArgs([]string{"--output", format})
-				require.NoError(t, cmd.ExecuteContext(t.Context()))
-				require.Len(t, writer.Writes, 1)
-			})
+			for _, optional := range []string{"omitted", "present"} {
+				t.Run(operation+"/"+format+"/"+optional, func(t *testing.T) {
+					identity, err := (&testClient{}).whoAmI(t.Context())
+					require.NoError(t, err)
+					identity.Principal.Type = to.Ptr(api.PrincipalTypeWorkload)
+					identity.Warnings = nil
+					data, err := json.Marshal(identity)
+					require.NoError(t, err)
+					var wire map[string]any
+					require.NoError(t, json.Unmarshal(data, &wire))
+					require.NotContains(t, wire, "warnings")
+					require.NotContains(t, wire["principal"], "displayName")
+					if optional == "present" {
+						wire["warnings"] = []any{}
+						wire["principal"].(map[string]any)["displayName"] = "Worker"
+					}
+					server, _ := inspectionHTTPServer(t, http.StatusOK, wire)
+					config := radcli.LoadConfigWithWorkspace(t)
+					section, err := cli.ReadWorkspaceSection(config)
+					require.NoError(t, err)
+					workspace := section.Items[radcli.TestWorkspaceName]
+					workspace.Connection["overrides"] = map[string]any{"ucp": server.URL}
+					section.Items[radcli.TestWorkspaceName] = workspace
+					cli.UpdateWorkspaceSection(config, section)
+					writer := &output.MockOutput{}
+					cmd, _ := newTestCommand(&framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: config}, Output: writer}, operation)
+					cmd.SetArgs([]string{"--output", format})
+					require.NoError(t, cmd.ExecuteContext(t.Context()))
+					require.Len(t, writer.Writes, 1)
+				})
+			}
 		}
 	}
 }

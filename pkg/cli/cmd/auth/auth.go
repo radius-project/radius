@@ -5,13 +5,16 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -226,7 +229,8 @@ func (r *runner) Run(ctx context.Context) error {
 
 func validPrincipal(principal *api.Principal) bool {
 	if principal == nil || principal.Type == nil || principal.Issuer == nil || *principal.Issuer == "" ||
-		principal.Subject == nil || *principal.Subject == "" {
+		principal.Subject == nil || *principal.Subject == "" ||
+		*principal.Subject == "system:anonymous" || *principal.Subject == "system:unauthenticated" {
 		return false
 	}
 	switch *principal.Type {
@@ -235,6 +239,10 @@ func validPrincipal(principal *api.Principal) bool {
 	default:
 		return false
 	}
+}
+
+func validCaller(principal *api.Principal) bool {
+	return validPrincipal(principal) && *principal.Type != api.PrincipalTypeGroup
 }
 
 func validMode(mode *api.UserAuthorizationMode) bool {
@@ -250,7 +258,7 @@ func validMode(mode *api.UserAuthorizationMode) bool {
 }
 
 func validateIdentityResponse(result api.WhoAmIResult) error {
-	if !validPrincipal(result.Principal) || *result.Principal.Type == api.PrincipalTypeGroup ||
+	if !validCaller(result.Principal) ||
 		result.Issuer == nil || *result.Issuer != *result.Principal.Issuer ||
 		!validMode(result.Mode) || result.IsRadiusAdministrator == nil || result.Groups == nil {
 		return fmt.Errorf("Radius returned an invalid identity response")
@@ -272,6 +280,9 @@ func validateAccessResponse(result api.CheckAccessResponse, request api.AccessCh
 	if !validPrincipal(result.Principal) || !validMode(result.Mode) || result.Generation == nil || *result.Generation < 0 ||
 		len(result.Checks) != len(request.Checks) {
 		return fmt.Errorf("Radius returned an invalid access-check response")
+	}
+	if request.Principal == nil && !validCaller(result.Principal) {
+		return fmt.Errorf("Radius returned an invalid access-check response: principal is not a caller")
 	}
 	if principal := request.Principal; principal != nil &&
 		(*result.Principal.Type != *principal.Type || *result.Principal.Issuer != *principal.Issuer || *result.Principal.Subject != *principal.Subject) {
@@ -309,17 +320,65 @@ func connect(ctx context.Context, workspace workspaces.Workspace) (inspectionCli
 }
 
 func (c *apiClient) whoAmI(ctx context.Context) (api.WhoAmIResult, error) {
+	var raw *http.Response
+	ctx = policy.WithCaptureResponse(ctx, &raw)
 	response, err := c.installation.WhoAmI(ctx, nil)
-	return response.WhoAmIResult, inspectionError(err)
+	if err != nil {
+		return api.WhoAmIResult{}, inspectionError(err)
+	}
+	if err := validateInspectionWireResponse(raw, true); err != nil {
+		return api.WhoAmIResult{}, err
+	}
+	return response.WhoAmIResult, nil
 }
 
 func (c *apiClient) checkAccess(ctx context.Context, scope string, request api.AccessCheckRequest) (api.CheckAccessResponse, error) {
+	var raw *http.Response
+	ctx = policy.WithCaptureResponse(ctx, &raw)
+	var result api.CheckAccessResponse
+	var err error
 	if scope == "/" {
-		response, err := c.installation.CheckAccess(ctx, request, nil)
-		return response.CheckAccessResponse, inspectionError(err)
+		response, callErr := c.installation.CheckAccess(ctx, request, nil)
+		result, err = response.CheckAccessResponse, callErr
+	} else {
+		response, callErr := c.scoped.CheckAccess(ctx, strings.TrimPrefix(scope, "/"), request, nil)
+		result, err = response.CheckAccessResponse, callErr
 	}
-	response, err := c.scoped.CheckAccess(ctx, strings.TrimPrefix(scope, "/"), request, nil)
-	return response.CheckAccessResponse, inspectionError(err)
+	if err != nil {
+		return api.CheckAccessResponse{}, inspectionError(err)
+	}
+	if err := validateInspectionWireResponse(raw, false); err != nil {
+		return api.CheckAccessResponse{}, err
+	}
+	return result, nil
+}
+
+// Generated unmarshallers discard JSON null, so inspect the cached wire payload
+// before treating optional fields as absent.
+func validateInspectionWireResponse(response *http.Response, identity bool) error {
+	if response == nil {
+		return fmt.Errorf("Radius returned an invalid inspection response: missing HTTP response")
+	}
+	body, err := runtime.Payload(response)
+	if err != nil {
+		return fmt.Errorf("reading inspection response: %w", err)
+	}
+	var wire struct {
+		Principal *struct {
+			DisplayName json.RawMessage `json:"displayName"`
+		} `json:"principal"`
+		Warnings json.RawMessage `json:"warnings"`
+	}
+	if err := json.Unmarshal(body, &wire); err != nil {
+		return fmt.Errorf("Radius returned an invalid inspection response: %w", err)
+	}
+	if wire.Principal != nil && bytes.Equal(bytes.TrimSpace(wire.Principal.DisplayName), []byte("null")) {
+		return fmt.Errorf("Radius returned an invalid inspection response: principal.displayName must not be null")
+	}
+	if identity && bytes.Equal(bytes.TrimSpace(wire.Warnings), []byte("null")) {
+		return fmt.Errorf("Radius returned an invalid identity response: warnings must not be null")
+	}
+	return nil
 }
 
 func inspectionError(err error) error {
