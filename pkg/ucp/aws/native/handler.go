@@ -245,7 +245,8 @@ type CreateRequest struct {
 
 	// Properties are the template's properties, including write-only values, and the name UCP generated when the
 	// template leaves out Options().NameProperty. When UCP sends a create again to find a resource before a delete,
-	// the template is not available, so Properties are those of the last create without write-only values.
+	// the template is not available, so Properties are those of the last create without write-only values. A create
+	// UCP's worker sends after it waited (see NotReady) has the template's properties, which set no write-only value.
 	Properties map[string]any
 
 	// ClientToken is a UUID saved on the record before the first create, and the same on every attempt to create
@@ -284,7 +285,8 @@ type UpdateRequest struct {
 	Identifier string
 
 	// Current is what Read returned, without write-only values, and Desired is the template's properties, including
-	// write-only values.
+	// write-only values. On an update UCP's worker sends after it waited (see NotReady), Desired has no write-only
+	// values and Current no secret ones, because UCP never stores them, and Patch changes none.
 	Current map[string]any
 	Desired map[string]any
 
