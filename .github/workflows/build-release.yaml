@@ -1346,7 +1346,7 @@ jobs:
         run: |
           plan="${RUNNER_TEMP}/plan.json"
           yq -o=json '.' ".github/release-plans/${GITHUB_REF_NAME}.yaml" >"${plan}"
-          recipes="$(jq -r '.releaseType == "final" and has("recipeSourceCommit")' "${plan}")"
+          recipes="$(yq -r '.releaseType == "final" and has("recipeSourceCommit")' "${plan}")"
           echo "recipes=${recipes}" >>"${GITHUB_OUTPUT}"
 
       - name: Get docs and samples dispatch token

@@ -173,7 +173,7 @@ write_outputs() {
     # Merged plans without the field keep their original publication contract.
     if [[ "$(plan_value 'has("recipeSourceCommit")')" == true ]]; then
         recipe_commit="$(bash "$(dirname "${BASH_SOURCE[0]}")/resolve-recipe-source.sh" \
-            --plan "${TEMP_DIR}/release-plan.yaml")"
+            "${TEMP_DIR}/release-plan.yaml")"
     fi
 
     mkdir -p "${OUTPUT_DIR}"

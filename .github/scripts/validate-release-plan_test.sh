@@ -310,23 +310,27 @@ test_accepts_curated_note_sections() {
     ((++PASS))
 }
 
-# Execute the actual preparation step. The only API read allowed on a retry
-# is the plan at the existing PR head, not a branch or a new selection.
-check_final_recipe_retry() (
+# Execute the preparation step with a local contrib main and a fixed PR head.
+final_recipe_step() (
     cd "${SCRIPT_DIR}/../.."
-    export EXISTING=true EXISTING_HEAD="${BASE_SHA}" VERSION=v0.61.0
+    export EXISTING="$1" EXISTING_HEAD="${BASE_SHA}" VERSION=v0.61.0
     export GITHUB_REPOSITORY=radius-project/radius RUNNER_TEMP="${TEST_ROOT}"
-    export GITHUB_OUTPUT="${TEST_ROOT}/retry-output" PLAN_FROM_API="$1"
+    export GITHUB_OUTPUT="${TEST_ROOT}/recipe-output" PLAN_FROM_API="${2:-}"
     export SIBLING_REPOSITORY_ROOT="${SIBLING_ROOT}"
     # shellcheck disable=SC2329 # Invoked by the workflow step in a child shell.
     gh() {
+        if [[ "$*" == 'api repos/radius-project/resource-types-contrib/git/ref/heads/main --jq .object.sha' ]]; then
+            git --git-dir="${SIBLING_REPOSITORY_ROOT}/resource-types-contrib.git" rev-parse main
+            return
+        fi
         [[ "${!#}" == "repos/${GITHUB_REPOSITORY}/contents/.github/release-plans/${VERSION}.yaml?ref=${EXISTING_HEAD}" ]] || return 1
         cat "${PLAN_FROM_API}"
     }
     export -f gh
+    : > "${GITHUB_OUTPUT}"
     bash -euo pipefail -c "$(yq -r '.jobs.prepare.steps[] |
         select(.id == "recipe-source") | .run' .github/workflows/prepare-release.yaml)" || exit 1
-    [[ "$(< "${GITHUB_OUTPUT}")" == "commit=$2" ]]
+    sed -n 's/^commit=//p' "${GITHUB_OUTPUT}"
 )
 
 test_real_preparation_contract() {
@@ -342,8 +346,7 @@ test_real_preparation_contract() {
         printf '["CHANGELOG.md",".github/release-plans/%s.yaml","docs/release-notes/%s.md","versions.yaml"]\n' \
             "${version}" "${version}" > "${REPO}/files.json"
         create_sibling_repository resource-types-contrib
-        recipe_commit="$(cd "${REPO}" && SIBLING_REPOSITORY_ROOT="${SIBLING_ROOT}" \
-            bash "${SCRIPT_DIR}/resolve-recipe-source.sh" --capture)"
+        recipe_commit="$(final_recipe_step false)"
         advance_sibling_main resource-types-contrib
     fi
     local notes="docs/release-notes/${version}.md"
@@ -394,8 +397,20 @@ EOF
         return
     fi
     if [[ "${release_type}" == final ]]; then
-        if ! check_final_recipe_retry "${EXPECTED_PLAN}" "${recipe_commit}"; then
+        if [[ "$(final_recipe_step true "${EXPECTED_PLAN}")" != "${recipe_commit}" ]]; then
             fail_test "an open final must reuse its recipe source after contrib main advances"
+            return
+        fi
+        # A conflicting first value is lost if the committed YAML is parsed as a JSON object.
+        sed -i '1i recipeSourceCommit: main' "${HEAD_DIR}/${plan}"
+        if GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
+            fail_test "an ambiguous committed recipe pin passed validation"
+            return
+        fi
+        cp "${HEAD_DIR}/${plan}" "${EXPECTED_PLAN}"
+        wrap_body
+        if GITHUB_TOKEN="" run_validator > "${log}" 2>&1; then
+            fail_test "matching duplicate recipe pins in the body and file passed validation"
             return
         fi
         for mutation in 'del(.recipeSourceCommit)' \

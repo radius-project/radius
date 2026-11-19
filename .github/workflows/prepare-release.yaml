@@ -223,18 +223,18 @@ jobs:
           EXISTING: ${{ steps.preflight.outputs.existing }}
           EXISTING_HEAD: ${{ steps.preflight.outputs.existing-head }}
         run: |
-          args=(--capture)
-          if [[ "${EXISTING}" != false ]]; then
-            [[ "${EXISTING}" == true && "${EXISTING_HEAD}" =~ ^[0-9a-f]{40}$ ]] || {
+          if [[ "${EXISTING}" == false ]]; then
+            commit="$(gh api repos/radius-project/resource-types-contrib/git/ref/heads/main --jq .object.sha)"
+          else
+            [[ "${EXISTING_HEAD}" =~ ^[0-9a-f]{40}$ ]] || {
               echo "Cannot identify the existing final plan." >&2
               exit 1
             }
             prior="${RUNNER_TEMP}/existing-final-plan.yaml"
             gh api -H 'Accept: application/vnd.github.raw+json' \
               "repos/${GITHUB_REPOSITORY}/contents/.github/release-plans/${VERSION}.yaml?ref=${EXISTING_HEAD}" >"${prior}"
-            args=(--plan "${prior}")
+            commit="$(bash .github/scripts/resolve-recipe-source.sh "${prior}")"
           fi
-          commit="$(bash .github/scripts/resolve-recipe-source.sh "${args[@]}")"
           echo "commit=${commit}" >>"${GITHUB_OUTPUT}"
 
       - name: Read curated notes from existing release pull request

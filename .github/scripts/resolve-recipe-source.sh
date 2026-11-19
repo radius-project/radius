@@ -16,38 +16,26 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-# Select contrib main only for a new final; otherwise verify the reviewed SHA.
+# Read the reviewed pin without converting ambiguous YAML keys to one value.
 set -euo pipefail
 
 root="${SIBLING_REPOSITORY_ROOT:-https://github.com/radius-project}"
 repo="${root%/}/resource-types-contrib.git"
-case "${1:-}:$#" in
-    --capture:1)
-        git ls-remote --exit-code "${repo}" refs/heads/main | cut -f1
-        ;;
-    --plan:2)
-        commit="$(yq -o=json '.' "$2" | jq -er '
-            select(.releaseType == "final") | .recipeSourceCommit |
-            select(type == "string" and test("^[0-9a-f]{40}\\z"))
-        ')" || {
-            echo "Expected a final plan with a full recipeSourceCommit." >&2
-            exit 1
-        }
-        scratch="$(mktemp -d)"
-        trap 'rm -rf "${scratch}"' EXIT
-        git init -q --bare "${scratch}"
-        git -C "${scratch}" remote add origin "${repo}"
-        git -C "${scratch}" fetch -q --no-tags --filter=tree:0 \
-            origin refs/heads/main
-        # Match an actual commit in main's history, not a peeled tag or ref.
-        if ! git -C "${scratch}" rev-list FETCH_HEAD | grep -Fx "${commit}" > /dev/null; then
-            echo "Recipe source ${commit} is not reachable from resource-types-contrib main." >&2
-            exit 1
-        fi
-        printf '%s\n' "${commit}"
-        ;;
-    *)
-        echo "Usage: resolve-recipe-source.sh --capture | --plan <final-plan.yaml>" >&2
-        exit 1
-        ;;
-esac
+commit="$(yq -o=json -I=0 'to_entries' "${1:?Expected a final plan}" | jq -ers '
+    select(length == 1) | .[0] | select(length == (unique_by(.key) | length)) |
+    from_entries | select(.releaseType == "final") | .recipeSourceCommit |
+    strings | select(test("^[0-9a-f]{40}\\z"))
+')" || {
+    echo "Expected one unambiguous final plan with a full recipeSourceCommit." >&2
+    exit 1
+}
+scratch="$(mktemp -d)"
+trap 'rm -rf "${scratch}"' EXIT
+git init -q --bare "${scratch}"
+git -C "${scratch}" remote add origin "${repo}"
+git -C "${scratch}" fetch -q --no-tags --filter=tree:0 origin refs/heads/main
+if ! git -C "${scratch}" rev-list FETCH_HEAD | grep -Fx "${commit}" > /dev/null; then
+    echo "Recipe source ${commit} is not reachable from resource-types-contrib main." >&2
+    exit 1
+fi
+printf '%s\n' "${commit}"

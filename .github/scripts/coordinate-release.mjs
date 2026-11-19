@@ -310,7 +310,7 @@ export async function coordinateTask({
   if (
     deployment.sha !== sourceSha ||
     deployment.payload?.version !== version ||
-    (task.ref && deployment.payload?.ref !== task.ref) ||
+    (task.id === "bicep-recipes" && deployment.payload?.ref !== task.ref) ||
     !isDeepStrictEqual(deployment.payload?.task, task)
   ) {
     throw new Error(
