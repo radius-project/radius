@@ -363,20 +363,44 @@ func validateInspectionWireResponse(response *http.Response, identity bool) erro
 	if err != nil {
 		return fmt.Errorf("reading inspection response: %w", err)
 	}
-	var wire struct {
-		Principal *struct {
-			DisplayName json.RawMessage `json:"displayName"`
-		} `json:"principal"`
-		Warnings json.RawMessage `json:"warnings"`
-	}
+	// Match the generated decoder's exact keys, not encoding/json's
+	// case-insensitive struct field matching.
+	var wire map[string]json.RawMessage
 	if err := json.Unmarshal(body, &wire); err != nil {
 		return fmt.Errorf("Radius returned an invalid inspection response: %w", err)
 	}
-	if wire.Principal != nil && bytes.Equal(bytes.TrimSpace(wire.Principal.DisplayName), []byte("null")) {
-		return fmt.Errorf("Radius returned an invalid inspection response: principal.displayName must not be null")
+	if err := validatePrincipalWireLabel(wire["principal"], "principal"); err != nil {
+		return err
 	}
-	if identity && bytes.Equal(bytes.TrimSpace(wire.Warnings), []byte("null")) {
-		return fmt.Errorf("Radius returned an invalid identity response: warnings must not be null")
+	if identity {
+		if bytes.Equal(bytes.TrimSpace(wire["warnings"]), []byte("null")) {
+			return fmt.Errorf("Radius returned an invalid identity response: warnings must not be null")
+		}
+		if raw := wire["groups"]; len(raw) > 0 {
+			var groups []json.RawMessage
+			if err := json.Unmarshal(raw, &groups); err != nil {
+				return fmt.Errorf("Radius returned an invalid identity response: %w", err)
+			}
+			for i, group := range groups {
+				if err := validatePrincipalWireLabel(group, fmt.Sprintf("groups[%d]", i)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func validatePrincipalWireLabel(raw json.RawMessage, field string) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	var principal map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &principal); err != nil {
+		return fmt.Errorf("Radius returned an invalid inspection response: %s: %w", field, err)
+	}
+	if bytes.Equal(bytes.TrimSpace(principal["displayName"]), []byte("null")) {
+		return fmt.Errorf("Radius returned an invalid inspection response: %s.displayName must not be null", field)
 	}
 	return nil
 }
