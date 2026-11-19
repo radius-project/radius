@@ -114,7 +114,7 @@ Policy-load regressions retain unregistered permissions for inspection and remed
 
 For policy runtime lifecycle and UCP wiring, run `go test -race ./pkg/ucp/authorization ./pkg/ucp ./pkg/ucp/server -short -count=1`. The `TestPolicyRuntime` tests use `testing/synctest` to verify startup recovery, missing-anchor failures, repeated failures/recovery, generation polling, the exact thirty-second freshness boundary, immediate local-write refresh, and cancellation without wall-clock sleeps. See [UCP policy lifecycle](../../../architecture/ucp.md#user-authorization-policy-lifecycle) for the opt-in configuration, preinitialized-anchor prerequisite, and authorization-specific readiness contract.
 
-For real backend recovery checks, omit `-short` and select `TestPolicyStoreAPIServer` (envtest setup below) or `TestPolicyStorePostgres` (requires a disposable database via `TEST_POSTGRES_URL`, as shown by `make db-init`). Missing Postgres configuration skips those checks rather than proving concurrency. These tests cover storage and runtime lifecycle/readiness interfaces, not management APIs or runtime request enforcement.
+For real backend recovery checks, omit `-short` and select `TestPolicyStoreAPIServer` (envtest setup below) or `TestPolicyStorePostgres` (requires a disposable database via `TEST_POSTGRES_URL`, as shown by `make db-init`). Missing Postgres configuration skips those checks rather than proving concurrency. These tests cover storage recovery against real backends only; they do not start `PolicyRuntime`, management APIs or request enforcement. Runtime lifecycle and readiness are covered by the in-memory `TestPolicyRuntime` tests above.
 
 ## Verification
 
