@@ -19,6 +19,7 @@ package operations
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -334,6 +335,145 @@ func Test_GeneratePatch(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFlattenProperties_EscapesKeys(t *testing.T) {
+	t.Parallel()
+
+	properties := map[string]any{
+		"M": map[string]any{
+			"tenant/id": "slash",
+			"tenant":    map[string]any{"id": "nested"},
+			"a~1b":      "tilde",
+			"a/b":       map[string]any{"~": "both"},
+		},
+		"x/y": "top",
+	}
+
+	flattened := FlattenProperties(properties)
+	require.Equal(t, map[string]any{
+		"M/tenant~1id": "slash",
+		"M/tenant/id":  "nested",
+		"M/a~01b":      "tilde",
+		"M/a~1b/~0":    "both",
+		"x~1y":         "top",
+	}, flattened)
+	require.Equal(t, properties, UnflattenProperties(flattened))
+}
+
+func TestPathSegments(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, []string{"M", "tenant/id", "a~1b", "*"}, PathSegments("M/tenant~1id/a~01b/*"))
+	require.Equal(t, []string{"A"}, PathSegments("A"))
+	require.Equal(t, "M/tenant~1id/a~01b/*", JoinPath([]string{"M", "tenant/id", "a~1b", "*"}))
+}
+
+// Test_GeneratePatchWithOptions_KeysWithSlashOrTilde covers map keys that hold "/" or "~". Each key stays one segment
+// of its path, so an unchanged template sends nothing, and a change or removal names the key AWS has.
+func Test_GeneratePatchWithOptions_KeysWithSlashOrTilde(t *testing.T) {
+	t.Parallel()
+
+	schema := []byte(`{
+		"properties": {"Name": {}, "Context": {}, "Labels": {}},
+		"createOnlyProperties": ["/properties/Context"]
+	}`)
+	properties := func(context map[string]any, labels map[string]any) map[string]any {
+		return map[string]any{"Name": "n", "Context": context, "Labels": labels}
+	}
+	context := map[string]any{"tenant/id": "a", "tenant": map[string]any{"id": "b"}}
+	labels := map[string]any{"a~1b": "tilde", "a/b": "slash", "x/y": map[string]any{}}
+	aws := properties(context, labels)
+
+	tests := []struct {
+		name        string
+		current     map[string]any
+		desired     map[string]any
+		lastApplied map[string]any
+		equivalent  func(path string, template any, aws any) bool
+		unresolved  []string
+		want        []string
+	}{
+		{
+			name:        "an unchanged template sends nothing",
+			current:     aws,
+			desired:     aws,
+			lastApplied: aws,
+		},
+		{
+			name:    "an unchanged template with no record sends nothing",
+			current: aws,
+			desired: aws,
+		},
+		{
+			name:        "a changed value is replaced at its key",
+			current:     aws,
+			desired:     properties(context, map[string]any{"a~1b": "tilde", "a/b": "changed", "x/y": map[string]any{}}),
+			lastApplied: aws,
+			want:        []string{"replace /Labels/a~1b"},
+		},
+		{
+			name:        "a key the last deploy set and the template drops is removed",
+			current:     aws,
+			desired:     properties(context, map[string]any{"a/b": "slash", "x/y": map[string]any{}}),
+			lastApplied: aws,
+			want:        []string{"remove /Labels/a~01b"},
+		},
+		{
+			name:    "a key with no record of the last deploy is kept",
+			current: aws,
+			desired: properties(context, map[string]any{"a/b": "slash"}),
+		},
+		{
+			name:        "Equivalent gets the escaped path",
+			current:     properties(context, map[string]any{"a/b": "SLASH"}),
+			desired:     properties(context, map[string]any{"a/b": "slash"}),
+			lastApplied: properties(context, map[string]any{"a/b": "slash"}),
+			equivalent: func(path string, template any, aws any) bool {
+				return path == "Labels/a~1b" && strings.EqualFold(template.(string), aws.(string))
+			},
+		},
+		{
+			name:        "a field AWS fills in inside a list under such a key is kept",
+			current:     map[string]any{"Outputs": map[string]any{"a/b": []any{map[string]any{"Name": "a", "Codec": "h264"}}}},
+			desired:     map[string]any{"Outputs": map[string]any{"a/b": []any{map[string]any{"Name": "a"}}}},
+			lastApplied: map[string]any{"Outputs": map[string]any{"a/b": []any{map[string]any{"Name": "a"}}}},
+		},
+		{
+			name:        "an unresolved escaped path is sent as the template sets it",
+			current:     properties(context, map[string]any{"a/b": "SLASH"}),
+			desired:     properties(context, map[string]any{"a/b": "slash"}),
+			lastApplied: properties(context, map[string]any{"a/b": "slash"}),
+			equivalent: func(path string, template any, aws any) bool {
+				return strings.EqualFold(template.(string), aws.(string))
+			},
+			unresolved: []string{"Labels/a~1b"},
+			want:       []string{"replace /Labels/a~1b"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.ElementsMatch(t, orEmpty(tt.want), patchOps(t, tt.current, tt.desired, schema, PatchOptions{
+				LastApplied: tt.lastApplied,
+				Removed:     RemovedPaths(tt.lastApplied, tt.desired),
+				Equivalent:  tt.equivalent,
+				Unresolved:  tt.unresolved,
+			}))
+		})
+	}
+}
+
+func Test_RemovedCreateOnly_KeyWithSlash(t *testing.T) {
+	t.Parallel()
+
+	current := map[string]any{"Context": map[string]any{"tenant/id": "a"}}
+	removed := RemovedPaths(current, map[string]any{})
+	require.Equal(t, []string{"Context/tenant~1id"}, removed)
+
+	got, err := RemovedCreateOnly(current, []byte(`{"createOnlyProperties": ["/properties/Context"]}`), removed)
+	require.NoError(t, err)
+	require.Equal(t, []string{"Context/tenant~1id"}, got)
 }
 
 func Test_ParsePropertyName(t *testing.T) {

@@ -59,7 +59,7 @@ type AWSResourceProperties struct {
 	// isn't confirmed in AWS: an operation that changed them failed partway, or UCP can't tell how it ended, and its
 	// values were kept as possibly applied. AWS may still hold values LastApplied no longer has at these paths, such
 	// as a field inside a list item. A deploy sends the template's value at them, and they are cleared once a deploy
-	// succeeds.
+	// succeeds. A key that holds "/" or "~" is escaped in a path as in a JSON Pointer, as "~1" and "~0".
 	UnresolvedPaths []string `json:"unresolvedPaths,omitempty"`
 
 	// Fingerprints are the fingerprints of the write-only values of the last successful deploy. UCP compares them

@@ -367,6 +367,12 @@ func Test_KeepPending_Unresolved(t *testing.T) {
 	KeepPending(rec)
 	require.Equal(t, []string{"Earlier", "Mode", "Nested/C", "Videos"}, rec.Properties.UnresolvedPaths, "changed paths are added to earlier ones, sorted, once each")
 
+	// A map key that holds "/" or "~" stays one segment of its path.
+	rec = NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.LastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "a", "a~b": "x"}}
+	rec.Properties.PendingLastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "b", "a~b": "y"}}
+	KeepPending(rec)
+	require.Equal(t, []string{"Labels/a~0b", "Labels/tenant~1id"}, rec.Properties.UnresolvedPaths)
 	for _, outcome := range []native.Outcome{native.OutcomePartial, native.OutcomeUnknown} {
 		rec = interrupted()
 		Settle(rec, outcome)

@@ -35,7 +35,34 @@ type ResourceTypeSchema struct {
 	WriteOnlyProperties             []string       `json:"writeOnlyProperties,omitempty"`
 }
 
+var (
+	pathSegmentEscaper   = strings.NewReplacer("~", "~0", "/", "~1")
+	pathSegmentUnescaper = strings.NewReplacer("~1", "/", "~0", "~")
+)
+
+// JoinPath returns the property path of segments: each segment escaped as a JSON Pointer reference token, "~" as "~0"
+// and "/" as "~1", with "/" between them. A key that holds neither, such as every CloudFormation property name, is
+// unchanged.
+func JoinPath(segments []string) string {
+	escaped := make([]string, len(segments))
+	for i, s := range segments {
+		escaped[i] = pathSegmentEscaper.Replace(s)
+	}
+	return strings.Join(escaped, "/")
+}
+
+// PathSegments returns the segments of a property path, such as a key of FlattenProperties or a schema path relative
+// to the properties object, unescaped as JoinPath escapes them.
+func PathSegments(path string) []string {
+	segments := strings.Split(path, "/")
+	for i, s := range segments {
+		segments[i] = pathSegmentUnescaper.Replace(s)
+	}
+	return segments
+}
+
 // FlattenProperties takes a string-keyed map, which may contain nested objects, and recursively flattens it into a single-level map.
+// Each key is a property path, as JoinPath makes it, so a key that holds "/" or "~" stays one segment.
 // For example:
 //
 //	"NumShards": 1
@@ -53,6 +80,7 @@ func FlattenProperties(state map[string]any) map[string]any {
 	flattenedState := map[string]any{}
 
 	for k, v := range state {
+		k = pathSegmentEscaper.Replace(k)
 		// If the value is a map, flatten it
 		if v != nil && reflect.TypeOf(v).Kind() == reflect.Map {
 			flattenedSubState := FlattenProperties(v.(map[string]any))
@@ -70,7 +98,7 @@ func FlattenProperties(state map[string]any) map[string]any {
 }
 
 // UnflattenProperties takes in a map of strings to any type and returns an object with the nested
-// properties unflattened.
+// properties unflattened. It reverses FlattenProperties: each key is split into segments by PathSegments.
 // For example:
 //
 //	"NumShards": 1
@@ -88,7 +116,7 @@ func UnflattenProperties(state map[string]any) map[string]any {
 	unflattenedState := map[string]any{}
 
 	for k, v := range state {
-		splitPath := strings.Split(k, "/")
+		splitPath := PathSegments(k)
 		rootKey := splitPath[0]
 
 		if len(splitPath) == 1 {
@@ -120,7 +148,7 @@ func UnflattenProperties(state map[string]any) map[string]any {
 // PatchOptions carries what UCP knows from its record of the last successful deploy of a resource.
 type PatchOptions struct {
 	// Removed are the property paths the last deploy set that the template no longer sets, relative to the properties
-	// object and with "/" between segments, like the keys of FlattenProperties. The patch removes them, except
+	// object, like the keys of FlattenProperties. The patch removes them, except
 	// read-only and create-only properties, which AWS cannot clear.
 	Removed []string
 
@@ -226,7 +254,7 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 	}
 	writeOnly := [][]string{}
 	for _, p := range PropertyPaths(resourceTypeSchema.WriteOnlyProperties) {
-		writeOnly = append(writeOnly, strings.Split(p, "/"))
+		writeOnly = append(writeOnly, PathSegments(p))
 	}
 	// LastApplied never holds write-only values, so the template is compared with it without them, as UCP stores it.
 	var stored map[string]any
@@ -415,11 +443,12 @@ func emptyObjects(state map[string]any, prefix string) map[string]bool {
 		if !ok {
 			continue
 		}
+		path := prefix + pathSegmentEscaper.Replace(k)
 		if len(m) == 0 {
-			out[prefix+k] = true
+			out[path] = true
 			continue
 		}
-		maps.Copy(out, emptyObjects(m, prefix+k+"/"))
+		maps.Copy(out, emptyObjects(m, path+"/"))
 	}
 	return out
 }
@@ -529,11 +558,11 @@ func ParsePropertyName(propertyIdentifier string) (string, error) {
 }
 
 // RemovePaths removes the properties at paths from properties in place, as UCP leaves write-only and secret values
-// out of a record and a response. Paths are relative to the properties object, with "/" between segments. A "*"
-// segment matches every array item.
+// out of a record and a response. Paths are relative to the properties object, like the keys of FlattenProperties. A
+// "*" segment matches every array item.
 func RemovePaths(properties map[string]any, paths []string) {
 	for _, p := range paths {
-		removePath(properties, strings.Split(p, "/"))
+		removePath(properties, PathSegments(p))
 	}
 }
 
