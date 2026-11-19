@@ -197,15 +197,6 @@ off
 {{- end -}}
 
 {{/*
-Non-off authorization relies on both admission policies being installed.
-*/}}
-{{- define "radius.authz.requireAdmissionPolicyAPI" -}}
-{{- if not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") -}}
-{{- fail "Radius authorization requires admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy (Kubernetes 1.30 or later). Upgrade the cluster or install with authorization off." -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Returns the Pod Security Admission level (baseline or restricted) from global.rbac.podSecurityLevel.
 An empty value defaults to baseline. Fails rendering for any other value.
 */}}
@@ -234,6 +225,9 @@ serviceaccount.yaml templates and the Secrets the chart creates.
 {{- $c := .Values.global.rbac.certificates | default dict -}}
 {{- if and (eq (include "radius.authz.certificates.mode" .) "caSecret") $c.caSecret -}}{{- $secrets = append $secrets $c.caSecret -}}{{- end -}}
 {{- end -}}
+{{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
+{{- $secrets = append $secrets (printf "%s-spiffe" .) -}}
+{{- end -}}
 {{- $secrets | uniq | toJson -}}
 {{- end -}}
 
@@ -258,7 +252,7 @@ annotation, so changing any of them rolls the pods.
 {{- $mode := include "radius.authz.mode" . -}}
 {{- $config := $mode -}}
 {{- if ne $mode "off" -}}
-{{- $config = list $mode (include "radius.authz.podSecurityLevel" .) (include "radius.authz.identityConfig" .) (include "radius.authz.spiffe.csiDriverName" .) (include "radius.authz.controlPlaneSecrets" .) (include "radius.de.internalAuth.enabled" .) | join "\n" -}}
+{{- $config = list $mode (include "radius.authz.podSecurityLevel" .) (include "radius.authz.identityConfig" .) (include "radius.authz.controlPlaneSecrets" .) (include "radius.de.internalAuth.enabled" .) | join "\n" -}}
 {{- $aggregation := include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") | fromJson -}}
 {{- if $aggregation.bundle -}}
 {{- $config = printf "%s\n%s" $config $aggregation.digest -}}
@@ -281,24 +275,6 @@ TODO(D7): default to the application-template identity once the broker issues it
 {{- $admission := (.Values.global.rbac | default dict).admission | default dict -}}
 {{- $identities := $admission.applicationIdentities | default (list (printf "system:serviceaccount:%s:applications-rp" .Release.Namespace)) -}}
 {{- $identities | toJson -}}
-{{- end -}}
-
-{{/*
-Usernames of the cert-manager controller that may request certificates from the Radius bootstrap and
-API server issuers. Empty defaults to cert-manager's default installation; rad install/upgrade sets the
-ServiceAccount of the cert-manager it installs or reuses.
-*/}}
-{{- define "radius.authz.certManagerRequesters" -}}
-{{- $certManager := (.Values.global.rbac | default dict).certManager | default dict -}}
-{{- $certManager.requesters | default (list "system:serviceaccount:cert-manager:cert-manager") | toJson -}}
-{{- end -}}
-
-{{/*
-SPIFFE trust domain of the Radius server certificates.
-*/}}
-{{- define "radius.authz.spiffe.trustDomain" -}}
-{{- $spiffe := (.Values.global.rbac | default dict).spiffe | default dict -}}
-{{- $spiffe.trustDomain | default "radius.internal" -}}
 {{- end -}}
 
 {{/*
@@ -346,9 +322,8 @@ ucp:
 {{- end -}}
 
 {{/*
-Path where every component mounts the Radius CA bundle (ca.crt). csi-driver-spiffe writes only
-tls.crt and tls.key because Radius does not configure it with a source CA bundle, which it must read
-at startup, before this chart has created radius-ca.
+Path where every component mounts the Radius CA bundle (ca.crt). It is separate from the server
+certificate mount, which projects only tls.crt and tls.key, and the controller mounts only this.
 */}}
 {{- define "radius.authz.caBundle.mountPath" -}}
 /var/run/radius/ca
@@ -389,23 +364,44 @@ Secret is not mounted. The Secret is required, so pods wait until cert-manager h
 {{- end -}}
 
 {{/*
-Path where a receiver's csi-driver-spiffe server certificate (tls.crt, tls.key) is mounted.
+Path where a receiver's server certificate Secret (<receiver>-spiffe: tls.crt, tls.key) is mounted.
 */}}
 {{- define "radius.authz.spiffe.mountPath" -}}
 /var/run/radius/spiffe
 {{- end -}}
 
 {{/*
-Name of the CSIDriver that Radius's csi-driver-spiffe instance registers.
+SPIFFE trust domain of the Radius server certificates.
 */}}
-{{- define "radius.authz.spiffe.csiDriverName" -}}
+{{- define "radius.authz.spiffe.trustDomain" -}}
 {{- $spiffe := (.Values.global.rbac | default dict).spiffe | default dict -}}
-{{- $spiffe.csiDriverName | default "spiffe.csi.radapp.io" -}}
+{{- $trustDomain := "radius.internal" -}}
+{{- if hasKey $spiffe "trustDomain" -}}
+{{- $trustDomain = $spiffe.trustDomain -}}
+{{- if not (kindIs "string" $trustDomain) -}}
+{{- fail (printf "global.rbac.spiffe.trustDomain must be a string, got %s" (kindOf $trustDomain)) -}}
+{{- end -}}
+{{- end -}}
+{{- if or (gt (len $trustDomain) 255) (not (regexMatch "^[a-z0-9._-]+$" $trustDomain)) -}}
+{{- fail (printf "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got %q" $trustDomain) -}}
+{{- end -}}
+{{- $trustDomain -}}
 {{- end -}}
 
 {{/*
-Renders the csi-driver-spiffe server certificate volume mount for a receiver container when the
-authorization mode is not off.
+Components that receive internal calls and get a SPIFFE server certificate, as a JSON list.
+*/}}
+{{- define "radius.authz.spiffe.receivers" -}}
+{{- $receivers := list "ucp" "applications-rp" "dynamic-rp" -}}
+{{- if eq (include "radius.de.internalAuth.enabled" .) "true" -}}
+{{- $receivers = append $receivers "bicep-de" -}}
+{{- end -}}
+{{- $receivers | toJson -}}
+{{- end -}}
+
+{{/*
+Renders the server certificate volume mount for a receiver container when the authorization mode
+is not off.
 */}}
 {{- define "radius.authz.spiffe.volumeMount" -}}
 {{- if and (ne (include "radius.authz.mode" .) "off") (eq (include "radius.authz.tls.provider" .) "radius") }}
@@ -416,19 +412,21 @@ authorization mode is not off.
 {{- end -}}
 
 {{/*
-Renders the csi-driver-spiffe server certificate volume for a receiver when the authorization mode
-is not off. The driver requests the certificate with the pod's ServiceAccount token, so the
-certificate carries the SPIFFE ID spiffe://<trust domain>/ns/<namespace>/sa/<service account>.
-Files are group-readable by gid 65532, the user Radius containers run as.
+Renders the server certificate Secret volume for a receiver when the authorization mode is not off.
+cert-manager issues Secret <receiver>-spiffe from Certificate <receiver>-spiffe (certificates.yaml).
+Only tls.crt and tls.key are projected; the CA bundle comes from radius-ca.
+Call with (dict "root" $ "component" "<receiver>").
 */}}
 {{- define "radius.authz.spiffe.volume" -}}
-{{- if and (ne (include "radius.authz.mode" .) "off") (eq (include "radius.authz.tls.provider" .) "radius") }}
+{{- if and (ne (include "radius.authz.mode" .root) "off") (eq (include "radius.authz.tls.provider" .root) "radius") }}
 - name: spiffe
-  csi:
-    driver: {{ include "radius.authz.spiffe.csiDriverName" . }}
-    readOnly: true
-    volumeAttributes:
-      spiffe.csi.cert-manager.io/fs-group: "65532"
+  secret:
+    secretName: {{ .component }}-spiffe
+    items:
+      - key: tls.crt
+        path: tls.crt
+      - key: tls.key
+        path: tls.key
 {{- end }}
 {{- end -}}
 

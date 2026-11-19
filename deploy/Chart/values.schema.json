@@ -6,10 +6,7 @@
       "type": "object",
       "properties": {
         "rbac": {
-          "anyOf": [
-            {"type": ["object", "null"]},
-            {"enum": [false, 0, ""]}
-          ],
+          "anyOf": [{ "type": ["object", "null"] }, { "enum": [false, 0, ""] }],
           "properties": {
             "certificates": {
               "type": ["object", "null"],
@@ -17,40 +14,15 @@
                 "issuerRef": {
                   "type": "object",
                   "properties": {
-                    "name": {"type": "string", "maxLength": 253},
-                    "kind": {"type": "string"},
-                    "group": {"type": "string"}
-                  }
-                },
-                "requestPolicy": {
-                  "type": "object",
-                  "properties": {
-                    "certManager": {"$ref": "#/definitions/controllerReference"},
-                    "approverPolicy": {"$ref": "#/definitions/controllerReference"},
-                    "spiffe": {"$ref": "#/definitions/controllerReference"},
-                    "webhook": {
-                      "type": "object",
-                      "properties": {
-                        "namespace": {"type": "string"},
-                        "service": {"type": "string"},
-                        "configuration": {"type": "string"}
-                      }
-                    }
+                    "name": { "type": "string", "maxLength": 253 },
+                    "kind": { "type": "string" },
+                    "group": { "type": "string" }
                   }
                 }
               }
             }
           }
         }
-      }
-    }
-  },
-  "definitions": {
-    "controllerReference": {
-      "type": "object",
-      "properties": {
-        "namespace": {"type": "string"},
-        "deployment": {"type": "string"}
       }
     }
   }

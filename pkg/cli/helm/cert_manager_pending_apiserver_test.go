@@ -100,9 +100,7 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 					options.CertManager.ChartPath = chartPath
 					options.CertManager.ReleaseName = name
 					options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-					// This envtest has real Helm storage but no cert-manager CRDs.
-					// Supply chart-render capabilities separately from the release under test.
-					impl := &Impl{Helm: helmClient, contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)}}
+					impl := &Impl{Helm: helmClient}
 					var radiusHistory []*releasev1.Release
 					if command == "upgrade" {
 						require.NoError(t, radiusConf.Releases.Create(&releasev1.Release{

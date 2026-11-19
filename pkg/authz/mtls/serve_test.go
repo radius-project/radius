@@ -27,6 +27,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptrace"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,6 +44,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
+	"k8s.io/client-go/rest"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/authz"
@@ -144,12 +147,18 @@ type seenRequest struct {
 // request the handler sees.
 func startServer(t *testing.T, ca testCA, mode authz.Mode) testServer {
 	t.Helper()
+	return startRecordingServer(t, ca, mode, serverSetup{})
+}
+
+// startRecordingServer is startServer with setup.
+func startRecordingServer(t *testing.T, ca testCA, mode authz.Mode, setup serverSetup) testServer {
+	t.Helper()
 	seen := make(chan seenRequest, 16)
-	srv := startServerWithHandler(t, ca, mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := startServerWithSetup(t, ca, mode, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, ok := authz.IdentityFromContext(r.Context())
 		seen <- seenRequest{authorization: r.Header.Get("Authorization"), identity: id, hasIdentity: ok}
 		w.WriteHeader(http.StatusOK)
-	}))
+	}), setup)
 	srv.seen = seen
 	return srv
 }
@@ -161,10 +170,33 @@ func startServerWithHandler(t *testing.T, ca testCA, mode authz.Mode, handler ht
 
 func startServerWithProvider(t *testing.T, ca testCA, mode authz.Mode, handler http.Handler, provider authz.TLSProvider) testServer {
 	t.Helper()
+	return startServerWithSetup(t, ca, mode, handler, serverSetup{provider: provider})
+}
+
+// serverSetup overrides the defaults of a test server.
+type serverSetup struct {
+	provider authz.TLSProvider
+	// leaf is the serving certificate. Nil issues one from the CA that is valid for an hour.
+	leaf *testCert
+	// certNow is the serving certificate's clock.
+	certNow func() time.Time
+}
+
+func startServerWithSetup(t *testing.T, ca testCA, mode authz.Mode, handler http.Handler, setup serverSetup) testServer {
+	t.Helper()
 
 	dir := t.TempDir()
+	provider := setup.provider
+	if provider == "" {
+		provider = authz.TLSProviderRadius
+	}
 	if provider == authz.TLSProviderRadius {
-		writeFiles(t, dir, ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")}), ca.pem)
+		leaf := setup.leaf
+		if leaf == nil {
+			issued := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")})
+			leaf = &issued
+		}
+		writeFiles(t, dir, *leaf, ca.pem)
 	}
 
 	core, logs := observer.New(zapcore.InfoLevel)
@@ -183,7 +215,7 @@ func startServerWithProvider(t *testing.T, ca testCA, mode authz.Mode, handler h
 	}
 	clock := &testClock{now: time.Now()}
 	keys := &staticKeys{}
-	config := serveConfig{pollInterval: testPollInterval, tokenNow: clock.Now}
+	config := serveConfig{pollInterval: testPollInterval, tokenNow: clock.Now, certNow: setup.certNow}
 	receiver := Receiver{Name: "applications-rp", AllowedCallers: []string{"ucp"}, KeySource: keys}
 
 	done := make(chan error, 1)
@@ -369,8 +401,11 @@ func TestServe_DryRun(t *testing.T) {
 	}
 
 	t.Run("plain HTTP", func(t *testing.T) {
-		require.Equal(t, http.StatusOK, send(t, http.DefaultClient, "http://"+srv.url, ""))
-		<-srv.seen
+		// A valid token sent in plain text is served, but it does not identify the caller.
+		require.Equal(t, http.StatusOK, send(t, http.DefaultClient, "http://"+srv.url, "Bearer "+mintToken(t, "ucp", "applications-rp")))
+		seen := <-srv.seen
+		require.Empty(t, seen.authorization, "the token must not reach the handler")
+		require.False(t, seen.hasIdentity, "a plain HTTP request has no identity")
 		requireLogged(t, srv.logs, authz.ModeDryRun, v1.CodeInvalidAuthenticationInfo, "plain HTTP")
 	})
 
@@ -439,6 +474,105 @@ func TestServe_ReloadsServerCertificate(t *testing.T) {
 	}, 5*time.Second, 20*time.Millisecond)
 }
 
+// TestServe_ServingCertificateExpiryOnOpenConnection checks that the receiver stops vouching
+// for requests once its own serving certificate expires, even on a connection that was
+// established while it was valid, and that a renewed certificate keeps the connection usable.
+func TestServe_ServingCertificateExpiryOnOpenConnection(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
+		for _, kind := range []string{"local server", "renewed server"} {
+			t.Run(string(mode)+"/"+kind, func(t *testing.T) {
+				t.Parallel()
+				now := time.Now().UTC().Truncate(time.Second)
+				expires := now.Add(10 * time.Minute)
+				ca := newCA(t)
+				leaf := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: expires})
+				var elapsed atomic.Int64
+				srv := startRecordingServer(t, ca, mode, serverSetup{
+					leaf:    &leaf,
+					certNow: func() time.Time { return now.Add(time.Duration(elapsed.Load())) },
+				})
+				c := client(t, ca)
+				transport := c.Transport.(*http.Transport)
+				transport.MaxConnsPerHost = 1
+				tok := "Bearer " + mintToken(t, "ucp", "applications-rp")
+
+				send := func() (int, bool, bool) {
+					t.Helper()
+					var reused bool
+					trace := &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused }}
+					req, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), trace), http.MethodGet, "https://"+srv.url, nil)
+					require.NoError(t, err)
+					req.Header.Set("Authorization", tok)
+					resp, err := c.Do(req)
+					require.NoError(t, err)
+					defer resp.Body.Close()
+					_, err = io.Copy(io.Discard, resp.Body)
+					require.NoError(t, err)
+					return resp.StatusCode, reused, resp.Close
+				}
+
+				status, reused, _ := send()
+				require.Equal(t, http.StatusOK, status)
+				require.False(t, reused)
+				require.True(t, (<-srv.seen).hasIdentity)
+
+				// X.509 validity is inclusive of NotAfter.
+				elapsed.Store(int64(expires.Sub(now)))
+				status, reused, _ = send()
+				require.True(t, reused)
+				require.Equal(t, http.StatusOK, status)
+				require.True(t, (<-srv.seen).hasIdentity)
+
+				if kind == "renewed server" {
+					renewed := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: now.Add(2 * time.Hour)})
+					writeFiles(t, srv.dir, renewed, ca.pem)
+					requireServing(t, ca, srv.url, renewed)
+				}
+				elapsed.Add(1)
+				status, reused, closed := send()
+				require.True(t, reused, "expiry must be checked on the existing connection")
+
+				if kind == "renewed server" {
+					require.Equal(t, http.StatusOK, status)
+					require.True(t, (<-srv.seen).hasIdentity)
+					for _, entry := range srv.logs.All() {
+						m := entry.ContextMap()
+						require.Nil(t, m[authz.LogFieldDenied], "unexpected denial: %v", entry)
+						require.Nil(t, m[authz.LogFieldWouldDeny], "unexpected denial: %v", entry)
+					}
+					return
+				}
+				requireLogged(t, srv.logs, mode, authz.CodeCertificateExpired, "own certificate")
+				if mode == authz.ModeEnforce {
+					require.Equal(t, http.StatusUnauthorized, status)
+					require.True(t, closed)
+					require.Empty(t, srv.seen, "the handler must not be called")
+					return
+				}
+				require.Equal(t, http.StatusOK, status)
+				seen := <-srv.seen
+				require.False(t, seen.hasIdentity, "an expired receiver must not attach an identity")
+				require.Empty(t, seen.authorization, "the token must not reach the handler")
+			})
+		}
+	}
+}
+
+// requireServing waits until new connections to addr are served with want.
+func requireServing(t *testing.T, ca testCA, addr string, want testCert) {
+	t.Helper()
+	wantLeaf := want.tlsCertificate(t).Leaf
+	require.Eventually(t, func() bool {
+		conn, err := tls.Dial("tcp", addr, trustClient(t, ca.pem, "applications-rp"))
+		if err != nil {
+			return false
+		}
+		defer conn.Close()
+		return conn.ConnectionState().PeerCertificates[0].SerialNumber.Cmp(wantLeaf.SerialNumber) == 0
+	}, 5*time.Second, 10*time.Millisecond)
+}
+
 func TestServe_Off(t *testing.T) {
 	t.Parallel()
 	ca := newCA(t)
@@ -495,10 +629,10 @@ func TestServe_ConfigErrors(t *testing.T) {
 	certDir := t.TempDir()
 	leaf := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp")})
 	writeFiles(t, certDir, leaf, ca.pem)
-	// csiDir is laid out like a csi-driver-spiffe volume without a source CA bundle: no ca.crt.
-	csiDir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(csiDir, CertFile), leaf.certPEM, 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(csiDir, KeyFile), leaf.keyPEM, 0o600))
+	// serverDir is laid out like a <receiver>-spiffe volume: tls.crt and tls.key, no ca.crt.
+	serverDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(serverDir, CertFile), leaf.certPEM, 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(serverDir, KeyFile), leaf.keyPEM, 0o600))
 	receiver := Receiver{Name: "applications-rp"}
 
 	for _, tc := range []struct {
@@ -512,22 +646,40 @@ func TestServe_ConfigErrors(t *testing.T) {
 		{name: "missing namespace", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir}, receiver: receiver, want: "requires certificateDirectory and namespace"},
 		{name: "missing receiver", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, Namespace: testNamespace}, want: "receiver name is required"},
 		{name: "no certificate files", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: t.TempDir(), Namespace: testNamespace}, receiver: receiver, want: "failed to load server certificate"},
-		{name: "CSI volume without CA directory", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: csiDir, Namespace: testNamespace}, receiver: receiver, want: "failed to read ca.crt"},
+		{name: "server certificate volume without CA directory", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: serverDir, Namespace: testNamespace}, receiver: receiver, want: "failed to read ca.crt"},
 		{name: "no CA bundle in CA directory", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, CADirectory: t.TempDir(), Namespace: testNamespace}, receiver: receiver, want: "failed to read ca.crt"},
-		{name: "CA bundle from CA directory", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: csiDir, CADirectory: certDir, Namespace: testNamespace}, receiver: receiver, want: "in-cluster config"},
 		{name: "not in a cluster", options: authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: certDir, Namespace: testNamespace}, receiver: receiver, want: "in-cluster config"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			ln, err := net.Listen("tcp", "127.0.0.1:0")
 			require.NoError(t, err)
-			err = Serve(t.Context(), &http.Server{}, ln, tc.options, tc.receiver)
+			// Fail the in-cluster config deterministically, so the test does not depend on
+			// where it runs; inside a pod rest.InClusterConfig succeeds.
+			config := serveConfig{
+				pollInterval:    testPollInterval,
+				inClusterConfig: func() (*rest.Config, error) { return nil, rest.ErrNotInCluster },
+			}
+			err = serve(t.Context(), &http.Server{}, ln, tc.options, tc.receiver, config)
 			require.ErrorContains(t, err, tc.want)
 
 			_, err = ln.Accept()
 			require.True(t, errors.Is(err, net.ErrClosed), "listener should be closed: %v", err)
 		})
 	}
+
+	t.Run("CA bundle from CA directory", func(t *testing.T) {
+		t.Parallel()
+		options := authz.Options{Mode: authz.ModeDryRun, CertificateDirectory: serverDir, CADirectory: certDir, Namespace: testNamespace}
+		receiver := receiver
+		receiver.KeySource = &staticKeys{}
+		verifier, source, err := newServerAuth(options, receiver, serveConfig{})
+		require.NoError(t, err)
+		require.NotNil(t, verifier)
+		m, err := source.load()
+		require.NoError(t, err)
+		require.Equal(t, leaf.tlsCertificate(t).Certificate, m.cert.Certificate)
+	})
 }
 
 // writeToken writes tok as the projected token for receiver under dir.
@@ -540,6 +692,52 @@ func writeToken(t *testing.T, dir, receiver, tok string) {
 // TestServe_StaleSigningKeysFailClosed checks that once the signing keys are MaxKeyAge old,
 // every request is rejected with AuthorizationUnavailable in every enforcing mode, whatever
 // credentials it carries, and never reaches the handler.
+// TestServe_ExpiredServingLeafAndStaleKeys checks that stale signing keys take precedence over
+// an expired serving certificate on a reused connection: the request fails with 503 in every
+// mode and never reaches the handler.
+func TestServe_ExpiredServingLeafAndStaleKeys(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			now := time.Now().UTC().Truncate(time.Second)
+			ca := newCA(t)
+			leaf := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: now.Add(time.Hour)})
+			var expired atomic.Bool
+			srv := startRecordingServer(t, ca, mode, serverSetup{
+				leaf: &leaf,
+				certNow: func() time.Time {
+					if expired.Load() {
+						return now.Add(2 * time.Hour)
+					}
+					return now
+				},
+			})
+			c := client(t, ca)
+			tok := "Bearer " + mintToken(t, "ucp", "applications-rp")
+			require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, tok))
+			<-srv.seen
+
+			srv.keys.unavailable.Store(true)
+			srv.clock.Advance(token.DefaultMaxKeyAge)
+			expired.Store(true)
+
+			var reused bool
+			trace := &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) { reused = info.Reused }}
+			req, err := http.NewRequestWithContext(httptrace.WithClientTrace(t.Context(), trace), http.MethodGet, "https://"+srv.url, nil)
+			require.NoError(t, err)
+			req.Header.Set("Authorization", tok)
+			resp, err := c.Do(req)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+			require.True(t, reused, "the request must reuse the connection opened before the certificate expired")
+			require.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+			requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
+			require.Empty(t, srv.seen, "requests must not reach the handler while the signing keys are stale")
+		})
+	}
+}
+
 func TestServe_StaleSigningKeysFailClosed(t *testing.T) {
 	t.Parallel()
 	credentials := map[string]string{
@@ -637,5 +835,53 @@ func TestServe_RequestTrailers(t *testing.T) {
 				require.Empty(t, req.Header.Get("Authorization"), "the transport must not modify the caller's request")
 			})
 		}
+	}
+}
+
+// TestServe_OptionsAsteriskIsAuthenticated checks that "OPTIONS *" reaches the token check
+// instead of being answered by net/http's general OPTIONS handler.
+func TestServe_OptionsAsteriskIsAuthenticated(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			ca := newCA(t)
+			srv := startServer(t, ca, mode)
+			c := client(t, ca)
+			tok := "Bearer " + mintToken(t, "ucp", "applications-rp")
+
+			sendOptions := func(authorization string) int {
+				req, err := http.NewRequestWithContext(t.Context(), http.MethodOptions, "https://"+srv.url, nil)
+				require.NoError(t, err)
+				req.URL = &url.URL{Scheme: "https", Host: srv.url, Opaque: "*"}
+				if authorization != "" {
+					req.Header.Set("Authorization", authorization)
+				}
+				resp, err := c.Do(req)
+				require.NoError(t, err)
+				defer resp.Body.Close()
+				_, _ = io.Copy(io.Discard, resp.Body)
+				return resp.StatusCode
+			}
+
+			status := sendOptions("")
+			requireLogged(t, srv.logs, mode, v1.CodeInvalidAuthenticationInfo, "missing bearer token")
+			if mode == authz.ModeEnforce {
+				require.Equal(t, http.StatusUnauthorized, status)
+				require.Empty(t, srv.seen)
+			} else {
+				require.Equal(t, http.StatusOK, status)
+				require.False(t, (<-srv.seen).hasIdentity)
+			}
+
+			// Load the keys, then let them go stale.
+			require.Equal(t, http.StatusOK, send(t, c, "https://"+srv.url, tok))
+			<-srv.seen
+			srv.keys.unavailable.Store(true)
+			srv.clock.Advance(token.DefaultMaxKeyAge + time.Minute)
+			require.Equal(t, http.StatusServiceUnavailable, sendOptions(tok))
+			requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
+			require.Empty(t, srv.seen)
+		})
 	}
 }

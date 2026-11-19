@@ -17,6 +17,7 @@ limitations under the License.
 package helm
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
 )
 
@@ -50,6 +52,9 @@ func newOffAfterOnCluster(t *testing.T) *stageCluster {
 func (c *stageCluster) clusterWrites() []string {
 	writes := []string{}
 	for _, action := range append(c.kube.Actions(), c.dynamic.Actions()...) {
+		if dryRunAction(action) {
+			continue
+		}
 		switch action.GetVerb() {
 		case "get", "list", "watch":
 		default:
@@ -151,7 +156,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, found)
 		require.Empty(t, live)
-		require.NoError(t, c.impl(nil, "").ReconcileUCPOffAPIServerTrust(t.Context(), "test", RadiusSystemNamespace))
+		require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test", RadiusSystemNamespace, nil))
 		c.requireOffTrust(t)
 	})
 
@@ -161,15 +166,15 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			c.putTrustSecret(t, plainHelm)
 			c.stampSecrets(t)
 			deleted := c.enforceDeletePreconditions(t, nil)
-			impl := c.impl(nil, "")
+			impl := c.impl(nil)
 
-			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 			c.requireOffTrust(t)
 			require.ElementsMatch(t, ucpOffSecretNames, *deleted, "rad must delete each Secret it inspected, pinned to its uid and resourceVersion")
 
 			c.kube.ClearActions()
 			c.dynamic.ClearActions()
-			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 			require.Empty(t, c.clusterWrites())
 		})
 	}
@@ -195,6 +200,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 					"apiVersion": "cert-manager.io/v1",
 					"kind":       "Certificate",
 					"metadata":   map[string]any{"name": ucpAPIServerCASecretName, "namespace": RadiusSystemNamespace},
+					"spec":       map[string]any{"secretName": ucpAPIServerCASecretName},
 				}}))
 				secret.UID = types.UID(name + "-2")
 			case ucpAPIServerTLSSecretName:
@@ -205,10 +211,10 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			require.NoError(t, c.kube.Tracker().Update(corev1.SchemeGroupVersion.WithResource("secrets"), secret, RadiusSystemNamespace))
 		})
 		logs := []string{}
-		impl := c.impl(nil, "")
+		impl := c.impl(nil)
 		impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
 
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		c.requireOffAPIService(t)
 		require.Nil(t, c.secret(t, ucpAPIServerTrustSecretName))
 		recreated := c.secret(t, ucpAPIServerCASecretName)
@@ -220,7 +226,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		require.Contains(t, strings.Join(logs, "\n"), "Secret radius-system/ucp-apiserver-tls changed")
 
 		// A rerun deletes the changed Secret, which is still a leftover, and keeps the one its new Certificate owns.
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		require.Nil(t, c.secret(t, ucpAPIServerTLSSecretName))
 		require.NotNil(t, c.secret(t, ucpAPIServerCASecretName))
 	})
@@ -242,10 +248,10 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		_, err = secrets.Update(t.Context(), trust, metav1.UpdateOptions{})
 		require.NoError(t, err)
 		logs := []string{}
-		impl := c.impl(nil, "")
+		impl := c.impl(nil)
 		impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
 
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		c.requireOffAPIService(t)
 		for _, name := range ucpOffSecretNames {
 			require.NotNil(t, c.secret(t, name), "rad must not delete Secret %s, which it does not own", name)
@@ -257,7 +263,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 
 		c.kube.ClearActions()
 		c.dynamic.ClearActions()
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		require.Empty(t, c.clusterWrites())
 	})
 
@@ -266,8 +272,8 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		c.onUCP(t)
 		c.kube.ClearActions()
 		c.dynamic.ClearActions()
-		impl := c.impl(nil, "")
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		impl := c.impl(nil)
+		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		require.Empty(t, c.clusterWrites())
 	})
 
@@ -285,9 +291,9 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			base64.StdEncoding.EncodeToString(c.cainjectorMerges(t, apiService, c.ucpCA.pem)), "spec", "caBundle"))
 		_, err = c.dynamic.Resource(apiServicesResource).Update(t.Context(), apiService, metav1.UpdateOptions{})
 		require.NoError(t, err)
-		impl := c.impl(nil, "")
+		impl := c.impl(nil)
 
-		err = impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace)
+		err = impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil)
 		require.ErrorContains(t, err, "UCP does not serve the certificate in Secret ucp-cert")
 		require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system rollout status deployment/ucp`)
 		// The API server still trusts the certificate UCP serves, and nothing that issues it is removed.
@@ -307,7 +313,7 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: ucpOffCertificateSecretName}}}}
 		_, err = c.kube.AppsV1().Deployments(RadiusSystemNamespace).Update(t.Context(), deployment, metav1.UpdateOptions{})
 		require.NoError(t, err)
-		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		c.requireOffTrust(t)
 	})
 
@@ -333,10 +339,56 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			return false, nil, nil
 		})
 
-		require.NoError(t, c.impl(nil, "").ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		require.Equal(t, 3, patches, "rad must patch again after the conflict and after cainjector's write-back")
 		require.Equal(t, 1, writeBacks)
 		c.requireOffTrust(t)
+	})
+
+	// The caBundle may be clean when rad first reads it while cainjector still runs from the annotation it had, so rad
+	// settles again after waiting for UCP's certificate, even though the first read needed no patch.
+	t.Run("settles after the serving wait even when the caBundle starts clean", func(t *testing.T) {
+		c := newOffAfterOnCluster(t)
+		union, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+		require.NoError(t, err)
+		clean := union.DeepCopy()
+		clean.SetAnnotations(nil)
+		require.NoError(t, unstructured.SetNestedField(clean.Object, base64.StdEncoding.EncodeToString(c.ucpCA.pem), "spec", "caBundle"))
+		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, clean, ""))
+		restored := false
+		// A delayed cainjector restores the annotation and both CAs while rad waits for the ucp Deployment.
+		c.kube.PrependReactor("get", "deployments", func(clienttesting.Action) (bool, runtime.Object, error) {
+			if !restored {
+				restored = true
+				require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, union.DeepCopy(), ""))
+			}
+			return false, nil, nil
+		})
+
+		require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+		require.True(t, restored)
+		c.requireOffTrust(t)
+	})
+
+	// A caBundle with the off CA and any other certificate, even one that is not a CA, is not clean: the final
+	// caBundle holds exactly the CA of ucp-cert.
+	t.Run("replaces a caBundle with an extra leaf certificate", func(t *testing.T) {
+		c := newOffAfterOnCluster(t)
+		apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+		require.NoError(t, err)
+		apiService.SetAnnotations(nil)
+		withLeaf := append(append([]byte{}, c.ucpCA.pem...), issueUCPCertificate(t, c.ucpCA)...)
+		require.NoError(t, unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(withLeaf), "spec", "caBundle"))
+		require.NoError(t, c.dynamic.Tracker().Update(apiServicesResource, apiService, ""))
+
+		require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+		c.requireOffTrust(t)
+		apiService, err = c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+		require.NoError(t, err)
+		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
+		offSecret := c.secret(t, ucpOffCertificateSecretName)
+		require.Equal(t, base64.StdEncoding.EncodeToString(encodeCertificates(testCACertificates(t, offSecret.Data[caCertificateKey]))), encoded,
+			"the caBundle must be exactly the PEM of the ucp-cert CA")
 	})
 
 	t.Run("keeps Secrets whose Certificate exists", func(t *testing.T) {
@@ -345,10 +397,11 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 			"apiVersion": "cert-manager.io/v1",
 			"kind":       "Certificate",
 			"metadata":   map[string]any{"name": ucpAPIServerCASecretName, "namespace": RadiusSystemNamespace},
+			"spec":       map[string]any{"secretName": ucpAPIServerCASecretName},
 		}}
 		require.NoError(t, c.dynamic.Tracker().Add(certificate))
 
-		require.NoError(t, c.impl(nil, "").ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, c.impl(nil).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.NotContains(t, apiService.GetAnnotations(), injectCAFromSecretAnnotation)
@@ -358,6 +411,34 @@ func Test_ReconcileUCPOffAPIServerTrust(t *testing.T) {
 		_, err = c.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTLSSecretName, metav1.GetOptions{})
 		require.True(t, apierrors.IsNotFound(err), "Secret %s has no Certificate, got %v", ucpAPIServerTLSSecretName, err)
 	})
+}
+
+func Test_ucpOffTrustClean(t *testing.T) {
+	ca := newTestCA(t, "ucp-ca")
+	other := newTestCA(t, "radius-apiserver-ca")
+	leaf := issueUCPCertificate(t, ca)
+	offCAs := testCACertificates(t, ca.pem)
+	join := func(parts ...[]byte) []byte { return bytes.Join(parts, nil) }
+	tests := []struct {
+		name   string
+		bundle []byte
+		clean  bool
+	}{
+		{name: "exactly the off CA", bundle: ca.pem, clean: true},
+		{name: "off CA and a leaf", bundle: join(ca.pem, leaf)},
+		{name: "off CA and another CA", bundle: join(ca.pem, other.pem)},
+		{name: "off CA and a private key block", bundle: join(ca.pem, []byte("-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n"))},
+		{name: "off CA and an unparseable certificate", bundle: join(ca.pem, []byte("-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n"))},
+		{name: "empty"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			apiService := &unstructured.Unstructured{Object: map[string]any{"spec": map[string]any{"caBundle": base64.StdEncoding.EncodeToString(tt.bundle)}}}
+			clean, err := ucpOffTrustClean(apiService, offCAs)
+			require.NoError(t, err)
+			require.Equal(t, tt.clean, clean)
+		})
+	}
 }
 
 func Test_ucpOffTrustPatch(t *testing.T) {
@@ -382,4 +463,75 @@ func Test_ucpOffTrustPatch(t *testing.T) {
 		{"op": "remove", "path": "/metadata/annotations/cert-manager.io~1inject-ca-from-secret"},
 		{"op": "add", "path": "/spec/caBundle", "value": base64.StdEncoding.EncodeToString(ca.pem)},
 	}, operations)
+}
+
+// An upgrade to authorization on that stopped before Helm leaves the staged radius-apiserver-ca chain outside the
+// release. Helm's later upgrade to authorization off does not remove it, so rad does, except an object marked keep.
+func Test_ReconcileUCPOffAPIServerTrust_DeletesInterruptedStage(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	issuer := ucpAPIServerCAStageObjects[2]
+	for _, kept := range []bool{false, true} {
+		t.Run(fmt.Sprintf("reserved Issuer kept %t", kept), func(t *testing.T) {
+			c := newOffAfterOnCluster(t)
+			for _, staged := range ucpAPIServerCAStageObjects {
+				var annotations map[string]string
+				if kept && staged == issuer {
+					annotations = map[string]string{helmResourcePolicyAnnotation: "keep"}
+				}
+				require.NoError(t, c.dynamic.Tracker().Add(stagedUCPAPIServerObject(staged.kind, staged.name, radiusReleaseName, annotations)))
+			}
+			logs := []string{}
+			impl := c.impl(nil)
+			impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
+
+			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+			c.requireOffTrust(t)
+			for _, staged := range ucpAPIServerCAStageObjects {
+				want := kept && staged == issuer
+				require.Equal(t, want, stageObjectExists(t, c.dynamic, staged.resource, staged.name), "%s %s", staged.kind, staged.name)
+			}
+			if kept {
+				require.Contains(t, strings.Join(logs, "\n"), "Warning: rad did not delete Issuer radius-system/radius-apiserver-issuer, which is not an object rad staged")
+			}
+
+			c.kube.ClearActions()
+			c.dynamic.ClearActions()
+			require.NoError(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
+			require.Empty(t, c.clusterWrites())
+		})
+	}
+}
+
+// A Secret is in use only while its Certificate writes it. The parent chart declares Certificate ucp-cert with the
+// Secret ucp-mtls, so after a rollback to it ucp-apiserver-tls is a leftover, not the Secret of ucp-cert.
+func Test_ucpOffLeftover_CertificateSecretName(t *testing.T) {
+	leftover := ucpOffLeftoverSecret{secret: ucpAPIServerTLSSecretName, certificate: ucpAPIServerCertificateName}
+	certificate := func(secretName string) *unstructured.Unstructured {
+		object := &unstructured.Unstructured{}
+		object.SetAPIVersion("cert-manager.io/v1")
+		object.SetKind("Certificate")
+		object.SetName(ucpAPIServerCertificateName)
+		object.SetNamespace(RadiusSystemNamespace)
+		require.NoError(t, unstructured.SetNestedField(object.Object, secretName, "spec", "secretName"))
+		return object
+	}
+	tests := []struct {
+		name       string
+		secretName string
+		want       ucpOffSecretState
+	}{
+		{name: "Certificate writes the Secret", secretName: ucpAPIServerTLSSecretName, want: ucpOffSecretKeep},
+		{name: "Certificate writes another Secret", secretName: "ucp-mtls", want: ucpOffSecretLeftover},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kubeClient := kubefake.NewSimpleClientset(&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+				Name: ucpAPIServerTLSSecretName, Namespace: RadiusSystemNamespace,
+				Annotations: map[string]string{certificateNameAnnotation: ucpAPIServerCertificateName},
+			}})
+			found, err := ucpOffLeftover(t.Context(), kubeClient, fakeCertManagerDynamicClient(nil, certificate(tt.secretName)), RadiusSystemNamespace, leftover)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, found.state)
+		})
+	}
 }

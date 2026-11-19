@@ -19,6 +19,7 @@ package mtls
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"slices"
 	"time"
 )
@@ -26,7 +27,7 @@ import (
 // ServerConfig returns a TLS config for a server that presents the current certificate
 // and does not request a client certificate; callers authenticate with a ServiceAccount
 // token instead. The certificate is read for each handshake, so reloads take effect
-// without a restart.
+// without a restart. A trust-only Source has no certificate, so every handshake fails.
 func (s *Source) ServerConfig() *tls.Config {
 	return s.ServerConfigFrom(&tls.Config{ClientAuth: tls.NoClientCert})
 }
@@ -53,6 +54,9 @@ func (s *Source) ServerConfigFrom(base *tls.Config) *tls.Config {
 		m, err := s.load()
 		if err != nil {
 			return nil, err
+		}
+		if m.cert == nil {
+			return nil, errors.New("no serving certificate: the source holds only a CA bundle")
 		}
 
 		// http.Server adds ALPN protocols to the outer config; keep them so HTTP/2 still works.
@@ -112,7 +116,10 @@ func verifiedByConnectionCheck(verify func(tls.ConnectionState) error) *tls.Conf
 }
 
 // verifyServer checks a server's certificate chain against pool and its SPIFFE ID, and
-// returns the verified chain. Every certificate in the chain must use an allowed key.
+// returns the verified chain. The leaf must list server authentication explicitly: Go's
+// chain verification also accepts a leaf with no extended key usage or with only "any",
+// which would let a certificate issued for another purpose serve a Radius receiver. Every
+// certificate in the chain must use an allowed key.
 func verifyServer(pool *x509.CertPool, certs []*x509.Certificate, spiffeID string, now time.Time) ([]*x509.Certificate, error) {
 	if len(certs) == 0 {
 		return nil, peerError("server presented no certificate", nil)
@@ -131,6 +138,9 @@ func verifyServer(pool *x509.CertPool, certs []*x509.Certificate, spiffeID strin
 	})
 	if err != nil {
 		return nil, peerError("server certificate verification failed", err)
+	}
+	if !slices.Contains(certs[0].ExtKeyUsage, x509.ExtKeyUsageServerAuth) {
+		return nil, peerError("server certificate does not list server authentication as an extended key usage", nil)
 	}
 	if err := checkSPIFFEID(certs[0], spiffeID); err != nil {
 		return nil, err

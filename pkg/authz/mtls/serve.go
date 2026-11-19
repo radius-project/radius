@@ -80,15 +80,25 @@ type Receiver struct {
 // options.CertificateDirectory and never requests a client certificate. The external
 // provider serves plain HTTP under operator encryption without loading TLS material.
 //
-// With the Radius provider in dryRun mode the listener accepts plain HTTP and TLS on the same port. Plain HTTP,
-// missing or invalid tokens, and callers that are not in receiver.AllowedCallers are logged
-// as would-deny, and the request is still served. While the signing keys are stale, every
-// request is rejected with AuthorizationUnavailable, as in enforce mode.
+// With the Radius provider in dryRun mode the listener accepts both plain HTTP and TLS on the same port. Plain HTTP,
+// missing or invalid tokens, callers that are not in receiver.AllowedCallers, and requests
+// received while the server's loaded certificate is expired are logged as would-deny, and
+// the request is still served. A request served over plain HTTP or with an expired server
+// certificate never carries the caller's identity, even if its token is valid. While the
+// signing keys are stale, every request is rejected with AuthorizationUnavailable, as in
+// enforce mode.
 //
 // With the Radius provider in enforce mode the listener only accepts TLS. Plain HTTP is closed and logged as denied.
 // A missing or invalid token gets InvalidAuthenticationInfo, a token that cannot be checked
 // because the signing keys are stale gets AuthorizationUnavailable, and a caller that is not
-// in receiver.AllowedCallers gets AuthorizationFailed.
+// in receiver.AllowedCallers gets AuthorizationFailed. A request received while the
+// server's loaded certificate is expired, for example after a failed rotation, gets
+// InvalidAuthenticationInfo and the connection is closed.
+//
+// The expiry check uses the certificate the server has loaded now, not the one presented
+// when the connection was established. After a successful rotation, a connection made with
+// the old certificate stays usable even once that certificate expires, because clients
+// verify the server only during the handshake.
 //
 // ListenAndServe changes srv's Handler when the mode is not off.
 func ListenAndServe(ctx context.Context, srv *http.Server, options authz.Options, receiver Receiver) error {
@@ -124,6 +134,13 @@ type serveConfig struct {
 
 	// tokenNow is the verifier's clock. Nil uses time.Now.
 	tokenNow func() time.Time
+
+	// certNow is the serving certificate's clock. Nil uses time.Now.
+	certNow func() time.Time
+
+	// inClusterConfig loads the config for the default key source. Nil uses
+	// rest.InClusterConfig.
+	inClusterConfig func() (*rest.Config, error)
 }
 
 func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz.Options, receiver Receiver, config serveConfig) error {
@@ -155,13 +172,15 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 	}
 	go verifier.Run(runCtx)
 
-	s := &server{verifier: verifier, mode: mode, allowedCallers: receiver.AllowedCallers}
+	s := &server{verifier: verifier, source: source, mode: mode, allowedCallers: receiver.AllowedCallers}
 
 	handler := srv.Handler
 	if handler == nil {
 		handler = http.DefaultServeMux
 	}
 	srv.Handler = s.authorizeCaller(handler)
+	// Otherwise net/http answers "OPTIONS *" itself, before Handler checks the token.
+	srv.DisableGeneralOptionsHandler = true
 
 	if options.EffectiveTLSProvider() == authz.TLSProviderExternal {
 		return srv.Serve(ln)
@@ -191,12 +210,19 @@ func newServerAuth(options authz.Options, receiver Receiver, config serveConfig)
 			return nil, nil, fmt.Errorf("failed to load server certificate: %w", err)
 		}
 	}
+	if managed && config.certNow != nil {
+		source.now = config.certNow
+	}
 
 	keys := receiver.KeySource
 	if keys == nil {
 		// Tokens are issued by the cluster hosting Radius, which may differ from the
 		// deployment target cluster.
-		restConfig, err := rest.InClusterConfig()
+		loadConfig := config.inClusterConfig
+		if loadConfig == nil {
+			loadConfig = rest.InClusterConfig
+		}
+		restConfig, err := loadConfig()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to load in-cluster config for token verification: %w", err)
 		}
@@ -221,6 +247,7 @@ func newServerAuth(options authz.Options, receiver Receiver, config serveConfig)
 
 type server struct {
 	verifier       *token.Verifier
+	source         *Source
 	mode           authz.Mode
 	allowedCallers []string
 }
@@ -228,10 +255,17 @@ type server struct {
 // authorizeCaller verifies the request's ServiceAccount token and checks that the caller is
 // one of the allowed components. It removes the Authorization header before calling next, so
 // the caller's token is never forwarded, for example when UCP proxies a request.
+//
+// The caller's identity is attached only to requests that arrived over TLS while the
+// receiver's own serving certificate is valid. A connection can outlive that certificate,
+// so its validity is checked on every request, not only at the handshake. Stale signing
+// keys take precedence: such requests are rejected with AuthorizationUnavailable in every
+// mode, whatever the state of the serving certificate.
 func (s *server) authorizeCaller(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		decision := authz.Decision{Allowed: true, Action: r.Method, Target: r.URL.Path}
+
 		logger := ucplog.FromContextOrDiscard(ctx).WithValues(LogFieldPeerAddress, r.RemoteAddr)
 
 		id, err := s.verifier.VerifyRequest(r)
@@ -257,6 +291,24 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 		if decision.Code == v1.CodeAuthorizationUnavailable {
 			mode = authz.ModeEnforce
 		}
+
+		// Plain HTTP in dryRun is logged once per connection by the listener. A request that
+		// stale keys reject is not checked further, so it always gets the 503.
+		trusted := s.source == nil || r.TLS != nil
+		if s.source != nil && trusted && decision.Code != v1.CodeAuthorizationUnavailable {
+			if _, err := s.source.load(); err != nil {
+				// The request context's logger has no token fields, so the log shows only
+				// the certificate failure.
+				logServingFailure(r.Context(), s.mode, r.RemoteAddr, err)
+				if s.mode == authz.ModeEnforce {
+					w.Header().Set("Connection", "close")
+					writeDenied(r.Context(), w, r, &authz.DeniedError{Code: v1.CodeInvalidAuthenticationInfo, Action: decision.Action, Target: decision.Target})
+					return
+				}
+				trusted = false
+			}
+		}
+
 		if err := authz.Apply(ctx, mode, decision); err != nil {
 			writeDenied(ctx, w, r, err)
 			return
@@ -267,7 +319,7 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 		r = r.WithContext(r.Context())
 		r.Header = r.Header.Clone()
 		r.Header.Del("Authorization")
-		if decision.Allowed {
+		if decision.Allowed && trusted {
 			r = r.WithContext(authz.WithIdentity(r.Context(), id))
 		}
 		next.ServeHTTP(w, r)
@@ -284,6 +336,18 @@ func writeDenied(ctx context.Context, w http.ResponseWriter, r *http.Request, er
 		}
 	}
 	http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+}
+
+// logServingFailure logs a request received while the receiver's own serving certificate
+// cannot be used, with the authorization log fields.
+func logServingFailure(ctx context.Context, mode authz.Mode, remote string, err error) {
+	code := v1.CodeInvalidAuthenticationInfo
+	var mErr *Error
+	if errors.As(err, &mErr) {
+		code = mErr.Code
+	}
+	logger := ucplog.FromContextOrDiscard(ctx).WithValues(LogFieldReason, err.Error(), LogFieldPeerAddress, remote)
+	_ = authz.Apply(logr.NewContext(ctx, logger), mode, authz.Decision{Code: code})
 }
 
 // logPlainHTTP logs a plain HTTP connection, which cannot carry a token safely, with the

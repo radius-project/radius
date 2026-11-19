@@ -182,6 +182,11 @@ func ucpAPIServerCASource(radiusNamespace string) string {
 	return radiusNamespace + "/" + ucpAPIServerCASecretName
 }
 
+// ucpAPIServerTrustSource is the inject-ca-from-secret value that makes cainjector copy the trust Secret.
+func ucpAPIServerTrustSource(radiusNamespace string) string {
+	return radiusNamespace + "/" + ucpAPIServerTrustSecretName
+}
+
 // injectUCPAPIServerCA makes cainjector copy ca.crt of radius-apiserver-ca into the UCP APIService, and sets the
 // caBundle to it now so the API server does not wait for cainjector.
 func injectUCPAPIServerCA(ctx context.Context, dynamicClient dynamic.Interface, radiusNamespace string, caBundle []byte) error {
@@ -200,8 +205,8 @@ func injectUCPAPIServerCA(ctx context.Context, dynamicClient dynamic.Interface, 
 	return nil
 }
 
-// settleUCPAPIServerCA waits until the APIService caBundle holds no certificate outside ca.crt of
-// radius-apiserver-ca, other than expired ones, for ucpAPIServerCASettleChecks polls in a row. cainjector merges
+// settleUCPAPIServerCA waits until the APIService caBundle holds ca.crt of radius-apiserver-ca and no other
+// certificate, other than expired ones, for ucpAPIServerCASettleChecks polls in a row. cainjector merges
 // ca.crt into the caBundle it reads from its cache and only drops expired certificates, so a reconcile that read the
 // APIService before rad switched it can write an earlier CA, such as ucp-ca, back and keep it trusted. rad sets the
 // caBundle to ca.crt again whenever that happens.
@@ -237,11 +242,19 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kubeClient ku
 		if parseErr != nil {
 			return false, fmt.Errorf("invalid APIService trust bundle: %w", parseErr)
 		}
-		if extra == 0 && apiService.GetAnnotations()[injectCAFromSecretAnnotation] == ucpAPIServerCASource(radiusNamespace) {
+		live, err := ucpAPIServiceCAs(apiService)
+		if err != nil {
+			return false, err
+		}
+		missing := !containsCertificates(live, []*x509.Certificate{ca})
+		if extra == 0 && !missing && apiService.GetAnnotations()[injectCAFromSecretAnnotation] == ucpAPIServerCASource(radiusNamespace) {
 			clean++
 			return clean >= ucpAPIServerCASettleChecks, nil
 		}
 		clean, problem = 0, fmt.Sprintf("its caBundle trusts %d certificate(s) outside Secret %s/%s", extra, radiusNamespace, ucpAPIServerCASecretName)
+		if missing {
+			problem = fmt.Sprintf("its caBundle does not hold the CA in Secret %s/%s", radiusNamespace, ucpAPIServerCASecretName)
+		}
 		return false, injectUCPAPIServerCA(ctx, dynamicClient, radiusNamespace, caBundle)
 	})
 	if wait.Interrupted(err) {
@@ -257,6 +270,9 @@ func extraCertificates(bundle, allowed []byte) (int, error) {
 	anchors, err := parseCertificateBundlePEM(allowed)
 	if err != nil {
 		return 0, fmt.Errorf("invalid allowed bundle: %w", err)
+	}
+	if len(bundle) == 0 {
+		return 0, nil
 	}
 	certs, err := parseCertificateBundlePEM(bundle)
 	if err != nil {
@@ -343,7 +359,8 @@ func (i *Impl) deleteOwnedUCPAPIServerTrust(ctx context.Context, kubeContext str
 // plain-Helm steps create: only a non-empty ca.crt, with annotation cert-manager.io/allow-direct-injection=true. rad writes,
 // trusts and deletes only such a Secret; the chart renders the APIService from it only then too.
 func ownsUCPAPIServerTrust(secret *corev1.Secret) bool {
-	return len(secret.Data[caCertificateKey]) > 0 && len(secret.Data) == 1 && secret.Annotations[allowDirectInjectionAnnotation] == "true"
+	_, pinned := secret.Annotations["radius.io/certificate-mode"]
+	return !pinned && len(secret.Data[caCertificateKey]) > 0 && len(secret.Data) == 1 && secret.Annotations[allowDirectInjectionAnnotation] == "true"
 }
 
 // foreignUCPAPIServerTrustProblem describes a trust Secret that rad does not own.

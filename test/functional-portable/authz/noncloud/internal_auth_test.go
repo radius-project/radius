@@ -20,7 +20,9 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -53,12 +55,15 @@ func testUnauthenticatedCallToApplicationsRP(t *testing.T) {
 	options := test.NewTestOptions(t)
 	ctx := t.Context()
 
-	client := rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{Namespace: createNamespace(t, options.K8sClient)})
+	client := newVerifiedClient(t, options, map[string]string{
+		allowedTokenDir: serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp"),
+	})
 
 	// Positive control: the same pod succeeds with UCP's token, so the failure below is
-	// caused by the missing token. -k skips server verification; only the receiver is tested.
-	requireAllowed(t, client, bearer(serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp")))
+	// caused by the missing token.
+	client.requireAllowed(t)
 
+	// No token is sent, so -k is safe here; only the receiver is tested.
 	resp, err := client.Do(ctx, rogue.Request{URL: applicationsRPOperationsURL, Insecure: true})
 	require.NoError(t, err)
 	requireRejected(t, mode, resp, http.StatusUnauthorized, v1.CodeInvalidAuthenticationInfo)
@@ -70,19 +75,19 @@ func testDisallowedCaller(t *testing.T) {
 	options := test.NewTestOptions(t)
 	ctx := t.Context()
 
-	client := rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{Namespace: createNamespace(t, options.K8sClient)})
-	requireAllowed(t, client, bearer(serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp")))
-
 	// dynamic-rp's token has applications-rp's audience, but applications-rp only accepts
 	// calls from UCP, so the caller check is the only reason for rejection.
+	const wrongCaller = "wrong-caller"
+	client := newVerifiedClient(t, options, map[string]string{
+		allowedTokenDir: serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp"),
+		wrongCaller:     serviceAccountToken(t, options.K8sClient, "dynamic-rp", "applications-rp"),
+	})
+	client.requireAllowed(t)
+
 	caller := "dynamic-rp." + radiusNamespace + ".svc"
 	logs := newDenialLogs(t, options.K8sClient, mode, caller)
 
-	resp, err := client.Do(ctx, rogue.Request{
-		URL:      applicationsRPOperationsURL,
-		Insecure: true,
-		Headers:  map[string]string{"Authorization": bearer(serviceAccountToken(t, options.K8sClient, "dynamic-rp", "applications-rp"))},
-	})
+	resp, err := client.Do(ctx, client.request(applicationsRPOperationsURL, wrongCaller))
 	require.NoError(t, err)
 	requireRejected(t, mode, resp, http.StatusForbidden, authz.CodeAuthorizationFailed)
 	logs.requireNew(t)
@@ -93,16 +98,16 @@ func testTokenReplay(t *testing.T) {
 	options := test.NewTestOptions(t)
 	ctx := t.Context()
 
-	client := rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{Namespace: createNamespace(t, options.K8sClient)})
-	requireAllowed(t, client, bearer(serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp")))
-
 	// UCP's token for dynamic-rp, replayed to applications-rp. The caller is allowed, so the
 	// audience is the only reason for rejection.
-	resp, err := client.Do(ctx, rogue.Request{
-		URL:      applicationsRPOperationsURL,
-		Insecure: true,
-		Headers:  map[string]string{"Authorization": bearer(serviceAccountToken(t, options.K8sClient, "ucp", "dynamic-rp"))},
+	const replayed = "replayed"
+	client := newVerifiedClient(t, options, map[string]string{
+		allowedTokenDir: serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp"),
+		replayed:        serviceAccountToken(t, options.K8sClient, "ucp", "dynamic-rp"),
 	})
+	client.requireAllowed(t)
+
+	resp, err := client.Do(ctx, client.request(applicationsRPOperationsURL, replayed))
 	require.NoError(t, err)
 	requireRejected(t, mode, resp, http.StatusUnauthorized, v1.CodeInvalidAuthenticationInfo)
 	requireAuthFailureLogged(t, options.K8sClient, mode, client.Pod().Status.PodIP, "token is not valid")
@@ -115,43 +120,88 @@ func testWrongServerSPIFFEID(t *testing.T) {
 
 	// The rogue pod uses the Radius client transport with the Radius CA bundle and UCP's
 	// token for applications-rp, like UCP itself.
-	ca, err := options.K8sClient.CoreV1().Secrets(radiusNamespace).Get(ctx, "radius-ca", metav1.GetOptions{})
-	require.NoError(t, err)
-	namespace := createNamespace(t, options.K8sClient)
-	secret, err := options.K8sClient.CoreV1().Secrets(namespace).Create(ctx, &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "rogue-identity"},
-		Data: map[string][]byte{
-			"ca.crt": ca.Data["ca.crt"],
-			"token":  []byte(serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp")),
-		},
-	}, metav1.CreateOptions{})
-	require.NoError(t, err)
-	client := rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{
-		Namespace:     namespace,
-		TLSSecretName: secret.Name,
-		TLSSecretItems: []corev1.KeyToPath{
-			{Key: "ca.crt", Path: "ca.crt"},
-			{Key: "token", Path: "tokens/applications-rp/token"},
-		},
+	client := newVerifiedClient(t, options, map[string]string{
+		allowedTokenDir: serviceAccountToken(t, options.K8sClient, "ucp", "applications-rp"),
 	})
 
-	request := rogue.Request{Receiver: "applications-rp", ReceiverNamespace: radiusNamespace}
-
 	// Positive control: applications-rp presents the expected SPIFFE ID.
-	request.URL = applicationsRPOperationsURL
-	resp, err := client.Do(ctx, request)
-	require.NoError(t, err)
-	require.Equalf(t, http.StatusOK, resp.StatusCode, "the Radius client was not accepted by applications-rp: %+v", resp)
+	client.requireAllowed(t)
 
 	// dynamic-rp has a valid server certificate from the Radius CA, but its SPIFFE ID is not
 	// applications-rp's, so the client must fail the handshake before sending the token.
-	request.URL = dynamicRPURL
-	resp, err = client.Do(ctx, request)
+	resp, err := client.Do(ctx, client.request(dynamicRPURL, allowedTokenDir))
 	require.NoError(t, err)
 	require.Equalf(t, rogueclient.ExitTransport, resp.ExitCode, "expected the client to refuse dynamic-rp: %+v", resp)
 	require.Equal(t, 0, resp.StatusCode)
 	require.Contains(t, resp.Stderr, authz.CodePeerCertificateInvalid)
-	require.Contains(t, resp.Stderr, mtls.SPIFFEID(mtls.DefaultTrustDomain, radiusNamespace, "dynamic-rp"))
+	require.Contains(t, resp.Stderr, mtls.SPIFFEID(client.trustDomain, radiusNamespace, "dynamic-rp"))
+}
+
+// allowedTokenDir holds UCP's token for applications-rp in a verifiedClient pod.
+const allowedTokenDir = "allowed"
+
+// verifiedClient is a rogue pod that calls applications-rp like UCP does: it verifies the
+// server against the Radius CA bundle and applications-rp's SPIFFE ID in the installed trust
+// domain, and only then sends a token read from a mounted file. Tokens never appear on the
+// rogue-client command line, which is sent in the pods/exec URL.
+type verifiedClient struct {
+	*rogue.Client
+	trustDomain string
+}
+
+// newVerifiedClient starts a verifiedClient whose pod mounts each token in tokens under
+// rogue.TLSMountPath/<directory>/applications-rp/token, where directory is the map key.
+func newVerifiedClient(t *testing.T, options test.TestOptions, tokens map[string]string) *verifiedClient {
+	t.Helper()
+	ctx := t.Context()
+
+	ca, err := options.K8sClient.CoreV1().Secrets(radiusNamespace).Get(ctx, "radius-ca", metav1.GetOptions{})
+	require.NoError(t, err)
+
+	data := map[string][]byte{"ca.crt": ca.Data["ca.crt"]}
+	items := []corev1.KeyToPath{{Key: "ca.crt", Path: "ca.crt"}}
+	for dir, token := range tokens {
+		key := dir + "-token"
+		data[key] = []byte(token)
+		items = append(items, corev1.KeyToPath{Key: key, Path: path.Join(dir, "applications-rp", "token")})
+	}
+
+	namespace := createNamespace(t, options.K8sClient)
+	secret, err := options.K8sClient.CoreV1().Secrets(namespace).Create(ctx, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "rogue-identity"},
+		Data:       data,
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	return &verifiedClient{
+		Client: rogue.New(t, options.K8sClient, options.K8sConfig, rogue.Options{
+			Namespace:      namespace,
+			TLSSecretName:  secret.Name,
+			TLSSecretItems: items,
+		}),
+		trustDomain: installedTrustDomain(installedValues(t)),
+	}
+}
+
+// request returns a request to url that expects applications-rp's SPIFFE ID and sends the
+// token mounted under tokenDir.
+func (c *verifiedClient) request(url, tokenDir string) rogue.Request {
+	return rogue.Request{
+		URL:               url,
+		Receiver:          "applications-rp",
+		ReceiverNamespace: radiusNamespace,
+		TrustDomain:       c.trustDomain,
+		TokenDirectory:    tokenDir,
+	}
+}
+
+// requireAllowed checks that applications-rp accepts the operations route with UCP's token
+// after the client verified applications-rp's identity.
+func (c *verifiedClient) requireAllowed(t *testing.T) {
+	t.Helper()
+	resp, err := c.Do(t.Context(), c.request(applicationsRPOperationsURL, allowedTokenDir))
+	require.NoError(t, err)
+	require.Equalf(t, http.StatusOK, resp.StatusCode, "UCP's token was not accepted: %+v", resp)
 }
 
 // serviceAccountToken requests a 10-minute token for a ServiceAccount in the Radius namespace
@@ -166,22 +216,6 @@ func serviceAccountToken(t *testing.T, client k8s.Interface, account, audience s
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 	return request.Status.Token
-}
-
-func bearer(token string) string {
-	return "Bearer " + token
-}
-
-// requireAllowed checks that applications-rp accepts the operations route with authorization.
-func requireAllowed(t *testing.T, client *rogue.Client, authorization string) {
-	t.Helper()
-	resp, err := client.Do(t.Context(), rogue.Request{
-		URL:      applicationsRPOperationsURL,
-		Insecure: true,
-		Headers:  map[string]string{"Authorization": authorization},
-	})
-	require.NoError(t, err)
-	require.Equalf(t, http.StatusOK, resp.StatusCode, "UCP's token was not accepted: %+v", resp)
 }
 
 // requireRejected checks that enforce rejected the request with status and an ARM error
@@ -366,8 +400,19 @@ func authFailureLine(line, marker, podIP, reason string) bool {
 	got, _ := entry[mtls.LogFieldReason].(string)
 	return entry[marker] == true &&
 		entry[authz.LogFieldCode] == v1.CodeInvalidAuthenticationInfo &&
-		strings.HasPrefix(address, podIP+":") &&
+		peerIsPod(address, podIP) &&
 		strings.Contains(got, reason)
+}
+
+// peerIsPod reports whether address, a host:port peer address that brackets IPv6 hosts,
+// comes from podIP.
+func peerIsPod(address, podIP string) bool {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return false
+	}
+	ip, want := net.ParseIP(host), net.ParseIP(podIP)
+	return ip != nil && want != nil && ip.Equal(want)
 }
 
 func tail(s string, n int) string {
@@ -376,6 +421,40 @@ func tail(s string, n int) string {
 		lines = lines[len(lines)-n:]
 	}
 	return strings.Join(lines, "\n")
+}
+
+func Test_AuthFailureLine(t *testing.T) {
+	t.Parallel()
+
+	marker := authz.LogFieldDenied
+	line := func(address string) string {
+		data, err := json.Marshal(map[string]any{
+			marker: true, authz.LogFieldCode: v1.CodeInvalidAuthenticationInfo,
+			mtls.LogFieldPeerAddress: address, mtls.LogFieldReason: "missing bearer token",
+		})
+		require.NoError(t, err)
+		return "2026-11-06T00:00:00Z " + string(data)
+	}
+
+	tests := []struct {
+		name    string
+		podIP   string
+		address string
+		want    bool
+	}{
+		{name: "IPv4", podIP: "10.0.0.1", address: "10.0.0.1:43210", want: true},
+		{name: "IPv6", podIP: "fd00::1", address: "[fd00::1]:43210", want: true},
+		{name: "IPv6 non-canonical pod IP", podIP: "fd00:0:0:0:0:0:0:1", address: "[fd00::1]:43210", want: true},
+		{name: "IPv4 other pod with shared prefix", podIP: "10.0.0.1", address: "10.0.0.12:43210"},
+		{name: "IPv6 other pod", podIP: "fd00::1", address: "[fd00::2]:43210"},
+		{name: "no port", podIP: "10.0.0.1", address: "10.0.0.1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.want, authFailureLine(line(tt.address), marker, tt.podIP, "missing bearer token"))
+		})
+	}
 }
 
 func Test_DenialLogsMatches(t *testing.T) {

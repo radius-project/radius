@@ -23,19 +23,10 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- end -}}
 {{- end -}}
 
-{{- define "radius.authz.certificates.issuerMatch" -}}
-{{- printf "(object.spec.issuerRef.name == '%s' && ((!has(object.spec.issuerRef.kind) || object.spec.issuerRef.kind == '') ? 'Issuer' : object.spec.issuerRef.kind) == '%s' && ((!has(object.spec.issuerRef.group) || object.spec.issuerRef.group == '') ? 'cert-manager.io' : object.spec.issuerRef.group) == '%s')" .name .kind .group -}}
-{{- end -}}
-
 {{- define "radius.authz.certificates.receivers" -}}
-{{- $receivers := list -}}
 {{- if eq (include "radius.authz.tls.provider" .) "radius" -}}
-{{- $receivers = list "ucp" "applications-rp" "dynamic-rp" -}}
-{{- if eq (include "radius.de.internalAuth.enabled" .) "true" -}}
-{{- $receivers = append $receivers "bicep-de" -}}
-{{- end -}}
-{{- end -}}
-{{- $receivers | toJson -}}
+{{- include "radius.authz.spiffe.receivers" . -}}
+{{- else -}}[]{{- end -}}
 {{- end -}}
 
 {{- define "radius.authz.certificates.validate" -}}
@@ -49,9 +40,6 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- fail "selfSigned must not specify caSecret, caBundle or issuerRef.name; CA/mode switches require the certificate lifecycle." -}}
 {{- end -}}
 {{- else -}}
-{{- if not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") -}}
-{{- fail "certificate prerequisite: bring-your-own CA modes require Kubernetes ValidatingAdmissionPolicy support." -}}
-{{- end -}}
 {{- if or (not (kindIs "string" $c.caBundle)) (not (regexMatch `^-----BEGIN CERTIFICATE-----\r?\n[A-Za-z0-9+/=\r\n]+-----END CERTIFICATE-----\s*$` (trim ($c.caBundle | default "")))) -}}
 {{- fail "global.rbac.certificates.caBundle must contain exactly one public dedicated CA certificate in PEM format, not a private key or organization chain." -}}
 {{- end -}}
@@ -59,13 +47,29 @@ snapshot resolver; an ordinary Helm render must never overwrite staged overlap.
 {{- if or (not (kindIs "string" $c.caSecret)) (not (regexMatch `^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$` (toString $c.caSecret))) (gt (len (toString $c.caSecret)) 253) -}}
 {{- fail "global.rbac.certificates.caSecret must be the name of an existing operator-owned TLS Secret in the release namespace." -}}
 {{- end -}}
-{{- if has $c.caSecret (list "radius-ca" "radius-apiserver-ca" "radius-apiserver-trust" "ucp-cert" "ucp-apiserver-tls" "ucp-mtls" "applications-rp-mtls" "dynamic-rp-mtls" "controller-mtls" "bicep-de-mtls") -}}
+{{- if has $c.caSecret (list "radius-ca" "radius-apiserver-ca" "radius-apiserver-trust" "ucp-cert" "ucp-apiserver-tls" "ucp-spiffe" "applications-rp-spiffe" "dynamic-rp-spiffe" "bicep-de-spiffe") -}}
 {{- fail "global.rbac.certificates.caSecret must not name a Radius-managed certificate Secret. Use a separate operator-owned signing Secret." -}}
 {{- end -}}
 {{- if ($c.issuerRef | default dict).name -}}{{- fail "caSecret must not specify issuerRef.name." -}}{{- end -}}
 {{- else -}}
 {{- if $c.caSecret -}}{{- fail "issuerRef must not specify caSecret; its private key stays with the existing issuer." -}}{{- end -}}
-{{- include "radius.authz.issuerPolicy.validate" . -}}
+{{- $issuer := $c.issuerRef | default dict -}}
+{{- if or (ne $issuer.group "cert-manager.io") (not (has $issuer.kind (list "Issuer" "ClusterIssuer"))) (not (kindIs "string" $issuer.name)) (not (regexMatch `^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$` (toString $issuer.name))) -}}
+{{- fail "issuerRef requires issuerRef.group=cert-manager.io, kind=Issuer or ClusterIssuer, and an existing issuer name." -}}
+{{- end -}}
+{{- $issuerNamespace := "" -}}
+{{- if eq $issuer.kind "Issuer" -}}{{- $issuerNamespace = .Release.Namespace -}}{{- end -}}
+{{- $existing := lookup "cert-manager.io/v1" $issuer.kind $issuerNamespace $issuer.name -}}
+{{- if not $existing -}}{{- fail "issuerRef prerequisite: the configured existing Issuer/ClusterIssuer is missing; use a live cluster-connected Helm render." -}}{{- end -}}
+{{- $ready := false -}}
+{{- range dig "status" "conditions" list $existing -}}
+{{- if and (eq .type "Ready") (eq .status "True") (gt (int64 $existing.metadata.generation) 0) (eq (int64 .observedGeneration) (int64 $existing.metadata.generation)) -}}
+{{- $ready = true -}}
+{{- end -}}
+{{- end -}}
+{{- if or (not $ready) $existing.metadata.deletionTimestamp -}}
+{{- fail (printf "issuerRef prerequisite: %s %s must be Ready at its current generation." $issuer.kind $issuer.name) -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- range $plane := list "internal" "aggregation" -}}

@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"math/big"
 	"net/url"
 	"strings"
@@ -37,15 +38,15 @@ import (
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/engine"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 // certificateTarget contains public desired state only. It does not authorize writes,
 // approve a transition, or prove that an external issuer can actually issue a leaf.
 type certificateTarget struct {
-	radiusAuthTarget
-	deployedMode   authz.Mode
-	requesters     []string
+	mode           authz.Mode
 	Mode, Provider string
 	TrustDomain    string
 	Receivers      []string
@@ -74,11 +75,67 @@ type certificatePublicSource struct {
 	Issuer                              certificateIssuerReference
 }
 
-func (t *certificateTarget) checkTransition(deployed authz.Mode) error {
-	if deployed != authz.ModeOff && t.mode != authz.ModeOff && t.Mode != "selfSigned" {
-		return fmt.Errorf("maintaining global.rbac.certificates.mode=%s requires the certificate lifecycle; ordinary upgrades and reinstalls only stage selfSigned aggregation trust. Helm has not changed Radius", t.Mode)
+// An external provider must not depend on Radius internal serving keys or anchors,
+// even if a chart conditionally adds the volume only on upgrade.
+func (t *certificateTarget) checkProviderRender(ctx context.Context, render renderRadiusManifest) error {
+	if t.Provider != "external" || t.mode == authz.ModeOff {
+		return nil
 	}
-	return checkUCPAPIServerCertificateTransition(deployed, t.mode, t.Values)
+	manifest, applied, err := render(ctx)
+	if err != nil || !applied {
+		return err
+	}
+	decode := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
+	for {
+		var obj unstructured.Unstructured
+		if err := decode.Decode(&obj.Object); err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		path := []string{"spec", "template", "spec", "volumes"}
+		switch obj.GetKind() {
+		case "Pod":
+			path = []string{"spec", "volumes"}
+		case "CronJob":
+			path = []string{"spec", "jobTemplate", "spec", "template", "spec", "volumes"}
+		case "Certificate":
+			name, _, err := unstructured.NestedString(obj.Object, "spec", "secretName")
+			if err != nil {
+				return err
+			}
+			if strings.HasSuffix(name, "-spiffe") || name == "radius-ca" {
+				return fmt.Errorf("external TLS provider cannot issue internal serving material %q", name)
+			}
+		}
+		volumes, _, err := unstructured.NestedSlice(obj.Object, path...)
+		if err != nil {
+			return err
+		}
+		for _, raw := range volumes {
+			v, _ := raw.(map[string]any)
+			if usesInternalSource(v, "secretName") {
+				return fmt.Errorf("external TLS provider cannot mount Radius internal certificate material in %s", obj.GetName())
+			}
+			sources, _, err := unstructured.NestedSlice(v, "projected", "sources")
+			if err != nil {
+				return err
+			}
+			for _, source := range sources {
+				s, _ := source.(map[string]any)
+				if usesInternalSource(s, "name") {
+					return fmt.Errorf("external TLS provider cannot project Radius internal certificate material in %s", obj.GetName())
+				}
+			}
+		}
+	}
+}
+
+func usesInternalSource(source map[string]any, secretField string) bool {
+	name, _, _ := unstructured.NestedString(source, "secret", secretField)
+	cm, _, _ := unstructured.NestedString(source, "configMap", "name")
+	return strings.HasSuffix(name, "-spiffe") || name == "radius-ca" || cm == "radius-mtls-ca"
 }
 
 func (i *Impl) prepareSelectedCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, current map[string]any, kubeContext string, deployed map[string]any) (*certificateTarget, *certificatePlan, error) {
@@ -148,13 +205,13 @@ func (i *Impl) prepareCertificateTarget(ctx context.Context, options ClusterOpti
 
 // certificateProfilePlan consumes the selected chart's shared issuer/receiver helpers,
 // rather than maintaining a second component inventory or policy evaluator in Go.
-func certificateProfilePlan(selected *chart.Chart, effective map[string]any, namespace string, settings chartAuthSettings) (*certificateTarget, error) {
+func certificateProfilePlan(selected *chart.Chart, effective map[string]any, namespace string, mode authz.Mode) (*certificateTarget, error) {
 	target := &certificateTarget{
-		radiusAuthTarget: radiusAuthTarget{chartAuthSettings: settings},
-		Mode:             certificateMode(effective), Values: copyValues(effective),
+		mode: mode,
+		Mode: certificateMode(effective), Values: copyValues(effective),
 		Planes: map[string]certificatePlaneTarget{},
 	}
-	if settings.mode == authz.ModeOff {
+	if mode == authz.ModeOff {
 		return target, nil
 	}
 	if selected.Metadata == nil {
@@ -170,9 +227,9 @@ func certificateProfilePlan(selected *chart.Chart, effective map[string]any, nam
 "trustDomain": {{ include "radius.authz.spiffe.trustDomain" . | toJson }},
 "receivers": {{ include "radius.authz.certificates.receivers" . }},
 "aggregation": {{ include "radius.authz.certificates.issuer" (dict "root" . "plane" "aggregation") }},
-"internal": {{ include "radius.authz.certificates.issuer" (dict "root" . "plane" "internal") }},
-"aggregationSource": {{ include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") }},
-"internalSource": {{ include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") }}
+{{ if eq (include "radius.authz.tls.provider" .) "radius" }}"internal": {{ include "radius.authz.certificates.issuer" (dict "root" . "plane" "internal") }},
+"internalSource": {{ include "radius.authz.certificates.publicSource" (dict "root" . "plane" "internal") }},{{ end }}
+"aggregationSource": {{ include "radius.authz.certificates.publicSource" (dict "root" . "plane" "aggregation") }}
 }`)})
 	values, err := valuesutil.CoalesceValues(c, effective)
 	if err != nil {
@@ -224,17 +281,6 @@ func certificateHelperChart(selected *chart.Chart) *chart.Chart {
 	return c
 }
 
-// certificatePolicyChart retains the selected chart's real policy evaluator without
-// rendering lifecycle resources. Only the lifecycle may authorize a target transition.
-func certificatePolicyChart(selected *chart.Chart) *chart.Chart {
-	c := certificateHelperChart(selected)
-	c.Templates = append(c.Templates, &common.File{
-		Name: "templates/certificate-target-policy.yaml",
-		Data: []byte(`{{ include "radius.authz.issuerPolicy.validate" . }}`),
-	})
-	return c
-}
-
 // validateCAProfiles probes X.509 constraints with ephemeral certificates. It never
 // signs with the operator key, and is not evidence of external backend issuance.
 func validateCAProfiles(chain []*x509.Certificate, target *certificateTarget, namespace string, now time.Time) error {
@@ -249,10 +295,9 @@ func validateCAProfiles(chain []*x509.Certificate, target *certificateTarget, na
 			return fmt.Errorf("invalid selected SPIFFE identity: %w", err)
 		}
 		profiles = append(profiles, x509.Certificate{
-			URIs: []*url.URL{identity},
-			// CSI v0.15.1 requires these usages, although callers use tokens, not client certificates.
-			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-			KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+			URIs:        []*url.URL{identity},
+			ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+			KeyUsage:    x509.KeyUsageDigitalSignature,
 		})
 	}
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

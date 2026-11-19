@@ -17,7 +17,7 @@ limitations under the License.
 // Package mtls secures calls between Radius components with TLS server certificates and
 // Kubernetes ServiceAccount tokens. No component presents a client certificate.
 //
-// A receiver (ucp, applications-rp, dynamic-rp) serves TLS with the csi-driver-spiffe
+// A receiver (ucp, applications-rp, dynamic-rp) serves TLS with the <receiver>-spiffe
 // certificate mounted in its pod, reloading it when it rotates. It does not request a client
 // certificate; instead it verifies the caller's projected ServiceAccount token with
 // pkg/authz/token and maps it to the caller's canonical "<component>.<namespace>.svc" identity.
@@ -28,7 +28,7 @@ limitations under the License.
 // Only after that succeeds does it send the projected token whose audience is the receiver.
 //
 // With the external TLS provider, operators supply encryption outside the process. The same
-// receivers and callers use HTTP without loading CSI or CA files, but still verify and send
+// receivers and callers use HTTP without loading certificate or CA files, but still verify and send
 // the same receiver-scoped tokens. Business dryRun remains advisory except when signing keys
 // are unavailable, which always fails closed.
 //
