@@ -191,7 +191,8 @@ func NewPolicyCache(source PolicySource, clk clock.WithTicker) (*PolicyCache, er
 // Each attempt has a five-second deadline, including time waiting for the gate.
 // The timestamp is from before I/O: a slow read cannot extend the stale window.
 // Deadline failures, including gate waits, record only the standard context
-// error. Caller cancellation leaves the shared diagnostic unchanged.
+// error. Caller cancellation leaves the shared diagnostic unchanged; a source
+// error wrapping cancellation while the attempt is live is still published.
 func (c *PolicyCache) Refresh(ctx context.Context) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, PolicyRefreshInterval)
 	defer cancel()
@@ -202,11 +203,11 @@ func (c *PolicyCache) Refresh(ctx context.Context) (err error) {
 			defer func() { <-c.gate }()
 		}
 		diagnostic := ctx.Err()
-		if diagnostic == nil {
-			diagnostic = err
-		}
 		if errors.Is(diagnostic, context.Canceled) {
 			return
+		}
+		if diagnostic == nil {
+			diagnostic = err
 		}
 		if errors.Is(diagnostic, context.DeadlineExceeded) {
 			diagnostic = context.DeadlineExceeded

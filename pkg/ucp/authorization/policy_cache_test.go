@@ -220,7 +220,7 @@ type diagnosticBarrierError struct {
 }
 
 func (e *diagnosticBarrierError) Is(target error) bool {
-	if target == context.Canceled {
+	if target == context.DeadlineExceeded {
 		close(e.entered)
 		<-e.release
 	}
@@ -296,6 +296,17 @@ func TestPolicyCacheCancelledLoadPreservesDiagnostic(t *testing.T) {
 		require.Equal(t, previous, cache.lastError)
 	}
 
+}
+
+func TestPolicyCacheSourceCancellationWithLiveAttempt(t *testing.T) {
+	cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
+		return nil, fmt.Errorf("source operation: %w", context.Canceled)
+	}), nil)
+	require.NoError(t, err)
+	refreshErr := cache.Refresh(t.Context())
+	require.ErrorIs(t, refreshErr, context.Canceled)
+	require.NoError(t, t.Context().Err())
+	require.Equal(t, refreshErr, cache.lastError, "a source cancellation during a live attempt is a refresh failure")
 }
 
 func TestPolicyCacheAttemptContextDiagnostic(t *testing.T) {
