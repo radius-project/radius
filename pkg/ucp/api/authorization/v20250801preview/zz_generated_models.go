@@ -57,7 +57,7 @@ type AccessChangeResource struct {
 
 // AccessCheck - A permission and concrete target to evaluate. A reference never implies access to its target.
 type AccessCheck struct {
-	// REQUIRED; The permission being evaluated.
+	// REQUIRED; The permission being evaluated, up to 256 characters.
 	Permission *string
 
 	// REQUIRED; The concrete target resource or scope ID, up to 2048 characters including the leading slash.
@@ -97,7 +97,7 @@ type AccessCheckResult struct {
 	// REQUIRED; Whether the evaluated policy grants the permission.
 	Allowed *bool
 
-	// REQUIRED; The permission being evaluated.
+	// REQUIRED; The permission being evaluated, up to 256 characters.
 	Permission *string
 
 	// REQUIRED; The concrete target resource or scope ID, up to 2048 characters including the leading slash.
@@ -268,7 +268,7 @@ type ExplainedAccessCheck struct {
 	// REQUIRED; Whether the evaluated policy grants the permission.
 	Allowed *bool
 
-	// REQUIRED; The permission being evaluated.
+	// REQUIRED; The permission being evaluated, up to 256 characters.
 	Permission *string
 
 	// REQUIRED; The concrete target resource or scope ID, up to 2048 characters including the leading slash.

@@ -156,17 +156,38 @@ func decodeAccessCheck(w http.ResponseWriter, r *http.Request) (api.AccessCheckR
 }
 
 func inspectionRequestObject(raw json.RawMessage, allowed ...string) (map[string]json.RawMessage, error) {
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &fields); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	token, err := decoder.Token()
+	if err != nil {
 		return nil, err
 	}
-	if fields == nil {
-		return nil, errors.New("expected a JSON object, not null")
+	if token != json.Delim('{') {
+		return nil, errors.New("expected a JSON object")
 	}
-	for name := range fields {
+	fields := map[string]json.RawMessage{}
+	for decoder.More() {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		name, ok := token.(string)
+		if !ok {
+			return nil, errors.New("expected a JSON member name")
+		}
 		if !slices.Contains(allowed, name) {
 			return nil, fmt.Errorf("unknown field %q", name)
 		}
+		if _, exists := fields[name]; exists {
+			return nil, fmt.Errorf("duplicate field %q", name)
+		}
+		var value json.RawMessage
+		if err := decoder.Decode(&value); err != nil {
+			return nil, err
+		}
+		fields[name] = value
+	}
+	if _, err := decoder.Token(); err != nil {
+		return nil, err
 	}
 	return fields, nil
 }

@@ -331,6 +331,10 @@ func TestInspectionBatchGeneration(t *testing.T) {
 }
 
 func TestInspectionContractLimits(t *testing.T) {
+	resourceType := "Team.Data/" + strings.Repeat("a", 250)
+	catalog, err := NewCatalog([]Registration{{Type: resourceType}})
+	require.NoError(t, err)
+	require.NoError(t, catalog.ValidatePermissions([]string{resourceType + "/read"}))
 	data, err := os.ReadFile("../../../swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json")
 	require.NoError(t, err)
 	type schema struct {
@@ -361,11 +365,12 @@ func TestInspectionContractLimits(t *testing.T) {
 		{"AccessCheckPrincipal", "subject", maxPrincipalSubjectLength},
 		{"AccessCheckPrincipal", "displayName", maxPrincipalDisplayNameLength},
 		{"AccessCheck", "target", maxAccessScopeLength},
+		{"AccessCheck", "permission", maxPermissionLength},
 	} {
 		require.Equal(t, field.limit, document.Definitions[field.model].Properties[field.property].MaxLength, "%s.%s", field.model, field.property)
 	}
 	require.Equal(t, maxAccessChecks, document.Definitions["AccessCheckRequest"].Properties["checks"].MaxItems)
-	require.Equal(t, maxPermissionLength, document.Definitions["PermissionName"].MaxLength)
+	require.Zero(t, document.Definitions["PermissionName"].MaxLength)
 	require.Zero(t, document.Definitions["AuthorizationScope"].MaxLength)
 	require.Zero(t, document.Definitions["AuthorizationScopePath"].MaxLength)
 	scopedCheck := false
@@ -428,7 +433,7 @@ func TestInspectionHTTPValidation(t *testing.T) {
 			{"permission", `"Radius.Core/applications/read"`, `{"checks":[{`, `,"target":"/"}]}`},
 			{"target", `"/"`, `{"checks":[{"permission":"Radius.Core/applications/read",`, `}]}`},
 		} {
-			for _, order := range []string{"null first", "null last", "variant only"} {
+			for _, order := range []string{"null first", "null last", "variant only", "duplicate null first", "duplicate null last", "duplicate valid", "escaped duplicate"} {
 				exact := fmt.Sprintf("%q:null", field.name)
 				variant := fmt.Sprintf("%q:%s", strings.ToUpper(field.name[:1])+field.name[1:], field.value)
 				members := exact + "," + variant
@@ -436,6 +441,16 @@ func TestInspectionHTTPValidation(t *testing.T) {
 					members = variant + "," + exact
 				} else if order == "variant only" {
 					members = variant
+				} else if strings.HasPrefix(order, "duplicate") || order == "escaped duplicate" {
+					value := fmt.Sprintf("%q:%s", field.name, field.value)
+					members = exact + "," + value
+					if order == "duplicate null last" {
+						members = value + "," + exact
+					} else if order == "duplicate valid" {
+						members = value + "," + value
+					} else if order == "escaped duplicate" {
+						members = exact + fmt.Sprintf(`,"\u%04x%s":%s`, field.name[0], field.name[1:], field.value)
+					}
 				}
 				request := httptest.NewRequest(http.MethodPost, "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", strings.NewReader(field.before+members+field.after))
 				request = request.WithContext(context.WithValue(request.Context(), identityContextKey{}, policyActor().Identity))
