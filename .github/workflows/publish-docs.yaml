@@ -106,26 +106,26 @@ jobs:
 
       # Generate resource reference docs
       - name: Generate resource reference docs
-        run: python docs/.github/scripts/generate_resource_references.py ./radius/hack/bicep-types-radius/generated/ ./docs/docs/content/reference/resources
+        run: python docs/.github/scripts/generate_resource_references.py ./radius/hack/bicep-types-radius/generated/ ./docs/content/reference/resources
 
       - name: Upload resource reference docs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: resource-docs
-          path: docs/docs/content/reference/resources
+          path: docs/content/reference/resources
 
       # Generate and upload CLI docs
       - name: Generate CLI docs
         run: |
-          find docs/docs/content/reference/cli -type f ! -name '_index.md' -delete
+          find docs/content/reference/cli -type f ! -name '_index.md' -delete
           cd radius
-          go run cmd/docgen/main.go ../docs/docs/content/reference/cli
+          go run cmd/docgen/main.go ../docs/content/reference/cli
 
       - name: Upload CLI docs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cli-docs
-          path: docs/docs/content/reference/cli
+          path: docs/content/reference/cli
 
       # Open PR against docs repository
       - name: Show git diff
@@ -206,15 +206,15 @@ jobs:
           # (formatted by bot-details) satisfies the docs repository's DCO check.
           COMMIT_BODY: "Signed-off-by: ${{ steps.bot-details.outputs.name-email }}"
           # The docs repo is checked out at ./docs, so the generated files live under
-          # docs/docs/content/reference/... and map to docs/content/reference/... in
-          # the target repo. The PR base branch is taken from "@<DOCS_BRANCH>".
+          # docs/content/reference/... and map to content/reference/... in the
+          # target repo. The PR base branch is taken from "@<DOCS_BRANCH>".
           # deleteOrphaned keeps the target in sync when generated files are removed
           # (e.g. CLI docs are regenerated from scratch, preserving only _index.md).
           INLINE_CONFIG: |
             radius-project/docs@${{ env.DOCS_BRANCH }}:
-              - source: docs/docs/content/reference/resources/
-                dest: docs/content/reference/resources/
+              - source: docs/content/reference/resources/
+                dest: content/reference/resources/
                 deleteOrphaned: true
-              - source: docs/docs/content/reference/cli/
-                dest: docs/content/reference/cli/
+              - source: docs/content/reference/cli/
+                dest: content/reference/cli/
                 deleteOrphaned: true

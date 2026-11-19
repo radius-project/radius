@@ -1,5 +1,5 @@
 {
-  "source": "recorded",
+  "source": "converted-recording",
   "inputs": {
     "RADIUS_REC_CODEBUILD_ROLE": "arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild",
     "RADIUS_REC_RUN": "rc899e"
@@ -8,102 +8,112 @@
     {
       "service": "CodeBuild",
       "operation": "CreateProject",
-      "request": "{\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"description\":\"Radius recording\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"type\":\"LINUX_CONTAINER\"},\"name\":\"radius-rec-rc899e\",\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":10}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"project\":{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859348874E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":10}}"
+      "body": "oWdwcm9qZWN0sGNhcm54QmFybjphd3M6Y29kZWJ1aWxkOnVzLXdlc3QtMjoxMjM0NTY3ODkwMTI6cHJvamVjdC9yYWRpdXMtcmVjLXJjODk5ZWlhcnRpZmFjdHOhZHR5cGVsTk9fQVJUSUZBQ1RTZWJhZGdloWxiYWRnZUVuYWJsZWT0ZWNhY2hloWR0eXBlaE5PX0NBQ0hFZ2NyZWF0ZWTB+0HauwfFN++ea2Rlc2NyaXB0aW9ucFJhZGl1cyByZWNvcmRpbmdtZW5jcnlwdGlvbktleXgvYXJuOmF3czprbXM6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjphbGlhcy9hd3MvczNrZW52aXJvbm1lbnSma2NvbXB1dGVUeXBldEJVSUxEX0dFTkVSQUwxX1NNQUxMdGVudmlyb25tZW50VmFyaWFibGVzgGVpbWFnZXgtYXdzL2NvZGVidWlsZC9hbWF6b25saW51eC14ODZfNjQtc3RhbmRhcmQ6NS4weBhpbWFnZVB1bGxDcmVkZW50aWFsc1R5cGVpQ09ERUJVSUxEbnByaXZpbGVnZWRNb2Rl9GR0eXBlb0xJTlVYX0NPTlRBSU5FUmxsYXN0TW9kaWZpZWTB+0HauwfFN++eZG5hbWVxcmFkaXVzLXJlYy1yYzg5OWVxcHJvamVjdFZpc2liaWxpdHlnUFJJVkFURXZxdWV1ZWRUaW1lb3V0SW5NaW51dGVzGQHga3NlcnZpY2VSb2xleDphcm46YXdzOmlhbTo6MTIzNDU2Nzg5MDEyOnJvbGUvcmFkaXVzLXJlYy1yYzg5OWUtY29kZWJ1aWxkZnNvdXJjZaNpYnVpbGRzcGVjeEB2ZXJzaW9uOiAwLjIKcGhhc2VzOgogIGJ1aWxkOgogICAgY29tbWFuZHM6CiAgICAgIC0gZWNobyByYWRpdXMKa2luc2VjdXJlU3Ns9GR0eXBlaU5PX1NPVVJDRWR0YWdzgaJja2V5cHJhZGl1cy1yZWNvcmRpbmdldmFsdWVmcmM4OTllcHRpbWVvdXRJbk1pbnV0ZXMK",
+      "binary": true
     },
     {
       "service": "CodeBuild",
       "operation": "BatchGetProjects",
-      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859348874E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":10}],\"projectsNotFound\":[]}"
+      "body": "omhwcm9qZWN0c4GwY2FybnhCYXJuOmF3czpjb2RlYnVpbGQ6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjpwcm9qZWN0L3JhZGl1cy1yZWMtcmM4OTllaWFydGlmYWN0c6FkdHlwZWxOT19BUlRJRkFDVFNlYmFkZ2WhbGJhZGdlRW5hYmxlZPRlY2FjaGWhZHR5cGVoTk9fQ0FDSEVnY3JlYXRlZMH7Qdq7B8U3755rZGVzY3JpcHRpb25wUmFkaXVzIHJlY29yZGluZ21lbmNyeXB0aW9uS2V5eC9hcm46YXdzOmttczp1cy13ZXN0LTI6MTIzNDU2Nzg5MDEyOmFsaWFzL2F3cy9zM2tlbnZpcm9ubWVudKZrY29tcHV0ZVR5cGV0QlVJTERfR0VORVJBTDFfU01BTEx0ZW52aXJvbm1lbnRWYXJpYWJsZXOAZWltYWdleC1hd3MvY29kZWJ1aWxkL2FtYXpvbmxpbnV4LXg4Nl82NC1zdGFuZGFyZDo1LjB4GGltYWdlUHVsbENyZWRlbnRpYWxzVHlwZWlDT0RFQlVJTERucHJpdmlsZWdlZE1vZGX0ZHR5cGVvTElOVVhfQ09OVEFJTkVSbGxhc3RNb2RpZmllZMH7Qdq7B8U3755kbmFtZXFyYWRpdXMtcmVjLXJjODk5ZXFwcm9qZWN0VmlzaWJpbGl0eWdQUklWQVRFdnF1ZXVlZFRpbWVvdXRJbk1pbnV0ZXMZAeBrc2VydmljZVJvbGV4OmFybjphd3M6aWFtOjoxMjM0NTY3ODkwMTI6cm9sZS9yYWRpdXMtcmVjLXJjODk5ZS1jb2RlYnVpbGRmc291cmNlo2lidWlsZHNwZWN4QHZlcnNpb246IDAuMgpwaGFzZXM6CiAgYnVpbGQ6CiAgICBjb21tYW5kczoKICAgICAgLSBlY2hvIHJhZGl1cwpraW5zZWN1cmVTc2z0ZHR5cGVpTk9fU09VUkNFZHRhZ3OBomNrZXlwcmFkaXVzLXJlY29yZGluZ2V2YWx1ZWZyYzg5OWVwdGltZW91dEluTWludXRlcwpwcHJvamVjdHNOb3RGb3VuZIA=",
+      "binary": true
     },
     {
       "service": "CodeBuild",
       "operation": "BatchGetProjects",
-      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859348874E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":10}],\"projectsNotFound\":[]}"
+      "body": "omhwcm9qZWN0c4GwY2FybnhCYXJuOmF3czpjb2RlYnVpbGQ6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjpwcm9qZWN0L3JhZGl1cy1yZWMtcmM4OTllaWFydGlmYWN0c6FkdHlwZWxOT19BUlRJRkFDVFNlYmFkZ2WhbGJhZGdlRW5hYmxlZPRlY2FjaGWhZHR5cGVoTk9fQ0FDSEVnY3JlYXRlZMH7Qdq7B8U3755rZGVzY3JpcHRpb25wUmFkaXVzIHJlY29yZGluZ21lbmNyeXB0aW9uS2V5eC9hcm46YXdzOmttczp1cy13ZXN0LTI6MTIzNDU2Nzg5MDEyOmFsaWFzL2F3cy9zM2tlbnZpcm9ubWVudKZrY29tcHV0ZVR5cGV0QlVJTERfR0VORVJBTDFfU01BTEx0ZW52aXJvbm1lbnRWYXJpYWJsZXOAZWltYWdleC1hd3MvY29kZWJ1aWxkL2FtYXpvbmxpbnV4LXg4Nl82NC1zdGFuZGFyZDo1LjB4GGltYWdlUHVsbENyZWRlbnRpYWxzVHlwZWlDT0RFQlVJTERucHJpdmlsZWdlZE1vZGX0ZHR5cGVvTElOVVhfQ09OVEFJTkVSbGxhc3RNb2RpZmllZMH7Qdq7B8U3755kbmFtZXFyYWRpdXMtcmVjLXJjODk5ZXFwcm9qZWN0VmlzaWJpbGl0eWdQUklWQVRFdnF1ZXVlZFRpbWVvdXRJbk1pbnV0ZXMZAeBrc2VydmljZVJvbGV4OmFybjphd3M6aWFtOjoxMjM0NTY3ODkwMTI6cm9sZS9yYWRpdXMtcmVjLXJjODk5ZS1jb2RlYnVpbGRmc291cmNlo2lidWlsZHNwZWN4QHZlcnNpb246IDAuMgpwaGFzZXM6CiAgYnVpbGQ6CiAgICBjb21tYW5kczoKICAgICAgLSBlY2hvIHJhZGl1cwpraW5zZWN1cmVTc2z0ZHR5cGVpTk9fU09VUkNFZHRhZ3OBomNrZXlwcmFkaXVzLXJlY29yZGluZ2V2YWx1ZWZyYzg5OWVwdGltZW91dEluTWludXRlcwpwcHJvamVjdHNOb3RGb3VuZIA=",
+      "binary": true
     },
     {
       "service": "CodeBuild",
       "operation": "BatchGetProjects",
-      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859348874E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":10}],\"projectsNotFound\":[]}"
+      "body": "omhwcm9qZWN0c4GwY2FybnhCYXJuOmF3czpjb2RlYnVpbGQ6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjpwcm9qZWN0L3JhZGl1cy1yZWMtcmM4OTllaWFydGlmYWN0c6FkdHlwZWxOT19BUlRJRkFDVFNlYmFkZ2WhbGJhZGdlRW5hYmxlZPRlY2FjaGWhZHR5cGVoTk9fQ0FDSEVnY3JlYXRlZMH7Qdq7B8U3755rZGVzY3JpcHRpb25wUmFkaXVzIHJlY29yZGluZ21lbmNyeXB0aW9uS2V5eC9hcm46YXdzOmttczp1cy13ZXN0LTI6MTIzNDU2Nzg5MDEyOmFsaWFzL2F3cy9zM2tlbnZpcm9ubWVudKZrY29tcHV0ZVR5cGV0QlVJTERfR0VORVJBTDFfU01BTEx0ZW52aXJvbm1lbnRWYXJpYWJsZXOAZWltYWdleC1hd3MvY29kZWJ1aWxkL2FtYXpvbmxpbnV4LXg4Nl82NC1zdGFuZGFyZDo1LjB4GGltYWdlUHVsbENyZWRlbnRpYWxzVHlwZWlDT0RFQlVJTERucHJpdmlsZWdlZE1vZGX0ZHR5cGVvTElOVVhfQ09OVEFJTkVSbGxhc3RNb2RpZmllZMH7Qdq7B8U3755kbmFtZXFyYWRpdXMtcmVjLXJjODk5ZXFwcm9qZWN0VmlzaWJpbGl0eWdQUklWQVRFdnF1ZXVlZFRpbWVvdXRJbk1pbnV0ZXMZAeBrc2VydmljZVJvbGV4OmFybjphd3M6aWFtOjoxMjM0NTY3ODkwMTI6cm9sZS9yYWRpdXMtcmVjLXJjODk5ZS1jb2RlYnVpbGRmc291cmNlo2lidWlsZHNwZWN4QHZlcnNpb246IDAuMgpwaGFzZXM6CiAgYnVpbGQ6CiAgICBjb21tYW5kczoKICAgICAgLSBlY2hvIHJhZGl1cwpraW5zZWN1cmVTc2z0ZHR5cGVpTk9fU09VUkNFZHRhZ3OBomNrZXlwcmFkaXVzLXJlY29yZGluZ2V2YWx1ZWZyYzg5OWVwdGltZW91dEluTWludXRlcwpwcHJvamVjdHNOb3RGb3VuZIA=",
+      "binary": true
     },
     {
       "service": "CodeBuild",
       "operation": "UpdateProject",
-      "request": "{\"description\":\"Radius recording, updated\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"type\":\"LINUX_CONTAINER\"},\"name\":\"radius-rec-rc899e\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"type\":\"NO_SOURCE\"},\"timeoutInMinutes\":15}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"project\":{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording, updated\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859348874E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":15},\"webhookDeletedStatus\":\"no_webhook\"}"
+      "body": "omdwcm9qZWN0sGNhcm54QmFybjphd3M6Y29kZWJ1aWxkOnVzLXdlc3QtMjoxMjM0NTY3ODkwMTI6cHJvamVjdC9yYWRpdXMtcmVjLXJjODk5ZWlhcnRpZmFjdHOhZHR5cGVsTk9fQVJUSUZBQ1RTZWJhZGdloWxiYWRnZUVuYWJsZWT0ZWNhY2hloWR0eXBlaE5PX0NBQ0hFZ2NyZWF0ZWTB+0HauwfFN++ea2Rlc2NyaXB0aW9ueBlSYWRpdXMgcmVjb3JkaW5nLCB1cGRhdGVkbWVuY3J5cHRpb25LZXl4L2Fybjphd3M6a21zOnVzLXdlc3QtMjoxMjM0NTY3ODkwMTI6YWxpYXMvYXdzL3Mza2Vudmlyb25tZW50pmtjb21wdXRlVHlwZXRCVUlMRF9HRU5FUkFMMV9TTUFMTHRlbnZpcm9ubWVudFZhcmlhYmxlc4BlaW1hZ2V4LWF3cy9jb2RlYnVpbGQvYW1hem9ubGludXgteDg2XzY0LXN0YW5kYXJkOjUuMHgYaW1hZ2VQdWxsQ3JlZGVudGlhbHNUeXBlaUNPREVCVUlMRG5wcml2aWxlZ2VkTW9kZfRkdHlwZW9MSU5VWF9DT05UQUlORVJsbGFzdE1vZGlmaWVkwftB2rsHxTfvnmRuYW1lcXJhZGl1cy1yZWMtcmM4OTllcXByb2plY3RWaXNpYmlsaXR5Z1BSSVZBVEV2cXVldWVkVGltZW91dEluTWludXRlcxkB4GtzZXJ2aWNlUm9sZXg6YXJuOmF3czppYW06OjEyMzQ1Njc4OTAxMjpyb2xlL3JhZGl1cy1yZWMtcmM4OTllLWNvZGVidWlsZGZzb3VyY2WjaWJ1aWxkc3BlY3hAdmVyc2lvbjogMC4yCnBoYXNlczoKICBidWlsZDoKICAgIGNvbW1hbmRzOgogICAgICAtIGVjaG8gcmFkaXVzCmtpbnNlY3VyZVNzbPRkdHlwZWlOT19TT1VSQ0VkdGFnc4GiY2tleXByYWRpdXMtcmVjb3JkaW5nZXZhbHVlZnJjODk5ZXB0aW1lb3V0SW5NaW51dGVzD3R3ZWJob29rRGVsZXRlZFN0YXR1c2pub193ZWJob29r",
+      "binary": true
     },
     {
       "service": "CodeBuild",
       "operation": "BatchGetProjects",
-      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording, updated\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859349235E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":15}],\"projectsNotFound\":[]}"
+      "body": "omhwcm9qZWN0c4GwY2FybnhCYXJuOmF3czpjb2RlYnVpbGQ6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjpwcm9qZWN0L3JhZGl1cy1yZWMtcmM4OTllaWFydGlmYWN0c6FkdHlwZWxOT19BUlRJRkFDVFNlYmFkZ2WhbGJhZGdlRW5hYmxlZPRlY2FjaGWhZHR5cGVoTk9fQ0FDSEVnY3JlYXRlZMH7Qdq7B8U3755rZGVzY3JpcHRpb254GVJhZGl1cyByZWNvcmRpbmcsIHVwZGF0ZWRtZW5jcnlwdGlvbktleXgvYXJuOmF3czprbXM6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjphbGlhcy9hd3MvczNrZW52aXJvbm1lbnSma2NvbXB1dGVUeXBldEJVSUxEX0dFTkVSQUwxX1NNQUxMdGVudmlyb25tZW50VmFyaWFibGVzgGVpbWFnZXgtYXdzL2NvZGVidWlsZC9hbWF6b25saW51eC14ODZfNjQtc3RhbmRhcmQ6NS4weBhpbWFnZVB1bGxDcmVkZW50aWFsc1R5cGVpQ09ERUJVSUxEbnByaXZpbGVnZWRNb2Rl9GR0eXBlb0xJTlVYX0NPTlRBSU5FUmxsYXN0TW9kaWZpZWTB+0HauwfFTwo9ZG5hbWVxcmFkaXVzLXJlYy1yYzg5OWVxcHJvamVjdFZpc2liaWxpdHlnUFJJVkFURXZxdWV1ZWRUaW1lb3V0SW5NaW51dGVzGQHga3NlcnZpY2VSb2xleDphcm46YXdzOmlhbTo6MTIzNDU2Nzg5MDEyOnJvbGUvcmFkaXVzLXJlYy1yYzg5OWUtY29kZWJ1aWxkZnNvdXJjZaNpYnVpbGRzcGVjeEB2ZXJzaW9uOiAwLjIKcGhhc2VzOgogIGJ1aWxkOgogICAgY29tbWFuZHM6CiAgICAgIC0gZWNobyByYWRpdXMKa2luc2VjdXJlU3Ns9GR0eXBlaU5PX1NPVVJDRWR0YWdzgaJja2V5cHJhZGl1cy1yZWNvcmRpbmdldmFsdWVmcmM4OTllcHRpbWVvdXRJbk1pbnV0ZXMPcHByb2plY3RzTm90Rm91bmSA",
+      "binary": true
     },
     {
       "service": "CodeBuild",
       "operation": "BatchGetProjects",
-      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording, updated\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859349235E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":15}],\"projectsNotFound\":[]}"
+      "body": "omhwcm9qZWN0c4GwY2FybnhCYXJuOmF3czpjb2RlYnVpbGQ6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjpwcm9qZWN0L3JhZGl1cy1yZWMtcmM4OTllaWFydGlmYWN0c6FkdHlwZWxOT19BUlRJRkFDVFNlYmFkZ2WhbGJhZGdlRW5hYmxlZPRlY2FjaGWhZHR5cGVoTk9fQ0FDSEVnY3JlYXRlZMH7Qdq7B8U3755rZGVzY3JpcHRpb254GVJhZGl1cyByZWNvcmRpbmcsIHVwZGF0ZWRtZW5jcnlwdGlvbktleXgvYXJuOmF3czprbXM6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjphbGlhcy9hd3MvczNrZW52aXJvbm1lbnSma2NvbXB1dGVUeXBldEJVSUxEX0dFTkVSQUwxX1NNQUxMdGVudmlyb25tZW50VmFyaWFibGVzgGVpbWFnZXgtYXdzL2NvZGVidWlsZC9hbWF6b25saW51eC14ODZfNjQtc3RhbmRhcmQ6NS4weBhpbWFnZVB1bGxDcmVkZW50aWFsc1R5cGVpQ09ERUJVSUxEbnByaXZpbGVnZWRNb2Rl9GR0eXBlb0xJTlVYX0NPTlRBSU5FUmxsYXN0TW9kaWZpZWTB+0HauwfFTwo9ZG5hbWVxcmFkaXVzLXJlYy1yYzg5OWVxcHJvamVjdFZpc2liaWxpdHlnUFJJVkFURXZxdWV1ZWRUaW1lb3V0SW5NaW51dGVzGQHga3NlcnZpY2VSb2xleDphcm46YXdzOmlhbTo6MTIzNDU2Nzg5MDEyOnJvbGUvcmFkaXVzLXJlYy1yYzg5OWUtY29kZWJ1aWxkZnNvdXJjZaNpYnVpbGRzcGVjeEB2ZXJzaW9uOiAwLjIKcGhhc2VzOgogIGJ1aWxkOgogICAgY29tbWFuZHM6CiAgICAgIC0gZWNobyByYWRpdXMKa2luc2VjdXJlU3Ns9GR0eXBlaU5PX1NPVVJDRWR0YWdzgaJja2V5cHJhZGl1cy1yZWNvcmRpbmdldmFsdWVmcmM4OTllcHRpbWVvdXRJbk1pbnV0ZXMPcHByb2plY3RzTm90Rm91bmSA",
+      "binary": true
     },
     {
       "service": "CodeBuild",
       "operation": "BatchGetProjects",
-      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"projects\":[{\"arn\":\"arn:aws:codebuild:us-west-2:123456789012:project/radius-rec-rc899e\",\"artifacts\":{\"type\":\"NO_ARTIFACTS\"},\"badge\":{\"badgeEnabled\":false},\"cache\":{\"type\":\"NO_CACHE\"},\"created\":1.793859348874E9,\"description\":\"Radius recording, updated\",\"encryptionKey\":\"arn:aws:kms:us-west-2:123456789012:alias/aws/s3\",\"environment\":{\"computeType\":\"BUILD_GENERAL1_SMALL\",\"environmentVariables\":[],\"image\":\"aws/codebuild/amazonlinux-x86_64-standard:5.0\",\"imagePullCredentialsType\":\"CODEBUILD\",\"privilegedMode\":false,\"type\":\"LINUX_CONTAINER\"},\"lastModified\":1.793859349235E9,\"name\":\"radius-rec-rc899e\",\"projectVisibility\":\"PRIVATE\",\"queuedTimeoutInMinutes\":480,\"serviceRole\":\"arn:aws:iam::123456789012:role/radius-rec-rc899e-codebuild\",\"source\":{\"buildspec\":\"version: 0.2\\nphases:\\n  build:\\n    commands:\\n      - echo radius\\n\",\"insecureSsl\":false,\"type\":\"NO_SOURCE\"},\"tags\":[{\"key\":\"radius-recording\",\"value\":\"rc899e\"}],\"timeoutInMinutes\":15}],\"projectsNotFound\":[]}"
+      "body": "omhwcm9qZWN0c4GwY2FybnhCYXJuOmF3czpjb2RlYnVpbGQ6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjpwcm9qZWN0L3JhZGl1cy1yZWMtcmM4OTllaWFydGlmYWN0c6FkdHlwZWxOT19BUlRJRkFDVFNlYmFkZ2WhbGJhZGdlRW5hYmxlZPRlY2FjaGWhZHR5cGVoTk9fQ0FDSEVnY3JlYXRlZMH7Qdq7B8U3755rZGVzY3JpcHRpb254GVJhZGl1cyByZWNvcmRpbmcsIHVwZGF0ZWRtZW5jcnlwdGlvbktleXgvYXJuOmF3czprbXM6dXMtd2VzdC0yOjEyMzQ1Njc4OTAxMjphbGlhcy9hd3MvczNrZW52aXJvbm1lbnSma2NvbXB1dGVUeXBldEJVSUxEX0dFTkVSQUwxX1NNQUxMdGVudmlyb25tZW50VmFyaWFibGVzgGVpbWFnZXgtYXdzL2NvZGVidWlsZC9hbWF6b25saW51eC14ODZfNjQtc3RhbmRhcmQ6NS4weBhpbWFnZVB1bGxDcmVkZW50aWFsc1R5cGVpQ09ERUJVSUxEbnByaXZpbGVnZWRNb2Rl9GR0eXBlb0xJTlVYX0NPTlRBSU5FUmxsYXN0TW9kaWZpZWTB+0HauwfFTwo9ZG5hbWVxcmFkaXVzLXJlYy1yYzg5OWVxcHJvamVjdFZpc2liaWxpdHlnUFJJVkFURXZxdWV1ZWRUaW1lb3V0SW5NaW51dGVzGQHga3NlcnZpY2VSb2xleDphcm46YXdzOmlhbTo6MTIzNDU2Nzg5MDEyOnJvbGUvcmFkaXVzLXJlYy1yYzg5OWUtY29kZWJ1aWxkZnNvdXJjZaNpYnVpbGRzcGVjeEB2ZXJzaW9uOiAwLjIKcGhhc2VzOgogIGJ1aWxkOgogICAgY29tbWFuZHM6CiAgICAgIC0gZWNobyByYWRpdXMKa2luc2VjdXJlU3Ns9GR0eXBlaU5PX1NPVVJDRWR0YWdzgaJja2V5cHJhZGl1cy1yZWNvcmRpbmdldmFsdWVmcmM4OTllcHRpbWVvdXRJbk1pbnV0ZXMPcHByb2plY3RzTm90Rm91bmSA",
+      "binary": true
     },
     {
       "service": "CodeBuild",
       "operation": "DeleteProject",
-      "request": "{\"name\":\"radius-rec-rc899e\"}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"webhookDeletedStatus\":\"no_webhook\"}"
+      "body": "oXR3ZWJob29rRGVsZXRlZFN0YXR1c2pub193ZWJob29r",
+      "binary": true
     },
     {
       "service": "CodeBuild",
       "operation": "BatchGetProjects",
-      "request": "{\"names\":[\"radius-rec-rc899e\"]}",
       "status": 200,
       "headers": {
-        "Content-Type": "application/x-amz-json-1.1"
+        "Content-Type": "application/cbor",
+        "Smithy-Protocol": "rpc-v2-cbor"
       },
-      "body": "{\"projects\":[],\"projectsNotFound\":[\"radius-rec-rc899e\"]}"
+      "body": "v2hwcm9qZWN0c5//cHByb2plY3RzTm90Rm91bmSfcXJhZGl1cy1yZWMtcmM4OTll//8=",
+      "binary": true
     }
   ]
 }
