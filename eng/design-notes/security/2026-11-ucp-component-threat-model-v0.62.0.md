@@ -7,7 +7,13 @@
 
 ## Overview
 
+This document provides a threat model for the Radius Universal Control Plane (UCP). It describes the system, its assets, potential threats and recommended mitigations.
+
+Radius supports application portability across platforms and environments. UCP exposes ARM-style resource operations through Radius APIs and routes them to internal providers or the supported Azure and AWS integrations.
+
 UCP routes Radius API requests and uses service identities and cloud credentials to act on a caller's behalf. Protecting the Kubernetes API path alone does not protect direct access to UCP or its downstream services.
+
+The 2024 model described custom provider support as future work. The release includes provider/type registration and routing to Dynamic RP for generic resources. Fine-grained internal authorization is still not implemented by the reserved RBAC mode settings, and chart-configured internal provider connections still use HTTP.
 
 The baseline is the stable release, not current `main`. The scenarios below describe risks, not confirmed exploits. The shared control matrix distinguishes release defaults from settings an operator must supply.
 
@@ -25,9 +31,29 @@ The baseline is the stable release, not current `main`. The scenarios below desc
 
 UCP serves planes, resource groups, provider/type registration, credentials, routing, and cloud adaptation. The released [configuration][config] routes core and portable resources to Applications RP, template deployments to DE, and other resource requests to Dynamic RP.
 
+An example deployment flow:
+
+1. A user runs `rad deploy app.bicep`. The definition includes a Radius environment, an application and a recipe-backed datastore on AWS.
+2. The CLI compiles Bicep into an ARM JSON template.
+3. Through its configured connection, the CLI sends a PUT to `/planes/radius/local/resourcegroups/{rg}/providers/Microsoft.Resources/deployments/{name}`. In the normal Kubernetes connection, this travels through API aggregation.
+4. UCP forwards the template deployment to the Deployment Engine.
+5. The Deployment Engine sends requests back through UCP for the environment, application and datastore.
+6. UCP routes each request to the relevant provider. Applications RP handles the portable datastore; recipe execution can result in further cloud resource operations.
+7. Asynchronous operations are polled until completion. Resource records and operation results are retained in the configured stores.
+
+This example shows UCP's routing and credential boundaries. The Deployment Engine remains an external request/callback dependency; its internals are outside this model.
+
 Assets include provider endpoints and schemas, resource records, pending operations, cloud credentials, and authority to manage cloud infrastructure. Actors include API users, trusted operators, internal services, other cluster workloads, and cloud or registry administrators.
 
 ### Architecture
+
+UCP consists of the following shared components:
+
+- **Storage Provider:** Stores resource records, routing/configuration state and operation data. The [released factory][storefactory] supports API-server storage, PostgreSQL and in-memory storage. API-server storage is the chart default. PostgreSQL is optional; in-memory storage is not durable. The 2024 list of Cosmos DB and direct etcd implementations does not describe the current factory.
+- **Secret Provider:** Stores credentials separately from ordinary resource metadata. The [released factory][secretfactory] supports Kubernetes Secrets and in-memory secrets. The chart selects Kubernetes Secrets. This provider does not make arbitrary resource properties encrypted.
+- **Queue Provider:** Adds asynchronous operations to a queue for later processing. The [released factory][queuefactory] supports API-server and in-memory queues. API-server queues are the chart default. Queue write access can influence work performed by a privileged service.
+- **Worker:** Retrieves queued operations and invokes the appropriate handlers. Operation records allow callers to query progress and results without holding the original HTTP request open.
+- **Frontend and routing:** Serves plane, resource-group, provider/type and credential APIs, then forwards resource operations to the configured provider or cloud integration.
 
 The `ucp` [Service][service] exposes port `443` and forwards to UCP's HTTPS listener on Pod port `9443`. The API path starts with `/apis/api.ucp.dev/v1alpha3`. Its [APIService configuration][apiservice] supplies a CA bundle. The [server][server] adds request context, logs and tracing but does not check each user's or component's permissions.
 
@@ -43,23 +69,64 @@ The [configuration][config] enables metrics and profiling. The [profiler service
 
 ### Implementation Details
 
-**Is there any use of cryptography?**
+#### UCP Container runs as Non-Root
 
-Yes. The chart generates and stores a UCP server certificate and key. Queue message generation uses random bytes. New identifiers and ETags use SHA-256 helpers; [legacy SHA-1 helpers][hashes] remain for compatibility lookups. These hashes are not permissions checks. [Sensitive-field encryption](2026-11-dynamic-rp-component-threat-model-v0.62.0.md) does not encrypt the whole UCP database.
+The [UCP image][image] sets `USER 65532:65532`. Running as a non-root user limits some effects of a process compromise, but does not reduce the Kubernetes or cloud API permissions granted to its credentials. Operators must also review the rendered Pod security settings and injected volumes.
 
-**Does the component store secrets?**
+#### Use of Cryptography
 
-Yes. The default secret provider uses Kubernetes Secrets. For example, [Azure credential registration][credentials] writes the credential through the secret client and clears the client secret from the resource representation. This does not prevent a principal with sufficient Kubernetes Secret access from reading it. Workload identity and AWS IRSA are supported options; their chart switches are disabled by default.
+The original model identified four uses of cryptography in the shared components. Their released behavior is:
 
-**Does the component process untrusted data or does the component parse any custom formats?**
+1. **Queue message keys:** The [API-server queue][queueclient] reads 16 random bytes with Go's `crypto/rand` and combines them with queue name and time. This produces message identifiers; it does not authenticate a queue writer.
+2. **Data-store resource names:** The [API-server store][storeclient] hashes normalized resource IDs with SHA-256 for new names, truncated to 40 hexadecimal characters. Legacy SHA-1 lookup remains for existing records, including updating them without duplicating state.
+3. **Tracked-resource names:** The [tracked-resource naming helper][trackednames] combines a resource-name prefix with a truncated SHA-256 suffix. Legacy SHA-1 helpers locate older tracking entries.
+4. **ETags:** The [ETag helper][etags] generates content-based tags with SHA-256. A separate revision helper encodes a backend revision. These values support resource versioning, not caller authentication or secret protection.
 
-Yes. Resource IDs, API versions, JSON bodies, registered schemas/endpoints, and cloud responses cross this boundary. Radius resource IDs have a custom parser. Storage, secret, and queue providers are selected by [provider factories][providers]; the current default is API-server records/queues and Kubernetes Secrets. PostgreSQL is optional, not the default.
+The [hash helpers][hashes] retain SHA-1 only for compatibility paths; the old blanket statement that current naming uses SHA-1 no longer applies. None of these naming hashes encrypts stored data.
+
+The chart generates and stores a UCP server certificate and key for HTTPS aggregation. Cloud and Kubernetes clients use their configured transport and credential mechanisms. [Dynamic RP sensitive-field encryption](2026-11-dynamic-rp-component-threat-model-v0.62.0.md) covers a separate set of marked fields, not the whole UCP database.
+
+#### Storage of Secrets
+
+Creating or updating a cloud credential can write its sensitive value through the secret provider. [Azure registration][credentials] stores the credential and clears the client secret from its ordinary resource representation. [AWS registration][awscredentials] similarly clears the secret access key before storing credential metadata. The [Azure][azuredelete] and [AWS][awsdelete] delete handlers remove stored credentials when the credential resource is deleted.
+
+The default provider stores these values in Kubernetes Secrets. A principal with sufficient Secret access can still read them. The 2024 claim that credentials cannot be updated through API calls was incorrect: create/update handlers accept registration changes, while secret values are kept separate from normal metadata.
+
+Azure workload identity and AWS IRSA are supported alternatives to long-lived credentials; their chart switches are disabled by default. Operators must protect both the configured identity's permissions and any stored credential material. Storage encryption, backup protection and optional database transport remain separate responsibilities.
+
+#### Data Serialization / Formats
+
+Radius resource IDs use a custom string format and a shared parser. API versions, JSON bodies, registered schemas/endpoints and cloud responses also cross this boundary. Standard JSON/client libraries handle their respective formats, but valid data can still request an operation outside the submitter's intended scope.
+
+Storage, secret and queue providers are selected by the configured factories. Different backends change storage, credential and recovery boundaries; selecting PostgreSQL does not move Kubernetes-backed Secrets or automatically encrypt the connection.
 
 ### Clients
 
-Clients include `rad`, Dashboard, controllers, RPs, and DE callbacks. Kubernetes probes and enabled metrics/profiling endpoints are additional callers or surfaces, not evidence that an API caller has user-level permission.
+1. **Radius components:** `rad`, Dashboard, controllers, Applications RP, Dynamic RP and Deployment Engine callbacks use UCP APIs. Some clients use Kubernetes aggregation; internal service connections must be assessed separately.
+2. **Health Check Probes:** Kubernetes calls the UCP process's health/readiness endpoints.
+3. **Metrics Scrapers and Diagnostic Clients:** Collectors use the enabled metrics endpoint, and approved operators may use profiling. Network access to these listeners is not user-level permission to submit Radius operations.
 
 ## Trust Boundaries
+
+### Trust Model of UCP Clients
+
+UCP is a [Kubernetes aggregated API service](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/apiserver-aggregation/). Requests under `/apis/api.ucp.dev/v1alpha3` travel through the Kubernetes API server, where Kubernetes authenticates and authorizes the caller before forwarding them.
+
+That protection applies to the aggregated path. A client that can reach the UCP Service or Pod directly takes a different path. The listener and reserved authorization settings do not supply the same per-user checks.
+
+### Trust Model of Internal Resource Providers
+
+UCP routes requests to Applications RP, Dynamic RP and the Deployment Engine using the configured internal endpoints. Those chart endpoints use HTTP and do not establish an authenticated service-to-service boundary. Payloads can include sensitive resource inputs, so configuration changes or network interception can disclose more than metadata.
+
+Operators must restrict who can change provider registrations, routing state, service configuration and discovery. An `AnonymousCredential` in an SDK client does not by itself describe every transport layer; the endpoint, connection configuration and API entry path determine the actual checks.
+
+### Trust Model of External Resource Managers (Azure and AWS)
+
+UCP uses the user's registered or federated cloud credentials to call the supported Azure and AWS APIs. Those services authenticate and authorize the selected identity over their configured HTTPS client transports. A user's narrower Kubernetes privileges are not automatically delegated as cloud IAM restrictions.
+
+The model treats the cloud control planes as trusted dependencies, not systems evaluated here. Operators remain responsible for the permissions and lifecycle of Radius's cloud identities.
+
+### Boundary summary
 
 | Boundary                    | Released behavior                                               | Residual limitation                                                                    |
 |-----------------------------|-----------------------------------------------------------------|----------------------------------------------------------------------------------------|
@@ -101,7 +168,15 @@ DE is covered only as an external request/callback dependency. No DE threat mode
 
 ## Assumptions
 
-Cluster administrators and Radius operators are trusted to install approved code and protect control-plane configuration. Kubernetes and cloud control planes are external trust anchors, not systems evaluated here.
+This threat model assumes that:
+
+1. The Radius installation has not been tampered with. Trusted operators select approved images and protect configuration.
+2. The Kubernetes control plane is not compromised.
+3. Kubernetes authenticates and authorizes requests made through its API. Radius cannot prevent actions taken by a cluster administrator.
+4. The selected resource datastore is protected from unauthorized reads and writes.
+5. The selected secret provider and its backing credentials are protected.
+6. The queue is protected from unauthorized insertion, modification or deletion of operations.
+7. External cloud control planes are not compromised and enforce their own identity and authorization models.
 
 Other cluster workloads and ordinary Radius users are not trusted as operators. Operators must check CNI policy enforcement, audit collection, ingress TLS and storage encryption. A compromised cluster administrator is outside the prevention boundary; access to an ordinary workload namespace is a lower-privilege threat.
 
@@ -134,6 +209,13 @@ flowchart LR
 ```
 
 F1-F2 are the normal aggregated path. F3 is a distinct network entry point and must not inherit F1's authorization assumptions. F4-F6 carry resource payloads and operation data. F7 stores state and retrieves credentials. F8 converts Radius authority into cloud actions.
+
+1. **The user deploys a template:** `rad deploy app.bicep` compiles the file to ARM JSON and submits it using the configured connection. Normal Kubernetes connections use the aggregated API path.
+2. **UCP forwards the template:** The deployment request goes to the configured Deployment Engine endpoint.
+3. **Resource requests return through UCP:** The Deployment Engine calls UCP for individual resource operations and later polls their status/results.
+4. **UCP selects a provider:** Core/portable operations go to Applications RP, generic resource operations go to Dynamic RP, and supported cloud operations use their provider integrations.
+5. **State and credentials are accessed:** Handlers and workers read or update resource/operation records and retrieve cloud credentials through the secret provider. Asynchronous work uses the configured queue.
+6. **Results return to callers:** Providers report resource and operation state through UCP. Internal service identities and downstream cloud identities can differ from the original user's identity.
 
 ## Threats
 
@@ -221,11 +303,15 @@ F1-F2 are the normal aggregated path. F3 is a distinct network entry point and m
 | Maintainers | Define user and service identities and permission checks at each API entry path. Complete when tests reject an unauthorized direct caller and preserve authorized aggregated/internal calls.                    | Untracked |
 | Maintainers | Select authenticated internal transport and optional database TLS settings. Add tests that reject an untrusted peer or server certificate and verify successful calls with the intended trust roots.            | Untracked |
 
-These follow-ups propose work; they do not record completed controls. No tracking issues have been linked to them here.
+These follow-ups propose work; they do not record completed controls. Their completion criteria have not been linked to current tracking issues.
+
+The original model linked [#8080](https://github.com/radius-project/radius/pull/8080) for least-privilege work and [#8083](https://github.com/radius-project/radius/issues/8083) for authenticated internal communication. These remain historical references; their existence does not establish that the released API paths enforce those controls.
 
 ## Review Notes
 
 Review covers the cited release source and published metadata. Security review is pending. No live infrastructure or exploit tests were run. Installation-specific access and audit checks remain open.
+
+The original model records reviews on 5 and 15 November 2024. Those dates describe the original document, not approval of this versioned update.
 
 The old spoofed-provider threat is retained as UCP-02. Secret disclosure is retained as UCP-04. Unauthenticated communication is split into direct-entry and transport risks, UCP-01/UCP-03. Old RBAC and secure-channel action items remain open where the release lacks checks; the new optional NetworkPolicies are no longer described as wholly absent. Unsupported old datastore listings are replaced with the current factories.
 
@@ -236,6 +322,8 @@ The [release lock][lock] records the core image source SHA; the [release manifes
 - [Release v0.62.0](https://github.com/radius-project/radius/releases/tag/v0.62.0).
 - [UCP configuration][config], [APIService TLS][apiservice], [HTTP server][server], and [chart defaults][values].
 - [NetworkPolicies][network], [storage provider factory][providers], [credential registration][credentials], and [hash helpers][hashes].
+- [Storage implementations][storefactory], [secret implementations][secretfactory], [queue implementations][queuefactory], and [non-root image][image].
+- [Queue identifiers][queueclient], [API-server record names][storeclient], [tracked-resource names][trackednames], [ETags][etags], and [AWS credential registration][awscredentials].
 
 [config]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/ucp/configmaps.yaml
 [apiservice]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/Chart/templates/ucp/apiservice.yaml
@@ -249,3 +337,14 @@ The [release lock][lock] records the core image source SHA; the [release manifes
 [hashes]: https://github.com/radius-project/radius/tree/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/hashutil
 [lock]: https://github.com/radius-project/radius/releases/download/v0.62.0/core-release-lock.json
 [manifest]: https://github.com/radius-project/radius/releases/download/v0.62.0/release-manifest.json
+[storefactory]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/components/database/databaseprovider/factory.go
+[secretfactory]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/components/secret/secretprovider/factory.go
+[queuefactory]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/components/queue/queueprovider/factory.go
+[image]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/deploy/images/ucpd/Dockerfile
+[queueclient]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/components/queue/apiserver/client.go
+[storeclient]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/components/database/apiserverstore/apiserverclient.go
+[trackednames]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/ucp/trackedresource/name.go
+[etags]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/ucp/util/etag/etag.go
+[awscredentials]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/ucp/frontend/controller/credentials/aws/createorupdateawscredential.go
+[azuredelete]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/ucp/frontend/controller/credentials/azure/deleteazurecredential.go
+[awsdelete]: https://github.com/radius-project/radius/blob/37a8cbd33e990886460f4fd1987d6a4fefd901c5/pkg/ucp/frontend/controller/credentials/aws/deleteawscredential.go

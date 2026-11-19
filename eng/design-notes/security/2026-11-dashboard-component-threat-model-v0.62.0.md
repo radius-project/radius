@@ -7,6 +7,10 @@
 
 ## Overview
 
+This document provides a threat model for the Radius Dashboard component. It describes the system, its assets, potential threats and recommended mitigations.
+
+The Radius Dashboard provides the frontend experience for Radius. It presents visual and textual information about applications, environments, resource types and resources.
+
 Dashboard displays Radius resources through Backstage and the Kubernetes backend plugin. Its UI issues read requests, but its shared Kubernetes service account has broader Radius API permissions. Read-only screens are not a backend authorization boundary.
 
 The released chart enables Dashboard by default, sets `NODE_ENV=development`, and uses guest authentication. Per-user access checks and HTTPS require operator configuration. The scenarios below describe risks; no public exposure or proxy exploit was tested.
@@ -23,6 +27,8 @@ The released chart enables Dashboard by default, sets `NODE_ENV=development`, an
 
 ## System Description
 
+The Dashboard component is an instance of [Backstage](https://backstage.io/). Radius customizes Backstage with a Radius frontend plugin and the community-supported Kubernetes plugin. Dashboard is a client of the Radius API and constructs views from the returned resource data.
+
 The [frontend Radius API client][api] uses Backstage's Kubernetes API proxy. It lists resources and types and fetches individual resources; it is not limited to the old model's application-graph description.
 
 The [backend entry point][backend] loads the app, proxy, auth, guest auth, catalog and Kubernetes backend modules. It does not register the separate Radius backend router found in the source tree.
@@ -31,7 +37,13 @@ Assets include application/environment/resource metadata, relationships and sche
 
 ### Architecture
 
+Backstage provides a core single-page application, a backend, and configurable database support. Plugins extend the frontend and backend. The Radius SPA plugin presents the application and resource views inside that framework.
+
+The released backend registers the app, proxy, authentication, guest authentication, catalog and Kubernetes modules. The 2024 model described a separate Radius backend plugin as part of the active request path. That router exists in the source tree but is not registered by the pinned backend entry point.
+
 The SPA calls the Kubernetes plugin, which contacts the configured Kubernetes API using `authProvider: serviceAccount`. The [Dashboard overlay][overlay] points at the in-cluster API, sets `skipTLSVerify: true`, and binds the backend listener to `:7007`.
+
+The application runs as a Dashboard Pod in the release namespace, normally `radius-system`, alongside the other Radius Pods. The base configuration selects in-memory SQLite. This database choice does not make the backend inaccessible or remove the credentials and resource data available to its process.
 
 The [Service][service] exposes HTTP port 80 to the Pod port. No public ingress or HTTPS termination is provided by this template. A ClusterIP Service is reachable within its network; it is not equivalent to a loopback-only process.
 
@@ -39,23 +51,92 @@ The chart's [role][rbac] grants wildcard verbs on wildcard `api.ucp.dev` resourc
 
 ### Implementation Details
 
-**Is there any use of cryptography?**
+Dashboard depends on Backstage for its display, authentication and backend plugin behavior. The [Backstage threat model](https://backstage.io/docs/overview/threat-model/) describes framework trust roles; deployment configuration still determines which controls apply here.
 
-Yes. Backstage uses authentication tokens and the Kubernetes connection uses TLS. The supplied configuration disables API certificate verification, so that connection does not verify the API server's identity. Browser/backend URLs use HTTP.
+The application uses `app-config.yaml` and `app-config.dashboard.yaml`. The Dashboard overlay merges with the base configuration for the Radius installation. The relevant released settings are shown below.
 
-**Does the component store secrets?**
+#### Radius API connection
+
+The Kubernetes plugin uses one configured cluster and the backend service-account identity:
+
+```yaml
+kubernetes:
+  serviceLocatorMethod:
+    type: singleTenant
+  clusterLocatorMethods:
+    - type: config
+      clusters:
+        - name: self
+          url: https://kubernetes.default.svc.cluster.local
+          authProvider: serviceAccount
+          skipTLSVerify: true
+          skipMetricsLookup: true
+```
+
+Kubernetes sees the backend service account, not each browser user's cluster identity. The chart grants that account wildcard verbs on wildcard Radius API resources.
+
+#### Backend listener and browser URL
+
+The Dashboard overlay uses:
+
+```yaml
+app:
+  baseUrl: http://localhost:7007
+backend:
+  baseUrl: http://localhost:7007
+  listen: ':7007'
+```
+
+`baseUrl` tells clients which URL to use. It does not restrict a listener bound to all interfaces. The HTTP ClusterIP Service and a port-forward are access paths, not application-level authentication.
+
+#### Database and sign-in configuration
+
+The base configuration uses an in-memory SQLite database and enables the guest auth provider:
+
+```yaml
+backend:
+  database:
+    client: better-sqlite3
+    connection: ':memory:'
+auth:
+  providers:
+    guest: {}
+```
+
+The supplied UI signs in through guest auth without an individual login. The chart sets `NODE_ENV=development`. Operators must configure a production auth provider and appropriate Backstage permissions before shared remote use.
+
+The Radius frontend client issues read requests. This describes the UI's behavior, not all operations allowed to the backend identity. A stolen service-account token has the authority granted by the chart role regardless of which buttons the SPA exposes.
+
+#### Storage of secrets
 
 The Pod has access to Kubernetes service-account credentials. Optional integrations can add credentials through configuration. The [base configuration][base] uses in-memory SQLite, but that does not make process memory, mounted credentials, responses or plugin data non-sensitive.
 
-**Does the component process untrusted data or does the component parse any custom formats?**
+#### Data Serialization / Formats
 
-Yes. Browser requests, Radius JSON bodies, resource identifiers and schema/resource properties are processed. Resource authors can supply strings later displayed to users. No stored-script execution or HTML injection was demonstrated by this review.
+Browser requests, Radius JSON bodies, resource identifiers and schema/resource properties are processed by the frontend and backend. Resource authors can supply strings later displayed to users. No stored-script execution or HTML injection was demonstrated by this review.
+
+### Cryptography
+
+Backstage uses authentication tokens and the Kubernetes connection uses TLS. The supplied configuration disables API certificate verification, so that connection does not verify the API server's identity. Browser/backend URLs use HTTP. HTTPS for remote browser access and verified API certificate trust require operator configuration.
 
 ### Clients
 
-Browsers are intended clients. In-cluster callers or users reaching a forwarded/exposed port can also reach the backend. `backend.baseUrl: http://localhost:7007` tells clients which URL to use; it does not restrict a listener bound to all interfaces.
+The primary user of Dashboard is a browser. The browser loads the SPA and sends API requests to the Backstage backend. In-cluster callers or users reaching a forwarded/exposed port can also reach that backend.
+
+Operators can add plugins or integrations. Each addition can introduce clients, credentials and routes beyond those included in this model.
 
 ## Trust Boundaries
+
+Dashboard and UCP normally live in the `radius-system` namespace. Namespace-scoped RBAC can restrict changes to the Dashboard Pod, its configuration and credentials. A namespace alone does not deny traffic from another Pod.
+
+Backstage distinguishes several trust roles:
+
+- **Internal users:** People allowed to use the portal and view the data granted to them.
+- **Operators:** People who maintain the Backstage installation, configuration and access policy.
+- **Builders:** Contributors who can change and deploy plugin or application code. That access can give them privileges comparable to operators.
+- **External users:** People outside the intended user group. Operators must prevent their direct access unless a separate deployment and permission policy explicitly supports it.
+
+The supplied guest setup does not enforce a separate identity or permission set for each internal user. Operators must configure those controls rather than treating Backstage framework support as an active installation policy.
 
 | Boundary                           | Default or supported behavior                                            | Security meaning                                             |
 |------------------------------------|--------------------------------------------------------------------------|--------------------------------------------------------------|
@@ -67,11 +148,25 @@ Browsers are intended clients. In-cluster callers or users reaching a forwarded/
 
 The [UCP model](2026-11-ucp-component-threat-model-v0.62.0.md) lists shared network defaults. Optional namespace ingress policies allow all same-namespace sources and do not authenticate Dashboard users.
 
+Dashboard is intended for trusted access rather than a public multi-tenant portal. An operator can access the default Service with a loopback port-forward:
+
+```bash
+kubectl port-forward --namespace=radius-system svc/dashboard 7007:80
+```
+
+That command uses the selected Kubernetes context and the install namespace. Kubernetes authorizes the person opening the tunnel. It does not provide application-level login to another person or process that can reach the forwarded port.
+
 ## Assumptions
 
-The default installation is for trusted access, not an Internet-facing multi-tenant portal. Operators control port forwarding, ingress and network policy. Their installed settings were not tested.
+This threat model assumes that:
 
-Operators must configure HTTPS, a production auth provider and Backstage permissions for shared remote access. Guest users do not have separate cluster identities. Kubernetes port-forward authorizes the person opening the tunnel; it does not provide application-level login to everyone who can reach that local port.
+1. The Radius/Dashboard installation and approved plugin code have not been tampered with.
+2. The Kubernetes control plane is not compromised.
+3. Kubernetes authenticates and authorizes API requests and access to port-forwarding. Radius cannot prevent actions by a cluster administrator.
+4. Operators control port forwarding, ingress, plugin configuration and network policy. Their installed settings were not tested.
+5. Access is limited to the intended trusted users unless an operator explicitly configures and verifies a broader access policy.
+
+The 2024 assumptions of HTTPS, configured per-user access and robust login are not release defaults. Operators must configure HTTPS, a production auth provider and Backstage permissions for shared remote access. Guest users do not have separate cluster identities.
 
 ## Data Flows
 
@@ -103,13 +198,20 @@ flowchart LR
 
 F1-F3 reach a backend with a shared identity. F5-F7 retrieve data using that identity. F8-F9 carry author-controlled data toward another user's browser. The diagram does not imply the resource provider connects directly to the browser; the response follows the request path.
 
+1. A user opens the Dashboard URL and loads the Radius SPA. The supplied setup signs in through the guest provider.
+2. The SPA requests resource, type, application or environment data through the Backstage Kubernetes plugin.
+3. The backend calls the configured in-cluster Kubernetes API with its service-account credentials. The supplied overlay skips verification of the API server's certificate.
+4. Kubernetes forwards Radius API requests to UCP through API aggregation, subject to the backend identity's Kubernetes grants.
+5. UCP queries the appropriate resource provider and returns the result through Kubernetes and Backstage.
+6. The SPA constructs visuals from the returned data and frontend components. Resource-controlled text and links cross into the display boundary at this step.
+
 ## Threats
 
 ### DASH-01: An unintended user reaches guest-accessible data
 
 **Description:** An operator exposes F1/F3 beyond its intended trusted users, including through a forwarded port or ingress.
 
-**Impact:** Resource, environment, schema and relationship information may be disclosed without an individual login.
+**Impact:** Resource, environment, schema and relationship information may be disclosed without an individual login. An attacker can use application dependencies and topology to select targets for a later attack.
 
 **Mitigation:** Restrict network/port-forward access. Configure a production auth provider and Backstage permissions before broader use. Verify that an unauthorized user cannot read resource data; disable Dashboard where not needed.
 
@@ -178,6 +280,8 @@ F1-F3 reach a backend with a shared identity. F5-F7 retrieve data using that ide
 | Operators   | Keep guest access within the approved network or disable Dashboard. Before remote use, test that unauthorized users cannot read data and that both TLS paths verify the intended server. | Untracked |
 | Maintainers | List the Kubernetes plugin's required methods/resources and test guest access to proxy routes. Reduce the role where possible; record any writes that must remain and why.               | Untracked |
 | Operators   | Trace a browser request through backend/access logs to a Kubernetes audit record. Record which users remain indistinguishable and set an audit retention policy.                         | Untracked |
+
+The original multi-user access guidance was tracked in [radius-project/dashboard#105](https://github.com/radius-project/dashboard/issues/105). It remains relevant to HTTPS, login and Backstage permissions. This revision does not infer completion from that historical link. Revisit the backend role when Radius authorization changes. The original [Backstage audit-log discussion](https://github.com/backstage/backstage/issues/23950) is also background, not evidence that this installation records individual guest users.
 
 ## Review Notes
 
