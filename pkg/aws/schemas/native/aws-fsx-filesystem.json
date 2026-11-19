@@ -578,6 +578,8 @@
     "delete": {
       "permissions": [
         "fsx:CreateBackup",
+        "fsx:CreateFileSystem",
+        "fsx:CreateFileSystemFromBackup",
         "fsx:DeleteFileSystem",
         "fsx:DescribeDataRepositoryAssociations",
         "fsx:DescribeFileSystems",

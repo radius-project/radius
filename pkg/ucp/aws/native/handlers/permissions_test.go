@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/pkg/aws/schemas"
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
@@ -112,6 +113,41 @@ func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
 	require.Empty(t, missing, "add each AWS call to the handler permissions of the operation that makes it")
 }
 
+// Test_ResendDeletePermissionsCoverCreate checks that the delete permissions of a handler whose Recovery is
+// RecoverByResend cover its create: a DELETE of a record whose create may have reached AWS sends the create again to
+// find the resource. They must list every AWS call Create makes, and every create permission, which also covers what
+// the call does, such as tagging the resource or iam:PassRole.
+func Test_ResendDeletePermissionsCoverCreate(t *testing.T) {
+	catalog, err := schemas.Load()
+	require.NoError(t, err)
+	missing := []string{}
+	for _, h := range All(aws.Config{}) {
+		if h.Options().Recovery != native.RecoverByResend {
+			continue
+		}
+		typ := reflect.TypeOf(h).Elem()
+		src := parseHandlerSource(t, filepath.Base(typ.PkgPath()))
+		var schema struct {
+			Handlers map[string]struct {
+				Permissions []string `json:"permissions"`
+			} `json:"handlers"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		required := slices.Clone(schema.Handlers["create"].Permissions)
+		for _, call := range src.Calls(typ.Name(), "Create") {
+			required = append(required, src.iam[call]+":"+call)
+		}
+		for _, action := range required {
+			gap := h.TypeName() + " delete: " + action
+			if !slices.Contains(schema.Handlers["delete"].Permissions, action) && !slices.Contains(missing, gap) {
+				missing = append(missing, gap)
+			}
+		}
+	}
+	slices.Sort(missing)
+	require.Empty(t, missing, "add each permission of the create to the delete permissions of a handler that recovers by resending the create")
+}
+
 // Test_SchemaPermissionsAreUsed checks the other way: every permission of the handler's own service in a schema is
 // for a call the handler makes for that operation, or for Read, which UCP calls during every operation, so a schema
 // never asks for more than the handler needs. AWS also checks some permissions for what a call does, such as tagging
@@ -142,6 +178,10 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 					used[op] = append(used[op], src.iam[call]+":"+call)
 				}
 			}
+		}
+		if h.Options().Recovery == native.RecoverByResend {
+			// A DELETE that finds a lost create sends the create again (see Test_ResendDeletePermissionsCoverCreate).
+			used["delete"] = slices.Concat(used["delete"], used["create"], implied["create"])
 		}
 		// The services the handler's clients call. Permissions of other services, such as iam:PassRole, are for
 		// what a call does, and aren't checked.
