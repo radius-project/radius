@@ -23,6 +23,7 @@ import (
 	"maps"
 	"net/netip"
 	"reflect"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -1171,6 +1172,201 @@ func (f *fakeAPI) DescribeRouteTables(ctx context.Context, in *awsec2.DescribeRo
 			}
 		}
 		out.RouteTables = append(out.RouteTables, rt)
+	}
+	return out, nil
+}
+
+// instanceIDPattern is the form of an instance ID that EC2's error codes page gives: i- and 8 or 17 hex characters.
+var instanceIDPattern = regexp.MustCompile(`^i-([0-9a-f]{8}|[0-9a-f]{17})$`)
+
+// instanceStateCodes are the codes of EC2's instance states, from the InstanceState page of the API reference.
+var instanceStateCodes = map[types.InstanceStateName]int32{
+	types.InstanceStateNamePending:      0,
+	types.InstanceStateNameRunning:      16,
+	types.InstanceStateNameShuttingDown: 32,
+	types.InstanceStateNameTerminated:   48,
+	types.InstanceStateNameStopping:     64,
+	types.InstanceStateNameStopped:      80,
+}
+
+// fakeInstances is an in-memory EC2 API for the running state of instances. It keeps each instance in the store under
+// instanceStateType, with the type's properties, InstanceId and State, and what EC2's rules need: RootDeviceType,
+// instance-store for an instance store root volume and ebs otherwise, SpotRequestType for a Spot Instance, one-time
+// or persistent, StateReason, the code of the reason for its last change of state, and Owner, other for an instance
+// of another account. A pending or stopping instance, such as one a start or stop just changed, reads as such once,
+// and then as running or stopped.
+type fakeInstances struct {
+	store *awsfake.CloudControl
+
+	mu sync.Mutex
+
+	// failStart maps an instance to the reason code of a start that fails, such as Server.InsufficientInstanceCapacity:
+	// the pending instance stops again instead of running.
+	failStart map[string]string
+
+	// errs maps a method name to an error the call returns instead of acting.
+	errs  map[string]error
+	calls []string
+}
+
+var _ InstanceAPI = (*fakeInstances)(nil)
+
+func newFakeInstances(store *awsfake.CloudControl) *fakeInstances {
+	return &fakeInstances{store: store, failStart: map[string]string{}, errs: map[string]error{}}
+}
+
+// putInstance puts an instance with an EBS root volume in state in the store, with the extra fields set.
+func putInstance(store *awsfake.CloudControl, id string, state types.InstanceStateName, extra map[string]any) {
+	props := map[string]any{"InstanceId": id, "State": string(state), "RootDeviceType": "ebs"}
+	maps.Copy(props, extra)
+	store.Put(instanceStateType, id, props)
+}
+
+// call records a call, and returns the error errs sets for it. A call without a region fails, as with AWS.
+func (f *fakeInstances) call(name string, opts []func(*awsec2.Options)) error {
+	f.calls = append(f.calls, name)
+	if regionOf(opts) == "" {
+		return fmt.Errorf("the call %s has no region", name)
+	}
+	return f.errs[name]
+}
+
+// instances returns the stored instances with ids, or the error EC2 returns for a missing list, a malformed ID, or
+// an ID it has no instance for.
+func (f *fakeInstances) instances(ids []string) ([]map[string]any, error) {
+	if len(ids) == 0 {
+		return nil, fault(missingParameter)
+	}
+	out := []map[string]any{}
+	for _, id := range ids {
+		if !instanceIDPattern.MatchString(id) {
+			return nil, fault("InvalidInstanceID.Malformed")
+		}
+		props := f.store.Resource(instanceStateType, id)
+		if props == nil {
+			return nil, fault("InvalidInstanceID.NotFound")
+		}
+		out = append(out, props)
+	}
+	return out, nil
+}
+
+// change sets the state of the stored instance.
+func (f *fakeInstances) change(props map[string]any, state types.InstanceStateName) types.InstanceStateChange {
+	id := awsapi.String(props, "InstanceId")
+	previous := types.InstanceStateName(awsapi.String(props, "State"))
+	props["State"] = string(state)
+	f.store.Put(instanceStateType, id, props)
+	return types.InstanceStateChange{InstanceId: aws.String(id), CurrentState: instanceStateOf(state), PreviousState: instanceStateOf(previous)}
+}
+
+// settle moves a pending instance to running, or back to stopped for a start in failStart, and a stopping instance
+// to stopped, after a read.
+func (f *fakeInstances) settle(props map[string]any) {
+	id := awsapi.String(props, "InstanceId")
+	switch types.InstanceStateName(awsapi.String(props, "State")) {
+	case types.InstanceStateNamePending:
+		props["State"], props["StateReason"] = string(types.InstanceStateNameRunning), ""
+		if reason := f.failStart[id]; reason != "" {
+			props["State"], props["StateReason"] = string(types.InstanceStateNameStopped), reason
+		}
+	case types.InstanceStateNameStopping:
+		props["State"], props["StateReason"] = string(types.InstanceStateNameStopped), "Client.UserInitiatedShutdown"
+	default:
+		return
+	}
+	f.store.Put(instanceStateType, id, props)
+}
+
+func instanceStateOf(name types.InstanceStateName) *types.InstanceState {
+	return &types.InstanceState{Name: name, Code: aws.Int32(instanceStateCodes[name])}
+}
+
+func (f *fakeInstances) DescribeInstances(ctx context.Context, in *awsec2.DescribeInstancesInput, opts ...func(*awsec2.Options)) (*awsec2.DescribeInstancesOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.call("DescribeInstances", opts); err != nil {
+		return nil, err
+	}
+	ids := in.InstanceIds
+	if len(ids) == 0 {
+		ids = f.store.List(instanceStateType)
+	} else if in.MaxResults != nil {
+		return nil, fault(invalidCombination)
+	}
+	instances, err := f.instances(ids)
+	if err != nil {
+		return nil, err
+	}
+	reservation := types.Reservation{ReservationId: aws.String("r-1")}
+	for _, props := range instances {
+		id := awsapi.String(props, "InstanceId")
+		if awsapi.String(props, "Owner") == "other" {
+			continue
+		}
+		instance := types.Instance{
+			InstanceId:     aws.String(id),
+			State:          instanceStateOf(types.InstanceStateName(awsapi.String(props, "State"))),
+			RootDeviceType: types.DeviceType(awsapi.String(props, "RootDeviceType")),
+		}
+		if reason := awsapi.String(props, "StateReason"); reason != "" {
+			instance.StateReason = &types.StateReason{Code: aws.String(reason), Message: aws.String(reason + ": the reason for the last change of state")}
+		}
+		if awsapi.String(props, "SpotRequestType") != "" {
+			instance.InstanceLifecycle = types.InstanceLifecycleTypeSpot
+		}
+		reservation.Instances = append(reservation.Instances, instance)
+		f.settle(props)
+	}
+	return &awsec2.DescribeInstancesOutput{Reservations: []types.Reservation{reservation}}, nil
+}
+
+func (f *fakeInstances) StartInstances(ctx context.Context, in *awsec2.StartInstancesInput, opts ...func(*awsec2.Options)) (*awsec2.StartInstancesOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.call("StartInstances", opts); err != nil {
+		return nil, err
+	}
+	instances, err := f.instances(in.InstanceIds)
+	if err != nil {
+		return nil, err
+	}
+	for _, props := range instances {
+		switch {
+		case awsapi.String(props, "RootDeviceType") == "instance-store":
+			return nil, fault("UnsupportedOperation")
+		case awsapi.String(props, "State") != string(types.InstanceStateNameStopped):
+			return nil, fault("IncorrectInstanceState")
+		}
+	}
+	out := &awsec2.StartInstancesOutput{}
+	for _, props := range instances {
+		out.StartingInstances = append(out.StartingInstances, f.change(props, types.InstanceStateNamePending))
+	}
+	return out, nil
+}
+
+func (f *fakeInstances) StopInstances(ctx context.Context, in *awsec2.StopInstancesInput, opts ...func(*awsec2.Options)) (*awsec2.StopInstancesOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.call("StopInstances", opts); err != nil {
+		return nil, err
+	}
+	instances, err := f.instances(in.InstanceIds)
+	if err != nil {
+		return nil, err
+	}
+	for _, props := range instances {
+		switch {
+		case awsapi.String(props, "RootDeviceType") == "instance-store", awsapi.String(props, "SpotRequestType") == "one-time":
+			return nil, fault("UnsupportedOperation")
+		case awsapi.String(props, "State") != string(types.InstanceStateNameRunning):
+			return nil, fault("IncorrectInstanceState")
+		}
+	}
+	out := &awsec2.StopInstancesOutput{}
+	for _, props := range instances {
+		out.StoppingInstances = append(out.StoppingInstances, f.change(props, types.InstanceStateNameStopping))
 	}
 	return out, nil
 }

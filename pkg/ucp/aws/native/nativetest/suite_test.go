@@ -148,6 +148,54 @@ func Test_Suite_Settings(t *testing.T) {
 	}
 }
 
+// Test_Suite_AlwaysPresent runs the suite for a setting AWS always has, at its default until a deploy changes it, and
+// back at the default after a delete resets it. The first deploy takes it over and updates it.
+func Test_Suite_AlwaysPresent(t *testing.T) {
+	defaults := map[string]any{"Id": "default", "MinimumLength": 8}
+	suite := settingSuite(schemas.OnDeleteReset, schemas.IdentityScopeAccount, defaults)
+	settings := suite.NewHandler
+	suite.NewHandler = func(store *awsfake.CloudControl) native.Handler {
+		store.Put(suite.TypeName, "default", defaults)
+		return settings(store)
+	}
+	suite.AlwaysPresent = true
+	Run(t, suite)
+}
+
+// partOf is a fake handler of a resource that is part of something AWS has before any deploy, such as the running
+// state of an EC2 instance. UCP calls Create only when a read finds nothing, and then AWS has nothing it can create.
+type partOf struct {
+	*nativefake.Handler
+}
+
+func (h partOf) Create(ctx context.Context, request native.CreateRequest) (string, error) {
+	return "", &native.Failure{Message: "AWS has no such instance", ClientError: true, Outcome: native.OutcomeRejected}
+}
+
+// Identifier returns Id, and rejects a template whose MinimumLength isn't a number before any AWS call.
+func (h partOf) Identifier(properties map[string]any) (string, error) {
+	if _, ok := properties["MinimumLength"].(float64); !ok {
+		return "", &native.Failure{Message: "MinimumLength must be a number", ClientError: true, Outcome: native.OutcomeRejected}
+	}
+	id, _ := properties["Id"].(string)
+	return id, nil
+}
+
+// Test_Suite_CreateFails runs the suite for a resource that is part of something AWS has before any deploy, which the
+// first deploy takes over, and whose create fails.
+func Test_Suite_CreateFails(t *testing.T) {
+	suite := settingSuite(schemas.OnDeleteNothing, schemas.IdentityScopeRegion, nil)
+	settings := suite.NewHandler
+	suite.NewHandler = func(store *awsfake.CloudControl) native.Handler {
+		store.Put(suite.TypeName, "default", map[string]any{"Id": "default", "MinimumLength": 8})
+		return partOf{settings(store).(*nativefake.Handler)}
+	}
+	suite.AlwaysPresent, suite.CreateFails = true, true
+	// AWS has the resource before the deploy, so a rejected template leaves AWS with one, not none.
+	suite.Invalid = []map[string]any{{"Id": "default", "MinimumLength": "twelve"}}
+	Run(t, suite)
+}
+
 // assignedSchema is the schema of a type whose identifier, Id, AWS assigns.
 func assignedSchema(typeName string) string {
 	return `{

@@ -322,3 +322,24 @@ func Test_Lifecycle_Cleanup(t *testing.T) {
 		require.Zero(t, deletes(h))
 	})
 }
+
+// Test_Lifecycle_ReadTypes checks that a replay fails when Read returns a value whose type doesn't match the schema of
+// a hand-written type, as it does for a native one.
+func Test_Lifecycle_ReadTypes(t *testing.T) {
+	const typeName = "AWS::EC2::InstanceState"
+	t.Setenv(awsreplay.RecordEnv, "")
+	file := filepath.Join(t.TempDir(), "cassette.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{"source": "recorded", "interactions": []}`), 0o600))
+	store := awsfake.NewCloudControl()
+	store.Identifiers[typeName] = "InstanceId"
+	h := nativefake.New(typeName, store)
+	l := Lifecycle{Handler: h, Session: awsreplay.New(t, file), Poll: time.Millisecond}
+
+	store.Put(typeName, "i-0123456789abcdef0", map[string]any{"InstanceId": "i-0123456789abcdef0", "State": "running"})
+	l.read(t, t.Context(), "i-0123456789abcdef0")
+
+	store.Put(typeName, "i-0123456789abcdef0", map[string]any{"InstanceId": "i-0123456789abcdef0", "State": 5})
+	f := newFakeTB(t)
+	f.run(func() { l.read(f, f.Context(), "i-0123456789abcdef0") })
+	require.True(t, f.failed, "State is a string in the hand-written schema")
+}

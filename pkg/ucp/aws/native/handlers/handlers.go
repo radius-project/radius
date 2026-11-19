@@ -33,6 +33,7 @@ import (
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
+	rdssdk "github.com/aws/aws-sdk-go-v2/service/rds"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
 	sagemakersdk "github.com/aws/aws-sdk-go-v2/service/sagemaker"
 	servicecatalogsdk "github.com/aws/aws-sdk-go-v2/service/servicecatalog"
@@ -54,6 +55,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/rds"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/servicecatalog"
 )
@@ -64,6 +66,7 @@ func All(cfg aws.Config) []native.Handler {
 	docdbAPI := docdbsdk.NewFromConfig(cfg)
 	ec2API := ec2sdk.NewFromConfig(cfg)
 	lakeformationAPI := lakeformationsdk.NewFromConfig(cfg)
+	rdsAPI := rdssdk.NewFromConfig(cfg)
 	stsAPI := stssdk.NewFromConfig(cfg)
 	return []native.Handler{
 		docdb.NewCluster(docdbAPI),
@@ -77,6 +80,7 @@ func All(cfg aws.Config) []native.Handler {
 		ec2.NewNetworkAclEntry(ec2API),
 		ec2.NewNetworkInterfacePermission(ec2API),
 		ec2.NewVPNGatewayRoutePropagation(ec2API),
+		ec2.NewInstanceState(ec2API),
 		elbv2.NewListenerCertificate(elbv2sdk.NewFromConfig(cfg)),
 		lakeformation.NewDataLakeSettings(lakeformationAPI),
 		lakeformation.NewPermissions(lakeformationAPI, stsAPI),
@@ -89,6 +93,7 @@ func All(cfg aws.Config) []native.Handler {
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		rds.NewDBInstanceState(rdsAPI),
 	}
 }
 

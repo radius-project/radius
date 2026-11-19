@@ -171,3 +171,19 @@ func Test_Replay_VPNGatewayRoutePropagation(t *testing.T) {
 		Poll:       5 * time.Second,
 	}.Run(t)
 }
+
+// Test_Replay_InstanceState stops a running instance and starts it again, against responses written by hand from
+// EC2's API reference. A delete changes nothing in AWS, so there is no delete step. To record it, launch an instance
+// with an EBS root volume, wait until it is running, export its ID, and terminate it after recording.
+func Test_Replay_InstanceState(t *testing.T) {
+	s := awsreplay.New(t, "testdata/instancestate.json")
+	id := s.Input("RADIUS_REC_EC2_INSTANCE")
+	nativetest.Lifecycle{
+		Handler:    NewInstanceState(awsec2.NewFromConfig(s.Config(t.Context()))),
+		Session:    s,
+		Properties: map[string]any{"InstanceId": id, "State": "stopped"},
+		Update:     map[string]any{"InstanceId": id, "State": "running"},
+		Poll:       15 * time.Second,
+		SkipDelete: true,
+	}.Run(t)
+}

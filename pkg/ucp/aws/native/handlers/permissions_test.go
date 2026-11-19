@@ -27,7 +27,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/require"
 
-	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
@@ -47,6 +46,7 @@ var iamPrefixes = map[string]string{
 	"kinesisanalyticsv2":       "kinesisanalytics",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
+	"rds":                      "rds",
 	"s3":                       "s3",
 	"sagemaker":                "sagemaker",
 	"servicecatalog":           "servicecatalog",
@@ -55,7 +55,8 @@ var iamPrefixes = map[string]string{
 
 // operationsOf maps a handler method to the schema handler operations whose permissions must cover the AWS calls it
 // makes. Find runs when a PUT or a DELETE looks for a lost create, and Progress while UCP waits for a create, an
-// update, or a delete.
+// update, or a delete. UpdateState runs before an update, and UpdateProgress while UCP waits for it
+// (native.UpdatePreparer).
 var operationsOf = map[string][]string{
 	"Create":     {"create"},
 	"Find":       {"create", "delete"},
@@ -64,6 +65,8 @@ var operationsOf = map[string][]string{
 	// UCP resolves an identifier on a PUT and on `existing`.
 	"ResolveIdentifier": {"create", "read", "update"},
 	"Update":            {"update"},
+	"UpdateState":       {"update"},
+	"UpdateProgress":    {"update"},
 	"Delete":            {"delete"},
 	"DeleteScoped":      {"delete"},
 	"DeleteToken":       {"delete"},
@@ -78,7 +81,7 @@ var operationsOf = map[string][]string{
 // of the package's AWS SDK client interfaces it, or a function or method of the package it calls, refers to, directly
 // or through an SDK paginator.
 func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
-	catalog, err := schemas.Load()
+	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	packages := map[string]handlerSource{}
 	missing := []string{}
@@ -95,11 +98,16 @@ func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(registry.Lookup(h.TypeName()).Schema), &schema), h.TypeName())
+		// UCP calls nothing of the handler on a delete whose metadata calls nothing in AWS.
+		onDelete := registry.Lookup(h.TypeName()).Metadata.OnDelete
 		for method, ops := range operationsOf {
 			for _, call := range src.Calls(typ.Name(), method) {
 				action := src.iam[call] + ":" + call
 				for _, op := range ops {
+					if op == "delete" && (onDelete == "nothing" || onDelete == "leave") {
+						continue
+					}
 					gap := h.TypeName() + " " + op + ": " + action
 					if !slices.Contains(schema.Handlers[op].Permissions, action) && !slices.Contains(missing, gap) {
 						missing = append(missing, gap)
@@ -125,7 +133,7 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 		},
 		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}
-	catalog, err := schemas.Load()
+	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	unused := []string{}
 	for _, h := range All(aws.Config{}) {
@@ -154,7 +162,7 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(registry.Lookup(h.TypeName()).Schema), &schema), h.TypeName())
 		for op, handler := range schema.Handlers {
 			for _, action := range handler.Permissions {
 				service, _, _ := strings.Cut(action, ":")

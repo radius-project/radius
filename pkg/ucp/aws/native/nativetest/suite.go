@@ -192,6 +192,18 @@ type Suite struct {
 	// undo, for a type whose Equivalent compares values only on what the template sets.
 	ChangedOutside *ChangedOutside
 
+	// AlwaysPresent is true for a setting AWS has for as long as the resource it belongs to exists, such as a bucket's
+	// Requester Pays setting, so a read never reports it missing. UCP takes it over and updates it on the first deploy,
+	// and never calls Create, so the cases that lose a create don't apply, and the worker restart case waits for that
+	// update instead.
+	AlwaysPresent bool
+
+	// CreateFails is true, with AlwaysPresent, for a resource that is part of something AWS has before any deploy,
+	// such as the running state of an EC2 instance. NewHandler puts the resource Properties names in store. Removing it
+	// from store, as when the instance is terminated outside Radius, leaves nothing UCP can take over, and Create
+	// fails with 400, so a deploy then gets 400 and removes the record.
+	CreateFails bool
+
 	// API records each AWS call the handler makes, by the name of its AWS SDK client method, such as
 	// CreateDBCluster: the call's page in AWS's API reference and the rules AWS documents for it, which the fake must
 	// enforce. It is nil for a handler that makes no AWS SDK calls, such as nativefake's.
@@ -266,6 +278,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("read values have the schema's types", func(t *testing.T) { s.readTypes(t) })
 	t.Run("existing", func(t *testing.T) { s.existing(t) })
 	t.Run("worker restart while waiting", func(t *testing.T) { s.workerRestart(t) })
+	t.Run("a setting AWS always has is taken over, not created", func(t *testing.T) { s.alwaysPresent(t) })
 	t.Run("delete as the metadata says", func(t *testing.T) { s.deleteByMetadata(t) })
 	t.Run("identifier another alias holds in the identity scope", func(t *testing.T) { s.identifierHeld(t) })
 	t.Run("value AWS returns in another form", func(t *testing.T) { s.otherForm(t) })
@@ -283,6 +296,8 @@ func Run(t *testing.T, s Suite) {
 		suffix := map[bool]string{true: "after the create reached AWS", false: "before the create reached AWS"}[reached]
 		t.Run("deploy again "+suffix, func(t *testing.T) { s.lostCreate(t, reached) })
 		t.Run("delete "+suffix, func(t *testing.T) { s.lostCreateDelete(t, reached) })
+		suffix = map[bool]string{true: "after the update reached AWS", false: "before the update reached AWS"}[reached]
+		t.Run("deploy again "+suffix, func(t *testing.T) { s.lostUpdate(t, reached) })
 	}
 	t.Run("deploy a changed write-only value after a lost create", func(t *testing.T) { s.lostCreateChangedWriteOnly(t) })
 	t.Run("delete fails after it finds a lost create", func(t *testing.T) { s.lostCreateFailedDelete(t) })
@@ -380,6 +395,13 @@ func (s Suite) deletedOutsideRadius(t *testing.T) {
 	h.deploy(s.Properties)
 	h.cc.Remove(s.TypeName, h.identifier())
 
+	if s.CreateFails {
+		resp := h.put(s.Properties)
+		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Nil(t, h.record(), "the resource is gone, so the record is removed")
+		require.Zero(t, h.cc.Count(s.TypeName), "UCP can't create the resource")
+		return
+	}
 	h.deploy(s.Properties)
 	requireSubset(t, s.readable(s.Properties), h.stored())
 	require.Equal(t, 1, h.cc.Count(s.TypeName))
@@ -716,6 +738,9 @@ func requireSegment(t *testing.T, collection string, id string) string {
 // lostCreate loses a create, after it reached AWS or before, and deploys again. The next deploy finds the resource
 // as the handler declares (native.Options.Recovery), and AWS ends with exactly one.
 func (s Suite) lostCreate(t *testing.T, reached bool) {
+	if s.AlwaysPresent {
+		t.Skip("UCP never creates a setting AWS always has")
+	}
 	h := s.newHarness(t)
 	h.handler.lose("Create", reached)
 	resp := h.put(s.Properties)
@@ -728,6 +753,25 @@ func (s Suite) lostCreate(t *testing.T, reached bool) {
 	if s.Identifier != "" {
 		require.Equal(t, s.Identifier, h.record().Properties.AWSIdentifier)
 	}
+}
+
+// lostUpdate loses the update of the first deploy of a resource AWS always has, after it reached AWS or before, and
+// deploys again. The next deploy reads AWS and finishes the update, and a deploy after that only reads.
+func (s Suite) lostUpdate(t *testing.T, reached bool) {
+	if !s.AlwaysPresent {
+		t.Skip("the first deploy creates the resource")
+	}
+	h := s.newHarness(t)
+	h.handler.lose("Update", reached)
+	resp := h.put(s.Properties)
+	require.GreaterOrEqual(t, resp.status, http.StatusInternalServerError, resp.raw)
+
+	h.deployEventually(s.Properties)
+	requireSubset(t, s.readable(s.Properties), h.stored())
+	h.handler.reset()
+	resp = h.put(s.Properties)
+	require.Equal(t, http.StatusOK, resp.status, resp.raw)
+	require.Equal(t, []string{"Read"}, h.handler.reset(), "the update is fully applied")
 }
 
 // lostCreateChangedWriteOnly loses a create that reached AWS, and deploys again with a changed write-only value. UCP
@@ -787,6 +831,9 @@ func (s Suite) resendFailsPartway(t *testing.T, method string, failure error) {
 // For a type whose onDelete is reject, the delete removes only the record when the create never reached AWS, and
 // otherwise gets 400 and keeps the resource and the record.
 func (s Suite) lostCreateDelete(t *testing.T, reached bool) {
+	if s.AlwaysPresent {
+		t.Skip("UCP never creates a setting AWS always has")
+	}
 	h := s.newHarness(t)
 	od := h.onDelete()
 	if od == schemas.OnDeleteNothing || od == schemas.OnDeleteLeave {
@@ -959,14 +1006,18 @@ func (s Suite) generatedNameRetry(t *testing.T, nameProperty string, reached boo
 	require.Equal(t, name, h.cc.Resource(s.TypeName, identifier)[nameProperty])
 }
 
-// workerRestart stops the worker while it waits for a create, and runs it again. Waiting only reads AWS, so the
-// second run finishes the create without calling Create again.
+// workerRestart stops the worker while it waits for the first deploy, a create or, for a setting AWS always has, an
+// update, and runs it again. Waiting only reads AWS, so the second run finishes it without sending it again.
 func (s Suite) workerRestart(t *testing.T) {
 	h := s.newHarness(t)
 	h.handler.holdProgress(true)
 	resp := h.put(s.Properties)
 	require.Equal(t, http.StatusCreated, resp.status, resp.raw)
-	require.Contains(t, h.handler.reset(), "Create")
+	start := "Create"
+	if s.AlwaysPresent {
+		start = "Update"
+	}
+	require.Contains(t, h.handler.reset(), start)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	h.handler.onProgress = cancel
@@ -982,7 +1033,21 @@ func (s Suite) workerRestart(t *testing.T) {
 	require.Nil(t, result.Error)
 	require.NoError(t, h.queue.FinishMessage(t.Context(), msg))
 	require.Equal(t, v1.ProvisioningStateSucceeded, h.record().ProvisioningState())
-	require.NotContains(t, h.handler.reset(), "Create", "the restarted worker does not create again")
+	require.NotContains(t, h.handler.reset(), start, "the restarted worker does not send the operation again")
+}
+
+// alwaysPresent deploys a setting AWS always has. The first deploy reads it and updates it, and never creates it, and
+// AWS ends with the template's values.
+func (s Suite) alwaysPresent(t *testing.T) {
+	if !s.AlwaysPresent {
+		t.Skip("AWS doesn't have the resource until a deploy creates it")
+	}
+	h := s.newHarness(t)
+	h.deploy(s.Properties)
+	called := h.handler.reset()
+	require.Contains(t, called, "Update")
+	require.NotContains(t, called, "Create")
+	requireSubset(t, s.readable(s.Properties), h.stored())
 }
 
 // switchHandlers creates a resource with one handler, and then reads, updates, and deletes it with the other, as when
@@ -1091,11 +1156,12 @@ func (s Suite) invalid(t *testing.T) {
 	for _, properties := range s.Invalid {
 		h := s.newHarness(t)
 		h.handler.reset()
+		count := h.cc.Count(s.TypeName)
 		resp := h.put(properties)
 		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
 		require.Empty(t, h.handler.reset(), "nothing reaches AWS")
 		require.Nil(t, h.record())
-		require.Zero(t, h.cc.Count(s.TypeName))
+		require.Equal(t, count, h.cc.Count(s.TypeName), "AWS has no new resource")
 	}
 }
 
@@ -2356,17 +2422,17 @@ func (r *recorder) Create(ctx context.Context, request native.CreateRequest) (st
 
 func (r *recorder) Update(ctx context.Context, request native.UpdateRequest) error {
 	r.note("Update")
-	return r.Handler.Update(ctx, request)
+	return r.lostCall("Update", func() error { return r.Handler.Update(ctx, request) })
 }
 
 func (r *recorder) Delete(ctx context.Context, region string, identifier string) error {
 	r.note("Delete")
-	return r.lostDelete(func() error { return r.Handler.Delete(ctx, region, identifier) })
+	return r.lostCall("Delete", func() error { return r.Handler.Delete(ctx, region, identifier) })
 }
 
-// lostDelete makes a delete call, losing its response as lose set.
-func (r *recorder) lostDelete(call func() error) error {
-	reached, lost := r.takeLoss("Delete")
+// lostCall makes a call to method, losing its response as lose set.
+func (r *recorder) lostCall(method string, call func() error) error {
+	reached, lost := r.takeLoss(method)
 	switch {
 	case lost && !reached:
 		return errLost
@@ -2389,7 +2455,7 @@ func (s scoped) ReadScoped(ctx context.Context, region string, identifier string
 
 func (s scoped) DeleteScoped(ctx context.Context, region string, identifier string, managed []map[string]any) error {
 	s.r.note("Delete")
-	return s.r.lostDelete(func() error {
+	return s.r.lostCall("Delete", func() error {
 		return s.r.Handler.(native.ScopedDeleter).DeleteScoped(ctx, region, identifier, managed)
 	})
 }
@@ -2422,7 +2488,7 @@ func (r *recorder) DeleteWithToken(ctx context.Context, region string, identifie
 	if onDelete != nil {
 		onDelete(token)
 	}
-	return r.lostDelete(func() error {
+	return r.lostCall("Delete", func() error {
 		return r.Handler.(native.DeletePreparer).DeleteWithToken(ctx, region, identifier, token)
 	})
 }

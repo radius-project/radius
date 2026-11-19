@@ -1,0 +1,108 @@
+{
+  "source": "api-reference",
+  "inputs": {
+    "RADIUS_REC_EC2_INSTANCE": "i-0a1b2c3d4e5f60718"
+  },
+  "interactions": [
+    {
+      "service": "EC2",
+      "operation": "DescribeInstances",
+      "request": "Action=DescribeInstances&InstanceId.1=i-0a1b2c3d4e5f60718&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeInstancesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>8f7724cf-496f-496e-8fe3-000000000001</requestId><reservationSet><item><reservationId>r-0a1b2c3d4e5f60718</reservationId><ownerId>123456789012</ownerId><groupSet/><instancesSet><item><instanceId>i-0a1b2c3d4e5f60718</instanceId><imageId>ami-0abcdef1234567890</imageId><instanceState><code>16</code><name>running</name></instanceState><privateDnsName>ip-10-0-1-25.us-west-2.compute.internal</privateDnsName><dnsName/><reason/><amiLaunchIndex>0</amiLaunchIndex><productCodes/><instanceType>t3.micro</instanceType><launchTime>2026-11-19T12:00:00.000Z</launchTime><placement><availabilityZone>us-west-2a</availabilityZone><groupName/><tenancy>default</tenancy></placement><monitoring><state>disabled</state></monitoring><subnetId>subnet-0a1b2c3d4e5f60718</subnetId><vpcId>vpc-0a1b2c3d4e5f60718</vpcId><privateIpAddress>10.0.1.25</privateIpAddress><sourceDestCheck>true</sourceDestCheck><architecture>x86_64</architecture><rootDeviceType>ebs</rootDeviceType><rootDeviceName>/dev/xvda</rootDeviceName><virtualizationType>hvm</virtualizationType><tagSet><item><key>radius-recording</key><value>example</value></item></tagSet><hypervisor>xen</hypervisor></item></instancesSet></item></reservationSet></DescribeInstancesResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "StopInstances",
+      "request": "Action=StopInstances&InstanceId.1=i-0a1b2c3d4e5f60718&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<StopInstancesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>8f7724cf-496f-496e-8fe3-000000000002</requestId><instancesSet><item><instanceId>i-0a1b2c3d4e5f60718</instanceId><currentState><code>64</code><name>stopping</name></currentState><previousState><code>16</code><name>running</name></previousState></item></instancesSet></StopInstancesResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeInstances",
+      "request": "Action=DescribeInstances&InstanceId.1=i-0a1b2c3d4e5f60718&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeInstancesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>8f7724cf-496f-496e-8fe3-000000000003</requestId><reservationSet><item><reservationId>r-0a1b2c3d4e5f60718</reservationId><ownerId>123456789012</ownerId><groupSet/><instancesSet><item><instanceId>i-0a1b2c3d4e5f60718</instanceId><imageId>ami-0abcdef1234567890</imageId><instanceState><code>64</code><name>stopping</name></instanceState><privateDnsName>ip-10-0-1-25.us-west-2.compute.internal</privateDnsName><dnsName/><reason/><amiLaunchIndex>0</amiLaunchIndex><productCodes/><instanceType>t3.micro</instanceType><launchTime>2026-11-19T12:00:00.000Z</launchTime><placement><availabilityZone>us-west-2a</availabilityZone><groupName/><tenancy>default</tenancy></placement><monitoring><state>disabled</state></monitoring><subnetId>subnet-0a1b2c3d4e5f60718</subnetId><vpcId>vpc-0a1b2c3d4e5f60718</vpcId><privateIpAddress>10.0.1.25</privateIpAddress><sourceDestCheck>true</sourceDestCheck><architecture>x86_64</architecture><rootDeviceType>ebs</rootDeviceType><rootDeviceName>/dev/xvda</rootDeviceName><virtualizationType>hvm</virtualizationType><tagSet><item><key>radius-recording</key><value>example</value></item></tagSet><hypervisor>xen</hypervisor></item></instancesSet></item></reservationSet></DescribeInstancesResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeInstances",
+      "request": "Action=DescribeInstances&InstanceId.1=i-0a1b2c3d4e5f60718&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeInstancesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>8f7724cf-496f-496e-8fe3-000000000004</requestId><reservationSet><item><reservationId>r-0a1b2c3d4e5f60718</reservationId><ownerId>123456789012</ownerId><groupSet/><instancesSet><item><instanceId>i-0a1b2c3d4e5f60718</instanceId><imageId>ami-0abcdef1234567890</imageId><instanceState><code>80</code><name>stopped</name></instanceState><privateDnsName>ip-10-0-1-25.us-west-2.compute.internal</privateDnsName><dnsName/><reason/><amiLaunchIndex>0</amiLaunchIndex><productCodes/><instanceType>t3.micro</instanceType><launchTime>2026-11-19T12:00:00.000Z</launchTime><placement><availabilityZone>us-west-2a</availabilityZone><groupName/><tenancy>default</tenancy></placement><monitoring><state>disabled</state></monitoring><subnetId>subnet-0a1b2c3d4e5f60718</subnetId><vpcId>vpc-0a1b2c3d4e5f60718</vpcId><privateIpAddress>10.0.1.25</privateIpAddress><sourceDestCheck>true</sourceDestCheck><stateReason><code>Client.UserInitiatedShutdown</code><message>Client.UserInitiatedShutdown: User initiated shutdown</message></stateReason><architecture>x86_64</architecture><rootDeviceType>ebs</rootDeviceType><rootDeviceName>/dev/xvda</rootDeviceName><virtualizationType>hvm</virtualizationType><tagSet><item><key>radius-recording</key><value>example</value></item></tagSet><hypervisor>xen</hypervisor></item></instancesSet></item></reservationSet></DescribeInstancesResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeInstances",
+      "request": "Action=DescribeInstances&InstanceId.1=i-0a1b2c3d4e5f60718&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeInstancesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>8f7724cf-496f-496e-8fe3-000000000005</requestId><reservationSet><item><reservationId>r-0a1b2c3d4e5f60718</reservationId><ownerId>123456789012</ownerId><groupSet/><instancesSet><item><instanceId>i-0a1b2c3d4e5f60718</instanceId><imageId>ami-0abcdef1234567890</imageId><instanceState><code>80</code><name>stopped</name></instanceState><privateDnsName>ip-10-0-1-25.us-west-2.compute.internal</privateDnsName><dnsName/><reason/><amiLaunchIndex>0</amiLaunchIndex><productCodes/><instanceType>t3.micro</instanceType><launchTime>2026-11-19T12:00:00.000Z</launchTime><placement><availabilityZone>us-west-2a</availabilityZone><groupName/><tenancy>default</tenancy></placement><monitoring><state>disabled</state></monitoring><subnetId>subnet-0a1b2c3d4e5f60718</subnetId><vpcId>vpc-0a1b2c3d4e5f60718</vpcId><privateIpAddress>10.0.1.25</privateIpAddress><sourceDestCheck>true</sourceDestCheck><stateReason><code>Client.UserInitiatedShutdown</code><message>Client.UserInitiatedShutdown: User initiated shutdown</message></stateReason><architecture>x86_64</architecture><rootDeviceType>ebs</rootDeviceType><rootDeviceName>/dev/xvda</rootDeviceName><virtualizationType>hvm</virtualizationType><tagSet><item><key>radius-recording</key><value>example</value></item></tagSet><hypervisor>xen</hypervisor></item></instancesSet></item></reservationSet></DescribeInstancesResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeInstances",
+      "request": "Action=DescribeInstances&InstanceId.1=i-0a1b2c3d4e5f60718&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeInstancesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>8f7724cf-496f-496e-8fe3-000000000006</requestId><reservationSet><item><reservationId>r-0a1b2c3d4e5f60718</reservationId><ownerId>123456789012</ownerId><groupSet/><instancesSet><item><instanceId>i-0a1b2c3d4e5f60718</instanceId><imageId>ami-0abcdef1234567890</imageId><instanceState><code>80</code><name>stopped</name></instanceState><privateDnsName>ip-10-0-1-25.us-west-2.compute.internal</privateDnsName><dnsName/><reason/><amiLaunchIndex>0</amiLaunchIndex><productCodes/><instanceType>t3.micro</instanceType><launchTime>2026-11-19T12:00:00.000Z</launchTime><placement><availabilityZone>us-west-2a</availabilityZone><groupName/><tenancy>default</tenancy></placement><monitoring><state>disabled</state></monitoring><subnetId>subnet-0a1b2c3d4e5f60718</subnetId><vpcId>vpc-0a1b2c3d4e5f60718</vpcId><privateIpAddress>10.0.1.25</privateIpAddress><sourceDestCheck>true</sourceDestCheck><stateReason><code>Client.UserInitiatedShutdown</code><message>Client.UserInitiatedShutdown: User initiated shutdown</message></stateReason><architecture>x86_64</architecture><rootDeviceType>ebs</rootDeviceType><rootDeviceName>/dev/xvda</rootDeviceName><virtualizationType>hvm</virtualizationType><tagSet><item><key>radius-recording</key><value>example</value></item></tagSet><hypervisor>xen</hypervisor></item></instancesSet></item></reservationSet></DescribeInstancesResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "StartInstances",
+      "request": "Action=StartInstances&InstanceId.1=i-0a1b2c3d4e5f60718&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<StartInstancesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>8f7724cf-496f-496e-8fe3-000000000007</requestId><instancesSet><item><instanceId>i-0a1b2c3d4e5f60718</instanceId><currentState><code>0</code><name>pending</name></currentState><previousState><code>80</code><name>stopped</name></previousState></item></instancesSet></StartInstancesResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeInstances",
+      "request": "Action=DescribeInstances&InstanceId.1=i-0a1b2c3d4e5f60718&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeInstancesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>8f7724cf-496f-496e-8fe3-000000000008</requestId><reservationSet><item><reservationId>r-0a1b2c3d4e5f60718</reservationId><ownerId>123456789012</ownerId><groupSet/><instancesSet><item><instanceId>i-0a1b2c3d4e5f60718</instanceId><imageId>ami-0abcdef1234567890</imageId><instanceState><code>0</code><name>pending</name></instanceState><privateDnsName>ip-10-0-1-25.us-west-2.compute.internal</privateDnsName><dnsName/><reason/><amiLaunchIndex>0</amiLaunchIndex><productCodes/><instanceType>t3.micro</instanceType><launchTime>2026-11-19T12:00:00.000Z</launchTime><placement><availabilityZone>us-west-2a</availabilityZone><groupName/><tenancy>default</tenancy></placement><monitoring><state>disabled</state></monitoring><subnetId>subnet-0a1b2c3d4e5f60718</subnetId><vpcId>vpc-0a1b2c3d4e5f60718</vpcId><privateIpAddress>10.0.1.25</privateIpAddress><sourceDestCheck>true</sourceDestCheck><architecture>x86_64</architecture><rootDeviceType>ebs</rootDeviceType><rootDeviceName>/dev/xvda</rootDeviceName><virtualizationType>hvm</virtualizationType><tagSet><item><key>radius-recording</key><value>example</value></item></tagSet><hypervisor>xen</hypervisor></item></instancesSet></item></reservationSet></DescribeInstancesResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeInstances",
+      "request": "Action=DescribeInstances&InstanceId.1=i-0a1b2c3d4e5f60718&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeInstancesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>8f7724cf-496f-496e-8fe3-000000000009</requestId><reservationSet><item><reservationId>r-0a1b2c3d4e5f60718</reservationId><ownerId>123456789012</ownerId><groupSet/><instancesSet><item><instanceId>i-0a1b2c3d4e5f60718</instanceId><imageId>ami-0abcdef1234567890</imageId><instanceState><code>16</code><name>running</name></instanceState><privateDnsName>ip-10-0-1-25.us-west-2.compute.internal</privateDnsName><dnsName/><reason/><amiLaunchIndex>0</amiLaunchIndex><productCodes/><instanceType>t3.micro</instanceType><launchTime>2026-11-19T12:00:00.000Z</launchTime><placement><availabilityZone>us-west-2a</availabilityZone><groupName/><tenancy>default</tenancy></placement><monitoring><state>disabled</state></monitoring><subnetId>subnet-0a1b2c3d4e5f60718</subnetId><vpcId>vpc-0a1b2c3d4e5f60718</vpcId><privateIpAddress>10.0.1.25</privateIpAddress><sourceDestCheck>true</sourceDestCheck><architecture>x86_64</architecture><rootDeviceType>ebs</rootDeviceType><rootDeviceName>/dev/xvda</rootDeviceName><virtualizationType>hvm</virtualizationType><tagSet><item><key>radius-recording</key><value>example</value></item></tagSet><hypervisor>xen</hypervisor></item></instancesSet></item></reservationSet></DescribeInstancesResponse>"
+    },
+    {
+      "service": "EC2",
+      "operation": "DescribeInstances",
+      "request": "Action=DescribeInstances&InstanceId.1=i-0a1b2c3d4e5f60718&Version=2016-11-15",
+      "status": 200,
+      "headers": {
+        "Content-Type": "text/xml;charset=UTF-8"
+      },
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<DescribeInstancesResponse xmlns=\"http://ec2.amazonaws.com/doc/2016-11-15/\"><requestId>8f7724cf-496f-496e-8fe3-000000000010</requestId><reservationSet><item><reservationId>r-0a1b2c3d4e5f60718</reservationId><ownerId>123456789012</ownerId><groupSet/><instancesSet><item><instanceId>i-0a1b2c3d4e5f60718</instanceId><imageId>ami-0abcdef1234567890</imageId><instanceState><code>16</code><name>running</name></instanceState><privateDnsName>ip-10-0-1-25.us-west-2.compute.internal</privateDnsName><dnsName/><reason/><amiLaunchIndex>0</amiLaunchIndex><productCodes/><instanceType>t3.micro</instanceType><launchTime>2026-11-19T12:00:00.000Z</launchTime><placement><availabilityZone>us-west-2a</availabilityZone><groupName/><tenancy>default</tenancy></placement><monitoring><state>disabled</state></monitoring><subnetId>subnet-0a1b2c3d4e5f60718</subnetId><vpcId>vpc-0a1b2c3d4e5f60718</vpcId><privateIpAddress>10.0.1.25</privateIpAddress><sourceDestCheck>true</sourceDestCheck><architecture>x86_64</architecture><rootDeviceType>ebs</rootDeviceType><rootDeviceName>/dev/xvda</rootDeviceName><virtualizationType>hvm</virtualizationType><tagSet><item><key>radius-recording</key><value>example</value></item></tagSet><hypervisor>xen</hypervisor></item></instancesSet></item></reservationSet></DescribeInstancesResponse>"
+    }
+  ]
+}
