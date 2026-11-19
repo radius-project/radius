@@ -86,6 +86,10 @@ func (s *Source) clientConfig(spiffeID string, verified func([]*x509.Certificate
 	if err != nil {
 		return nil, err
 	}
+	if m.pool == nil {
+		// x509 would fall back to the system roots.
+		return nil, errors.New("no CA bundle: the source holds only a certificate")
+	}
 
 	return verifiedByConnectionCheck(func(cs tls.ConnectionState) error {
 		chain, err := verifyServer(m.pool, cs.PeerCertificates, spiffeID, s.now())
