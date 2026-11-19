@@ -319,6 +319,23 @@ func Test_FindRejectedValues(t *testing.T) {
 	require.EqualError(t, err, "connection reset")
 }
 
+// Test_FindAfterPrincipalChanged makes a grant that ListGrants doesn't list yet, and then has CreateGrant reject the
+// same values, as when a principal was deleted after the first create. The grant may exist, so Find returns the error,
+// and UCP keeps the record instead of leaving the grant without one.
+func Test_FindAfterPrincipalChanged(t *testing.T) {
+	for _, code := range []string{"InvalidArnException", "NotFoundException"} {
+		h, api := newHandler()
+		api.lagNew = true
+		request := native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()}
+		_, err := h.Create(t.Context(), request)
+		require.NoError(t, err)
+		api.errs["CreateGrant"] = fault(code)
+		_, err = h.Find(t.Context(), request)
+		require.ErrorContains(t, err, code)
+		require.Len(t, api.grantsOf(keyID), 1)
+	}
+}
+
 // Test_CreateAfterChange sends a lost create again with a changed template. The key already has the grant named for
 // the create, so Create returns it instead of making a second grant, and UCP then compares it with the template.
 func Test_CreateAfterChange(t *testing.T) {

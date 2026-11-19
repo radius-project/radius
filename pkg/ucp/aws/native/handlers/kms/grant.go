@@ -392,14 +392,15 @@ func (h *Grant) create(ctx context.Context, request native.CreateRequest) (strin
 // it under the record: a PUT then compares it with the template, and rejects a change to a create-only property, and
 // a DELETE retires it.
 //
-// Find returns "" when the answer shows no grant can exist: the key no longer exists, or AWS rejects the values
-// themselves (ValidationError or InvalidArnException), which no create could have made a grant with. A PUT then
-// creates the grant with its own template, and a DELETE removes only the record, so a create AWS rejected never
-// blocks the alias. Any other error, such as a disabled key or a timeout, may follow a create that made the grant, so
-// Find returns it and UCP keeps the record.
+// Find returns "" when the answer shows no grant can exist: AWS rejects the values themselves with ValidationError,
+// such as an operation the key doesn't support, which no create could have made a grant with, or, before Find sends
+// CreateGrant, the key doesn't exist or its ARN isn't valid. A PUT then creates the grant with its own template, and a
+// DELETE removes only the record, so a create AWS rejected never blocks the alias. Any other error may follow a create
+// that made the grant, so Find returns it and UCP keeps the record: CreateGrant's InvalidArnException or
+// NotFoundException can name a principal deleted since the first create, and a disabled key still has its grants.
 func (h *Grant) Find(ctx context.Context, request native.CreateRequest) (string, error) {
-	id, _, err := h.create(ctx, request)
-	if awsapi.HasCode(err, "NotFoundException", "ValidationError", "InvalidArnException") {
+	id, sent, err := h.create(ctx, request)
+	if awsapi.HasCode(err, "ValidationError") || (!sent && awsapi.HasCode(err, "NotFoundException", "InvalidArnException")) {
 		return "", nil
 	}
 	return id, err
