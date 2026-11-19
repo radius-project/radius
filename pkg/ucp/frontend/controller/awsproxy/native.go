@@ -516,10 +516,14 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //   - RecoverBySearch: the handler's Find looks for the resource with the lost create's values, the pending
 //     properties, because the template may have changed since. If AWS has none, the create is sent again with the
 //     template. If another alias manages the resource Find returns, the request gets 409.
-//   - RecoverByResend: the create is sent again with the template. AWS may return the first resource, with the lost
-//     create's values, so UCP treats the result like a found resource rather than a new create. For a handler whose
-//     resource is some members of a parent, UCP first saves the members of both (see saveResendMembers). When the
-//     create fails but returns an identifier, the record keeps it (see identifierToKeep), and the request fails.
+//   - RecoverByResend: the create is sent again with the template, while the record is reserved (see
+//     resendReserved). AWS may return the first resource, with the lost create's values, so UCP treats the result
+//     like a found resource rather than a new create. When the create fails but returns an identifier, the record
+//     keeps it (see identifierToKeep), and the request fails.
+//
+// Find and reading AWS change nothing, so they run before a reservation. Every later call that can change AWS comes
+// after a reservation with the ETag this request read, so a DELETE that changed the record meanwhile makes the PUT
+// get 409 before it calls AWS.
 //
 // When UCP reads the resource, it continues by what AWS shows:
 //
@@ -534,18 +538,17 @@ func (e *engine) startDeleteCall(ctx context.Context, r *request, identifier str
 //   - failed otherwise: the request returns the failure, and the record stays, so a DELETE can remove the resource.
 func (e *engine) resumeNativeCreate(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, properties map[string]any, deploy applied, typeInfo *cloudformation.DescribeTypeOutput, parsed *typeSchema, secrets []string) (armrpc_rest.Response, error) {
 	identifier := rec.Properties.AWSIdentifier
-	if identifier == "" {
+	switch {
+	case identifier == "" && r.handler.Options().Recovery == native.RecoverByResend:
+		var resp armrpc_rest.Response
 		var err error
-		if r.handler.Options().Recovery == native.RecoverByResend {
-			var resp armrpc_rest.Response
-			etag, resp, err = e.saveResendMembers(ctx, r, rec, etag, deploy, parsed)
-			if resp != nil || err != nil {
-				return resp, err
-			}
-			identifier, err = e.resendCreate(ctx, r, rec, properties)
-		} else {
-			identifier, err = e.findCreate(ctx, r, rec, rec.Properties.PendingLastApplied)
+		identifier, etag, resp, err = e.resendReserved(ctx, r, rec, etag, properties, deploy, parsed)
+		if resp != nil || err != nil {
+			return resp, err
 		}
+	case identifier == "":
+		var err error
+		identifier, err = e.findCreate(ctx, r, rec, rec.Properties.PendingLastApplied)
 		if err != nil {
 			if found := e.identifierToKeep(ctx, r, identifier); found != "" {
 				e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
@@ -707,21 +710,71 @@ func (e *engine) recoverNativeCreate(ctx context.Context, r *request, rec *datam
 	return etag, nil, nil
 }
 
-// saveResendMembers saves the record before a create is sent again with the template, for a handler whose resource is
-// some members of a parent (native.ScopedReader). The create sent again may add the template's members and then fail,
-// so the pending values become the template's, with the members of the lost create added, and a DELETE removes the
-// members of both. Which attempt's write-only values AWS has is unknown, so the record keeps no fingerprints for them.
+// resendReserved sends the record's first create again with the template, for a handler whose Recovery is
+// RecoverByResend, and returns the identifier of the resource AWS has and the record's new ETag. The resend can create
+// the resource, so UCP first reserves the record with the ETag this request read: a DELETE that changed the record
+// since makes this request get 409 before it calls AWS, and one that comes later gets 409 until the record is
+// released. Otherwise a DELETE could remove the record while the resend makes or keeps the resource, and AWS would
+// keep a resource no record has.
 //
-// A template that changes a create-only property of the lost create, such as the parent, gets 400 and nothing is
-// saved or sent: sending the create again would add members to another parent, and the record would lose the lost
-// create's members.
-func (e *engine) saveResendMembers(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, deploy applied, parsed *typeSchema) (string, armrpc_rest.Response, error) {
+// After the resend, the record gets the identifier and its state before the reservation, as a record whose identifier
+// UCP saved before the create, and the request continues by what AWS shows. When the resend fails, the record keeps
+// an identifier the failed create returned (see identifierToKeep), and the request fails. When another alias manages
+// the resource, the request gets 409 and the record keeps no identifier. A failed save leaves the reservation, which
+// goes stale, and the next request sends the create again with the same client token.
+//
+// For a handler whose resource is some members of a parent (native.ScopedReader), the reservation also saves the
+// pending values as the template's, with the members of the lost create added: the resend may add the template's
+// members and then fail, and a DELETE then removes the members of both. Which attempt's write-only values AWS has is
+// unknown, so the record keeps no fingerprints for them. A template that changes a create-only property of the lost
+// create, such as the parent, gets 400 and nothing is saved or sent: sending the create again would add members to
+// another parent, and the record would lose the lost create's members.
+func (e *engine) resendReserved(ctx context.Context, r *request, rec *datamodel.AWSResource, etag string, properties map[string]any, deploy applied, parsed *typeSchema) (string, string, armrpc_rest.Response, error) {
+	if resp, err := resendMembers(r, rec, deploy, parsed); resp != nil || err != nil {
+		return "", "", resp, err
+	}
+	prior := rec.ProvisioningState()
+	etag, resp, err := e.reserve(ctx, r, rec, etag, records.OperationCreate)
+	if resp != nil || err != nil {
+		return "", "", resp, err
+	}
+
+	identifier, err := e.resendCreate(ctx, r, rec, properties)
+	if err != nil {
+		found := e.identifierToKeep(ctx, r, identifier)
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = found
+			rec.SetProvisioningState(prior)
+		})
+		resp, err := identifierError(ctx, r, err)
+		return "", "", resp, err
+	}
+	if held, err := e.checkIdentifier(ctx, r, identifier); held != nil || err != nil {
+		e.release(ctx, r, rec, etag, func(rec *datamodel.AWSResource) {
+			rec.SetProvisioningState(prior)
+		})
+		return "", "", held, err
+	}
+
+	rec.Properties.AWSIdentifier = identifier
+	rec.SetProvisioningState(prior)
+	etag, err = e.store.Save(ctx, rec, etag)
+	if err != nil {
+		resp, err := saveError(r.id, err)
+		return "", "", resp, err
+	}
+	return identifier, etag, nil, nil
+}
+
+// resendMembers sets the pending values a resend reserves for a handler whose resource is some members of a parent,
+// or returns 400 when the template changes a create-only property of the lost create (see resendReserved).
+func resendMembers(r *request, rec *datamodel.AWSResource, deploy applied, parsed *typeSchema) (armrpc_rest.Response, error) {
 	if _, scoped := r.handler.(native.ScopedReader); !scoped {
-		return etag, nil, nil
+		return nil, nil
 	}
 	patch, err := jsondiff.Compare(rec.Properties.PendingLastApplied, deploy.properties)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 	// The pending values have no write-only values, so the template's aren't changes.
 	patch = slices.DeleteFunc(patch, func(op jsondiff.Operation) bool {
@@ -729,18 +782,13 @@ func (e *engine) saveResendMembers(ctx context.Context, r *request, rec *datamod
 		return ok
 	})
 	if resp := createOnlyChanged(r, parsed, patch); resp != nil {
-		return "", resp, nil
+		return resp, nil
 	}
 	pending := maps.Clone(deploy.properties)
 	addMembers(pending, rec.Properties.PendingLastApplied)
 	rec.Properties.PendingLastApplied = pending
 	rec.Properties.PendingFingerprints = nil
-	etag, err = e.store.Save(ctx, rec, etag)
-	if err != nil {
-		resp, err := saveError(r.id, err)
-		return "", resp, err
-	}
-	return etag, nil, nil
+	return nil, nil
 }
 
 // identifierToKeep returns the identifier a resent create returned along with an error, so the record can keep it:
