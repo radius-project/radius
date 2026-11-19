@@ -301,7 +301,7 @@ func TestServiceDryRunRequests(t *testing.T) {
 			})
 		}
 		t.Run("Azure checkAccess stays local", func(t *testing.T) {
-			for _, scope := range []string{azure, azure + "/resourceGroups/unsupported"} {
+			for _, scope := range []string{azure, azure + "/resourceGroups/unsupported", azure + "/subscriptions/123"} {
 				for _, subject := range []string{"alice", "bob"} {
 					logs.TakeAll()
 					before := calls.Load()
