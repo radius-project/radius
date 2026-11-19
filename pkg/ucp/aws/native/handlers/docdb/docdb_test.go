@@ -78,12 +78,19 @@ func tags(pairs ...string) []any {
 	return out
 }
 
+// addClusters adds available DocumentDB clusters to store, for instances to be created in.
+func addClusters(store *awsfake.CloudControl, ids ...string) {
+	for _, id := range ids {
+		store.Put(clusterType, id, map[string]any{"DBClusterIdentifier": id, "Engine": Engine})
+	}
+}
+
 func Test_Suite_Cluster(t *testing.T) {
 	var fs fakes
 	cluster := map[string]any{
 		"DBClusterIdentifier":   "app-docdb",
 		"MasterUsername":        "radius",
-		"MasterUserPassword":    "p@ss-one-1234",
+		"MasterUserPassword":    "pass-one-1234",
 		"EngineVersion":         "5.0",
 		"BackupRetentionPeriod": 1,
 		"DeletionProtection":    false,
@@ -101,7 +108,7 @@ func Test_Suite_Cluster(t *testing.T) {
 		Properties:         cluster,
 		Identifier:         "app-docdb",
 		Changed:            with(cluster, map[string]any{"BackupRetentionPeriod": 7}),
-		ChangedWriteOnly:   with(cluster, map[string]any{"MasterUserPassword": "p@ss-two-5678"}),
+		ChangedWriteOnly:   with(cluster, map[string]any{"MasterUserPassword": "pass-two-5678"}),
 		Removable:          "Tags",
 		CreateOnlyChange:   with(cluster, map[string]any{"MasterUsername": "other"}),
 		OtherForm:          map[string]any{"EngineVersion": "5.0.0", "DBClusterIdentifier": "APP-DOCDB"},
@@ -113,6 +120,7 @@ func Test_Suite_Cluster(t *testing.T) {
 		FailCall: nativetest.FailCall(2, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: clusterAPI,
 	})
 }
 
@@ -129,6 +137,7 @@ func Test_Suite_Instance(t *testing.T) {
 		TypeName: instanceType,
 		Schema:   schema(t, "aws-docdb-dbinstance.json"),
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
+			addClusters(store, "app-docdb", "other-cluster")
 			api := newFakeAPI(store)
 			return fs.add(NewInstance(api), api)
 		},
@@ -147,6 +156,7 @@ func Test_Suite_Instance(t *testing.T) {
 		FailCall: nativetest.FailCall(2, func(h native.Handler) *nativetest.Failer {
 			return &fs.of(h).failer
 		}),
+		API: instanceAPI,
 	})
 }
 

@@ -169,8 +169,9 @@ func Test_Helm_InstallRadius_ExistingContourIsNotChecked(t *testing.T) {
 
 	client := NewMockHelmClient(gomock.NewController(t))
 
-	expectNoRadiusHistory(client)
 	options := NewDefaultClusterOptions()
+	options.RadiusInstalled = true
+	expectRadiusBaseline(t, client, options)
 	options.Radius.Reinstall = true
 	options.Contour.SetArgs = []string{turnOffFeaturesForTraefikCRDs}
 

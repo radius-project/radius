@@ -235,6 +235,11 @@ func TestVerify_Invalid(t *testing.T) {
 			c["aud"] = []string{"dynamic-rp"}
 			return sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, c)
 		}},
+		{name: "audience also names another receiver", token: func(t *testing.T) string {
+			c := claimsFor("ucp", start)
+			c["aud"] = []string{testAudience, "dynamic-rp"}
+			return sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, c)
+		}},
 		{name: "no audience", token: func(t *testing.T) string {
 			c := claimsFor("ucp", start)
 			delete(c, "aud")
@@ -733,14 +738,55 @@ func TestRefresh_WaitForRefreshInProgressHonorsContext(t *testing.T) {
 	require.NoError(t, v.Refresh(t.Context()), "a later refresh succeeds once the gate is free")
 }
 
+func TestVerify_IgnoresKeysOutsidePolicy(t *testing.T) {
+	weak, err := rsa.GenerateKey(rand.Reader, 1024)
+	require.NoError(t, err)
+	keys := defaultKeys()
+	keys["weak"] = &weak.PublicKey
+	v := newTestVerifier(t, newFakeSource(keys), &fakeClock{now: start})
+	require.NoError(t, v.Refresh(t.Context()))
+
+	_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "weak", weak, claimsFor("ucp", start)))
+	requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
+	_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", start)))
+	require.NoError(t, err)
+}
+
+func TestRefresh_NoUsableKeysDropsCachedKeys(t *testing.T) {
+	weak, err := rsa.GenerateKey(rand.Reader, 1024)
+	require.NoError(t, err)
+	sets := map[string]map[string]crypto.PublicKey{
+		"empty":            {},
+		"only unsupported": {"weak": &weak.PublicKey},
+	}
+	for name, set := range sets {
+		t.Run(name, func(t *testing.T) {
+			source := newFakeSource(defaultKeys())
+			v := newTestVerifier(t, source, &fakeClock{now: start})
+			require.NoError(t, v.Refresh(t.Context()))
+			token := sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", start))
+
+			source.set(set, nil)
+			require.ErrorContains(t, v.Refresh(t.Context()), "no usable signing keys")
+			_, err := v.Verify(t.Context(), token)
+			requireCode(t, err, v1.CodeAuthorizationUnavailable)
+
+			source.set(defaultKeys(), nil)
+			require.NoError(t, v.Refresh(t.Context()))
+			_, err = v.Verify(t.Context(), token)
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestRefresh_KeepsKeysOnFailure(t *testing.T) {
 	clock := &fakeClock{now: start}
 	source := newFakeSource(defaultKeys())
 	v := newTestVerifier(t, source, clock)
 	require.NoError(t, v.Refresh(t.Context()))
 
-	source.set(nil, nil)
-	require.Error(t, v.Refresh(t.Context()), "an empty key set is a failed refresh")
+	source.set(nil, errors.New("API server unreachable"))
+	require.Error(t, v.Refresh(t.Context()), "a failed fetch keeps the cached keys")
 
 	_, err := v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", start)))
 	require.NoError(t, err)

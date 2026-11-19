@@ -919,6 +919,14 @@ func validateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 		// A nil datamodel map is persisted as JSON null, not an empty object.
 		propertiesData = nil
 	}
+	if properties, ok := propertiesData.(map[string]any); ok {
+		// Radius writes the reserved status property, and schemas cannot declare it.
+		if _, found := properties[reservedPropStatus]; found {
+			properties = maps.Clone(properties)
+			delete(properties, reservedPropStatus)
+			propertiesData = properties
+		}
+	}
 
 	if err := schemaRef.Value.VisitJSON(propertiesData); err != nil {
 		if !allowEncryptedFields {

@@ -565,8 +565,8 @@ func (u *stageUpgrade) mock(t *testing.T, upgrades int, beforeHelm func()) *Mock
 			})
 		return client
 	}
-	migration := expectControllerStrategyMigration(client, u.command != "upgrade --reset-values").Times(upgrades)
-	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).After(migration).Times(upgrades).
+	client.EXPECT().MigrateControllerStrategy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, gomock.Any()).AnyTimes().Return(nil)
+	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(upgrades).
 		DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, _ bool, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
 			beforeHelm()
 			return u.helmClient.RunHelmUpgrade(u.configuration, c, vals, name, namespace, false, reuse, timeout)
@@ -594,6 +594,39 @@ func (u *stageUpgrade) run(t *testing.T, impl *Impl, setArgs []string) error {
 		return impl.InstallRadius(t.Context(), options, "test-context")
 	default:
 		return impl.InstallRadius(t.Context(), options, "test-context")
+	}
+}
+
+func Test_ControllerMigrationFailurePreventsUCPTrustStaging(t *testing.T) {
+	for _, command := range []string{"upgrade", "upgrade --reset-values", "install --reinstall"} {
+		t.Run(command, func(t *testing.T) {
+			client := NewMockHelmClient(gomock.NewController(t))
+			client.EXPECT().LoadChart("chart").Return(loadStageTestChart(t), nil)
+			client.EXPECT().RunHelmGet(gomock.Any(), NewDefaultClusterOptions().CertManager.ReleaseName).Return(nil, driver.ErrReleaseNotFound)
+			failure := errors.New("controller migration denied")
+			client.EXPECT().MigrateControllerStrategy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(),
+				"radius", RadiusSystemNamespace, command != "upgrade --reset-values").Return(failure)
+
+			c := newStageCluster(t, nil, true)
+			impl := c.impl(client)
+			options := NewDefaultClusterOptions()
+			options.Contour.Disabled = true
+			options.Radius.ChartPath = "chart"
+			options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
+			options.ResetValues = command == "upgrade --reset-values"
+			options.RadiusInstalled = true
+			expectRadiusBaseline(t, client, options)
+			var err error
+			if command == "install --reinstall" {
+				options.Radius.Reinstall = true
+				err = impl.InstallRadius(t.Context(), options, "test-context")
+			} else {
+				err = impl.UpgradeRadius(t.Context(), options, "test-context")
+			}
+			require.ErrorIs(t, err, failure)
+			require.Empty(t, c.kube.Actions(), "migration failure must precede trust Secret access")
+			require.Empty(t, c.dynamic.Actions(), "migration failure must precede APIService and issuer access")
+		})
 	}
 }
 

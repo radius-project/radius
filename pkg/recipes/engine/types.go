@@ -28,6 +28,7 @@ import (
 type Engine interface {
 	// Execute gathers environment configuration, recipe definition and calls the driver to deploy the recipe.
 	// prevState is added to the driver execute options, which is used to get the obsolete resources for cleanup. It consists list of recipe output resource IDs that were created in the previous deployment.
+	// When the deployment succeeds but cleanup fails, it returns the output together with a RecipeGarbageCollectionFailed error.
 	Execute(ctx context.Context, opts ExecuteOptions) (*recipes.RecipeOutput, error)
 
 	// Delete handles deletion of output resources for the recipe deployment.
@@ -58,6 +59,12 @@ type DeleteOptions struct {
 
 	// OutputResources is the list of output resources for the recipe.
 	OutputResources []rpv1.OutputResource
+
+	// PendingDeployments identifies Bicep deployments whose output inventory must be recovered before deletion.
+	PendingDeployments []string
+
+	// PersistCleanup saves recovered inventory before any infrastructure is deleted.
+	PersistCleanup func(context.Context, []rpv1.OutputResource, []string) error
 }
 
 type GetRecipeMetadataOptions struct {

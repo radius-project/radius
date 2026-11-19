@@ -21,9 +21,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -36,6 +38,7 @@ import (
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -90,6 +93,59 @@ spec:
 	require.ErrorContains(t, impl.CheckRadiusCertificates(t.Context(), opts, "selected-context"), "external TLS provider cannot project")
 }
 
+func TestCertificateActionRenderOrdering(t *testing.T) {
+	for _, action := range []string{"reinstall", "upgrade", "reset", "fresh"} {
+		for _, invalid := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/invalid-provider=%t", action, invalid), func(t *testing.T) {
+				c := certificateHelperChart(certificateTestChart(t))
+				c.Templates = append(c.Templates, &common.File{Name: "templates/action.yaml", Data: []byte(
+					`{{ if .Release.IsUpgrade }}{{ fail "rendered upgrade" }}{{ else }}{{ fail "rendered install" }}{{ end }}`)})
+				options := NewDefaultClusterOptions()
+				options.Contour.Disabled = true
+				options.RadiusInstalled = action != "fresh"
+				options.Radius.Reinstall = action == "reinstall" || action == "fresh"
+				options.ResetValues = action == "reset"
+				options.Radius.ChartPath = "chart"
+				provider := "external"
+				if invalid {
+					provider = "unknown"
+				}
+				options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=" + provider}
+				client := NewMockHelmClient(gomock.NewController(t))
+				client.EXPECT().LoadChart("chart").Return(c, nil)
+				if options.RadiusInstalled {
+					expectRadiusBaseline(t, client, options)
+				}
+				if !invalid {
+					client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(nil, driver.ErrReleaseNotFound)
+					if options.RadiusInstalled {
+						client.EXPECT().MigrateControllerStrategy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, !options.ResetValues).Return(nil)
+					}
+					if action == "reinstall" {
+						client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(&releasev1.Release{Chart: c, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}, nil)
+					} else if action == "fresh" {
+						client.EXPECT().RunHelmGet(gomock.Any(), "radius").Return(nil, driver.ErrReleaseNotFound)
+					}
+				}
+				impl := newStageCluster(t, nil, true).impl(client)
+				run := impl.UpgradeRadius
+				if options.Radius.Reinstall {
+					run = impl.InstallRadius
+				}
+				err := run(t.Context(), options, "test-context")
+				switch {
+				case invalid:
+					require.ErrorContains(t, err, "provider")
+				case action == "fresh":
+					require.ErrorContains(t, err, "rendered install")
+				default:
+					require.ErrorContains(t, err, "rendered upgrade")
+				}
+			})
+		}
+	}
+}
+
 func TestSteadyBYORechecksSigningSecret(t *testing.T) {
 	ca, key, _ := testSigningCA(t, nil, nil, nil, nil)
 	opts := NewDefaultClusterOptions()
@@ -109,13 +165,47 @@ metadata: {name: radius-apiserver-trust}`
 	secret := caTLSSecret("operator-ca", ca, key)
 	kube := fake.NewClientset(secret)
 	impl := &Impl{Helm: client, newCertificateClient: func(k string) (kubernetes.Interface, error) { require.Equal(t, "selected", k); return kube, nil }}
-	render := func(context.Context) (string, bool, error) { return manifest, true, nil }
-	_, plan, err := impl.prepareOrdinaryCertificates(t.Context(), opts, chart, nil, map[string]any{}, "selected", true, render)
+	_, plan, err := impl.prepareOrdinaryCertificates(t.Context(), opts, chart, nil, map[string]any{}, "selected", true)
 	require.NoError(t, err)
 	secret.Data[corev1.TLSPrivateKeyKey] = nil
 	_, err = kube.CoreV1().Secrets(opts.Radius.Namespace).Update(t.Context(), secret, metav1.UpdateOptions{})
 	require.NoError(t, err)
 	require.ErrorContains(t, plan.recheck(), "signing Secret changed")
+}
+
+func TestMigrationFailureWithImportedCA(t *testing.T) {
+	ca, key, cert := testSigningCA(t, nil, nil, nil, nil)
+	digest := sha256.Sum256(cert.Raw)
+	name := fmt.Sprintf("radius-imported-ca-%x", digest[:16])
+	options := NewDefaultClusterOptions()
+	dir := t.TempDir()
+	options.Certificates = CertificateOptions{CACert: filepath.Join(dir, "ca.pem"), CAKey: filepath.Join(dir, "key.pem")}
+	require.NoError(t, os.WriteFile(options.Certificates.CACert, ca, 0600))
+	require.NoError(t, os.WriteFile(options.Certificates.CAKey, key, 0600))
+	options.Radius.ChartPath, options.Contour.Disabled = "chart", true
+	options.RadiusReleaseValues = caReleaseValues(name, ca)
+	c := certificateTestChart(t)
+	revision := &releasev1.Release{Version: 1, Chart: c, Config: options.RadiusReleaseValues,
+		Info: &releasev1.Info{Status: releasecommon.StatusDeployed}, Manifest: `apiVersion: v1
+kind: Secret
+metadata: {name: radius-apiserver-trust}`}
+	client := NewMockHelmClient(gomock.NewController(t))
+	client.EXPECT().LoadChart("chart").Return(c, nil)
+	client.EXPECT().RunHelmHistory(gomock.Any(), "radius").Return([]*releasev1.Release{revision}, nil).MinTimes(1)
+	client.EXPECT().RunHelmGet(gomock.Any(), options.CertManager.ReleaseName).Return(nil, driver.ErrReleaseNotFound)
+	failure := errors.New("migration denied")
+	expectControllerStrategyMigration(client, true).Return(failure)
+	cluster := newStageCluster(t, nil, true)
+	impl := cluster.impl(client)
+	signing := fake.NewClientset(caTLSSecret(name, ca, key))
+	impl.newCertificateClient = func(string) (kubernetes.Interface, error) { return signing, nil }
+	require.ErrorIs(t, impl.UpgradeRadius(t.Context(), options, "test-context"), failure)
+	require.NotEmpty(t, signing.Actions())
+	for _, action := range signing.Actions() {
+		require.Equal(t, "get", action.GetVerb())
+	}
+	require.Empty(t, cluster.kube.Actions())
+	require.Empty(t, cluster.dynamic.Actions())
 }
 
 func runInstalledChartSwitchCommands(t *testing.T, old, selected *chart.Chart, stored map[string]any, kubeContext string) {
