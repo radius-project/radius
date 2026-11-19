@@ -318,7 +318,7 @@ func Test_TenantDatabase_Delete(t *testing.T) {
 		api.status[tenantID] = "backing-up"
 		err := h.Delete(t.Context(), region, tenantID)
 		requireRejected(t, err, "InvalidDBInstanceState")
-		require.Contains(t, err.Error(), "after 10m0s")
+		require.Contains(t, err.Error(), "after 45s")
 		require.Empty(t, api.snapshots)
 	})
 }
@@ -433,7 +433,7 @@ func Test_TenantDatabase_ProgressSecret(t *testing.T) {
 func Test_TenantDatabase_instanceBusy(t *testing.T) {
 	for status, busy := range map[string]bool{
 		"available": false, "Available": false, "backing-up": true, "modifying": true, "rebooting": true,
-		"a-status-rds-adds-later": true, "stopped": false, "deleting": false, "storage-full": false,
+		"a-status-rds-adds-later": true, "storage-optimization": false, "storage-initialization": false, "stopped": false, "deleting": false, "storage-full": false,
 		"incompatible-parameters": false, "inaccessible-encryption-credentials": false, "failed": false,
 	} {
 		require.Equal(t, busy, instanceBusy(status), status)

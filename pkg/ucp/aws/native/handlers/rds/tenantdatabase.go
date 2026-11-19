@@ -73,18 +73,20 @@ func sleep(ctx context.Context, d time.Duration) error {
 
 const (
 	// instanceWait is how long a create, update, or delete waits for the tenant database's instance to be free
-	// before it fails. RDS changes one tenant database of an instance at a time and backs the instance up after each,
-	// which took about 2.5 minutes in a review against AWS.
-	instanceWait = 10 * time.Minute
+	// before it fails. The wait runs inside the PUT or DELETE request, which reaches UCP through kube-apiserver with
+	// its 60 second limit, so it is short: it covers an instance that is about to be free, and a template chains
+	// tenant databases of one instance with dependsOn, because the backup RDS takes after each change took about 2.5
+	// minutes in a review against AWS. Progress waits for the instance after each change, with no such limit.
+	instanceWait = 45 * time.Second
 
 	// firstPoll and maxPoll are how long it waits between reads of the instance: firstPoll, doubled up to maxPoll.
 	firstPoll = 5 * time.Second
-	maxPoll   = 30 * time.Second
+	maxPoll   = 20 * time.Second
 )
 
 // whenInstanceFree makes call, a create, update, or delete of a tenant database of instance, once the instance is
 // free. RDS rejects such a call with InvalidDBInstanceState while it changes another tenant database of the instance,
-// so two tenant databases a template deploys together both succeed. While the instance is busy, or call is rejected
+// so a change that starts just after another one finishes waits for it. While the instance is busy, or call is rejected
 // that way while the instance reads as available, it waits and tries again, up to instanceWait, and then fails with a
 // rejected client failure. An instance that won't be available without someone acting, such as a stopped one, gets
 // call's error at once. A stop of ctx sends nothing more.
@@ -111,7 +113,7 @@ func (h *TenantDatabase) whenInstanceFree(ctx context.Context, region string, in
 		}
 		if !h.now().Add(poll).Before(deadline) {
 			return &native.Failure{
-				Message:     fmt.Sprintf("RDS can't change the tenant database while the DB instance %q or the tenant database is busy, and after %s %s. Deploy again once both are available.", instance, instanceWait, last),
+				Message:     fmt.Sprintf("RDS can't change the tenant database while the DB instance %q or the tenant database is busy, and after %s %s. RDS changes one tenant database of an instance at a time, so give tenant databases of one instance dependsOn on each other, or deploy again once both are available.", instance, instanceWait, last),
 				ClientError: true,
 				Outcome:     native.OutcomeRejected,
 			}
@@ -494,6 +496,10 @@ func (h *TenantDatabase) instanceProgress(ctx context.Context, region string, id
 	return native.Progress{Done: true, State: "available"}, nil
 }
 
+// availableInstanceStates are the statuses of a DB instance that RDS documents as available for changes. Storage
+// optimization can last more than 24 hours, but the instance stays available.
+var availableInstanceStates = []string{"available", "storage-optimization", "storage-initialization"}
+
 // settledInstanceStates are the statuses of a DB instance that won't become available without someone acting, or
 // that end with the instance gone, so waiting for them can't help.
 var settledInstanceStates = []string{"deleting", "delete-precheck", "failed", "restore-error", "stopped", "storage-full"}
@@ -503,7 +509,7 @@ var settledInstanceStates = []string{"deleting", "delete-precheck", "failed", "r
 // waited for rather than ignored.
 func instanceBusy(status string) bool {
 	status = strings.ToLower(status)
-	if status == "available" || slices.Contains(settledInstanceStates, status) {
+	if slices.Contains(availableInstanceStates, status) || slices.Contains(settledInstanceStates, status) {
 		return false
 	}
 	for _, prefix := range []string{"inaccessible-", "incompatible-", "insufficient-"} {

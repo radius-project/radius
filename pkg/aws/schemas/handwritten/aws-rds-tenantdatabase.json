@@ -1,6 +1,6 @@
 {
   "typeName": "AWS::RDS::TenantDatabase",
-  "description": "A tenant database (PDB) in an RDS for Oracle container database (CDB) instance that uses the multi-tenant configuration. RDS changes one tenant database of an instance at a time, so a deploy waits up to 10 minutes for the instance to be free. Deleting it takes a final DB snapshot of the instance, which Radius never deletes.",
+  "description": "A tenant database (PDB) in an RDS for Oracle container database (CDB) instance that uses the multi-tenant configuration. RDS changes one tenant database of an instance at a time and backs the instance up after each change, so give tenant databases of one instance dependsOn on each other. A deploy waits for the instance after each change, and up to 45 seconds for it to be free before one. Deleting it takes a final DB snapshot of the instance, which Radius never deletes.",
   "additionalProperties": false,
   "definitions": {
     "Tag": {
