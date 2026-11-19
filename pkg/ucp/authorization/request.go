@@ -73,6 +73,18 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 			return RequestMapping{Kind: DiscoveryRequest}, nil
 		}
 	}
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	// Azure serves only credential collections/items locally under providers.
+	// Classify its catch-all before interpreting a suffix as an inspection API.
+	if len(parts) >= 4 && strings.EqualFold(parts[0], "planes") && strings.EqualFold(parts[1], "azure") &&
+		strings.EqualFold(parts[3], "providers") {
+		providerPath := parts[4:]
+		localCredential := (len(providerPath) == 2 || len(providerPath) == 3) &&
+			strings.EqualFold(providerPath[0], "System.Azure") && strings.EqualFold(providerPath[1], "credentials")
+		if !localCredential {
+			return c.mapping(ResourceRequest, "System.Azure/credentials/use/action", "/"+strings.Join(parts[:3], "/"))
+		}
+	}
 	for _, action := range []string{"checkaccess", "explainaccess", "effectiveaccess"} {
 		suffix := "/providers/radius.core/" + action
 		if strings.HasSuffix(lower, suffix) {
@@ -92,7 +104,6 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 			return RequestMapping{}, fmt.Errorf("unsupported access inspection method")
 		}
 	}
-	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if method == http.MethodGet && lower == "/planes" {
 		return c.mapping(ListRequest, "System.Resources/planes/read", "/")
 	}
@@ -124,15 +135,6 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 				return RequestMapping{Kind: OperationStatusRequest}, nil
 			}
 			return c.mapping(ResourceRequest, "System."+planeType+"/credentials/use/action", plane)
-		}
-		// The Azure router serves only credential collections/items locally
-		// beneath providers; all other namespaces and descendants use its proxy.
-		if strings.EqualFold(planeType, "azure") && len(parts) > 3 && strings.EqualFold(parts[3], "providers") {
-			localCredential := (len(parts) == 6 || len(parts) == 7) &&
-				strings.EqualFold(parts[4], "System.Azure") && strings.EqualFold(parts[5], "credentials")
-			if !localCredential {
-				return c.mapping(ResourceRequest, "System.Azure/credentials/use/action", plane)
-			}
 		}
 		if method == http.MethodGet && len(parts) >= 8 &&
 			strings.EqualFold(parts[len(parts)-4], "locations") &&

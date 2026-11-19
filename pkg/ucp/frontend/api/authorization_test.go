@@ -179,7 +179,7 @@ func TestServiceDryRunRequests(t *testing.T) {
 		var calls atomic.Int32
 		proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			calls.Add(1)
-			require.Equal(t, http.MethodGet, r.Method)
+			w.Header().Set("X-Downstream-Method", r.Method)
 			w.Header().Set("X-Downstream", "preserved")
 			w.WriteHeader(http.StatusAccepted)
 			_, err := w.Write([]byte("original proxy response"))
@@ -200,25 +200,29 @@ func TestServiceDryRunRequests(t *testing.T) {
 			}},
 		}))
 		for _, tt := range []struct {
-			name, path, permission, target, result string
-			proxied                                bool
+			name, method, path, permission, target, result string
+			proxied                                        bool
 		}{
-			{"real icon", iconParent + "/icons/" + iconHash, "System.Resources/resourceProviders/resourceTypes/read", iconParent, "wouldDeny", false},
-			{"child named icons", child, "", "", "indeterminate", false},
-			{"Azure Radius.Core proxy", azure + "/providers/Radius.Core/applications/app", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
-			{"Azure System.Resources proxy", azure + "/providers/System.Resources/resourcegroups/rg", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
-			{"Azure credentials local", azure + "/providers/System.Azure/credentials/default", "System.Azure/credentials/read", azure + "/providers/System.Azure/credentials/default", "wouldDeny", false},
+			{"real icon", http.MethodGet, iconParent + "/icons/" + iconHash, "System.Resources/resourceProviders/resourceTypes/read", iconParent, "wouldDeny", false},
+			{"child named icons", http.MethodGet, child, "", "", "indeterminate", false},
+			{"Azure Radius.Core proxy", http.MethodGet, azure + "/providers/Radius.Core/applications/app", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure System.Resources proxy", http.MethodGet, azure + "/providers/System.Resources/resourcegroups/rg", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure effectiveAccess proxy", http.MethodGet, azure + "/providers/Radius.Core/effectiveAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure checkAccess proxy", http.MethodPost, azure + "/providers/Radius.Core/checkAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure explainAccess proxy", http.MethodPost, azure + "/providers/Radius.Core/explainAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure credentials local", http.MethodGet, azure + "/providers/System.Azure/credentials/default", "System.Azure/credentials/read", azure + "/providers/System.Azure/credentials/default", "wouldDeny", false},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
 				before := calls.Load()
-				allowed, allowedHeaders, allowedBody := call(http.MethodGet, tt.path+"?api-version=2023-10-01-preview", "alice", "")
+				allowed, allowedHeaders, allowedBody := call(tt.method, tt.path+"?api-version=2023-10-01-preview", "alice", "")
 				logs.TakeAll()
-				denied, deniedHeaders, deniedBody := call(http.MethodGet, tt.path+"?api-version=2023-10-01-preview", "bob", "")
+				denied, deniedHeaders, deniedBody := call(tt.method, tt.path+"?api-version=2023-10-01-preview", "bob", "")
 				require.Equal(t, allowed, denied)
 				require.Equal(t, allowedBody, deniedBody)
 				if tt.proxied {
 					require.Equal(t, http.StatusAccepted, denied, deniedBody)
 					require.Equal(t, "original proxy response", deniedBody)
+					require.Equal(t, tt.method, deniedHeaders.Get("X-Downstream-Method"))
 					require.Equal(t, "preserved", allowedHeaders.Get("X-Downstream"))
 					require.Equal(t, "preserved", deniedHeaders.Get("X-Downstream"))
 					require.Equal(t, before+2, calls.Load())
