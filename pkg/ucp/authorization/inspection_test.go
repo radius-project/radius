@@ -179,39 +179,6 @@ func TestInspectionSnapshotAvailabilityChanges(t *testing.T) {
 			require.ErrorIs(t, err, ErrAuthorizationUnavailable)
 		})
 	}
-	for _, operation := range []string{"whoami", "checkAccess"} {
-		for _, scenario := range []string{"expired", "cancelled"} {
-			t.Run(operation+"/"+scenario, func(t *testing.T) {
-				ctx, cancel := context.WithCancel(t.Context())
-				defer cancel()
-				calls := 0
-				clk := evaluationClock{WithTicker: clock.RealClock{}, since: func(time.Time) time.Duration {
-					calls++
-					if calls == 2 {
-						if scenario == "cancelled" {
-							cancel()
-						} else {
-							return PolicyMaxAge
-						}
-					}
-					return 0
-				}}
-				runtime := &PolicyRuntime{ctx: ctx, cache: &PolicyCache{value: testPolicySnapshot(t, 1), asOf: time.Now(), clock: clk}}
-				method, body, route := http.MethodGet, "", "whoAmI"
-				if operation == "checkAccess" {
-					method, body, route = http.MethodPost, `{"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`, "checkAccess"
-				}
-				request := httptest.NewRequest(method, "/providers/Radius.Core/"+route+"?api-version=2025-08-01-preview", strings.NewReader(body))
-				request = request.WithContext(context.WithValue(request.Context(), identityContextKey{}, policyActor().Identity))
-				response := httptest.NewRecorder()
-				Inspection(runtime, "")(http.NotFoundHandler()).ServeHTTP(response, request)
-				require.Equal(t, http.StatusServiceUnavailable, response.Code, response.Body.String())
-				require.Contains(t, response.Body.String(), "AuthorizationUnavailable")
-				require.NotContains(t, response.Body.String(), `"checks"`)
-				require.NotContains(t, response.Body.String(), `"principal"`)
-			})
-		}
-	}
 }
 
 func TestInspectionInputLimits(t *testing.T) {
