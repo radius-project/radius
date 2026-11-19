@@ -555,7 +555,7 @@ func Test_ensureCertManager(t *testing.T) {
 
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
-			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.defaults, tt.stored, tt.upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", tt.defaults, tt.stored, cliUserValues(t, options), tt.upgrade)
 			switch {
 			case tt.wantErr != "":
 				require.ErrorContains(t, err, tt.wantErr)
@@ -638,7 +638,7 @@ func Test_ensureCertManager_RBACWarning(t *testing.T) {
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = tt.setArgs
 			options.Radius.SetFileArgs = tt.setFileArgs
-			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, tt.stored, tt.upgrade)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, tt.stored, cliUserValues(t, options), tt.upgrade)
 			if !tt.wantWarning {
 				require.NoError(t, err)
 				require.Empty(t, logs)
@@ -698,7 +698,7 @@ func Test_ensureCertManager_NewerOwnedRelease(t *testing.T) {
 				}}
 				options := NewDefaultClusterOptions()
 				options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-				err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, upgrade)
+				err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, cliUserValues(t, options), upgrade)
 				if healthy {
 					require.NoError(t, err)
 				} else {
@@ -732,7 +732,7 @@ func Test_ensureCertManager_DetectionFailureDoesNotRepair(t *testing.T) {
 			}}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, false)
+			err := impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, cliUserValues(t, options), false)
 			require.ErrorIs(t, err, failure)
 		})
 	}
@@ -958,7 +958,7 @@ func Test_ensureCertManager_UnreadyWebhookIsNotReused(t *testing.T) {
 			}}
 			options := NewDefaultClusterOptions()
 			options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-			err = impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, version == "v1.22.1")
+			err = impl.ensureCertManager(t.Context(), options, "test-context", nil, nil, cliUserValues(t, options), version == "v1.22.1")
 			require.ErrorContains(t, err, "cert-manager webhook Deployment")
 			require.ErrorContains(t, err, "is not ready")
 		})
@@ -1111,4 +1111,12 @@ func Test_foreignCertManagerResources_MissingTypeDoesNotHideOtherTypes(t *testin
 	foreign, err := foreignCertManagerResources(t.Context(), client, RadiusSystemNamespace)
 	require.NoError(t, err)
 	require.Equal(t, []string{"app/Issuer/issuer"}, foreign)
+}
+
+// cliUserValues returns the values that prepareRadiusChart reads from the command line options.
+func cliUserValues(t *testing.T, options ClusterOptions) map[string]any {
+	t.Helper()
+	values, err := parseUserValuesFromCLI(&options.Radius)
+	require.NoError(t, err)
+	return values
 }
