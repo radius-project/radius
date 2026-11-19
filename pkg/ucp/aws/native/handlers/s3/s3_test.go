@@ -101,6 +101,7 @@ func Test_Suite_MultiRegionAccessPointRoutes(t *testing.T) {
 			{"Mrap": "mfzwi23gnjvgw.mrap", "Routes": properties["Routes"]},
 			withRoute(properties, map[string]any{"TrafficDialPercentage": 0}),
 			withRoute(properties, map[string]any{"Bucket": "bucket-east", "TrafficDialPercentage": 101}),
+			withRoute(properties, map[string]any{"Bucket": "bucket-east", "TrafficDialPercentage": 50}),
 			withRoute(properties, map[string]any{"Bucket": "bucket-east"}),
 			{"Mrap": properties["Mrap"], "Routes": []any{
 				map[string]any{"Bucket": "bucket-east", "TrafficDialPercentage": 100},

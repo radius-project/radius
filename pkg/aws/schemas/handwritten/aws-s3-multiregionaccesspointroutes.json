@@ -38,9 +38,8 @@
         },
         "TrafficDialPercentage": {
           "type": "integer",
-          "description": "100 makes the route active, so the Multi-Region Access Point sends requests to the bucket, and 0 makes it passive. At least one route must be active.",
-          "minimum": 0,
-          "maximum": 100
+          "description": "100 makes the route active, so the Multi-Region Access Point sends requests to the bucket, and 0 makes it passive. S3 takes no other value. At least one route must be active.",
+          "enum": [0, 100]
         }
       },
       "required": ["TrafficDialPercentage"]

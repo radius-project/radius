@@ -71,7 +71,12 @@ func Test_Routes_Apply(t *testing.T) {
 		{"a Region the Multi-Region Access Point doesn't have", routeItems(byBucket("bucket-east", 100), byBucket("bucket-west", 0), byBucket("bucket-eu", 0), map[string]any{"Region": "ap-south-1", "TrafficDialPercentage": 0}), "lists the Region ap-south-1"},
 		{"the same Region twice", routeItems(map[string]any{"Region": "us-east-1", "TrafficDialPercentage": 100}, map[string]any{"Region": "us-east-1", "TrafficDialPercentage": 0}), "lists Region us-east-1 twice"},
 		{"a dial that isn't a whole number", routeItems(byBucket("bucket-east", 0), map[string]any{"Bucket": "bucket-west", "TrafficDialPercentage": 50.5}), "whole number"},
-		{"a route without a dial", routeItems(map[string]any{"Bucket": "bucket-east"}), "TrafficDialPercentage from 0 to 100"},
+		{"a route without a dial", routeItems(map[string]any{"Bucket": "bucket-east"}), "TrafficDialPercentage to 0 (passive) or 100 (active)"},
+		{"a dial of 1", routeItems(byBucket("bucket-east", 100), byBucket("bucket-west", 1), byBucket("bucket-eu", 0)), "gives the bucket bucket-west the TrafficDialPercentage 1. Use 0 (passive) or 100 (active)"},
+		{"a dial of 50", routeItems(byBucket("bucket-east", 50), byBucket("bucket-west", 100), byBucket("bucket-eu", 0)), "gives the bucket bucket-east the TrafficDialPercentage 50"},
+		{"a dial of 99 named by Region", routeItems(byBucket("bucket-east", 100), byBucket("bucket-west", 0), map[string]any{"Region": "eu-west-1", "TrafficDialPercentage": 99}), "gives the Region eu-west-1 the TrafficDialPercentage 99"},
+		{"a dial below 0", routeItems(byBucket("bucket-east", 100), byBucket("bucket-west", -1), byBucket("bucket-eu", 0)), "TrafficDialPercentage -1"},
+		{"a dial above 100", routeItems(byBucket("bucket-east", 101), byBucket("bucket-west", 0), byBucket("bucket-eu", 0)), "TrafficDialPercentage 101"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			api := newFakeAPI(awsfake.NewCloudControl())

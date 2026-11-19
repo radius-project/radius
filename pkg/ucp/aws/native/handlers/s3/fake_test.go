@@ -245,7 +245,7 @@ func dial(route map[string]any) int {
 
 // SubmitMultiRegionAccessPointRoutes changes the routes the call names and keeps the others. It fails, changing
 // nothing, for a route that names neither a bucket nor a Region, or a bucket in another Region than the one it gives,
-// a TrafficDialPercentage outside 0 to 100, a Multi-Region Access Point with one bucket, and a configuration with no
+// a TrafficDialPercentage other than 0 or 100, a Multi-Region Access Point with one bucket, and a configuration with no
 // active route.
 func (f *fakeAPI) SubmitMultiRegionAccessPointRoutes(ctx context.Context, in *s3control.SubmitMultiRegionAccessPointRoutesInput, optFns ...func(*s3control.Options)) (*s3control.SubmitMultiRegionAccessPointRoutesOutput, error) {
 	f.mu.Lock()
@@ -270,7 +270,7 @@ func (f *fakeAPI) SubmitMultiRegionAccessPointRoutes(ctx context.Context, in *s3
 	}
 	for _, u := range in.RouteUpdates {
 		bucket, region := aws.ToString(u.Bucket), aws.ToString(u.Region)
-		if (bucket == "" && region == "") || u.TrafficDialPercentage == nil || *u.TrafficDialPercentage < 0 || *u.TrafficDialPercentage > 100 {
+		if (bucket == "" && region == "") || u.TrafficDialPercentage == nil || (*u.TrafficDialPercentage != 0 && *u.TrafficDialPercentage != 100) {
 			return nil, fault(invalidRequestCode)
 		}
 		i := slices.IndexFunc(updated, func(r any) bool {

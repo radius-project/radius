@@ -380,6 +380,20 @@ var routesAPI = map[string]nativetest.Call{
 				Code: invalidRequestCode,
 			},
 			nativetest.Rule{
+				Rule: "TrafficDialPercentage is 0 (passive) or 100 (active), and S3 rejects 1 to 99 with InvalidRequest, as calls with 1, 50, and 99 against S3 in us-west-2 show",
+				Doc:  routeType,
+				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
+					var err error
+					for _, dial := range []int32{1, 50, 99} {
+						if err = submit(ctx, store, route("bucket-east", "", dial)); err == nil {
+							return fmt.Errorf("the fake accepted the TrafficDialPercentage %d", dial)
+						}
+					}
+					return err
+				},
+				Code: invalidRequestCode,
+			},
+			nativetest.Rule{
 				Rule: "at least one Region stays active, and a configuration with every Region passive fails with InvalidRequest",
 				Doc:  routeType,
 				Break: func(ctx context.Context, store *awsfake.CloudControl) error {
@@ -399,8 +413,9 @@ var routesAPI = map[string]nativetest.Call{
 		Unclear: routeCallsUnclear + " The route data type names no error for a route without Bucket or Region, a " +
 			"bucket outside the Region given, a bucket the Multi-Region Access Point doesn't have, or a " +
 			"TrafficDialPercentage outside 0 to 100; the fake returns InvalidRequest, the error the page gives for every " +
-			"Region passive. The docs describe only 0 (passive) and 100 (active); the fake counts any other value as " +
-			"active. The failover errors page gives 405 for a Multi-Region Access Point with one Region without naming " +
+			"Region passive. The data type gives TrafficDialPercentage the range 0 to 100 but describes only 0 (passive) " +
+			"and 100 (active); calls against S3 in us-west-2 with 1, 50, and 99 each failed with InvalidRequest and " +
+			"changed nothing, so the fake rejects them too. The failover errors page gives 405 for a Multi-Region Access Point with one Region without naming " +
 			"the code; the fake returns MethodNotAllowed, S3's code for 405, for any route update of one. It gives 409 " +
 			"for two updates of one Multi-Region Access Point at once without naming the code; the fake handles one call " +
 			"at a time, and the handler sends one call per change. AWS can take up to 2 minutes to route by a new " +

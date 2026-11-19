@@ -35,8 +35,9 @@ const (
 	routesType = "AWS::S3::MultiRegionAccessPointRoutes"
 
 	// activeDial is the TrafficDialPercentage of an active route, which every route of a new Multi-Region Access Point
-	// has.
-	activeDial = 100
+	// has, and passiveDial that of a passive one. S3 Control rejects every other value.
+	activeDial  = 100
+	passiveDial = 0
 
 	// noSuchMrapCode is the error S3 Control returns for a Multi-Region Access Point it doesn't have.
 	noSuchMrapCode = "NoSuchMultiRegionAccessPoint"
@@ -112,21 +113,24 @@ func routesOf(properties map[string]any) ([]types.MultiRegionAccessPointRoute, e
 		Routes []types.MultiRegionAccessPointRoute
 	}
 	if err := awsapi.Decode(map[string]any{"Routes": properties["Routes"]}, &decoded); err != nil {
-		return nil, rejected("each item of Routes must set Bucket or Region as text, and TrafficDialPercentage as a whole number from 0 to 100")
+		return nil, rejected("each item of Routes must set Bucket or Region as text, and TrafficDialPercentage as a whole number, 0 or 100")
 	}
 	return decoded.Routes, nil
 }
 
 // checkRoutes rejects routes AWS doesn't take: one that names neither a bucket nor a Region, or has no
-// TrafficDialPercentage from 0 to 100, and two that name the same bucket or Region.
+// TrafficDialPercentage of 0 or 100, and two that name the same bucket or Region.
 func checkRoutes(routes []types.MultiRegionAccessPointRoute) error {
 	seen := map[string]bool{}
 	for _, r := range routes {
 		if aws.ToString(r.Bucket) == "" && aws.ToString(r.Region) == "" {
 			return rejected("each item of Routes must set Bucket, Region, or both")
 		}
-		if r.TrafficDialPercentage == nil || *r.TrafficDialPercentage < 0 || *r.TrafficDialPercentage > activeDial {
-			return rejected("each item of Routes must set TrafficDialPercentage from 0 to 100")
+		if r.TrafficDialPercentage == nil {
+			return rejected("each item of Routes must set TrafficDialPercentage to 0 (passive) or 100 (active)")
+		}
+		if dial := *r.TrafficDialPercentage; dial != passiveDial && dial != activeDial {
+			return rejected("Routes gives the %s the TrafficDialPercentage %d. Use 0 (passive) or 100 (active); S3 takes no other value", describe(r), dial)
 		}
 		for _, key := range []string{"bucket " + aws.ToString(r.Bucket), "Region " + aws.ToString(r.Region)} {
 			if strings.HasSuffix(key, " ") {
