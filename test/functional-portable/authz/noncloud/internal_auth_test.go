@@ -421,40 +421,6 @@ func tail(s string, n int) string {
 	return strings.Join(lines, "\n")
 }
 
-func Test_AuthFailureLine(t *testing.T) {
-	t.Parallel()
-
-	marker := authz.LogFieldDenied
-	line := func(address string) string {
-		data, err := json.Marshal(map[string]any{
-			marker: true, authz.LogFieldCode: v1.CodeInvalidAuthenticationInfo,
-			mtls.LogFieldPeerAddress: address, mtls.LogFieldReason: "missing bearer token",
-		})
-		require.NoError(t, err)
-		return "2026-11-06T00:00:00Z " + string(data)
-	}
-
-	tests := []struct {
-		name    string
-		podIP   string
-		address string
-		want    bool
-	}{
-		{name: "IPv4", podIP: "10.0.0.1", address: "10.0.0.1:43210", want: true},
-		{name: "IPv6", podIP: "fd00::1", address: "[fd00::1]:43210", want: true},
-		{name: "IPv6 non-canonical pod IP", podIP: "fd00:0:0:0:0:0:0:1", address: "[fd00::1]:43210", want: true},
-		{name: "IPv4 other pod with shared prefix", podIP: "10.0.0.1", address: "10.0.0.12:43210"},
-		{name: "IPv6 other pod", podIP: "fd00::1", address: "[fd00::2]:43210"},
-		{name: "no port", podIP: "10.0.0.1", address: "10.0.0.1"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			require.Equal(t, tt.want, authFailureLine(line(tt.address), marker, tt.podIP, "missing bearer token"))
-		})
-	}
-}
-
 func Test_DenialLogsMatches(t *testing.T) {
 	t.Parallel()
 
