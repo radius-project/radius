@@ -707,6 +707,8 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 					},
 					newCertManagerDynamicClient: readyUCPAPIServiceClient,
 					newUCPAPIServerTrustClient:  issuedUCPAPIServerTrustClient,
+					// rad renders the target chart to tell which certificate it serves UCP's API server with.
+					contourCluster: &fakeContourCluster{},
 				}
 
 				state, err := impl.CheckRadiusInstall("test-context")

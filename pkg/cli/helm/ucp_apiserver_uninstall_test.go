@@ -19,6 +19,8 @@ package helm
 import (
 	"fmt"
 	"maps"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -26,6 +28,7 @@ import (
 	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/storage/driver"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -34,6 +37,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
+	"k8s.io/client-go/kubernetes"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 )
 
@@ -208,7 +213,7 @@ func Test_deleteUnadoptedUCPAPIServerStage(t *testing.T) {
 			var logs []string
 			impl := &Impl{logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }}
 
-			require.NoError(t, impl.deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, RadiusSystemNamespace, radiusReleaseName))
+			require.NoError(t, impl.deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, RadiusSystemNamespace, radiusReleaseName, nil))
 			for _, staged := range ucpAPIServerCAStageObjects {
 				want := tt.wantKept && staged.name == certificate.name && staged.kind == certificate.kind
 				require.Equal(t, want, stageObjectExists(t, dynamicClient, staged.resource, staged.name), "%s %s", staged.kind, staged.name)
@@ -222,7 +227,7 @@ func Test_deleteUnadoptedUCPAPIServerStage(t *testing.T) {
 			}
 
 			deletes := countDeletes(dynamicClient)
-			require.NoError(t, impl.deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, RadiusSystemNamespace, radiusReleaseName))
+			require.NoError(t, impl.deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, RadiusSystemNamespace, radiusReleaseName, nil))
 			if tt.wantRerunDeletes {
 				require.Equal(t, deletes+1, countDeletes(dynamicClient), "a rerun deletes the Certificate it read again")
 				require.False(t, stageObjectExists(t, dynamicClient, certificate.resource, certificate.name))
@@ -234,6 +239,103 @@ func Test_deleteUnadoptedUCPAPIServerStage(t *testing.T) {
 
 	t.Run("cert-manager CRDs already removed", func(t *testing.T) {
 		dynamicClient := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
-		require.NoError(t, (&Impl{}).deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, RadiusSystemNamespace, radiusReleaseName))
+		require.NoError(t, (&Impl{}).deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, RadiusSystemNamespace, radiusReleaseName, nil))
 	})
+}
+
+// Helm uninstall leaves the Secrets that cert-manager issued for the Certificates of the release, since they have no
+// owner reference, and Secret ucp-cert when an interrupted switch to authorization off staged it before Helm adopted
+// it. rad deletes those it or cert-manager wrote for the release, and warns about any other Secret with their names.
+func Test_UninstallRadius_DeletesUCPAPIServerSecrets(t *testing.T) {
+	issued := func(name, certificate string) *corev1.Secret {
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: RadiusSystemNamespace, UID: types.UID("uid-" + name), ResourceVersion: "1",
+			Annotations: map[string]string{certificateNameAnnotation: certificate}}}
+	}
+	stagedOffCertificate := func(release string) *unstructured.Unstructured {
+		object := stagedUCPAPIServerObject("Secret", ucpOffCertificateSecretName, release, nil)
+		object.SetAPIVersion("v1")
+		return object
+	}
+	tests := []struct {
+		name       string
+		secrets    []runtime.Object
+		staged     *unstructured.Unstructured
+		wantKept   []string
+		wantLogged []string
+	}{
+		{
+			name:    "issued for the release",
+			secrets: []runtime.Object{issued(ucpAPIServerCASecretName, ucpAPIServerCASecretName), issued(ucpAPIServerTLSSecretName, ucpAPIServerCertificateName)},
+			staged:  stagedOffCertificate(radiusReleaseName),
+		},
+		{
+			name:     "with other owners",
+			secrets:  []runtime.Object{issued(ucpAPIServerCASecretName, "other"), issued(ucpAPIServerTLSSecretName, "other")},
+			staged:   stagedOffCertificate(""),
+			wantKept: []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName, ucpOffCertificateSecretName},
+			wantLogged: []string{
+				"Secret radius-system/ucp-cert, which is not an object rad staged for the Radius release",
+				"radius-system/radius-apiserver-ca", "radius-system/ucp-apiserver-tls",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			kubeClient := kubefake.NewSimpleClientset(tt.secrets...)
+			dynamicClient := fakeCertManagerDynamicClient(nil, tt.staged)
+			mockHelmClient := NewMockHelmClient(gomock.NewController(t))
+			options := NewDefaultClusterOptions()
+			for _, c := range []struct{ releaseName, ns string }{
+				{options.Radius.ReleaseName, options.Radius.Namespace},
+				{options.Contour.ReleaseName, options.Contour.Namespace},
+			} {
+				mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), c.releaseName, c.ns, true).Return(&release.UninstallReleaseResponse{}, nil)
+			}
+			mockHelmClient.EXPECT().RunHelmGet(gomock.Any(), certManagerReleaseName).Return(nil, driver.ErrReleaseNotFound)
+			var logs []string
+			impl := &Impl{
+				Helm:                        mockHelmClient,
+				logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
+				removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+				newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubeClient, nil },
+				newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
+			}
+			require.NoError(t, impl.UninstallRadius(t.Context(), options, "test-context"))
+
+			for _, name := range []string{ucpAPIServerCASecretName, ucpAPIServerTLSSecretName} {
+				_, err := kubeClient.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), name, metav1.GetOptions{})
+				if slices.Contains(tt.wantKept, name) {
+					require.NoError(t, err, "uninstall must keep Secret %s", name)
+				} else {
+					require.True(t, apierrors.IsNotFound(err), "uninstall must delete Secret %s, got %v", name, err)
+				}
+			}
+			require.Equal(t, slices.Contains(tt.wantKept, ucpOffCertificateSecretName),
+				stageObjectExists(t, dynamicClient, corev1.SchemeGroupVersion.WithResource("secrets"), ucpOffCertificateSecretName))
+			joined := strings.Join(logs, "\n")
+			for _, want := range tt.wantLogged {
+				require.Contains(t, joined, want)
+			}
+			if len(tt.wantLogged) == 0 {
+				require.Empty(t, logs)
+			}
+		})
+	}
+}
+
+// A rollback, or an upgrade, to a chart that still declares part of the radius-apiserver-ca chain, such as the
+// radius-selfsigned-bootstrap Issuer of the parent chart, must not delete that part after Helm applies it.
+func Test_deleteUnadoptedUCPAPIServerStage_KeepsDeclaredObjects(t *testing.T) {
+	var objects []runtime.Object
+	for _, staged := range ucpAPIServerCAStageObjects {
+		objects = append(objects, stagedUCPAPIServerObject(staged.kind, staged.name, radiusReleaseName, nil))
+	}
+	dynamicClient := fakeCertManagerDynamicClient(nil, objects...)
+	declared, err := manifestObjects("apiVersion: cert-manager.io/v1\nkind: Issuer\nmetadata:\n  name: " + radiusBootstrapIssuerName + "\n---\napiVersion: v1\nkind: Secret\nmetadata:\n  name: ucp-cert\n")
+	require.NoError(t, err)
+
+	require.NoError(t, (&Impl{}).deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, RadiusSystemNamespace, radiusReleaseName, declared))
+	for _, staged := range ucpAPIServerCAStageObjects {
+		require.Equal(t, staged.name == radiusBootstrapIssuerName, stageObjectExists(t, dynamicClient, staged.resource, staged.name), "%s %s", staged.kind, staged.name)
+	}
 }

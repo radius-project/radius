@@ -800,6 +800,11 @@ func Test_UpgradeRadius_StageUCPAPIServerCATimeout(t *testing.T) {
 	require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
 }
 
+// deployedMode returns a function that returns mode, as stageUCPAPIServerCA reads the deployed mode.
+func deployedMode(mode authz.Mode) func() (authz.Mode, error) {
+	return func() (authz.Mode, error) { return mode, nil }
+}
+
 // When UCP does not move to the staged ucp-cert in time before authorization turns off, rad stops before Helm with
 // both CAs trusted. Running the command again once UCP has rolled out finishes the upgrade.
 // With authorization off before and after, UCP already serves the certificate of the off chart, so rad does not read
@@ -810,9 +815,9 @@ func Test_StageUCPAPIServerCA_OffToOffSkipsCluster(t *testing.T) {
 		t.Fatal("rad must not render the chart")
 		return "", false, nil
 	}
-	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", authz.ModeOff, authz.ModeOff, render))
+	require.NoError(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", deployedMode(authz.ModeOff), authz.ModeOff, render))
 	for _, deployed := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
-		require.ErrorContains(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", deployed, authz.ModeOff, render), "no cluster")
+		require.ErrorContains(t, impl.stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, "radius", deployedMode(deployed), authz.ModeOff, render), "no cluster")
 	}
 }
 
@@ -1099,7 +1104,7 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 		c := newStageCluster(t, nil, true)
 		c.onUCP(t)
 		c.helmAppliesOff(t, nil, nil)
-		require.NoError(t, c.impl(&MockHelmClient{}).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+		require.NoError(t, c.impl(&MockHelmClient{}).ReconcileUCPOffAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace, nil))
 		writes := len(c.clusterWrites())
 
 		m := NewMockHelmClient(gomock.NewController(t))
@@ -1114,4 +1119,49 @@ func Test_RollbackRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 		require.Empty(t, c.clusterWrites()[writes:], "rad must not stage or wait for radius-apiserver-ca for a chart that does not implement authorization")
 		c.requireOffTrust(t)
 	})
+}
+
+// A chart before radius-apiserver-ca, such as v0.62.0, accepts the values of authorization on but serves UCP from the
+// Secret ucp-cert of authorization off. Moving to it from a release with authorization on stages that Secret before
+// Helm, as turning authorization off does; from a release with authorization off, UCP already serves it.
+func Test_StageUCPAPIServerCA_ChartWithoutAPIServerCA(t *testing.T) {
+	oldChart := renderStageTestManifest(t, map[string]any{})
+	render := func(context.Context) (string, bool, error) { return oldChart, true, nil }
+
+	t.Run("from authorization on", func(t *testing.T) {
+		shortenUCPAPIServiceWait(t)
+		c := newStageCluster(t, nil, true)
+		c.onUCP(t)
+		require.NoError(t, c.impl(nil).stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, radiusReleaseName, deployedMode(authz.ModeEnforce), authz.ModeEnforce, render))
+		requireStagedOffCertificate(t, c.stagedOffCertificate(t))
+		c.requireTrusts(t, c.servedLeaf(t), "UCP before Helm")
+	})
+	t.Run("from authorization off", func(t *testing.T) {
+		c := newStageCluster(t, nil, true)
+		c.addOffAPIService(t, offAPIServiceVariants[0])
+		require.NoError(t, c.impl(nil).stageUCPAPIServerCA(t.Context(), "test-context", RadiusSystemNamespace, radiusReleaseName, deployedMode(authz.ModeOff), authz.ModeEnforce, render))
+		require.Nil(t, c.stagedOffCertificate(t))
+		c.requireNotStaged(t)
+	})
+}
+
+// Rolling back to a revision with authorization on needs cert-manager to issue its certificates, so rad checks it
+// before Helm, as install and upgrade do.
+func Test_RollbackRadius_ChecksCertManager(t *testing.T) {
+	manifest := renderStageTestManifest(t, authzOnValues)
+	history := []*releasev1.Release{
+		{Version: 1, Config: authzOnValues, Manifest: manifest, Chart: manifestTestChart(t, manifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Config: map[string]any{}, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+	}
+	c := newStageCluster(t, nil, true)
+	c.addOffAPIService(t, offAPIServiceVariants[0])
+	m := NewMockHelmClient(gomock.NewController(t))
+	m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history, nil)
+	impl := c.impl(m)
+	impl.newCertManagerClients = func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+		kubeClient, apiextClient := fakeCertManagerCluster{}.clients()
+		return kubeClient, apiextClient, nil
+	}
+	require.ErrorContains(t, impl.RollbackRadiusToRevision(t.Context(), "test-context", 1), "cert-manager is not installed")
+	c.requireNotStaged(t)
 }
