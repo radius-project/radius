@@ -116,8 +116,12 @@ func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
 // Test_ResendDeletePermissionsCoverCreate checks that the delete permissions of a handler whose Recovery is
 // RecoverByResend cover its create: a DELETE of a record whose create may have reached AWS sends the create again to
 // find the resource. They must list every AWS call Create makes, and every create permission, which also covers what
-// the call does, such as tagging the resource or iam:PassRole.
+// the call does, such as tagging the resource or iam:PassRole. The resend has no write-only values, so a permission in
+// writeOnlyOnly, for a call Create makes only when the write-only property is set, isn't needed.
 func Test_ResendDeletePermissionsCoverCreate(t *testing.T) {
+	writeOnlyOnly := map[string]map[string]string{
+		"AWS::FSx::FileSystem": {"fsx:CreateFileSystemFromBackup": "/properties/BackupId"},
+	}
 	catalog, err := schemas.Load()
 	require.NoError(t, err)
 	missing := []string{}
@@ -131,6 +135,7 @@ func Test_ResendDeletePermissionsCoverCreate(t *testing.T) {
 			Handlers map[string]struct {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
+			WriteOnlyProperties []string `json:"writeOnlyProperties"`
 		}
 		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
 		required := slices.Clone(schema.Handlers["create"].Permissions)
@@ -138,6 +143,9 @@ func Test_ResendDeletePermissionsCoverCreate(t *testing.T) {
 			required = append(required, src.iam[call]+":"+call)
 		}
 		for _, action := range required {
+			if property, ok := writeOnlyOnly[h.TypeName()][action]; ok && slices.Contains(schema.WriteOnlyProperties, property) {
+				continue
+			}
 			gap := h.TypeName() + " delete: " + action
 			if !slices.Contains(schema.Handlers["delete"].Permissions, action) && !slices.Contains(missing, gap) {
 				missing = append(missing, gap)
