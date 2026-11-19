@@ -22,13 +22,10 @@ package s3
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3control"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -53,22 +50,9 @@ func rejected(format string, args ...any) error {
 	return &native.Failure{Message: fmt.Sprintf(format, args...), ClientError: true, Outcome: native.OutcomeRejected}
 }
 
-// rejectedByS3 returns err as a client failure AWS applied none of when S3 answered it with a 4xx status, and err
-// otherwise. The SDK leaves the fault of most S3 and S3 Control errors unset, such as InvalidRequest or AccessDenied,
-// so without this UCP would count a request S3 rejected as possibly applied. A not found error stays ErrNotFound.
-func rejectedByS3(err error) error {
-	var response *smithyhttp.ResponseError
-	if err == nil || errors.Is(err, native.ErrNotFound) || !errors.As(err, &response) {
-		return err
-	}
-	if status := response.HTTPStatusCode(); status < http.StatusBadRequest || status >= http.StatusInternalServerError {
-		return err
-	}
-	return &native.Failure{Message: err.Error(), ClientError: true, Outcome: native.OutcomeRejected}
-}
-
-// notFoundOrRejected returns err as ErrNotFound when it has code, and otherwise as rejectedByS3 does, for a read or a
-// reset, where a resource AWS doesn't have is not an error.
+// notFoundOrRejected returns err as ErrNotFound when it has code, and otherwise as awsapi.Rejected does, for a read or
+// a reset, where a resource AWS doesn't have is not an error. The SDK leaves the fault of most S3 and S3 Control
+// errors unknown, such as InvalidRequest or AccessDenied.
 func notFoundOrRejected(err error, code string) error {
-	return rejectedByS3(awsapi.NotFound(err, code))
+	return awsapi.Rejected(awsapi.NotFound(err, code))
 }

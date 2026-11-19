@@ -118,7 +118,7 @@ func (h *BucketRequestPayment) Create(ctx context.Context, request native.Create
 		return "", err
 	}
 	if err := h.put(ctx, request.Region, bucket, payer); err != nil {
-		return "", rejectedByS3(err)
+		return "", awsapi.Rejected(err)
 	}
 	return bucket, nil
 }
@@ -129,7 +129,7 @@ func (h *BucketRequestPayment) Update(ctx context.Context, request native.Update
 	if err != nil {
 		return err
 	}
-	return rejectedByS3(h.put(ctx, request.Region, request.Identifier, payer))
+	return awsapi.Rejected(h.put(ctx, request.Region, request.Identifier, payer))
 }
 
 // Reset sets the payer of the bucket back to BucketOwner, S3's default. It returns ErrNotFound when S3 has no such

@@ -249,7 +249,7 @@ func (h *MultiRegionAccessPointRoutes) apply(ctx context.Context, region string,
 	}
 	current, err := h.get(ctx, region, account, mrap)
 	if err != nil {
-		return rejectedByS3(err)
+		return awsapi.Rejected(err)
 	}
 	listed := make([]bool, len(current))
 	for _, d := range desired {
@@ -273,7 +273,7 @@ func (h *MultiRegionAccessPointRoutes) apply(ctx context.Context, region string,
 	if len(missing) > 0 {
 		return rejected("Routes leaves out the routes to %s. List every route of the Multi-Region Access Point", strings.Join(missing, ", "))
 	}
-	return rejectedByS3(h.submit(ctx, region, account, mrap, desired))
+	return awsapi.Rejected(h.submit(ctx, region, account, mrap, desired))
 }
 
 // Create sets the routes of the Multi-Region Access Point and returns its ARN.
