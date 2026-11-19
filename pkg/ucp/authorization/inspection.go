@@ -164,14 +164,19 @@ func (r *PolicyRuntime) CheckAccess(caller Identity, scope string, request api.A
 	return result, nil
 }
 
+// ValidateInspectionScope checks inspection scope length and supported topology.
+func ValidateInspectionScope(scope string) error {
+	if err := validateAccessString("scope", scope, maxAccessScopeLength); err != nil {
+		return err
+	}
+	return ValidateScope(scope)
+}
+
 func validateAccessCheck(scope string, request api.AccessCheckRequest) ([]Check, error) {
 	if len(request.Checks) == 0 || len(request.Checks) > maxAccessChecks {
 		return nil, fmt.Errorf("checks must contain between 1 and %d items", maxAccessChecks)
 	}
-	if err := validateAccessString("scope", scope, maxAccessScopeLength); err != nil {
-		return nil, err
-	}
-	if err := ValidateScope(scope); err != nil {
+	if err := ValidateInspectionScope(scope); err != nil {
 		return nil, err
 	}
 	if p := request.Principal; p != nil {

@@ -105,7 +105,7 @@ func (r *runner) Validate(cmd *cobra.Command, _ []string) error {
 	if r.scope == "" {
 		r.scope = r.workspace.Scope
 	}
-	if err := authorization.ValidateScope(r.scope); err != nil {
+	if err := authorization.ValidateInspectionScope(r.scope); err != nil {
 		return fmt.Errorf("invalid inspection scope: %w", err)
 	}
 	if len(r.actions) == 0 {
@@ -250,13 +250,19 @@ func validMode(mode *api.UserAuthorizationMode) bool {
 }
 
 func validateIdentityResponse(result api.WhoAmIResult) error {
-	if !validPrincipal(result.Principal) || result.Issuer == nil || *result.Issuer != *result.Principal.Issuer ||
+	if !validPrincipal(result.Principal) || *result.Principal.Type == api.PrincipalTypeGroup ||
+		result.Issuer == nil || *result.Issuer != *result.Principal.Issuer ||
 		!validMode(result.Mode) || result.IsRadiusAdministrator == nil || result.Groups == nil {
 		return fmt.Errorf("Radius returned an invalid identity response")
 	}
 	for _, group := range result.Groups {
 		if !validPrincipal(group) || *group.Type != api.PrincipalTypeGroup || *group.Issuer != *result.Issuer {
 			return fmt.Errorf("Radius returned an invalid group identity")
+		}
+	}
+	for _, warning := range result.Warnings {
+		if warning == nil {
+			return fmt.Errorf("Radius returned an invalid identity response: warning must not be null")
 		}
 	}
 	return nil

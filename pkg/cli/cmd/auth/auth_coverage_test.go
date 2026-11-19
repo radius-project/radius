@@ -391,6 +391,8 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 					name   string
 					mutate func(map[string]any)
 				}{
+					{"group caller", func(w map[string]any) { w["principal"].(map[string]any)["type"] = "group" }},
+					{"null warning", func(w map[string]any) { w["warnings"] = []any{nil} }},
 					{"missing issuer", func(w map[string]any) { delete(w, "issuer") }},
 					{"mismatched issuer", func(w map[string]any) { w["issuer"] = "different" }},
 					{"missing admin", func(w map[string]any) { delete(w, "isRadiusAdministrator") }},
@@ -426,6 +428,35 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 					require.Empty(t, writer.Writes, "malformed success response must not reach either formatter")
 				})
 			}
+		}
+	}
+}
+
+func TestIdentityResponseWithoutWarnings(t *testing.T) {
+	for _, operation := range []string{"whoami", "status"} {
+		for _, format := range []string{"json", "table"} {
+			t.Run(operation+"/"+format, func(t *testing.T) {
+				identity, err := (&testClient{}).whoAmI(t.Context())
+				require.NoError(t, err)
+				identity.Principal.Type = to.Ptr(api.PrincipalTypeWorkload)
+				identity.Warnings = nil
+				data, err := json.Marshal(identity)
+				require.NoError(t, err)
+				require.NotContains(t, string(data), `"warnings"`)
+				server, _ := inspectionHTTPServer(t, http.StatusOK, identity)
+				config := radcli.LoadConfigWithWorkspace(t)
+				section, err := cli.ReadWorkspaceSection(config)
+				require.NoError(t, err)
+				workspace := section.Items[radcli.TestWorkspaceName]
+				workspace.Connection["overrides"] = map[string]any{"ucp": server.URL}
+				section.Items[radcli.TestWorkspaceName] = workspace
+				cli.UpdateWorkspaceSection(config, section)
+				writer := &output.MockOutput{}
+				cmd, _ := newTestCommand(&framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: config}, Output: writer}, operation)
+				cmd.SetArgs([]string{"--output", format})
+				require.NoError(t, cmd.ExecuteContext(t.Context()))
+				require.Len(t, writer.Writes, 1)
+			})
 		}
 	}
 }
