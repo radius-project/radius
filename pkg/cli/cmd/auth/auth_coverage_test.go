@@ -502,6 +502,7 @@ func TestCheckResponsePrincipalMatchesExplicitRequest(t *testing.T) {
 			name      string
 			principal api.Principal
 			omit      bool
+			empty     bool
 			wantError bool
 		}{
 			{
@@ -527,6 +528,10 @@ func TestCheckResponsePrincipalMatchesExplicitRequest(t *testing.T) {
 				name: "omitted principal uses returned identity", omit: true,
 				principal: api.Principal{Type: to.Ptr(api.PrincipalTypeUser), Issuer: to.Ptr("kubernetes:other"), Subject: to.Ptr("alice")},
 			},
+			{
+				name: "empty principal is not self", empty: true,
+				principal: api.Principal{Type: to.Ptr(api.PrincipalTypeUser), Issuer: to.Ptr("kubernetes:other"), Subject: to.Ptr("alice")},
+			},
 		} {
 			t.Run(format+"/"+tt.name, func(t *testing.T) {
 				response := api.CheckAccessResponse{
@@ -544,11 +549,19 @@ func TestCheckResponsePrincipalMatchesExplicitRequest(t *testing.T) {
 				writer := &output.MockOutput{}
 				cmd, _ := newTestCommand(&framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: config}, Output: writer}, "check")
 				args := []string{"--output", format, "--scope", "/", "--action", "Radius.Core/applications/read"}
-				if !tt.omit {
+				if tt.empty {
+					args = append(args, "--principal=")
+				} else if !tt.omit {
 					args = append(args, "--principal", "group:developers", "--issuer", "kubernetes:test")
 				}
 				cmd.SetArgs(args)
 				err = cmd.ExecuteContext(t.Context())
+				if tt.empty {
+					require.EqualError(t, err, "--principal cannot be empty; omit it to check the caller")
+					require.Empty(t, writer.Writes)
+					require.Empty(t, requests, "empty explicit principal must fail before an HTTP request")
+					return
+				}
 				if tt.wantError {
 					require.EqualError(t, err, "Radius returned an invalid access-check response: principal does not match the request")
 					require.Empty(t, writer.Writes, "mismatched principal must not reach either formatter")

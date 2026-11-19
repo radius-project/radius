@@ -123,6 +123,9 @@ func (r *runner) Validate(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("supply one --target per --action, or omit all targets to check at scope")
 	}
 	if r.principal == "" {
+		if cmd.Flags().Changed("principal") {
+			return fmt.Errorf("--principal cannot be empty; omit it to check the caller")
+		}
 		if r.issuer != "" {
 			return fmt.Errorf("--issuer requires --principal")
 		}

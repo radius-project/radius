@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -17,8 +18,12 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
-func inspectionRoute(path string) (operation, scope string) {
-	lower := strings.ToLower(path)
+func inspectionRoute(path, pathBase string) (operation, scope string) {
+	path, mounted := MountedRequestPath(path, pathBase)
+	if !mounted {
+		return "", ""
+	}
+	lower := strings.ToLower(strings.TrimSuffix(path, "/"))
 	const prefix = "/providers/radius.core/"
 	index := strings.LastIndex(lower, prefix)
 	if index < 0 {
@@ -40,15 +45,7 @@ func inspectionRoute(path string) (operation, scope string) {
 func Inspection(runtime *PolicyRuntime, pathBase string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			path := r.URL.Path
-			if pathBase != "" {
-				if !strings.HasPrefix(path, pathBase+"/") {
-					next.ServeHTTP(w, r)
-					return
-				}
-				path = strings.TrimPrefix(path, pathBase)
-			}
-			operation, scope := inspectionRoute(path)
+			operation, scope := inspectionRoute(r.URL.Path, pathBase)
 			if operation == "" {
 				next.ServeHTTP(w, r)
 				return
@@ -104,25 +101,12 @@ func Inspection(runtime *PolicyRuntime, pathBase string) func(http.Handler) http
 	}
 }
 
-// Generated model unmarshallers intentionally ignore unknown properties. Decode
-// a strict wire shape instead so groups cannot be silently accepted as input.
+// Validate exact wire keys before generated decoding, which ignores unknown
+// properties. Struct decoding would also accept case variants of trusted fields.
 func decodeAccessCheck(w http.ResponseWriter, r *http.Request) (api.AccessCheckRequest, error) {
-	var wire struct {
-		Principal json.RawMessage `json:"principal,omitempty"`
-		Checks    []*struct {
-			Permission *string `json:"permission"`
-			Target     *string `json:"target"`
-		} `json:"checks"`
-	}
-	var principal struct {
-		Type        *api.PrincipalType `json:"type"`
-		Issuer      *string            `json:"issuer"`
-		Subject     *string            `json:"subject"`
-		DisplayName json.RawMessage    `json:"displayName,omitempty"`
-	}
+	var body json.RawMessage
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&wire); err != nil {
+	if err := decoder.Decode(&body); err != nil {
 		return api.AccessCheckRequest{}, err
 	}
 	var extra any
@@ -130,39 +114,61 @@ func decodeAccessCheck(w http.ResponseWriter, r *http.Request) (api.AccessCheckR
 		return api.AccessCheckRequest{}, errors.New("expected exactly one JSON request object")
 	}
 	request := api.AccessCheckRequest{}
-	if len(wire.Checks) == 0 || len(wire.Checks) > maxAccessChecks {
-		return request, fmt.Errorf("checks must contain between 1 and %d items", maxAccessChecks)
+	wire, err := inspectionRequestObject(body, "principal", "checks")
+	if err != nil {
+		return request, err
 	}
-	if len(wire.Principal) > 0 {
-		if bytes.Equal(bytes.TrimSpace(wire.Principal), []byte("null")) {
-			return request, errors.New("principal must not be null; omit it to check the caller")
-		}
-		principalDecoder := json.NewDecoder(bytes.NewReader(wire.Principal))
-		principalDecoder.DisallowUnknownFields()
-		if err := principalDecoder.Decode(&principal); err != nil {
+	var checks []json.RawMessage
+	if raw := wire["checks"]; len(raw) > 0 {
+		if err := json.Unmarshal(raw, &checks); err != nil {
 			return request, err
 		}
-		var displayName *string
-		if len(principal.DisplayName) > 0 {
-			if bytes.Equal(bytes.TrimSpace(principal.DisplayName), []byte("null")) {
-				return request, errors.New("principal.displayName must not be null; omit it if no label is supplied")
-			}
-			if err := json.Unmarshal(principal.DisplayName, &displayName); err != nil {
-				return request, err
-			}
+	}
+	if len(checks) == 0 || len(checks) > maxAccessChecks {
+		return request, fmt.Errorf("checks must contain between 1 and %d items", maxAccessChecks)
+	}
+	if raw := wire["principal"]; len(raw) > 0 {
+		if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+			return request, errors.New("principal must not be null; omit it to check the caller")
 		}
-		request.Principal = &api.AccessCheckPrincipal{
-			Type: principal.Type, Issuer: principal.Issuer,
-			Subject: principal.Subject, DisplayName: displayName,
+		principal, err := inspectionRequestObject(raw, "type", "issuer", "subject", "displayName")
+		if err != nil {
+			return request, err
+		}
+		if bytes.Equal(bytes.TrimSpace(principal["displayName"]), []byte("null")) {
+			return request, errors.New("principal.displayName must not be null; omit it if no label is supplied")
+		}
+		if err := json.Unmarshal(raw, &request.Principal); err != nil {
+			return request, err
 		}
 	}
-	for _, check := range wire.Checks {
-		if check == nil {
-			return request, errors.New("access check cannot be null")
+	for _, raw := range checks {
+		if _, err := inspectionRequestObject(raw, "permission", "target"); err != nil {
+			return request, err
 		}
-		request.Checks = append(request.Checks, &api.AccessCheck{Permission: check.Permission, Target: check.Target})
+		var check api.AccessCheck
+		if err := json.Unmarshal(raw, &check); err != nil {
+			return request, err
+		}
+		request.Checks = append(request.Checks, &check)
 	}
 	return request, nil
+}
+
+func inspectionRequestObject(raw json.RawMessage, allowed ...string) (map[string]json.RawMessage, error) {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		return nil, err
+	}
+	if fields == nil {
+		return nil, errors.New("expected a JSON object, not null")
+	}
+	for name := range fields {
+		if !slices.Contains(allowed, name) {
+			return nil, fmt.Errorf("unknown field %q", name)
+		}
+	}
+	return fields, nil
 }
 
 func writeInspectionError(w http.ResponseWriter, r *http.Request, status int, code, message string) {
