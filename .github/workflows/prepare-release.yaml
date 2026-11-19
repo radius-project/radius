@@ -126,7 +126,7 @@ jobs:
           git rev-parse --verify --quiet "${release_ref}^{commit}" \
             >/dev/null || release_ref=HEAD
           bash ./.github/scripts/verify-release-build-contract.sh \
-            "${release_ref}" --require-sibling-releases \
+            "${release_ref}" --require-sibling-releases --require-current-bicep \
             --expected-targets .github/release-parity/targets.json
 
           # A final promotes the channel's last release candidate.

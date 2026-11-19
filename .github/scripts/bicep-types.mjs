@@ -35,8 +35,7 @@ const request = () => ({ signal: AbortSignal.timeout(20_000) });
 /** @typedef {{repository: string, ref: string, commit: string, workflow: string, runId: number, generationAttempt: number}} Source */
 
 export const targets = Object.freeze({
-  ghcr: "ghcr.io/radius-project/bicep-types-radius:edge",
-  acr: "biceptypes.azurecr.io/radius:latest"
+  ghcr: "ghcr.io/radius-project/bicep-types-radius:edge"
 });
 
 /** Run only trusted, installed tools; never a command from a downloaded bundle. */
@@ -247,8 +246,7 @@ export async function prepare(archive, source, directory, run = tool) {
     ...bundle,
     publicationAttempt: source.generationAttempt,
     status: "failed",
-    ghcr: { reference: targets.ghcr },
-    acr: { reference: targets.acr }
+    ghcr: { reference: targets.ghcr }
   };
 }
 
@@ -352,7 +350,7 @@ export async function prepareBundle(
   };
 }
 
-export function copyRequest(receipt) {
+export function validateReceipt(receipt) {
   const { source, artifact, manifestDigest } = receipt;
   assert.equal(source.repository, "radius-project/radius");
   assert.equal(source.ref, "refs/heads/main");
@@ -371,25 +369,10 @@ export function copyRequest(receipt) {
   assert.match(artifact.digest, digestPattern);
   assert.match(manifestDigest, digestPattern);
   assert.equal(receipt.ghcr.reference, targets.ghcr);
-  assert.equal(receipt.acr.reference, targets.acr);
-  const identifier = `copy-radius-edge-${source.commit}-${source.runId}-${source.generationAttempt}-${manifestDigest.slice(7)}`;
-  assert.ok(identifier.length <= 200, "Copy identifier exceeds monitor limit");
-  return {
-    mode: "copy",
-    source_repository: source.repository,
-    source_ref: source.ref,
-    source_sha: source.commit,
-    registry_target: "radius",
-    rel_channel: "edge",
-    digest: manifestDigest,
-    release_identifier: identifier,
-    source_evidence: {
-      run_id: source.runId,
-      run_attempt: source.generationAttempt,
-      artifact_id: artifact.id,
-      artifact_digest: artifact.digest
-    }
-  };
+  assert.ok(
+    !Object.hasOwn(receipt, "acr") && !Object.hasOwn(receipt, "mirror"),
+    "Historical mirror receipts cannot be resumed by the GHCR-only publisher"
+  );
 }
 
 async function verifyDigest(reference, digest, run, registryConfig) {
@@ -414,7 +397,7 @@ export async function publishGHCR(receipt, layout, mainSha, run = tool) {
     assert.equal(
       receipt.publicationAttempt,
       1,
-      "Superseded retry: prior publication may be partial. Inspect both tags/receipts and recover from current main"
+      "Superseded retry: prior publication may be partial. Inspect the GHCR tag/receipts and recover from current main"
     );
     receipt.status = "superseded";
     return;
@@ -429,7 +412,7 @@ export async function publishGHCR(receipt, layout, mainSha, run = tool) {
   ]);
   await verifyDigest(targets.ghcr, receipt.manifestDigest, run);
   receipt.ghcr.digest = receipt.manifestDigest;
-  receipt.status = "pending-mirror";
+  receipt.status = "uploaded";
 }
 
 export async function publish({ github, core }, source, directory, run = tool) {
@@ -439,7 +422,7 @@ export async function publish({ github, core }, source, directory, run = tool) {
     source
   );
   assert.equal(receipt.publicationAttempt, source.generationAttempt);
-  const payload = copyRequest(receipt);
+  validateReceipt(receipt);
   try {
     const { data: main } = await github.rest.repos.getBranch({
       ...repo,
@@ -449,11 +432,7 @@ export async function publish({ github, core }, source, directory, run = tool) {
     assert.equal(main.protected, true);
     assert.match(main.commit.sha, /^[0-9a-f]{40}$/);
     await publishGHCR(receipt, join(directory, "layout"), main.commit.sha, run);
-    if (receipt.status === "pending-mirror") {
-      receipt.mirror = {
-        release_identifier: payload.release_identifier,
-        run_state: "not-requested"
-      };
+    if (receipt.status === "uploaded") {
       await save(join(directory, "receipt.json"), receipt);
       receipt.visibility = "unknown";
       try {
@@ -476,72 +455,16 @@ export async function publish({ github, core }, source, directory, run = tool) {
           run,
           await anonymousConfig(directory)
         );
+        receipt.status = "published";
       } catch (error) {
         throw new Error(
           "The Bicep artifact was uploaded to GHCR, but public/anonymous access is not verified. " +
-            "The private ACR mirror has not been requested. " +
             "A package admin must use Packages -> bicep-types-radius -> Package settings -> Change visibility -> Public, " +
             "then rerun and verify anonymous restore. " +
             (error instanceof Error ? error.message : String(error)),
           { cause: error }
         );
       }
-    }
-  } finally {
-    await save(join(directory, "receipt.json"), receipt);
-    await core.summary
-      .addCodeBlock(JSON.stringify(receipt, null, 2), "json")
-      .write();
-  }
-  core.setOutput("status", receipt.status);
-  if (receipt.status === "pending-mirror") {
-    core.setOutput("release_identifier", payload.release_identifier);
-    core.setOutput("client_payload", JSON.stringify(payload));
-  }
-}
-
-export async function complete({ core }, source, directory, env, run = tool) {
-  const receipt = await json(join(directory, "receipt.json"));
-  assert.deepEqual(
-    { ...receipt.source, generationAttempt: source.generationAttempt },
-    source
-  );
-  assert.equal(receipt.publicationAttempt, source.generationAttempt);
-  const payload = copyRequest(receipt);
-  try {
-    if (receipt.status === "superseded") {
-      assert.equal(env.MIRROR_RESULT, "skipped");
-    } else {
-      receipt.mirror = {
-        release_identifier:
-          env.MIRROR_RELEASE_IDENTIFIER || payload.release_identifier,
-        run_state: env.MIRROR_RUN_STATE || "not-requested",
-        run_id: env.MIRROR_RUN_ID || "",
-        run_url: env.MIRROR_RUN_URL || "",
-        conclusion: env.MIRROR_CONCLUSION || ""
-      };
-      assert.equal(receipt.status, "pending-mirror");
-      assert.equal(receipt.visibility, "public");
-      assert.equal(receipt.ghcr.digest, receipt.manifestDigest);
-      assert.equal(
-        env.MIRROR_RESULT,
-        "success",
-        `Private Bicep copy did not succeed (${env.MIRROR_RESULT}); inspect the retained receipt and publisher run before retrying`
-      );
-      assert.equal(env.MIRROR_RELEASE_IDENTIFIER, payload.release_identifier);
-      assert.equal(receipt.mirror.run_state, "found");
-      assert.equal(receipt.mirror.conclusion, "success");
-      assert.match(receipt.mirror.run_id, /^[1-9][0-9]*$/);
-      assert.ok(Number.isSafeInteger(Number(receipt.mirror.run_id)));
-      assert.equal(
-        receipt.mirror.run_url,
-        `https://github.com/azure-octo/radius-publisher/actions/runs/${receipt.mirror.run_id}`
-      );
-      const config = await anonymousConfig(directory);
-      await verifyDigest(targets.acr, receipt.manifestDigest, run, config);
-      receipt.acr.digest = receipt.manifestDigest;
-      await verifyDigest(targets.ghcr, receipt.manifestDigest, run, config);
-      receipt.status = "published";
     }
   } finally {
     await save(join(directory, "receipt.json"), receipt);
@@ -559,10 +482,7 @@ export default async function script(args) {
   try {
     const operation = core.getInput("operation", { required: true });
     if (operation === "summary") return checkSummary(context, process.env);
-    const source =
-      operation === "complete" ?
-        sourceIdentity(context, process.env)
-      : await verifiedSource(args);
+    const source = await verifiedSource(args);
     const directory = core.getInput("directory", { required: true });
     await mkdir(directory, { recursive: true });
     if (operation === "select") {
@@ -614,8 +534,6 @@ export default async function script(args) {
       await save(join(directory, "receipt.json"), receipt);
     } else if (operation === "publish") {
       await publish(args, source, directory);
-    } else if (operation === "complete") {
-      await complete(args, source, directory, process.env);
     } else {
       throw new Error(`Unknown Bicep operation: ${operation}`);
     }

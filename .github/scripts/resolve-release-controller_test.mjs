@@ -1,11 +1,268 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import resolveReleaseController from "./resolve-release-controller.mjs";
+import resolveReleaseController, {
+  verifyReleaseBuildSource
+} from "./resolve-release-controller.mjs";
+import { mandatoryChecks } from "./publish-draft-release.mjs";
+import stage from "./stage-release-bicep.mjs";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const repository = "radius-project/radius";
 const sourceCommit = "a".repeat(40);
 const backportCommit = "b".repeat(40);
+
+test("published historical sources retain validation and recovery; unpublished sources require GHCR-only writers", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "approved-build-contract-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  for (const state of [
+    "published",
+    "draft",
+    "absent",
+    "API failure",
+    "wrong tag",
+    "wrong AWS tag",
+    "missing manifest",
+    "wrong manifest",
+    "unsupported workflow"
+  ]) {
+    const calls = [],
+      outputs = {};
+    const version = "v0.61.0";
+    const plan = {
+      version,
+      channel: "0.61",
+      releaseType: "patch",
+      changelogPolicy: "stable-only",
+      expectedOutputs: {
+        ociArtifacts: [{ repository: "biceptypes.azurecr.io/radius" }]
+      },
+      siblingRepositories: [
+        {
+          name: "bicep-types-aws",
+          repository: "radius-project/bicep-types-aws",
+          sourceCommit: backportCommit
+        }
+      ]
+    };
+    const manifest = {
+      schemaVersion: 1,
+      tag: version,
+      sourceSha: state === "wrong manifest" ? backportCommit : sourceCommit,
+      channel: plan.channel,
+      releaseType: plan.releaseType,
+      checks: Object.fromEntries(
+        mandatoryChecks.map((name) => [name, "verified"])
+      )
+    };
+    const github = {
+      paginate: async (method) => {
+        calls.push(method);
+        if (state === "API failure") throw new Error("403 denied");
+        if (method === "releases")
+          return state === "absent" ?
+              []
+            : [{ id: 1, tag_name: version, draft: state === "draft" }];
+        assert.equal(method, "assets");
+        return state === "missing manifest" ?
+            []
+          : [{ id: 2, name: "release-manifest.json", state: "uploaded" }];
+      },
+      request: async (method) => {
+        assert.match(method, /^GET /);
+        return { data: Buffer.from(JSON.stringify(manifest)) };
+      },
+      rest: {
+        repos: {
+          listReleases: "releases",
+          listReleaseAssets: "assets",
+          getCommit: async ({ repo, ref }) => {
+            assert.equal(ref, `refs/tags/${version}`);
+            calls.push(repo);
+            return {
+              data: {
+                sha:
+                  repo === "radius" ?
+                    state === "wrong tag" ?
+                      backportCommit
+                    : sourceCommit
+                  : state === "wrong AWS tag" ? sourceCommit
+                  : backportCommit
+              }
+            };
+          }
+        }
+      }
+    };
+    const inputs = {
+      VERSION: version,
+      SOURCE_SHA: sourceCommit,
+      PLAN_FILE: join(directory, "approved-plan.yaml")
+    };
+    const core = {
+      getInput: (name) => inputs[name],
+      setOutput: (name, value) => {
+        outputs[name] = value;
+      }
+    };
+    const run = async (args) => {
+      if (args[0] === "yq") return JSON.stringify(plan);
+      assert.deepEqual(args.slice(0, 3), [
+        "bash",
+        "./.github/scripts/verify-release-build-contract.sh",
+        sourceCommit
+      ]);
+      assert.ok(args.includes("--require-sibling-releases"));
+      assert.ok(args.includes("--expected-targets"));
+      assert.deepEqual(
+        JSON.parse(
+          await readFile(args[args.indexOf("--expected-targets") + 1], "utf8")
+        ),
+        plan.expectedOutputs
+      );
+      calls.push("build-contract");
+      if (["draft", "absent"].includes(state)) {
+        assert.ok(args.includes("--require-current-bicep"));
+        throw new Error("requires the retired Bicep ACR writer");
+      }
+      assert.ok(!args.includes("--require-current-bicep"));
+      if (state === "unsupported workflow")
+        throw new Error("does not enforce the publication gate");
+      return "";
+    };
+    const promise = verifyReleaseBuildSource({ github, core, run });
+    if (state === "published") {
+      await promise;
+      assert.equal(outputs.published, "true");
+      assert.deepEqual(calls, [
+        "releases",
+        "radius",
+        "assets",
+        "bicep-types-aws",
+        "build-contract"
+      ]);
+    } else {
+      await assert.rejects(promise);
+      assert.deepEqual(outputs, {});
+      if (!["draft", "absent", "unsupported workflow"].includes(state))
+        assert.ok(!calls.includes("build-contract"));
+    }
+  }
+});
+
+test("legacy published preflight is read-only while absent/draft legacy mutation fails", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "legacy-bicep-preflight-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const plan = {
+    expectedOutputs: {
+      ociArtifacts: [
+        {
+          name: "aws-bicep-types",
+          repository: "biceptypes.azurecr.io/aws",
+          artifactType: "application/vnd.ms.bicep.provider.artifact"
+        },
+        {
+          name: "radius-bicep-types",
+          repository: "biceptypes.azurecr.io/radius",
+          artifactType: "application/vnd.ms.bicep.provider.artifact"
+        }
+      ]
+    }
+  };
+  for (const state of ["published", "draft", "absent", ""]) {
+    const inputs = { directory, operation: "preflight", release_state: state };
+    const promise = stage({
+      github: new Proxy({}, { get: () => assert.fail("No Bicep API calls") }),
+      context: { ref: "refs/tags/v0.61.0" },
+      core: { getInput: (name) => inputs[name], setOutput() {} },
+      run: async (args) => {
+        assert.equal(
+          args[0],
+          "yq",
+          "No tag, dispatch, marker or registry mutations"
+        );
+        return JSON.stringify(plan);
+      }
+    });
+    if (state === "published") await promise;
+    else await assert.rejects(promise, /retired Bicep ACR writer/);
+  }
+});
+
+test("published workflow gates skip Bicep producers/finalizers without disabling downstream recovery", () => {
+  const read = (file) =>
+    JSON.parse(
+      execFileSync("yq", ["-o=json", ".", file], { encoding: "utf8" })
+    );
+  const jobs = read(".github/workflows/build-release.yaml").jobs;
+  for (const name of [
+    "publish-radius-bicep-extension",
+    "build-and-push-bicep-types",
+    "finalize-release"
+  ]) {
+    const condition = jobs[name].if
+      .replace(/needs\.[\w-]+(?:\.outputs)?\.[\w-]+/g, (value) =>
+        value.endsWith(".release-state") ? "'published'" : "'success'"
+      )
+      .replace("!cancelled()", "true")
+      .replace("github.repository", "'radius-project/radius'")
+      .replace("startsWith(github.ref, 'refs/tags/v')", "true")
+      .replace("contains(github.ref_name, '-rc.')", "false");
+    assert.equal(Function(`return (${condition})`)(), false, name);
+  }
+  for (const name of [
+    "verify-release",
+    "coordinate-release",
+    "publish-sibling-releases"
+  ])
+    assert.match(jobs[name].if, /release-state == 'published'/);
+  const controller = read(".github/workflows/__release-controller.yaml").jobs;
+  assert.equal(controller.approve.if, "needs.validate.outputs.ready == 'true'");
+  const aws = controller["reconcile-siblings"].steps.find(
+    (step) => step.name === "Reconcile radius-project/bicep-types-aws"
+  );
+  assert.equal(aws.if, "needs.validate.outputs.published != 'true'");
+  assert.ok(
+    controller["create-radius-tag"].steps.some((step) =>
+      step.with?.script?.includes("resumeReleasePublication")
+    )
+  );
+});
+
+test("locked pair does not hide a failed or cancelled selected producer", () => {
+  const workflow = JSON.parse(
+    execFileSync(
+      "yq",
+      ["-o=json", ".", ".github/workflows/build-release.yaml"],
+      { encoding: "utf8" }
+    )
+  );
+  const expression = workflow.jobs["build-and-push-bicep-types"].if;
+  for (const locked of ["true", "false"]) {
+    for (const result of ["success", "failure", "cancelled", "skipped"]) {
+      const inputs = {
+        "needs.release-preflight.result": "success",
+        "needs.release-preflight.outputs.release-state": "draft",
+        "needs.release-preflight.outputs.ghcr-bicep": "true",
+        "needs.release-preflight.outputs.bicep-locked": locked,
+        "needs.publish-radius-bicep-extension.result": result
+      };
+      const condition = expression
+        .replace("!cancelled()", "true")
+        .replace(/needs\.[\w-]+(?:\.outputs)?\.[\w-]+/g, (key) =>
+          JSON.stringify(inputs[key])
+        );
+      assert.equal(
+        Function(`return (${condition})`)(),
+        result === "success" || (result === "skipped" && locked === "true"),
+        `${result}, locked=${locked}`
+      );
+    }
+  }
+});
 
 function releasePull(overrides = {}) {
   return {

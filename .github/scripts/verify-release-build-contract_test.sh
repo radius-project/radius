@@ -55,6 +55,19 @@ use_legacy_contract() {
         .ociArtifacts[0].repository = "biceptypes.azurecr.io/aws" |
         .ociArtifacts[1].repository = "biceptypes.azurecr.io/radius"
     ' "${REPO}/.github/release-parity/targets.json"
+    yq -i '
+        .jobs."build-and-push-bicep-types" = {
+            "uses": "./.github/workflows/__build-bicep-types.yaml",
+            "needs": ["release-preflight"],
+            "if": "github.repository == '\''radius-project/radius'\'' && startsWith(github.ref, '\''refs/tags/v'\'') && needs.release-preflight.outputs.release-state != '\''published'\''"
+        } |
+        del(.jobs."publish-radius-bicep-extension") |
+        (.jobs."finalize-release".steps[] | select(.name == "Promote locked Bicep extensions")) |= (
+            .name = "Promote verified Bicep aliases" |
+            .if = "env.UPDATE_RELEASE == '\''true'\'' && steps.alias-policy.outputs.promote_channel == '\''true'\''" |
+            .with.script = "await import(\"./promote-bicep-types.mjs\")"
+        )
+    ' "${WORKFLOWS}/build-release.yaml"
 }
 
 # Commits the fixture and expects a pass, or a failure that contains $1.
@@ -108,6 +121,7 @@ main() {
     expect "has no reusable Radius Bicep producer workflow" "missing reusable workflow rejects partial backport"
     write_pipeline
     expect pass "new preparations require sibling publication" HEAD --require-sibling-releases
+    expect pass "new mutation requires GHCR-only publication" HEAD --require-current-bicep
 
     write_pipeline
     yq -i 'del(.jobs."publish-sibling-releases") |
@@ -136,6 +150,7 @@ main() {
             '.jobs."build-summary".needs |= map(select(. != "attest-release"))' \
             '(.jobs."attest-release".steps[] | select(.name == "Attest release provenance")).if = "false"' \
             '(.jobs."attest-release".steps[] | select(.name == "Attest release provenance"))."continue-on-error" = true'; do
+            [[ "${contract}" != legacy || "${mutation}" != 'del(.jobs."attest-release")' ]] || continue
             write_pipeline
             [[ "${contract}" != legacy ]] || use_legacy_contract
             yq -i "${mutation}" "${WORKFLOWS}/build-release.yaml"
@@ -175,20 +190,12 @@ main() {
 
     write_pipeline
     use_legacy_contract
-    expect pass "dual pipeline preserves selector-free ACR plans"
-    yq -i '
-        .jobs."build-and-push-bicep-types" = .jobs."publish-legacy-bicep-types" |
-        .jobs."build-and-push-bicep-types".if =
-          "github.repository == '\''radius-project/radius'\'' && startsWith(github.ref, '\''refs/tags/v'\'') && needs.release-preflight.outputs.release-state != '\''published'\''" |
-        del(.jobs."publish-radius-bicep-extension", .jobs."publish-legacy-bicep-types") |
-        .jobs."finalize-release".steps |= map(select(
-          .name != "Promote and mirror locked Bicep extensions" and
-          .name != "Retain partial Bicep promotion and mirror receipt")) |
-        (.jobs."finalize-release".steps[] | select(
-          .name == "Promote verified Bicep aliases" or .name == "Get Bicep promotion token")).if =
-          "env.UPDATE_RELEASE == '\''true'\'' && steps.alias-policy.outputs.promote_channel == '\''true'\''"
-    ' "${WORKFLOWS}/build-release.yaml"
-    expect pass "legacy-only pipeline keeps original immutable ACR promotion gate"
+    expect pass "historical inspection preserves selector-free ACR contracts"
+    expect "requires the retired Bicep ACR writer" \
+        "new mutation cannot use a historical ACR pipeline" HEAD --require-current-bicep
+    yq -i '.jobs."build-and-push-bicep-types".if += " || true"' "${WORKFLOWS}/build-release.yaml"
+    expect "does not enforce the published Bicep resume gate" \
+        "historical published recovery must never reach the ACR writer"
 
     for job in verify-release approve-publication coordinate-release; do
         write_pipeline
@@ -230,32 +237,26 @@ main() {
         '.jobs."finalize-release".steps |= map(select(.name != "Promote stable aliases"))' \
         '(.jobs."finalize-release".steps[] | select(.name == "Promote stable aliases")).if = "false"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Promote stable aliases"))."continue-on-error" = true' \
-        '.jobs."finalize-release".steps |= map(select(.name != "Promote verified Bicep aliases"))' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases")).if = "false"' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases"))."continue-on-error" = true' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Get Bicep promotion token")).if = "true"' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Promote verified Bicep aliases")).if += " || true"' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Promote and mirror locked Bicep extensions")).if = "false"' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Promote and mirror locked Bicep extensions"))."continue-on-error" = true' \
+        '.jobs."finalize-release".steps |= map(select(.name != "Promote locked Bicep extensions"))' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote locked Bicep extensions")).if = "false"' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote locked Bicep extensions"))."continue-on-error" = true' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote locked Bicep extensions")).if += " || true"' \
         '.jobs."finalize-release".permissions."id-token" = "write"' \
         '.jobs."finalize-release".env.BICEPTYPES_CLIENT_ID = "forbidden"' \
         '.jobs."finalize-release".steps += [{"name":"Unexpected Azure login","run":"az acr login --name biceptypes"}]' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Get Bicep promotion token")).with.repositories = "other"' \
+        '.jobs."finalize-release".steps += [{"name":"Private token","uses":"actions/create-github-app-token@abc"}]' \
         '.jobs."publish-legacy-bicep-types".if += " || true"' \
         '.jobs."publish-radius-bicep-extension".if = "true"' \
         '(.jobs."build-and-push-remaining-images".steps[] | select(.run == "make docker-publish-bicep")).env.BICEP_RELEASE_PLAN = ""' \
         '(.jobs."build-and-push-remaining-images".steps[] | select(.run == "make docker-publish-bicep")).env.BICEP_EXTENSION_TAG = "latest"' \
         '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Authenticate and retain immutable extension pair")).if = "false"' \
-        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Stage immutable ACR mirrors before verification")).if = "false"' \
-        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Stage immutable ACR mirrors before verification"))."continue-on-error" = true' \
-        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Get immutable Bicep mirror token")).if = "true"' \
-        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Get immutable Bicep mirror token")).with.repositories = "other"' \
-        '.jobs."build-and-push-bicep-types".steps |= reverse' \
+        '.jobs."build-and-push-bicep-types".if += " || true"' \
+        '.jobs."build-and-push-bicep-types".steps += [{"name":"Retired mirror","with":{"script":"await stageMirrors({github, core})"}}]' \
         '.jobs."build-and-push-bicep-types".permissions."id-token" = "write"' \
         '.jobs."build-and-push-bicep-types".permissions.packages = "write"' \
-        '(.jobs."finalize-release".steps[] | select(.name == "Promote and mirror locked Bicep extensions")).env.INPUT_JOB_DEADLINE = ""' \
+        '(.jobs."finalize-release".steps[] | select(.name == "Promote locked Bicep extensions")).env.INPUT_JOB_DEADLINE = ""' \
         '.jobs."finalize-release".steps |= map(select(.name != "Record Bicep job deadline"))' \
-        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Stage immutable ACR mirrors before verification")).with.script = "await finalize({github,core,context})"' \
+        '(.jobs."build-and-push-bicep-types".steps[] | select(.name == "Authenticate and retain immutable extension pair")).with.script = "await finalize({github,core,context})"' \
         '(.jobs."finalize-release".steps[] | select(.name == "Recheck RC prerequisites after approval")).if = "false"' \
         '.jobs."coordinate-release".if = "false"'; do
         write_pipeline

@@ -15,296 +15,14 @@ import {
 import {
   promoteExtensions,
   promotionTargets,
-  releaseCopyRequests,
-  stageExtensionMirrors,
-  stageMirrors,
   finalizeExtensions
 } from "./promote-release-bicep.mjs";
-import { verifyMirrors } from "./collect-release-bicep.mjs";
 import { recoveryInputs, verifyPair } from "./stage-release-bicep.mjs";
-import { selectAliases } from "./publish-draft-release.mjs";
-import { mandatoryChecks } from "./publish-draft-release.mjs";
+import { selectAliases, mandatoryChecks } from "./publish-draft-release.mjs";
 
 const hash = (bytes) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const sourceSha = "a".repeat(40);
-
-function remoteFixture(f) {
-  const manifest = {
-    schemaVersion: 1,
-    tag: f.plan.version,
-    sourceSha,
-    channel: f.plan.channel,
-    releaseType: f.plan.releaseType,
-    checks: Object.fromEntries(
-      mandatoryChecks.map((name) => [name, "verified"])
-    ),
-    observed: {
-      downstream: {
-        bicepExtensionLock: structuredClone(f.lock),
-        ociArtifacts: f.lock.artifacts.map((record) => ({
-          name: record.name,
-          reference: record.reference,
-          descriptor: { digest: record.digest },
-          manifest: JSON.parse(f.store.get(record.reference))
-        }))
-      }
-    }
-  };
-  const calls = [];
-  const monitor = async ({ core }) => {
-    const request = JSON.parse(core.getInput("CLIENT_PAYLOAD"));
-    assert.equal(core.getInput("OWNER"), "azure-octo");
-    assert.equal(core.getInput("REPO"), "radius-publisher");
-    assert.equal(core.getInput("REUSE_SUCCESSFUL"), "false");
-    assert.equal(core.getInput("MAX_WAIT_SECONDS"), "300");
-    const target = request.registry_target;
-    const record = f.lock.artifacts.find(
-      (entry) => entry.name === `${target}-bicep-types`
-    );
-    const copy = core.getInput("EVENT_TYPE") !== "bicep-types.promote";
-    if (copy) {
-      assert.equal(request.mode, "copy");
-      assert.ok(!Object.hasOwn(request, "source_evidence"));
-      assert.equal(request.source_repository, record.source.repository);
-      assert.equal(request.source_sha, record.source.commit);
-      assert.equal(request.source_ref, `refs/tags/${f.plan.version}`);
-      assert.equal(
-        core.getInput("WORKFLOW_FILE"),
-        target === "aws" ?
-          "publish-bicep-types-aws.yml"
-        : "publish-bicep-types.yml"
-      );
-      assert.equal(
-        request.release_identifier,
-        `copy-${target}-${record.version}-${record.source.commit}-${record.digest.slice(7)}`
-      );
-      const destination = `biceptypes.azurecr.io/${target}:${record.version}`;
-      const existing = f.store.get(destination);
-      if (existing && hash(existing) !== record.digest)
-        core.setFailed("Immutable version conflict");
-      f.store.set(destination, f.store.get(record.reference));
-    } else {
-      assert.equal(request.source_repository, "radius-project/radius");
-      assert.equal(request.source_sha, sourceSha);
-      assert.equal(
-        calls.filter((entry) => entry.mode === "copy").length >= 2,
-        true
-      );
-      assert.equal(core.getInput("WORKFLOW_FILE"), "promote-bicep-types.yml");
-      const bytes = f.store.get(
-        `biceptypes.azurecr.io/${target}:${record.version}`
-      );
-      assert.equal(hash(bytes), request.digest);
-      f.store.set(`biceptypes.azurecr.io/${target}:${request.channel}`, bytes);
-    }
-    calls.push(request);
-    core.setOutput("run_id", String(900 + calls.length));
-    core.setOutput(
-      "run_url",
-      `https://github.com/azure-octo/radius-publisher/actions/runs/${900 + calls.length}`
-    );
-    core.setOutput("run_state", "found");
-    core.setOutput("conclusion", "success");
-  };
-  const run = async (args, options) => {
-    if (args[1] === "cp")
-      assert.ok(args[3].startsWith("ghcr.io/"), "Radius cannot write ACR");
-    if (args.at(-1).startsWith("biceptypes.azurecr.io/")) {
-      assert.ok(
-        args.includes("--registry-config"),
-        "ACR read must be anonymous"
-      );
-      const config = JSON.parse(
-        await readFile(args[args.indexOf("--registry-config") + 1])
-      );
-      assert.deepEqual(config, { auths: {} });
-      assert.equal(options.timeout, 30_000);
-    }
-    return f.run(args);
-  };
-  const directory = join(f.file, "../remote");
-  return {
-    manifest,
-    calls,
-    monitor,
-    run,
-    directory,
-    stage: (overrides = {}) =>
-      stageExtensionMirrors({
-        github: {},
-        core: { info() {} },
-        plan: f.plan,
-        sourceSha,
-        lock: f.lock,
-        directory,
-        monitor,
-        run,
-        ...overrides
-      }),
-    finalize: (channel = "true", latest = "true", overrides = {}) =>
-      finalizeExtensions({
-        github: {},
-        core: { info() {} },
-        plan: f.plan,
-        sourceSha,
-        lock: f.lock,
-        manifest,
-        channel,
-        latest,
-        directory,
-        monitor,
-        run,
-        ...overrides
-      })
-  };
-}
-
-test("immutable mirror staging enables ACR consumption without stable aliases or final approval", async (t) => {
-  for (const version of ["v0.62.1", "v0.62.1-rc.2"]) {
-    const f = await fixture(t, version);
-    const remote = remoteFixture(f);
-    await assert.rejects(verifyMirrors(f.plan, sourceSha, f.lock, f.run));
-    const receipt = await remote.stage({ channel: "true", latest: "true" });
-    assert.equal(receipt.status, "complete");
-    assert.equal(receipt.copies.length, 2);
-    assert.deepEqual(receipt.promotions, []);
-    assert.equal(receipt.ghcr, undefined);
-    assert.equal(f.copies.length, 0);
-    assert.ok(remote.calls.every((request) => request.mode === "copy"));
-    await verifyMirrors(f.plan, sourceSha, f.lock, remote.run);
-    await remote.stage();
-    assert.equal(f.copies.length, 0);
-    const channel = version.includes("-rc.") ? "false" : "true";
-    await remote.finalize(channel, channel);
-    assert.equal(
-      remote.calls.filter((request) => !request.mode).length,
-      channel === "true" ? 2 : 0
-    );
-  }
-});
-
-test("mirror staging rejects substituted lock, failed private work and wrong readback", async (t) => {
-  for (const failure of ["source", "digest", "private", "readback"]) {
-    const f = await fixture(t);
-    const remote = remoteFixture(f);
-    const lock = structuredClone(f.lock);
-    let monitor = remote.monitor;
-    if (failure === "source") lock.artifacts[0].source.commit = sourceSha;
-    if (failure === "digest") lock.artifacts[0].digest = hash("wrong");
-    if (failure === "private")
-      monitor = async () => {
-        throw new Error("private operation failed");
-      };
-    if (failure === "readback")
-      monitor = async (args) => {
-        await remote.monitor(args);
-        f.store.set("biceptypes.azurecr.io/aws:0.62.1", "wrong bytes");
-      };
-    await assert.rejects(remote.stage({ lock, monitor }));
-    assert.equal(f.copies.length, 0);
-    const receipt = JSON.parse(
-      await readFile(join(remote.directory, "receipt.json"))
-    );
-    assert.notEqual(receipt.status, "complete");
-    assert.deepEqual(receipt.promotions, []);
-  }
-});
-
-test("mirror verification catches post-staging substitution and authorization failure without writes", async (t) => {
-  const f = await fixture(t);
-  const remote = remoteFixture(f);
-  await remote.stage();
-  const ref = "biceptypes.azurecr.io/radius:0.62.1";
-  const bytes = f.store.get(ref);
-  f.store.set(ref, `${bytes} `);
-  await assert.rejects(
-    verifyMirrors(f.plan, sourceSha, f.lock, remote.run),
-    /mirror digest mismatch/
-  );
-  f.store.set(ref, bytes);
-  await assert.rejects(
-    verifyMirrors(f.plan, sourceSha, f.lock, async () => {
-      throw new Error("unauthorized");
-    }),
-    /unauthorized/
-  );
-  assert.equal(f.copies.length, 0);
-});
-
-test("mirror staging entry rejects unapproved source before using private authority", async (t) => {
-  const f = await fixture(t);
-  const context = {
-    repo: { owner: "radius-project", repo: "radius" },
-    eventName: "push",
-    ref: `refs/tags/${f.plan.version}`,
-    sha: sourceSha,
-    runId: 123
-  };
-  const env = {
-    GITHUB_WORKFLOW_REF: `radius-project/radius/.github/workflows/build-release.yaml@${context.ref}`,
-    GITHUB_RUN_ATTEMPT: "1"
-  };
-  const github = {
-    rest: {
-      actions: {
-        getWorkflowRunAttempt: async () => ({
-          data: {
-            id: 123,
-            run_attempt: 1,
-            head_sha: sourceSha,
-            head_branch: f.plan.version,
-            path: ".github/workflows/build-release.yaml",
-            event: "push",
-            repository: { full_name: "radius-project/radius" },
-            head_repository: { full_name: "radius-project/radius" }
-          }
-        })
-      },
-      repos: { getCommit: async () => ({ data: { sha: sourceSha } }) },
-      pulls: { list() {} }
-    },
-    paginate: async () => [
-      {
-        number: 1,
-        head: {
-          ref: `automation/prepare-release-${f.plan.version.slice(1)}`,
-          repo: { full_name: "radius-project/radius" }
-        },
-        base: { ref: "main" },
-        merged_at: "2026-10-01",
-        merge_commit_sha: sourceSha
-      }
-    ]
-  };
-  let checked = false;
-  const run = async (args) => {
-    if (args[0] === "yq") return JSON.stringify(f.plan);
-    if (args[1] === "rev-parse") return sourceSha;
-    if (args[1] === "fetch" || args[1] === "show") return "";
-    if (args[0] === "bash") {
-      assert.equal(
-        args[1],
-        ".github/scripts/validate-release-controller-plan.sh"
-      );
-      checked = true;
-      throw new Error("plan not approved");
-    }
-    assert.fail(`Unexpected operation before approval: ${args}`);
-  };
-  await assert.rejects(
-    stageMirrors({
-      github,
-      core: { getInput: () => join(f.file, "../stage-entry") },
-      context,
-      publisherGithub: {},
-      env,
-      run
-    }),
-    /plan not approved/
-  );
-  assert.equal(checked, true);
-});
 
 async function fixture(t, version = "v0.62.1") {
   const directory = await mkdtemp(join(tmpdir(), "bicep-promotion-"));
@@ -349,8 +67,8 @@ async function fixture(t, version = "v0.62.1") {
           "org.opencontainers.image.version": record.version
         }
       };
-      const bytes = JSON.stringify(manifest);
-      const digest = hash(bytes);
+      const bytes = JSON.stringify(manifest),
+        digest = hash(bytes);
       store.set(record.reference, bytes);
       store.set(`${bicepExtensionTargets[index].repository}@${digest}`, bytes);
       return {
@@ -372,8 +90,33 @@ async function fixture(t, version = "v0.62.1") {
     releaseSourceCommit: sourceSha,
     artifacts
   };
-  const copies = [];
-  const run = async (args) => {
+  const manifest = {
+    schemaVersion: 1,
+    tag: plan.version,
+    sourceSha,
+    channel: plan.channel,
+    releaseType: plan.releaseType,
+    checks: Object.fromEntries(
+      mandatoryChecks.map((name) => [name, "verified"])
+    ),
+    observed: {
+      downstream: {
+        bicepExtensionLock: structuredClone(lock),
+        ociArtifacts: lock.artifacts.map((record) => ({
+          name: record.name,
+          reference: record.reference,
+          descriptor: { digest: record.digest },
+          manifest: JSON.parse(store.get(record.reference))
+        }))
+      }
+    }
+  };
+  const copies = [],
+    calls = [];
+  const run = async (args, options) => {
+    calls.push(args);
+    assert.ok(args.at(-1).startsWith("ghcr.io/"), "No production ACR requests");
+    if (options) assert.ok(options.timeout > 0 && options.timeout <= 30_000);
     const reference = args.at(-1);
     if (args[1] === "cp") {
       copies.push(args);
@@ -394,103 +137,69 @@ async function fixture(t, version = "v0.62.1") {
   return {
     plan,
     lock,
+    manifest,
     store,
     run,
     copies,
+    calls,
     file,
+    directory,
     promote: (channel = "true", latest = "true", execute = run) =>
-      promoteExtensions(plan, sourceSha, lock, channel, latest, file, execute)
+      promoteExtensions(plan, sourceSha, lock, channel, latest, file, execute),
+    finalize: (channel = "true", latest = "true", overrides = {}) =>
+      finalizeExtensions({
+        plan,
+        sourceSha,
+        lock,
+        manifest,
+        channel,
+        latest,
+        directory,
+        run,
+        ...overrides
+      })
   };
 }
 
-test("private full copies precede private channels and local GHCR aliases for stable and RC", async (t) => {
-  for (const [version, channel, latest, promotions] of [
-    ["v0.62.1", "true", "true", 2],
+test("finalization publishes GHCR only, retries exact bytes and never rewrites locks", async (t) => {
+  for (const [version, channel, latest, count] of [
+    ["v0.62.1", "true", "true", 4],
+    ["v0.62.1", "true", "false", 2],
     ["v0.62.1", "false", "false", 0],
     ["v0.62.0-rc.1", "false", "false", 0]
   ]) {
     const f = await fixture(t, version);
-    const r = remoteFixture(f);
-    const receipt = await r.finalize(channel, latest);
+    const before = JSON.stringify(f.lock);
+    const receipt = await f.finalize(channel, latest);
     assert.equal(receipt.status, "complete");
-    assert.equal(receipt.copies.length, 2);
-    assert.equal(receipt.promotions.length, promotions);
-    assert.deepEqual(
-      r.calls.slice(0, 2).map((entry) => entry.registry_target),
-      ["aws", "radius"]
-    );
-    assert.equal(
-      r.calls[0].rel_channel,
-      version.includes("-rc.") ? version.slice(1) : "0.62"
-    );
-    for (const record of f.lock.artifacts) {
-      const target = record.name.split("-")[0];
-      assert.equal(
-        hash(f.store.get(`biceptypes.azurecr.io/${target}:${record.version}`)),
-        record.digest
-      );
-      assert.equal(
-        f.store.has(`biceptypes.azurecr.io/${target}:latest`),
-        false
-      );
-    }
-    assert.equal(f.copies.length, promotions ? 4 : 0);
-    await r.finalize(channel, latest);
-    assert.equal(
-      r.calls.filter((entry) => entry.mode === "copy").length,
-      4,
-      "retries reconcile remote copies instead of trusting cached success"
-    );
+    assert.equal(receipt.copies, undefined);
+    assert.equal(receipt.promotions, undefined);
+    assert.equal(f.copies.length, count);
+    assert.ok(f.copies.every((args) => args[2].includes("@sha256:")));
+    await f.finalize(channel, latest);
+    assert.equal(f.copies.length, count);
+    assert.equal(JSON.stringify(f.lock), before);
   }
 });
 
-test("unknown/failed private work and mismatched anonymous readback retain partial receipt", async (t) => {
-  for (const mode of ["unknown", "failure", "digest", "auth"]) {
-    const f = await fixture(t);
-    const r = remoteFixture(f);
-    let count = 0;
-    const monitor = async (args) => {
-      if (++count === 2) {
-        args.core.setOutput("run_id", "901");
-        args.core.setOutput(
-          "run_state",
-          mode === "unknown" ? "unknown" : "found"
-        );
-        if (mode === "unknown" || mode === "failure")
-          args.core.setFailed(`${mode} dispatch`);
-      }
-      await r.monitor(args);
-      if (count === 2 && mode === "digest")
-        f.store.set("biceptypes.azurecr.io/radius:0.62.1", "{}");
-    };
-    const run = async (args, options) => {
-      if (
-        mode === "auth" &&
-        args.at(-1) === "biceptypes.azurecr.io/radius:0.62.1"
-      )
-        throw new Error("401 denied");
-      return r.run(args, options);
-    };
-    await assert.rejects(r.finalize("true", "true", { monitor, run }));
-    const receipt = JSON.parse(
-      await readFile(join(r.directory, "receipt.json"))
-    );
-    assert.equal(receipt.status, "partial");
-    assert.equal(receipt.copies[0].status, "verified");
-    assert.equal(receipt.promotions.length, 0);
-    assert.equal(f.copies.length, 0);
-    assert.ok(receipt.copies[1].run_id);
-    if (mode !== "digest") {
-      await r.finalize();
-      assert.equal(f.copies.length, 4);
-    } else {
-      await assert.rejects(r.finalize(), /Immutable version conflict/);
-    }
-  }
-});
-
-test("approved lock source/tag/digest substitutions reject before remote operations", async (t) => {
+test("unapproved manifest and substituted exact pair fail before writes", async (t) => {
   for (const mutate of [
+    (f) => {
+      f.manifest.checks.installation = "pending";
+    },
+    (f) => {
+      f.manifest.sourceSha = "f".repeat(40);
+    },
+    (f) => {
+      f.manifest.channel = "0.63";
+    },
+    (f) => {
+      f.manifest.releaseType = "rc";
+    },
+    (f) => {
+      f.manifest.observed.downstream.bicepExtensionLock.artifacts[0].digest =
+        hash("changed");
+    },
     (f) => {
       f.plan.version = "v0.62.2";
     },
@@ -505,130 +214,81 @@ test("approved lock source/tag/digest substitutions reject before remote operati
     },
     (f) => {
       f.lock.artifacts.pop();
+    },
+    (f) => {
+      f.store.set(f.lock.artifacts[1].reference, "{}");
     }
   ]) {
     const f = await fixture(t);
-    const r = remoteFixture(f);
     mutate(f);
-    await assert.rejects(r.finalize());
-    assert.equal(r.calls.length, 0);
-  }
-});
-
-test("tagged requests are stable across publication retries and use durable lock without Actions reads", async (t) => {
-  const f = await fixture(t);
-  const before = JSON.stringify(f.lock);
-  const requests = releaseCopyRequests(f.plan, sourceSha, f.lock);
-  const r = remoteFixture(f);
-  await r.finalize("false", "false", {
-    github: new Proxy(
-      {},
-      {
-        get() {
-          throw new Error("No source Actions reads");
-        }
-      }
-    )
-  });
-  assert.deepEqual(releaseCopyRequests(f.plan, sourceSha, f.lock), requests);
-  assert.equal(JSON.stringify(f.lock), before);
-  assert.ok(
-    requests.every((entry) => !Object.hasOwn(entry, "source_evidence"))
-  );
-});
-
-test("private promotion failure stops local aliases and retry preserves accepted full versions", async (t) => {
-  const f = await fixture(t);
-  const r = remoteFixture(f);
-  await assert.rejects(
-    r.finalize("true", "true", {
-      monitor: async (args) => {
-        if (args.core.getInput("EVENT_TYPE") === "bicep-types.promote")
-          args.core.setFailed("promotion denied");
-        await r.monitor(args);
-      }
-    }),
-    /promotion denied/
-  );
-  const receipt = JSON.parse(await readFile(join(r.directory, "receipt.json")));
-  assert.ok(receipt.copies.every((entry) => entry.status === "verified"));
-  assert.equal(f.copies.length, 0);
-  await r.finalize();
-  assert.equal(f.copies.length, 4);
-});
-
-test("no-op monitor success without authenticated run/conclusion cannot claim a copy", async (t) => {
-  const f = await fixture(t);
-  const r = remoteFixture(f);
-  await assert.rejects(
-    r.finalize("false", "false", { monitor: async () => {} }),
-    /Private publication did not succeed/
-  );
-  assert.equal(f.copies.length, 0);
-});
-
-test("unapproved manifest or changed paired evidence fails before dispatch", async (t) => {
-  for (const mutate of [
-    (manifest) => {
-      manifest.checks.installation = "pending";
-    },
-    (manifest) => {
-      manifest.sourceSha = "f".repeat(40);
-    },
-    (manifest) => {
-      manifest.observed.downstream.bicepExtensionLock.artifacts[0].digest =
-        hash("changed");
-    }
-  ]) {
-    const f = await fixture(t);
-    const r = remoteFixture(f);
-    mutate(r.manifest);
-    await assert.rejects(r.finalize());
-    assert.equal(r.calls.length, 0);
+    await assert.rejects(f.finalize());
     assert.equal(f.copies.length, 0);
+    assert.notEqual(JSON.parse(await readFile(f.file)).status, "complete");
   }
 });
 
-test("finalization budget exhaustion retains partial copies without further dispatch", async (t) => {
+test("finalization auth errors and budget exhaustion retain failures without ACR fallback", async (t) => {
+  for (const mode of ["auth", "budget"]) {
+    const f = await fixture(t);
+    let time = 0;
+    await assert.rejects(
+      f.finalize("true", "true", {
+        now: () => time,
+        run: async (args, options) => {
+          if (mode === "auth") throw new Error("401 denied");
+          const result = await f.run(args, options);
+          time = 24 * 60_000;
+          return result;
+        }
+      }),
+      mode === "auth" ? /401 denied/ : /budget exhausted/
+    );
+    assert.equal(f.copies.length, 0);
+    assert.ok(JSON.parse(await readFile(f.file)).error);
+  }
+});
+
+test("partial finalization survives alias failure and converges without recopying successful aliases", async (t) => {
   const f = await fixture(t);
-  const r = remoteFixture(f);
-  let time = 0;
   await assert.rejects(
-    r.finalize("true", "true", {
-      now: () => time,
-      monitor: async (args) => {
-        await r.monitor(args);
-        time = 24 * 60_000;
+    f.finalize("true", "true", {
+      run: async (args, options) => {
+        if (
+          args[1] === "cp" &&
+          args[3] === "ghcr.io/radius-project/bicep-types-radius:0.62"
+        )
+          throw new Error("alias permission denied");
+        return f.run(args, options);
       }
-    }),
-    /budget exhausted/
+    })
   );
-  const receipt = JSON.parse(await readFile(join(r.directory, "receipt.json")));
-  assert.equal(receipt.status, "partial");
-  assert.equal(receipt.copies.length, 1);
-  assert.equal(receipt.copies[0].conclusion, "success");
-  assert.equal(receipt.promotions.length, 0);
-  assert.equal(f.copies.length, 0);
+  assert.equal(JSON.parse(await readFile(f.file)).status, "partial");
+  const partial = JSON.parse(
+    await readFile(join(f.directory, "ghcr-receipt.json"))
+  );
+  assert.equal(partial.destinations[0].status, "verified");
+  assert.match(partial.error, /alias permission denied/);
+  await f.finalize();
+  assert.equal(f.copies.length, 4);
 });
 
 test("late helper entry respects job deadline and leaves time to upload receipts", async (t) => {
   const f = await fixture(t);
-  const r = remoteFixture(f);
   await assert.rejects(
-    r.finalize("true", "true", {
+    f.finalize("true", "true", {
       now: () => 28 * 60_000,
       jobDeadline: 30 * 60_000,
-      monitor: async () => assert.fail("no late dispatch")
+      run: async () => assert.fail("no late registry operation")
     }),
     /budget exhausted/
   );
-  const receipt = JSON.parse(await readFile(join(r.directory, "receipt.json")));
+  const receipt = JSON.parse(await readFile(join(f.directory, "receipt.json")));
   assert.notEqual(receipt.status, "complete");
-  assert.equal(receipt.copies.length, 0);
+  assert.equal(f.copies.length, 0);
   const workflow = JSON.parse(
     await tool(["yq", "-o=json", ".", ".github/workflows/build-release.yaml"])
   );
-  for (const name of ["finalize-release", "build-and-push-bicep-types"]) {
+  for (const name of ["finalize-release"]) {
     assert.equal(
       workflow.jobs[name].steps[0].name,
       "Record Bicep job deadline"
@@ -642,41 +302,31 @@ test("late helper entry respects job deadline and leaves time to upload receipts
   }
 });
 
-test("local stable promotion writes GHCR aliases only, never production ACR", async (t) => {
+test("uncertain alias write requires exact readback before claiming success", async (t) => {
   const f = await fixture(t);
-  const receipt = await f.promote();
-  assert.equal(receipt.status, "complete");
-  assert.equal(f.copies.length, 4);
-  assert.ok(f.copies.every((args) => args[3].startsWith("ghcr.io/")));
-  assert.ok(f.copies.every((args) => args[2].includes("@sha256:")));
+  const receipt = await f.finalize("true", "true", {
+    run: async (args, options) => {
+      const result = await f.run(args, options);
+      if (args[1] === "cp") throw new Error("response lost");
+      return result;
+    }
+  });
   assert.ok(
-    !f.copies.some(
-      (args) =>
-        /azurecr\.io\/[^:]+:latest$/.test(args[3]) || args[3].endsWith(":edge")
-    )
+    receipt.ghcr.destinations.every((entry) => entry.recoveredUncertainWrite)
   );
-  await f.promote();
   assert.equal(f.copies.length, 4);
 });
 
-test("RC never writes local stable aliases or ACR", async (t) => {
+test("RC never writes stable aliases", async (t) => {
   const f = await fixture(t, "v0.62.0-rc.1");
   assert.throws(() => promotionTargets(f.plan, f.lock, "true", "false"), /RC/);
-  await f.promote("false", "false");
+  await assert.rejects(f.finalize("false", "true"), /RC/);
+  await f.finalize("false", "false");
   assert.equal(f.copies.length, 0);
 });
 
-test("channel and latest follow existing independent eligibility decisions", async (t) => {
-  const f = await fixture(t);
-  await f.promote("true", "false");
-  assert.equal(f.copies.length, 2);
-  assert.ok(f.copies.every((args) => args[3].endsWith(":0.62")));
-  await f.promote("false", "false");
-  assert.equal(f.copies.length, 2);
-});
-
-test("shared release eligibility drives GHCR latest while preserving development aliases", async (t) => {
-  for (const [version, published, expectedCopies, expectedLatest] of [
+test("existing eligibility drives aliases without touching development tags", async (t) => {
+  for (const [version, published, count, latest] of [
     ["v0.62.1", [], 4, 2],
     ["v0.62.1", ["v0.63.0"], 2, 0],
     ["v0.62.1", ["v0.62.2"], 0, 0],
@@ -698,11 +348,11 @@ test("shared release eligibility drives GHCR latest while preserving development
       "ghcr.io/radius-project/bicep-types-radius:edge"
     ];
     for (const ref of protectedRefs) f.store.set(ref, "development-bytes");
-    await f.promote(String(policy.channel), String(policy.latest));
-    assert.equal(f.copies.length, expectedCopies);
+    await f.finalize(String(policy.channel), String(policy.latest));
+    assert.equal(f.copies.length, count);
     assert.equal(
       f.copies.filter((args) => args[3].endsWith(":latest")).length,
-      expectedLatest
+      latest
     );
     for (const ref of protectedRefs)
       assert.equal(f.store.get(ref), "development-bytes");
@@ -710,72 +360,34 @@ test("shared release eligibility drives GHCR latest while preserving development
   const workflow = JSON.parse(
     await tool(["yq", "-o=json", ".", ".github/workflows/build-release.yaml"])
   );
-  const steps = workflow.jobs["finalize-release"].steps;
   for (const name of [
     "Promote stable aliases",
-    "Promote and mirror locked Bicep extensions"
-  ])
+    "Promote locked Bicep extensions"
+  ]) {
+    const step = workflow.jobs["finalize-release"].steps.find(
+      (step) => step.name === name
+    );
     assert.equal(
-      steps.find((step) => step.name === name).env.RELEASE_PROMOTE_LATEST ??
-        steps.find((step) => step.name === name).env.INPUT_PROMOTE_LATEST,
+      step.env.RELEASE_PROMOTE_LATEST ?? step.env.INPUT_PROMOTE_LATEST,
       "${{ steps.alias-policy.outputs.promote_latest }}"
     );
+  }
 });
 
-test("partially finalized newer release prevents pair-wide channel/latest downgrade", async (t) => {
+test("partially finalized newer release prevents pair-wide downgrade", async (t) => {
   const f = await fixture(t);
-  const record = f.lock.artifacts[0];
-  const manifest = JSON.parse(f.store.get(record.reference));
+  const manifest = JSON.parse(f.store.get(f.lock.artifacts[0].reference));
   manifest.annotations["org.opencontainers.image.version"] = "0.62.2";
-  f.store.set(
-    "ghcr.io/radius-project/bicep-types-aws:0.62",
-    JSON.stringify(manifest)
-  );
-  f.store.set(
-    "ghcr.io/radius-project/bicep-types-aws:latest",
-    JSON.stringify(manifest)
-  );
-  const receipt = await f.promote();
+  for (const tag of ["0.62", "latest"])
+    f.store.set(
+      `ghcr.io/radius-project/bicep-types-aws:${tag}`,
+      JSON.stringify(manifest)
+    );
+  const receipt = await f.finalize();
   assert.equal(f.copies.length, 0);
   assert.ok(
-    receipt.destinations.every((entry) => entry.status === "superseded")
+    receipt.ghcr.destinations.every((entry) => entry.status === "superseded")
   );
-});
-
-test("partial GHCR receipt survives failure and retry converges on same bytes", async (t) => {
-  const f = await fixture(t);
-  const failing = async (args) => {
-    if (
-      args[1] === "cp" &&
-      args[3] === "ghcr.io/radius-project/bicep-types-radius:0.62"
-    )
-      throw new Error("alias permission denied");
-    return f.run(args);
-  };
-  await assert.rejects(f.promote("true", "true", failing));
-  const receipt = JSON.parse(await readFile(f.file));
-  assert.equal(receipt.status, "partial");
-  assert.equal(receipt.destinations[0].status, "verified");
-  assert.match(receipt.error, /alias permission denied/);
-  await f.promote();
-  assert.equal(f.copies.length, 4);
-});
-
-test("auth errors and source/version/digest substitution fail before writes", async (t) => {
-  for (const kind of ["auth", "source", "version", "digest", "missing-aws"]) {
-    const f = await fixture(t);
-    let run = f.run;
-    if (kind === "auth")
-      run = async () => {
-        throw new Error("unauthorized");
-      };
-    if (kind === "source") f.lock.artifacts[0].source.commit = sourceSha;
-    if (kind === "version") f.lock.artifacts[0].version = "0.62.2";
-    if (kind === "digest") f.store.set(f.lock.artifacts[0].reference, "{}");
-    if (kind === "missing-aws") f.lock.artifacts.shift();
-    await assert.rejects(f.promote("true", "true", run));
-    assert.equal(f.copies.length, 0);
-  }
 });
 
 test("post-approval pair verification rejects modified immutable tags", async (t) => {
@@ -788,7 +400,7 @@ test("post-approval pair verification rejects modified immutable tags", async (t
   );
 });
 
-test("cross-run recovery requires paired explicit provenance and never regenerates staged version", async () => {
+test("cross-run recovery requires explicit provenance and never regenerates staged version", async () => {
   const context = { runId: 10, ref: "refs/tags/v0.62.1" };
   const source = {
     runId: 10,
@@ -823,14 +435,7 @@ test("cross-run recovery requires paired explicit provenance and never regenerat
     },
     paginate: async (method) =>
       method === "runs" ?
-        [
-          {
-            id: 9,
-            head_sha: sourceSha,
-            head_branch: "v0.62.1",
-            event: "push"
-          }
-        ]
+        [{ id: 9, head_sha: sourceSha, head_branch: "v0.62.1", event: "push" }]
       : []
   };
   await assert.rejects(
@@ -853,7 +458,7 @@ test("cross-run recovery requires paired explicit provenance and never regenerat
 });
 
 test(
-  "native OCI private-copy transport fixture and local aliases preserve exact bytes",
+  "native OCI GHCR-only finalization preserves exact manifest and blob bytes",
   {
     skip: !process.env.BICEP_RELEASE_NATIVE_REGISTRY
   },
@@ -862,39 +467,25 @@ test(
     assert.match(registry, /^localhost:[0-9]+$/);
     for (const version of ["v0.62.1", "v0.62.0-rc.1"]) {
       const f = await fixture(t, version);
-      const r = remoteFixture(f);
-      const directory = join(f.file, "..");
       const namespace = randomUUID();
-      const mappings = [
-        [
-          "ghcr.io/radius-project/bicep-types-aws",
-          `${registry}/${namespace}/cutover-aws`
-        ],
-        [
-          "ghcr.io/radius-project/bicep-types-radius",
-          `${registry}/${namespace}/cutover-radius`
-        ],
-        ["biceptypes.azurecr.io/aws", `${registry}/${namespace}/mirror-aws`],
-        [
-          "biceptypes.azurecr.io/radius",
-          `${registry}/${namespace}/mirror-radius`
-        ]
-      ];
+      const mappings = bicepExtensionTargets.map((entry, index) => [
+        entry.repository,
+        `${registry}/${namespace}/extension-${index}`
+      ]);
       const map = (arg) =>
         mappings.reduce((text, [from, to]) => text.replace(from, to), arg);
-      const blobFile = join(directory, "blob");
+      const blobFile = join(f.directory, "blob");
       await writeFile(blobFile, "blob");
       for (const artifact of f.lock.artifacts) {
-        const repository = map(artifact.reference.split(":")[0]);
         await tool([
           "oras",
           "blob",
           "push",
           "--plain-http",
-          repository,
+          map(artifact.reference.split(":")[0]),
           blobFile
         ]);
-        const file = join(directory, `${artifact.name}.json`);
+        const file = join(f.directory, `${artifact.name}.json`);
         await writeFile(file, f.store.get(artifact.reference));
         await tool([
           "oras",
@@ -906,20 +497,15 @@ test(
         ]);
       }
       const copies = [];
-      const run = async (args) => {
+      const run = async (args, options) => {
+        assert.ok(args.at(-1).startsWith("ghcr.io/"), "No ACR requests");
         const mapped = args.map(map);
         if (args[1] === "cp") {
-          assert.ok(
-            args[3].startsWith("ghcr.io/"),
-            "Public caller cannot write production ACR"
-          );
           mapped.splice(2, 0, "--from-plain-http", "--to-plain-http");
           copies.push(args);
-        } else {
-          mapped.splice(3, 0, "--plain-http");
-        }
+        } else mapped.splice(3, 0, "--plain-http");
         try {
-          return await tool(mapped);
+          return await tool(mapped, options);
         } catch (error) {
           if (error.stderr)
             error.stderr = mappings.reduce(
@@ -929,47 +515,19 @@ test(
           throw error;
         }
       };
-      const monitor = async (args) => {
-        await r.monitor(args);
-        const request = JSON.parse(args.core.getInput("CLIENT_PAYLOAD"));
-        const target = request.registry_target;
-        const source =
-          request.mode === "copy" ?
-            `ghcr.io/radius-project/bicep-types-${target}@${request.digest}`
-          : `biceptypes.azurecr.io/${target}@${request.digest}`;
-        const destination = `biceptypes.azurecr.io/${target}:${
-          request.mode === "copy" ? version.slice(1) : request.channel
-        }`;
-        // This is the private transport test double, not public workflow code.
-        await tool([
-          "oras",
-          "cp",
-          "--from-plain-http",
-          "--to-plain-http",
-          map(source),
-          map(destination)
-        ]);
-      };
-      const stable = !version.includes("-rc.");
-      await r.stage({ monitor, run });
-      assert.equal(copies.length, 0, "Staging cannot move GHCR aliases");
-      await verifyMirrors(f.plan, sourceSha, f.lock, run);
-      await r.finalize(String(stable), String(stable), { monitor, run });
-      await r.finalize(String(stable), String(stable), { monitor, run });
-      assert.equal(copies.length, stable ? 4 : 0);
-      const receipt = JSON.parse(
-        await readFile(join(r.directory, "receipt.json"))
-      );
-      assert.equal(receipt.status, "complete");
-      for (const entry of receipt.copies) {
-        assert.equal(
-          hash(await run(["oras", "manifest", "fetch", entry.destination])),
-          entry.request.digest
-        );
-        const copied = JSON.parse(
-          await run(["oras", "manifest", "fetch", entry.destination])
-        );
-        for (const blob of [copied.config, ...copied.layers]) {
+      const stable = String(!version.includes("-rc."));
+      await f.finalize(stable, stable, { run });
+      const receipt = await f.finalize(stable, stable, { run });
+      assert.equal(copies.length, stable === "true" ? 4 : 0);
+      for (const entry of [...f.lock.artifacts, ...receipt.ghcr.destinations]) {
+        const bytes = await run(["oras", "manifest", "fetch", entry.reference]);
+        assert.equal(hash(bytes), entry.digest);
+        const manifest = JSON.parse(bytes);
+        for (const blob of [manifest.config, ...manifest.layers]) {
+          const repository = map(entry.reference).slice(
+            0,
+            map(entry.reference).lastIndexOf(":")
+          );
           const bytes = await tool([
             "oras",
             "blob",
@@ -977,16 +535,10 @@ test(
             "--plain-http",
             "--output",
             "-",
-            `${map(entry.destination).split(":").slice(0, -1).join(":")}@${blob.digest}`
+            `${repository}@${blob.digest}`
           ]);
           assert.equal(hash(bytes), blob.digest);
         }
-      }
-      for (const entry of receipt.ghcr.destinations) {
-        assert.equal(
-          hash(await run(["oras", "manifest", "fetch", entry.reference])),
-          entry.digest
-        );
       }
     }
   }

@@ -6,21 +6,11 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { tool } from "./bicep-types.mjs";
-import { approvedRelease, existingManifest } from "./publish-release-bicep.mjs";
-import { readBicepExtensionLock } from "./release-assets.mjs";
-import { readAwsEvidence } from "./collect-release-bicep.mjs";
+import { existingManifest } from "./publish-release-bicep.mjs";
 import { verifyBicepExtensionOutput } from "./release-bicep-extensions.mjs";
 import { verifyPair } from "./stage-release-bicep.mjs";
-import monitorRemoteWorkflow from "./monitor-remote-workflow.mjs";
-import {
-  promotionRequests,
-  dispatchPromotion
-} from "./promote-bicep-types.mjs";
 import { validatePublicationManifest } from "./publish-draft-release.mjs";
-import {
-  validateBicepExtensionLock,
-  verifyBicepExtensionOutputs
-} from "./release-bicep-extensions.mjs";
+import { verifyBicepExtensionOutputs } from "./release-bicep-extensions.mjs";
 
 const hash = (bytes) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -194,57 +184,18 @@ export async function promoteExtensions(
   }
 }
 
-export function releaseCopyRequests(plan, sourceSha, lock) {
-  validateBicepExtensionLock(plan, sourceSha, lock);
-  return lock.artifacts.map((record) => {
-    const target = record.name === "aws-bicep-types" ? "aws" : "radius";
-    const identifier = `copy-${target}-${record.version}-${record.source.commit}-${record.digest.slice(7)}`;
-    assert.ok(
-      identifier.length <= 200,
-      "Copy identifier exceeds monitor limit"
-    );
-    return {
-      mode: "copy",
-      source_repository: record.source.repository,
-      source_ref: `refs/tags/${plan.version}`,
-      source_sha: record.source.commit,
-      registry_target: target,
-      rel_channel: plan.releaseType === "rc" ? record.version : plan.channel,
-      digest: record.digest,
-      release_identifier: identifier
-    };
-  });
-}
-
-export function finalizeExtensions(options) {
-  return publishExtensions(options, true);
-}
-
-export function stageExtensionMirrors(options) {
-  return publishExtensions(
-    { ...options, channel: "false", latest: "false" },
-    false
-  );
-}
-
-async function publishExtensions(
-  {
-    github,
-    core,
-    plan,
-    sourceSha,
-    lock,
-    manifest,
-    channel,
-    latest,
-    directory,
-    monitor = monitorRemoteWorkflow,
-    run = tool,
-    now = Date.now,
-    jobDeadline
-  },
-  finalize
-) {
+export async function finalizeExtensions({
+  plan,
+  sourceSha,
+  lock,
+  manifest,
+  channel,
+  latest,
+  directory,
+  run = tool,
+  now = Date.now,
+  jobDeadline
+}) {
   const deadline = Math.min(
     now() + 24 * 60_000,
     jobDeadline === undefined ? Infinity : jobDeadline - 180_000
@@ -262,24 +213,11 @@ async function publishExtensions(
       ...options,
       timeout: Math.min(options.timeout ?? 30_000, remaining())
     });
-  const reconcile = (args) =>
-    monitor({
-      ...args,
-      core: {
-        ...args.core,
-        getInput: (name, options) =>
-          name === "MAX_WAIT_SECONDS" ?
-            String(Math.min(300, Math.floor(remaining() / 1000)))
-          : args.core.getInput(name, options)
-      }
-    });
   const receipt = {
     schemaVersion: 1,
     version: plan.version,
     releaseSourceCommit: sourceSha,
-    status: "verifying",
-    copies: [],
-    promotions: []
+    status: "verifying"
   };
   await mkdir(directory, { recursive: true });
   const save = () =>
@@ -287,132 +225,25 @@ async function publishExtensions(
       join(directory, "receipt.json"),
       JSON.stringify(receipt, null, 2) + "\n"
     );
-  const registryConfig = join(directory, "anonymous-registry.json");
-  const readback = async (reference, digest) => {
-    assert.equal(
-      hash(
-        await execute(
-          [
-            "oras",
-            "manifest",
-            "fetch",
-            "--registry-config",
-            registryConfig,
-            reference
-          ],
-          { timeout: 30_000 }
-        )
-      ),
-      digest,
-      `Private Bicep copy digest mismatch: ${reference}`
-    );
-  };
-  const remoteCore = (entry) => ({
-    ...core,
-    setOutput: (name, value) => {
-      entry[name] = value;
-    },
-    setFailed: (message) => {
-      throw new Error(message);
-    }
-  });
-  const requireSuccess = (entry) => {
-    assert.equal(
-      entry.conclusion,
-      "success",
-      "Private publication did not succeed; inspect retained run identity"
-    );
-    assert.match(
-      String(entry.run_id ?? ""),
-      /^[1-9]\d*$/,
-      "Missing private run identity"
-    );
-    assert.equal(
-      entry.run_state,
-      "found",
-      "Private run acceptance is not established"
-    );
-  };
   try {
-    if (finalize) {
-      validatePublicationManifest(manifest, plan.version, sourceSha);
-      assert.equal(manifest.releaseType, plan.releaseType);
-      assert.equal(manifest.channel, plan.channel);
-      assert.deepEqual(
-        manifest.observed?.downstream?.bicepExtensionLock,
-        lock,
-        "Approved manifest and paired lock differ"
-      );
-      verifyBicepExtensionOutputs(
-        plan,
-        sourceSha,
-        lock,
-        manifest.observed.downstream.ociArtifacts
-      );
-    }
+    validatePublicationManifest(manifest, plan.version, sourceSha);
+    assert.equal(manifest.releaseType, plan.releaseType);
+    assert.equal(manifest.channel, plan.channel);
+    assert.deepEqual(
+      manifest.observed?.downstream?.bicepExtensionLock,
+      lock,
+      "Approved manifest and paired lock differ"
+    );
+    verifyBicepExtensionOutputs(
+      plan,
+      sourceSha,
+      lock,
+      manifest.observed.downstream.ociArtifacts
+    );
     promotionTargets(plan, lock, channel, latest);
     await verifyPair(plan, sourceSha, lock, (args) => execute(args));
-    await writeFile(registryConfig, JSON.stringify({ auths: {} }));
     receipt.status = "partial";
-    for (const request of releaseCopyRequests(plan, sourceSha, lock)) {
-      const target = request.registry_target;
-      const record = lock.artifacts.find(
-        (entry) => entry.name === `${target}-bicep-types`
-      );
-      const destination = `biceptypes.azurecr.io/${target}:${record.version}`;
-      const entry = { request, destination, status: "pending" };
-      receipt.copies.push(entry);
-      await save();
-      await readback(record.reference, record.digest);
-      const inputs = {
-        OWNER: "azure-octo",
-        REPO: "radius-publisher",
-        WORKFLOW_FILE:
-          target === "aws" ?
-            "publish-bicep-types-aws.yml"
-          : "publish-bicep-types.yml",
-        EVENT_TYPE: target === "aws" ? "bicep-types-aws" : "bicep-types",
-        RELEASE_IDENTIFIER: request.release_identifier,
-        CLIENT_PAYLOAD: JSON.stringify(request),
-        REUSE_SUCCESSFUL: "false",
-        MAX_WAIT_SECONDS: "300",
-        POLL_INTERVAL_SECONDS: "10"
-      };
-      await reconcile({
-        github,
-        core: { ...remoteCore(entry), getInput: (name) => inputs[name] ?? "" }
-      });
-      requireSuccess(entry);
-      await readback(destination, record.digest);
-      entry.status = "verified";
-      await save();
-    }
-    if (!finalize) {
-      receipt.status = "complete";
-      return receipt;
-    }
-    if (channel === "true") {
-      for (const request of promotionRequests(
-        manifest,
-        plan.version,
-        sourceSha,
-        plan,
-        lock
-      )) {
-        const entry = { request, status: "pending" };
-        receipt.promotions.push(entry);
-        await save();
-        await dispatchPromotion(github, remoteCore(entry), request, reconcile);
-        requireSuccess(entry);
-        await readback(
-          `biceptypes.azurecr.io/${request.registry_target}:${request.channel}`,
-          request.digest
-        );
-        entry.status = "verified";
-        await save();
-      }
-    }
-    // Azure writes are complete before local mutable GHCR aliases move.
+    await save();
     receipt.ghcr = await promoteExtensions(
       plan,
       sourceSha,
@@ -432,52 +263,6 @@ async function publishExtensions(
   }
 }
 
-export async function stageMirrors({
-  github,
-  core,
-  context,
-  publisherGithub,
-  env = process.env,
-  run = tool
-}) {
-  assert.ok(publisherGithub, "Private publisher client is required");
-  const directory = core.getInput("DIRECTORY", { required: true });
-  await mkdir(directory, { recursive: true });
-  const { source } = await approvedRelease(
-    { github, context },
-    directory,
-    env,
-    run
-  );
-  const plan = JSON.parse(
-    await run([
-      "yq",
-      "-o=json",
-      ".",
-      `.github/release-plans/${context.ref.slice("refs/tags/".length)}.yaml`
-    ])
-  );
-  const lock = await readBicepExtensionLock(github, plan.version, { core });
-  assert.ok(lock, "Immutable Bicep pair is required before mirror staging");
-  const aws = await readAwsEvidence(github, plan, source.commit);
-  assert.ok(aws, "Trusted AWS evidence is required before mirror staging");
-  assert.deepEqual(
-    lock.artifacts[0],
-    aws.artifact,
-    "Paired AWS lock differs from controller evidence"
-  );
-  return stageExtensionMirrors({
-    github: publisherGithub,
-    core,
-    plan,
-    sourceSha: source.commit,
-    lock,
-    directory,
-    jobDeadline: readJobDeadline(core),
-    run
-  });
-}
-
 function readJobDeadline(core) {
   const deadline = Number(core.getInput("JOB_DEADLINE", { required: true }));
   assert.ok(
@@ -487,7 +272,7 @@ function readJobDeadline(core) {
   return deadline;
 }
 
-export default async function finalize({ github, core, context }) {
+export default async function finalize({ core, context }) {
   const load = async (name) =>
     JSON.parse(await readFile(core.getInput(name, { required: true }), "utf8"));
   const plan = await load("PLAN_FILE");
@@ -495,8 +280,6 @@ export default async function finalize({ github, core, context }) {
   assert.equal(context.repo.repo, "radius");
   assert.equal(context.ref, `refs/tags/${plan.version}`);
   await finalizeExtensions({
-    github,
-    core,
     plan,
     sourceSha: context.sha,
     lock: await load("LOCK_FILE"),
