@@ -242,7 +242,7 @@ func (h *Grant) Read(ctx context.Context, region string, identifier string) (map
 	if err != nil {
 		return nil, err
 	}
-	return awsapi.EncodeObject(grant{
+	properties, err := awsapi.EncodeObject(grant{
 		KeyId:                    aws.ToString(e.KeyId),
 		GrantId:                  aws.ToString(e.GrantId),
 		Name:                     aws.ToString(e.Name),
@@ -251,9 +251,39 @@ func (h *Grant) Read(ctx context.Context, region string, identifier string) (map
 		RetiringPrincipal:        aws.ToString(e.RetiringPrincipal),
 		RetiringServicePrincipal: aws.ToString(e.RetiringServicePrincipal),
 		Operations:               e.Operations,
-		Constraints:              e.Constraints,
 		IssuingAccount:           aws.ToString(e.IssuingAccount),
 	})
+	if c := constraintsOf(e.Constraints); c != nil && err == nil {
+		properties["Constraints"] = c
+	}
+	return properties, err
+}
+
+// constraintsOf returns the grant's constraints as the Constraints property, or nil when it has none. It copies every
+// encryption context pair as it is, because awsapi.Encode drops empty strings and keys named ResultMetadata, which are
+// pairs a constraint can have.
+func constraintsOf(c *types.GrantConstraints) map[string]any {
+	if c == nil {
+		return nil
+	}
+	out := map[string]any{}
+	for name, pairs := range map[string]map[string]string{"EncryptionContextEquals": c.EncryptionContextEquals, "EncryptionContextSubset": c.EncryptionContextSubset} {
+		if len(pairs) == 0 {
+			continue
+		}
+		m := map[string]any{}
+		for k, v := range pairs {
+			m[k] = v
+		}
+		out[name] = m
+	}
+	if arn := aws.ToString(c.SourceArn); arn != "" {
+		out["SourceArn"] = arn
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // named returns the identifiers of the key's grants with the name.

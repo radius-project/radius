@@ -25,7 +25,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
+	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	"github.com/aws/smithy-go"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -60,7 +62,7 @@ var template = map[string]any{
 	"GranteePrincipal":  grantee,
 	"RetiringPrincipal": "arn:aws:iam::" + account + ":role/admin",
 	"Operations":        []any{"Decrypt", "GenerateDataKey"},
-	"Constraints":       map[string]any{"EncryptionContextSubset": map[string]any{"app": "orders"}},
+	"Constraints":       map[string]any{"EncryptionContextSubset": map[string]any{"app": "orders", "ResultMetadata": "kept", "empty": ""}},
 }
 
 // firstGrant is the ID of the first grant a new fake makes.
@@ -356,6 +358,43 @@ func Test_CreateServiceGrant(t *testing.T) {
 	require.Equal(t, with(properties, map[string]any{
 		"GrantId": firstGrant, "Name": native.GenerateName(request.ClientToken), "IssuingAccount": "arn:aws:iam::" + account + ":root",
 	}), read)
+}
+
+// awkwardContext is an encryption context with pairs awsapi.Encode would drop: an empty value and a key named
+// ResultMetadata.
+var awkwardContext = map[string]any{"app": "orders", "ResultMetadata": "kept", "empty": ""}
+
+// Test_ReadConstraints checks that Read returns every encryption context pair as the create sent it, so a redeploy of
+// the same template isn't a change to the create-only Constraints, and that it leaves out constraints with no values.
+func Test_ReadConstraints(t *testing.T) {
+	for _, c := range []map[string]any{
+		{"EncryptionContextEquals": awkwardContext},
+		{"EncryptionContextSubset": awkwardContext},
+	} {
+		h, _ := newHandler()
+		properties := with(template, map[string]any{"Constraints": c})
+		id := create(t, h, properties)
+		read, err := h.Read(t.Context(), region, id)
+		require.NoError(t, err)
+		require.Equal(t, c, read["Constraints"])
+	}
+
+	require.Nil(t, constraintsOf(nil))
+	require.Nil(t, constraintsOf(&types.GrantConstraints{EncryptionContextEquals: map[string]string{}, SourceArn: aws.String("")}), "a constraint with no values is no constraint")
+}
+
+// Test_CreateAgainWithAwkwardContext sends a lost create again before ListGrants lists the grant. AWS returns the first
+// grant for the same name and values, so the fake must keep every encryption context pair to see that they match.
+func Test_CreateAgainWithAwkwardContext(t *testing.T) {
+	h, api := newHandler()
+	api.lagNew = true
+	request := native.CreateRequest{Region: region, Properties: with(template, map[string]any{"Constraints": map[string]any{"EncryptionContextSubset": awkwardContext}}), ClientToken: uuid.NewString()}
+	id, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
+	again, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, id, again)
+	require.Len(t, api.grantsOf(keyID), 1)
 }
 
 func Test_ReadDelete(t *testing.T) {

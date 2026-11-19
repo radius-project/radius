@@ -291,7 +291,7 @@ func props(key string, grantID string, in *kms.CreateGrantInput) map[string]any 
 		ops = append(ops, string(op))
 	}
 	p["Operations"] = ops
-	if c, _ := awsapi.EncodeObject(in.Constraints); len(c) > 0 {
+	if c := constraintsOf(in.Constraints); c != nil {
 		p["Constraints"] = c
 	}
 	return p
