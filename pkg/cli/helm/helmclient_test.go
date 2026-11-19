@@ -723,7 +723,12 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 
 				upgraded, err := helmClient.RunHelmGet(configuration, "radius")
 				require.NoError(t, err)
-				sum := sha256.Sum256([]byte(tt.want))
+				// ucp, dynamic-rp and controller hash the mode and, when not off, the trust domain.
+				checksumInput := tt.want
+				if tt.want != "off" {
+					checksumInput += ":radius.internal"
+				}
+				sum := sha256.Sum256([]byte(checksumInput))
 				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+hex.EncodeToString(sum[:]))
 				if tt.want == "off" {
 					require.Zero(t, detectCalls)

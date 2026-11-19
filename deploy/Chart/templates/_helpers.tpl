@@ -195,6 +195,21 @@ TODO(D7): default to the application-template identity once the broker issues it
 {{- end -}}
 
 {{/*
+Renders the authorization settings that a component reads only at startup, for its
+checksum/authz-config pod annotation. Clients fix the receiver's expected SPIFFE ID when they
+start, so the trust domain is included and a trust-domain-only upgrade rolls every caller.
+Renders only the mode when authorization is off, so the default checksum is unchanged.
+*/}}
+{{- define "radius.authz.checksumInput" -}}
+{{- $mode := include "radius.authz.mode" . -}}
+{{- if eq $mode "off" -}}
+{{- $mode -}}
+{{- else -}}
+{{- printf "%s:%s" $mode (include "radius.authz.spiffe.trustDomain" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Renders the authorization settings shared by every component's config: where the SPIFFE server
 certificate, the Radius CA bundle, and the projected ServiceAccount tokens are mounted, the trust
 domain, and the release namespace.
