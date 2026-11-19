@@ -163,6 +163,11 @@ func ucpAPIServerCASource(radiusNamespace string) string {
 	return radiusNamespace + "/" + ucpAPIServerCASecretName
 }
 
+// ucpAPIServerTrustSource is the inject-ca-from-secret value that makes cainjector copy the trust Secret.
+func ucpAPIServerTrustSource(radiusNamespace string) string {
+	return radiusNamespace + "/" + ucpAPIServerTrustSecretName
+}
+
 // injectUCPAPIServerCA makes cainjector copy ca.crt of radius-apiserver-ca into the UCP APIService, and sets the
 // caBundle to it now so the API server does not wait for cainjector.
 func injectUCPAPIServerCA(ctx context.Context, dynamicClient dynamic.Interface, radiusNamespace string, caBundle []byte) error {
@@ -181,8 +186,8 @@ func injectUCPAPIServerCA(ctx context.Context, dynamicClient dynamic.Interface, 
 	return nil
 }
 
-// settleUCPAPIServerCA waits until the APIService caBundle holds no certificate outside ca.crt of
-// radius-apiserver-ca, other than expired ones, for ucpAPIServerCASettleChecks polls in a row. cainjector merges
+// settleUCPAPIServerCA waits until the APIService caBundle holds ca.crt of radius-apiserver-ca and no other
+// certificate, other than expired ones, for ucpAPIServerCASettleChecks polls in a row. cainjector merges
 // ca.crt into the caBundle it reads from its cache and only drops expired certificates, so a reconcile that read the
 // APIService before rad switched it can write an earlier CA, such as ucp-ca, back and keep it trusted. rad sets the
 // caBundle to ca.crt again whenever that happens.
@@ -209,11 +214,15 @@ func settleUCPAPIServerCA(ctx context.Context, kubeContext string, kubeClient ku
 		encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 		bundle, decodeErr := base64.StdEncoding.DecodeString(encoded)
 		extra := extraCertificates(bundle, caBundle)
-		if decodeErr == nil && extra == 0 && apiService.GetAnnotations()[injectCAFromSecretAnnotation] == ucpAPIServerCASource(radiusNamespace) {
+		missing := !containsCertificates(parseCertificates(bundle), parseCertificates(caBundle))
+		if decodeErr == nil && extra == 0 && !missing && apiService.GetAnnotations()[injectCAFromSecretAnnotation] == ucpAPIServerCASource(radiusNamespace) {
 			clean++
 			return clean >= ucpAPIServerCASettleChecks, nil
 		}
 		clean, problem = 0, fmt.Sprintf("its caBundle trusts %d certificate(s) outside Secret %s/%s", extra, radiusNamespace, ucpAPIServerCASecretName)
+		if missing {
+			problem = fmt.Sprintf("its caBundle does not hold the CA in Secret %s/%s", radiusNamespace, ucpAPIServerCASecretName)
+		}
 		return false, injectUCPAPIServerCA(ctx, dynamicClient, radiusNamespace, caBundle)
 	})
 	if wait.Interrupted(err) {

@@ -17,10 +17,12 @@ limitations under the License.
 package helm
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"strings"
 
@@ -100,9 +102,17 @@ type ucpOffLeftoverFound struct {
 //
 // It does nothing when the APIService or Secret ucp-cert does not exist. If UCP does not serve the certificate in
 // ucp-cert in time, it returns an error and leaves the caBundle trusting both CAs; running the command again resumes.
-func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
+//
+// declared holds the objects of the release Helm applied. An object of the radius-apiserver-ca chain with the release's
+// Helm metadata that the release does not declare was staged by an upgrade to authorization on that stopped before
+// Helm, and this deletes it. It keeps a declared object, such as the radius-selfsigned-bootstrap Issuer that charts
+// which serve UCP from ucp-cert also use to issue radius-ca.
+func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, declared manifestObjectSet) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
+		return err
+	}
+	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared); err != nil {
 		return err
 	}
 	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
@@ -123,7 +133,7 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if len(offCAs) == 0 {
 		return fmt.Errorf("Secret %s/%s has no CA certificate in %s", radiusNamespace, ucpOffCertificateSecretName, caCertificateKey)
 	}
-	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace)
+	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, ucpOffLeftoverSecrets)
 	if err != nil {
 		return err
 	}
@@ -140,13 +150,18 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if err := waitForUCPOffCertificate(ctx, kubeContext, kubeClient, radiusNamespace, offCAs); err != nil {
 		return err
 	}
-	if !clean {
-		if err := settleUCPOffTrust(ctx, kubeContext, dynamicClient, offCAs); err != nil {
-			return err
-		}
+	// cainjector may have rewritten the caBundle while rad waited, so settle even when the first read was clean.
+	if err := settleUCPOffTrust(ctx, kubeContext, dynamicClient, offCAs); err != nil {
+		return err
 	}
 
-	found, err = ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace)
+	return i.deleteUCPOffLeftovers(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace, ucpOffLeftoverSecrets)
+}
+
+// deleteUCPOffLeftovers deletes each Secret of leftovers that is a leftover, as ucpOffLeftover decides, pinned to the
+// uid and resourceVersion rad read, and warns about each that rad does not own.
+func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret) error {
+	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
 	if err != nil {
 		return err
 	}
@@ -216,7 +231,7 @@ func (i *Impl) warnForeignUCPOffSecrets(kubeContext, radiusNamespace string, fou
 }
 
 // ucpOffTrustClean reports whether apiService has none of the cert-manager inject annotations and its caBundle holds
-// exactly the CA certificates offCAs.
+// exactly the CA certificates offCAs and nothing else: a leaf certificate or any other PEM block makes it unclean.
 func ucpOffTrustClean(apiService *unstructured.Unstructured, offCAs []*x509.Certificate) (bool, error) {
 	for _, annotation := range ucpInjectAnnotations {
 		if _, ok := apiService.GetAnnotations()[annotation]; ok {
@@ -228,14 +243,35 @@ func ucpOffTrustClean(apiService *unstructured.Unstructured, offCAs []*x509.Cert
 	if err != nil {
 		return false, fmt.Errorf("failed to decode the caBundle of APIService %s: %w", ucpAPIServiceName, err)
 	}
-	live := caCertificates(bundle)
-	return containsCertificates(live, offCAs) && containsCertificates(offCAs, live), nil
+	live, ok := exactCertificates(bundle)
+	return ok && containsCertificates(live, offCAs) && containsCertificates(offCAs, live), nil
 }
 
-// ucpOffLeftovers returns the state of each Secret of ucpOffLeftoverSecrets.
-func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string) ([]ucpOffLeftoverFound, error) {
+// exactCertificates returns every certificate in a PEM bundle and whether the bundle holds nothing else: each block
+// is a parseable CERTIFICATE and no data follows the last block.
+func exactCertificates(bundle []byte) ([]*x509.Certificate, bool) {
+	var certs []*x509.Certificate
+	for {
+		var block *pem.Block
+		block, bundle = pem.Decode(bundle)
+		if block == nil {
+			return certs, len(bytes.TrimSpace(bundle)) == 0
+		}
+		if block.Type != "CERTIFICATE" {
+			return nil, false
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, false
+		}
+		certs = append(certs, cert)
+	}
+}
+
+// ucpOffLeftovers returns the state of each Secret of leftovers.
+func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret) ([]ucpOffLeftoverFound, error) {
 	found := []ucpOffLeftoverFound{}
-	for _, leftover := range ucpOffLeftoverSecrets {
+	for _, leftover := range leftovers {
 		f, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, leftover)
 		if err != nil {
 			return nil, err

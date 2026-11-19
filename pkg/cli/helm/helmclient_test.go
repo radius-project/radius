@@ -632,8 +632,7 @@ func TestHelmClientImpl_RunHelmPull_RepoURLUnsupportedOptions(t *testing.T) {
 }
 
 // Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm runs rad upgrade and rad install --reinstall against real
-// Helm storage and checks that the cert-manager and csi-driver-spiffe decisions match the authorization mode Helm
-// renders.
+// Helm storage and checks that the cert-manager decision matches the authorization mode Helm renders.
 func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 	t.Parallel()
 
@@ -669,7 +668,7 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				configuration := &helm.Configuration{
 					Releases:     storage.Init(driver.NewMemory()),
 					KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
-					Capabilities: capabilitiesWith(admissionPolicyAPI),
+					Capabilities: common.DefaultCapabilities,
 				}
 				helmClient := NewHelmClient()
 				installed, err := helmClient.RunHelmInstall(configuration, loadChart(t), tt.deployed, "radius", "radius-system", false, DefaultInstallTimeout, nil)
@@ -698,31 +697,19 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 					DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, wait, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
 						return helmClient.RunHelmUpgrade(configuration, c, vals, name, namespace, false, reuse, timeout)
 					})
-				spiffeInstalls := 0
-				if tt.want != "off" {
-					expectCSIDriverSPIFFEPull(t, client)
-					client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, radManagedByLabels()).
-						DoAndReturn(func(*helm.Configuration, *chart.Chart, map[string]any, string, string, bool, time.Duration, map[string]string) (*releasev1.Release, error) {
-							spiffeInstalls++
-							return &releasev1.Release{}, nil
-						})
-				}
 
 				detectCalls := 0
 				impl := &Impl{
-					Helm:           client,
-					contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
+					Helm: client,
 					newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 						detectCalls++
 						kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 						return kubeClient, apiextClient, nil
 					},
-					newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
-						controller := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), "cert-manager")
-						return sarClient(nil, nil, controller), nil
-					},
 					newCertManagerDynamicClient: readyUCPAPIServiceClient,
 					newUCPAPIServerTrustClient:  issuedUCPAPIServerTrustClient,
+					// rad renders the target chart to tell which certificate it serves UCP's API server with.
+					contourCluster: &fakeContourCluster{},
 				}
 
 				state, err := impl.CheckRadiusInstall("test-context")
@@ -732,7 +719,6 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				options.Radius.SetArgs = tt.setArgs
 				options.Contour.Disabled = true
 				options.RadiusReleaseValues = state.RadiusValues
-				options.RadiusReleaseChart = state.RadiusChart
 				if command == "upgrade" {
 					require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
 				} else {
@@ -744,22 +730,16 @@ func Test_RetryAfterFailedUpgrade_CertManagerMatchesHelm(t *testing.T) {
 				require.NoError(t, err)
 				// The off checksum hashes only the mode; other modes also hash the rest of the authorization settings,
 				// so the dryRun value is the one deploy/Chart/tests/config_checksum_test.yaml expects.
-				wantChecksum := map[string]string{"dryRun": "024341e48a4b4c462f89d96ce9da94db066067e56c66a3f4c2a3c645349cbe5c"}
+				wantChecksum := map[string]string{"dryRun": "a8235814f5d8f0ba57e9a9251d3ae650ea7f7fcb8cd2ba0a6717c49a05aa66e2"}
 				if tt.want == "off" {
 					sum := sha256.Sum256([]byte(tt.want))
 					wantChecksum["off"] = hex.EncodeToString(sum[:])
 				}
 				require.Contains(t, upgraded.Manifest, "checksum/authz-config: "+wantChecksum[tt.want])
-				requesters := nestedValue(upgraded.Config, "global", "rbac", "certManager", "requesters")
 				if tt.want == "off" {
 					require.Zero(t, detectCalls)
-					require.Zero(t, spiffeInstalls)
-					require.Nil(t, requesters)
 				} else {
 					require.Equal(t, 1, detectCalls)
-					require.Equal(t, 1, spiffeInstalls)
-					// The issuance policy allows the detected cert-manager controller, not the chart default.
-					require.Equal(t, []any{"system:serviceaccount:security:cert-manager"}, requesters)
 				}
 			})
 		}

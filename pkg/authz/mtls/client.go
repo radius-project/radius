@@ -286,12 +286,18 @@ func chainValidity(chain []*x509.Certificate) connectionValidity {
 // failed verification. If a connection's verified server chain is no longer valid, the
 // connection is closed and the request uses a fresh pool, forcing a new handshake with the
 // current CA bundle.
+//
+// Like any http.RoundTripper, RoundTrip closes the request body, even on errors: it closes
+// it when it fails before handing the request on, and the underlying transport closes it
+// otherwise.
 func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.URL.Scheme != "https" {
+		closeBody(req)
 		return nil, fmt.Errorf("refusing to send a ServiceAccount token over %q; the URL must use https", req.URL.Scheme)
 	}
 	token, err := t.token.Token()
 	if err != nil {
+		closeBody(req)
 		return nil, err
 	}
 	pool := t.transportForRequest()
@@ -302,6 +308,13 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header = req.Header.Clone()
 	req.Header.Set("Authorization", "Bearer "+token)
 	return pool.RoundTrip(req)
+}
+
+// closeBody closes req's body, if any, for a request that will not be sent.
+func closeBody(req *http.Request) {
+	if req.Body != nil {
+		_ = req.Body.Close()
+	}
 }
 
 // CloseIdleConnections closes idle connections in the current and retired connection pools.

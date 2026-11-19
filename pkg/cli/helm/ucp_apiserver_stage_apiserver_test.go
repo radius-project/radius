@@ -21,6 +21,7 @@ package helm
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,6 +34,9 @@ import (
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -138,6 +142,117 @@ func TestStagedUCPAPIServerCAAdoptedByHelm_APIServer(t *testing.T) {
 		_, err = NewHelmClient().RunHelmUpgrade(configuration, stagedCATestChart(t, staged, namespace), map[string]any{}, "radius", namespace, false, true, time.Minute)
 		require.ErrorContains(t, err, "cannot be imported into the current release")
 	})
+
+	// An upgrade that stops after rad stages the chain but before Helm adopts it leaves the chain outside the release,
+	// so Helm's uninstall keeps it. rad deletes what it staged and leaves an object that another owner created.
+	t.Run("uninstall before adoption", func(t *testing.T) {
+		namespace := "stage-uninstall"
+		_, err := client.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+		require.NoError(t, err)
+		configuration := helmTestConfiguration(t, kubeconfig, namespace)
+		_, err = newInstallClient(configuration, "radius", namespace, false, time.Minute).Run(stagedCATestChart(t, nil, namespace), map[string]any{})
+		require.NoError(t, err)
+
+		foreign := staged[0].object.DeepCopy()
+		foreign.SetNamespace(namespace)
+		_, err = dynamicClient.Resource(staged[0].resource).Namespace(namespace).Create(t.Context(), foreign, metav1.CreateOptions{})
+		require.NoError(t, err)
+		for _, object := range staged[1:] {
+			require.NoError(t, applyHelmOwnedObject(t.Context(), "test-context", dynamicClient, object.resource, object.object, "radius", namespace))
+		}
+
+		_, err = NewHelmClient().RunHelmUninstall(configuration, "radius", namespace, true)
+		require.NoError(t, err)
+		for _, object := range staged {
+			_, err := dynamicClient.Resource(object.resource).Namespace(namespace).Get(t.Context(), object.object.GetName(), metav1.GetOptions{})
+			require.NoError(t, err, "Helm's uninstall keeps %s, which is not in the release", object.object.GetName())
+		}
+
+		var logs []string
+		impl := &Impl{logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }}
+		for range 2 {
+			logs = nil
+			require.NoError(t, impl.deleteUnadoptedUCPAPIServerStage(t.Context(), "test-context", dynamicClient, namespace, "radius", nil))
+			_, err = dynamicClient.Resource(staged[0].resource).Namespace(namespace).Get(t.Context(), foreign.GetName(), metav1.GetOptions{})
+			require.NoError(t, err, "rad must keep %s, which it did not stage", foreign.GetName())
+			for _, object := range staged[1:] {
+				_, err := dynamicClient.Resource(object.resource).Namespace(namespace).Get(t.Context(), object.object.GetName(), metav1.GetOptions{})
+				require.True(t, apierrors.IsNotFound(err), "rad must delete %s, which it staged, got %v", object.object.GetName(), err)
+			}
+			require.Len(t, logs, 1)
+			require.Contains(t, logs[0], "kubectl --context \"test-context\" -n "+namespace+" delete issuer "+foreign.GetName())
+		}
+
+		// A delete pinned to an earlier resourceVersion fails against the real API server, so an object that changed
+		// after rad read it survives.
+		require.NoError(t, applyHelmOwnedObject(t.Context(), "test-context", dynamicClient, staged[1].resource, staged[1].object, "radius", namespace))
+		live, err := dynamicClient.Resource(staged[1].resource).Namespace(namespace).Get(t.Context(), staged[1].object.GetName(), metav1.GetOptions{})
+		require.NoError(t, err)
+		uid, stale := live.GetUID(), live.GetResourceVersion()
+		live.SetLabels(map[string]string{helmManagedByLabel: helmManagedByValue, "changed": "true"})
+		_, err = dynamicClient.Resource(staged[1].resource).Namespace(namespace).Update(t.Context(), live, metav1.UpdateOptions{})
+		require.NoError(t, err)
+		err = dynamicClient.Resource(staged[1].resource).Namespace(namespace).Delete(t.Context(), staged[1].object.GetName(),
+			metav1.DeleteOptions{Preconditions: &metav1.Preconditions{UID: &uid, ResourceVersion: &stale}})
+		require.True(t, apierrors.IsConflict(err), "got %v", err)
+	})
+}
+
+// lookupRenderCluster renders with a configuration whose template lookups read a real API server.
+type lookupRenderCluster struct {
+	*fakeContourCluster
+	configuration func() *helm.Configuration
+}
+
+func (c lookupRenderCluster) RenderConfiguration(string, string) (*helm.Configuration, error) {
+	return c.configuration(), nil
+}
+
+// TestRenderRadiusRollbackKeepsLiveUCPCert_APIServer checks, against a real API server, that rad stages what
+// RunHelmRollback applies: an upgrade to the target chart and values whose lookups keep the live Secret ucp-cert.
+// The target revision stored a different ucp-cert; staging it would replace the key UCP serves with.
+func TestRenderRadiusRollbackKeepsLiveUCPCert_APIServer(t *testing.T) {
+	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
+		t.Skip("Run make test or set KUBEBUILDER_ASSETS to run the isolated API-server regression.")
+	}
+	runtimelog.SetLogger(logr.Discard())
+	kubeconfig, client := startTestAPIServer(t)
+	namespace := RadiusSystemNamespace
+	_, err := client.CoreV1().Namespaces().Create(t.Context(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	live := map[string][]byte{
+		corev1.TLSCertKey:       []byte("live-certificate"),
+		corev1.TLSPrivateKeyKey: []byte("live-key"),
+		caCertificateKey:        []byte("live-ca"),
+	}
+	_, err = client.CoreV1().Secrets(namespace).Create(t.Context(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: ucpOffCertificateSecretName, Namespace: namespace},
+		Data:       live,
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	stored := renderStageTestManifest(t, map[string]any{})
+	storedSecret, _ := renderedOffCertificate(t, stored)
+	require.NotEqual(t, live[corev1.TLSPrivateKeyKey], storedSecret.Data[corev1.TLSPrivateKeyKey])
+	history := []*releasev1.Release{
+		{Name: radiusReleaseName, Namespace: namespace, Version: 1, Config: map[string]any{}, Manifest: stored, Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Name: radiusReleaseName, Namespace: namespace, Version: 2, Config: authzOnValues, Manifest: renderStageTestManifest(t, authzOnValues), Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
+	}
+	impl := &Impl{contourCluster: lookupRenderCluster{
+		fakeContourCluster: &fakeContourCluster{},
+		configuration: func() *helm.Configuration {
+			configuration := helmTestConfiguration(t, kubeconfig, namespace)
+			configuration.KubeClient = &kubefake.PrintingKubeClient{Out: io.Discard}
+			return configuration
+		},
+	}}
+
+	manifest, ok, err := impl.renderRadiusRollback("test-context", namespace, history, 1)(t.Context())
+	require.NoError(t, err)
+	require.True(t, ok)
+	rendered, _ := renderedOffCertificate(t, manifest)
+	require.Equal(t, live, rendered.Data, "the rollback must render the live Secret %s, not the one revision 1 stored", ucpOffCertificateSecretName)
 }
 
 func helmTestConfiguration(t *testing.T, kubeconfig, namespace string) *helm.Configuration {

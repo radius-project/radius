@@ -237,7 +237,6 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 	clusterOptions.RadiusReleaseValues = state.RadiusValues
-	clusterOptions.RadiusReleaseChart = state.RadiusChart
 
 	err = r.Helm.InstallRadius(ctx, clusterOptions, r.KubeContext)
 	if err != nil {

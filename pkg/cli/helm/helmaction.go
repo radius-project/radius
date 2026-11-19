@@ -309,29 +309,35 @@ func isTransientHelmStatus(status int) bool {
 }
 
 func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) (bool, error) {
+	applied, _, err := helmAction.applyHelmChartRelease(kubeContext, helmChart, helmConf, options, vals)
+	return applied, err
+}
+
+// applyHelmChartRelease is ApplyHelmChart that also returns the release Helm applied, or nil when it applied none.
+func (helmAction *HelmActionImpl) applyHelmChartRelease(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) (bool, *releasev1.Release, error) {
 	chartInstalled, _, err := helmAction.QueryRelease(kubeContext, options.ReleaseName, options.Namespace)
 	if err != nil {
-		return false, fmt.Errorf("failed to query Helm release, err: %w", err)
+		return false, nil, fmt.Errorf("failed to query Helm release, err: %w", err)
 	}
 
 	if !chartInstalled {
-		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, options.Timeout, nil)
+		rel, err := helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, options.Timeout, nil)
 		if err != nil {
-			return false, fmt.Errorf("failed to run Helm install, err: %w", err)
+			return false, nil, fmt.Errorf("failed to run Helm install, err: %w", err)
 		}
-		return true, nil
+		return true, rel, nil
 	}
 	if !options.Reinstall {
-		return false, nil
+		return false, nil, nil
 	}
 	// Reinstall path is used during `rad install kubernetes --reinstall`. Preserve the
 	// previously-stored user values by default (ResetThenReuseValues) so that re-runs
 	// don't silently revert non-default settings.
-	_, err = helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, true, options.Timeout)
+	rel, err := helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, true, options.Timeout)
 	if err != nil {
-		return false, fmt.Errorf("failed to run Helm upgrade, err: %w", err)
+		return false, nil, fmt.Errorf("failed to run Helm upgrade, err: %w", err)
 	}
-	return true, nil
+	return true, rel, nil
 }
 
 func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespace string) (bool, string, error) {
@@ -343,8 +349,8 @@ func (helmAction *HelmActionImpl) QueryRelease(kubeContext, releaseName, namespa
 	return err == nil, version, err
 }
 
-// queryReleaseBaseline returns the chart and Config from the same revision Helm reuses.
-func (helmAction *HelmActionImpl) queryReleaseBaseline(kubeContext, releaseName, namespace string) (bool, string, *releasev1.Release, error) {
+// queryReleaseValues is QueryRelease that also returns the user-supplied values Helm upgrade will reuse.
+func (helmAction *HelmActionImpl) queryReleaseValues(kubeContext, releaseName, namespace string) (bool, string, map[string]any, error) {
 	release, err := helmAction.getRelease(kubeContext, releaseName, namespace)
 	if err != nil || release == nil {
 		return false, "", nil, err
@@ -358,7 +364,7 @@ func (helmAction *HelmActionImpl) queryReleaseBaseline(kubeContext, releaseName,
 	// deployed revision, falling back to the latest revision when none is deployed. A nil Info is treated as
 	// deployed so the history lookup only happens after a failed or pending revision.
 	if release.Info == nil || release.Info.Status == releasecommon.StatusDeployed {
-		return true, version, release, nil
+		return true, version, release.Config, nil
 	}
 	helmConf, err := initHelmConfig(&genericclioptions.ConfigFlags{Namespace: &namespace, Context: &kubeContext})
 	if err != nil {
@@ -368,17 +374,17 @@ func (helmAction *HelmActionImpl) queryReleaseBaseline(kubeContext, releaseName,
 	if err != nil {
 		return false, "", nil, fmt.Errorf("failed to get helm history for release %s in namespace %s (context: %s): %w", releaseName, namespace, kubeContext, err)
 	}
-	return true, version, reusedRelease(release, history), nil
+	return true, version, reusedReleaseValues(release, history), nil
 }
 
-// reusedRelease applies Helm upgrade's release selection to history, which is in ascending revision order.
-func reusedRelease(latest *releasev1.Release, history []*releasev1.Release) *releasev1.Release {
+// reusedReleaseValues applies Helm upgrade's release selection to history, which is in ascending revision order.
+func reusedReleaseValues(latest *releasev1.Release, history []*releasev1.Release) map[string]any {
 	for _, rel := range slices.Backward(history) {
 		if rel.Info != nil && rel.Info.Status == releasecommon.StatusDeployed {
-			return rel
+			return rel.Config
 		}
 	}
-	return latest
+	return latest.Config
 }
 
 func releaseAppVersion(release *releasev1.Release) (string, error) {
