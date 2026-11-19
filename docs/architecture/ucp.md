@@ -72,8 +72,36 @@ UCP calls AWS through Cloud Control, except for types a native handler in `pkg/u
 
 ### Internal endpoint
 
-The Kubernetes APIService endpoint (Service port 443 to container port 9443,
-using the `ucp-cert` certificate) is unchanged by internal authorization. When
+The Kubernetes APIService endpoint (Service port 443 to container port 9443)
+uses the `ucp-cert` certificate. With authorization off, the chart generates it.
+Otherwise cert-manager issues it from the namespaced `radius-apiserver-issuer`
+as a 24-hour certificate renewed after 16 hours. cert-manager's cainjector
+copies `ca.crt` of the `radius-apiserver-ca` Secret, the self-signed CA
+certificate, into the APIService `caBundle` and follows each renewal of that CA
+without `rad` running; the API server never trusts the `ca.crt` of UCP's
+certificate Secret. On upgrade or rollback from the Helm-generated `ucp-ca`,
+`rad` applies `radius-apiserver-ca` and its Issuers with Helm ownership metadata
+before the Helm call, waits for cert-manager to issue the CA, and trusts both
+CAs through the `radius-apiserver-trust` Secret before Helm reissues UCP's
+certificate. It keeps both trusted until every UCP pod serves
+a certificate from `radius-apiserver-ca`, and then points the APIService at
+`radius-apiserver-ca` and deletes `radius-apiserver-trust`. When authorization
+turns off, `rad` instead applies the `ucp-cert` Secret that the target release renders,
+trusts its CA alongside `radius-apiserver-ca`, and moves UCP onto it before the
+Helm call, so the `ucp-ca` `caBundle` Helm applies matches what UCP serves.
+After Helm, once UCP serves `ucp-cert`, `rad` removes its cert-manager inject
+annotation and sets the `caBundle` to the CA of `ucp-cert` in one patch guarded
+by the APIService's uid and resourceVersion, then deletes the
+`radius-apiserver-ca`, `ucp-apiserver-tls` and `radius-apiserver-trust` Secrets,
+so cainjector cannot add `radius-apiserver-ca` back. Before that, it deletes
+any `radius-apiserver-ca` chain left by an upgrade to authorization on that
+stopped before Helm. Each delete applies only
+when `rad` owns the object and it is unchanged since `rad` read it; otherwise
+`rad` leaves it and warns. In the
+`selfSigned` certificate mode, the only mode supported today, this CA is
+separate from the `radius-ca` that signs component server certificates, and no
+Radius component trusts it.
+UCP reloads it without a restart. When
 the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
 on a separate internal port, 9444 (Service port name `internal`, config
 `server.internalPort`), for traffic from other Radius components. That endpoint
