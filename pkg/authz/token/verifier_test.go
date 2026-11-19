@@ -723,6 +723,8 @@ func TestVerify_IgnoresKeysOutsidePolicy(t *testing.T) {
 	require.NoError(t, err)
 	keys := defaultKeys()
 	keys["weak"] = &weak.PublicKey
+	keys["nil-rsa"] = (*rsa.PublicKey)(nil)
+	keys["nil-ecdsa"] = (*ecdsa.PublicKey)(nil)
 	v := newTestVerifier(t, newFakeSource(keys), &fakeClock{now: start})
 	require.NoError(t, v.Refresh(t.Context()))
 
@@ -738,6 +740,7 @@ func TestRefresh_NoUsableKeysDropsCachedKeys(t *testing.T) {
 	sets := map[string]map[string]crypto.PublicKey{
 		"empty":            {},
 		"only unsupported": {"weak": &weak.PublicKey},
+		"only an empty ID": {"": &rsaKey.PublicKey},
 	}
 	for name, set := range sets {
 		t.Run(name, func(t *testing.T) {

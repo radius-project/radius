@@ -245,7 +245,7 @@ func (v *Verifier) fetchLocked(ctx context.Context) error {
 	}
 	accepted := make(map[string]crypto.PublicKey, len(keys.Keys))
 	for kid, key := range keys.Keys {
-		if acceptedKey(key) {
+		if kid != "" && acceptedKey(key) {
 			accepted[kid] = key
 		}
 	}
