@@ -847,3 +847,27 @@ func get(c *http.Client, url string) (int, error) {
 	_, _ = io.Copy(io.Discard, resp.Body)
 	return resp.StatusCode, nil
 }
+
+// TestClientTransport_NilHeader calls RoundTrip directly with a nil header map, which
+// http.Client would have replaced with an empty one.
+func TestClientTransport_NilHeader(t *testing.T) {
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeEnforce)
+	options := callerOptions(t, ca.pem, authz.ModeEnforce, "ucp")
+	transport, err := newClientTransport(options, "applications-rp")
+	require.NoError(t, err)
+	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, srv.url)
+	}
+	t.Cleanup(transport.CloseIdleConnections)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://applications-rp.radius-system.svc:5443/", nil)
+	require.NoError(t, err)
+	req.Header = nil
+	resp, err := transport.RoundTrip(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "ucp.radius-system.svc", (<-srv.seen).identity.String())
+	require.Nil(t, req.Header, "the caller's request must not be modified")
+}
