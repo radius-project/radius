@@ -176,6 +176,10 @@ func TestNew_Validation(t *testing.T) {
 		{name: "no namespace", config: Config{Audience: testAudience, Keys: source}},
 		{name: "no audience", config: Config{Namespace: testNamespace, Keys: source}},
 		{name: "no keys", config: Config{Namespace: testNamespace, Audience: testAudience}},
+		{name: "negative refresh interval", config: Config{Namespace: testNamespace, Audience: testAudience, Keys: source, RefreshInterval: -time.Second}},
+		{name: "negative unknown key interval", config: Config{Namespace: testNamespace, Audience: testAudience, Keys: source, UnknownKeyInterval: -time.Second}},
+		{name: "negative max key age", config: Config{Namespace: testNamespace, Audience: testAudience, Keys: source, MaxKeyAge: -time.Second}},
+		{name: "negative fetch timeout", config: Config{Namespace: testNamespace, Audience: testAudience, Keys: source, FetchTimeout: -time.Second}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -183,6 +187,16 @@ func TestNew_Validation(t *testing.T) {
 			require.Error(t, err)
 		})
 	}
+}
+
+func TestNew_ZeroDurationsUseDefaults(t *testing.T) {
+	v, err := New(Config{Namespace: testNamespace, Audience: testAudience, Keys: newFakeSource(defaultKeys()), Leeway: -time.Second})
+	require.NoError(t, err)
+	require.Equal(t, DefaultRefreshInterval, v.refreshInterval)
+	require.Equal(t, DefaultUnknownKeyInterval, v.unknownKeyInterval)
+	require.Equal(t, DefaultMaxKeyAge, v.maxKeyAge)
+	require.Equal(t, DefaultFetchTimeout, v.fetchTimeout)
+	require.Zero(t, v.leeway, "a negative leeway still means no leeway")
 }
 
 func TestServiceAccountsMatchComponents(t *testing.T) {
