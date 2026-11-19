@@ -358,7 +358,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
+	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall); err != nil {
 		return err
 	}
 
@@ -385,7 +385,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 	// Install Radius
 	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
-	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall, render); err != nil {
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall, render); err != nil {
 		return err
 	}
 	if clusterOptions.Radius.Reinstall {
@@ -400,7 +400,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	// When Helm left an installed release unchanged, the authorization mode of radiusValues did not take effect, so
 	// there is no APIService change to wait for or reconcile.
 	if applied {
-		if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, appliedRelease, clusterOptions.RadiusReleaseValues); err != nil {
+		if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, appliedRelease, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues); err != nil {
 			return err
 		}
 	}
@@ -560,12 +560,12 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		}
 	}
 
-	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, storedValues, true); err != nil {
+	if err := i.ensureCertManager(ctx, clusterOptions, kubeContext, radiusHelmChart.Values, storedValues, true); err != nil {
 		return err
 	}
 
 	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
-	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, storedValues, true, render); err != nil {
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, radiusHelmChart.Values, storedValues, true, render); err != nil {
 		return err
 	}
 	if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues); err != nil {
@@ -576,7 +576,7 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
 	}
-	if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, upgraded, storedValues); err != nil {
+	if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, upgraded, radiusHelmChart.Values, storedValues); err != nil {
 		return err
 	}
 	output.LogInfo("Radius upgrade complete")
