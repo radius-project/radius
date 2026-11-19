@@ -101,7 +101,12 @@ spec:
         - name: kubernetes
           value: "true"
         - name: RADIUSBACKENDURL
+          {{- /* ucp-cert names only ucp.<namespace>.svc. With authorization off, keep the URL that earlier charts render, a name in the Helm-generated certificate, so an upgrade does not restart bicep-de. */}}
+          {{- if eq (include "radius.authz.mode" .) "off" }}
+          value: https://ucp.{{ .Release.Namespace }}:443/apis/api.ucp.dev/v1alpha3
+          {{- else }}
           value: https://ucp.{{ .Release.Namespace }}.svc:443/apis/api.ucp.dev/v1alpha3
+          {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
