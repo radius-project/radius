@@ -18,6 +18,7 @@ package token
 
 import (
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"errors"
@@ -230,20 +231,32 @@ func (v *Verifier) releaseFetch() {
 	<-v.fetchGate
 }
 
-// fetchLocked fetches the keys. The caller holds fetchGate and sets ctx's deadline.
+// fetchLocked fetches the keys. The caller holds fetchGate and sets ctx's deadline. A
+// failed fetch keeps the cached keys. A successful fetch replaces them with the keys
+// Radius accepts. If there are none, it returns an error and Verify rejects every token
+// with AuthorizationUnavailable, so a key the cluster removed is not trusted for longer.
 func (v *Verifier) fetchLocked(ctx context.Context) error {
 	keys, err := v.source.Fetch(ctx)
 	if err != nil {
 		return err
 	}
-	if keys.Issuer == "" || len(keys.Keys) == 0 {
-		return errors.New("key source returned no issuer or no keys")
+	if keys.Issuer == "" {
+		return errors.New("key source returned no issuer")
+	}
+	accepted := make(map[string]crypto.PublicKey, len(keys.Keys))
+	for kid, key := range keys.Keys {
+		if acceptedKey(key) {
+			accepted[kid] = key
+		}
 	}
 
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	v.keys = keys
+	v.keys = KeySet{Issuer: keys.Issuer, Keys: accepted}
 	v.lastSuccess = v.now()
+	if len(accepted) == 0 {
+		return errors.New("key set has no usable signing keys")
+	}
 	return nil
 }
 
@@ -269,7 +282,7 @@ func (v *Verifier) refreshForUnknownKey(ctx context.Context) {
 }
 
 // current returns the cached keys, or an AuthorizationUnavailable error if they have
-// never loaded or are at least MaxKeyAge old.
+// never loaded, are at least MaxKeyAge old, or contain no usable key.
 func (v *Verifier) current() (KeySet, error) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
@@ -278,6 +291,9 @@ func (v *Verifier) current() (KeySet, error) {
 	}
 	if v.now().Sub(v.lastSuccess) >= v.maxKeyAge {
 		return KeySet{}, unavailable("signing keys could not be refreshed", nil)
+	}
+	if len(v.keys.Keys) == 0 {
+		return KeySet{}, unavailable("the cluster publishes no usable signing keys", nil)
 	}
 	return v.keys, nil
 }
@@ -295,10 +311,10 @@ func (v *Verifier) VerifyRequest(r *http.Request) (mtls.Identity, error) {
 	return v.Verify(r.Context(), token)
 }
 
-// Verify checks token's signature, issuer, audience, expiry, not-before time, namespace,
-// and ServiceAccount, and returns the calling component's identity. Failures are *Error
-// values: AuthorizationUnavailable if the signing keys are not fresh, otherwise
-// InvalidAuthenticationInfo.
+// Verify checks token's signature, issuer, audience (exactly one, this receiver), expiry,
+// not-before time, namespace, and ServiceAccount, and returns the calling component's
+// identity. Failures are *Error values: AuthorizationUnavailable if the signing keys are
+// not fresh or none are usable, otherwise InvalidAuthenticationInfo.
 func (v *Verifier) Verify(ctx context.Context, token string) (mtls.Identity, error) {
 	if _, err := v.current(); err != nil {
 		return mtls.Identity{}, err
@@ -374,6 +390,11 @@ func (v *Verifier) parse(token string) (claims *serviceAccountClaims, unknownKey
 
 // identity maps verified claims to the calling component's identity.
 func (v *Verifier) identity(claims *serviceAccountClaims) (mtls.Identity, error) {
+	// The parser checks that aud contains this receiver. A token for more than one
+	// receiver could be replayed from one to another, so require exactly one.
+	if len(claims.Audience) != 1 {
+		return mtls.Identity{}, invalid("token must name exactly one audience", nil)
+	}
 	k := claims.Kubernetes
 	if k.Namespace != v.namespace {
 		return mtls.Identity{}, invalid(fmt.Sprintf("ServiceAccount namespace %q is not the Radius namespace", k.Namespace), nil)
