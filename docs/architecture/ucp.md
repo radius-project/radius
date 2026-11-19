@@ -95,7 +95,11 @@ by the APIService's uid and resourceVersion, then deletes the
 `radius-apiserver-ca`, `ucp-apiserver-tls` and `radius-apiserver-trust` Secrets,
 so cainjector cannot add `radius-apiserver-ca` back. Before that, it deletes
 any `radius-apiserver-ca` chain left by an upgrade to authorization on that
-stopped before Helm. Each delete applies only
+stopped before Helm, except objects the applied chart still declares.
+`rad` decides which certificate the release serves from the applied
+manifest, not from its values, so an older chart that ignores the
+authorization values is handled as authorization off. `rad uninstall
+kubernetes` deletes the same Secrets after Helm. Each delete applies only
 when `rad` owns the object and it is unchanged since `rad` read it; otherwise
 `rad` leaves it and warns. In the
 `selfSigned` certificate mode, the only mode supported today, this CA is

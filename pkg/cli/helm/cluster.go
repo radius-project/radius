@@ -388,14 +388,14 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall, render); err != nil {
 		return err
 	}
-	applied, err := helmAction.ApplyHelmChart(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
+	applied, appliedRelease, err := helmAction.applyHelmChartRelease(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
 		return fmt.Errorf("failed to apply Radius Helm chart, err: %w", err)
 	}
 	// When Helm left an installed release unchanged, the authorization mode of radiusValues did not take effect, so
 	// there is no APIService change to wait for or reconcile.
 	if applied {
-		if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, clusterOptions.RadiusReleaseValues); err != nil {
+		if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, appliedRelease, clusterOptions.RadiusReleaseValues); err != nil {
 			return err
 		}
 	}
@@ -414,21 +414,17 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 
 // UninstallRadius uninstalls Radius and its dependencies (Contour, and cert-manager if rad installed it) from the cluster using the provided options.
 func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
-	_, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
-	if err != nil {
+	// Build the clients for the cleanup before Helm uninstalls anything.
+	if _, _, err := i.ucpAPIServerTrustClients(kubeContext); err != nil {
 		return err
 	}
 	// Uninstall Radius
 	if err := i.uninstallHelmRelease("Radius", radiusReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
 		return err
 	}
-	// rad stages the radius-apiserver-ca chain before the Helm upgrade that adopts it; an interrupted upgrade can
-	// leave it outside the release.
-	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, clusterOptions.Radius.Namespace, radiusReleaseName); err != nil {
-		return err
-	}
-	// rad creates the UCP API server trust Secret outside the Helm release.
-	if err := i.deleteUCPAPIServerTrust(ctx, kubeContext, clusterOptions.Radius.Namespace); err != nil {
+	// rad stages objects before the Helm upgrade that adopts them, and cert-manager issues Secrets that Helm does not
+	// own; an interrupted upgrade or the uninstall itself can leave them outside the release.
+	if err := i.deleteUCPAPIServerLeftovers(ctx, kubeContext, clusterOptions.Radius.Namespace); err != nil {
 		return err
 	}
 
@@ -567,11 +563,11 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, storedValues, true, render); err != nil {
 		return err
 	}
-	_, err = i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
+	upgraded, err := i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade Radius, err: %w", err)
 	}
-	if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, storedValues); err != nil {
+	if err := i.waitForInstalledUCPAPIService(ctx, clusterOptions, kubeContext, upgraded, storedValues); err != nil {
 		return err
 	}
 	output.LogInfo("Radius upgrade complete")
