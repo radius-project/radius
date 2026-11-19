@@ -387,14 +387,14 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 	}
 
 	// Install Radius
-	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
-	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall, render); err != nil {
-		return err
-	}
 	if clusterOptions.Radius.Reinstall {
 		if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true); err != nil {
 			return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
 		}
+	}
+	render := i.renderRadiusInstall(kubeContext, helmAction, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ChartOptions)
+	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, radiusHelmChart.Values, clusterOptions.RadiusReleaseValues, clusterOptions.Radius.Reinstall, render); err != nil {
+		return err
 	}
 	applied, appliedRelease, err := helmAction.applyHelmChartRelease(kubeContext, radiusHelmChart, radiusHelmConf, clusterOptions.Radius.ChartOptions, radiusValues)
 	if err != nil {
@@ -570,12 +570,13 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return err
 	}
 
+	if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues); err != nil {
+		return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
+	}
+
 	render := i.renderRadiusUpgrade(kubeContext, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues)
 	if err := i.stageInstalledUCPAPIServerCA(ctx, clusterOptions, kubeContext, radiusHelmConf, radiusHelmChart.Values, storedValues, true, render); err != nil {
 		return err
-	}
-	if err := i.Helm.MigrateControllerStrategy(ctx, radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, reuseValues); err != nil {
-		return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
 	}
 
 	upgraded, err := i.Helm.RunHelmUpgrade(radiusHelmConf, radiusHelmChart, radiusValues, clusterOptions.Radius.ReleaseName, clusterOptions.Radius.Namespace, true, reuseValues, clusterOptions.Radius.Timeout)

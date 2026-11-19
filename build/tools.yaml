@@ -10,7 +10,7 @@ platforms:
 tools:
   - name: yq
     makePrefix: YQ
-    version: v4.54.1
+    version: v4.54.3
     source:
       type: github-release
       repository: mikefarah/yq
@@ -19,16 +19,16 @@ tools:
     platforms:
       linux_amd64:
         asset: yq_linux_amd64
-        checksum: 8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f
+        checksum: 129534601871538efe0ba4c5e62a34fb1d5f469bcb975c4fddeb467d82974973
       linux_arm64:
         asset: yq_linux_arm64
-        checksum: 189088da0c6429ec5178dfaab1a114805f6cab0b61b165ab236efedf1d57a71b
+        checksum: 89f69310b61b68d1245065a1241d1fc843f7a36cd6103ffd77ad987613bd1b67
       darwin_amd64:
         asset: yq_darwin_amd64
-        checksum: 3a812fce205a4d67014fb71b7fa297092210e580df3d8f52dddc2cf3a599c22b
+        checksum: 96d5105ffd693d6845c54fbd825b2d1bbdb8619e0a2ce6af95e5654e841e0984
       darwin_arm64:
         asset: yq_darwin_arm64
-        checksum: fee511a181bd8b3e6b7da98842b41973bfac8cd3bcd341ed29a584620b5b2844
+        checksum: a2aebb93b5bdcb61bb76f630e42a0ef6a3ee10842a6516cd7b9e4080786ec593
     checksumSource:
       type: github-release-file
       fileTemplate: checksums

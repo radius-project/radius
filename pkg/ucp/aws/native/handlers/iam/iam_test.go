@@ -73,6 +73,7 @@ func Test_Suite_UserToGroupAddition(t *testing.T) {
 		FailCall: nativetest.FailCall(3, func(h native.Handler) *nativetest.Failer {
 			return &h.(*tracked).api.failer
 		}),
+		API: userToGroupAdditionAPI,
 		Outside: func(store *awsfake.CloudControl, properties map[string]any) func() bool {
 			name := properties["GroupName"].(string)
 			current := store.Resource(outsideType, name)
