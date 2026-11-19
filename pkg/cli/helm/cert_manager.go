@@ -212,7 +212,7 @@ func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, nam
 			loadConfig := func(container corev1.Container, configPath string) (*caInjectorFileConfig, error) {
 				return readCAInjectorConfig(ctx, client, &deployment, container, configPath)
 			}
-			if problem := caInjectorProblem(injectors, radiusNamespace, loadConfig, warn); problem != "" {
+			if problem := caInjectorProblem(injectors, namespace, radiusNamespace, loadConfig, warn); problem != "" {
 				return fmt.Errorf("cert-manager cainjector Deployment %s/%s %s. Radius needs it to inject the CA certificate in Secret %s/%s into the Radius APIService. Remove that setting from cert-manager and retry", namespace, deployment.Name, problem, radiusNamespace, ucpAPIServerCASecretName)
 			}
 		}
@@ -256,23 +256,43 @@ type caInjectorConfigLoader func(container corev1.Container, configPath string) 
 
 // caInjectorProblem describes a setting of the cainjector containers that stops cainjector from injecting the CA
 // certificates of a Secret in radiusNamespace into an APIService, or returns "" when there is none. It reads the flags
-// of Command after the executable as well as Args, since the container runs both, and the configuration file that
-// --config names, which loadConfig reads. As in cainjector, a flag overrides the file. When loadConfig fails, it calls
-// warn and checks only the flags; rad then reports the problem when the CA certificate never reaches the APIService.
-func caInjectorProblem(injectors []corev1.Container, radiusNamespace string, loadConfig caInjectorConfigLoader, warn func(format string, v ...any)) string {
+// of Command after the executable as well as Args, since the container runs both, with the $(NAME) references to the
+// container's environment that Kubernetes expands, and the configuration file that --config names, which loadConfig
+// reads. As in cainjector, a flag overrides the file. podNamespace is the namespace of the cainjector pods. When it
+// cannot resolve the --namespace value, or loadConfig fails, it calls warn and does not check that setting; rad then
+// reports the problem when the CA certificate never reaches the APIService.
+func caInjectorProblem(injectors []corev1.Container, podNamespace, radiusNamespace string, loadConfig caInjectorConfigLoader, warn func(format string, v ...any)) string {
 	for _, container := range injectors {
-		argv := slices.Clone(container.Args)
+		env := containerEnvironment(container, podNamespace)
+		var argv []string
+		var resolved []bool
+		raw := slices.Clone(container.Args)
 		if len(container.Command) > 1 {
-			argv = append(slices.Clone(container.Command[1:]), container.Args...)
+			raw = append(slices.Clone(container.Command[1:]), container.Args...)
+		}
+		for _, arg := range raw {
+			value, ok := expandContainerReferences(arg, env)
+			argv = append(argv, value)
+			resolved = append(resolved, ok)
 		}
 		var namespace, apiServices, configPath *string
+		namespaceResolved := true
 		for idx, arg := range argv {
-			if !strings.HasPrefix(arg, "-") {
+			if !strings.HasPrefix(raw[idx], "-") {
 				continue
 			}
 			name, value, hasValue := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+			_, rawValue, _ := strings.Cut(raw[idx], "=")
+			valueResolved := resolved[idx]
 			if !hasValue && name != "enable-apiservices-injectable" && idx+1 < len(argv) {
-				value = argv[idx+1]
+				value, rawValue, valueResolved = argv[idx+1], raw[idx+1], resolved[idx+1]
+			}
+			if !valueResolved {
+				if name == "namespace" {
+					namespace, namespaceResolved = &rawValue, false
+				}
+				// rad cannot tell what cainjector receives for any other flag either, so it leaves it unchecked.
+				continue
 			}
 			switch name {
 			case "enable-apiservices-injectable":
@@ -282,7 +302,7 @@ func caInjectorProblem(injectors []corev1.Container, radiusNamespace string, loa
 				}
 				apiServices = &value
 			case "namespace":
-				namespace = &value
+				namespace, namespaceResolved = &value, true
 			case "config":
 				configPath = &value
 			case "ignore-namespaces":
@@ -296,7 +316,10 @@ func caInjectorProblem(injectors []corev1.Container, radiusNamespace string, loa
 				return "sets --enable-apiservices-injectable=" + *apiServices
 			}
 		}
-		if namespace != nil {
+		if !namespaceResolved {
+			warn("Warning: rad could not resolve the --namespace value %q of cert-manager cainjector container %q, so it did not check that cainjector watches namespace %q",
+				*namespace, container.Name, radiusNamespace)
+		} else if namespace != nil {
 			if *namespace != "" && *namespace != radiusNamespace {
 				return "is limited to namespace " + strconv.Quote(*namespace) + " by --namespace"
 			}
@@ -318,6 +341,67 @@ func caInjectorProblem(injectors []corev1.Container, radiusNamespace string, loa
 		}
 	}
 	return ""
+}
+
+// containerEnvironment returns the environment variables of container that rad can resolve as the kubelet does:
+// literal values, which may refer to variables defined before them, and the pod namespace. A variable whose value the
+// kubelet resolves from another source maps to ok false.
+func containerEnvironment(container corev1.Container, podNamespace string) map[string]containerEnvValue {
+	env := map[string]containerEnvValue{}
+	for _, variable := range container.Env {
+		switch {
+		case variable.ValueFrom == nil:
+			value, ok := expandContainerReferences(variable.Value, env)
+			env[variable.Name] = containerEnvValue{value: value, ok: ok}
+		case variable.ValueFrom.FieldRef != nil && variable.ValueFrom.FieldRef.FieldPath == "metadata.namespace":
+			env[variable.Name] = containerEnvValue{value: podNamespace, ok: true}
+		default:
+			env[variable.Name] = containerEnvValue{}
+		}
+	}
+	return env
+}
+
+// containerEnvValue is the value of a container environment variable, and whether rad could resolve it.
+type containerEnvValue struct {
+	value string
+	ok    bool
+}
+
+// expandContainerReferences expands the $(NAME) references in s to env as Kubernetes does for a container's command,
+// args and environment: $$ is a literal $, and a reference to an undefined variable stays as written. ok is false when
+// s refers to a variable that env does not define or cannot resolve.
+func expandContainerReferences(s string, env map[string]containerEnvValue) (string, bool) {
+	var out strings.Builder
+	ok := true
+	for idx := 0; idx < len(s); idx++ {
+		if s[idx] != '$' || idx+1 >= len(s) {
+			out.WriteByte(s[idx])
+			continue
+		}
+		switch s[idx+1] {
+		case '$':
+			out.WriteByte('$')
+			idx++
+			continue
+		case '(':
+			end := strings.IndexByte(s[idx+2:], ')')
+			if end < 0 {
+				break
+			}
+			name := s[idx+2 : idx+2+end]
+			if value, found := env[name]; found && value.ok {
+				out.WriteString(value.value)
+			} else {
+				out.WriteString(s[idx : idx+3+end])
+				ok = false
+			}
+			idx += 2 + end
+			continue
+		}
+		out.WriteByte(s[idx])
+	}
+	return out.String(), ok
 }
 
 // readCAInjectorConfig reads the CAInjectorConfiguration file at configPath of container in deployment from the
