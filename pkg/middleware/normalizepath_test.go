@@ -143,3 +143,78 @@ func Test_NormalizePath_SegmentRewrite(t *testing.T) {
 		})
 	}
 }
+
+func Test_NormalizePath_EscapedRequestTarget(t *testing.T) {
+	tests := []struct {
+		name            string
+		target          string
+		expectedPath    string
+		expectedRawPath string
+		expectedName    string
+	}{
+		{
+			name:            "default escaping",
+			target:          "/Planes/radius/%C8%BAteam/resourceGroups/team",
+			expectedPath:    "/planes/radius/\u023Ateam/resourcegroups/team",
+			expectedRawPath: "",
+			expectedName:    "\u023Ateam",
+		},
+		{
+			name:            "non-default escaping",
+			target:          "/Planes/radius/%c8%bateam/resourceGroups/team",
+			expectedPath:    "/planes/radius/\u023Ateam/resourcegroups/team",
+			expectedRawPath: "/planes/radius/%c8%bateam/resourcegroups/team",
+			expectedName:    "%c8%bateam",
+		},
+		{
+			name:            "encoded slash stays in one segment",
+			target:          "/Planes/radius/a%2Fb/resourceGroups/team",
+			expectedPath:    "/planes/radius/a/b/resourcegroups/team",
+			expectedRawPath: "/planes/radius/a%2Fb/resourcegroups/team",
+			expectedName:    "a%2Fb",
+		},
+		{
+			name:            "encoded keyword",
+			target:          "/%50lanes/radius/local/resourceGroups/team",
+			expectedPath:    "/planes/radius/local/resourcegroups/team",
+			expectedRawPath: "/planes/radius/local/resourcegroups/team",
+			expectedName:    "local",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotPath, gotRawPath, gotName string
+			calls := 0
+			r := chi.NewRouter()
+			r.Get("/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}", func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				gotPath, gotRawPath, gotName = r.URL.Path, r.URL.RawPath, chi.URLParam(r, "planeName")
+			})
+
+			w := httptest.NewRecorder()
+			NormalizePath(r).ServeHTTP(w, httptest.NewRequestWithContext(t.Context(), http.MethodGet, tt.target, nil))
+
+			require.Equal(t, http.StatusOK, w.Code)
+			require.Equal(t, 1, calls)
+			require.Equal(t, tt.expectedPath, gotPath)
+			require.Equal(t, tt.expectedRawPath, gotRawPath)
+			require.Equal(t, tt.expectedName, gotName)
+		})
+	}
+}
+
+func Test_NormalizePath_EscapedFirstOccurrence(t *testing.T) {
+	var got *http.Request
+	handler := NormalizePath(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r
+	}))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/x%2FPlanes/Planes/radius/local", nil)
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	require.Equal(t, "/x%2FPlanes/planes/radius/local", got.URL.RawPath)
+	require.Equal(t, "/x/Planes/planes/radius/local", got.URL.Path)
+}
