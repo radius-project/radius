@@ -22,13 +22,16 @@ package neptune
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/neptune"
 	"github.com/aws/aws-sdk-go-v2/service/neptune/types"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -209,6 +212,12 @@ func (h *ClusterEndpoint) properties(ctx context.Context, region string, e *type
 	return properties, nil
 }
 
+// endpointTypes are the values of EndpointType, and maxIdentifierLength is the longest DBClusterEndpointIdentifier
+// Neptune takes.
+var endpointTypes = []string{"READER", "WRITER", "ANY"}
+
+const maxIdentifierLength = 63
+
 // wrongType is the failure for a property whose value has the wrong type, so it is never sent as an empty value or left
 // out.
 func wrongType(path string, want string) error {
@@ -228,6 +237,12 @@ func validate(properties map[string]any) error {
 				return wrongType(name, "a string")
 			}
 		}
+	}
+	if t := awsapi.String(properties, "EndpointType"); t != "" && !slices.Contains(endpointTypes, t) {
+		return wrongType("EndpointType", "READER, WRITER, or ANY")
+	}
+	if id := awsapi.String(properties, "DBClusterEndpointIdentifier"); len(id) > maxIdentifierLength {
+		return wrongType("DBClusterEndpointIdentifier", fmt.Sprintf("at most %d characters", maxIdentifierLength))
 	}
 	if value, ok := properties["Tags"]; ok && value != nil {
 		tags, ok := value.([]any)
@@ -271,7 +286,8 @@ func memberList(properties map[string]any, name string) ([]string, error) {
 	for _, v := range list {
 		s, isString := v.(string)
 		ok = ok && isString
-		out = append(out, s)
+		// Neptune stores DB instance identifiers in lowercase, and rejects a member in another case.
+		out = append(out, strings.ToLower(s))
 	}
 	if !ok {
 		return nil, &native.Failure{
@@ -335,9 +351,25 @@ func (h *ClusterEndpoint) Create(ctx context.Context, request native.CreateReque
 		Tags:                        awsapi.SDKTags[types.Tag](awsapi.Tags(request.Properties)),
 	}
 	if _, err := h.api.CreateDBClusterEndpoint(ctx, input, inRegion(request.Region)); err != nil {
-		return "", lostCreate(err)
+		return "", rejectedByNeptune(lostCreate(err))
 	}
 	return h.Identifier(request.Properties)
+}
+
+// rejectedByNeptune returns err as a client failure AWS applied none of when Neptune answered it with a 4xx status, and
+// err otherwise. The SDK leaves the fault of errors it doesn't model unknown, such as InvalidParameterValue, so without
+// this UCP would answer 500 and keep the record of a create Neptune rejected. A not found error stays ErrNotFound, and
+// a failure the handler built stays as it is.
+func rejectedByNeptune(err error) error {
+	var response *smithyhttp.ResponseError
+	var failure *native.Failure
+	if err == nil || errors.Is(err, native.ErrNotFound) || errors.As(err, &failure) || !errors.As(err, &response) {
+		return err
+	}
+	if status := response.HTTPStatusCode(); status < http.StatusBadRequest || status >= http.StatusInternalServerError {
+		return err
+	}
+	return &native.Failure{Message: err.Error(), ClientError: true, Outcome: native.OutcomeRejected}
 }
 
 // lostCreate returns err, unless it says the endpoint already exists. UCP reads AWS by the identifier before it creates
@@ -355,9 +387,10 @@ func lostCreate(err error) error {
 	}
 }
 
-// Update changes the endpoint type and members with ModifyDBClusterEndpoint, then adds and removes tags. It sends a
+// Update adds and removes tags, then changes the endpoint type and members with ModifyDBClusterEndpoint. It sends a
 // member list only when the template changes what AWS has, and sends the other list empty only when Neptune must clear
-// it to take the new one, so a list the template leaves out keeps the members AWS has.
+// it to take the new one, so a list the template leaves out keeps the members AWS has. Neptune can't remove the last
+// member list, so a template that removes it is rejected.
 func (h *ClusterEndpoint) Update(ctx context.Context, request native.UpdateRequest) error {
 	if err := validate(request.Desired); err != nil {
 		return err
@@ -380,6 +413,14 @@ func (h *ClusterEndpoint) Update(ctx context.Context, request native.UpdateReque
 	}
 	setStatic := slices.Contains(changed, "StaticMembers") && !sameMembers("StaticMembers", anyList(static), anyList(endpoint.StaticMembers))
 	setExcluded := slices.Contains(changed, "ExcludedMembers") && !sameMembers("ExcludedMembers", anyList(excluded), anyList(endpoint.ExcludedMembers))
+	if (setStatic || setExcluded) && len(static) == 0 && len(excluded) == 0 {
+		// Neptune keeps a member list ModifyDBClusterEndpoint sends empty, unless the call sets the other list.
+		return &native.Failure{
+			Message:     fmt.Sprintf("Neptune can't remove the last member list of the custom endpoint %q. Set StaticMembers or ExcludedMembers, or delete the endpoint and deploy it again", request.Identifier),
+			ClientError: true,
+			Outcome:     native.OutcomeRejected,
+		}
+	}
 	if setStatic || (setExcluded && len(excluded) > 0) {
 		input.StaticMembers = nonNil(static)
 		modify = true
@@ -388,17 +429,18 @@ func (h *ClusterEndpoint) Update(ctx context.Context, request native.UpdateReque
 		input.ExcludedMembers = nonNil(excluded)
 		modify = true
 	}
+	// Tags first: Neptune rejects tag changes while the modify below leaves the endpoint modifying.
 	calls := []func() error{}
+	if slices.Contains(changed, "Tags") {
+		calls = append(calls, h.tagCalls(ctx, endpoint.DBClusterEndpointArn, request, opt)...)
+	}
 	if modify {
 		calls = append(calls, func() error {
 			_, err := h.api.ModifyDBClusterEndpoint(ctx, input, opt)
 			return err
 		})
 	}
-	if slices.Contains(changed, "Tags") {
-		calls = append(calls, h.tagCalls(ctx, endpoint.DBClusterEndpointArn, request, opt)...)
-	}
-	return awsapi.Calls(calls...)
+	return rejectedByNeptune(awsapi.Calls(calls...))
 }
 
 // anyList returns list as a JSON list.
@@ -457,7 +499,7 @@ func (h *ClusterEndpoint) Delete(ctx context.Context, region string, identifier 
 			return nil
 		}
 	}
-	return awsapi.NotFound(err, "DBClusterEndpointNotFoundFault")
+	return rejectedByNeptune(awsapi.NotFound(err, "DBClusterEndpointNotFoundFault"))
 }
 
 // List returns every custom endpoint of a Neptune cluster in the region. Endpoints of other products' clusters are

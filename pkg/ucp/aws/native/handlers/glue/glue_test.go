@@ -21,6 +21,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/glue"
 	"github.com/aws/aws-sdk-go-v2/service/glue/types"
 	"github.com/stretchr/testify/require"
@@ -154,8 +155,13 @@ func Test_ReadPages(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
 	h := NewPartitionIndex(api)
 	for i, key := range []string{"year", "month", "region"} {
-		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex("i"+string(rune('0'+i)), key)})
+		name := "i" + string(rune('0'+i))
+		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: partitionIndex(name, key)})
 		require.NoError(t, err)
+		if i < 2 {
+			_, err = h.Progress(t.Context(), region, account+"|sales|orders|"+name, native.OperationCreate)
+			require.NoError(t, err, "Glue builds one index on a table at a time")
+		}
 	}
 	properties, err := h.Read(t.Context(), region, account+"|sales|orders|i2")
 	require.NoError(t, err, "the third index is on the second page")
@@ -172,10 +178,15 @@ func Test_ReadPages(t *testing.T) {
 	require.Empty(t, resources)
 }
 
+// Test_CreateFails covers an index AWS fails to build. The create fails as rejected, so UCP creates the index again on
+// the next deploy. AWS keeps the failed index listed, can't delete it, and lets a create reuse its name, so Read,
+// Delete, and the progress of a delete treat it as absent.
 func Test_CreateFails(t *testing.T) {
-	h := NewPartitionIndex(newFakeAPI(awsfake.NewCloudControl()))
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewPartitionIndex(api)
 	identifier := account + "|sales|secret|by_year"
-	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(partitionIndex("by_year", "year"), map[string]any{"TableName": "secret"})})
+	properties := with(partitionIndex("by_year", "year"), map[string]any{"TableName": "secret"})
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
 	require.NoError(t, err)
 
 	progress, err := h.Progress(t.Context(), region, identifier, native.OperationCreate)
@@ -188,20 +199,30 @@ func Test_CreateFails(t *testing.T) {
 	require.True(t, progress.Done)
 	require.NotNil(t, progress.Failure)
 	require.True(t, progress.Failure.ClientError)
-	require.Equal(t, `AWS Glue failed to build the partition index "by_year" from the table's partitions (ENCRYPTED_PARTITION_ERROR). Fix the partitions, then delete the index and deploy it again`, progress.Failure.Message)
+	require.Equal(t, native.OutcomeRejected, progress.Failure.Outcome, "no index was made, so the next deploy creates it again")
+	require.Equal(t, `AWS Glue failed to build the partition index "by_year" from the table's partitions (ENCRYPTED_PARTITION_ERROR). AWS keeps the failed index in the table's history. Fix the partitions, then deploy again to create the index again`, progress.Failure.Message)
 
 	_, err = h.Read(t.Context(), region, identifier)
-	var failure *native.Failure
-	require.ErrorAs(t, err, &failure, "a deploy that finds a FAILED index fails")
-	require.True(t, failure.ClientError)
-	require.Contains(t, failure.Message, "ENCRYPTED_PARTITION_ERROR")
+	require.ErrorIs(t, err, native.ErrNotFound, "a failed index reads as absent")
+	require.ErrorIs(t, h.Delete(t.Context(), region, identifier), native.ErrNotFound, "a delete removes only the record")
+	_, err = h.Progress(t.Context(), region, identifier, native.OperationDelete)
+	require.ErrorIs(t, err, native.ErrNotFound, "a delete doesn't wait for a failed index")
 
-	require.NoError(t, h.Delete(t.Context(), region, identifier), "a FAILED index can be deleted")
+	// The next deploy creates the index again, with the same name, beside the failed one.
+	api.holdCreating = true
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
+	require.NoError(t, err)
+	got, err := h.Read(t.Context(), region, identifier)
+	require.NoError(t, err)
+	require.Equal(t, "CREATING", got["IndexStatus"], "Read skips the failed index listed first")
+	progress, err = h.Progress(t.Context(), region, identifier, native.OperationCreate)
+	require.NoError(t, err)
+	require.False(t, progress.Done, "the create waits for the new index, not the failed one")
 }
 
 func Test_backfillFailure(t *testing.T) {
-	require.Equal(t, `AWS Glue failed to build the partition index "i" from the table's partitions. Fix the partitions, then delete the index and deploy it again`, backfillFailure("i", nil))
-	require.Equal(t, `AWS Glue failed to build the partition index "i" from the table's partitions (MISSING_PARTITION_VALUE_ERROR, INTERNAL_ERROR). Fix the partitions, then delete the index and deploy it again`,
+	require.Equal(t, `AWS Glue failed to build the partition index "i" from the table's partitions. AWS keeps the failed index in the table's history. Fix the partitions, then deploy again to create the index again`, backfillFailure("i", nil))
+	require.Equal(t, `AWS Glue failed to build the partition index "i" from the table's partitions (MISSING_PARTITION_VALUE_ERROR, INTERNAL_ERROR). AWS keeps the failed index in the table's history. Fix the partitions, then deploy again to create the index again`,
 		backfillFailure("i", []types.BackfillError{
 			{Code: types.BackfillErrorCodeMissingPartitionValueError},
 			{Code: types.BackfillErrorCodeInternalError},
@@ -281,29 +302,18 @@ func Test_CreateAlreadyExists(t *testing.T) {
 func Test_FailedHistory(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
 	h := NewPartitionIndex(api)
-	create := func(name string) {
+	for i := range 11 {
+		name := "f" + string(rune('a'+i))
 		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(partitionIndex(name, "year"), map[string]any{"TableName": "secret"})})
 		require.NoError(t, err)
+		for range 2 {
+			_, err = h.Progress(t.Context(), region, account+"|sales|secret|"+name, native.OperationCreate)
+			require.NoError(t, err)
+		}
 	}
-	read := func(name string) {
-		_, err := h.Progress(t.Context(), region, account+"|sales|secret|"+name, native.OperationCreate)
-		require.NoError(t, err)
-	}
-	create("a")
-	read("a")
-	require.NoError(t, h.Delete(t.Context(), region, account+"|sales|secret|a"))
-	_, err := h.Progress(t.Context(), region, account+"|sales|secret|a", native.OperationDelete)
-	require.NoError(t, err)
-	create("a")
-	read("a")
-	for i := range 9 {
-		name := "f" + string(rune('0'+i))
-		create(name)
-		read(name)
-	}
-	_, err = h.Progress(t.Context(), region, account+"|sales|secret|a", native.OperationCreate)
-	require.NoError(t, err, "the index failed again is one of the last 10 failures")
-	require.Len(t, api.failed[account+"|sales|secret"], 10)
+	history := api.failed[account+"|sales|secret"]
+	require.Len(t, history, 10, "a table keeps its last 10 failed indexes")
+	require.Equal(t, "fb", aws.ToString(history[0].IndexName), "the oldest is dropped")
 }
 
 // Test_ValueTypes checks that a value of the wrong type is rejected before any AWS call, instead of being sent as a

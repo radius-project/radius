@@ -193,6 +193,11 @@ const tagsUnclear = " The tag pages name DBClusterNotFoundFault, DBInstanceNotFo
 	"for an endpoint the ARN names that doesn't exist; the fake returns DBClusterEndpointNotFoundFault. The Tag page " +
 	"says a value is optional and also 1 to 256 characters; the fake accepts an empty value."
 
+// modifyingUnclear is where the rule that tags can't change while the endpoint is modifying comes from.
+const modifyingUnclear = " The pages don't say tags can't change while an endpoint is modifying. AWS answered such a " +
+	"call with InvalidDBClusterEndpointStateFault in a run against real AWS, so the handler changes tags before it " +
+	"modifies the endpoint. The fake doesn't reject them in other states, which that run didn't cover."
+
 // pagingRules returns the rules of a describe call's MaxRecords and pages. describe makes the call with marker and
 // maxRecords, after put stores n records, and returns how many the page has and its marker.
 func pagingRules(put func(store *awsfake.CloudControl, n int), describe func(ctx context.Context, f *fakeAPI, marker *string, maxRecords *int32) (int, *string, error)) []nativetest.Rule {
@@ -308,7 +313,12 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 			{
 				Rule:  "each member is an instance of the cluster",
 				Break: against(createEndpoint(func(in *neptune.CreateDBClusterEndpointInput) { in.StaticMembers = []string{"graph-1", "other-1"} })),
-				Code:  "DBInstanceNotFound",
+				Code:  "InvalidParameterValue",
+			},
+			{
+				Rule:  "a member is compared in the case Neptune stores it, lowercase",
+				Break: against(createEndpoint(func(in *neptune.CreateDBClusterEndpointInput) { in.StaticMembers = []string{"Graph-1"} })),
+				Code:  "InvalidParameterValue",
 			},
 			{
 				Rule:  "each member is available",
@@ -326,8 +336,11 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 		Unclear: codesUnclear + " The page lists WRITER as a type, while DescribeDBClusterEndpoints filters custom " +
 			"endpoints only by reader and any; the fake takes all three. The guide gives the name's length but no " +
 			"pattern, so the fake applies no pattern. It doesn't say which cluster states InvalidDBClusterStateFault " +
-			"covers, or whether a member of another cluster gets DBInstanceNotFound; the fake takes only an available " +
-			"cluster, and only its own instances. The page lists DBClusterEndpointQuotaExceededFault without the limit " +
+			"covers; the fake takes only an available cluster. The page lists DBInstanceNotFound, but AWS answered a " +
+			"member in another case than the instance's with InvalidParameterValue (\"does not belong to the cluster\") " +
+			"in a run against real AWS, so the fake returns that for any member that isn't an instance of the cluster. " +
+			"The SDK doesn't model InvalidParameterValue or InvalidParameterCombination, so their fault is unknown; the " +
+			"handler reports any 4xx answer as rejected, which Test_Replay_RejectedCreate shows through the SDK. The page lists DBClusterEndpointQuotaExceededFault without the limit " +
 			"it applies, so the fake has none. The call takes no idempotency token: a create sent again gets " +
 			"DBClusterEndpointAlreadyExistsFault. The handler reads the endpoint by its name before it creates one, and " +
 			"reports that error as an unknown outcome, because an SDK retry of a create whose response was lost gets it." + tagsUnclear,
@@ -431,7 +444,7 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 			{
 				Rule:  "each member is an instance of the endpoint's cluster",
 				Break: against(createEndpoint(), ready, modify(&neptune.ModifyDBClusterEndpointInput{StaticMembers: []string{"graph-9"}})),
-				Code:  "DBInstanceNotFound",
+				Code:  "InvalidParameterValue",
 			},
 			{
 				Rule:  "each member is available",
@@ -442,7 +455,7 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 				Rule: "an endpoint has a static list or an exclusion list, not both",
 				Doc:  endpointGuide,
 				Break: against(createEndpoint(), ready,
-					modify(&neptune.ModifyDBClusterEndpointInput{ExcludedMembers: []string{"graph-3"}})),
+					modify(&neptune.ModifyDBClusterEndpointInput{StaticMembers: []string{"graph-1"}, ExcludedMembers: []string{"graph-3"}})),
 				Code: "InvalidParameterCombination",
 			},
 			{
@@ -451,6 +464,12 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 				Check: against(createEndpoint(), ready,
 					modify(&neptune.ModifyDBClusterEndpointInput{StaticMembers: []string{}, ExcludedMembers: []string{"graph-3"}}),
 					ready, expectMembers(nil, []string{"graph-3"})),
+			},
+			{
+				Rule: "a member list sent empty keeps its members, even with the other list sent empty too",
+				Check: against(createEndpoint(), ready,
+					modify(&neptune.ModifyDBClusterEndpointInput{StaticMembers: []string{}, ExcludedMembers: []string{}}),
+					ready, expectMembers([]string{"graph-1", "graph-2"}, nil)),
 			},
 			{
 				Rule: "a parameter the call leaves out keeps its value",
@@ -463,8 +482,10 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 				Check: against(createEndpoint(), ready, modify(&neptune.ModifyDBClusterEndpointInput{EndpointType: aws.String("ANY")}), expectStatus("modifying"), expectStatus("available")),
 			},
 		},
-		Unclear: codesUnclear + " The page doesn't say what an empty member list does; the fake clears the list, as " +
-			"the handler sends it to switch lists or remove one. It doesn't say which endpoint states " +
+		Unclear: codesUnclear + " The page doesn't say what an empty member list does. In a run against real AWS, " +
+			"Neptune accepted a list sent empty, with or without the other list empty too, and kept its members, while a " +
+			"list sent with members replaced the other list; the fake does the same, and the handler rejects a template " +
+			"that removes the last list. It doesn't say which endpoint states " +
 			"InvalidDBClusterEndpointStateFault or InvalidDBClusterStateFault covers; the fake takes a change only while the " +
 			"endpoint and its cluster are available.",
 	},
@@ -564,14 +585,24 @@ var clusterEndpointAPI = map[string]nativetest.Call{
 				}
 				return addTags(endpointArn, tags...)(ctx, f)
 			}
-		}), existsCheck(addTags(endpointArn, tag("team", "a")))),
-		Unclear: codesUnclear + tagsUnclear,
+		}), existsCheck(addTags(endpointArn, tag("team", "a"))), nativetest.Rule{
+			Rule: "tags can't change while the endpoint is modifying",
+			Break: against(createEndpoint(), ready, modify(&neptune.ModifyDBClusterEndpointInput{EndpointType: aws.String("ANY")}),
+				addTags(endpointArn, tag("team", "a"))),
+			Code: "InvalidDBClusterEndpointStateFault",
+		}),
+		Unclear: codesUnclear + tagsUnclear + modifyingUnclear,
 	},
 	"RemoveTagsFromResource": {
-		Doc:   apiReference + "API_RemoveTagsFromResource.html",
-		Rules: []nativetest.Rule{existsCheck(removeTags(endpointArn))},
+		Doc: apiReference + "API_RemoveTagsFromResource.html",
+		Rules: []nativetest.Rule{existsCheck(removeTags(endpointArn)), nativetest.Rule{
+			Rule: "tags can't change while the endpoint is modifying",
+			Break: against(createEndpoint(), ready, modify(&neptune.ModifyDBClusterEndpointInput{EndpointType: aws.String("ANY")}),
+				removeTags(endpointArn)),
+			Code: "InvalidDBClusterEndpointStateFault",
+		}},
 		Unclear: "The page doesn't say what AWS does with a key the resource doesn't have; the fake ignores it." +
-			tagsUnclear,
+			tagsUnclear + modifyingUnclear,
 	},
 }
 

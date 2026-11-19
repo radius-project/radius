@@ -126,9 +126,12 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 		},
 		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}
-	// AWS authorizes Glue's CreatePartitionIndex and DeletePartitionIndex with glue:UpdateTable on the table.
-	implied["create"] = append(implied["create"], "glue:UpdateTable")
-	implied["delete"] = append(implied["delete"], "glue:UpdateTable")
+	// AWS authorizes Glue's CreatePartitionIndex and DeletePartitionIndex with glue:UpdateTable on the table, and
+	// GetPartitionIndexes, which every operation calls, with glue:GetTable.
+	implied["create"] = append(implied["create"], "glue:UpdateTable", "glue:GetTable")
+	implied["delete"] = append(implied["delete"], "glue:UpdateTable", "glue:GetTable")
+	implied["read"] = append(implied["read"], "glue:GetTable")
+	implied["update"] = append(implied["update"], "glue:GetTable")
 	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	unused := []string{}

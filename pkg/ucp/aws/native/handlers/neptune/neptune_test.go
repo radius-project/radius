@@ -22,6 +22,7 @@ import (
 	"errors"
 	"maps"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -110,7 +111,7 @@ func Test_Suite_ClusterEndpoint(t *testing.T) {
 		Properties:         endpoint,
 		Identifier:         "reads",
 		Changed:            with(endpoint, map[string]any{"StaticMembers": nil, "ExcludedMembers": []any{"graph-3"}}),
-		Removable:          "StaticMembers",
+		Removable:          "Tags",
 		CreateOnlyChange:   with(endpoint, map[string]any{"DBClusterIdentifier": "other-graph", "StaticMembers": []any{"other-1"}}),
 		OtherForm:          map[string]any{"StaticMembers": []any{"graph-2", "graph-1"}},
 		SameResource:       []map[string]any{with(endpoint, map[string]any{"DBClusterEndpointIdentifier": "Reads", "DBClusterIdentifier": "Graph"})},
@@ -120,6 +121,8 @@ func Test_Suite_ClusterEndpoint(t *testing.T) {
 			with(endpoint, map[string]any{"StaticMembers": []any{"graph-1", 2}}),
 			with(endpoint, map[string]any{"ExcludedMembers": "graph-3", "StaticMembers": nil}),
 			with(endpoint, map[string]any{"DBClusterIdentifier": 5}),
+			with(endpoint, map[string]any{"EndpointType": "FOO"}),
+			with(endpoint, map[string]any{"DBClusterEndpointIdentifier": strings.Repeat("a", 64)}),
 		},
 		OtherProduct: func(store *awsfake.CloudControl, identifier string) {
 			store.Put(endpointType, identifier, map[string]any{"DBClusterEndpointIdentifier": identifier, "DBClusterIdentifier": "aurora-app", "EndpointType": "ANY"})
@@ -265,19 +268,22 @@ func Test_Update(t *testing.T) {
 	require.ErrorIs(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: "reads", Desired: with(desired, map[string]any{"StaticMembers": []any{"graph-1"}})}), bothMembers)
 }
 
+// Test_UpdateRemovesMembers checks that a template that removes the last member list gets a rejected client failure
+// before any change, because Neptune keeps a list sent empty, and that the type and tags then stay as AWS has them.
 func Test_UpdateRemovesMembers(t *testing.T) {
 	h, api := newHandler()
 	created(t, h, endpoint)
-	current, err := h.Read(t.Context(), region, "reads")
-	require.NoError(t, err)
-	desired := with(endpoint, map[string]any{"StaticMembers": nil})
-	patch, err := jsondiff.Compare(current, desired)
-	require.NoError(t, err)
-	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: "reads", Current: current, Desired: desired, Patch: patch}))
+	desired := with(endpoint, map[string]any{"StaticMembers": nil, "EndpointType": "ANY", "Tags": nil})
+	err := update(t, h, endpoint, desired)
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, "delete the endpoint and deploy it again")
+	require.Nil(t, api.lastModify, "nothing is sent")
 	stored := api.store.Resource(endpointType, "reads")
-	require.NotContains(t, stored, "StaticMembers")
-	require.NotContains(t, stored, "ExcludedMembers")
-	require.Equal(t, "READER", stored["EndpointType"], "a member change doesn't send the type")
+	require.Equal(t, "READER", stored["EndpointType"])
+	require.NotEmpty(t, stored["Tags"])
 }
 
 func Test_Delete(t *testing.T) {
@@ -484,6 +490,7 @@ func Test_UpdateMemberLists(t *testing.T) {
 		static      []string
 		excluded    []string
 		modify      bool
+		rejected    bool
 	}{
 		{
 			name:        "removing a list that is already empty sends nothing and keeps the other list",
@@ -492,11 +499,26 @@ func Test_UpdateMemberLists(t *testing.T) {
 			desired:     base,
 		},
 		{
-			name:        "removing the static list clears only it",
+			name:        "removing the last list is rejected, because Neptune keeps a list sent empty",
 			aws:         with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
 			lastApplied: with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
 			desired:     base,
-			static:      []string{},
+			rejected:    true,
+		},
+		{
+			name:        "removing the last exclusion list is rejected too",
+			aws:         with(base, map[string]any{"ExcludedMembers": []any{"graph-3"}}),
+			lastApplied: with(base, map[string]any{"ExcludedMembers": []any{"graph-3"}}),
+			desired:     with(base, map[string]any{"ExcludedMembers": []any{}}),
+			rejected:    true,
+		},
+		{
+			name:        "members in another case are sent in lowercase",
+			aws:         with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			lastApplied: with(base, map[string]any{"StaticMembers": []any{"graph-1"}}),
+			desired:     with(base, map[string]any{"StaticMembers": []any{"Graph-1", "GRAPH-2"}}),
+			static:      []string{"graph-1", "graph-2"},
+			excluded:    []string{},
 			modify:      true,
 		},
 		{
@@ -535,7 +557,15 @@ func Test_UpdateMemberLists(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			h, api := newHandler()
 			created(t, h, tt.aws)
-			require.NoError(t, update(t, h, tt.lastApplied, tt.desired))
+			err := update(t, h, tt.lastApplied, tt.desired)
+			if tt.rejected {
+				var failure *native.Failure
+				require.ErrorAs(t, err, &failure)
+				require.Equal(t, native.OutcomeRejected, failure.Outcome)
+				require.Nil(t, api.lastModify)
+				return
+			}
+			require.NoError(t, err)
 			if !tt.modify {
 				require.Nil(t, api.lastModify)
 				return
@@ -576,6 +606,8 @@ func Test_ValueTypes(t *testing.T) {
 		"a cluster that isn't a string":        with(endpoint, map[string]any{"DBClusterIdentifier": 5}),
 		"an endpoint name that isn't a string": with(endpoint, map[string]any{"DBClusterEndpointIdentifier": 5}),
 		"a type that isn't a string":           with(endpoint, map[string]any{"EndpointType": []any{"READER"}}),
+		"a type Neptune doesn't take":          with(endpoint, map[string]any{"EndpointType": "FOO"}),
+		"a name longer than 63 characters":     with(endpoint, map[string]any{"DBClusterEndpointIdentifier": strings.Repeat("a", 64)}),
 		"tags that aren't a list":              with(endpoint, map[string]any{"Tags": map[string]any{"team": "a"}}),
 		"a tag that isn't an object":           with(endpoint, map[string]any{"Tags": []any{"team"}}),
 		"a tag key that isn't a string":        with(endpoint, map[string]any{"Tags": []any{map[string]any{"Key": 1, "Value": "a"}}}),

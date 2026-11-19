@@ -1,6 +1,6 @@
 {
   "typeName": "AWS::Glue::PartitionIndex",
-  "description": "A partition index on an AWS Glue Data Catalog table, made with CreatePartitionIndex. AWS has no call that changes an index, so every property is create-only.",
+  "description": "A partition index on an AWS Glue Data Catalog table, made with CreatePartitionIndex. AWS has no call that changes an index, so every property is create-only. Glue builds one index on a table at a time.",
   "definitions": {
     "PartitionIndex": {
       "type": "object",
@@ -52,8 +52,8 @@
     },
     "IndexStatus": {
       "type": "string",
-      "description": "The status of the index: CREATING, ACTIVE, DELETING, or FAILED.",
-      "enum": ["CREATING", "ACTIVE", "DELETING", "FAILED"]
+      "description": "The status of the index: CREATING, ACTIVE, or DELETING. AWS keeps an index it failed to build in the table's history as FAILED, where it can't be deleted, and Radius creates the index again on the next deploy.",
+      "enum": ["CREATING", "ACTIVE", "DELETING"]
     }
   },
   "required": ["CatalogId", "DatabaseName", "TableName", "PartitionIndex"],
@@ -80,20 +80,22 @@
       "permissions": [
         "glue:CreatePartitionIndex",
         "glue:UpdateTable",
-        "glue:GetPartitionIndexes"
+        "glue:GetPartitionIndexes",
+        "glue:GetTable"
       ]
     },
     "read": {
-      "permissions": ["glue:GetPartitionIndexes"]
+      "permissions": ["glue:GetPartitionIndexes", "glue:GetTable"]
     },
     "update": {
-      "permissions": ["glue:GetPartitionIndexes"]
+      "permissions": ["glue:GetPartitionIndexes", "glue:GetTable"]
     },
     "delete": {
       "permissions": [
         "glue:DeletePartitionIndex",
         "glue:UpdateTable",
-        "glue:GetPartitionIndexes"
+        "glue:GetPartitionIndexes",
+        "glue:GetTable"
       ]
     }
   }

@@ -97,8 +97,9 @@ type fakeAPI struct {
 	// deletes counts the DeletePartitionIndex calls that reached the fake.
 	deletes int
 
-	// failed are the failed indexes of each table, oldest first.
-	failed map[string][]string
+	// failed are the failed indexes of each table, oldest first. AWS keeps them in the table's list apart from the
+	// index of the same name, which it lets a create make again.
+	failed map[string][]types.PartitionIndexDescriptor
 
 	// holdCreating keeps a new index CREATING, as for a table with many partitions.
 	holdCreating bool
@@ -110,7 +111,7 @@ type fakeAPI struct {
 var _ API = (*fakeAPI)(nil)
 
 func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
-	return &fakeAPI{store: store, status: map[string]types.PartitionIndexStatus{}, failed: map[string][]string{}, errs: map[string]error{}}
+	return &fakeAPI{store: store, status: map[string]types.PartitionIndexStatus{}, failed: map[string][]types.PartitionIndexDescriptor{}, errs: map[string]error{}}
 }
 
 func fault(code string) error {
@@ -175,17 +176,31 @@ func tableOfIndex(id string) string {
 	return id[:strings.LastIndex(id, "|")]
 }
 
-// fail marks the index FAILED, and removes the oldest failed index of its table when the table has more than maxFailed.
-func (f *fakeAPI) fail(id string) {
-	f.status[id] = types.PartitionIndexStatusFailed
+// fail moves the index to its table's failed indexes, and drops the oldest of them when the table has more than
+// maxFailed.
+func (f *fakeAPI) fail(id string, t table) {
 	table := tableOfIndex(id)
-	f.failed[table] = append(f.failed[table], id)
+	f.failed[table] = append(f.failed[table], f.descriptor(id, t, types.PartitionIndexStatusFailed))
 	if len(f.failed[table]) > maxFailed {
-		oldest := f.failed[table][0]
 		f.failed[table] = f.failed[table][1:]
-		delete(f.status, oldest)
-		f.store.Remove(partitionIndexType, oldest)
 	}
+	delete(f.status, id)
+	f.store.Remove(partitionIndexType, id)
+}
+
+// descriptor returns the index as GetPartitionIndexes returns it, with status.
+func (f *fakeAPI) descriptor(id string, t table, status types.PartitionIndexStatus) types.PartitionIndexDescriptor {
+	index, _ := f.store.Resource(partitionIndexType, id)["PartitionIndex"].(map[string]any)
+	d := types.PartitionIndexDescriptor{IndexName: aws.String(index["IndexName"].(string)), IndexStatus: status}
+	keys, _ := index["Keys"].([]any)
+	for _, k := range keys {
+		i := slices.IndexFunc(t.keys, func(c types.Column) bool { return aws.ToString(c.Name) == k })
+		d.Keys = append(d.Keys, types.KeySchemaElement{Name: aws.String(k.(string)), Type: t.keys[i].Type})
+	}
+	if status == types.PartitionIndexStatusFailed {
+		d.BackfillErrors = []types.BackfillError{{Code: types.BackfillErrorCodeEncryptedPartitionError}}
+	}
+	return d
 }
 
 // reported moves the status of an index a read returned on: a create finishes, ACTIVE, or FAILED on a table with
@@ -196,15 +211,13 @@ func (f *fakeAPI) reported(id string, t table) {
 		switch {
 		case f.holdCreating:
 		case t.encrypted:
-			f.fail(id)
+			f.fail(id, t)
 		default:
 			delete(f.status, id)
 		}
 	case types.PartitionIndexStatusDeleting:
 		delete(f.status, id)
 		f.store.Remove(partitionIndexType, id)
-		table := tableOfIndex(id)
-		f.failed[table] = slices.DeleteFunc(f.failed[table], func(failed string) bool { return failed == id })
 	}
 }
 
@@ -249,8 +262,10 @@ func (f *fakeAPI) CreatePartitionIndex(ctx context.Context, in *glue.CreateParti
 	if slices.Contains(existing, id) {
 		return nil, fault("AlreadyExistsException")
 	}
-	counted := slices.DeleteFunc(existing, func(i string) bool { return f.status[i] == types.PartitionIndexStatusFailed })
-	if len(counted) >= maxIndexes {
+	building := slices.ContainsFunc(existing, func(i string) bool {
+		return f.status[i] == types.PartitionIndexStatusCreating || f.status[i] == types.PartitionIndexStatusDeleting
+	})
+	if len(existing) >= maxIndexes || building {
 		return nil, fault("ResourceNumberLimitExceededException")
 	}
 	return &glue.CreatePartitionIndexOutput{}, f.change(func() error {
@@ -288,30 +303,32 @@ func (f *fakeAPI) GetPartitionIndexes(ctx context.Context, in *glue.GetPartition
 	if err != nil {
 		return nil, err
 	}
-	ids := f.indexes(prefix)
+	// Failed indexes come first, so a reader that takes the first entry with a name gets the failed one.
+	type entry struct {
+		id         string
+		descriptor types.PartitionIndexDescriptor
+	}
+	entries := []entry{}
+	for _, d := range f.failed[prefix] {
+		entries = append(entries, entry{descriptor: d})
+	}
+	for _, id := range f.indexes(prefix) {
+		entries = append(entries, entry{id: id, descriptor: f.descriptor(id, t, f.statusOf(id))})
+	}
 	start, _ := strconv.Atoi(aws.ToString(in.NextToken))
-	end := min(start+pageSize, len(ids))
+	end := min(start+pageSize, len(entries))
 	out := &glue.GetPartitionIndexesOutput{PartitionIndexDescriptorList: []types.PartitionIndexDescriptor{}}
-	page := ids[min(start, end):end]
-	for _, id := range page {
-		status := f.statusOf(id)
-		index, _ := f.store.Resource(partitionIndexType, id)["PartitionIndex"].(map[string]any)
-		d := types.PartitionIndexDescriptor{IndexName: aws.String(index["IndexName"].(string)), IndexStatus: status}
-		keys, _ := index["Keys"].([]any)
-		for _, k := range keys {
-			i := slices.IndexFunc(t.keys, func(c types.Column) bool { return aws.ToString(c.Name) == k })
-			d.Keys = append(d.Keys, types.KeySchemaElement{Name: aws.String(k.(string)), Type: t.keys[i].Type})
-		}
-		if status == types.PartitionIndexStatusFailed {
-			d.BackfillErrors = []types.BackfillError{{Code: types.BackfillErrorCodeEncryptedPartitionError}}
-		}
-		out.PartitionIndexDescriptorList = append(out.PartitionIndexDescriptorList, d)
+	page := entries[min(start, end):end]
+	for _, e := range page {
+		out.PartitionIndexDescriptorList = append(out.PartitionIndexDescriptorList, e.descriptor)
 	}
 	// The page is built before any status moves on, because a failure can remove another index of the page.
-	for _, id := range page {
-		f.reported(id, t)
+	for _, e := range page {
+		if e.id != "" {
+			f.reported(e.id, t)
+		}
 	}
-	if end < len(ids) {
+	if end < len(entries) {
 		out.NextToken = aws.String(strconv.Itoa(end))
 	}
 	return out, nil

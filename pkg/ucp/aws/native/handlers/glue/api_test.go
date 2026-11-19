@@ -19,6 +19,7 @@ package glue
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -133,6 +134,31 @@ func deleteIndex(edit func(*glue.DeletePartitionIndexInput)) apiCall {
 	}
 }
 
+// settle reads sales.orders until no index on it is CREATING.
+func settle(ctx context.Context, f *fakeAPI) error {
+	return settle2("orders")(ctx, f)
+}
+
+// settle2 returns a call that reads the table name in the sales database twice, so a new index on it finishes.
+func settle2(name string) apiCall {
+	return func(ctx context.Context, f *fakeAPI) error {
+		for range 2 {
+			if _, err := getIndexes(ctx, f, &glue.GetPartitionIndexesInput{DatabaseName: aws.String("sales"), TableName: aws.String(name)}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// createSecret returns a call that creates the index name on sales.secret, whose encrypted partitions make it fail.
+func createSecret(name string) apiCall {
+	return createIndex(named(name), func(c *glue.CreatePartitionIndexInput) {
+		c.TableName = aws.String("secret")
+		c.PartitionIndex.Keys = []string{"year"}
+	})
+}
+
 // onActiveIndex returns a call that creates the index by_date on sales.orders and reads it until it is ACTIVE, then
 // calls call.
 func onActiveIndex(call apiCall) apiCall {
@@ -228,9 +254,41 @@ var partitionIndexAPI = map[string]nativetest.Call{
 			{
 				Rule: "a table has at most 3 partition indexes",
 				Doc:  indexGuide,
-				Break: against(createIndex(named("a"), keyed("year")), createIndex(named("b"), keyed("month")),
-					createIndex(named("c"), keyed("region")), createIndex(named("d"), keyed("day"))),
+				Break: against(createIndex(named("a"), keyed("year")), settle, createIndex(named("b"), keyed("month")), settle,
+					createIndex(named("c"), keyed("region")), settle, createIndex(named("d"), keyed("day"))),
 				Code: "ResourceNumberLimitExceededException",
+			},
+			{
+				Rule:  "a table builds one index at a time: a create while another index is CREATING fails",
+				Break: against(createIndex(named("a"), keyed("year")), createIndex(named("b"), keyed("month"))),
+				Code:  "ResourceNumberLimitExceededException",
+			},
+			{
+				Rule: "a create while another index is DELETING fails too",
+				Break: against(onActiveIndex(func(ctx context.Context, f *fakeAPI) error {
+					if err := deleteIndex(nil)(ctx, f); err != nil {
+						return err
+					}
+					return createIndex(named("b"), keyed("month"))(ctx, f)
+				})),
+				Code: "ResourceNumberLimitExceededException",
+			},
+			{
+				Rule: "an index AWS failed to build doesn't block a create, and its name can be used again",
+				Check: against(createSecret("f"), settle2("secret"), createSecret("f"), func(ctx context.Context, f *fakeAPI) error {
+					indexes, err := getIndexes(ctx, f, &glue.GetPartitionIndexesInput{DatabaseName: aws.String("sales"), TableName: aws.String("secret")})
+					if err != nil {
+						return err
+					}
+					statuses := []types.PartitionIndexStatus{}
+					for _, i := range indexes {
+						statuses = append(statuses, i.IndexStatus)
+					}
+					if !slices.Equal(statuses, []types.PartitionIndexStatus{types.PartitionIndexStatusFailed, types.PartitionIndexStatusCreating}) {
+						return fmt.Errorf("the table lists %v", statuses)
+					}
+					return nil
+				}),
 			},
 			{
 				Rule:  "each key is a partition key of the table",
@@ -321,7 +379,10 @@ var partitionIndexAPI = map[string]nativetest.Call{
 			},
 		},
 		Unclear: "The guide limits a table to 3 indexes without saying whether FAILED ones count; the fake doesn't " +
-			"count them. It says a key must be a partition key of a supported type, without naming the error, or whether " +
+			"count them. The docs don't say a table builds one index at a time; in a run against real AWS, a create while " +
+			"another index on the table was CREATING or DELETING got ResourceNumberLimitExceededException (\"Only 1 index " +
+			"can be created or deleted simultaneously per table\"), and the same run could create an index with the name " +
+			"of a FAILED one, which stayed listed. It says a key must be a partition key of a supported type, without naming the error, or whether " +
 			"AWS checks it before the index is CREATING; the fake rejects the call with InvalidInputException, the error " +
 			"the call lists for input that isn't valid. The docs don't say whether a name a FAILED index has can be used " +
 			"again; the fake returns AlreadyExistsException, as for any index the table lists. They don't say whether " +
@@ -407,6 +468,15 @@ var partitionIndexAPI = map[string]nativetest.Call{
 				}),
 			},
 			{
+				Rule: "an index AWS failed to build can't be deleted",
+				Break: against(createSecret("f"), settle2("secret"), func(ctx context.Context, f *fakeAPI) error {
+					return deleteIndex(func(in *glue.DeletePartitionIndexInput) {
+						in.TableName, in.IndexName = aws.String("secret"), aws.String("f")
+					})(ctx, f)
+				}),
+				Code: "EntityNotFoundException",
+			},
+			{
 				Rule: "an ACTIVE index goes to DELETING, then leaves the list",
 				Doc:  indexGuide,
 				Check: against(onActiveIndex(func(ctx context.Context, f *fakeAPI) error {
@@ -427,7 +497,8 @@ var partitionIndexAPI = map[string]nativetest.Call{
 			},
 		},
 		Unclear: "The docs say an index that is CREATING can't be deleted, without naming the error; the fake returns " +
-			"InvalidInputException. They don't say whether a FAILED index can be deleted; the fake deletes it. They " +
+			"InvalidInputException. They don't say whether a FAILED index can be deleted; in a run against real AWS, the " +
+			"call got EntityNotFoundException and the index stayed listed, so the fake does the same. They " +
 			"don't say what AWS does for an index that is DELETING; the fake returns EntityNotFoundException, and the " +
 			"handler doesn't call it for one." + constraintNote,
 	},

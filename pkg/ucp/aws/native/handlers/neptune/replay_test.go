@@ -21,7 +21,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/neptune"
+	"github.com/stretchr/testify/require"
 
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
@@ -49,4 +51,23 @@ func Test_Replay_ClusterEndpoint(t *testing.T) {
 		WantUpdated: with(properties, map[string]any{"EndpointType": "ANY", "Status": "available"}),
 		Poll:        15 * time.Second,
 	}.Run(t)
+}
+
+// Test_Replay_RejectedCreate creates an endpoint over a DB instance that isn't in the cluster. Neptune answers 400 with
+// InvalidParameterValue, which the SDK doesn't model, so it reports no client fault; the handler must still report the
+// create as a rejected client failure, so UCP answers 400 and drops the record.
+func Test_Replay_RejectedCreate(t *testing.T) {
+	s := awsreplay.New(t, "testdata/rejectedcreate.json")
+	api := neptune.NewFromConfig(s.Config(t.Context()))
+	_, err := NewClusterEndpoint(api).Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{
+		"DBClusterEndpointIdentifier": "radius-rec-reads",
+		"DBClusterIdentifier":         s.Input("RADIUS_REC_NEPTUNE_CLUSTER"),
+		"EndpointType":                "READER",
+		"StaticMembers":               []any{"radius-rec-graph-9"},
+	}})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, "InvalidParameterValue")
 }

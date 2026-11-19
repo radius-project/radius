@@ -19,6 +19,7 @@ package glue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -48,9 +49,9 @@ var (
 	_ native.IdentifierResolver = (*PartitionIndex)(nil)
 )
 
-// createStates are the states a create waits for. AWS builds a new index from the table's partitions, and the index
-// fails when a partition can't be indexed.
-var createStates = awsapi.States{Done: []string{string(types.PartitionIndexStatusActive)}, Failed: []string{string(types.PartitionIndexStatusFailed)}}
+// createStates are the states a create waits for while AWS builds a new index from the table's partitions. describe
+// skips an index AWS failed to build.
+var createStates = awsapi.States{Done: []string{string(types.PartitionIndexStatusActive)}}
 
 // PartitionIndex serves AWS::Glue::PartitionIndex: an index on some of a Glue table's partition keys. Its identifier is
 // CatalogId, DatabaseName, TableName, and the index's IndexName, joined with "|". Glue stores database and table names
@@ -201,39 +202,41 @@ func (h *PartitionIndex) ResolveIdentifier(ctx context.Context, region string, i
 	return id.String(), nil
 }
 
-// describe returns the index, or ErrNotFound when the table, or the index on it, doesn't exist.
-func (h *PartitionIndex) describe(ctx context.Context, region string, id indexID) (*types.PartitionIndexDescriptor, error) {
+// describe returns the index, or ErrNotFound when the table, or an index with the name on it, doesn't exist. AWS keeps
+// indexes it failed to build in the table's list, where they can't be deleted, and lets a create make one with the same
+// name again, so describe skips them. failed is the first failed index with the name, for the progress of a create.
+func (h *PartitionIndex) describe(ctx context.Context, region string, id indexID) (index *types.PartitionIndexDescriptor, failed *types.PartitionIndexDescriptor, err error) {
 	input := &glue.GetPartitionIndexesInput{CatalogId: aws.String(id.catalog), DatabaseName: aws.String(id.database), TableName: aws.String(id.table)}
 	for {
 		page, err := h.api.GetPartitionIndexes(ctx, input, inRegion(region))
 		if err != nil {
-			return nil, awsapi.NotFound(err, "EntityNotFoundException")
+			return nil, nil, awsapi.NotFound(err, "EntityNotFoundException")
 		}
 		for i := range page.PartitionIndexDescriptorList {
-			if index := &page.PartitionIndexDescriptorList[i]; aws.ToString(index.IndexName) == id.name {
-				return index, nil
+			d := &page.PartitionIndexDescriptorList[i]
+			switch {
+			case aws.ToString(d.IndexName) != id.name:
+			case d.IndexStatus != types.PartitionIndexStatusFailed:
+				return d, nil, nil
+			case failed == nil:
+				failed = d
 			}
 		}
 		if input.NextToken = page.NextToken; input.NextToken == nil {
-			return nil, native.ErrNotFound
+			return nil, failed, native.ErrNotFound
 		}
 	}
 }
 
-// Read returns the index's properties. An index AWS failed to build is a client failure, so a deploy that finds one,
-// such as a redeploy after the create failed, or a take-over, fails instead of reporting an index that doesn't work.
-// A delete finds the index without Read, so it still deletes it.
+// Read returns the index's properties. An index AWS failed to build reads as absent, so a deploy creates a new one.
 func (h *PartitionIndex) Read(ctx context.Context, region string, identifier string) (map[string]any, error) {
 	id, err := parseID(identifier)
 	if err != nil {
 		return nil, err
 	}
-	index, err := h.describe(ctx, region, id)
+	index, _, err := h.describe(ctx, region, id)
 	if err != nil {
 		return nil, err
-	}
-	if index.IndexStatus == types.PartitionIndexStatusFailed {
-		return nil, &native.Failure{Message: backfillFailure(id.name, index.BackfillErrors), ClientError: true, Outcome: native.OutcomeRejected}
 	}
 	keys := []any{}
 	for _, k := range index.Keys {
@@ -295,7 +298,7 @@ func (h *PartitionIndex) Delete(ctx context.Context, region string, identifier s
 	if err != nil {
 		return err
 	}
-	index, err := h.describe(ctx, region, id)
+	index, _, err := h.describe(ctx, region, id)
 	if err != nil {
 		return err
 	}
@@ -316,8 +319,9 @@ func (h *PartitionIndex) List(ctx context.Context, region string) ([]native.Reso
 	return nil, nil
 }
 
-// Progress reads the index's status. A create waits for ACTIVE, and fails at FAILED, naming AWS's backfill error codes.
-// A delete waits for the index to be gone. An update changes nothing, so it is done.
+// Progress reads the index's status. A create waits for ACTIVE, and fails when AWS failed to build the index, naming
+// AWS's backfill error codes. A delete waits for the index to be gone; a failed index with the name doesn't count. An
+// update changes nothing, so it is done.
 func (h *PartitionIndex) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
 	if op == native.OperationUpdate {
 		return native.Progress{Done: true}, nil
@@ -326,7 +330,15 @@ func (h *PartitionIndex) Progress(ctx context.Context, region string, identifier
 	if err != nil {
 		return native.Progress{}, err
 	}
-	index, err := h.describe(ctx, region, id)
+	index, failed, err := h.describe(ctx, region, id)
+	if op == native.OperationCreate && failed != nil && errors.Is(err, native.ErrNotFound) {
+		// The create made no index that works, so nothing is left to manage: the next deploy creates the index again.
+		return native.Progress{Done: true, State: string(failed.IndexStatus), Failure: &native.Failure{
+			Message:     backfillFailure(id.name, failed.BackfillErrors),
+			ClientError: true,
+			Outcome:     native.OutcomeRejected,
+		}}, nil
+	}
 	if err != nil {
 		return native.Progress{}, err
 	}
@@ -334,12 +346,7 @@ func (h *PartitionIndex) Progress(ctx context.Context, region string, identifier
 	if op == native.OperationDelete {
 		return native.Progress{State: status, Waiting: "deleted"}, nil
 	}
-	progress := createStates.Progress(status)
-	if progress.Failure != nil {
-		progress.Failure.Message = backfillFailure(id.name, index.BackfillErrors)
-		progress.Failure.ClientError = true
-	}
-	return progress, nil
+	return createStates.Progress(status), nil
 }
 
 // backfillFailure returns the message of an index AWS failed to build, naming each error code once.
@@ -354,5 +361,5 @@ func backfillFailure(name string, errs []types.BackfillError) string {
 	if len(codes) > 0 {
 		message += " (" + strings.Join(codes, ", ") + ")"
 	}
-	return message + ". Fix the partitions, then delete the index and deploy it again"
+	return message + ". AWS keeps the failed index in the table's history. Fix the partitions, then deploy again to create the index again"
 }

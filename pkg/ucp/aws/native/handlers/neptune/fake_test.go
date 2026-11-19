@@ -108,9 +108,8 @@ func (r *rules) check(ok bool, code string) {
 }
 
 var (
-	endpointTypes = []string{"READER", "WRITER", "ANY"}
-	tagPattern    = regexp.MustCompile(`^[\p{L}\p{Z}\p{N}_.:/=+\-]*$`)
-	filterValues  = map[string][]string{
+	tagPattern   = regexp.MustCompile(`^[\p{L}\p{Z}\p{N}_.:/=+\-]*$`)
+	filterValues = map[string][]string{
 		"db-cluster-endpoint-type":        {"reader", "writer", "custom"},
 		"db-cluster-endpoint-custom-type": {"reader", "any"},
 		"db-cluster-endpoint-status":      {"available", "creating", "deleting", "inactive", "modifying"},
@@ -191,15 +190,16 @@ func (f *fakeAPI) change(apply func() error) error {
 func (f *fakeAPI) members(r *rules, cluster string, static []string, excluded []string) {
 	r.check(len(static) == 0 || len(excluded) == 0, "InvalidParameterCombination")
 	for _, m := range slices.Concat(static, excluded) {
-		r.check(slices.Contains(instances[strings.ToLower(cluster)], strings.ToLower(m)), "DBInstanceNotFound")
-		r.check(!f.busy[strings.ToLower(m)], "InvalidDBInstanceState")
+		// Neptune answered a member in another case, or of no instance of the cluster, with InvalidParameterValue.
+		r.check(slices.Contains(instances[strings.ToLower(cluster)], m), "InvalidParameterValue")
+		r.check(!f.busy[m], "InvalidDBInstanceState")
 	}
 }
 
-func lowerAll(list []string) []any {
+func listOf(list []string) []any {
 	out := []any{}
 	for _, v := range list {
-		out = append(out, strings.ToLower(v))
+		out = append(out, v)
 	}
 	return out
 }
@@ -234,10 +234,10 @@ func (f *fakeAPI) CreateDBClusterEndpoint(ctx context.Context, in *neptune.Creat
 			"Endpoint":                            id + ".cluster-custom-abc123.us-west-2.neptune.amazonaws.com",
 		}
 		if len(in.StaticMembers) > 0 {
-			props["StaticMembers"] = lowerAll(in.StaticMembers)
+			props["StaticMembers"] = listOf(in.StaticMembers)
 		}
 		if len(in.ExcludedMembers) > 0 {
-			props["ExcludedMembers"] = lowerAll(in.ExcludedMembers)
+			props["ExcludedMembers"] = listOf(in.ExcludedMembers)
 		}
 		if len(in.Tags) > 0 {
 			props["Tags"] = awsapi.TagListOf(in.Tags)
@@ -358,14 +358,16 @@ func (f *fakeAPI) ModifyDBClusterEndpoint(ctx context.Context, in *neptune.Modif
 	r.check(in.EndpointType == nil || slices.Contains(endpointTypes, aws.ToString(in.EndpointType)), "InvalidParameterValue")
 	r.check(f.status[id] == "", "InvalidDBClusterEndpointStateFault")
 	r.check(!f.busy[awsapi.String(props, "DBClusterIdentifier")], "InvalidDBClusterStateFault")
+	// A list sent empty doesn't clear it. A list sent with members replaces both, because an endpoint has one kind of
+	// list, so switching from a static list to an exclusion list works.
+	f.members(r, awsapi.String(props, "DBClusterIdentifier"), in.StaticMembers, in.ExcludedMembers)
 	static, excluded := awsapi.Strings(props, "StaticMembers"), awsapi.Strings(props, "ExcludedMembers")
-	if in.StaticMembers != nil {
-		static = in.StaticMembers
+	switch {
+	case len(in.StaticMembers) > 0:
+		static, excluded = in.StaticMembers, nil
+	case len(in.ExcludedMembers) > 0:
+		static, excluded = nil, in.ExcludedMembers
 	}
-	if in.ExcludedMembers != nil {
-		excluded = in.ExcludedMembers
-	}
-	f.members(r, awsapi.String(props, "DBClusterIdentifier"), static, excluded)
 	if r.err != nil {
 		return nil, r.err
 	}
@@ -377,7 +379,7 @@ func (f *fakeAPI) ModifyDBClusterEndpoint(ctx context.Context, in *neptune.Modif
 			if len(list) == 0 {
 				delete(props, name)
 			} else {
-				props[name] = lowerAll(list)
+				props[name] = listOf(list)
 			}
 		}
 		f.store.Put(endpointType, id, props)
@@ -483,6 +485,9 @@ func (f *fakeAPI) AddTagsToResource(ctx context.Context, in *neptune.AddTagsToRe
 	if id == "" {
 		return nil, fault(endpointNotFound)
 	}
+	if f.status[id] == "modifying" {
+		return nil, fault("InvalidDBClusterEndpointStateFault")
+	}
 	return &neptune.AddTagsToResourceOutput{}, f.change(func() error {
 		props := f.store.Resource(endpointType, id)
 		tags := awsapi.Tags(props)
@@ -505,6 +510,9 @@ func (f *fakeAPI) RemoveTagsFromResource(ctx context.Context, in *neptune.Remove
 	id := f.endpointOfARN(in.ResourceName)
 	if id == "" {
 		return nil, fault(endpointNotFound)
+	}
+	if f.status[id] == "modifying" {
+		return nil, fault("InvalidDBClusterEndpointStateFault")
 	}
 	return &neptune.RemoveTagsFromResourceOutput{}, f.change(func() error {
 		props := f.store.Resource(endpointType, id)
