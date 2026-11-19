@@ -167,6 +167,52 @@ func TestRequestMappingRouteShortcuts(t *testing.T) {
 	}
 }
 
+func TestServedRoute(t *testing.T) {
+	const rp = "/planes/radius/local/providers/System.Resources/resourceproviders/Foo.Bar"
+	const aws = "/planes/aws/aws/accounts/1/regions/r/providers/AWS.S3/Bucket"
+	for _, tt := range []struct {
+		method, path string
+		served       bool
+	}{
+		{http.MethodGet, "/planes", true},
+		{http.MethodGet, "/planes/radius/", true},
+		{http.MethodPut, "/planes/radius/local", true},
+		{http.MethodPatch, "/planes/radius/local", false},
+		{http.MethodGet, "/planes/RADIUS/local", false},
+		{http.MethodGet, "/planes/AZURE/local/providers/Radius.Core/applications/app", false},
+		{http.MethodGet, "/planes/AWS/aws/accounts/1/regions/r/providers/AWS.S3/Bucket", false},
+		{http.MethodGet, "/planes/other/local", false},
+		{http.MethodGet, "/providers/Radius.Core/effectiveAccess", false},
+		// NormalizePath lowercases the first resourcegroups segment.
+		{http.MethodGet, "/PLANES/radius/local/resourceGroups/team-a", true},
+		{http.MethodPut, "/planes/radius/local/resourcegroups/team-a", true},
+		{http.MethodPatch, "/planes/radius/local/resourcegroups/team-a", false},
+		{http.MethodGet, "/planes/radius/local/resourcegroups/team-a/resources/", true},
+		{http.MethodPost, "/planes/radius/local/resourcegroups/team-a/resources", false},
+		{http.MethodPatch, "/planes/radius/local/resourcegroups/team-a/providers/Radius.Core/applications/app", true},
+		{http.MethodGet, "/planes/radius/local/resourcegroups/team-a/PROVIDERS/Radius.Core/applications/app", false},
+		{http.MethodGet, "/planes/radius/local/providers/Foo.Bar", true},
+		{http.MethodGet, "/planes/radius/local/providers/Foo.Bar/", false},
+		{http.MethodPost, "/planes/radius/local/providers/Foo.Bar/things/x/action", true},
+		{http.MethodPut, rp + "/resourcetypes/things/apiversions/v1", true},
+		{http.MethodPatch, rp + "/resourcetypes/things/apiversions/v1", false},
+		{http.MethodGet, rp + "/resourcetypes/things/icons/h", true},
+		{http.MethodGet, rp + "/resourcetypes/things/icons/h/", false},
+		{http.MethodGet, rp + "/RESOURCETYPES/things/icons/h", false},
+		{http.MethodGet, "/planes/radius/local/providers/System.Resources/locations/global/operationStatuses/1", true},
+		{http.MethodGet, "/planes/radius/local/providers/System.Resources/other/x", false},
+		{http.MethodGet, aws + "/", true},
+		{http.MethodGet, aws + "/x/", false},
+		{http.MethodGet, "/planes/aws/aws/providers/System.AWS/credentials/default", true},
+		{http.MethodGet, "/planes/aws/aws/providers/Radius.Core/roleAssignments", false},
+		{http.MethodPatch, "/planes/azure/local/providers/Radius.Core/applications/app", true},
+	} {
+		t.Run(tt.method+tt.path, func(t *testing.T) {
+			require.Equal(t, tt.served, ServedRoute(tt.method, tt.path))
+		})
+	}
+}
+
 func TestCloudPlaneAccessManagement(t *testing.T) {
 	catalog, err := NewCatalog(nil)
 	require.NoError(t, err)

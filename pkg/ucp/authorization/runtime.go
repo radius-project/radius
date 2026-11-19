@@ -201,9 +201,13 @@ func (r *PolicyRuntime) EvaluateRequest(identity Identity, method, path string) 
 	if err != nil {
 		return result, fmt.Errorf("AuthorizationIndeterminate: request target cannot be mapped")
 	}
-	switch mapping.Kind {
-	case DiscoveryRequest:
+	if mapping.Kind == DiscoveryRequest {
 		return result, nil
+	}
+	if !ServedRoute(method, path) {
+		return result, fmt.Errorf("AuthorizationIndeterminate: request does not match a served UCP route")
+	}
+	switch mapping.Kind {
 	case OperationStatusRequest, SelfAccessRequest, MixedResourceListRequest:
 		return result, fmt.Errorf("AuthorizationIndeterminate: request requires additional trusted context or response checks")
 	}

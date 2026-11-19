@@ -244,6 +244,26 @@ func TestServiceDryRunRequests(t *testing.T) {
 				Icon: to.Ptr(icon), IconHash: to.Ptr(iconHash),
 			}},
 		}))
+		// Exact frontend responses for requests that stay local.
+		localStatus := map[string]int{
+			"real icon":                                 http.StatusOK,
+			"child named icons":                         http.StatusInternalServerError,
+			"Azure credentials local":                   http.StatusNotFound,
+			"icon escaped namespace":                    http.StatusBadRequest,
+			"Azure proxy without provider":              http.StatusBadRequest,
+			"Azure proxy subscription without provider": http.StatusBadRequest,
+			"Azure proxy provider collection":           http.StatusInternalServerError,
+			"Azure credential descendant":               http.StatusNotFound,
+			"icon fixed segment case":                   http.StatusNotFound,
+			"AWS unregistered descendant":               http.StatusNotFound,
+			"Azure plane type case":                     http.StatusBadRequest,
+			"AWS plane type case":                       http.StatusBadRequest,
+			"Radius plane type case":                    http.StatusBadRequest,
+			"resource group PATCH":                      http.StatusMethodNotAllowed,
+			"resource group providers case":             http.StatusNotFound,
+			"icon trailing slash":                       http.StatusNotFound,
+			"root effectiveAccess":                      http.StatusNotFound,
+		}
 		for _, tt := range []struct {
 			name, method, path, permission, target, result string
 			proxied                                        bool
@@ -268,6 +288,15 @@ func TestServiceDryRunRequests(t *testing.T) {
 			{"Azure credential descendant", http.MethodGet, azure + "/providers/System.Azure/credentials/default/children/a", "", "", "indeterminate", false},
 			{"icon fixed segment case", http.MethodGet, strings.Replace(iconParent, "/resourcetypes/", "/RESOURCETYPES/", 1) + "/icons/" + iconHash, "", "", "indeterminate", false},
 			{"AWS unregistered descendant", http.MethodGet, "/planes/aws/aws/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket/x/children/y", "", "", "indeterminate", false},
+			// The dispatcher selects plane modules by their exact type key.
+			{"Azure plane type case", http.MethodGet, "/planes/AZURE/local/providers/Radius.Core/applications/app", "", "", "indeterminate", false},
+			{"AWS plane type case", http.MethodGet, "/planes/AWS/aws/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket", "", "", "indeterminate", false},
+			{"Radius plane type case", http.MethodGet, "/planes/RADIUS/local/resourcegroups/team-a", "", "", "indeterminate", false},
+			// Fixed routes serve only their registered methods and leaves.
+			{"resource group PATCH", http.MethodPatch, group, "", "", "indeterminate", false},
+			{"resource group providers case", http.MethodGet, group + "/PROVIDERS/Foo.Bar/things/x", "", "", "indeterminate", false},
+			{"icon trailing slash", http.MethodGet, iconParent + "/icons/" + iconHash + "/", "", "", "indeterminate", false},
+			{"root effectiveAccess", http.MethodGet, "/providers/Radius.Core/effectiveAccess", "", "", "indeterminate", false},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
 				before := calls.Load()
@@ -285,16 +314,13 @@ func TestServiceDryRunRequests(t *testing.T) {
 					require.Equal(t, before+2, calls.Load())
 				} else {
 					require.Equal(t, before, calls.Load(), "local routes must not reach the Azure proxy")
-					if tt.name == "real icon" {
-						require.Equal(t, http.StatusOK, denied, deniedBody)
+					require.Contains(t, localStatus, tt.name)
+					require.Equal(t, localStatus[tt.name], denied, deniedBody)
+					switch tt.name {
+					case "real icon":
 						require.Equal(t, icon, deniedBody)
-					} else if strings.HasPrefix(tt.name, "Azure proxy") && strings.HasSuffix(tt.name, "without provider") {
-						require.Equal(t, http.StatusBadRequest, denied, deniedBody)
+					case "Azure proxy without provider", "Azure proxy subscription without provider":
 						require.Contains(t, deniedBody, "invalid resourceID specified with no provider")
-					} else if tt.name == "Azure credentials local" {
-						require.Equal(t, http.StatusNotFound, denied, deniedBody)
-					} else {
-						require.GreaterOrEqual(t, denied, http.StatusBadRequest, "unregistered child retains its routing error")
 					}
 				}
 				events := logs.FilterMessage("User authorization request").All()

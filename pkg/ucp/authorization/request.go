@@ -214,6 +214,121 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 	return c.mapping(kind, typ+"/"+op, target)
 }
 
+// normalizedRoutePath applies middleware.NormalizePath's rewrite, which the
+// frontend performs before dispatch, so the route gate sees what chi routes.
+func normalizedRoutePath(path string) string {
+	for _, segment := range []string{"/planes", "/resourcegroups"} {
+		if index := strings.Index(strings.ToLower(path), segment); index >= 0 {
+			path = path[:index] + segment + path[index+len(segment):]
+		}
+	}
+	return path
+}
+
+// ServedRoute reports whether UCP's frontend dispatcher has a handler for method
+// and path, relative to the path base, among the routes MapRequest maps to
+// checks. It mirrors api.Register and the radius, aws and azure modules: after
+// NormalizePath's rewrite, the plane module key, every other fixed segment,
+// registered methods and leaf trailing slashes must match exactly. Proxied
+// subtrees are accepted for any method; MapRequest checks their structure.
+// The catalog also maps API routes this frontend does not mount, so DryRun
+// records unserved requests as indeterminate.
+func ServedRoute(method, path string) bool {
+	trailingSlash := path != "/" && strings.HasSuffix(path, "/")
+	return servedRoute(method, strings.Split(strings.Trim(normalizedRoutePath(path), "/"), "/"), trailingSlash)
+}
+
+func servedRoute(method string, parts []string, trailingSlash bool) bool {
+	get := method == http.MethodGet
+	crud := slices.Contains([]string{http.MethodGet, http.MethodPut, http.MethodDelete}, method)
+	if len(parts) == 0 || parts[0] != "planes" {
+		return false
+	}
+	if len(parts) == 1 || len(parts) == 2 {
+		return get && (len(parts) == 1 || slices.Contains([]string{"radius", "aws", "azure"}, parts[1]))
+	}
+	if !slices.Contains([]string{"radius", "aws", "azure"}, parts[1]) {
+		return false
+	}
+	if len(parts) == 3 {
+		return crud
+	}
+	below := parts[3:]
+	switch parts[1] {
+	case "azure":
+		// Local credential routes and the catch-all proxy are classified by MapRequest.
+		return true
+	case "aws":
+		if below[0] == "accounts" {
+			// Only resource collections accept a trailing slash.
+			return !trailingSlash || len(below) == 7
+		}
+		return len(below) >= 3 && below[0] == "providers" && below[1] == "System.AWS" && below[2] == "credentials" &&
+			(len(below) == 3 && get || len(below) == 4 && crud)
+	}
+	switch below[0] {
+	case "providers":
+		if len(below) == 1 {
+			return get
+		}
+		if below[1] != "System.Resources" {
+			// /providers/{name} is a summary leaf; deeper paths are proxied.
+			return len(below) > 2 || get && !trailingSlash
+		}
+		return radiusSystemResourcesRoute(method, below[2:], trailingSlash)
+	case "resourcegroups":
+		switch {
+		case len(below) == 1:
+			return get
+		case len(below) == 2:
+			return crud
+		case len(below) == 3 && below[2] == "resources":
+			return get
+		}
+		return len(below) > 3 && below[2] == "providers"
+	}
+	return false
+}
+
+// radiusSystemResourcesRoute matches the routes below
+// /planes/radius/{plane}/providers/System.Resources.
+func radiusSystemResourcesRoute(method string, rest []string, trailingSlash bool) bool {
+	get := method == http.MethodGet
+	crud := slices.Contains([]string{http.MethodGet, http.MethodPut, http.MethodDelete}, method)
+	if len(rest) == 4 && rest[0] == "locations" && (rest[2] == "operationStatuses" || rest[2] == "operationResults") {
+		return get && !trailingSlash
+	}
+	if len(rest) == 0 || rest[0] != "resourceproviders" {
+		return false
+	}
+	switch len(rest) {
+	case 1:
+		return get
+	case 2:
+		return crud
+	}
+	switch rest[2] {
+	case "locations":
+		return len(rest) == 3 && get || len(rest) == 4 && crud
+	case "resourcetypes":
+	default:
+		return false
+	}
+	switch {
+	case len(rest) == 3:
+		return get
+	case len(rest) == 4:
+		return crud
+	case len(rest) == 5 && rest[4] == "apiversions":
+		return get
+	case len(rest) == 6 && rest[4] == "apiversions":
+		return crud
+	case len(rest) == 6 && rest[4] == "icons":
+		return get && !trailingSlash
+	}
+	return false
+}
+
 // awsProxyRoute reports whether below (the path after /planes/aws/{plane})
 // is one of the finite AWS resource routes in frontend/aws/routes.go.
 func awsProxyRoute(method string, below []string) (RequestKind, bool) {
