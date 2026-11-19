@@ -250,13 +250,8 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	pool := t.transportForRequest()
 
-	// A shallow copy shares req.Trailer and req.Body, so trailers the caller sets while the
-	// body streams are still sent. Only the header map is replaced.
 	req = req.WithContext(req.Context())
 	req.Header = req.Header.Clone()
-	if req.Header == nil {
-		req.Header = make(http.Header)
-	}
 	// Header.Set touches only the canonical key, and the transport sends non-canonical keys
 	// as written, so drop every case variant first.
 	for k := range req.Header {
@@ -443,7 +438,6 @@ func (t *upgradeTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	}
 
 	if req.URL.Scheme == "http" {
-		// A shallow copy keeps the caller's live req.Trailer; only the URL is replaced.
 		u := *req.URL
 		u.Scheme = "https"
 		req = req.WithContext(req.Context())

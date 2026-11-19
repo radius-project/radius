@@ -128,10 +128,11 @@ presents a client certificate.
 
 - `off` (default): plain HTTP, behavior unchanged.
 - `dryRun`: the same port accepts TLS and plain HTTP. Plain HTTP, missing or
-  invalid tokens, and disallowed callers are logged as would-deny
-  (`InvalidAuthenticationInfo`, `AuthorizationFailed`), and the request is
-  served. Unavailable signing keys are the exception: every request gets
-  `503 AuthorizationUnavailable`, as in `enforce`.
+  invalid tokens, disallowed callers, and requests that can't be checked
+  because the signing keys are unavailable are logged as would-deny
+  (`InvalidAuthenticationInfo`, `AuthorizationFailed`,
+  `AuthorizationUnavailable`), and the request is served without a caller
+  identity.
 - `enforce`: TLS is required (plain HTTP gets `400`). A missing, invalid, or
   wrong-audience token gets `401 InvalidAuthenticationInfo`; unavailable
   signing keys give `503 AuthorizationUnavailable`; and callers not in the
