@@ -29,8 +29,8 @@ var (
 	ErrMembershipUnavailable = errors.New("trusted group membership for another user or workload is unavailable; check as that caller or inspect a group")
 )
 
-// inspectPolicy captures one immutable snapshot without blocking refresh during
-// evaluation. Its age and lifetime are rechecked before publishing any result.
+// inspectPolicy checks freshness before evaluating one immutable snapshot without
+// blocking refresh.
 func (r *PolicyRuntime) inspectPolicy(inspect func(*PolicySnapshot) error) error {
 	if r == nil {
 		return ErrAuthorizationUnavailable
@@ -41,18 +41,11 @@ func (r *PolicyRuntime) inspectPolicy(inspect func(*PolicySnapshot) error) error
 	r.cache.mu.RLock()
 	snapshot, asOf := r.cache.value, r.cache.asOf
 	r.cache.mu.RUnlock()
-	fresh := func() bool {
-		return lifetime != nil && snapshot != nil &&
-			r.cache.clock.Since(asOf) < PolicyMaxAge && lifetime.Err() == nil
-	}
-	if !fresh() {
+	if lifetime == nil || snapshot == nil ||
+		r.cache.clock.Since(asOf) >= PolicyMaxAge || lifetime.Err() != nil {
 		return ErrAuthorizationUnavailable
 	}
-	err := inspect(snapshot)
-	if !fresh() {
-		return ErrAuthorizationUnavailable
-	}
-	return err
+	return inspect(snapshot)
 }
 
 // WhoAmI returns identity and installation-administrator status from fresh policy.

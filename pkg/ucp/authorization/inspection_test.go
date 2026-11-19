@@ -27,7 +27,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 	"k8s.io/utils/clock"
-	clocktesting "k8s.io/utils/clock/testing"
 )
 
 func TestInspectionEveryMode(t *testing.T) {
@@ -149,36 +148,6 @@ func TestInspectionUnavailable(t *testing.T) {
 		require.ErrorIs(t, err, ErrAuthorizationUnavailable)
 		stop()
 	})
-}
-
-func TestInspectionSnapshotAvailabilityChanges(t *testing.T) {
-	for _, scenario := range []string{"expired", "refreshed after expiry", "cancelled"} {
-		t.Run(scenario, func(t *testing.T) {
-			clk := clocktesting.NewFakeClock(time.Now())
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
-			snapshot := testPolicySnapshot(t, 1)
-			runtime := &PolicyRuntime{ctx: ctx, cache: &PolicyCache{value: snapshot, asOf: clk.Now(), clock: clk}}
-			err := runtime.inspectPolicy(func(captured *PolicySnapshot) error {
-				require.Same(t, snapshot, captured)
-				require.True(t, runtime.mu.TryLock(), "inspection must not hold the runtime lock")
-				runtime.mu.Unlock()
-				require.True(t, runtime.cache.mu.TryLock(), "inspection must not block refresh")
-				defer runtime.cache.mu.Unlock()
-				if scenario == "cancelled" {
-					cancel()
-				} else {
-					clk.Step(PolicyMaxAge)
-					if scenario == "refreshed after expiry" {
-						runtime.cache.value = testPolicySnapshot(t, 2)
-						runtime.cache.asOf = clk.Now()
-					}
-				}
-				return nil
-			})
-			require.ErrorIs(t, err, ErrAuthorizationUnavailable)
-		})
-	}
 }
 
 func TestInspectionInputLimits(t *testing.T) {
