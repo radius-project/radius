@@ -83,6 +83,11 @@ func (c *Catalog) MapRequest(method, path string) (RequestMapping, error) {
 			// Azure serves only the literal credential routes locally; every
 			// other path below the plane is proxied with the plane's credential.
 			if len(below) < 3 || below[0] != "providers" || below[1] != "System.Azure" || below[2] != "credentials" {
+				// planes.ProxyController rejects paths without a provider
+				// resource before forwarding, so no credential is used.
+				if id, err := resources.Parse(path); err != nil || id.ProviderNamespace() == "" {
+					return RequestMapping{}, fmt.Errorf("Azure proxy route requires a provider resource")
+				}
 				return c.mapping(ResourceRequest, "System.Azure/credentials/use/action", plane)
 			}
 			if !(len(below) == 3 && method == http.MethodGet ||

@@ -5,6 +5,7 @@ package authorization
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,14 +16,21 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
-func trimPathBase(path, pathBase string) string {
-	if pathBase != "" && (path == pathBase || strings.HasPrefix(path, pathBase+"/")) {
+// MountedRequestPath returns path relative to pathBase and reports whether UCP's
+// router serves it. api.Register mounts every API below pathBase and serves only
+// the Kubernetes OpenAPI documents at the root, so other paths are unrouted.
+func MountedRequestPath(path, pathBase string) (string, bool) {
+	if pathBase == "" {
+		return path, true
+	}
+	if path == pathBase || strings.HasPrefix(path, pathBase+"/") {
 		path = strings.TrimPrefix(path, pathBase)
 		if path == "" {
 			path = "/"
 		}
+		return path, true
 	}
-	return path
+	return path, path == "/openapi/v2" || path == "/openapi/v3"
 }
 
 // ObserveRequests records DryRun target decisions without modifying workload
@@ -32,14 +40,16 @@ func trimPathBase(path, pathBase string) string {
 func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			path := trimPathBase(r.URL.Path, pathBase)
+			// Protected-mutation detection is independent of the mount.
+			path, _ := MountedRequestPath(r.URL.Path, pathBase)
 			// chi routes on RawPath when it is set, so map that representation.
 			// Escaped segments fail path validation and are logged as indeterminate
 			// instead of being attributed to a handler the router may not select.
-			routePath := path
+			rawPath := r.URL.Path
 			if r.URL.RawPath != "" {
-				routePath = trimPathBase(r.URL.RawPath, pathBase)
+				rawPath = r.URL.RawPath
 			}
+			routePath, mounted := MountedRequestPath(rawPath, pathBase)
 			identity, verified := IdentityFromContext(r.Context())
 			logger := ucplog.FromContextOrDiscard(r.Context())
 			if protectedMutation(r.Method, path) {
@@ -58,6 +68,11 @@ func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler)
 				return
 			}
 			result, err := runtime.EvaluateRequest(identity, r.Method, routePath)
+			if !mounted && err == nil {
+				// The router does not dispatch this path, so no decision applies.
+				result.Mapping, result.Decisions = RequestMapping{}, nil
+				err = errors.New("AuthorizationIndeterminate: request path is outside the API mount")
+			}
 			if result.Mode == api.UserAuthorizationModeEnforce && result.Mapping.Kind != DiscoveryRequest {
 				logger.Info("User authorization request", "result", "deny", "reason", "enforceUnsupported")
 				writeAuthorizationUnavailable(w, r)

@@ -553,3 +553,25 @@ func TestObserveRequestsPathBaseDiscovery(t *testing.T) {
 		require.Empty(t, logs.FilterMessage("User authorization request").All())
 	})
 }
+
+func TestMountedRequestPath(t *testing.T) {
+	const base = "/apis/api.ucp.dev/v1alpha3"
+	tests := []struct {
+		path, pathBase, want string
+		mounted              bool
+	}{
+		{"/planes/radius/local", "", "/planes/radius/local", true},
+		{base, base, "/", true},
+		{base + "/planes/radius/local", base, "/planes/radius/local", true},
+		{base + "x/planes/radius/local", base, base + "x/planes/radius/local", false},
+		{"/planes/radius/local", base, "/planes/radius/local", false},
+		{"/openapi/v2", base, "/openapi/v2", true},
+		{"/openapi/v3", base, "/openapi/v3", true},
+		{"/openapi/v3/extra", base, "/openapi/v3/extra", false},
+	}
+	for _, tt := range tests {
+		got, mounted := MountedRequestPath(tt.path, tt.pathBase)
+		require.Equal(t, tt.want, got, tt.path)
+		require.Equal(t, tt.mounted, mounted, tt.path)
+	}
+}
