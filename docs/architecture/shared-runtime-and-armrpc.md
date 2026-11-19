@@ -155,7 +155,8 @@ require exactly one SAN, a URI SAN with the receiver's SPIFFE ID, instead of
 matching DNS names; a certificate with any DNS, IP, email, or other SAN is
 rejected. Only after the server is verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
-Every component projects only `ca.crt` from the `radius-ca` Secret (never
+UCP, Applications RP, Dynamic RP, and the controller project only `ca.crt`
+from the `radius-ca` Secret (never
 `tls.key`) to `/var/run/radius/ca`; the server certificate volume projects no
 `ca.crt`. Servers chain their certificate to it and clients verify servers
 against it.

@@ -162,8 +162,9 @@ global:
     # 24h, renew 8h before expiry, and get a new key on each renewal. Callers mount 10-minute
     # projected ServiceAccount tokens at /var/run/radius/tokens/<receiver>/token, with the
     # receiver's name as the audience. Receivers verify each caller's token offline; callers verify
-    # the receiver's SPIFFE ID before sending a token. Every component also projects only key
-    # ca.crt of Secret "radius-ca" to /var/run/radius/ca (never tls.key) as its Radius CA bundle.
+    # the receiver's SPIFFE ID before sending a token. ucp, applications-rp, dynamic-rp, and
+    # controller also project only key ca.crt of Secret "radius-ca" to /var/run/radius/ca (never
+    # tls.key) as their Radius CA bundle; bicep-de mounts neither credential.
     spiffe:
       # SPIFFE trust domain of the Radius server certificates: lowercase letters, digits, '.', '-'
       # and '_', at most 255 characters. Rendering fails for any other value when the mode is not off.
