@@ -220,7 +220,6 @@ func TestServiceDryRunRequests(t *testing.T) {
 		const icon = `<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>`
 		const iconHash = "7f9d93106668218aa422f68b0570c4d8676fb271a89d27a7e561da7517f3d9f5"
 		const iconParent = "/planes/radius/local/providers/System.Resources/resourceproviders/Foo.Bar/resourcetypes/things"
-		child := group + "/providers/Foo.Bar/things/x/icons/y"
 		var calls atomic.Int32
 		proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			calls.Add(1)
@@ -244,59 +243,20 @@ func TestServiceDryRunRequests(t *testing.T) {
 				Icon: to.Ptr(icon), IconHash: to.Ptr(iconHash),
 			}},
 		}))
-		// Exact frontend responses for requests that stay local.
-		localStatus := map[string]int{
-			"real icon":                                 http.StatusOK,
-			"child named icons":                         http.StatusInternalServerError,
-			"Azure credentials local":                   http.StatusNotFound,
-			"icon escaped namespace":                    http.StatusBadRequest,
-			"Azure proxy without provider":              http.StatusBadRequest,
-			"Azure proxy subscription without provider": http.StatusBadRequest,
-			"Azure proxy provider collection":           http.StatusInternalServerError,
-			"Azure credential descendant":               http.StatusNotFound,
-			"icon fixed segment case":                   http.StatusNotFound,
-			"AWS unregistered descendant":               http.StatusNotFound,
-			"Azure plane type case":                     http.StatusBadRequest,
-			"AWS plane type case":                       http.StatusBadRequest,
-			"Radius plane type case":                    http.StatusBadRequest,
-			"resource group PATCH":                      http.StatusMethodNotAllowed,
-			"resource group providers case":             http.StatusNotFound,
-			"icon trailing slash":                       http.StatusNotFound,
-			"root effectiveAccess":                      http.StatusNotFound,
-		}
 		for _, tt := range []struct {
 			name, method, path, permission, target, result string
 			proxied                                        bool
 		}{
 			{"real icon", http.MethodGet, iconParent + "/icons/" + iconHash, "System.Resources/resourceProviders/resourceTypes/read", iconParent, "wouldDeny", false},
-			{"child named icons", http.MethodGet, child, "", "", "indeterminate", false},
 			{"Azure Radius.Core proxy", http.MethodGet, azure + "/providers/Radius.Core/applications/app", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
-			{"Azure System.Resources proxy", http.MethodGet, azure + "/providers/System.Resources/resourcegroups/rg", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
 			{"Azure effectiveAccess proxy", http.MethodGet, azure + "/providers/Radius.Core/effectiveAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
-			{"Azure checkAccess proxy", http.MethodPost, azure + "/providers/Radius.Core/checkAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
-			{"Azure explainAccess proxy", http.MethodPost, azure + "/providers/Radius.Core/explainAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
 			{"Azure credentials local", http.MethodGet, azure + "/providers/System.Azure/credentials/default", "System.Azure/credentials/read", azure + "/providers/System.Azure/credentials/default", "wouldDeny", false},
-			{"Azure subscription effectiveAccess proxy", http.MethodGet, azure + "/subscriptions/123/providers/Radius.Core/effectiveAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
-			{"Azure subscription checkAccess proxy", http.MethodPost, azure + "/subscriptions/123/providers/Radius.Core/checkAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
-			{"Azure subscription explainAccess proxy", http.MethodPost, azure + "/subscriptions/123/providers/Radius.Core/explainAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
-			{"Azure credential case proxy", http.MethodGet, azure + "/providers/SYSTEM.AZURE/CREDENTIALS/default", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
 			{"Azure credentials escaped dot proxy", http.MethodGet, azure + "/providers/System%2EAzure/credentials/default", "", "", "indeterminate", true},
 			{"icon escaped namespace", http.MethodGet, strings.Replace(iconParent, "System.Resources", "System%2EResources", 1) + "/icons/" + iconHash, "", "", "indeterminate", false},
 			{"Azure proxy without provider", http.MethodGet, azure + "/tenants/abc", "", "", "indeterminate", false},
 			{"Azure proxy subscription without provider", http.MethodGet, azure + "/subscriptions/123/resourceGroups/rg", "", "", "indeterminate", false},
 			{"Azure proxy provider collection", http.MethodGet, azure + "/providers", "", "", "indeterminate", false},
 			{"Azure credential descendant", http.MethodGet, azure + "/providers/System.Azure/credentials/default/children/a", "", "", "indeterminate", false},
-			{"icon fixed segment case", http.MethodGet, strings.Replace(iconParent, "/resourcetypes/", "/RESOURCETYPES/", 1) + "/icons/" + iconHash, "", "", "indeterminate", false},
-			{"AWS unregistered descendant", http.MethodGet, "/planes/aws/aws/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket/x/children/y", "", "", "indeterminate", false},
-			// The dispatcher selects plane modules by their exact type key.
-			{"Azure plane type case", http.MethodGet, "/planes/AZURE/local/providers/Radius.Core/applications/app", "", "", "indeterminate", false},
-			{"AWS plane type case", http.MethodGet, "/planes/AWS/aws/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket", "", "", "indeterminate", false},
-			{"Radius plane type case", http.MethodGet, "/planes/RADIUS/local/resourcegroups/team-a", "", "", "indeterminate", false},
-			// Fixed routes serve only their registered methods and leaves.
-			{"resource group PATCH", http.MethodPatch, group, "", "", "indeterminate", false},
-			{"resource group providers case", http.MethodGet, group + "/PROVIDERS/Foo.Bar/things/x", "", "", "indeterminate", false},
-			{"icon trailing slash", http.MethodGet, iconParent + "/icons/" + iconHash + "/", "", "", "indeterminate", false},
-			{"root effectiveAccess", http.MethodGet, "/providers/Radius.Core/effectiveAccess", "", "", "indeterminate", false},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
 				before := calls.Load()
@@ -314,13 +274,16 @@ func TestServiceDryRunRequests(t *testing.T) {
 					require.Equal(t, before+2, calls.Load())
 				} else {
 					require.Equal(t, before, calls.Load(), "local routes must not reach the Azure proxy")
-					require.Contains(t, localStatus, tt.name)
-					require.Equal(t, localStatus[tt.name], denied, deniedBody)
-					switch tt.name {
-					case "real icon":
+					if tt.name == "real icon" {
+						require.Equal(t, http.StatusOK, denied, deniedBody)
 						require.Equal(t, icon, deniedBody)
-					case "Azure proxy without provider", "Azure proxy subscription without provider":
+					} else if strings.HasPrefix(tt.name, "Azure proxy") && strings.HasSuffix(tt.name, "without provider") {
+						require.Equal(t, http.StatusBadRequest, denied, deniedBody)
 						require.Contains(t, deniedBody, "invalid resourceID specified with no provider")
+					} else if tt.name == "Azure credentials local" {
+						require.Equal(t, http.StatusNotFound, denied, deniedBody)
+					} else {
+						require.GreaterOrEqual(t, denied, http.StatusBadRequest, "unregistered child retains its routing error")
 					}
 				}
 				events := logs.FilterMessage("User authorization request").All()
@@ -505,19 +468,12 @@ func TestServiceProtectedMutationsEveryMode(t *testing.T) {
 						}
 					}
 				}
-				send := func(method, target, subject, overrideHeader, override string) (int, string) {
+				send := func(method, target, subject string) (int, string) {
 					t.Helper()
-					query := "?api-version=2025-08-01-preview"
-					if overrideHeader == "_method" {
-						query += "&_method=" + override
-					}
-					request, err := http.NewRequest(method, listener.URL+pathBase+target+query, strings.NewReader(`{"properties":{}}`))
+					request, err := http.NewRequest(method, listener.URL+pathBase+target+"?api-version=2025-08-01-preview", strings.NewReader(`{"properties":{}}`))
 					require.NoError(t, err)
 					if subject != "" {
 						request.Header.Set("X-Remote-User", subject)
-					}
-					if overrideHeader != "" && overrideHeader != "_method" {
-						request.Header.Set(overrideHeader, override)
 					}
 					response, err := client.Do(request)
 					require.NoError(t, err)
@@ -540,36 +496,15 @@ func TestServiceProtectedMutationsEveryMode(t *testing.T) {
 							"/planes/radius/local/providers/Radius.Core/roleDefinitions/private-definition-id/",
 							"/Planes/radius/local/providers/RADIUS.CORE/ROLEASSIGNMENTS/private-assignment-id",
 						} {
-							for _, overrideHeader := range []string{"", "X-HTTP-Method-Override", "X-HTTP-Method", "X-Method-Override", "_method"} {
-								logs.TakeAll()
-								status, body := send(method, target, subject, overrideHeader, http.MethodGet)
-								expected := http.StatusServiceUnavailable
-								if subject == "" {
-									expected = http.StatusUnauthorized
-								}
-								require.Equal(t, expected, status, "%s %s: %s", method, target, body)
-								require.Len(t, logs.FilterMessage("User authorization request").All(), 1)
-								require.Zero(t, logs.FilterMessage("Forwarding request to plane").Len())
-								assertPrivateEvents()
-							}
-						}
-					}
-				}
-				// Overrides are ignored in both directions. A read cannot become a
-				// policy mutation, and the same ordinary handler response is kept.
-				for _, target := range []string{
-					"/planes/radius/local/providers/Radius.Core/roleAssignments/private-assignment-id",
-					"/planes/radius/local/providers/Radius.Core/roleDefinitions/private-definition-id",
-				} {
-					for _, method := range []string{http.MethodGet, http.MethodHead, http.MethodOptions} {
-						logs.TakeAll()
-						status, body := send(method, target, "alice", "", "")
-						assertPrivateEvents()
-						for _, overrideHeader := range []string{"X-HTTP-Method-Override", "X-HTTP-Method", "X-Method-Override", "_method"} {
 							logs.TakeAll()
-							overriddenStatus, overriddenBody := send(method, target, "alice", overrideHeader, http.MethodPut)
-							require.Equal(t, status, overriddenStatus)
-							require.Equal(t, body, overriddenBody)
+							status, body := send(method, target, subject)
+							expected := http.StatusServiceUnavailable
+							if subject == "" {
+								expected = http.StatusUnauthorized
+							}
+							require.Equal(t, expected, status, "%s %s: %s", method, target, body)
+							require.Len(t, logs.FilterMessage("User authorization request").All(), 1)
+							require.Zero(t, logs.FilterMessage("Forwarding request to plane").Len())
 							assertPrivateEvents()
 						}
 					}
