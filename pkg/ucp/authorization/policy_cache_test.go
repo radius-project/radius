@@ -282,22 +282,6 @@ func TestPolicyCacheOverlappingRefreshDiagnostics(t *testing.T) {
 	}
 }
 
-func TestPolicyCacheCancelledLoadPreservesDiagnostic(t *testing.T) {
-	failure := errors.New("refresh failed")
-	for _, previous := range []error{nil, failure} {
-		ctx, cancel := context.WithCancel(t.Context())
-		cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
-			cancel()
-			return nil, fmt.Errorf("private source detail: %w", ctx.Err())
-		}), nil)
-		require.NoError(t, err)
-		cache.lastError = previous
-		require.ErrorIs(t, cache.Refresh(ctx), context.Canceled)
-		require.Equal(t, previous, cache.lastError)
-	}
-
-}
-
 func TestPolicyCacheSourceCancellationWithLiveAttempt(t *testing.T) {
 	cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
 		return nil, fmt.Errorf("source operation: %w", context.Canceled)

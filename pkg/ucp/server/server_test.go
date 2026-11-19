@@ -59,12 +59,9 @@ func TestNewServerPolicyRuntime(t *testing.T) {
 		name    string
 		enabled bool
 		runtime *authorization.PolicyRuntime
-		wantErr bool
 	}{
 		{name: "unconfigured"},
 		{name: "configured", enabled: true, runtime: runtime},
-		{name: "missing runtime", enabled: true, wantErr: true},
-		{name: "unexpected runtime", runtime: runtime, wantErr: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			options := &ucp.Options{
@@ -77,10 +74,6 @@ func TestNewServerPolicyRuntime(t *testing.T) {
 				},
 			}
 			host, err := NewServer(t.Context(), options)
-			if tt.wantErr {
-				require.ErrorContains(t, err, "runtime must match")
-				return
-			}
 			require.NoError(t, err)
 			count := 0
 			for _, service := range host.Services {

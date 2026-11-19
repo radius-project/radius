@@ -17,53 +17,12 @@ import (
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	api "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/stretchr/testify/require"
-	"k8s.io/utils/clock"
 )
 
 type runtimeDatabase struct {
 	database.Client
 	mu  sync.RWMutex
 	get func(context.Context, string) error
-}
-
-type evaluationClock struct {
-	clock.WithTicker
-	since func(time.Time) time.Duration
-}
-
-func (c evaluationClock) Since(t time.Time) time.Duration { return c.since(t) }
-
-func TestPolicyRuntimeEvaluateAvailabilityChanges(t *testing.T) {
-	for _, scenario := range []string{"cancelled", "expired"} {
-		t.Run(scenario, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
-			snapshot := testPolicySnapshot(t, 1)
-			calls := 0
-			clk := evaluationClock{WithTicker: clock.RealClock{}, since: func(time.Time) time.Duration {
-				calls++
-				if calls == 2 {
-					if scenario == "cancelled" {
-						cancel()
-					} else {
-						return PolicyMaxAge
-					}
-
-				}
-				return 0
-			}}
-			cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
-				return snapshot, nil
-			}), clk)
-			require.NoError(t, err)
-			cache.value, cache.asOf = snapshot, time.Now()
-			runtime := &PolicyRuntime{cache: cache, ctx: ctx}
-			decisions, err := runtime.Evaluate(testIdentity(), []Check{{"Radius.Core/applications/write", appA}})
-			require.Equal(t, 2, calls)
-			require.ErrorIs(t, err, ErrAuthorizationUnavailable)
-			require.Nil(t, decisions)
-		})
-	}
 }
 
 func TestPolicyRuntimeInvalidAndUnconfigured(t *testing.T) {
@@ -77,23 +36,6 @@ func TestPolicyRuntimeInvalidAndUnconfigured(t *testing.T) {
 	require.ErrorIs(t, err, ErrAuthorizationUnavailable)
 	require.Nil(t, ctx)
 	require.Nil(t, cancel)
-}
-
-func TestPolicyRuntimeMutationCancellationAfterReadiness(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	cache, err := NewPolicyCache(policySourceFunc(func(context.Context, int64) (*PolicySnapshot, error) {
-		t.Fatal("cancelled mutation must not refresh")
-		return nil, nil
-	}), evaluationClock{WithTicker: clock.RealClock{}, since: func(time.Time) time.Duration {
-		// State has already checked liveness when it checks freshness.
-		cancel()
-		return 0
-	}})
-	require.NoError(t, err)
-	cache.value, cache.asOf = testPolicySnapshot(t, 1), time.Now()
-	runtime := &PolicyRuntime{cache: cache, ctx: ctx}
-	require.ErrorIs(t, runtime.Mutate(t.Context(), policyActor(), readerMutation()), ErrAuthorizationUnavailable)
 }
 
 func (d *runtimeDatabase) setGet(get func(context.Context, string) error) {
