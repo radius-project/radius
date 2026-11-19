@@ -273,6 +273,12 @@ var grantAPI = map[string]nativetest.Call{
 				Code:  validationCode,
 			},
 			{
+				Rule:  "a grant has EncryptionContextEquals or EncryptionContextSubset, not both",
+				Doc:   creating,
+				Break: against(createGrant(constrained(types.GrantConstraints{EncryptionContextEquals: pairs(1), EncryptionContextSubset: pairs(1)}))),
+				Code:  validationCode,
+			},
+			{
 				Rule:  "an encryption context value is at most 384 characters",
 				Break: against(createGrant(constrained(types.GrantConstraints{EncryptionContextSubset: map[string]string{"k": strings.Repeat("v", 385)}}))),
 				Code:  validationCode,

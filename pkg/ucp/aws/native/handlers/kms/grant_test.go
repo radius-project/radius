@@ -65,14 +65,18 @@ var template = map[string]any{
 // firstGrant is the ID of the first grant a new fake makes.
 var firstGrant = fmt.Sprintf("%064x", 1)
 
-func Test_Suite_Grant(t *testing.T) {
-	nativetest.Run(t, nativetest.Suite{
+// grantSuite returns the suite for the handler, with a fake that hides a new grant from ListGrants for its first read
+// when lagNew is set.
+func grantSuite(t *testing.T, lagNew bool) nativetest.Suite {
+	return nativetest.Suite{
 		TypeName:    grantType,
 		Schema:      readFile(t, "aws-kms-grant.json"),
 		Metadata:    readFile(t, "aws-kms-grant.metadata.json"),
 		HandWritten: true,
 		NewHandler: func(store *awsfake.CloudControl) native.Handler {
-			return NewGrant(newFakeAPI(store))
+			api := newFakeAPI(store)
+			api.lagNew = lagNew
+			return NewGrant(api)
 		},
 		IdentifierProperty: "GrantId",
 		Properties:         template,
@@ -88,6 +92,7 @@ func Test_Suite_Grant(t *testing.T) {
 			with(template, map[string]any{"KeyId": 5}),
 			with(template, map[string]any{"KeyId": "alias/app"}),
 			without(template, "Operations"),
+			with(template, map[string]any{"Name": "app"}),
 			with(template, map[string]any{"Constraints": map[string]any{"EncryptionContextSubset": map[string]any{"app": 1}}}),
 		},
 		IdentifierProperties: func(identifier string) map[string]any {
@@ -96,7 +101,18 @@ func Test_Suite_Grant(t *testing.T) {
 			return map[string]any{"KeyId": key, "GrantId": id}
 		},
 		API: grantAPI,
-	})
+	}
+}
+
+func Test_Suite_Grant(t *testing.T) {
+	nativetest.Run(t, grantSuite(t, false))
+}
+
+// Test_Suite_GrantListedLate runs the suite with a fake that lists a new grant only from its second read, as AWS's
+// eventual consistency allows, so a create sent again, and a delete after a lost create, happen before ListGrants
+// lists the grant.
+func Test_Suite_GrantListedLate(t *testing.T) {
+	nativetest.Run(t, grantSuite(t, true))
 }
 
 func Test_InRegion(t *testing.T) {
@@ -144,6 +160,12 @@ func Test_Identifier(t *testing.T) {
 	requireRejected(t, err, "KeyId and Operations")
 	_, err = h.Identifier(without(template, "KeyId"))
 	requireRejected(t, err, "KeyId and Operations")
+
+	_, err = h.Identifier(with(template, map[string]any{"Name": "app"}))
+	requireRejected(t, err, "Name", "read-only")
+	id, err = h.Identifier(map[string]any{"KeyId": keyARN(keyID), "GrantId": firstGrant, "Name": "app"})
+	require.NoError(t, err)
+	require.Equal(t, keyARN(keyID)+"|"+firstGrant, id, "a grant AWS reports has a name")
 
 	_, err = h.Identifier(with(template, map[string]any{"Operations": []any{"Decrypt", 2}}))
 	requireRejected(t, err, "types")
@@ -203,26 +225,19 @@ func Test_sameKey(t *testing.T) {
 
 func Test_Create(t *testing.T) {
 	h, api := newHandler()
-	id := create(t, h, with(template, map[string]any{"KeyId": keyID, "Name": "app"}))
+	request := native.CreateRequest{Region: region, Properties: with(template, map[string]any{"KeyId": keyID}), ClientToken: uuid.NewString()}
+	id, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
 	require.Equal(t, keyARN(keyID)+"|"+firstGrant, id, "the identifier has the key ARN, as ListGrants reports it")
-
-	api.calls = nil
-	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(template, map[string]any{"Name": "app", "Operations": []any{"GenerateDataKey", "Decrypt"}})})
-	requireRejected(t, err, `named "app"`, id)
-	require.NotContains(t, api.calls, "CreateGrant", "AWS would return the grant that is there")
-
-	other := create(t, h, with(template, map[string]any{"Name": "app", "Operations": []any{"Decrypt"}}))
-	require.NotEqual(t, id, other, "a grant with the same name and other values is another grant")
-
-	request := native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()}
-	unnamed, err := h.Create(t.Context(), request)
+	read, err := h.Read(t.Context(), region, id)
 	require.NoError(t, err)
-	read, err := h.Read(t.Context(), region, unnamed)
+	require.Equal(t, native.GenerateName(request.ClientToken), read["Name"], "the grant is named from the client token")
+
+	again, err := h.Create(t.Context(), request)
 	require.NoError(t, err)
-	require.Equal(t, native.GenerateName(request.ClientToken), read["Name"], "a grant the template doesn't name gets a name from the client token")
-	require.NotEqual(t, unnamed, create(t, h, template), "another create gets another name")
-	_, err = h.Create(t.Context(), request)
-	requireRejected(t, err, "earlier attempt", unnamed)
+	require.Equal(t, id, again, "a create sent again returns the first grant")
+	require.NotEqual(t, id, create(t, h, template), "another create makes another grant")
+	require.Len(t, api.grantsOf(keyID), 2)
 
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(template, map[string]any{"KeyId": "ffffffff-ffff-ffff-ffff-ffffffffffff"})})
 	require.ErrorContains(t, err, "NotFoundException")
@@ -230,6 +245,8 @@ func Test_Create(t *testing.T) {
 	requireRejected(t, err, validationCode)
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: without(template, "Operations")})
 	requireRejected(t, err, "KeyId and Operations")
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(template, map[string]any{"Operations": 1})})
+	requireRejected(t, err)
 
 	// The AWS SDK doesn't know ValidationError, so its fault is unknown, but AWS rejected the create.
 	api.errs["CreateGrant"] = &smithy.GenericAPIError{Code: validationCode, Message: "1 validation error detected"}
@@ -239,17 +256,57 @@ func Test_Create(t *testing.T) {
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()})
 	require.EqualError(t, err, "connection reset", "AWS may have made the grant")
 	delete(api.errs, "CreateGrant")
-	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(template, map[string]any{"Operations": 1})})
-	requireRejected(t, err)
 
 	api.errs["ListGrants"] = errors.New("throttled")
-	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(template, map[string]any{"Name": "new"})})
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()})
 	require.ErrorContains(t, err, "throttled")
 	delete(api.errs, "ListGrants")
 
 	h = NewGrant(noARN{api})
-	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: template})
+	_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()})
 	require.ErrorContains(t, err, "no grant ID")
+}
+
+// Test_CreateAfterChange sends a lost create again with a changed template. The key already has the grant named for
+// the create, so Create returns it instead of making a second grant, and UCP then compares it with the template.
+func Test_CreateAfterChange(t *testing.T) {
+	h, api := newHandler()
+	request := native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()}
+	id, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
+	// Grants on other keys and with other names make ListGrants return more than one page.
+	create(t, h, template)
+	create(t, h, with(template, map[string]any{"KeyId": keyARN(otherKeyID)}))
+
+	api.calls = nil
+	request.Properties = with(template, map[string]any{"Operations": []any{"Decrypt"}})
+	again, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, id, again)
+	require.NotContains(t, api.calls, "CreateGrant")
+
+	// Only another way of making grants can give two the name of one create.
+	duplicate := keyARN(keyID) + "|" + fmt.Sprintf("%064x", 99)
+	api.store.Put(grantType, duplicate, with(api.store.Resource(grantType, id), map[string]any{"GrantId": fmt.Sprintf("%064x", 99)}))
+	_, err = h.Create(t.Context(), request)
+	require.ErrorContains(t, err, id)
+	require.ErrorContains(t, err, duplicate)
+}
+
+// Test_CreateListedLate sends a create again before ListGrants lists the first grant. The create has the same name and
+// values, so AWS returns the first grant.
+func Test_CreateListedLate(t *testing.T) {
+	h, api := newHandler()
+	api.lagNew = true
+	request := native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()}
+	id, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
+	api.calls = nil
+	again, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, id, again)
+	require.Contains(t, api.calls, "CreateGrant", "ListGrants didn't list the grant yet")
+	require.Len(t, api.grantsOf(keyID), 1)
 }
 
 func Test_CreateServiceGrant(t *testing.T) {
@@ -260,60 +317,27 @@ func Test_CreateServiceGrant(t *testing.T) {
 		"RetiringServicePrincipal": "rds.amazonaws.com",
 		"Operations":               []any{"Decrypt"},
 		"Constraints":              map[string]any{"SourceArn": "arn:aws:rds:us-west-2:" + account + ":db:app"},
-		"Name":                     "rds",
 	}
-	id := create(t, h, properties)
+	request := native.CreateRequest{Region: region, Properties: properties, ClientToken: uuid.NewString()}
+	id, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
 	read, err := h.Read(t.Context(), region, id)
 	require.NoError(t, err)
-	require.Equal(t, with(properties, map[string]any{"GrantId": firstGrant, "IssuingAccount": "arn:aws:iam::" + account + ":root"}), read)
-
-	found, err := h.Find(t.Context(), native.CreateRequest{Region: region, Properties: properties})
-	require.NoError(t, err)
-	require.Equal(t, id, found, "a grant to a service principal is found without a grantee filter")
-}
-
-func Test_Find(t *testing.T) {
-	h, api := newHandler()
-	named := with(template, map[string]any{"Name": "app"})
-	found, err := h.Find(t.Context(), native.CreateRequest{Region: region, Properties: named})
-	require.NoError(t, err)
-	require.Empty(t, found)
-
-	// Grants on other keys and with other values make ListGrants return more than one page.
-	create(t, h, with(template, map[string]any{"Operations": []any{"Decrypt"}}))
-	create(t, h, with(template, map[string]any{"KeyId": keyARN(otherKeyID)}))
-	create(t, h, with(named, map[string]any{"Constraints": map[string]any{"EncryptionContextEquals": map[string]any{"app": "orders"}}}))
-	id := create(t, h, named)
-	found, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: with(named, map[string]any{"Operations": []any{"GenerateDataKey", "Decrypt"}})})
-	require.NoError(t, err)
-	require.Equal(t, id, found, "operations in another order are the same grant")
-
-	found, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: with(named, map[string]any{"KeyId": "ffffffff-ffff-ffff-ffff-ffffffffffff"})})
-	require.NoError(t, err)
-	require.Empty(t, found, "a key that is gone has no grants")
-
-	// AWS returns an existing grant for a create with the same name and values, so only a grant made some other way
-	// is a second match.
-	duplicate := keyARN(keyID) + "|" + fmt.Sprintf("%064x", 99)
-	api.store.Put(grantType, duplicate, with(api.store.Resource(grantType, id), map[string]any{"GrantId": fmt.Sprintf("%064x", 99)}))
-	_, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: named})
-	require.ErrorContains(t, err, id)
-	require.ErrorContains(t, err, duplicate)
-
-	_, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: with(template, map[string]any{"KeyId": "alias/app"})})
-	requireRejected(t, err, "alias")
-
-	api.errs["ListGrants"] = errors.New("throttled")
-	_, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: named})
-	require.ErrorContains(t, err, "throttled")
+	require.Equal(t, with(properties, map[string]any{
+		"GrantId": firstGrant, "Name": native.GenerateName(request.ClientToken), "IssuingAccount": "arn:aws:iam::" + account + ":root",
+	}), read)
 }
 
 func Test_ReadDelete(t *testing.T) {
 	h, api := newHandler()
-	id := create(t, h, with(template, map[string]any{"Name": "app"}))
+	request := native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()}
+	id, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
 	read, err := h.Read(t.Context(), region, id)
 	require.NoError(t, err)
-	require.Equal(t, with(template, map[string]any{"Name": "app", "GrantId": firstGrant, "IssuingAccount": "arn:aws:iam::" + account + ":root"}), read)
+	require.Equal(t, with(template, map[string]any{
+		"Name": native.GenerateName(request.ClientToken), "GrantId": firstGrant, "IssuingAccount": "arn:aws:iam::" + account + ":root",
+	}), read)
 
 	_, err = h.Read(t.Context(), region, keyARN(keyID)+"|missing")
 	require.ErrorIs(t, err, native.ErrNotFound)
@@ -355,25 +379,6 @@ func Test_Progress(t *testing.T) {
 	api.errs["ListGrants"] = errors.New("throttled")
 	_, err = h.Progress(t.Context(), region, id, native.OperationCreate)
 	require.ErrorContains(t, err, "throttled")
-}
-
-// Test_LostCreateListedLate loses a create whose grant ListGrants doesn't list yet, as when a deploy looks for the
-// lost create right after it. The create sent again finds the grant and sends nothing, and the next search finds it.
-func Test_LostCreateListedLate(t *testing.T) {
-	h, api := newHandler()
-	api.lagNew = true
-	request := native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()}
-	id, err := h.Create(t.Context(), request)
-	require.NoError(t, err)
-	found, err := h.Find(t.Context(), request)
-	require.NoError(t, err)
-	require.Empty(t, found, "ListGrants doesn't list the grant yet")
-	_, err = h.Create(t.Context(), request)
-	requireRejected(t, err, "deploy again", id)
-	found, err = h.Find(t.Context(), request)
-	require.NoError(t, err)
-	require.Equal(t, id, found)
-	require.Len(t, api.grantsOf(keyID), 1)
 }
 
 func Test_UpdateList(t *testing.T) {

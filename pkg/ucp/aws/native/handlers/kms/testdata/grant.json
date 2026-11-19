@@ -2,7 +2,7 @@
   "source": "api-reference",
   "inputs": {
     "RADIUS_REC_ACCOUNT_ID": "123456789012",
-    "RADIUS_REC_GRANTEE_ROLE_ARN": "arn:aws:iam::123456789012:role/radius-rec-grantee",
+    "RADIUS_REC_GRANTEE_ROLE_ARN": "arn:aws:iam::123456789012:role/radius-3f9a1c0b7d2eee",
     "RADIUS_REC_KMS_KEY_ID": "1234abcd-12ab-34cd-56ef-1234567890ab"
   },
   "interactions": [
@@ -19,7 +19,7 @@
     {
       "service": "KMS",
       "operation": "ListGrants",
-      "request": "{\"GranteePrincipal\":\"arn:aws:iam::123456789012:role/radius-rec-grantee\",\"KeyId\":\"arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"Limit\":100}",
+      "request": "{\"GranteePrincipal\":\"arn:aws:iam::123456789012:role/radius-3f9a1c0b7d2eee\",\"KeyId\":\"arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"Limit\":100}",
       "status": 200,
       "headers": {
         "Content-Type": "application/x-amz-json-1.1"
@@ -29,7 +29,7 @@
     {
       "service": "KMS",
       "operation": "CreateGrant",
-      "request": "{\"Constraints\":{\"EncryptionContextSubset\":{\"app\":\"radius-rec\"}},\"GranteePrincipal\":\"arn:aws:iam::123456789012:role/radius-rec-grantee\",\"KeyId\":\"arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"Name\":\"radius-rec-grant\",\"Operations\":[\"Decrypt\",\"GenerateDataKey\"]}",
+      "request": "{\"Constraints\":{\"EncryptionContextSubset\":{\"app\":\"radius-rec\"}},\"GranteePrincipal\":\"arn:aws:iam::123456789012:role/radius-3f9a1c0b7d2eee\",\"KeyId\":\"arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"Name\":\"radius-3f9a1c0b7d2e\",\"Operations\":[\"Decrypt\",\"GenerateDataKey\"]}",
       "status": 200,
       "headers": {
         "Content-Type": "application/x-amz-json-1.1"
@@ -54,7 +54,7 @@
       "headers": {
         "Content-Type": "application/x-amz-json-1.1"
       },
-      "body": "{\"Grants\":[{\"Constraints\":{\"EncryptionContextSubset\":{\"app\":\"radius-rec\"}},\"CreationDate\":1795110000.0,\"GrantId\":\"0c237476b39f8bc44e45212e08498fbe3151305030726c0590dd8d3e9f3d6a60\",\"GranteePrincipal\":\"arn:aws:iam::123456789012:role/radius-rec-grantee\",\"IssuingAccount\":\"arn:aws:iam::123456789012:root\",\"KeyId\":\"arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"Name\":\"radius-rec-grant\",\"Operations\":[\"Decrypt\",\"GenerateDataKey\"]}],\"Truncated\":false}"
+      "body": "{\"Grants\":[{\"Constraints\":{\"EncryptionContextSubset\":{\"app\":\"radius-rec\"}},\"CreationDate\":1795110000.0,\"GrantId\":\"0c237476b39f8bc44e45212e08498fbe3151305030726c0590dd8d3e9f3d6a60\",\"GranteePrincipal\":\"arn:aws:iam::123456789012:role/radius-3f9a1c0b7d2eee\",\"IssuingAccount\":\"arn:aws:iam::123456789012:root\",\"KeyId\":\"arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"Name\":\"radius-3f9a1c0b7d2e\",\"Operations\":[\"Decrypt\",\"GenerateDataKey\"]}],\"Truncated\":false}"
     },
     {
       "service": "KMS",
@@ -64,7 +64,7 @@
       "headers": {
         "Content-Type": "application/x-amz-json-1.1"
       },
-      "body": "{\"Grants\":[{\"Constraints\":{\"EncryptionContextSubset\":{\"app\":\"radius-rec\"}},\"CreationDate\":1795110000.0,\"GrantId\":\"0c237476b39f8bc44e45212e08498fbe3151305030726c0590dd8d3e9f3d6a60\",\"GranteePrincipal\":\"arn:aws:iam::123456789012:role/radius-rec-grantee\",\"IssuingAccount\":\"arn:aws:iam::123456789012:root\",\"KeyId\":\"arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"Name\":\"radius-rec-grant\",\"Operations\":[\"Decrypt\",\"GenerateDataKey\"]}],\"Truncated\":false}"
+      "body": "{\"Grants\":[{\"Constraints\":{\"EncryptionContextSubset\":{\"app\":\"radius-rec\"}},\"CreationDate\":1795110000.0,\"GrantId\":\"0c237476b39f8bc44e45212e08498fbe3151305030726c0590dd8d3e9f3d6a60\",\"GranteePrincipal\":\"arn:aws:iam::123456789012:role/radius-3f9a1c0b7d2eee\",\"IssuingAccount\":\"arn:aws:iam::123456789012:root\",\"KeyId\":\"arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"Name\":\"radius-3f9a1c0b7d2e\",\"Operations\":[\"Decrypt\",\"GenerateDataKey\"]}],\"Truncated\":false}"
     },
     {
       "service": "KMS",
@@ -74,7 +74,7 @@
       "headers": {
         "Content-Type": "application/x-amz-json-1.1"
       },
-      "body": "{\"Grants\":[{\"Constraints\":{\"EncryptionContextSubset\":{\"app\":\"radius-rec\"}},\"CreationDate\":1795110000.0,\"GrantId\":\"0c237476b39f8bc44e45212e08498fbe3151305030726c0590dd8d3e9f3d6a60\",\"GranteePrincipal\":\"arn:aws:iam::123456789012:role/radius-rec-grantee\",\"IssuingAccount\":\"arn:aws:iam::123456789012:root\",\"KeyId\":\"arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"Name\":\"radius-rec-grant\",\"Operations\":[\"Decrypt\",\"GenerateDataKey\"]}],\"Truncated\":false}"
+      "body": "{\"Grants\":[{\"Constraints\":{\"EncryptionContextSubset\":{\"app\":\"radius-rec\"}},\"CreationDate\":1795110000.0,\"GrantId\":\"0c237476b39f8bc44e45212e08498fbe3151305030726c0590dd8d3e9f3d6a60\",\"GranteePrincipal\":\"arn:aws:iam::123456789012:role/radius-3f9a1c0b7d2eee\",\"IssuingAccount\":\"arn:aws:iam::123456789012:root\",\"KeyId\":\"arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"Name\":\"radius-3f9a1c0b7d2e\",\"Operations\":[\"Decrypt\",\"GenerateDataKey\"]}],\"Truncated\":false}"
     },
     {
       "service": "KMS",

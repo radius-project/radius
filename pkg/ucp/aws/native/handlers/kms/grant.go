@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -50,7 +49,6 @@ var (
 	_ native.Handler            = (*Grant)(nil)
 	_ native.IdentifierEncoder  = (*Grant)(nil)
 	_ native.IdentifierResolver = (*Grant)(nil)
-	_ native.Finder             = (*Grant)(nil)
 )
 
 // grantNotFound are the codes AWS returns when the key or the grant doesn't exist. The docs don't say which one a call
@@ -61,8 +59,8 @@ var grantNotFound = []string{"NotFoundException", "InvalidGrantIdException"}
 // joined with "|". AWS has no call that changes a grant, so every property is create-only, and a delete retires it.
 //
 // CreateGrant takes no idempotency token, but a create with the same Name and values as an existing grant returns
-// that grant. The handler names a grant the template doesn't name from the record's client token, so every attempt of
-// one create sends the same name, and a lost create is found by its name and values.
+// that grant. The handler names every grant from the record's client token, so the name belongs to one create, and a
+// create sent again returns that create's grant, even before ListGrants lists it.
 type Grant struct {
 	api API
 }
@@ -83,7 +81,7 @@ func (h *Grant) TypeName() string {
 func (h *Grant) Options() native.Options {
 	return native.Options{
 		List:          native.ListParent,
-		Recovery:      native.RecoverBySearch,
+		Recovery:      native.RecoverByResend,
 		Equivalent:    sameKey,
 		CreateTimeout: 15 * time.Minute,
 		DeleteTimeout: 15 * time.Minute,
@@ -132,15 +130,6 @@ func parse(properties map[string]any) (grant, error) {
 	return g, nil
 }
 
-// withName returns g with the name native.GenerateName gives token, the record's client token, when the template has
-// none. The name stays out of the template, so a later deploy that still leaves it out keeps it.
-func withName(g grant, token string) grant {
-	if g.Name == "" {
-		g.Name = native.GenerateName(token)
-	}
-	return g
-}
-
 // parseID returns the key and the grant ID of an identifier.
 func parseID(identifier string) (string, string, error) {
 	key, id, ok := strings.Cut(identifier, "|")
@@ -164,10 +153,13 @@ func (h *Grant) Identifier(properties map[string]any) (string, error) {
 }
 
 // required returns a client failure when the template leaves out KeyId or Operations, which the AWS SDK would reject
-// before it sends the create.
+// before it sends the create, or sets Name, which the handler sets.
 func required(g grant) error {
 	if g.KeyId == "" || len(g.Operations) == 0 {
 		return rejected("an %s needs KeyId and Operations", grantType)
+	}
+	if g.Name != "" {
+		return rejected("Name of an %s is read-only: Radius names the grant, so a create it sends again returns the same grant", grantType)
 	}
 	return nil
 }
@@ -262,52 +254,15 @@ func (h *Grant) Read(ctx context.Context, region string, identifier string) (map
 	})
 }
 
-// sorted returns the operations in order, so two lists compare as sets.
-func sorted(ops []types.GrantOperation) []types.GrantOperation {
-	out := slices.Clone(ops)
-	slices.Sort(out)
-	return out
-}
-
-// sameConstraints reports whether two grants have the same constraints. A constraint with no pairs is no constraint.
-func sameConstraints(a *types.GrantConstraints, b *types.GrantConstraints) bool {
-	var x, y types.GrantConstraints
-	if a != nil {
-		x = *a
-	}
-	if b != nil {
-		y = *b
-	}
-	return maps.Equal(x.EncryptionContextEquals, y.EncryptionContextEquals) &&
-		maps.Equal(x.EncryptionContextSubset, y.EncryptionContextSubset) &&
-		aws.ToString(x.SourceArn) == aws.ToString(y.SourceArn)
-}
-
-// matches reports whether AWS's grant e has g's name, principals, operations in any order, and constraints: the
-// values for which CreateGrant returns e instead of a new grant.
-func matches(e types.GrantListEntry, g grant) bool {
-	return aws.ToString(e.Name) == g.Name &&
-		aws.ToString(e.GranteePrincipal) == g.GranteePrincipal &&
-		aws.ToString(e.GranteeServicePrincipal) == g.GranteeServicePrincipal &&
-		aws.ToString(e.RetiringPrincipal) == g.RetiringPrincipal &&
-		aws.ToString(e.RetiringServicePrincipal) == g.RetiringServicePrincipal &&
-		slices.Equal(sorted(e.Operations), sorted(g.Operations)) &&
-		sameConstraints(e.Constraints, g.Constraints)
-}
-
-// find returns the identifiers of the key's grants that match g.
-func (h *Grant) find(ctx context.Context, region string, g grant) ([]string, error) {
-	in := &kms.ListGrantsInput{KeyId: aws.String(g.KeyId)}
-	if g.GranteePrincipal != "" {
-		in.GranteePrincipal = aws.String(g.GranteePrincipal)
-	}
-	list, err := h.grants(ctx, region, in)
+// named returns the identifiers of the key's grants with the name.
+func (h *Grant) named(ctx context.Context, region string, key string, name string) ([]string, error) {
+	list, err := h.grants(ctx, region, &kms.ListGrantsInput{KeyId: aws.String(key)})
 	if err != nil {
 		return nil, err
 	}
 	ids := []string{}
 	for _, e := range list {
-		if matches(e, g) {
+		if aws.ToString(e.Name) == name {
 			ids = append(ids, aws.ToString(e.KeyId)+"|"+aws.ToString(e.GrantId))
 		}
 	}
@@ -322,12 +277,10 @@ func optional(s string) *string {
 	return aws.String(s)
 }
 
-// Create creates the grant, and returns its identifier, with the key's ARN.
-//
-// CreateGrant returns an existing grant with the same name and values instead of a new one. So when the key already
-// has one, Create sends nothing and fails as rejected: it may be another alias's, or one made outside Radius, which
-// UCP must not take over without being asked. When the grant is one an earlier attempt of this create made, the next
-// deploy finds it with Find.
+// Create creates the grant, named from the record's client token, and returns its identifier, with the key's ARN.
+// The name belongs to this create, so a grant the key already has with the name is this create's: Create returns it,
+// whatever its values, and UCP then reads it and compares it with the template. A create sent again before ListGrants
+// lists the grant has the same name and, unless the template changed, the same values, so AWS returns the same grant.
 //
 // KMS rejects invalid input with ValidationError, which the AWS SDK doesn't know as a client error, so Create reports
 // it as rejected, and UCP doesn't keep the record of a create AWS never ran.
@@ -347,22 +300,25 @@ func (h *Grant) create(ctx context.Context, request native.CreateRequest) (strin
 	if err != nil {
 		return "", err
 	}
-	g = withName(g, request.ClientToken)
-	if g.KeyId, err = h.keyARN(ctx, request.Region, g.KeyId); err != nil {
-		return "", err
-	}
-	existing, err := h.find(ctx, request.Region, g)
+	name := native.GenerateName(request.ClientToken)
+	key, err := h.keyARN(ctx, request.Region, g.KeyId)
 	if err != nil {
 		return "", err
 	}
-	if len(existing) > 0 {
-		return "", rejected("the KMS key already has a grant named %q with the same values (%s), which AWS would return instead of creating one, so Radius sent nothing. If an earlier attempt of this deploy made it, deploy again. Otherwise choose another Name, or take the grant over by setting name to %q", g.Name, existing[0], existing[0])
+	existing, err := h.named(ctx, request.Region, key, name)
+	switch {
+	case err != nil:
+		return "", err
+	case len(existing) == 1:
+		return existing[0], nil
+	case len(existing) > 1:
+		return "", fmt.Errorf("the KMS key has %d grants named %s, which only one create of an AWS resource of type %s makes, so UCP can't tell which one it made: %s", len(existing), name, grantType, strings.Join(existing, ", "))
 	}
 	out, err := h.api.CreateGrant(ctx, &kms.CreateGrantInput{
-		KeyId:                    aws.String(g.KeyId),
+		KeyId:                    aws.String(key),
 		Operations:               g.Operations,
 		Constraints:              g.Constraints,
-		Name:                     aws.String(g.Name),
+		Name:                     aws.String(name),
 		GranteePrincipal:         optional(g.GranteePrincipal),
 		GranteeServicePrincipal:  optional(g.GranteeServicePrincipal),
 		RetiringPrincipal:        optional(g.RetiringPrincipal),
@@ -374,30 +330,7 @@ func (h *Grant) create(ctx context.Context, request native.CreateRequest) (strin
 	if aws.ToString(out.GrantId) == "" {
 		return "", fmt.Errorf("AWS returned no grant ID for the create of an AWS resource of type %s", grantType)
 	}
-	return g.KeyId + "|" + aws.ToString(out.GrantId), nil
-}
-
-// Find returns the identifier of the key's grant with the name and values the create sent, or "" when the key has none
-// or no longer exists.
-func (h *Grant) Find(ctx context.Context, request native.CreateRequest) (string, error) {
-	g, err := parse(request.Properties)
-	if err != nil {
-		return "", err
-	}
-	ids, err := h.find(ctx, request.Region, withName(g, request.ClientToken))
-	if awsapi.HasCode(err, "NotFoundException") {
-		return "", nil
-	}
-	if err != nil {
-		return "", err
-	}
-	switch len(ids) {
-	case 0:
-		return "", nil
-	case 1:
-		return ids[0], nil
-	}
-	return "", awsapi.Ambiguous("KMS grants", ids)
+	return key + "|" + aws.ToString(out.GrantId), nil
 }
 
 // Update does nothing: every property of a grant is create-only, so UCP rejects a change before it calls Update.

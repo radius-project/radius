@@ -35,7 +35,6 @@ func Test_Replay_Grant(t *testing.T) {
 	key := s.Input("RADIUS_REC_KMS_KEY_ID")
 	properties := map[string]any{
 		"KeyId":            key,
-		"Name":             "radius-rec-grant",
 		"GranteePrincipal": s.Input("RADIUS_REC_GRANTEE_ROLE_ARN"),
 		"Operations":       []any{"Decrypt", "GenerateDataKey"},
 		"Constraints":      map[string]any{"EncryptionContextSubset": map[string]any{"app": "radius-rec"}},

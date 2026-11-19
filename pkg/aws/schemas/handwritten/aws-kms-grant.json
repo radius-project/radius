@@ -104,7 +104,7 @@
     },
     "Name": {
       "type": "string",
-      "description": "A name for the grant. Radius generates one when the template leaves it out, so a create it sends again returns the same grant.",
+      "description": "The name Radius gives the grant, from the create's client token. AWS returns the existing grant for a create with the same name and values, so a create Radius sends again never makes a second grant.",
       "minLength": 1,
       "maxLength": 256,
       "pattern": "^[a-zA-Z0-9:/_-]+$"
@@ -128,10 +128,13 @@
     "/properties/RetiringPrincipal",
     "/properties/RetiringServicePrincipal",
     "/properties/Operations",
-    "/properties/Constraints",
-    "/properties/Name"
+    "/properties/Constraints"
   ],
-  "readOnlyProperties": ["/properties/GrantId", "/properties/IssuingAccount"],
+  "readOnlyProperties": [
+    "/properties/Name",
+    "/properties/GrantId",
+    "/properties/IssuingAccount"
+  ],
   "handlers": {
     "create": {
       "permissions": ["kms:CreateGrant", "kms:DescribeKey", "kms:ListGrants"],

@@ -248,8 +248,9 @@ func validContext(pairs map[string]string) bool {
 	return true
 }
 
-// validConstraints returns ValidationError unless the constraints fit their documented limits. An encryption context
-// constraint is only for a symmetric encryption key, whose operations take an encryption context.
+// validConstraints returns ValidationError unless the constraints fit their documented limits. A grant has
+// EncryptionContextEquals or EncryptionContextSubset, not both, and only for a symmetric encryption key, whose
+// operations take an encryption context.
 func validConstraints(c *types.GrantConstraints, usage types.KeyUsageType) error {
 	if c == nil {
 		return nil
@@ -257,6 +258,7 @@ func validConstraints(c *types.GrantConstraints, usage types.KeyUsageType) error
 	hasContext := len(c.EncryptionContextEquals) > 0 || len(c.EncryptionContextSubset) > 0
 	arn := aws.ToString(c.SourceArn)
 	if !validContext(c.EncryptionContextEquals) || !validContext(c.EncryptionContextSubset) ||
+		(len(c.EncryptionContextEquals) > 0 && len(c.EncryptionContextSubset) > 0) ||
 		(hasContext && usage != types.KeyUsageTypeEncryptDecrypt) ||
 		(c.SourceArn != nil && !(length(arn, 20, 512) && sourceArnPattern.MatchString(arn))) {
 		return fault(validationCode)
