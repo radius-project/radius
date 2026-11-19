@@ -199,7 +199,7 @@ func TestSwaggerOperationsMap(t *testing.T) {
 				}
 				if mapping.Kind != SelfAccessRequest {
 					expected := route.Permission
-					if strings.HasPrefix(path, "/planes/azure/") && strings.Contains(path, "/providers/Radius.Core/role") {
+					if strings.HasPrefix(path, "/planes/azure/local/providers/") {
 						expected = "System.Azure/credentials/use/action"
 					}
 					require.Equal(t, strings.ToLower(expected), strings.ToLower(mapping.Checks[0].Permission))
