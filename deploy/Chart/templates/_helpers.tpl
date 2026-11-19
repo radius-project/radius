@@ -199,7 +199,7 @@ Pod volume names the authorization helpers add, as a JSON list. Values that name
 not reuse them, or Kubernetes rejects the Deployment for duplicate volume names.
 */}}
 {{- define "radius.authz.reservedVolumeNames" -}}
-{{- $names := list "mtls" "spiffe" -}}
+{{- $names := list "spiffe" "radius-ca" -}}
 {{- range include "radius.authz.spiffe.receivers" . | fromJsonArray -}}
 {{- $names = append $names (printf "token-%s" .) -}}
 {{- end -}}
@@ -326,6 +326,7 @@ Secret is not mounted. The Secret is required, so pods wait until cert-manager h
 */}}
 {{- define "radius.authz.caBundle.volume" -}}
 {{- if ne (include "radius.authz.mode" .) "off" }}
+{{- include "radius.authz.validateVolumeNames" . }}
 - name: radius-ca
   secret:
     secretName: radius-ca
