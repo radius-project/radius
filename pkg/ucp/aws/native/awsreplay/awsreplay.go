@@ -79,7 +79,8 @@ var keptHeaders = []string{"Content-Type", "Smithy-Protocol", "X-Amzn-Errortype"
 
 // Cassette is the calls of one test, in order.
 type Cassette struct {
-	// Source is SourceRecorded or SourceAPIReference.
+	// Source is "recorded" for live captures, "converted-recording" for responses converted
+	// from a recording in another protocol, or "api-reference" for hand-authored responses.
 	Source string `json:"source"`
 
 	// Inputs are values the test reads from the environment when it records, such as the ID of a subnet the
