@@ -33,19 +33,11 @@ func TestTokenCertificateModesChart(t *testing.T) {
 		for _, provider := range []string{"radius", "external"} {
 			for _, enforcement := range []string{"off", "dryRun", "enforce"} {
 				t.Run(mode+"/"+provider+"/"+enforcement, func(t *testing.T) {
-					f := newIssuerPolicyFixture(t)
+					f := newCertificateChartFixture(t)
 					rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 					rbac["enabled"], rbac["dryRun"] = enforcement == "enforce", enforcement == "dryRun"
 					rbac["tls"] = map[string]any{"provider": provider}
-					if provider == "external" {
-						var objects []*unstructured.Unstructured
-						for _, obj := range f.objects {
-							if !strings.HasPrefix(obj.GetName(), "cert-manager-csi-driver-spiffe-approver") && obj.GetName() != "spiffe-approver" {
-								objects = append(objects, obj)
-							}
-						}
-						f.objects = objects
-					}
+
 					if mode != "issuerRef" {
 						c := map[string]any{"mode": mode}
 						if mode == "caSecret" {
@@ -102,6 +94,24 @@ func TestTokenCertificateModesChart(t *testing.T) {
 					dns, _, err := unstructured.NestedStringSlice(aggregation.Object, "spec", "dnsNames")
 					require.NoError(t, err)
 					require.Equal(t, []string{"ucp.radius-system.svc"}, dns)
+					for _, receiver := range []string{"ucp", "applications-rp", "dynamic-rp"} {
+						leaf := find("Certificate", receiver+"-spiffe")
+						if provider == "external" {
+							require.Nil(t, leaf)
+							continue
+						}
+						require.NotNil(t, leaf)
+						spec := leaf.Object["spec"].(map[string]any)
+						require.Equal(t, receiver+"-spiffe", spec["secretName"])
+						require.Equal(t, []any{"spiffe://radius.internal/ns/radius-system/sa/" + receiver}, spec["uris"])
+						require.NotContains(t, spec, "dnsNames")
+						require.Equal(t, []any{"digital signature", "server auth"}, spec["usages"])
+						name := "radius-ca-issuer"
+						if mode == "issuerRef" {
+							name = "external-ca"
+						}
+						require.Equal(t, name, spec["issuerRef"].(map[string]any)["name"])
+					}
 					for _, component := range []string{"ucp", "applications-rp", "dynamic-rp", "controller", "bicep-de"} {
 						require.Nil(t, find("Secret", component+"-mtls"))
 						if component != "ucp" {
@@ -186,20 +196,12 @@ func TestCertificateModesDoNotAddSecretReaderPermissions(t *testing.T) {
 	}
 	for _, provider := range []string{"radius", "external"} {
 		t.Run(provider, func(t *testing.T) {
-			f := newIssuerPolicyFixture(t)
+			f := newCertificateChartFixture(t)
 			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 			issuerCertificates := rbac["certificates"]
 			rbac["tls"] = map[string]any{"provider": provider}
 			rbac["enabled"], rbac["dryRun"] = false, false
-			if provider == "external" {
-				var objects []*unstructured.Unstructured
-				for _, object := range f.objects {
-					if !strings.HasPrefix(object.GetName(), "cert-manager-csi-driver-spiffe-approver") && object.GetName() != "spiffe-approver" {
-						objects = append(objects, object)
-					}
-				}
-				f.objects = objects
-			}
+
 			rendered, err := f.renderChart(t)
 			require.NoError(t, err)
 			baseline := grants(chartObjects(t, rendered))
@@ -256,22 +258,17 @@ func TestCertificateReceiverInventory(t *testing.T) {
 		{name: "external engine gate", provider: "external", de: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			f := newIssuerPolicyFixture(t)
+			f := newCertificateChartFixture(t)
 			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 			rbac["certificates"] = map[string]any{"mode": "selfSigned"}
 			rbac["tls"] = map[string]any{"provider": tt.provider}
-			f.values["de"] = map[string]any{"internalAuth": map[string]any{"enabled": tt.de}}
+			f.values["de"] = map[string]any{"tag": "test-compatible", "internalAuth": map[string]any{"enabled": tt.de}}
 			rendered, err := f.renderChart(t)
 			require.NoError(t, err)
 			var actual []string
 			for _, obj := range chartObjects(t, rendered) {
-				if obj.GetKind() != "RoleBinding" || obj.GetName() != "radius-spiffe-certificaterequests" {
-					continue
-				}
-				subjects, _, err := unstructured.NestedSlice(obj.Object, "subjects")
-				require.NoError(t, err)
-				for _, subject := range subjects {
-					actual = append(actual, subject.(map[string]any)["name"].(string))
+				if obj.GetKind() == "Certificate" && strings.HasSuffix(obj.GetName(), "-spiffe") {
+					actual = append(actual, strings.TrimSuffix(obj.GetName(), "-spiffe"))
 				}
 			}
 			require.ElementsMatch(t, tt.expected, actual)
@@ -283,17 +280,17 @@ func TestCertificatePublicSourceGuards(t *testing.T) {
 	const selected = "-----BEGIN CERTIFICATE-----\ndGVzdA==\n-----END CERTIFICATE-----\n"
 	for _, tt := range []struct {
 		name   string
-		change func(*issuerPolicyFixture)
+		change func(*certificateChartFixture)
 		object *unstructured.Unstructured
 		err    string
 	}{
-		{name: "missing signing name", change: func(f *issuerPolicyFixture) {
+		{name: "missing signing name", change: func(f *certificateChartFixture) {
 			f.values["global"].(map[string]any)["rbac"].(map[string]any)["certificates"].(map[string]any)["caSecret"] = ""
 		}, err: "existing operator-owned TLS Secret"},
-		{name: "managed signing name", change: func(f *issuerPolicyFixture) {
+		{name: "managed signing name", change: func(f *certificateChartFixture) {
 			f.values["global"].(map[string]any)["rbac"].(map[string]any)["certificates"].(map[string]any)["caSecret"] = "radius-apiserver-ca"
 		}, err: "must not name a Radius-managed"},
-		{name: "invalid signing name", change: func(f *issuerPolicyFixture) {
+		{name: "invalid signing name", change: func(f *certificateChartFixture) {
 			f.values["global"].(map[string]any)["rbac"].(map[string]any)["certificates"].(map[string]any)["caSecret"] = "invalid/name"
 		}, err: "existing operator-owned TLS Secret"},
 		{name: "unfinished or unknown journal", object: &unstructured.Unstructured{Object: map[string]any{
@@ -323,7 +320,7 @@ func TestCertificatePublicSourceGuards(t *testing.T) {
 		}}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			f := newIssuerPolicyFixture(t)
+			f := newCertificateChartFixture(t)
 			f.values["global"].(map[string]any)["rbac"].(map[string]any)["certificates"] = map[string]any{
 				"mode": "caSecret", "caSecret": "operator-ca", "caBundle": selected,
 			}

@@ -168,6 +168,8 @@ func Test_Helm_InstallRadius_ExistingContourIsNotChecked(t *testing.T) {
 	t.Parallel()
 
 	client := NewMockHelmClient(gomock.NewController(t))
+
+	expectNoRadiusHistory(client)
 	options := NewDefaultClusterOptions()
 	options.Radius.Reinstall = true
 	options.Contour.SetArgs = []string{turnOffFeaturesForTraefikCRDs}
@@ -228,6 +230,7 @@ func Test_Helm_UpgradeRadius_ReusesStoredContourValues(t *testing.T) {
 	t.Parallel()
 
 	client := NewMockHelmClient(gomock.NewController(t))
+
 	options := NewDefaultClusterOptions()
 	contourRelease := newContourReleaseWithStoredValues(options)
 
@@ -294,6 +297,7 @@ func Test_Helm_UpgradeRadius_ContourValuesFromFlags(t *testing.T) {
 			t.Parallel()
 
 			client := NewMockHelmClient(gomock.NewController(t))
+
 			options := NewDefaultClusterOptions()
 			options.ResetValues = resetValues
 			options.Contour.SetArgs = []string{turnOffFeaturesForTraefikCRDs}
@@ -405,6 +409,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeBaseline(t *testing.T) {
 			t.Parallel()
 
 			client := NewMockHelmClient(gomock.NewController(t))
+
 			options := NewDefaultClusterOptions()
 			expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
 			expectContourHistory(client, options, tt.history...)
@@ -672,6 +677,7 @@ func Test_Helm_UpgradeRadius_DownloadsContourChartOnce(t *testing.T) {
 	t.Parallel()
 
 	client := NewMockHelmClient(gomock.NewController(t))
+
 	options := NewDefaultClusterOptions()
 	contourRelease := newContourReleaseWithStoredValues(options)
 	expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
@@ -710,6 +716,7 @@ func Test_Helm_UpgradeRadius_WaitsForK3sOnce(t *testing.T) {
 
 	synctest.Test(t, func(t *testing.T) {
 		client := NewMockHelmClient(gomock.NewController(t))
+
 		options := NewDefaultClusterOptions()
 		// The Contour release of v0.62.0 manages the Gateway API CRDs.
 		contourRelease := &releasev1.Release{
@@ -1080,7 +1087,6 @@ func recordHelmCalls(t *testing.T, options ClusterOptions, upgrade bool) []strin
 	})
 	if upgrade {
 		expectRadiusBaseline(t, client, options)
-		expectRadiusPlanningReads(impl, client, newTestContourChart(), nil, false, true)
 		require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
 	} else {
 		require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
@@ -1194,9 +1200,6 @@ func radiusChartRef(options ClusterOptions) string {
 func expectChartPull(t *testing.T, client *MockHelmClient, chartRef string, loaded *chart.Chart) {
 	t.Helper()
 
-	if loaded.Metadata == nil {
-		loaded.Metadata = &chart.Metadata{Name: path.Base(chartRef), Version: "0.1.0"}
-	}
 	fileName := path.Base(chartRef) + ".tgz"
 	client.EXPECT().RunHelmPull(gomock.Any(), chartRef).
 		DoAndReturn(func(pullopts []helm.PullOpt, _ string) (string, error) {

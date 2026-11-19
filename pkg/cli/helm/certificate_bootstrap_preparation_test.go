@@ -47,7 +47,6 @@ func TestBootstrapInstallRejectsStaticValuesBeforeWrites(t *testing.T) {
 			client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), certManagerReleaseName,
 				gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 			impl := &Impl{Helm: client, newRotationStore: func(string, string) (*rotationStore, error) { return store, nil },
-				newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return sarClient(nil, nil), nil },
 				newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 					k, e := (fakeCertManagerCluster{}).clients()
 					return k, e, nil

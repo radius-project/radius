@@ -37,22 +37,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	valuesutil "helm.sh/helm/v4/pkg/chart/common/util"
-	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	"helm.sh/helm/v4/pkg/release"
-	releasecommon "helm.sh/helm/v4/pkg/release/common"
-	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
@@ -485,8 +482,11 @@ func TestRadiusCertificateImportRetainedAfterUninstall(t *testing.T) {
 	client := NewMockHelmClient(gomock.NewController(t))
 	kube := k8sfake.NewClientset()
 	impl := &Impl{
-		Helm:                        client,
-		newCertificateClient:        func(string) (kubernetes.Interface, error) { return kube, nil },
+		Helm:                 client,
+		newCertificateClient: func(string) (kubernetes.Interface, error) { return kube, nil },
+		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
+			return dynamicfake.NewSimpleDynamicClient(runtime.NewScheme()), nil
+		},
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kube, nil },
 		removeDefaultContourGateway: func(context.Context, string) error { return nil }, newRotationStore: uninstallTestStore(t),
 	}
@@ -702,10 +702,6 @@ func TestPrepareIssuerCertificates(t *testing.T) {
 		{name: "invalid issuer map", values: true, edit: func(o *ClusterOptions, v map[string]any) { certificateValues(v)["issuerRef"] = "external-ca" }, err: "requires group"},
 		{name: "signing Secret prohibited", values: true, edit: func(o *ClusterOptions, v map[string]any) { certificateValues(v)["caSecret"] = "operator-ca" }, err: "must not specify a signing Secret"},
 		{name: "reset values rejected", edit: func(o *ClusterOptions, v map[string]any) { o.ResetValues = true }, err: "cannot discard stored"},
-		{name: "new prerequisite references allowed", edit: func(o *ClusterOptions, v map[string]any) {
-			o.Certificates.CertIssuer = "Issuer/external-ca"
-			setCertificateValues(v, map[string]any{"requestPolicy": map[string]any{"certManager": map[string]any{"namespace": "security", "deployment": "cm"}}})
-		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -734,219 +730,6 @@ func TestPrepareIssuerCertificates(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, strings.TrimSpace(string(cert)), certificateValues(current)["caBundle"])
 			require.Equal(t, "external-ca", certificateValues(current)["issuerRef"].(map[string]any)["name"])
-			if tt.name == "new prerequisite references allowed" {
-				require.Equal(t, "security", nestedValue(certificateValues(current), "requestPolicy", "certManager", "namespace"))
-			}
-		})
-	}
-}
-
-func TestRadiusIssuerLivePreflight(t *testing.T) {
-	for _, scenario := range []struct {
-		name, operation, err string
-		clusterIssuer        bool
-		intermediate         bool
-		explicitContext      bool
-		external             bool
-		override             string
-		edit                 func(*testing.T, *issuerPolicyFixture)
-	}{
-		{name: "Issuer install isolated config", operation: "install"},
-		{name: "ClusterIssuer install merged explicit context", operation: "install", clusterIssuer: true, explicitContext: true},
-		{name: "dedicated intermediate without key or root", operation: "install", intermediate: true},
-		{name: "upgrade omitted flags", operation: "upgrade", explicitContext: true, err: "maintaining global.rbac.certificates.mode=issuerRef requires the certificate lifecycle"},
-		{name: "upgrade with stored chart-default issuer fields", operation: "default issuer upgrade"},
-		{name: "installed chart issuer default cannot switch silently", operation: "changed default issuer upgrade", err: "changing issuers requires coordinated CA migration"},
-		{name: "retry after failed upgrade", operation: "failed upgrade"},
-		{name: "pending upgrade rejected", operation: "pending upgrade", err: "live issuer-policy verification failed"},
-		{name: "reinstall omitted flags", operation: "reinstall", err: "maintaining global.rbac.certificates.mode=issuerRef requires the certificate lifecycle"},
-		{name: "preflight-only", operation: "preflight-only", err: "maintaining global.rbac.certificates.mode=issuerRef requires the certificate lifecycle"},
-		{name: "external aggregation-only", operation: "install", external: true},
-		{name: "external issuer bootstrap rejects invalid workload values", operation: "install", external: true, override: "networkPolicies.enabled=true", err: "networkPolicies.controlPlaneCIDRs"},
-		{name: "issuer flags switch-on requires lifecycle", operation: "switch-on", err: "certificate mode changes require coordinated CA migration"},
-		{name: "external issuer flags switch-on requires lifecycle", operation: "switch-on", external: true, err: "certificate mode changes require coordinated CA migration"},
-		{name: "stored issuer switch-on upgrade requires lifecycle", operation: "switch-on upgrade", err: "mode=issuerRef requires the certificate lifecycle"},
-		{name: "stored issuer switch-on preflight requires lifecycle", operation: "switch-on preflight", err: "mode=issuerRef requires the certificate lifecycle"},
-		{name: "external ClusterIssuer upgrade", operation: "upgrade", external: true, clusterIssuer: true},
-		{name: "missing preprovisioned namespace", operation: "install", err: "live issuer-policy verification failed", edit: func(t *testing.T, f *issuerPolicyFixture) {
-			f.object("Namespace", RadiusSystemNamespace).SetName("absent")
-		}},
-		{name: "missing policy blocks install", operation: "install", err: "live issuer-policy verification failed", edit: func(t *testing.T, f *issuerPolicyFixture) {
-			f.object("CertificateRequestPolicy", "radius-radius-system-ucp").SetName("missing")
-		}},
-		{name: "missing policy blocks upgrade", operation: "upgrade", err: "live issuer-policy verification failed", edit: func(t *testing.T, f *issuerPolicyFixture) {
-			f.object("CertificateRequestPolicy", "radius-radius-system-ucp").SetName("missing")
-		}},
-		{name: "invalid webhook blocks preflight", operation: "preflight-only", err: "live issuer-policy verification failed", edit: func(t *testing.T, f *issuerPolicyFixture) {
-			f.object("ValidatingWebhookConfiguration", "cert-manager-webhook").Object["webhooks"].([]any)[0].(map[string]any)["failurePolicy"] = "Ignore"
-		}},
-		{name: "selected signer default approval blocks reinstall", operation: "reinstall", err: "live issuer-policy verification failed", edit: func(t *testing.T, f *issuerPolicyFixture) {
-			binding := f.object("ClusterRoleBinding", "approver").DeepCopy()
-			binding.SetName("default-approver")
-			binding.Object["subjects"] = []any{map[string]any{"kind": "ServiceAccount", "namespace": "cert-manager", "name": "cert-manager"}}
-			f.objects = append(f.objects, binding)
-		}},
-		{name: "forbidden policy inventory", operation: "install", err: "forbidden", edit: func(t *testing.T, f *issuerPolicyFixture) {
-			f.forbiddenPath = "/apis/policy.cert-manager.io/v1alpha1/certificaterequestpolicies"
-		}},
-		{name: "missing policy-use RBAC", operation: "install", err: "live issuer-policy verification failed", edit: func(t *testing.T, f *issuerPolicyFixture) {
-			f.object("ClusterRole", "radius-policy-use").Object["rules"] = []any{}
-		}},
-		{name: "chart without verifier", operation: "old chart", err: "invalid selected Radius chart authorization settings"},
-		{name: "concurrent stored settings change", operation: "concurrent upgrade", err: "changed since preflight"},
-	} {
-		t.Run(scenario.name, func(t *testing.T) {
-			fixture := newIssuerPolicyFixture(t)
-			d, rs, pod := injectorFixture("cm-cainjector")
-			for _, object := range []runtime.Object{d, rs, pod} {
-				data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
-				require.NoError(t, err)
-				apiVersion, kind := "apps/v1", "Deployment"
-				switch object.(type) {
-				case *corev1.Pod:
-					apiVersion, kind = "v1", "Pod"
-				default:
-					if object == rs {
-						kind = "ReplicaSet"
-					}
-				}
-				data["apiVersion"], data["kind"] = apiVersion, kind
-				fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: data})
-			}
-			if scenario.clusterIssuer {
-				fixture.useClusterIssuer(t)
-			}
-			if scenario.external {
-				fixture.values["global"].(map[string]any)["rbac"].(map[string]any)["tls"] = map[string]any{"provider": "external"}
-				onlyUCP := fixture.objects[:0]
-				for _, object := range fixture.objects {
-					if strings.HasPrefix(object.GetName(), "cert-manager-csi-driver-spiffe-approver") || object.GetName() == "spiffe-approver" {
-						continue
-					}
-					onlyUCP = append(onlyUCP, object)
-				}
-				fixture.objects = onlyUCP
-			}
-			if scenario.edit != nil {
-				scenario.edit(t, fixture)
-			}
-			install := scenario.operation == "install" || scenario.operation == "old chart" || scenario.operation == "switch-on"
-			if !install || scenario.operation == "switch-on" {
-				fixture.objects = append(fixture.objects, &unstructured.Unstructured{Object: map[string]any{
-					"apiVersion": "apiregistration.k8s.io/v1", "kind": "APIService",
-					"metadata": map[string]any{"name": radiusAPIService, "uid": "existing-aggregation", "resourceVersion": "1"},
-				}})
-			}
-			target := fixture.server(t)
-			decoy := k8sutil.NewForbiddenAPIServer(t)
-			kubeContext := useTargetKubeconfig(t, target.URL, decoy.URL, scenario.explicitContext)
-			ca, _, _ := testSigningCA(t, nil, nil, nil, nil)
-			if scenario.intermediate {
-				parentKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-				require.NoError(t, err)
-				_, _, parent := testSigningCA(t, parentKey, nil, nil, nil)
-				ca, _, _ = testSigningCA(t, nil, func(c *x509.Certificate) {
-					c.Subject.CommonName = "dedicated-radius-intermediate"
-				}, parent, parentKey)
-			}
-			settings := certificateValues(fixture.values)
-			settings["caBundle"] = string(ca)
-			options := NewDefaultClusterOptions()
-			options.Contour.Disabled, options.Radius.ChartPath = true, "local-chart"
-			if install {
-				bundlePath := filepath.Join(t.TempDir(), "public-ca.pem")
-				require.NoError(t, os.WriteFile(bundlePath, ca, 0600))
-				options.Certificates = CertificateOptions{CertIssuer: settings["issuerRef"].(map[string]any)["kind"].(string) + "/external-ca", CABundle: bundlePath}
-				options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.certificates.requestPolicy.spiffe.namespace=cert-manager"}
-				if scenario.external {
-					options.Radius.SetArgs = append(options.Radius.SetArgs, "global.rbac.tls.provider=external")
-				}
-				if scenario.override != "" {
-					options.Radius.SetArgs = append(options.Radius.SetArgs, scenario.override)
-				}
-				if scenario.operation == "switch-on" {
-					options.RadiusInstalled = true
-					options.Radius.Reinstall = true
-					options.RadiusReleaseValues = map[string]any{}
-					if scenario.external {
-						require.NoError(t, unstructured.SetNestedField(options.RadiusReleaseValues, "external", "global", "rbac", "tls", "provider"))
-					}
-				}
-			} else {
-				options.RadiusReleaseValues = copyValues(fixture.values)
-				if scenario.operation == "default issuer upgrade" || scenario.operation == "changed default issuer upgrade" {
-					certificateValues(options.RadiusReleaseValues)["issuerRef"] = map[string]any{"name": "external-ca"}
-				}
-				options.RadiusInstalled = true
-				options.Radius.Reinstall = scenario.operation == "reinstall"
-				if strings.HasPrefix(scenario.operation, "switch-on") {
-					rbac := options.RadiusReleaseValues["global"].(map[string]any)["rbac"].(map[string]any)
-					rbac["enabled"], rbac["dryRun"] = false, false
-					options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
-				}
-			}
-			selected, err := loader.Load(filepath.Join("..", "..", "..", "deploy", "Chart"))
-			require.NoError(t, err)
-			defaultsBefore := copyValues(selected.Values)
-			if scenario.operation == "old chart" {
-				selected.Templates = nil
-			}
-			client := NewMockHelmClient(gomock.NewController(t))
-			client.EXPECT().LoadChart("local-chart").Return(selected, nil)
-			if scenario.operation == "switch-on" {
-				expectRadiusBaseline(t, client, options)
-			}
-			if !install {
-				config := copyValues(options.RadiusReleaseValues)
-				installedChart := selected
-				if scenario.operation == "changed default issuer upgrade" {
-					installedChart = cloneChart(selected)
-					installedChart.Values = copyValues(selected.Values)
-					certificateValues(installedChart.Values)["issuerRef"].(map[string]any)["kind"] = "ClusterIssuer"
-				}
-				if scenario.operation == "concurrent upgrade" {
-					config["changed"] = true
-				}
-				history := []*releasev1.Release{{
-					Name: "radius", Namespace: RadiusSystemNamespace, Version: 1, Config: config,
-					Chart: installedChart, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
-				}}
-				if scenario.operation == "failed upgrade" || scenario.operation == "pending upgrade" {
-					status := releasecommon.StatusFailed
-					if scenario.operation == "pending upgrade" {
-						status = releasecommon.StatusPendingUpgrade
-					}
-					history = append(history, &releasev1.Release{
-						Name: "radius", Namespace: RadiusSystemNamespace, Version: 2, Config: map[string]any{},
-						Chart: selected, Info: &releasev1.Info{Status: status},
-					})
-				}
-				client.EXPECT().RunHelmHistory(gomock.Any(), "radius").Return(history, nil)
-			}
-			impl := &Impl{Helm: client}
-			if scenario.err == "" {
-				// Exercise the real selected-chart preflight only. Permanent public trust
-				// staging/convergence is paired lifecycle work, not mocked issuance.
-				selectedChart, configuration, current, prepareErr := prepareRadiusChart(t.Context(), NewHelmAction(client), options.Radius, kubeContext)
-				require.NoError(t, prepareErr)
-				_, _, err = impl.prepareOrdinaryCertificates(t.Context(), options, selectedChart, configuration, current, kubeContext, !install, nil)
-			} else {
-				switch scenario.operation {
-				case "install", "old chart", "reinstall", "switch-on":
-					err = impl.InstallRadius(t.Context(), options, kubeContext)
-				case "preflight-only", "switch-on preflight":
-					err = impl.CheckRadiusCertificates(t.Context(), options, kubeContext)
-				default:
-					err = impl.UpgradeRadius(t.Context(), options, kubeContext)
-				}
-			}
-			if scenario.err != "" {
-				require.ErrorContains(t, err, scenario.err)
-			} else {
-				require.NoError(t, err)
-			}
-			require.Empty(t, decoy.Requests(), "must not use another kubeconfig or context")
-			require.Equal(t, defaultsBefore, selected.Values, "preflight must not rewrite chart defaults")
 		})
 	}
 }

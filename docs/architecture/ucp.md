@@ -93,19 +93,24 @@ After Helm, once UCP serves `ucp-cert`, `rad` removes its cert-manager inject
 annotation and sets the `caBundle` to the CA of `ucp-cert` in one patch guarded
 by the APIService's uid and resourceVersion, then deletes the
 `radius-apiserver-ca`, `ucp-apiserver-tls` and `radius-apiserver-trust` Secrets,
-so cainjector cannot add `radius-apiserver-ca` back. Each delete applies only
-when `rad` owns the Secret and it is unchanged since `rad` read it; otherwise
+so cainjector cannot add `radius-apiserver-ca` back. Before that, it deletes
+any `radius-apiserver-ca` chain left by an upgrade to authorization on that
+stopped before Helm, except objects the applied chart still declares.
+`rad` decides which certificate the release serves from the applied
+manifest, not from its values, so an older chart that ignores the
+authorization values is handled as authorization off. `rad uninstall
+kubernetes` deletes the same Secrets after Helm. Each delete applies only
+when `rad` owns the object and it is unchanged since `rad` read it; otherwise
 `rad` leaves it and warns. In the
 `selfSigned` certificate mode, the only mode supported today, this CA is
-separate from the `radius-ca` that signs component server certificates. The Kubernetes API server trusts that CA for UCP, so the
-`radius-certificate-issuance` ValidatingAdmissionPolicy lets only the
-cert-manager controller request certificates from `radius-apiserver-issuer`.
+separate from the `radius-ca` that signs component server certificates, and no
+Radius component trusts it.
 UCP reloads it without a restart. When
 the authorization mode is `dryRun` or `enforce`, UCP also serves the same routes
 on a separate internal port, 9444 (Service port name `internal`, config
 `server.internalPort`), for traffic from other Radius components. That endpoint
-uses `mtls.ListenAndServe` with UCP's csi-driver-spiffe certificate, requires a
-ServiceAccount token with audience `ucp`, accepts any Radius component identity,
+uses `mtls.ListenAndServe` with UCP's `ucp-spiffe` server certificate, requires
+a ServiceAccount token with audience `ucp`, accepts any Radius component identity,
 and reloads certificates without a restart. See
 [Shared Runtime And ARM-RPC](shared-runtime-and-armrpc.md#internal-component-authorization).
 
@@ -117,7 +122,7 @@ The [schema4 model](../../pkg/cli/helm/certificate_lifecycle.go) pins independen
 
 The production rotation entrypoint performs read-only A9 target preparation and then fails before Lease, import, journal or source writes. Production authority-specific reporting and authorized acquisition are incomplete, including actual Kubernetes aggregator cache adoption. The wired exact-Pod serving observer cannot substitute for that evidence. The CLI must not mint or extract component tokens, impersonate UCP, forward API credentials to workloads or add an anonymous proof route. Explicit legacy proof configuration also fails UCP startup; the old metrics proof endpoint is not an available observation path.
 
-Fresh enabled CLI bootstrap uses Kubernetes/cert-manager public state to stage roots and permanent public trust before applying the full chart; it does not require workload observer credentials. Legacy rotation/bootstrap implementations are removed, and any legacy journal or namespace creation marker requires recovery with the matching pre-token release. The shared [operation guard](../../pkg/cli/helm/certificate_rotation_operation.go) protects supported writes with ownership, cancellation and conditional-write checks. A11 provider journals remain fail-closed without their full validator. Internal issuerRef/CSI switching and expired-anchor/outage recovery remain unsupported. See [the chart's lifecycle limits](../../deploy/Chart/README.md#internal-service-certificate-modes); no local fixture establishes live issuance, compatible-image, HA, compromise-recovery or full incident-response acceptance.
+Fresh enabled CLI bootstrap uses Kubernetes/cert-manager public state to stage roots and permanent public trust before applying the full chart; it does not require workload observer credentials. Legacy rotation/bootstrap implementations are removed, and any legacy journal or namespace creation marker requires recovery with the matching pre-token release. The shared [operation guard](../../pkg/cli/helm/certificate_rotation_operation.go) protects supported writes with ownership, cancellation and conditional-write checks. A11 provider journals remain fail-closed without their full validator. Automatic issuer transitions and expired-anchor recovery remain unsupported. See [the chart's lifecycle limits](../../deploy/Chart/README.md#internal-service-certificate-modes); no local fixture establishes live issuance, compatible-image, HA, compromise-recovery or full incident-response acceptance.
 
 ## Invariants And Constraints
 

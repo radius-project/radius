@@ -8,12 +8,11 @@ templates:
   - rp/configmaps.yaml
   - dynamic-rp/configmaps.yaml
   - ucp/apiservice.yaml
-  - global/spiffe-rbac.yaml
 release:
   name: radius
   namespace: radius-test
 tests:
-  - it: omits component CSI and CA from every external caller and receiver
+  - it: omits component certificates and CA from every external caller and receiver
     templates:
       - ucp/deployment.yaml
       - rp/deployment.yaml
@@ -59,14 +58,11 @@ tests:
       global.rbac.tls.provider: external
     asserts: *noTLS
 
-  - it: preserves independent aggregation TLS without granting component CSI permissions
+  - it: preserves independent aggregation TLS without component certificates
     set:
       global.rbac.enabled: true
       global.rbac.tls.provider: external
     asserts: &aggregationTLS
-      - hasDocuments:
-          count: 0
-        template: global/spiffe-rbac.yaml
       - isKind:
           of: Certificate
         template: ucp/apiservice.yaml

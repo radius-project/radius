@@ -140,7 +140,7 @@ func TestServingConfig_TrustOverlapAndDelayedAggregator(t *testing.T) {
 			oldCA, newCA, proxyCA := newCA(t), newCA(t), newCA(t)
 			oldLeaf := oldCA.issue(t, certOptions{dnsNames: []string{ucpServerName}})
 			newLeaf := newCA.issue(t, certOptions{dnsNames: []string{ucpServerName}})
-			proxyLeaf := proxyCA.issue(t, certOptions{dnsNames: []string{"aggregation-proxy.example"}})
+			proxyLeaf := proxyCA.issue(t, certOptions{dnsNames: []string{"aggregation-proxy.example"}, extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}})
 			dir := newKubeletDir(t, oldLeaf, oldCA.pem)
 			source, err := NewSource(dir.root)
 			require.NoError(t, err)

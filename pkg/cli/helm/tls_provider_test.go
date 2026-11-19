@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -130,6 +131,7 @@ func TestTLSProviderDeferredValues(t *testing.T) {
 			options, current := ClusterOptions{}, values
 			if stored {
 				options.RadiusReleaseValues, current = values, map[string]any{}
+				options.RadiusReleaseChart = certificateTestChart(t)
 			}
 			err := testProviderSelection(&Impl{}, options, certificateTestChart(t), current, stored)
 			require.ErrorIs(t, err, errProviderObservationUnavailable)
@@ -179,15 +181,23 @@ func TestProviderHistoryMaintenance(t *testing.T) {
 func testProviderSelection(i *Impl, options ClusterOptions, selected *chart.Chart, current map[string]any, installed bool) error {
 	var baseline *chartAuthSettings
 	if installed {
-		if _, _, err := providerValue(options.RadiusReleaseValues); err != nil {
-			return err
-		}
-		_, settings, err := installedAuthzSettings(options)
+		settings, err := historicalProviderSettings(&releasev1.Release{Chart: options.RadiusReleaseChart, Config: options.RadiusReleaseValues})
 		if err != nil {
 			return err
 		}
+
 		baseline = &settings
 	}
 	_, _, err := i.prepareTLSProvider(options, selected, current, baseline)
 	return err
+}
+
+func TestResetIgnoredLegacyProvider(t *testing.T) {
+	selected := certificateTestChart(t)
+	deployed := certificateTestChart(t)
+	unstructured.RemoveNestedField(deployed.Values, "global", "rbac", "tls", "provider")
+	options := ClusterOptions{RadiusInstalled: true, RadiusReleaseChart: deployed, RadiusReleaseValues: providerTestValues("external"), ResetValues: true}
+	require.NoError(t, testProviderSelection(&Impl{}, options, selected, providerTestValues("radius"), true))
+	options.RadiusReleaseChart = selected
+	require.ErrorIs(t, testProviderSelection(&Impl{}, options, selected, providerTestValues("radius"), true), errResetDiscardsStoredProvider)
 }

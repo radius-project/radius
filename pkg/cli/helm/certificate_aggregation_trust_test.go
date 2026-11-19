@@ -134,9 +134,9 @@ func TestAggregationPreflightDoesNotCleanUpOff(t *testing.T) {
 		t.Fatal("Off preflight must not render or clean up annotations")
 		return "", false, nil
 	}
-	require.NoError(t, (&Impl{newRotationStore: emptyRotationTestStore}).checkAggregationBeforeDependencies(t.Context(), options, "", nil, render))
+	require.NoError(t, (&Impl{newRotationStore: emptyRotationTestStore}).checkBeforeCertificateDependencies(t.Context(), options, "", nil, &certificateTarget{mode: authz.ModeOff}, render))
 	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-	err := (&Impl{}).checkAggregationBeforeDependencies(t.Context(), options, "", nil,
+	err := (&Impl{}).checkBeforeCertificateDependencies(t.Context(), options, "", nil, &certificateTarget{mode: authz.ModeDryRun},
 		func(context.Context) (string, bool, error) { return "", true, nil })
 	require.ErrorIs(t, err, errCertificateObserverUnavailable)
 }

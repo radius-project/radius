@@ -183,7 +183,7 @@ func TestLifecycleConsumerPinsRequireObservedIdentities(t *testing.T) {
 			switch scenario {
 			case "CSI receiver", "missing driver UID":
 				consumer.TrustOnly = false
-				consumer.Driver, consumer.DriverUID = SPIFFECSIDriverNameDefault, "driver"
+				consumer.Driver, consumer.DriverUID = "legacy.example", "driver"
 				consumer.ServerSPIFFEID = "spiffe://radius.internal/ns/radius-system/sa/ucp"
 				if scenario == "missing driver UID" {
 					consumer.DriverUID = ""

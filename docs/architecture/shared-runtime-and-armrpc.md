@@ -128,8 +128,6 @@ presents a client certificate.
 
 The Helm setting `global.rbac.tls.provider` renders `authorization.tlsProvider` (`authz.Options.TLSProvider`), independently of the authorization mode. The default `radius` provider uses the TLS behavior below. The `external` provider uses HTTP under operator-provided encryption, loads no component certificate or CA material, and applies the same receiver-token verification and allowed-caller checks. Ordinary DryRun denials remain advisory; unavailable signing keys still return 503 in both providers. Unknown providers fail configuration, and neither provider retries through an unauthenticated transport. UCP's separate aggregated API TLS is unaffected.
 
-The internal UCP/RP listeners expose [schema1 caller receipts](../../pkg/authz/mtls/internal_identity.go) through the same token middleware, with strict authentication even in DryRun. The UCP receipt stays inside its existing forwarded-user rejection boundary and is not exposed on aggregation. RP receipts call UCP through their actual configured client. The wire caller remains the full verified ServiceAccount subject; the canonical FQDN is a separate internal identity. Neither a receipt nor its nested UCP exchange substitutes for managed server SPIFFE verification or loaded-trust adoption evidence. The controller remains trust-only, with no receipt listener or serving certificate.
-
 - `off` (default): plain HTTP, behavior unchanged.
 - `dryRun`: the same port accepts TLS and plain HTTP. Plain HTTP, missing or
   invalid tokens, and disallowed callers are logged as would-deny
@@ -142,9 +140,10 @@ The internal UCP/RP listeners expose [schema1 caller receipts](../../pkg/authz/m
   the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
   and `dynamic-rp` allow only the `ucp` identity.
 
-Each receiver presents the csi-driver-spiffe certificate mounted at
-`/var/run/radius/spiffe` (`tls.crt`, `tls.key`), whose only SAN is the
-URI `spiffe://<trustDomain>/ns/<namespace>/sa/<service account>`. It requests no
+Each receiver presents the certificate that cert-manager issues to it in Secret
+`<receiver>-spiffe`, mounted at `/var/run/radius/spiffe` (`tls.crt`,
+`tls.key`), whose only SAN is the URI
+`spiffe://<trustDomain>/ns/<namespace>/sa/<service account>`. It requests no
 client certificate. It verifies the `Authorization: Bearer` token offline with
 [pkg/authz/token](../../pkg/authz/token/verifier.go), requiring the receiver's
 name as the audience, maps the ServiceAccount to the caller's
@@ -153,14 +152,12 @@ handler. Probes and metrics stay on their plain ports.
 
 Callers build transports with `mtls.NewClientTransport` and
 `mtls.NewUpgradeTransport` in [pkg/authz/mtls/client.go](../../pkg/authz/mtls/client.go).
-They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and require exactly
-one SAN, a URI SAN with the receiver's SPIFFE ID, instead of matching DNS
-names; a certificate with any DNS, IP, email, or other SAN is rejected. Only
-after the server is verified do they send the token from
+They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and
+require exactly one SAN, a URI SAN with the receiver's SPIFFE ID, instead of
+matching DNS names; a certificate with any DNS, IP, email, or other SAN is
+rejected. Only after the server is verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
-Internal public trust is mounted separately at `/var/run/radius/ca`, never with a CA signing key. BYO uses ConfigMap `radius-mtls-ca`; steady-state selfSigned projects only `radius-ca/ca.crt`, including after bootstrap, so renewed public trust reaches consumers without Helm. Historical public copies remain continuity pins; journal-bound rotation retains exact independent source snapshots. In selfSigned mode aggregation retains a separate CA. In caSecret mode distinct internal and aggregation Issuers share the operator's signing Secret; issuerRef selects the existing issuer for both request profiles. UCP's ordinary DNS Certificate and internal own-Pod SPIFFE CSI requests have separate approval restrictions, even under the same CA. Runtime callers never present component client certificates; pinned CSI's client-auth EKU is not caller authorization.
-
-In selfSigned mode the APIService follows public `ca.crt` of the cert-manager-owned `radius-apiserver-ca` Secret through cainjector, including same-key, same-subject renewal without another Helm run. BYO modes retain the pinned public-only `radius-apiserver-trust` source, never a leaf Secret or organization root. Existing A8 selfSigned public copies remain unused for injection and retained as `rad` continuity pins. Connected Helm checks signer ownership/profile structurally; `rad` also compares subject public key info and encoded subject with retained trust at command boundaries. Neither blocks changes between commands. The chart guards public sources and rotation journals against unvalidated overwrite; lifecycle operations requiring newly generated anchor pins must stage issuance before a connected render. Journal-aware convergence remains paired lifecycle work: cainjector merging alone does not establish exact retirement of old anchors. See the [certificate-mode contract](../../deploy/Chart/README.md#internal-service-certificate-modes).
+UCP, Applications RP, Dynamic RP, and the controller project only public `ca.crt` to `/var/run/radius/ca`. In `selfSigned` mode, it comes from the `radius-ca` Secret. UCP's aggregated API uses a separate `radius-apiserver-ca` Secret, whose `ca.crt` cainjector copies to the APIService. In `caSecret` and `issuerRef` modes, component trust comes from ConfigMap `radius-mtls-ca` and aggregation trust from Secret `radius-apiserver-trust`. Both contain the selected dedicated signing CA, not the organization root. The serving volume contains the receiver's key and certificate, never the CA's key.
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Before each request, a client
@@ -171,9 +168,9 @@ The [source-bound trust report](../../pkg/authz/mtls/trust_proof.go) describes t
 
 The CLI can independently measure an exact Pod's serving certificate through [TLS-only observation](../../pkg/cli/helm/certificate_serving_observation.go). Kubernetes credentials authenticate only the outer port-forward connection; no workload HTTP request or component token is sent. The selected CA and DNS or SPIFFE identity verify the inner TLS connection. This measures serving material, not the Pod's outbound loaded trust or every HA API server's trust.
 
-The [token/CSI lifecycle](../../pkg/cli/helm/certificate_lifecycle.go) separates internal and aggregation trust planes and rejects legacy journals rather than reinterpreting their Certificate UIDs as CSI observations. Fresh enabled CLI bootstrap stages independent public trust before Helm waits for serving readiness. Rotation and provider transitions remain blocked before Lease acquisition or mutation because production outbound-trust reporting and authorized acquisition, including aggregator adoption evidence, remain unresolved. The serving-fleet observer is wired but cannot establish outbound trust. Superseded state machines and anonymous proof clients are removed; serialized legacy fixtures test rejection. See [the current CLI boundaries](../contributing/contributing-code/contributing-code-control-plane/configSettings.md#2-update-shared-service-options); isolated API-server fixtures are not live issuance or image acceptance.
+The internal UCP and RP listeners expose [schema1 caller receipts](../../pkg/authz/mtls/internal_identity.go) through the same token middleware, with strict authentication even in DryRun. The UCP receipt stays inside its forwarded-user rejection boundary and is not exposed on aggregation. An RP receipt reports the full verified ServiceAccount subject and includes an exchange through the RP's configured direct UCP client. Neither exchange proves adoption of outbound trust. The controller remains a caller without a receipt listener or serving certificate.
 
-Provider transition execution and recovery are deferred, not completed token-transition support. The fixture-only executor and configuration preparation have been removed. The completed-v2 read-only validator remains reachable from ordinary lifecycle guards and retains its exact saved-schema checks, including all five workloads; it does not claim controller observation or authorize writes. Existing authenticated UCP/RP readiness receipts and shared token transport are unchanged. The controller remains trust-only without a new listener or CSI serving identity.
+The [certificate lifecycle](../../pkg/cli/helm/certificate_lifecycle.go) separates internal and aggregation trust planes and rejects legacy journals rather than reinterpreting their Certificate UIDs as loaded-trust observations. Fresh enabled CLI bootstrap stages independent public trust before Helm waits for serving readiness. Rotation remains blocked before Lease acquisition or mutation because production outbound-trust reporting and authorized acquisition, including aggregator adoption evidence, remain unresolved. Serving evidence cannot establish outbound trust. Superseded state machines and anonymous proof clients are removed; serialized legacy fixtures test rejection. See [the current CLI boundaries](../contributing/contributing-code/contributing-code-control-plane/configSettings.md#2-update-shared-service-options); isolated API-server fixtures are not live issuance or image acceptance.
 
 Before reusing a connection, outbound token clients check the validity of every certificate in the verified server chain. They retire the connection pool before the next request and close expired connections, including active HTTP/2 streams. The next request performs a fresh handshake with the current CA bundle instead of racing HTTP/2's asynchronous removal of the closed connection. A retired pool keeps only its unexpired connections that are still serving requests. Each later request closes the pool's idle connections and forgets the pool once it has no unexpired tracked connections. When a connection in a retired pool expires, the client closes it without replacing the current pool again. Clients still present no certificate; they send their token only after verifying the server.
 

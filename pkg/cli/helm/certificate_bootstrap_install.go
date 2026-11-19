@@ -60,7 +60,7 @@ func (i *Impl) prepareAggregationBootstrap(ctx context.Context, options ClusterO
 			namespaceIntent = &intent
 		}
 	}
-	if settings.mode == authz.ModeOff {
+	if settings == authz.ModeOff {
 		if found || namespaceIntent != nil || initialErr == nil && initial.Phase != "complete" {
 			return nil, errors.New("unfinished bootstrap cannot be bypassed by disabling authorization; resume the identical install")
 		}

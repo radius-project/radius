@@ -71,9 +71,6 @@ func TestBootstrapNativeInstallPublishesBeforeServingVerification(t *testing.T) 
 	}
 	impl := &Impl{
 		Helm: NewHelmClient(),
-		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
-			return sarClient(nil, nil, certManagerControllerWithServiceAccount(certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, ""), "cert-manager")), nil
-		},
 		newRotationStore: func(string, string) (*rotationStore, error) {
 			return s, nil
 		},

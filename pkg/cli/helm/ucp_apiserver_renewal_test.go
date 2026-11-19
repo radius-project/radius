@@ -164,7 +164,7 @@ func TestSelfSignedAggregationSourceAndRenewal(t *testing.T) {
 	renewed := reissueTestCA(t, old, time.Now().Add(2*time.Hour))
 	for _, provider := range []string{"radius", "external"} {
 		t.Run(provider, func(t *testing.T) {
-			f := newIssuerPolicyFixture(t)
+			f := newCertificateChartFixture(t)
 			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 			rbac["certificates"] = map[string]any{"mode": "selfSigned"}
 			rbac["tls"] = map[string]any{"provider": provider}
@@ -194,7 +194,7 @@ func TestSelfSignedAggregationSourceAndRenewal(t *testing.T) {
 			require.Equal(t, fmt.Sprintf("%x", sha256.Sum256(old.pem)), source.ContentDigest)
 			require.NotEmpty(t, source.IssuerDigest)
 			require.NotEmpty(t, source.Digest)
-			require.Equal(t, RadiusAPIServerIssuerName, source.Issuer["name"])
+			require.Equal(t, radiusAPIServerIssuerName, source.Issuer["name"])
 			delete(manifests, "radius/templates/source-contract.json")
 			var api *unstructured.Unstructured
 			for _, obj := range chartObjects(t, manifests) {
@@ -252,7 +252,7 @@ func TestSelfSignedAggregationStructuralGuards(t *testing.T) {
 		for _, field := range []string{"type", certificateNameAnnotation, "cert-manager.io/issuer-name",
 			"cert-manager.io/issuer-kind", "cert-manager.io/issuer-group", "tls.crt", "tls.key", "ca.crt"} {
 			t.Run(provider+"/"+field, func(t *testing.T) {
-				f := newIssuerPolicyFixture(t)
+				f := newCertificateChartFixture(t)
 				rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 				rbac["certificates"] = map[string]any{"mode": "selfSigned"}
 				rbac["tls"] = map[string]any{"provider": provider}
@@ -279,7 +279,7 @@ func TestSelfSignedAggregationStructuralGuards(t *testing.T) {
 func TestSelfSignedInternalProjectionRenewsWithoutHelm(t *testing.T) {
 	old := reissueTestCA(t, newTestCA(t, "radius-ca"), time.Now().Add(time.Minute))
 	renewed := reissueTestCA(t, old, time.Now().Add(2*time.Hour))
-	f := newIssuerPolicyFixture(t)
+	f := newCertificateChartFixture(t)
 	rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 	rbac["certificates"] = map[string]any{"mode": "selfSigned"}
 	rbac["tls"] = map[string]any{"provider": "radius"}
@@ -442,7 +442,7 @@ func TestRetainedSelfSignedTrustReinstallAfterUninstall(t *testing.T) {
 func TestBYOPublicTrustUninstallAndChartReinstall(t *testing.T) {
 	for _, mode := range []string{"caSecret", "issuerRef"} {
 		t.Run(mode, func(t *testing.T) {
-			f := newIssuerPolicyFixture(t)
+			f := newCertificateChartFixture(t)
 			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 			if mode == "caSecret" {
 				rbac["certificates"] = map[string]any{"mode": mode, "caSecret": "operator-ca",
@@ -472,7 +472,7 @@ func TestBYOPublicTrustUninstallAndChartReinstall(t *testing.T) {
 			rbac["tls"] = map[string]any{"provider": "external"}
 			_, err = f.renderChart(t)
 			require.ErrorContains(t, err, "radius-apiserver-trust belongs to another certificate mode")
-			_, err = retainedUCPAPIServerTrust(t.Context(), client, RadiusSystemNamespace)
+			err = impl.stageUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, "radius", authz.ModeEnforce, authz.ModeEnforce, nil)
 			require.ErrorContains(t, err, "use the certificate lifecycle before switching to selfSigned")
 			err = impl.stageUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, "radius", authz.ModeEnforce, authz.ModeEnforce, func(context.Context) (string, bool, error) {
 				_, err := f.renderChart(t)
@@ -490,7 +490,7 @@ func TestAggregationTrustSelectionGuards(t *testing.T) {
 	for _, mode := range []string{"selfSigned", "caSecret", "issuerRef"} {
 		for _, invalid := range []string{"foreign", "empty"} {
 			t.Run(mode+"/"+invalid, func(t *testing.T) {
-				f := newIssuerPolicyFixture(t)
+				f := newCertificateChartFixture(t)
 				rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 				if mode != "issuerRef" {
 					rbac["certificates"] = map[string]any{"mode": mode}
@@ -533,7 +533,7 @@ func TestSelfSignedSwitchOnOverlapRender(t *testing.T) {
 		t.Run(provider, func(t *testing.T) {
 			c := newStageCluster(t, nil, true)
 			c.addOffAPIService(t, "off")
-			f := newIssuerPolicyFixture(t)
+			f := newCertificateChartFixture(t)
 			rbac := f.values["global"].(map[string]any)["rbac"].(map[string]any)
 			rbac["certificates"] = map[string]any{"mode": "selfSigned"}
 			rbac["tls"] = map[string]any{"provider": provider}
@@ -597,12 +597,13 @@ func TestBYOSwitchOnRequiresLifecycleBeforeStaging(t *testing.T) {
 					}}}
 					var err error
 					switch source {
-					case "flags":
-						values, parseErr := parseUserValuesFromCLI(&options.Radius)
-						require.NoError(t, parseErr)
-						_, err = resolveRadiusActionTarget(t.Context(), chart, RadiusSystemNamespace, "radius", values, nil, false, authz.ModeOff, nil)
-					case "stored":
-						_, err = resolveRadiusActionTarget(t.Context(), chart, RadiusSystemNamespace, "radius", nil, target, false, authz.ModeOff, nil)
+					case "flags", "stored":
+						var stored map[string]any
+						if source == "stored" {
+							stored = target
+							options.Radius.SetArgs = nil
+						}
+						err = impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test", nil, chart.Values, stored, false, nil)
 					case "rollback":
 						history := []*releasev1.Release{{Version: 1, Chart: chart, Config: target}, {Version: 2, Chart: chart}}
 						err = impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
@@ -634,17 +635,18 @@ func TestRollbackCertificateModeBeforeStaging(t *testing.T) {
 			}
 			history := []*releasev1.Release{
 				{Version: 1, Chart: target, Config: map[string]any{"global": map[string]any{"rbac": rbac}}},
-				{Version: 2, Chart: loadStageTestChart(t)},
+				{Version: 2, Chart: loadStageTestChart(t), Info: &releasev1.Info{Status: "deployed"}},
 			}
 			called := false
-			impl := &Impl{newUCPAPIServerTrustClient: func(string) (kubernetes.Interface, error) {
+			impl := newStageCluster(t, nil, false).impl(nil)
+			impl.newUCPAPIServerTrustClient = func(string) (kubernetes.Interface, error) {
 				called = true
 				return nil, fmt.Errorf("stage attempted trust client")
-			}}
+			}
 			err := impl.stageRolledBackUCPAPIServerCA(t.Context(), "test", RadiusSystemNamespace, history, 1)
 			if tt.refusedMode == "" {
-				require.True(t, called)
-				require.ErrorContains(t, err, "stage attempted trust client")
+				require.ErrorIs(t, err, errCertificateObserverUnavailable)
+				require.False(t, called)
 				return
 			}
 			require.ErrorContains(t, err, "mode="+tt.refusedMode+" requires the certificate lifecycle")

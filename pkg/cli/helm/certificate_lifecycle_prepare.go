@@ -44,7 +44,8 @@ func (s *rotationStore) planCertificateLifecycle(ctx context.Context, installed 
 	if installed == nil || installed.Chart == nil || installed.Version < 1 || selected == nil || target == nil {
 		return state, errors.New("certificate planning requires the installed release and selected target")
 	}
-	effective, settings, err := resolveEffectiveChartValues(installed.Chart, s.namespace, s.release, installed.Config, nil, historicalAuthSettings)
+	effective := resolveEffectiveChartValues(installed.Chart.Values, nil, installed.Config)
+	settings, err := servedAuthzMode(installed)
 	if err != nil {
 		return state, err
 	}
@@ -55,9 +56,8 @@ func (s *rotationStore) planCertificateLifecycle(ctx context.Context, installed 
 	if baseline.Provider != target.Provider {
 		return state, errors.New("CA replacement cannot also change the TLS provider")
 	}
-	if baseline.TrustDomain != target.TrustDomain || !slices.Equal(baseline.Receivers, target.Receivers) ||
-		resolveSPIFFESettings(nil, baseline.Values) != resolveSPIFFESettings(nil, target.Values) {
-		return state, errors.New("CA replacement cannot also change the receiver inventory, trust domain or CSI driver")
+	if baseline.TrustDomain != target.TrustDomain || !slices.Equal(baseline.Receivers, target.Receivers) {
+		return state, errors.New("CA replacement cannot also change the receiver inventory or trust domain")
 	}
 	if scope != "" && baseline.Mode != target.Mode {
 		return state, errors.New("a certificate mode change must include every enabled plane")
@@ -65,9 +65,6 @@ func (s *rotationStore) planCertificateLifecycle(ctx context.Context, installed 
 	affected, err := certificateRotationPlanes(target.Provider, scope)
 	if err != nil {
 		return state, err
-	}
-	if target.Mode == "issuerRef" && slices.Contains(affected, "internal") {
-		return state, errors.New("internal issuerRef replacement requires a verified staged CSI issuer configuration; this executor does not switch the separately managed driver")
 	}
 	snapshots, err := s.snapshotCertificateInstallation(ctx, baseline)
 	if err != nil {

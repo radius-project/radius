@@ -221,7 +221,7 @@ func decodeProviderTransitionJournal(cm *corev1.ConfigMap, namespace, release st
 		cm.Labels[providerTransitionMarker] != release || len(cm.OwnerReferences) != 0 ||
 		cm.Annotations["meta.helm.sh/release-name"] != "" || len(cm.Data) != 1 ||
 		len(cm.BinaryData) != 0 || len(raw) > 64*1024 {
-		return state, errors.New("invalid provider transition journal ownership or content")
+		return state, fmt.Errorf("invalid provider transition journal %s ownership or content", providerTransitionJournal)
 	}
 	if err := checkProviderTransitionJSON(raw); err != nil {
 		return state, err
@@ -230,7 +230,7 @@ func decodeProviderTransitionJournal(cm *corev1.ConfigMap, namespace, release st
 		Version int `json:"version"`
 	}
 	if err := json.Unmarshal([]byte(raw), &envelope); err != nil || envelope.Version != 2 {
-		return state, errors.New("legacy or unsupported provider journal: token/CSI transitions require protocol v2; preserve historical v1 state and use the matching pre-token release for investigation; no automatic recovery or completed-state migration exists")
+		return state, errors.New("legacy or unsupported provider journal: token-authenticated transitions require protocol v2; preserve historical v1 state and use the matching pre-token release for investigation; no automatic recovery or completed-state migration exists")
 	}
 	decoder := json.NewDecoder(bytes.NewBufferString(raw))
 	decoder.DisallowUnknownFields()

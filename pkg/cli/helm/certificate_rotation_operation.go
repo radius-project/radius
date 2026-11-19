@@ -122,7 +122,7 @@ func (o *identityOperation) checkProviderJournal(ctx context.Context, release st
 		cm.Labels[identityProviderMarker] != release || len(cm.OwnerReferences) != 0 ||
 		cm.Annotations["meta.helm.sh/release-name"] != "" || len(cm.Data) != 1 ||
 		len(cm.BinaryData) != 0 || len(raw) == 0 || len(raw) > maxIdentityProviderBytes {
-		return errors.New("invalid provider transition journal ownership or content")
+		return fmt.Errorf("invalid provider transition journal %s ownership or content", identityProviderJournal)
 	}
 	decoder := json.NewDecoder(strings.NewReader(raw))
 	first, err := decoder.Token()

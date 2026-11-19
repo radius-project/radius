@@ -168,14 +168,18 @@ func TestExternalClientTransport_RotationAndErrors(t *testing.T) {
 	}))
 	defer srv.Close()
 	rt, err := NewClientTransport(options, "ucp", srv.Listener.Addr().String())
-	require.NoError(t, err, "external must not read CSI or CA material")
+	require.NoError(t, err, "external must not read certificate or CA material")
 	c := &http.Client{Transport: rt}
 	defer c.CloseIdleConnections()
 	for _, value := range []string{"first-token", "rotated-token-with-different-length"} {
 		writeToken(t, options.TokenDirectory, "ucp", value)
-		response, err := c.Get(srv.URL)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, srv.URL, nil)
+		require.NoError(t, err)
+		req.Header = nil
+		response, err := rt.RoundTrip(req)
 		require.NoError(t, err)
 		require.NoError(t, response.Body.Close())
+		require.Nil(t, req.Header)
 	}
 
 	require.Equal(t, []string{"Bearer first-token", "Bearer rotated-token-with-different-length"}, got)
@@ -361,9 +365,11 @@ func TestUpgradeTransport_RejectsWrongServer(t *testing.T) {
 func TestClientTransport_NoTokenWithoutVerifiedServer(t *testing.T) {
 	ca := newCA(t)
 	for name, cert := range map[string]testCert{
-		"wrong SPIFFE ID": ca.issue(t, certOptions{uris: spiffeURIs("controller")}),
-		"wrong CA":        newCA(t).issue(t, certOptions{uris: spiffeURIs("applications-rp")}),
-		"DNS SAN only":    ca.issue(t, certOptions{dnsNames: []string{"applications-rp.radius-system.svc"}}),
+		"wrong SPIFFE ID":             ca.issue(t, certOptions{uris: spiffeURIs("controller")}),
+		"wrong CA":                    newCA(t).issue(t, certOptions{uris: spiffeURIs("applications-rp")}),
+		"DNS SAN only":                ca.issue(t, certOptions{dnsNames: []string{"applications-rp.radius-system.svc"}}),
+		"no extended key usage":       ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), extKeyUsage: []x509.ExtKeyUsage{}}),
+		"any extended key usage only": ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}}),
 	} {
 		t.Run(name, func(t *testing.T) {
 			ln, err := tls.Listen("tcp", "127.0.0.1:0", staticServer(t, cert))
@@ -404,27 +410,75 @@ func TestClientTransport_RefusesPlainHTTP(t *testing.T) {
 	require.Empty(t, srv.seen)
 }
 
-type countedRequestBody struct {
+// closeRecorder is a request body that records whether it was closed.
+type closeRecorder struct {
 	io.Reader
-	closes int
+	closed atomic.Bool
 }
 
-func (b *countedRequestBody) Close() error {
-	b.closes++
+func (b *closeRecorder) Close() error {
+	b.closed.Store(true)
 	return nil
 }
 
-func TestClientTransport_ClosesBodyOnTrustLoadError(t *testing.T) {
-	options := clientOptions(t, newCA(t).pem, authz.ModeEnforce)
+// TestClientTransport_ClosesBodyOnEarlyError checks the RoundTripper contract: RoundTrip
+// closes the request body when it fails before the underlying transport takes the request,
+// and the underlying transport closes it otherwise.
+func TestClientTransport_ClosesBodyOnEarlyError(t *testing.T) {
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeEnforce)
+	options := clientOptions(t, ca.pem, authz.ModeEnforce)
 	transport, err := newClientTransport(options, "applications-rp")
 	require.NoError(t, err)
-	require.NoError(t, os.Remove(filepath.Join(options.CADirectory, CAFile)))
-	body := &countedRequestBody{Reader: strings.NewReader("payload")}
-	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "https://applications-rp/", body)
-	require.NoError(t, err)
-	_, err = transport.RoundTrip(req)
-	require.ErrorIs(t, err, fs.ErrNotExist)
-	require.Equal(t, 1, body.closes)
+	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, srv.url)
+	}
+	t.Cleanup(transport.CloseIdleConnections)
+
+	roundTrip := func(t *testing.T, url string) (*closeRecorder, error) {
+		t.Helper()
+		body := &closeRecorder{Reader: strings.NewReader("body")}
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, url, body)
+		require.NoError(t, err)
+		resp, err := transport.RoundTrip(req)
+		if resp != nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
+		}
+		return body, err
+	}
+
+	t.Run("success", func(t *testing.T) {
+		body, err := roundTrip(t, "https://applications-rp.radius-system.svc:5443/")
+		require.NoError(t, err)
+		require.Equal(t, "ucp.radius-system.svc", (<-srv.seen).identity.String())
+		require.Eventually(t, body.closed.Load, 5*time.Second, 10*time.Millisecond)
+	})
+
+	t.Run("plain HTTP", func(t *testing.T) {
+		body, err := roundTrip(t, "http://applications-rp.radius-system.svc:5443/")
+		require.ErrorContains(t, err, "must use https")
+		require.True(t, body.closed.Load())
+	})
+
+	t.Run("unreadable token", func(t *testing.T) {
+		// Both transports read the token when they are created, so create them first.
+		upgrade, err := NewUpgradeTransport(options, http.DefaultTransport, []string{"applications-rp"})
+		require.NoError(t, err)
+		require.NoError(t, os.Remove(filepath.Join(options.TokenDirectory, "applications-rp", TokenFile)))
+
+		body, err := roundTrip(t, "https://applications-rp.radius-system.svc:5443/")
+		require.ErrorContains(t, err, "failed to read ServiceAccount token")
+		require.True(t, body.closed.Load())
+
+		body = &closeRecorder{Reader: strings.NewReader("body")}
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://applications-rp.radius-system.svc:5443/", body)
+		require.NoError(t, err)
+		_, err = upgrade.RoundTrip(req)
+		require.ErrorContains(t, err, "failed to read ServiceAccount token")
+		require.True(t, body.closed.Load(), "the upgrade transport must close the body too")
+	})
+	require.Empty(t, srv.seen)
 }
 
 // TestClientTransport_TokenRotation replaces the projected token, as the kubelet does, and
@@ -937,4 +991,28 @@ func get(c *http.Client, url string) (int, error) {
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, resp.Body)
 	return resp.StatusCode, nil
+}
+
+// TestClientTransport_NilHeader calls RoundTrip directly with a nil header map, which
+// http.Client would have replaced with an empty one.
+func TestClientTransport_NilHeader(t *testing.T) {
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeEnforce)
+	options := callerOptions(t, ca.pem, authz.ModeEnforce, "ucp")
+	transport, err := newClientTransport(options, "applications-rp")
+	require.NoError(t, err)
+	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, srv.url)
+	}
+	t.Cleanup(transport.CloseIdleConnections)
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, "https://applications-rp.radius-system.svc:5443/", nil)
+	require.NoError(t, err)
+	req.Header = nil
+	resp, err := transport.RoundTrip(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "ucp.radius-system.svc", (<-srv.seen).identity.String())
+	require.Nil(t, req.Header, "the caller's request must not be modified")
 }

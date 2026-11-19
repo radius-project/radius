@@ -37,7 +37,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -95,11 +95,7 @@ type initialCertificateInstaller struct {
 }
 
 func initialCertificateValuesDigest(values map[string]any) (string, error) {
-	copy := copyValues(values)
-	// The CSI dependency planner supplies this list after read-only preparation.
-	// The complete post-dependency values are pinned separately before CA writes.
-	unstructured.RemoveNestedField(copy, "global", "rbac", "certManager", "requesters")
-	return bootstrapDigest(copy)
+	return bootstrapDigest(values)
 }
 
 func readInitialCertificateJournal(ctx context.Context, store *rotationStore) (*corev1.ConfigMap, initialCertificateState, error) {
@@ -283,13 +279,12 @@ func (b *initialCertificateInstaller) run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	b.values = values
 	valuesHash, err := bootstrapDigest(values)
 	if err != nil {
 		return err
 	}
 	if b.journal != nil && b.state.ValuesSHA256 != valuesHash {
-		return errors.New("bootstrap retry changed the effective dependency/requester configuration")
+		return errors.New("bootstrap retry changed the effective configuration")
 	}
 	b.state.ValuesSHA256 = valuesHash
 	namespace, err := b.store.kube.CoreV1().Namespaces().Get(ctx, b.store.namespace, metav1.GetOptions{})
@@ -382,7 +377,7 @@ func (b *initialCertificateInstaller) run(ctx context.Context) error {
 		if b.verifyFixture != nil {
 			err = b.verifyFixture(ctx)
 		} else {
-			err = b.impl.waitForUCPAPIService(ctx, b.kubeContext, b.store.namespace, b.target.mode)
+			err = b.impl.waitForUCPAPIService(ctx, b.kubeContext, b.store.namespace, b.target.mode, nil)
 		}
 		if err != nil {
 			return err

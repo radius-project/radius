@@ -108,9 +108,9 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 	for name, plane := range state.Planes {
 		plane.Source.Bundle = plane.NewCA
 		plane.Source.SHA256 = fmt.Sprintf("%x", sha256.Sum256(plane.NewCA))
-		plane.Issuer.Name = RadiusCAIssuerName
+		plane.Issuer.Name = "radius-ca-issuer"
 		if name == "aggregation" {
-			plane.Issuer.Name = RadiusAPIServerIssuerName
+			plane.Issuer.Name = radiusAPIServerIssuerName
 		}
 		_, err = client.Resource(rotationIssuerResource).Namespace(state.Namespace).Create(t.Context(), &unstructured.Unstructured{Object: map[string]any{
 			"apiVersion": "cert-manager.io/v1", "kind": "Issuer",
@@ -181,7 +181,7 @@ func TestLifecycleShippingSnapshot(t *testing.T) {
 				source, err = kube.CoreV1().Secrets(state.Namespace).Update(t.Context(), source, metav1.UpdateOptions{})
 				require.NoError(t, err)
 				require.NotEqual(t, state.Planes["aggregation"].Source.ResourceVersion, source.ResourceVersion)
-				issuer, readErr := client.Resource(rotationIssuerResource).Namespace(state.Namespace).Get(t.Context(), RadiusAPIServerIssuerName, metav1.GetOptions{})
+				issuer, readErr := client.Resource(rotationIssuerResource).Namespace(state.Namespace).Get(t.Context(), radiusAPIServerIssuerName, metav1.GetOptions{})
 				require.NoError(t, readErr)
 				issuer.SetAnnotations(map[string]string{"unrelated": "metadata"})
 				_, err = client.Resource(rotationIssuerResource).Namespace(state.Namespace).Update(t.Context(), issuer, metav1.UpdateOptions{})

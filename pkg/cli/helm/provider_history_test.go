@@ -61,7 +61,7 @@ func TestProviderHistoryRollbackBeforeMutation(t *testing.T) {
 					m := NewMockHelmClient(gomock.NewController(t))
 					// Any dependency Helm call or RunHelmRollback is an unexpected call.
 					m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{target, installed, latest}, nil)
-					impl := c.impl(m, "cert-manager")
+					impl := c.impl(m)
 					c.kube.ClearActions()
 					c.dynamic.ClearActions()
 					var err error
@@ -88,6 +88,20 @@ func TestProviderHistoryRollbackPreservesExternal(t *testing.T) {
 	require.Equal(t, authz.ModeOff, mode)
 }
 
+func TestProviderHistoryRecheckRequiresDeployedRevision(t *testing.T) {
+	old := providerHistoryRevision(t, 1, "0.45.0", releasecommon.StatusDeployed, "radius")
+	failed := *old
+	failed.Info = &releasev1.Info{Status: releasecommon.StatusFailed}
+	h := NewMockHelmClient(gomock.NewController(t))
+	h.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{old}, nil)
+	h.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{&failed}, nil)
+	opts := NewDefaultClusterOptions()
+	opts.RadiusReleaseChart, opts.RadiusReleaseValues = old.Chart, old.Config
+	_, plan, _, err := (&Impl{Helm: h}).selectActionCertificates(t.Context(), &opts, old.Chart, nil, map[string]any{}, "", true)
+	require.NoError(t, err)
+	require.ErrorContains(t, plan.recheck(), "revision changed")
+}
+
 func TestProviderHistoryPublicMaintenance(t *testing.T) {
 	for _, command := range []string{"reinstall", "upgrade", "preflight"} {
 		for _, deployed := range []bool{true, false} {
@@ -98,7 +112,7 @@ func TestProviderHistoryPublicMaintenance(t *testing.T) {
 			t.Run(command+"/"+name, func(t *testing.T) {
 				c := newStageCluster(t, nil, false)
 				h := NewMockHelmClient(gomock.NewController(t))
-				i := c.impl(h, "cert-manager")
+				i := c.impl(h)
 				old := providerHistoryRevision(t, 1, "0.45.0", releasecommon.StatusDeployed, "external")
 				latest := providerHistoryRevision(t, 2, "0.46.0", releasecommon.StatusFailed, "radius")
 				history := []*releasev1.Release{latest}

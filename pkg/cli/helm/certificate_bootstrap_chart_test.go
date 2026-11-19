@@ -34,8 +34,8 @@ func TestBootstrapNamespaceIntentBlocksDirectHelm(t *testing.T) {
 	for _, raw := range []string{"", "unresolved-intent"} {
 		t.Run(raw, func(t *testing.T) {
 			t.Parallel()
-			fixture := newIssuerPolicyFixture(t)
-			fixture.object("Namespace", RadiusSystemNamespace).SetAnnotations(map[string]string{bootstrapNamespaceIntent: raw})
+			fixture := newCertificateChartFixture(t)
+			fixture.objects[0].SetAnnotations(map[string]string{bootstrapNamespaceIntent: raw})
 			selected, err := loader.Load("../../../deploy/Chart")
 			require.NoError(t, err)
 			server := fixture.server(t)
@@ -54,7 +54,7 @@ func TestLegacyBootstrapJournalRejectedBySelectedChart(t *testing.T) {
 		for _, external := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/external=%t", mode, external), func(t *testing.T) {
 				s := bootstrapStoreFixture(t)
-				fixture := newIssuerPolicyFixture(t)
+				fixture := newCertificateChartFixture(t)
 				selected, err := loader.Load("../../../deploy/Chart")
 				require.NoError(t, err)
 				ca, _, _ := testSigningCA(t, nil, nil, nil, nil)

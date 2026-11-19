@@ -53,9 +53,9 @@ the new chart's defaults (this mirrors 'helm upgrade --reset-values').
 Omitted certificate flags preserve the installed signing CA and trust. '--reset-values' cannot
 discard stored certificate settings. '--ca-secret' or '--ca-cert' with '--ca-key' can confirm the
 same dedicated CA. '--cert-issuer Issuer/name' or 'ClusterIssuer/name' can confirm the stored
-external issuer, optionally with its unchanged public '--ca-bundle'. External issuers require
-live verification of operator-managed controllers, admission, bounded request policies and
-RBAC on every invocation; Radius does not reconfigure those prerequisites.
+external issuer, optionally with its unchanged public '--ca-bundle'. A connected render checks issuer readiness only. Operators must bind approval to the selected
+issuer, actual request namespace and sole permitted receiver URI or aggregation DNS name,
+without any bypass grant.
 Mode, signing Secret, issuer and trust changes require coordinated CA migration.
 Turning authorization on with a dedicated CA or external issuer also requires the paired
 certificate lifecycle, even when the certificate flags confirm the stored selection.

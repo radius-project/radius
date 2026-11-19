@@ -25,7 +25,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
@@ -74,7 +73,7 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 		signer := caTLSSecret(name, ca, key)
 		signer.Data[caCertificateKey] = ca
 		signer.Annotations = map[string]string{
-			certificateNameAnnotation: name, "cert-manager.io/issuer-name": RadiusBootstrapIssuerName,
+			certificateNameAnnotation: name, "cert-manager.io/issuer-name": radiusBootstrapIssuerName,
 			"cert-manager.io/issuer-kind": "Issuer", "cert-manager.io/issuer-group": "cert-manager.io",
 		}
 		if name == ucpAPIServerCASecretName {
@@ -154,7 +153,7 @@ func TestCertManagerPendingReleaseWithHelmStorage(t *testing.T) {
 						// before this dependency gate. Exercise the gate against
 						// real Helm storage without pretending the stub chart
 						// implements configured-CA bootstrap.
-						err = impl.ensureCertManager(t.Context(), options, testKubeContext, authz.ModeDryRun, options.Radius.Reinstall)
+						err = impl.ensureCertManager(t.Context(), options, testKubeContext, nil, nil, options.Radius.Reinstall)
 					}
 					require.True(t, clierrors.IsFriendlyError(err), "%v", err)
 					require.ErrorContains(t, err, string(status))

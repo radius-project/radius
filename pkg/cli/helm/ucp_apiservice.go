@@ -18,7 +18,10 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,9 +29,13 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/dynamic"
 
+	helm "helm.sh/helm/v4/pkg/action"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
 
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -56,8 +63,9 @@ var (
 // workloads, and with authorization on the APIService trusts UCP only after cert-manager issues
 // radius-apiserver-ca and its cainjector copies the CA into the APIService. With authorization off, the chart sets
 // the CA bundle itself, and this only removes the trust that authorization on left, as
-// ReconcileUCPOffAPIServerTrust describes.
-func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode) error {
+// ReconcileUCPOffAPIServerTrust describes. declared holds the objects of the applied release, as manifestObjects
+// returns them, which that cleanup keeps.
+func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, mode authz.Mode, declared manifestObjectSet) error {
 	if mode == authz.ModeOff {
 		return i.withCertificateOffOperation(ctx, kubeContext, radiusNamespace, mode, func(ctx context.Context) error {
 			operation, ok := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation)
@@ -65,26 +73,41 @@ func (i *Impl) waitForUCPAPIService(ctx context.Context, kubeContext, radiusName
 				// No namespace or APIService exists, so there is no trust to clean.
 				return ctx.Err()
 			}
+			if len(declared) == 0 {
+				return errors.New("Off cleanup requires the applied release manifest; retaining certificate resources")
+			}
 			operation.postHelm = true
-			return i.ReconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace)
+			return i.ReconcileUCPOffAPIServerTrust(ctx, kubeContext, radiusNamespace, declared)
 		})
 	}
+	// Reconcile the selected public source (including BYO), never an inferred replacement signer.
 	if err := i.reconcileUCPAPIServerTrust(ctx, kubeContext, radiusNamespace); err != nil {
 		return err
 	}
 	return i.waitForAvailableUCPAPIService(ctx, kubeContext, radiusNamespace)
 }
 
+// waitForAppliedUCPAPIService waits for the UCP APIService after Helm applied rel, in the mode in which rel serves UCP's
+// API server, as servedAuthzMode decides from its manifest rather than from its values: a chart that accepts the
+// values of authorization without implementing them serves the certificate of authorization off.
+func (i *Impl) waitForAppliedUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, rel *releasev1.Release) error {
+	mode, err := servedAuthzMode(rel)
+	if err != nil {
+		return err
+	}
+	declared, err := manifestObjects(rel.Manifest)
+	if err != nil {
+		return fmt.Errorf("failed to read the manifest of revision %d: %w", rel.Version, err)
+	}
+	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, mode, declared)
+}
+
 // waitForAvailableUCPAPIService waits until the UCP APIService has a CA bundle and the API server reports it
 // Available.
 func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string) error {
-	newClient := i.newCertManagerDynamicClient
-	if newClient == nil {
-		newClient = newCertManagerDynamicClient
-	}
-	client, err := newClient(kubeContext)
+	client, err := i.certManagerDynamicClient(kubeContext)
 	if err != nil {
-		return fmt.Errorf("failed to create Kubernetes client: %w", err)
+		return err
 	}
 
 	output.LogInfo("Waiting for the Kubernetes API server to trust and reach UCP...")
@@ -107,84 +130,443 @@ func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, r
 		ucpAPIServiceDiagnostics(kubeContext, radiusNamespace, problem == ucpAPIServiceNoCABundle))
 }
 
-func (i *Impl) checkAggregationBeforeDependencies(ctx context.Context, options ClusterOptions, kubeContext string, target *certificateTarget, render renderRadiusManifest) error {
-	if target.mode == authz.ModeOff {
-		return i.clearAggregationInjection(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName)
-	}
-	return i.stageInstalledUCPAPIServerCA(ctx, options, kubeContext, target, render)
-}
-
-func checkUCPAPIServerCertificateTransition(deployed, target authz.Mode, values map[string]any) error {
-	if deployed != authz.ModeOff || target == authz.ModeOff {
-		return nil
-	}
-	mode, found, err := unstructured.NestedString(values, "global", "rbac", "certificates", "mode")
-	if err != nil {
-		return fmt.Errorf("invalid global.rbac.certificates.mode: %w", err)
-	}
-	if !found || mode == "selfSigned" {
-		return nil
-	}
-	return fmt.Errorf("turning authorization on with global.rbac.certificates.mode=%s requires the certificate lifecycle to stage the selected issuer and overlapping public trust; this CLI only stages selfSigned aggregation. Helm has not changed Radius; use the paired certificate lifecycle instead of retrying or replacing radius-apiserver-trust", mode)
-}
-
-// stageInstalledUCPAPIServerCA keeps the deployed mode distinct from the target on reset.
-func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, target *certificateTarget, render renderRadiusManifest) error {
-	if err := target.checkTransition(target.deployedMode); err != nil {
-		return err
-	}
-	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, target.deployedMode, target.mode, render)
-}
-
-// waitForRolledBackUCPAPIService waits for the UCP APIService after rad rolls Radius back to revision of history.
-func (i *Impl) waitForRolledBackUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
-	values, target, err := rollbackChartValues(history, revision)
-	if err != nil || values == nil {
-		return err
-	}
-	return i.waitForUCPAPIService(ctx, kubeContext, radiusNamespace, target.mode)
-}
-
-// stageRolledBackUCPAPIServerCA stages radius-apiserver-ca from the manifest of revision of history before rad rolls
-// Radius back to it.
-func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
-	values, target, err := rollbackChartValues(history, revision)
-	if err != nil || values == nil {
-		return err
-	}
-	currentValues, current, err := rollbackChartValues(history, latestRevision(history))
+// waitForInstalledUCPAPIService waits for the UCP APIService after rad installs or upgrades Radius to applied, the
+// release Helm returned, in the mode in which applied serves UCP's API server. The values of options merged over
+// storedValues and chartDefaults, the values.yaml of the chart rad applied, select that mode, but the manifest of applied
+// decides between on and off: a chart that accepts those values without implementing authorization, such as v0.62.0,
+// serves UCP from the Secret ucp-cert of authorization off whatever they say, and a manifest with the cert-manager
+// Certificate ucp-cert serves the certificate of authorization on.
+func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options ClusterOptions, kubeContext string, applied *releasev1.Release, chartDefaults, storedValues map[string]any) error {
+	mode, err := installedAuthzMode(options, chartDefaults, storedValues)
 	if err != nil {
 		return err
 	}
-	if currentValues == nil {
-		current.mode = authz.ModeOff
+	var declared manifestObjectSet
+	if applied != nil {
+		kind, err := ucpServingCertificateKind(applied.Manifest)
+		if err != nil {
+			return fmt.Errorf("failed to read the manifest of revision %d: %w", applied.Version, err)
+		}
+		mode = servingAuthzMode(kind, mode)
+		if declared, err = manifestObjects(applied.Manifest); err != nil {
+			return fmt.Errorf("failed to read the manifest of revision %d: %w", applied.Version, err)
+		}
 	}
-	if err := checkUCPAPIServerCertificateTransition(current.mode, target.mode, values); err != nil {
-		return err
-	}
-	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, current.mode, target.mode, renderRadiusRollback(history, revision))
+	return i.waitForUCPAPIService(ctx, kubeContext, options.Radius.Namespace, mode, declared)
 }
 
-// latestRevision returns the newest revision of history, which is the release Helm rolls back from.
-func latestRevision(history []*releasev1.Release) int {
-	latest := 0
+// servingAuthzMode returns the mode in which a manifest whose ucp-cert has kind, as ucpServingCertificateKind returns
+// it, serves UCP's API server, given mode, the mode its values select. The kind decides between on and off; the trust
+// rad reconciles depends only on that. A Certificate whose values select off serves as authorization on in
+// authz.ModeEnforce, and a manifest without ucp-cert keeps mode.
+func servingAuthzMode(kind string, mode authz.Mode) authz.Mode {
+	switch {
+	case kind == "Secret":
+		return authz.ModeOff
+	case kind == "Certificate" && mode == authz.ModeOff:
+		return authz.ModeEnforce
+	}
+	return mode
+}
+
+// stageInstalledUCPAPIServerCA stages radius-apiserver-ca before rad installs or upgrades Radius with the values of
+// options merged over storedValues. render returns the manifest that Helm applies. upgrade is true when Helm upgrades
+// an installed release, as rad upgrade and rad install --reinstall do; otherwise the install is fresh or leaves the
+// installed release unchanged.
+func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, helmConf *helm.Configuration, chartDefaults, storedValues map[string]any, upgrade bool, render renderRadiusManifest) error {
+	mode, err := installedAuthzMode(options, chartDefaults, storedValues)
+	if err != nil {
+		return err
+	}
+	current, err := parseUserValuesFromCLI(&options.Radius)
+	if err != nil {
+		return err
+	}
+	values := resolveEffectiveChartValues(chartDefaults, storedValues, current)
+	return i.stageCertificateTarget(ctx, options, kubeContext, helmConf, values, mode, upgrade, render)
+}
+
+func (i *Impl) stageCertificateTarget(ctx context.Context, options ClusterOptions, kubeContext string, helmConf *helm.Configuration, values map[string]any, mode authz.Mode, upgrade bool, render renderRadiusManifest) error {
+	deployed := func() (authz.Mode, error) {
+		if !upgrade {
+			return authz.ModeOff, nil
+		}
+		// Decide from the newest revision, not from the stored values of the deployed one: a newer failed or
+		// interrupted upgrade may have moved UCP to the certificate of authorization on while those values still turn
+		// it off. deployedAuthzMode then returns "", so the stage checks which certificate UCP serves.
+		history, err := i.radiusReleaseHistory(helmConf, options.Radius.ReleaseName)
+		if err != nil {
+			return "", err
+		}
+		return deployedAuthzMode(history)
+	}
+	if mode != authz.ModeOff && byoCertificateMode(values) != "" {
+		var latest *releasev1.Release
+		if upgrade {
+			history, err := i.radiusReleaseHistory(helmConf, options.Radius.ReleaseName)
+			if err != nil {
+				return err
+			}
+			latest = latestRevision(history)
+		}
+		if err := checkSteadyBYOCertificates(latest, values); err != nil {
+			return err
+		}
+		return checkRenderedBYO(ctx, render)
+	}
+	previous, err := deployed()
+	if err != nil {
+		return err
+	}
+	return i.stageUCPAPIServerCA(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName, previous, mode, render)
+}
+
+func byoCertificateMode(values map[string]any) string {
+	m, _ := nestedValue(values, "global", "rbac", "certificates", "mode").(string)
+	if m == "caSecret" || m == "issuerRef" {
+		return m
+	}
+	return ""
+}
+
+// checkRenderedBYO checks the action-specific server render, not an offline install of the chart.
+func checkRenderedBYO(ctx context.Context, render renderRadiusManifest) error {
+	manifest, ok, err := render(ctx)
+	if err != nil || !ok {
+		return err
+	}
+	kind, err := ucpServingCertificateKind(manifest)
+	if err != nil {
+		return err
+	}
+	objects, err := manifestObjects(manifest)
+	if err != nil {
+		return err
+	}
+	if kind != "Certificate" || !objects[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] || objects[manifestObjectKey("cert-manager.io", "Certificate", ucpAPIServerCASecretName)] {
+		return fmt.Errorf("selected chart does not render BYO UCP serving and public aggregation trust; use the certificate lifecycle")
+	}
+	return nil
+}
+
+// Self-signed staging cannot prepare a BYO signer or replace its public trust pin.
+func checkSteadyBYOCertificates(latest *releasev1.Release, target map[string]any) error {
+	if latest != nil && latest.Chart != nil && latest.Info != nil && latest.Info.Status == releasecommon.StatusDeployed {
+		mode, err := servedAuthzMode(latest)
+		if err != nil {
+			return err
+		}
+		previous := resolveEffectiveChartValues(latest.Chart.Values, nil, latest.Config)
+		objects, err := manifestObjects(latest.Manifest)
+		if err != nil {
+			return err
+		}
+		if mode != authz.ModeOff && byoCertificateMode(previous) != "" && objects[manifestObjectKey("", "Secret", ucpAPIServerTrustSecretName)] && unchangedCertificateSelection(previous, target) == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("selecting global.rbac.certificates.mode=%s requires the certificate lifecycle to stage the selected issuer and public trust; Helm has not changed Radius", byoCertificateMode(target))
+}
+
+// radiusReleaseHistory returns the history of release releaseName, or none when the release does not exist.
+func (i *Impl) radiusReleaseHistory(helmConf *helm.Configuration, releaseName string) ([]*releasev1.Release, error) {
+	history, err := i.Helm.RunHelmHistory(helmConf, releaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the history of release %s: %w", releaseName, err)
+	}
+	return history, nil
+}
+
+// latestRevision returns the newest revision of history.
+func latestRevision(history []*releasev1.Release) *releasev1.Release {
+	var latest *releasev1.Release
 	for _, rel := range history {
-		if rel != nil && rel.Version > latest {
-			latest = rel.Version
+		if rel != nil && (latest == nil || rel.Version > latest.Version) {
+			latest = rel
 		}
 	}
 	return latest
 }
 
-// rollbackChartValues returns nil values when history has no matching revision.
-func rollbackChartValues(history []*releasev1.Release, revision int) (map[string]any, chartAuthSettings, error) {
-	for _, rel := range history {
-		if rel == nil || rel.Version != revision {
+// certManagerDynamicClient returns the dynamic client for kubeContext.
+func (i *Impl) certManagerDynamicClient(kubeContext string) (dynamic.Interface, error) {
+	newClient := i.newCertManagerDynamicClient
+	if newClient == nil {
+		newClient = newCertManagerDynamicClient
+	}
+	client, err := newClient(kubeContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
+	}
+	return client, nil
+}
+
+// installedAuthzMode returns the mode that the values of options, merged over storedValues and chartDefaults, the
+// values.yaml of the Radius chart rad applies, select.
+func installedAuthzMode(options ClusterOptions, chartDefaults, storedValues map[string]any) (authz.Mode, error) {
+	currentValues, err := parseUserValuesFromCLI(&options.Radius)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse Radius values: %w", err)
+	}
+	return resolveAuthzMode(chartDefaults, storedValues, currentValues)
+}
+
+// waitForRolledBackUCPAPIService waits for the UCP APIService after rad rolls Radius back to revision of history, in the
+// mode in which that revision serves UCP's API server.
+func (i *Impl) waitForRolledBackUCPAPIService(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
+	target := releaseRevision(history, revision)
+	if target == nil {
+		return nil
+	}
+	if err := i.waitForAppliedUCPAPIService(ctx, kubeContext, radiusNamespace, target); err != nil {
+		return err
+	}
+	return i.cleanupHistoricalOnCertificates(ctx, kubeContext, radiusNamespace, target)
+}
+
+func (i *Impl) cleanupHistoricalOnCertificates(ctx context.Context, kubeContext, radiusNamespace string, target *releasev1.Release) error {
+	mode, err := servedAuthzMode(target)
+	if err != nil || mode == authz.ModeOff {
+		return err // Off reconciliation already inspected the applied revision.
+	}
+	declared, err := manifestObjects(target.Manifest)
+	if err != nil {
+		return err
+	}
+	// Historical authorization-on charts issued ucp-mtls instead of the
+	// separate aggregation leaf. Use their actual release declarations.
+	if !declared.legacyUCPCertificate() {
+		return nil
+	}
+	op, ok := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation)
+	if !ok || op.store.namespace != radiusNamespace || op.kubeContext != kubeContext {
+		return fmt.Errorf("historical certificate cleanup requires the rollback operation Lease")
+	}
+	if err := op.check(ctx); err != nil {
+		return err
+	}
+	var issued []ucpOffLeftoverSecret
+	for _, entry := range undeclaredLeftovers(ucpOffLeftoverSecrets, declared) {
+		if entry.certificate != "" {
+			issued = append(issued, entry)
+		}
+	}
+	return i.deleteUCPOffLeftovers(ctx, kubeContext, op.store.kube, op.store.dynamic, radiusNamespace, issued)
+}
+
+// stageRolledBackUCPAPIServerCA stages UCP's API server certificate for revision of history before rad rolls Radius
+// back to it, from what that rollback renders. When that revision serves UCP with authorization on, it first checks
+// that cert-manager can issue and inject radius-apiserver-ca, as an install or upgrade does.
+func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace string, history []*releasev1.Release, revision int) error {
+	target := releaseRevision(history, revision)
+	if target == nil {
+		return nil
+	}
+	// Rollback is an upgrade to the target chart with its stored overrides, never the current
+	// release's values. Reject unsupported provider/engine settings before touching trust.
+	options := ChartOptions{Namespace: radiusNamespace, ReleaseName: radiusReleaseName}
+	mode, err := radiusActionMode(target.Chart, target.Config, nil, options, true)
+	if err != nil {
+		return err
+	}
+	mode, err = manifestAuthzMode(target, mode)
+	if err != nil {
+		return err
+	}
+	values := resolveEffectiveChartValues(target.Chart.Values, nil, target.Config)
+	latest := latestRevision(history)
+	if latest != nil && latest.Chart != nil {
+		previous := resolveEffectiveChartValues(latest.Chart.Values, nil, latest.Config)
+		if byoCertificateMode(previous) != "" {
+			if err := unchangedCertificateSelection(previous, values); err != nil {
+				return err
+			}
+			if mode == authz.ModeOff {
+				return fmt.Errorf("turning off established BYO certificates requires the certificate lifecycle")
+			}
+		}
+	}
+	render := i.renderRadiusRollback(kubeContext, radiusNamespace, history, revision)
+	if mode != authz.ModeOff && byoCertificateMode(values) != "" {
+		if err := checkSteadyBYOCertificates(latest, values); err != nil {
+			return err
+		}
+		opts := NewDefaultClusterOptions()
+		opts.Radius.Namespace, opts.RadiusInstalled = radiusNamespace, true
+		selected, _, err := i.prepareCertificateTarget(ctx, opts, target.Chart, copyValues(target.Config), kubeContext)
+		if err != nil {
+			return err
+		}
+		render = renderOnce(render)
+		if err := selected.checkProviderRender(ctx, render); err != nil {
+			return err
+		}
+		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, radiusNamespace); err != nil {
+			return err
+		}
+		return checkRenderedBYO(ctx, render)
+	}
+	if nestedValue(values, "global", "rbac", "tls", "provider") == "external" && mode != authz.ModeOff {
+		render = renderOnce(render)
+		selected := &certificateTarget{Provider: "external", mode: mode}
+		if err := selected.checkProviderRender(ctx, render); err != nil {
+			return err
+		}
+	}
+	previous, err := deployedAuthzMode(history)
+	if err != nil {
+		return err
+	}
+	if previous == authz.ModeOff && mode != authz.ModeOff {
+		return errCertificateObserverUnavailable
+	}
+	if mode != authz.ModeOff {
+		if err := i.checkInstalledCertManagerReady(ctx, kubeContext, radiusNamespace); err != nil {
+			return err
+		}
+	}
+	return i.stageUCPAPIServerCA(ctx, kubeContext, radiusNamespace, radiusReleaseName, previous, mode, render)
+}
+
+// Historical On releases need the same exclusion as Off while reclaiming the
+// token chart's Secrets. Modern On rollbacks do not perform that cleanup.
+func (i *Impl) withRollbackCertificateOperation(ctx context.Context, kubeContext, namespace string, target *releasev1.Release, run func(context.Context) error) error {
+	mode, err := servedAuthzMode(target)
+	if err != nil {
+		return err
+	}
+	if mode != authz.ModeOff {
+		objects, err := manifestObjects(target.Manifest)
+		if err != nil {
+			return err
+		}
+		if objects.legacyUCPCertificate() {
+			return i.withCertificateOffOperation(ctx, kubeContext, namespace, authz.ModeOff, func(ctx context.Context) error {
+				if _, ok := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation); !ok {
+					return errors.New("historical rollback requires an existing namespace and operation Lease")
+				}
+				return run(ctx)
+			})
+		}
+	}
+	return i.withCertificateOffOperation(ctx, kubeContext, namespace, mode, run)
+}
+
+// deployedAuthzMode returns the mode in which the newest revision of history serves UCP's API server, which is the
+// release Helm rolls back from, or authz.ModeOff when history is empty. It returns "" when that revision is not
+// deployed: a failed or interrupted upgrade may have changed UCP only partly, so the cluster, not history, shows which
+// certificate UCP serves.
+func deployedAuthzMode(history []*releasev1.Release) (authz.Mode, error) {
+	latest := latestRevision(history)
+	if latest == nil {
+		return authz.ModeOff, nil
+	}
+	if latest.Info == nil || latest.Info.Status != releasecommon.StatusDeployed {
+		return "", nil
+	}
+	return servedAuthzMode(latest)
+}
+
+// servedAuthzMode returns the mode in which rel serves UCP's API server. Its values, merged over the values.yaml of its
+// chart, select the mode only in a chart that implements authorization, whose manifest has the cert-manager Certificate
+// ucp-cert with authorization on. A chart that accepts the values without implementing them, such as v0.62.0, renders
+// the Helm-generated Secret ucp-cert of authorization off whatever they say. A manifest has the same kind of ucp-cert
+// as a rollback to rel renders, because the chart selects it from values alone, so the kind decides between on and
+// off, as servingAuthzMode describes.
+func servedAuthzMode(rel *releasev1.Release) (authz.Mode, error) {
+	var chartDefaults map[string]any
+	if rel.Chart != nil {
+		chartDefaults = rel.Chart.Values
+	}
+	mode, err := resolveAuthzMode(chartDefaults, rel.Config, nil)
+	if err != nil {
+		return "", err
+	}
+	return manifestAuthzMode(rel, mode)
+}
+
+func manifestAuthzMode(rel *releasev1.Release, mode authz.Mode) (authz.Mode, error) {
+	kind, err := ucpServingCertificateKind(rel.Manifest)
+	if err != nil {
+		return "", fmt.Errorf("failed to read the manifest of revision %d: %w", rel.Version, err)
+	}
+	return servingAuthzMode(kind, mode), nil
+}
+
+// manifestObjectSet holds the objects of a manifest by API group, kind and name.
+type manifestObjectSet map[string]bool
+
+func (s manifestObjectSet) legacyUCPCertificate() bool {
+	return s[manifestObjectKey("cert-manager.io", "CertificateTarget/"+ucpAPIServerCertificateName, "ucp-mtls")]
+}
+
+func manifestObjectKey(group, kind, name string) string {
+	return group + "/" + kind + "/" + name
+}
+
+// has reports whether the set holds object, the object of ucpAPIServerCAStageObjects with that name.
+func (s manifestObjectSet) has(object stageInventoryObject) bool {
+	return s[manifestObjectKey(object.resource.Group, object.kind, object.name)]
+}
+
+// manifestObjects returns the objects of manifest.
+func manifestObjects(manifest string) (manifestObjectSet, error) {
+	objects := manifestObjectSet{}
+	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
+	for {
+		var document map[string]any
+		err := decoder.Decode(&document)
+		if errors.Is(err, io.EOF) {
+			return objects, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		if document == nil {
 			continue
 		}
-		return resolveEffectiveChartValues(rel.Chart, rel.Namespace, rel.Name, rel.Config, nil, historicalAuthSettings)
+		object := &unstructured.Unstructured{Object: document}
+		objects[manifestObjectKey(object.GroupVersionKind().Group, object.GetKind(), object.GetName())] = true
+		if object.GroupVersionKind().Group == "cert-manager.io" && object.GetKind() == "Certificate" {
+			name, _, err := unstructured.NestedString(document, "spec", "secretName")
+			if err != nil {
+				return nil, err
+			}
+			if name != "" {
+				objects[manifestObjectKey("", "IssuedSecret", name)] = true
+				objects[manifestObjectKey("cert-manager.io", "CertificateTarget/"+object.GetName(), name)] = true
+			}
+		}
 	}
-	return nil, chartAuthSettings{}, nil
+}
+
+// ucpServingCertificateKind returns the kind of the ucp-cert object in manifest: Certificate with authorization on,
+// Secret with it off, or "" when manifest has neither.
+func ucpServingCertificateKind(manifest string) (string, error) {
+	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
+	for {
+		var document map[string]any
+		err := decoder.Decode(&document)
+		if errors.Is(err, io.EOF) {
+			return "", nil
+		}
+		if err != nil {
+			return "", err
+		}
+		object := &unstructured.Unstructured{Object: document}
+		if document == nil || object.GetName() != ucpAPIServerCertificateName {
+			continue
+		}
+		switch {
+		case object.GetAPIVersion() == "cert-manager.io/v1" && object.GetKind() == "Certificate":
+			return "Certificate", nil
+		case object.GetAPIVersion() == "v1" && object.GetKind() == "Secret":
+			return "Secret", nil
+		}
+	}
 }
 
 const ucpAPIServiceNoCABundle = "it has no CA bundle"
@@ -220,9 +602,12 @@ func ucpAPIServiceDiagnostics(kubeContext, radiusNamespace string, noCABundle bo
 			radiusNamespace, kubectlCommand(kubeContext, "", "get apiservice "+ucpAPIServiceName+" -o yaml"))
 	}
 
-	return fmt.Sprintf("cert-manager's cainjector copies ca.crt of Secret %s/%s into the APIService. Check the Secret with %s, and find the cainjector to check its logs with %s",
+	// The Secret also holds the CA's private key, so the suggested commands read only the Certificate's status and
+	// the public ca.crt.
+	return fmt.Sprintf("cert-manager's cainjector copies ca.crt of Secret %s/%s into the APIService. Check that cert-manager issued the CA with %s and that the Secret has a ca.crt with %s, and find the cainjector to check its logs with %s",
 		radiusNamespace, ucpAPIServerCASecretName,
-		kubectlCommand(kubeContext, radiusNamespace, "get secret "+ucpAPIServerCASecretName+" -o yaml"),
+		kubectlCommand(kubeContext, radiusNamespace, "describe certificate "+ucpAPIServerCASecretName),
+		kubectlCommand(kubeContext, radiusNamespace, "get secret "+ucpAPIServerCASecretName+` -o jsonpath='{.data.ca\.crt}'`),
 		kubectlCommand(kubeContext, "", "get pods -A -l app.kubernetes.io/component=cainjector"))
 }
 
@@ -244,4 +629,11 @@ func condition(object *unstructured.Unstructured, conditionType string) (objectC
 		return objectCondition{status: status, reason: reason, message: message}, true
 	}
 	return objectCondition{}, false
+}
+
+func (i *Impl) checkBeforeCertificateDependencies(ctx context.Context, options ClusterOptions, kubeContext string, conf *helm.Configuration, target *certificateTarget, render renderRadiusManifest) error {
+	if target.mode == authz.ModeOff {
+		return i.clearAggregationInjection(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName)
+	}
+	return i.stageCertificateTarget(ctx, options, kubeContext, conf, target.Values, target.mode, options.RadiusInstalled || options.RadiusReleaseValues != nil, render)
 }

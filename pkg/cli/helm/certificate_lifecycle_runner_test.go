@@ -52,7 +52,7 @@ func TestCertificateSelectedPhaseRendering(t *testing.T) {
 		"enabled": true, "tls": map[string]any{"provider": "radius"},
 		"certificates": map[string]any{"mode": "selfSigned"},
 	}}}
-	settings, err := selectedAuthSettings(selected, values, w.store.namespace, w.store.release)
+	settings, err := resolveAuthzMode(selected.Values, nil, values)
 	require.NoError(t, err)
 	target, err := certificateProfilePlan(selected, values, w.store.namespace, settings)
 	require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestCertificateSelectedPhaseRendering(t *testing.T) {
 	options.RadiusInstalled, options.RadiusReleaseValues = true, copyValues(values)
 	history := []*releasev1.Release{{Name: w.store.release, Namespace: w.store.namespace, Version: 1,
 		Chart: selected, Config: copyValues(values), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}}
-	impl := &Impl{contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)}}
+	impl := &Impl{contourCluster: &fakeContourCluster{capabilities: capabilitiesWith()}}
 	// This uses the real selected templates and in-memory Helm history. It is
 	// not controller issuance, dry-run API admission, or authenticated evidence.
 	w.observeLoaded = func(ctx context.Context, _ certificateLifecycle) error { return ctx.Err() }

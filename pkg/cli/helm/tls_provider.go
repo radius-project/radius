@@ -28,6 +28,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+var errResetDiscardsStoredProvider = errors.New("--reset-values cannot discard stored TLS provider settings")
+
 var errProviderObservationUnavailable = errors.New("TLS provider transition blocked before mutation: production loaded-trust reporting and authorized observation are unavailable for Radius callers (including the trust-only controller), engine UCP trust, UCP downstream authorities and every aggregation cache; receiver readiness also lacks approved CLI credentials; do not mint component tokens, extract credentials, forward API bearer tokens or bypass the gate")
 
 // TLSProviderOptions selects transport independently of caller authentication and certificate mode.
@@ -39,13 +41,13 @@ type TLSProviderOptions struct {
 // AddFlags registers the selector and an explicit diagnostic for the former flag.
 func (o *TLSProviderOptions) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.Provider, "tls-provider", "", "Internal encryption provider: radius (default) or external (operator protects every connection, including storage and queues)")
-	flags.StringVar(&o.legacy, "mtls-provider", "", "Unsupported legacy provider selector; use --tls-provider on a token/CSI installation")
+	flags.StringVar(&o.legacy, "mtls-provider", "", "Unsupported legacy provider selector; use --tls-provider on a token-authenticated installation")
 }
 
 // ValidateFlags never aliases legacy certificate-client identity to token identity.
 func (o TLSProviderOptions) ValidateFlags(flags *pflag.FlagSet) error {
 	if o.legacy != "" || flags != nil && flags.Changed("mtls-provider") {
-		return errors.New("--mtls-provider is unsupported; use --tls-provider for token/CSI installations; legacy installations and journals require a separately supported migration")
+		return errors.New("--mtls-provider is unsupported; use --tls-provider for token-authenticated installations; legacy installations and journals require a separately supported migration")
 	}
 	if flags != nil && flags.Changed("tls-provider") && o.Provider == "" {
 		return errors.New("--tls-provider must not be empty")
@@ -93,6 +95,16 @@ func providerValue(values map[string]any) (string, bool, error) {
 	return value, true, nil
 }
 
+// A deployed chart without the provider key ignored a stored override, as A6
+// did, so resetting values discards no provider setting that was in effect.
+func storedProviderHonored(deployed *chart.Chart) bool {
+	if deployed == nil {
+		return true
+	}
+	_, found, err := providerValue(deployed.Values)
+	return found || err != nil
+}
+
 func (i *Impl) prepareTLSProvider(options ClusterOptions, selected *chart.Chart, current map[string]any, baseline *chartAuthSettings) (map[string]any, chartAuthSettings, error) {
 	if err := options.TLS.ValidateFlags(nil); err != nil {
 		return nil, chartAuthSettings{}, err
@@ -114,8 +126,8 @@ func (i *Impl) prepareTLSProvider(options ClusterOptions, selected *chart.Chart,
 	if options.TLS.Provider != "" && explicit {
 		return nil, chartAuthSettings{}, errors.New("--tls-provider cannot be combined with global.rbac.tls.provider overrides")
 	}
-	if options.ResetValues && stored {
-		return nil, chartAuthSettings{}, errors.New("--reset-values cannot discard stored TLS provider settings")
+	if options.ResetValues && stored && storedProviderHonored(options.RadiusReleaseChart) {
+		return nil, chartAuthSettings{}, errResetDiscardsStoredProvider
 	}
 	overrides := current
 	if options.TLS.Provider != "" {
@@ -124,15 +136,20 @@ func (i *Impl) prepareTLSProvider(options ClusterOptions, selected *chart.Chart,
 			return nil, chartAuthSettings{}, err
 		}
 	}
-	merged, target, err := selectedCertificateValues(options, selected, overrides)
+	saved := options.RadiusReleaseValues
+	if options.ResetValues {
+		saved = nil
+	}
+	merged := resolveEffectiveChartValues(selected.Values, saved, overrides)
+	target, err := radiusActionSettings(selected, overrides, saved, options.Radius.ChartOptions, options.RadiusInstalled || options.RadiusReleaseValues != nil)
 	if err != nil {
 		return nil, chartAuthSettings{}, err
 	}
 	if baseline != nil && baseline.provider != target.provider {
 		return nil, chartAuthSettings{}, errProviderObservationUnavailable
 	}
-	if (explicit || stored || options.TLS.Provider != "") && (selected.Metadata == nil || selected.Metadata.Annotations["radius.io/provider-transition-protocol"] != "2") {
-		return nil, chartAuthSettings{}, errors.New("selected chart does not support token/CSI TLS provider protocol v2")
+	if (explicit || stored && !options.ResetValues || options.TLS.Provider != "") && (selected.Metadata == nil || selected.Metadata.Annotations["radius.io/provider-transition-protocol"] != "2") {
+		return nil, chartAuthSettings{}, errors.New("selected chart does not support TLS provider protocol v2")
 	}
 	if target.mode == authz.ModeOff && (options.TLS.Provider != "" || explicit && target.provider == authz.TLSProviderExternal) {
 		return nil, chartAuthSettings{}, errors.New("--tls-provider requires active authorization; Off is not a transition bridge")
@@ -175,16 +192,11 @@ func rollbackProviderMode(history []*releasev1.Release, revision int) (authz.Mod
 	if target == nil {
 		return "", fmt.Errorf("rollback revision %d not found", revision)
 	}
-	for _, rel := range []*releasev1.Release{deployed, target} {
-		if err := validateProviderRevision(rel); err != nil {
-			return "", err
-		}
-	}
-	_, old, err := rollbackChartValues(history, deployed.Version)
+	old, err := historicalProviderSettings(deployed)
 	if err != nil {
 		return "", err
 	}
-	_, next, err := rollbackChartValues(history, target.Version)
+	next, err := historicalProviderSettings(target)
 	if err != nil {
 		return "", err
 	}
@@ -192,6 +204,17 @@ func rollbackProviderMode(history []*releasev1.Release, revision int) (authz.Mod
 		return "", errProviderObservationUnavailable
 	}
 	return next.mode, nil
+}
+
+func historicalProviderSettings(rel *releasev1.Release) (chartAuthSettings, error) {
+	if err := validateProviderRevision(rel); err != nil {
+		return chartAuthSettings{}, err
+	}
+	if !storedProviderHonored(rel.Chart) {
+		mode, err := resolveAuthzMode(rel.Chart.Values, nil, rel.Config)
+		return chartAuthSettings{mode, authz.TLSProviderRadius}, err
+	}
+	return radiusActionSettings(rel.Chart, rel.Config, nil, ChartOptions{Namespace: rel.Namespace, ReleaseName: rel.Name}, true)
 }
 
 func validateProviderRevision(rel *releasev1.Release) error {

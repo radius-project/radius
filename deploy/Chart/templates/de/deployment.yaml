@@ -66,7 +66,7 @@ spec:
           configMap:
             name: bicep-de-config
         {{- if $auth }}
-        {{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.spiffe.volume" (dict "root" . "component" "bicep-de") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.caBundle.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "ucp")) | nindent 8 }}
         {{- end }}
@@ -154,8 +154,10 @@ spec:
         - name: RADIUS_INTERNAL_TLS_CA_DIRECTORY
           value: {{ include "radius.authz.caBundle.mountPath" . | quote }}
         {{- end }}
+        {{- else if eq (include "radius.authz.mode" .) "off" }}
+          value: https://ucp.{{ .Release.Namespace }}:443/apis/api.ucp.dev/v1alpha3
         {{- else }}
-          value: https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3
+          value: https://ucp.{{ .Release.Namespace }}.svc:443/apis/api.ucp.dev/v1alpha3
         {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}

@@ -78,25 +78,20 @@ is responsible for:
 
 The deployment engine is configured via environment variables:
 
-| Variable | Purpose | Example |
-| --- | --- | --- |
-| `RADIUSBACKENDURL` | UCP endpoint for callbacks | `https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3` |
-| `ASPNETCORE_URLS` | Listening URL | `http://+:6443` |
-| `ARM_AUTH_METHOD` | Authentication method | `UCPCredential` |
-| `SKIP_ARM` | Skip Azure ARM integration | `true` / `false` |
-| `kubernetes` | Enable Kubernetes mode | `true` |
+| Variable           | Purpose                    | Example                                                       |
+|--------------------|----------------------------|---------------------------------------------------------------|
+| `RADIUSBACKENDURL` | UCP endpoint for callbacks | `https://ucp.radius-system.svc:443/apis/api.ucp.dev/v1alpha3` |
+| `ASPNETCORE_URLS`  | Listening URL              | `http://+:6443`                                               |
+| `ARM_AUTH_METHOD`  | Authentication method      | `UCPCredential`                                               |
+| `SKIP_ARM`         | Skip Azure ARM integration | `true` / `false`                                              |
+| `kubernetes`       | Enable Kubernetes mode     | `true`                                                        |
 
-In production the `RADIUSBACKENDURL` points to the UCP service inside the
-cluster (`https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3`). In
-development, debug scripts/manifests set it to host-reachable UCP endpoints
-such as `http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3` (Docker
-debug) or `http://host.k3d.internal:9000/apis/api.ucp.dev/v1alpha3`
-(Kubernetes debug manifest).
+With the engine gate off, `RADIUSBACKENDURL` uses a name in UCP's serving certificate: `https://ucp.<namespace>:443/apis/api.ucp.dev/v1alpha3` with authorization off and `https://ucp.<namespace>.svc:443/apis/api.ucp.dev/v1alpha3` in DryRun or Enforce. In development, debug manifests use host-reachable endpoints such as `http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3` (Docker) or `http://host.k3d.internal:9000/apis/api.ucp.dev/v1alpha3` (Kubernetes).
 
 Debug manifests may also include provider toggles such as `AZURE_ENABLED`,
 `AWS_ENABLED`, and `KUBERNETES_ENABLED`.
 
-The Helm chart gates token-capable engine integration with `de.internalAuth.enabled=true` and a non-off global authorization mode. Both `global.rbac.tls.provider=radius` (default) and `external` project separate receiver tokens with bare audiences `ucp` and `bicep-de`; Kubernetes API credentials remain separate. Radius TLS uses the engine's own server-only CSI certificate at `/var/run/radius/spiffe` and public CA at `/var/run/radius/ca`, with exact URI-only SPIFFE verification and no client certificate. External uses HTTP without internal TLS mounts; operators must provide authenticated encryption before enabling it. Callbacks target `ucp.<namespace>.svc:9444/apis/api.ucp.dev/v1alpha3`, and UCP targets the sole engine listener at `bicep-de.<namespace>.svc:6443`, using HTTPS for Radius or HTTP for external. The active gate removes anonymous metrics annotations. In Enforce mode, only the UCP ServiceAccount can access `/metrics`; there is no supported Prometheus scraper identity. A compatible engine image must be selected explicitly; the default image, gate-off callback endpoint, and aggregation compatibility path remain unchanged. The obsolete enabled `de.ucpMTLS` contract is rejected. See the [chart integration prerequisite](../../deploy/Chart/README.md#deployment-engine-token-authentication-integration-prerequisite) for exact environment variables, migration, and pending image/live and observer integration.
+The Helm chart gates token-capable engine integration with `de.internalAuth.enabled=true` and a non-off global authorization mode. Both `global.rbac.tls.provider=radius` (default) and `external` project separate receiver tokens with bare audiences `ucp` and `bicep-de`; Kubernetes API credentials remain separate. Radius TLS uses the engine's own server-only certificate Secret at `/var/run/radius/spiffe` and public CA at `/var/run/radius/ca`, with exact URI-only SPIFFE verification and no client certificate. External uses HTTP without internal TLS mounts; operators must provide authenticated encryption before enabling it. Callbacks target `ucp.<namespace>.svc:9444/apis/api.ucp.dev/v1alpha3`, and UCP targets the sole engine listener at `bicep-de.<namespace>.svc:6443`, using HTTPS for Radius or HTTP for external. The active gate removes anonymous metrics annotations. In Enforce mode, only the UCP ServiceAccount can access `/metrics`; there is no supported Prometheus scraper identity. A compatible engine image must be selected explicitly; the default image, gate-off callback endpoint, and aggregation compatibility path remain unchanged. The obsolete enabled `de.ucpMTLS` contract is rejected. See the [chart integration prerequisite](../../deploy/Chart/README.md#deployment-engine-token-authentication-integration-prerequisite) for exact environment variables, migration, and pending image/live and observer integration.
 
 ## How Deployments Work
 
@@ -336,17 +331,17 @@ graph LR
 
 ### Key Interfaces and Types
 
-| Type | Location | Purpose |
-| --- | --- | --- |
-| `ResourceDeploymentsClient` | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go) | Interface for creating/deleting deployments |
-| `ResourceDeploymentsClientImpl` | Same file | HTTP implementation that talks to UCP |
-| `ResourceDeploymentOperationsClient` | [pkg/sdk/clients/resourcedeploymentoperationsclient.go](../../pkg/sdk/clients/resourcedeploymentoperationsclient.go) | Client for listing deployment operations (progress) |
-| `Deployment` / `DeploymentProperties` | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go) | Request payload containing template, parameters, and provider config |
-| `ProviderConfig` | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go) | Scopes for Radius, Azure, AWS, and deployment targets (helper functions in [providerconfig.go](../../pkg/sdk/clients/providerconfig.go)) |
-| `ResourceDeploymentClient` | [pkg/cli/deployment/deploy.go](../../pkg/cli/deployment/deploy.go) | CLI-layer wrapper that adds progress monitoring |
-| `ProxyController` | [pkg/ucp/frontend/controller/radius/proxy.go](../../pkg/ucp/frontend/controller/radius/proxy.go) | UCP controller that proxies requests to downstream RPs and the DE |
-| `DeploymentTemplateReconciler` | [pkg/controller/reconciler/deploymenttemplate_reconciler.go](../../pkg/controller/reconciler/deploymenttemplate_reconciler.go) | Kubernetes reconciler for `DeploymentTemplate` CRDs |
-| `bicepDriver` | [pkg/recipes/driver/bicep/bicep.go](../../pkg/recipes/driver/bicep/bicep.go) | Recipe driver that deploys Bicep templates via the DE |
+| Type                                  | Location                                                                                                                       | Purpose                                                                                                                                  |
+|---------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| `ResourceDeploymentsClient`           | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go)                             | Interface for creating/deleting deployments                                                                                              |
+| `ResourceDeploymentsClientImpl`       | Same file                                                                                                                      | HTTP implementation that talks to UCP                                                                                                    |
+| `ResourceDeploymentOperationsClient`  | [pkg/sdk/clients/resourcedeploymentoperationsclient.go](../../pkg/sdk/clients/resourcedeploymentoperationsclient.go)           | Client for listing deployment operations (progress)                                                                                      |
+| `Deployment` / `DeploymentProperties` | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go)                             | Request payload containing template, parameters, and provider config                                                                     |
+| `ProviderConfig`                      | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go)                             | Scopes for Radius, Azure, AWS, and deployment targets (helper functions in [providerconfig.go](../../pkg/sdk/clients/providerconfig.go)) |
+| `ResourceDeploymentClient`            | [pkg/cli/deployment/deploy.go](../../pkg/cli/deployment/deploy.go)                                                             | CLI-layer wrapper that adds progress monitoring                                                                                          |
+| `ProxyController`                     | [pkg/ucp/frontend/controller/radius/proxy.go](../../pkg/ucp/frontend/controller/radius/proxy.go)                               | UCP controller that proxies requests to downstream RPs and the DE                                                                        |
+| `DeploymentTemplateReconciler`        | [pkg/controller/reconciler/deploymenttemplate_reconciler.go](../../pkg/controller/reconciler/deploymenttemplate_reconciler.go) | Kubernetes reconciler for `DeploymentTemplate` CRDs                                                                                      |
+| `bicepDriver`                         | [pkg/recipes/driver/bicep/bicep.go](../../pkg/recipes/driver/bicep/bicep.go)                                                   | Recipe driver that deploys Bicep templates via the DE                                                                                    |
 
 ## Deployment Lifecycle
 
