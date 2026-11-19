@@ -17,19 +17,19 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: renders the CAs and issuers in dry run
+  - it: renders the CAs, issuers, and SPIFFE server certificates in dry run
     set:
       global.rbac.dryRun: true
     asserts:
       - hasDocuments:
-          count: 5
+          count: 8
 
   - it: renders the self-signed bootstrap issuer and Radius CA
     set:
       global.rbac.enabled: true
     asserts:
       - hasDocuments:
-          count: 5
+          count: 8
       - isKind:
           of: Issuer
         documentIndex: 0
@@ -89,57 +89,57 @@ tests:
     asserts:
       - isKind:
           of: Certificate
-        documentIndex: 3
+        documentIndex: 6
       - equal:
           path: metadata.name
           value: radius-apiserver-ca
-        documentIndex: 3
+        documentIndex: 6
       - equal:
           path: metadata.namespace
           value: radius-system
-        documentIndex: 3
+        documentIndex: 6
       - equal:
           path: spec.isCA
           value: true
-        documentIndex: 3
+        documentIndex: 6
       - equal:
           path: spec.secretName
           value: radius-apiserver-ca
-        documentIndex: 3
+        documentIndex: 6
       - equal:
           path: spec.privateKey
           value:
             algorithm: ECDSA
             size: 256
             rotationPolicy: Never
-        documentIndex: 3
+        documentIndex: 6
       - equal:
           path: spec.secretTemplate.annotations
           value:
             cert-manager.io/allow-direct-injection: "true"
-        documentIndex: 3
+        documentIndex: 6
       - equal:
           path: spec.issuerRef
           value:
             group: cert-manager.io
             kind: Issuer
             name: radius-selfsigned-bootstrap
-        documentIndex: 3
+        documentIndex: 6
       - isKind:
           of: Issuer
-        documentIndex: 4
+        documentIndex: 7
       - equal:
           path: metadata.name
           value: radius-apiserver-issuer
-        documentIndex: 4
+        documentIndex: 7
       - equal:
           path: metadata.namespace
           value: radius-system
-        documentIndex: 4
+        documentIndex: 7
       - equal:
           path: spec.ca.secretName
           value: radius-apiserver-ca
-        documentIndex: 4
+        documentIndex: 7
 
   - it: uses the release namespace for the API server CA and issuer
     release:
@@ -150,11 +150,11 @@ tests:
       - equal:
           path: metadata.namespace
           value: custom-ns
-        documentIndex: 3
+        documentIndex: 6
       - equal:
           path: metadata.namespace
           value: custom-ns
-        documentIndex: 4
+        documentIndex: 7
 
   - it: renders no per-component client certificates
     set:
@@ -190,6 +190,115 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: "global.rbac.certificates.mode=\"bogus\" is not valid. Use selfSigned."
+
+  - it: renders a SPIFFE server certificate for each receiver
+    set:
+      global.rbac.enabled: true
+    asserts:
+      - containsDocument:
+          kind: Certificate
+          apiVersion: cert-manager.io/v1
+          name: ucp-spiffe
+          namespace: radius-system
+          any: true
+      - containsDocument:
+          kind: Certificate
+          apiVersion: cert-manager.io/v1
+          name: applications-rp-spiffe
+          namespace: radius-system
+          any: true
+      - containsDocument:
+          kind: Certificate
+          apiVersion: cert-manager.io/v1
+          name: dynamic-rp-spiffe
+          namespace: radius-system
+          any: true
+
+  - it: issues the ucp SPIFFE server certificate with only its SPIFFE ID and server auth
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: metadata.name
+      value: ucp-spiffe
+    asserts:
+      - equal:
+          path: spec
+          value:
+            secretName: ucp-spiffe
+            duration: 24h
+            renewBefore: 8h
+            privateKey:
+              algorithm: ECDSA
+              size: 256
+              rotationPolicy: Always
+            usages:
+              - digital signature
+              - server auth
+            uris:
+              - spiffe://radius.internal/ns/radius-system/sa/ucp
+            issuerRef:
+              group: cert-manager.io
+              kind: Issuer
+              name: radius-ca-issuer
+
+  - it: uses the receiver's ServiceAccount and the configured trust domain in the SPIFFE ID
+    set:
+      global.rbac.dryRun: true
+      global.rbac.spiffe.trustDomain: example.org
+    documentSelector:
+      path: metadata.name
+      value: dynamic-rp-spiffe
+    asserts:
+      - equal:
+          path: spec.uris
+          value: [spiffe://example.org/ns/radius-system/sa/dynamic-rp]
+      - equal:
+          path: spec.secretName
+          value: dynamic-rp-spiffe
+      - notExists:
+          path: spec.dnsNames
+
+  - it: fails for a trust domain with a path segment
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org/team
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got \"example.org/team\""
+
+  - it: fails for a trust domain with uppercase letters or a scheme in dryRun
+    set:
+      global.rbac.dryRun: true
+      global.rbac.spiffe.trustDomain: spiffe://Example.org
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got \"spiffe://Example.org\""
+
+  - it: fails for a trust domain longer than 255 characters
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    asserts:
+      - failedTemplate: {}
+
+  - it: does not validate the trust domain when the mode is off
+    set:
+      global.rbac.spiffe.trustDomain: example.org/team
+    asserts:
+      - notFailedTemplate: {}
+
+  - it: issues no certificate to the bootstrap issuer except the two CAs
+    set:
+      global.rbac.enabled: true
+    documentSelector:
+      path: spec.issuerRef.name
+      value: radius-selfsigned-bootstrap
+      matchMany: true
+      skipEmptyTemplates: true
+    asserts:
+      - matchRegex:
+          path: metadata.name
+          pattern: ^radius-(apiserver-)?ca$
 
   - it: fails for a false mode instead of defaulting
     set:

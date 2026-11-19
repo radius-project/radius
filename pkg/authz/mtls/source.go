@@ -35,8 +35,7 @@ import (
 )
 
 const (
-	// CertFile, KeyFile, and CAFile are the file names that csi-driver-spiffe writes, which
-	// match a mounted kubernetes.io/tls Secret.
+	// CertFile, KeyFile, and CAFile are the file names of a mounted kubernetes.io/tls Secret.
 	CertFile = "tls.crt"
 	KeyFile  = "tls.key"
 	CAFile   = "ca.crt"
@@ -63,8 +62,8 @@ type material struct {
 }
 
 // Source holds a component's certificate, key, and CA bundle loaded from a directory,
-// such as a csi-driver-spiffe volume. Start reloads them when the files change. Kubelet
-// and CSI drivers update volumes by swapping a symlink, so Source polls file contents
+// such as a mounted Secret volume. Start reloads them when the files change. Kubelet
+// updates Secret volumes by swapping a symlink, so Source polls file contents
 // rather than watching individual files.
 type Source struct {
 	dir      string
@@ -85,8 +84,8 @@ func NewSource(dir string) (*Source, error) {
 }
 
 // NewSourceWithCA loads the certificate and key from dir and the CA bundle (ca.crt) from
-// caDir. Radius receivers use it because csi-driver-spiffe writes only tls.crt and tls.key;
-// the Radius CA bundle is mounted separately from the radius-ca Secret.
+// caDir. Radius receivers use it because their <receiver>-spiffe Secret volume projects only
+// tls.crt and tls.key; the Radius CA bundle is mounted separately from the radius-ca Secret.
 func NewSourceWithCA(dir, caDir string) (*Source, error) {
 	return newSource(dir, caDir, certAndTrust)
 }

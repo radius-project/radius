@@ -78,16 +78,18 @@ is responsible for:
 
 The deployment engine is configured via environment variables:
 
-| Variable | Purpose | Example |
-| --- | --- | --- |
-| `RADIUSBACKENDURL` | UCP endpoint for callbacks | `https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3` |
-| `ASPNETCORE_URLS` | Listening URL | `http://+:6443` |
-| `ARM_AUTH_METHOD` | Authentication method | `UCPCredential` |
-| `SKIP_ARM` | Skip Azure ARM integration | `true` / `false` |
-| `kubernetes` | Enable Kubernetes mode | `true` |
+| Variable           | Purpose                    | Example                                                       |
+|--------------------|----------------------------|---------------------------------------------------------------|
+| `RADIUSBACKENDURL` | UCP endpoint for callbacks | `https://ucp.radius-system.svc:443/apis/api.ucp.dev/v1alpha3` |
+| `ASPNETCORE_URLS`  | Listening URL              | `http://+:6443`                                               |
+| `ARM_AUTH_METHOD`  | Authentication method      | `UCPCredential`                                               |
+| `SKIP_ARM`         | Skip Azure ARM integration | `true` / `false`                                              |
+| `kubernetes`       | Enable Kubernetes mode     | `true`                                                        |
 
-In production the `RADIUSBACKENDURL` points to the UCP service inside the
-cluster (`https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3`). In
+In production the `RADIUSBACKENDURL` points to the UCP service in the release
+namespace
+(`https://ucp.<namespace>.svc:443/apis/api.ucp.dev/v1alpha3`), a name
+in the certificate UCP serves. In
 development, debug scripts/manifests set it to host-reachable UCP endpoints
 such as `http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3` (Docker
 debug) or `http://host.k3d.internal:9000/apis/api.ucp.dev/v1alpha3`
@@ -334,17 +336,17 @@ graph LR
 
 ### Key Interfaces and Types
 
-| Type | Location | Purpose |
-| --- | --- | --- |
-| `ResourceDeploymentsClient` | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go) | Interface for creating/deleting deployments |
-| `ResourceDeploymentsClientImpl` | Same file | HTTP implementation that talks to UCP |
-| `ResourceDeploymentOperationsClient` | [pkg/sdk/clients/resourcedeploymentoperationsclient.go](../../pkg/sdk/clients/resourcedeploymentoperationsclient.go) | Client for listing deployment operations (progress) |
-| `Deployment` / `DeploymentProperties` | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go) | Request payload containing template, parameters, and provider config |
-| `ProviderConfig` | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go) | Scopes for Radius, Azure, AWS, and deployment targets (helper functions in [providerconfig.go](../../pkg/sdk/clients/providerconfig.go)) |
-| `ResourceDeploymentClient` | [pkg/cli/deployment/deploy.go](../../pkg/cli/deployment/deploy.go) | CLI-layer wrapper that adds progress monitoring |
-| `ProxyController` | [pkg/ucp/frontend/controller/radius/proxy.go](../../pkg/ucp/frontend/controller/radius/proxy.go) | UCP controller that proxies requests to downstream RPs and the DE |
-| `DeploymentTemplateReconciler` | [pkg/controller/reconciler/deploymenttemplate_reconciler.go](../../pkg/controller/reconciler/deploymenttemplate_reconciler.go) | Kubernetes reconciler for `DeploymentTemplate` CRDs |
-| `bicepDriver` | [pkg/recipes/driver/bicep/bicep.go](../../pkg/recipes/driver/bicep/bicep.go) | Recipe driver that deploys Bicep templates via the DE |
+| Type                                  | Location                                                                                                                       | Purpose                                                                                                                                  |
+|---------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| `ResourceDeploymentsClient`           | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go)                             | Interface for creating/deleting deployments                                                                                              |
+| `ResourceDeploymentsClientImpl`       | Same file                                                                                                                      | HTTP implementation that talks to UCP                                                                                                    |
+| `ResourceDeploymentOperationsClient`  | [pkg/sdk/clients/resourcedeploymentoperationsclient.go](../../pkg/sdk/clients/resourcedeploymentoperationsclient.go)           | Client for listing deployment operations (progress)                                                                                      |
+| `Deployment` / `DeploymentProperties` | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go)                             | Request payload containing template, parameters, and provider config                                                                     |
+| `ProviderConfig`                      | [pkg/sdk/clients/resourcedeploymentsclient.go](../../pkg/sdk/clients/resourcedeploymentsclient.go)                             | Scopes for Radius, Azure, AWS, and deployment targets (helper functions in [providerconfig.go](../../pkg/sdk/clients/providerconfig.go)) |
+| `ResourceDeploymentClient`            | [pkg/cli/deployment/deploy.go](../../pkg/cli/deployment/deploy.go)                                                             | CLI-layer wrapper that adds progress monitoring                                                                                          |
+| `ProxyController`                     | [pkg/ucp/frontend/controller/radius/proxy.go](../../pkg/ucp/frontend/controller/radius/proxy.go)                               | UCP controller that proxies requests to downstream RPs and the DE                                                                        |
+| `DeploymentTemplateReconciler`        | [pkg/controller/reconciler/deploymenttemplate_reconciler.go](../../pkg/controller/reconciler/deploymenttemplate_reconciler.go) | Kubernetes reconciler for `DeploymentTemplate` CRDs                                                                                      |
+| `bicepDriver`                         | [pkg/recipes/driver/bicep/bicep.go](../../pkg/recipes/driver/bicep/bicep.go)                                                   | Recipe driver that deploys Bicep templates via the DE                                                                                    |
 
 ## Deployment Lifecycle
 

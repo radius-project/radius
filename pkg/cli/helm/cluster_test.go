@@ -113,6 +113,7 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 		Helm:                        mockHelmClient,
 		removeDefaultContourGateway: gatewayCalls.remove,
 		newUCPAPIServerTrustClient:  uninstallTrustClient,
+		newCertManagerDynamicClient: uninstallStageClient,
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -133,13 +134,11 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 			Times(1)
 	}
 
-	// csi-driver-spiffe and cert-manager are removed only when rad installed them; here they are not installed.
-	for _, name := range []string{csiDriverSPIFFEReleaseName, certManagerReleaseName} {
-		mockHelmClient.EXPECT().
-			RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), name).
-			Return(nil, driver.ErrReleaseNotFound).
-			Times(1)
-	}
+	// cert-manager is removed only when rad installed it; here it is not installed.
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), certManagerReleaseName).
+		Return(nil, driver.ErrReleaseNotFound).
+		Times(1)
 
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err)
@@ -156,6 +155,7 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 		Helm:                        mockHelmClient,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
 		newUCPAPIServerTrustClient:  uninstallTrustClient,
+		newCertManagerDynamicClient: uninstallStageClient,
 	}
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -179,13 +179,11 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 			Times(1)
 	}
 
-	// csi-driver-spiffe and cert-manager are removed only when rad installed them; here they are not installed.
-	for _, name := range []string{csiDriverSPIFFEReleaseName, certManagerReleaseName} {
-		mockHelmClient.EXPECT().
-			RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), name).
-			Return(nil, driver.ErrReleaseNotFound).
-			Times(1)
-	}
+	// cert-manager is removed only when rad installed it; here it is not installed.
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), certManagerReleaseName).
+		Return(nil, driver.ErrReleaseNotFound).
+		Times(1)
 
 	err := impl.UninstallRadius(ctx, options, kubeContext)
 	require.NoError(t, err) // ErrReleaseNotFound should be swallowed
@@ -412,6 +410,8 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
+
+	expectNoRadiusHistory(mockHelmClient)
 	gatewayCalls := &defaultContourGatewayCalls{}
 	impl := withoutUCPAPIService(&Impl{
 		Helm:                           mockHelmClient,
@@ -503,6 +503,8 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
+
+	expectNoRadiusHistory(mockHelmClient)
 	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient})
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -658,7 +660,9 @@ func Test_Helm_UpgradeRadius_RadiusUpgradeError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient}
+
+	expectNoRadiusHistory(mockHelmClient)
+	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient})
 	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
@@ -700,6 +704,8 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
+
+	expectNoRadiusHistory(mockHelmClient)
 	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient, contourCluster: staticCRDs()})
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -812,6 +818,8 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
+
+	expectNoRadiusHistory(mockHelmClient)
 	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient})
 	ctx := t.Context()
 	kubeContext := "test-context"
@@ -1084,7 +1092,7 @@ func Test_Helm_RollbackRadiusToRevision_RollbackError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockHelmClient := NewMockHelmClient(ctrl)
-	impl := &Impl{Helm: mockHelmClient}
+	impl := withoutUCPAPIService(&Impl{Helm: mockHelmClient})
 	ctx := t.Context()
 	kubeContext := "test-context"
 	targetRevision := 1
@@ -1335,4 +1343,10 @@ func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {
 	// Should return AppVersion (v0.43.0) instead of chart Version (1.0.0)
 	require.Equal(t, "v0.43.0", state.RadiusVersion)
 	require.Equal(t, "", state.ContourVersion)
+}
+
+// expectNoRadiusHistory lets rad read the history of the Radius release, which it does before it upgrades Radius with
+// authorization off, and returns none, which deployedAuthzMode reads as a release with authorization off.
+func expectNoRadiusHistory(client *MockHelmClient) {
+	client.EXPECT().RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return(nil, nil).AnyTimes()
 }

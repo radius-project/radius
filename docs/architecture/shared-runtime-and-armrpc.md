@@ -138,9 +138,10 @@ presents a client certificate.
   the server's allowed list get `403 AuthorizationFailed`. `applications-rp`
   and `dynamic-rp` allow only the `ucp` identity.
 
-Each receiver presents the csi-driver-spiffe certificate mounted at
-`/var/run/radius/spiffe` (`tls.crt`, `tls.key`), whose only SAN is the
-URI `spiffe://<trustDomain>/ns/<namespace>/sa/<service account>`. It requests no
+Each receiver presents the certificate that cert-manager issues to it in Secret
+`<receiver>-spiffe`, mounted at `/var/run/radius/spiffe` (`tls.crt`,
+`tls.key`), whose only SAN is the URI
+`spiffe://<trustDomain>/ns/<namespace>/sa/<service account>`. It requests no
 client certificate. It verifies the `Authorization: Bearer` token offline with
 [pkg/authz/token](../../pkg/authz/token/verifier.go), requiring the receiver's
 name as the audience, maps the ServiceAccount to the caller's
@@ -149,25 +150,21 @@ handler. Probes and metrics stay on their plain ports.
 
 Callers build transports with `mtls.NewClientTransport` and
 `mtls.NewUpgradeTransport` in [pkg/authz/mtls/client.go](../../pkg/authz/mtls/client.go).
-They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and require exactly
-one SAN, a URI SAN with the receiver's SPIFFE ID, instead of matching DNS
-names; a certificate with any DNS, IP, email, or other SAN is rejected. Only
-after the server is verified do they send the token from
+They verify the server's chain against `ca.crt` in `/var/run/radius/ca` and
+require exactly one SAN, a URI SAN with the receiver's SPIFFE ID, instead of
+matching DNS names; a certificate with any DNS, IP, email, or other SAN is
+rejected. Only after the server is verified do they send the token from
 `/var/run/radius/tokens/<receiver>/token`, which they re-read when it changes.
-Every component projects only `ca.crt` from the `radius-ca` Secret (never
-`tls.key`) to `/var/run/radius/ca`, because csi-driver-spiffe writes no `ca.crt`
-without a configured source CA bundle. Servers chain their certificate to it and
-clients verify servers against it. The `radius-ca` CA signs only these
-SPIFFE server certificates; in the `selfSigned` certificate mode (the only one
-supported today), UCP's aggregated API certificate comes from the separate
-`radius-apiserver-ca`, which Radius components do not trust. Only the
-Kubernetes API server trusts that CA: cert-manager's cainjector copies `ca.crt`
-of the `radius-apiserver-ca` Secret into the APIService `caBundle` and follows
-its renewals.
-The API server does trust it for UCP, so the `radius-certificate-issuance`
-ValidatingAdmissionPolicy lets only the cert-manager controller request from
-`radius-apiserver-issuer` and `radius-selfsigned-bootstrap`, and limits Radius
-ServiceAccounts to `radius-ca-issuer`.
+UCP, Applications RP, Dynamic RP, and the controller project only `ca.crt`
+from the `radius-ca` Secret (never
+`tls.key`) to `/var/run/radius/ca`; the server certificate volume projects no
+`ca.crt`. Servers chain their certificate to it and clients verify servers
+against it. The `radius-ca` CA signs only these SPIFFE server certificates; in
+the `selfSigned` certificate mode (the only one supported today), UCP's
+aggregated API certificate comes from the separate `radius-apiserver-ca`, which
+Radius components do not trust. Only the Kubernetes API server trusts that CA:
+cert-manager's cainjector copies `ca.crt` of the `radius-apiserver-ca` Secret
+into the APIService `caBundle` and follows its renewals.
 
 Certificate and CA files are reloaded by polling (every 10 seconds) without a
 restart; new handshakes use the new material. Before each request, a client

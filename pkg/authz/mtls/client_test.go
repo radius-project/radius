@@ -231,9 +231,11 @@ func TestUpgradeTransport_RejectsWrongServer(t *testing.T) {
 func TestClientTransport_NoTokenWithoutVerifiedServer(t *testing.T) {
 	ca := newCA(t)
 	for name, cert := range map[string]testCert{
-		"wrong SPIFFE ID": ca.issue(t, certOptions{uris: spiffeURIs("controller")}),
-		"wrong CA":        newCA(t).issue(t, certOptions{uris: spiffeURIs("applications-rp")}),
-		"DNS SAN only":    ca.issue(t, certOptions{dnsNames: []string{"applications-rp.radius-system.svc"}}),
+		"wrong SPIFFE ID":             ca.issue(t, certOptions{uris: spiffeURIs("controller")}),
+		"wrong CA":                    newCA(t).issue(t, certOptions{uris: spiffeURIs("applications-rp")}),
+		"DNS SAN only":                ca.issue(t, certOptions{dnsNames: []string{"applications-rp.radius-system.svc"}}),
+		"no extended key usage":       ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), extKeyUsage: []x509.ExtKeyUsage{}}),
+		"any extended key usage only": ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}}),
 	} {
 		t.Run(name, func(t *testing.T) {
 			ln, err := tls.Listen("tcp", "127.0.0.1:0", staticServer(t, cert))
@@ -271,6 +273,77 @@ func TestClientTransport_RefusesPlainHTTP(t *testing.T) {
 
 	_, err = (&http.Client{Transport: transport}).Get("http://" + srv.url)
 	require.ErrorContains(t, err, "must use https")
+	require.Empty(t, srv.seen)
+}
+
+// closeRecorder is a request body that records whether it was closed.
+type closeRecorder struct {
+	io.Reader
+	closed atomic.Bool
+}
+
+func (b *closeRecorder) Close() error {
+	b.closed.Store(true)
+	return nil
+}
+
+// TestClientTransport_ClosesBodyOnEarlyError checks the RoundTripper contract: RoundTrip
+// closes the request body when it fails before the underlying transport takes the request,
+// and the underlying transport closes it otherwise.
+func TestClientTransport_ClosesBodyOnEarlyError(t *testing.T) {
+	ca := newCA(t)
+	srv := startServer(t, ca, authz.ModeEnforce)
+	options := clientOptions(t, ca.pem, authz.ModeEnforce)
+	transport, err := newClientTransport(options, "applications-rp")
+	require.NoError(t, err)
+	transport.DialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		return (&net.Dialer{}).DialContext(ctx, network, srv.url)
+	}
+	t.Cleanup(transport.CloseIdleConnections)
+
+	roundTrip := func(t *testing.T, url string) (*closeRecorder, error) {
+		t.Helper()
+		body := &closeRecorder{Reader: strings.NewReader("body")}
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, url, body)
+		require.NoError(t, err)
+		resp, err := transport.RoundTrip(req)
+		if resp != nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
+		}
+		return body, err
+	}
+
+	t.Run("success", func(t *testing.T) {
+		body, err := roundTrip(t, "https://applications-rp.radius-system.svc:5443/")
+		require.NoError(t, err)
+		require.Equal(t, "ucp.radius-system.svc", (<-srv.seen).identity.String())
+		require.Eventually(t, body.closed.Load, 5*time.Second, 10*time.Millisecond)
+	})
+
+	t.Run("plain HTTP", func(t *testing.T) {
+		body, err := roundTrip(t, "http://applications-rp.radius-system.svc:5443/")
+		require.ErrorContains(t, err, "must use https")
+		require.True(t, body.closed.Load())
+	})
+
+	t.Run("unreadable token", func(t *testing.T) {
+		// Both transports read the token when they are created, so create them first.
+		upgrade, err := NewUpgradeTransport(options, http.DefaultTransport, []string{"applications-rp"})
+		require.NoError(t, err)
+		require.NoError(t, os.Remove(filepath.Join(options.TokenDirectory, "applications-rp", TokenFile)))
+
+		body, err := roundTrip(t, "https://applications-rp.radius-system.svc:5443/")
+		require.ErrorContains(t, err, "failed to read ServiceAccount token")
+		require.True(t, body.closed.Load())
+
+		body = &closeRecorder{Reader: strings.NewReader("body")}
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://applications-rp.radius-system.svc:5443/", body)
+		require.NoError(t, err)
+		_, err = upgrade.RoundTrip(req)
+		require.ErrorContains(t, err, "failed to read ServiceAccount token")
+		require.True(t, body.closed.Load(), "the upgrade transport must close the body too")
+	})
 	require.Empty(t, srv.seen)
 }
 

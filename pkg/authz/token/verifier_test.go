@@ -23,6 +23,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/base64"
 	"errors"
 	"maps"
 	"net/http"
@@ -319,6 +320,38 @@ func TestVerify_Leeway(t *testing.T) {
 	requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
 }
 
+// signES384WithP256 signs claims as ES384 using a P-256 key: a SHA-384 digest with r and s
+// padded to 48 bytes, which is the signature length ES384 expects. RFC 7518 section 3.4
+// requires ES384 to use P-384, so the standard signer refuses to produce this token.
+func signES384WithP256(t *testing.T, kid string, claims jwt.MapClaims) string {
+	t.Helper()
+	tok := jwt.NewWithClaims(jwt.SigningMethodES384, claims)
+	tok.Header["kid"] = kid
+	signingString, err := tok.SigningString()
+	require.NoError(t, err)
+	digest := crypto.SHA384.New()
+	digest.Write([]byte(signingString))
+	r, s, err := ecdsa.Sign(rand.Reader, ecKey, digest.Sum(nil))
+	require.NoError(t, err)
+	sig := make([]byte, 96)
+	r.FillBytes(sig[:48])
+	s.FillBytes(sig[48:])
+	return signingString + "." + base64.RawURLEncoding.EncodeToString(sig)
+}
+
+func TestVerify_ECDSACurveMustMatchAlgorithm(t *testing.T) {
+	clock := &fakeClock{now: start}
+	v := newTestVerifier(t, newFakeSource(defaultKeys()), clock)
+	require.NoError(t, v.Refresh(t.Context()))
+
+	_, err := v.Verify(t.Context(), signES384WithP256(t, "ec", claimsFor("ucp", start)))
+	requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
+
+	// The same key still verifies ES256, its matching algorithm.
+	_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodES256, "ec", ecKey, claimsFor("ucp", start)))
+	require.NoError(t, err)
+}
+
 func TestVerify_ConfiguredIssuer(t *testing.T) {
 	clock := &fakeClock{now: start}
 	v, err := New(Config{Namespace: testNamespace, Audience: testAudience, Keys: newFakeSource(defaultKeys()), Now: clock.Now, Issuer: "https://configured"})
@@ -342,6 +375,13 @@ func TestVerifyRequest(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	r.Header.Set("Authorization", "Bearer "+sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", start)))
 	id, err := v.VerifyRequest(r)
+	require.NoError(t, err)
+	require.Equal(t, "ucp."+testNamespace+".svc", id.String())
+
+	// RFC 6750 section 2.1 allows one or more spaces after the scheme.
+	r = httptest.NewRequest(http.MethodGet, "/", nil)
+	r.Header.Set("Authorization", "Bearer   "+sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", start)))
+	id, err = v.VerifyRequest(r)
 	require.NoError(t, err)
 	require.Equal(t, "ucp."+testNamespace+".svc", id.String())
 
@@ -607,6 +647,76 @@ func TestVerify_StaleKeysRejectEveryRequest(t *testing.T) {
 		_, err := v.Verify(t.Context(), "")
 		requireCode(t, err, v1.CodeAuthorizationUnavailable)
 	})
+}
+
+// blockingSource blocks each Fetch after the first until release is closed or the
+// fetch's context ends.
+type blockingSource struct {
+	*fakeSource
+	started chan struct{}
+	release chan struct{}
+	calls   int
+	mu      sync.Mutex
+}
+
+func (s *blockingSource) Fetch(ctx context.Context) (KeySet, error) {
+	s.mu.Lock()
+	s.calls++
+	first := s.calls == 1
+	s.mu.Unlock()
+	if !first {
+		s.started <- struct{}{}
+		select {
+		case <-s.release:
+		case <-ctx.Done():
+			return KeySet{}, ctx.Err()
+		}
+	}
+	return s.fakeSource.Fetch(ctx)
+}
+
+func TestRefresh_WaitForRefreshInProgressHonorsContext(t *testing.T) {
+	clock := &fakeClock{now: time.Unix(1_700_000_000, 0)}
+	source := &blockingSource{fakeSource: newFakeSource(defaultKeys()), started: make(chan struct{}, 1), release: make(chan struct{})}
+	v, err := New(Config{Namespace: testNamespace, Audience: testAudience, Keys: source, Now: clock.Now, FetchTimeout: time.Hour})
+	require.NoError(t, err)
+	require.NoError(t, v.Refresh(t.Context()))
+
+	holder := make(chan error, 1)
+	go func() { holder <- v.Refresh(t.Context()) }()
+	<-source.started
+
+	cancelled, cancel := context.WithCancel(t.Context())
+	cancel()
+	unknown := sign(t, jwt.SigningMethodRS256, "rotated", rsaKey, claimsFor("ucp", clock.Now()))
+	waiters := map[string]func() error{
+		"Refresh": func() error { return v.Refresh(cancelled) },
+		"Verify with unknown key": func() error {
+			_, err := v.Verify(cancelled, unknown)
+			return err
+		},
+	}
+	for name, call := range waiters {
+		t.Run(name, func(t *testing.T) {
+			done := make(chan error, 1)
+			go func() { done <- call() }()
+			select {
+			case err := <-done:
+				require.Error(t, err)
+				if name == "Refresh" {
+					require.ErrorIs(t, err, context.Canceled)
+				} else {
+					requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("a cancelled caller kept waiting for the refresh in progress")
+			}
+		})
+	}
+
+	close(source.release)
+	require.NoError(t, <-holder)
+	require.NoError(t, v.Refresh(t.Context()), "a later refresh succeeds once the gate is free")
 }
 
 func TestRefresh_KeepsKeysOnFailure(t *testing.T) {

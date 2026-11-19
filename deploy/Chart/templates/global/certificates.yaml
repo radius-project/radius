@@ -45,8 +45,7 @@ spec:
     kind: Issuer
     name: radius-selfsigned-bootstrap
 ---
-# Signs only the csi-driver-spiffe server certificates; Radius's csi-driver-spiffe approver is the
-# only approver allowed to approve its requests.
+# Signs only the "<receiver>-spiffe" server certificates below.
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -57,11 +56,45 @@ metadata:
 spec:
   ca:
     secretName: radius-ca
+{{- $trustDomain := include "radius.authz.spiffe.trustDomain" . }}
+{{- range $receiver := include "radius.authz.spiffe.receivers" . | fromJsonArray }}
+---
+# Server certificate for internal calls to {{ $receiver }}. Its only SAN is the SPIFFE ID of the
+# {{ $receiver }} ServiceAccount, which callers verify. The pod mounts Secret {{ $receiver }}-spiffe
+# read-only. cert-manager requests these certificates; the earlier receiver CertificateRequest
+# grant is removed. Existing privileges (bicep-de's cluster-admin and UCP/RP Secret access)
+# remain until the control-plane isolation work.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $receiver }}-spiffe
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: {{ $receiver }}
+    app.kubernetes.io/part-of: radius
+spec:
+  secretName: {{ $receiver }}-spiffe
+  # 24 hours, renewed at two-thirds of its lifetime.
+  duration: 24h
+  renewBefore: 8h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - server auth
+  uris:
+    - spiffe://{{ $trustDomain }}/ns/{{ $ns }}/sa/{{ $receiver }}
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: radius-ca-issuer
+{{- end }}
 ---
 # UCP's aggregated API certificate has its own CA, independent of global.rbac.certificates.mode.
 # Only the Kubernetes API server trusts it (through the APIService caBundle); no Radius component
-# mounts it. cert-manager's default approver approves its requests; it must not approve requests
-# for radius-ca-issuer, which only Radius's csi-driver-spiffe approver approves.
+# mounts it.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

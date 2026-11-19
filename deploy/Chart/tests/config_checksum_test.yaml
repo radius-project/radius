@@ -29,7 +29,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 02a34436a937996011e86fc809c87973b61aed4b53132adc3ade230dcbf5568a
+          value: a8235814f5d8f0ba57e9a9251d3ae650ea7f7fcb8cd2ba0a6717c49a05aa66e2
 
   - it: hashes the enforce mode
     set:
@@ -37,25 +37,27 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: f32a75024b850219eeba205e23b2a06eb37358c760a96fdb6af28550834af115
+          value: 1168e8ad578671079e58691b022feab5236004c0855be916295a8004c1081e4b
 
-  - it: changes the checksum when the trust domain changes
+  # Clients fix the receiver's expected SPIFFE ID at startup, so a trust-domain-only
+  # upgrade must roll every caller.
+  - it: changes the dryRun checksum for a trust-domain-only upgrade
+    set:
+      global.rbac.dryRun: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: bf665dd31bba41fd0528b85e2866902b68861925d866cf3fc368c5fa8af32d52
+
+  - it: changes the enforce checksum for a trust-domain-only upgrade
     set:
       global.rbac.enabled: true
       global.rbac.spiffe.trustDomain: example.org
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: fdce8307a373dbc3a1087e6a8938abaceecf90fd26a9b6f720946d9f7cd351ff
-
-  - it: changes the checksum when the CSI driver name changes
-    set:
-      global.rbac.enabled: true
-      global.rbac.spiffe.csiDriverName: spiffe.example.org
-    asserts:
-      - equal:
-          path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 391983fba120037f0bebcb5c4dd866f19dc0ad8e2f145b93dbb4ad76ade42279
+          value: e4005fee65cb5f6057040b6a53597bcc2ae8745519998fc6d49df415e91b9c3c
 
   - it: ignores the trust domain when authorization is off
     set:

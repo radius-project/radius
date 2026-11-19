@@ -17,11 +17,13 @@ limitations under the License.
 package helm
 
 import (
+	"encoding/base64"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -61,7 +63,7 @@ func ucpAPIServiceDynamicClient(objects ...runtime.Object) dynamic.Interface {
 
 // readyUCPAPIServiceClient returns a client for a cluster whose UCP APIService has a CA bundle and is Available.
 func readyUCPAPIServiceClient(string) (dynamic.Interface, error) {
-	return ucpAPIServiceDynamicClient(ucpAPIService("Y2E=", "True", "Passed")), nil
+	return ucpAPIServiceDynamicClient(ucpAPIService(base64.StdEncoding.EncodeToString(issuedUCPAPIServerCA()), "True", "Passed")), nil
 }
 
 // withoutUCPAPIService makes impl see a cluster without the UCP APIService, so the step that removes trust left by
@@ -83,12 +85,12 @@ func Test_waitForUCPAPIService(t *testing.T) {
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return ucpAPIServiceDynamicClient(), nil },
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubefake.NewSimpleClientset(), nil },
 	}
-	require.NoError(t, off.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff))
+	require.NoError(t, off.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff, nil))
 	unreachable := &Impl{
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return nil, errors.New("no cluster") },
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubefake.NewSimpleClientset(), nil },
 	}
-	require.ErrorContains(t, unreachable.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff), "no cluster")
+	require.ErrorContains(t, unreachable.waitForUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, authz.ModeOff, nil), "no cluster")
 
 	tests := []struct {
 		name    string
@@ -108,7 +110,7 @@ func Test_waitForUCPAPIService(t *testing.T) {
 			wantErr: []string{
 				"it has no CA bundle",
 				"ca.crt of Secret radius-system/radius-apiserver-ca",
-				"kubectl --context \"test-context\" -n radius-system get secret radius-apiserver-ca -o yaml",
+				"kubectl --context \"test-context\" -n radius-system get secret radius-apiserver-ca -o jsonpath='{.data.ca\\.crt}'",
 				"kubectl --context \"test-context\" get pods -A -l app.kubernetes.io/component=cainjector",
 			},
 		},
@@ -136,6 +138,9 @@ func Test_waitForUCPAPIService(t *testing.T) {
 				return
 			}
 			require.Error(t, err)
+			// The Secret holds the CA's private key; diagnostics must never print the whole Secret.
+			require.NotContains(t, err.Error(), "-o yaml\n")
+			require.NotContains(t, err.Error(), "get secret "+ucpAPIServerCASecretName+" -o yaml")
 			for _, want := range tt.wantErr {
 				require.Contains(t, err.Error(), want)
 			}
@@ -164,4 +169,68 @@ func Test_waitForRolledBackUCPAPIService(t *testing.T) {
 	// Rolling back to a revision with authorization on waits for the API server CA.
 	err := impl.waitForRolledBackUCPAPIService(t.Context(), "test-context", RadiusSystemNamespace, history, 2)
 	require.ErrorContains(t, err, "Secret radius-system/radius-apiserver-ca is not usable")
+}
+
+// A chart before radius-apiserver-ca accepts the values of authorization on but serves UCP from the Secret ucp-cert of
+// authorization off, so rad waits as for authorization off rather than for radius-apiserver-ca.
+func Test_waitForInstalledUCPAPIService_ChartWithoutAPIServerCA(t *testing.T) {
+	timeout, interval := ucpAPIServiceTimeout, ucpAPIServicePollInterval
+	ucpAPIServiceTimeout, ucpAPIServicePollInterval = 50*time.Millisecond, 10*time.Millisecond
+	t.Cleanup(func() { ucpAPIServiceTimeout, ucpAPIServicePollInterval = timeout, interval })
+	impl := &Impl{
+		newUCPAPIServerTrustClient: uninstallTrustClient,
+		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
+			return ucpAPIServiceDynamicClient(ucpAPIService("", "", "")), nil
+		},
+	}
+	options := NewDefaultClusterOptions()
+	options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
+	served := func(kind string) *releasev1.Release {
+		return &releasev1.Release{Version: 1, Manifest: "apiVersion: v1\nkind: " + kind + "\nmetadata:\n  name: ucp-cert\n"}
+	}
+
+	require.NoError(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Secret"), nil))
+	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Certificate"), nil), "Secret radius-system/radius-apiserver-ca is not usable")
+}
+
+func Test_deployedAuthzMode(t *testing.T) {
+	const certificate = "apiVersion: cert-manager.io/v1\nkind: Certificate\nmetadata:\n  name: ucp-cert\n"
+	const secret = "apiVersion: v1\nkind: Secret\nmetadata:\n  name: ucp-cert\n"
+	enforce := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true, "mode": "enforce"}}}
+	revision := func(version int, status releasecommon.Status, config map[string]any, manifest string) *releasev1.Release {
+		return &releasev1.Release{Version: version, Config: config, Manifest: manifest, Info: &releasev1.Info{Status: status}}
+	}
+
+	tests := []struct {
+		name    string
+		history []*releasev1.Release
+		want    authz.Mode
+		wantErr string
+	}{
+		{name: "no history", want: authz.ModeOff},
+		{name: "deployed on", history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed, enforce, certificate)}, want: authz.ModeEnforce},
+		{name: "deployed off", history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed, map[string]any{}, secret)}, want: authz.ModeOff},
+		{
+			name:    "failed revision above a deployed one is unknown",
+			history: []*releasev1.Release{revision(2, releasecommon.StatusFailed, map[string]any{}, secret), revision(1, releasecommon.StatusDeployed, enforce, certificate)},
+			want:    "",
+		},
+		{name: "chart that ignores its authorization values", history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed, enforce, secret)}, want: authz.ModeOff},
+		{
+			name:    "Certificate with authorization off",
+			history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed, map[string]any{}, certificate)},
+			wantErr: "Radius cannot tell which certificate",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := deployedAuthzMode(tt.history)
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }
