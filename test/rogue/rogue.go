@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/net/http/httpguts"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -367,9 +368,16 @@ func clientArgs(req Request, hasTLS bool) ([]string, error) {
 	}
 	for k := range req.Headers {
 		// rogue-client trims header names, so compare the name it will send.
-		if strings.EqualFold(strings.TrimSpace(k), "Authorization") {
+		name := strings.TrimSpace(k)
+		if strings.EqualFold(name, "Authorization") {
 			// The value is not echoed, so the error cannot leak the credential either.
 			return nil, errors.New("rogue: Authorization headers are not allowed because the command is sent in the exec request URL; send tokens with Receiver and a mounted token file")
+		}
+		// rogue-client splits each header at its first colon, so a name containing one
+		// could send a different header than the one checked above. The name is not
+		// echoed because it could contain a credential.
+		if !httpguts.ValidHeaderFieldName(name) {
+			return nil, errors.New("rogue: header names must be valid HTTP field names")
 		}
 	}
 
