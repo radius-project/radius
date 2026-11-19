@@ -377,7 +377,7 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		} else {
 			output.LogInfo("Installing Contour...")
 		}
-		_, err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
+		err = helmAction.ApplyHelmChart(kubeContext, contour.chart, contour.conf, contourOptions, contour.values)
 		if err != nil {
 			return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 		}
