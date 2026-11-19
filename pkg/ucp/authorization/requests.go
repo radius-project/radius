@@ -15,6 +15,16 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
+func trimPathBase(path, pathBase string) string {
+	if pathBase != "" && (path == pathBase || strings.HasPrefix(path, pathBase+"/")) {
+		path = strings.TrimPrefix(path, pathBase)
+		if path == "" {
+			path = "/"
+		}
+	}
+	return path
+}
+
 // ObserveRequests records DryRun target decisions without modifying workload
 // requests or responses. Authentication must run first. Reserved policy mutations
 // are rejected even with no runtime: no public safe policy/settings writer is
@@ -22,12 +32,13 @@ import (
 func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			path := r.URL.Path
-			if pathBase != "" && (path == pathBase || strings.HasPrefix(path, pathBase+"/")) {
-				path = strings.TrimPrefix(path, pathBase)
-				if path == "" {
-					path = "/"
-				}
+			path := trimPathBase(r.URL.Path, pathBase)
+			// chi routes on RawPath when it is set, so map that representation.
+			// Escaped segments fail path validation and are logged as indeterminate
+			// instead of being attributed to a handler the router may not select.
+			routePath := path
+			if r.URL.RawPath != "" {
+				routePath = trimPathBase(r.URL.RawPath, pathBase)
 			}
 			identity, verified := IdentityFromContext(r.Context())
 			logger := ucplog.FromContextOrDiscard(r.Context())
@@ -46,7 +57,7 @@ func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler)
 				next.ServeHTTP(w, r)
 				return
 			}
-			result, err := runtime.EvaluateRequest(identity, r.Method, path)
+			result, err := runtime.EvaluateRequest(identity, r.Method, routePath)
 			if result.Mode == api.UserAuthorizationModeEnforce && result.Mapping.Kind != DiscoveryRequest {
 				logger.Info("User authorization request", "result", "deny", "reason", "enforceUnsupported")
 				writeAuthorizationUnavailable(w, r)
