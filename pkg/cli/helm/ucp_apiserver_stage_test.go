@@ -565,6 +565,7 @@ func (u *stageUpgrade) mock(t *testing.T, upgrades int, beforeHelm func()) *Mock
 			})
 		return client
 	}
+	client.EXPECT().MigrateControllerStrategy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, gomock.Any()).AnyTimes().Return(nil)
 	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), "radius", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(upgrades).
 		DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, _ bool, reuse bool, timeout time.Duration) (*releasev1.Release, error) {
 			beforeHelm()
