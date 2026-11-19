@@ -408,6 +408,11 @@ cp "${OUTPUT}" "${FIRST_OUTPUT}"
 run_collector
 cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
     fail "collector output was not deterministic"
+jq -n --slurpfile targets "${TARGETS}" '{expectedOutputs: $targets[0]}' \
+    >"${FIXTURES}/legacy-plan.json"
+run_collector --plan-file "${FIXTURES}/legacy-plan.json"
+cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
+    fail "legacy plan changed collector output"
 
 jq -e '
     .schemaVersion == 1
@@ -569,6 +574,26 @@ JS
 if run_collector 2>/dev/null; then
     fail "GHCR collection accepted no approved plan"
 fi
+cp "${TARGETS}" "${FIXTURES}/approved-targets.json"
+for repository in ghcr.io/radius-project/bicep-types-aws \
+    biceptypes.azurecr.io/aws; do
+    jq --arg repository "${repository}" \
+        'del(.bicepExtensionsContract) | .ociArtifacts[0].repository = $repository' \
+        "${FIXTURES}/approved-targets.json" >"${TARGETS}"
+    jq --slurpfile targets "${TARGETS}" '.expectedOutputs = $targets[0]' \
+        "${FIXTURES}/plan.json" >"${FIXTURES}/selector-free-plan.json"
+    for plan in "" "${FIXTURES}/selector-free-plan.json"; do
+        args=()
+        [[ -z "${plan}" ]] || args=(--plan-file "${plan}")
+        if run_collector "${args[@]}" 2>"${FIXTURES}/selector-error.log"; then
+            fail "collector accepted selector-free non-ACR targets"
+        fi
+        grep -q 'non-ACR Bicep targets require an approved contract selector' \
+            "${FIXTURES}/selector-error.log" ||
+            fail "collector did not reject the selector-free target contract"
+    done
+done
+mv "${FIXTURES}/approved-targets.json" "${TARGETS}"
 run_collector --plan-file "${FIXTURES}/plan.json"
 jq -e '
     (.downstream.ociArtifacts | length) == 2

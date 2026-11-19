@@ -853,10 +853,15 @@ main() {
         node "${SCRIPT_DIR}/release-bicep-extensions.mjs" targets \
             "${PLAN_FILE}" "${source_commit}" >/dev/null
         GHCR_BICEP="true"
-    elif [[ -n "${PLAN_FILE}" ]]; then
-        jq -e --slurpfile targets "${TARGETS_FILE}" \
-            '.expectedOutputs == $targets[0]' "${PLAN_FILE}" >/dev/null ||
-            fail "approved plan differs from targets"
+    else
+        jq -e 'all(.ociArtifacts[]; .repository | startswith("biceptypes.azurecr.io/"))' \
+            "${TARGETS_FILE}" >/dev/null ||
+            fail "non-ACR Bicep targets require an approved contract selector"
+        if [[ -n "${PLAN_FILE}" ]]; then
+            jq -e --slurpfile targets "${TARGETS_FILE}" \
+                '.expectedOutputs == $targets[0]' "${PLAN_FILE}" >/dev/null ||
+                fail "approved plan differs from targets"
+        fi
     fi
 
     collect_cli_assets "${release_json}" "${source_commit}" \
