@@ -80,14 +80,16 @@ The deployment engine is configured via environment variables:
 
 | Variable | Purpose | Example |
 | --- | --- | --- |
-| `RADIUSBACKENDURL` | UCP endpoint for callbacks | `https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3` |
+| `RADIUSBACKENDURL` | UCP endpoint for callbacks | `https://ucp.radius-system.svc:443/apis/api.ucp.dev/v1alpha3` |
 | `ASPNETCORE_URLS` | Listening URL | `http://+:6443` |
 | `ARM_AUTH_METHOD` | Authentication method | `UCPCredential` |
 | `SKIP_ARM` | Skip Azure ARM integration | `true` / `false` |
 | `kubernetes` | Enable Kubernetes mode | `true` |
 
-In production the `RADIUSBACKENDURL` points to the UCP service inside the
-cluster (`https://ucp.radius-system:443/apis/api.ucp.dev/v1alpha3`). In
+In production the `RADIUSBACKENDURL` points to the UCP service in the release
+namespace
+(`https://ucp.<namespace>.svc:443/apis/api.ucp.dev/v1alpha3`), a name
+in the certificate UCP serves. In
 development, debug scripts/manifests set it to host-reachable UCP endpoints
 such as `http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3` (Docker
 debug) or `http://host.k3d.internal:9000/apis/api.ucp.dev/v1alpha3`
