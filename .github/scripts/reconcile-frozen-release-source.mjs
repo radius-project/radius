@@ -44,12 +44,25 @@ function verifyAppSignature(commit) {
   if (
     commit.commit?.verification?.verified !== true ||
     commit.author?.type !== "Bot" ||
-    commit.author?.login !== releaseAuthor
+    commit.author?.login !== releaseAuthor ||
+    ![releaseAuthor, "web-flow"].includes(commit.committer?.login)
   ) {
     throw new Error(
       "Frozen source is not a GitHub-verified release App commit"
     );
   }
+}
+
+async function metadataFile(github, repository, ref, path) {
+  const { data } = await github.rest.repos.getContent({
+    ...repository,
+    ref,
+    path
+  });
+  if (data.type !== "file" || data.encoding !== "base64" || !data.content) {
+    throw new Error(`Expected release metadata file at ${path}`);
+  }
+  return { path, contents: data.content.replace(/\s/g, "") };
 }
 
 async function commitMetadata(
@@ -139,21 +152,8 @@ export async function updateFrozenPreparation({ github, context, core }) {
     const contents = (await readFile(path.join(workspace, file))).toString(
       "base64"
     );
-    const { data } = await github.rest.repos.getContent({
-      owner,
-      repo,
-      ref: head,
-      path: file
-    });
-    if (
-      Array.isArray(data) ||
-      data.type !== "file" ||
-      data.encoding !== "base64" ||
-      !data.content
-    ) {
-      throw new Error(`Expected existing release metadata at ${file}`);
-    }
-    if (data.content.replace(/\s/g, "") !== contents)
+    const previous = await metadataFile(github, context.repo, head, file);
+    if (previous.contents !== contents)
       additions.push({ path: file, contents });
   }
   if (additions.length) {
@@ -250,8 +250,6 @@ export default async function reconcileFrozenReleaseSource({
       throw new Error("Frozen source ref changed during verification");
     }
     core.setOutput("release-commit", sha);
-    core.setOutput("release-identifier", `${version}-${sha}`);
-    core.setOutput("resolved", "true");
   }
 
   let reference = await getRef(github, owner, repo, branch);
@@ -278,29 +276,11 @@ export default async function reconcileFrozenReleaseSource({
     }
     throw new Error(`${ref} exists without a resolved frozen source`);
   }
-  if (mode === "read") {
-    core.setOutput("resolved", "false");
-    return;
-  }
-  const files = metadataFiles(version);
+  if (mode === "read") return;
   const additions = await Promise.all(
-    files.map(async (path) => {
-      const { data } = await github.rest.repos.getContent({
-        owner,
-        repo,
-        ref: metadata,
-        path
-      });
-      if (
-        Array.isArray(data) ||
-        data.type !== "file" ||
-        data.encoding !== "base64" ||
-        !data.content
-      ) {
-        throw new Error(`Expected approved release metadata at ${path}`);
-      }
-      return { path, contents: data.content.replace(/\s/g, "") };
-    })
+    metadataFiles(version).map((path) =>
+      metadataFile(github, context.repo, metadata, path)
+    )
   );
   if (!reference) {
     try {

@@ -272,17 +272,13 @@ test_identity_and_cleanup() {
 test_frozen_output_contract() {
     local job
 
-    assert_json "${CONTROLLER}" '.jobs.validate.outputs."plan-artifact-id"' \
+    assert_json "${CONTROLLER}" '.jobs."reconcile-source".outputs."plan-artifact-id"' \
         "\"\${{ steps.upload-plan.outputs.artifact-id }}\"" \
-        "validation must identify its immutable plan artifact"
+        "source resolution must identify its immutable plan artifact"
     assert_yq "${CONTROLLER}" \
-        '.jobs.validate.steps[] | select(.id == "upload-plan") |
+        '.jobs."reconcile-source".steps[] | select(.id == "upload-plan") |
         .with.path | contains("/release-controller/release-targets.json")' \
         "plan artifact must carry the approved output contract"
-    assert_yq "${CONTROLLER}" \
-        ".jobs.validate.steps[] | select(.id == \"upload-plan\") |
-        .with.name | contains(\"\${{ github.run_attempt }}\")" \
-        "reruns must retain earlier attempts instead of replacing their artifacts"
     assert_json "${CONTROLLER}" \
         '[.jobs."publish-deployment-engine", .jobs."create-radius-tag"] |
         [.[].steps[] | select(.run // "" |

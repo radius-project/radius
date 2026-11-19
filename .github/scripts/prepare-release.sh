@@ -683,7 +683,7 @@ write_release_plan() {
 }
 
 main() {
-    local version branch_ref
+    local version branch_ref source_commit
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -777,11 +777,10 @@ main() {
     version="$(calculate_version)"
     validate_completed_releases
     select_frozen_source "${version}" "${branch_ref}"
+    source_commit="${PRODUCT_COMMIT:-$(git rev-parse "${branch_ref}^{commit}")}"
     mkdir -p "${OUTPUT_DIR}"
     printf '%s\n' "${version}" > "${OUTPUT_DIR}/version.txt"
-    printf '%s\n' \
-        "${PRODUCT_COMMIT:-$(git rev-parse "${branch_ref}^{commit}")}" \
-        > "${OUTPUT_DIR}/product-commit.txt"
+    printf '%s\n' "${source_commit}" > "${OUTPUT_DIR}/product-commit.txt"
     printf 'automation/prepare-release-%s\n' "${version#v}" \
         > "${OUTPUT_DIR}/pr-branch.txt"
     if [[ "${VERSION_ONLY}" == "true" ]]; then
@@ -809,7 +808,7 @@ main() {
     validate_backports "${branch_ref}"
     validate_sibling_repositories
 
-    local current previous_version source_ref source_commit requires_backport
+    local current previous_version source_ref requires_backport
     local changelog_base_version changelog_body notes_file
     current="$(channel_version)"
     previous_version="${current:-$(latest_supported_version)}"
@@ -822,7 +821,6 @@ main() {
         fi
     fi
     source_ref="${branch_ref:-refs/heads/main}"
-    source_commit="${PRODUCT_COMMIT:-$(git rev-parse "${branch_ref}^{commit}")}"
     requires_backport="false"
     [[ -z "${branch_ref}" ]] || requires_backport="true"
     changelog_body="${OUTPUT_DIR}/changelog-section.md"

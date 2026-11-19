@@ -73,6 +73,7 @@ function fixture() {
     commit: {
       parents: [{ sha: product }],
       author: { type: "Bot", login: "radius-release[bot]" },
+      committer: { login: "web-flow" },
       commit: {
         tree: { sha: tree },
         message: `chore(release): freeze ${version}\n\n(cherry picked from commit ${metadata})`,
@@ -150,7 +151,7 @@ test("read-only preflight never creates a source before approval", async () => {
   const f = fixture();
   f.core.inputs.MODE = "read";
   await f.run();
-  assert.equal(f.core.outputs.resolved, "false");
+  assert.equal(f.core.outputs["release-commit"], undefined);
   assert.equal(f.state.creates, 0);
   assert.equal(f.state.mutations.length, 0);
 });
@@ -167,7 +168,6 @@ test("creates one three-file App commit with a frozen-parent CAS; resume is a no
   const f = fixture();
   await f.run();
   assert.equal(f.core.outputs["release-commit"], release);
-  assert.equal(f.core.outputs["release-identifier"], `${version}-${release}`);
   const [input] = f.state.mutations;
   assert.equal(input.expectedHeadOid, product);
   assert.deepEqual(
@@ -229,6 +229,13 @@ for (const [name, mutate, error] of [
     "App author",
     (f) => {
       f.state.commit.author.login = "another-app[bot]";
+    },
+    /release App commit/
+  ],
+  [
+    "non-App committer with App attribution",
+    (f) => {
+      f.state.commit.committer.login = "another-user";
     },
     /release App commit/
   ],
@@ -751,6 +758,7 @@ test("offline lifecycle: A + curated metadata, never later main/queue B; immutab
               .slice(1)
               .map((sha) => ({ sha })),
             author: { type: "Bot", login: "radius-release[bot]" },
+            committer: { login: "web-flow" },
             commit: {
               tree: { sha: git("rev-parse", `${ref}^{tree}`) },
               message: git("show", "-s", "--format=%B", ref),

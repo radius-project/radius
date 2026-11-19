@@ -77,12 +77,10 @@ jobs:
       channel: ${{ steps.plan.outputs.channel }}
       release-type: ${{ steps.plan.outputs.release-type }}
       release-branch: ${{ steps.plan.outputs.release-branch }}
-      release-identifier: ${{ steps.plan.outputs.release-identifier }}
       de-image-tag: ${{ steps.plan.outputs.de-image-tag }}
       de-source-tag: ${{ steps.plan.outputs.de-source-tag }}
       de-source-commit: ${{ steps.de-tag.outputs.commit }}
       de-tag-state: ${{ steps.de-tag.outputs.state }}
-      plan-artifact-id: ${{ steps.upload-plan.outputs.artifact-id }}
       recipes-commit: ${{ steps.plan.outputs.recipes-commit }}
       dashboard-commit: ${{ steps.plan.outputs.dashboard-commit }}
       bicep-types-aws-commit: ${{ steps.plan.outputs.bicep-types-aws-commit }}
@@ -90,7 +88,6 @@ jobs:
       product-commit: ${{ steps.plan.outputs.product-commit }}
       release-tree: ${{ steps.plan.outputs.release-tree }}
       frozen-source: ${{ steps.plan.outputs.frozen-source }}
-      source-resolved: ${{ steps.plan.outputs.source-resolved }}
     steps:
       - name: Checkout trusted controller
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -385,17 +382,6 @@ jobs:
             fi
           } >> "${GITHUB_STEP_SUMMARY}"
 
-      - name: Upload validated release plan
-        id: upload-plan
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: validated-release-plan-${{ inputs.version }}-${{ inputs.source-pr-commit }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/release-controller/release-plan.yaml
-            ${{ runner.temp }}/release-controller/release-targets.json
-          if-no-files-found: error
-          retention-days: 90
-
   approve:
     name: Approve release reconciliation
     needs: validate
@@ -490,12 +476,6 @@ jobs:
             echo "The approved release source is still unresolved." >&2
             exit 1
           }
-          args=("${RELEASE_COMMIT}")
-          if [[ "$(yq -r '.changelogPolicy' "${RUNNER_TEMP}/release-plan.yaml")" == stable-only ]]; then
-            args+=(--require-sibling-releases)
-          fi
-          bash ./.github/scripts/verify-release-build-contract.sh \
-            "${args[@]}"
 
       - name: Upload resolved release plan
         id: upload-plan

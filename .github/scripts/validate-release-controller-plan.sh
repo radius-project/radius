@@ -216,7 +216,6 @@ write_outputs() {
         > "${OUTPUT_DIR}/previous-version.txt"
     printf '%s\n' "${RELEASE_COMMIT}" > "${OUTPUT_DIR}/release-commit.txt"
     printf '%s\n' "${RELEASE_TREE}" > "${OUTPUT_DIR}/release-tree.txt"
-    printf '%s\n' "${FROZEN_SOURCE}" > "${OUTPUT_DIR}/frozen-source.txt"
     printf '%s\n' "${SOURCE_RESOLVED}" > "${OUTPUT_DIR}/source-resolved.txt"
 
     if [[ -n "${GITHUB_OUTPUT:-}" ]]; then

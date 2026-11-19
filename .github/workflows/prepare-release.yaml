@@ -118,16 +118,12 @@ jobs:
           PRODUCT_COMMIT: ${{ inputs.product-commit }}
         run: |
           output_dir="${RUNNER_TEMP}/release-preflight"
-          source_options=()
+          preflight=(--release-type "${RELEASE_TYPE}" --channel "${CHANNEL}"
+            --output-dir "${output_dir}" --version-only)
           if [[ -n "${PRODUCT_COMMIT}" ]]; then
-            source_options+=(--product-commit "${PRODUCT_COMMIT}")
+            preflight+=(--product-commit "${PRODUCT_COMMIT}")
           fi
-          bash ./.github/scripts/prepare-release.sh \
-            --release-type "${RELEASE_TYPE}" \
-            --channel "${CHANNEL}" \
-            --output-dir "${output_dir}" \
-            "${source_options[@]}" \
-            --version-only
+          bash ./.github/scripts/prepare-release.sh "${preflight[@]}"
           version="$(<"${output_dir}/version.txt")"
           branch="$(<"${output_dir}/pr-branch.txt")"
 
@@ -142,13 +138,12 @@ jobs:
           existing="$(
             gh pr list --repo "${GITHUB_REPOSITORY}" --state open \
               --head "${branch}" --base main \
-              --json number,url,headRefOid,isCrossRepository \
+              --json number,headRefOid,isCrossRepository \
               --jq '[.[] | select(.isCrossRepository == false)] | .[0] // empty'
           )"
           if [[ -n "${existing}" ]]; then
             existing_state=true
             existing_number="$(jq -r .number <<< "${existing}")"
-            existing_url="$(jq -r .url <<< "${existing}")"
             existing_head="$(jq -r .headRefOid <<< "${existing}")"
           else
             set +e
@@ -169,7 +164,6 @@ jobs:
             esac
             existing_state=false
             existing_number=""
-            existing_url=""
             existing_head=""
           fi
 
@@ -185,12 +179,9 @@ jobs:
             if [[ "$(yq -r '.source.productRef' "${plan}")" == HEAD ]]; then
               migrate_frozen_plan=true
             fi
-            source_options+=(--existing-plan "${plan}")
+            bash ./.github/scripts/prepare-release.sh "${preflight[@]}" \
+              --existing-plan "${plan}"
           fi
-          bash ./.github/scripts/prepare-release.sh \
-            --release-type "${RELEASE_TYPE}" --channel "${CHANNEL}" \
-            --output-dir "${output_dir}" "${source_options[@]}" \
-            --version-only
           # A tag runs the frozen product's build tooling, not main's tooling.
           product_commit="$(<"${output_dir}/product-commit.txt")"
           bash ./.github/scripts/verify-release-build-contract.sh \
@@ -199,10 +190,8 @@ jobs:
           {
             echo "existing=${existing_state}"
             echo "existing-number=${existing_number}"
-            echo "existing-url=${existing_url}"
             echo "existing-head=${existing_head}"
             echo "version=${version}"
-            echo "branch=${branch}"
             echo "release-candidate=${release_candidate}"
             echo "reuse-frozen-plan=${reuse_frozen_plan}"
             echo "migrate-frozen-plan=${migrate_frozen_plan}"
