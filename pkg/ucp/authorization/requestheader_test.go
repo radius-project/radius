@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -137,6 +138,7 @@ func testRequestHeaderCABundles(t *testing.T, load func(*testing.T, []byte) (*Re
 	secondPEM, err := os.ReadFile(second.file)
 	require.NoError(t, err)
 	valid := string(firstPEM)
+	joined := strings.TrimRight(valid, "\n")
 	for _, tt := range []struct {
 		name   string
 		bundle string
@@ -154,7 +156,12 @@ func testRequestHeaderCABundles(t *testing.T, load func(*testing.T, []byte) (*Re
 		{name: "PEM headers", bundle: valid + string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Headers: map[string]string{"Comment": "unexpected"}, Bytes: second.ca.Raw}))},
 		{name: "empty"},
 		{name: "whitespace only", bundle: " \t\r\n"},
+		{name: "adjacent blocks without separator", bundle: joined + string(secondPEM)},
+		{name: "adjacent blocks separated by space", bundle: joined + " " + string(secondPEM)},
+		{name: "garbage on closing line", bundle: joined + " garbage\n" + string(secondPEM)},
 		{name: "valid rotation bundle", bundle: " \t\r\n" + valid + "\n \t\n" + string(secondPEM) + " \t\r\n", valid: true},
+		{name: "valid CRLF bundle", bundle: strings.ReplaceAll(valid+string(secondPEM), "\n", "\r\n"), valid: true},
+		{name: "valid bundle with trailing blanks on closing line", bundle: joined + " \t\n" + strings.TrimRight(string(secondPEM), "\n"), valid: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			authenticator, err := load(t, []byte(tt.bundle))
