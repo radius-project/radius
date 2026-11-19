@@ -220,6 +220,11 @@ func Test_ProgressCreate(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, native.Progress{Done: true, State: "SUSPENDED"}, progress, "a MicroVM AWS suspended for lack of traffic ran")
 
+	api.state[id] = types.MicrovmState("STARTING")
+	progress, err = h.Progress(t.Context(), region, id, native.OperationCreate)
+	require.NoError(t, err)
+	require.Equal(t, native.Progress{State: "STARTING", Waiting: "RUNNING"}, progress, "a state the handler doesn't know isn't done")
+
 	_, err = h.Progress(t.Context(), region, "mvm-missing", native.OperationCreate)
 	require.ErrorIs(t, err, native.ErrNotFound)
 }

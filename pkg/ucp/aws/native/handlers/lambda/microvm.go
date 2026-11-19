@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -330,8 +331,12 @@ func (h *Microvm) Progress(ctx context.Context, region string, identifier string
 			ClientError: true,
 			Outcome:     native.OutcomeApplied,
 		}}, nil
-	case out.State == types.MicrovmStatePending:
-		return native.Progress{State: state, Waiting: string(types.MicrovmStateRunning)}, nil
+	case slices.Contains(ran, out.State):
+		return native.Progress{Done: true, State: state}, nil
 	}
-	return native.Progress{Done: true, State: state}, nil
+	// PENDING, or a state this handler doesn't know, which UCP waits on until the create's timeout names it.
+	return native.Progress{State: state, Waiting: string(types.MicrovmStateRunning)}, nil
 }
+
+// ran are the states of a MicroVM that has run: RUNNING, and suspended for lack of traffic.
+var ran = []types.MicrovmState{types.MicrovmStateRunning, types.MicrovmStateSuspending, types.MicrovmStateSuspended}
