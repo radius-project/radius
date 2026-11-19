@@ -87,3 +87,59 @@ func TestNormalizePath(t *testing.T) {
 		require.Equal(t, tt.expected, parsed)
 	}
 }
+
+func Test_NormalizePath_SegmentRewrite(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		expected string
+	}{
+		{
+			name:     "ascii",
+			path:     "/Planes/radius/Kteam/ResourceGroups/team",
+			expected: "/planes/radius/Kteam/resourcegroups/team",
+		},
+		{
+			name:     "mixed case segments",
+			path:     "/apis/api.ucp.dev/v1alpha3/pLaNeS/radius/local/rEsOuRcEgRoUpS/Abc",
+			expected: "/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourcegroups/Abc",
+		},
+		{
+			name:     "lowercasing shrinks preceding character",
+			path:     "/planes/radius/\u212Ateam/resourceGroups/team",
+			expected: "/planes/radius/\u212Ateam/resourcegroups/team",
+		},
+		{
+			name:     "lowercasing grows preceding character",
+			path:     "/planes/radius/\u023Ateam/resourceGroups/team",
+			expected: "/planes/radius/\u023Ateam/resourcegroups/team",
+		},
+		{
+			name:     "non-ascii before planes",
+			path:     "/\u212A\u023A/Planes/radius/local",
+			expected: "/\u212A\u023A/planes/radius/local",
+		},
+		{
+			name:     "only first occurrence is rewritten",
+			path:     "/Planes/radius/local/ResourceGroups/Planes/providers/Foo/ResourceGroups/x",
+			expected: "/planes/radius/local/resourcegroups/Planes/providers/Foo/ResourceGroups/x",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var got string
+			handler := NormalizePath(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				got = r.URL.Path
+			}))
+
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+			req.URL.Path = tt.path
+			handler.ServeHTTP(httptest.NewRecorder(), req)
+
+			require.Equal(t, tt.expected, got)
+		})
+	}
+}
