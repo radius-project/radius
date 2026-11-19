@@ -1199,8 +1199,9 @@ func (s Suite) deployBoth(t *testing.T, first map[string]any, second map[string]
 	require.Nil(t, h.recordAt(other))
 	require.Equal(t, 1, h.cc.Count(s.TypeName))
 
+	before := h.stored()
 	h.remove()
-	h.requireRemoved(nil)
+	h.requireRemoved(before)
 }
 
 // sameResourceNames deploys Properties under one alias, and Properties with each of SameResourceNames under another.

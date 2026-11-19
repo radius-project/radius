@@ -338,6 +338,34 @@ func Test_InstanceState_UpdateProgress(t *testing.T) {
 		require.Contains(t, progress.Failure.Message, `the EC2 instance "i-0123456789abcdef0" is stopped, not running: Client.InstanceInitiatedShutdown`)
 	})
 
+	// The first attempt's start reached AWS, its response was lost, and the instance stopped again. UCP sends the
+	// update again with the state from before the first attempt.
+	t.Run("an update sent again after its start stopped again", func(t *testing.T) {
+		h, api := newInstanceState(types.InstanceStateNameStopped, map[string]any{"StateReason": "Client.UserInitiatedShutdown"})
+		api.failStart[testInstance] = "Server.InsufficientInstanceCapacity"
+		request := update(t, h, "running")
+		require.NoError(t, h.Update(t.Context(), request))
+		_, err := h.Read(t.Context(), testRegion, testInstance)
+		require.NoError(t, err)
+		delete(api.failStart, testInstance)
+
+		api.calls = nil
+		require.NoError(t, h.Update(t.Context(), request))
+		require.NotContains(t, api.calls, "StartInstances", "the earlier attempt ended, so nothing starts the instance again")
+		progress, err := h.UpdateProgress(t.Context(), testRegion, testInstance, request.State)
+		require.NoError(t, err)
+		require.True(t, progress.Done)
+		require.Contains(t, progress.Failure.Message, "is stopped, not running: Server.InsufficientInstanceCapacity")
+	})
+
+	t.Run("an update sent again before its start reached AWS", func(t *testing.T) {
+		h, api := newInstanceState(types.InstanceStateNameStopped, map[string]any{"StateReason": "Client.UserInitiatedShutdown"})
+		request := update(t, h, "running")
+		api.calls = nil
+		require.NoError(t, h.Update(t.Context(), request))
+		require.Contains(t, api.calls, "StartInstances", "the instance is as it was, so the start is sent")
+	})
+
 	t.Run("a running instance with no reason, as before", func(t *testing.T) {
 		h, _ := newInstanceState(types.InstanceStateNameRunning, nil)
 		state, err := h.UpdateState(t.Context(), testRegion, testInstance)

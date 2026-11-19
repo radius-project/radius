@@ -21,6 +21,9 @@
   "primaryIdentifier": ["/properties/DBInstanceIdentifier"],
   "createOnlyProperties": ["/properties/DBInstanceIdentifier"],
   "readOnlyProperties": ["/properties/DBInstanceStatus"],
+  "propertyTransform": {
+    "/properties/DBInstanceIdentifier": "$lowercase(DBInstanceIdentifier)"
+  },
   "handlers": {
     "create": {
       "permissions": ["rds:DescribeDBInstances"]

@@ -58,7 +58,9 @@ func Test_Suite_DBInstanceState(t *testing.T) {
 		Properties:         stopped,
 		Identifier:         testDBInstance,
 		Changed:            dbInstanceState("running"),
-		SameResourceNames:  []string{"App-DB"},
+		// RDS stores the identifier in lowercase, so a template in another case names the same DB instance.
+		SameResource:      []map[string]any{{"DBInstanceIdentifier": "App-DB", "State": "stopped"}},
+		SameResourceNames: []string{"App-DB"},
 		Invalid: []map[string]any{
 			dbInstanceState("available"),
 			{"DBInstanceIdentifier": testDBInstance, "State": 1},
@@ -347,6 +349,15 @@ func Test_DBInstanceState_UpdateProgress(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, progress.Done)
 		require.Equal(t, `the DB instance "app-db" is incompatible-parameters, not running`, progress.Failure.Message)
+	})
+
+	// UpdateState saw the DB instance backing up, the stop was sent once it was available, and the read doesn't show
+	// the stop yet.
+	t.Run("a read that shows another status in which the DB instance runs", func(t *testing.T) {
+		h, _ := newDBInstanceState("available", nil)
+		progress, err := h.UpdateProgress(t.Context(), dbRegion, testDBInstance, "backing-up")
+		require.NoError(t, err)
+		require.Equal(t, native.Progress{State: "available", Waiting: "stopped"}, progress)
 	})
 
 	t.Run("a started DB instance that backs up", func(t *testing.T) {

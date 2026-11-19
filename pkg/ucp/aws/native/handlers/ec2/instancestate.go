@@ -162,8 +162,8 @@ func (h *InstanceState) Update(ctx context.Context, request native.UpdateRequest
 	if err != nil {
 		return err
 	}
-	var before instanceBefore
-	if json.Unmarshal([]byte(request.State), &before) == nil {
+	var before *instanceBefore
+	if json.Unmarshal([]byte(request.State), &before) == nil && before != nil {
 		state := types.InstanceStateName(before.State)
 		if target := updateTarget(state); target != desired {
 			message := fmt.Sprintf("The EC2 instance %q changed to %s while the deploy started. Deploy again.", request.Identifier, state)
@@ -173,13 +173,18 @@ func (h *InstanceState) Update(ctx context.Context, request native.UpdateRequest
 			return &native.Failure{Message: message, ClientError: true, Outcome: native.OutcomeRejected}
 		}
 	}
-	return h.apply(ctx, request.Region, request.Identifier, desired)
+	return h.apply(ctx, request.Region, request.Identifier, desired, before)
 }
 
 // apply starts or stops the instance when it isn't in, or on its way to, the desired state. A call EC2 rejects, such
 // as a stop of an instance with an instance store root volume, is a rejected client failure that names the instance
 // and its state.
-func (h *InstanceState) apply(ctx context.Context, region string, id string, desired string) error {
+//
+// before is the instance as it was before the update, or nil. An instance back in the state it had then, with another
+// reason or launch time, shows that an earlier attempt of this update reached AWS and ended, such as a start whose
+// response UCP lost and that stopped again. apply calls nothing then, and UpdateProgress reports the attempt's
+// outcome, so a read that doesn't show a new start yet can't be taken for it.
+func (h *InstanceState) apply(ctx context.Context, region string, id string, desired string, before *instanceBefore) error {
 	instance, err := h.instance(ctx, region, id)
 	if errors.Is(err, native.ErrNotFound) {
 		return instanceGone(id)
@@ -187,7 +192,7 @@ func (h *InstanceState) apply(ctx context.Context, region string, id string, des
 		return err
 	}
 	current := instance.State.Name
-	if instanceTarget(current) == desired {
+	if instanceTarget(current) == desired || (before != nil && string(current) == before.State && beforeOf(instance) != *before) {
 		return nil
 	}
 	verb := "start"

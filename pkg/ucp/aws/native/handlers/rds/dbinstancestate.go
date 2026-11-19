@@ -325,8 +325,9 @@ func (h *DBInstanceState) UpdateState(ctx context.Context, region string, identi
 }
 
 // UpdateProgress waits for the state the update moves the DB instance to (see updateTarget), given its status before
-// the update in state. A read that still shows the status from before doesn't show the change yet. Any other status
-// that isn't the update's state means the update failed, such as a start that ended in incompatible-parameters.
+// the update in state. A read that still shows the state from before, even in another status, such as available for a
+// DB instance that was backing up, doesn't show the change yet. Any other status that isn't the update's state means
+// the update failed, such as a start that ended in incompatible-parameters.
 func (h *DBInstanceState) UpdateProgress(ctx context.Context, region string, identifier string, state string) (native.Progress, error) {
 	if state == "" {
 		return h.Progress(ctx, region, identifier, native.OperationUpdate)
@@ -340,7 +341,7 @@ func (h *DBInstanceState) UpdateProgress(ctx context.Context, region string, ide
 	switch {
 	case stateOf(status) == target:
 		return native.Progress{Done: true, State: status}, nil
-	case dbInstanceTarget(status) != stateOf(status), status == state:
+	case dbInstanceTarget(status) != stateOf(status), stateOf(status) == stateOf(state):
 		return native.Progress{State: status, Waiting: target}, nil
 	}
 	return native.Progress{Done: true, State: status, Failure: &native.Failure{Message: fmt.Sprintf("the DB instance %q is %s, not %s", identifier, status, target)}}, nil

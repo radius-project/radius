@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -181,13 +182,14 @@ func (h partOf) Create(ctx context.Context, request native.CreateRequest) (strin
 	return "", &native.Failure{Message: "AWS has no such instance", ClientError: true, Outcome: native.OutcomeRejected}
 }
 
-// Identifier returns Id, and rejects a template whose MinimumLength isn't a number before any AWS call.
+// Identifier returns Id in lowercase, as AWS stores it, and rejects a template whose MinimumLength isn't a number
+// before any AWS call.
 func (h partOf) Identifier(properties map[string]any) (string, error) {
 	if _, ok := properties["MinimumLength"].(float64); !ok {
 		return "", &native.Failure{Message: "MinimumLength must be a number", ClientError: true, Outcome: native.OutcomeRejected}
 	}
 	id, _ := properties["Id"].(string)
-	return id, nil
+	return strings.ToLower(id), nil
 }
 
 // Test_Suite_CreateFails runs the suite for a resource that is part of something AWS has before any deploy, which the
@@ -202,6 +204,9 @@ func Test_Suite_CreateFails(t *testing.T) {
 	suite.AlwaysPresent, suite.CreateFails = true, true
 	// AWS has the resource before the deploy, so a rejected template leaves AWS with one, not none.
 	suite.Invalid = []map[string]any{{"Id": "default", "MinimumLength": "twelve"}}
+	// AWS stores Id in lowercase, so a template in another case names the same resource, and a delete leaves it.
+	suite.Schema = strings.Replace(suite.Schema, `"primaryIdentifier"`, `"propertyTransform": {"/properties/Id": "$lowercase(Id)"}, "primaryIdentifier"`, 1)
+	suite.SameResource = []map[string]any{{"Id": "Default", "MinimumLength": 12, "RequireSymbols": true}}
 	Run(t, suite)
 }
 
