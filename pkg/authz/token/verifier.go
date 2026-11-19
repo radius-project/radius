@@ -44,7 +44,8 @@ const (
 	// every token is rejected with AuthorizationUnavailable.
 	DefaultMaxKeyAge = 15 * time.Minute
 
-	// DefaultFetchTimeout bounds a single key fetch.
+	// DefaultFetchTimeout bounds a single key refresh, including the wait for a refresh
+	// already in progress.
 	DefaultFetchTimeout = 10 * time.Second
 
 	// DefaultLeeway is the clock skew allowed when checking exp and nbf. It matches the
@@ -117,8 +118,9 @@ type Verifier struct {
 	fetchTimeout       time.Duration
 	leeway             time.Duration
 
-	// fetchMu serializes fetches and guards lastUnknownKeyFetch.
-	fetchMu             sync.Mutex
+	// fetchGate serializes fetches and guards lastUnknownKeyFetch. A caller holds it by
+	// sending a value. Unlike a mutex, waiting for it stops when the caller's context ends.
+	fetchGate           chan struct{}
 	lastUnknownKeyFetch time.Time
 
 	// mu guards keys and lastSuccess.
@@ -150,6 +152,7 @@ func New(config Config) (*Verifier, error) {
 		maxKeyAge:          orDefault(config.MaxKeyAge, DefaultMaxKeyAge),
 		fetchTimeout:       orDefault(config.FetchTimeout, DefaultFetchTimeout),
 		leeway:             orDefault(config.Leeway, DefaultLeeway),
+		fetchGate:          make(chan struct{}, 1),
 	}
 	if v.now == nil {
 		v.now = time.Now
@@ -190,16 +193,33 @@ func (v *Verifier) Run(ctx context.Context) {
 }
 
 // Refresh fetches the signing keys and replaces the cached keys if the fetch succeeds.
+// FetchTimeout bounds the whole call, including the wait for a refresh already in progress.
 func (v *Verifier) Refresh(ctx context.Context) error {
-	v.fetchMu.Lock()
-	defer v.fetchMu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, v.fetchTimeout)
+	defer cancel()
+	if err := v.acquireFetch(ctx); err != nil {
+		return fmt.Errorf("waiting for a signing key refresh in progress: %w", err)
+	}
+	defer v.releaseFetch()
 	return v.fetchLocked(ctx)
 }
 
-func (v *Verifier) fetchLocked(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, v.fetchTimeout)
-	defer cancel()
+// acquireFetch takes fetchGate, or returns ctx's error if ctx ends first.
+func (v *Verifier) acquireFetch(ctx context.Context) error {
+	select {
+	case v.fetchGate <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
 
+func (v *Verifier) releaseFetch() {
+	<-v.fetchGate
+}
+
+// fetchLocked fetches the keys. The caller holds fetchGate and sets ctx's deadline.
+func (v *Verifier) fetchLocked(ctx context.Context) error {
 	keys, err := v.source.Fetch(ctx)
 	if err != nil {
 		return err
@@ -216,10 +236,15 @@ func (v *Verifier) fetchLocked(ctx context.Context) error {
 }
 
 // refreshForUnknownKey refetches the keys unless a refetch for an unknown key ID ran
-// within UnknownKeyInterval.
+// within UnknownKeyInterval. FetchTimeout bounds the whole call, and it returns early if
+// ctx ends while another refresh is in progress.
 func (v *Verifier) refreshForUnknownKey(ctx context.Context) {
-	v.fetchMu.Lock()
-	defer v.fetchMu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, v.fetchTimeout)
+	defer cancel()
+	if err := v.acquireFetch(ctx); err != nil {
+		return
+	}
+	defer v.releaseFetch()
 
 	now := v.now()
 	if !v.lastUnknownKeyFetch.IsZero() && now.Sub(v.lastUnknownKeyFetch) < v.unknownKeyInterval {

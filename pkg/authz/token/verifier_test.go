@@ -629,6 +629,76 @@ func TestVerify_StaleKeysRejectEveryRequest(t *testing.T) {
 	})
 }
 
+// blockingSource blocks each Fetch after the first until release is closed or the
+// fetch's context ends.
+type blockingSource struct {
+	*fakeSource
+	started chan struct{}
+	release chan struct{}
+	calls   int
+	mu      sync.Mutex
+}
+
+func (s *blockingSource) Fetch(ctx context.Context) (KeySet, error) {
+	s.mu.Lock()
+	s.calls++
+	first := s.calls == 1
+	s.mu.Unlock()
+	if !first {
+		s.started <- struct{}{}
+		select {
+		case <-s.release:
+		case <-ctx.Done():
+			return KeySet{}, ctx.Err()
+		}
+	}
+	return s.fakeSource.Fetch(ctx)
+}
+
+func TestRefresh_WaitForRefreshInProgressHonorsContext(t *testing.T) {
+	clock := &fakeClock{now: time.Unix(1_700_000_000, 0)}
+	source := &blockingSource{fakeSource: newFakeSource(defaultKeys()), started: make(chan struct{}, 1), release: make(chan struct{})}
+	v, err := New(Config{Namespace: testNamespace, Audience: testAudience, Keys: source, Now: clock.Now, FetchTimeout: time.Hour})
+	require.NoError(t, err)
+	require.NoError(t, v.Refresh(t.Context()))
+
+	holder := make(chan error, 1)
+	go func() { holder <- v.Refresh(t.Context()) }()
+	<-source.started
+
+	cancelled, cancel := context.WithCancel(t.Context())
+	cancel()
+	unknown := sign(t, jwt.SigningMethodRS256, "rotated", rsaKey, claimsFor("ucp", clock.Now()))
+	waiters := map[string]func() error{
+		"Refresh": func() error { return v.Refresh(cancelled) },
+		"Verify with unknown key": func() error {
+			_, err := v.Verify(cancelled, unknown)
+			return err
+		},
+	}
+	for name, call := range waiters {
+		t.Run(name, func(t *testing.T) {
+			done := make(chan error, 1)
+			go func() { done <- call() }()
+			select {
+			case err := <-done:
+				require.Error(t, err)
+				if name == "Refresh" {
+					require.ErrorIs(t, err, context.Canceled)
+				} else {
+					requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("a cancelled caller kept waiting for the refresh in progress")
+			}
+		})
+	}
+
+	close(source.release)
+	require.NoError(t, <-holder)
+	require.NoError(t, v.Refresh(t.Context()), "a later refresh succeeds once the gate is free")
+}
+
 func TestRefresh_KeepsKeysOnFailure(t *testing.T) {
 	clock := &fakeClock{now: start}
 	source := newFakeSource(defaultKeys())
