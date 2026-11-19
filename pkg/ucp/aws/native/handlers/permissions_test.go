@@ -27,7 +27,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/require"
 
-	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
@@ -45,6 +44,7 @@ var iamPrefixes = map[string]string{
 	"fsx":                      "fsx",
 	"iam":                      "iam",
 	"kinesisanalyticsv2":       "kinesisanalytics",
+	"kms":                      "kms",
 	"lakeformation":            "lakeformation",
 	"medialive":                "medialive",
 	"s3":                       "s3",
@@ -78,7 +78,7 @@ var operationsOf = map[string][]string{
 // of the package's AWS SDK client interfaces it, or a function or method of the package it calls, refers to, directly
 // or through an SDK paginator.
 func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
-	catalog, err := schemas.Load()
+	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	packages := map[string]handlerSource{}
 	missing := []string{}
@@ -95,7 +95,7 @@ func Test_SchemaPermissionsCoverAWSCalls(t *testing.T) {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(registry.Lookup(h.TypeName()).Schema), &schema), h.TypeName())
 		for method, ops := range operationsOf {
 			for _, call := range src.Calls(typ.Name(), method) {
 				action := src.iam[call] + ":" + call
@@ -125,7 +125,7 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 		},
 		"delete": {"rds:CreateDBClusterSnapshot", "fsx:CreateBackup", "fsx:TagResource"},
 	}
-	catalog, err := schemas.Load()
+	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	unused := []string{}
 	for _, h := range All(aws.Config{}) {
@@ -154,7 +154,7 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 				Permissions []string `json:"permissions"`
 			} `json:"handlers"`
 		}
-		require.NoError(t, json.Unmarshal([]byte(catalog.Native[h.TypeName()]), &schema), h.TypeName())
+		require.NoError(t, json.Unmarshal([]byte(registry.Lookup(h.TypeName()).Schema), &schema), h.TypeName())
 		for op, handler := range schema.Handlers {
 			for _, action := range handler.Permissions {
 				service, _, _ := strings.Cut(action, ":")

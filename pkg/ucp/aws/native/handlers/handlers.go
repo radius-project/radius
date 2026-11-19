@@ -31,6 +31,7 @@ import (
 	fsxsdk "github.com/aws/aws-sdk-go-v2/service/fsx"
 	iamsdk "github.com/aws/aws-sdk-go-v2/service/iam"
 	kinesisanalyticsv2sdk "github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2"
+	kmssdk "github.com/aws/aws-sdk-go-v2/service/kms"
 	lakeformationsdk "github.com/aws/aws-sdk-go-v2/service/lakeformation"
 	medialivesdk "github.com/aws/aws-sdk-go-v2/service/medialive"
 	s3sdk "github.com/aws/aws-sdk-go-v2/service/s3"
@@ -52,6 +53,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/fsx"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/iam"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kinesisanalyticsv2"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/kms"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/lakeformation"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/medialive"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/handlers/sagemaker"
@@ -89,6 +91,7 @@ func All(cfg aws.Config) []native.Handler {
 		kinesisanalyticsv2.NewLoggingOption(kinesisanalyticsv2sdk.NewFromConfig(cfg)),
 		servicecatalog.NewAcceptedPortfolioShare(servicecatalogsdk.NewFromConfig(cfg)),
 		iam.NewUserToGroupAddition(iamsdk.NewFromConfig(cfg)),
+		kms.NewGrant(kmssdk.NewFromConfig(cfg)),
 	}
 }
 
