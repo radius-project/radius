@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambdamicrovms/types"
 	"github.com/stretchr/testify/require"
 
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
@@ -58,7 +59,7 @@ func newHandler() (*Microvm, *fakeAPI) {
 }
 
 func Test_Suite_Microvm(t *testing.T) {
-	// AWS reports the image by its ARN. RecordedForm covers a template that names it by its name.
+	// AWS reports the image by its ARN. Test_ImageTransform covers a template that names it by its name.
 	properties := webApp(map[string]any{"ImageIdentifier": imageArn})
 	nativetest.Run(t, nativetest.Suite{
 		TypeName:    microvmType,
@@ -74,11 +75,11 @@ func Test_Suite_Microvm(t *testing.T) {
 		// Every property is create-only, so a deploy of the same template is the only update.
 		Changed:          properties,
 		CreateOnlyChange: webApp(map[string]any{"MaximumDurationInSeconds": 7200}),
-		RecordedForm:     &nativetest.RecordedForm{Property: "ImageIdentifier", Template: image, Other: "api-app", Stored: imageArn},
 		Invalid: []map[string]any{
 			webApp(map[string]any{"ImageIdentifier": 5}),
 			webApp(map[string]any{"Logging": map[string]any{"CloudWatch": map[string]any{"LogGroup": "/a"}, "Disabled": map[string]any{}}}),
 			webApp(map[string]any{"IdlePolicy": map[string]any{"AutoResumeEnabled": true, "MaxIdleDurationSeconds": 90.5, "SuspendedDurationSeconds": 0}}),
+			webApp(map[string]any{"IdlePolicy": map[string]any{}}),
 		},
 		API: microvmAPI,
 	})
@@ -115,6 +116,7 @@ func Test_ValueTypes(t *testing.T) {
 		"an integer":   {webApp(map[string]any{"MaximumDurationInSeconds": 1.5}), "MaximumDurationInSeconds must be an integer, not a number 1.5"},
 		"both logging": {webApp(map[string]any{"Logging": map[string]any{"CloudWatch": map[string]any{}, "Disabled": map[string]any{}}}), "exactly one of CloudWatch and Disabled"},
 		"no logging":   {webApp(map[string]any{"Logging": map[string]any{}}), "exactly one of CloudWatch and Disabled"},
+		"idle policy":  {webApp(map[string]any{"IdlePolicy": map[string]any{"AutoResumeEnabled": true, "MaxIdleDurationSeconds": 60}}), "IdlePolicy of an AWS::Lambda::Microvm must set"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			var failure *native.Failure
@@ -303,9 +305,14 @@ func Test_List(t *testing.T) {
 	require.ErrorContains(t, err, "ThrottlingException")
 }
 
-func Test_recordedEquivalent(t *testing.T) {
-	require.True(t, recordedEquivalent("ImageIdentifier", image, imageArn))
-	require.False(t, recordedEquivalent("ImageIdentifier", "app", imageArn), "another image whose name ends the same")
-	require.False(t, recordedEquivalent("ImageVersion", image, imageArn))
-	require.False(t, recordedEquivalent("ImageIdentifier", 5, imageArn))
+// Test_ImageTransform checks that a template naming the image matches the ARN AWS reports, with or without a record of
+// the last deploy, such as after a lost create whose values are unresolved, and that another image doesn't.
+func Test_ImageTransform(t *testing.T) {
+	schema := []byte(readFile(t, "aws-lambda-microvm.json"))
+	current := []byte(`{"ImageIdentifier": "` + imageArn + `"}`)
+	for template, want := range map[string]int{image: 0, imageArn: 0, "app": 1, "api-app": 1} {
+		patch, err := awsoperations.GeneratePatchWithOptions(current, []byte(`{"ImageIdentifier": "`+template+`"}`), schema, awsoperations.PatchOptions{Unresolved: []string{"ImageIdentifier"}})
+		require.NoError(t, err)
+		require.Len(t, patch, want, template)
+	}
 }

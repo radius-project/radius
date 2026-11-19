@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/lambdamicrovms"
@@ -75,18 +74,10 @@ func (h *Microvm) TypeName() string {
 	return microvmType
 }
 
-// Options returns how UCP uses the handler. AWS reports the image as its ARN, so a template that names it by its name
-// matches the ARN when the record shows the last deploy sent that name. Without a record, such as on a take-over, the
-// name could be of an image in another account, so the template must give the ARN.
+// Options returns how UCP uses the handler. AWS reports the image as its ARN, so the schema's propertyTransform
+// matches a template that names the image by its name.
 func (h *Microvm) Options() native.Options {
-	return native.Options{List: native.ListRegion, Recovery: native.RecoverByResend, RecordedEquivalent: recordedEquivalent}
-}
-
-// recordedEquivalent reports whether AWS's image ARN is of the image the template names by its name.
-func recordedEquivalent(path string, template any, aws any) bool {
-	t, okT := template.(string)
-	a, okA := aws.(string)
-	return okT && okA && path == "ImageIdentifier" && strings.HasSuffix(a, ":microvm-image:"+t)
+	return native.Options{List: native.ListRegion, Recovery: native.RecoverByResend}
 }
 
 // template is a MicroVM as a template gives it, in the shape of the schema.
@@ -122,8 +113,8 @@ func clientFailure(format string, args ...any) error {
 	return &native.Failure{Message: fmt.Sprintf(format, args...), ClientError: true, Outcome: native.OutcomeRejected}
 }
 
-// parse returns the MicroVM the properties give. A value of the wrong type, or a Logging that doesn't set exactly
-// one kind, is a client failure, so it is never sent as an empty or dropped value.
+// parse returns the MicroVM the properties give. A value of the wrong type, a Logging that doesn't set exactly one
+// kind, or an IdlePolicy without all its fields, is a client failure, so it is never sent as an empty or dropped value.
 func parse(properties map[string]any) (template, error) {
 	var t template
 	if err := awsapi.Decode(properties, &t); err != nil {
@@ -131,6 +122,10 @@ func parse(properties map[string]any) (template, error) {
 	}
 	if l := t.Logging; l != nil && (l.CloudWatch == nil) == (l.Disabled == nil) {
 		return template{}, clientFailure("Logging of an %s must set exactly one of CloudWatch and Disabled", microvmType)
+	}
+	// The SDK rejects an incomplete idle policy before it calls AWS, with an error UCP can't tell from a lost call.
+	if p := t.IdlePolicy; p != nil && (p.AutoResumeEnabled == nil || p.MaxIdleDurationSeconds == nil || p.SuspendedDurationSeconds == nil) {
+		return template{}, clientFailure("IdlePolicy of an %s must set AutoResumeEnabled, MaxIdleDurationSeconds, and SuspendedDurationSeconds", microvmType)
 	}
 	return t, nil
 }

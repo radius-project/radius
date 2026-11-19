@@ -19,6 +19,7 @@ package amplify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -184,11 +185,20 @@ func (h *BackendEnvironment) Create(ctx context.Context, request native.CreateRe
 		// earlier attempt of this create made, such as when the SDK retried a call whose response was lost. The docs
 		// name no error for a name in use, so any rejection is checked. The outcome is then unknown, so UCP keeps the
 		// record and the next deploy finds the environment by its identifier.
-		if _, getErr := h.get(ctx, request.Region, e); getErr == nil {
+		_, getErr := h.get(ctx, request.Region, e)
+		switch {
+		case getErr == nil:
 			return "", &native.Failure{
 				Message:     fmt.Sprintf("the Amplify app %q already has a backend environment named %q, which an earlier attempt of this deploy may have created. Deploy again to manage it, or choose another name: %v", e.app, e.name, err),
 				ClientError: true,
 				Outcome:     native.OutcomeUnknown,
+			}
+		case !errors.Is(getErr, native.ErrNotFound) && !ucp_aws.IsClientFault(getErr):
+			// A server or transport error doesn't show whether AWS has the environment, so UCP keeps the record. AWS
+			// rejecting the read too, such as for a Gen 2 app, means the create was rejected.
+			return "", &native.Failure{
+				Message: fmt.Sprintf("AWS rejected the create of the backend environment %q, and reading it to check whether an earlier attempt made it failed: %v. Deploy again: %v", e.name, getErr, err),
+				Outcome: native.OutcomeUnknown,
 			}
 		}
 	}

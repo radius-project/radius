@@ -158,6 +158,21 @@ func Test_CreateAlreadyExists(t *testing.T) {
 	require.Contains(t, failure.Message, badRequestCode)
 }
 
+// Test_CreateRejectedReadFails covers a rejected create whose check for an environment an earlier attempt made fails,
+// so UCP can't tell whether AWS has one and keeps the record.
+func Test_CreateRejectedReadFails(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := NewBackendEnvironment(api)
+	api.errs["CreateBackendEnvironment"] = fault(badRequestCode)
+	api.errs["GetBackendEnvironment"] = &smithy.GenericAPIError{Code: "InternalFailureException", Fault: smithy.FaultServer}
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: staging(nil)})
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome)
+	require.False(t, failure.ClientError)
+	require.Contains(t, failure.Message, "InternalFailureException")
+}
+
 func Test_CreateServerError(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
 	h := NewBackendEnvironment(api)
