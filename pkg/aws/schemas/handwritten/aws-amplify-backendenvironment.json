@@ -1,0 +1,65 @@
+{
+  "typeName": "AWS::Amplify::BackendEnvironment",
+  "description": "A backend environment of an AWS Amplify Gen 1 app, made with Amplify's CreateBackendEnvironment. AWS has no call that changes an environment, so every property is create-only.",
+  "properties": {
+    "AppId": {
+      "type": "string",
+      "description": "The ID of the Amplify app.",
+      "minLength": 1,
+      "maxLength": 20,
+      "pattern": "d[a-z0-9]+"
+    },
+    "EnvironmentName": {
+      "type": "string",
+      "description": "The name of the backend environment.",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "StackName": {
+      "type": "string",
+      "description": "The name of the AWS CloudFormation stack of the backend environment.",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "DeploymentArtifacts": {
+      "type": "string",
+      "description": "The name of the deployment artifacts.",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "BackendEnvironmentArn": {
+      "type": "string",
+      "description": "The ARN of the backend environment."
+    }
+  },
+  "required": ["AppId", "EnvironmentName"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/AppId", "/properties/EnvironmentName"],
+  "createOnlyProperties": [
+    "/properties/AppId",
+    "/properties/EnvironmentName",
+    "/properties/StackName",
+    "/properties/DeploymentArtifacts"
+  ],
+  "readOnlyProperties": ["/properties/BackendEnvironmentArn"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "amplify:CreateBackendEnvironment",
+        "amplify:GetBackendEnvironment"
+      ]
+    },
+    "read": {
+      "permissions": ["amplify:GetBackendEnvironment"]
+    },
+    "update": {
+      "permissions": ["amplify:GetBackendEnvironment"]
+    },
+    "delete": {
+      "permissions": [
+        "amplify:DeleteBackendEnvironment",
+        "amplify:GetBackendEnvironment"
+      ]
+    }
+  }
+}

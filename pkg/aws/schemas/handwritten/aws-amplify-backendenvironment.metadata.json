@@ -1,0 +1,6 @@
+{
+  "typeName": "AWS::Amplify::BackendEnvironment",
+  "identityScope": "region",
+  "onDelete": "delete",
+  "arnProperty": "BackendEnvironmentArn"
+}

@@ -27,6 +27,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.48.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.18
 	github.com/aws/aws-sdk-go-v2/credentials v1.21.0
+	github.com/aws/aws-sdk-go-v2/service/amplify v1.49.7
 	github.com/aws/aws-sdk-go-v2/service/appsync v1.62.12
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.38.12
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.83.0
@@ -44,6 +45,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.65.12
 	github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.48.0
 	github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0
+	github.com/aws/aws-sdk-go-v2/service/lambdamicrovms v1.12.2
 	github.com/aws/aws-sdk-go-v2/service/medialive v1.114.5
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.10
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.288.1
