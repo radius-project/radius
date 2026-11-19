@@ -59,9 +59,8 @@ scalar RoleDefinitionScope extends AuthorizationScope;
 @pattern("^[^/\\s*]+(/[^/\\s*]+)*$")
 scalar AuthorizationScopePath extends string;
 
-@doc("An explicit catalog permission, up to 256 characters, such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.")
+@doc("An explicit catalog permission, such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.")
 @pattern("^[^*/\\s]+(/[^*/\\s]+){2,}$")
-@maxLength(256)
 scalar PermissionName extends string;
 
 @doc("An authorization resource name. Assignment names are deterministic Bicep guid(scope, roleDefinitionId, type, issuer, subject) values; the API also accepts stable caller-provided names.")
@@ -354,7 +353,8 @@ model WhoAmIResult {
 
 @doc("A permission and concrete target to evaluate. A reference never implies access to its target.")
 model AccessCheck {
-  @doc("The permission being evaluated.")
+  @doc("The permission being evaluated, up to 256 characters.")
+  @maxLength(256)
   permission: PermissionName;
 
   @doc("The concrete target resource or scope ID, up to 2048 characters including the leading slash.")

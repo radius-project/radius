@@ -66,8 +66,9 @@ test("inspection scope limits preserve existing policy and management contracts"
   for (const [path, methods] of Object.entries(paths)) {
     for (const operation of Object.values(methods)) {
       for (const value of operation.parameters ?? []) {
-        const parameter = value.$ref?.startsWith("#/parameters/")
-          ? parameters[value.$ref.slice("#/parameters/".length)]
+        const parameter =
+          value.$ref?.startsWith("#/parameters/") ?
+            parameters[value.$ref.slice("#/parameters/".length)]
           : value;
         if (parameter.name !== "scope") continue;
         const inspection = path.endsWith("/checkAccess");
@@ -77,7 +78,41 @@ test("inspection scope limits preserve existing policy and management contracts"
     }
   }
   assert.equal(scopedCheck, true);
-  assert.equal(parameters["AccessChangeListOptions.scope"].maxLength, undefined);
+  assert.equal(
+    parameters["AccessChangeListOptions.scope"].maxLength,
+    undefined
+  );
+});
+
+test("inspection permission limits preserve existing catalog and policy contracts", () => {
+  const { definitions } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  const resolve = (schema) =>
+    schema.$ref ?
+      {
+        ...resolve(definitions[schema.$ref.slice("#/definitions/".length)]),
+        ...schema
+      }
+    : schema;
+  const permission = `Team.Data/${"a".repeat(250)}/read`;
+  for (const [model, property] of [
+    ["RoleDefinitionProperties", "permissions"],
+    ["Permission", "name"],
+    ["EffectiveAccessResponse", "permissions"]
+  ]) {
+    const field = definitions[model].properties[property];
+    const schema = resolve(field.items ?? field);
+    assert.match(permission, new RegExp(schema.pattern), model);
+    assert.equal(schema.maxLength, undefined, model);
+  }
+  const inspection = resolve(definitions.AccessCheck.properties.permission);
+  assert.match(permission, new RegExp(inspection.pattern));
+  assert.equal(inspection.maxLength, 256);
+  assert.ok(permission.length > inspection.maxLength);
 });
 
 test("examples preserve the requested role and assignment shapes", async (t) => {
@@ -255,7 +290,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   ]) {
     assert.equal(scope.test(value), false, value);
   }
-  const permission = scalarPattern(source, "PermissionName", 256);
+  const permission = scalarPattern(source, "PermissionName");
   for (const value of [
     "Radius.Core/applications/read",
     "Radius.Core/environments/use/action",

@@ -1271,7 +1271,8 @@
       "properties": {
         "permission": {
           "$ref": "#/definitions/PermissionName",
-          "description": "The permission being evaluated."
+          "description": "The permission being evaluated, up to 256 characters.",
+          "maxLength": 256
         },
         "target": {
           "type": "string",
@@ -1693,8 +1694,7 @@
     },
     "PermissionName": {
       "type": "string",
-      "description": "An explicit catalog permission, up to 256 characters, such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.",
-      "maxLength": 256,
+      "description": "An explicit catalog permission, such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.",
       "pattern": "^[^*/\\s]+(/[^*/\\s]+){2,}$"
     },
     "PolicyChange": {
