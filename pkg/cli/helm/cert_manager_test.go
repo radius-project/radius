@@ -794,10 +794,15 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 		// a ConfigMap and passes with --config; configMissing leaves that ConfigMap out.
 		config        string
 		configMissing bool
-		wantErr       string
-		wantWarning   bool
+		// env is the environment of the cainjector container, which Kubernetes expands in $(NAME) references of its
+		// command and args.
+		env         []corev1.EnvVar
+		wantErr     string
+		wantWarning bool
 		// wantConfigWarning is part of the warning rad prints when it cannot read the configuration file.
 		wantConfigWarning string
+		// wantNamespaceWarning is set when rad cannot resolve the namespace flag and warns instead of checking it.
+		wantNamespaceWarning bool
 	}{
 		{name: "chart defaults", args: []string{"--v=2", "--leader-election-namespace=kube-system"}},
 		{name: "injection explicitly enabled", args: []string{"--enable-apiservices-injectable=true", "--enable-certificates-data-source"}},
@@ -832,6 +837,25 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 		{name: "flag enables APIService injection over the configuration file", args: []string{"--enable-apiservices-injectable=true"}, config: "enableInjectableConfig:\n  apiServices: false\n"},
 		{name: "flag widens the namespace of the configuration file", args: []string{"--namespace="}, config: "namespace: security\n"},
 		{name: "configuration file named by its command", command: []string{"cainjector", "--config=/var/cert-manager/config/config.yaml"}, config: "enableInjectableConfig:\n  apiServices: false\n", wantErr: "sets enableInjectableConfig.apiServices: false"},
+		// Kubernetes expands $(NAME) references to the container's environment in its command and args.
+		{name: "namespace from the environment is the Radius namespace", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "WATCH_NAMESPACE", Value: RadiusSystemNamespace}}},
+		{name: "namespace from the environment is another namespace", args: []string{"--namespace", "$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "WATCH_NAMESPACE", Value: "security"}}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "namespace from the pod namespace", command: []string{"cainjector", "--namespace=$(POD_NAMESPACE)"},
+			env:     []corev1.EnvVar{{Name: "POD_NAMESPACE", ValueFrom: &corev1.EnvVarSource{FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.namespace"}}}},
+			wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "namespace from an environment variable that refers to another", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "BASE", Value: "secur"}, {Name: "WATCH_NAMESPACE", Value: "$(BASE)ity"}}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "escaped reference is literal", args: []string{"--namespace=$$(WATCH_NAMESPACE)"},
+			env: []corev1.EnvVar{{Name: "WATCH_NAMESPACE", Value: RadiusSystemNamespace}}, wantErr: `is limited to namespace "$(WATCH_NAMESPACE)" by --namespace`},
+		{name: "ignored namespaces from the environment", args: []string{"--ignore-namespaces=$(IGNORED)"},
+			env: []corev1.EnvVar{{Name: "IGNORED", Value: "kube-system," + RadiusSystemNamespace}}, wantErr: `ignores namespace "radius-system" by --ignore-namespaces`},
+		// A value that only the kubelet can resolve leaves the namespace unknown, so rad warns rather than refusing.
+		{name: "namespace from a Secret", args: []string{"--namespace=$(WATCH_NAMESPACE)"},
+			env:                  []corev1.EnvVar{{Name: "WATCH_NAMESPACE", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{Key: "namespace"}}}},
+			wantNamespaceWarning: true},
+		{name: "namespace from an undefined variable", args: []string{"--namespace=$(WATCH_NAMESPACE)"}, wantNamespaceWarning: true},
 		{name: "unreadable configuration file", config: "namespace: security\n", configMissing: true, wantConfigWarning: `failed to read ConfigMap security/cert-manager-cainjector`},
 	}
 	for _, tt := range tests {
@@ -843,6 +867,7 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 			require.NoError(t, err)
 			deployment.Spec.Template.Spec.Containers[0].Args = tt.args
 			deployment.Spec.Template.Spec.Containers[0].Command = tt.command
+			deployment.Spec.Template.Spec.Containers[0].Env = tt.env
 			if tt.mirrored {
 				injector := &deployment.Spec.Template.Spec.Containers[0]
 				injector.Name = "injector"
@@ -886,6 +911,9 @@ func Test_checkCertManagerReady_CAInjector(t *testing.T) {
 			if tt.wantWarning {
 				require.Equal(t, []string{`Warning: rad could not tell which container of cert-manager cainjector Deployment security/cert-manager-cainjector ("proxy", "injector") runs cainjector, ` +
 					`so it did not check that cainjector can inject the CA certificate in Secret radius-system/radius-apiserver-ca into the Radius APIService`}, warnings)
+			} else if tt.wantNamespaceWarning {
+				require.Equal(t, []string{`Warning: rad could not resolve the --namespace value "$(WATCH_NAMESPACE)" of cert-manager cainjector container "cert-manager-cainjector", ` +
+					`so it did not check that cainjector watches namespace "radius-system"`}, warnings)
 			} else if tt.wantConfigWarning != "" {
 				require.Len(t, warnings, 1)
 				require.Contains(t, warnings[0], `Warning: rad could not read the configuration file /var/cert-manager/config/config.yaml of cert-manager cainjector container "cert-manager-cainjector"`)
