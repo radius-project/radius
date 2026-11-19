@@ -56,6 +56,7 @@ require (
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260615092313-b57e5e6d29bb
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/distribution/reference v0.6.0
+	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/fatih/color v1.19.0
 	github.com/fluxcd/pkg/apis/meta v1.38.0
 	github.com/fluxcd/pkg/http/fetch v0.31.0
@@ -189,7 +190,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.14.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/evanphx/json-patch v5.9.11+incompatible // indirect
-	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/extism/go-sdk v1.7.1 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect

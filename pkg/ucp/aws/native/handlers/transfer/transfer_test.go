@@ -168,6 +168,7 @@ func Test_BadIdentifier(t *testing.T) {
 		_, err = h.Progress(t.Context(), region, id, native.OperationCreate)
 		require.ErrorAs(t, err, &failure)
 		require.ErrorAs(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: id, Desired: access}), &failure)
+		require.Contains(t, failure.Message, "is not the identifier of an AWS Transfer Family access")
 	}
 	require.Zero(t, api.updates)
 }
@@ -327,4 +328,48 @@ func Test_RedeployEmptyValues(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, patchOf(t, current, template, template))
 	require.Empty(t, patchOf(t, current, nil, template), "a take-over sends nothing either")
+}
+
+// Test_UpdateKeepsValuesOutsideTemplate checks that an update sends what UCP's patch makes of AWS's values, so a
+// nested value the template never set, such as secondary groups added outside Radius, stays as AWS has it.
+func Test_UpdateKeepsValuesOutsideTemplate(t *testing.T) {
+	template := with(access, map[string]any{
+		"PosixProfile":          map[string]any{"Uid": float64(1000), "Gid": float64(100)},
+		"HomeDirectoryType":     "LOGICAL",
+		"HomeDirectoryMappings": []any{map[string]any{"Entry": "/", "Target": "/bucket/home"}},
+		"HomeDirectory":         nil,
+	})
+	for name, lastApplied := range map[string]map[string]any{"after a deploy": template, "on a take-over": nil} {
+		t.Run(name, func(t *testing.T) {
+			h, api := newHandler()
+			_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(template, map[string]any{
+				"PosixProfile":          map[string]any{"Uid": float64(1000), "Gid": float64(100), "SecondaryGids": []any{float64(4), float64(5)}},
+				"HomeDirectoryMappings": []any{map[string]any{"Entry": "/", "Target": "/bucket/home", "Type": "FILE"}},
+			})})
+			require.NoError(t, err)
+
+			require.NoError(t, update(t, h, lastApplied, with(template, map[string]any{"PosixProfile": map[string]any{"Uid": float64(2000), "Gid": float64(100)}})))
+			require.Equal(t, int64(2000), aws.ToInt64(api.lastUpdate.PosixProfile.Uid))
+			require.Equal(t, []int64{4, 5}, api.lastUpdate.PosixProfile.SecondaryGids, "the secondary groups AWS has are kept")
+			if lastApplied == nil {
+				// UCP can't tell AWS's defaults from values set outside Radius, so it sends the template's list.
+				require.Len(t, api.lastUpdate.HomeDirectoryMappings, 1)
+				return
+			}
+			require.Nil(t, api.lastUpdate.HomeDirectoryMappings, "a list whose values the template sets as AWS has them isn't sent")
+			properties, err := h.Read(t.Context(), region, identifier)
+			require.NoError(t, err)
+			require.Equal(t, "FILE", properties["HomeDirectoryMappings"].([]any)[0].(map[string]any)["Type"])
+		})
+	}
+}
+
+func Test_UpdatePatchDoesNotApply(t *testing.T) {
+	h, api := newHandler()
+	patch := jsondiff.Patch{{Type: jsondiff.OperationRemove, Path: "/Missing"}}
+	var failure *native.Failure
+	require.ErrorAs(t, h.Update(t.Context(), native.UpdateRequest{Region: region, Identifier: identifier, Current: access, Desired: access, Patch: patch}), &failure)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, "doesn't apply to the access AWS has")
+	require.Zero(t, api.updates)
 }

@@ -19,6 +19,7 @@ package transfer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/transfer"
 	"github.com/aws/aws-sdk-go-v2/service/transfer/types"
+	jsonpatch "github.com/evanphx/json-patch/v5"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -338,15 +340,37 @@ func cantRemove(name string) error {
 	return clientFailure("AWS can't remove %s from a Transfer Family access. Set it in the template, or delete the access and deploy it again", name)
 }
 
-// Update sends the properties the patch changes in one UpdateAccess call. A removed HomeDirectory or Policy is sent
-// empty and a removed HomeDirectoryType as PATH, AWS's default, which clears them. AWS has no value that clears
-// HomeDirectoryMappings or PosixProfile, so removing one fails before any change.
-func (h *Access) Update(ctx context.Context, request native.UpdateRequest) error {
-	v, err := parse(request.Desired)
+// patched returns the values of AWS's access with the patch applied, which keeps what UCP leaves as AWS has it, such as
+// nested values the template never set. Current and Patch hold JSON values, so they always encode, and patched values
+// come from Read and the template, which parse already checked.
+func patched(request native.UpdateRequest) (values, error) {
+	current, _ := json.Marshal(request.Current)
+	ops, _ := json.Marshal(request.Patch)
+	patch, err := jsonpatch.DecodePatch(ops)
+	if err == nil {
+		current, err = patch.Apply(current)
+	}
 	if err != nil {
+		return values{}, &native.Failure{Message: "UCP's update of the AWS::Transfer::Access doesn't apply to the access AWS has: " + err.Error() + ". Deploy again.", Outcome: native.OutcomeRejected}
+	}
+	target := map[string]any{}
+	_ = json.Unmarshal(current, &target)
+	v, _ := parse(target)
+	return v, nil
+}
+
+// Update sends the properties the patch changes in one UpdateAccess call, with the values the patch gives them. A
+// removed HomeDirectory or Policy is sent empty and a removed HomeDirectoryType as PATH, AWS's default, which clears
+// them. AWS has no value that clears HomeDirectoryMappings or PosixProfile, so removing one fails before any change.
+func (h *Access) Update(ctx context.Context, request native.UpdateRequest) error {
+	if _, err := parse(request.Desired); err != nil {
 		return err
 	}
 	id, err := parseID(request.Identifier)
+	if err != nil {
+		return err
+	}
+	v, err := patched(request)
 	if err != nil {
 		return err
 	}
