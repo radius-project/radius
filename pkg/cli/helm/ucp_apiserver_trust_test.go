@@ -264,7 +264,7 @@ func Test_reconcileUCPAPIServerTrust_RestoredOverlapAPIService(t *testing.T) {
 	shortenUCPAPIServiceWait(t)
 	ucpCA, apiServerCA := newTestCA(t, "ucp-ca"), newTestCA(t, "radius-apiserver-ca")
 	stale := ucpAPIService(base64.StdEncoding.EncodeToString(append(append([]byte{}, ucpCA.pem...), apiServerCA.pem...)), "True", "Passed")
-	stale.SetAnnotations(map[string]string{injectCAFromSecretAnnotation: "radius-system/" + ucpAPIServerTrustSecretName})
+	setAnnotation(stale, injectCAFromSecretAnnotation, "radius-system/"+ucpAPIServerTrustSecretName)
 	kubeClient := kubefake.NewSimpleClientset(apiServerCASecret(apiServerCA))
 	dynamicClient := ucpAPIServiceDynamicClient(stale)
 

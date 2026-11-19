@@ -43,8 +43,19 @@ func ucpAPIService(caBundle string, available string, reason string) *unstructur
 	object := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "apiregistration.k8s.io/v1",
 		"kind":       "APIService",
-		"metadata":   map[string]any{"name": ucpAPIServiceName},
-		"spec":       map[string]any{"group": "api.ucp.dev", "version": "v1alpha3"},
+		"metadata": map[string]any{
+			"name":   ucpAPIServiceName,
+			"labels": map[string]any{helmManagedByLabel: helmManagedByValue},
+			"annotations": map[string]any{
+				helmReleaseNameAnnotation:      "radius",
+				helmReleaseNamespaceAnnotation: RadiusSystemNamespace,
+			},
+		},
+		"spec": map[string]any{
+			"group":   "api.ucp.dev",
+			"version": "v1alpha3",
+			"service": map[string]any{"name": "ucp", "namespace": RadiusSystemNamespace},
+		},
 	}}
 	if caBundle != "" {
 		object.Object["spec"].(map[string]any)["caBundle"] = caBundle
@@ -55,6 +66,16 @@ func ucpAPIService(caBundle string, available string, reason string) *unstructur
 		}}
 	}
 	return object
+}
+
+// setAnnotation sets annotation key of object to value, keeping its other annotations.
+func setAnnotation(object *unstructured.Unstructured, key, value string) {
+	annotations := object.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[key] = value
+	object.SetAnnotations(annotations)
 }
 
 func ucpAPIServiceDynamicClient(objects ...runtime.Object) dynamic.Interface {
