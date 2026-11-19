@@ -132,7 +132,7 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 		"s3tables:GetTableMaintenanceConfiguration", "s3tables:PutTableMaintenanceConfiguration",
 	}
 	implied["create"] = append(implied["create"], tableReplication...)
-	implied["update"] = tableReplication
+	implied["update"] = append(implied["update"], tableReplication...)
 	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	unused := []string{}
