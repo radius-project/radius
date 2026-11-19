@@ -308,10 +308,24 @@ func (s *server) authorizeCaller(next http.Handler) http.Handler {
 func writeDenied(ctx context.Context, w http.ResponseWriter, r *http.Request, err error) {
 	var denied *authz.DeniedError
 	if errors.As(err, &denied) {
-		if resp, rerr := denied.Response(); rerr == nil {
-			if aerr := resp.Apply(ctx, w, r); aerr == nil {
-				return
+		resp, rerr := denied.Response()
+		if rerr != nil {
+			// The target is blank, for example in an authority-form CONNECT, so send the
+			// denial's code and status with a message that names no target.
+			code := denied.Code
+			if code == "" {
+				code = authz.CodeAuthorizationFailed
 			}
+			resp = &authz.DeniedResponse{
+				StatusCode: authz.StatusForCode(code),
+				Body: v1.ErrorResponse{Error: &v1.ErrorDetails{
+					Code:    code,
+					Message: authz.GenericMessageForCode(code),
+				}},
+			}
+		}
+		if aerr := resp.Apply(ctx, w, r); aerr == nil {
+			return
 		}
 	}
 	http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
