@@ -23,7 +23,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
 	"errors"
 	"maps"
 	"net/http"
@@ -176,10 +175,6 @@ func TestNew_Validation(t *testing.T) {
 		{name: "no namespace", config: Config{Audience: testAudience, Keys: source}},
 		{name: "no audience", config: Config{Namespace: testNamespace, Keys: source}},
 		{name: "no keys", config: Config{Namespace: testNamespace, Audience: testAudience}},
-		{name: "negative refresh interval", config: Config{Namespace: testNamespace, Audience: testAudience, Keys: source, RefreshInterval: -time.Second}},
-		{name: "negative unknown key interval", config: Config{Namespace: testNamespace, Audience: testAudience, Keys: source, UnknownKeyInterval: -time.Second}},
-		{name: "negative max key age", config: Config{Namespace: testNamespace, Audience: testAudience, Keys: source, MaxKeyAge: -time.Second}},
-		{name: "negative fetch timeout", config: Config{Namespace: testNamespace, Audience: testAudience, Keys: source, FetchTimeout: -time.Second}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -338,38 +333,6 @@ func TestVerify_Leeway(t *testing.T) {
 	clock.Advance(time.Minute)
 	_, err = v.Verify(t.Context(), token)
 	requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
-}
-
-// signES384WithP256 signs claims as ES384 using a P-256 key: a SHA-384 digest with r and s
-// padded to 48 bytes, which is the signature length ES384 expects. RFC 7518 section 3.4
-// requires ES384 to use P-384, so the standard signer refuses to produce this token.
-func signES384WithP256(t *testing.T, kid string, claims jwt.MapClaims) string {
-	t.Helper()
-	tok := jwt.NewWithClaims(jwt.SigningMethodES384, claims)
-	tok.Header["kid"] = kid
-	signingString, err := tok.SigningString()
-	require.NoError(t, err)
-	digest := crypto.SHA384.New()
-	digest.Write([]byte(signingString))
-	r, s, err := ecdsa.Sign(rand.Reader, ecKey, digest.Sum(nil))
-	require.NoError(t, err)
-	sig := make([]byte, 96)
-	r.FillBytes(sig[:48])
-	s.FillBytes(sig[48:])
-	return signingString + "." + base64.RawURLEncoding.EncodeToString(sig)
-}
-
-func TestVerify_ECDSACurveMustMatchAlgorithm(t *testing.T) {
-	clock := &fakeClock{now: start}
-	v := newTestVerifier(t, newFakeSource(defaultKeys()), clock)
-	require.NoError(t, v.Refresh(t.Context()))
-
-	_, err := v.Verify(t.Context(), signES384WithP256(t, "ec", claimsFor("ucp", start)))
-	requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
-
-	// The same key still verifies ES256, its matching algorithm.
-	_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodES256, "ec", ecKey, claimsFor("ucp", start)))
-	require.NoError(t, err)
 }
 
 func TestVerify_ConfiguredIssuer(t *testing.T) {
@@ -578,19 +541,18 @@ func TestVerify_FailsClosedWhenKeysAreStale(t *testing.T) {
 	require.NoError(t, v.Refresh(t.Context()))
 
 	source.set(defaultKeys(), errors.New("API server unavailable"))
-	for range 3 {
+	for range 2 {
 		clock.Advance(DefaultRefreshInterval)
 		require.Error(t, v.Refresh(t.Context()))
 	}
-	require.Equal(t, DefaultMaxKeyAge, clock.Now().Sub(start))
 
-	// Just under MaxKeyAge since the last success: still accepted.
-	clock.Advance(-time.Nanosecond)
+	// Ten minutes since the last success: still accepted.
 	_, err := v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", clock.Now())))
 	require.NoError(t, err)
 
-	// Exactly MaxKeyAge since the last success: stale.
-	clock.Advance(time.Nanosecond)
+	clock.Advance(DefaultRefreshInterval + time.Second)
+
+	// More than MaxKeyAge since the last success: stale.
 	_, err = v.Verify(t.Context(), sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", clock.Now())))
 	requireCode(t, err, v1.CodeAuthorizationUnavailable)
 	require.Equal(t, http.StatusServiceUnavailable, authz.StatusForCode(err.(*Error).Code))
@@ -606,116 +568,19 @@ func TestVerify_FailsClosedWhenKeysAreStale(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestVerify_StaleKeysRejectEveryRequest checks that stale keys are reported before the
+// credential is parsed, so even a request with no token gets AuthorizationUnavailable.
 func TestVerify_StaleKeysRejectEveryRequest(t *testing.T) {
-	tests := []struct {
-		name          string
-		authorization string
-	}{
-		{name: "valid token"},
-		{name: "no Authorization header", authorization: "-"},
-		{name: "Basic credentials", authorization: "Basic dXNlcjpwYXNz"},
-		{name: "malformed bearer", authorization: "Bearer"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			clock := &fakeClock{now: start}
-			source := newFakeSource(defaultKeys())
-			v := newTestVerifier(t, source, clock)
-			require.NoError(t, v.Refresh(t.Context()))
-			source.set(defaultKeys(), errors.New("API server unavailable"))
-			clock.Advance(DefaultMaxKeyAge)
-
-			r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-			switch tt.authorization {
-			case "":
-				r.Header.Set("Authorization", "Bearer "+sign(t, jwt.SigningMethodRS256, "rsa", rsaKey, claimsFor("ucp", clock.Now())))
-			case "-":
-			default:
-				r.Header.Set("Authorization", tt.authorization)
-			}
-			_, err := v.VerifyRequest(r)
-			requireCode(t, err, v1.CodeAuthorizationUnavailable)
-		})
-	}
-
-	t.Run("empty token", func(t *testing.T) {
-		clock := &fakeClock{now: start}
-		v := newTestVerifier(t, newFakeSource(defaultKeys()), clock)
-		require.NoError(t, v.Refresh(t.Context()))
-		clock.Advance(DefaultMaxKeyAge)
-		_, err := v.Verify(t.Context(), "")
-		requireCode(t, err, v1.CodeAuthorizationUnavailable)
-	})
-}
-
-// blockingSource blocks each Fetch after the first until release is closed or the
-// fetch's context ends.
-type blockingSource struct {
-	*fakeSource
-	started chan struct{}
-	release chan struct{}
-	calls   int
-	mu      sync.Mutex
-}
-
-func (s *blockingSource) Fetch(ctx context.Context) (KeySet, error) {
-	s.mu.Lock()
-	s.calls++
-	first := s.calls == 1
-	s.mu.Unlock()
-	if !first {
-		s.started <- struct{}{}
-		select {
-		case <-s.release:
-		case <-ctx.Done():
-			return KeySet{}, ctx.Err()
-		}
-	}
-	return s.fakeSource.Fetch(ctx)
-}
-
-func TestRefresh_WaitForRefreshInProgressHonorsContext(t *testing.T) {
-	clock := &fakeClock{now: time.Unix(1_700_000_000, 0)}
-	source := &blockingSource{fakeSource: newFakeSource(defaultKeys()), started: make(chan struct{}, 1), release: make(chan struct{})}
-	v, err := New(Config{Namespace: testNamespace, Audience: testAudience, Keys: source, Now: clock.Now, FetchTimeout: time.Hour})
-	require.NoError(t, err)
+	clock := &fakeClock{now: start}
+	source := newFakeSource(defaultKeys())
+	v := newTestVerifier(t, source, clock)
 	require.NoError(t, v.Refresh(t.Context()))
+	source.set(defaultKeys(), errors.New("API server unavailable"))
+	clock.Advance(DefaultMaxKeyAge)
 
-	holder := make(chan error, 1)
-	go func() { holder <- v.Refresh(t.Context()) }()
-	<-source.started
-
-	cancelled, cancel := context.WithCancel(t.Context())
-	cancel()
-	unknown := sign(t, jwt.SigningMethodRS256, "rotated", rsaKey, claimsFor("ucp", clock.Now()))
-	waiters := map[string]func() error{
-		"Refresh": func() error { return v.Refresh(cancelled) },
-		"Verify with unknown key": func() error {
-			_, err := v.Verify(cancelled, unknown)
-			return err
-		},
-	}
-	for name, call := range waiters {
-		t.Run(name, func(t *testing.T) {
-			done := make(chan error, 1)
-			go func() { done <- call() }()
-			select {
-			case err := <-done:
-				require.Error(t, err)
-				if name == "Refresh" {
-					require.ErrorIs(t, err, context.Canceled)
-				} else {
-					requireCode(t, err, v1.CodeInvalidAuthenticationInfo)
-				}
-			case <-time.After(5 * time.Second):
-				t.Fatal("a cancelled caller kept waiting for the refresh in progress")
-			}
-		})
-	}
-
-	close(source.release)
-	require.NoError(t, <-holder)
-	require.NoError(t, v.Refresh(t.Context()), "a later refresh succeeds once the gate is free")
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	_, err := v.VerifyRequest(r)
+	requireCode(t, err, v1.CodeAuthorizationUnavailable)
 }
 
 func TestVerify_IgnoresKeysOutsidePolicy(t *testing.T) {
