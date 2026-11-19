@@ -80,6 +80,21 @@ type stageInventoryObject struct {
 // that call does not change the release, so there is nothing to stage.
 type renderRadiusManifest func(ctx context.Context) (manifest string, ok bool, err error)
 
+// renderOnce returns a renderRadiusManifest that calls render at most once and then returns its first result.
+func renderOnce(render renderRadiusManifest) renderRadiusManifest {
+	var done bool
+	var manifest string
+	var ok bool
+	var err error
+	return func(ctx context.Context) (string, bool, error) {
+		if !done {
+			manifest, ok, err = render(ctx)
+			done = true
+		}
+		return manifest, ok, err
+	}
+}
+
 // stageUCPAPIServerCA makes the Kubernetes API server trust both the CA that the running UCP pods serve, such as the
 // Helm-generated ucp-ca, and radius-apiserver-ca before Helm reissues ucp-cert from radius-apiserver-issuer.
 //
@@ -94,17 +109,26 @@ type renderRadiusManifest func(ctx context.Context) (manifest string, ok bool, e
 // It does nothing when the APIService does not exist, as on a fresh install, or the APIService caBundle already holds
 // only the key of radius-apiserver-ca. When manifest has no radius-apiserver-ca Certificate, as in charts before it, it
 // only records the CAs of the live caBundle in the trust Secret. If cert-manager does not issue the CA in time, it
-// returns an error before Helm changes anything; running the command again resumes. When authorization will be off
-// and the deployed release, in mode deployed, has it on, or deployed is "" because history does not show which
-// certificate UCP serves, it stages the certificate of that release instead, as stageUCPOffCertificate describes; when
-// UCP already serves that certificate, that stage writes nothing.
-func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace, releaseName string, deployed, mode authz.Mode, render renderRadiusManifest) error {
-	if mode == authz.ModeOff {
+// returns an error before Helm changes anything; running the command again resumes. When authorization will be off,
+// or the rendered chart serves UCP from the Secret ucp-cert of authorization off whatever its values say, as charts
+// before radius-apiserver-ca do, and the deployed release, in the mode deployed returns, has it on, or deployed returns
+// "" because history does not show which certificate UCP serves, it stages the certificate of that release instead,
+// as stageUCPOffCertificate describes; when UCP already serves that certificate, that stage writes nothing.
+func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNamespace, releaseName string, deployed func() (authz.Mode, error), mode authz.Mode, render renderRadiusManifest) error {
+	render = renderOnce(render)
+	stageOff := func() error {
+		current, err := deployed()
+		if err != nil {
+			return err
+		}
 		// With authorization off in the deployed release too, UCP already serves the certificate of the off chart.
-		if deployed == authz.ModeOff {
+		if current == authz.ModeOff {
 			return nil
 		}
 		return i.stageUCPOffCertificate(ctx, kubeContext, radiusNamespace, releaseName, render)
+	}
+	if mode == authz.ModeOff {
+		return stageOff()
 	}
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
@@ -117,6 +141,21 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 	}
 	if err != nil {
 		return fmt.Errorf("failed to read APIService %s: %w", ucpAPIServiceName, err)
+	}
+
+	manifest, ok, err := render(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to render the Radius chart to stage %s: %w", ucpAPIServerCASecretName, err)
+	}
+	if !ok {
+		return nil
+	}
+	kind, err := ucpServingCertificateKind(manifest)
+	if err != nil {
+		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)
+	}
+	if kind == "Secret" {
+		return stageOff()
 	}
 	encoded, _, _ := unstructured.NestedString(apiService.Object, "spec", "caBundle")
 	bundle, err := base64.StdEncoding.DecodeString(encoded)
@@ -138,13 +177,6 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, radiusNames
 		return nil
 	}
 
-	manifest, ok, err := render(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to render the Radius chart to stage %s: %w", ucpAPIServerCASecretName, err)
-	}
-	if !ok {
-		return nil
-	}
 	objects, err := ucpAPIServerCAStage(manifest)
 	if err != nil {
 		return fmt.Errorf("failed to read the rendered Radius chart: %w", err)

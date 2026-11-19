@@ -213,11 +213,38 @@ func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, nam
 	return nil
 }
 
+// checkInstalledCertManagerReady fails unless cert-manager is installed and ready to issue and inject the CA
+// certificate in Secret radius-apiserver-ca, as checkCertManagerReady decides. rad calls it before a command that does
+// not install cert-manager itself, such as a rollback, applies a release that serves UCP from that CA.
+func (i *Impl) checkInstalledCertManagerReady(ctx context.Context, kubeContext, radiusNamespace string) error {
+	newClients := i.newCertManagerClients
+	if newClients == nil {
+		newClients = newCertManagerClients
+	}
+	kubeClient, apiextClient, err := newClients(kubeContext)
+	if err != nil {
+		return fmt.Errorf("failed to create Kubernetes clients: %w", err)
+	}
+	existing, err := detectCertManager(ctx, kubeClient, apiextClient)
+	if err != nil {
+		return err
+	}
+	if !existing.Installed {
+		return fmt.Errorf("cert-manager is not installed, and the Radius release serves UCP's API server from a certificate that cert-manager issues. Install cert-manager, for example with rad upgrade kubernetes, and retry")
+	}
+	return checkCertManagerReady(ctx, kubeClient, existing.Namespace, radiusNamespace, i.logInfo)
+}
+
 // caInjectorProblem describes an argument of the cainjector containers that stops cainjector from injecting the CA
-// certificates of a Secret in radiusNamespace into an APIService, or returns "" when there is none.
+// certificates of a Secret in radiusNamespace into an APIService, or returns "" when there is none. It reads the flags
+// of Command after the executable as well as Args, since the container runs both.
 func caInjectorProblem(injectors []corev1.Container, radiusNamespace string) string {
 	for _, container := range injectors {
-		for idx, arg := range container.Args {
+		argv := slices.Clone(container.Args)
+		if len(container.Command) > 1 {
+			argv = append(slices.Clone(container.Command[1:]), container.Args...)
+		}
+		for idx, arg := range argv {
 			if !strings.HasPrefix(arg, "-") {
 				continue
 			}
@@ -229,15 +256,15 @@ func caInjectorProblem(injectors []corev1.Container, radiusNamespace string) str
 					return "sets " + arg
 				}
 			case "namespace":
-				if !hasValue && idx+1 < len(container.Args) {
-					value = container.Args[idx+1]
+				if !hasValue && idx+1 < len(argv) {
+					value = argv[idx+1]
 				}
 				if value != "" && value != radiusNamespace {
 					return "is limited to namespace " + strconv.Quote(value) + " by --namespace"
 				}
 			case "ignore-namespaces":
-				if !hasValue && idx+1 < len(container.Args) {
-					value = container.Args[idx+1]
+				if !hasValue && idx+1 < len(argv) {
+					value = argv[idx+1]
 				}
 				if slices.Contains(strings.Split(value, ","), radiusNamespace) {
 					return "ignores namespace " + strconv.Quote(radiusNamespace) + " by --ignore-namespaces"
@@ -374,7 +401,15 @@ func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, ku
 		if _, err := i.Helm.RunHelmUpgrade(helmConf, helmChart, buildCertManagerValues(), chartOptions.ReleaseName, chartOptions.Namespace, chartOptions.Wait, true, chartOptions.Timeout); err != nil {
 			return fmt.Errorf("failed to upgrade cert-manager, err: %w", err)
 		}
-		return nil
+		// The upgrade reuses the values of the release, which can configure cainjector so it cannot inject Radius's CA.
+		existing, err := detect()
+		if err != nil {
+			return err
+		}
+		if !existing.Installed {
+			return fmt.Errorf("cert-manager is not running after rad upgraded it in namespace %q. Repair cert-manager and retry", chartOptions.Namespace)
+		}
+		return checkCertManagerReady(ctx, kubeClient, existing.Namespace, options.Radius.Namespace, i.logInfo)
 	}
 
 	existing, err := detect()
