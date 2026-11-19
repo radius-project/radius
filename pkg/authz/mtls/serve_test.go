@@ -17,12 +17,14 @@ limitations under the License.
 package mtls
 
 import (
+	"bufio"
 	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
@@ -821,6 +823,59 @@ func TestServe_OptionsAsteriskIsAuthenticated(t *testing.T) {
 			srv.clock.Advance(token.DefaultMaxKeyAge + time.Minute)
 			require.Equal(t, http.StatusServiceUnavailable, sendOptions(tok))
 			requireLogged(t, srv.logs, authz.ModeEnforce, v1.CodeAuthorizationUnavailable, "signing keys")
+			require.Empty(t, srv.seen)
+		})
+	}
+}
+
+// TestServe_ConnectAuthorityFormDenials checks that a denied authority-form CONNECT, whose
+// URL has no path, still gets the denial's ARM code and status rather than a plain 403.
+func TestServe_ConnectAuthorityFormDenials(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeDryRun, authz.ModeEnforce} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			ca := newCA(t)
+			srv := startServer(t, ca, mode)
+			tok := "Bearer " + mintToken(t, "ucp", "applications-rp")
+
+			sendConnect := func(authorization string) (int, string) {
+				conn, err := tls.Dial("tcp", srv.url, trustClient(t, ca.pem, "applications-rp"))
+				require.NoError(t, err)
+				defer conn.Close()
+				raw := "CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n"
+				if authorization != "" {
+					raw += "Authorization: " + authorization + "\r\n"
+				}
+				_, err = io.WriteString(conn, raw+"\r\n")
+				require.NoError(t, err)
+				resp, err := http.ReadResponse(bufio.NewReader(conn), &http.Request{Method: http.MethodConnect})
+				require.NoError(t, err)
+				defer resp.Body.Close()
+				var body v1.ErrorResponse
+				if resp.StatusCode != http.StatusOK {
+					require.NoError(t, json.NewDecoder(resp.Body).Decode(&body), "status %d", resp.StatusCode)
+					require.NotNil(t, body.Error)
+					return resp.StatusCode, body.Error.Code
+				}
+				return resp.StatusCode, ""
+			}
+
+			if mode == authz.ModeEnforce {
+				status, code := sendConnect("")
+				require.Equal(t, http.StatusUnauthorized, status)
+				require.Equal(t, v1.CodeInvalidAuthenticationInfo, code)
+				require.Empty(t, srv.seen)
+			}
+
+			// Load the keys, then let them go stale.
+			require.Equal(t, http.StatusOK, send(t, client(t, ca), "https://"+srv.url, tok))
+			<-srv.seen
+			srv.keys.unavailable.Store(true)
+			srv.clock.Advance(token.DefaultMaxKeyAge + time.Minute)
+			status, code := sendConnect(tok)
+			require.Equal(t, http.StatusServiceUnavailable, status)
+			require.Equal(t, v1.CodeAuthorizationUnavailable, code)
 			require.Empty(t, srv.seen)
 		})
 	}
