@@ -77,13 +77,13 @@ func validateUCPAPIServerCAOwnership(secret *corev1.Secret) error {
 	a := secret.Annotations
 	if secret.Type != corev1.SecretTypeTLS ||
 		a[certificateNameAnnotation] != ucpAPIServerCASecretName ||
-		a["cert-manager.io/issuer-name"] != RadiusBootstrapIssuerName ||
+		a["cert-manager.io/issuer-name"] != radiusBootstrapIssuerName ||
 		a["cert-manager.io/issuer-kind"] != "Issuer" ||
 		a["cert-manager.io/issuer-group"] != "cert-manager.io" ||
 		len(secret.Data[corev1.TLSCertKey]) == 0 || len(secret.Data[corev1.TLSPrivateKeyKey]) == 0 ||
 		len(secret.Data[caCertificateKey]) == 0 {
 		return fmt.Errorf("selfSigned aggregation Secret %s/%s is foreign or has an invalid profile: require a TLS Secret for Certificate %s issued by cert-manager.io/Issuer %s with tls.crt, tls.key and ca.crt; preserve it and repair ownership before retrying",
-			secret.Namespace, secret.Name, ucpAPIServerCASecretName, RadiusBootstrapIssuerName)
+			secret.Namespace, secret.Name, ucpAPIServerCASecretName, radiusBootstrapIssuerName)
 	}
 	return nil
 }

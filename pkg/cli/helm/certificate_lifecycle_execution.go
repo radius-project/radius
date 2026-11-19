@@ -223,7 +223,7 @@ func (intent certificateResourceIntent) validateSpec() error {
 		issuer, issuerOK := intent.Spec["issuerRef"].(map[string]any)
 		if !keyOK || !issuerOK || len(key) != 3 || key["algorithm"] != "ECDSA" ||
 			key["rotationPolicy"] != "Never" || fmt.Sprint(key["size"]) != "256" ||
-			len(issuer) != 3 || issuer["name"] != RadiusBootstrapIssuerName ||
+			len(issuer) != 3 || issuer["name"] != radiusBootstrapIssuerName ||
 			issuer["group"] != "cert-manager.io" || issuer["kind"] != "Issuer" {
 			return errors.New("planned root must preserve the selected P256 bootstrap profile")
 		}
@@ -240,7 +240,7 @@ func (intent certificateResourceIntent) validateSpec() error {
 
 func (intent certificateResourceIntent) existingBootstrap() bool {
 	value, ok := intent.Spec["selfSigned"].(map[string]any)
-	return intent.Before != nil && intent.Kind == "Issuer" && intent.Name == RadiusBootstrapIssuerName &&
+	return intent.Before != nil && intent.Kind == "Issuer" && intent.Name == radiusBootstrapIssuerName &&
 		len(intent.Spec) == 1 && ok && len(value) == 0
 }
 

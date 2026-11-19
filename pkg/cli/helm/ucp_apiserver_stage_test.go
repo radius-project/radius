@@ -201,22 +201,18 @@ func (c *stageCluster) cainjectorAPIService() *unstructured.Unstructured {
 	return apiService
 }
 
-func (c *stageCluster) impl(client HelmClient, certManagerControllerSA string) *Impl {
+func (c *stageCluster) impl(client HelmClient) *Impl {
 	c.prepare()
 	return &Impl{
 		Helm:           client,
 		logger:         func(string, ...any) {},
-		contourCluster: &fakeContourCluster{capabilities: capabilitiesWith(admissionPolicyAPI)},
+		contourCluster: &fakeContourCluster{capabilities: capabilitiesWith()},
 		newRotationStore: func(string, string) (*rotationStore, error) {
 			return &rotationStore{kube: c.kube, dynamic: c.dynamic, namespace: RadiusSystemNamespace, release: radiusReleaseName, now: time.Now}, nil
 		},
 		newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 			kubeClient, apiextClient := fakeCertManagerCluster{crd: true, controller: certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")}.clients()
 			return kubeClient, apiextClient, nil
-		},
-		newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) {
-			controller := certManagerControllerWithServiceAccount(certManagerController("security", CertManagerChartDefaultVersion, ""), certManagerControllerSA)
-			return sarClient(nil, nil, controller), nil
 		},
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return c.dynamic, nil },
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return c.kube, nil },
@@ -274,7 +270,7 @@ func loadStageTestChart(t *testing.T) *chart.Chart {
 // renderStageTestManifest renders the Radius chart with values as a fresh install does.
 func renderStageTestManifest(t *testing.T, values map[string]any) string {
 	t.Helper()
-	install := helm.NewInstall(newTestRenderConfiguration(capabilitiesWith(admissionPolicyAPI)))
+	install := helm.NewInstall(newTestRenderConfiguration(capabilitiesWith()))
 	install.DryRunStrategy = helm.DryRunServer
 	install.ReleaseName = "radius"
 	install.Namespace = RadiusSystemNamespace
@@ -491,7 +487,7 @@ func newStageUpgrade(t *testing.T, deployed map[string]any, command string) *sta
 		configuration: &helm.Configuration{
 			Releases:     storage.Init(driver.NewMemory()),
 			KubeClient:   &kubefakehelm.PrintingKubeClient{Out: io.Discard},
-			Capabilities: capabilitiesWith(admissionPolicyAPI),
+			Capabilities: capabilitiesWith(),
 		},
 		helmClient: NewHelmClient(),
 		command:    command,
@@ -524,10 +520,6 @@ func (u *stageUpgrade) mock(t *testing.T, upgrades int, beforeHelm func()) *Mock
 			}
 			return chart, nil
 		})
-	// rad installs csi-driver-spiffe only when authorization will be on.
-	expectCSIDriverSPIFFEPull(t, client).AnyTimes()
-	client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), csiDriverSPIFFEReleaseName, RadiusSystemNamespace, true, DefaultInstallTimeout, radManagedByLabels()).
-		AnyTimes().Return(&releasev1.Release{}, nil)
 	if u.command == "install" {
 		client.EXPECT().RunHelmInstall(gomock.Any(), gomock.Any(), gomock.Any(), "radius", RadiusSystemNamespace, gomock.Any(), gomock.Any(), gomock.Any()).Times(upgrades).
 			DoAndReturn(func(_ *helm.Configuration, c *chart.Chart, vals map[string]any, name, namespace string, _ bool, timeout time.Duration, labels map[string]string) (*releasev1.Release, error) {
@@ -584,7 +576,7 @@ func Test_UpgradeRadius_BlocksLegacyAggregationMigrationBeforeWrites(t *testing.
 					helmCalls++
 				})
 
-				impl := c.impl(client, "cert-manager")
+				impl := c.impl(client)
 				before, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 				require.NoError(t, err)
 				require.ErrorIs(t, u.run(t, impl, []string{"global.rbac.enabled=true"}), errCertificateObserverUnavailable)
@@ -617,7 +609,7 @@ func Test_UpgradeRadius_BlocksLegacyAggregationMigrationBeforeWrites(t *testing.
 					requireStagedOffCertificate(t, staged)
 				})
 
-				require.NoError(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"}))
+				require.NoError(t, u.run(t, c.impl(client), []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"}))
 				require.Equal(t, 1, helmCalls)
 				require.Equal(t, []string{"ucp-ca"}, apiServiceCABundle(t, c.dynamic))
 				c.requireOffTrust(t)
@@ -635,7 +627,7 @@ func Test_UpgradeRadius_RequiresIndependentPublicSource(t *testing.T) {
 		require.NoError(t, c.dynamic.Tracker().Add(c.cainjectorAPIService()))
 		client := u.mock(t, 0, func() { t.Fatal("missing public source must stop Helm") })
 
-		require.ErrorIs(t, u.run(t, c.impl(client, "cert-manager"), nil), errCertificateObserverUnavailable)
+		require.ErrorIs(t, u.run(t, c.impl(client), nil), errCertificateObserverUnavailable)
 		c.requireNotStaged(t)
 	})
 
@@ -644,7 +636,7 @@ func Test_UpgradeRadius_RequiresIndependentPublicSource(t *testing.T) {
 		u := newStageUpgrade(t, authzOnValues, "install --reinstall")
 		c := newStageCluster(t, ucpAPIService("", "", ""), true)
 		client := u.mock(t, 0, func() { t.Fatal("missing observation must stop Helm") })
-		require.ErrorIs(t, u.run(t, c.impl(client, "cert-manager"), nil), errCertificateObserverUnavailable)
+		require.ErrorIs(t, u.run(t, c.impl(client), nil), errCertificateObserverUnavailable)
 		c.requireNotStaged(t)
 	})
 }
@@ -659,7 +651,7 @@ func Test_InstallRadius_InstalledReleaseKeepsAuthzMode(t *testing.T) {
 		apiService := c.offAPIService(t)
 		require.NoError(t, c.dynamic.Tracker().Add(apiService))
 
-		impl := c.impl(u.mock(t, 0, func() {}), "cert-manager")
+		impl := c.impl(u.mock(t, 0, func() {}))
 		apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.NoError(t, u.run(t, impl, []string{"global.rbac.enabled=true"}))
@@ -680,7 +672,7 @@ func Test_InstallRadius_InstalledReleaseKeepsAuthzMode(t *testing.T) {
 		require.NoError(t, err)
 		writes := len(c.clusterWrites())
 
-		require.NoError(t, u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"}))
+		require.NoError(t, u.run(t, c.impl(u.mock(t, 0, func() {})), []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"}))
 		require.Empty(t, c.clusterWrites()[writes:])
 		require.Equal(t, RadiusSystemNamespace+"/"+ucpAPIServerCASecretName, apiServiceCASource(t, c.dynamic))
 		require.Equal(t, []string{"radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
@@ -697,7 +689,7 @@ func Test_UpgradeRadius_LateIssuanceDoesNotAuthorizeMigration(t *testing.T) {
 	offAPIService := c.offAPIService(t)
 	require.NoError(t, c.dynamic.Tracker().Add(offAPIService))
 
-	err := u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), []string{"global.rbac.enabled=true"})
+	err := u.run(t, c.impl(u.mock(t, 0, func() {})), []string{"global.rbac.enabled=true"})
 	require.ErrorIs(t, err, errCertificateObserverUnavailable)
 	apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
 	require.NoError(t, err)
@@ -713,7 +705,7 @@ func Test_UpgradeRadius_LateIssuanceDoesNotAuthorizeMigration(t *testing.T) {
 	client := u.mock(t, 0, func() {
 		helmCalls++
 	})
-	require.ErrorIs(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=true"}), errCertificateObserverUnavailable)
+	require.ErrorIs(t, u.run(t, c.impl(client), []string{"global.rbac.enabled=true"}), errCertificateObserverUnavailable)
 	require.Zero(t, helmCalls)
 	c.requireNotStaged(t)
 }
@@ -745,7 +737,7 @@ func Test_UpgradeRadius_OffToOffRemovesLeftoverTrust(t *testing.T) {
 			require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, c.dynamic))
 
 			client := u.mock(t, 1, func() { c.helmAppliesOff(t, nil, nil) })
-			require.NoError(t, u.run(t, c.impl(client, "cert-manager"), []string{"global.rbac.enabled=false"}))
+			require.NoError(t, u.run(t, c.impl(client), []string{"global.rbac.enabled=false"}))
 			c.requireOffTrust(t)
 		})
 	}
@@ -770,7 +762,7 @@ func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
 	c.setUCPRolledOut(t, false)
 	off := []string{"global.rbac.enabled=false", "global.rbac.dryRun=false"}
 
-	err := u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), off)
+	err := u.run(t, c.impl(u.mock(t, 0, func() {})), off)
 	require.ErrorContains(t, err, "UCP does not serve the certificate in Secret ucp-cert")
 	require.ErrorContains(t, err, `kubectl --context "test-context" -n radius-system rollout status deployment/ucp`)
 	require.Equal(t, []string{"radius-apiserver-ca", "ucp-ca"}, apiServiceCABundle(t, c.dynamic), "the API server must trust both CAs while pods move")
@@ -786,7 +778,7 @@ func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
 	require.NoError(t, err)
 	onLeaf, err := firstCertificate(onSecret.Data[corev1.TLSCertKey])
 	require.NoError(t, err)
-	err = u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), off)
+	err = u.run(t, c.impl(u.mock(t, 0, func() {})), off)
 	require.ErrorContains(t, err, "UCP does not serve the certificate in Secret ucp-cert")
 	c.requireTrusts(t, onLeaf, "the UCP pods that have not rolled out")
 	c.requireTrusts(t, c.servedLeaf(t), "the UCP pods that rolled out")
@@ -797,7 +789,7 @@ func Test_UpgradeRadius_StageUCPOffCertificateTimeout(t *testing.T) {
 		helmCalls++
 		c.helmAppliesOff(t, nil, nil)
 	})
-	require.NoError(t, u.run(t, c.impl(client, "cert-manager"), off))
+	require.NoError(t, u.run(t, c.impl(client), off))
 	require.Equal(t, 1, helmCalls)
 	require.Equal(t, []string{"ucp-ca"}, apiServiceCABundle(t, c.dynamic))
 	c.requireOffTrust(t)
@@ -816,7 +808,7 @@ func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T)
 		}
 	}
 	impl := func(c *stageCluster, m *MockHelmClient) *Impl {
-		return c.impl(m, "cert-manager")
+		return c.impl(m)
 	}
 
 	for _, toRevision := range []bool{false, true} {
@@ -861,7 +853,7 @@ func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T)
 				c.onUCP(t)
 				m := NewMockHelmClient(gomock.NewController(t))
 				m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return([]*releasev1.Release{
-					{Version: 1, Config: map[string]any{}, Manifest: offManifest, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+					{Version: 1, Config: map[string]any{}, Manifest: offManifest, Chart: manifestTestChart(t, offManifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 					{Version: 2, Config: values, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 				}, nil)
 				m.EXPECT().RunHelmGet(gomock.Any(), gomock.Any()).AnyTimes().Return(nil, driver.ErrReleaseNotFound)
@@ -896,7 +888,7 @@ func Test_RollbackRadius_RejectsLegacyTrustBeforeDependencyChanges(t *testing.T)
 		c.onUCP(t)
 		c.setUCPRolledOut(t, false)
 		releases := []*releasev1.Release{
-			{Version: 1, Config: map[string]any{}, Manifest: offManifest, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+			{Version: 1, Config: map[string]any{}, Manifest: offManifest, Chart: manifestTestChart(t, offManifest), Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
 			{Version: 2, Config: authzOnValues, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 		}
 		mock := func(rollbacks int, beforeHelm func()) *MockHelmClient {
@@ -948,10 +940,24 @@ spec:
 		m.EXPECT().RunHelmHistory(gomock.Any(), radiusReleaseName).Return(history(legacy), nil)
 
 		err := impl(c, m).RollbackRadiusToRevision(t.Context(), "test-context", 1)
-		require.ErrorContains(t, err, "Radius cannot roll back to revision 1")
+		require.ErrorIs(t, err, errCertificateObserverUnavailable)
 		for _, action := range c.dynamic.Actions() {
 			require.Equal(t, "get", action.GetVerb(), "a refused rollback must not mutate the cluster")
 		}
 		requireNoTrustSecret(t, c.kube)
 	})
+}
+
+func manifestTestChart(t *testing.T, manifest string) *chart.Chart {
+	t.Helper()
+	require.NotContains(t, manifest, "{{")
+	return &chart.Chart{
+		Metadata:  &chart.Metadata{APIVersion: chart.APIVersionV2, Name: "radius", Version: "0.45.0"},
+		Templates: []*common.File{{Name: "templates/manifest.yaml", Data: []byte(manifest)}},
+	}
+}
+
+func dryRunAction(action clienttesting.Action) bool {
+	create, ok := action.(interface{ GetCreateOptions() metav1.CreateOptions })
+	return ok && slices.Equal(create.GetCreateOptions().DryRun, []string{metav1.DryRunAll})
 }

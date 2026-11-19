@@ -18,6 +18,8 @@ package token
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"errors"
 	"fmt"
 	"net/http"
@@ -42,7 +44,8 @@ const (
 	// every token is rejected with AuthorizationUnavailable.
 	DefaultMaxKeyAge = 15 * time.Minute
 
-	// DefaultFetchTimeout bounds a single key fetch.
+	// DefaultFetchTimeout bounds a single key refresh, including the wait for a refresh
+	// already in progress.
 	DefaultFetchTimeout = 10 * time.Second
 
 	// DefaultLeeway is the clock skew allowed when checking exp and nbf. It matches the
@@ -52,6 +55,9 @@ const (
 
 // signingMethods are the algorithms accepted for the keys publicKey allows.
 var signingMethods = []string{"RS256", "ES256", "ES384"}
+
+// curveForMethod is the curve each ECDSA signing method requires.
+var curveForMethod = map[string]elliptic.Curve{"ES256": elliptic.P256(), "ES384": elliptic.P384()}
 
 // serviceForAccount maps each Radius ServiceAccount allowed to call another component to
 // the Kubernetes Service name used in its canonical identity. The chart gives each
@@ -112,8 +118,9 @@ type Verifier struct {
 	fetchTimeout       time.Duration
 	leeway             time.Duration
 
-	// fetchMu serializes fetches and guards lastUnknownKeyFetch.
-	fetchMu             sync.Mutex
+	// fetchGate serializes fetches and guards lastUnknownKeyFetch. A caller holds it by
+	// sending a value. Unlike a mutex, waiting for it stops when the caller's context ends.
+	fetchGate           chan struct{}
 	lastUnknownKeyFetch time.Time
 
 	// mu guards keys and lastSuccess.
@@ -122,7 +129,9 @@ type Verifier struct {
 	lastSuccess time.Time
 }
 
-// New returns a Verifier for config. Namespace, Audience, and Keys are required.
+// New returns a Verifier for config. Namespace, Audience, and Keys are required. A zero
+// duration uses its default, and a negative RefreshInterval, UnknownKeyInterval,
+// MaxKeyAge, or FetchTimeout is an error.
 func New(config Config) (*Verifier, error) {
 	if config.Namespace == "" {
 		return nil, errors.New("namespace is required")
@@ -132,6 +141,16 @@ func New(config Config) (*Verifier, error) {
 	}
 	if config.Keys == nil {
 		return nil, errors.New("key source is required")
+	}
+	for name, d := range map[string]time.Duration{
+		"RefreshInterval":    config.RefreshInterval,
+		"UnknownKeyInterval": config.UnknownKeyInterval,
+		"MaxKeyAge":          config.MaxKeyAge,
+		"FetchTimeout":       config.FetchTimeout,
+	} {
+		if d < 0 {
+			return nil, fmt.Errorf("%s must not be negative, got %s", name, d)
+		}
 	}
 
 	v := &Verifier{
@@ -145,6 +164,7 @@ func New(config Config) (*Verifier, error) {
 		maxKeyAge:          orDefault(config.MaxKeyAge, DefaultMaxKeyAge),
 		fetchTimeout:       orDefault(config.FetchTimeout, DefaultFetchTimeout),
 		leeway:             orDefault(config.Leeway, DefaultLeeway),
+		fetchGate:          make(chan struct{}, 1),
 	}
 	if v.now == nil {
 		v.now = time.Now
@@ -192,16 +212,33 @@ func (v *Verifier) Run(ctx context.Context) {
 }
 
 // Refresh fetches the signing keys and replaces the cached keys if the fetch succeeds.
+// FetchTimeout bounds the whole call, including the wait for a refresh already in progress.
 func (v *Verifier) Refresh(ctx context.Context) error {
-	v.fetchMu.Lock()
-	defer v.fetchMu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, v.fetchTimeout)
+	defer cancel()
+	if err := v.acquireFetch(ctx); err != nil {
+		return fmt.Errorf("waiting for a signing key refresh in progress: %w", err)
+	}
+	defer v.releaseFetch()
 	return v.fetchLocked(ctx)
 }
 
-func (v *Verifier) fetchLocked(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(ctx, v.fetchTimeout)
-	defer cancel()
+// acquireFetch takes fetchGate, or returns ctx's error if ctx ends first.
+func (v *Verifier) acquireFetch(ctx context.Context) error {
+	select {
+	case v.fetchGate <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
 
+func (v *Verifier) releaseFetch() {
+	<-v.fetchGate
+}
+
+// fetchLocked fetches the keys. The caller holds fetchGate and sets ctx's deadline.
+func (v *Verifier) fetchLocked(ctx context.Context) error {
 	keys, err := v.source.Fetch(ctx)
 	if err != nil {
 		return err
@@ -218,10 +255,15 @@ func (v *Verifier) fetchLocked(ctx context.Context) error {
 }
 
 // refreshForUnknownKey refetches the keys unless a refetch for an unknown key ID ran
-// within UnknownKeyInterval.
+// within UnknownKeyInterval. FetchTimeout bounds the whole call, and it returns early if
+// ctx ends while another refresh is in progress.
 func (v *Verifier) refreshForUnknownKey(ctx context.Context) {
-	v.fetchMu.Lock()
-	defer v.fetchMu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, v.fetchTimeout)
+	defer cancel()
+	if err := v.acquireFetch(ctx); err != nil {
+		return
+	}
+	defer v.releaseFetch()
 
 	now := v.now()
 	if !v.lastUnknownKeyFetch.IsZero() && now.Sub(v.lastUnknownKeyFetch) < v.unknownKeyInterval {
@@ -321,6 +363,13 @@ func (v *Verifier) parse(token string) (claims *serviceAccountClaims, unknownKey
 		if !ok {
 			unknownKey = true
 			return nil, errors.New("unknown key ID")
+		}
+		// RFC 7518 section 3.4 binds ES256 to P-256 and ES384 to P-384; the JWT library checks
+		// only the signature length.
+		if ecKey, ok := key.(*ecdsa.PublicKey); ok {
+			if want := curveForMethod[t.Method.Alg()]; want == nil || ecKey.Curve != want {
+				return nil, fmt.Errorf("key %q does not use the curve that %s requires", kid, t.Method.Alg())
+			}
 		}
 		return key, nil
 	})

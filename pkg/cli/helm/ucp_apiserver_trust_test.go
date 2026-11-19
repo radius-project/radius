@@ -125,7 +125,7 @@ func apiServerCASecret(ca testCA) *corev1.Secret {
 	secret := tlsSecret(ucpAPIServerCASecretName, ca.pem, ca.pem)
 	secret.Annotations = map[string]string{
 		allowDirectInjectionAnnotation: "true", certificateNameAnnotation: ucpAPIServerCASecretName,
-		"cert-manager.io/issuer-name": RadiusBootstrapIssuerName, "cert-manager.io/issuer-kind": "Issuer",
+		"cert-manager.io/issuer-name": radiusBootstrapIssuerName, "cert-manager.io/issuer-kind": "Issuer",
 		"cert-manager.io/issuer-group": "cert-manager.io",
 	}
 	return secret
@@ -502,7 +502,7 @@ func Test_UCPAPIServerTrust_ForeignSecret(t *testing.T) {
 		_, err := c.kube.CoreV1().Secrets(RadiusSystemNamespace).Create(t.Context(), foreignTrustSecret(), metav1.CreateOptions{})
 		require.NoError(t, err)
 
-		err = u.run(t, c.impl(u.mock(t, 0, func() {}), "cert-manager"), []string{"global.rbac.enabled=true"})
+		err = u.run(t, c.impl(u.mock(t, 0, func() {})), []string{"global.rbac.enabled=true"})
 		require.ErrorIs(t, err, errCertificateObserverUnavailable)
 		requireForeignTrustSecretKept(t, c.kube)
 		require.Empty(t, c.certManagerWrites(), "rad must not stage radius-apiserver-ca when it cannot stage the trust")
@@ -593,7 +593,7 @@ func Test_deleteUCPAPIServerTrust_Pinned(t *testing.T) {
 			stampTrustSecret(t, c.kube)
 			deleted := c.enforceDeletePreconditions(t, nil)
 
-			require.NoError(t, c.impl(nil, "").deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
+			require.NoError(t, c.impl(nil).deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
 			require.Equal(t, []string{ucpAPIServerTrustSecretName}, *deleted)
 			requireNoTrustSecret(t, c.kube)
 		})
@@ -624,7 +624,7 @@ func Test_deleteUCPAPIServerTrust_Pinned(t *testing.T) {
 				require.NoError(t, c.kube.Tracker().Update(corev1.SchemeGroupVersion.WithResource("secrets"), secret, RadiusSystemNamespace))
 			})
 			logs := []string{}
-			impl := c.impl(nil, "")
+			impl := c.impl(nil)
 			impl.logger = func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) }
 
 			require.NoError(t, impl.deleteUCPAPIServerTrust(t.Context(), "test-context", RadiusSystemNamespace))
@@ -648,7 +648,7 @@ func Test_deleteUCPAPIServerTrust_Pinned(t *testing.T) {
 		require.NoError(t, c.dynamic.Tracker().Add(ucpAPIService("", "", "")))
 		deleted := c.enforceDeletePreconditions(t, nil)
 
-		require.NoError(t, c.impl(nil, "").deleteOwnedUCPAPIServerTrust(t.Context(), "test-context", c.kube, RadiusSystemNamespace))
+		require.NoError(t, c.impl(nil).deleteOwnedUCPAPIServerTrust(t.Context(), "test-context", c.kube, RadiusSystemNamespace))
 		require.Equal(t, []string{ucpAPIServerTrustSecretName}, *deleted)
 		require.Empty(t, apiServiceCABundle(t, c.dynamic), "shared deletion does not change APIService trust")
 	})
@@ -671,4 +671,8 @@ func Test_writeUCPAPIServerTrust_RetriesConflict(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, conflicts)
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, trustedSubjects(t, c.kube))
+}
+
+func uninstallStageClient(string) (dynamic.Interface, error) {
+	return fakeCertManagerDynamicClient(nil), nil
 }

@@ -223,7 +223,7 @@ kind: Pod
 metadata: {name: injected-workload}
 spec:
   containers: [{name: app, image: example.invalid/app}]
-  volumes: [{name: serving, csi: {driver: spiffe.csi.radapp.io}}]
+  volumes: [{name: serving, secret: {secretName: ucp-spiffe}}]
 {{ end }}`)})
 	archive, err := chartutil.Save(selected, t.TempDir())
 	require.NoError(t, err)
@@ -240,15 +240,15 @@ spec:
 	options.Radius.Wait = false
 	options.Radius.Timeout = time.Minute
 	options.Radius.SetArgs = []string{"global.rbac.enabled=true", "global.rbac.tls.provider=external"}
-	controller := certManagerControllerWithServiceAccount(certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, ""), "cert-manager")
-	impl := &Impl{Helm: NewHelmClient(), newRotationStore: func(string, string) (*rotationStore, error) { return store, nil }, newCSIDriverSPIFFEClient: func(string) (kubernetes.Interface, error) { return sarClient(nil, nil, controller), nil }, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
+	controller := certManagerController(CertManagerNamespace, CertManagerChartDefaultVersion, "")
+	impl := &Impl{Helm: NewHelmClient(), newRotationStore: func(string, string) (*rotationStore, error) { return store, nil }, newCertManagerClients: func(string) (kubernetes.Interface, apiextclient.Interface, error) {
 		k, e := (fakeCertManagerCluster{crd: true, controller: controller}).clients()
 		return k, e, nil
 	}}
 	configuration := newTestHelmConfiguration(t, kubeconfig, store.namespace)
 	reject := func() {
 		err := impl.InstallRadius(ctx, options, "fixture")
-		require.ErrorContains(t, err, "requires managed CSI driver")
+		require.ErrorContains(t, err, "external TLS provider")
 		require.ErrorContains(t, err, "dependencies may remain installed")
 		require.ErrorContains(t, err, "retry identical install settings")
 	}

@@ -19,11 +19,13 @@ limitations under the License.
 //	rogue-client idle
 //	rogue-client request [-X method] [-H 'Name: value']... [--data body]
 //	    [--cert file --key file] [--cacert file] [-k] [--max-time 30s]
-//	    [--radius-receiver name --radius-dir dir --radius-namespace ns [--radius-trust-domain td]] URL
+//	    [--radius-receiver name --radius-dir dir --radius-namespace ns [--radius-trust-domain td]
+//	     [--radius-token-dir tokens]] URL
 //
 // --radius-receiver sends the request with the Radius component client transport: it verifies
 // the server against <dir>/ca.crt and the receiver's SPIFFE ID, and only then sends the token in
-// <dir>/tokens/<receiver>/token.
+// <tokens>/<receiver>/token, where tokens defaults to <dir>/tokens. Tokens are read from files so
+// they never appear on the command line.
 //
 // request writes the response body to stdout followed by StatusMarker and the HTTP
 // status code, or StatusMarker and 0 when no HTTP response was received.
@@ -105,6 +107,7 @@ type requestOptions struct {
 	radiusDir   string
 	namespace   string
 	trustDomain string
+	tokenDir    string
 }
 
 func request(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -151,6 +154,7 @@ func parseRequest(args []string, stderr io.Writer) (requestOptions, error) {
 	fs.StringVar(&opts.radiusDir, "radius-dir", "", "directory holding ca.crt and tokens/<receiver>/token")
 	fs.StringVar(&opts.namespace, "radius-namespace", "", "Radius namespace in the receiver's SPIFFE ID")
 	fs.StringVar(&opts.trustDomain, "radius-trust-domain", "", "SPIFFE trust domain of the receiver")
+	fs.StringVar(&opts.tokenDir, "radius-token-dir", "", "directory holding <receiver>/token (default <radius-dir>/tokens)")
 	if err := fs.Parse(args); err != nil {
 		return opts, err
 	}
@@ -168,6 +172,8 @@ func parseRequest(args []string, stderr io.Writer) (requestOptions, error) {
 		if opts.cert != "" || opts.caCert != "" || opts.insecure {
 			return opts, errors.New("--radius-receiver cannot be combined with --cert, --cacert, or -k")
 		}
+	} else if opts.tokenDir != "" {
+		return opts, errors.New("--radius-token-dir requires --radius-receiver")
 	}
 	return opts, nil
 }
@@ -190,10 +196,14 @@ func buildRequest(ctx context.Context, opts requestOptions) (*http.Request, *htt
 	}
 
 	if opts.receiver != "" {
+		tokenDir := opts.tokenDir
+		if tokenDir == "" {
+			tokenDir = filepath.Join(opts.radiusDir, "tokens")
+		}
 		transport, err := mtls.NewClientTransport(authz.Options{
 			Mode:                 authz.ModeEnforce,
 			CertificateDirectory: opts.radiusDir,
-			TokenDirectory:       filepath.Join(opts.radiusDir, "tokens"),
+			TokenDirectory:       tokenDir,
 			TrustDomain:          opts.trustDomain,
 			Namespace:            opts.namespace,
 		}, opts.receiver)

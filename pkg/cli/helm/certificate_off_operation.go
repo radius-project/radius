@@ -228,7 +228,7 @@ func (i *Impl) withCertificateOffOperation(ctx context.Context, kubeContext, nam
 
 // ReconcileUCPOffAPIServerTrust runs the inherited Off writer only within the
 // post-Helm operation scope. Direct calls cannot bypass its Lease or journal guards.
-func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, namespace string) error {
+func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, namespace string, declared manifestObjectSet) error {
 	operation, ok := ctx.Value(certificateOffOperationKey{}).(*certificateOffOperation)
 	if !ok || !operation.postHelm || operation.store.namespace != namespace || operation.kubeContext != kubeContext {
 		return errors.New("Off trust reconciliation requires the post-Helm operation scope")
@@ -255,5 +255,5 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, n
 		}
 		return false, ctx.Err()
 	})
-	return i.reconcileUCPOffAPIServerTrust(ctx, kubeContext, namespace)
+	return i.reconcileUCPOffAPIServerTrust(ctx, kubeContext, namespace, declared)
 }

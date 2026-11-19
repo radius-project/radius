@@ -69,9 +69,9 @@ or '--ca-cert' with '--ca-key' to import one. The key is stored only in a create
 Secret outside Helm ownership, retained on failure and uninstall. Without these flags the chart
 uses its self-signed CAs. Use '--cert-issuer Issuer/name' or 'ClusterIssuer/name' with '--ca-bundle'
 for an existing external issuer and exactly one public dedicated CA certificate, without its
-key or parent chain. This requires an operator-provisioned Radius namespace, controllers,
-admission webhooks and bounded request policies. Live verification runs before any changes;
-Radius never installs or reconfigures those issuer prerequisites.
+key or parent chain. A connected render checks issuer readiness, not approval policy. Operators must restrict
+approval to the selected issuer, actual request namespace and sole permitted receiver URI or
+aggregation DNS name, without another grant that bypasses these restrictions.
 Reinstall preserves stored certificate settings; switching modes, issuers or trust requires
 coordinated CA migration.
 Turning authorization on with a dedicated CA or external issuer, including a fresh installation,

@@ -367,7 +367,7 @@ spec:
         - name: config-volume
           configMap:
             name: dynamic-rp-config
-        {{- with include "radius.authz.spiffe.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
+        {{- with include "radius.authz.spiffe.volume" (dict "root" . "component" "dynamic-rp") | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.caBundle.volume" . | trim }}{{ . | nindent 8 }}{{- end }}
         {{- with include "radius.authz.tokens.volumes" (dict "root" . "receivers" (list "ucp")) | trim }}{{ . | nindent 8 }}{{- end }}
         {{- if eq .Values.global.aws.irsa.enabled true }}

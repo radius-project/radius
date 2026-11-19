@@ -35,7 +35,7 @@ func validateBootstrapRenewal(secret *corev1.Secret, anchor initialCertificateAn
 		secret.ResourceVersion == "" || secret.DeletionTimestamp != nil ||
 		secret.Type != corev1.SecretTypeTLS ||
 		secret.Annotations[certificateNameAnnotation] != pin.Name ||
-		secret.Annotations["cert-manager.io/issuer-name"] != RadiusBootstrapIssuerName ||
+		secret.Annotations["cert-manager.io/issuer-name"] != radiusBootstrapIssuerName ||
 		secret.Annotations["cert-manager.io/issuer-kind"] != "Issuer" ||
 		secret.Annotations["cert-manager.io/issuer-group"] != "cert-manager.io" {
 		return errors.New("bootstrap signer identity or ownership changed")

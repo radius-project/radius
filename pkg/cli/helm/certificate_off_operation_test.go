@@ -169,14 +169,14 @@ func TestCertificateOffPublicEntryPointCannotBypassJournals(t *testing.T) {
 	for _, name := range []string{initialCertificateJournal, rotationJournalName, identityProviderJournal} {
 		t.Run(name, func(t *testing.T) {
 			cluster := newOffAfterOnCluster(t)
-			impl := cluster.impl(nil, "")
+			impl := cluster.impl(nil)
 			_, err := cluster.kube.CoreV1().ConfigMaps(RadiusSystemNamespace).Create(t.Context(), &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: name},
 				Data:       map[string]string{"phase": "complete"},
 			}, metav1.CreateOptions{})
 			require.NoError(t, err)
 			before := len(cluster.clusterWrites())
-			require.ErrorContains(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff), name)
+			require.ErrorContains(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff, nil), name)
 			require.Empty(t, cluster.clusterWrites()[before:], "even completed intent is rejected before Lease or trust writes")
 			require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, cluster.dynamic))
 		})
@@ -187,13 +187,13 @@ func TestCertificateOffPublicEntryPointComposesRetention(t *testing.T) {
 	shortenUCPAPIServiceWait(t)
 	cluster := newOffAfterOnCluster(t)
 	cluster.putTrustSecret(t, true)
-	impl := cluster.impl(nil, "")
+	impl := cluster.impl(nil)
 	calls := 0
 	impl.ucpMutationGuard = func(_ context.Context, verb string, object metav1.PartialObjectMetadata) (bool, error) {
 		calls++
 		return verb == "delete" && object.Name == ucpAPIServerTrustSecretName, nil
 	}
-	require.NoError(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff))
+	require.NoError(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff, manifestObjectSet{manifestObjectKey("", "Secret", ucpOffCertificateSecretName): true}))
 	require.Positive(t, calls)
 	_, err := cluster.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerTrustSecretName, metav1.GetOptions{})
 	require.NoError(t, err, "retention does not bypass the operation guard")
@@ -207,7 +207,7 @@ func TestCertificateOffPublicEntryPointComposesRetention(t *testing.T) {
 func TestCertificateOffPublicEntryPointPinsServingSource(t *testing.T) {
 	shortenUCPAPIServiceWait(t)
 	cluster := newOffAfterOnCluster(t)
-	impl := cluster.impl(nil, "")
+	impl := cluster.impl(nil)
 	impl.observeUCPOffServing = func(ctx context.Context, _, _ string, _ kubernetes.Interface) error {
 		secrets := cluster.kube.CoreV1().Secrets(RadiusSystemNamespace)
 		source, err := secrets.Get(ctx, ucpOffCertificateSecretName, metav1.GetOptions{})
@@ -216,7 +216,7 @@ func TestCertificateOffPublicEntryPointPinsServingSource(t *testing.T) {
 		require.NoError(t, err)
 		return nil
 	}
-	require.ErrorContains(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff), "Off serving source changed")
+	require.ErrorContains(t, impl.waitForUCPAPIService(t.Context(), "", RadiusSystemNamespace, authz.ModeOff, manifestObjectSet{manifestObjectKey("", "Secret", ucpOffCertificateSecretName): true}), "Off serving source changed")
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, cluster.dynamic))
 	_, err := cluster.kube.CoreV1().Secrets(RadiusSystemNamespace).Get(t.Context(), ucpAPIServerCASecretName, metav1.GetOptions{})
 	require.NoError(t, err)
@@ -224,11 +224,11 @@ func TestCertificateOffPublicEntryPointPinsServingSource(t *testing.T) {
 
 func TestCertificateOffPublicEntryPointRequiresPostHelmScope(t *testing.T) {
 	cluster := newOffAfterOnCluster(t)
-	impl := cluster.impl(nil, "")
-	require.ErrorContains(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "", RadiusSystemNamespace), "post-Helm operation scope")
+	impl := cluster.impl(nil)
+	require.ErrorContains(t, impl.ReconcileUCPOffAPIServerTrust(t.Context(), "", RadiusSystemNamespace, nil), "post-Helm operation scope")
 	require.ErrorContains(t, impl.withCertificateOffOperation(t.Context(), "", RadiusSystemNamespace, authz.ModeOff,
 		func(ctx context.Context) error {
-			return impl.ReconcileUCPOffAPIServerTrust(ctx, "", RadiusSystemNamespace)
+			return impl.ReconcileUCPOffAPIServerTrust(ctx, "", RadiusSystemNamespace, nil)
 		}), "post-Helm operation scope")
 	require.Equal(t, []string{"ucp-ca", "radius-apiserver-ca"}, apiServiceCABundle(t, cluster.dynamic))
 }

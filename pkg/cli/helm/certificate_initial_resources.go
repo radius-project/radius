@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/radius-project/radius/pkg/authz"
 	helm "helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/common"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
@@ -61,10 +60,10 @@ func (i *Impl) renderBootstrapChart(ctx context.Context, selected *chart.Chart, 
 	return accessor.Manifest(), nil
 }
 
-func initialCertificatePolicyChart(selected *chart.Chart) *chart.Chart {
+func initialCertificateValidationChart(selected *chart.Chart) *chart.Chart {
 	result := certificateHelperChart(selected)
-	result.Templates = append(result.Templates, &common.File{Name: "templates/initial-certificate-policy.yaml",
-		Data: []byte(`{{ include "radius.authz.certificates.validate" . }}`)})
+	result.Templates = append(result.Templates, &common.File{Name: "templates/initial-certificate-validation.yaml",
+		Data: []byte(`{{ include "radius.authz.certificates.validate" . }}{{ include "radius.validateExternalWorkloadValues" . }}`)})
 	return result
 }
 
@@ -360,7 +359,9 @@ func (b *initialCertificateInstaller) applyChart(ctx context.Context) error {
 	if err != nil || chartDigest != b.state.ChartSHA256 {
 		return errors.New("recorded bootstrap Helm chart changed")
 	}
-	digest, err := bootstrapDigest(previous.Config)
+	// The journal pins the effective configuration, but Helm stores only
+	// overrides, so upgrades can still pick up new chart defaults.
+	digest, err := bootstrapDigest(resolveEffectiveChartValues(previous.Chart.Values, nil, previous.Config))
 	if err != nil || digest != b.state.ValuesSHA256 {
 		return errors.New("recorded bootstrap Helm values changed")
 	}
@@ -374,7 +375,7 @@ func (b *initialCertificateInstaller) applyChart(ctx context.Context) error {
 }
 
 func (b *initialCertificateInstaller) runPublishedAction(ctx context.Context, configuration *helm.Configuration, run func(*helm.Configuration, helm.DryRunStrategy) (release.Releaser, error)) error {
-	if b.target.Mode == "selfSigned" && b.target.provider == authz.TLSProviderExternal {
+	if b.target.Provider == "external" {
 		preview := renderRadiusRelease(func(context.Context) (*releasev1.Release, error) {
 			// Keep live discovery, template lookups and release history. Do not build or apply resources: install may not yet have registered the chart CRDs.
 			readOnly := &helm.Configuration{RESTClientGetter: configuration.RESTClientGetter, Releases: configuration.Releases, KubeClient: &kubefake.PrintingKubeClient{Out: io.Discard}}
@@ -384,10 +385,7 @@ func (b *initialCertificateInstaller) runPublishedAction(ctx context.Context, co
 			}
 			return asRelease(rel)
 		})
-		manifest, _, err := preview.manifest(true)(ctx)
-		if err == nil {
-			err = checkExternalWorkloadManifest(manifest, b.target.chartAuthSettings)
-		}
+		err := b.target.checkProviderRender(ctx, preview.manifest(true))
 		if err != nil {
 			return fmt.Errorf("external workload validation failed before applying the Radius chart; dependencies may remain installed: %w", err)
 		}

@@ -312,7 +312,7 @@ func initialUninstallFixture(t *testing.T, b *initialCertificateInstaller, after
 		})
 	client.EXPECT().RunHelmUninstall(gomock.Any(), contourReleaseName, b.store.namespace, true).
 		Return(&release.UninstallReleaseResponse{}, nil).AnyTimes()
-	for _, name := range []string{csiDriverSPIFFEReleaseName, certManagerReleaseName} {
+	for _, name := range []string{certManagerReleaseName} {
 		client.EXPECT().RunHelmGet(gomock.Any(), name).Return(nil, driver.ErrReleaseNotFound).AnyTimes()
 	}
 }
@@ -411,11 +411,13 @@ func TestInitialCertificateUninstallPreservesForeignState(t *testing.T) {
 }
 
 func TestInitialCertificateUninstallInterruptedCleanup(t *testing.T) {
-	for _, point := range []string{"radius-ca", "radius-apiserver-ca", "radius-mtls-ca", ucpAPIServerTrustSecretName, "namespace", initialCertificateJournal} {
+	for _, point := range []string{"radius-ca", "radius-apiserver-ca", "radius-mtls-ca", "ucp-spiffe", ucpAPIServerTrustSecretName, "namespace", initialCertificateJournal} {
 		t.Run(point, func(t *testing.T) {
 			b, fresh := initialControllerFixture(t, "selfSigned", "radius")
 			require.NoError(t, b.run(t.Context()))
 			kube := b.store.kube.(*kubefake.Clientset)
+			_, seedErr := kube.CoreV1().Secrets(b.store.namespace).Create(t.Context(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "ucp-spiffe", Namespace: b.store.namespace, Annotations: map[string]string{certificateNameAnnotation: "ucp-spiffe"}}}, metav1.CreateOptions{})
+			require.NoError(t, seedErr)
 			injected := false
 			kube.PrependReactor("*", "*", func(action k8stesting.Action) (bool, runtime.Object, error) {
 				match := false

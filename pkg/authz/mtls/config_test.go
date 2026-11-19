@@ -155,6 +155,44 @@ func TestServerConfig_NoClientCertificate(t *testing.T) {
 	require.Empty(t, result.serverState.PeerCertificates)
 }
 
+// TestServerConfig_ServerAuthOnly checks that a serving certificate that lists only server
+// authentication is accepted.
+func TestServerConfig_ServerAuthOnly(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	dir := t.TempDir()
+	writeFiles(t, dir, ca.issue(t, certOptions{uris: spiffeURIs("ucp"), extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}), ca.pem)
+	server, err := NewSource(dir)
+	require.NoError(t, err)
+
+	result := handshake(t, server.ServerConfig(), trustClient(t, ca.pem, "ucp"))
+	require.NoError(t, result.serverErr)
+	require.NoError(t, result.clientErr)
+}
+
+// TestServerConfig_TrustOnlySource checks that a server config built from a Source with no
+// serving certificate fails the handshake with an error instead of panicking.
+func TestServerConfig_TrustOnlySource(t *testing.T) {
+	t.Parallel()
+	ca := newCA(t)
+	trust := newTrustSource(t, ca.pem)
+
+	var err error
+	require.NotPanics(t, func() {
+		_, err = trust.ServerConfig().GetConfigForClient(&tls.ClientHelloInfo{})
+	})
+	require.ErrorContains(t, err, "no serving certificate")
+
+	result := handshake(t, trust.ServerConfig(), trustClient(t, ca.pem, "ucp"))
+	require.ErrorContains(t, result.serverErr, "no serving certificate")
+	require.Error(t, result.clientErr)
+
+	// The same Source still verifies servers for clients.
+	result = handshake(t, newTestSource(t, ca, "ucp").ServerConfig(), clientConfig(t, trust, "ucp"))
+	require.NoError(t, result.serverErr)
+	require.NoError(t, result.clientErr)
+}
+
 // TestServerConfigFrom_PreservesClientAuth checks that a base config's client-certificate
 // settings are kept while the certificate comes from the source.
 func TestServerConfigFrom_PreservesClientAuth(t *testing.T) {
@@ -238,6 +276,12 @@ func TestClientConfig_RejectsServer(t *testing.T) {
 		}},
 		{name: "client auth only", wantErr: "incompatible key usage", server: func() testCert {
 			return ca.issue(t, certOptions{uris: spiffeURIs("ucp"), extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}})
+		}},
+		{name: "no extended key usage", wantErr: "does not list server authentication", server: func() testCert {
+			return ca.issue(t, certOptions{uris: spiffeURIs("ucp"), extKeyUsage: []x509.ExtKeyUsage{}})
+		}},
+		{name: "any extended key usage only", wantErr: "does not list server authentication", server: func() testCert {
+			return ca.issue(t, certOptions{uris: spiffeURIs("ucp"), extKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageAny}})
 		}},
 		{name: "RSA-1024", wantErr: "RSA key size 1024", server: func() testCert {
 			return ca.issue(t, certOptions{uris: spiffeURIs("ucp"), key: rsaKey(t, 1024)})

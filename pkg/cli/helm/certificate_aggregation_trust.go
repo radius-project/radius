@@ -296,6 +296,12 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, 
 	if err != nil {
 		return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
 	}
+	if render == nil {
+		if _, err := retainedUCPAPIServerTrust(ctx, kube, namespace); err != nil {
+			return err
+		}
+		return fmt.Errorf("selfSigned aggregation requires the selected release render: %w", errCertificateObserverUnavailable)
+	}
 	api, apiErr := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
 	if apiErr != nil && !apierrors.IsNotFound(apiErr) {
 		return apiErr

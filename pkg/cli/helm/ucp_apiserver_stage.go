@@ -52,32 +52,79 @@ var (
 	certManagerIssuersResource      = schema.GroupVersionResource{Group: "cert-manager.io", Version: "v1", Resource: "issuers"}
 )
 
+const (
+	// radiusBootstrapIssuerName is the chart's self-signed Issuer, which signs the Radius CAs.
+	radiusBootstrapIssuerName = "radius-selfsigned-bootstrap"
+	// radiusAPIServerIssuerName is the chart's Issuer that signs UCP's aggregated API server certificate from
+	// radius-apiserver-ca.
+	radiusAPIServerIssuerName = "radius-apiserver-issuer"
+)
+
 // ucpAPIServerCAStageObjects are the objects of the chart that cert-manager needs to issue radius-apiserver-ca, in
 // the order rad applies them: the self-signed Issuer, the CA Certificate, and the Issuer that signs ucp-cert from it.
-var ucpAPIServerCAStageObjects = []struct {
+var ucpAPIServerCAStageObjects = []stageInventoryObject{
+	{kind: "Issuer", name: radiusBootstrapIssuerName, resource: certManagerIssuersResource},
+	{kind: "Certificate", name: ucpAPIServerCASecretName, resource: certManagerCertificatesResource},
+	{kind: "Issuer", name: radiusAPIServerIssuerName, resource: certManagerIssuersResource},
+}
+
+// stageInventoryObject is an object that rad may stage before Helm adopts it into the Radius release.
+type stageInventoryObject struct {
 	kind     string
 	name     string
 	resource schema.GroupVersionResource
-}{
-	{kind: "Issuer", name: RadiusBootstrapIssuerName, resource: certManagerIssuersResource},
-	{kind: "Certificate", name: ucpAPIServerCASecretName, resource: certManagerCertificatesResource},
-	{kind: "Issuer", name: RadiusAPIServerIssuerName, resource: certManagerIssuersResource},
 }
 
 // renderRadiusManifest returns the manifest of the Radius release that the next Helm call applies. ok is false when
 // that call does not change the release, so there is nothing to stage.
 type renderRadiusManifest func(ctx context.Context) (manifest string, ok bool, err error)
 
+// renderOnce returns a renderRadiusManifest that calls render at most once and then returns its first result.
+func renderOnce(render renderRadiusManifest) renderRadiusManifest {
+	var done bool
+	var manifest string
+	var ok bool
+	var err error
+	return func(ctx context.Context) (string, bool, error) {
+		if !done {
+			manifest, ok, err = render(ctx)
+			done = true
+		}
+		return manifest, ok, err
+	}
+}
+
+// stageUCPAPIServerCA makes the Kubernetes API server trust both the CA that the running UCP pods serve, such as the
+// Helm-generated ucp-ca, and radius-apiserver-ca before Helm reissues ucp-cert from radius-apiserver-issuer.
+//
+// Helm creates radius-apiserver-ca and reissues ucp-cert in the same call, and UCP reloads its certificate within
+// seconds, so the API server would reject UCP until rad trusted the new CA after Helm returned. Instead, rad writes
+// the earlier CAs to the trust Secret and points the inject-ca-from-secret annotation of the APIService at it together with the caBundle, so a
+// cainjector that replaces the caBundle keeps the earlier CAs, applies the radius-apiserver-ca chain with the metadata Helm needs to adopt it into the
+// release, waits for cert-manager to issue the CA, and writes the earlier CAs and the new one to the trust Secret and the APIService
+// caBundle. The chart then renders the APIService from the trust Secret, and reconcileUCPAPIServerTrust removes the
+// earlier CAs after Helm once UCP serves the new certificate.
+//
+// It does nothing when the APIService does not exist, as on a fresh install, or the APIService caBundle already holds
+// only the key of radius-apiserver-ca. When manifest has no radius-apiserver-ca Certificate, as in charts before it, it
+// only records the CAs of the live caBundle in the trust Secret. If cert-manager does not issue the CA in time, it
+// returns an error before Helm changes anything; running the command again resumes. When authorization will be off,
+// or the rendered chart serves UCP from the Secret ucp-cert of authorization off whatever its values say, as charts
+// before radius-apiserver-ca do, and the deployed release, in the mode deployed returns, has it on, or deployed returns
+// "" because history does not show which certificate UCP serves, it stages the certificate of that release instead,
+// as stageUCPOffCertificate describes; when UCP already serves that certificate, that stage writes nothing.
+
 // stageUCPOffCertificate moves UCP to the certificate that Helm applies when authorization turns off, before Helm
 // applies it, while the Kubernetes API server trusts both the CA UCP serves now and the CA of that certificate.
 //
 // With authorization off, the chart serves UCP from Secret ucp-cert, signed by the Helm-generated ucp-ca, and sets the
 // APIService caBundle to only ucp-ca. Helm applies that caBundle at once, but UCP serves a radius-apiserver-ca
-// certificate until its pods roll out, so the API server would reject UCP in between. A rollback applies the stored
-// caBundle of the target revision, so the chart cannot avoid this by rendering both CAs. Instead, rad applies the
-// rendered ucp-cert with the metadata Helm needs to adopt it, adds its CA to the caBundle, and mounts it in the ucp
-// Deployment, then waits until every UCP pod serves it. Helm then keeps that Secret, because the chart reuses a live
-// ucp-cert and its ucp-ca, or a rollback applies the same Secret, so the caBundle Helm applies trusts what UCP serves.
+// certificate until its pods roll out, so the API server would reject UCP in between. A rollback renders the chart of
+// the target revision, which may predate this release, so the chart cannot avoid this by rendering both CAs. Instead,
+// rad renders what Helm applies (see renderRadiusRollback), applies the rendered ucp-cert with the metadata Helm needs
+// to adopt it, adds its CA to the caBundle, and mounts it in the ucp Deployment, then waits until every UCP pod serves
+// it. Helm then keeps that Secret, because the chart it renders, for an upgrade or a rollback, reuses a live ucp-cert
+// and its ucp-ca, so the caBundle Helm applies trusts what UCP serves.
 //
 // It does nothing when the ucp Deployment or the APIService does not exist, the Deployment mounts no named certificate
 // volume, or manifest has no ucp-cert Secret. If UCP does not serve the certificate in time, it returns an error before
@@ -201,8 +248,9 @@ func ucpAPIServiceCAs(apiService *unstructured.Unstructured) ([]*x509.Certificat
 	return cas, nil
 }
 
-// trustUCPAPIServerCAs sets the caBundle of the UCP APIService to cas and waits until it has held them for
-// ucpAPIServerCASettleChecks polls in a row, setting it again if cainjector writes back a caBundle it read earlier.
+// trustUCPAPIServerCAs points the inject-ca-from-secret annotation of the UCP APIService at source and sets its
+// caBundle to cas in one patch, then waits until both have held for ucpAPIServerCASettleChecks polls in a row, patching
+// again if cainjector writes back a caBundle it read earlier. trusts describes cas in the timeout error.
 func trustUCPAPIServerCAs(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, cas []*x509.Certificate) error {
 	held := 0
 	err := wait.PollUntilContextTimeout(ctx, ucpAPIServicePollInterval, ucpAPIServiceTimeout, true, func(ctx context.Context) (bool, error) {
@@ -447,59 +495,74 @@ func containsCertificates(certs, want []*x509.Certificate) bool {
 // renderRadiusUpgrade renders the Radius upgrade that RunHelmUpgrade applies with values and reuseValues, as a
 // server-side dry run against a copy of the release history, so lookups and capabilities match the real upgrade.
 func (i *Impl) renderRadiusUpgrade(kubeContext string, helmConf *helm.Configuration, helmChart *chart.Chart, values map[string]any, releaseName, namespace string, reuseValues bool) renderRadiusManifest {
-	return i.renderRadiusUpgradeRelease(kubeContext, helmConf, helmChart, values, releaseName, namespace, reuseValues).manifest(false)
-}
-
-func (i *Impl) renderRadiusUpgradeRelease(kubeContext string, helmConf *helm.Configuration, helmChart *chart.Chart, values map[string]any, releaseName, namespace string, reuseValues bool) renderRadiusRelease {
-	return func(ctx context.Context) (*releasev1.Release, error) {
+	return func(ctx context.Context) (string, bool, error) {
 		history, err := i.Helm.RunHelmHistory(helmConf, releaseName)
 		if err != nil {
-			return nil, err
+			return "", false, err
 		}
-		return i.renderUpgradeFromHistory(ctx, kubeContext, history, helmChart, values, releaseName, namespace, reuseValues)
+		manifest, err := i.dryRunRadiusUpgrade(ctx, kubeContext, history, helmChart, values, releaseName, namespace, reuseValues, false)
+		return manifest, err == nil, err
 	}
 }
 
-func (i *Impl) renderUpgradeFromHistory(ctx context.Context, kubeContext string, history []*releasev1.Release, helmChart *chart.Chart, values map[string]any, releaseName, namespace string, reuseValues bool) (*releasev1.Release, error) {
+// dryRunRadiusUpgrade returns the manifest of an upgrade of releaseName, with history, to helmChart and values, as a
+// server-side dry run with the configuration that RenderConfiguration returns: it reads the capabilities of the
+// cluster, its lookups read the live objects, and it changes neither the cluster nor history.
+func (i *Impl) dryRunRadiusUpgrade(ctx context.Context, kubeContext string, history []*releasev1.Release, helmChart *chart.Chart, values map[string]any, releaseName, namespace string, reuseValues, disableHooks bool) (string, error) {
 	configuration, err := i.cluster().RenderConfiguration(kubeContext, namespace)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	releases, err := releaseHistoryStorage(history)
+	named := make([]*releasev1.Release, 0, len(history))
+	for _, revision := range history {
+		if revision == nil {
+			continue
+		}
+		copied := *revision
+		if copied.Name == "" {
+			copied.Name = releaseName
+		}
+		if copied.Namespace == "" {
+			copied.Namespace = namespace
+		}
+		named = append(named, &copied)
+	}
+	releases, err := releaseHistoryStorage(named)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	configuration.Releases = releases
 	client := newUpgradeClient(configuration, namespace, false, reuseValues, 0, usesServerSideApply(configuration, releaseName))
+	client.DisableHooks = disableHooks
 	client.DryRunStrategy = helm.DryRunServer
 	upgraded, err := client.RunWithContext(ctx, releaseName, cloneChart(helmChart), copyValues(values))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return asRelease(upgraded)
+	rendered, err := asRelease(upgraded)
+	if err != nil {
+		return "", err
+	}
+	return releaseActionManifest(rendered, !disableHooks), nil
 }
 
 // renderRadiusInstall renders what ApplyHelmChart applies: a fresh install, or with Reinstall an upgrade that reuses
 // the stored values. An installed release without Reinstall is left unchanged, so nothing is rendered.
 func (i *Impl) renderRadiusInstall(kubeContext string, helmAction HelmAction, helmConf *helm.Configuration, helmChart *chart.Chart, values map[string]any, options ChartOptions) renderRadiusManifest {
-	return i.renderRadiusInstallRelease(kubeContext, helmAction, helmConf, helmChart, values, options).manifest(false)
-}
-
-func (i *Impl) renderRadiusInstallRelease(kubeContext string, helmAction HelmAction, helmConf *helm.Configuration, helmChart *chart.Chart, values map[string]any, options ChartOptions) renderRadiusRelease {
-	return func(ctx context.Context) (*releasev1.Release, error) {
+	return func(ctx context.Context) (string, bool, error) {
 		installed, _, err := helmAction.QueryRelease(kubeContext, options.ReleaseName, options.Namespace)
 		if err != nil {
-			return nil, err
+			return "", false, err
 		}
 		if installed {
 			if !options.Reinstall {
-				return nil, nil
+				return "", false, nil
 			}
-			return i.renderRadiusUpgradeRelease(kubeContext, helmConf, helmChart, values, options.ReleaseName, options.Namespace, true)(ctx)
+			return i.renderRadiusUpgrade(kubeContext, helmConf, helmChart, values, options.ReleaseName, options.Namespace, true)(ctx)
 		}
 		configuration, err := i.cluster().RenderConfiguration(kubeContext, options.Namespace)
 		if err != nil {
-			return nil, err
+			return "", false, err
 		}
 		install := helm.NewInstall(configuration)
 		install.DryRunStrategy = helm.DryRunServer
@@ -507,10 +570,43 @@ func (i *Impl) renderRadiusInstallRelease(kubeContext string, helmAction HelmAct
 		install.Namespace = options.Namespace
 		installedRelease, err := install.RunWithContext(ctx, cloneChart(helmChart), copyValues(values))
 		if err != nil {
-			return nil, err
+			return "", false, err
 		}
-		return asRelease(installedRelease)
+		rendered, err := asRelease(installedRelease)
+		if err != nil {
+			return "", false, err
+		}
+		return releaseActionManifest(rendered, true), true, nil
 	}
+}
+
+// renderRadiusRollback renders what RunHelmRollback applies to roll Radius back to revision of history: not the
+// stored manifest of revision, but an upgrade to its chart and stored values, without hooks, whose lookups read the
+// live cluster. A chart that keeps a live Secret, such as the ucp-cert of authorization off, renders the live key
+// rather than the one revision stored.
+func (i *Impl) renderRadiusRollback(kubeContext, namespace string, history []*releasev1.Release, revision int) renderRadiusManifest {
+	return func(ctx context.Context) (string, bool, error) {
+		target := releaseRevision(history, revision)
+		if target == nil || target.Chart == nil {
+			return "", false, nil
+		}
+		values := target.Config
+		if values == nil {
+			values = map[string]any{}
+		}
+		manifest, err := i.dryRunRadiusUpgrade(ctx, kubeContext, history, target.Chart, values, radiusReleaseName, namespace, false, true)
+		return manifest, err == nil, err
+	}
+}
+
+// releaseRevision returns revision of history, or nil when history does not have it.
+func releaseRevision(history []*releasev1.Release, revision int) *releasev1.Release {
+	for _, rel := range history {
+		if rel != nil && rel.Version == revision {
+			return rel
+		}
+	}
+	return nil
 }
 
 type renderRadiusRelease func(context.Context) (*releasev1.Release, error)
@@ -521,32 +617,24 @@ func (render renderRadiusRelease) manifest(includeWorkloadHooks bool) renderRadi
 		if err != nil || rel == nil {
 			return "", false, err
 		}
-		if !includeWorkloadHooks {
-			return rel.Manifest, true, nil
-		}
-		// Helm stores hook Pods and Jobs separately from the workload manifest.
-		pre, post := releasev1.HookPreUpgrade, releasev1.HookPostUpgrade
-		if rel.Version == 1 {
-			pre, post = releasev1.HookPreInstall, releasev1.HookPostInstall
-		}
-		documents := []string{rel.Manifest}
-		for _, hook := range rel.Hooks {
-			if slices.Contains(hook.Events, pre) || slices.Contains(hook.Events, post) {
-				documents = append(documents, hook.Manifest)
-			}
-		}
-		return strings.Join(documents, "\n---\n"), true, nil
+		return releaseActionManifest(rel, includeWorkloadHooks), true, nil
 	}
 }
 
-// renderRadiusRollback returns the saved manifest used for historical CA staging.
-func renderRadiusRollback(history []*releasev1.Release, revision int) renderRadiusManifest {
-	return func(context.Context) (string, bool, error) {
-		for _, rel := range history {
-			if rel != nil && rel.Version == revision {
-				return rel.Manifest, true, nil
-			}
-		}
-		return "", false, nil
+func releaseActionManifest(rel *releasev1.Release, includeWorkloadHooks bool) string {
+	if !includeWorkloadHooks {
+		return rel.Manifest
 	}
+	// Helm stores hook Pods and Jobs separately from the workload manifest.
+	pre, post := releasev1.HookPreUpgrade, releasev1.HookPostUpgrade
+	if rel.Version == 1 {
+		pre, post = releasev1.HookPreInstall, releasev1.HookPostInstall
+	}
+	documents := []string{rel.Manifest}
+	for _, hook := range rel.Hooks {
+		if slices.Contains(hook.Events, pre) || slices.Contains(hook.Events, post) {
+			documents = append(documents, hook.Manifest)
+		}
+	}
+	return strings.Join(documents, "\n---\n")
 }

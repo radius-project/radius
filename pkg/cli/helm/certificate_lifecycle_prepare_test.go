@@ -40,7 +40,7 @@ func TestCertificatePreparationSelectedChart(t *testing.T) {
 			for _, object := range []runtime.Object{deployment, replicaSet, pod} {
 				require.NoError(t, b.store.kube.(*kubefake.Clientset).Tracker().Add(object))
 			}
-			settings, err := selectedAuthSettings(b.selected, b.values, b.store.namespace, b.store.release)
+			settings, err := resolveAuthzMode(b.selected.Values, nil, b.values)
 			require.NoError(t, err)
 			target, err := certificateProfilePlan(b.selected, b.values, b.store.namespace, settings)
 			require.NoError(t, err)
@@ -82,11 +82,11 @@ func TestCertificatePreparationSelectedChart(t *testing.T) {
 			unsupported := *target
 			unsupported.Mode = "issuerRef"
 			_, err = b.store.planCertificateLifecycle(t.Context(), installed, b.selected, &unsupported, "")
-			require.ErrorContains(t, err, "staged CSI issuer configuration")
+			require.ErrorContains(t, err, "distinct staged target issuer")
 			unsupported = *target
 			unsupported.TrustDomain = "changed.invalid"
 			_, err = b.store.planCertificateLifecycle(t.Context(), installed, b.selected, &unsupported, scope)
-			require.ErrorContains(t, err, "receiver inventory, trust domain or CSI driver")
+			require.ErrorContains(t, err, "receiver inventory or trust domain")
 			state, err := b.store.planCertificateLifecycle(t.Context(), installed, b.selected, target, scope)
 			require.NoError(t, err)
 			w := &certificateExecutionWriter{store: b.store, state: state}
@@ -120,7 +120,7 @@ func TestCertificatePreparationSelectedChart(t *testing.T) {
 				secret := caTLSSecret(name, ca, key)
 				secret.Namespace = b.store.namespace
 				secret.UID, secret.ResourceVersion = "fixture-"+certificate.GetUID(), "1"
-				secret.Annotations = map[string]string{"cert-manager.io/issuer-name": RadiusBootstrapIssuerName,
+				secret.Annotations = map[string]string{"cert-manager.io/issuer-name": radiusBootstrapIssuerName,
 					"cert-manager.io/issuer-kind": "Issuer", "cert-manager.io/issuer-group": "cert-manager.io"}
 				require.NoError(t, kube.Tracker().Create(corev1.SchemeGroupVersion.WithResource("secrets"), secret, b.store.namespace))
 				certificate.Object["status"] = map[string]any{"conditions": []any{map[string]any{

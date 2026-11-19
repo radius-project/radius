@@ -70,8 +70,8 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 					return false, err
 				}
 				if ns.UID == "" || current.UID != ns.UID || current.DeletionTimestamp != nil ||
-					verb != "delete" || target.Kind != "Secret" || target.Namespace != namespace ||
-					target.Name != ucpAPIServerTrustSecretName || target.UID == "" || target.ResourceVersion == "" {
+					verb != "delete" || target.Namespace != namespace ||
+					target.UID == "" || target.ResourceVersion == "" {
 					return false, errors.New("uninstall trust cleanup lost its pinned namespace or source")
 				}
 				if err := store.excludeCertificateOffTransition(ctx); err != nil {
@@ -79,7 +79,7 @@ func (i *Impl) uninstallRadiusRelease(ctx context.Context, namespace, kubeContex
 				}
 				return false, ctx.Err()
 			})
-			return i.deleteUCPAPIServerTrust(ctx, kubeContext, namespace)
+			return i.deleteUCPAPIServerLeftovers(ctx, kubeContext, store)
 		})
 	}
 	if err != nil {
@@ -182,6 +182,29 @@ func (b *initialCertificateInstaller) retireBootstrap(ctx context.Context) error
 		if err := b.deleteBootstrapObject(ctx, object, remove); err != nil {
 			return err
 		}
+	}
+	// The signer and public source have stronger journal-specific checks above.
+	// Never let generic ownership metadata authorize their deletion on retry.
+	var orphans []ucpOffLeftoverSecret
+	for _, entry := range ucpOffLeftoverSecrets {
+		if entry.certificate == "" || entry.secret == "radius-ca" || entry.secret == ucpAPIServerCASecretName {
+			continue
+		}
+		protected := false
+		for _, anchor := range b.state.Anchors {
+			if anchor.Signer != nil && anchor.Signer.Name == entry.secret {
+				protected = true
+			}
+		}
+		if !protected {
+			orphans = append(orphans, entry)
+		}
+	}
+	guarded := withUCPMutationGuard(ctx, func(ctx context.Context, _ string, _ metav1.PartialObjectMetadata) (bool, error) {
+		return false, b.check(ctx)
+	})
+	if err := b.impl.deleteUCPOffLeftovers(guarded, "", b.store.kube, b.store.dynamic, b.store.namespace, orphans); err != nil {
+		return err
 	}
 	namespace, err := b.store.kube.CoreV1().Namespaces().Get(ctx, b.store.namespace, metav1.GetOptions{})
 	if err != nil {

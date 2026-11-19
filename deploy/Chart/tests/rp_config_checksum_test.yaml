@@ -33,7 +33,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 024341e48a4b4c462f89d96ce9da94db066067e56c66a3f4c2a3c645349cbe5c
+          value: 951884283020cbbe7fe1c2d38235b78ba38523a500907db48bcddf8eaeb22af5
 
   - it: changes the dryRun checksum for a level-only upgrade to restricted
     set:
@@ -42,7 +42,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: bac90d29223ce58c49ed3a87f066c46690da87a0279433ddf0327fc562647db6
+          value: f68f9cbf6c24785b7b491bb686fb535cba5f6f7dabda58ea91ccdf6c8090252e
 
   - it: hashes enforce with the default baseline level
     set:
@@ -50,7 +50,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 746a456cff3676346ddc26f2cd59138cdf5ab59ba9ae03b2ee28d38278e0cc2b
+          value: 60041c19e045f787e48e16860a3c6d2110834d0b33a41b7064f4f48c5ae2d32d
 
   - it: changes the enforce checksum for a level-only upgrade to restricted
     set:
@@ -59,7 +59,33 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 5ab209fcf887e72f9e5270a70dd1bca3c84f182c3bcf03e637e2aa3bd22bda19
+          value: 8a013895ece4aa750f9cdc26006448609ac524b4984a3fffd056f509c813c40b
+
+  - it: changes the dryRun checksum for a trust-domain-only upgrade
+    set:
+      global.rbac.dryRun: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 996ff28168ee886337397b2958c904fa93ce9d868475db5ff34d807374a6a6f7
+
+  - it: changes the enforce checksum for a trust-domain-only upgrade
+    set:
+      global.rbac.enabled: true
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: 0bf5705545c43a811997708155b021f2e6cd893f3c478988e95d49993d0bf352
+
+  - it: ignores the trust domain when authorization is off
+    set:
+      global.rbac.spiffe.trustDomain: example.org
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/authz-config"]
+          value: b4dc66dde806261bdda8607d8707aa727d308cd80272381a5583f63899918467
 
   - it: hashes an empty level as baseline
     set:
@@ -68,7 +94,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: 746a456cff3676346ddc26f2cd59138cdf5ab59ba9ae03b2ee28d38278e0cc2b
+          value: 60041c19e045f787e48e16860a3c6d2110834d0b33a41b7064f4f48c5ae2d32d
 
   - it: keeps the checksum when prometheus is disabled
     set:
@@ -93,7 +119,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: bff9c689b96f8f0f1b29a81dd5105aff4e583016f78f9f2c9f0187f91e67a5f8
+          value: 815c49559ffeae6f9178646d1ca3cc2d8c723524d4b0c569ff648f4a1098e330
 
   - it: changes the checksum when the protected target kubeconfig Secret changes
     set:
@@ -102,7 +128,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: e4c0fa2fe6ee2fa5e9a28c811df7076c6cc2395d25cdec31a5ab3cdcdc9dce5d
+          value: db355eb7d9895a9f7f12783c89197f8ed9968e02b2f7ec4a7f61bd4ae7a97b56
 
   - it: changes the checksum when the control-plane namespace changes
     release:
@@ -112,7 +138,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["checksum/authz-config"]
-          value: eaa22b4b3a7eb161ec96c535ed12fec7f28791561f6d15bda1a278794a03cdc2
+          value: 52880e3fe40ad3acb056be846d2e1e02102447b3bcc377b5a6441f99139b59bc
 
   - it: ignores protected Secret changes when authorization is off
     set:
