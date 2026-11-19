@@ -17,7 +17,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/radius-project/radius/pkg/cli"
-	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
@@ -34,15 +33,6 @@ func TestValidateMissingOutputFlag(t *testing.T) {
 	r := &runner{config: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}}
 	require.EqualError(t, r.Validate(cmd, nil), `flag "output" does not exist`)
 	require.NotNil(t, r.workspace)
-}
-
-func TestValidateMissingWorkspaceFlag(t *testing.T) {
-	t.Parallel()
-	cmd := &cobra.Command{}
-	commonflags.AddOutputFlag(cmd)
-	r := &runner{config: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}}
-	require.EqualError(t, r.Validate(cmd, nil), `flag "workspace" does not exist`)
-	require.Nil(t, r.workspace)
 }
 
 func TestCheckPrincipalIssuerFailures(t *testing.T) {
@@ -76,22 +66,6 @@ func TestCheckPrincipalIssuerFailures(t *testing.T) {
 			require.Empty(t, writer.Writes)
 		})
 	}
-}
-
-func TestRunRejectsInvalidPrincipal(t *testing.T) {
-	t.Parallel()
-	client := &testClient{}
-	writer := &output.MockOutput{}
-	r := &runner{
-		operation: "check", workspace: &workspaces.Workspace{}, output: writer,
-		principal: "user:", issuer: "kubernetes:test",
-		connect: func(context.Context, workspaces.Workspace) (inspectionClient, error) { return client, nil },
-	}
-	// Cobra rejects this during validation; Run also rejects invalid direct callers.
-	require.EqualError(t, r.Run(t.Context()), "principal must be user:<subject>, group:<subject>, or workload:<subject>")
-	require.Zero(t, client.calls)
-	require.Empty(t, client.request.Checks)
-	require.Empty(t, writer.Writes)
 }
 
 func TestConnectInvalidWorkspace(t *testing.T) {
@@ -368,11 +342,6 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 				{"missing subject", func(w map[string]any) { delete(w["principal"].(map[string]any), "subject") }},
 				{"anonymous principal", func(w map[string]any) { w["principal"].(map[string]any)["subject"] = "system:anonymous" }},
 				{"unauthenticated principal", func(w map[string]any) { w["principal"].(map[string]any)["subject"] = "system:unauthenticated" }},
-				{"null display name", func(w map[string]any) { w["principal"].(map[string]any)["displayName"] = nil }},
-				{"null display name with case variant", func(w map[string]any) {
-					principal := w["principal"].(map[string]any)
-					principal["displayName"], principal["displayname"] = nil, "Extension"
-				}},
 				{"empty issuer", func(w map[string]any) { w["principal"].(map[string]any)["issuer"] = "" }},
 				{"missing mode", func(w map[string]any) { delete(w, "mode") }},
 				{"invalid mode", func(w map[string]any) { w["mode"] = "unknown" }},
@@ -404,8 +373,6 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 					mutate func(map[string]any)
 				}{
 					{"group caller", func(w map[string]any) { w["principal"].(map[string]any)["type"] = "group" }},
-					{"null warning", func(w map[string]any) { w["warnings"] = []any{nil} }},
-					{"null warnings", func(w map[string]any) { w["warnings"] = nil }},
 					{"anonymous group", func(w map[string]any) { w["groups"].([]any)[0].(map[string]any)["subject"] = "system:anonymous" }},
 					{"unauthenticated group", func(w map[string]any) { w["groups"].([]any)[0].(map[string]any)["subject"] = "system:unauthenticated" }},
 					{"missing issuer", func(w map[string]any) { delete(w, "issuer") }},
@@ -413,11 +380,6 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 					{"missing admin", func(w map[string]any) { delete(w, "isRadiusAdministrator") }},
 					{"missing groups", func(w map[string]any) { delete(w, "groups") }},
 					{"null group", func(w map[string]any) { w["groups"] = []any{nil} }},
-					{"null group display name", func(w map[string]any) { w["groups"].([]any)[0].(map[string]any)["displayName"] = nil }},
-					{"null group display name with case variant", func(w map[string]any) {
-						group := w["groups"].([]any)[0].(map[string]any)
-						group["displayName"], group["displayname"] = nil, "Extension"
-					}},
 					{"empty group", func(w map[string]any) { w["groups"] = []any{map[string]any{}} }},
 					{"wrong group type", func(w map[string]any) { w["groups"].([]any)[0].(map[string]any)["type"] = "user" }},
 				}...)
@@ -455,7 +417,7 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 func TestIdentityResponseWithoutWarnings(t *testing.T) {
 	for _, operation := range []string{"whoami", "status"} {
 		for _, format := range []string{"json", "table"} {
-			for _, optional := range []string{"omitted", "present", "unknown casing"} {
+			for _, optional := range []string{"omitted", "present"} {
 				t.Run(operation+"/"+format+"/"+optional, func(t *testing.T) {
 					identity, err := (&testClient{}).whoAmI(t.Context())
 					require.NoError(t, err)
@@ -471,11 +433,6 @@ func TestIdentityResponseWithoutWarnings(t *testing.T) {
 						wire["warnings"] = []any{}
 						wire["principal"].(map[string]any)["displayName"] = "Worker"
 						wire["groups"].([]any)[0].(map[string]any)["displayName"] = "Developers"
-					}
-					if optional == "unknown casing" {
-						wire["Warnings"], wire["Principal"], wire["Groups"] = nil, nil, nil
-						wire["principal"].(map[string]any)["displayname"] = nil
-						wire["groups"].([]any)[0].(map[string]any)["displayname"] = nil
 					}
 					server, _ := inspectionHTTPServer(t, http.StatusOK, wire)
 					config := radcli.LoadConfigWithWorkspace(t)

@@ -5,16 +5,13 @@
 package auth
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -271,11 +268,6 @@ func validateIdentityResponse(result api.WhoAmIResult) error {
 			return fmt.Errorf("Radius returned an invalid group identity")
 		}
 	}
-	for _, warning := range result.Warnings {
-		if warning == nil {
-			return fmt.Errorf("Radius returned an invalid identity response: warning must not be null")
-		}
-	}
 	return nil
 }
 
@@ -323,21 +315,14 @@ func connect(ctx context.Context, workspace workspaces.Workspace) (inspectionCli
 }
 
 func (c *apiClient) whoAmI(ctx context.Context) (api.WhoAmIResult, error) {
-	var raw *http.Response
-	ctx = policy.WithCaptureResponse(ctx, &raw)
 	response, err := c.installation.WhoAmI(ctx, nil)
 	if err != nil {
 		return api.WhoAmIResult{}, inspectionError(err)
-	}
-	if err := validateInspectionWireResponse(raw, true); err != nil {
-		return api.WhoAmIResult{}, err
 	}
 	return response.WhoAmIResult, nil
 }
 
 func (c *apiClient) checkAccess(ctx context.Context, scope string, request api.AccessCheckRequest) (api.CheckAccessResponse, error) {
-	var raw *http.Response
-	ctx = policy.WithCaptureResponse(ctx, &raw)
 	var result api.CheckAccessResponse
 	var err error
 	if scope == "/" {
@@ -350,62 +335,7 @@ func (c *apiClient) checkAccess(ctx context.Context, scope string, request api.A
 	if err != nil {
 		return api.CheckAccessResponse{}, inspectionError(err)
 	}
-	if err := validateInspectionWireResponse(raw, false); err != nil {
-		return api.CheckAccessResponse{}, err
-	}
 	return result, nil
-}
-
-// Generated unmarshallers discard JSON null, so inspect the cached wire payload
-// before treating optional fields as absent.
-func validateInspectionWireResponse(response *http.Response, identity bool) error {
-	if response == nil {
-		return fmt.Errorf("Radius returned an invalid inspection response: missing HTTP response")
-	}
-	body, err := runtime.Payload(response)
-	if err != nil {
-		return fmt.Errorf("reading inspection response: %w", err)
-	}
-	// Match the generated decoder's exact keys, not encoding/json's
-	// case-insensitive struct field matching.
-	var wire map[string]json.RawMessage
-	if err := json.Unmarshal(body, &wire); err != nil {
-		return fmt.Errorf("Radius returned an invalid inspection response: %w", err)
-	}
-	if err := validatePrincipalWireLabel(wire["principal"], "principal"); err != nil {
-		return err
-	}
-	if identity {
-		if bytes.Equal(bytes.TrimSpace(wire["warnings"]), []byte("null")) {
-			return fmt.Errorf("Radius returned an invalid identity response: warnings must not be null")
-		}
-		if raw := wire["groups"]; len(raw) > 0 {
-			var groups []json.RawMessage
-			if err := json.Unmarshal(raw, &groups); err != nil {
-				return fmt.Errorf("Radius returned an invalid identity response: %w", err)
-			}
-			for i, group := range groups {
-				if err := validatePrincipalWireLabel(group, fmt.Sprintf("groups[%d]", i)); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func validatePrincipalWireLabel(raw json.RawMessage, field string) error {
-	if len(raw) == 0 {
-		return nil
-	}
-	var principal map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &principal); err != nil {
-		return fmt.Errorf("Radius returned an invalid inspection response: %s: %w", field, err)
-	}
-	if bytes.Equal(bytes.TrimSpace(principal["displayName"]), []byte("null")) {
-		return fmt.Errorf("Radius returned an invalid inspection response: %s.displayName must not be null", field)
-	}
-	return nil
 }
 
 func inspectionError(err error) error {
