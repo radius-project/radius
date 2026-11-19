@@ -225,6 +225,8 @@ func TestServiceDryRunRequests(t *testing.T) {
 			{"Azure subscription checkAccess proxy", http.MethodPost, azure + "/subscriptions/123/providers/Radius.Core/checkAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
 			{"Azure subscription explainAccess proxy", http.MethodPost, azure + "/subscriptions/123/providers/Radius.Core/explainAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
 			{"Azure credential case proxy", http.MethodGet, azure + "/providers/SYSTEM.AZURE/CREDENTIALS/default", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure credentials escaped dot proxy", http.MethodGet, azure + "/providers/System%2EAzure/credentials/default", "", "", "indeterminate", true},
+			{"icon escaped namespace", http.MethodGet, strings.Replace(iconParent, "System.Resources", "System%2EResources", 1) + "/icons/" + iconHash, "", "", "indeterminate", false},
 			{"Azure credential descendant", http.MethodGet, azure + "/providers/System.Azure/credentials/default/children/a", "", "", "indeterminate", false},
 			{"icon fixed segment case", http.MethodGet, strings.Replace(iconParent, "/resourcetypes/", "/RESOURCETYPES/", 1) + "/icons/" + iconHash, "", "", "indeterminate", false},
 			{"AWS unregistered descendant", http.MethodGet, "/planes/aws/aws/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket/x/children/y", "", "", "indeterminate", false},
