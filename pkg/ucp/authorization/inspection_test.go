@@ -340,8 +340,17 @@ func TestInspectionContractLimits(t *testing.T) {
 			MaxLength int `json:"maxLength"`
 		} `json:"properties"`
 	}
+	type parameter struct {
+		Ref       string `json:"$ref"`
+		Name      string `json:"name"`
+		MaxLength int    `json:"maxLength"`
+	}
 	var document struct {
-		Definitions map[string]schema `json:"definitions"`
+		Definitions map[string]schema    `json:"definitions"`
+		Parameters  map[string]parameter `json:"parameters"`
+		Paths       map[string]map[string]struct {
+			Parameters []parameter `json:"parameters"`
+		} `json:"paths"`
 	}
 	require.NoError(t, json.Unmarshal(data, &document))
 	for _, field := range []struct {
@@ -357,8 +366,28 @@ func TestInspectionContractLimits(t *testing.T) {
 	}
 	require.Equal(t, maxAccessChecks, document.Definitions["AccessCheckRequest"].Properties["checks"].MaxItems)
 	require.Equal(t, maxPermissionLength, document.Definitions["PermissionName"].MaxLength)
-	require.Equal(t, maxAccessScopeLength, document.Definitions["AuthorizationScope"].MaxLength)
-	require.Equal(t, maxAccessScopeLength-1, document.Definitions["AuthorizationScopePath"].MaxLength)
+	require.Zero(t, document.Definitions["AuthorizationScope"].MaxLength)
+	require.Zero(t, document.Definitions["AuthorizationScopePath"].MaxLength)
+	scopedCheck := false
+	for path, methods := range document.Paths {
+		for _, operation := range methods {
+			for _, parameter := range operation.Parameters {
+				if strings.HasPrefix(parameter.Ref, "#/parameters/") {
+					parameter = document.Parameters[strings.TrimPrefix(parameter.Ref, "#/parameters/")]
+				}
+				if parameter.Name != "scope" {
+					continue
+				}
+				if strings.HasSuffix(path, "/checkAccess") {
+					require.Equal(t, maxAccessScopeLength-1, parameter.MaxLength, path)
+					scopedCheck = true
+				} else {
+					require.Zero(t, parameter.MaxLength, path)
+				}
+			}
+		}
+	}
+	require.True(t, scopedCheck)
 }
 
 func TestInspectionBootstrapWarning(t *testing.T) {
@@ -387,6 +416,40 @@ func TestInspectionHTTPValidation(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		runtime, _ := startPolicyRuntime(t, newTestPolicyStore(t, inmemory.NewClient(), true))
 		valid := `{"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`
+		for _, field := range []struct {
+			name, value, before, after string
+		}{
+			{"principal", `{"type":"user","issuer":"kubernetes:cluster-a","subject":"alice"}`, `{`, `,"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`},
+			{"checks", `[{"permission":"Radius.Core/applications/read","target":"/"}]`, `{`, `}`},
+			{"type", `"user"`, `{"principal":{`, `,"issuer":"kubernetes:cluster-a","subject":"alice"},"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`},
+			{"issuer", `"kubernetes:cluster-a"`, `{"principal":{"type":"user",`, `,"subject":"alice"},"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`},
+			{"subject", `"alice"`, `{"principal":{"type":"user","issuer":"kubernetes:cluster-a",`, `},"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`},
+			{"displayName", `"Alice"`, `{"principal":{"type":"user","issuer":"kubernetes:cluster-a","subject":"alice",`, `},"checks":[{"permission":"Radius.Core/applications/read","target":"/"}]}`},
+			{"permission", `"Radius.Core/applications/read"`, `{"checks":[{`, `,"target":"/"}]}`},
+			{"target", `"/"`, `{"checks":[{"permission":"Radius.Core/applications/read",`, `}]}`},
+		} {
+			for _, order := range []string{"null first", "null last", "variant only"} {
+				exact := fmt.Sprintf("%q:null", field.name)
+				variant := fmt.Sprintf("%q:%s", strings.ToUpper(field.name[:1])+field.name[1:], field.value)
+				members := exact + "," + variant
+				if order == "null last" {
+					members = variant + "," + exact
+				} else if order == "variant only" {
+					members = variant
+				}
+				request := httptest.NewRequest(http.MethodPost, "/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", strings.NewReader(field.before+members+field.after))
+				request = request.WithContext(context.WithValue(request.Context(), identityContextKey{}, policyActor().Identity))
+				response := httptest.NewRecorder()
+				Inspection(runtime, "")(http.NotFoundHandler()).ServeHTTP(response, request)
+				if response.Code != http.StatusBadRequest {
+					t.Errorf("%s/%s: expected 400, got %d: %s", field.name, order, response.Code, response.Body.String())
+					continue
+				}
+				require.Contains(t, response.Body.String(), "InvalidRequestContent")
+				require.NotContains(t, response.Body.String(), `"checks"`)
+				require.NotContains(t, response.Body.String(), `"allowed"`)
+			}
+		}
 		for _, tt := range []struct {
 			name, method, path, body string
 			status                   int
@@ -539,7 +602,7 @@ func TestInspectionUnicodeScope(t *testing.T) {
 			t.Parallel()
 			scope := "/planes/radius/local/resourceGroups/" + name
 			path := scope + "/providers/Radius.Core/checkAccess"
-			operation, actualScope := inspectionRoute(path)
+			operation, actualScope := inspectionRoute(path, "")
 			require.Equal(t, "checkaccess", operation)
 			require.Equal(t, strings.ToLower(scope), actualScope)
 			runtime := &PolicyRuntime{ctx: t.Context(), cache: &PolicyCache{

@@ -44,6 +44,42 @@ test("access-check input bounds do not constrain verified identity output", () =
   );
 });
 
+test("inspection scope limits preserve existing policy and management contracts", () => {
+  const { definitions, paths, parameters } = json(
+    new URL(
+      "swagger/specification/authorization/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json",
+      root
+    )
+  );
+  assert.equal(definitions.AuthorizationScope.maxLength, undefined);
+  assert.equal(definitions.AuthorizationScopePath.maxLength, undefined);
+  for (const [model, property] of [
+    ["RoleDefinitionProperties", "assignableScopes"],
+    ["RoleAssignmentProperties", "scope"]
+  ]) {
+    const field = definitions[model].properties[property];
+    assert.equal(field.maxLength, undefined);
+    if (field.items) assert.equal(field.items.maxLength, undefined);
+  }
+  assert.equal(definitions.AccessCheck.properties.target.maxLength, 2048);
+  let scopedCheck = false;
+  for (const [path, methods] of Object.entries(paths)) {
+    for (const operation of Object.values(methods)) {
+      for (const value of operation.parameters ?? []) {
+        const parameter = value.$ref?.startsWith("#/parameters/")
+          ? parameters[value.$ref.slice("#/parameters/".length)]
+          : value;
+        if (parameter.name !== "scope") continue;
+        const inspection = path.endsWith("/checkAccess");
+        assert.equal(parameter.maxLength, inspection ? 2047 : undefined, path);
+        if (inspection) scopedCheck = true;
+      }
+    }
+  }
+  assert.equal(scopedCheck, true);
+  assert.equal(parameters["AccessChangeListOptions.scope"].maxLength, undefined);
+});
+
 test("examples preserve the requested role and assignment shapes", async (t) => {
   assert.equal(examples.length, 3);
   for (const example of examples) {
@@ -140,8 +176,12 @@ const scalarPattern = (source, name, maximum) => {
   );
   assert.ok(pattern, `missing scalar pattern: ${name}`);
   const maxLength = declaration[1].match(/^[\t ]*@maxLength\((\d+)\)[\t ]*$/m);
-  assert.ok(maxLength, `missing scalar maxLength: ${name}`);
-  assert.equal(Number(maxLength[1]), maximum, `scalar maxLength: ${name}`);
+  if (maximum === undefined) {
+    assert.equal(maxLength, null, `unexpected scalar maxLength: ${name}`);
+  } else {
+    assert.ok(maxLength, `missing scalar maxLength: ${name}`);
+    assert.equal(Number(maxLength[1]), maximum, `scalar maxLength: ${name}`);
+  }
   return new RegExp(JSON.parse(`"${pattern[1]}"`));
 };
 
@@ -183,7 +223,7 @@ test("scalar constraints accept decorator order without losing either constraint
 
 test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   const source = read(new URL("../authorization.tsp", import.meta.url));
-  const scope = scalarPattern(source, "AuthorizationScope", 2048);
+  const scope = scalarPattern(source, "AuthorizationScope");
   const plane = "/planes/radius/local";
   const group = `${plane}/resourceGroups/team-a`;
   for (const value of [
@@ -232,7 +272,7 @@ test("scope syntax preserves ARM IDs and permissions exclude wildcards", () => {
   ]) {
     assert.equal(permission.test(value), false, value);
   }
-  const path = scalarPattern(source, "AuthorizationScopePath", 2047);
+  const path = scalarPattern(source, "AuthorizationScopePath");
   assert.ok(path.test(group.slice(1)));
   assert.equal(path.test(group), false);
   assert.equal(path.test(`${group.slice(1)}/`), false);

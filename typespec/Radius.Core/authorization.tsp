@@ -48,9 +48,8 @@ enum PrincipalType {
   workload: "workload",
 }
 
-@doc("An installation, plane, resource group, or supported resource ID, up to 2048 characters including the leading slash. Inheritance follows the ID hierarchy, never resource references. Supported resources are Radius.Core environments, recipePacks, applications and Applications.Core environments and applications. UCP validates the scope's topology and supported type using ARM's case-insensitive ID rules; the string constraint only validates path syntax.")
+@doc("An installation, plane, resource group, or supported resource ID. Inheritance follows the ID hierarchy, never resource references. Supported resources are Radius.Core environments, recipePacks, applications and Applications.Core environments and applications. UCP validates the scope's topology and supported type using ARM's case-insensitive ID rules; the string constraint only validates path syntax.")
 @pattern("^(/|/[^/\\s*]+(/[^/\\s*]+)*)$")
-@maxLength(2048)
 scalar AuthorizationScope extends string;
 
 @doc("The installation, a plane, or a resource group. Role definitions cannot be created beneath individual resources.")
@@ -58,7 +57,6 @@ scalar RoleDefinitionScope extends AuthorizationScope;
 
 @doc("A scope ID as a URI path prefix, without the leading slash. Resource properties and IDs always retain their leading slash. Installation operations have separate paths.")
 @pattern("^[^/\\s*]+(/[^/\\s*]+)*$")
-@maxLength(2047)
 scalar AuthorizationScopePath extends string;
 
 @doc("An explicit catalog permission, up to 256 characters, such as Radius.Core/environments/use/action. Custom permissions cannot contain wildcards. Catalog membership is validated on writes.")
@@ -89,6 +87,15 @@ model AuthorizationScopeParameter {
   @path
   @extension("x-ms-skip-url-encoding", true)
   @doc("The plane, resource-group, or supported-resource ID without a leading or trailing slash, for example planes/radius/local/resourceGroups/platform/providers/Radius.Core/environments/staging. Use the installation operations for scope /.")
+  scope: AuthorizationScopePath;
+}
+
+@doc("The bounded non-installation scope of an access check.")
+model AccessCheckScopeParameter {
+  @path
+  @extension("x-ms-skip-url-encoding", true)
+  @doc("The plane, resource-group, or supported-resource ID without a leading or trailing slash, up to 2047 characters. Use the installation operation for scope /.")
+  @maxLength(2047)
   scope: AuthorizationScopePath;
 }
 
@@ -748,7 +755,7 @@ interface ScopedAccess {
   @route("/checkAccess")
   checkAccess(
     ...AuthorizationParameters,
-    ...AuthorizationScopeParameter,
+    ...AccessCheckScopeParameter,
     @body request: AccessCheckRequest,
   ): ArmResponse<CheckAccessResponse> | ErrorResponse;
 

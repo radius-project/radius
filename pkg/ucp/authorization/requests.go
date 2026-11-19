@@ -63,7 +63,7 @@ func ObserveRequests(runtime *PolicyRuntime, pathBase string) func(http.Handler)
 				writeAuthorizationUnavailable(w, r)
 				return
 			}
-			if operation, _ := inspectionRoute(path); operation != "" {
+			if operation, _ := inspectionRoute(r.URL.Path, pathBase); operation != "" {
 				// These operations perform explicit authentication and policy
 				// checks in Inspection, including in unsupported workload Enforce.
 				next.ServeHTTP(w, r)

@@ -148,6 +148,7 @@ func TestInspectionCommandErrors(t *testing.T) {
 		{"--action", "x", "--issuer", "kubernetes:test"},
 		{"--action", "x", "--principal", "invalid:subject"},
 		{"--action", "x", "--principal", "user:"},
+		{"--action", "Radius.Core/applications/read", "--principal="},
 		{"--action", "x", "--output", "invalid"},
 	} {
 		factory := &framework.Impl{ConfigHolder: &framework.ConfigHolder{Config: radcli.LoadConfigWithWorkspace(t)}, Output: &output.MockOutput{}}
