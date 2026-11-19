@@ -261,6 +261,12 @@ func Test_NewRegistry_Scoped(t *testing.T) {
 
 	_, err = native.NewRegistry(catalog, readsOnlyScoped{h})
 	require.EqualError(t, err, "the native handler for the AWS type AWS::IAM::UserToGroupAddition must have both ReadScoped and DeleteScoped, or neither")
+
+	h.Opts.ReadyTimeout = time.Minute
+	_, err = native.NewRegistry(catalog, h.Scoped("Users"))
+	require.EqualError(t, err, "the native handler for the AWS type AWS::IAM::UserToGroupAddition reads only the members it manages, so it can't set ReadyTimeout")
+	_, err = native.NewRegistry(catalog, h)
+	require.NoError(t, err)
 }
 
 func Test_NewRegistry_Members(t *testing.T) {
@@ -302,4 +308,76 @@ func Test_GenerateName(t *testing.T) {
 	require.Regexp(t, `^radius-[0-9a-f]{12}$`, name)
 	require.Equal(t, name, native.GenerateName("token"))
 	require.NotEqual(t, name, native.GenerateName("other"))
+}
+
+func Test_Type_WithName(t *testing.T) {
+	catalog := schemas.Catalog{Native: map[string]string{"AWS::Test::Named": `{"properties": {"Name": {"type": "string", "maxLength": 64}}}`}}
+	h := nativefake.New("AWS::Test::Named", awsfake.NewCloudControl())
+	h.Opts.NameProperty = "Name"
+	registry, err := native.NewRegistry(catalog, h)
+	require.NoError(t, err)
+	named := registry.Lookup("AWS::Test::Named")
+
+	properties := map[string]any{"Size": 1}
+	out, err := named.WithName(properties, "token")
+	require.NoError(t, err)
+	require.Equal(t, native.GenerateName("token"), out["Name"], "the name comes from the client token")
+	require.NotContains(t, properties, "Name", "the template's properties are not changed")
+
+	out, err = named.WithName(nil, "token")
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"Name": native.GenerateName("token")}, out)
+
+	out, err = named.WithName(map[string]any{"Name": "mine"}, "token")
+	require.NoError(t, err)
+	require.Equal(t, "mine", out["Name"])
+
+	named.NameRules.MinLength = 100
+	_, err = named.WithName(properties, "token")
+	require.ErrorContains(t, err, "doesn't fit the rules of Name")
+
+	plain := &native.Type{Handler: h}
+	out, err = plain.WithName(properties, "token")
+	require.NoError(t, err)
+	require.Equal(t, properties, out)
+}
+
+func Test_Type_StartDelete(t *testing.T) {
+	store := awsfake.NewCloudControl()
+	store.Identifiers["AWS::Test::Thing"] = "Name"
+	deploy := func(h *nativefake.Handler) {
+		store.Put("AWS::Test::Thing", "thing-1", map[string]any{"Name": "thing-1", "Users": []any{"ana"}})
+		h.Calls()
+	}
+	h := nativefake.New("AWS::Test::Thing", store)
+	h.ResetTo = map[string]any{"Name": "thing-1"}
+
+	cases := map[string]struct {
+		t      *native.Type
+		token  string
+		method string
+		copies int
+	}{
+		"delete":        {t: &native.Type{Handler: h}, method: "Delete"},
+		"reset":         {t: &native.Type{Handler: h, Metadata: schemas.Metadata{OnDelete: schemas.OnDeleteReset}}, method: "Reset"},
+		"delete token":  {t: &native.Type{Handler: h.DeleteTokens()}, token: "final-1", method: "Delete", copies: 1},
+		"no token yet":  {t: &native.Type{Handler: h.DeleteTokens()}, method: "Delete"},
+		"scoped delete": {t: &native.Type{Handler: h.Scoped("Users")}, token: "final-1", method: "Delete"},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			deploy(h)
+			before := h.Copies()
+			require.NoError(t, tc.t.StartDelete(t.Context(), "us-west-2", "thing-1", []map[string]any{{"Users": []any{"ana"}}}, tc.token))
+			calls := h.Calls()
+			require.Len(t, calls, 1)
+			require.Equal(t, tc.method, calls[0].Method)
+			require.Equal(t, tc.copies, h.Copies()-before)
+		})
+	}
+}
+
+func Test_NotReady(t *testing.T) {
+	var err error = &native.NotReady{Reason: `the DB instance "cdb1" is backing-up`}
+	require.EqualError(t, err, `the DB instance "cdb1" is backing-up`)
 }

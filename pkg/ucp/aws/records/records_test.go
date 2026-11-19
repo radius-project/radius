@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/nativefake"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
@@ -467,4 +468,112 @@ type concurrentSave struct{ database.Client }
 
 func (concurrentSave) Save(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
 	return &database.ErrConcurrency{}
+}
+
+// Test_StartFailed checks how the record is settled after the call that starts an operation fails, at the request or
+// in the worker after it waited.
+func Test_StartFailed(t *testing.T) {
+	withOperation := func(op string) *datamodel.AWSResource {
+		rec := NewRecord(parse(t, vpcID), "owner")
+		rec.Properties.PendingOperation = op
+		rec.Properties.LastApplied = map[string]any{"Size": 1}
+		rec.Properties.PendingLastApplied = map[string]any{"Size": 2}
+		rec.Properties.UpdateToken = "update-token"
+		rec.Properties.StartState, rec.Properties.StartReason = StartWaiting, "busy"
+		rec.Properties.StartPatch = []map[string]any{{"op": "replace"}}
+		rec.Properties.StartCurrent = map[string]any{"Size": 1}
+		if op == OperationCreate {
+			rec.Properties.ClientToken = "client-token"
+			rec.Properties.LastApplied = nil
+		}
+		return rec
+	}
+	requireNoStart := func(t *testing.T, rec *datamodel.AWSResource) {
+		require.Empty(t, rec.Properties.StartState)
+		require.Empty(t, rec.Properties.StartReason)
+		require.Nil(t, rec.Properties.StartPatch)
+		require.Nil(t, rec.Properties.StartCurrent)
+	}
+
+	t.Run("a rejected first create removes the record", func(t *testing.T) {
+		rec := withOperation(OperationCreate)
+		require.True(t, StartFailed(rec, OperationCreate, native.OutcomeRejected, "", false))
+		require.True(t, DropWaiting(withOperation(OperationCreate)))
+	})
+
+	t.Run("a rejected resent create keeps the record", func(t *testing.T) {
+		rec := withOperation(OperationCreate)
+		require.False(t, StartFailed(rec, OperationCreate, native.OutcomeRejected, "", true))
+		require.Equal(t, "client-token", rec.Properties.ClientToken)
+		requireNoStart(t, rec)
+	})
+
+	t.Run("a create AWS fully applied is finished", func(t *testing.T) {
+		rec := withOperation(OperationCreate)
+		require.False(t, StartFailed(rec, OperationCreate, native.OutcomeApplied, "id-1", false))
+		require.Equal(t, "id-1", rec.Properties.AWSIdentifier)
+		require.Empty(t, rec.Properties.ClientToken)
+		require.Equal(t, map[string]any{"Size": 2}, rec.Properties.LastApplied)
+	})
+
+	t.Run("a create with an unknown outcome keeps its values to find it", func(t *testing.T) {
+		rec := withOperation(OperationCreate)
+		require.False(t, StartFailed(rec, OperationCreate, native.OutcomeUnknown, "", false))
+		require.Equal(t, "client-token", rec.Properties.ClientToken)
+		require.Equal(t, map[string]any{"Size": 2}, rec.Properties.PendingLastApplied)
+	})
+
+	t.Run("a rejected first update drops its values and token", func(t *testing.T) {
+		rec := withOperation(OperationUpdate)
+		require.False(t, DropWaiting(rec))
+		require.Nil(t, rec.Properties.PendingLastApplied)
+		require.Empty(t, rec.Properties.UpdateToken)
+		require.Equal(t, map[string]any{"Size": 1}, rec.Properties.LastApplied)
+		requireNoStart(t, rec)
+	})
+
+	t.Run("a rejected resent update keeps its token", func(t *testing.T) {
+		rec := withOperation(OperationUpdate)
+		require.False(t, StartFailed(rec, OperationUpdate, native.OutcomeRejected, "", true))
+		require.Equal(t, "update-token", rec.Properties.UpdateToken)
+	})
+
+	t.Run("an update with an unknown outcome keeps its values as possibly applied", func(t *testing.T) {
+		rec := withOperation(OperationUpdate)
+		require.False(t, StartFailed(rec, OperationUpdate, native.OutcomeUnknown, "", false))
+		require.Equal(t, "update-token", rec.Properties.UpdateToken)
+		require.Equal(t, map[string]any{"Size": 2}, rec.Properties.LastApplied)
+		require.Equal(t, []string{"Size"}, rec.Properties.UnresolvedPaths)
+	})
+
+	t.Run("a delete drops its values, and one AWS fully applied removes the record", func(t *testing.T) {
+		rec := withOperation(OperationDelete)
+		require.False(t, StartFailed(rec, OperationDelete, native.OutcomeUnknown, "", false))
+		require.Nil(t, rec.Properties.PendingLastApplied)
+		require.Empty(t, rec.Properties.PendingOperation)
+		require.True(t, StartFailed(withOperation(OperationDelete), OperationDelete, native.OutcomeApplied, "", false))
+	})
+}
+
+func Test_FailStart(t *testing.T) {
+	rec := NewRecord(parse(t, vpcID), "owner")
+	rec.Properties.RequestToken = "op-1"
+	rec.Properties.PendingLastApplied = map[string]any{"Size": 2}
+	rec.Properties.StartState = StartSending
+	FailStart(rec, &v1.ErrorDetails{Message: "failed"})
+	require.Equal(t, v1.ProvisioningStateFailed, rec.ProvisioningState())
+	require.Equal(t, "op-1", rec.Properties.LastRequestToken)
+	require.Empty(t, rec.Properties.RequestToken)
+	require.Empty(t, rec.Properties.StartState)
+	require.False(t, IsWaiting(rec))
+	require.Equal(t, map[string]any{"Size": 2}, rec.Properties.PendingLastApplied, "a create AWS may have keeps the values it is found with")
+}
+
+func Test_OutcomeOf(t *testing.T) {
+	require.Equal(t, native.OutcomeRejected, OutcomeOf(&native.NotReady{Reason: "the parent is busy"}))
+	require.Equal(t, native.OutcomePartial, OutcomeOf(&native.Failure{Outcome: native.OutcomePartial}))
+	require.Equal(t, native.OutcomeRejected, OutcomeOf(nativefake.ClientError("ValidationException", "bad value")))
+	require.Equal(t, native.OutcomeUnknown, OutcomeOf(nativefake.ServerError("InternalFailure", "unavailable")))
+	require.Equal(t, native.OutcomeUnknown, OutcomeOf(errors.New("connection reset")))
+	require.Equal(t, native.OutcomeRejected, OutcomeOf(&native.OtherProductError{Identifier: "id-1", Product: "aurora"}))
 }

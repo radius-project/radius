@@ -58,7 +58,8 @@ type Registry struct {
 // NewRegistry returns a Registry of handlers, each with its schema and metadata from catalog. A handler with no
 // schema, two handlers for one type, a RecoverBySearch handler that isn't a Finder, a type whose onDelete is reset
 // with a handler that isn't a Resetter, a name property the schema doesn't define as a string, or whose rules no
-// generated name fits, and a hand-written schema whose list handler doesn't match whether the handler lists, fail.
+// generated name fits, a hand-written schema whose list handler doesn't match whether the handler lists, and a
+// handler that reads only the members it manages and sets ReadyTimeout, fail.
 func NewRegistry(catalog schemas.Catalog, handlers ...Handler) (*Registry, error) {
 	r := &Registry{types: map[string]*Type{}}
 	for _, h := range handlers {
@@ -97,6 +98,9 @@ func NewRegistry(catalog schemas.Catalog, handlers ...Handler) (*Registry, error
 		opts := h.Options()
 		if opts.Members != nil && (!reads || opts.Members.Parent == "" || opts.Members.List == "") {
 			return nil, fmt.Errorf("the native handler for the AWS type %s names members, so it must have ReadScoped, a parent, and a list", name)
+		}
+		if opts.ReadyTimeout > 0 && reads {
+			return nil, fmt.Errorf("the native handler for the AWS type %s reads only the members it manages, so it can't set ReadyTimeout", name)
 		}
 		if _, ok := h.(Finder); opts.Recovery == RecoverBySearch && !ok {
 			return nil, fmt.Errorf("the native handler for the AWS type %s finds a lost create by search, but has no Find method", name)

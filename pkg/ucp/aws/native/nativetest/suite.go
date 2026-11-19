@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -47,6 +48,7 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
+	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/aws/schemas"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
@@ -192,6 +194,11 @@ type Suite struct {
 	// undo, for a type whose Equivalent compares values only on what the template sets.
 	ChangedOutside *ChangedOutside
 
+	// Busy makes the parent of the resource properties give busy, so handler, the handler NewHandler returned, reports
+	// that AWS can't take a start call yet (native.NotReady), and returns a function that frees the parent. A handler
+	// that sets Options.ReadyTimeout must give it. It is nil for other handlers.
+	Busy func(handler native.Handler, store *awsfake.CloudControl, properties map[string]any) (free func())
+
 	// API records each AWS call the handler makes, by the name of its AWS SDK client method, such as
 	// CreateDBCluster: the call's page in AWS's API reference and the rules AWS documents for it, which the fake must
 	// enforce. It is nil for a handler that makes no AWS SDK calls, such as nativefake's.
@@ -275,6 +282,7 @@ func Run(t *testing.T, s Suite) {
 	t.Run("member added outside Radius", func(t *testing.T) { s.outsideMember(t) })
 	t.Run("update interrupted before its first call", func(t *testing.T) { s.interruptedScopedUpdate(t) })
 	t.Run("delete again after the response is lost", func(t *testing.T) { s.deleteTokenRetry(t) })
+	t.Run("create, update, and delete while the parent is busy", func(t *testing.T) { s.busyParent(t) })
 	t.Run("the fake follows AWS's documented API rules", func(t *testing.T) {
 		requireAPIRules(t, s.API, s.NewHandler(awsfake.NewCloudControl()))
 	})
@@ -983,6 +991,69 @@ func (s Suite) workerRestart(t *testing.T) {
 	require.NoError(t, h.queue.FinishMessage(t.Context(), msg))
 	require.Equal(t, v1.ProvisioningStateSucceeded, h.record().ProvisioningState())
 	require.NotContains(t, h.handler.reset(), "Create", "the restarted worker does not create again")
+}
+
+// busyParent creates, updates, and deletes the resource while its parent is busy, for a handler that sets
+// Options.ReadyTimeout. Each request is accepted and waits, and the worker sends the call once the parent is free. A
+// create whose template sets a write-only value isn't accepted, because UCP never stores one: it gets 409, and the
+// deploy after the parent is free creates the resource.
+func (s Suite) busyParent(t *testing.T) {
+	if s.NewHandler(awsfake.NewCloudControl()).Options().ReadyTimeout == 0 {
+		return
+	}
+	require.NotNil(t, s.Busy, "a handler that sets ReadyTimeout must give Suite.Busy")
+	h := s.newHarness(t)
+	busy := func(properties map[string]any) func() {
+		return s.Busy(h.handler.Handler, h.cc, properties)
+	}
+	requireWaiting := func(resp response, status int) {
+		t.Helper()
+		require.Equal(t, status, resp.status, resp.raw)
+		require.Equal(t, records.StartWaiting, h.record().Properties.StartState)
+	}
+
+	free := busy(s.Properties)
+	resp := h.put(s.Properties)
+	if s.setsWriteOnly(s.Properties) {
+		require.Equal(t, http.StatusConflict, resp.status, resp.raw)
+		require.Nil(t, h.record())
+		free()
+		h.deploy(s.Properties)
+	} else {
+		requireWaiting(resp, http.StatusCreated)
+		free()
+		h.finish()
+		h.requireDeployed()
+	}
+	requireSubset(t, s.readable(s.Properties), h.stored())
+
+	free = busy(s.Changed)
+	requireWaiting(h.put(s.Changed), http.StatusCreated)
+	free()
+	h.finish()
+	h.requireDeployed()
+	requireSubset(t, s.readable(s.Changed), h.stored())
+
+	if onDelete := h.onDelete(); onDelete != schemas.OnDeleteDelete && onDelete != schemas.OnDeleteReset {
+		return
+	}
+	before := h.stored()
+	free = busy(s.Changed)
+	requireWaiting(h.do(awsproxy.NewDeleteAWSResource, http.MethodDelete, h.path(), owner, nil), http.StatusAccepted)
+	free()
+	h.finish()
+	h.requireRemoved(before)
+}
+
+// setsWriteOnly reports whether properties set a write-only value.
+func (s Suite) setsWriteOnly(properties map[string]any) bool {
+	// A template is JSON, so it always converts.
+	b, _ := json.Marshal(properties)
+	var copied, without map[string]any
+	_ = json.Unmarshal(b, &copied)
+	_ = json.Unmarshal(b, &without)
+	awsoperations.RemovePaths(without, s.WriteOnly)
+	return !reflect.DeepEqual(without, copied)
 }
 
 // switchHandlers creates a resource with one handler, and then reads, updates, and deletes it with the other, as when
