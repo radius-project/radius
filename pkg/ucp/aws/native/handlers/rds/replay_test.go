@@ -17,7 +17,6 @@ limitations under the License.
 package rds
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -59,7 +58,6 @@ func Test_Replay_TenantDatabase(t *testing.T) {
 	s.Scrub(password, newPassword)
 
 	h := NewTenantDatabase(rds.NewFromConfig(s.Config(t.Context())))
-	h.sleep = func(ctx context.Context, d time.Duration) error { s.Wait(d); return ctx.Err() }
 	if !s.Recording() {
 		// The time the cassette was written. A recording keeps the real clock, so each run's final snapshot gets
 		// its own name.
@@ -92,7 +90,7 @@ func Test_Replay_Errors(t *testing.T) {
 	}
 	s := awsreplay.New(t, "testdata/errors.json")
 	api := rds.NewFromConfig(s.Config(t.Context()))
-	tenants, streams := newTenantHandler(api), NewActivityStream(api)
+	tenants, streams := NewTenantDatabase(api), NewActivityStream(api)
 	properties := map[string]any{
 		"DBInstanceIdentifier": s.Input("RADIUS_REC_ORACLE_CDB_INSTANCE"),
 		"TenantDBName":         "pdbrec",

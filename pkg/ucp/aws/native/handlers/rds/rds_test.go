@@ -17,13 +17,11 @@ limitations under the License.
 package rds
 
 import (
-	"context"
 	"maps"
 	"os"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -139,7 +137,7 @@ func Test_Suite_TenantDatabase(t *testing.T) {
 			addInstance(store, "app-cdb")
 			addInstance(store, "other-cdb")
 			api := newFakeAPI(store)
-			return fs.add(newTenantHandler(api), api)
+			return fs.add(NewTenantDatabase(api), api)
 		},
 		IdentifierProperty: "TenantDBName",
 		IdentifierProperties: func(identifier string) map[string]any {
@@ -162,24 +160,4 @@ func Test_Suite_TenantDatabase(t *testing.T) {
 		}),
 		API: tenantDatabaseAPI,
 	})
-}
-
-// newTenantHandler returns the handler for tenant databases on api, with a clock that moves only when it waits for a
-// busy instance, so a wait returns at once and still ends at the handler's limit.
-func newTenantHandler(api API) *TenantDatabase {
-	h := NewTenantDatabase(api)
-	var mu sync.Mutex
-	clock := time.Date(2026, 11, 19, 12, 0, 0, 0, time.UTC)
-	h.now = func() time.Time {
-		mu.Lock()
-		defer mu.Unlock()
-		return clock
-	}
-	h.sleep = func(ctx context.Context, d time.Duration) error {
-		mu.Lock()
-		defer mu.Unlock()
-		clock = clock.Add(d)
-		return ctx.Err()
-	}
-	return h
 }

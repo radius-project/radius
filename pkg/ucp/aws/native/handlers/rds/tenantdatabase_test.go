@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -42,7 +43,7 @@ func newTenant(t *testing.T, properties map[string]any) (*TenantDatabase, *fakeA
 	store := awsfake.NewCloudControl()
 	addInstance(store, "app-cdb")
 	api := newFakeAPI(store)
-	h := newTenantHandler(api)
+	h := NewTenantDatabase(api)
 	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
 	require.NoError(t, err)
 	require.Equal(t, tenantID, id)
@@ -316,9 +317,7 @@ func Test_TenantDatabase_Delete(t *testing.T) {
 	t.Run("a final snapshot needs the tenant database available", func(t *testing.T) {
 		h, api := newTenant(t, tenant)
 		api.status[tenantID] = "backing-up"
-		err := h.Delete(t.Context(), region, tenantID)
-		requireRejected(t, err, "InvalidDBInstanceState")
-		require.Contains(t, err.Error(), "after 45s")
+		requireConflict(t, h.Delete(t.Context(), region, tenantID), "or the tenant database is busy")
 		require.Empty(t, api.snapshots)
 	})
 }
@@ -463,48 +462,53 @@ func Test_TenantDatabase_WhenInstanceFree(t *testing.T) {
 	}
 	second := native.CreateRequest{Region: region, Properties: with(tenant, map[string]any{"TenantDBName": "pdb2"})}
 
-	t.Run("two tenant databases on one instance both deploy", func(t *testing.T) {
-		h, _ := newTenant(t, tenant)
+	t.Run("a second tenant database while RDS backs the instance up gets a conflict, then deploys", func(t *testing.T) {
+		h, api := newTenant(t, tenant)
+		busy(api, "backing-up")
 		_, err := h.Create(t.Context(), second)
-		require.NoError(t, err)
-		_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(tenant, map[string]any{"TenantDBName": "pdb3"})})
-		require.NoError(t, err, "the second create waits until RDS finished backing up the instance after the first")
+		requireConflict(t, err, "is backing-up")
+		require.Nil(t, api.store.Resource(tenantDatabaseType, "app-cdb|pdb2"), "nothing is sent while the instance is busy")
+		_, err = h.Create(t.Context(), second)
+		require.NoError(t, err, "the instance is free once RDS finished the backup")
 	})
 
-	t.Run("a call RDS rejects while the instance reads available is sent again", func(t *testing.T) {
+	t.Run("a call RDS rejects while the instance reads available is a conflict", func(t *testing.T) {
 		h, api := newTenant(t, tenant)
-		rejects := 2
+		rejects := 1
 		h.api = busyOnce{API: api, rejects: &rejects}
 		_, err := h.Create(t.Context(), second)
+		requireConflict(t, err, "or the tenant database is busy")
+		_, err = h.Create(t.Context(), second)
 		require.NoError(t, err)
-		require.Zero(t, rejects)
 	})
 
-	t.Run("an instance that won't be available fails at once", func(t *testing.T) {
+	t.Run("updates and deletes check the instance too", func(t *testing.T) {
+		h, api := newTenant(t, tenant)
+		busy(api, "modifying")
+		api.errs["ModifyTenantDatabase"] = fmt.Errorf("unexpected call")
+		api.errs["DeleteTenantDatabase"] = fmt.Errorf("unexpected call")
+		err := h.Update(t.Context(), native.UpdateRequest{
+			Region: region, Identifier: tenantID, Desired: with(tenant, map[string]any{"MasterUserPassword": "pass-two-5678"}),
+			Patch: jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/MasterUserPassword", Value: "pass-two-5678"}},
+		})
+		requireConflict(t, err, "is modifying")
+		requireConflict(t, h.Delete(t.Context(), region, tenantID), "is modifying")
+	})
+
+	t.Run("an instance that won't be available gets RDS's error", func(t *testing.T) {
 		h, api := newTenant(t, tenant)
 		busy(api, "stopped")
-		start := h.now()
 		_, err := h.Create(t.Context(), second)
-		require.ErrorContains(t, err, "InvalidDBInstanceState", "RDS's error reaches the user")
-		require.Equal(t, start, h.now(), "nothing waits for a stopped instance")
+		require.ErrorContains(t, err, "InvalidDBInstanceState")
+		var failure *native.Failure
+		require.False(t, errors.As(err, &failure) && failure.Conflict, "deploying again won't help")
 	})
 
-	t.Run("a busy instance fails at the limit, and nothing is sent", func(t *testing.T) {
+	t.Run("storage optimization leaves the instance available", func(t *testing.T) {
 		h, api := newTenant(t, tenant)
-		busy(api, "modifying")
-		api.errs["CreateTenantDatabase"] = fmt.Errorf("unexpected call")
+		busy(api, "storage-optimization")
 		_, err := h.Create(t.Context(), second)
-		requireRejected(t, err, "the instance is modifying")
-	})
-
-	t.Run("a stopped request sends nothing", func(t *testing.T) {
-		h, api := newTenant(t, tenant)
-		busy(api, "modifying")
-		api.errs["CreateTenantDatabase"] = fmt.Errorf("unexpected call")
-		ctx, cancel := context.WithCancel(t.Context())
-		cancel()
-		_, err := h.Create(ctx, second)
-		require.ErrorIs(t, err, context.Canceled)
+		require.NoError(t, err)
 	})
 
 	t.Run("an instance that is gone or unreadable fails", func(t *testing.T) {
@@ -516,13 +520,18 @@ func Test_TenantDatabase_WhenInstanceFree(t *testing.T) {
 		_, err = h.Create(t.Context(), second)
 		require.ErrorIs(t, err, native.ErrNotFound)
 	})
+}
 
-	t.Run("sleep stops with the context", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(t.Context())
-		cancel()
-		require.ErrorIs(t, sleep(ctx, time.Hour), context.Canceled)
-		require.NoError(t, sleep(t.Context(), time.Nanosecond))
-	})
+// requireConflict requires err to be a conflict with a busy instance, which UCP answers with 409, whose message has
+// state and tells the user to chain tenant databases with dependsOn.
+func requireConflict(t *testing.T, err error, state string) {
+	t.Helper()
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.Conflict)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, state)
+	require.Contains(t, failure.Message, "dependsOn")
 }
 
 // busyOnce rejects the next rejects calls of CreateTenantDatabase with InvalidDBInstanceState, as RDS does when

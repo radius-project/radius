@@ -349,6 +349,12 @@ func (f *fakeAPI) StopActivityStream(ctx context.Context, in *rds.StopActivitySt
 	}, nil
 }
 
+// instanceAvailable reports whether the instance takes changes: it is available, or optimizing its storage, which RDS
+// documents as leaving it available.
+func instanceAvailable(instance map[string]any) bool {
+	return slices.Contains(availableInstanceStates, awsapi.String(instance, "Status"))
+}
+
 // backUp sets the instance of a tenant database that changed to backing-up, until the next DescribeDBInstances.
 func (f *fakeAPI) backUp(instance map[string]any) {
 	instance["Status"] = "backing-up"
@@ -512,7 +518,7 @@ func (f *fakeAPI) CreateTenantDatabase(ctx context.Context, in *rds.CreateTenant
 	if existing != nil {
 		return nil, fault("TenantDatabaseAlreadyExists")
 	}
-	if awsapi.String(instance, "Status") != "available" {
+	if !instanceAvailable(instance) {
 		return nil, fault("InvalidDBInstanceState")
 	}
 	instanceID := awsapi.String(instance, "DBInstanceIdentifier")
@@ -621,7 +627,7 @@ func (f *fakeAPI) ModifyTenantDatabase(ctx context.Context, in *rds.ModifyTenant
 	if err != nil {
 		return nil, err
 	}
-	if awsapi.String(instance, "Status") != "available" || !f.tenantAvailable(key) {
+	if !instanceAvailable(instance) || !f.tenantAvailable(key) {
 		return nil, fault("InvalidDBInstanceState")
 	}
 	_, managed := t["MasterUserSecret"].(map[string]any)
@@ -697,7 +703,7 @@ func (f *fakeAPI) DeleteTenantDatabase(ctx context.Context, in *rds.DeleteTenant
 		return nil, fault("DBSnapshotAlreadyExists")
 	}
 	status := f.status[key]
-	available := awsapi.String(instance, "Status") == "available" && f.tenantAvailable(key)
+	available := instanceAvailable(instance) && f.tenantAvailable(key)
 	if f.tenantCount(instance) <= 1 {
 		return nil, fault("InvalidParameterCombination")
 	}

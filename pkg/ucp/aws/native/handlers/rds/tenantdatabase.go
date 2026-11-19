@@ -50,78 +50,48 @@ var (
 type TenantDatabase struct {
 	api API
 
-	// now returns the current time, for the name of the final snapshot and how long to wait for the instance.
+	// now returns the current time, for the name of the final snapshot.
 	now func() time.Time
-
-	// sleep waits for d, or until ctx ends.
-	sleep func(ctx context.Context, d time.Duration) error
 }
 
 // NewTenantDatabase returns the handler for RDS for Oracle tenant databases.
 func NewTenantDatabase(api API) *TenantDatabase {
-	return &TenantDatabase{api: api, now: time.Now, sleep: sleep}
+	return &TenantDatabase{api: api, now: time.Now}
 }
 
-func sleep(ctx context.Context, d time.Duration) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-time.After(d):
-		return nil
-	}
-}
-
-const (
-	// instanceWait is how long a create, update, or delete waits for the tenant database's instance to be free
-	// before it fails. The wait runs inside the PUT or DELETE request, which reaches UCP through kube-apiserver with
-	// its 60 second limit, so it is short: it covers an instance that is about to be free, and a template chains
-	// tenant databases of one instance with dependsOn, because the backup RDS takes after each change took about 2.5
-	// minutes in a review against AWS. Progress waits for the instance after each change, with no such limit.
-	instanceWait = 45 * time.Second
-
-	// firstPoll and maxPoll are how long it waits between reads of the instance: firstPoll, doubled up to maxPoll.
-	firstPoll = 5 * time.Second
-	maxPoll   = 20 * time.Second
-)
-
-// whenInstanceFree makes call, a create, update, or delete of a tenant database of instance, once the instance is
-// free. RDS rejects such a call with InvalidDBInstanceState while it changes another tenant database of the instance,
-// so a change that starts just after another one finishes waits for it. While the instance is busy, or call is rejected
-// that way while the instance reads as available, it waits and tries again, up to instanceWait, and then fails with a
-// rejected client failure. An instance that won't be available without someone acting, such as a stopped one, gets
-// call's error at once. A stop of ctx sends nothing more.
+// whenInstanceFree makes call, a create, update, or delete of a tenant database of instance, when the instance is
+// free. RDS changes one tenant database of an instance at a time, and backs the instance up after each change, so it
+// rejects such a call with InvalidDBInstanceState until then. A busy instance, or that error while the instance reads
+// as available, fails with a conflict, which UCP answers with 409, and sends nothing more: the caller deploys again
+// once the instance is free, and a template chains tenant databases of one instance with dependsOn. An instance that
+// won't be available without someone acting, such as a stopped one, gets call's error.
 func (h *TenantDatabase) whenInstanceFree(ctx context.Context, region string, instance string, call func() error) error {
-	deadline := h.now().Add(instanceWait)
-	poll := firstPoll
-	last := ""
-	for {
-		out, err := h.api.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{DBInstanceIdentifier: aws.String(instance)}, inRegion(region))
-		if err != nil {
-			return awsapi.NotFound(err, "DBInstanceNotFound")
-		}
-		status := ""
-		if len(out.DBInstances) > 0 {
-			status = aws.ToString(out.DBInstances[0].DBInstanceStatus)
-		}
-		last = "the instance is " + status
-		if !instanceBusy(status) {
-			err := call()
-			if !awsapi.HasCode(err, "InvalidDBInstanceState") || !strings.EqualFold(status, "available") {
-				return err
-			}
-			last = "RDS returned " + err.Error()
-		}
-		if !h.now().Add(poll).Before(deadline) {
-			return &native.Failure{
-				Message:     fmt.Sprintf("RDS can't change the tenant database while the DB instance %q or the tenant database is busy, and after %s %s. RDS changes one tenant database of an instance at a time, so give tenant databases of one instance dependsOn on each other, or deploy again once both are available.", instance, instanceWait, last),
-				ClientError: true,
-				Outcome:     native.OutcomeRejected,
-			}
-		}
-		if err := h.sleep(ctx, poll); err != nil {
-			return err
-		}
-		poll = min(poll*2, maxPoll)
+	out, err := h.api.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{DBInstanceIdentifier: aws.String(instance)}, inRegion(region))
+	if err != nil {
+		return awsapi.NotFound(err, "DBInstanceNotFound")
+	}
+	status := ""
+	if len(out.DBInstances) > 0 {
+		status = aws.ToString(out.DBInstances[0].DBInstanceStatus)
+	}
+	if instanceBusy(status) {
+		return instanceConflict(instance, "is "+status)
+	}
+	err = call()
+	if awsapi.HasCode(err, "InvalidDBInstanceState") && slices.Contains(availableInstanceStates, strings.ToLower(status)) {
+		return instanceConflict(instance, "or the tenant database is busy")
+	}
+	return err
+}
+
+// instanceConflict returns the conflict of a change to a tenant database of instance, which state describes.
+func instanceConflict(instance string, state string) error {
+	return &native.Failure{
+		Message: fmt.Sprintf("The DB instance %q %s, and RDS changes one tenant database of an instance at a time, so it changed nothing. "+
+			"Deploy again once the instance is available, and give tenant databases of one instance dependsOn on each other.", instance, state),
+		ClientError: true,
+		Conflict:    true,
+		Outcome:     native.OutcomeRejected,
 	}
 }
 

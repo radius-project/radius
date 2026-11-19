@@ -554,7 +554,9 @@ var tenantDatabaseAPI = map[string]nativetest.Call{
 		Unclear: "The adding guide says RDS backs up the instance before and after it adds a tenant database when backup " +
 			"retention is on, and the modifying and deleting guides say RDS changes one tenant database at a time. " +
 			"Neither says for how long; a review against AWS saw backing-up for about 2.5 minutes after a create. The " +
-			"fake backs the instance up after every create, update, and delete, for one read.",
+			"fake backs the instance up after every create, update, and delete, for one read. The page doesn't list " +
+			"which statuses take a tenant database change; the fake takes available and storage-optimization, which " +
+			"the status guide says leaves the instance available.",
 	},
 	"ModifyTenantDatabase": {
 		Doc: apiReference + "API_ModifyTenantDatabase.html",
