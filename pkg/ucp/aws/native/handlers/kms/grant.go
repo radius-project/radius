@@ -29,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 )
@@ -155,13 +156,24 @@ func (h *Grant) Identifier(properties map[string]any) (string, error) {
 }
 
 // required returns a client failure when the template leaves out KeyId or Operations, which the AWS SDK would reject
-// before it sends the create, or sets Name, which the handler sets.
+// before it sends the create, or sets Name, which the handler sets. It also rejects an encryption context key with
+// "/": UCP compares properties by paths with "/" between segments, so it would read such a key as nested objects and
+// see a change to the create-only Constraints on every redeploy.
 func required(g grant) error {
 	if g.KeyId == "" || len(g.Operations) == 0 {
 		return rejected("an %s needs KeyId and Operations", grantType)
 	}
 	if g.Name != "" {
 		return rejected("Name of an %s is read-only: Radius names the grant, so a create it sends again returns the same grant", grantType)
+	}
+	if g.Constraints != nil {
+		for _, pairs := range []map[string]string{g.Constraints.EncryptionContextEquals, g.Constraints.EncryptionContextSubset} {
+			for k := range pairs {
+				if strings.Contains(k, "/") {
+					return rejected("the encryption context key %q of an %s contains \"/\", which Radius can't compare yet, so every redeploy would fail. Use a key without \"/\"", k, grantType)
+				}
+			}
+		}
 	}
 	return nil
 }
@@ -314,37 +326,46 @@ func optional(s string) *string {
 // whatever its values, and UCP then reads it and compares it with the template. A create sent again before ListGrants
 // lists the grant has the same name and, unless the template changed, the same values, so AWS returns the same grant.
 //
-// KMS rejects invalid input with ValidationError, which the AWS SDK doesn't know as a client error, so Create reports
-// it as rejected, and UCP doesn't keep the record of a create AWS never ran.
+// A create that fails before it sends CreateGrant, such as a ListGrants that times out, made nothing, so Create
+// reports it as rejected, and UCP doesn't keep the record of a create AWS never got. KMS rejects invalid input with
+// ValidationError, which the AWS SDK doesn't know as a client error, so Create reports that as a rejected client
+// failure too.
 func (h *Grant) Create(ctx context.Context, request native.CreateRequest) (string, error) {
-	id, err := h.create(ctx, request)
-	if awsapi.HasCode(err, "ValidationError") {
+	id, sent, err := h.create(ctx, request)
+	var failure *native.Failure
+	switch {
+	case err == nil || errors.As(err, &failure):
+	case awsapi.HasCode(err, "ValidationError"):
 		return "", &native.Failure{Message: err.Error(), ClientError: true, Outcome: native.OutcomeRejected}
+	case !sent:
+		return "", &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
 	}
 	return id, err
 }
 
-func (h *Grant) create(ctx context.Context, request native.CreateRequest) (string, error) {
+// create creates the grant, as Create says, and reports whether it sent CreateGrant.
+func (h *Grant) create(ctx context.Context, request native.CreateRequest) (string, bool, error) {
 	g, err := parse(request.Properties)
 	if err == nil {
 		err = required(g)
 	}
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	name := native.GenerateName(request.ClientToken)
 	key, err := h.keyARN(ctx, request.Region, g.KeyId)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	existing, err := h.named(ctx, request.Region, key, name)
 	switch {
 	case err != nil:
-		return "", err
+		return "", false, err
 	case len(existing) == 1:
-		return existing[0], nil
+		return existing[0], false, nil
 	case len(existing) > 1:
-		return "", fmt.Errorf("the KMS key has %d grants named %s, which only one create of an AWS resource of type %s makes, so UCP can't tell which one it made: %s", len(existing), name, grantType, strings.Join(existing, ", "))
+		// Not a rejection: the grants may include this create's, so UCP keeps the record.
+		return "", true, fmt.Errorf("the KMS key has %d grants named %s, which only one create of an AWS resource of type %s makes, so UCP can't tell which one it made: %s", len(existing), name, grantType, strings.Join(existing, ", "))
 	}
 	out, err := h.api.CreateGrant(ctx, &kms.CreateGrantInput{
 		KeyId:                    aws.String(key),
@@ -357,22 +378,28 @@ func (h *Grant) create(ctx context.Context, request native.CreateRequest) (strin
 		RetiringServicePrincipal: optional(g.RetiringServicePrincipal),
 	}, inRegion(request.Region))
 	if err != nil {
-		return "", err
+		return "", true, err
 	}
 	if aws.ToString(out.GrantId) == "" {
-		return "", fmt.Errorf("AWS returned no grant ID for the create of an AWS resource of type %s", grantType)
+		return "", true, fmt.Errorf("AWS returned no grant ID for the create of an AWS resource of type %s", grantType)
 	}
-	return key + "|" + aws.ToString(out.GrantId), nil
+	return key + "|" + aws.ToString(out.GrantId), true, nil
 }
 
 // Find returns the grant of a lost create by sending the create again with that create's values, which UCP passes,
 // rather than the current template's: AWS returns the grant when the create reached it, even before ListGrants lists
 // it, and on the key that create named. When the create never reached AWS, Find makes the grant now, so UCP manages
 // it under the record: a PUT then compares it with the template, and rejects a change to a create-only property, and
-// a DELETE retires it. A key that no longer exists has no grants, so Find returns "".
+// a DELETE retires it.
+//
+// Find returns "" when the answer shows no grant can exist: the key no longer exists, or AWS rejects the values
+// themselves (ValidationError or InvalidArnException), which no create could have made a grant with. A PUT then
+// creates the grant with its own template, and a DELETE removes only the record, so a create AWS rejected never
+// blocks the alias. Any other error, such as a disabled key or a timeout, may follow a create that made the grant, so
+// Find returns it and UCP keeps the record.
 func (h *Grant) Find(ctx context.Context, request native.CreateRequest) (string, error) {
-	id, err := h.Create(ctx, request)
-	if awsapi.HasCode(err, "NotFoundException") {
+	id, _, err := h.create(ctx, request)
+	if awsapi.HasCode(err, "NotFoundException", "ValidationError", "InvalidArnException") {
 		return "", nil
 	}
 	return id, err

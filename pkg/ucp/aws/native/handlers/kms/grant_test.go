@@ -96,6 +96,8 @@ func grantSuite(t *testing.T, lagNew bool) nativetest.Suite {
 			with(template, map[string]any{"KeyId": "alias/app"}),
 			without(template, "Operations"),
 			with(template, map[string]any{"Name": "app"}),
+			with(template, map[string]any{"Constraints": map[string]any{"EncryptionContextEquals": map[string]any{"tenant/id": "t1"}}}),
+			with(template, map[string]any{"Constraints": map[string]any{"EncryptionContextSubset": map[string]any{"tenant/id": "t1"}}}),
 			with(template, map[string]any{"Constraints": map[string]any{"EncryptionContextSubset": map[string]any{"app": 1}}}),
 		},
 		IdentifierProperties: func(identifier string) map[string]any {
@@ -270,6 +272,53 @@ func Test_Create(t *testing.T) {
 	require.ErrorContains(t, err, "no grant ID")
 }
 
+// Test_CreateFailsBeforeSending fails each call Create makes before CreateGrant. AWS got no create, so the failure is
+// rejected, keeping a client fault's 400 and anything else's 500, and UCP keeps no record of it.
+func Test_CreateFailsBeforeSending(t *testing.T) {
+	for _, call := range []string{"DescribeKey", "ListGrants"} {
+		for _, failure := range []struct {
+			err    error
+			client bool
+		}{
+			{errors.New("connection reset"), false},
+			{&smithy.GenericAPIError{Code: "KMSInternalException", Fault: smithy.FaultServer}, false},
+			{fault("AccessDeniedException"), true},
+		} {
+			h, api := newHandler()
+			api.errs[call] = failure.err
+			_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(template, map[string]any{"KeyId": keyID}), ClientToken: uuid.NewString()})
+			var f *native.Failure
+			require.ErrorAs(t, err, &f, call)
+			require.Equal(t, native.OutcomeRejected, f.Outcome, call)
+			require.Equal(t, failure.client, f.ClientError, call)
+			require.Contains(t, f.Message, failure.err.Error())
+			require.NotContains(t, api.calls, "CreateGrant")
+		}
+	}
+}
+
+// Test_FindRejectedValues finds a lost create whose values AWS rejects, as when the rejection's response was lost.
+// No grant can exist, so Find returns "", and the next PUT creates with its own template and a DELETE removes only the
+// record. Other errors may follow a create that made the grant, so Find returns them.
+func Test_FindRejectedValues(t *testing.T) {
+	h, api := newHandler()
+	for _, properties := range []map[string]any{
+		with(template, map[string]any{"Operations": []any{"Sign"}}),
+		with(template, map[string]any{"KeyId": "arn:aws:kms:us-west-2:123:key"}),
+	} {
+		found, err := h.Find(t.Context(), native.CreateRequest{Region: region, Properties: properties, ClientToken: uuid.NewString()})
+		require.NoError(t, err)
+		require.Empty(t, found)
+	}
+	require.Empty(t, api.grantsOf(keyID))
+
+	_, err := h.Find(t.Context(), native.CreateRequest{Region: region, Properties: with(template, map[string]any{"KeyId": keyARN(disabledKeyID)}), ClientToken: uuid.NewString()})
+	require.ErrorContains(t, err, "DisabledException", "a key disabled after the create may hold its grant")
+	api.errs["CreateGrant"] = errors.New("connection reset")
+	_, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()})
+	require.EqualError(t, err, "connection reset")
+}
+
 // Test_CreateAfterChange sends a lost create again with a changed template. The key already has the grant named for
 // the create, so Create returns it instead of making a second grant, and UCP then compares it with the template.
 func Test_CreateAfterChange(t *testing.T) {
@@ -294,6 +343,8 @@ func Test_CreateAfterChange(t *testing.T) {
 	_, err = h.Create(t.Context(), request)
 	require.ErrorContains(t, err, id)
 	require.ErrorContains(t, err, duplicate)
+	var failure *native.Failure
+	require.False(t, errors.As(err, &failure), "the grants may include this create's, so UCP keeps the record")
 }
 
 // Test_Find finds a lost create with that create's values. UCP passes them rather than the current template's, so a
