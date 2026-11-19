@@ -259,7 +259,8 @@ func (s *Service) listenAndServe(ctx context.Context, service *http.Server) erro
 		return service.ListenAndServeTLS(dir+"/"+mtls.CertFile, dir+"/"+mtls.KeyFile)
 	}
 
-	source, err := mtls.NewSource(dir)
+	// The directory holds tls.crt and tls.key; the server checks no client against a Radius CA, so it needs no ca.crt.
+	source, err := mtls.NewCertificateSource(dir)
 	if err != nil {
 		return fmt.Errorf("failed to load the API server certificate: %w", err)
 	}
