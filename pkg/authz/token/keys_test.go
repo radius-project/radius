@@ -85,8 +85,9 @@ func TestPublicKeys(t *testing.T) {
 }
 
 func TestPublicKeys_Errors(t *testing.T) {
-	_, err := jsonWebKeySet{}.publicKeys()
-	require.ErrorContains(t, err, "no usable signing keys")
+	keys, err := jsonWebKeySet{Keys: []jsonWebKey{{Kty: "oct", Kid: "secret"}}}.publicKeys()
+	require.NoError(t, err, "a set with no usable keys is the cluster's answer, not a read failure")
+	require.Empty(t, keys)
 
 	_, err = jsonWebKeySet{Keys: []jsonWebKey{rsaJWK("dup", &rsaKey.PublicKey), rsaJWK("dup", &rsaKey.PublicKey)}}.publicKeys()
 	require.ErrorContains(t, err, "more than one key")
@@ -203,8 +204,10 @@ func TestOIDCKeySource_FetchErrors(t *testing.T) {
 
 	t.Run("no usable keys", func(t *testing.T) {
 		srv, _ := newAPIServer(t, func(base string) string { return base + apiServerJWKSPath }, jsonWebKeySet{})
-		_, err := (&OIDCKeySource{Client: srv.Client(), BaseURL: srv.URL}).Fetch(t.Context())
-		require.ErrorContains(t, err, "no usable signing keys")
+		set, err := (&OIDCKeySource{Client: srv.Client(), BaseURL: srv.URL}).Fetch(t.Context())
+		require.NoError(t, err, "the Verifier, not the source, decides what an empty set means")
+		require.NotEmpty(t, set.Issuer)
+		require.Empty(t, set.Keys)
 	})
 
 	t.Run("oversized response", func(t *testing.T) {
