@@ -63,6 +63,7 @@ func TestBootstrapNativeInstallPublishesBeforeServingVerification(t *testing.T) 
 	}, kubeconfig))
 	t.Setenv("KUBECONFIG", kubeconfig)
 	options := NewDefaultClusterOptions()
+	options.Radius.Reinstall = true // Still a fresh installation on the first attempt.
 	options.Radius.Wait, options.Radius.Timeout = false, time.Minute
 	options.Radius.ChartPath, options.Contour.Disabled, options.Certificates.CASecret = archive, true, "operator-ca"
 	options.Radius.SetArgs = []string{

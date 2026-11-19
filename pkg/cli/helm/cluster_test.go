@@ -49,6 +49,7 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
+	options.Radius.Reinstall = true // No history: expect install, never migrate or upgrade.
 
 	// Mock Helm Pull
 	mockHelmClient.EXPECT().
@@ -1358,10 +1359,6 @@ func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {
 
 // expectNoRadiusHistory lets rad read the history of the Radius release, which it does before it upgrades Radius with
 // authorization off, and returns none, which deployedAuthzMode reads as a release with authorization off.
-func expectNoRadiusHistory(client *MockHelmClient) {
-	client.EXPECT().RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").Return(nil, nil).AnyTimes()
-}
-
 func TestRollbackRejectsUnsupportedEngineProviderBeforeTrustChanges(t *testing.T) {
 	client := NewMockHelmClient(gomock.NewController(t))
 	history := []*releasev1.Release{{

@@ -365,6 +365,21 @@ func (b *initialCertificateInstaller) applyChart(ctx context.Context) error {
 	if err != nil || digest != b.state.ValuesSHA256 {
 		return errors.New("recorded bootstrap Helm values changed")
 	}
+	if !b.options.Radius.Reinstall || b.importPlan == nil || b.importPlan.recheck == nil {
+		return errors.New("bootstrap release appeared after fresh preflight; retry the identical install with --reinstall")
+	}
+	if err := b.importPlan.recheck(); err != nil {
+		return err
+	}
+	if err := b.checkMaterial(ctx); err != nil {
+		return err
+	}
+	if err := b.impl.Helm.MigrateControllerStrategy(ctx, configuration, b.selected, b.values, b.store.release, b.store.namespace, false); err != nil {
+		return fmt.Errorf("failed to prepare Radius controller upgrade: %w", err)
+	}
+	if err := b.importPlan.recheck(); err != nil {
+		return err
+	}
 	ssa := usesServerSideApply(configuration, b.store.release)
 	return b.runPublishedAction(ctx, configuration, func(configuration *helm.Configuration, strategy helm.DryRunStrategy) (release.Releaser, error) {
 		upgrade := newUpgradeClient(configuration, b.store.namespace, b.options.Radius.Wait, false, b.options.Radius.Timeout, ssa)

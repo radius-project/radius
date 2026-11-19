@@ -14,6 +14,13 @@ types:
             username: 'myadmin'
             // From a @secure() password parameter passed in via the CLI
             password: password
+            extensions: [
+              'pg_trgm'
+              'btree_gin'
+            ]
+            serverSettings: {
+              log_min_duration_statement: '1000'
+            }
           }
         }
       ```
@@ -82,12 +89,27 @@ types:
               description: "(Optional) The name of the database. Defaults to `postgres_db` if not provided."
             initSql:
               type: string
-              description: "(Optional) SQL script mounted into the PostgreSQL container's `/docker-entrypoint-initdb.d/` directory and executed whenever PGDATA is empty. With the default ephemeral storage this runs on every pod restart. If a PersistentVolumeClaim is used, the script runs only on the very first startup and subsequent changes to initSql are ignored on existing volumes. Limited to ~1 MiB. Useful for creating tables, indexes, and inserting seed data."
+              x-radius-sensitive: true
+              description: "(Optional) SQL script for users, schemas, and seed data. Radius encrypts it at rest and redacts it on reads. Azure runs it after provisioning with a deployment script; it can run again after SQL changes or deployment-script retention expires. Use SQL that is safe to repeat. Kubernetes Bicep mounts it into /docker-entrypoint-initdb.d/ and runs it when PGDATA is empty; changes do not run against existing volumes. Platform script and environment-variable size limits apply. See the Azure Recipe documentation for execution limits."
             tls:
               type: string
               enum: ['required', 'optional']
               default: 'required'
-              description: "(Optional) The requested transport policy for database connections. Configure your client using `CONNECTION_POSTGRESQL_TLS`. Defaults to `required`. Use `optional` only when the server is not publicly reachable; it permits connections without TLS."
+              description: "(Optional) The requested transport policy for database connections. Defaults to `required`, rejecting plaintext TCP connections in the Kubernetes Recipes. `optional` permits plaintext but keeps TLS available. Kubernetes Recipes generate a self-signed development certificate when `<resource-name>-tls` is absent or empty; a supplied operator certificate takes precedence and invalid material fails initialization. Configure clients using `CONNECTION_POSTGRESQL_TLS` and separately trust the server CA and verify its hostname; generated certificates are not trusted automatically. Use `optional` only when the server is not publicly reachable. See [Azure configuration rules](https://github.com/radius-project/resource-types-contrib/blob/main/Data/postgreSqlDatabases/recipes/azure/README.md#settings-and-operator-overrides) for operator overrides."
+            extensions:
+              type: array
+              default: []
+              items:
+                type: string
+                minLength: 1
+                pattern: '^[a-z][a-z0-9_-]*$'
+              description: "(Optional) PostgreSQL extension names, such as pg_trgm or vector. Azure allow-lists them; the application must create them in each database. See [Azure configuration rules](https://github.com/radius-project/resource-types-contrib/blob/main/Data/postgreSqlDatabases/recipes/azure/README.md#settings-and-operator-overrides) for list merging and operator overrides. Kubernetes creates them on first database initialization; the container image must include each extension."
+            serverSettings:
+              type: object
+              default: {}
+              additionalProperties:
+                type: string
+              description: "(Optional) PostgreSQL server parameter names and string values. See [Azure configuration rules](https://github.com/radius-project/resource-types-contrib/blob/main/Data/postgreSqlDatabases/recipes/azure/README.md#settings-and-operator-overrides) for operator overrides and protected settings. Kubernetes passes settings to postgres with -c, but reserves ssl, ssl_cert_file, ssl_key_file, and hba_file for TLS without regard to case. Both platforms keep the server on 5432. Invalid or unavailable settings fail deployment or startup. Do not put credentials in this object."
             host:
               type: string
               description: "(Read Only) The host name used to connect to the database. Mapped from the recipe module's output."

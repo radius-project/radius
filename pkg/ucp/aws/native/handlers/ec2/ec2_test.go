@@ -149,6 +149,7 @@ func Test_Suite_ClientVpnEndpoint(t *testing.T) {
 		}),
 		Calls:    2,
 		FailCall: nativetest.FailCall(2, fs.failer),
+		API:      clientVpnEndpointAPI,
 	})
 }
 
@@ -173,6 +174,7 @@ func Test_Suite_ClientVpnTargetNetworkAssociation(t *testing.T) {
 			endpoint, association, _ := strings.Cut(identifier, "|")
 			return map[string]any{"ClientVpnEndpointId": endpoint, "AssociationId": association}
 		},
+		API: clientVpnTargetNetworkAssociationAPI,
 	})
 }
 
@@ -180,10 +182,11 @@ func Test_Suite_NetworkAclEntry(t *testing.T) {
 	entry := map[string]any{
 		"NetworkAclId":  "acl-1",
 		"RuleNumber":    100,
-		"Protocol":      6,
+		"Protocol":      -1,
 		"RuleAction":    "allow",
 		"Ipv6CidrBlock": "2001:DB8::/32",
-		"PortRange":     map[string]any{"From": 443, "To": 443},
+		// AWS takes ports with any protocol, and needs them only for TCP and UDP, so they can be removed.
+		"PortRange": map[string]any{"From": 443, "To": 443},
 	}
 	nativetest.Run(t, nativetest.Suite{
 		TypeName: networkAclEntryType,
@@ -197,13 +200,14 @@ func Test_Suite_NetworkAclEntry(t *testing.T) {
 		Changed:            with(entry, map[string]any{"RuleAction": "deny"}),
 		Removable:          "PortRange",
 		CreateOnlyChange:   with(entry, map[string]any{"RuleNumber": 101}),
-		OtherForm:          map[string]any{"Ipv6CidrBlock": "2001:db8::/32", "RuleAction": "ALLOW", "Protocol": "6"},
+		OtherForm:          map[string]any{"Ipv6CidrBlock": "2001:db8::/32", "RuleAction": "ALLOW", "Protocol": "-1"},
 		// A rule number outside 1 to 32766, including one that would wrap to 100 as an int32.
 		Invalid: []map[string]any{
 			with(entry, map[string]any{"RuleNumber": 0}),
 			with(entry, map[string]any{"RuleNumber": 32767}),
 			with(entry, map[string]any{"RuleNumber": 4294967396}),
 		},
+		API: networkAclEntryAPI,
 	})
 }
 
@@ -220,6 +224,7 @@ func Test_Suite_NetworkInterfacePermission(t *testing.T) {
 		Changed:            permission,
 		CreateOnlyChange:   with(permission, map[string]any{"Permission": "EIP-ASSOCIATE"}),
 		Duplicates:         true,
+		API:                networkInterfacePermissionAPI,
 	})
 }
 
@@ -272,6 +277,7 @@ func Test_Suite_VPNGatewayRoutePropagation(t *testing.T) {
 		Calls:              3,
 		RejectedCalls:      1,
 		FailCall:           nativetest.FailCall(3, fs.failer),
+		API:                vpnGatewayRoutePropagationAPI,
 		Outside: func(store *awsfake.CloudControl, properties map[string]any) func() bool {
 			gateway := awsapi.String(properties, "VpnGatewayId")
 			entry := store.Resource(outsidePropagationType, gateway)
