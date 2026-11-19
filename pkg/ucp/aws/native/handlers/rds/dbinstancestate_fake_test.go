@@ -38,8 +38,8 @@ const recoverableStatus = "inaccessible-encryption-credentials-recoverable"
 // fakeDBInstances is an in-memory RDS API for the running state of DB instances. It keeps each DB instance in the
 // store under dbInstanceStateType, by its identifier in lowercase, with DBInstanceIdentifier, DBInstanceStatus, and
 // State, as the suite sees it: running for available, and the status otherwise. It also keeps what RDS's rules need:
-// Engine, postgres unless set, DBClusterIdentifier for a DB instance of a cluster, and ReadReplica for a DB instance
-// that has a read replica or is one. A starting or stopping DB instance, such as one a start or stop just changed,
+// Engine, postgres unless set, DBClusterIdentifier for a DB instance of a cluster, ReadReplica for a DB instance
+// that has a read replica or is one, and MultiAZ for a DB instance in a Multi-AZ deployment. A starting or stopping DB instance, such as one a start or stop just changed,
 // reads as such once, and then as available or stopped.
 type fakeDBInstances struct {
 	store *awsfake.CloudControl
@@ -194,7 +194,8 @@ func (f *fakeDBInstances) StopDBInstance(ctx context.Context, in *rds.StopDBInst
 	if err != nil {
 		return nil, err
 	}
-	if awsapi.String(props, "DBClusterIdentifier") != "" || props["ReadReplica"] == true || awsapi.String(props, "DBInstanceStatus") != "available" {
+	sqlServerMultiAZ := strings.HasPrefix(awsapi.String(props, "Engine"), "sqlserver") && props["MultiAZ"] == true
+	if awsapi.String(props, "DBClusterIdentifier") != "" || props["ReadReplica"] == true || sqlServerMultiAZ || awsapi.String(props, "DBInstanceStatus") != "available" {
 		return nil, dbFault("InvalidDBInstanceState")
 	}
 	return &rds.StopDBInstanceOutput{DBInstance: f.change(props, statusStopping)}, nil

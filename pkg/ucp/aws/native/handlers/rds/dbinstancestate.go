@@ -79,9 +79,9 @@ var otherProducts = []string{"docdb", "neptune"}
 // makes a delete change nothing in AWS.
 //
 // A deploy starts or stops the DB instance only when its state differs from the template's, and then waits for the
-// template's state. A DB instance being deleted reads as gone. A DB instance of an Aurora or Multi-AZ DB cluster is
-// rejected with 400 before any change, because RDS starts and stops it only with its cluster. RDS starts a stopped DB
-// instance on its own after 7 days, so the next deploy finds it running and stops it again.
+// template's state. A DB instance being deleted reads as gone. A DB instance of a cluster is rejected with 400 before
+// any change: RDS starts and stops an Aurora DB instance only with its cluster, and can't stop a Multi-AZ DB cluster.
+// RDS starts a stopped DB instance on its own after 7 days, so the next deploy finds it running and stops it again.
 type DBInstanceState struct {
 	api DBInstanceAPI
 }
@@ -142,11 +142,11 @@ func (h *DBInstanceState) describe(ctx context.Context, region string, identifie
 		return nil, &native.OtherProductError{Identifier: identifier, Product: engine}
 	}
 	if cluster := aws.ToString(instance.DBClusterIdentifier); cluster != "" {
-		return nil, &native.Failure{
-			Message:     fmt.Sprintf("The DB instance %q belongs to the DB cluster %q, and RDS starts and stops the DB instances of a cluster only with the whole cluster. Start or stop the cluster instead.", identifier, cluster),
-			ClientError: true,
-			Outcome:     native.OutcomeRejected,
+		message := fmt.Sprintf("The DB instance %q belongs to the Multi-AZ DB cluster %q, which RDS can't stop or start.", identifier, cluster)
+		if strings.HasPrefix(aws.ToString(instance.Engine), "aurora") {
+			message = fmt.Sprintf("The DB instance %q belongs to the Aurora DB cluster %q, and RDS starts and stops it only with the whole cluster. Start or stop the cluster instead.", identifier, cluster)
 		}
+		return nil, &native.Failure{Message: message, ClientError: true, Outcome: native.OutcomeRejected}
 	}
 	return instance, nil
 }
@@ -197,18 +197,36 @@ func (h *DBInstanceState) Read(ctx context.Context, region string, identifier st
 	}, nil
 }
 
-// Create keeps the DB instance in the template's state. UCP calls it only when a read found no DB instance, so it
-// usually fails with 400, saying the DB instance doesn't exist.
+// Create changes nothing and fails with 400. UCP calls it only when a read found no DB instance, and AWS has nothing
+// a deploy can create: it says the DB instance doesn't exist, or, when RDS reports it now, to deploy again, so the
+// next deploy takes it over and waits for the template's state as an update.
 func (h *DBInstanceState) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	id, err := h.Identifier(request.Properties)
 	if err != nil {
 		return "", err
 	}
-	desired, err := awsapi.RunningState(request.Properties, dbInstanceStateType)
-	if err != nil {
+	if _, err := awsapi.RunningState(request.Properties, dbInstanceStateType); err != nil {
 		return "", err
 	}
-	return id, h.apply(ctx, request.Region, id, desired)
+	if _, err := h.describe(ctx, request.Region, id); errors.Is(err, native.ErrNotFound) {
+		return "", dbInstanceGone(id)
+	} else if err != nil {
+		return "", err
+	}
+	return "", &native.Failure{
+		Message:     fmt.Sprintf("RDS reported no DB instance %q when the deploy read it, and reports it now. Deploy again.", id),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
+}
+
+// dbInstanceGone is the failure for a DB instance RDS doesn't have, or is deleting.
+func dbInstanceGone(id string) error {
+	return &native.Failure{
+		Message:     fmt.Sprintf("AWS has no RDS DB instance %q that can run: it doesn't exist, or it is being deleted. Set DBInstanceIdentifier to an existing DB instance.", id),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
 }
 
 // Update starts or stops the DB instance, when the template's state differs from the one RDS reports now.
@@ -240,11 +258,7 @@ func (h *DBInstanceState) Update(ctx context.Context, request native.UpdateReque
 func (h *DBInstanceState) apply(ctx context.Context, region string, id string, desired string) error {
 	instance, err := h.describe(ctx, region, id)
 	if errors.Is(err, native.ErrNotFound) {
-		return &native.Failure{
-			Message:     fmt.Sprintf("AWS has no RDS DB instance %q that can run: it doesn't exist, or it is being deleted. Set DBInstanceIdentifier to an existing DB instance.", id),
-			ClientError: true,
-			Outcome:     native.OutcomeRejected,
-		}
+		return dbInstanceGone(id)
 	} else if err != nil {
 		return err
 	}
@@ -280,8 +294,8 @@ func (h *DBInstanceState) List(ctx context.Context, region string) ([]native.Res
 }
 
 // Progress reports the operation as finished once the DB instance runs or is stopped, and as failed for a status in
-// which it does neither, such as incompatible-parameters. It is for a create, which UCP only waits for after a read
-// found no DB instance, because an update waits with UpdateProgress.
+// which it does neither, such as incompatible-parameters. UCP waits for an update with UpdateProgress, and Create
+// never starts an operation, so UpdateProgress calls it only for an update whose state it can't read.
 func (h *DBInstanceState) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
 	instance, err := h.describe(ctx, region, identifier)
 	if err != nil {

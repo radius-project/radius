@@ -166,6 +166,7 @@ var dbInstanceStateAPI = map[string]nativetest.Call{
 		Unclear: "The page names InvalidDBInstanceState for a DB instance that isn't in a valid state, but not which states are " +
 			"valid. The fake stops only an available DB instance. The page says the call doesn't apply to Aurora DB instances, " +
 			"and the User Guide (" + rdsStopGuide + ") says a DB instance that has a read replica, or is one, can't be " +
-			"stopped. Neither names an error, and the fake returns InvalidDBInstanceState for both.",
+			"stopped, and neither can an RDS for SQL Server DB instance in a Multi-AZ deployment. None of these names an " +
+			"error, and the fake returns InvalidDBInstanceState for each.",
 	},
 }

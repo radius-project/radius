@@ -124,6 +124,15 @@ func settingSuite(onDelete schemas.OnDelete, scope schemas.IdentityScope, resetT
 		Changed:            map[string]any{"Id": "default", "MinimumLength": 14, "RequireSymbols": true},
 		Removable:          "RequireSymbols",
 		ResetTo:            resetTo,
+		// MinimumLength is lowered outside Radius.
+		ChangedOutside: &ChangedOutside{
+			Properties: map[string]any{"Id": "default", "MinimumLength": 12, "RequireSymbols": true},
+			Change: func(stored map[string]any) map[string]any {
+				stored["MinimumLength"] = 6
+				return stored
+			},
+			Restored: func(stored map[string]any) bool { return fmt.Sprint(stored["MinimumLength"]) == "12" },
+		},
 	}
 }
 

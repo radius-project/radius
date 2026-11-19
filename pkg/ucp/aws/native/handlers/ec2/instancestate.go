@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -120,18 +121,36 @@ func (h *InstanceState) Read(ctx context.Context, region string, identifier stri
 	return map[string]any{"InstanceId": identifier, "State": string(instance.State.Name)}, nil
 }
 
-// Create keeps the instance in the template's state. UCP calls it only when a read found no instance, so it usually
-// fails with 400, saying the instance doesn't exist.
+// Create changes nothing and fails with 400. UCP calls it only when a read found no instance, and AWS has nothing a
+// deploy can create: it says the instance doesn't exist, or, when EC2 reports it now, to deploy again, so the next
+// deploy takes it over and waits for the template's state as an update.
 func (h *InstanceState) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	id, err := h.Identifier(request.Properties)
 	if err != nil {
 		return "", err
 	}
-	desired, err := awsapi.RunningState(request.Properties, instanceStateType)
-	if err != nil {
+	if _, err := awsapi.RunningState(request.Properties, instanceStateType); err != nil {
 		return "", err
 	}
-	return id, h.apply(ctx, request.Region, id, desired)
+	if _, err := h.instance(ctx, request.Region, id); errors.Is(err, native.ErrNotFound) {
+		return "", instanceGone(id)
+	} else if err != nil {
+		return "", err
+	}
+	return "", &native.Failure{
+		Message:     fmt.Sprintf("EC2 reported no instance %q when the deploy read it, and reports it now. Deploy again.", id),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
+}
+
+// instanceGone is the failure for an instance EC2 doesn't have, or that is terminated.
+func instanceGone(id string) error {
+	return &native.Failure{
+		Message:     fmt.Sprintf("AWS has no EC2 instance %q that can run: it doesn't exist, or it is terminated. Set InstanceId to an existing instance.", id),
+		ClientError: true,
+		Outcome:     native.OutcomeRejected,
+	}
 }
 
 // Update starts or stops the instance, when the template's state differs from the one EC2 reports now. UpdateProgress
@@ -163,11 +182,7 @@ func (h *InstanceState) Update(ctx context.Context, request native.UpdateRequest
 func (h *InstanceState) apply(ctx context.Context, region string, id string, desired string) error {
 	instance, err := h.instance(ctx, region, id)
 	if errors.Is(err, native.ErrNotFound) {
-		return &native.Failure{
-			Message:     fmt.Sprintf("AWS has no EC2 instance %q that can run: it doesn't exist, or it is terminated. Set InstanceId to an existing instance.", id),
-			ClientError: true,
-			Outcome:     native.OutcomeRejected,
-		}
+		return instanceGone(id)
 	} else if err != nil {
 		return err
 	}
@@ -227,8 +242,9 @@ func (h *InstanceState) List(ctx context.Context, region string) ([]native.Resou
 	return nil, nil
 }
 
-// Progress reports the operation as finished once the instance is running or stopped. It is for a create, which
-// UCP only waits for after a read found no instance, because an update waits with UpdateProgress.
+// Progress reports the operation as finished once the instance is running or stopped. UCP waits for an update with
+// UpdateProgress, and Create never starts an operation, so UpdateProgress calls it only for an update whose state it
+// can't read.
 func (h *InstanceState) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
 	instance, err := h.instance(ctx, region, identifier)
 	if err != nil {
@@ -241,13 +257,26 @@ func (h *InstanceState) Progress(ctx context.Context, region string, identifier 
 	return native.Progress{Done: true, State: state}, nil
 }
 
-// instanceBefore is the instance as it was before an update: its state, and the code of the reason for its last
-// change of state, such as Client.UserInitiatedShutdown. UCP keeps it on the record (native.UpdatePreparer), so the
-// update's progress knows which state it waits for, and can tell a start that failed from a read that doesn't show
-// the change yet.
+// instanceBefore is the instance as it was before an update: its state, the code of the reason for its last change of
+// state, such as Client.UserInitiatedShutdown, and the time it was last launched. UCP keeps it on the record
+// (native.UpdatePreparer), so the update's progress knows which state it waits for, and can tell a start that failed
+// from a read that doesn't show the change yet.
 type instanceBefore struct {
-	State  string `json:"state"`
-	Reason string `json:"reason,omitempty"`
+	State    string `json:"state"`
+	Reason   string `json:"reason,omitempty"`
+	Launched string `json:"launched,omitempty"`
+}
+
+// beforeOf returns instance as instanceBefore.
+func beforeOf(instance *types.Instance) instanceBefore {
+	before := instanceBefore{State: string(instance.State.Name)}
+	if instance.StateReason != nil {
+		before.Reason = aws.ToString(instance.StateReason.Code)
+	}
+	if instance.LaunchTime != nil {
+		before.Launched = instance.LaunchTime.UTC().Format(time.RFC3339Nano)
+	}
+	return before
 }
 
 // UpdateState returns the instance as it is before the update, as JSON.
@@ -256,21 +285,14 @@ func (h *InstanceState) UpdateState(ctx context.Context, region string, identifi
 	if err != nil {
 		return "", err
 	}
-	b, err := json.Marshal(instanceBefore{State: string(instance.State.Name), Reason: reasonCode(instance)})
+	b, err := json.Marshal(beforeOf(instance))
 	return string(b), err
 }
 
-func reasonCode(instance *types.Instance) string {
-	if instance.StateReason == nil {
-		return ""
-	}
-	return aws.ToString(instance.StateReason.Code)
-}
-
 // UpdateProgress waits for the state the update moves the instance to (see updateTarget), given the instance as it
-// was before the update in state. A read that still shows the state from before, with the same reason, doesn't show
-// the change yet. Any other running or stopped instance means the update failed, such as a start that ran out of
-// capacity, or whose operating system shut down at once, and stopped again.
+// was before the update in state. A read that still shows the instance as it was before, with the same state, reason,
+// and launch time, doesn't show the change yet. Any other running or stopped instance means the update failed, such
+// as a start that ran out of capacity, or whose operating system shut down at once, and stopped again.
 func (h *InstanceState) UpdateProgress(ctx context.Context, region string, identifier string, state string) (native.Progress, error) {
 	var before instanceBefore
 	if err := json.Unmarshal([]byte(state), &before); err != nil {
@@ -285,7 +307,7 @@ func (h *InstanceState) UpdateProgress(ctx context.Context, region string, ident
 	switch {
 	case current == target:
 		return native.Progress{Done: true, State: current}, nil
-	case instanceTarget(instance.State.Name) != current, current == before.State && reasonCode(instance) == before.Reason:
+	case instanceTarget(instance.State.Name) != current, beforeOf(instance) == before:
 		return native.Progress{State: current, Waiting: target}, nil
 	}
 	message := fmt.Sprintf("the EC2 instance %q is %s, not %s", identifier, current, target)

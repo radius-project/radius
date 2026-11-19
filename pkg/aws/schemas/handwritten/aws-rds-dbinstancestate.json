@@ -4,7 +4,7 @@
   "properties": {
     "DBInstanceIdentifier": {
       "type": "string",
-      "description": "The identifier of the DB instance. RDS stores it in lowercase. A DB instance of an Aurora or Multi-AZ DB cluster can't be started or stopped on its own: start or stop the cluster instead."
+      "description": "The identifier of the DB instance. RDS stores it in lowercase. A DB instance of an Aurora DB cluster starts and stops only with its cluster, and one of a Multi-AZ DB cluster can't be stopped."
     },
     "State": {
       "type": "string",
@@ -23,11 +23,7 @@
   "readOnlyProperties": ["/properties/DBInstanceStatus"],
   "handlers": {
     "create": {
-      "permissions": [
-        "rds:DescribeDBInstances",
-        "rds:StartDBInstance",
-        "rds:StopDBInstance"
-      ]
+      "permissions": ["rds:DescribeDBInstances"]
     },
     "read": {
       "permissions": ["rds:DescribeDBInstances"]

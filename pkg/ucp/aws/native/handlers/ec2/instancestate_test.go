@@ -143,11 +143,11 @@ func Test_InstanceState_Read(t *testing.T) {
 }
 
 func Test_InstanceState_Create(t *testing.T) {
+	// The read before the create found no instance, and EC2 reports it now.
 	h, api := newInstanceState(types.InstanceStateNameStopped, nil)
-	id, err := h.Create(t.Context(), createRequest(instanceState("running")))
-	require.NoError(t, err)
-	require.Equal(t, testInstance, id)
-	require.Equal(t, []string{"DescribeInstances", "StartInstances"}, api.calls)
+	_, err := h.Create(t.Context(), createRequest(instanceState("running")))
+	requireStateRejected(t, err, `EC2 reported no instance "i-0123456789abcdef0" when the deploy read it, and reports it now. Deploy again.`)
+	require.Equal(t, []string{"DescribeInstances"}, api.calls, "the create starts nothing")
 
 	h, api = newInstanceState(types.InstanceStateNameTerminated, nil)
 	_, err = h.Create(t.Context(), createRequest(instanceState("running")))
@@ -281,9 +281,8 @@ func Test_InstanceState_CantStop(t *testing.T) {
 }
 
 func Test_InstanceState_Progress(t *testing.T) {
-	h, api := newInstanceState(types.InstanceStateNameStopped, nil)
-	id, err := h.Create(t.Context(), createRequest(instanceState("running")))
-	require.NoError(t, err)
+	h, api := newInstanceState(types.InstanceStateNamePending, nil)
+	id := testInstance
 	progress, err := h.Progress(t.Context(), testRegion, id, native.OperationCreate)
 	require.NoError(t, err)
 	require.Equal(t, native.Progress{State: "pending", Waiting: "running"}, progress)
@@ -301,7 +300,7 @@ func Test_InstanceState_UpdateProgress(t *testing.T) {
 		h, _ := newInstanceState(types.InstanceStateNameStopped, map[string]any{"StateReason": "Client.UserInitiatedShutdown"})
 		state, err := h.UpdateState(t.Context(), testRegion, testInstance)
 		require.NoError(t, err)
-		require.JSONEq(t, `{"state": "stopped", "reason": "Client.UserInitiatedShutdown"}`, state)
+		require.JSONEq(t, `{"state": "stopped", "reason": "Client.UserInitiatedShutdown", "launched": "2026-11-19T12:00:00Z"}`, state)
 		progress, err := h.UpdateProgress(t.Context(), testRegion, testInstance, state)
 		require.NoError(t, err)
 		require.Equal(t, native.Progress{State: "stopped", Waiting: "running"}, progress)
@@ -320,6 +319,23 @@ func Test_InstanceState_UpdateProgress(t *testing.T) {
 		require.True(t, progress.Done)
 		require.NotNil(t, progress.Failure)
 		require.Equal(t, `the EC2 instance "i-0123456789abcdef0" is stopped, not running: Server.InsufficientInstanceCapacity: the reason for the last change of state`, progress.Failure.Message)
+	})
+
+	// A start whose operating system shuts the instance down again stops it with the reason it had before, so only the
+	// new launch time shows that it ran.
+	t.Run("a start that stops again for the same reason", func(t *testing.T) {
+		h, api := newInstanceState(types.InstanceStateNameStopped, map[string]any{"StateReason": "Client.InstanceInitiatedShutdown"})
+		api.failStart[testInstance] = "Client.InstanceInitiatedShutdown"
+		request := update(t, h, "running")
+		require.NoError(t, h.Update(t.Context(), request))
+		var progress native.Progress
+		for range 2 {
+			var err error
+			progress, err = h.UpdateProgress(t.Context(), testRegion, testInstance, request.State)
+			require.NoError(t, err)
+		}
+		require.True(t, progress.Done)
+		require.Contains(t, progress.Failure.Message, `the EC2 instance "i-0123456789abcdef0" is stopped, not running: Client.InstanceInitiatedShutdown`)
 	})
 
 	t.Run("a running instance with no reason, as before", func(t *testing.T) {
@@ -387,5 +403,7 @@ func Test_InstanceState_DescribeFails(t *testing.T) {
 	_, err = h.Progress(t.Context(), testRegion, testInstance, native.OperationCreate)
 	require.ErrorContains(t, err, "EC2 failed")
 	err = h.Update(t.Context(), updateRequest(t, testInstance, map[string]any{}, instanceState("stopped")))
+	require.ErrorContains(t, err, "EC2 failed")
+	_, err = h.Create(t.Context(), createRequest(instanceState("stopped")))
 	require.ErrorContains(t, err, "EC2 failed")
 }

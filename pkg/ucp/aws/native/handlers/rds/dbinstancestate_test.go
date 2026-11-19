@@ -148,12 +148,13 @@ func Test_DBInstanceState_Read(t *testing.T) {
 	require.Equal(t, native.OtherProductError{Identifier: testDBInstance, Product: "docdb"}, *other)
 }
 
-// Test_DBInstanceState_Cluster checks that a DB instance of an Aurora or Multi-AZ DB cluster is rejected with 400
-// before any change, saying to start or stop the cluster.
+// Test_DBInstanceState_Cluster checks that a DB instance of a cluster is rejected with 400 before any change, saying
+// to start or stop an Aurora cluster, and that RDS can't stop a Multi-AZ DB cluster.
 func Test_DBInstanceState_Cluster(t *testing.T) {
-	for _, engine := range []string{"aurora-postgresql", "aurora-mysql", "mysql"} {
+	aurora := `The DB instance "app-db" belongs to the Aurora DB cluster "app-cluster", and RDS starts and stops it only with the whole cluster. Start or stop the cluster instead.`
+	multiAZ := `The DB instance "app-db" belongs to the Multi-AZ DB cluster "app-cluster", which RDS can't stop or start.`
+	for engine, want := range map[string]string{"aurora-postgresql": aurora, "aurora-mysql": aurora, "mysql": multiAZ, "postgres": multiAZ} {
 		h, api := newDBInstanceState("available", map[string]any{"Engine": engine, "DBClusterIdentifier": "app-cluster"})
-		want := `The DB instance "app-db" belongs to the DB cluster "app-cluster", and RDS starts and stops the DB instances of a cluster only with the whole cluster. Start or stop the cluster instead.`
 		_, err := h.Read(t.Context(), dbRegion, testDBInstance)
 		requireDBRejected(t, err, want)
 		_, err = h.Create(t.Context(), native.CreateRequest{Region: dbRegion, Properties: dbInstanceState("stopped")})
@@ -164,11 +165,11 @@ func Test_DBInstanceState_Cluster(t *testing.T) {
 }
 
 func Test_DBInstanceState_Create(t *testing.T) {
+	// The read before the create found no DB instance, and RDS reports it now.
 	h, api := newDBInstanceState("stopped", nil)
-	id, err := h.Create(t.Context(), native.CreateRequest{Region: dbRegion, Properties: dbInstanceState("running")})
-	require.NoError(t, err)
-	require.Equal(t, testDBInstance, id)
-	require.Equal(t, []string{"DescribeDBInstances", "StartDBInstance"}, api.calls)
+	_, err := h.Create(t.Context(), native.CreateRequest{Region: dbRegion, Properties: dbInstanceState("running")})
+	requireDBRejected(t, err, `RDS reported no DB instance "app-db" when the deploy read it, and reports it now. Deploy again.`)
+	require.Equal(t, []string{"DescribeDBInstances"}, api.calls, "the create starts nothing")
 
 	h, api = newDBInstanceState("deleting", nil)
 	_, err = h.Create(t.Context(), native.CreateRequest{Region: dbRegion, Properties: dbInstanceState("running")})
@@ -271,6 +272,11 @@ func Test_DBInstanceState_UpdateConflicts(t *testing.T) {
 		require.NoError(t, h.Update(t.Context(), dbUpdateRequest(t, "", "stopped")))
 		require.Contains(t, api.calls, "StopDBInstance")
 	})
+	t.Run("a deleted DB instance", func(t *testing.T) {
+		h, api := newDBInstanceState("available", nil)
+		api.store.Remove(dbInstanceStateType, testDBInstance)
+		requireDBRejected(t, h.Update(t.Context(), dbUpdateRequest(t, "available", "stopped")), "it doesn't exist, or it is being deleted")
+	})
 	t.Run("an invalid state", func(t *testing.T) {
 		h, api := newDBInstanceState("available", nil)
 		requireDBRejected(t, h.Update(t.Context(), dbUpdateRequest(t, "available", "available")), "must be")
@@ -286,6 +292,10 @@ func Test_DBInstanceState_CantStop(t *testing.T) {
 	requireDBRejected(t, err, `RDS can't stop the DB instance "app-db", which is available: `)
 	require.ErrorContains(t, err, "InvalidDBInstanceState")
 
+	h, _ = newDBInstanceState("available", map[string]any{"Engine": "sqlserver-se", "MultiAZ": true})
+	err = h.Update(t.Context(), dbUpdateRequest(t, "available", "stopped"))
+	requireDBRejected(t, err, `RDS can't stop the DB instance "app-db", which is available: `)
+
 	h, _ = newDBInstanceState("backing-up", nil)
 	err = h.Update(t.Context(), dbUpdateRequest(t, "backing-up", "stopped"))
 	requireDBRejected(t, err, `RDS can't stop the DB instance "app-db", which is backing-up: `)
@@ -299,9 +309,7 @@ func Test_DBInstanceState_CantStop(t *testing.T) {
 }
 
 func Test_DBInstanceState_Progress(t *testing.T) {
-	h, api := newDBInstanceState("stopped", nil)
-	_, err := h.Create(t.Context(), native.CreateRequest{Region: dbRegion, Properties: dbInstanceState("running")})
-	require.NoError(t, err)
+	h, api := newDBInstanceState("starting", nil)
 	progress, err := h.Progress(t.Context(), dbRegion, testDBInstance, native.OperationCreate)
 	require.NoError(t, err)
 	require.Equal(t, native.Progress{State: "starting", Waiting: "running"}, progress)

@@ -458,8 +458,13 @@ func (s Suite) changedOutside(t *testing.T, takeOver bool) {
 	}
 	h := s.newHarness(t)
 	if takeOver {
-		identifier, err := h.handler.Handler.Create(t.Context(), native.CreateRequest{Region: region, Properties: c.Properties, ClientToken: uuid.NewString()})
-		require.NoError(t, err)
+		// NewHandler already put the resource of a type whose create fails in AWS.
+		identifier := h.identifier()
+		if !s.CreateFails {
+			var err error
+			identifier, err = h.handler.Handler.Create(t.Context(), native.CreateRequest{Region: region, Properties: c.Properties, ClientToken: uuid.NewString()})
+			require.NoError(t, err)
+		}
 		h.cc.Put(s.TypeName, identifier, c.Change(h.cc.Resource(s.TypeName, identifier)))
 		resp := h.do(h.putFactory(), http.MethodPut, h.path(), owner, map[string]any{"name": identifier, "properties": c.Properties})
 		require.Contains(t, []int{http.StatusOK, http.StatusCreated}, resp.status, resp.raw)

@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -1192,8 +1193,8 @@ var instanceStateCodes = map[types.InstanceStateName]int32{
 // fakeInstances is an in-memory EC2 API for the running state of instances. It keeps each instance in the store under
 // instanceStateType, with the type's properties, InstanceId and State, and what EC2's rules need: RootDeviceType,
 // instance-store for an instance store root volume and ebs otherwise, SpotRequestType for a Spot Instance, one-time
-// or persistent, StateReason, the code of the reason for its last change of state, and Owner, other for an instance
-// of another account. A pending or stopping instance, such as one a start or stop just changed, reads as such once,
+// or persistent, StateReason, the code of the reason for its last change of state, LaunchTime, when it was last
+// launched, and Owner, other for an instance of another account. A pending or stopping instance, such as one a start or stop just changed, reads as such once,
 // and then as running or stopped.
 type fakeInstances struct {
 	store *awsfake.CloudControl
@@ -1207,9 +1208,15 @@ type fakeInstances struct {
 	// errs maps a method name to an error the call returns instead of acting.
 	errs  map[string]error
 	calls []string
+
+	// launches counts the launches of instances, which each get a later LaunchTime.
+	launches int
 }
 
 var _ InstanceAPI = (*fakeInstances)(nil)
+
+// firstLaunch is the LaunchTime of an instance the fake hasn't launched.
+var firstLaunch = time.Date(2026, 11, 19, 12, 0, 0, 0, time.UTC)
 
 func newFakeInstances(store *awsfake.CloudControl) *fakeInstances {
 	return &fakeInstances{store: store, failStart: map[string]string{}, errs: map[string]error{}}
@@ -1260,12 +1267,14 @@ func (f *fakeInstances) change(props map[string]any, state types.InstanceStateNa
 	return types.InstanceStateChange{InstanceId: aws.String(id), CurrentState: instanceStateOf(state), PreviousState: instanceStateOf(previous)}
 }
 
-// settle moves a pending instance to running, or back to stopped for a start in failStart, and a stopping instance
-// to stopped, after a read.
+// settle moves a pending instance to running, or back to stopped for a start in failStart, with a new LaunchTime, and
+// a stopping instance to stopped, after a read.
 func (f *fakeInstances) settle(props map[string]any) {
 	id := awsapi.String(props, "InstanceId")
 	switch types.InstanceStateName(awsapi.String(props, "State")) {
 	case types.InstanceStateNamePending:
+		f.launches++
+		props["LaunchTime"] = firstLaunch.Add(time.Duration(f.launches) * time.Minute).Format(time.RFC3339)
 		props["State"], props["StateReason"] = string(types.InstanceStateNameRunning), ""
 		if reason := f.failStart[id]; reason != "" {
 			props["State"], props["StateReason"] = string(types.InstanceStateNameStopped), reason
@@ -1308,6 +1317,10 @@ func (f *fakeInstances) DescribeInstances(ctx context.Context, in *awsec2.Descri
 			InstanceId:     aws.String(id),
 			State:          instanceStateOf(types.InstanceStateName(awsapi.String(props, "State"))),
 			RootDeviceType: types.DeviceType(awsapi.String(props, "RootDeviceType")),
+			LaunchTime:     aws.Time(firstLaunch),
+		}
+		if launched, err := time.Parse(time.RFC3339, awsapi.String(props, "LaunchTime")); err == nil {
+			instance.LaunchTime = aws.Time(launched)
 		}
 		if reason := awsapi.String(props, "StateReason"); reason != "" {
 			instance.StateReason = &types.StateReason{Code: aws.String(reason), Message: aws.String(reason + ": the reason for the last change of state")}

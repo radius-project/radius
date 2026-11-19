@@ -18,11 +18,7 @@
   "createOnlyProperties": ["/properties/InstanceId"],
   "handlers": {
     "create": {
-      "permissions": [
-        "ec2:DescribeInstances",
-        "ec2:StartInstances",
-        "ec2:StopInstances"
-      ]
+      "permissions": ["ec2:DescribeInstances"]
     },
     "read": {
       "permissions": ["ec2:DescribeInstances"]
