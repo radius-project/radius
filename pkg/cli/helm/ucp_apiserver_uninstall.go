@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,14 +32,54 @@ import (
 // helmResourcePolicyAnnotation set to keep makes Helm leave an object when it uninstalls the release.
 const helmResourcePolicyAnnotation = "helm.sh/resource-policy"
 
-// deleteUnadoptedUCPAPIServerStage deletes, after Helm uninstalls Radius, each object of ucpAPIServerCAStageObjects
+// ucpOffCertificateStageObject is Secret ucp-cert, which stageUCPOffCertificate applies with the release's Helm metadata
+// before the Helm upgrade to authorization off adopts it. A release with authorization on renders a Certificate of
+// that name instead, so Helm does not delete the Secret when it uninstalls that release.
+var ucpOffCertificateStageObject = stageInventoryObject{kind: "Secret", name: ucpOffCertificateSecretName, resource: corev1.SchemeGroupVersion.WithResource("secrets")}
+
+// ucpUninstallLeftoverSecrets are the Secrets that cert-manager issues for Certificates of the Radius release. They have
+// no owner reference, so neither Helm nor Kubernetes deletes them with the release.
+var ucpUninstallLeftoverSecrets = []ucpOffLeftoverSecret{
+	{secret: ucpAPIServerCASecretName, certificate: ucpAPIServerCASecretName},
+	{secret: ucpAPIServerTLSSecretName, certificate: ucpAPIServerCertificateName},
+}
+
+// deleteUCPAPIServerLeftovers deletes, after Helm uninstalls Radius, the objects of UCP's API server that Helm leaves:
+// the radius-apiserver-ca chain and Secret ucp-cert that an interrupted command staged but Helm never adopted, Secret
+// radius-apiserver-trust, and the Secrets radius-apiserver-ca and ucp-apiserver-tls, which hold private keys, once
+// their Certificates are gone. It deletes only what rad or cert-manager wrote for the release, each pinned to the uid
+// and resourceVersion rad read, and warns about anything else with those names.
+func (i *Impl) deleteUCPAPIServerLeftovers(ctx context.Context, kubeContext, radiusNamespace string) error {
+	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
+	if err != nil {
+		return err
+	}
+	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, nil); err != nil {
+		return err
+	}
+	if err := i.deleteUnadoptedStagedObject(ctx, kubeContext, dynamicClient, ucpOffCertificateStageObject, radiusNamespace, radiusReleaseName); err != nil {
+		return err
+	}
+	if err := i.deleteOwnedUCPAPIServerTrust(ctx, kubeContext, kubeClient, radiusNamespace); err != nil {
+		return err
+	}
+	return i.deleteUCPOffLeftovers(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace, ucpUninstallLeftoverSecrets)
+}
+
+// deleteUnadoptedUCPAPIServerStage deletes, after Helm uninstalls Radius or applies a release, each object of ucpAPIServerCAStageObjects
 // that rad staged for release releaseName but Helm never adopted, because the command stopped before the Helm upgrade.
 // Helm deletes the objects it adopted itself, so any that remain with the release's Helm ownership metadata were
 // staged. Each delete carries the uid and resourceVersion rad read, so an object that changed or was recreated since
 // survives. rad leaves an object with other ownership, or with helm.sh/resource-policy: keep, and warns how to delete it.
-func (i *Impl) deleteUnadoptedUCPAPIServerStage(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace, releaseName string) error {
+// It keeps each object that declared, the objects of the release Helm applied, holds; declared is empty after Helm
+// uninstalls the release.
+func (i *Impl) deleteUnadoptedUCPAPIServerStage(ctx context.Context, kubeContext string, dynamicClient dynamic.Interface, radiusNamespace, releaseName string, declared manifestObjectSet) error {
 	for index := len(ucpAPIServerCAStageObjects) - 1; index >= 0; index-- {
-		if err := i.deleteUnadoptedStagedObject(ctx, kubeContext, dynamicClient, ucpAPIServerCAStageObjects[index], radiusNamespace, releaseName); err != nil {
+		staged := ucpAPIServerCAStageObjects[index]
+		if declared.has(staged) {
+			continue
+		}
+		if err := i.deleteUnadoptedStagedObject(ctx, kubeContext, dynamicClient, staged, radiusNamespace, releaseName); err != nil {
 			return err
 		}
 	}

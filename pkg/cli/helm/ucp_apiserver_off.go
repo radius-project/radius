@@ -102,13 +102,17 @@ type ucpOffLeftoverFound struct {
 //
 // It does nothing when the APIService or Secret ucp-cert does not exist. If UCP does not serve the certificate in
 // ucp-cert in time, it returns an error and leaves the caBundle trusting both CAs; running the command again resumes.
-func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string) error {
+//
+// declared holds the objects of the release Helm applied. An object of the radius-apiserver-ca chain with the release's
+// Helm metadata that the release does not declare was staged by an upgrade to authorization on that stopped before
+// Helm, and this deletes it. It keeps a declared object, such as the radius-selfsigned-bootstrap Issuer that charts
+// which serve UCP from ucp-cert also use to issue radius-ca.
+func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, radiusNamespace string, declared manifestObjectSet) error {
 	kubeClient, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
 	if err != nil {
 		return err
 	}
-	// The release renders none of the radius-apiserver-ca chain when authorization is off, so any left with the release's Helm metadata were staged by an upgrade to authorization on that stopped before Helm.
-	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName); err != nil {
+	if err := i.deleteUnadoptedUCPAPIServerStage(ctx, kubeContext, dynamicClient, radiusNamespace, radiusReleaseName, declared); err != nil {
 		return err
 	}
 	apiService, err := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
@@ -129,7 +133,7 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 	if len(offCAs) == 0 {
 		return fmt.Errorf("Secret %s/%s has no CA certificate in %s", radiusNamespace, ucpOffCertificateSecretName, caCertificateKey)
 	}
-	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace)
+	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, ucpOffLeftoverSecrets)
 	if err != nil {
 		return err
 	}
@@ -151,7 +155,13 @@ func (i *Impl) ReconcileUCPOffAPIServerTrust(ctx context.Context, kubeContext, r
 		return err
 	}
 
-	found, err = ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace)
+	return i.deleteUCPOffLeftovers(ctx, kubeContext, kubeClient, dynamicClient, radiusNamespace, ucpOffLeftoverSecrets)
+}
+
+// deleteUCPOffLeftovers deletes each Secret of leftovers that is a leftover, as ucpOffLeftover decides, pinned to the
+// uid and resourceVersion rad read, and warns about each that rad does not own.
+func (i *Impl) deleteUCPOffLeftovers(ctx context.Context, kubeContext string, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret) error {
+	found, err := ucpOffLeftovers(ctx, kubeClient, dynamicClient, radiusNamespace, leftovers)
 	if err != nil {
 		return err
 	}
@@ -258,10 +268,10 @@ func exactCertificates(bundle []byte) ([]*x509.Certificate, bool) {
 	}
 }
 
-// ucpOffLeftovers returns the state of each Secret of ucpOffLeftoverSecrets.
-func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string) ([]ucpOffLeftoverFound, error) {
+// ucpOffLeftovers returns the state of each Secret of leftovers.
+func ucpOffLeftovers(ctx context.Context, kubeClient kubernetes.Interface, dynamicClient dynamic.Interface, radiusNamespace string, leftovers []ucpOffLeftoverSecret) ([]ucpOffLeftoverFound, error) {
 	found := []ucpOffLeftoverFound{}
-	for _, leftover := range ucpOffLeftoverSecrets {
+	for _, leftover := range leftovers {
 		f, err := ucpOffLeftover(ctx, kubeClient, dynamicClient, radiusNamespace, leftover)
 		if err != nil {
 			return nil, err
