@@ -528,10 +528,11 @@ func imageTag(image string) string {
 // version when none exists, upgrades a release rad installed when upgrade is true or when that release is
 // not deployed or its controller is missing, reuses a supported
 // installation it did not install, and fails when that installation is older than CertManagerMinimumVersion.
-// Authorization is enabled when the values of options, merged over storedValues and chartDefaults, the values.yaml of
-// the Radius chart rad applies, turn it on. With authorization off it returns without contacting the cluster.
-func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, chartDefaults, storedValues map[string]any, upgrade bool) error {
-	mode, err := installedAuthzMode(options, chartDefaults, storedValues)
+// Authorization is enabled when userValues, the values prepareRadiusChart read from the command line, merged over
+// storedValues and chartDefaults, the values.yaml of the Radius chart rad applies, turn it on. With authorization off
+// it returns without contacting the cluster.
+func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, chartDefaults, storedValues, userValues map[string]any, upgrade bool) error {
+	mode, err := resolveAuthzMode(chartDefaults, storedValues, userValues)
 	if err != nil {
 		return err
 	}
