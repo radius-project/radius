@@ -18,11 +18,13 @@ package awsapi
 
 import (
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -258,4 +260,29 @@ func Test_SharedHelpers(t *testing.T) {
 	require.False(t, equivalent("Name", "App", "other"))
 	require.False(t, equivalent("Other", "App", "app"))
 	require.False(t, equivalent("Name", 1, "1"))
+}
+
+func Test_Rejected(t *testing.T) {
+	response := func(status int, err error) error {
+		return &smithyhttp.ResponseError{Response: &smithyhttp.Response{Response: &http.Response{StatusCode: status}}, Err: err}
+	}
+	invalid := &smithy.GenericAPIError{Code: "InvalidParameterValue", Message: "bad"}
+
+	err := Rejected(response(http.StatusBadRequest, invalid))
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, "InvalidParameterValue")
+
+	for _, kept := range []error{
+		nil,
+		response(http.StatusServiceUnavailable, invalid),
+		response(http.StatusFound, invalid),
+		invalid,
+		NotFound(response(http.StatusNotFound, &smithy.GenericAPIError{Code: "DBInstanceNotFound"}), "DBInstanceNotFound"),
+		&native.Failure{Message: "partly applied", Outcome: native.OutcomePartial},
+	} {
+		require.Equal(t, kept, Rejected(kept), "%v", kept)
+	}
 }

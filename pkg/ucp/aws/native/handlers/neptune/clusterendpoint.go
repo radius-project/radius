@@ -22,16 +22,13 @@ package neptune
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"slices"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/neptune"
 	"github.com/aws/aws-sdk-go-v2/service/neptune/types"
-	smithyhttp "github.com/aws/smithy-go/transport/http"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
@@ -351,25 +348,9 @@ func (h *ClusterEndpoint) Create(ctx context.Context, request native.CreateReque
 		Tags:                        awsapi.SDKTags[types.Tag](awsapi.Tags(request.Properties)),
 	}
 	if _, err := h.api.CreateDBClusterEndpoint(ctx, input, inRegion(request.Region)); err != nil {
-		return "", rejectedByNeptune(lostCreate(err))
+		return "", awsapi.Rejected(lostCreate(err))
 	}
 	return h.Identifier(request.Properties)
-}
-
-// rejectedByNeptune returns err as a client failure AWS applied none of when Neptune answered it with a 4xx status, and
-// err otherwise. The SDK leaves the fault of errors it doesn't model unknown, such as InvalidParameterValue, so without
-// this UCP would answer 500 and keep the record of a create Neptune rejected. A not found error stays ErrNotFound, and
-// a failure the handler built stays as it is.
-func rejectedByNeptune(err error) error {
-	var response *smithyhttp.ResponseError
-	var failure *native.Failure
-	if err == nil || errors.Is(err, native.ErrNotFound) || errors.As(err, &failure) || !errors.As(err, &response) {
-		return err
-	}
-	if status := response.HTTPStatusCode(); status < http.StatusBadRequest || status >= http.StatusInternalServerError {
-		return err
-	}
-	return &native.Failure{Message: err.Error(), ClientError: true, Outcome: native.OutcomeRejected}
 }
 
 // lostCreate returns err, unless it says the endpoint already exists. UCP reads AWS by the identifier before it creates
@@ -440,7 +421,7 @@ func (h *ClusterEndpoint) Update(ctx context.Context, request native.UpdateReque
 			return err
 		})
 	}
-	return rejectedByNeptune(awsapi.Calls(calls...))
+	return awsapi.Rejected(awsapi.Calls(calls...))
 }
 
 // anyList returns list as a JSON list.
@@ -499,7 +480,7 @@ func (h *ClusterEndpoint) Delete(ctx context.Context, region string, identifier 
 			return nil
 		}
 	}
-	return rejectedByNeptune(awsapi.NotFound(err, "DBClusterEndpointNotFoundFault"))
+	return awsapi.Rejected(awsapi.NotFound(err, "DBClusterEndpointNotFoundFault"))
 }
 
 // List returns every custom endpoint of a Neptune cluster in the region. Endpoints of other products' clusters are
