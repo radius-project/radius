@@ -130,14 +130,8 @@ func TestSettleAggregationRetainsExactPermanentSource(t *testing.T) {
 func TestAggregationPreflightDoesNotCleanUpOff(t *testing.T) {
 	t.Parallel()
 	options := NewDefaultClusterOptions()
-	render := func(context.Context) (string, bool, error) {
-		t.Fatal("Off preflight must not render or clean up annotations")
-		return "", false, nil
-	}
-	require.NoError(t, (&Impl{newRotationStore: emptyRotationTestStore}).checkBeforeCertificateDependencies(t.Context(), options, "", nil, &certificateTarget{mode: authz.ModeOff}, render))
-	options.Radius.SetArgs = []string{"global.rbac.dryRun=true"}
-	err := (&Impl{}).checkBeforeCertificateDependencies(t.Context(), options, "", nil, &certificateTarget{mode: authz.ModeDryRun},
-		func(context.Context) (string, bool, error) { return "", true, nil })
+	require.NoError(t, (&Impl{newRotationStore: emptyRotationTestStore}).checkBeforeCertificateDependencies(t.Context(), options, "", nil, &certificateTarget{mode: authz.ModeOff}))
+	err := (&Impl{}).checkBeforeCertificateDependencies(t.Context(), options, "", nil, &certificateTarget{Mode: "selfSigned", mode: authz.ModeDryRun})
 	require.ErrorIs(t, err, errCertificateObserverUnavailable)
 }
 

@@ -302,24 +302,8 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, 
 		}
 		return fmt.Errorf("selfSigned aggregation requires the selected release render: %w", errCertificateObserverUnavailable)
 	}
-	api, apiErr := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
-	if apiErr != nil && !apierrors.IsNotFound(apiErr) {
-		return apiErr
-	}
-	if apiErr == nil {
-		source, err := aggregationPublicSource(ctx, kube, namespace)
-		if err != nil {
-			return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
-		}
-		if source.Name == ucpAPIServerCASecretName {
-			ca, _, _, err := readUCPAPIServerCA(ctx, kube, namespace)
-			if err != nil {
-				return err
-			}
-			if err := validateUCPAPIServerAPIAnchors(ca, api); err != nil {
-				return err
-			}
-		}
+	if err := checkCurrentAggregationSource(ctx, kube, dynamicClient, namespace); err != nil {
+		return err
 	}
 	manifest, ok, err := render(ctx)
 	if err != nil || !ok {
@@ -338,6 +322,29 @@ func (i *Impl) stageUCPAPIServerCA(ctx context.Context, kubeContext, namespace, 
 	}
 	if err := exactCertificateSet(current, selected, time.Now()); err != nil {
 		return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
+	}
+	return nil
+}
+
+func checkCurrentAggregationSource(ctx context.Context, kube kubernetes.Interface, dynamicClient dynamic.Interface, namespace string) error {
+	api, apiErr := dynamicClient.Resource(apiServicesResource).Get(ctx, ucpAPIServiceName, metav1.GetOptions{})
+	if apiErr != nil && !apierrors.IsNotFound(apiErr) {
+		return apiErr
+	}
+	if apiErr == nil {
+		source, err := aggregationPublicSource(ctx, kube, namespace)
+		if err != nil {
+			return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
+		}
+		if source.Name == ucpAPIServerCASecretName {
+			ca, _, _, err := readUCPAPIServerCA(ctx, kube, namespace)
+			if err != nil {
+				return err
+			}
+			if err := validateUCPAPIServerAPIAnchors(ca, api); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

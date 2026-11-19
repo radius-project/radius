@@ -63,6 +63,7 @@ func Test_Options(t *testing.T) {
 func Test_Cluster_Restore(t *testing.T) {
 	t.Run("from a snapshot", func(t *testing.T) {
 		h, api := newCluster(t)
+		api.snapshots = []string{"snap-1"}
 		id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{
 			"DBClusterIdentifier": "Restored",
 			"SnapshotIdentifier":  "snap-1",
@@ -77,6 +78,7 @@ func Test_Cluster_Restore(t *testing.T) {
 
 	t.Run("to a point in time", func(t *testing.T) {
 		h, api := newCluster(t)
+		addClusters(api.store, "source")
 		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{
 			"DBClusterIdentifier":       "copy",
 			"SourceDBClusterIdentifier": "source",
@@ -301,6 +303,7 @@ func (p *pagedAPI) DescribeDBClusters(ctx context.Context, in *docdb.DescribeDBC
 
 func Test_Instance_Errors(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
+	addClusters(api.store, "app")
 	h := NewInstance(api)
 
 	api.errs["CreateDBInstance"] = fault("DBClusterNotFoundFault")
@@ -346,6 +349,7 @@ func Test_Instance_UpdatesEveryUpdatableProperty(t *testing.T) {
 // is left as AWS has it.
 func Test_Instance_RemovedDefaults(t *testing.T) {
 	api := newFakeAPI(awsfake.NewCloudControl())
+	addClusters(api.store, "app")
 	h := NewInstance(api)
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{
 		"DBInstanceIdentifier": "one", "DBClusterIdentifier": "app", "AutoMinorVersionUpgrade": false,
@@ -373,6 +377,7 @@ func Test_Instance_RemovedDefaults(t *testing.T) {
 func Test_Instance_CertificateRotationRestart(t *testing.T) {
 	for _, restart := range []bool{false, true} {
 		api := newFakeAPI(awsfake.NewCloudControl())
+		addClusters(api.store, "app")
 		h := NewInstance(api)
 		properties := map[string]any{"DBInstanceIdentifier": "one", "DBClusterIdentifier": "app", "CACertificateIdentifier": "rds-ca-2019", "CertificateRotationRestart": restart}
 		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
@@ -387,6 +392,7 @@ func Test_Instance_CertificateRotationRestart(t *testing.T) {
 	}
 
 	api := newFakeAPI(awsfake.NewCloudControl())
+	addClusters(api.store, "app")
 	h := NewInstance(api)
 	_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: map[string]any{"DBInstanceIdentifier": "one", "DBClusterIdentifier": "app"}})
 	require.NoError(t, err)
@@ -447,4 +453,63 @@ func Test_Fake_SnapshotNameRules(t *testing.T) {
 	} {
 		require.Equal(t, tt.valid, validSnapshotName(tt.name), tt.name)
 	}
+}
+
+// Test_Fake_RecreatedDropsQueuedChanges checks that a cluster or instance created with the identifier of a deleted
+// one doesn't take the changes the deleted one left for its maintenance window.
+func Test_Fake_RecreatedDropsQueuedChanges(t *testing.T) {
+	t.Run("instance", func(t *testing.T) {
+		ctx := t.Context()
+		f := newFakeAPI(awsfake.NewCloudControl())
+		require.NoError(t, onReadyInstance(nil, modifyInstance(&docdb.ModifyDBInstanceInput{DBInstanceClass: aws.String("db.r6g.large")}))(ctx, f))
+		_, err := describeInstance(ctx, f, "app-1")
+		require.NoError(t, err)
+		_, err = f.DeleteDBInstance(ctx, &docdb.DeleteDBInstanceInput{DBInstanceIdentifier: aws.String("app-1")})
+		require.NoError(t, err)
+		_, err = describeInstance(ctx, f, "app-1")
+		require.NoError(t, err)
+		_, err = describeInstance(ctx, f, "app-1")
+		require.ErrorContains(t, err, "DBInstanceNotFound")
+
+		require.NoError(t, createInstance(ctx, f, nil))
+		_, err = describeInstance(ctx, f, "app-1")
+		require.NoError(t, err)
+		require.NoError(t, modifyInstance(&docdb.ModifyDBInstanceInput{PromotionTier: aws.Int32(2), ApplyImmediately: aws.Bool(true)})(ctx, f))
+		i, err := describeInstance(ctx, f, "app-1")
+		require.NoError(t, err)
+		require.Equal(t, "db.t3.medium", aws.ToString(i.DBInstanceClass))
+	})
+
+	t.Run("cluster", func(t *testing.T) {
+		ctx := t.Context()
+		f := newFakeAPI(awsfake.NewCloudControl())
+		require.NoError(t, onReadyCluster(nil, modifyCluster(&docdb.ModifyDBClusterInput{EngineVersion: aws.String("8.0.1")}))(ctx, f))
+		_, err := describeCluster(ctx, f, "app")
+		require.NoError(t, err)
+		require.NoError(t, deleteCluster(&docdb.DeleteDBClusterInput{SkipFinalSnapshot: aws.Bool(true)})(ctx, f))
+		_, err = describeCluster(ctx, f, "app")
+		require.NoError(t, err)
+		_, err = describeCluster(ctx, f, "app")
+		require.ErrorContains(t, err, "DBClusterNotFoundFault")
+
+		require.NoError(t, readyCluster(ctx, f, nil))
+		require.NoError(t, modifyCluster(&docdb.ModifyDBClusterInput{BackupRetentionPeriod: aws.Int32(7), ApplyImmediately: aws.Bool(true)})(ctx, f))
+		c, err := describeCluster(ctx, f, "app")
+		require.NoError(t, err)
+		require.Equal(t, "8.0.0", aws.ToString(c.EngineVersion))
+	})
+}
+
+// Test_Fake_RejectedModifyQueuesNothing checks that a modify the Failer rejects before it takes effect leaves no
+// change for the maintenance window.
+func Test_Fake_RejectedModifyQueuesNothing(t *testing.T) {
+	ctx := t.Context()
+	f := newFakeAPI(awsfake.NewCloudControl())
+	require.NoError(t, onReadyInstance(nil, func(context.Context, *fakeAPI) error { return nil })(ctx, f))
+
+	f.failer.FailOn(0, errors.New("throttled"), false)
+	require.ErrorContains(t, modifyCluster(&docdb.ModifyDBClusterInput{EngineVersion: aws.String("8.0.1")})(ctx, f), "throttled")
+	f.failer.FailOn(0, errors.New("throttled"), false)
+	require.ErrorContains(t, modifyInstance(&docdb.ModifyDBInstanceInput{DBInstanceClass: aws.String("db.r6g.large")})(ctx, f), "throttled")
+	require.Empty(t, f.pending)
 }

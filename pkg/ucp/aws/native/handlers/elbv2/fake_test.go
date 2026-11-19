@@ -21,6 +21,7 @@ import (
 	"errors"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -37,6 +38,12 @@ import (
 // outsideType is the pseudo type under which the store keeps the certificates added to a listener outside Radius,
 // keyed by the listener ARN.
 const outsideType = "outside::" + listenerCertificateType
+
+// missingCertificate is the ARN of a certificate that doesn't exist.
+const missingCertificate = "arn:aws:acm:us-west-2:123456789012:certificate/00000000-0000-0000-0000-000000000000"
+
+// certificatesPerLoadBalancer is the default quota of certificates per load balancer, without default certificates.
+const certificatesPerLoadBalancer = 25
 
 // defaultCertificate returns the ARN of the listener's default certificate.
 func defaultCertificate(listener string) string {
@@ -129,9 +136,40 @@ func (f *fakeAPI) list(listener string) []string {
 	return out
 }
 
-// one returns the ARN of the single certificate of a call, or a client error, because AWS takes one per call.
+// loadBalancerOf returns the part of a listener ARN that names its load balancer: the ARN without the listener's ID.
+func loadBalancerOf(listener string) string {
+	if i := strings.LastIndex(listener, "/"); i >= 0 {
+		return listener[:i]
+	}
+	return listener
+}
+
+// loadBalancerCertificates returns the certificates in the certificate lists of every listener of the load
+// balancer, without default certificates.
+func (f *fakeAPI) loadBalancerCertificates(loadBalancer string) []string {
+	listeners := []string{}
+	for _, id := range f.store.List(listenerCertificateType) {
+		listeners = append(listeners, awsapi.String(f.store.Resource(listenerCertificateType, id), "ListenerArn"))
+	}
+	listeners = append(listeners, f.store.List(outsideType)...)
+	out := []string{}
+	for _, l := range listeners {
+		if loadBalancerOf(l) != loadBalancer {
+			continue
+		}
+		for _, arn := range f.list(l) {
+			if arn != defaultCertificate(l) && !slices.Contains(out, arn) {
+				out = append(out, arn)
+			}
+		}
+	}
+	return out
+}
+
+// one returns the ARN of the single certificate of a call, or ValidationError, because AWS takes one per call, with
+// CertificateArn set and IsDefault not set.
 func one(certificates []types.Certificate) (string, error) {
-	if len(certificates) != 1 || aws.ToString(certificates[0].CertificateArn) == "" {
+	if len(certificates) != 1 || aws.ToString(certificates[0].CertificateArn) == "" || certificates[0].IsDefault != nil {
 		return "", fault("ValidationError")
 	}
 	return aws.ToString(certificates[0].CertificateArn), nil
@@ -142,6 +180,9 @@ func (f *fakeAPI) DescribeListenerCertificates(ctx context.Context, in *elasticl
 	defer f.mu.Unlock()
 	if err := f.call("DescribeListenerCertificates", optFns); err != nil {
 		return nil, err
+	}
+	if in.PageSize != nil && (*in.PageSize < 1 || *in.PageSize > 400) {
+		return nil, fault("ValidationError")
 	}
 	listener := aws.ToString(in.ListenerArn)
 	if f.missing[listener] {
@@ -158,7 +199,11 @@ func (f *fakeAPI) DescribeListenerCertificates(ctx context.Context, in *elasticl
 			return nil, fault("ValidationError")
 		}
 	}
-	end := min(start+f.pageSize, len(all))
+	size := f.pageSize
+	if in.PageSize != nil {
+		size = min(size, int(*in.PageSize))
+	}
+	end := min(start+size, len(all))
 	out := &elasticloadbalancingv2.DescribeListenerCertificatesOutput{Certificates: all[start:end]}
 	if end < len(all) {
 		out.NextMarker = aws.String(strconv.Itoa(end))
@@ -180,8 +225,15 @@ func (f *fakeAPI) AddListenerCertificates(ctx context.Context, in *elasticloadba
 	if f.missing[listener] {
 		return nil, fault("ListenerNotFound")
 	}
+	if arn == missingCertificate {
+		return nil, fault("CertificateNotFound")
+	}
 	if f.current == "" {
 		return nil, errors.New("the fake has no current entry: set it with use")
+	}
+	loadBalancer := f.loadBalancerCertificates(loadBalancerOf(listener))
+	if arn != defaultCertificate(listener) && !slices.Contains(loadBalancer, arn) && len(loadBalancer) >= certificatesPerLoadBalancer {
+		return nil, fault("TooManyCertificates")
 	}
 	if err := f.failer.Before(); err != nil {
 		return nil, err

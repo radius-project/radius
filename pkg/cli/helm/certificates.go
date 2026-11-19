@@ -555,13 +555,15 @@ func (i *Impl) prepareIssuerCertificates(settings, current map[string]any) error
 	return nil
 }
 
-func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool, render renderRadiusManifest) (*certificateTarget, *certificatePlan, error) {
+func (i *Impl) prepareOrdinaryCertificates(ctx context.Context, options ClusterOptions, selected *chart.Chart, source *helm.Configuration, current map[string]any, kubeContext string, installed bool) (*certificateTarget, *certificatePlan, error) {
 	target, plan, history, err := i.selectActionCertificates(ctx, &options, selected, source, current, kubeContext, installed)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := i.checkOrdinaryCertificateAction(ctx, target, history, render); err != nil {
-		return nil, nil, err
+	if target.Mode != "selfSigned" {
+		if err := checkSteadyBYOCertificates(latestRevision(history), target.Values); err != nil {
+			return nil, nil, err
+		}
 	}
 	return target, plan, nil
 }
@@ -616,22 +618,6 @@ func (i *Impl) selectActionCertificates(ctx context.Context, options *ClusterOpt
 		}
 	}
 	return target, plan, history, nil
-}
-
-func (i *Impl) checkOrdinaryCertificateAction(ctx context.Context, target *certificateTarget, history []*releasev1.Release, render renderRadiusManifest) error {
-	if target.Mode != "selfSigned" {
-		if err := checkSteadyBYOCertificates(latestRevision(history), target.Values); err != nil {
-			return err
-		}
-		render = renderOnce(render)
-		if err := checkRenderedBYO(ctx, render); err != nil {
-			return err
-		}
-	}
-	if err := target.checkProviderRender(ctx, render); err != nil {
-		return err
-	}
-	return nil
 }
 
 func selectedCertificateValues(options ClusterOptions, selected *chart.Chart, current map[string]any) (map[string]any, authz.Mode, error) {
@@ -748,7 +734,40 @@ func (i *Impl) CheckRadiusCertificates(ctx context.Context, options ClusterOptio
 	if err != nil {
 		return err
 	}
-	render := i.renderRadiusUpgrade(kubeContext, configuration, chart, current, options.Radius.ReleaseName, options.Radius.Namespace, !options.ResetValues)
-	_, _, err = i.prepareOrdinaryCertificates(ctx, options, chart, configuration, current, kubeContext, true, render)
-	return err
+	target, _, err := i.prepareOrdinaryCertificates(ctx, options, chart, configuration, current, kubeContext, true)
+	if err != nil {
+		return err
+	}
+	render := renderOnce(i.renderRadiusUpgrade(kubeContext, configuration, chart, current, options.Radius.ReleaseName, options.Radius.Namespace, !options.ResetValues))
+	if _, _, err := render(ctx); err != nil {
+		return err
+	}
+	return target.checkActionRender(ctx, render)
+}
+
+func (t *certificateTarget) checkActionRender(ctx context.Context, render renderRadiusManifest) error {
+	if t.Mode != "selfSigned" {
+		if err := checkRenderedBYO(ctx, render); err != nil {
+			return err
+		}
+	}
+	return t.checkProviderRender(ctx, render)
+}
+
+// stageOrdinaryCertificates checks the action Helm will apply after controller migration.
+// The standalone preflight checks that render without migrating or staging anything.
+func (i *Impl) stageOrdinaryCertificates(ctx context.Context, options ClusterOptions, kubeContext string, conf *helm.Configuration, target *certificateTarget, plan *certificatePlan, upgrade bool, render renderRadiusManifest) error {
+	render = renderOnce(render)
+	if err := target.checkActionRender(ctx, render); err != nil {
+		return err
+	}
+	if plan != nil && plan.recheck != nil {
+		if err := plan.recheck(); err != nil {
+			return err
+		}
+	}
+	if err := i.applyCertificatePlan(ctx, plan); err != nil {
+		return err
+	}
+	return i.stageCertificateTarget(ctx, options, kubeContext, conf, target.Values, target.mode, upgrade, render)
 }

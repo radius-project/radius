@@ -631,9 +631,23 @@ func condition(object *unstructured.Unstructured, conditionType string) (objectC
 	return objectCondition{}, false
 }
 
-func (i *Impl) checkBeforeCertificateDependencies(ctx context.Context, options ClusterOptions, kubeContext string, conf *helm.Configuration, target *certificateTarget, render renderRadiusManifest) error {
+func (i *Impl) checkBeforeCertificateDependencies(ctx context.Context, options ClusterOptions, kubeContext string, history []*releasev1.Release, target *certificateTarget) error {
 	if target.mode == authz.ModeOff {
 		return i.clearAggregationInjection(ctx, kubeContext, options.Radius.Namespace, options.Radius.ReleaseName)
 	}
-	return i.stageCertificateTarget(ctx, options, kubeContext, conf, target.Values, target.mode, options.RadiusInstalled || options.RadiusReleaseValues != nil, render)
+	if target.Mode != "selfSigned" {
+		return checkSteadyBYOCertificates(latestRevision(history), target.Values)
+	}
+	deployed, err := deployedAuthzMode(history)
+	if err != nil {
+		return err
+	}
+	if deployed == authz.ModeOff {
+		return errCertificateObserverUnavailable
+	}
+	kube, dynamicClient, err := i.ucpAPIServerTrustClients(kubeContext)
+	if err != nil {
+		return fmt.Errorf("%w: %w", errCertificateObserverUnavailable, err)
+	}
+	return checkCurrentAggregationSource(ctx, kube, dynamicClient, options.Radius.Namespace)
 }
