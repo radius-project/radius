@@ -138,9 +138,9 @@ func TestServiceDryRunRequests(t *testing.T) {
 	defer transport.CloseIdleConnections()
 	transport.TLSClientConfig.Certificates = []tls.Certificate{certificate}
 	client := &http.Client{Transport: transport}
-	call := func(method, path, subject, body string) (int, http.Header, string) {
+	callAt := func(base, method, path, subject, body string) (int, http.Header, string) {
 		t.Helper()
-		request, err := http.NewRequest(method, listener.URL+pathBase+path, strings.NewReader(body))
+		request, err := http.NewRequest(method, listener.URL+base+path, strings.NewReader(body))
 		require.NoError(t, err)
 		request.Header.Set("Content-Type", "application/json")
 		if subject != "" {
@@ -152,6 +152,10 @@ func TestServiceDryRunRequests(t *testing.T) {
 		data, err := io.ReadAll(response.Body)
 		require.NoError(t, err)
 		return response.StatusCode, response.Header, string(data)
+	}
+	call := func(method, path, subject, body string) (int, http.Header, string) {
+		t.Helper()
+		return callAt(pathBase, method, path, subject, body)
 	}
 	// Exercise the real UCP write/read controllers, not a proxy-only stand-in.
 	code, _, body := call(http.MethodPut, "/planes/radius/local?api-version=2023-10-01-preview", "alice", `{"location":"global","properties":{"resourceProviders":{}}}`)
@@ -173,6 +177,37 @@ func TestServiceDryRunRequests(t *testing.T) {
 		}
 		require.Equal(t, expected, events[0].ContextMap()["result"])
 	}
+	t.Run("paths outside the mount are indeterminate", func(t *testing.T) {
+		const query = "?api-version=2023-10-01-preview"
+		logs.TakeAll()
+		code, _, body := callAt(pathBase, http.MethodGet, group+query, "bob", "")
+		require.Equal(t, http.StatusOK, code, body)
+		events := logs.FilterMessage("User authorization request").All()
+		require.Len(t, events, 1)
+		require.Equal(t, "wouldDeny", events[0].ContextMap()["result"])
+
+		logs.TakeAll()
+		code, _, body = callAt("", http.MethodGet, group+query, "bob", "")
+		require.Equal(t, http.StatusNotFound, code, body)
+		events = logs.FilterMessage("User authorization request").All()
+		require.Len(t, events, 1)
+		require.Equal(t, "indeterminate", events[0].ContextMap()["result"])
+		require.NotContains(t, events[0].ContextMap(), "permission")
+
+		// The Kubernetes OpenAPI documents are served at the root.
+		for _, document := range []string{"/openapi/v2", "/openapi/v3"} {
+			logs.TakeAll()
+			code, _, body = callAt("", http.MethodGet, document, "bob", "")
+			require.Equal(t, http.StatusOK, code, body)
+			require.Empty(t, logs.FilterMessage("User authorization request").All(), document)
+		}
+
+		// Protected-write rejection does not depend on the mount.
+		logs.TakeAll()
+		code, _, body = callAt("", http.MethodPut, group+"/providers/Radius.Core/roleAssignments/x?api-version=2025-08-01-preview", "bob", `{"properties":{}}`)
+		require.Equal(t, http.StatusServiceUnavailable, code, body)
+	})
+
 	for _, path := range []string{group, "/planes/radius/local/resourcegroups/missing"} {
 		allowed, _, allowedBody := call(http.MethodGet, path+"?api-version=2023-10-01-preview", "alice", "")
 		denied, _, deniedBody := call(http.MethodGet, path+"?api-version=2023-10-01-preview", "bob", "")
@@ -227,6 +262,9 @@ func TestServiceDryRunRequests(t *testing.T) {
 			{"Azure credential case proxy", http.MethodGet, azure + "/providers/SYSTEM.AZURE/CREDENTIALS/default", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
 			{"Azure credentials escaped dot proxy", http.MethodGet, azure + "/providers/System%2EAzure/credentials/default", "", "", "indeterminate", true},
 			{"icon escaped namespace", http.MethodGet, strings.Replace(iconParent, "System.Resources", "System%2EResources", 1) + "/icons/" + iconHash, "", "", "indeterminate", false},
+			{"Azure proxy without provider", http.MethodGet, azure + "/tenants/abc", "", "", "indeterminate", false},
+			{"Azure proxy subscription without provider", http.MethodGet, azure + "/subscriptions/123/resourceGroups/rg", "", "", "indeterminate", false},
+			{"Azure proxy provider collection", http.MethodGet, azure + "/providers", "", "", "indeterminate", false},
 			{"Azure credential descendant", http.MethodGet, azure + "/providers/System.Azure/credentials/default/children/a", "", "", "indeterminate", false},
 			{"icon fixed segment case", http.MethodGet, strings.Replace(iconParent, "/resourcetypes/", "/RESOURCETYPES/", 1) + "/icons/" + iconHash, "", "", "indeterminate", false},
 			{"AWS unregistered descendant", http.MethodGet, "/planes/aws/aws/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket/x/children/y", "", "", "indeterminate", false},
@@ -250,6 +288,9 @@ func TestServiceDryRunRequests(t *testing.T) {
 					if tt.name == "real icon" {
 						require.Equal(t, http.StatusOK, denied, deniedBody)
 						require.Equal(t, icon, deniedBody)
+					} else if strings.HasPrefix(tt.name, "Azure proxy") && strings.HasSuffix(tt.name, "without provider") {
+						require.Equal(t, http.StatusBadRequest, denied, deniedBody)
+						require.Contains(t, deniedBody, "invalid resourceID specified with no provider")
 					} else if tt.name == "Azure credentials local" {
 						require.Equal(t, http.StatusNotFound, denied, deniedBody)
 					} else {
