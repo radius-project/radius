@@ -1,0 +1,145 @@
+{
+  "typeName": "AWS::Transfer::Access",
+  "description": "A directory group's access to an AWS Transfer Family server whose identity provider is a directory, made with CreateAccess. AWS has no call that removes HomeDirectoryMappings or PosixProfile from an access, so a deploy that removes one fails before any change.",
+  "definitions": {
+    "HomeDirectoryMapEntry": {
+      "type": "object",
+      "description": "A path the group's users see, and the Amazon S3 or Amazon EFS path it shows.",
+      "properties": {
+        "Entry": {
+          "type": "string",
+          "description": "The path the users see.",
+          "minLength": 0,
+          "maxLength": 1024,
+          "pattern": "^/.*$"
+        },
+        "Target": {
+          "type": "string",
+          "description": "The Amazon S3 or Amazon EFS path the entry shows.",
+          "minLength": 0,
+          "maxLength": 1024,
+          "pattern": "^/.*$"
+        },
+        "Type": {
+          "type": "string",
+          "description": "FILE for a target that is a file, or DIRECTORY, AWS's default, for a directory.",
+          "enum": ["FILE", "DIRECTORY"]
+        }
+      },
+      "required": ["Entry", "Target"],
+      "additionalProperties": false
+    },
+    "PosixProfile": {
+      "type": "object",
+      "description": "The POSIX identity the group's users have on Amazon EFS file systems.",
+      "properties": {
+        "Uid": {
+          "type": "integer",
+          "description": "The POSIX user ID.",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "Gid": {
+          "type": "integer",
+          "description": "The POSIX group ID.",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "SecondaryGids": {
+          "type": "array",
+          "description": "The secondary POSIX group IDs.",
+          "insertionOrder": false,
+          "minItems": 0,
+          "maxItems": 16,
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          }
+        }
+      },
+      "required": ["Uid", "Gid"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "ServerId": {
+      "type": "string",
+      "description": "The ID of the server.",
+      "minLength": 19,
+      "maxLength": 19,
+      "pattern": "^s-([0-9a-f]{17})$"
+    },
+    "ExternalId": {
+      "type": "string",
+      "description": "The security identifier (SID) of the directory group, such as S-1-1-12-1234567890-123456789-1234567890-1234.",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^S-1-[\\d-]+$"
+    },
+    "Role": {
+      "type": "string",
+      "description": "The ARN of the IAM role that gives the group's users access to the Amazon S3 bucket or Amazon EFS file system.",
+      "minLength": 20,
+      "maxLength": 2048,
+      "pattern": "^arn:.*role/\\S+$"
+    },
+    "HomeDirectory": {
+      "type": "string",
+      "description": "The directory the users land in when they sign in, such as /bucket_name/home/mydirectory.",
+      "minLength": 0,
+      "maxLength": 1024,
+      "pattern": "^(|/.*)$"
+    },
+    "HomeDirectoryType": {
+      "type": "string",
+      "description": "PATH, AWS's default, to show the users Amazon S3 or Amazon EFS paths as they are, or LOGICAL to show them HomeDirectoryMappings.",
+      "enum": ["PATH", "LOGICAL"]
+    },
+    "HomeDirectoryMappings": {
+      "type": "array",
+      "description": "The paths the users see, when HomeDirectoryType is LOGICAL.",
+      "insertionOrder": false,
+      "minItems": 1,
+      "maxItems": 50000,
+      "items": {
+        "$ref": "#/definitions/HomeDirectoryMapEntry"
+      }
+    },
+    "Policy": {
+      "type": "string",
+      "description": "A session policy, as JSON, that scopes down the role's access for the users. Amazon EFS doesn't use it.",
+      "minLength": 0,
+      "maxLength": 2048
+    },
+    "PosixProfile": {
+      "$ref": "#/definitions/PosixProfile"
+    }
+  },
+  "required": ["ServerId", "ExternalId", "Role"],
+  "additionalProperties": false,
+  "primaryIdentifier": ["/properties/ServerId", "/properties/ExternalId"],
+  "createOnlyProperties": ["/properties/ServerId", "/properties/ExternalId"],
+  "handlers": {
+    "create": {
+      "permissions": [
+        "transfer:CreateAccess",
+        "transfer:DescribeAccess",
+        "iam:PassRole"
+      ]
+    },
+    "read": {
+      "permissions": ["transfer:DescribeAccess"]
+    },
+    "update": {
+      "permissions": [
+        "transfer:UpdateAccess",
+        "transfer:DescribeAccess",
+        "iam:PassRole"
+      ]
+    },
+    "delete": {
+      "permissions": ["transfer:DeleteAccess", "transfer:DescribeAccess"]
+    }
+  }
+}

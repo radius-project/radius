@@ -41,6 +41,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/emr v1.71.3
 	github.com/aws/aws-sdk-go-v2/service/fsx v1.74.12
 	github.com/aws/aws-sdk-go-v2/service/iam v1.65.0
+	github.com/aws/aws-sdk-go-v2/service/iot v1.84.12
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.65.12
 	github.com/aws/aws-sdk-go-v2/service/kinesisanalyticsv2 v1.48.0
 	github.com/aws/aws-sdk-go-v2/service/lakeformation v1.58.0
@@ -49,6 +50,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.288.1
 	github.com/aws/aws-sdk-go-v2/service/servicecatalog v1.50.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.52.0
+	github.com/aws/aws-sdk-go-v2/service/transfer v1.86.8
 	github.com/aws/smithy-go v1.28.9
 	github.com/charmbracelet/x/ansi v0.11.9
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260615092313-b57e5e6d29bb
