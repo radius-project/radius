@@ -34,7 +34,12 @@
   "primaryIdentifier": ["/properties/ResourceArn"],
   "handlers": {
     "create": {
-      "permissions": ["rds:DescribeDBClusters", "rds:StartActivityStream"]
+      "permissions": [
+        "rds:DescribeDBClusters",
+        "rds:StartActivityStream",
+        "kms:CreateGrant",
+        "kms:DescribeKey"
+      ]
     },
     "read": {
       "permissions": ["rds:DescribeDBClusters"]
