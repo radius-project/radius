@@ -4,7 +4,8 @@ import test from "node:test";
 import {
   findRelease,
   waitForRelease,
-  waitForReleaseState
+  waitForReleaseState,
+  waitForState
 } from "./release-reconciliation.mjs";
 
 function fixture() {
@@ -20,6 +21,20 @@ function fixture() {
     description: "Release v0.61.0"
   };
 }
+
+test("shared visibility retry bounds missing state without assuming a release", async () => {
+  const state = { ...fixture(), description: "Published manifest" };
+  let reads = 0;
+  await assert.rejects(
+    waitForState(async () => {
+      reads++;
+      return undefined;
+    }, state),
+    { message: "Published manifest was not visible after 5 attempts" }
+  );
+  assert.equal(reads, 5);
+  assert.deepEqual(state.delays, [1000, 2000, 4000, 8000]);
+});
 
 test("returns visible state without delaying or reading again", async () => {
   const state = fixture();

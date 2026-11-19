@@ -565,3 +565,18 @@ func Test_DynamicResource_ApplyDeploymentOutput_ProviderResourceID(t *testing.T)
 	require.NotContains(t, stored[1], "providerResourceId")
 	require.Equal(t, outputResources, resource.OutputResources())
 }
+
+func Test_DynamicResource_ApplyDeploymentOutput_ReplacesPreviousOutput(t *testing.T) {
+	resource := &DynamicResource{Properties: map[string]any{
+		"status": map[string]any{
+			"outputResources": []any{map[string]any{"id": "/planes/kubernetes/local/namespaces/app/providers/core/ConfigMap/old"}},
+			"computedValues":  map[string]any{"host": "old"},
+			"recipe":          map[string]any{"templatePath": "test-path"},
+		},
+	}}
+
+	err := resource.ApplyDeploymentOutput(rpv1.DeploymentOutput{})
+	require.NoError(t, err)
+
+	require.Equal(t, map[string]any{"recipe": map[string]any{"templatePath": "test-path"}}, resource.Status())
+}

@@ -91,13 +91,13 @@
       "$ref": "radius/radius.data/2025-08-01-preview/types.json#/45"
     },
     "Radius.Data/postgreSqlDatabases@2025-08-01-preview": {
-      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/72"
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/76"
     },
     "Radius.Data/redisCaches@2025-08-01-preview": {
-      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/96"
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/101"
     },
     "Radius.Data/sqlServerDatabases@2025-08-01-preview": {
-      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/115"
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/120"
     },
     "Radius.Messaging/kafka@2025-08-01-preview": {
       "$ref": "radius/radius.messaging/2025-08-01-preview/types.json#/19"

@@ -17,6 +17,7 @@ limitations under the License.
 package dynamic
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -27,10 +28,12 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	recipeutil "github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	ucptesthost "github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -340,6 +343,86 @@ func Test_Dynamic_Resource_InvalidUpdate_PreservesResource(t *testing.T) {
 			require.NotEqual(t, originalETag, response.Raw.Header.Get("ETag"))
 		})
 	}
+}
+
+func Test_Dynamic_Resource_FailedRecipeCleanupSurvivesPutAndDeleteRetries(t *testing.T) {
+	mocks := gomock.NewController(t)
+	mockDriver := driver.NewMockDriver(mocks)
+	loader := configloader.NewMockConfigurationLoader(mocks)
+	_, ucp := testhost.Start(t, testhost.TestHostOptionFunc(func(options *dynamicrp.Options) {
+		options.Recipes.Drivers = map[string]func(*dynamicrp.Options) (driver.Driver, error){
+			recipes.TemplateKindBicep: func(*dynamicrp.Options) (driver.Driver, error) { return mockDriver, nil },
+		}
+		options.Recipes.ConfigurationLoader = loader
+	}))
+	createRadiusPlane(ucp)
+	createResourceProvider(ucp)
+	createRecipeResourceType(ucp)
+	createAPIVersion(ucp, recipeResourceTypeName, nil)
+	createLocation(ucp, recipeResourceTypeName)
+	createResourceGroup(ucp)
+
+	definition := &recipes.EnvironmentDefinition{Name: "default", Driver: recipes.TemplateKindBicep}
+	loader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(&recipes.Configuration{}, nil).AnyTimes()
+	setupErr := recipes.NewRecipeError(recipes.RecipeConfigurationFailure, "recipe unavailable", recipeutil.RecipeSetupError)
+	gomock.InOrder(
+		loader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Return(definition, nil),
+		loader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Return(nil, setupErr),
+		loader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).Return(definition, nil).Times(2),
+	)
+	const ownedID = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/virtualNetworks/owned"
+	const recoveredID = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.Network/publicIPAddresses/recovered"
+	const pendingID = "/planes/radius/testing/resourceGroups/test-group/providers/Microsoft.Resources/deployments/pending"
+	deploymentErr := recipes.NewRecipeError(recipes.RecipeDeploymentFailed, "partial failure", recipeutil.ExecutionError)
+	mockDriver.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&recipes.RecipeOutput{
+		Resources: []string{ownedID}, PendingDeploymentID: pendingID,
+	}, deploymentErr)
+
+	body := map[string]any{"properties": map[string]any{"foo": "bar"}}
+	failedPut := func(expectedCode string) {
+		t.Helper()
+		response := ucp.MakeTypedRequest(http.MethodPut, testRecipeResourceURL, body)
+		response.WaitForOperationComplete(nil)
+		var operation v1.AsyncOperationStatus
+		ucp.MakeRequest(http.MethodGet, response.Raw.Header.Get("Azure-AsyncOperation"), nil).ReadAs(&operation)
+		require.Equal(t, v1.ProvisioningStateFailed, operation.Status)
+		require.Equal(t, expectedCode, operation.Error.Code)
+	}
+	failedPut(recipes.RecipeDeploymentFailed)
+	failedPut(recipes.RecipeConfigurationFailure)
+	response := ucp.MakeRequest(http.MethodGet, testRecipeResourceURL, nil)
+	response.EqualsStatusCode(http.StatusOK)
+	require.Contains(t, response.Body.String(), ownedID)
+	require.Contains(t, response.Body.String(), pendingID)
+
+	mockDriver.EXPECT().Delete(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, opts driver.DeleteOptions) error {
+		require.Equal(t, []string{pendingID}, opts.PendingDeployments)
+		require.Len(t, opts.OutputResources, 1)
+		require.Equal(t, ownedID, opts.OutputResources[0].ID.String())
+		require.NotNil(t, opts.PersistCleanup)
+		outputs := append(opts.OutputResources, rpv1.OutputResource{ID: resources.MustParse(recoveredID), RadiusManaged: new(true)})
+		require.NoError(t, opts.PersistCleanup(ctx, outputs, nil))
+		return recipes.NewRecipeError(recipes.RecipeDeletionFailed, "resource deletion failed after inventory recovery", "", nil)
+	})
+	response = ucp.MakeRequest(http.MethodDelete, testRecipeResourceURL, nil)
+	response.WaitForOperationComplete(nil)
+	var operation v1.AsyncOperationStatus
+	ucp.MakeRequest(http.MethodGet, response.Raw.Header.Get("Azure-AsyncOperation"), nil).ReadAs(&operation)
+	require.Equal(t, v1.ProvisioningStateFailed, operation.Status)
+
+	response = ucp.MakeRequest(http.MethodGet, testRecipeResourceURL, nil)
+	response.EqualsStatusCode(http.StatusOK)
+	require.Contains(t, response.Body.String(), ownedID)
+	require.Contains(t, response.Body.String(), recoveredID)
+	require.NotContains(t, response.Body.String(), pendingID)
+	mockDriver.EXPECT().Delete(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, opts driver.DeleteOptions) error {
+		require.Empty(t, opts.PendingDeployments)
+		require.Nil(t, opts.PersistCleanup)
+		require.Len(t, opts.OutputResources, 2)
+		return nil
+	})
+	ucp.MakeRequest(http.MethodDelete, testRecipeResourceURL, nil).WaitForOperationComplete(nil)
+	ucp.MakeRequest(http.MethodGet, testRecipeResourceURL, nil).EqualsErrorCode(http.StatusNotFound, v1.CodeNotFound)
 }
 
 func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {

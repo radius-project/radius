@@ -435,7 +435,7 @@ The Bicep driver starts one delete worker per distinct managed output resource. 
 
 The workers run in parallel without dependency ordering, so the driver retries most deletion failures. Dependency failures can have many HTTP statuses, for example `400 InUseSubnetCannotBeDeleted` from Azure, or `200` from a long-running operation that ends in the `Failed` state. Only permanent authentication and authorization failures stop retries at once with `RecipeDeletionFailed`: HTTP 401 and 403 responses from Azure or Kubernetes, and the ARM error codes `AuthenticationFailed`, `AuthorizationFailed`, `InvalidAuthenticationToken`, `InvalidAuthenticationTokenTenant`, and `LinkedAuthorizationFailed`. Context cancellation and deadline errors also stop retries. `deleteRetryCount` limits retries after the first attempt, and `deleteRetryDelaySeconds` sets the delay between attempts. The driver does not wait after the last attempt, and cancellation interrupts a pending delay. Retry logs include the resource ID, attempt number, delay, and last error. Each output resource retries on its own, so a failure on one resource does not stop the deletion of the others. When any deletion fails, the `RecipeDeletionFailed` error lists every failed resource with its attempt count and last error.
 
-The Bicep driver deletes tracked recipe resources on resource deletion and removes obsolete resources after an update. For Azure Key Vault, ARM does not support direct deletion of `Microsoft.KeyVault/vaults/secrets`. When the same deletion batch contains both a secret and its Radius-managed parent vault, the driver deletes the vault instead of sending a separate secret DELETE. The batch waits for vault deletion to finish and reports a failure if vault deletion fails. Azure soft-delete retention still applies; this operation does not purge the vault or its secrets.
+The Bicep driver deletes tracked recipe resources on resource deletion and removes obsolete resources after an update. If removing obsolete resources fails after a successful update, the driver still returns the deployment output with a `RecipeGarbageCollectionFailed` error. The driver also reports which previous output resources it failed to delete. The resource controller saves the new output resources together with only those, then fails the operation, so the next deployment or delete retries the deletion without touching resources that were already deleted. For Azure Key Vault, ARM does not support direct deletion of `Microsoft.KeyVault/vaults/secrets`. When the same deletion batch contains both a secret and its Radius-managed parent vault, the driver deletes the vault instead of sending a separate secret DELETE. The batch waits for vault deletion to finish and reports a failure if vault deletion fails. Azure soft-delete retention still applies; this operation does not purge the vault or its secrets.
 
 The parent match uses ARM-form paths, so a plain ARM ID can match an Azure UCP-qualified ID for the same resource. Only Azure plane prefixes are removed; subscription and resource group scopes remain part of the match. This rule does not apply if the vault remains in the current recipe output, is unmanaged, or is absent from the deletion batch. It does not ignore HTTP 405 errors, change secret values, or transfer resource ownership. Removing a tracked secret while retaining its vault still uses the existing direct deletion path.
 
@@ -588,17 +588,20 @@ sequenceDiagram
   else default (recipe-backed)
     DynCtrl->>DeleteCtrl: NewRecipeDeleteController
     DeleteCtrl->>DB: load stored resource and output resources
-    DeleteCtrl->>Eng: Delete(ResourceMetadata, OutputResources)
+    DeleteCtrl->>Eng: Delete(ResourceMetadata, OutputResources, PendingDeployments)
     Eng->>Drv: driver.Delete
+    opt Pending Bicep deployments
+      Drv->>Drv: recover final owned-resource inventory
+      Drv->>DeleteCtrl: PersistCleanup
+      DeleteCtrl->>DB: save recovered IDs and remaining pending entries
+    end
+    Drv->>Drv: delete stored output resources
     Drv-->>Eng: deletion complete
     DeleteCtrl->>DB: delete resource record
   end
 ```
 
-`DeleteResource` skips driver deletion when the recipe deployment failed during
-setup, because no output resources were created. Otherwise it passes the stored
-output resources to the driver so recipe-created infrastructure can be cleaned
-up before the Radius resource record is removed.
+`DeleteResource` skips driver deletion after a recipe setup failure only when no stored output resources or pending deployments remain. Otherwise it passes both cleanup fields to the driver. Before deleting infrastructure, the Bicep driver must recover final, explicit inventory for pending deployments and save the recovered IDs through the controller. Unknown inventory blocks deletion; a missing list is not an empty inventory. The Radius resource record is removed only after cleanup succeeds.
 
 ## Invariants
 

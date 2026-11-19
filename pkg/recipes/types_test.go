@@ -117,6 +117,16 @@ func TestRecipeOutput_PrepareRecipeResponse_RejectsProviderResourceIDs(t *testin
 	require.Empty(t, ro.ProviderResourceIDs)
 }
 
+func TestRecipeOutput_PrepareRecipeResponse_RejectsUndeletedResources(t *testing.T) {
+	ro := &RecipeOutput{}
+	err := ro.PrepareRecipeResponse(map[string]any{
+		"resources":          []string{"outputResourceId1"},
+		"undeletedResources": []string{"outputResourceId2"},
+	})
+	require.EqualError(t, err, "json: unknown field \"undeletedResources\"")
+	require.Empty(t, ro.UndeletedResources)
+}
+
 func TestRecipeOutput_ProviderResourceID(t *testing.T) {
 	id := "/planes/aws/aws/accounts/123456789012/regions/global/providers/AWS.S3/Bucket/my-bucket"
 	ro := &RecipeOutput{}

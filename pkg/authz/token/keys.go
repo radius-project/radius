@@ -66,7 +66,9 @@ type KeySet struct {
 // KeySource fetches the cluster's current KeySet.
 type KeySource interface {
 	// Fetch returns the current KeySet. It must return an error rather than an empty
-	// or partial KeySet when the keys cannot be read.
+	// or partial KeySet when the keys cannot be read. A nil error means the KeySet is the
+	// cluster's current set: the Verifier drops keys that Radius does not accept, and if
+	// none remain it stops accepting tokens until a later fetch returns usable keys.
 	Fetch(ctx context.Context) (KeySet, error)
 }
 
@@ -195,8 +197,8 @@ type jsonWebKey struct {
 
 // publicKeys returns the signing keys in the set by key ID. Keys without an ID, keys
 // for another use, and key types or sizes that Radius does not accept are skipped, so an
-// unsupported key may share an ID with a usable one (RFC 7517 section 4.5). A set with no
-// usable keys or with two usable keys that share an ID is an error.
+// unsupported key may share an ID with a usable one (RFC 7517 section 4.5). The result may
+// be empty. A set with two usable keys that share an ID is an error.
 func (s jsonWebKeySet) publicKeys() (map[string]crypto.PublicKey, error) {
 	keys := map[string]crypto.PublicKey{}
 	for _, k := range s.Keys {
@@ -212,10 +214,20 @@ func (s jsonWebKeySet) publicKeys() (map[string]crypto.PublicKey, error) {
 		}
 		keys[k.Kid] = key
 	}
-	if len(keys) == 0 {
-		return nil, errors.New("key set has no usable signing keys")
-	}
 	return keys, nil
+}
+
+// acceptedKey reports whether Radius accepts key for verifying tokens: an RSA key of at
+// least minRSABits, or an ECDSA P-256 or P-384 key.
+func acceptedKey(key crypto.PublicKey) bool {
+	switch k := key.(type) {
+	case *rsa.PublicKey:
+		return k.N != nil && k.N.BitLen() >= minRSABits
+	case *ecdsa.PublicKey:
+		return k.Curve == elliptic.P256() || k.Curve == elliptic.P384()
+	default:
+		return false
+	}
 }
 
 // publicKey accepts RSA keys of at least 2048 bits and ECDSA P-256 or P-384 keys.

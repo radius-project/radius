@@ -70,12 +70,20 @@ export function testTypesRegistry(env = process.env) {
 }
 
 export async function tool(args, options = {}) {
-  const { stdout } = await promisify(execFile)(args[0], args.slice(1), {
-    timeout: 180_000,
-    maxBuffer: 1024 * 1024,
-    ...options
-  });
-  return stdout;
+  const { onStderr, ...settings } = options;
+  let result;
+  try {
+    result = await promisify(execFile)(args[0], args.slice(1), {
+      timeout: 180_000,
+      maxBuffer: 1024 * 1024,
+      ...settings
+    });
+  } catch (error) {
+    onStderr?.(error.stderr ?? "");
+    throw error;
+  }
+  onStderr?.(result.stderr);
+  return result.stdout;
 }
 
 export function sourceIdentity(context, env, attempt = env.GITHUB_RUN_ATTEMPT) {
@@ -232,6 +240,8 @@ export function destinations(roots, tag, env = process.env) {
       kind,
       name,
       digest: root.digest,
+      mediaType: root.mediaType,
+      size: root.size,
       reference: `${kind === "types" ? typesRegistry : registries[kind]}/${repositoryPath(kind, name)}:${tag}`
     };
   });
@@ -444,8 +454,130 @@ export async function prepare({ core }, env = process.env, run = tool) {
   });
 }
 
+function manifestPaths(entry) {
+  const slash = entry.reference.indexOf("/");
+  const colon = entry.reference.lastIndexOf(":");
+  const repository = entry.reference.slice(slash + 1, colon);
+  return {
+    host: entry.reference.slice(0, slash),
+    prefix: `/v2/${repository}/`,
+    tag: `/v2/${repository}/manifests/${entry.reference.slice(colon + 1)}`,
+    digest: `/v2/${repository}/manifests/${entry.digest}`
+  };
+}
+
+/** Project ORAS's in-memory trace onto an allowlist; never emit the raw trace. */
+export function registryResponses(trace, entry) {
+  const paths = manifestPaths(entry);
+  const requests = new Map(),
+    responses = [];
+  for (const block of trace.split(/^\[[^\]\r\n]+\]\[DEBUG\]: /m)) {
+    const request = /^--> Request #([0-9]+)\n/.exec(block);
+    if (request) {
+      let method = "unknown",
+        path = "[redacted]",
+        trusted = false;
+      try {
+        const url = new URL(
+          JSON.parse(/^> Request URL: (.+)$/m.exec(block)[1])
+        );
+        method = JSON.parse(/^> Request method: (.+)$/m.exec(block)[1]);
+        if (!/^(GET|HEAD|PUT|POST|PATCH|DELETE)$/.test(method))
+          method = "unknown";
+        trusted =
+          url.host === paths.host &&
+          url.protocol === "https:" &&
+          !url.username &&
+          !url.password;
+        if (trusted) {
+          if (url.pathname === paths.tag || url.pathname === paths.digest)
+            path = url.pathname;
+          else if (
+            url.pathname.startsWith(paths.prefix) &&
+            /^blobs\/sha256:[a-f0-9]{64}$/.test(
+              url.pathname.slice(paths.prefix.length)
+            )
+          )
+            path = url.pathname;
+          else if (url.pathname.startsWith(`${paths.prefix}blobs/uploads/`))
+            path = `${paths.prefix}blobs/uploads/[redacted]`;
+        }
+      } catch {
+        // Unknown trace formats fail closed and cannot authorize recovery.
+      }
+      requests.set(request[1], { method, path, trusted });
+    }
+    const response =
+      /^<-- Response #([0-9]+)\n< Response Status: "([1-5][0-9]{2})(?: [^"\r\n]*)?"\n/.exec(
+        block
+      );
+    if (!response) continue;
+    const {
+      method = "unknown",
+      path = "[redacted]",
+      trusted
+    } = requests.get(response[1]) ?? {};
+    requests.delete(response[1]);
+    const requestIDs = {};
+    if (trusted) {
+      const headers =
+        block.split("< Response headers:\n")[1]?.split("< Response body:")[0] ??
+        "";
+      for (const match of headers.matchAll(
+        /^\s+"(X-Github-Request-Id|X-Ms-Request-Id|X-Ms-Correlation-Request-Id)": "([^"\r\n]+)"$/gim
+      )) {
+        const value = match[2];
+        if (
+          /^[a-f0-9]+(?::[a-f0-9]+){3,5}$/i.test(value) ||
+          /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value)
+        )
+          requestIDs[match[1].toLowerCase()] = value;
+      }
+    }
+    responses.push({ method, path, status: Number(response[2]), requestIDs });
+  }
+  for (const { method, path } of requests.values())
+    responses.push({ method, path, status: null, requestIDs: {} });
+  return responses;
+}
+
+async function registryCommand(args, entry, phase, core, run, options = {}) {
+  let responses = [];
+  try {
+    return await run([...args.slice(0, -1), "--debug", args.at(-1)], {
+      ...options,
+      onStderr: (trace) => {
+        responses = registryResponses(trace, entry);
+        for (const response of responses)
+          core.info(JSON.stringify({ phase, ...response }));
+      }
+    });
+  } catch (error) {
+    // execFile errors include raw stderr, headers and URLs, even in their message.
+    throw Object.assign(
+      new Error(
+        `Registry ${phase} failed for ${entry.reference}; see sanitized HTTP diagnostics`
+      ),
+      {
+        responses,
+        exited: error.code === 1 && !error.killed && !error.signal
+      }
+    );
+  }
+}
+
+function missingManifest(error, path) {
+  const last = error.responses?.at(-1);
+  return (
+    error.exited &&
+    last?.method === "GET" &&
+    last.path === path &&
+    last.status === 404
+  );
+}
+
 export async function publish(
-  { core, context },
+  { core, context, sleep },
   env = process.env,
   run = tool
 ) {
@@ -467,20 +599,106 @@ export async function publish(
   const targets = destinations(receipt.roots, receipt.tag, env).filter(
     (entry) => (entry.kind === "types") === (destination === "acr")
   );
+  // Capture is a standalone sparse checkout; only the full trusted publisher needs this helper.
+  const { waitForState } = await import("./release-reconciliation.mjs");
   try {
     for (const entry of targets) {
-      await run([
-        "oras",
-        "cp",
-        "--from-oci-layout",
-        `${join(directory, "layout")}@${entry.digest}`,
-        entry.reference
-      ]);
-      assert.equal(
-        sha256(await run(["oras", "manifest", "fetch", entry.reference])),
-        entry.digest,
-        "Published digest changed"
+      const file = join(
+        directory,
+        "layout",
+        "blobs",
+        "sha256",
+        entry.digest.slice(7)
       );
+      const info = await lstat(file);
+      assert.ok(
+        info.isFile() && info.size === entry.size,
+        "Imported root size/type mismatch"
+      );
+      const raw = await readFile(file);
+      assert.equal(raw.length, entry.size, "Imported root size mismatch");
+      validateManifest(raw, entry);
+      assert.equal(
+        JSON.parse(raw).mediaType ?? entry.mediaType,
+        entry.mediaType,
+        "Imported root media type mismatch"
+      );
+      core.info(
+        JSON.stringify({
+          phase: "verified-import",
+          reference: entry.reference,
+          digest: sha256(raw),
+          size: raw.length,
+          mediaType: entry.mediaType
+        })
+      );
+      const paths = manifestPaths(entry);
+      try {
+        await registryCommand(
+          [
+            "oras",
+            "cp",
+            "--from-oci-layout",
+            `${join(directory, "layout")}@${entry.digest}`,
+            entry.reference
+          ],
+          entry,
+          "copy",
+          core,
+          run
+        );
+      } catch (error) {
+        const put = error.responses?.at(-2);
+        if (
+          !missingManifest(error, paths.digest) ||
+          put?.method !== "PUT" ||
+          put.path !== paths.tag ||
+          put.status !== 201
+        )
+          throw error;
+        core.info(
+          `ORAS post-copy destination read failed for ${entry.digest}; verifying without another upload`
+        );
+      }
+      for (const [phase, reference, path] of [
+        [
+          "digest-readback",
+          `${entry.reference.slice(0, entry.reference.lastIndexOf(":"))}@${entry.digest}`,
+          paths.digest
+        ],
+        ["tag-readback", entry.reference, paths.tag]
+      ]) {
+        await waitForState(
+          async () => {
+            let published;
+            try {
+              published = await registryCommand(
+                ["oras", "manifest", "fetch", reference],
+                entry,
+                phase,
+                core,
+                run,
+                { timeout: 10_000 }
+              );
+            } catch (error) {
+              if (missingManifest(error, path)) return undefined;
+              throw error;
+            }
+            assert.equal(
+              sha256(published),
+              entry.digest,
+              `Published digest changed during ${phase}`
+            );
+            assert.equal(
+              Buffer.byteLength(published),
+              entry.size,
+              `Published size changed during ${phase}`
+            );
+            return true;
+          },
+          { core, sleep, description: `${phase} ${reference}` }
+        );
+      }
       receipt.published.push(entry.reference);
     }
   } finally {
