@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/kms"
@@ -291,6 +292,35 @@ func Test_CreateAfterChange(t *testing.T) {
 	_, err = h.Create(t.Context(), request)
 	require.ErrorContains(t, err, id)
 	require.ErrorContains(t, err, duplicate)
+}
+
+// Test_Find finds a lost create with that create's values. UCP passes them rather than the current template's, so a
+// template that has since moved to another key still finds the grant on the first key.
+func Test_Find(t *testing.T) {
+	h, api := newHandler()
+	api.lagNew = true
+	request := native.CreateRequest{Region: region, Properties: template, ClientToken: uuid.NewString()}
+	id, err := h.Create(t.Context(), request)
+	require.NoError(t, err)
+
+	found, err := h.Find(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, id, found, "AWS returns the grant before ListGrants lists it")
+	require.Len(t, api.grantsOf(keyID), 1)
+	require.Empty(t, api.grantsOf(otherKeyID))
+
+	never := native.CreateRequest{Region: region, Properties: with(template, map[string]any{"KeyId": keyARN(otherKeyID)}), ClientToken: uuid.NewString()}
+	made, err := h.Find(t.Context(), never)
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(made, keyARN(otherKeyID)+"|"), "a create that never reached AWS makes the grant, so the record manages it")
+
+	found, err = h.Find(t.Context(), native.CreateRequest{Region: region, Properties: with(template, map[string]any{"KeyId": "ffffffff-ffff-ffff-ffff-ffffffffffff"}), ClientToken: uuid.NewString()})
+	require.NoError(t, err)
+	require.Empty(t, found, "a key that no longer exists has no grants")
+
+	api.errs["ListGrants"] = errors.New("throttled")
+	_, err = h.Find(t.Context(), request)
+	require.ErrorContains(t, err, "throttled")
 }
 
 // Test_CreateListedLate sends a create again before ListGrants lists the first grant. The create has the same name and

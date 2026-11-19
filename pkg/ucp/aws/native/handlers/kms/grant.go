@@ -49,6 +49,7 @@ var (
 	_ native.Handler            = (*Grant)(nil)
 	_ native.IdentifierEncoder  = (*Grant)(nil)
 	_ native.IdentifierResolver = (*Grant)(nil)
+	_ native.Finder             = (*Grant)(nil)
 )
 
 // grantNotFound are the codes AWS returns when the key or the grant doesn't exist. The docs don't say which one a call
@@ -60,7 +61,8 @@ var grantNotFound = []string{"NotFoundException", "InvalidGrantIdException"}
 //
 // CreateGrant takes no idempotency token, but a create with the same Name and values as an existing grant returns
 // that grant. The handler names every grant from the record's client token, so the name belongs to one create, and a
-// create sent again returns that create's grant, even before ListGrants lists it.
+// create sent again with that create's values returns its grant, even before ListGrants lists it. UCP finds a lost
+// create that way (see Find).
 type Grant struct {
 	api API
 }
@@ -81,7 +83,7 @@ func (h *Grant) TypeName() string {
 func (h *Grant) Options() native.Options {
 	return native.Options{
 		List:          native.ListParent,
-		Recovery:      native.RecoverByResend,
+		Recovery:      native.RecoverBySearch,
 		Equivalent:    sameKey,
 		CreateTimeout: 15 * time.Minute,
 		DeleteTimeout: 15 * time.Minute,
@@ -331,6 +333,19 @@ func (h *Grant) create(ctx context.Context, request native.CreateRequest) (strin
 		return "", fmt.Errorf("AWS returned no grant ID for the create of an AWS resource of type %s", grantType)
 	}
 	return key + "|" + aws.ToString(out.GrantId), nil
+}
+
+// Find returns the grant of a lost create by sending the create again with that create's values, which UCP passes,
+// rather than the current template's: AWS returns the grant when the create reached it, even before ListGrants lists
+// it, and on the key that create named. When the create never reached AWS, Find makes the grant now, so UCP manages
+// it under the record: a PUT then compares it with the template, and rejects a change to a create-only property, and
+// a DELETE retires it. A key that no longer exists has no grants, so Find returns "".
+func (h *Grant) Find(ctx context.Context, request native.CreateRequest) (string, error) {
+	id, err := h.Create(ctx, request)
+	if awsapi.HasCode(err, "NotFoundException") {
+		return "", nil
+	}
+	return id, err
 }
 
 // Update does nothing: every property of a grant is create-only, so UCP rejects a change before it calls Update.

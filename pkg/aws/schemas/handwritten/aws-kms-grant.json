@@ -147,7 +147,12 @@
       "permissions": ["kms:ListGrants", "kms:DescribeKey"]
     },
     "delete": {
-      "permissions": ["kms:RetireGrant", "kms:ListGrants"],
+      "permissions": [
+        "kms:RetireGrant",
+        "kms:ListGrants",
+        "kms:CreateGrant",
+        "kms:DescribeKey"
+      ],
       "timeoutInMinutes": 15
     },
     "list": {
