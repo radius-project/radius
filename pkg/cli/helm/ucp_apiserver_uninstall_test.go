@@ -340,8 +340,9 @@ func Test_deleteUnadoptedUCPAPIServerStage_KeepsDeclaredObjects(t *testing.T) {
 	}
 }
 
-// Helm removes the Radius release before rad deletes these objects, so a failed delete leaves them with no release. A
-// retried uninstall lists them and resumes the cleanup; it never lists objects that other owners wrote.
+// Helm removes the Radius release before rad deletes these objects, so a failed delete leaves them with no release. The
+// failed uninstall still removes Contour, which a retry would skip. A retried uninstall lists the objects and resumes the
+// cleanup; it never lists objects that other owners wrote.
 func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 	issued := func(name, certificate string) *corev1.Secret {
 		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: RadiusSystemNamespace, UID: types.UID("uid-" + name), ResourceVersion: "1",
@@ -367,14 +368,17 @@ func Test_RadiusUninstallLeftovers_ResumesFailedCleanup(t *testing.T) {
 	mockHelmClient := NewMockHelmClient(gomock.NewController(t))
 	options := NewDefaultClusterOptions()
 	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Radius.ReleaseName, options.Radius.Namespace, true).Return(&release.UninstallReleaseResponse{}, nil)
+	mockHelmClient.EXPECT().RunHelmUninstall(gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, true).Return(&release.UninstallReleaseResponse{}, nil)
+	gateway := &defaultContourGatewayCalls{}
 	impl := &Impl{
 		Helm:                        mockHelmClient,
 		logger:                      func(string, ...any) {},
-		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		removeDefaultContourGateway: gateway.remove,
 		newUCPAPIServerTrustClient:  func(string) (kubernetes.Interface, error) { return kubeClient, nil },
 		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) { return dynamicClient, nil },
 	}
 	require.ErrorContains(t, impl.UninstallRadius(t.Context(), options, "test-context"), ucpAPIServerTLSSecretName)
+	require.Equal(t, 1, gateway.removeCalls)
 
 	leftovers, err := impl.RadiusUninstallLeftovers(t.Context(), options, "test-context")
 	require.NoError(t, err)
