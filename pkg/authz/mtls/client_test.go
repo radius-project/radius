@@ -810,7 +810,14 @@ func TestClientTransport_RetiredPool(t *testing.T) {
 				require.Error(t, <-pending, "closing the expired connection must interrupt its request")
 			}
 			require.Same(t, current, transport.pool(), "a connection in a retired pool must not replace the current pool")
-			require.Equal(t, 1, transport.openConns())
+			if expireB {
+				// The expired connection is closed before the request is sent.
+				require.Equal(t, 1, transport.openConns())
+			} else {
+				// The retired pool refuses B's connection when it goes idle, so net/http closes it
+				// from the connection's read loop after returning B's response. Wait for that close.
+				require.Eventually(t, func() bool { return transport.openConns() == 1 }, 10*time.Second, 10*time.Millisecond)
+			}
 
 			_, err = get(client, urlA)
 			require.NoError(t, err)
