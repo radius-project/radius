@@ -119,7 +119,7 @@ func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, r
 }
 
 // waitForInstalledUCPAPIService waits for the UCP APIService after rad installs or upgrades Radius to applied, the
-// release Helm returned, in the mode of the values of options merged over storedValues. A chart that accepts those
+// release Helm returned, in the selected action's mode. A chart that accepts those
 // values without implementing authorization, such as v0.62.0, serves UCP from the Secret ucp-cert of authorization
 // off whatever they say, so when the manifest of applied has that Secret this waits as for authorization off.
 func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options ClusterOptions, kubeContext string, applied *releasev1.Release, mode authz.Mode) error {
@@ -139,8 +139,8 @@ func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options Cluste
 	return i.waitForUCPAPIService(ctx, kubeContext, options.Radius.Namespace, mode, declared)
 }
 
-// stageInstalledUCPAPIServerCA stages radius-apiserver-ca before rad installs or upgrades Radius with the values of
-// options merged over storedValues. render returns the manifest that Helm applies. upgrade is true when Helm upgrades
+// stageInstalledUCPAPIServerCA stages radius-apiserver-ca before rad installs or upgrades Radius in mode.
+// render returns the manifest that Helm applies. upgrade is true when Helm upgrades
 // an installed release, as rad upgrade and rad install --reinstall do; otherwise the install is fresh or leaves the
 // installed release unchanged.
 func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, helmConf *helm.Configuration, mode authz.Mode, upgrade bool, render renderRadiusManifest) error {
@@ -214,7 +214,14 @@ func (i *Impl) stageRolledBackUCPAPIServerCA(ctx context.Context, kubeContext, r
 	if target == nil {
 		return nil
 	}
-	mode, err := servedAuthzMode(target)
+	// Rollback is an upgrade to the target chart with its stored overrides, never the current
+	// release's values. Reject unsupported provider/engine settings before touching trust.
+	options := ChartOptions{Namespace: radiusNamespace, ReleaseName: radiusReleaseName}
+	mode, err := radiusActionMode(target.Chart, target.Config, nil, options, true)
+	if err != nil {
+		return err
+	}
+	mode, err = manifestAuthzMode(target, mode)
 	if err != nil {
 		return err
 	}
@@ -256,6 +263,10 @@ func servedAuthzMode(rel *releasev1.Release) (authz.Mode, error) {
 	if err != nil {
 		return "", err
 	}
+	return manifestAuthzMode(rel, mode)
+}
+
+func manifestAuthzMode(rel *releasev1.Release, mode authz.Mode) (authz.Mode, error) {
 	kind, err := ucpServingCertificateKind(rel.Manifest)
 	if err != nil {
 		return "", fmt.Errorf("failed to read the manifest of revision %d: %w", rel.Version, err)
