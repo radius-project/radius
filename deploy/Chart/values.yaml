@@ -21,7 +21,7 @@ global:
   rootCA:
     cert: ""
     secretName: "root-ca-cert"
-    # Must not be a pod volume name the authorization settings add (mtls, spiffe, token-<receiver>).
+    # Must not be a pod volume name the authorization settings add (spiffe, radius-ca, token-<receiver>).
     volumeName: "root-ca-vol"
     # Must not be an authorization mount path (/var/run/radius/spiffe, /var/run/radius/tokens/<receiver>).
     mountPath: "/tmp/sslcerts"

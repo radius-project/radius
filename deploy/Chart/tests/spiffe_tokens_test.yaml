@@ -213,7 +213,7 @@ tests:
       global.rootCA.volumeName: spiffe
     asserts:
       - failedTemplate:
-          errorMessage: "global.rootCA.volumeName must not be \"spiffe\": Radius authorization reserves the pod volume names mtls, spiffe, token-ucp, token-applications-rp, token-dynamic-rp"
+          errorMessage: "global.rootCA.volumeName must not be \"spiffe\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
         template: ucp/deployment.yaml
 
   # Helm stops at the first failing template, so the chart-wide render error is reported for ucp.
@@ -224,7 +224,7 @@ tests:
       global.rootCA.volumeName: token-ucp
     asserts:
       - failedTemplate:
-          errorMessage: "global.rootCA.volumeName must not be \"token-ucp\": Radius authorization reserves the pod volume names mtls, spiffe, token-ucp, token-applications-rp, token-dynamic-rp"
+          errorMessage: "global.rootCA.volumeName must not be \"token-ucp\": Radius authorization reserves the pod volume names spiffe, radius-ca, token-ucp, token-applications-rp, token-dynamic-rp"
         template: ucp/deployment.yaml
 
   - it: allows a reserved global.rootCA.volumeName when authorization is off
