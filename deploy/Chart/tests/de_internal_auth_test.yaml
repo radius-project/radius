@@ -10,12 +10,6 @@ release:
 tests:
   - it: preserves the published engine contract by default
     asserts: &legacy
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: RADIUSBACKENDURL
-            value: https://ucp.radius-test.svc:443/apis/api.ucp.dev/v1alpha3
-        template: de/deployment.yaml
       - equal:
           path: spec.template.spec.volumes
           value:

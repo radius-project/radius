@@ -86,14 +86,7 @@ The deployment engine is configured via environment variables:
 | `SKIP_ARM`         | Skip Azure ARM integration | `true` / `false`                                              |
 | `kubernetes`       | Enable Kubernetes mode     | `true`                                                        |
 
-In production the `RADIUSBACKENDURL` points to the UCP service in the release
-namespace
-(`https://ucp.<namespace>.svc:443/apis/api.ucp.dev/v1alpha3`), a name
-in the certificate UCP serves. In
-development, debug scripts/manifests set it to host-reachable UCP endpoints
-such as `http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3` (Docker
-debug) or `http://host.k3d.internal:9000/apis/api.ucp.dev/v1alpha3`
-(Kubernetes debug manifest).
+With the engine gate off, `RADIUSBACKENDURL` uses a name in UCP's serving certificate: `https://ucp.<namespace>:443/apis/api.ucp.dev/v1alpha3` with authorization off and `https://ucp.<namespace>.svc:443/apis/api.ucp.dev/v1alpha3` in DryRun or Enforce. In development, debug manifests use host-reachable endpoints such as `http://host.docker.internal:9000/apis/api.ucp.dev/v1alpha3` (Docker) or `http://host.k3d.internal:9000/apis/api.ucp.dev/v1alpha3` (Kubernetes).
 
 Debug manifests may also include provider toggles such as `AZURE_ENABLED`,
 `AWS_ENABLED`, and `KUBERNETES_ENABLED`.

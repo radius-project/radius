@@ -64,7 +64,7 @@ func radiusActionMode(selected *chart.Chart, current, stored map[string]any, opt
 				return "", fmt.Errorf("de.%s.enabled is retired; use de.internalAuth.enabled", key)
 			}
 		}
-		return resolveAuthzMode(nil, values)
+		return resolveAuthzMode(selected.Values, stored, current)
 	}
 	// Use the chart's own mode and engine gates without running hooks, lookups or Secret templates.
 	c := &chart.Chart{Metadata: selected.Metadata}

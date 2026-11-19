@@ -148,6 +148,8 @@ spec:
         - name: RADIUS_INTERNAL_TLS_CA_DIRECTORY
           value: {{ include "radius.authz.caBundle.mountPath" . | quote }}
         {{- end }}
+        {{- else if eq (include "radius.authz.mode" .) "off" }}
+          value: https://ucp.{{ .Release.Namespace }}:443/apis/api.ucp.dev/v1alpha3
         {{- else }}
           value: https://ucp.{{ .Release.Namespace }}.svc:443/apis/api.ucp.dev/v1alpha3
         {{- end }}

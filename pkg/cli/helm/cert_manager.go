@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/yaml"
 
 	"github.com/radius-project/radius/pkg/authz"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -96,11 +97,14 @@ func newCertManagerClients(kubeContext string) (kubernetes.Interface, apiextclie
 }
 
 // resolveAuthzMode returns the authorization mode the Radius chart will render from global.rbac. Values from the
-// current invocation are merged over the stored release values with Helm's own CoalesceTables, the merge Helm
-// upgrade applies for ResetThenReuseValues, so null or non-map replacements clear stored flags like Helm does.
-func resolveAuthzMode(stored, current map[string]any) (authz.Mode, error) {
+// current invocation are merged over the stored release values, and both over chartDefaults, the values.yaml of the
+// chart Helm applies, with Helm's own CoalesceTables, the merge Helm upgrade applies for ResetThenReuseValues, so null
+// or non-map replacements clear stored flags and chart defaults like Helm does. Without chartDefaults, a chart that
+// turns authorization on by default would render it while the user values say nothing.
+func resolveAuthzMode(chartDefaults, stored, current map[string]any) (authz.Mode, error) {
 	// CoalesceTables mutates both arguments, so merge copies.
 	merged := valuesutil.CoalesceTables(copyValues(current), copyValues(stored))
+	merged = valuesutil.CoalesceTables(merged, copyValues(chartDefaults))
 	enabled, dryRun := rbacFlag(merged, "enabled"), rbacFlag(merged, "dryRun")
 
 	switch {
@@ -206,7 +210,10 @@ func checkCertManagerReady(ctx context.Context, client kubernetes.Interface, nam
 				warn("Warning: rad could not tell which container of cert-manager cainjector Deployment %s/%s (%s) runs cainjector, so it did not check that cainjector can inject the CA certificate in Secret %s/%s into the Radius APIService",
 					namespace, deployment.Name, strings.Join(names, ", "), radiusNamespace, ucpAPIServerCASecretName)
 			}
-			if problem := caInjectorProblem(injectors, radiusNamespace); problem != "" {
+			loadConfig := func(container corev1.Container, configPath string) (*caInjectorFileConfig, error) {
+				return readCAInjectorConfig(ctx, client, &deployment, container, configPath)
+			}
+			if problem := caInjectorProblem(injectors, radiusNamespace, loadConfig, warn); problem != "" {
 				return fmt.Errorf("cert-manager cainjector Deployment %s/%s %s. Radius needs it to inject the CA certificate in Secret %s/%s into the Radius APIService. Remove that setting from cert-manager and retry", namespace, deployment.Name, problem, radiusNamespace, ucpAPIServerCASecretName)
 			}
 		}
@@ -236,44 +243,163 @@ func (i *Impl) checkInstalledCertManagerReady(ctx context.Context, kubeContext, 
 	return checkCertManagerReady(ctx, kubeClient, existing.Namespace, radiusNamespace, i.logInfo)
 }
 
-// caInjectorProblem describes an argument of the cainjector containers that stops cainjector from injecting the CA
+// caInjectorFileConfig holds the fields of a cainjector CAInjectorConfiguration file, set by --config, that decide
+// whether cainjector injects a Secret's CA certificates into an APIService in a namespace.
+type caInjectorFileConfig struct {
+	Namespace              string `json:"namespace"`
+	EnableInjectableConfig struct {
+		APIServices *bool `json:"apiServices"`
+	} `json:"enableInjectableConfig"`
+}
+
+// caInjectorConfigLoader reads the configuration file at configPath of container.
+type caInjectorConfigLoader func(container corev1.Container, configPath string) (*caInjectorFileConfig, error)
+
+// caInjectorProblem describes a setting of the cainjector containers that stops cainjector from injecting the CA
 // certificates of a Secret in radiusNamespace into an APIService, or returns "" when there is none. It reads the flags
-// of Command after the executable as well as Args, since the container runs both.
-func caInjectorProblem(injectors []corev1.Container, radiusNamespace string) string {
+// of Command after the executable as well as Args, since the container runs both, and the configuration file that
+// --config names, which loadConfig reads. As in cainjector, a flag overrides the file. When loadConfig fails, it calls
+// warn and checks only the flags; rad then reports the problem when the CA certificate never reaches the APIService.
+func caInjectorProblem(injectors []corev1.Container, radiusNamespace string, loadConfig caInjectorConfigLoader, warn func(format string, v ...any)) string {
 	for _, container := range injectors {
 		argv := slices.Clone(container.Args)
 		if len(container.Command) > 1 {
 			argv = append(slices.Clone(container.Command[1:]), container.Args...)
 		}
+		var namespace, apiServices, configPath *string
 		for idx, arg := range argv {
 			if !strings.HasPrefix(arg, "-") {
 				continue
 			}
 			name, value, hasValue := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+			if !hasValue && name != "enable-apiservices-injectable" && idx+1 < len(argv) {
+				value = argv[idx+1]
+			}
 			switch name {
 			case "enable-apiservices-injectable":
 				// Boolean flags take their value only after "=".
-				if enabled, err := strconv.ParseBool(value); hasValue && err == nil && !enabled {
-					return "sets " + arg
+				if !hasValue {
+					value = "true"
 				}
+				apiServices = &value
 			case "namespace":
-				if !hasValue && idx+1 < len(argv) {
-					value = argv[idx+1]
-				}
-				if value != "" && value != radiusNamespace {
-					return "is limited to namespace " + strconv.Quote(value) + " by --namespace"
-				}
+				namespace = &value
+			case "config":
+				configPath = &value
 			case "ignore-namespaces":
-				if !hasValue && idx+1 < len(argv) {
-					value = argv[idx+1]
-				}
 				if slices.Contains(strings.Split(value, ","), radiusNamespace) {
 					return "ignores namespace " + strconv.Quote(radiusNamespace) + " by --ignore-namespaces"
 				}
 			}
 		}
+		if apiServices != nil {
+			if enabled, err := strconv.ParseBool(*apiServices); err == nil && !enabled {
+				return "sets --enable-apiservices-injectable=" + *apiServices
+			}
+		}
+		if namespace != nil {
+			if *namespace != "" && *namespace != radiusNamespace {
+				return "is limited to namespace " + strconv.Quote(*namespace) + " by --namespace"
+			}
+		}
+		if configPath == nil || *configPath == "" || (apiServices != nil && namespace != nil) {
+			continue
+		}
+		config, err := loadConfig(container, *configPath)
+		if err != nil {
+			warn("Warning: rad could not read the configuration file %s of cert-manager cainjector container %q, so it did not check that the file lets cainjector inject the CA certificate into the Radius APIService: %v",
+				*configPath, container.Name, err)
+			continue
+		}
+		if apiServices == nil && config.EnableInjectableConfig.APIServices != nil && !*config.EnableInjectableConfig.APIServices {
+			return "sets enableInjectableConfig.apiServices: false in its configuration file " + *configPath
+		}
+		if namespace == nil && config.Namespace != "" && config.Namespace != radiusNamespace {
+			return "is limited to namespace " + strconv.Quote(config.Namespace) + " by namespace in its configuration file " + *configPath
+		}
 	}
 	return ""
+}
+
+// readCAInjectorConfig reads the CAInjectorConfiguration file at configPath of container in deployment from the
+// ConfigMap or Secret volume mounted there, as the cert-manager chart's cainjector.config value mounts it.
+func readCAInjectorConfig(ctx context.Context, client kubernetes.Interface, deployment *appsv1.Deployment, container corev1.Container, configPath string) (*caInjectorFileConfig, error) {
+	configPath = path.Clean(configPath)
+	var mount *corev1.VolumeMount
+	for idx := range container.VolumeMounts {
+		candidate := &container.VolumeMounts[idx]
+		mountPath := path.Clean(candidate.MountPath)
+		if configPath != mountPath && !strings.HasPrefix(configPath, strings.TrimSuffix(mountPath, "/")+"/") {
+			continue
+		}
+		if mount == nil || len(mountPath) > len(path.Clean(mount.MountPath)) {
+			mount = candidate
+		}
+	}
+	if mount == nil {
+		return nil, fmt.Errorf("no volume is mounted at %s", configPath)
+	}
+	file := strings.TrimPrefix(strings.TrimPrefix(configPath, path.Clean(mount.MountPath)), "/")
+	if mount.SubPath != "" {
+		file = path.Join(mount.SubPath, file)
+	}
+	var volume *corev1.Volume
+	for idx := range deployment.Spec.Template.Spec.Volumes {
+		if deployment.Spec.Template.Spec.Volumes[idx].Name == mount.Name {
+			volume = &deployment.Spec.Template.Spec.Volumes[idx]
+		}
+	}
+	keyFor := func(items []corev1.KeyToPath) (string, bool) {
+		if len(items) == 0 {
+			return file, true
+		}
+		for _, item := range items {
+			if path.Clean(item.Path) == file {
+				return item.Key, true
+			}
+		}
+		return "", false
+	}
+	var data []byte
+	switch {
+	case volume == nil:
+		return nil, fmt.Errorf("the Deployment has no volume %q", mount.Name)
+	case volume.ConfigMap != nil:
+		key, ok := keyFor(volume.ConfigMap.Items)
+		if !ok {
+			return nil, fmt.Errorf("ConfigMap volume %q does not project %s", mount.Name, file)
+		}
+		configMap, err := client.CoreV1().ConfigMaps(deployment.Namespace).Get(ctx, volume.ConfigMap.Name, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to read ConfigMap %s/%s: %w", deployment.Namespace, volume.ConfigMap.Name, err)
+		}
+		value, ok := configMap.Data[key]
+		if !ok {
+			return nil, fmt.Errorf("ConfigMap %s/%s has no key %q", deployment.Namespace, volume.ConfigMap.Name, key)
+		}
+		data = []byte(value)
+	case volume.Secret != nil:
+		key, ok := keyFor(volume.Secret.Items)
+		if !ok {
+			return nil, fmt.Errorf("Secret volume %q does not project %s", mount.Name, file)
+		}
+		secret, err := client.CoreV1().Secrets(deployment.Namespace).Get(ctx, volume.Secret.SecretName, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to read Secret %s/%s: %w", deployment.Namespace, volume.Secret.SecretName, err)
+		}
+		value, ok := secret.Data[key]
+		if !ok {
+			return nil, fmt.Errorf("Secret %s/%s has no key %q", deployment.Namespace, volume.Secret.SecretName, key)
+		}
+		data = value
+	default:
+		return nil, fmt.Errorf("volume %q is neither a ConfigMap nor a Secret", mount.Name)
+	}
+	config := &caInjectorFileConfig{}
+	if err := yaml.Unmarshal(data, config); err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", configPath, err)
+	}
+	return config, nil
 }
 
 // caInjectorContainers returns the containers of deployment that run cainjector: those named, or running an image or
@@ -319,8 +445,13 @@ func imageTag(image string) string {
 // version when none exists, upgrades a release rad installed when upgrade is true or when that release is
 // not deployed or its controller is missing, refuses pending Helm operations, reuses a supported
 // installation it did not install, and fails when that installation is older than CertManagerMinimumVersion.
-// With authorization off it returns without contacting the cluster.
-func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, mode authz.Mode, upgrade bool) error {
+// Authorization is enabled when the values of options, merged over storedValues and chartDefaults, the values.yaml of
+// the Radius chart rad applies, turn it on. With authorization off it returns without contacting the cluster.
+func (i *Impl) ensureCertManager(ctx context.Context, options ClusterOptions, kubeContext string, chartDefaults, storedValues map[string]any, upgrade bool) error {
+	mode, err := installedAuthzMode(options, chartDefaults, storedValues)
+	if err != nil {
+		return err
+	}
 	if mode == authz.ModeOff {
 		return nil
 	}

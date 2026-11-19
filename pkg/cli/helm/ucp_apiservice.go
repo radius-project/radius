@@ -119,19 +119,23 @@ func (i *Impl) waitForAvailableUCPAPIService(ctx context.Context, kubeContext, r
 }
 
 // waitForInstalledUCPAPIService waits for the UCP APIService after rad installs or upgrades Radius to applied, the
-// release Helm returned, in the selected action's mode. A chart that accepts those
-// values without implementing authorization, such as v0.62.0, serves UCP from the Secret ucp-cert of authorization
-// off whatever they say, so when the manifest of applied has that Secret this waits as for authorization off.
-func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options ClusterOptions, kubeContext string, applied *releasev1.Release, mode authz.Mode) error {
+// release Helm returned, in the mode in which applied serves UCP's API server. The values of options merged over
+// storedValues and chartDefaults, the values.yaml of the chart rad applied, select that mode, but the manifest of applied
+// decides between on and off: a chart that accepts those values without implementing authorization, such as v0.62.0,
+// serves UCP from the Secret ucp-cert of authorization off whatever they say, and a manifest with the cert-manager
+// Certificate ucp-cert serves the certificate of authorization on.
+func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options ClusterOptions, kubeContext string, applied *releasev1.Release, chartDefaults, storedValues map[string]any) error {
+	mode, err := installedAuthzMode(options, chartDefaults, storedValues)
+	if err != nil {
+		return err
+	}
 	var declared manifestObjectSet
 	if applied != nil {
 		kind, err := ucpServingCertificateKind(applied.Manifest)
 		if err != nil {
 			return fmt.Errorf("failed to read the manifest of revision %d: %w", applied.Version, err)
 		}
-		if kind == "Secret" {
-			mode = authz.ModeOff
-		}
+		mode = servingAuthzMode(kind, mode)
 		if declared, err = manifestObjects(applied.Manifest); err != nil {
 			return fmt.Errorf("failed to read the manifest of revision %d: %w", applied.Version, err)
 		}
@@ -139,11 +143,29 @@ func (i *Impl) waitForInstalledUCPAPIService(ctx context.Context, options Cluste
 	return i.waitForUCPAPIService(ctx, kubeContext, options.Radius.Namespace, mode, declared)
 }
 
-// stageInstalledUCPAPIServerCA stages radius-apiserver-ca before rad installs or upgrades Radius in mode.
-// render returns the manifest that Helm applies. upgrade is true when Helm upgrades
+// servingAuthzMode returns the mode in which a manifest whose ucp-cert has kind, as ucpServingCertificateKind returns
+// it, serves UCP's API server, given mode, the mode its values select. The kind decides between on and off; the trust
+// rad reconciles depends only on that. A Certificate whose values select off serves as authorization on in
+// authz.ModeEnforce, and a manifest without ucp-cert keeps mode.
+func servingAuthzMode(kind string, mode authz.Mode) authz.Mode {
+	switch {
+	case kind == "Secret":
+		return authz.ModeOff
+	case kind == "Certificate" && mode == authz.ModeOff:
+		return authz.ModeEnforce
+	}
+	return mode
+}
+
+// stageInstalledUCPAPIServerCA stages radius-apiserver-ca before rad installs or upgrades Radius with the values of
+// options merged over storedValues. render returns the manifest that Helm applies. upgrade is true when Helm upgrades
 // an installed release, as rad upgrade and rad install --reinstall do; otherwise the install is fresh or leaves the
 // installed release unchanged.
-func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, helmConf *helm.Configuration, mode authz.Mode, upgrade bool, render renderRadiusManifest) error {
+func (i *Impl) stageInstalledUCPAPIServerCA(ctx context.Context, options ClusterOptions, kubeContext string, helmConf *helm.Configuration, chartDefaults, storedValues map[string]any, upgrade bool, render renderRadiusManifest) error {
+	mode, err := installedAuthzMode(options, chartDefaults, storedValues)
+	if err != nil {
+		return err
+	}
 	deployed := func() (authz.Mode, error) {
 		if !upgrade {
 			return authz.ModeOff, nil
@@ -194,6 +216,16 @@ func (i *Impl) certManagerDynamicClient(kubeContext string) (dynamic.Interface, 
 		return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
 	return client, nil
+}
+
+// installedAuthzMode returns the mode that the values of options, merged over storedValues and chartDefaults, the
+// values.yaml of the Radius chart rad applies, select.
+func installedAuthzMode(options ClusterOptions, chartDefaults, storedValues map[string]any) (authz.Mode, error) {
+	currentValues, err := parseUserValuesFromCLI(&options.Radius)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse Radius values: %w", err)
+	}
+	return resolveAuthzMode(chartDefaults, storedValues, currentValues)
 }
 
 // waitForRolledBackUCPAPIService waits for the UCP APIService after rad rolls Radius back to revision of history, in the
@@ -249,17 +281,18 @@ func deployedAuthzMode(history []*releasev1.Release) (authz.Mode, error) {
 	return servedAuthzMode(latest)
 }
 
-// servedAuthzMode returns the mode in which rel serves UCP's API server. Its values select the mode only in a chart
-// that implements authorization, whose manifest has the cert-manager Certificate ucp-cert with authorization on. A
-// chart that accepts the values without implementing them, such as v0.62.0, renders the Helm-generated Secret ucp-cert
-// of authorization off whatever they say. A manifest has the same kind of ucp-cert as a rollback to rel renders,
-// because the chart selects it from values alone.
+// servedAuthzMode returns the mode in which rel serves UCP's API server. Its values, merged over the values.yaml of its
+// chart, select the mode only in a chart that implements authorization, whose manifest has the cert-manager Certificate
+// ucp-cert with authorization on. A chart that accepts the values without implementing them, such as v0.62.0, renders
+// the Helm-generated Secret ucp-cert of authorization off whatever they say. A manifest has the same kind of ucp-cert
+// as a rollback to rel renders, because the chart selects it from values alone, so the kind decides between on and
+// off, as servingAuthzMode describes.
 func servedAuthzMode(rel *releasev1.Release) (authz.Mode, error) {
-	var defaults map[string]any
+	var chartDefaults map[string]any
 	if rel.Chart != nil {
-		defaults = rel.Chart.Values
+		chartDefaults = rel.Chart.Values
 	}
-	mode, err := resolveAuthzMode(defaults, rel.Config)
+	mode, err := resolveAuthzMode(chartDefaults, rel.Config, nil)
 	if err != nil {
 		return "", err
 	}
@@ -271,14 +304,7 @@ func manifestAuthzMode(rel *releasev1.Release, mode authz.Mode) (authz.Mode, err
 	if err != nil {
 		return "", fmt.Errorf("failed to read the manifest of revision %d: %w", rel.Version, err)
 	}
-	switch {
-	case kind == "Secret":
-		return authz.ModeOff, nil
-	case kind == "Certificate" && mode == authz.ModeOff:
-		return "", fmt.Errorf("revision %d has the cert-manager Certificate %s, which authorization on renders, but its values turn authorization off. "+
-			"Radius cannot tell which certificate it serves UCP's API server with", rel.Version, ucpAPIServerCertificateName)
-	}
-	return mode, nil
+	return servingAuthzMode(kind, mode), nil
 }
 
 // manifestObjectSet holds the objects of a manifest by API group, kind and name.

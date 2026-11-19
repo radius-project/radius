@@ -129,7 +129,9 @@ type Verifier struct {
 	lastSuccess time.Time
 }
 
-// New returns a Verifier for config. Namespace, Audience, and Keys are required.
+// New returns a Verifier for config. Namespace, Audience, and Keys are required. A zero
+// duration uses its default, and a negative RefreshInterval, UnknownKeyInterval,
+// MaxKeyAge, or FetchTimeout is an error.
 func New(config Config) (*Verifier, error) {
 	if config.Namespace == "" {
 		return nil, errors.New("namespace is required")
@@ -139,6 +141,16 @@ func New(config Config) (*Verifier, error) {
 	}
 	if config.Keys == nil {
 		return nil, errors.New("key source is required")
+	}
+	for name, d := range map[string]time.Duration{
+		"RefreshInterval":    config.RefreshInterval,
+		"UnknownKeyInterval": config.UnknownKeyInterval,
+		"MaxKeyAge":          config.MaxKeyAge,
+		"FetchTimeout":       config.FetchTimeout,
+	} {
+		if d < 0 {
+			return nil, fmt.Errorf("%s must not be negative, got %s", name, d)
+		}
 	}
 
 	v := &Verifier{

@@ -82,8 +82,8 @@ type Receiver struct {
 //
 // With the Radius provider in dryRun mode the listener accepts both plain HTTP and TLS on the same port. Plain HTTP,
 // missing or invalid tokens, callers that are not in receiver.AllowedCallers, and requests
-// received after the server's own certificate expired are logged as would-deny, and the
-// request is still served. A request served over plain HTTP or with an expired server
+// received while the server's loaded certificate is expired are logged as would-deny, and
+// the request is still served. A request served over plain HTTP or with an expired server
 // certificate never carries the caller's identity, even if its token is valid. While the
 // signing keys are stale, every request is rejected with AuthorizationUnavailable, as in
 // enforce mode.
@@ -91,9 +91,14 @@ type Receiver struct {
 // With the Radius provider in enforce mode the listener only accepts TLS. Plain HTTP is closed and logged as denied.
 // A missing or invalid token gets InvalidAuthenticationInfo, a token that cannot be checked
 // because the signing keys are stale gets AuthorizationUnavailable, and a caller that is not
-// in receiver.AllowedCallers gets AuthorizationFailed. A request on a connection that
-// outlived the server's own certificate gets InvalidAuthenticationInfo and the connection
-// is closed.
+// in receiver.AllowedCallers gets AuthorizationFailed. A request received while the
+// server's loaded certificate is expired, for example after a failed rotation, gets
+// InvalidAuthenticationInfo and the connection is closed.
+//
+// The expiry check uses the certificate the server has loaded now, not the one presented
+// when the connection was established. After a successful rotation, a connection made with
+// the old certificate stays usable even once that certificate expires, because clients
+// verify the server only during the handshake.
 //
 // ListenAndServe changes srv's Handler when the mode is not off.
 func ListenAndServe(ctx context.Context, srv *http.Server, options authz.Options, receiver Receiver) error {
@@ -174,6 +179,8 @@ func serve(ctx context.Context, srv *http.Server, ln net.Listener, options authz
 		handler = http.DefaultServeMux
 	}
 	srv.Handler = s.authorizeCaller(handler)
+	// Otherwise net/http answers "OPTIONS *" itself, before Handler checks the token.
+	srv.DisableGeneralOptionsHandler = true
 
 	if options.EffectiveTLSProvider() == authz.TLSProviderExternal {
 		return srv.Serve(ln)

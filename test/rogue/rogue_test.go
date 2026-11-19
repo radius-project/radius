@@ -197,6 +197,30 @@ func Test_ClientArgs_RejectsCredentials(t *testing.T) {
 	}
 }
 
+// Test_ClientArgs_RejectsInvalidHeaderNames checks that a header name rogue-client would
+// split differently, such as one containing a colon, cannot smuggle a credential into argv.
+func Test_ClientArgs_RejectsInvalidHeaderNames(t *testing.T) {
+	t.Parallel()
+	const sentinel = "rogue-test-sentinel-token"
+	for _, name := range []string{
+		"Authorization: Bearer " + sentinel,
+		"Authorization:",
+		"X-Test:Authorization",
+		"X Test",
+		"X-Test\n" + sentinel,
+		" ",
+		"",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			args, err := clientArgs(Request{URL: "https://x", Insecure: true, Headers: map[string]string{name: "Bearer " + sentinel}}, true)
+			require.Error(t, err)
+			require.NotContains(t, err.Error(), sentinel)
+			require.Nil(t, args)
+		})
+	}
+}
+
 // Test_ExecURL_HasNoToken checks that a request that sends a token from a mounted file puts
 // only the token's path, never the token, in the pods/exec URL.
 func Test_ExecURL_HasNoToken(t *testing.T) {

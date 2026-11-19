@@ -138,6 +138,9 @@ func (t *externalTransport) RoundTrip(req *http.Request) (*http.Response, error)
 	}
 	req = req.WithContext(req.Context())
 	req.Header = req.Header.Clone()
+	if req.Header == nil {
+		req.Header = make(http.Header)
+	}
 	req.Header.Set("Authorization", "Bearer "+value)
 	return t.Transport.RoundTrip(req)
 }
@@ -306,6 +309,9 @@ func (t *clientTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// body streams are still sent. Only the header map is replaced.
 	req = req.WithContext(req.Context())
 	req.Header = req.Header.Clone()
+	if req.Header == nil {
+		req.Header = make(http.Header)
+	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	return pool.RoundTrip(req)
 }

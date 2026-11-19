@@ -17,12 +17,14 @@ limitations under the License.
 package helm
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -187,11 +189,40 @@ func Test_waitForInstalledUCPAPIService_ChartWithoutAPIServerCA(t *testing.T) {
 	options := NewDefaultClusterOptions()
 	options.Radius.SetArgs = []string{"global.rbac.enabled=true"}
 	served := func(kind string) *releasev1.Release {
-		return &releasev1.Release{Version: 1, Manifest: "apiVersion: v1\nkind: " + kind + "\nmetadata:\n  name: ucp-cert\n"}
+		apiVersion := "v1"
+		if kind == "Certificate" {
+			apiVersion = "cert-manager.io/v1"
+		}
+		return &releasev1.Release{Version: 1, Manifest: "apiVersion: " + apiVersion + "\nkind: " + kind + "\nmetadata:\n  name: ucp-cert\n"}
 	}
 
-	require.NoError(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Secret"), authz.ModeEnforce))
-	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Certificate"), authz.ModeEnforce), "Secret radius-system/radius-apiserver-ca is not usable")
+	require.NoError(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Secret"), nil, nil))
+	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Certificate"), nil, nil), "Secret radius-system/radius-apiserver-ca is not usable")
+
+	// A chart that enables authorization by default serves UCP from the Certificate ucp-cert while the user values say
+	// nothing, so rad waits for radius-apiserver-ca rather than reporting success without it.
+	options.Radius.SetArgs = nil
+	defaults := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}
+	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Certificate"), defaults, nil), "Secret radius-system/radius-apiserver-ca is not usable")
+	require.ErrorContains(t, impl.waitForInstalledUCPAPIService(t.Context(), options, "test-context", served("Certificate"), nil, nil), "Secret radius-system/radius-apiserver-ca is not usable")
+}
+
+// With a chart that enables authorization by default, rad stages radius-apiserver-ca from the rendered chart before
+// Helm, although the user values say nothing about authorization.
+func Test_stageInstalledUCPAPIServerCA_ChartDefaults(t *testing.T) {
+	impl := &Impl{
+		newUCPAPIServerTrustClient: uninstallTrustClient,
+		newCertManagerDynamicClient: func(string) (dynamic.Interface, error) {
+			return ucpAPIServiceDynamicClient(ucpAPIService("", "", "")), nil
+		},
+	}
+	errRendered := errors.New("rendered")
+	render := func(context.Context) (string, bool, error) { return "", false, errRendered }
+	options := NewDefaultClusterOptions()
+
+	require.NoError(t, impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, nil, nil, false, render))
+	defaults := map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}
+	require.ErrorIs(t, impl.stageInstalledUCPAPIServerCA(t.Context(), options, "test-context", nil, defaults, nil, false, render), errRendered)
 }
 
 func Test_deployedAuthzMode(t *testing.T) {
@@ -217,10 +248,23 @@ func Test_deployedAuthzMode(t *testing.T) {
 			want:    "",
 		},
 		{name: "chart that ignores its authorization values", history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed, enforce, secret)}, want: authz.ModeOff},
+		// The manifest decides between on and off; a chart that renders the Certificate serves authorization on.
+		{name: "Certificate with authorization off in values", history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed, map[string]any{}, certificate)}, want: authz.ModeEnforce},
 		{
-			name:    "Certificate with authorization off",
-			history: []*releasev1.Release{revision(1, releasecommon.StatusDeployed, map[string]any{}, certificate)},
-			wantErr: "Radius cannot tell which certificate",
+			name: "chart that enables authorization by default",
+			history: []*releasev1.Release{{
+				Version: 1, Config: map[string]any{}, Manifest: certificate, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+				Chart: &chart.Chart{Values: map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": false, "dryRun": true}}}},
+			}},
+			want: authz.ModeDryRun,
+		},
+		{
+			name: "invalid values",
+			history: []*releasev1.Release{{
+				Version: 1, Config: map[string]any{"global": map[string]any{"rbac": map[string]any{"dryRun": true}}}, Manifest: certificate, Info: &releasev1.Info{Status: releasecommon.StatusDeployed},
+				Chart: &chart.Chart{Values: map[string]any{"global": map[string]any{"rbac": map[string]any{"enabled": true}}}},
+			}},
+			wantErr: "cannot be combined",
 		},
 	}
 	for _, tt := range tests {
