@@ -88,7 +88,13 @@ func (c fakeCertManagerCluster) clients() (kubernetes.Interface, apiextclient.In
 		webhook.Name = "cert-manager-webhook"
 		webhook.Labels["app.kubernetes.io/name"] = "webhook"
 		webhook.Labels["app.kubernetes.io/component"] = "webhook"
-		kubeObjects = append(kubeObjects, webhook)
+		cainjector := certManagerController(c.controller.Namespace, "", "")
+		cainjector.Name = "cert-manager-cainjector"
+		cainjector.Labels["app.kubernetes.io/name"] = "cainjector"
+		cainjector.Labels["app.kubernetes.io/component"] = "cainjector"
+		// The cert-manager chart's container name and image.
+		cainjector.Spec.Template.Spec.Containers = []corev1.Container{{Name: "cert-manager-cainjector", Image: "quay.io/jetstack/cert-manager-cainjector:v1.21.2"}}
+		kubeObjects = append(kubeObjects, webhook, cainjector)
 	}
 	apiextObjects := []runtime.Object{}
 	if c.crd {
@@ -666,14 +672,14 @@ func Test_ensureCertManager_DetectionFailureDoesNotRepair(t *testing.T) {
 
 func Test_checkCertManagerReady(t *testing.T) {
 	t.Parallel()
-	for _, component := range []string{"controller", "webhook"} {
+	for _, component := range []string{"controller", "webhook", "cainjector"} {
 		for _, failure := range []string{"missing", "scaled down", "unavailable", "stale rollout", "old replicas", "forbidden"} {
 			t.Run(component+"/"+failure, func(t *testing.T) {
 				t.Parallel()
 				k, _ := (fakeCertManagerCluster{controller: certManagerController("security", "v1.21.2", "")}).clients()
 				name := "cert-manager"
-				if component == "webhook" {
-					name += "-webhook"
+				if component != "controller" {
+					name += "-" + component
 				}
 				deployments := k.AppsV1().Deployments("security")
 				deployment, err := deployments.Get(t.Context(), name, metav1.GetOptions{})
@@ -699,9 +705,90 @@ func Test_checkCertManagerReady(t *testing.T) {
 					_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
 					require.NoError(t, err)
 				}
-				require.Error(t, checkCertManagerReady(t.Context(), k, "security"))
+				require.Error(t, checkCertManagerReady(t.Context(), k, "security", RadiusSystemNamespace, t.Logf))
 			})
 		}
+	}
+}
+
+func Test_checkCertManagerReady_CAInjector(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		args    []string
+		sidecar []string
+		// mirrored renames the cainjector container and mirrors its image, so only its command identifies it.
+		mirrored bool
+		// unidentified renames the cainjector container and mirrors its image without a command that identifies it.
+		unidentified bool
+		wantErr      string
+		wantWarning  bool
+	}{
+		{name: "chart defaults", args: []string{"--v=2", "--leader-election-namespace=kube-system"}},
+		{name: "injection explicitly enabled", args: []string{"--enable-apiservices-injectable=true", "--enable-certificates-data-source"}},
+		{name: "limited to the Radius namespace", args: []string{"--namespace", RadiusSystemNamespace}},
+		{name: "APIService injection disabled", args: []string{"--enable-apiservices-injectable=false"}, wantErr: "sets --enable-apiservices-injectable=false"},
+		// Radius injects from a Secret, not a Certificate.
+		{name: "Certificate data source disabled", args: []string{"--enable-certificates-data-source=false"}},
+		{name: "ignores other namespaces", args: []string{"--ignore-namespaces=kube-system,security"}},
+		{name: "ignores the Radius namespace", args: []string{"--ignore-namespaces", "kube-system," + RadiusSystemNamespace}, wantErr: `ignores namespace "radius-system" by --ignore-namespaces`},
+		{name: "limited to another namespace", args: []string{"--namespace=security"}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "limited to another namespace with a separate value", args: []string{"--namespace", "security"}, wantErr: `is limited to namespace "security" by --namespace`},
+		// Only the cainjector container's flags configure injection; a sidecar's flags of the same name do not.
+		{name: "sidecar limited to another namespace", sidecar: []string{"--namespace=security", "--enable-apiservices-injectable=false"}},
+		{name: "restricted injector beside a sidecar", args: []string{"--namespace=security"}, sidecar: []string{"--v=2"}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "renamed mirrored injector beside a restricted sidecar", mirrored: true, sidecar: []string{"--namespace=security"}},
+		// With nothing to identify cainjector among several containers, rad reads no container's flags and warns.
+		{name: "unidentified injector beside a restricted sidecar", unidentified: true, sidecar: []string{"--namespace=security"}, wantWarning: true},
+		{name: "unidentified restricted injector beside a sidecar", unidentified: true, args: []string{"--namespace=security"}, sidecar: []string{"--v=2"}, wantWarning: true},
+		// A Deployment with one container runs cainjector in it.
+		{name: "unidentified lone restricted injector", unidentified: true, args: []string{"--namespace=security"}, wantErr: `is limited to namespace "security" by --namespace`},
+		{name: "renamed mirrored restricted injector beside a sidecar", mirrored: true, args: []string{"--namespace=security"}, sidecar: []string{"--v=2"}, wantErr: `is limited to namespace "security" by --namespace`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			k, _ := (fakeCertManagerCluster{controller: certManagerController("security", "v1.21.2", "")}).clients()
+			deployments := k.AppsV1().Deployments("security")
+			deployment, err := deployments.Get(t.Context(), "cert-manager-cainjector", metav1.GetOptions{})
+			require.NoError(t, err)
+			deployment.Spec.Template.Spec.Containers[0].Args = tt.args
+			if tt.mirrored {
+				injector := &deployment.Spec.Template.Spec.Containers[0]
+				injector.Name = "injector"
+				injector.Image = "registry.example.com/platform/injector:v1"
+				injector.Command = []string{"/usr/local/bin/cainjector"}
+			}
+			if tt.unidentified {
+				injector := &deployment.Spec.Template.Spec.Containers[0]
+				injector.Name = "injector"
+				injector.Image = "registry.example.com/platform/injector:v1"
+				injector.Command = []string{"/usr/local/bin/injector"}
+			}
+			if tt.sidecar != nil {
+				// A sidecar listed first, like the injected proxies of some service meshes.
+				deployment.Spec.Template.Spec.Containers = append([]corev1.Container{{Name: "proxy", Image: "example.com/mesh/proxy:v1", Args: tt.sidecar}}, deployment.Spec.Template.Spec.Containers...)
+			}
+			_, err = deployments.Update(t.Context(), deployment, metav1.UpdateOptions{})
+			require.NoError(t, err)
+
+			var warnings []string
+			err = checkCertManagerReady(t.Context(), k, "security", RadiusSystemNamespace, func(format string, v ...any) {
+				warnings = append(warnings, fmt.Sprintf(format, v...))
+			})
+			if tt.wantWarning {
+				require.Equal(t, []string{`Warning: rad could not tell which container of cert-manager cainjector Deployment security/cert-manager-cainjector ("proxy", "injector") runs cainjector, ` +
+					`so it did not check that cainjector can inject the CA certificate in Secret radius-system/radius-apiserver-ca into the Radius APIService`}, warnings)
+			} else {
+				require.Empty(t, warnings)
+			}
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, "cert-manager cainjector Deployment security/cert-manager-cainjector "+tt.wantErr)
+			require.ErrorContains(t, err, "inject the CA certificate in Secret radius-system/radius-apiserver-ca into the Radius APIService")
+		})
 	}
 }
 
@@ -867,6 +954,8 @@ func Test_UninstallRadius_CertManagerOwnershipErrorDoesNotBlockCleanup(t *testin
 	impl := &Impl{
 		Helm:                        client,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
+		newUCPAPIServerTrustClient:  uninstallTrustClient,
+		newCertManagerDynamicClient: uninstallStageClient,
 		logger:                      func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
 	}
 	require.NoError(t, impl.UninstallRadius(t.Context(), NewDefaultClusterOptions(), "test-context"))

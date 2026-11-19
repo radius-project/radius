@@ -119,11 +119,11 @@ func Test_Helm_InstallRadius_ContourValues(t *testing.T) {
 					return &releasev1.Release{}, nil
 				}).Times(1)
 
-			impl := &Impl{
+			impl := withoutUCPAPIService(&Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 				contourCluster:                 staticCRDs(tt.crds...),
-			}
+			})
 			require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 
 			for valuePath, want := range tt.want {
@@ -168,6 +168,8 @@ func Test_Helm_InstallRadius_ExistingContourIsNotChecked(t *testing.T) {
 	t.Parallel()
 
 	client := NewMockHelmClient(gomock.NewController(t))
+
+	expectNoRadiusHistory(client)
 	options := NewDefaultClusterOptions()
 	options.Radius.Reinstall = true
 	options.Contour.SetArgs = []string{turnOffFeaturesForTraefikCRDs}
@@ -187,14 +189,14 @@ func Test_Helm_InstallRadius_ExistingContourIsNotChecked(t *testing.T) {
 	// No Contour history, chart pull, install, or upgrade is expected.
 
 	gatewayCalls := &defaultContourGatewayCalls{}
-	impl := &Impl{
+	impl := withoutUCPAPIService(&Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: gatewayCalls.configure,
 		contourCluster: &fakeContourCluster{readCRDs: func(context.Context, string, []string) ([]crdInfo, error) {
 			t.Error("the CRDs must not be checked when Contour does not change")
 			return traefikGatewayAPICRDs(), nil
 		}},
-	}
+	})
 
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 	require.Equal(t, 1, gatewayCalls.configureCalls)
@@ -227,6 +229,8 @@ func Test_Helm_UpgradeRadius_ReusesStoredContourValues(t *testing.T) {
 	t.Parallel()
 
 	client := NewMockHelmClient(gomock.NewController(t))
+
+	expectNoRadiusHistory(client)
 	options := NewDefaultClusterOptions()
 	contourRelease := newContourReleaseWithStoredValues(options)
 
@@ -242,11 +246,11 @@ func Test_Helm_UpgradeRadius_ReusesStoredContourValues(t *testing.T) {
 			return &releasev1.Release{}, nil
 		}).Times(1)
 
-	impl := &Impl{
+	impl := withoutUCPAPIService(&Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
-	}
+	})
 
 	require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
 	require.Equal(t, false, nestedValue(contourValues, "gatewayAPI", "manageCRDs"))
@@ -290,6 +294,8 @@ func Test_Helm_UpgradeRadius_ContourValuesFromFlags(t *testing.T) {
 			t.Parallel()
 
 			client := NewMockHelmClient(gomock.NewController(t))
+
+			expectNoRadiusHistory(client)
 			options := NewDefaultClusterOptions()
 			options.ResetValues = resetValues
 			options.Contour.SetArgs = []string{turnOffFeaturesForTraefikCRDs}
@@ -313,11 +319,11 @@ func Test_Helm_UpgradeRadius_ContourValuesFromFlags(t *testing.T) {
 					return &releasev1.Release{}, nil
 				}).Times(1)
 
-			impl := &Impl{
+			impl := withoutUCPAPIService(&Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 				contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
-			}
+			})
 
 			require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
 			require.Equal(t, false, nestedValue(contourValues, "gatewayAPI", "manageCRDs"))
@@ -399,6 +405,8 @@ func Test_Helm_UpgradeRadius_ContourUpgradeBaseline(t *testing.T) {
 			t.Parallel()
 
 			client := NewMockHelmClient(gomock.NewController(t))
+
+			expectNoRadiusHistory(client)
 			options := NewDefaultClusterOptions()
 			expectChartPull(t, client, radiusChartRef(options), &chart.Chart{})
 			expectContourHistory(client, options, tt.history...)
@@ -414,11 +422,11 @@ func Test_Helm_UpgradeRadius_ContourUpgradeBaseline(t *testing.T) {
 			}
 			// Otherwise no upgrade is expected.
 
-			impl := &Impl{
+			impl := withoutUCPAPIService(&Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 				contourCluster:                 staticCRDs(tt.crds...),
-			}
+			})
 
 			err := impl.UpgradeRadius(t.Context(), options, "test-context")
 			if tt.wantErr == "" {
@@ -460,11 +468,11 @@ func Test_Helm_InstallRadius_ReinstallContourUsesUpgradeBaseline(t *testing.T) {
 	client.EXPECT().RunHelmUpgrade(gomock.Any(), gomock.Any(), gomock.Any(), options.Contour.ReleaseName, options.Contour.Namespace, false, true, gomock.Any()).
 		Return(&releasev1.Release{}, nil).Times(1)
 
-	impl := &Impl{
+	impl := withoutUCPAPIService(&Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 		contourCluster:                 staticCRDs(traefikGatewayAPICRDs()...),
-	}
+	})
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 }
 
@@ -588,11 +596,11 @@ func Test_Helm_InstallRadius_InstallsContourBeforeRadius(t *testing.T) {
 			}).Times(1),
 	)
 
-	impl := &Impl{
+	impl := withoutUCPAPIService(&Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: gatewayCalls.configure,
 		contourCluster:                 staticCRDs(),
-	}
+	})
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 	require.Equal(t, 1, gatewayCalls.configureCalls)
 }
@@ -644,11 +652,11 @@ func Test_Helm_InstallRadius_ContourInstallUsesClusterConfiguration(t *testing.T
 			return &releasev1.Release{}, nil
 		}).Times(1)
 
-	impl := &Impl{
+	impl := withoutUCPAPIService(&Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 		contourCluster:                 staticCRDs(),
-	}
+	})
 	require.NoError(t, impl.InstallRadius(t.Context(), options, "test-context"))
 
 	require.NotNil(t, contourConfiguration)
@@ -663,6 +671,8 @@ func Test_Helm_UpgradeRadius_DownloadsContourChartOnce(t *testing.T) {
 	t.Parallel()
 
 	client := NewMockHelmClient(gomock.NewController(t))
+
+	expectNoRadiusHistory(client)
 	options := NewDefaultClusterOptions()
 	contourRelease := newContourReleaseWithStoredValues(options)
 	expectChartPull(t, client, options.Contour.ReleaseName, newTestContourChart())
@@ -675,14 +685,14 @@ func Test_Helm_UpgradeRadius_DownloadsContourChartOnce(t *testing.T) {
 		Return(&releasev1.Release{}, nil).Times(1)
 
 	var checks int
-	impl := &Impl{
+	impl := withoutUCPAPIService(&Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 		contourCluster: &fakeContourCluster{readCRDs: func(ctx context.Context, kubeContext string, names []string) ([]crdInfo, error) {
 			checks++
 			return staticCRDs(traefikGatewayAPICRDs()...).CRDs(ctx, kubeContext, names)
 		}},
-	}
+	})
 
 	upgrade, err := impl.CheckContourUpgrade(t.Context(), options, "test-context")
 	require.NoError(t, err)
@@ -699,6 +709,7 @@ func Test_Helm_UpgradeRadius_WaitsForK3sOnce(t *testing.T) {
 
 	synctest.Test(t, func(t *testing.T) {
 		client := NewMockHelmClient(gomock.NewController(t))
+		expectNoRadiusHistory(client)
 		options := NewDefaultClusterOptions()
 		// The Contour release of v0.62.0 manages the Gateway API CRDs.
 		contourRelease := &releasev1.Release{
@@ -720,7 +731,7 @@ func Test_Helm_UpgradeRadius_WaitsForK3sOnce(t *testing.T) {
 			Return(&releasev1.Release{}, nil).Times(1)
 
 		var logs []string
-		impl := &Impl{
+		impl := withoutUCPAPIService(&Impl{
 			Helm:                           client,
 			configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 			contourCluster: &fakeContourCluster{
@@ -729,7 +740,7 @@ func Test_Helm_UpgradeRadius_WaitsForK3sOnce(t *testing.T) {
 				jobs:       map[string]helmControllerJob{"kube-system/helm-install-traefik-crd": {}},
 			},
 			logger: func(format string, v ...any) { logs = append(logs, fmt.Sprintf(format, v...)) },
-		}
+		})
 
 		start := time.Now()
 		upgrade, err := impl.CheckContourUpgrade(t.Context(), options, "test-context")
@@ -813,11 +824,11 @@ func Test_Helm_InstallRadius_WaitsForK3sTraefikCRDs(t *testing.T) {
 					// Nothing is installed.
 				}
 
-				impl := &Impl{
+				impl := withoutUCPAPIService(&Impl{
 					Helm:                           client,
 					configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 					contourCluster:                 cluster,
-				}
+				})
 				start := time.Now()
 				err := impl.InstallRadius(t.Context(), options, "test-context")
 
@@ -930,11 +941,11 @@ func Test_Helm_InstallRadius_ExistingContourRelease(t *testing.T) {
 				// The Contour release is neither read nor changed.
 			}
 
-			impl := &Impl{
+			impl := withoutUCPAPIService(&Impl{
 				Helm:                           client,
 				configureDefaultContourGateway: gatewayCalls.configure,
 				contourCluster:                 staticCRDs(contourBundleCRDs()...),
-			}
+			})
 			err := impl.InstallRadius(t.Context(), options, "test-context")
 			if tt.wantErr != "" {
 				require.True(t, clierrors.IsFriendlyError(err), "%v", err)
@@ -1023,6 +1034,7 @@ func recordHelmCalls(t *testing.T, options ClusterOptions, upgrade bool) []strin
 	var calls []string
 	contourRelease := &releasev1.Release{Name: contourReleaseName, Version: 1, Chart: newTestContourChart(), Info: &releasev1.Info{Status: releasecommon.StatusDeployed}}
 	client := NewMockHelmClient(gomock.NewController(t))
+	expectNoRadiusHistory(client)
 	client.EXPECT().RunHelmPull(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
 			pull := helm.NewPull(pullopts...)
@@ -1057,11 +1069,11 @@ func recordHelmCalls(t *testing.T, options ClusterOptions, upgrade bool) []strin
 			return &releasev1.Release{}, nil
 		}).AnyTimes()
 
-	impl := &Impl{
+	impl := withoutUCPAPIService(&Impl{
 		Helm:                           client,
 		configureDefaultContourGateway: (&defaultContourGatewayCalls{}).configure,
 		contourCluster:                 staticCRDs(),
-	}
+	})
 	if upgrade {
 		require.NoError(t, impl.UpgradeRadius(t.Context(), options, "test-context"))
 	} else {
