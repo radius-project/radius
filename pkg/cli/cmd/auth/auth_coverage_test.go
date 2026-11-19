@@ -369,6 +369,10 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 				{"anonymous principal", func(w map[string]any) { w["principal"].(map[string]any)["subject"] = "system:anonymous" }},
 				{"unauthenticated principal", func(w map[string]any) { w["principal"].(map[string]any)["subject"] = "system:unauthenticated" }},
 				{"null display name", func(w map[string]any) { w["principal"].(map[string]any)["displayName"] = nil }},
+				{"null display name with case variant", func(w map[string]any) {
+					principal := w["principal"].(map[string]any)
+					principal["displayName"], principal["displayname"] = nil, "Extension"
+				}},
 				{"empty issuer", func(w map[string]any) { w["principal"].(map[string]any)["issuer"] = "" }},
 				{"missing mode", func(w map[string]any) { delete(w, "mode") }},
 				{"invalid mode", func(w map[string]any) { w["mode"] = "unknown" }},
@@ -409,6 +413,11 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 					{"missing admin", func(w map[string]any) { delete(w, "isRadiusAdministrator") }},
 					{"missing groups", func(w map[string]any) { delete(w, "groups") }},
 					{"null group", func(w map[string]any) { w["groups"] = []any{nil} }},
+					{"null group display name", func(w map[string]any) { w["groups"].([]any)[0].(map[string]any)["displayName"] = nil }},
+					{"null group display name with case variant", func(w map[string]any) {
+						group := w["groups"].([]any)[0].(map[string]any)
+						group["displayName"], group["displayname"] = nil, "Extension"
+					}},
 					{"empty group", func(w map[string]any) { w["groups"] = []any{map[string]any{}} }},
 					{"wrong group type", func(w map[string]any) { w["groups"].([]any)[0].(map[string]any)["type"] = "user" }},
 				}...)
@@ -446,7 +455,7 @@ func TestInspectionCommandsRejectIncompleteResponses(t *testing.T) {
 func TestIdentityResponseWithoutWarnings(t *testing.T) {
 	for _, operation := range []string{"whoami", "status"} {
 		for _, format := range []string{"json", "table"} {
-			for _, optional := range []string{"omitted", "present"} {
+			for _, optional := range []string{"omitted", "present", "unknown casing"} {
 				t.Run(operation+"/"+format+"/"+optional, func(t *testing.T) {
 					identity, err := (&testClient{}).whoAmI(t.Context())
 					require.NoError(t, err)
@@ -461,6 +470,12 @@ func TestIdentityResponseWithoutWarnings(t *testing.T) {
 					if optional == "present" {
 						wire["warnings"] = []any{}
 						wire["principal"].(map[string]any)["displayName"] = "Worker"
+						wire["groups"].([]any)[0].(map[string]any)["displayName"] = "Developers"
+					}
+					if optional == "unknown casing" {
+						wire["Warnings"], wire["Principal"], wire["Groups"] = nil, nil, nil
+						wire["principal"].(map[string]any)["displayname"] = nil
+						wire["groups"].([]any)[0].(map[string]any)["displayname"] = nil
 					}
 					server, _ := inspectionHTTPServer(t, http.StatusOK, wire)
 					config := radcli.LoadConfigWithWorkspace(t)
