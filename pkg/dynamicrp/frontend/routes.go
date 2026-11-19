@@ -62,6 +62,7 @@ func (s *Service) registerRoutes(
 		ResponseConverter: converter.DynamicResourceDataModelToVersioned,
 		UpdateFilters: makeUpdateFilters(
 			defaultsFilter,
+			makeStatusFilter(),
 			makeValidationFilter(ucpClient),
 			encryptionFilter,
 		),

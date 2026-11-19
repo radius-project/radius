@@ -7,13 +7,13 @@
       "$ref": "types.json#/45"
     },
     "Radius.Data/postgreSqlDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/72"
+      "$ref": "types.json#/76"
     },
     "Radius.Data/redisCaches@2025-08-01-preview": {
-      "$ref": "types.json#/96"
+      "$ref": "types.json#/101"
     },
     "Radius.Data/sqlServerDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/115"
+      "$ref": "types.json#/120"
     }
   },
   "resourceFunctions": {},

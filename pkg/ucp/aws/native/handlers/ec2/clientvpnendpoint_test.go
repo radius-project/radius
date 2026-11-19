@@ -40,7 +40,7 @@ func Test_ClientVpnEndpoint_CreateWithPolicy(t *testing.T) {
 	id, err := h.Create(t.Context(), request)
 	require.NoError(t, err)
 	require.Equal(t, []string{"CreateClientVpnEndpoint", "ModifyClientVpnEndpointAuthorizationPolicy"}, api.calls)
-	require.Equal(t, id, api.tokens[clientVpnEndpointType+"/"+request.ClientToken], "the create sends the record's client token")
+	require.Equal(t, id, api.tokens[testRegion+"/"+request.ClientToken].made, "the create sends the record's client token")
 
 	again, err := h.Create(t.Context(), request)
 	require.NoError(t, err)
@@ -96,6 +96,10 @@ func Test_ClientVpnEndpoint_CreateWithPolicyToken(t *testing.T) {
 	require.Len(t, api.policies, 1)
 	require.NotEmpty(t, api.policies[0], "the policy call sends a token")
 	require.NotEqual(t, request.ClientToken, api.policies[0])
+	require.Equal(t, "ModifyClientVpnEndpointAuthorizationPolicy", api.tokens[testRegion+"/"+api.policies[0]].call,
+		"EC2 keeps the policy call's token for that call")
+	require.Equal(t, "ModifyClientVpnEndpointAuthorizationPolicy", api.tokens[testRegion+"/"+api.policies[0]].call,
+		"EC2 keeps the policy call's token for that call")
 
 	again, err := h.Create(t.Context(), request)
 	require.NoError(t, err, "a create sent again sends the same tokens")

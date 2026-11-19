@@ -124,6 +124,10 @@ var (
 
 // RecipeOutput represents recipe deployment output.
 type RecipeOutput struct {
+	// PendingDeploymentID identifies a Bicep deployment whose cleanup inventory could not be read.
+	// It is driver bookkeeping, not a template output.
+	PendingDeploymentID string `json:"-"`
+
 	// Resources represents the list of output resources deployed recipe.
 	Resources []string
 
@@ -131,6 +135,11 @@ type RecipeOutput struct {
 	// Recipe drivers set it when they can determine the provider-native ID. Recipe outputs can't set it.
 	// Use SetProviderResourceID and ProviderResourceID to access it.
 	ProviderResourceIDs map[string]string `json:"-"`
+
+	// UndeletedResources lists the resource IDs from the previous deployment that the driver tried and failed to
+	// delete after this deployment, so the caller keeps tracking them. Drivers set it with a
+	// RecipeGarbageCollectionFailed error. Recipe outputs can't set it.
+	UndeletedResources []string `json:"-"`
 
 	// Secrets represents the key/value pairs of secret values of the deployed resource.
 	Secrets map[string]any
