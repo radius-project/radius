@@ -155,9 +155,9 @@ func (c *stageCluster) addOffAPIService(t *testing.T, variant string) {
 	apiService := c.offAPIService(t)
 	switch variant {
 	case "stale annotation, ucp-ca only":
-		apiService.SetAnnotations(map[string]string{injectCAFromSecretAnnotation: ucpAPIServerCASource(RadiusSystemNamespace)})
+		setAnnotation(apiService, injectCAFromSecretAnnotation, ucpAPIServerCASource(RadiusSystemNamespace))
 	case "stale annotation, leftover CA merged":
-		apiService.SetAnnotations(map[string]string{injectCAFromSecretAnnotation: ucpAPIServerCASource(RadiusSystemNamespace)})
+		setAnnotation(apiService, injectCAFromSecretAnnotation, ucpAPIServerCASource(RadiusSystemNamespace))
 		bundle := append(append([]byte{}, c.ucpCA.pem...), c.apiServerCA.pem...)
 		require.NoError(t, unstructured.SetNestedField(apiService.Object, base64.StdEncoding.EncodeToString(bundle), "spec", "caBundle"))
 		// cert-manager keeps the Secret after the off release removes its Certificate.
@@ -169,7 +169,7 @@ func (c *stageCluster) addOffAPIService(t *testing.T, variant string) {
 // cainjectorCASource makes the APIService look like one cert-manager already maintains from radius-apiserver-ca.
 func (c *stageCluster) cainjectorAPIService() *unstructured.Unstructured {
 	apiService := ucpAPIService(base64.StdEncoding.EncodeToString(c.apiServerCA.pem), "True", "Passed")
-	apiService.SetAnnotations(map[string]string{injectCAFromSecretAnnotation: ucpAPIServerCASource(RadiusSystemNamespace)})
+	setAnnotation(apiService, injectCAFromSecretAnnotation, ucpAPIServerCASource(RadiusSystemNamespace))
 	return apiService
 }
 
@@ -719,6 +719,56 @@ func Test_UpgradeRadius_StagesUCPAPIServerCABeforeHelm(t *testing.T) {
 	}
 }
 
+// The APIService is cluster-scoped, so another Radius installation may own it. rad refuses to change it, or anything
+// else, before Helm in either direction unless the Radius release owns it and it routes to UCP in the Radius namespace.
+func Test_UpgradeRadius_RefusesForeignUCPAPIService(t *testing.T) {
+	foreign := map[string]func(*unstructured.Unstructured){
+		"other release namespace": func(o *unstructured.Unstructured) {
+			setAnnotation(o, helmReleaseNamespaceAnnotation, "other-radius")
+		},
+		"other release name": func(o *unstructured.Unstructured) { setAnnotation(o, helmReleaseNameAnnotation, "other") },
+		"not Helm managed":   func(o *unstructured.Unstructured) { o.SetLabels(nil) },
+		"other Service namespace": func(o *unstructured.Unstructured) {
+			require.NoError(t, unstructured.SetNestedField(o.Object, "other-radius", "spec", "service", "namespace"))
+		},
+	}
+	for name, mutate := range foreign {
+		for _, direction := range []string{"off to on", "on to off"} {
+			t.Run(direction+"/"+name, func(t *testing.T) {
+				shortenUCPAPIServiceWait(t)
+				deployed, setArgs := map[string]any{}, []string{"global.rbac.enabled=true"}
+				if direction == "on to off" {
+					deployed, setArgs = authzOnValues, []string{"global.rbac.enabled=false"}
+				}
+				u := newStageUpgrade(t, deployed, "upgrade")
+				c := newStageCluster(t, nil, true)
+				if direction == "on to off" {
+					c.onUCP(t)
+				} else {
+					c.addOffAPIService(t, offAPIServiceVariants[0])
+				}
+				apiService, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+				require.NoError(t, err)
+				mutate(apiService)
+				before, err := c.dynamic.Resource(apiServicesResource).Update(t.Context(), apiService, metav1.UpdateOptions{})
+				require.NoError(t, err)
+				deployment, _ := c.kube.AppsV1().Deployments(RadiusSystemNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})
+
+				err = u.run(t, c.impl(u.mock(t, 0, func() {})), setArgs)
+				require.ErrorContains(t, err, "APIService "+ucpAPIServiceName)
+				require.ErrorContains(t, err, "Helm has not changed Radius")
+				after, err := c.dynamic.Resource(apiServicesResource).Get(t.Context(), ucpAPIServiceName, metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, before, after)
+				requireNoTrustSecret(t, c.kube)
+				require.Empty(t, c.certManagerWrites())
+				unchanged, _ := c.kube.AppsV1().Deployments(RadiusSystemNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})
+				require.Equal(t, deployment, unchanged)
+			})
+		}
+	}
+}
+
 // (d): an upgrade that keeps authorization on, and a fresh install, have no earlier CA to overlap with, so rad stages
 // nothing before Helm.
 func Test_UpgradeRadius_DoesNotStageUCPAPIServerCA(t *testing.T) {
@@ -1196,4 +1246,19 @@ func Test_RollbackRadius_ChecksCertManager(t *testing.T) {
 	}
 	require.ErrorContains(t, impl.RollbackRadiusToRevision(t.Context(), "test-context", 1), "cert-manager is not installed")
 	c.requireNotStaged(t)
+}
+
+// trustUCPAPIServerCAs stops without patching when the APIService it checked was replaced.
+func Test_trustUCPAPIServerCAs_ReplacedAPIService(t *testing.T) {
+	shortenUCPAPIServiceWait(t)
+	ca := newTestCA(t, "ucp-ca")
+	replacement := ucpAPIService("", "", "")
+	replacement.SetUID("replacement")
+	dynamicClient := ucpAPIServiceDynamicClient(replacement).(*dynamicfake.FakeDynamicClient)
+
+	err := trustUCPAPIServerCAs(t.Context(), "test-context", dynamicClient, "checked", ucpAPIServerTrustSource(RadiusSystemNamespace), []*x509.Certificate{ca.cert}, "ucp-ca")
+	require.ErrorContains(t, err, "was replaced")
+	for _, action := range dynamicClient.Actions() {
+		require.Equal(t, "get", action.GetVerb())
+	}
 }
