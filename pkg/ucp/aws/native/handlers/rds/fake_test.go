@@ -56,7 +56,8 @@ const (
 	maxTags = 50
 )
 
-// fakeAPI is an in-memory RDS API for activity streams and tenant databases. It keeps them in an awsfake store, in
+// fakeAPI is an in-memory RDS API for activity streams and tenant databases. After a tenant database changes, its
+// instance is backing-up for one read of DescribeDBInstances, as RDS backs it up after each change. It keeps them in an awsfake store, in
 // their types' property format, so the suite's Cloud Control sees the same resources: a stream under its cluster's ARN
 // in lowercase while it is starting, started, or stopping, and a tenant database under its identifier. A stream or a
 // tenant database reports a starting, creating, modifying, stopping, or deleting status for one read before it
@@ -73,6 +74,9 @@ type fakeAPI struct {
 	// pendingPassword holds the tenant databases whose new password is pending for one read.
 	pendingPassword map[string]bool
 
+	// makingSecret holds the tenant databases whose secret RDS is still making for one read after they are available.
+	makingSecret map[string]bool
+
 	// waiting maps a cluster's ARN, in lowercase, to the stream call a call without ApplyImmediately left for the
 	// cluster's next maintenance window.
 	waiting map[string]string
@@ -86,7 +90,7 @@ type fakeAPI struct {
 var _ API = (*fakeAPI)(nil)
 
 func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
-	return &fakeAPI{store: store, status: map[string]string{}, pendingPassword: map[string]bool{}, waiting: map[string]string{}, errs: map[string]error{}}
+	return &fakeAPI{store: store, status: map[string]string{}, pendingPassword: map[string]bool{}, makingSecret: map[string]bool{}, waiting: map[string]string{}, errs: map[string]error{}}
 }
 
 func fault(code string) error {
@@ -345,6 +349,34 @@ func (f *fakeAPI) StopActivityStream(ctx context.Context, in *rds.StopActivitySt
 	}, nil
 }
 
+// backUp sets the instance of a tenant database that changed to backing-up, until the next DescribeDBInstances.
+func (f *fakeAPI) backUp(instance map[string]any) {
+	instance["Status"] = "backing-up"
+	f.store.Put(instanceType, awsapi.String(instance, "DBInstanceIdentifier"), instance)
+}
+
+func (f *fakeAPI) DescribeDBInstances(ctx context.Context, in *rds.DescribeDBInstancesInput, _ ...func(*rds.Options)) (*rds.DescribeDBInstancesOutput, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if err := f.errs["DescribeDBInstances"]; err != nil {
+		return nil, err
+	}
+	instance, ok := f.instance(aws.ToString(in.DBInstanceIdentifier))
+	if !ok {
+		return nil, fault("DBInstanceNotFound")
+	}
+	status := awsapi.String(instance, "Status")
+	if status == "backing-up" {
+		instance["Status"] = "available"
+		f.store.Put(instanceType, awsapi.String(instance, "DBInstanceIdentifier"), instance)
+	}
+	return &rds.DescribeDBInstancesOutput{DBInstances: []types.DBInstance{{
+		DBInstanceIdentifier: aws.String(awsapi.String(instance, "DBInstanceIdentifier")),
+		DbiResourceId:        aws.String(awsapi.String(instance, "DbiResourceId")),
+		DBInstanceStatus:     aws.String(status),
+	}}}, nil
+}
+
 func (f *fakeAPI) instance(identifier string) (map[string]any, bool) {
 	for _, id := range f.store.List(instanceType) {
 		if strings.EqualFold(id, identifier) {
@@ -428,7 +460,7 @@ func (f *fakeAPI) tenantOf(key string, t map[string]any, status string) types.Te
 	if secret, ok := t["MasterUserSecret"].(map[string]any); ok {
 		out.MasterUserSecret = &types.MasterUserSecret{
 			SecretArn:    aws.String(awsapi.String(secret, "SecretArn")),
-			SecretStatus: aws.String(awsapi.String(secret, "SecretStatus")),
+			SecretStatus: aws.String(map[bool]string{true: "creating", false: awsapi.String(secret, "SecretStatus")}[f.makingSecret[key]]),
 			KmsKeyId:     aws.String(awsapi.String(secret, "KmsKeyId")),
 		}
 	}
@@ -512,6 +544,10 @@ func (f *fakeAPI) CreateTenantDatabase(ctx context.Context, in *rds.CreateTenant
 	err = f.change(func() error {
 		f.store.Put(tenantDatabaseType, key, t)
 		f.status[key] = "creating"
+		if aws.ToBool(in.ManageMasterUserPassword) {
+			f.makingSecret[key] = true
+		}
+		f.backUp(instance)
 		return nil
 	})
 	if err != nil {
@@ -558,6 +594,9 @@ func (f *fakeAPI) DescribeTenantDatabases(ctx context.Context, in *rds.DescribeT
 		}
 		out.TenantDatabases = append(out.TenantDatabases, f.tenantOf(key, t, status))
 		delete(f.pendingPassword, key)
+		if status == "available" {
+			delete(f.makingSecret, key)
+		}
 	}
 	if end < len(keys) {
 		out.Marker = aws.String(strconv.Itoa(end))
@@ -606,10 +645,17 @@ func (f *fakeAPI) ModifyTenantDatabase(ctx context.Context, in *rds.ModifyTenant
 	}
 	err = f.change(func() error {
 		f.store.Put(tenantDatabaseType, key, changed)
-		f.status[key] = "modifying"
+		if turningOn {
+			// RDS reports the tenant database available, with nothing pending, until it starts resetting the
+			// credentials, but the secret isn't active yet.
+			f.makingSecret[key] = true
+		} else {
+			f.status[key] = "modifying"
+		}
 		if in.MasterUserPassword != nil {
 			f.pendingPassword[key] = true
 		}
+		f.backUp(instance)
 		return nil
 	})
 	if err != nil {
@@ -652,10 +698,10 @@ func (f *fakeAPI) DeleteTenantDatabase(ctx context.Context, in *rds.DeleteTenant
 	}
 	status := f.status[key]
 	available := awsapi.String(instance, "Status") == "available" && f.tenantAvailable(key)
-	switch {
-	case f.tenantCount(instance) <= 1,
-		status == "deleting" || status == "deleted-next",
-		!skip && !available:
+	if f.tenantCount(instance) <= 1 {
+		return nil, fault("InvalidParameterCombination")
+	}
+	if status == "deleting" || status == "deleted-next" || (!skip && !available) {
 		return nil, fault("InvalidDBInstanceState")
 	}
 	err = f.change(func() error {
@@ -663,6 +709,7 @@ func (f *fakeAPI) DeleteTenantDatabase(ctx context.Context, in *rds.DeleteTenant
 			f.snapshots = append(f.snapshots, snapshot)
 		}
 		f.status[key] = "deleting"
+		f.backUp(instance)
 		return nil
 	})
 	if err != nil {

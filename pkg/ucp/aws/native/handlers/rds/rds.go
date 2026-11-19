@@ -32,6 +32,7 @@ type API interface {
 	DescribeDBClusters(ctx context.Context, params *rds.DescribeDBClustersInput, optFns ...func(*rds.Options)) (*rds.DescribeDBClustersOutput, error)
 	StartActivityStream(ctx context.Context, params *rds.StartActivityStreamInput, optFns ...func(*rds.Options)) (*rds.StartActivityStreamOutput, error)
 	StopActivityStream(ctx context.Context, params *rds.StopActivityStreamInput, optFns ...func(*rds.Options)) (*rds.StopActivityStreamOutput, error)
+	DescribeDBInstances(ctx context.Context, params *rds.DescribeDBInstancesInput, optFns ...func(*rds.Options)) (*rds.DescribeDBInstancesOutput, error)
 	CreateTenantDatabase(ctx context.Context, params *rds.CreateTenantDatabaseInput, optFns ...func(*rds.Options)) (*rds.CreateTenantDatabaseOutput, error)
 	DescribeTenantDatabases(ctx context.Context, params *rds.DescribeTenantDatabasesInput, optFns ...func(*rds.Options)) (*rds.DescribeTenantDatabasesOutput, error)
 	ModifyTenantDatabase(ctx context.Context, params *rds.ModifyTenantDatabaseInput, optFns ...func(*rds.Options)) (*rds.ModifyTenantDatabaseOutput, error)

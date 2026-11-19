@@ -167,7 +167,7 @@ func (h *ActivityStream) Create(ctx context.Context, request native.CreateReques
 		ApplyImmediately: aws.Bool(true),
 	}, inRegion(request.Region))
 	if err != nil {
-		return "", err
+		return "", awsapi.Rejected(err)
 	}
 	return identifier, nil
 }
@@ -206,7 +206,7 @@ func (h *ActivityStream) Reset(ctx context.Context, region string, identifier st
 			return stopErr
 		}
 	}
-	return awsapi.NotFound(err, "DBClusterNotFoundFault")
+	return awsapi.Rejected(awsapi.NotFound(err, "DBClusterNotFoundFault"))
 }
 
 // stopped reports whether the cluster's stream needs no stop call: AWS is stopping it or deleting the cluster, or it

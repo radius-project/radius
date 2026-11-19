@@ -17,11 +17,15 @@ limitations under the License.
 package rds
 
 import (
+	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/stretchr/testify/require"
 
+	"github.com/radius-project/radius/pkg/ucp/aws/native"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/awsreplay"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
@@ -55,6 +59,7 @@ func Test_Replay_TenantDatabase(t *testing.T) {
 	s.Scrub(password, newPassword)
 
 	h := NewTenantDatabase(rds.NewFromConfig(s.Config(t.Context())))
+	h.sleep = func(ctx context.Context, d time.Duration) error { s.Wait(d); return ctx.Err() }
 	if !s.Recording() {
 		// The time the cassette was written. A recording keeps the real clock, so each run's final snapshot gets
 		// its own name.
@@ -76,4 +81,45 @@ func Test_Replay_TenantDatabase(t *testing.T) {
 		WantUpdated: with(properties, map[string]any{"MasterUserPassword": nil, "Tags": tags("radius-recording", run, "team", "a")}),
 		Poll:        time.Minute,
 	}.Run(t)
+}
+
+// Test_Replay_Errors checks how the handlers report RDS's errors, which the SDK reads without a fault when RDS's model
+// doesn't list them, such as InvalidParameterValue: a 4xx is a call RDS rejected and applied none of, and a 5xx
+// leaves the outcome unknown.
+func Test_Replay_Errors(t *testing.T) {
+	if awsreplay.Recording() {
+		t.Skip("the cassette is written by hand from RDS's error responses; recording it needs invalid requests to AWS")
+	}
+	s := awsreplay.New(t, "testdata/errors.json")
+	api := rds.NewFromConfig(s.Config(t.Context()))
+	tenants, streams := newTenantHandler(api), NewActivityStream(api)
+	properties := map[string]any{
+		"DBInstanceIdentifier": s.Input("RADIUS_REC_ORACLE_CDB_INSTANCE"),
+		"TenantDBName":         "pdbrec",
+		"MasterUsername":       "admin",
+		"MasterUserPassword":   "Abc@12345678",
+	}
+
+	_, err := tenants.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: properties})
+	requireRejected(t, err, "InvalidParameterValue")
+
+	_, err = tenants.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: properties})
+	var failure *native.Failure
+	require.Error(t, err)
+	require.False(t, errors.As(err, &failure), "a server error leaves the outcome unknown")
+
+	_, err = streams.Create(t.Context(), native.CreateRequest{Region: awsreplay.Region, Properties: map[string]any{
+		"ResourceArn": s.Input("RADIUS_REC_AURORA_CLUSTER_ARN"), "Mode": "async", "KmsKeyId": keyID,
+	}})
+	requireRejected(t, err, "KMSKeyNotAccessibleFault")
+}
+
+// requireRejected requires err to be a client failure RDS applied none of, naming code.
+func requireRejected(t *testing.T, err error, code string) {
+	t.Helper()
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.ClientError)
+	require.Equal(t, native.OutcomeRejected, failure.Outcome)
+	require.Contains(t, failure.Message, code)
 }

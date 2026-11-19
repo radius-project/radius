@@ -42,7 +42,7 @@ func newTenant(t *testing.T, properties map[string]any) (*TenantDatabase, *fakeA
 	store := awsfake.NewCloudControl()
 	addInstance(store, "app-cdb")
 	api := newFakeAPI(store)
-	h := NewTenantDatabase(api)
+	h := newTenantHandler(api)
 	id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: properties})
 	require.NoError(t, err)
 	require.Equal(t, tenantID, id)
@@ -281,6 +281,9 @@ func Test_TenantDatabase_Delete(t *testing.T) {
 		progress, err := h.Progress(t.Context(), region, tenantID, native.OperationDelete)
 		require.NoError(t, err)
 		require.Equal(t, native.Progress{State: "deleting", Waiting: "deleted"}, progress)
+		progress, err = h.Progress(t.Context(), region, tenantID, native.OperationDelete)
+		require.NoError(t, err)
+		require.Equal(t, native.Progress{State: "instance backing-up", Waiting: "instance available"}, progress, "the tenant database is gone, but the instance is still busy")
 		_, err = h.Progress(t.Context(), region, tenantID, native.OperationDelete)
 		require.ErrorIs(t, err, native.ErrNotFound)
 		require.ErrorIs(t, h.Delete(t.Context(), region, tenantID), native.ErrNotFound)
@@ -306,14 +309,16 @@ func Test_TenantDatabase_Delete(t *testing.T) {
 		instance := api.store.Resource(instanceType, "app-cdb")
 		instance["InitialTenants"] = 0
 		api.store.Put(instanceType, "app-cdb", instance)
-		require.ErrorContains(t, h.Delete(t.Context(), region, tenantID), "InvalidDBInstanceState")
+		require.ErrorContains(t, h.Delete(t.Context(), region, tenantID), "InvalidParameterCombination")
 		require.Empty(t, api.snapshots)
 	})
 
 	t.Run("a final snapshot needs the tenant database available", func(t *testing.T) {
 		h, api := newTenant(t, tenant)
 		api.status[tenantID] = "backing-up"
-		require.ErrorContains(t, h.Delete(t.Context(), region, tenantID), "InvalidDBInstanceState")
+		err := h.Delete(t.Context(), region, tenantID)
+		requireRejected(t, err, "InvalidDBInstanceState")
+		require.Contains(t, err.Error(), "after 10m0s")
 		require.Empty(t, api.snapshots)
 	})
 }
@@ -340,6 +345,8 @@ func Test_TenantDatabase_List(t *testing.T) {
 	for _, name := range []string{"pdb2", "pdb3"} {
 		_, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(tenant, map[string]any{"DBInstanceIdentifier": "other-cdb", "TenantDBName": name})})
 		require.NoError(t, err)
+		_, err = api.DescribeDBInstances(t.Context(), &rds.DescribeDBInstancesInput{DBInstanceIdentifier: aws.String("other-cdb")})
+		require.NoError(t, err, "RDS changes one tenant database of an instance at a time")
 	}
 	resources, err := h.List(t.Context(), region)
 	require.NoError(t, err)
@@ -366,10 +373,15 @@ func Test_TenantDatabase_Progress(t *testing.T) {
 	require.Equal(t, native.Progress{State: "modifying", Waiting: "available"}, progress, "a pending password isn't applied yet")
 	progress, err = h.Progress(t.Context(), region, tenantID, native.OperationUpdate)
 	require.NoError(t, err)
+	require.Equal(t, native.Progress{State: "instance backing-up", Waiting: "instance available"}, progress, "the instance is still busy")
+	progress, err = h.Progress(t.Context(), region, tenantID, native.OperationUpdate)
+	require.NoError(t, err)
 	require.True(t, progress.Done)
 
-	require.False(t, pending(nil))
-	require.True(t, pending(&types.TenantDatabasePendingModifiedValues{TenantDBName: aws.String("pdb2")}))
+	require.False(t, pending(&types.TenantDatabase{}))
+	require.True(t, pending(&types.TenantDatabase{PendingModifiedValues: &types.TenantDatabasePendingModifiedValues{TenantDBName: aws.String("pdb2")}}))
+	require.True(t, pending(&types.TenantDatabase{MasterUserSecret: &types.MasterUserSecret{SecretStatus: aws.String("creating")}}), "a secret RDS is making isn't applied yet")
+	require.False(t, pending(&types.TenantDatabase{MasterUserSecret: &types.MasterUserSecret{SecretStatus: aws.String("Active")}}))
 }
 
 func Test_TenantDatabase_Errors(t *testing.T) {
@@ -398,4 +410,132 @@ type deleteGone struct {
 func (d deleteGone) DeleteTenantDatabase(ctx context.Context, in *rds.DeleteTenantDatabaseInput, opts ...func(*rds.Options)) (*rds.DeleteTenantDatabaseOutput, error) {
 	d.store.store.Remove(tenantDatabaseType, tenantID)
 	return d.API.DeleteTenantDatabase(ctx, in, opts...)
+}
+
+func Test_TenantDatabase_ProgressSecret(t *testing.T) {
+	h, api := newTenant(t, tenant)
+	rec := &recordingAPI{API: api}
+	h.api = rec
+	require.NoError(t, h.Update(t.Context(), native.UpdateRequest{
+		Region: region, Identifier: tenantID,
+		Desired: with(tenant, map[string]any{"MasterUserPassword": nil, "ManageMasterUserPassword": true}),
+		Patch:   jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/ManageMasterUserPassword", Value: true}},
+	}))
+	progress, err := h.Progress(t.Context(), region, tenantID, native.OperationUpdate)
+	require.NoError(t, err)
+	require.Equal(t, native.Progress{State: "available", Waiting: "available"}, progress, "RDS reports the tenant database available while it still makes the secret")
+	waitTenant(t, h, native.OperationUpdate)
+	properties, err := h.Read(t.Context(), region, tenantID)
+	require.NoError(t, err)
+	require.Equal(t, "active", properties["MasterUserSecret"].(map[string]any)["SecretStatus"])
+}
+
+func Test_TenantDatabase_instanceBusy(t *testing.T) {
+	for status, busy := range map[string]bool{
+		"available": false, "Available": false, "backing-up": true, "modifying": true, "rebooting": true,
+		"a-status-rds-adds-later": true, "stopped": false, "deleting": false, "storage-full": false,
+		"incompatible-parameters": false, "inaccessible-encryption-credentials": false, "failed": false,
+	} {
+		require.Equal(t, busy, instanceBusy(status), status)
+	}
+}
+
+func Test_TenantDatabase_InstanceGoneOrUnreadable(t *testing.T) {
+	h, api := newTenant(t, tenant)
+	api.errs["DescribeDBInstances"] = fault("ThrottlingException")
+	_, err := h.Progress(t.Context(), region, tenantID, native.OperationCreate)
+	require.ErrorContains(t, err, "ThrottlingException", "UCP reads again rather than finish while it can't tell")
+
+	api.errs["DescribeDBInstances"] = fault("DBInstanceNotFound")
+	progress, err := h.Progress(t.Context(), region, tenantID, native.OperationCreate)
+	require.NoError(t, err)
+	require.True(t, progress.Done)
+
+	_, err = h.instanceProgress(t.Context(), region, "app-cdb", nil)
+	require.Error(t, err, "an identifier without a tenant database name is rejected")
+}
+
+func Test_TenantDatabase_WhenInstanceFree(t *testing.T) {
+	busy := func(api *fakeAPI, status string) {
+		instance := api.store.Resource(instanceType, "app-cdb")
+		instance["Status"] = status
+		api.store.Put(instanceType, "app-cdb", instance)
+	}
+	second := native.CreateRequest{Region: region, Properties: with(tenant, map[string]any{"TenantDBName": "pdb2"})}
+
+	t.Run("two tenant databases on one instance both deploy", func(t *testing.T) {
+		h, _ := newTenant(t, tenant)
+		_, err := h.Create(t.Context(), second)
+		require.NoError(t, err)
+		_, err = h.Create(t.Context(), native.CreateRequest{Region: region, Properties: with(tenant, map[string]any{"TenantDBName": "pdb3"})})
+		require.NoError(t, err, "the second create waits until RDS finished backing up the instance after the first")
+	})
+
+	t.Run("a call RDS rejects while the instance reads available is sent again", func(t *testing.T) {
+		h, api := newTenant(t, tenant)
+		rejects := 2
+		h.api = busyOnce{API: api, rejects: &rejects}
+		_, err := h.Create(t.Context(), second)
+		require.NoError(t, err)
+		require.Zero(t, rejects)
+	})
+
+	t.Run("an instance that won't be available fails at once", func(t *testing.T) {
+		h, api := newTenant(t, tenant)
+		busy(api, "stopped")
+		start := h.now()
+		_, err := h.Create(t.Context(), second)
+		require.ErrorContains(t, err, "InvalidDBInstanceState", "RDS's error reaches the user")
+		require.Equal(t, start, h.now(), "nothing waits for a stopped instance")
+	})
+
+	t.Run("a busy instance fails at the limit, and nothing is sent", func(t *testing.T) {
+		h, api := newTenant(t, tenant)
+		busy(api, "modifying")
+		api.errs["CreateTenantDatabase"] = fmt.Errorf("unexpected call")
+		_, err := h.Create(t.Context(), second)
+		requireRejected(t, err, "the instance is modifying")
+	})
+
+	t.Run("a stopped request sends nothing", func(t *testing.T) {
+		h, api := newTenant(t, tenant)
+		busy(api, "modifying")
+		api.errs["CreateTenantDatabase"] = fmt.Errorf("unexpected call")
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		_, err := h.Create(ctx, second)
+		require.ErrorIs(t, err, context.Canceled)
+	})
+
+	t.Run("an instance that is gone or unreadable fails", func(t *testing.T) {
+		h, api := newTenant(t, tenant)
+		api.errs["DescribeDBInstances"] = fault("ThrottlingException")
+		_, err := h.Create(t.Context(), second)
+		require.ErrorContains(t, err, "ThrottlingException")
+		api.errs["DescribeDBInstances"] = fault("DBInstanceNotFound")
+		_, err = h.Create(t.Context(), second)
+		require.ErrorIs(t, err, native.ErrNotFound)
+	})
+
+	t.Run("sleep stops with the context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		require.ErrorIs(t, sleep(ctx, time.Hour), context.Canceled)
+		require.NoError(t, sleep(t.Context(), time.Nanosecond))
+	})
+}
+
+// busyOnce rejects the next rejects calls of CreateTenantDatabase with InvalidDBInstanceState, as RDS does when
+// another change starts between the handler's read of the instance and its call.
+type busyOnce struct {
+	API
+	rejects *int
+}
+
+func (b busyOnce) CreateTenantDatabase(ctx context.Context, in *rds.CreateTenantDatabaseInput, opts ...func(*rds.Options)) (*rds.CreateTenantDatabaseOutput, error) {
+	if *b.rejects > 0 {
+		*b.rejects--
+		return nil, fault("InvalidDBInstanceState")
+	}
+	return b.API.CreateTenantDatabase(ctx, in, opts...)
 }

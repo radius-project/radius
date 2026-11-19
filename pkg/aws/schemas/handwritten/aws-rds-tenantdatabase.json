@@ -1,6 +1,6 @@
 {
   "typeName": "AWS::RDS::TenantDatabase",
-  "description": "A tenant database (PDB) in an RDS for Oracle container database (CDB) instance that uses the multi-tenant configuration. Deleting it takes a final DB snapshot of the instance, which Radius never deletes.",
+  "description": "A tenant database (PDB) in an RDS for Oracle container database (CDB) instance that uses the multi-tenant configuration. RDS changes one tenant database of an instance at a time, so a deploy waits up to 10 minutes for the instance to be free. Deleting it takes a final DB snapshot of the instance, which Radius never deletes.",
   "additionalProperties": false,
   "definitions": {
     "Tag": {
@@ -136,6 +136,7 @@
     "create": {
       "permissions": [
         "rds:AddTagsToResource",
+        "rds:DescribeDBInstances",
         "rds:CreateTenantDatabase",
         "rds:DescribeTenantDatabases",
         "kms:CreateGrant",
@@ -153,6 +154,7 @@
       "permissions": [
         "rds:AddTagsToResource",
         "rds:DescribeTenantDatabases",
+        "rds:DescribeDBInstances",
         "rds:ModifyTenantDatabase",
         "rds:RemoveTagsFromResource",
         "kms:CreateGrant",
@@ -166,6 +168,7 @@
     "delete": {
       "permissions": [
         "rds:CreateDBSnapshot",
+        "rds:DescribeDBInstances",
         "rds:DeleteTenantDatabase",
         "rds:DescribeTenantDatabases"
       ]

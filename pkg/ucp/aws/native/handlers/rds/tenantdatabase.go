@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -49,13 +50,77 @@ var (
 type TenantDatabase struct {
 	api API
 
-	// now returns the current time, for the name of the final snapshot.
+	// now returns the current time, for the name of the final snapshot and how long to wait for the instance.
 	now func() time.Time
+
+	// sleep waits for d, or until ctx ends.
+	sleep func(ctx context.Context, d time.Duration) error
 }
 
 // NewTenantDatabase returns the handler for RDS for Oracle tenant databases.
 func NewTenantDatabase(api API) *TenantDatabase {
-	return &TenantDatabase{api: api, now: time.Now}
+	return &TenantDatabase{api: api, now: time.Now, sleep: sleep}
+}
+
+func sleep(ctx context.Context, d time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(d):
+		return nil
+	}
+}
+
+const (
+	// instanceWait is how long a create, update, or delete waits for the tenant database's instance to be free
+	// before it fails. RDS changes one tenant database of an instance at a time and backs the instance up after each,
+	// which took about 2.5 minutes in a review against AWS.
+	instanceWait = 10 * time.Minute
+
+	// firstPoll and maxPoll are how long it waits between reads of the instance: firstPoll, doubled up to maxPoll.
+	firstPoll = 5 * time.Second
+	maxPoll   = 30 * time.Second
+)
+
+// whenInstanceFree makes call, a create, update, or delete of a tenant database of instance, once the instance is
+// free. RDS rejects such a call with InvalidDBInstanceState while it changes another tenant database of the instance,
+// so two tenant databases a template deploys together both succeed. While the instance is busy, or call is rejected
+// that way while the instance reads as available, it waits and tries again, up to instanceWait, and then fails with a
+// rejected client failure. An instance that won't be available without someone acting, such as a stopped one, gets
+// call's error at once. A stop of ctx sends nothing more.
+func (h *TenantDatabase) whenInstanceFree(ctx context.Context, region string, instance string, call func() error) error {
+	deadline := h.now().Add(instanceWait)
+	poll := firstPoll
+	last := ""
+	for {
+		out, err := h.api.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{DBInstanceIdentifier: aws.String(instance)}, inRegion(region))
+		if err != nil {
+			return awsapi.NotFound(err, "DBInstanceNotFound")
+		}
+		status := ""
+		if len(out.DBInstances) > 0 {
+			status = aws.ToString(out.DBInstances[0].DBInstanceStatus)
+		}
+		last = "the instance is " + status
+		if !instanceBusy(status) {
+			err := call()
+			if !awsapi.HasCode(err, "InvalidDBInstanceState") || !strings.EqualFold(status, "available") {
+				return err
+			}
+			last = "RDS returned " + err.Error()
+		}
+		if !h.now().Add(poll).Before(deadline) {
+			return &native.Failure{
+				Message:     fmt.Sprintf("RDS can't change the tenant database while the DB instance %q or the tenant database is busy, and after %s %s. Deploy again once both are available.", instance, instanceWait, last),
+				ClientError: true,
+				Outcome:     native.OutcomeRejected,
+			}
+		}
+		if err := h.sleep(ctx, poll); err != nil {
+			return err
+		}
+		poll = min(poll*2, maxPoll)
+	}
 }
 
 // TypeName returns AWS::RDS::TenantDatabase.
@@ -174,8 +239,12 @@ func (h *TenantDatabase) Create(ctx context.Context, request native.CreateReques
 	if tags := awsapi.Tags(request.Properties); len(tags) > 0 {
 		input.Tags = awsapi.SDKTags[types.Tag](tags)
 	}
-	if _, err := h.api.CreateTenantDatabase(ctx, input, inRegion(request.Region)); err != nil {
-		return "", err
+	err := h.whenInstanceFree(ctx, request.Region, aws.ToString(input.DBInstanceIdentifier), func() error {
+		_, err := h.api.CreateTenantDatabase(ctx, input, inRegion(request.Region))
+		return err
+	})
+	if err != nil {
+		return "", awsapi.Rejected(err)
 	}
 	return identifier, nil
 }
@@ -209,8 +278,10 @@ func (h *TenantDatabase) Update(ctx context.Context, request native.UpdateReques
 	if input != nil {
 		input.DBInstanceIdentifier, input.TenantDBName = tenant.DBInstanceIdentifier, tenant.TenantDBName
 		calls = append(calls, func() error {
-			_, err := h.api.ModifyTenantDatabase(ctx, input, opt)
-			return err
+			return h.whenInstanceFree(ctx, request.Region, aws.ToString(tenant.DBInstanceIdentifier), func() error {
+				_, err := h.api.ModifyTenantDatabase(ctx, input, opt)
+				return err
+			})
 		})
 	}
 	if slices.Contains(changed, "Tags") {
@@ -230,7 +301,7 @@ func (h *TenantDatabase) Update(ctx context.Context, request native.UpdateReques
 			})
 		}
 	}
-	return awsapi.Calls(calls...)
+	return awsapi.Rejected(awsapi.Calls(calls...))
 }
 
 // modifyInput returns the ModifyTenantDatabase input for the changed properties, or nil when none needs the call.
@@ -332,21 +403,26 @@ func (h *TenantDatabase) DeleteWithToken(ctx context.Context, region string, ide
 	if deleting(tenant) {
 		return nil
 	}
-	_, err = h.api.DeleteTenantDatabase(ctx, &rds.DeleteTenantDatabaseInput{
-		DBInstanceIdentifier:      tenant.DBInstanceIdentifier,
-		TenantDBName:              tenant.TenantDBName,
-		FinalDBSnapshotIdentifier: aws.String(token),
-	}, inRegion(region))
-	if awsapi.HasCode(err, "InvalidDBInstanceState") {
-		tenant, describeErr := h.describe(ctx, region, identifier)
-		if describeErr != nil {
-			return describeErr
+	err = h.whenInstanceFree(ctx, region, aws.ToString(tenant.DBInstanceIdentifier), func() error {
+		_, err := h.api.DeleteTenantDatabase(ctx, &rds.DeleteTenantDatabaseInput{
+			DBInstanceIdentifier:      tenant.DBInstanceIdentifier,
+			TenantDBName:              tenant.TenantDBName,
+			FinalDBSnapshotIdentifier: aws.String(token),
+		}, inRegion(region))
+		if !awsapi.HasCode(err, "InvalidDBInstanceState") {
+			return err
 		}
-		if deleting(tenant) {
+		// A delete may have started since the read, such as a retry of this one.
+		current, describeErr := h.describe(ctx, region, identifier)
+		switch {
+		case describeErr != nil:
+			return describeErr
+		case deleting(current):
 			return nil
 		}
-	}
-	return awsapi.NotFound(err, "DBInstanceNotFound", "TenantDatabaseNotFound")
+		return err
+	})
+	return awsapi.Rejected(awsapi.NotFound(err, "DBInstanceNotFound", "TenantDatabaseNotFound"))
 }
 
 func deleting(t *types.TenantDatabase) bool {
@@ -373,10 +449,15 @@ func (h *TenantDatabase) List(ctx context.Context, region string) ([]native.Reso
 	}
 }
 
-// Progress reads the tenant database's status. A create or update waits until it is available and has no pending
-// changes, such as a new master user password, and a delete until it is gone.
+// Progress reads the tenant database's status. A create or update waits until it is available, has no pending
+// changes, such as a new master user password, and has no secret RDS is still making, and a delete until it is gone.
+// RDS changes one tenant database of an instance at a time, and backs the instance up after a change, so each then
+// also waits until the instance is free for the next change (see instanceBusy).
 func (h *TenantDatabase) Progress(ctx context.Context, region string, identifier string, op native.Operation) (native.Progress, error) {
 	tenant, err := h.describe(ctx, region, identifier)
+	if op == native.OperationDelete && errors.Is(err, native.ErrNotFound) {
+		return h.instanceProgress(ctx, region, identifier, err)
+	}
 	if err != nil {
 		return native.Progress{}, err
 	}
@@ -384,12 +465,61 @@ func (h *TenantDatabase) Progress(ctx context.Context, region string, identifier
 	if op == native.OperationDelete {
 		return native.Progress{State: status, Waiting: "deleted"}, nil
 	}
-	if strings.EqualFold(status, "available") && !pending(tenant.PendingModifiedValues) {
-		return native.Progress{Done: true, State: status}, nil
+	if !strings.EqualFold(status, "available") || pending(tenant) {
+		return native.Progress{State: status, Waiting: "available"}, nil
 	}
-	return native.Progress{State: status, Waiting: "available"}, nil
+	return h.instanceProgress(ctx, region, identifier, nil)
 }
 
-func pending(p *types.TenantDatabasePendingModifiedValues) bool {
-	return p != nil && (p.MasterUserPassword != nil || p.TenantDBName != nil)
+// instanceProgress returns the progress of an operation whose tenant database is done, which done is returned as:
+// nil, or ErrNotFound for a delete. It waits while the tenant database's instance is busy, and returns done once the
+// instance is free or gone.
+func (h *TenantDatabase) instanceProgress(ctx context.Context, region string, identifier string, done error) (native.Progress, error) {
+	instance, _, err := splitTenant(identifier)
+	if err != nil {
+		return native.Progress{}, err
+	}
+	out, err := h.api.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{DBInstanceIdentifier: aws.String(instance)}, inRegion(region))
+	if err != nil && !awsapi.HasCode(err, "DBInstanceNotFound") {
+		return native.Progress{}, err
+	}
+	if err == nil && len(out.DBInstances) > 0 {
+		if status := aws.ToString(out.DBInstances[0].DBInstanceStatus); instanceBusy(status) {
+			return native.Progress{State: "instance " + status, Waiting: "instance available"}, nil
+		}
+	}
+	if done != nil {
+		return native.Progress{}, done
+	}
+	return native.Progress{Done: true, State: "available"}, nil
+}
+
+// settledInstanceStates are the statuses of a DB instance that won't become available without someone acting, or
+// that end with the instance gone, so waiting for them can't help.
+var settledInstanceStates = []string{"deleting", "delete-precheck", "failed", "restore-error", "stopped", "storage-full"}
+
+// instanceBusy reports whether an instance with status is changing and will be available again, such as backing-up
+// after a tenant database change. Any status but available and the settled ones counts, so a status RDS adds later is
+// waited for rather than ignored.
+func instanceBusy(status string) bool {
+	status = strings.ToLower(status)
+	if status == "available" || slices.Contains(settledInstanceStates, status) {
+		return false
+	}
+	for _, prefix := range []string{"inaccessible-", "incompatible-", "insufficient-"} {
+		if strings.HasPrefix(status, prefix) {
+			return false
+		}
+	}
+	return true
+}
+
+// pending reports whether RDS hasn't applied a change to the tenant database yet: a new password or name it lists as
+// pending, or a secret for the password it is still making. Turning on Secrets Manager management lists nothing as
+// pending until RDS starts resetting the credentials, but the secret isn't active until it is done.
+func pending(t *types.TenantDatabase) bool {
+	if p := t.PendingModifiedValues; p != nil && (p.MasterUserPassword != nil || p.TenantDBName != nil) {
+		return true
+	}
+	return t.MasterUserSecret != nil && !strings.EqualFold(aws.ToString(t.MasterUserSecret.SecretStatus), "active")
 }

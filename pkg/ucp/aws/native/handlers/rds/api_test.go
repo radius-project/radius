@@ -50,7 +50,9 @@ const (
 	// its limits, or parameters that can't be combined.
 	codesUnclear = "The page doesn't name the error for a missing parameter, a value out of its limits, or parameters " +
 		"that can't be combined; the fake returns MissingParameter, InvalidParameterValue, and " +
-		"InvalidParameterCombination, from the Common Errors page."
+		"InvalidParameterCombination, from the Common Errors page. The SDK's model lists none of them, so it reads " +
+		"them with an unknown fault, which the handlers report as rejected by their 4xx status (see " +
+		"Test_Replay_Errors). The fake returns them as client faults, as the suite's rule checks expect."
 )
 
 // apiCall is a call against a fake RDS API, after any calls it needs to set up.
@@ -292,6 +294,20 @@ func tenantIs(check func(t *types.TenantDatabase) error) apiCall {
 	}
 }
 
+// instanceIs returns a call that reads the instance app-cdb and fails unless its status is want.
+func instanceIs(want string) apiCall {
+	return func(ctx context.Context, f *fakeAPI) error {
+		out, err := f.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{DBInstanceIdentifier: aws.String("app-cdb")})
+		if err != nil {
+			return err
+		}
+		if got := aws.ToString(out.DBInstances[0].DBInstanceStatus); got != want {
+			return fmt.Errorf("the instance is %s, not %s", got, want)
+		}
+		return nil
+	}
+}
+
 func tenantStatusIs(want string) apiCall {
 	return tenantIs(func(t *types.TenantDatabase) error {
 		if got := aws.ToString(t.Status); got != want {
@@ -304,7 +320,7 @@ func tenantStatusIs(want string) apiCall {
 // readyTenant creates the tenant database pdb1, with the changes edit makes to the input, and reads it, after which
 // it is available.
 func readyTenant(edit func(*rds.CreateTenantDatabaseInput)) apiCall {
-	return then(createTenant(edit), tenantStatusIs("creating"), tenantStatusIs("available"))
+	return then(createTenant(edit), tenantStatusIs("creating"), tenantStatusIs("available"), instanceIs("backing-up"))
 }
 
 func modifyTenant(edit func(*rds.ModifyTenantDatabaseInput)) apiCall {
@@ -511,6 +527,35 @@ var tenantDatabaseAPI = map[string]nativetest.Call{
 			"default or limits for MaxRecords; the fake returns 2 tenant databases a page when the call doesn't set it, " +
 			"so the handler's paging runs.",
 	},
+	"DescribeDBInstances": {
+		Doc: apiReference + "API_DescribeDBInstances.html",
+		Rules: []nativetest.Rule{
+			{
+				Rule: "DBInstanceIdentifier must match an existing instance",
+				Break: against(func(ctx context.Context, f *fakeAPI) error {
+					_, err := f.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{DBInstanceIdentifier: aws.String("missing")})
+					return err
+				}),
+				Code: "DBInstanceNotFound",
+			},
+			{
+				Rule: "DBInstanceIdentifier isn't case-sensitive",
+				Check: against(func(ctx context.Context, f *fakeAPI) error {
+					_, err := f.DescribeDBInstances(ctx, &rds.DescribeDBInstancesInput{DBInstanceIdentifier: aws.String("APP-CDB")})
+					return err
+				}),
+			},
+			{
+				Rule:  "RDS backs up the instance after it adds a tenant database, so the instance is backing-up, then available",
+				Doc:   addTenantGuide,
+				Check: against(then(createTenant(nil), instanceIs("backing-up"), instanceIs("available"))),
+			},
+		},
+		Unclear: "The adding guide says RDS backs up the instance before and after it adds a tenant database when backup " +
+			"retention is on, and the modifying and deleting guides say RDS changes one tenant database at a time. " +
+			"Neither says for how long; a review against AWS saw backing-up for about 2.5 minutes after a create. The " +
+			"fake backs the instance up after every create, update, and delete, for one read.",
+	},
 	"ModifyTenantDatabase": {
 		Doc: apiReference + "API_ModifyTenantDatabase.html",
 		Rules: append([]nativetest.Rule{
@@ -564,7 +609,7 @@ var tenantDatabaseAPI = map[string]nativetest.Call{
 				Check: against(then(readyTenant(nil), modifyTenant(func(in *rds.ModifyTenantDatabaseInput) {
 					in.MasterUserPassword = aws.String("pass-two-5678")
 				}), tenantIs(func(t *types.TenantDatabase) error {
-					if aws.ToString(t.Status) != "modifying" || !pending(t.PendingModifiedValues) {
+					if aws.ToString(t.Status) != "modifying" || !pending(t) {
 						return fmt.Errorf("the tenant database is %s with pending values %v", aws.ToString(t.Status), t.PendingModifiedValues)
 					}
 					return nil
@@ -636,6 +681,16 @@ var tenantDatabaseAPI = map[string]nativetest.Call{
 				Code: "DBSnapshotAlreadyExists",
 			},
 			{
+				Rule: "a tenant database can't be deleted when it is the instance's only one",
+				Break: against(then(readyTenant(nil), func(ctx context.Context, f *fakeAPI) error {
+					instance := f.store.Resource(instanceType, "app-cdb")
+					instance["InitialTenants"] = 0
+					f.store.Put(instanceType, "app-cdb", instance)
+					return deleteTenant(nil)(ctx, f)
+				})),
+				Code: "InvalidParameterCombination",
+			},
+			{
 				Rule: "RDS takes a final snapshot unless the call skips it, and the tenant database is deleting, then gone",
 				Doc:  deleteTenantGuide,
 				Check: against(then(readyTenant(nil), deleteTenant(nil), tenantStatusIs("deleting"), func(ctx context.Context, f *fakeAPI) error {
@@ -650,10 +705,11 @@ var tenantDatabaseAPI = map[string]nativetest.Call{
 				})),
 			},
 		},
-		Unclear: codesUnclear + " The page says a tenant database can't be deleted when it is the instance's only " +
-			"one, and the guide that a final snapshot needs the tenant database and instance to be available, " +
-			"without naming the errors; the fake returns InvalidDBInstanceState for both, and for a tenant database " +
-			"that is already deleting, which the handler checks before it calls.",
+		Unclear: codesUnclear + " The page doesn't name the error for deleting an instance's only tenant database; a " +
+			"review against AWS saw InvalidParameterCombination (\"The last tenant database on a DB instance can't be " +
+			"deleted\"), which the fake returns. The guide says a final snapshot needs the tenant database and instance " +
+			"to be available, without naming the error; the fake returns InvalidDBInstanceState, and for a tenant " +
+			"database that is already deleting, which the handler checks before it calls.",
 	},
 	"AddTagsToResource": {
 		Doc: apiReference + "API_AddTagsToResource.html",
