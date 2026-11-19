@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { capture, verifyIntent } from "./aws-pin-plan.mjs";
-import { reconcile } from "./reconcile-aws-release-pin.mjs";
+import controller, { reconcile } from "./reconcile-aws-release-pin.mjs";
 
 const product = "b934a5984d5a6798f52643c8c4d0ad47bf535962";
 const wrong = "6816fbfe9e9aeb84f7aba1046967061ce90f76c0";
@@ -222,8 +222,8 @@ function fixture(t, state = "wrong") {
     );
   const approve = async (input = plan()) => {
     const source = input[2];
-    verifyIntent(dir, source, product);
     if (!source.radiusPin) return source.sourceCommit;
+    verifyIntent(dir, source, product);
     return reconcile({
       github,
       base,
@@ -237,8 +237,50 @@ function fixture(t, state = "wrong") {
       wait: async () => {}
     });
   };
-  return { plan, approve, config, calls, git, siblings, base };
+  return { plan, approve, config, calls, git, github, dir, siblings, base };
 }
+
+test("inspection returns a legacy SHA but never the base as a pending pin's release SHA", async (t) => {
+  const f = fixture(t);
+  const file = join(f.dir, "plan.json");
+  const output = {};
+  const lookup = f.github.paginate;
+  f.github.paginate = (route, options) =>
+    options.repo === "radius" ?
+      [{ type: "update" }, { type: "deletion" }]
+    : lookup(route, options);
+  const core = {
+    getInput: (key) =>
+      ({ MODE: "inspect", PLAN_FILE: file, AWS_CHECKOUT: f.dir })[key],
+    setOutput: (key, value) => {
+      output[key] = value;
+    },
+    summary: { addRaw: () => ({ write: async () => {} }) }
+  };
+  const plan = {
+    schemaVersion: 2,
+    version,
+    channel,
+    releaseType: "rc",
+    source: { productCommit: product }
+  };
+  for (const [siblings, expected] of [
+    [f.siblings, f.base],
+    [f.plan(), ""]
+  ]) {
+    writeFileSync(
+      file,
+      JSON.stringify({ ...plan, siblingRepositories: siblings })
+    );
+    await controller({
+      github: f.github,
+      context: { repo: { owner: "radius-project", repo: "radius" } },
+      core
+    });
+    assert.equal(output.commit, expected);
+  }
+  assert.deepEqual(f.calls, []);
+});
 
 test("first RC corrects the wrong-repository SHA; replay adopts the exact rebase result", async (t) => {
   const f = fixture(t);

@@ -1,14 +1,19 @@
 // Copyright 2026 The Radius Authors. Licensed under the Apache License, Version 2.0.
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
-import { fileURLToPath } from "node:url";
+import { verifyFinalInputs } from "./verify-aws-final-inputs.mjs";
 
-const scripts = fileURLToPath(new URL(".", import.meta.url));
-const root = join(scripts, `.verify-aws-final-${randomUUID()}`);
+const root = mkdtempSync(join(tmpdir(), "radius-aws-final-"));
 // Never inherit a caller's index, object directory, hooks or signing settings
 // for the Git commands that write fixtures.
 const env = {
@@ -87,16 +92,16 @@ function metadata({ files = {}, plan = {}, oldPolicy = false } = {}) {
   const version = `v0.63.0-rc.${++sequence}`;
   const planPath = `.github/release-plans/${version}.yaml`;
   const notes = `docs/release-notes/${version}.md`;
+  const rcPlan = {
+    schemaVersion: 2,
+    version,
+    releaseType: "rc",
+    releasePlanPath: plan.path ?? planPath,
+    source: { productCommit: plan.product ?? rc },
+    ...(oldPolicy ? {} : { changelogPolicy: "stable-only" })
+  };
   const cutoff = radius.commit(rc, {
-    [planPath]: [
-      "schemaVersion: 2",
-      ...(oldPolicy ? [] : ["changelogPolicy: stable-only"]),
-      `version: ${version}`,
-      "releaseType: rc",
-      `releasePlanPath: ${plan.path ?? planPath}`,
-      "source:",
-      `  productCommit: ${plan.product ?? rc}`
-    ].join("\n"),
+    [planPath]: JSON.stringify(rcPlan),
     [notes]: "Curated RC notes\n",
     "versions.yaml": `supported:\n  - channel: "0.63"\n    version: ${version}\n`,
     ...(oldPolicy ?
@@ -105,11 +110,10 @@ function metadata({ files = {}, plan = {}, oldPolicy = false } = {}) {
     ...(typeof files === "function" ? files({ notes, planPath }) : files)
   });
   radius.git(["tag", "--no-sign", "-a", version, cutoff, "-m", "validated RC"]);
-  return { cutoff, version };
+  return { cutoff, version, rcPlan };
 }
 
 before(() => {
-  mkdirSync(root);
   radius = repository("Radius checkout");
   aws = repository("AWS checkout");
   rc = radius.commit(null, {
@@ -140,37 +144,24 @@ after(() => rmSync(root, { recursive: true, force: true }));
 function verify(
   {
     product = baseline,
-    raw = rc,
     awsRc = landed,
     base = awsRc,
-    version = product.version,
-    infer = false
+    version = product.version
   } = {},
   failure
 ) {
-  const run = spawnSync(
-    "bash",
-    [
-      join(scripts, "verify-aws-final-inputs.sh"),
-      radius.dir,
-      aws.dir,
-      raw,
-      product.cutoff,
-      awsRc,
-      base,
-      ...(infer ? [] : [version])
-    ],
-    { encoding: "utf8", env }
-  );
-  assert.ifError(run.error);
-  if (!failure) {
-    assert.equal(run.status, 0, run.stderr);
-    assert.ok(run.stdout.includes(product.version));
-  } else {
-    assert.equal(run.status, 1, `${run.stdout}\n${run.stderr}`);
-    assert.match(run.stderr, failure);
-    assert.match(run.stderr, /cut another RC/i);
-  }
+  const run = () =>
+    verifyFinalInputs({
+      radius: radius.dir,
+      aws: aws.dir,
+      rcPlan: product.rcPlan,
+      version,
+      product: product.cutoff,
+      landed: awsRc,
+      base
+    });
+  if (failure) assert.throws(run, failure);
+  else run();
 }
 
 test("promotes exactly the tagged RC metadata and a schema-neutral AWS pin, without modifying either checkout", () => {
@@ -184,7 +175,7 @@ test("promotes exactly the tagged RC metadata and a schema-neutral AWS pin, with
       readFileSync(join(repo.dir, ".git", "index"))
     ]);
   const before = snapshot();
-  verify({ infer: true });
+  verify();
   verify({ base });
   assert.deepEqual(snapshot(), before);
   verify({ base: aws.commit(landed, { radius: gitlink(baseline.cutoff) }) });
@@ -218,15 +209,14 @@ test("rejects product code, handwritten docs, other versions' metadata and disal
 });
 
 test("binds the raw product SHA, plan path and final cutoff to the actual RC tag", () => {
-  verify({ version: "v0.63.0-rc.99999" }, /tagged commit/);
+  verify({ version: "v0.63.0-rc.99999" }, /committed .* RC plan/);
   verify(
     { product: { ...baseline, cutoff: radius.commit(baseline.cutoff) } },
     /tagged commit/
   );
-  verify({ raw: baseline.cutoff }, /only parent/);
   verify(
     { product: metadata({ plan: { product: baseline.cutoff } }) },
-    /committed .* RC plan/
+    /only parent/
   );
   verify(
     { product: metadata({ plan: { path: "docs/release-notes/extra.md" } }) },
@@ -311,8 +301,11 @@ test("never treats a removed, malformed, newly introduced or dangling submodule 
 });
 
 test("fails closed on refs instead of full SHAs, non-commits and shallow history", () => {
-  verify({ raw: "HEAD" }, /full commit SHA/);
-  verify({ raw: radius.git(["rev-parse", `${rc}^{tree}`]) }, /is not a commit/);
+  verify({ base: "HEAD" }, /full commit SHA/);
+  verify(
+    { base: aws.git(["rev-parse", `${landed}^{tree}`]) },
+    /is not a commit/
+  );
   const shallow = join(aws.dir, ".git", "shallow");
   writeFileSync(shallow, `${legacy}\n`);
   try {

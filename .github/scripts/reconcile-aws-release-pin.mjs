@@ -2,14 +2,19 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
-import { fileURLToPath } from "node:url";
 import { awsSource, git, requireCheck, verifyIntent } from "./aws-pin-plan.mjs";
-import { readReceipt, writeReceipt } from "./aws-pin-receipt.mjs";
+import {
+  createReleaseAppCommit,
+  readReceipt,
+  releaseBot,
+  signedByReleaseApp,
+  writeReceipt
+} from "./aws-pin-receipt.mjs";
+import { verifyFinalInputs } from "./verify-aws-final-inputs.mjs";
 
 const owner = "radius-project";
 const repo = "bicep-types-aws";
 const repository = `${owner}/${repo}`;
-const bot = "radius-release[bot]";
 const actionsApp = 15368;
 const buildCheck = "Build and test";
 const sha = /^[a-f0-9]{40}$/;
@@ -67,10 +72,7 @@ function verifyContent(commit, base, tree) {
 function verifyProposal(commit, base, tree) {
   verifyContent(commit, base, tree);
   assert(
-    commit.author?.login === bot &&
-      commit.author.type === "Bot" &&
-      [bot, "web-flow"].includes(commit.committer?.login) &&
-      commit.commit.verification?.verified === true,
+    signedByReleaseApp(commit),
     `AWS pin proposal ${commit.sha} is not signed by the release App`
   );
 }
@@ -84,43 +86,27 @@ async function signedProposal(
   tree,
   version
 ) {
-  let head = await getRef(github, branch);
-  if (!head) {
-    const { data: replacement } = await github.rest.git.createTree({
-      owner,
-      repo,
-      base_tree: baseTree,
-      tree: [{ path: "radius", mode: "160000", type: "commit", sha: product }]
-    });
-    assert(replacement.sha === tree, "GitHub returned an unexpected AWS tree");
-    const { data: user } = await github.rest.users.getByUsername({
-      username: bot
-    });
-    assert(
-      user.type === "Bot" &&
-        user.login === bot &&
-        Number.isSafeInteger(user.id),
-      "Could not resolve the release App identity"
-    );
-    const signoff = `${bot} <${user.id}+${bot}@users.noreply.github.com>`;
-    // Let GitHub sign the installation's commit. Supplying an author,
-    // committer or signature here changes those verification semantics.
-    const { data } = await github.rest.git.createCommit({
-      owner,
-      repo,
-      tree,
-      parents: [base],
-      message: `chore(release): pin Radius for ${version}\n\nSigned-off-by: ${signoff}`
-    });
-    head = data.sha;
-    assert(sha.test(head), "Invalid AWS pin commit");
+  const existing = await getRef(github, branch);
+  if (existing) {
+    verifyProposal(await commitAt(github, existing), base, tree);
+    return existing;
   }
-  verifyProposal(await commitAt(github, head), base, tree);
-  if (!(await getRef(github, branch))) await createRef(github, branch, head);
-  assert(
-    (await getRef(github, branch)) === head,
-    `Pin proposal ${branch} changed`
+  const { data: replacement } = await github.rest.git.createTree({
+    owner,
+    repo,
+    base_tree: baseTree,
+    tree: [{ path: "radius", mode: "160000", type: "commit", sha: product }]
+  });
+  assert(replacement.sha === tree, "GitHub returned an unexpected AWS tree");
+  const head = await createReleaseAppCommit(
+    github,
+    { owner, repo },
+    base,
+    tree,
+    `chore(release): pin Radius for ${version}`
   );
+  verifyProposal(await commitAt(github, head), base, tree);
+  await createRef(github, branch, head);
   return head;
 }
 
@@ -155,7 +141,7 @@ async function ensurePull(github, branch, target, head, product, version) {
     }
   }
   assert(
-    pull.user.login === bot &&
+    pull.user.login === releaseBot &&
       pull.head.repo?.full_name === repository &&
       pull.head.ref === branch &&
       pull.head.sha === head &&
@@ -274,7 +260,7 @@ export async function reconcile({
     assert(
       prior?.merged_at &&
         prior.head.repo?.full_name === repository &&
-        prior.user.login === bot,
+        prior.user.login === releaseBot,
       `AWS ${target} changed since its source was captured`
     );
     verifyProposal(await commitAt(github, prior.head.sha), base, tree);
@@ -317,10 +303,6 @@ async function finalParity(github, plan, checkout) {
   const path = `.github/release-plans/${rc}.yaml`;
   const raw = execFileSync("git", ["show", `refs/tags/${rc}:${path}`]);
   const previous = parsePlan(raw);
-  assert(
-    previous.version === rc && previous.releaseType === "rc",
-    "Wrong RC plan at its tag"
-  );
   const prior = awsSource(previous);
   const lock =
     prior.radiusPin && (await readReceipt(github, previous, blob(raw)));
@@ -333,20 +315,15 @@ async function finalParity(github, plan, checkout) {
     git(checkout, "rev-parse", `refs/tags/${rc}^{commit}`) === landed,
     "The AWS RC tag no longer identifies its validated inputs"
   );
-  execFileSync(
-    "bash",
-    [
-      fileURLToPath(new URL("./verify-aws-final-inputs.sh", import.meta.url)),
-      ".",
-      checkout,
-      previous.source.productCommit,
-      plan.source.productCommit,
-      landed,
-      awsSource(plan).sourceCommit,
-      rc
-    ],
-    { stdio: "inherit" }
-  );
+  verifyFinalInputs({
+    radius: ".",
+    aws: checkout,
+    rcPlan: previous,
+    version: rc,
+    product: plan.source.productCommit,
+    landed,
+    base: awsSource(plan).sourceCommit
+  });
 }
 
 export default async function controller({ github, core, context }) {
@@ -403,9 +380,8 @@ export default async function controller({ github, core, context }) {
       }
     }
     if (plan.releaseType === "final") await finalParity(github, plan, checkout);
-    core.setOutput("planned", "true");
-    core.setOutput("locked", String(Boolean(record)));
-    core.setOutput("commit", record?.landedCommit ?? base);
+    // No releasable SHA until the approved pin is locked. The base is only a preflight input.
+    core.setOutput("commit", record?.landedCommit ?? "");
     await core.summary
       .addRaw(
         `AWS ${plan.version}: base \`${base}\`, Radius product \`${product}\`, expected tree \`${aws.radiusPin.expectedTree}\`, receipt \`${branch}\`.`

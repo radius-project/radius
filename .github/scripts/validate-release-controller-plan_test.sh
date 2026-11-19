@@ -282,6 +282,13 @@ create_existing_channel_release() {
         refs/remotes/origin/release/0.61 "${product_commit}" \
         "generated release backport commit on release/0.61" release/0.61
     git -C "${REPO}" add .
+    if [[ "${variant}" == reformatted-pin-plan ]]; then
+        PRODUCT="${product_commit}" yq -i '.siblingRepositories[2].radiusPin = {
+            "productCommit": strenv(PRODUCT),
+            "expectedTree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }' "${plan}"
+        git -C "${REPO}" add "${plan}"
+    fi
     git -C "${REPO}" commit --quiet \
         -m "chore(release): prepare ${version}"
     source_commit="$(git -C "${REPO}" rev-parse HEAD)"
@@ -293,6 +300,10 @@ create_existing_channel_release() {
         git -C "${REPO}" rm --quiet .github/workflows/release.yaml
     fi
     case "${variant}" in
+        reformatted-pin-plan)
+            printf '\n# Same YAML, different Git blob.\n' >> "${plan}"
+            git -C "${REPO}" add "${plan}"
+            ;;
         extra-file)
             printf 'unreviewed change\n' > "${REPO}/product.txt"
             git -C "${REPO}" add product.txt
@@ -559,6 +570,8 @@ main() {
         "kept the legacy release workflow"
     test_rejects_invalid_backport changed-plan \
         "committed release plan differs from approved plan"
+    test_rejects_invalid_backport reformatted-pin-plan \
+        "AWS pin receipt requires the approved plan blob"
     test_rejects_invalid_backport merge "must have one parent"
     test_stable_only_rc_contract valid
     test_stable_only_rc_contract changed-changelog

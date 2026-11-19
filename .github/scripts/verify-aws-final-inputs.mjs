@@ -1,57 +1,30 @@
 // Copyright 2026 The Radius Authors. Licensed under the Apache License, Version 2.0.
+import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 
-const sha = /^[0-9a-f]{40}$/;
-const rcTag = /^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-rc\.?[1-9]\d*$/;
-const env = {
-  ...process.env,
-  GIT_NO_REPLACE_OBJECTS: "1",
-  GIT_NO_LAZY_FETCH: "1",
-  GIT_ALLOW_PROTOCOL: "",
-  GIT_OPTIONAL_LOCKS: "0"
-};
-// In particular, a caller's GIT_DIR or GIT_SHALLOW_FILE must not override -C
-// or turn removed-submodule history into apparent pre-submodule history.
-for (const key of [
-  "GIT_DIR",
-  "GIT_WORK_TREE",
-  "GIT_COMMON_DIR",
-  "GIT_OBJECT_DIRECTORY",
-  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-  "GIT_GRAFT_FILE",
-  "GIT_SHALLOW_FILE"
-])
-  delete env[key];
-
-function requireThat(condition, message) {
-  if (!condition) throw new Error(message);
-}
+// These are the inputs the AWS generator reads from its Radius submodule.
+const schemas = [
+  "pkg/aws/schemas/native",
+  "pkg/aws/schemas/handwritten",
+  "pkg/aws/extraproperties/extra_properties.json"
+];
 
 function git(repo, ...args) {
-  return execFileSync(
-    "git",
-    ["--no-pager", "--literal-pathspecs", "-C", repo, ...args],
-    {
-      env,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"]
+  return execFileSync("git", ["--no-replace-objects", "-C", repo, ...args], {
+    encoding: "utf8",
+    env: {
+      ...Object.fromEntries(
+        Object.entries(process.env).filter(([k]) => !k.startsWith("GIT_"))
+      ),
+      GIT_NO_LAZY_FETCH: "1",
+      GIT_ALLOW_PROTOCOL: "",
+      GIT_OPTIONAL_LOCKS: "0"
     }
-  );
+  });
 }
 
-function requireCommit(repo, id) {
-  requireThat(
-    sha.test(id),
-    `Expected a full commit SHA, got ${JSON.stringify(id)}`
-  );
-  requireThat(
-    git(repo, "cat-file", "-t", id).trimEnd() === "commit",
-    `${id} is not a commit in ${repo}`
-  );
-}
-
-function treeEntries(repo, commit, paths) {
-  const raw = git(
+function entries(repo, commit, paths) {
+  const tree = git(
     repo,
     "ls-tree",
     "--full-tree",
@@ -60,17 +33,18 @@ function treeEntries(repo, commit, paths) {
     "--",
     ...paths
   );
-  const entries = new Map();
-  for (const entry of raw.split("\0").filter(Boolean)) {
-    const tab = entry.indexOf("\t");
-    entries.set(entry.slice(tab + 1), entry.slice(0, tab));
-  }
-  return entries;
+  return new Map(
+    tree
+      .split("\0")
+      .filter(Boolean)
+      .map((row) => {
+        const tab = row.indexOf("\t");
+        return [row.slice(tab + 1), row.slice(0, tab)];
+      })
+  );
 }
 
-// With rename detection off, each pair is a raw header and one NUL-terminated
-// path. Include tree entries so even a directory replacing a file is visible.
-function* changes(repo, from, to) {
+function changes(repo, from, to) {
   const fields = git(
     repo,
     "diff-tree",
@@ -80,123 +54,40 @@ function* changes(repo, from, to) {
     "--raw",
     "--no-commit-id",
     "--no-renames",
-    "--no-ext-diff",
-    "--no-textconv",
     "--ignore-submodules=none",
     from,
     to,
     "--"
   ).split("\0");
+  const result = new Map();
   for (let i = 0; i < fields.length - 1; i += 2) {
     const [before, after] = fields[i].slice(1).split(" ");
-    yield { path: fields[i + 1], before, after };
+    result.set(fields[i + 1], `${before}:${after}`);
   }
+  return result;
 }
 
-function verifyProduct(radius, rc, final, requestedVersion) {
-  const tags = git(
-    radius,
-    "tag",
-    "--list",
-    "--format=%(refname:lstrip=2)",
-    "--points-at",
-    final,
-    "v*-rc*"
-  )
-    .split(/\r?\n/)
-    .filter((tag) => rcTag.test(tag));
-  const version = requestedVersion ?? (tags.length === 1 ? tags[0] : undefined);
-  requireThat(
-    tags.includes(version),
-    `Final product ${final} must be the tagged commit of the validated RC`
-  );
-  requireThat(
-    git(radius, "rev-list", "--parents", "-1", final).trimEnd() ===
-      `${final} ${rc}`,
-    `The tagged ${version} metadata commit must have the raw RC product ${rc} as its only parent`
-  );
-
-  const planPath = `.github/release-plans/${version}.yaml`;
-  const plan = JSON.parse(
-    execFileSync("yq", ["-o=json", ".", "-"], {
-      input: git(radius, "cat-file", "blob", `${final}:${planPath}`),
-      encoding: "utf8"
-    })
-  );
-  requireThat(
-    plan.version === version &&
-      plan.releaseType === "rc" &&
-      plan.releasePlanPath === planPath &&
-      plan.source?.productCommit === rc,
-    `The committed ${version} RC plan does not match the requested product and plan path`
-  );
-
-  // These are the file operations of the already validated RC, not path
-  // prefixes to exempt from an arbitrary later commit.
-  const expected = new Map([
-    [planPath, "000000"],
-    [`docs/release-notes/${version}.md`, "000000"],
-    ["versions.yaml", "100644"]
-  ]);
-  if (plan.schemaVersion === 2 && plan.changelogPolicy == null) {
-    expected.set("CHANGELOG.md", "100644"); // Pre-stable-only RC plans.
-  } else {
-    requireThat(
-      plan.changelogPolicy === "stable-only",
-      `Unknown changelog policy in ${planPath}`
-    );
-  }
-  const seen = new Set();
-  for (const { path, before, after } of changes(radius, rc, final)) {
-    if (
-      after === "040000" &&
-      ["000000", "040000"].includes(before) &&
-      [...expected.keys()].some((file) => file.startsWith(`${path}/`))
-    )
-      continue;
-    requireThat(
-      after === "100644" && expected.get(path) === before,
-      `Unexpected Radius product change at ${JSON.stringify(path)} (${before} -> ${after})`
-    );
-    seen.add(path);
-  }
-  for (const path of expected.keys()) {
-    requireThat(
-      seen.has(path),
-      `Missing generated ${version} metadata change: ${path}`
-    );
-  }
-  return version;
-}
-
-function radiusPin(aws, commit) {
-  const tree = treeEntries(aws, commit, ["radius", ".gitmodules"]);
+function pin(repo, commit) {
+  const tree = entries(repo, commit, ["radius", ".gitmodules"]);
   const entry = tree.get("radius");
   const link = /^160000 commit ([a-f0-9]{40})$/.exec(entry);
-  if (entry) {
-    requireThat(
+  if (entry)
+    assert(
       link,
       `AWS commit ${commit} has a radius path that is not a gitlink`
     );
-  } else {
-    requireThat(
-      !git(aws, "rev-list", "--full-history", "-1", commit, "--", "radius"),
+  else
+    assert(
+      !git(repo, "rev-list", "--full-history", "-1", commit, "--", "radius"),
       `AWS commit ${commit} removed its radius submodule`
     );
-  }
-  verifyDeclaration(aws, commit, tree.get(".gitmodules"), Boolean(link));
-  return link?.[1] ?? null;
-}
-
-function verifyDeclaration(aws, commit, entry, pin) {
-  if (!entry && !pin) return;
-  requireThat(
-    /^100644 blob [a-f0-9]{40}$/.test(entry),
-    `Missing or malformed .gitmodules at AWS commit ${commit}`
+  if (!link && !tree.has(".gitmodules")) return null;
+  assert(
+    /^100644 blob /.test(tree.get(".gitmodules")),
+    `Malformed radius submodule at ${commit}`
   );
-  // Parse the committed blob, not checkout config. Never follow its URL.
-  const fields = git(
-    aws,
+  const config = git(
+    repo,
     "config",
     "--no-includes",
     "--null",
@@ -204,131 +95,163 @@ function verifyDeclaration(aws, commit, entry, pin) {
     `${commit}:.gitmodules`,
     "--list"
   ).split("\0");
-  const mappings = fields.filter((field) =>
-    /^submodule\..+\.path\nradius$/.test(field)
+  const mapping = config.filter((kv) =>
+    /^submodule\..+\.path\nradius$/.test(kv)
   );
-  if (!pin) {
-    requireThat(
-      !mappings.length &&
-        !fields.some((field) => field.startsWith("submodule.radius.")),
-      `AWS commit ${commit} declares radius without a gitlink`
+  if (!link) {
+    assert(
+      !mapping.length &&
+        !config.some((kv) => kv.startsWith("submodule.radius.")),
+      "AWS declares radius without a gitlink"
     );
-    return;
+    return null;
   }
-  const malformed = `Malformed radius submodule declaration at AWS commit ${commit}`;
-  requireThat(mappings.length === 1, malformed);
-  const section = mappings[0].slice(0, -".path\nradius".length);
+  const section = mapping[0]?.slice(0, -".path\nradius".length);
   const values = (key) =>
-    fields
-      .filter((field) => field === key || field.startsWith(`${key}\n`))
-      .map((field) => field.slice(key.length + 1));
+    config
+      .filter((kv) => kv === key || kv.startsWith(`${key}\n`))
+      .map((kv) => kv.slice(key.length + 1));
   const urls = values(`${section}.url`);
-  requireThat(
-    values(`${section}.path`).length === 1 &&
+  assert(
+    mapping.length === 1 &&
+      values(`${section}.path`).length === 1 &&
       urls.length === 1 &&
       /^https:\/\/github\.com\/radius-project\/radius(?:\.git)?$/.test(urls[0]),
-    malformed
+    `Malformed radius submodule at ${commit}`
   );
+  return link[1];
 }
 
-// defaultRadiusPaths in bicep-types-aws/src/aws-type-generator/src/radius.ts.
-// Compare the entire schema directories (recursively by tree ID) and the extra
-// properties blob. A link in place of an input or its parent isn't evidence.
-const schemaPaths = [
-  "pkg/aws/schemas/native",
-  "pkg/aws/schemas/handwritten",
-  "pkg/aws/extraproperties/extra_properties.json"
-];
-const schemaPathsAndParents = [
-  ...new Set(
-    schemaPaths.flatMap((path) => {
-      const parts = path.split("/");
-      return parts.map((_, i) => parts.slice(0, i + 1).join("/"));
-    })
-  )
-];
-
-function schemaInputs(radius, commit) {
-  const entries = treeEntries(radius, commit, schemaPathsAndParents);
-  for (const path of schemaPathsAndParents) {
-    if (!entries.has(path)) continue; // An older tree can lack a schema directory.
-    const expected =
-      path.endsWith(".json") ? /^100(?:644|755) blob / : /^040000 tree /;
-    requireThat(
-      expected.test(entries.get(path)),
+function schemaInputs(repo, commit) {
+  const paths = [
+    ...new Set(
+      schemas.flatMap((path) =>
+        path.split("/").map((_, i, parts) => parts.slice(0, i + 1).join("/"))
+      )
+    )
+  ];
+  const tree = entries(repo, commit, paths);
+  for (const path of paths) {
+    const entry = tree.get(path);
+    if (!entry) continue;
+    assert(
+      (path.endsWith(".json") ? /^100(?:644|755) blob / : /^040000 tree /).test(
+        entry
+      ),
       `Malformed Radius schema input ${path} at ${commit}`
     );
   }
-  return entries;
+  return schemas.map((path) => tree.get(path));
 }
 
-function verifyAws(radius, aws, rcProduct, finalProduct, rcAws, finalAws) {
-  const rcPin = radiusPin(aws, rcAws);
-  const finalPin = rcAws === finalAws ? rcPin : radiusPin(aws, finalAws);
-  for (const { path } of changes(aws, rcAws, finalAws)) {
-    requireThat(
-      path === "radius",
-      `AWS build input changed: ${JSON.stringify(path)}`
-    );
-  }
-  requireThat(
-    (rcPin === null) === (finalPin === null),
-    "The AWS radius gitlink was added or removed"
-  );
-  if (!rcPin) return;
-  requireThat(
-    rcPin === rcProduct,
-    `RC AWS commit ${rcAws} pins ${rcPin}, not RC product ${rcProduct}`
-  );
-  // The frozen base pin need not be the pin that will land. Check both using
-  // Radius objects; never resolve a gitlink in the AWS object database.
-  const rcInputs = schemaInputs(radius, rcPin);
-  for (const next of new Set([finalProduct, finalPin])) {
-    if (next === rcPin) continue;
-    if (next !== finalProduct) requireCommit(radius, next);
-    const inputs = schemaInputs(radius, next);
-    for (const path of schemaPaths) {
-      requireThat(
-        rcInputs.get(path) === inputs.get(path),
-        `AWS gitlink changes Radius schema input ${path} (${rcPin} -> ${next})`
+export function verifyFinalInputs({
+  radius,
+  aws,
+  rcPlan,
+  version,
+  product,
+  landed,
+  base
+}) {
+  const raw = rcPlan.source.productCommit;
+  try {
+    for (const [repo, cutoff] of [
+      [radius, raw],
+      [radius, product],
+      [aws, landed],
+      [aws, base]
+    ]) {
+      assert(/^[a-f0-9]{40}$/.test(cutoff), "Expected a full commit SHA");
+      assert.equal(
+        git(repo, "cat-file", "-t", cutoff).trim(),
+        "commit",
+        `${cutoff} is not a commit`
       );
     }
-  }
-}
+    // Both checkouts are fetch-depth: 0; a shallow history cannot prove a submodule never existed.
+    for (const repo of [radius, aws])
+      assert.equal(
+        git(repo, "rev-parse", "--is-shallow-repository").trim(),
+        "false",
+        "Expected a full checkout"
+      );
 
-try {
-  const args = process.argv.slice(2);
-  requireThat(
-    args.length === 6 || args.length === 7,
-    "Usage: verify-aws-final-inputs.sh <radius-dir> <aws-dir> <rc-product-sha> <final-product-sha> <rc-aws-landed-sha> <final-aws-base-sha> [rc-version]"
-  );
-  const [radius, aws, rc, final, rcAws, finalAws, version] = args;
-  for (const repo of [radius, aws]) {
-    requireThat(
-      repo &&
-        git(
-          repo,
-          "rev-parse",
-          "--is-shallow-repository",
-          "--show-prefix"
-        ).trimEnd() === "false",
-      `Expected a full checkout at its repository root: ${repo}`
+    const path = `.github/release-plans/${version}.yaml`;
+    assert(
+      rcPlan.version === version &&
+        rcPlan.releaseType === "rc" &&
+        rcPlan.releasePlanPath === path,
+      `Invalid committed ${version} RC plan`
+    );
+    assert.equal(
+      git(radius, "rev-parse", `refs/tags/${version}^{commit}`).trim(),
+      product,
+      "Final product is not the tagged commit of its validated RC"
+    );
+    assert.equal(
+      git(radius, "show", "-s", "--format=%P", product).trim(),
+      raw,
+      "RC product must be the only parent"
+    );
+    const metadata = new Map([
+      [path, "000000:100644"],
+      [`docs/release-notes/${version}.md`, "000000:100644"],
+      ["versions.yaml", "100644:100644"]
+    ]);
+    if (rcPlan.schemaVersion === 2 && rcPlan.changelogPolicy == null)
+      metadata.set("CHANGELOG.md", "100644:100644");
+    else
+      assert.equal(
+        rcPlan.changelogPolicy,
+        "stable-only",
+        "Unknown RC changelog policy"
+      );
+    const changed = changes(radius, raw, product);
+    for (const dir of [
+      ".github",
+      ".github/release-plans",
+      "docs",
+      "docs/release-notes"
+    ]) {
+      if (["000000:040000", "040000:040000"].includes(changed.get(dir)))
+        changed.delete(dir);
+    }
+    assert.deepEqual(changed, metadata, "Unexpected Radius product change");
+
+    const rcPin = pin(aws, landed);
+    const awsChanges = changes(aws, landed, base);
+    const nextPin = awsChanges.has("radius") ? pin(aws, base) : rcPin;
+    assert(
+      [...awsChanges.keys()].every((name) => name === "radius"),
+      "AWS build input changed"
+    );
+    // No other change, including .gitmodules, is permitted. Only the gitlink can differ.
+    assert.equal(
+      Boolean(rcPin),
+      Boolean(nextPin),
+      "AWS radius gitlink was added or removed"
+    );
+    if (!rcPin) return;
+    assert.equal(rcPin, raw, `AWS RC pin is not RC product ${raw}`);
+    // The Radius diff above proves the final product is schema-identical to the RC.
+    // A changed AWS base pin is independent: it must not introduce untested generator inputs.
+    const tested = schemaInputs(radius, raw);
+    if (nextPin !== raw && nextPin !== product) {
+      assert.equal(
+        git(radius, "cat-file", "-t", nextPin).trim(),
+        "commit",
+        "AWS base pin is not a Radius commit"
+      );
+      assert.deepEqual(
+        schemaInputs(radius, nextPin),
+        tested,
+        "AWS gitlink changes Radius schema inputs"
+      );
+    }
+  } catch (error) {
+    throw new Error(
+      `${error.message}. Cut another RC and validate it before releasing the final.`,
+      { cause: error }
     );
   }
-  for (const [repo, id] of [
-    [radius, rc],
-    [radius, final],
-    [aws, rcAws],
-    [aws, finalAws]
-  ]) {
-    requireCommit(repo, id);
-  }
-  const verified = verifyProduct(radius, rc, final, version);
-  verifyAws(radius, aws, rc, final, rcAws, finalAws);
-  console.log(`Final Radius product and AWS build inputs match ${verified}.`);
-} catch (error) {
-  console.error(
-    `Error: ${error.message}\nPlease cut another RC and validate it before releasing the final.`
-  );
-  process.exitCode = 1;
 }

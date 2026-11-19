@@ -75,9 +75,7 @@ jobs:
       ready: ${{ steps.plan.outputs.ready }}
       version: ${{ steps.plan.outputs.version }}
       channel: ${{ steps.plan.outputs.channel }}
-      aws-pin-planned: ${{ steps.inspect-aws.outputs.planned }}
-      aws-pin-locked: ${{ steps.inspect-aws.outputs.locked }}
-      aws-locked-commit: ${{ steps.inspect-aws.outputs.commit }}
+      aws-release-commit: ${{ steps.inspect-aws.outputs.commit }}
       release-type: ${{ steps.plan.outputs.release-type }}
       release-branch: ${{ steps.plan.outputs.release-branch }}
       release-identifier: ${{ steps.plan.outputs.release-identifier }}
@@ -261,7 +259,7 @@ jobs:
           RECIPES_COMMIT: ${{ steps.plan.outputs.recipes-commit }}
           DASHBOARD_COMMIT: ${{ steps.plan.outputs.dashboard-commit }}
           BICEP_TYPES_AWS_COMMIT: >-
-            ${{ steps.inspect-aws.outputs.commit }}
+            ${{ steps.inspect-aws.outputs.commit || steps.plan.outputs.bicep-types-aws-commit }}
           RELEASE_RECONCILE_CHECK_ONLY: "true"
         run: |
           script="${GITHUB_WORKSPACE}/.github/scripts/release-create-tag-and-branch.sh"
@@ -732,7 +730,7 @@ jobs:
           persist-credentials: false
 
       - name: Read the approved AWS plan at the immutable Radius merge commit
-        if: needs.validate.outputs.aws-pin-planned == 'true' && needs.validate.outputs.aws-pin-locked != 'true'
+        if: needs.validate.outputs.aws-release-commit == ''
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.validate.outputs.version }}
@@ -744,7 +742,7 @@ jobs:
             >"${RUNNER_TEMP}/approved-aws-plan.yaml"
 
       - name: Get scoped AWS pin PR token after release approval
-        if: needs.validate.outputs.aws-pin-planned == 'true' && needs.validate.outputs.aws-pin-locked != 'true'
+        if: needs.validate.outputs.aws-release-commit == ''
         id: aws-pin-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
@@ -827,16 +825,11 @@ jobs:
           GH_TOKEN: ${{ steps.release-token.outputs.token }}
           VERSION: ${{ needs.validate.outputs.version }}
           RELEASE_BRANCH: ${{ needs.validate.outputs.release-branch }}
-          SOURCE_COMMIT: ${{ needs.validate.outputs.bicep-types-aws-commit }}
-          PIN_PLANNED: ${{ needs.validate.outputs.aws-pin-planned }}
-          LOCKED_COMMIT: ${{ steps.lock-aws.outputs.commit || (needs.validate.outputs.aws-pin-locked == 'true' && needs.validate.outputs.aws-locked-commit) || '' }}
+          SOURCE_COMMIT: ${{ steps.lock-aws.outputs.commit || needs.validate.outputs.aws-release-commit }}
         run: |
-          if [[ "${PIN_PLANNED}" == true ]]; then
-            SOURCE_COMMIT="${LOCKED_COMMIT:?AWS tag requires the approved pin receipt}"
-          fi
           ./.github/scripts/release-create-tag-and-branch.sh \
             bicep-types-aws "${VERSION}" "${RELEASE_BRANCH}" \
-            "${SOURCE_COMMIT}"
+            "${SOURCE_COMMIT:?missing verified AWS release commit}"
 
   create-radius-tag:
     name: Create Radius tag last

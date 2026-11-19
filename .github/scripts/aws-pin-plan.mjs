@@ -87,12 +87,6 @@ export function intent(directory, base, product) {
 }
 
 export function verifyIntent(directory, source, product) {
-  if (!Object.hasOwn(source, "radiusPin")) {
-    execFileSync("bash", [verifier, directory, source.sourceCommit, product], {
-      stdio: "inherit"
-    });
-    return;
-  }
   const expected = intent(directory, source.sourceCommit, product);
   const approved = source.radiusPin;
   if (

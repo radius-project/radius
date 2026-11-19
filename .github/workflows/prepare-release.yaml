@@ -50,7 +50,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
-      actions: read # Read the release environment's approval rules.
       contents: read
       pull-requests: read
       deployments: read
@@ -73,17 +72,13 @@ jobs:
       - name: Install release tools
         run: make install-yq install-jq install-git-cliff
 
-      - name: Verify the release approval and required plan check
+      - name: Verify the required release plan check
         if: github.repository == 'radius-project/radius'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          INPUT_ENVIRONMENT: release
         with:
           script: |
             const { requireCheck } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/aws-pin-plan.mjs`)
-            const { default: verifyEnvironment } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/verify-release-environment.mjs`)
             await requireCheck(github, 'radius', 'main', 'Validate release plan')
-            await verifyEnvironment({ github, core, context })
 
       - name: Create release App token
         if: github.repository == 'radius-project/radius'

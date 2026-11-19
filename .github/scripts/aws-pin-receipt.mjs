@@ -9,7 +9,7 @@ import { tagCommit } from "./coordinate-release.mjs";
 
 const radius = { owner: "radius-project", repo: "radius" };
 const aws = { owner: "radius-project", repo: "bicep-types-aws" };
-const bot = "radius-release[bot]";
+export const releaseBot = "radius-release[bot]";
 const receiptPath = ".github/release-state/aws-pin.json";
 const stateRef = (version) =>
   `heads/automation/release-state-aws-${version.slice(1)}`;
@@ -20,6 +20,42 @@ const isOid = (value) =>
 
 function requireThat(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+export function signedByReleaseApp(commit) {
+  return (
+    commit.author?.login === releaseBot &&
+    commit.author.type === "Bot" &&
+    [releaseBot, "web-flow"].includes(commit.committer?.login) &&
+    commit.commit.verification?.verified === true
+  );
+}
+
+// GitHub signs for the installation when no author, committer or signature override is supplied.
+export async function createReleaseAppCommit(
+  github,
+  repository,
+  parent,
+  tree,
+  subject
+) {
+  const { data: user } = await github.rest.users.getByUsername({
+    username: releaseBot
+  });
+  requireThat(
+    user.login === releaseBot &&
+      user.type === "Bot" &&
+      Number.isSafeInteger(user.id),
+    "Could not resolve the release App for sign-off"
+  );
+  const { data: candidate } = await github.rest.git.createCommit({
+    ...repository,
+    tree,
+    parents: [parent],
+    message: `${subject}\n\nSigned-off-by: ${releaseBot} <${user.id}+${releaseBot}@users.noreply.github.com>`
+  });
+  requireThat(isOid(candidate.sha), "Invalid release App commit");
+  return candidate.sha;
 }
 
 function awsEntry(plan) {
@@ -134,10 +170,7 @@ async function recordAt(github, sha, expected) {
     `Unexpected AWS pin receipt history at ${sha}`
   );
   requireThat(
-    commit.author?.login === bot &&
-      commit.author.type === "Bot" &&
-      [bot, "web-flow"].includes(commit.committer?.login) &&
-      commit.commit.verification?.verified === true,
+    signedByReleaseApp(commit),
     `AWS pin receipt ${sha} is not a GitHub-verified release App commit`
   );
   const { bytes, blob } = await fileAt(github, sha, receiptPath);
@@ -197,13 +230,6 @@ export async function writeReceipt(github, plan, planBlob, landedCommit) {
   const record = { ...expected, landedCommit };
   await verifyLanded(github, record);
   const parent = await commitAt(github, radius, expected.productCommit);
-  const { data: user } = await github.rest.users.getByUsername({
-    username: bot
-  });
-  requireThat(
-    user.login === bot && user.type === "Bot" && Number.isSafeInteger(user.id),
-    "Could not resolve the release App for sign-off"
-  );
   const { data: tree } = await github.rest.git.createTree({
     ...radius,
     base_tree: parent.commit.tree.sha,
@@ -217,15 +243,14 @@ export async function writeReceipt(github, plan, planBlob, landedCommit) {
     ]
   });
   requireThat(isOid(tree.sha), "Invalid AWS pin receipt tree");
-  // Omit author, committer and signature so GitHub signs for the installation.
-  const { data: candidate } = await github.rest.git.createCommit({
-    ...radius,
-    tree: tree.sha,
-    parents: [expected.productCommit],
-    message: `chore(release): record AWS pin for ${plan.version}\n\nSigned-off-by: ${bot} <${user.id}+${bot}@users.noreply.github.com>`
-  });
-  requireThat(isOid(candidate.sha), "Invalid AWS pin receipt commit");
-  adopt(await recordAt(github, candidate.sha, expected), landedCommit);
+  const candidate = await createReleaseAppCommit(
+    github,
+    radius,
+    expected.productCommit,
+    tree.sha,
+    `chore(release): record AWS pin for ${plan.version}`
+  );
+  adopt(await recordAt(github, candidate, expected), landedCommit);
 
   // Creating (never updating) the protected ref is the compare-and-swap.
   // A concurrent winner may have signed identical contents at a different SHA.
@@ -234,7 +259,7 @@ export async function writeReceipt(github, plan, planBlob, landedCommit) {
     await github.rest.git.createRef({
       ...radius,
       ref: `refs/${stateRef(plan.version)}`,
-      sha: candidate.sha,
+      sha: candidate,
       request: { retries: 0 }
     });
   } catch (error) {
