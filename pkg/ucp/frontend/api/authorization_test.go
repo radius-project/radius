@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -299,6 +300,34 @@ func TestServiceDryRunRequests(t *testing.T) {
 				}
 			})
 		}
+		t.Run("Azure checkAccess stays local", func(t *testing.T) {
+			for _, scope := range []string{azure, azure + "/resourceGroups/unsupported"} {
+				for _, subject := range []string{"alice", "bob"} {
+					logs.TakeAll()
+					before := calls.Load()
+					body := fmt.Sprintf(`{"checks":[{"permission":"System.Azure/credentials/use/action","target":%q}]}`, scope)
+					status, headers, data := call(http.MethodPost, scope+"/providers/Radius.Core/checkAccess?api-version=2025-08-01-preview", subject, body)
+					require.Equal(t, before, calls.Load(), "inspection must not reach the Azure proxy")
+					require.Empty(t, headers.Get("X-Downstream"))
+					require.Empty(t, logs.FilterMessage("User authorization request").All(), "inspection must run before workload evaluation")
+					if scope != azure {
+						require.Equal(t, http.StatusBadRequest, status, data)
+						require.Contains(t, data, "InvalidRequestContent")
+						require.NotContains(t, data, `"checks"`)
+						continue
+					}
+					require.Equal(t, http.StatusOK, status, data)
+					var result authapi.CheckAccessResponse
+					require.NoError(t, json.Unmarshal([]byte(data), &result))
+					require.Equal(t, subject, *result.Principal.Subject)
+					require.Equal(t, authapi.UserAuthorizationModeDryRun, *result.Mode)
+					require.Equal(t, runtime.State().Generation, *result.Generation)
+					require.Equal(t, []*authapi.AccessCheckResult{{
+						Permission: to.Ptr("System.Azure/credentials/use/action"), Target: to.Ptr(azure), Allowed: to.Ptr(subject == "alice"),
+					}}, result.Checks)
+				}
+			}
+		})
 	})
 
 	var downstreamCalls atomic.Int32
