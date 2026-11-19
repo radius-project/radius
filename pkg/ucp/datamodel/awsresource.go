@@ -63,7 +63,8 @@ type AWSResourceProperties struct {
 	UnresolvedPaths []string `json:"unresolvedPropertyPaths,omitempty"`
 
 	// LegacyUnresolvedPaths are unresolved paths that UCP saved before it escaped keys in paths, with each key as it is.
-	// The records store moves them into UnresolvedPaths when it reads a record, so they are never saved again.
+	// A key that holds "/" makes such a path ambiguous, so it isn't converted: UCP matches it against each path written
+	// the same way, as it did when it saved it. UCP adds no new paths here, and clears them with UnresolvedPaths.
 	LegacyUnresolvedPaths []string `json:"unresolvedPaths,omitempty"`
 
 	// Fingerprints are the fingerprints of the write-only values of the last successful deploy. UCP compares them

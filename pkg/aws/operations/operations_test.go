@@ -464,6 +464,84 @@ func Test_GeneratePatchWithOptions_KeysWithSlashOrTilde(t *testing.T) {
 	}
 }
 
+// Test_GeneratePatchWithOptions_LegacyUnresolved covers unresolved paths that UCP saved before it escaped keys, with
+// each key as it is. Each is matched against paths written the same way, so it works as it did when UCP saved it.
+func Test_GeneratePatchWithOptions_LegacyUnresolved(t *testing.T) {
+	t.Parallel()
+
+	schema := []byte(`{"properties": {"Name": {}, "Labels": {}, "Config": {}}}`)
+	tests := []struct {
+		name        string
+		current     map[string]any
+		desired     map[string]any
+		lastApplied map[string]any
+		legacy      []string
+		equivalent  func(path string, template any, aws any) bool
+		want        []string
+	}{
+		{
+			name:        "a path of the key tenant/id doesn't remove the key id inside tenant",
+			current:     map[string]any{"Labels": map[string]any{"tenant/id": "a", "tenant": map[string]any{"id": "outside"}}},
+			desired:     map[string]any{"Labels": map[string]any{"tenant/id": "a"}},
+			lastApplied: map[string]any{"Labels": map[string]any{"tenant/id": "a"}},
+			legacy:      []string{"Labels/tenant/id"},
+		},
+		{
+			name:        "a path of the key a~1b doesn't remove the key a/b",
+			current:     map[string]any{"Name": "n", "Labels": map[string]any{"a/b": "outside"}},
+			desired:     map[string]any{"Name": "n"},
+			lastApplied: map[string]any{"Name": "n"},
+			legacy:      []string{"Labels/a~1b"},
+		},
+		{
+			name:        "a path of the key a~1b removes that key",
+			current:     map[string]any{"Labels": map[string]any{"a~1b": "set by Radius", "keep": "k"}},
+			desired:     map[string]any{"Labels": map[string]any{"keep": "k"}},
+			lastApplied: map[string]any{"Labels": map[string]any{"keep": "k"}},
+			legacy:      []string{"Labels/a~1b"},
+			want:        []string{"remove /Labels/a~01b"},
+		},
+		{
+			name:        "a path of an object emptied by a failed update removes the list AWS still has",
+			current:     map[string]any{"Name": "n", "Config": []any{"set by Radius"}},
+			desired:     map[string]any{"Name": "n"},
+			lastApplied: map[string]any{"Name": "n", "Config": map[string]any{}},
+			legacy:      []string{"Config"},
+			want:        []string{"remove /Config"},
+		},
+		{
+			name:        "a path no value of the record has still removes AWS's value there",
+			current:     map[string]any{"Name": "n", "Config": map[string]any{"Items": []any{"x"}, "Other": "new"}},
+			desired:     map[string]any{"Name": "n", "Config": map[string]any{"Other": "new"}},
+			lastApplied: map[string]any{"Name": "n", "Config": map[string]any{"Other": "new"}},
+			legacy:      []string{"Config", "Config/Items", "Config/Other"},
+			want:        []string{"remove /Config/Items"},
+		},
+		{
+			name:        "Equivalent isn't used at a legacy path",
+			current:     map[string]any{"Labels": map[string]any{"a/b": "SLASH"}},
+			desired:     map[string]any{"Labels": map[string]any{"a/b": "slash"}},
+			lastApplied: map[string]any{"Labels": map[string]any{"a/b": "slash"}},
+			legacy:      []string{"Labels/a/b"},
+			equivalent: func(path string, template any, aws any) bool {
+				return strings.EqualFold(template.(string), aws.(string))
+			},
+			want: []string{"replace /Labels/a~1b"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.ElementsMatch(t, orEmpty(tt.want), patchOps(t, tt.current, tt.desired, schema, PatchOptions{
+				LastApplied:      tt.lastApplied,
+				Removed:          RemovedPaths(tt.lastApplied, tt.desired),
+				Equivalent:       tt.equivalent,
+				LegacyUnresolved: tt.legacy,
+			}))
+		})
+	}
+}
+
 func Test_RemovedCreateOnly_KeyWithSlash(t *testing.T) {
 	t.Parallel()
 

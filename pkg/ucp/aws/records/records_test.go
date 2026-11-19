@@ -102,8 +102,8 @@ func Test_Store_Errors(t *testing.T) {
 	require.ErrorContains(t, err, "failed to read the record")
 }
 
-// Test_Store_LegacyUnresolvedPaths reads a record that UCP saved before it escaped keys in paths. Each key of its
-// unresolved paths is escaped, so the key a~1b isn't read as a/b, and the record is saved in the new form.
+// Test_Store_LegacyUnresolvedPaths reads a record that UCP saved before it escaped keys in paths. Its unresolved paths
+// stay as they are, apart from new ones, until AWS has the values of a deploy.
 func Test_Store_LegacyUnresolvedPaths(t *testing.T) {
 	db := inmemory.NewClient()
 	data := map[string]any{
@@ -112,35 +112,41 @@ func Test_Store_LegacyUnresolvedPaths(t *testing.T) {
 		"type": "AWS.EC2/VPC",
 		"properties": map[string]any{
 			"owner":           "owner",
-			"unresolvedPaths": []any{"Labels/a~1b", "Labels/c~d", "Mode", "Nested/A"},
+			"lastApplied":     map[string]any{"Labels": map[string]any{"tenant/id": "a"}},
+			"unresolvedPaths": []any{"Labels/tenant/id", "Labels/a~1b"},
 		},
 	}
 	require.NoError(t, db.Save(t.Context(), &database.Object{Metadata: database.Metadata{ID: vpcID}, Data: data}))
 	store := NewStore(db)
-	want := []string{"Labels/a~01b", "Labels/c~0d", "Mode", "Nested/A"}
-
-	others, err := store.Others(t.Context(), parse(t, otherID), schemas.IdentityScopeRegion)
-	require.NoError(t, err)
-	require.Len(t, others, 1)
-	require.Equal(t, want, others[0].Properties.UnresolvedPaths)
-	require.Nil(t, others[0].Properties.LegacyUnresolvedPaths)
 
 	rec, etag, err := store.Get(t.Context(), parse(t, vpcID))
 	require.NoError(t, err)
-	require.Equal(t, want, rec.Properties.UnresolvedPaths)
-	require.Nil(t, rec.Properties.LegacyUnresolvedPaths)
+	require.Equal(t, []string{"Labels/tenant/id", "Labels/a~1b"}, rec.Properties.LegacyUnresolvedPaths)
+	require.Empty(t, rec.Properties.UnresolvedPaths)
+	require.True(t, HasUnresolved(rec))
 
+	// An interrupted update adds new paths in the escaped form and keeps the legacy ones.
+	rec.Properties.PendingLastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "b"}}
+	KeepPending(rec)
 	_, err = store.Save(t.Context(), rec, etag)
 	require.NoError(t, err)
 	obj, err := db.Get(t.Context(), vpcID)
 	require.NoError(t, err)
 	properties := obj.Data.(map[string]any)["properties"].(map[string]any)
-	require.NotContains(t, properties, "unresolvedPaths")
-	require.Equal(t, []any{"Labels/a~01b", "Labels/c~0d", "Mode", "Nested/A"}, properties["unresolvedPropertyPaths"])
+	require.Equal(t, []any{"Labels/tenant/id", "Labels/a~1b"}, properties["unresolvedPaths"])
+	require.Equal(t, []any{"Labels/tenant~1id"}, properties["unresolvedPropertyPaths"])
 
-	rec, _, err = store.Get(t.Context(), parse(t, vpcID))
+	others, err := store.Others(t.Context(), parse(t, otherID), schemas.IdentityScopeRegion)
 	require.NoError(t, err)
-	require.Equal(t, want, rec.Properties.UnresolvedPaths, "a saved path isn't escaped again")
+	require.Len(t, others, 1)
+	require.Equal(t, []string{"Labels/tenant/id", "Labels/a~1b"}, others[0].Properties.LegacyUnresolvedPaths)
+
+	// A deploy AWS applied clears both.
+	rec.Properties.PendingLastApplied = map[string]any{"Labels": map[string]any{"tenant/id": "c"}}
+	ApplyPending(rec)
+	require.Nil(t, rec.Properties.UnresolvedPaths)
+	require.Nil(t, rec.Properties.LegacyUnresolvedPaths)
+	require.False(t, HasUnresolved(rec))
 }
 
 func Test_FindByIdentifier(t *testing.T) {

@@ -172,6 +172,10 @@ type PatchOptions struct {
 	// over is removed at exactly that path.
 	Unresolved []string
 
+	// LegacyUnresolved are Unresolved paths that UCP saved before it escaped keys in paths, with each key as it is.
+	// They are matched against each path written the same way, so they work as they did when UCP saved them.
+	LegacyUnresolved []string
+
 	// FailUncertain makes GeneratePatchWithOptions return an *UncertainError instead of a patch when it can't tell
 	// whether an update is needed at a path: Equivalent counts AWS's value as the template's, but LastApplied doesn't
 	// show that AWS added the values beyond the template's (see UncertainError). Set it for a type whose update restarts
@@ -279,13 +283,13 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 			flattenedDesiredStateObject[k] = current
 			continue
 		}
-		resolved := !overlapsAny(k, opts.Unresolved)
+		resolved := !opts.unresolvedAt(k)
 		known := resolved && ownsSame(owned, k, v)
 		if opts.Equivalent != nil {
 			if known && opts.Equivalent(k, v, current) {
 				flattenedDesiredStateObject[k] = current
 				continue
-			} else if !known && opts.FailUncertain && !ownsAll(owned, k, current, opts.Unresolved) && opts.Equivalent(k, v, current) {
+			} else if !known && opts.FailUncertain && !(resolved && ownsAll(owned, k, current)) && opts.Equivalent(k, v, current) {
 				uncertain = append(uncertain, k)
 				continue
 			}
@@ -323,6 +327,16 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 			omitted[p] = true
 		}
 	}
+	legacyDesired := map[string]any{}
+	for k := range flattenedDesiredStateObject {
+		legacyDesired[legacyPath(k)] = nil
+	}
+	legacyOmitted := map[string]bool{}
+	for _, p := range opts.LegacyUnresolved {
+		if !setsAny(legacyDesired, p) {
+			legacyOmitted[p] = true
+		}
+	}
 
 	// Add read-only and create-only properties from current state to the desired state
 	for k, v := range flattenedCurrentStateObject {
@@ -337,7 +351,7 @@ func GeneratePatchWithOptions(currentState []byte, desiredState []byte, schema [
 		isCreateOnlyProperty := slices.Contains(resourceTypeSchema.CreateOnlyProperties, property)
 		isWriteOnlyProperty := slices.Contains(resourceTypeSchema.WriteOnlyProperties, property)
 
-		if _, exists := flattenedDesiredStateObject[k]; !exists && (underAny(k, opts.Removed) || omitted[k]) &&
+		if _, exists := flattenedDesiredStateObject[k]; !exists && (underAny(k, opts.Removed) || omitted[k] || legacyOmitted[legacyPath(k)]) &&
 			!overlapsAny(k, PropertyPaths(resourceTypeSchema.ReadOnlyProperties)) && !overlapsAny(k, PropertyPaths(resourceTypeSchema.CreateOnlyProperties)) {
 			// Radius set this property in the last deploy and the template no longer sets it: leave it out, so the
 			// patch clears it.
@@ -418,11 +432,21 @@ func setsAny(flattened map[string]any, path string) bool {
 	return false
 }
 
-// ownsAll reports whether AWS's value at k is exactly what the last deploy set there, confirmed: Radius set every value
-// AWS has at k, so any value the template leaves out is one Radius set, and an update is needed.
-func ownsAll(owned map[string]any, k string, current any, unresolved []string) bool {
+// ownsAll reports whether AWS's value at k is exactly what the last deploy set there: when k is resolved, Radius set
+// every value AWS has at k, so any value the template leaves out is one Radius set, and an update is needed.
+func ownsAll(owned map[string]any, k string, current any) bool {
 	applied, ok := owned[k]
-	return ok && !overlapsAny(k, unresolved) && reflect.DeepEqual(applied, current)
+	return ok && reflect.DeepEqual(applied, current)
+}
+
+// unresolvedAt reports whether the path k is at, under, or over a path of Unresolved or LegacyUnresolved.
+func (opts PatchOptions) unresolvedAt(k string) bool {
+	return overlapsAny(k, opts.Unresolved) || overlapsAny(legacyPath(k), opts.LegacyUnresolved)
+}
+
+// legacyPath returns path with each key as it is, as UCP wrote paths before it escaped keys.
+func legacyPath(path string) string {
+	return strings.Join(PathSegments(path), "/")
 }
 
 // ownsSame reports whether the template's value v at path k drops nothing the last deploy set there: UCP has no

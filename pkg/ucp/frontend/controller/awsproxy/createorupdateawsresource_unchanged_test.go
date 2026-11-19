@@ -230,7 +230,8 @@ func Test_UpdateAWSResource_MapKeyWithSlash(t *testing.T) {
 			"properties": {
 				"Name": {"type": "string"},
 				"Context": {"type": "object", "patternProperties": {".*": {"type": "string"}}},
-				"Labels": {"type": "object", "patternProperties": {".*": {"type": "string"}}}
+				"Labels": {"type": "object"},
+				"Config": {}
 			},
 			"createOnlyProperties": ["/properties/Name", "/properties/Context"],
 			"primaryIdentifier": ["/properties/Name"]
@@ -304,5 +305,43 @@ func Test_UpdateAWSResource_MapKeyWithSlash(t *testing.T) {
 		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
 		require.Equal(t, properties(outside), h.cc.Resource(typeName, identifier))
 		require.Empty(t, h.record(path).Properties.UnresolvedPaths)
+	})
+
+	t.Run("a legacy unresolved path of a key with / doesn't remove a nested key set outside Radius", func(t *testing.T) {
+		h := newHarness(t)
+		withTenant := map[string]any{"team/owner": "web", "cost~center": "42", "tenant/id": "a"}
+		h.saveRecord(path, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = identifier
+			rec.Properties.LastApplied = properties(withTenant)
+			// UCP saved the path of the key tenant/id as it is before it escaped keys.
+			rec.Properties.LegacyUnresolvedPaths = []string{"Labels/tenant/id"}
+		})
+		outside := map[string]any{"team/owner": "web", "cost~center": "42", "tenant/id": "a", "tenant": map[string]any{"id": "set outside Radius"}}
+		h.cc.Put(typeName, identifier, properties(outside))
+
+		resp := h.do(factory(h), http.MethodPut, path, testOwner, map[string]any{"properties": properties(withTenant)})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+		require.Equal(t, properties(outside), h.cc.Resource(typeName, identifier))
+	})
+
+	t.Run("a legacy unresolved path of an emptied object removes the value Radius set", func(t *testing.T) {
+		h := newHarness(t)
+		h.saveRecord(path, func(rec *datamodel.AWSResource) {
+			rec.Properties.AWSIdentifier = identifier
+			// A failed update from a list to an empty object left the empty object as last applied.
+			applied := properties(labels)
+			applied["Config"] = map[string]any{}
+			rec.Properties.LastApplied = applied
+			rec.Properties.LegacyUnresolvedPaths = []string{"Config"}
+		})
+		stored := properties(labels)
+		stored["Config"] = []any{"set by Radius"}
+		h.cc.Put(typeName, identifier, stored)
+
+		resp := h.do(factory(h), http.MethodPut, path, testOwner, map[string]any{"properties": properties(labels)})
+		require.Equal(t, http.StatusCreated, resp.status, resp.raw)
+		h.finish()
+		require.Equal(t, properties(labels), h.cc.Resource(typeName, identifier))
 	})
 }
