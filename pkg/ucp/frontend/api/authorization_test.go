@@ -28,10 +28,12 @@ import (
 	"github.com/radius-project/radius/pkg/ucp"
 	authapi "github.com/radius-project/radius/pkg/ucp/api/authorization/v20250801preview"
 	"github.com/radius-project/radius/pkg/ucp/authorization"
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest/observer"
 )
@@ -97,6 +99,14 @@ func frontendRequestOptions(t *testing.T, pathBase string) *ucp.Options {
 		},
 	})
 	require.NoError(t, err)
+	// Mock clients keep initialization independent of ambient AWS
+	// configuration and fail the test if a request reaches AWS.
+	ctrl := gomock.NewController(t)
+	options.AWSClients = ucp_aws.Clients{
+		CloudControl:   ucp_aws.NewMockAWSCloudControlClient(ctrl),
+		CloudFormation: ucp_aws.NewMockAWSCloudFormationClient(ctrl),
+		Kafka:          ucp_aws.NewMockAWSKafkaClient(ctrl),
+	}
 	return options
 }
 
@@ -211,6 +221,13 @@ func TestServiceDryRunRequests(t *testing.T) {
 			{"Azure checkAccess proxy", http.MethodPost, azure + "/providers/Radius.Core/checkAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
 			{"Azure explainAccess proxy", http.MethodPost, azure + "/providers/Radius.Core/explainAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
 			{"Azure credentials local", http.MethodGet, azure + "/providers/System.Azure/credentials/default", "System.Azure/credentials/read", azure + "/providers/System.Azure/credentials/default", "wouldDeny", false},
+			{"Azure subscription effectiveAccess proxy", http.MethodGet, azure + "/subscriptions/123/providers/Radius.Core/effectiveAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure subscription checkAccess proxy", http.MethodPost, azure + "/subscriptions/123/providers/Radius.Core/checkAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure subscription explainAccess proxy", http.MethodPost, azure + "/subscriptions/123/providers/Radius.Core/explainAccess", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure credential case proxy", http.MethodGet, azure + "/providers/SYSTEM.AZURE/CREDENTIALS/default", "System.Azure/credentials/use/action", azure, "wouldDeny", true},
+			{"Azure credential descendant", http.MethodGet, azure + "/providers/System.Azure/credentials/default/children/a", "", "", "indeterminate", false},
+			{"icon fixed segment case", http.MethodGet, strings.Replace(iconParent, "/resourcetypes/", "/RESOURCETYPES/", 1) + "/icons/" + iconHash, "", "", "indeterminate", false},
+			{"AWS unregistered descendant", http.MethodGet, "/planes/aws/aws/accounts/123/regions/us-west-2/providers/AWS.S3/Bucket/x/children/y", "", "", "indeterminate", false},
 		} {
 			t.Run(tt.name, func(t *testing.T) {
 				before := calls.Load()
