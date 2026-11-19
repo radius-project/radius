@@ -231,6 +231,48 @@ assert_file_contains() {
     return 0
 }
 
+test_first_rc_reviews_pin_without_writing_aws() {
+    local aws="${TEST_ROOT}/aws-pin-source" root="${SCRIPT_DIR}/../.."
+    local base product tree before
+    setup_repo v0.60.0
+    git init -q -b main "${aws}"
+    git -C "${aws}" update-index --add --cacheinfo \
+        "160000,6816fbfe9e9aeb84f7aba1046967061ce90f76c0,radius"
+    git -C "${aws}" -c user.name=Fixture -c user.email=fixture@example.invalid \
+        -c commit.gpgsign=false commit -qm "Frozen AWS source"
+    base="$(git -C "${aws}" rev-parse HEAD)"
+    before="$(git -C "${aws}" show-ref)"
+    jq --arg base "${base}" '.[2].sourceCommit = $base' "${REPO}/siblings.json" \
+        > "${REPO}/out/base.json"
+    cp "${REPO}/out/base.json" "${REPO}/siblings.json"
+    mkdir -p "${REPO}/.github/scripts" "${REPO}/.github/workflows"
+    cp "${SCRIPT_DIR}/aws-pin-receipt.mjs" "${REPO}/.github/scripts/"
+    cp "${root}"/.github/workflows/{__build-bicep-types,build-release}.yaml \
+        "${REPO}/.github/workflows/"
+    git -C "${REPO}" add .github siblings.json
+    git -C "${REPO}" commit -qm "Install receipt readers"
+    git -C "${REPO}" tag v0.60.0
+    product="$(git -C "${REPO}" rev-parse HEAD)"
+    tree="$(printf '160000 commit %s\tradius\n' "${product}" |
+        git -C "${aws}" mktree --missing)"
+    PLAN_AWS_PIN=true GIT_CONFIG_COUNT=1 \
+        GIT_CONFIG_KEY_0="url.file://${aws}.insteadOf" \
+        GIT_CONFIG_VALUE_0=https://github.com/radius-project/bicep-types-aws.git \
+        run_prepare rc 0.61
+    assert_version v0.61.0-rc.1 || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.siblingRepositories[2].sourceCommit' "${base}" || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.siblingRepositories[2].radiusPin.productCommit' "${product}" || return
+    assert_yq_value "${REPO}/out/release-plan.yaml" \
+        '.siblingRepositories[2].radiusPin.expectedTree' "${tree}" || return
+    if [[ "$(git -C "${aws}" show-ref)" != "${before}" ]]; then
+        fail_test "plan generation changed an AWS ref before approval"
+        return
+    fi
+    ((++PASS))
+}
+
 assert_changelog_entry() {
     local file="$1"
     local heading="$2"
@@ -922,6 +964,7 @@ main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/prepare-release-test-XXXXXX")"
 
     test_first_rc
+    test_first_rc_reviews_pin_without_writing_aws
     test_first_rc_keeps_previous_stable_supported
     test_first_rc_requires_latest_stable
     test_pending_supported_release_blocks_preparation v0.60.0

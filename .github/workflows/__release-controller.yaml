@@ -75,6 +75,7 @@ jobs:
       ready: ${{ steps.plan.outputs.ready }}
       version: ${{ steps.plan.outputs.version }}
       channel: ${{ steps.plan.outputs.channel }}
+      aws-release-commit: ${{ steps.inspect-aws.outputs.commit }}
       release-type: ${{ steps.plan.outputs.release-type }}
       release-branch: ${{ steps.plan.outputs.release-branch }}
       release-identifier: ${{ steps.plan.outputs.release-identifier }}
@@ -227,9 +228,27 @@ jobs:
         run: |
           product_commit="$(yq -r '.source.productCommit' \
             "${RUNNER_TEMP}/release-plan.yaml")"
-          bash "${GITHUB_WORKSPACE}/.github/scripts/verify-bicep-types-aws-radius-pin.sh" \
-            controller-siblings/bicep-types-aws "${BICEP_TYPES_AWS_COMMIT}" \
-            "${product_commit}"
+          if yq -e '.siblingRepositories[] | select(.name == "bicep-types-aws") |
+            has("radiusPin")' "${RUNNER_TEMP}/release-plan.yaml" >/dev/null; then
+            bash .github/scripts/verify-aws-pin-readers.sh "${product_commit}"
+          else
+            bash "${GITHUB_WORKSPACE}/.github/scripts/verify-bicep-types-aws-radius-pin.sh" \
+              controller-siblings/bicep-types-aws "${BICEP_TYPES_AWS_COMMIT}" \
+              "${product_commit}"
+          fi
+
+      - name: Validate the proposed AWS tree and any existing immutable receipt
+        id: inspect-aws
+        if: steps.plan.outputs.ready == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: inspect
+          INPUT_PLAN_FILE: ${{ runner.temp }}/release-plan.yaml
+          INPUT_AWS_CHECKOUT: controller-siblings/bicep-types-aws
+        with:
+          script: |
+            const { default: inspect } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-aws-release-pin.mjs`)
+            await inspect({ github, core, context })
 
       - name: Preflight every release repository
         if: steps.plan.outputs.ready == 'true'
@@ -240,7 +259,7 @@ jobs:
           RECIPES_COMMIT: ${{ steps.plan.outputs.recipes-commit }}
           DASHBOARD_COMMIT: ${{ steps.plan.outputs.dashboard-commit }}
           BICEP_TYPES_AWS_COMMIT: >-
-            ${{ steps.plan.outputs.bicep-types-aws-commit }}
+            ${{ steps.inspect-aws.outputs.commit || steps.plan.outputs.bicep-types-aws-commit }}
           RELEASE_RECONCILE_CHECK_ONLY: "true"
         run: |
           script="${GITHUB_WORKSPACE}/.github/scripts/release-create-tag-and-branch.sh"
@@ -657,7 +676,7 @@ jobs:
     name: Reconcile sibling repositories
     needs: [validate, publish-deployment-engine]
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 40
     permissions:
       contents: read
     steps:
@@ -710,6 +729,72 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Read the approved AWS plan at the immutable Radius merge commit
+        if: needs.validate.outputs.aws-release-commit == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          PLAN_COMMIT: ${{ inputs.source-pr-commit }}
+        run: |
+          make install-yq
+          gh api -H 'Accept: application/vnd.github.raw+json' \
+            "repos/${GITHUB_REPOSITORY}/contents/.github/release-plans/${VERSION}.yaml?ref=${PLAN_COMMIT}" \
+            >"${RUNNER_TEMP}/approved-aws-plan.yaml"
+
+      - name: Get scoped AWS pin PR token after release approval
+        if: needs.validate.outputs.aws-release-commit == ''
+        id: aws-pin-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: radius-project
+          repositories: bicep-types-aws
+          permission-checks: read
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Land the approved AWS pin
+        id: land-aws
+        if: steps.aws-pin-token.outcome == 'success'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: pin
+          INPUT_APP_SLUG: ${{ steps.aws-pin-token.outputs.app-slug }}
+          INPUT_PLAN_FILE: ${{ runner.temp }}/approved-aws-plan.yaml
+          INPUT_AWS_CHECKOUT: bicep-types-aws
+        with:
+          github-token: ${{ steps.aws-pin-token.outputs.token }}
+          script: |
+            const { default: pin } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-aws-release-pin.mjs`)
+            await pin({ github, core, context })
+
+      - name: Get scoped Radius pin receipt token
+        id: aws-receipt-token
+        if: steps.land-aws.outcome == 'success'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: radius-project
+          repositories: radius
+          permission-contents: write
+
+      - name: Lock the verified landed AWS commit before tagging
+        id: lock-aws
+        if: steps.aws-receipt-token.outcome == 'success'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: lock
+          INPUT_APP_SLUG: ${{ steps.aws-receipt-token.outputs.app-slug }}
+          INPUT_PLAN_FILE: ${{ runner.temp }}/approved-aws-plan.yaml
+          INPUT_LANDED_COMMIT: ${{ steps.land-aws.outputs.commit }}
+        with:
+          github-token: ${{ steps.aws-receipt-token.outputs.token }}
+          script: |
+            const { default: lock } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-aws-release-pin.mjs`)
+            await lock({ github, core, context })
+
       - name: Configure git authentication
         env:
           GH_TOKEN: ${{ steps.release-token.outputs.token }}
@@ -740,12 +825,11 @@ jobs:
           GH_TOKEN: ${{ steps.release-token.outputs.token }}
           VERSION: ${{ needs.validate.outputs.version }}
           RELEASE_BRANCH: ${{ needs.validate.outputs.release-branch }}
-          SOURCE_COMMIT: >-
-            ${{ needs.validate.outputs.bicep-types-aws-commit }}
+          SOURCE_COMMIT: ${{ steps.lock-aws.outputs.commit || needs.validate.outputs.aws-release-commit }}
         run: |
           ./.github/scripts/release-create-tag-and-branch.sh \
             bicep-types-aws "${VERSION}" "${RELEASE_BRANCH}" \
-            "${SOURCE_COMMIT}"
+            "${SOURCE_COMMIT:?missing verified AWS release commit}"
 
   create-radius-tag:
     name: Create Radius tag last

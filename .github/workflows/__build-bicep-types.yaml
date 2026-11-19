@@ -127,18 +127,17 @@ jobs:
       - name: Install plan reader
         run: make install-yq
 
-      - name: Resolve planned AWS source
-        id: source
-        run: |
-          bash ./.github/scripts/release-version.sh >>"${GITHUB_ENV}"
-          source_sha="$(yq -er '.siblingRepositories[] |
-            select(.name == "bicep-types-aws") | .sourceCommit' \
-            ".github/release-plans/${GITHUB_REF_NAME}.yaml")"
-          [[ "${source_sha}" =~ ^[0-9a-f]{40}$ ]] || {
-            echo "The approved plan has no valid AWS Bicep source." >&2
-            exit 1
-          }
-          echo "sha=${source_sha}" >>"${GITHUB_OUTPUT}"
+      - name: Parse release version
+        run: bash ./.github/scripts/release-version.sh >>"${GITHUB_ENV}"
+
+      - name: Resolve tag-owned AWS pin
+        id: aws-pin
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 5
+          script: |
+            const { default: materializeTagPlan } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/aws-pin-receipt.mjs`)
+            await materializeTagPlan({ github, context, core })
 
       - name: Get publisher token
         id: token
@@ -164,12 +163,12 @@ jobs:
           INPUT_REPO: radius-publisher
           INPUT_WORKFLOW_FILE: publish-bicep-types-aws.yml
           INPUT_EVENT_TYPE: bicep-types-aws
-          INPUT_RELEASE_IDENTIFIER: ${{ env.REL_VERSION }}-${{ steps.source.outputs.sha }}
+          INPUT_RELEASE_IDENTIFIER: ${{ env.REL_VERSION }}-${{ steps.aws-pin.outputs.sha }}
           INPUT_CLIENT_PAYLOAD: |-
             {
               "source_repository": "radius-project/bicep-types-aws",
               "source_ref": ${{ toJSON(github.ref) }},
-              "source_sha": ${{ toJSON(steps.source.outputs.sha) }},
+              "source_sha": ${{ toJSON(steps.aws-pin.outputs.sha) }},
               "rel_channel": ${{ toJSON(env.REL_CHANNEL) }},
               "registry_target": "aws"
             }

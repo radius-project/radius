@@ -958,16 +958,20 @@ jobs:
       - name: Install verification tools
         run: make install-jq install-yq install-oras install-helm install-kind install-kubectl
 
-      - name: Read release plan
-        run: |
-          mkdir -p dist/verification
-          yq -o=json '.' ".github/release-plans/${GITHUB_REF_NAME}.yaml" >dist/verification/plan.json
+      - name: Resolve tag-owned AWS pin
+        id: aws-pin
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 5
+          script: |
+            const { default: materializeTagPlan } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/aws-pin-receipt.mjs`)
+            await materializeTagPlan({ github, context, core })
 
       - name: Verify RC prerequisites for finals
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INPUT_MODE: check-rc
-          INPUT_PLAN_FILE: dist/verification/plan.json
+          INPUT_PLAN_FILE: ${{ steps.aws-pin.outputs.plan-file }}
         with:
           retries: 5
           script: |
@@ -995,6 +999,8 @@ jobs:
       - name: Verify required outputs and installation
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_SOURCE_SHA: ${{ github.sha }}
+          RELEASE_VERIFY_PLAN_FILE: ${{ steps.aws-pin.outputs.plan-file }}
         run: make verify-release-publication
 
       - name: Retain verification evidence
@@ -1098,9 +1104,20 @@ jobs:
           name: release-verification-${{ github.sha }}
           path: dist/approved
 
+      - name: Resolve tag-owned AWS pin
+        id: aws-pin
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 5
+          script: |
+            const { default: materializeTagPlan } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/aws-pin-receipt.mjs`)
+            await materializeTagPlan({ github, context, core })
+
       - name: Recheck outputs after approval
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_SOURCE_SHA: ${{ github.sha }}
+          RELEASE_VERIFY_PLAN_FILE: ${{ steps.aws-pin.outputs.plan-file }}
           RELEASE_VERIFY_APPROVED_MANIFEST: dist/approved/release-manifest.json
         run: make recheck-release-publication
 
@@ -1108,7 +1125,7 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           INPUT_MODE: check-rc
-          INPUT_PLAN_FILE: dist/verification/plan.json
+          INPUT_PLAN_FILE: ${{ steps.aws-pin.outputs.plan-file }}
         with:
           retries: 5
           script: |
@@ -1260,8 +1277,14 @@ jobs:
       - name: Install plan reader
         run: make install-yq
 
-      - name: Read approved plan
-        run: yq -o=json '.' ".github/release-plans/${GITHUB_REF_NAME}.yaml" >"${RUNNER_TEMP}/plan.json"
+      - name: Resolve tag-owned AWS pin
+        id: aws-pin
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 5
+          script: |
+            const { default: materializeTagPlan } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/aws-pin-receipt.mjs`)
+            await materializeTagPlan({ github, context, core })
 
       - name: Download verification evidence
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -1295,7 +1318,7 @@ jobs:
         id: publish
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          INPUT_PLAN_FILE: ${{ runner.temp }}/plan.json
+          INPUT_PLAN_FILE: ${{ steps.aws-pin.outputs.plan-file }}
           INPUT_MANIFEST_FILE: dist/verification/release-manifest.json
           SIBLING_RELEASE_TOKEN: ${{ steps.sibling-token.outputs.token }}
           ENGINE_RELEASE_TOKEN: ${{ steps.engine-token.outputs.token }}
