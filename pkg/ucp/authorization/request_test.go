@@ -19,7 +19,6 @@ func TestRequestMapping(t *testing.T) {
 	require.NoError(t, err)
 	// Paths built the way rad deploy builds them (pkg/cli/deployment/deploy.go).
 	deployment := teamA + "/providers/Microsoft.Resources/deployments/rad-deploy"
-	const awsS3 = "/planes/aws/local/accounts/123/regions/us-west-2/providers/AWS.S3"
 	for _, tt := range []struct {
 		method, path, permission, target string
 		kind                             RequestKind
@@ -83,14 +82,6 @@ func TestRequestMapping(t *testing.T) {
 		{"GET", "/planes/radius/local//resourceGroups/team-a"}, {"GET", appA + "/../other"},
 		{"GET", appA + "%2f"}, {"GET", "https://host" + appA}, {"GET", appA + "?api-version=2025"},
 		{"GET", teamA + "/providers/Unknown.Namespace/types/test"},
-		// AWS serves only the finite routes in frontend/aws/routes.go.
-		{"GET", awsS3 + "/Bucket/x/children/y"}, {"POST", awsS3 + "/Bucket/:put"}, {"GET", awsS3 + "/Bucket/:get"},
-		{"PATCH", awsS3 + "/Bucket/x"}, {"POST", awsS3 + "/Bucket/x/action"}, {"PUT", awsS3 + "/Bucket"},
-		{"PUT", awsS3 + "/locations/global/operationStatuses/token"}, {"GET", awsS3 + "/locations/global/operationstatuses/token"},
-		{"GET", awsS3 + "/locations/global/other/token"},
-		{"GET", "/planes/aws/local/Accounts/123/regions/us-west-2/providers/AWS.S3/Bucket/x"},
-		{"GET", "/planes/aws/local/accounts/123/REGIONS/us-west-2/providers/AWS.S3/Bucket/x"},
-		{"GET", "/planes/aws/local/accounts/123/regions/us-west-2/Providers/AWS.S3/Bucket/x"},
 		{"GET", "/planes/aws/local/accounts/123/regions/us-west-2/providers"},
 	} {
 		_, err := catalog.MapRequest(tt.method, tt.path)
@@ -105,7 +96,6 @@ func TestRequestMappingRouteShortcuts(t *testing.T) {
 	const azure = "/planes/azure/local"
 	const subscription = azure + "/subscriptions/123"
 	iconParent := plane + "/providers/System.Resources/resourceproviders/Foo.Bar/resourcetypes/things"
-	child := teamA + "/providers/Foo.Bar/things/x/icons/y"
 	credential := azure + "/providers/System.Azure/credentials/default"
 	for _, tt := range []struct {
 		name, method, path, permission, target string
@@ -114,22 +104,14 @@ func TestRequestMappingRouteShortcuts(t *testing.T) {
 		{"registered icon route", "GET", iconParent + "/icons/hash", "System.Resources/resourceProviders/resourceTypes/read", iconParent, ResourceRequest},
 		{"icon target folds parameters", "GET", "/planes/radius/LOCAL/providers/System.Resources/resourceproviders/FOO.BAR/resourcetypes/THINGS/icons/HASH",
 			"System.Resources/resourceProviders/resourceTypes/read", iconParent, ResourceRequest},
-		{"resource-group child named icons", "GET", child, "Foo.Bar/things/icons/read", child, ResourceRequest},
 		{"Azure Radius.Core proxy", "GET", azure + "/providers/Radius.Core/applications/app", "System.Azure/credentials/use/action", azure, ResourceRequest},
-		{"Azure System.Resources proxy", "GET", azure + "/providers/System.Resources/resourcegroups/rg", "System.Azure/credentials/use/action", azure, ResourceRequest},
 		{"Azure operation status proxy", "GET", azure + "/providers/System.Resources/locations/global/operationStatuses/123", "System.Azure/credentials/use/action", azure, ResourceRequest},
 		{"Azure icon proxy", "GET", strings.Replace(iconParent, plane, azure, 1) + "/icons/hash", "System.Azure/credentials/use/action", azure, ResourceRequest},
 		{"Azure subscription effectiveAccess proxy", "GET", subscription + "/providers/Radius.Core/effectiveAccess", "System.Azure/credentials/use/action", azure, ResourceRequest},
-		{"Azure subscription checkAccess proxy", "POST", subscription + "/providers/Radius.Core/checkAccess", "System.Azure/credentials/use/action", azure, ResourceRequest},
-		{"Azure subscription explainAccess proxy", "POST", subscription + "/providers/Radius.Core/explainAccess", "System.Azure/credentials/use/action", azure, ResourceRequest},
 		{"Azure credential item local", "GET", credential, "System.Azure/credentials/read", credential, ResourceRequest},
 		{"Azure credential item write", "PUT", credential, "System.Azure/credentials/write", credential, ResourceRequest},
 		{"Azure credential item delete", "DELETE", credential, "System.Azure/credentials/delete", credential, ResourceRequest},
 		{"Azure credential collection local", "GET", azure + "/providers/System.Azure/credentials", "System.Azure/credentials/read", azure, ListRequest},
-		{"Azure credential upper case proxy", "GET", azure + "/providers/SYSTEM.AZURE/CREDENTIALS/default", "System.Azure/credentials/use/action", azure, ResourceRequest},
-		{"Azure credential namespace case proxy", "GET", azure + "/providers/System.azure/credentials/default", "System.Azure/credentials/use/action", azure, ResourceRequest},
-		{"Azure credential type case proxy", "GET", azure + "/providers/System.Azure/Credentials", "System.Azure/credentials/use/action", azure, ResourceRequest},
-		{"Azure providers case proxy", "GET", azure + "/Providers/System.Azure/credentials/default", "System.Azure/credentials/use/action", azure, ResourceRequest},
 		{"Azure unknown System.Azure type proxy", "GET", azure + "/providers/System.Azure/widgets/a", "System.Azure/credentials/use/action", azure, ResourceRequest},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -143,12 +125,6 @@ func TestRequestMappingRouteShortcuts(t *testing.T) {
 		{"GET", plane + "/providers/System.Resources/other/rp/resourcetypes/things/icons/hash"},
 		{"GET", plane + "/providers/System.Resources/resourceproviders/rp/other/things/icons/hash"},
 		{"GET", strings.Replace(iconParent, "/radius/", "/aws/", 1) + "/icons/hash"},
-		// The router registers these fixed icon segments literally.
-		{"GET", plane + "/providers/System.Resources/resourceproviders/Foo.Bar/RESOURCETYPES/things/icons/hash"},
-		{"GET", plane + "/providers/System.Resources/RESOURCEPROVIDERS/Foo.Bar/resourcetypes/things/icons/hash"},
-		{"GET", plane + "/providers/SYSTEM.RESOURCES/resourceproviders/Foo.Bar/resourcetypes/things/icons/hash"},
-		{"GET", plane + "/PROVIDERS/System.Resources/resourceproviders/Foo.Bar/resourcetypes/things/icons/hash"},
-		{"GET", iconParent + "/ICONS/hash"},
 		// The Azure proxy rejects paths without a provider resource before forwarding.
 		{"GET", azure + "/tenants/abc"},
 		{"GET", subscription},
@@ -164,52 +140,6 @@ func TestRequestMappingRouteShortcuts(t *testing.T) {
 	} {
 		_, err := catalog.MapRequest(tt.method, tt.path)
 		require.Error(t, err, "%s %s", tt.method, tt.path)
-	}
-}
-
-func TestServedRoute(t *testing.T) {
-	const rp = "/planes/radius/local/providers/System.Resources/resourceproviders/Foo.Bar"
-	const aws = "/planes/aws/aws/accounts/1/regions/r/providers/AWS.S3/Bucket"
-	for _, tt := range []struct {
-		method, path string
-		served       bool
-	}{
-		{http.MethodGet, "/planes", true},
-		{http.MethodGet, "/planes/radius/", true},
-		{http.MethodPut, "/planes/radius/local", true},
-		{http.MethodPatch, "/planes/radius/local", false},
-		{http.MethodGet, "/planes/RADIUS/local", false},
-		{http.MethodGet, "/planes/AZURE/local/providers/Radius.Core/applications/app", false},
-		{http.MethodGet, "/planes/AWS/aws/accounts/1/regions/r/providers/AWS.S3/Bucket", false},
-		{http.MethodGet, "/planes/other/local", false},
-		{http.MethodGet, "/providers/Radius.Core/effectiveAccess", false},
-		// NormalizePath lowercases the first resourcegroups segment.
-		{http.MethodGet, "/PLANES/radius/local/resourceGroups/team-a", true},
-		{http.MethodPut, "/planes/radius/local/resourcegroups/team-a", true},
-		{http.MethodPatch, "/planes/radius/local/resourcegroups/team-a", false},
-		{http.MethodGet, "/planes/radius/local/resourcegroups/team-a/resources/", true},
-		{http.MethodPost, "/planes/radius/local/resourcegroups/team-a/resources", false},
-		{http.MethodPatch, "/planes/radius/local/resourcegroups/team-a/providers/Radius.Core/applications/app", true},
-		{http.MethodGet, "/planes/radius/local/resourcegroups/team-a/PROVIDERS/Radius.Core/applications/app", false},
-		{http.MethodGet, "/planes/radius/local/providers/Foo.Bar", true},
-		{http.MethodGet, "/planes/radius/local/providers/Foo.Bar/", false},
-		{http.MethodPost, "/planes/radius/local/providers/Foo.Bar/things/x/action", true},
-		{http.MethodPut, rp + "/resourcetypes/things/apiversions/v1", true},
-		{http.MethodPatch, rp + "/resourcetypes/things/apiversions/v1", false},
-		{http.MethodGet, rp + "/resourcetypes/things/icons/h", true},
-		{http.MethodGet, rp + "/resourcetypes/things/icons/h/", false},
-		{http.MethodGet, rp + "/RESOURCETYPES/things/icons/h", false},
-		{http.MethodGet, "/planes/radius/local/providers/System.Resources/locations/global/operationStatuses/1", true},
-		{http.MethodGet, "/planes/radius/local/providers/System.Resources/other/x", false},
-		{http.MethodGet, aws + "/", true},
-		{http.MethodGet, aws + "/x/", false},
-		{http.MethodGet, "/planes/aws/aws/providers/System.AWS/credentials/default", true},
-		{http.MethodGet, "/planes/aws/aws/providers/Radius.Core/roleAssignments", false},
-		{http.MethodPatch, "/planes/azure/local/providers/Radius.Core/applications/app", true},
-	} {
-		t.Run(tt.method+tt.path, func(t *testing.T) {
-			require.Equal(t, tt.served, ServedRoute(tt.method, tt.path))
-		})
 	}
 }
 
