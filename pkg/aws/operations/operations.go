@@ -148,8 +148,8 @@ func UnflattenProperties(state map[string]any) map[string]any {
 // PatchOptions carries what UCP knows from its record of the last successful deploy of a resource.
 type PatchOptions struct {
 	// Removed are the property paths the last deploy set that the template no longer sets, relative to the properties
-	// object, like the keys of FlattenProperties. The patch removes them, except
-	// read-only and create-only properties, which AWS cannot clear.
+	// object, like the keys of FlattenProperties. The patch removes them, except read-only and create-only properties,
+	// which AWS cannot clear.
 	Removed []string
 
 	// Equivalent, when set, reports whether AWS's value at path, a key of FlattenProperties, means the same as the

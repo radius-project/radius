@@ -288,4 +288,21 @@ func Test_UpdateAWSResource_MapKeyWithSlash(t *testing.T) {
 		require.Equal(t, properties(map[string]any{"team/owner": "api"}), h.cc.Resource(typeName, identifier))
 		require.Equal(t, properties(map[string]any{"team/owner": "api"}), h.record(path).Properties.LastApplied)
 	})
+
+	t.Run("a legacy unresolved path of a key with ~ doesn't remove a key with /", func(t *testing.T) {
+		h := newHarness(t)
+		seed(h)
+		h.saveRecord(path, func(rec *datamodel.AWSResource) {
+			// UCP saved the path of the key a~1b as it is before it escaped keys.
+			rec.Properties.LegacyUnresolvedPaths = []string{"Labels/a~1b"}
+		})
+		outside := map[string]any{"team/owner": "web", "cost~center": "42", "a/b": "set outside Radius"}
+		h.cc.Put(typeName, identifier, properties(outside))
+
+		resp := h.do(factory(h), http.MethodPut, path, testOwner, map[string]any{"properties": properties(labels)})
+		require.Equal(t, http.StatusOK, resp.status, resp.raw)
+		require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
+		require.Equal(t, properties(outside), h.cc.Resource(typeName, identifier))
+		require.Empty(t, h.record(path).Properties.UnresolvedPaths)
+	})
 }

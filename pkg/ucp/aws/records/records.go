@@ -88,8 +88,8 @@ func (s *Store) Get(ctx context.Context, id resources.ID) (*datamodel.AWSResourc
 	} else if err != nil {
 		return nil, "", fmt.Errorf("failed to read the record of %s: %w", id.String(), err)
 	}
-	rec := &datamodel.AWSResource{}
-	if err := convert(obj.Data, rec); err != nil {
+	rec, err := decode(obj.Data)
+	if err != nil {
 		return nil, "", fmt.Errorf("failed to read the record of %s: %w", id.String(), err)
 	}
 	return rec, obj.ETag, nil
@@ -206,8 +206,8 @@ func (s *Store) Others(ctx context.Context, id resources.ID, scope schemas.Ident
 			if strings.EqualFold(item.ID, id.String()) {
 				continue
 			}
-			rec := &datamodel.AWSResource{}
-			if err := convert(item.Data, rec); err != nil {
+			rec, err := decode(item.Data)
+			if err != nil {
 				return nil, fmt.Errorf("failed to read the record of %s: %w", item.ID, err)
 			}
 			out = append(out, rec)
@@ -464,6 +464,27 @@ func AliasOf(resourceID string) string {
 		return id.Name()
 	}
 	return resourceID
+}
+
+// decode reads a record from the data store. Unresolved paths that UCP saved before it escaped keys in paths
+// (LegacyUnresolvedPaths) are escaped segment by segment and added to UnresolvedPaths, so a key that holds "~", such
+// as a~1b, isn't read as another key, a/b. A legacy path whose key holds "/" was always read as nested keys, and
+// still is.
+func decode(data any) (*datamodel.AWSResource, error) {
+	rec := &datamodel.AWSResource{}
+	if err := convert(data, rec); err != nil {
+		return nil, err
+	}
+	if legacy := rec.Properties.LegacyUnresolvedPaths; len(legacy) > 0 {
+		paths := rec.Properties.UnresolvedPaths
+		for _, p := range legacy {
+			paths = append(paths, awsoperations.JoinPath(strings.Split(p, "/")))
+		}
+		slices.Sort(paths)
+		rec.Properties.UnresolvedPaths = slices.Compact(paths)
+		rec.Properties.LegacyUnresolvedPaths = nil
+	}
+	return rec, nil
 }
 
 func convert(in any, out any) error {

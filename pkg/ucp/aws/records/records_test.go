@@ -102,6 +102,47 @@ func Test_Store_Errors(t *testing.T) {
 	require.ErrorContains(t, err, "failed to read the record")
 }
 
+// Test_Store_LegacyUnresolvedPaths reads a record that UCP saved before it escaped keys in paths. Each key of its
+// unresolved paths is escaped, so the key a~1b isn't read as a/b, and the record is saved in the new form.
+func Test_Store_LegacyUnresolvedPaths(t *testing.T) {
+	db := inmemory.NewClient()
+	data := map[string]any{
+		"id":   vpcID,
+		"name": "app-vpc",
+		"type": "AWS.EC2/VPC",
+		"properties": map[string]any{
+			"owner":           "owner",
+			"unresolvedPaths": []any{"Labels/a~1b", "Labels/c~d", "Mode", "Nested/A"},
+		},
+	}
+	require.NoError(t, db.Save(t.Context(), &database.Object{Metadata: database.Metadata{ID: vpcID}, Data: data}))
+	store := NewStore(db)
+	want := []string{"Labels/a~01b", "Labels/c~0d", "Mode", "Nested/A"}
+
+	others, err := store.Others(t.Context(), parse(t, otherID), schemas.IdentityScopeRegion)
+	require.NoError(t, err)
+	require.Len(t, others, 1)
+	require.Equal(t, want, others[0].Properties.UnresolvedPaths)
+	require.Nil(t, others[0].Properties.LegacyUnresolvedPaths)
+
+	rec, etag, err := store.Get(t.Context(), parse(t, vpcID))
+	require.NoError(t, err)
+	require.Equal(t, want, rec.Properties.UnresolvedPaths)
+	require.Nil(t, rec.Properties.LegacyUnresolvedPaths)
+
+	_, err = store.Save(t.Context(), rec, etag)
+	require.NoError(t, err)
+	obj, err := db.Get(t.Context(), vpcID)
+	require.NoError(t, err)
+	properties := obj.Data.(map[string]any)["properties"].(map[string]any)
+	require.NotContains(t, properties, "unresolvedPaths")
+	require.Equal(t, []any{"Labels/a~01b", "Labels/c~0d", "Mode", "Nested/A"}, properties["unresolvedPropertyPaths"])
+
+	rec, _, err = store.Get(t.Context(), parse(t, vpcID))
+	require.NoError(t, err)
+	require.Equal(t, want, rec.Properties.UnresolvedPaths, "a saved path isn't escaped again")
+}
+
 func Test_FindByIdentifier(t *testing.T) {
 	db := inmemory.NewClient()
 	store := NewStore(db)
