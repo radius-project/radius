@@ -1,5 +1,5 @@
 {{- $appversion := include "radius.versiontag" . }}
-{{- $authzConfig := include "radius.authz.mode" . }}
+{{- $authzConfig := include "radius.authz.checksumInput" . }}
 {{- if ne $authzConfig "off" }}
 {{- $authzConfig = printf "%s:%s:%s:%s" $authzConfig (include "radius.authz.podSecurityLevel" .) .Release.Namespace (include "radius.authz.controlPlaneSecrets" .) }}
 {{- end }}
