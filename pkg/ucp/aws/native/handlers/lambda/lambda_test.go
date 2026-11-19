@@ -17,6 +17,7 @@ limitations under the License.
 package lambda
 
 import (
+	"encoding/json"
 	"errors"
 	"maps"
 	"os"
@@ -29,6 +30,7 @@ import (
 	awsoperations "github.com/radius-project/radius/pkg/aws/operations"
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
+	"github.com/radius-project/radius/pkg/ucp/aws/native/awsapi"
 	"github.com/radius-project/radius/pkg/ucp/aws/native/nativetest"
 )
 
@@ -45,6 +47,7 @@ func webApp(changes map[string]any) map[string]any {
 		"ExecutionRoleArn":         roleARN,
 		"IdlePolicy":               map[string]any{"AutoResumeEnabled": true, "MaxIdleDurationSeconds": 900, "SuspendedDurationSeconds": 300},
 		"IngressNetworkConnectors": []any{"arn:aws:lambda:us-west-2:aws:network-connector:aws-network-connector:ALL_INGRESS"},
+		"EgressNetworkConnectors":  []any{},
 		"MaximumDurationInSeconds": 3600,
 		"Logging":                  map[string]any{"CloudWatch": map[string]any{"LogGroup": "/microvm/web-app"}},
 		"RunHookPayload":           "session=4f1c",
@@ -159,10 +162,11 @@ func Test_CreateAndRead(t *testing.T) {
 		"ExecutionRoleArn":         roleARN,
 		"IdlePolicy":               map[string]any{"AutoResumeEnabled": true, "MaxIdleDurationSeconds": int32(900), "SuspendedDurationSeconds": int32(300)},
 		"IngressNetworkConnectors": []any{"arn:aws:lambda:us-west-2:aws:network-connector:aws-network-connector:ALL_INGRESS"},
+		"EgressNetworkConnectors":  []any{},
 		"MaximumDurationInSeconds": int32(3600),
 		"Endpoint":                 "https://" + id + ".microvm.lambda.us-west-2.on.aws",
 		"State":                    "PENDING",
-	}, properties, "AWS returns neither Logging nor RunHookPayload")
+	}, properties, "AWS returns neither Logging nor RunHookPayload, and the empty list the template set")
 
 	again, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: webApp(nil), ClientToken: "token-a"})
 	require.NoError(t, err)
@@ -303,6 +307,28 @@ func Test_List(t *testing.T) {
 	api.errs["ListMicrovms"] = fault("ThrottlingException")
 	_, err = h.List(t.Context(), region)
 	require.ErrorContains(t, err, "ThrottlingException")
+}
+
+// Test_EmptyConnectors checks that a template that sets an empty connector list redeploys with no change: Read
+// reports AWS's empty list, so it matches, and a template that leaves the list out still matches too.
+func Test_EmptyConnectors(t *testing.T) {
+	schema := []byte(readFile(t, "aws-lambda-microvm.json"))
+	for _, name := range []string{"IngressNetworkConnectors", "EgressNetworkConnectors"} {
+		for _, template := range []map[string]any{webApp(map[string]any{name: []any{}}), awsapi.Without(webApp(nil), name)} {
+			h, _ := newHandler()
+			id, err := h.Create(t.Context(), native.CreateRequest{Region: region, Properties: template, ClientToken: "token"})
+			require.NoError(t, err)
+			read, err := h.Read(t.Context(), region, id)
+			require.NoError(t, err)
+			current, err := json.Marshal(read)
+			require.NoError(t, err)
+			desired, err := json.Marshal(awsapi.Without(template, "Logging", "RunHookPayload"))
+			require.NoError(t, err)
+			patch, err := awsoperations.GeneratePatchWithOptions(current, desired, schema, awsoperations.PatchOptions{})
+			require.NoError(t, err)
+			require.Empty(t, patch, "%s %v", name, template[name])
+		}
+	}
 }
 
 // Test_ImageTransform checks that a template naming the image matches the ARN AWS reports, with or without a record of

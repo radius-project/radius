@@ -62,6 +62,8 @@ func Test_Suite_BackendEnvironment(t *testing.T) {
 			staging(map[string]any{"EnvironmentName": "staging|blue"}),
 			staging(map[string]any{"StackName": 5}),
 			staging(map[string]any{"AppId": []any{gen1App}}),
+			staging(map[string]any{"StackName": ""}),
+			staging(map[string]any{"DeploymentArtifacts": ""}),
 		},
 		IdentifierProperties: func(identifier string) map[string]any {
 			e, err := parseID(identifier)

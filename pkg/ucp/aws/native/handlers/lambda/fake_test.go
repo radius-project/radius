@@ -190,7 +190,7 @@ func (f *fakeAPI) RunMicrovm(ctx context.Context, in *lambdamicrovms.RunMicrovmI
 		}
 	}
 	for name, list := range map[string][]string{"IngressNetworkConnectors": in.IngressNetworkConnectors, "EgressNetworkConnectors": in.EgressNetworkConnectors} {
-		if len(list) > 0 {
+		if list != nil {
 			stored[name] = anyList(list)
 		}
 	}
@@ -281,15 +281,15 @@ func (f *fakeAPI) describe(id string) *lambdamicrovms.GetMicrovmOutput {
 	return out
 }
 
-// stringList returns a stored list of strings.
+// stringList returns a stored list of strings, or nil when none is stored.
 func stringList(v any) []string {
-	list, _ := v.([]any)
+	list, ok := v.([]any)
+	if !ok {
+		return nil
+	}
 	out := []string{}
 	for _, item := range list {
 		out = append(out, fmt.Sprint(item))
-	}
-	if len(out) == 0 {
-		return nil
 	}
 	return out
 }

@@ -84,18 +84,19 @@ func clientFailure(format string, args ...any) error {
 	return &native.Failure{Message: fmt.Sprintf(format, args...), ClientError: true, Outcome: native.OutcomeRejected}
 }
 
-// parse returns the environment the properties give. A value that isn't a string, or an app ID or name with "|",
-// which separates them in the identifier, is a client failure.
+// parse returns the environment the properties give. A value that isn't a string, an empty StackName or
+// DeploymentArtifacts, or an app ID or name with "|", which separates them in the identifier, is a client failure.
 func parse(properties map[string]any) (environment, error) {
 	e := environment{}
 	for _, field := range []struct {
-		name  string
-		value *string
+		name     string
+		value    *string
+		optional bool
 	}{
-		{"AppId", &e.app},
-		{"EnvironmentName", &e.name},
-		{"StackName", &e.stack},
-		{"DeploymentArtifacts", &e.artifacts},
+		{"AppId", &e.app, false},
+		{"EnvironmentName", &e.name, false},
+		{"StackName", &e.stack, true},
+		{"DeploymentArtifacts", &e.artifacts, true},
 	} {
 		v, ok := properties[field.name]
 		if !ok || v == nil {
@@ -104,6 +105,11 @@ func parse(properties map[string]any) (environment, error) {
 		s, ok := v.(string)
 		if !ok {
 			return environment{}, clientFailure("%s of an %s must be a string", field.name, backendEnvironmentType)
+		}
+		// AWS takes no "" for an optional property, and the handler doesn't send one, so a template that set it would
+		// see a change to a create-only property on every deploy.
+		if s == "" && field.optional {
+			return environment{}, clientFailure("%s of an %s can't be empty. Leave it out instead", field.name, backendEnvironmentType)
 		}
 		*field.value = s
 	}

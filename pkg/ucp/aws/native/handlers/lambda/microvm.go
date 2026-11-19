@@ -183,7 +183,7 @@ func (h *Microvm) Read(ctx context.Context, region string, identifier string) (m
 }
 
 // propertiesOf returns the properties of m, with the image's ARN as ImageIdentifier. Values AWS doesn't return are
-// left out.
+// left out. An empty connector list AWS returns is kept, so a template that sets [] matches it.
 func propertiesOf(m *lambdamicrovms.GetMicrovmOutput) map[string]any {
 	properties := map[string]any{
 		"MicrovmId":       aws.ToString(m.MicrovmId),
@@ -205,7 +205,7 @@ func propertiesOf(m *lambdamicrovms.GetMicrovmOutput) map[string]any {
 		"IngressNetworkConnectors": m.IngressNetworkConnectors,
 		"EgressNetworkConnectors":  m.EgressNetworkConnectors,
 	} {
-		if len(list) > 0 {
+		if list != nil {
 			items := []any{}
 			for _, v := range list {
 				items = append(items, v)
