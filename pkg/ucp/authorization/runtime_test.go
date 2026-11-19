@@ -320,7 +320,7 @@ func TestPolicyRuntimeCancellationAndDeadline(t *testing.T) {
 				runtime, stop := startPolicyRuntime(t, store)
 				require.ErrorContains(t, runtime.Run(t.Context()), "only run once")
 				if block {
-					time.Sleep(PolicyRefreshInterval)
+					time.Sleep(PolicyMaxAge)
 					synctest.Wait()
 					require.ErrorIs(t, runtime.State().LastError, context.DeadlineExceeded)
 				}
@@ -348,11 +348,13 @@ func TestPolicyRuntimeLocalRefreshTimeoutRecoversOnPoll(t *testing.T) {
 		})
 		started := time.Now()
 		require.ErrorIs(t, runtime.Refresh(t.Context()), context.DeadlineExceeded)
-		require.Equal(t, PolicyRefreshInterval, time.Since(started))
+		require.Equal(t, PolicyMaxAge, time.Since(started))
 		require.NoError(t, t.Context().Err())
 		require.Equal(t, int64(0), runtime.State().Generation)
 		db.setGet(nil)
-		time.Sleep(2 * PolicyRefreshInterval)
+		// A poll may have taken the gate as the local refresh released it and be
+		// blocked on its own read until that attempt's bound.
+		time.Sleep(PolicyMaxAge + 2*PolicyRefreshInterval)
 		synctest.Wait()
 		require.Equal(t, int64(1), runtime.State().Generation)
 		require.Nil(t, runtime.State().LastError)
@@ -389,7 +391,9 @@ func TestPolicyRuntimePostCommitRefreshTimeout(t *testing.T) {
 		require.NoError(t, t.Context().Err())
 		require.Equal(t, int64(0), runtime.State().Generation)
 		db.setGet(nil)
-		time.Sleep(2 * PolicyRefreshInterval)
+		// A poll may have taken the gate as the post-commit refresh released it
+		// and be blocked on its own read until that attempt's bound.
+		time.Sleep(PolicyMaxAge + 2*PolicyRefreshInterval)
 		synctest.Wait()
 		require.Equal(t, int64(1), runtime.State().Generation)
 		require.Nil(t, runtime.State().LastError)
@@ -397,6 +401,78 @@ func TestPolicyRuntimePostCommitRefreshTimeout(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, event.Properties.PolicyChange.After.RoleAssignment)
 	})
+}
+
+// A full load slower than one poll interval, but younger than PolicyMaxAge when
+// it completes, must still become usable; slower loads must not.
+func TestPolicyRuntimeSlowFullLoad(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		delay time.Duration
+		fresh bool
+	}{
+		{name: "between poll interval and max age", delay: 2 * time.Second, fresh: true},
+		{name: "at max age", delay: 8 * time.Second},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				db := &runtimeDatabase{Client: inmemory.NewClient()}
+				store := newTestPolicyStore(t, db, true)
+				var gets atomic.Int32
+				db.setGet(func(context.Context, string) error {
+					gets.Add(1)
+					return nil
+				})
+				_, err := store.LoadPolicy(t.Context(), -1)
+				require.NoError(t, err)
+				total := time.Duration(gets.Load()) * tt.delay
+				if tt.fresh {
+					require.Greater(t, total, PolicyRefreshInterval)
+					require.Less(t, total, PolicyMaxAge)
+				} else {
+					require.GreaterOrEqual(t, total, PolicyMaxAge)
+				}
+				slow := func(ctx context.Context, _ string) error {
+					select {
+					case <-time.After(tt.delay):
+						return nil
+					case <-ctx.Done():
+						return ctx.Err()
+					}
+				}
+				db.setGet(slow)
+				runtime, stop := startPolicyRuntime(t, store)
+				defer stop()
+				time.Sleep(total)
+				synctest.Wait()
+				state := runtime.State()
+				if !tt.fresh {
+					time.Sleep(PolicyMaxAge)
+					synctest.Wait()
+					state = runtime.State()
+					require.Equal(t, RuntimeUnavailable, state.Status)
+					require.Equal(t, int64(-1), state.Generation, "a partial or late load must never be published")
+					require.ErrorIs(t, state.LastError, context.DeadlineExceeded)
+					return
+				}
+				require.Equal(t, RuntimeFresh, state.Status)
+				require.Equal(t, int64(0), state.Generation)
+				require.Nil(t, state.LastError)
+
+				// A generation change requires another full load at the same latency.
+				db.setGet(nil)
+				_, err = store.Mutate(t.Context(), policyActor(), readerMutation())
+				require.NoError(t, err)
+				db.setGet(slow)
+				time.Sleep(2*PolicyRefreshInterval + total)
+				synctest.Wait()
+				state = runtime.State()
+				require.Equal(t, RuntimeFresh, state.Status)
+				require.Equal(t, int64(1), state.Generation)
+				require.Nil(t, state.LastError)
+			})
+		})
+	}
 }
 
 func TestPolicyRuntimeCancelsLocalRefresh(t *testing.T) {

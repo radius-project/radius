@@ -360,7 +360,12 @@ func TestPolicyCacheRefreshAttemptBound(t *testing.T) {
 					cache.gate <- struct{}{}
 					defer func() { <-cache.gate }()
 				}
-				caller, expected := t.Context(), PolicyRefreshInterval
+				// The gate wait has its own poll-interval bound; the source may use the
+				// whole freshness window.
+				caller, expected := t.Context(), PolicyMaxAge
+				if tt.gate {
+					expected = PolicyRefreshInterval
+				}
 				if tt.deadline != 0 {
 					var cancel context.CancelFunc
 					caller, cancel = context.WithTimeout(caller, tt.deadline)

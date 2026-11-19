@@ -188,13 +188,15 @@ func NewPolicyCache(source PolicySource, clk clock.WithTicker) (*PolicyCache, er
 }
 
 // Refresh serializes local reloads without preventing cancellation while waiting.
-// Each attempt has a five-second deadline, including time waiting for the gate.
+// Waiting for the gate is bounded by the five-second poll interval. The whole
+// attempt is bounded by PolicyMaxAge, since a later result is unusable; a full
+// load slower than one poll interval can still complete instead of restarting.
 // The timestamp is from before I/O: a slow read cannot extend the stale window.
 // Deadline failures, including gate waits, record only the standard context
 // error. Caller cancellation leaves the shared diagnostic unchanged; a source
 // error wrapping cancellation while the attempt is live is still published.
 func (c *PolicyCache) Refresh(ctx context.Context) (err error) {
-	ctx, cancel := context.WithTimeout(ctx, PolicyRefreshInterval)
+	ctx, cancel := context.WithTimeout(ctx, PolicyMaxAge)
 	defer cancel()
 	acquired := false
 	defer func() {
@@ -216,11 +218,13 @@ func (c *PolicyCache) Refresh(ctx context.Context) (err error) {
 		c.lastError = diagnostic
 		c.mu.Unlock()
 	}()
+	wait, stopWaiting := context.WithTimeout(ctx, PolicyRefreshInterval)
+	defer stopWaiting()
 	select {
 	case c.gate <- struct{}{}:
 		acquired = true
-	case <-ctx.Done():
-		return ctx.Err()
+	case <-wait.Done():
+		return wait.Err()
 	}
 	if err := ctx.Err(); err != nil {
 		return err
@@ -274,8 +278,8 @@ func (c *PolicyCache) Evaluate(identity Identity, checks []Check) ([]Decision, e
 	return value.Evaluate(identity, checks)
 }
 
-// Run refreshes every five seconds until cancelled. Each attempt has a five
-// second deadline. The owner must join this call at shutdown. Failures are
+// Run refreshes every five seconds until cancelled. Refresh bounds each attempt
+// as documented there. The owner must join this call at shutdown. Failures are
 // delivered to report, never silently discarded.
 func (c *PolicyCache) Run(ctx context.Context, report func(error)) error {
 	if report == nil {
