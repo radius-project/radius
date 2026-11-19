@@ -880,3 +880,36 @@ func TestServe_ConnectAuthorityFormDenials(t *testing.T) {
 		})
 	}
 }
+
+// TestServe_ExpiredServingCertificateHandshakeLogged checks that a handshake refused because
+// the receiver's own serving certificate has expired is logged at normal verbosity, since
+// every new connection fails until the certificate is renewed.
+func TestServe_ExpiredServingCertificateHandshakeLogged(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []authz.Mode{authz.ModeEnforce, authz.ModeDryRun} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			now := time.Now().UTC().Truncate(time.Second)
+			ca := newCA(t)
+			leaf := ca.issue(t, certOptions{uris: spiffeURIs("applications-rp"), notAfter: now.Add(10 * time.Minute)})
+			srv := startRecordingServer(t, ca, mode, serverSetup{
+				leaf:    &leaf,
+				certNow: func() time.Time { return now.Add(time.Hour) },
+			})
+
+			conn, err := tls.Dial("tcp", srv.url, trustClient(t, ca.pem, "applications-rp"))
+			if err == nil {
+				_ = conn.Close()
+			}
+			require.Error(t, err)
+			require.Eventually(t, func() bool {
+				for _, entry := range srv.logs.All() {
+					if entry.Message == "TLS handshake failed" && entry.ContextMap()[authz.LogFieldCode] == authz.CodeCertificateExpired {
+						return true
+					}
+				}
+				return false
+			}, 5*time.Second, 10*time.Millisecond, "no handshake failure log with code %s: %v", authz.CodeCertificateExpired, srv.logs.All())
+		})
+	}
+}

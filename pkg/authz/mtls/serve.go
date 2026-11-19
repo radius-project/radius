@@ -450,8 +450,15 @@ func (l *listener) classify(c net.Conn) (net.Conn, error) {
 	tlsConn := tls.Server(peeked, l.tlsConfig)
 	if err := tlsConn.HandshakeContext(l.ctx); err != nil {
 		// Clients do not present certificates, so a failed handshake is not an authorization
-		// decision.
-		ucplog.FromContextOrDiscard(l.ctx).V(ucplog.LevelDebug).Info("TLS handshake failed", LogFieldPeerAddress, c.RemoteAddr().String(), "error", err.Error())
+		// decision. A failure of the receiver's own certificate, such as expiry, refuses every
+		// new connection until it is fixed, so log it at normal verbosity.
+		logger := ucplog.FromContextOrDiscard(l.ctx)
+		var mErr *Error
+		if errors.As(err, &mErr) {
+			logger.Error(err, "TLS handshake failed", LogFieldPeerAddress, c.RemoteAddr().String(), authz.LogFieldCode, mErr.Code)
+		} else {
+			logger.V(ucplog.LevelDebug).Info("TLS handshake failed", LogFieldPeerAddress, c.RemoteAddr().String(), "error", err.Error())
+		}
 		return nil, err
 	}
 	_ = c.SetDeadline(time.Time{})
