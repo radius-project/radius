@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -182,6 +183,8 @@ func TestInspectionCommandErrors(t *testing.T) {
 
 func TestCheckResolvedScopeBeforeConnection(t *testing.T) {
 	t.Parallel()
+	const prefix = "/planes/radius/local/resourceGroups/"
+	boundaryScope := prefix + strings.Repeat("é", 2048-len(prefix))
 	for _, scope := range []string{
 		"/planes/radius/local/resourceGroups/team?query=value",
 		"/planes/radius/local/resourceGroups/team#fragment",
@@ -191,6 +194,8 @@ func TestCheckResolvedScopeBeforeConnection(t *testing.T) {
 		"/planes/radius/local/resourceGroups/team/",
 		"/",
 		"/planes/radius/local/resourceGroups/team",
+		boundaryScope,
+		boundaryScope + "é",
 	} {
 		for _, explicit := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/explicit=%t", scope, explicit), func(t *testing.T) {
@@ -216,7 +221,7 @@ func TestCheckResolvedScopeBeforeConnection(t *testing.T) {
 				}
 				cmd.SetArgs(args)
 				err = cmd.ExecuteContext(t.Context())
-				valid := scope == "/" || scope == "/planes/radius/local/resourceGroups/team"
+				valid := scope == "/" || scope == "/planes/radius/local/resourceGroups/team" || scope == boundaryScope
 				require.Equal(t, valid, connected)
 				if valid {
 					require.NoError(t, err)

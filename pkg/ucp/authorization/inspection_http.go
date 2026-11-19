@@ -118,7 +118,7 @@ func decodeAccessCheck(w http.ResponseWriter, r *http.Request) (api.AccessCheckR
 		Type        *api.PrincipalType `json:"type"`
 		Issuer      *string            `json:"issuer"`
 		Subject     *string            `json:"subject"`
-		DisplayName *string            `json:"displayName,omitempty"`
+		DisplayName json.RawMessage    `json:"displayName,omitempty"`
 	}
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
 	decoder.DisallowUnknownFields()
@@ -142,9 +142,18 @@ func decodeAccessCheck(w http.ResponseWriter, r *http.Request) (api.AccessCheckR
 		if err := principalDecoder.Decode(&principal); err != nil {
 			return request, err
 		}
+		var displayName *string
+		if len(principal.DisplayName) > 0 {
+			if bytes.Equal(bytes.TrimSpace(principal.DisplayName), []byte("null")) {
+				return request, errors.New("principal.displayName must not be null; omit it if no label is supplied")
+			}
+			if err := json.Unmarshal(principal.DisplayName, &displayName); err != nil {
+				return request, err
+			}
+		}
 		request.Principal = &api.AccessCheckPrincipal{
 			Type: principal.Type, Issuer: principal.Issuer,
-			Subject: principal.Subject, DisplayName: principal.DisplayName,
+			Subject: principal.Subject, DisplayName: displayName,
 		}
 	}
 	for _, check := range wire.Checks {
