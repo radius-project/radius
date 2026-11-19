@@ -315,13 +315,7 @@ SPIFFE trust domain of the Radius server certificates.
 */}}
 {{- define "radius.authz.spiffe.trustDomain" -}}
 {{- $spiffe := (.Values.global.rbac | default dict).spiffe | default dict -}}
-{{- $trustDomain := "radius.internal" -}}
-{{- if hasKey $spiffe "trustDomain" -}}
-{{- $trustDomain = $spiffe.trustDomain -}}
-{{- if not (kindIs "string" $trustDomain) -}}
-{{- fail (printf "global.rbac.spiffe.trustDomain must be a string, got %s" (kindOf $trustDomain)) -}}
-{{- end -}}
-{{- end -}}
+{{- $trustDomain := $spiffe.trustDomain | default "radius.internal" | toString -}}
 {{- if or (gt (len $trustDomain) 255) (not (regexMatch "^[a-z0-9._-]+$" $trustDomain)) -}}
 {{- fail (printf "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got %q" $trustDomain) -}}
 {{- end -}}

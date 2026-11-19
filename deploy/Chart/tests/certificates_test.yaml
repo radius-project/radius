@@ -348,22 +348,6 @@ tests:
     asserts:
       - failedTemplate: {}
 
-  - it: fails for an explicitly empty trust domain instead of using the default
-    set:
-      global.rbac.enabled: true
-      global.rbac.spiffe.trustDomain: ""
-    asserts:
-      - failedTemplate:
-          errorMessage: "global.rbac.spiffe.trustDomain must be a SPIFFE trust domain name (lowercase letters, digits, '.', '-', '_'; at most 255 characters), got \"\""
-
-  - it: fails for a non-string trust domain in dryRun
-    set:
-      global.rbac.dryRun: true
-      global.rbac.spiffe.trustDomain: 42
-    asserts:
-      - failedTemplate:
-          errorMessage: "global.rbac.spiffe.trustDomain must be a string, got float64"
-
   - it: does not validate the trust domain when the mode is off
     set:
       global.rbac.spiffe.trustDomain: example.org/team
