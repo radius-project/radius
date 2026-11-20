@@ -140,20 +140,31 @@ func Test_Termination_UpdateKeepsWhatAWSFilledIn(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, 1, current["Termination"].(map[string]any)["CpsLimit"], "AWS fills in CpsLimit")
 
-	// The template drops DefaultPhoneNumber and adds CA. The Put sends the CpsLimit and Disabled AWS has, and clears
-	// the phone number.
+	_, shown := current["Termination"].(map[string]any)["DefaultPhoneNumber"]
+	require.False(t, shown, "DefaultPhoneNumber is write-only, and AWS may not return it")
+
+	// The template adds CA and keeps the phone number. The patch has only CallingRegions, because UCP compares the
+	// write-only phone number by fingerprint, so the Put sends the CpsLimit and Disabled AWS has and the template's
+	// phone number.
+	desired := map[string]any{"CallingRegions": []any{"US", "CA"}, "CidrAllowedList": []any{"203.0.113.0/27"}, "DefaultPhoneNumber": "+12065550100"}
 	request := update(t, current, nil)
-	request.Desired = termination(testVC, map[string]any{"CallingRegions": []any{"US", "CA"}, "CidrAllowedList": []any{"203.0.113.0/27"}})
-	request.Patch = jsondiff.Patch{
-		{Type: jsondiff.OperationRemove, Path: "/Termination/DefaultPhoneNumber"},
-		{Type: jsondiff.OperationReplace, Path: "/Termination/CallingRegions", Value: []any{"US", "CA"}},
-	}
+	request.Desired = termination(testVC, desired)
+	request.Patch = jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/Termination/CallingRegions", Value: []any{"US", "CA"}}}
 	require.NoError(t, h.Update(ctx, request))
-	got, err := h.Read(ctx, region, testVC)
-	require.NoError(t, err)
 	require.Equal(t, termination(testVC, map[string]any{
 		"CallingRegions": []any{"US", "CA"}, "CidrAllowedList": []any{"203.0.113.0/27"}, "CpsLimit": float64(1), "Disabled": false,
-	}), got)
+		"DefaultPhoneNumber": "+12065550100",
+	}), api.store.Resource(terminationType, testVC))
+
+	// The template then drops the phone number, which clears it.
+	delete(desired, "DefaultPhoneNumber")
+	request.Desired = termination(testVC, desired)
+	request.Patch = nil
+	require.NoError(t, h.Update(ctx, request))
+	_, kept := api.store.Resource(terminationType, testVC)["Termination"].(map[string]any)["DefaultPhoneNumber"]
+	require.False(t, kept)
+	got, err := h.Read(ctx, region, testVC)
+	require.NoError(t, err)
 
 	t.Run("a patch that doesn't apply to what AWS has is rejected", func(t *testing.T) {
 		request := update(t, got, nil)

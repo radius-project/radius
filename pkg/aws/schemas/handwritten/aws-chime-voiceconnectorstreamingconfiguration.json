@@ -67,7 +67,7 @@
         },
         "Disabled": {
           "type": "boolean",
-          "description": "When true, call analytics is off."
+          "description": "When true, call analytics is off. AWS uses false when left out."
         }
       }
     }
@@ -85,7 +85,8 @@
         "chime:GetVoiceConnectorStreamingConfiguration",
         "sns:CreateTopic",
         "sqs:CreateQueue",
-        "iam:CreateServiceLinkedRole"
+        "iam:CreateServiceLinkedRole",
+        "chime:GetMediaInsightsPipelineConfiguration"
       ]
     },
     "read": {
@@ -97,7 +98,8 @@
         "chime:GetVoiceConnectorStreamingConfiguration",
         "sns:CreateTopic",
         "sqs:CreateQueue",
-        "iam:CreateServiceLinkedRole"
+        "iam:CreateServiceLinkedRole",
+        "chime:GetMediaInsightsPipelineConfiguration"
       ]
     },
     "delete": {

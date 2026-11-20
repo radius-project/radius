@@ -43,7 +43,7 @@
         "DefaultPhoneNumber": {
           "type": "string",
           "pattern": "^\\+?[1-9]\\d{1,14}$",
-          "description": "The default outbound calling number, in E.164 format."
+          "description": "The default outbound calling number, in E.164 format, which must be a phone number of the Voice Connector. UCP never returns it, and compares it by fingerprint."
         },
         "Disabled": {
           "type": "boolean",
@@ -81,5 +81,6 @@
         "chime:GetVoiceConnectorTermination"
       ]
     }
-  }
+  },
+  "writeOnlyProperties": ["/properties/Termination/DefaultPhoneNumber"]
 }

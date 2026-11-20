@@ -29,6 +29,10 @@ import (
 const (
 	terminationType     = "AWS::Chime::VoiceConnectorTermination"
 	terminationProperty = "Termination"
+
+	// defaultPhoneNumberProperty is write-only: in live calls AWS required a number of the Voice Connector, so the
+	// recordings couldn't confirm that GetVoiceConnectorTermination returns it.
+	defaultPhoneNumberProperty = "DefaultPhoneNumber"
 )
 
 var _ native.Handler = (*Termination)(nil)
@@ -64,7 +68,7 @@ func (h *Termination) Read(ctx context.Context, region string, identifier string
 	if err != nil {
 		return nil, notFound(err)
 	}
-	return properties(identifier, terminationProperty, out.Termination), nil
+	return terminationProperties(identifier, out.Termination), nil
 }
 
 // put sets the Voice Connector's termination settings to those properties set, and waits until a read shows them.
@@ -80,7 +84,18 @@ func (h *Termination) put(ctx context.Context, region string, identifier string,
 	if err != nil {
 		return sendFailed(err)
 	}
-	return confirm(ctx, h.wait, h.Read, region, identifier, properties(identifier, terminationProperty, out.Termination))
+	return confirm(ctx, h.wait, h.Read, region, identifier, terminationProperties(identifier, out.Termination))
+}
+
+// terminationProperties returns the properties of settings, without DefaultPhoneNumber, which is write-only, so a read
+// that leaves it out matches the Put that set it.
+func terminationProperties(identifier string, settings *types.Termination) map[string]any {
+	if settings != nil {
+		copied := *settings
+		copied.DefaultPhoneNumber = nil
+		settings = &copied
+	}
+	return properties(identifier, terminationProperty, settings)
 }
 
 // Create sets the Voice Connector's termination settings to the template's and returns the Voice Connector's ID.
@@ -101,6 +116,16 @@ func (h *Termination) Update(ctx context.Context, request native.UpdateRequest) 
 	target, err := patched(request)
 	if err != nil {
 		return err
+	}
+	// DefaultPhoneNumber is write-only, so AWS's settings in the patch may not have it. The Put replaces every setting,
+	// so it sends the template's, or none when the template has none, which clears it.
+	if settings, ok := target[terminationProperty].(map[string]any); ok {
+		desired, _ := request.Desired[terminationProperty].(map[string]any)
+		if phone, ok := desired[defaultPhoneNumberProperty]; ok {
+			settings[defaultPhoneNumberProperty] = phone
+		} else {
+			delete(settings, defaultPhoneNumberProperty)
+		}
 	}
 	return h.put(ctx, request.Region, request.Identifier, target)
 }

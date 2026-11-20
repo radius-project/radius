@@ -134,6 +134,9 @@ func Test_SchemaPermissionsAreUsed(t *testing.T) {
 	}
 	implied["create"] = append(implied["create"], tableReplication...)
 	implied["update"] = append(implied["update"], tableReplication...)
+	// AWS checks the caller for this on a Chime streaming Put with a MediaInsightsConfiguration.
+	implied["create"] = append(implied["create"], "chime:GetMediaInsightsPipelineConfiguration")
+	implied["update"] = append(implied["update"], "chime:GetMediaInsightsPipelineConfiguration")
 	registry, err := NewRegistry(aws.Config{})
 	require.NoError(t, err)
 	unused := []string{}

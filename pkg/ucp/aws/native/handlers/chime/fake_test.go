@@ -84,6 +84,9 @@ func routable(host string) bool {
 	return true
 }
 
+// phoneNumbers are the phone numbers of each Voice Connector in the fake.
+var phoneNumbers = map[string][]string{testVC: {"+12065550100", "+12065550101"}}
+
 // callingRegions are the countries a Voice Connector can call in the fake.
 var callingRegions = []string{"US", "CA"}
 
@@ -333,6 +336,12 @@ func (f *fakeAPI) PutVoiceConnectorStreamingConfiguration(ctx context.Context, i
 		return nil, err
 	}
 	settings := *in.StreamingConfiguration
+	// AWS reports call analytics as not disabled when a Put leaves Disabled out.
+	if insights := settings.MediaInsightsConfiguration; insights != nil && insights.Disabled == nil {
+		copied := *insights
+		copied.Disabled = aws.Bool(false)
+		settings.MediaInsightsConfiguration = &copied
+	}
 	// AWS sends streaming notifications to EventBridge when a Put leaves the targets out.
 	if len(settings.StreamingNotificationTargets) == 0 {
 		settings.StreamingNotificationTargets = []types.StreamingNotificationTarget{{NotificationTarget: types.NotificationTargetEventBridge}}
@@ -478,11 +487,13 @@ func (f *fakeAPI) GetVoiceConnectorTermination(ctx context.Context, in *chimesdk
 	}
 	var settings types.Termination
 	decode(props, terminationProperty, &settings)
+	// The recordings couldn't confirm that AWS returns DefaultPhoneNumber, so the fake leaves it out.
+	settings.DefaultPhoneNumber = nil
 	return &chimesdkvoice.GetVoiceConnectorTerminationOutput{Termination: &settings}, nil
 }
 
 // checkTermination returns the error AWS returns for termination settings it doesn't take.
-func checkTermination(settings *types.Termination) error {
+func checkTermination(id string, settings *types.Termination) error {
 	switch {
 	case settings == nil:
 		return missing("PutVoiceConnectorTerminationInput", "Termination")
@@ -496,6 +507,9 @@ func checkTermination(settings *types.Termination) error {
 		return badRequest("Provided CPS limit (%d) exceeded allowable limit (%d)", *settings.CpsLimit, cpsQuota)
 	case settings.DefaultPhoneNumber != nil && !phoneNumberPattern.MatchString(*settings.DefaultPhoneNumber):
 		return invalid("DefaultPhoneNumber must satisfy regular expression pattern")
+	}
+	if settings.DefaultPhoneNumber != nil && !slices.Contains(phoneNumbers[id], *settings.DefaultPhoneNumber) {
+		return badRequest("Provided default caller id number (%s) is not associated with the voiceConnectorId (%s)", *settings.DefaultPhoneNumber, id)
 	}
 	for _, region := range settings.CallingRegions {
 		if !slices.Contains(callingRegions, region) {
@@ -523,7 +537,7 @@ func (f *fakeAPI) PutVoiceConnectorTermination(ctx context.Context, in *chimesdk
 	if err := f.begin("PutVoiceConnectorTermination"); err != nil {
 		return nil, err
 	}
-	if err := checkTermination(in.Termination); err != nil {
+	if err := checkTermination(aws.ToString(in.VoiceConnectorId), in.Termination); err != nil {
 		return nil, err
 	}
 	if err := voiceConnector(in.VoiceConnectorId, "PutVoiceConnectorTerminationInput"); err != nil {

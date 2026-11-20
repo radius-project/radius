@@ -139,8 +139,10 @@ func Test_Suite_Origination(t *testing.T) {
 
 func Test_Suite_Termination(t *testing.T) {
 	settings := func(regions ...any) map[string]any {
-		return map[string]any{"CallingRegions": regions, "CidrAllowedList": []any{"203.0.113.0/27"}}
+		return map[string]any{"CallingRegions": regions, "CidrAllowedList": []any{"203.0.113.0/27"}, "DefaultPhoneNumber": "+12065550100"}
 	}
+	changedPhone := settings("US")
+	changedPhone["DefaultPhoneNumber"] = "+12065550101"
 	nativetest.Run(t, nativetest.Suite{
 		TypeName:    terminationType,
 		Schema:      readFile(t, "aws-chime-voiceconnectortermination.json"),
@@ -150,9 +152,11 @@ func Test_Suite_Termination(t *testing.T) {
 			return withoutWait(NewTermination(newFakeAPI(store)))
 		},
 		IdentifierProperty: voiceConnectorIDProperty,
+		WriteOnly:          []string{"Termination/DefaultPhoneNumber"},
 		Properties:         termination(testVC, settings("US")),
 		Identifier:         testVC,
 		Changed:            termination(testVC, settings("US", "CA")),
+		ChangedWriteOnly:   termination(testVC, changedPhone),
 		CreateOnlyChange:   termination(otherVC, settings("US")),
 		API:                terminationAPI,
 	})

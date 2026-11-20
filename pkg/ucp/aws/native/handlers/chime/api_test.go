@@ -199,7 +199,9 @@ var streamingAPI = map[string]nativetest.Call{
 			"without DataRetentionInHours or Disabled before it sends it, and so does the fake. The page doesn't name " +
 			"the permissions a notification target needs: AWS checks the caller for sns:CreateTopic for SNS and " +
 			"sqs:CreateQueue for SQS, and creates a topic or queue named ChimeVoiceConnector-Streaming, which stays " +
-			"after a delete.",
+			"after a delete. With a MediaInsightsConfiguration, AWS checks the caller for " +
+			"chime:GetMediaInsightsPipelineConfiguration, and reports Disabled as false when the Put leaves it out; " +
+			"the fake does the same.",
 	},
 	"DeleteVoiceConnectorStreamingConfiguration": {
 		Doc: doc("DeleteVoiceConnectorStreamingConfiguration"),
@@ -416,7 +418,10 @@ var terminationAPI = map[string]nativetest.Call{
 			"without it, a CIDR block wider than /27, and a private one, with BadRequestException, and a country it " +
 			"doesn't serve. The fake does the same, and takes US and CA. The page doesn't say what Disabled is when " +
 			"left out; AWS reported false, and so does the fake. The fake's quota is 1 call per second, the default " +
-			"quota of the recording account.",
+			"quota of the recording account. The page doesn't say DefaultPhoneNumber must be a phone number of the " +
+			"Voice Connector, but AWS rejected another with BadRequestException; the fake does the same. Assigning a " +
+			"number costs money, so no recording shows whether GetVoiceConnectorTermination returns it: the fake leaves " +
+			"it out, and the schema makes it write-only.",
 	},
 	"DeleteVoiceConnectorTermination": {
 		Doc: doc("DeleteVoiceConnectorTermination"),
