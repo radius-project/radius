@@ -63,8 +63,8 @@ const (
 	staleReads = 2
 )
 
-// documentationRanges are the IPv4 ranges RFC 5737 reserves for documentation, which aren't publicly routable.
-var documentationRanges = []string{"192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24"}
+// documentationRanges are the ranges RFC 5737 and RFC 3849 reserve for documentation, which aren't publicly routable.
+var documentationRanges = []string{"192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24", "2001:db8::/32"}
 
 // routable reports whether host, an FQDN or an IP address, can be an origination route's host: AWS takes only
 // publicly routable IP addresses.

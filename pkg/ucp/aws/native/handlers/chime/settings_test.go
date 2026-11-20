@@ -383,6 +383,27 @@ func Test_Settings_Errors(t *testing.T) {
 	})
 }
 
+func Test_LoggingConfiguration_UpdateWithBadPatchedValue(t *testing.T) {
+	api := newFakeAPI(awsfake.NewCloudControl())
+	h := withoutWait(NewLoggingConfiguration(api))
+	current := logging(testVC, true, false)
+	request := update(t, current, nil)
+	request.Desired = map[string]any{"VoiceConnectorId": testVC, "LoggingConfiguration": map[string]any{}}
+	request.Patch = jsondiff.Patch{{Type: jsondiff.OperationReplace, Path: "/LoggingConfiguration/EnableSIPLogs", Value: "true"}}
+	requireRejected(t, h.Update(t.Context(), request), "LoggingConfiguration")
+	require.Empty(t, api.calls, "no Put turns the logs off")
+}
+
+func Test_Fake_RejectsHostsThatArentRoutable(t *testing.T) {
+	for _, host := range []string{"10.0.0.10", "127.0.0.1", "203.0.113.10", "2001:db8::10", "fe80::1"} {
+		store := awsfake.NewCloudControl()
+		err := putOrigination(t.Context(), store, &types.Origination{Routes: []types.OriginationRoute{sdkRoute(func(r *types.OriginationRoute) { r.Host = aws.String(host) })}})
+		require.ErrorContains(t, err, "not permitted", host)
+		require.Zero(t, store.Count(originationType), host)
+	}
+	require.NoError(t, putOrigination(t.Context(), awsfake.NewCloudControl(), &types.Origination{Routes: []types.OriginationRoute{sdkRoute(func(r *types.OriginationRoute) { r.Host = aws.String("54.240.196.186") })}}))
+}
+
 func Test_Settings_LostCreateResponse(t *testing.T) {
 	ctx := t.Context()
 	api := newFakeAPI(awsfake.NewCloudControl())

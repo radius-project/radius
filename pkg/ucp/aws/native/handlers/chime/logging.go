@@ -136,10 +136,11 @@ func (h *LoggingConfiguration) Update(ctx context.Context, request native.Update
 	}
 	// A template that sets LoggingConfiguration to {} after setting logs gets a patch that removes the object, which
 	// turns every log off.
-	// The patched settings hold only the template's values, which decoded above, and AWS's, so they decode too.
 	settings = types.LoggingConfiguration{}
 	if _, ok := target[loggingProperty]; ok {
-		_ = settingsOf(target, loggingProperty, &settings)
+		if err := settingsOf(target, loggingProperty, &settings); err != nil {
+			return err
+		}
 	}
 	return sendFailed(h.put(ctx, request.Region, request.Identifier, settings))
 }
