@@ -109,16 +109,17 @@
     "radius-project/dashboard",
     "radius-project/recipes"
   ],
+  "bicepExtensionsContract": "ghcr-v1",
   "ociArtifacts": [
     {
       "artifactType": "application/vnd.ms.bicep.provider.artifact",
       "name": "aws-bicep-types",
-      "repository": "biceptypes.azurecr.io/aws"
+      "repository": "ghcr.io/radius-project/bicep-types-aws"
     },
     {
       "artifactType": "application/vnd.ms.bicep.provider.artifact",
       "name": "radius-bicep-types",
-      "repository": "biceptypes.azurecr.io/radius"
+      "repository": "ghcr.io/radius-project/bicep-types-radius"
     }
   ]
 }

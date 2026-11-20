@@ -56,6 +56,45 @@ require_command() {
     command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
 }
 
+# Only a confirmed missing file on an already resolved release source is absence.
+read_source_file() {
+    local repository="$1" source="$2" path="$3" output="$4"
+    local error="${TEMP_DIR}/source-read-error"
+    if gh api -H 'Accept: application/vnd.github.raw+json' \
+        "/repos/${repository}/contents/${path}?ref=${source}" \
+        >"${output}" 2>"${error}"; then
+        return 0
+    fi
+    cat "${error}" >&2
+    if grep -Eq '^gh: .* \(HTTP 404\)$' "${error}"; then
+        return 4
+    fi
+    return 1
+}
+
+resolve_source_targets() {
+    local repository="$1" source="$2" tag="$3" status
+    TARGETS_FILE="${TEMP_DIR}/source-targets.json"
+    if read_source_file "${repository}" "${source}" \
+        ".github/release-parity/targets.json" "${TARGETS_FILE}"; then
+        return
+    else
+        status=$?
+    fi
+    [[ "${status}" == 4 && "${STAGED}" == false ]] ||
+        fail "could not read required source targets"
+    # A release with an approved plan must never fall back to a legacy contract.
+    if read_source_file "${repository}" "${source}" \
+        ".github/release-plans/${tag}.yaml" "${TEMP_DIR}/source-plan.yaml"; then
+        fail "approved release plan exists but source targets are missing"
+    else
+        status=$?
+    fi
+    [[ "${status}" == 4 ]] || fail "could not determine historical release contract"
+    cp "${SCRIPT_DIR}/../release-parity/legacy-targets.json" "${TARGETS_FILE}"
+    echo "Using frozen legacy inventory: ${tag} has no source targets or release plan." >&2
+}
+
 require_any_command() {
     local candidate
     for candidate in "$@"; do
@@ -844,6 +883,21 @@ main() {
     fi
     source_commit="$(resolve_tag_commit "${repository}" "${tag}")"
 
+    # Default inspection follows the release's committed contract, not main.
+    # Explicit historical fixtures remain available through RELEASE_PARITY_TARGETS.
+    if [[ -z "${PLAN_FILE}" && -z "${RELEASE_PARITY_TARGETS:-}" ]]; then
+        resolve_source_targets "${repository}" "${source_commit}" "${tag}"
+        jq -e --arg repository "${repository}" \
+            '.repository == $repository' "${TARGETS_FILE}" >/dev/null ||
+            fail "source targets have an unexpected repository"
+        if jq -e 'has("bicepExtensionsContract")' "${TARGETS_FILE}" >/dev/null; then
+            PLAN_FILE="${TEMP_DIR}/source-plan.json"
+            gh api -H 'Accept: application/vnd.github.raw+json' \
+                "/repos/${repository}/contents/.github/release-plans/${tag}.yaml?ref=${source_commit}" |
+                yq -o=json '.' >"${PLAN_FILE}"
+        fi
+    fi
+
     if jq -e 'has("bicepExtensionsContract")' "${TARGETS_FILE}" >/dev/null; then
         [[ -f "${PLAN_FILE}" ]] || fail "approved JSON --plan-file is required"
         require_command node
@@ -901,6 +955,9 @@ main() {
             "${PLAN_FILE}" "${source_commit}" \
             "${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}/bicep-extension-lock.json" \
             "${oci_artifacts_json}"
+        node "${SCRIPT_DIR}/collect-release-bicep.mjs" verify-mirrors \
+            "${PLAN_FILE}" "${source_commit}" \
+            "${RELEASE_PARITY_ASSETS_DIR:-${TEMP_DIR}/assets}/bicep-extension-lock.json"
     fi
 
     mkdir -p "$(dirname "${OUTPUT_PATH}")"
@@ -961,4 +1018,6 @@ main() {
     echo "Wrote release parity manifest to ${OUTPUT_PATH}"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

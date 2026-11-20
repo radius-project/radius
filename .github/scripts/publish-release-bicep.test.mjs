@@ -11,6 +11,7 @@ import { capture, tool } from "./bicep-types.mjs";
 import {
   bicepExtensionTargets,
   plannedBicepExtensions,
+  releaseBicepConfig,
   validateBicepExtensionLock
 } from "./release-bicep-extensions.mjs";
 import script, {
@@ -699,7 +700,7 @@ test("script surfaces API/auth failures instead of returning success or regenera
   );
 });
 
-test("reusable workflow stays preparatory, separates generation credentials, and serializes release writers", async () => {
+test("release caller activates the credential-isolated full-version producer and serializes writers", async () => {
   const yaml = await readFile(
     new URL("../workflows/__publish-release-bicep.yaml", import.meta.url),
     "utf8"
@@ -712,7 +713,7 @@ test("reusable workflow stays preparatory, separates generation credentials, and
   for (const step of job.steps) {
     assert.ok(bundle.includes(`- name: ${step.name}\n`));
   }
-  assert.doesNotMatch(active, /uses:.*__publish-release-bicep/);
+  assert.match(active, /uses:.*__publish-release-bicep/);
   assert.doesNotMatch(
     yaml,
     /secrets:|id-token:|--force|azure\/login|ACR|create-github-app-token/
@@ -821,14 +822,40 @@ test(
       await mkdir(restore);
       await mkdir(join(restore, "docker"));
       await writeFile(join(restore, "docker/config.json"), "{}");
+      // Private transport fixture: preserve canonical bytes at the consumer destination.
+      const mirror = `${registry}/release-mirror:${target.version}`;
+      await tool([
+        "oras",
+        "cp",
+        "--from-plain-http",
+        "--to-plain-http",
+        `${registry}/release-radius@${receipt.record.digest}`,
+        mirror
+      ]);
+      assert.equal(
+        hash(await tool(["oras", "manifest", "fetch", "--plain-http", mirror])),
+        receipt.record.digest
+      );
+      const imageConfig = releaseBicepConfig(
+        {
+          ...plan,
+          version: `v${target.version}`,
+          releaseType: target.version.includes("-rc.") ? "rc" : "final"
+        },
+        source.commit,
+        target.version
+      );
+      imageConfig.extensions.radius = imageConfig.extensions.radius.replace(
+        "biceptypes.azurecr.io/radius",
+        `${registry}/release-mirror`
+      );
       await writeFile(
         join(restore, "bicepconfig.json"),
         JSON.stringify({
+          ...imageConfig,
+          // The disposable generic registry needs OCI; the shipped ACR config does not.
           experimentalFeaturesEnabled: { ociEnabled: true },
-          cacheRootDirectory: join(restore, "cache"),
-          extensions: {
-            radius: `br:${registry}/release-radius:${target.version}`
-          }
+          cacheRootDirectory: join(restore, "cache")
         })
       );
       await writeFile(join(restore, "main.bicep"), "extension radius\n");
