@@ -163,6 +163,16 @@ JSON
     "id": 103,
     "updated_at": "2099-01-01T00:00:00Z",
     "metadata": {"container": {"tags": ["pr-103"]}}
+  },
+  {
+    "id": 105,
+    "updated_at": "2020-01-01T00:00:00Z",
+    "metadata": {"container": {"tags": ["pr-105", "test-func1234-1-1"]}}
+  },
+  {
+    "id": 106,
+    "updated_at": "2020-01-01T00:00:00Z",
+    "metadata": {"container": {"tags": []}}
   }
 ]
 JSON
@@ -189,6 +199,8 @@ main
     fail_test "delete count"
 grep -q '/versions/101$' "${TEST_DIR}/deletes" ||
     fail_test "wrong version deleted"
+! grep -q '/versions/105$' "${TEST_DIR}/deletes" ||
+    fail_test "version shared with a test- tag was deleted"
 
 cleanup
 : > "${TEST_DIR}/gets"
