@@ -358,7 +358,7 @@ func Test_Native_FindLostCreate_Delete(t *testing.T) {
 		h := newNativeHarness(t)
 		h.assigned.Opts.Recovery = native.RecoverBySearch
 		h.loseCreate(h.assigned, assignedPath, assigned)
-		h.assigned.Errors["Find"] = nativefake.ServerError("Throttling", "slow down")
+		h.assigned.Errors["Find"] = nativefake.ServerError("InternalFailure", "unavailable")
 
 		require.Equal(t, http.StatusInternalServerError, h.delete(assignedPath, testOwner).status)
 		h.requireCreateKept(assignedPath)

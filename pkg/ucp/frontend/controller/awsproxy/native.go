@@ -874,7 +874,8 @@ func outcomeOf(err error) native.Outcome {
 }
 
 // handleError returns the response for an error from AWS or a native handler of the resource id: 409 for an
-// identifier of another product, the failure a native handler reports, and otherwise as ucp_aws.HandleAWSError does.
+// identifier of another product, the failure a native handler reports, 429 for AWS's throttling, and otherwise as
+// ucp_aws.HandleAWSError does.
 func handleError(ctx context.Context, id resources.ID, err error) (armrpc_rest.Response, error) {
 	var other *native.OtherProductError
 	if errors.As(err, &other) {

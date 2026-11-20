@@ -34,6 +34,7 @@ import (
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 
+	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
 )
 
@@ -151,19 +152,9 @@ func statusOf(err error) int {
 	return response.HTTPStatusCode()
 }
 
-// throttled reports whether err is AWS limiting the rate of calls: status 429, or an error code the SDK retries as
-// throttling. LimitExceededException is left out, because many services return it for a quota the user must raise,
-// which is the request's fault.
+// throttled reports whether err is AWS limiting the rate of calls (see ucp_aws.IsThrottled).
 func throttled(err error) bool {
-	if statusOf(err) == http.StatusTooManyRequests {
-		return true
-	}
-	var apiErr smithy.APIError
-	if !errors.As(err, &apiErr) || apiErr.ErrorCode() == "LimitExceededException" {
-		return false
-	}
-	_, ok := retry.DefaultThrottleErrorCodes[apiErr.ErrorCode()]
-	return ok
+	return ucp_aws.IsThrottled(err)
 }
 
 // Decode sets out, a pointer to an AWS SDK struct, from properties. Property names match the SDK's field names,

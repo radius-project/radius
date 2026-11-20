@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 	"github.com/stretchr/testify/require"
@@ -149,6 +150,17 @@ func Test_ActivityStream_Reset(t *testing.T) {
 		require.NoError(t, h.Reset(t.Context(), region, clusterArn))
 	})
 
+	t.Run("a retried stop whose check read is throttled has an unknown outcome", func(t *testing.T) {
+		h, api := startedStream(t)
+		api.errs["StopActivityStream"] = &retry.MaxAttemptsError{Attempt: 2, Err: fault("InvalidDBClusterStateFault")}
+		h.api = throttledClusterReread{API: api, reads: new(int)}
+		var failure *native.Failure
+		require.ErrorAs(t, h.Reset(t.Context(), region, clusterArn), &failure)
+		require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have started the stop")
+		require.True(t, failure.Throttled)
+		require.Contains(t, failure.Message, "whether an earlier attempt started the stop")
+	})
+
 	t.Run("a cluster that is gone is not found", func(t *testing.T) {
 		h, api := startedStream(t)
 		api.store.Remove(clusterType, "app-aurora")
@@ -168,6 +180,20 @@ type stopRace struct {
 func (s stopRace) StopActivityStream(ctx context.Context, in *rds.StopActivityStreamInput, opts ...func(*rds.Options)) (*rds.StopActivityStreamOutput, error) {
 	s.before()
 	return s.API.StopActivityStream(ctx, in, opts...)
+}
+
+// throttledClusterReread throttles every read of the cluster after the handler's first.
+type throttledClusterReread struct {
+	API
+	reads *int
+}
+
+func (d throttledClusterReread) DescribeDBClusters(ctx context.Context, in *rds.DescribeDBClustersInput, opts ...func(*rds.Options)) (*rds.DescribeDBClustersOutput, error) {
+	*d.reads++
+	if *d.reads > 1 {
+		return nil, throttling()
+	}
+	return d.API.DescribeDBClusters(ctx, in, opts...)
 }
 
 func Test_ActivityStream_Progress(t *testing.T) {

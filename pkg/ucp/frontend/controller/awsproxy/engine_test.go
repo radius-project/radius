@@ -832,15 +832,18 @@ func (h *harness) withFailingQueue() { h.sm = failingQueue{h.sm} }
 
 func Test_Create_FailurePaths(t *testing.T) {
 	// A client fault on the first attempt, with a client token this request generated, means AWS did nothing.
-	for name, rejection := range map[string]error{
-		"invalid":   awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient}),
-		"throttled": throttled(),
+	for name, rejection := range map[string]struct {
+		err    error
+		status int
+	}{
+		"invalid":   {awsError(&smithy.GenericAPIError{Code: "ValidationException", Message: "bad", Fault: smithy.FaultClient}), http.StatusBadRequest},
+		"throttled": {throttled(), http.StatusTooManyRequests},
 	} {
 		t.Run("AWS rejects the first attempt: "+name, func(t *testing.T) {
 			h := newHarness(t)
-			h.cc.Errors["CreateResource"] = rejection
+			h.cc.Errors["CreateResource"] = rejection.err
 			resp := h.put(vpcPath, map[string]any{"CidrBlock": "bad"})
-			require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+			require.Equal(t, rejection.status, resp.status, resp.raw)
 			require.Nil(t, h.record(vpcPath))
 		})
 	}
@@ -857,7 +860,7 @@ func Test_Create_FailurePaths(t *testing.T) {
 		h.cc.Errors["CreateResource"] = throttled()
 		h.cc.Calls()
 		resp := h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"})
-		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Equal(t, http.StatusTooManyRequests, resp.status, resp.raw)
 		require.Contains(t, resp.message(), "Rate exceeded")
 		calls := h.cc.Calls()
 		require.Equal(t, []string{"CreateResource"}, operations(calls))
@@ -1089,7 +1092,7 @@ func Test_Get(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, resp.status)
 	require.Equal(t, v1.CodeNotFound, resp.code())
 
-	h.cc.Errors["GetResource"] = awsError(&smithy.GenericAPIError{Code: "Throttling", Message: "slow", Fault: smithy.FaultServer})
+	h.cc.Errors["GetResource"] = awsError(&smithy.GenericAPIError{Code: "InternalFailure", Message: "unavailable", Fault: smithy.FaultServer})
 	require.Equal(t, http.StatusInternalServerError, h.get(vpcPath).status)
 }
 
@@ -1116,7 +1119,7 @@ func Test_ReadAndSaveErrors(t *testing.T) {
 
 	t.Run("reading AWS fails", func(t *testing.T) {
 		h := newHarness(t)
-		h.cc.Errors["GetResource"] = awsError(&smithy.GenericAPIError{Code: "Throttling", Message: "slow", Fault: smithy.FaultServer})
+		h.cc.Errors["GetResource"] = awsError(&smithy.GenericAPIError{Code: "InternalFailure", Message: "unavailable", Fault: smithy.FaultServer})
 		require.Equal(t, http.StatusInternalServerError, h.put(bktPath, map[string]any{"BucketName": "assets"}).status)
 		require.Nil(t, h.record(bktPath))
 	})
@@ -1334,7 +1337,7 @@ func Test_Put_RequestTokenNotUUID(t *testing.T) {
 func Test_Put_ReadingKnownResourceFails(t *testing.T) {
 	h := newHarness(t)
 	h.saveRecord(vpcPath, func(rec *datamodel.AWSResource) { rec.Properties.AWSIdentifier = "vpc-1" })
-	h.cc.Errors["GetResource"] = awsError(&smithy.GenericAPIError{Code: "Throttling", Message: "slow", Fault: smithy.FaultServer})
+	h.cc.Errors["GetResource"] = awsError(&smithy.GenericAPIError{Code: "InternalFailure", Message: "unavailable", Fault: smithy.FaultServer})
 	require.Equal(t, http.StatusInternalServerError, h.put(vpcPath, map[string]any{"CidrBlock": "10.0.0.0/16"}).status)
 	require.Equal(t, []string{"GetResource"}, operations(h.cc.Calls()))
 }
@@ -1483,7 +1486,7 @@ func Test_Reservation_Recovery(t *testing.T) {
 			rec.Properties.PendingOperation = records.OperationDelete
 			rec.SetProvisioningState(v1.ProvisioningStateDeleting)
 		})
-		h.cc.Errors["DeleteResource"] = awsError(&smithy.GenericAPIError{Code: "Throttling", Message: "slow", Fault: smithy.FaultServer})
+		h.cc.Errors["DeleteResource"] = awsError(&smithy.GenericAPIError{Code: "InternalFailure", Message: "unavailable", Fault: smithy.FaultServer})
 		stale(t)
 		require.Equal(t, http.StatusInternalServerError, h.put(vpcPath, map[string]any{}).status)
 		rec := h.record(vpcPath)
@@ -1591,7 +1594,7 @@ func Test_Delete_UncertainCreate(t *testing.T) {
 		token := h.record(vpcPath).Properties.ClientToken
 		h.cc.Errors["CreateResource"] = throttled()
 		resp := h.delete(vpcPath, testOwner)
-		require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+		require.Equal(t, http.StatusTooManyRequests, resp.status, resp.raw)
 		require.Contains(t, resp.message(), "Rate exceeded")
 		require.Equal(t, []string{"CreateResource"}, operations(h.cc.Calls()))
 		rec := h.record(vpcPath)
@@ -2085,7 +2088,7 @@ func Test_Put_UncertainCreateWithWriteOnly_Fingerprints(t *testing.T) {
 		h := acceptedCreate(t, original)
 		template := map[string]any{"Size": "large", "Password": "rotated"}
 		h.cc.Errors["CreateResource"] = throttled()
-		require.Equal(t, http.StatusBadRequest, h.put(credentialPath, template).status)
+		require.Equal(t, http.StatusTooManyRequests, h.put(credentialPath, template).status)
 		delete(h.cc.Errors, "CreateResource")
 		h.cc.Calls()
 
@@ -2097,7 +2100,7 @@ func Test_Put_UncertainCreateWithWriteOnly_Fingerprints(t *testing.T) {
 	t.Run("a resend AWS rejected keeps the fingerprints of the create", func(t *testing.T) {
 		h := acceptedCreate(t, original)
 		h.cc.Errors["CreateResource"] = throttled()
-		require.Equal(t, http.StatusBadRequest, h.put(credentialPath, map[string]any{"Size": "large", "Password": "rotated"}).status)
+		require.Equal(t, http.StatusTooManyRequests, h.put(credentialPath, map[string]any{"Size": "large", "Password": "rotated"}).status)
 		delete(h.cc.Errors, "CreateResource")
 		h.cc.Calls()
 

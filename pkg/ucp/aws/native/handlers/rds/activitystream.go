@@ -18,6 +18,7 @@ package rds
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -199,6 +200,9 @@ func (h *ActivityStream) Reset(ctx context.Context, region string, identifier st
 	}, inRegion(region))
 	if awsapi.HasCode(err, "InvalidDBClusterStateFault") {
 		cluster, describeErr := h.describe(ctx, region, identifier)
+		if describeErr != nil && awsapi.Retried(err) && !errors.Is(describeErr, native.ErrNotFound) {
+			return unconfirmed("stop", err, describeErr)
+		}
 		if describeErr != nil {
 			return describeErr
 		}

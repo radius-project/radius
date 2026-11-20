@@ -22,12 +22,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/stretchr/testify/require"
 	"github.com/wI2L/jsondiff"
 
@@ -305,6 +309,27 @@ func Test_TenantDatabase_Delete(t *testing.T) {
 		require.NoError(t, h.DeleteWithToken(t.Context(), region, tenantID, "snap-one"))
 	})
 
+	t.Run("a retried delete whose check read is throttled has an unknown outcome", func(t *testing.T) {
+		h, api := newTenant(t, tenant)
+		api.errs["DeleteTenantDatabase"] = &retry.MaxAttemptsError{Attempt: 2, Err: fault("InvalidDBInstanceState")}
+		h.api = throttledReread{API: api, reads: new(int)}
+		err := h.DeleteWithToken(t.Context(), region, tenantID, "snap-one")
+		var failure *native.Failure
+		require.ErrorAs(t, err, &failure)
+		require.Equal(t, native.OutcomeUnknown, failure.Outcome, "an earlier attempt may have started the delete")
+		require.True(t, failure.Throttled)
+		require.False(t, failure.ClientError)
+		require.Contains(t, failure.Message, "whether an earlier attempt started the delete")
+
+		h.api = goneOnReread{API: api, reads: new(int)}
+		api.errs["DeleteTenantDatabase"] = &retry.MaxAttemptsError{Attempt: 2, Err: fault("InvalidDBInstanceState")}
+		require.ErrorIs(t, h.DeleteWithToken(t.Context(), region, tenantID, "snap-one"), native.ErrNotFound, "a tenant database gone by the check read is deleted")
+
+		h.api = throttledReread{API: api, reads: new(int)}
+		api.errs["DeleteTenantDatabase"] = fault("InvalidDBInstanceState")
+		require.ErrorContains(t, h.DeleteWithToken(t.Context(), region, tenantID, "snap-one"), "Throttling", "without a retry, the read's error is returned")
+	})
+
 	t.Run("the instance's only tenant database can't be deleted", func(t *testing.T) {
 		h, api := newTenant(t, tenant)
 		instance := api.store.Resource(instanceType, "app-cdb")
@@ -336,6 +361,44 @@ func (d deleteRace) DescribeTenantDatabases(ctx context.Context, in *rds.Describ
 		out.TenantDatabases[0].Status = aws.String(map[bool]string{true: "available", false: "deleting"}[*d.reads == 1])
 	}
 	return out, err
+}
+
+// throttledReread throttles every read of the tenant database after the handler's first, as RDS does when the account
+// makes too many calls.
+type throttledReread struct {
+	API
+	reads *int
+}
+
+func (d throttledReread) DescribeTenantDatabases(ctx context.Context, in *rds.DescribeTenantDatabasesInput, opts ...func(*rds.Options)) (*rds.DescribeTenantDatabasesOutput, error) {
+	*d.reads++
+	if *d.reads > 1 {
+		return nil, throttling()
+	}
+	return d.API.DescribeTenantDatabases(ctx, in, opts...)
+}
+
+// throttling returns RDS's answer to a call it throttled, as the SDK reports it.
+func throttling() error {
+	return &smithyhttp.ResponseError{
+		Response: &smithyhttp.Response{Response: &http.Response{StatusCode: http.StatusBadRequest}},
+		Err:      &smithy.GenericAPIError{Code: "Throttling", Message: "Rate exceeded"},
+	}
+}
+
+// goneOnReread reports the tenant database as gone to every read after the handler's first, as when an earlier attempt
+// of a delete finished.
+type goneOnReread struct {
+	API
+	reads *int
+}
+
+func (d goneOnReread) DescribeTenantDatabases(ctx context.Context, in *rds.DescribeTenantDatabasesInput, opts ...func(*rds.Options)) (*rds.DescribeTenantDatabasesOutput, error) {
+	*d.reads++
+	if *d.reads > 1 {
+		return &rds.DescribeTenantDatabasesOutput{}, nil
+	}
+	return d.API.DescribeTenantDatabases(ctx, in, opts...)
 }
 
 func Test_TenantDatabase_List(t *testing.T) {

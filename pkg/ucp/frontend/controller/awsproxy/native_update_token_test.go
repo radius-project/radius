@@ -216,7 +216,7 @@ func Test_Native_UpdateToken(t *testing.T) {
 		// did with the first attempt, which it may have accepted.
 		h.cc.Put(nativeType, "app-native", map[string]any{"Name": "app-native", "Size": 1})
 		h.fake.Errors["Update"] = nativefake.ClientError("ThrottlingException", "Rate exceeded")
-		require.Equal(t, http.StatusBadRequest, h.put(nativePath, nativeProperties(2)).status)
+		require.Equal(t, http.StatusTooManyRequests, h.put(nativePath, nativeProperties(2)).status)
 		require.Equal(t, first, lastUpdate(t, h.fake.Calls()).Token)
 		rec := h.record(nativePath)
 		require.Equal(t, first, rec.Properties.UpdateToken)
@@ -325,7 +325,7 @@ func Test_Native_UpdateState(t *testing.T) {
 	*s.stateErr = nativefake.ClientError("ThrottlingException", "slow down")
 	h.fake.Calls()
 	resp := h.put(nativePath, nativeProperties(4))
-	require.Equal(t, http.StatusBadRequest, resp.status, resp.raw)
+	require.Equal(t, http.StatusTooManyRequests, resp.status, resp.raw)
 	require.Equal(t, []string{"Read"}, methods(h.fake.Calls()), "no update without its state")
 	rec := h.record(nativePath)
 	require.Equal(t, v1.ProvisioningStateSucceeded, rec.ProvisioningState(), "nothing was reserved")

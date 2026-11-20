@@ -547,6 +547,7 @@ func Test_handleError(t *testing.T) {
 		{name: "a conflict", err: &native.Failure{Message: "the instance is busy", ClientError: true, Conflict: true}, status: http.StatusConflict, message: "the instance is busy"},
 		{name: "throttled", err: &native.Failure{Message: "AWS limited the rate of calls", Throttled: true}, status: http.StatusTooManyRequests, message: "AWS limited the rate of calls", code: v1.CodeThrottled},
 		{name: "an AWS error", err: nativefake.ClientError("ValidationException", "bad value"), status: http.StatusBadRequest, message: "bad value"},
+		{name: "AWS's throttling", err: nativefake.ClientError("ThrottlingException", "Rate exceeded"), status: http.StatusTooManyRequests, code: v1.CodeThrottled},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -557,7 +558,9 @@ func Test_handleError(t *testing.T) {
 			got := response{status: w.Code, body: map[string]any{}}
 			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got.body))
 			require.Equal(t, tt.status, got.status)
-			require.Equal(t, tt.message, got.message())
+			if tt.message != "" {
+				require.Equal(t, tt.message, got.message())
+			}
 			if tt.code != "" {
 				require.Equal(t, tt.code, got.code())
 			}

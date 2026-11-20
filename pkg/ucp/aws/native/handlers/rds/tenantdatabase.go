@@ -404,6 +404,8 @@ func (h *TenantDatabase) DeleteWithToken(ctx context.Context, region string, ide
 		// A delete may have started since the read, such as a retry of this one.
 		current, describeErr := h.describe(ctx, region, identifier)
 		switch {
+		case describeErr != nil && awsapi.Retried(err) && !errors.Is(describeErr, native.ErrNotFound):
+			return unconfirmed("delete", err, describeErr)
 		case describeErr != nil:
 			return describeErr
 		case deleting(current):

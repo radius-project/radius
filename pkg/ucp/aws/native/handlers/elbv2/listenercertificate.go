@@ -229,7 +229,7 @@ func (h *ListenerCertificate) Update(ctx context.Context, request native.UpdateR
 		remove := h.remove(ctx, request.Region, listener, arn)
 		calls = append(calls, func() error {
 			if err := remove(); err != nil {
-				return &native.Failure{Message: fmt.Sprintf("failed to remove a certificate from the listener: %s", err), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
+				return &native.Failure{Message: fmt.Sprintf("failed to remove a certificate from the listener: %s", err), ClientError: ucp_aws.IsClientFault(err), Throttled: ucp_aws.IsThrottled(err), Outcome: native.OutcomeRejected}
 			}
 			return nil
 		})

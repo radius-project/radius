@@ -325,7 +325,7 @@ func removing(removes bool, err error) error {
 	if err == nil || !removes || errors.Is(err, native.ErrNotFound) {
 		return err
 	}
-	return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Outcome: native.OutcomeRejected}
+	return &native.Failure{Message: err.Error(), ClientError: ucp_aws.IsClientFault(err), Throttled: ucp_aws.IsThrottled(err), Outcome: native.OutcomeRejected}
 }
 
 // Delete changes nothing. The type's metadata makes a delete leave the settings as they are, so UCP never calls it.

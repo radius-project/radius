@@ -108,6 +108,12 @@ func Test_VPNGatewayRoutePropagation_Update(t *testing.T) {
 	require.ErrorAs(t, err, &failure)
 	require.Equal(t, native.OutcomeRejected, failure.Outcome, "a failed removal keeps every route table on the record")
 	require.True(t, failure.ClientError)
+	require.False(t, failure.Throttled)
+
+	api.errs["DisableVgwRoutePropagation"] = fault("RequestLimitExceeded")
+	err = h.Update(t.Context(), updateRequest(t, id, propagation("vgw-1", "rtb-2", "rtb-3"), propagation("vgw-1", "rtb-3")))
+	require.ErrorAs(t, err, &failure)
+	require.True(t, failure.Throttled, "UCP answers 429, as for any AWS throttle")
 
 	require.Error(t, h.Update(t.Context(), updateRequest(t, "id-1", map[string]any{}, map[string]any{})))
 }
