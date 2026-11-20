@@ -22,6 +22,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/ses/types"
 	"github.com/stretchr/testify/require"
+	"github.com/wI2L/jsondiff"
 
 	"github.com/radius-project/radius/pkg/ucp/aws/awsfake"
 	"github.com/radius-project/radius/pkg/ucp/aws/native"
@@ -144,11 +145,12 @@ func requirePartial(t *testing.T, err error, clientError bool) {
 // is partly applied, so UCP keeps the record, and that a 4xx answer the SDK doesn't model stays a client error.
 func Test_IdentityNotificationTopic_FailureAfterAChange(t *testing.T) {
 	ctx := t.Context()
-	t.Run("a read after the create set the topic", func(t *testing.T) {
+	t.Run("reads fail after the create set the topic", func(t *testing.T) {
 		h, api := newTopicHandler()
 		api.errs["GetIdentityNotificationAttributes"] = unmodeled("Throttling", "Rate exceeded")
-		_, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: notificationTopic("Bounce", topicA, true)})
-		requirePartial(t, err, true)
+		identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: notificationTopic("Bounce", topicA, true)})
+		requireUnknown(t, err, "Rate exceeded")
+		require.Equal(t, testIdentity+"|Bounce", identifier, "UCP keeps the record of a create that may have applied")
 	})
 	t.Run("clearing the topic after a delete turned headers off", func(t *testing.T) {
 		h, api := newTopicHandler()
@@ -164,7 +166,62 @@ func Test_IdentityNotificationTopic_FailureAfterAChange(t *testing.T) {
 		require.NoError(t, err)
 		api.errs["SetIdentityHeadersInNotificationsEnabled"] = errors.New("connection reset")
 		current[headersProperty] = false
-		err = h.Update(ctx, native.UpdateRequest{Region: region, Identifier: identifier, Current: current, Desired: notificationTopic("Bounce", topicB, true)})
+		err = h.Update(ctx, update(t, identifier, current, notificationTopic("Bounce", topicB, true)))
 		requirePartial(t, err, false)
 	})
+}
+
+// update returns the update of the resource with identifier from current to desired, with the patch UCP computes.
+func update(t *testing.T, identifier string, current map[string]any, desired map[string]any) native.UpdateRequest {
+	t.Helper()
+	patch, err := jsondiff.Compare(current, desired)
+	require.NoError(t, err)
+	return native.UpdateRequest{Region: region, Identifier: identifier, Current: current, Desired: desired, Patch: patch}
+}
+
+// requireUnknown requires err to be a failure whose outcome is unknown, which says to deploy again and contains text.
+func requireUnknown(t *testing.T, err error, text string) {
+	t.Helper()
+	var failure *native.Failure
+	require.ErrorAs(t, err, &failure)
+	require.Equal(t, native.OutcomeUnknown, failure.Outcome, failure.Message)
+	require.False(t, failure.ClientError, failure.Message)
+	require.Contains(t, failure.Message, "Deploy again")
+	require.Contains(t, failure.Message, text)
+}
+
+// Test_IdentityNotificationTopic_UpdateFollowsThePatch checks that an update changes only what its patch changes: a
+// headers setting turned on outside Radius stays on when the template never set it, and turns off when the patch
+// removes it.
+func Test_IdentityNotificationTopic_UpdateFollowsThePatch(t *testing.T) {
+	ctx := t.Context()
+	h, api := newTopicHandler()
+	identifier, err := h.Create(ctx, native.CreateRequest{Region: region, Properties: notificationTopic("Bounce", topicA, true)})
+	require.NoError(t, err)
+	current, err := h.Read(ctx, region, identifier)
+	require.NoError(t, err)
+
+	// A take-over: the template changes the topic and never set headers, so UCP's patch keeps AWS's value.
+	desired := notificationTopic("Bounce", topicB, false)
+	request := update(t, identifier, current, with(desired, map[string]any{headersProperty: true}))
+	request.Desired = desired
+	api.calls = nil
+	require.NoError(t, h.Update(ctx, request))
+	require.NotContains(t, api.calls, "SetIdentityHeadersInNotificationsEnabled")
+	require.True(t, headersOn(t, h, testIdentity, "Bounce"), "headers the template never set stay on")
+
+	// The template removes headers it set, so UCP's patch removes them.
+	current, err = h.Read(ctx, region, identifier)
+	require.NoError(t, err)
+	request = update(t, identifier, current, desired)
+	require.NoError(t, h.Update(ctx, request))
+	require.False(t, headersOn(t, h, testIdentity, "Bounce"))
+
+	// An explicit false the patch sets turns headers off too.
+	_, err = h.setHeaders(ctx, region, identifier, true)
+	require.NoError(t, err)
+	current, err = h.Read(ctx, region, identifier)
+	require.NoError(t, err)
+	require.NoError(t, h.Update(ctx, update(t, identifier, current, with(desired, map[string]any{headersProperty: false}))))
+	require.False(t, headersOn(t, h, testIdentity, "Bounce"))
 }

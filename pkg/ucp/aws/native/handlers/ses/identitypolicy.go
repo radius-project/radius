@@ -19,6 +19,7 @@ package ses
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"regexp"
 	"slices"
@@ -33,6 +34,9 @@ import (
 
 const (
 	identityPolicyType = "AWS::SES::EmailIdentityPolicy"
+
+	// alreadyExistsCode is the error SES returns for a create of a policy the identity already has.
+	alreadyExistsCode = "AlreadyExistsException"
 
 	// defaultPolicyVersion is the Version SES gives a policy that has none.
 	defaultPolicyVersion = "2008-10-17"
@@ -108,9 +112,9 @@ func (h *EmailIdentityPolicy) Read(ctx context.Context, region string, identifie
 }
 
 // shows returns whether a read shows policy, in any form that means the same.
-func shows(policy string) func(map[string]any, error) bool {
-	return func(got map[string]any, err error) bool {
-		return err == nil && samePolicy(policy, awsapi.String(got, "Policy"))
+func shows(policy string) func(map[string]any) bool {
+	return func(got map[string]any) bool {
+		return samePolicy(policy, awsapi.String(got, "Policy"))
 	}
 }
 
@@ -123,7 +127,8 @@ func policyOf(properties map[string]any) (string, error) {
 	return policy, nil
 }
 
-// Create creates the policy, waits until a read shows it, and returns its identifier.
+// Create creates the policy, waits until a read shows it, and returns its identifier. A create SES answers with
+// AlreadyExistsException, or that no read shows, fails with an unknown outcome and keeps the identifier.
 func (h *EmailIdentityPolicy) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	identifier, _ := h.Identifier(request.Properties)
 	identity, name, err := pair(identifier)
@@ -139,10 +144,18 @@ func (h *EmailIdentityPolicy) Create(ctx context.Context, request native.CreateR
 		PolicyName:    aws.String(name),
 		Policy:        aws.String(policy),
 	}, inRegionV2(request.Region))
+	if awsapi.HasCode(err, alreadyExistsCode) {
+		// UCP creates a policy only after a read found none, so SES has it because this create, or an SDK retry of
+		// it whose first response was lost, made it. Report the outcome as unknown, which keeps the identifier, so
+		// the next deploy reads the policy and updates it.
+		return identifier, &native.Failure{Message: fmt.Sprintf("SES already has the policy %q. Deploy again.", identifier), Outcome: native.OutcomeUnknown}
+	}
 	if err != nil {
 		return "", awsapi.Rejected(err)
 	}
-	confirm(ctx, h.wait, h.Read, request.Region, identifier, shows(policy))
+	if err := confirm(ctx, h.wait, h.Read, request.Region, identifier, "the policy", shows(policy)); err != nil {
+		return identifier, err
+	}
 	return identifier, nil
 }
 
@@ -164,8 +177,7 @@ func (h *EmailIdentityPolicy) Update(ctx context.Context, request native.UpdateR
 	if err != nil {
 		return awsapi.Rejected(err)
 	}
-	confirm(ctx, h.wait, h.Read, request.Region, request.Identifier, shows(policy))
-	return nil
+	return confirm(ctx, h.wait, h.Read, request.Region, request.Identifier, "the policy", shows(policy))
 }
 
 // Delete deletes the policy. It returns ErrNotFound when SES has no such policy or identity.

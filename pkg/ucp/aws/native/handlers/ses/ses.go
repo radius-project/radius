@@ -130,27 +130,31 @@ func joined(properties map[string]any, name1 string, name2 string) string {
 	return first + "|" + second
 }
 
-// confirm reads until shown reports that a read shows the change, so the next read sees it, and returns whether one
-// did. It stops early when a read fails with anything but ErrNotFound, and after confirmReads reads, because the change
-// succeeded either way: a deploy that still reads the earlier value then sends the same change again, which changes
-// nothing.
-func confirm(ctx context.Context, wait pause, read reader, region string, identifier string, shown func(map[string]any, error) bool) bool {
+// confirm reads until shown reports that a read shows the change, so the next read sees it, for up to confirmReads
+// reads. AWS accepted the change, but until a read shows it, a later deploy could read the earlier value and keep, or
+// send again, a value the template removed. So when no read shows it, confirm returns a failure whose outcome is
+// unknown, which keeps the template's values as possibly applied: the next deploy sends the template's value at each
+// of them. what names the resource, such as "the policy".
+func confirm(ctx context.Context, wait pause, read reader, region string, identifier string, what string, shown func(map[string]any) bool) error {
+	var err error
 	for i := range confirmReads {
 		if i > 0 {
 			wait(ctx, confirmPause)
 		}
 		if ctx.Err() != nil {
-			return false
+			err = ctx.Err()
+			break
 		}
-		got, err := read(ctx, region, identifier)
-		if shown(got, err) {
-			return true
-		}
-		if err != nil && !errors.Is(err, native.ErrNotFound) {
-			return false
+		var got map[string]any
+		if got, err = read(ctx, region, identifier); err == nil && shown(got) {
+			return nil
 		}
 	}
-	return false
+	message := fmt.Sprintf("AWS accepted the change to %s %q, but no read showed it within %s, so UCP can't tell what AWS has. Deploy again.", what, identifier, confirmReads*confirmPause)
+	if err != nil {
+		message += " The last read failed: " + err.Error()
+	}
+	return &native.Failure{Message: message, Outcome: native.OutcomeUnknown}
 }
 
 // isRejected reports whether err is a request AWS rejected as a client fault, such as any 4xx answer.

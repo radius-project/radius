@@ -157,15 +157,14 @@ func (h *IdentityNotificationTopic) setTopic(ctx context.Context, region string,
 	if err != nil {
 		return err
 	}
-	confirm(ctx, h.wait, h.Read, region, identifier, func(got map[string]any, err error) bool {
-		return err == nil && got["SnsTopic"] == topic
+	return confirm(ctx, h.wait, h.Read, region, identifier, "the notification topic", func(got map[string]any) bool {
+		return got["SnsTopic"] == topic
 	})
-	return nil
 }
 
 // setHeaders sets whether the notifications include the original email headers, and waits until a read shows it. It
 // returns whether a read showed it, which tells a call that applied but returned an error, such as one whose response
-// was lost, from one that didn't apply.
+// was lost, from one that didn't apply, and the call's error, or confirm's when the call succeeded.
 func (h *IdentityNotificationTopic) setHeaders(ctx context.Context, region string, identifier string, enabled bool) (bool, error) {
 	identity, kind, err := notification(identifier)
 	if err != nil {
@@ -174,10 +173,13 @@ func (h *IdentityNotificationTopic) setHeaders(ctx context.Context, region strin
 	_, err = h.api.SetIdentityHeadersInNotificationsEnabled(ctx, &ses.SetIdentityHeadersInNotificationsEnabledInput{Identity: aws.String(identity), NotificationType: kind, Enabled: enabled}, inRegionV1(region))
 	// The template leaves the setting out to turn it off, so a deploy that reads it still on would take it as a value
 	// AWS set. The call may have applied even when it returned an error, so the read waits for it either way.
-	shown := confirm(ctx, h.wait, h.Read, region, identifier, func(got map[string]any, err error) bool {
-		return err == nil && got[headersProperty] == enabled
+	confirmed := confirm(ctx, h.wait, h.Read, region, identifier, "the notification topic", func(got map[string]any) bool {
+		return got[headersProperty] == enabled
 	})
-	return shown, err
+	if err == nil {
+		err = confirmed
+	}
+	return confirmed == nil, err
 }
 
 // lastHeaders sets the headers setting as the last call of a create or an update. When the call returns an error but
@@ -227,18 +229,21 @@ func (h *IdentityNotificationTopic) Create(ctx context.Context, request native.C
 	return identifier, nil
 }
 
-// Update sets the topic when the template changed it, then the headers setting when it differs from SES's. A
-// headers setting the template no longer sets is turned off. A failure after the first call is partly applied.
+// Update sets what the update's patch changes: the topic, then the headers setting. A patch that removes the headers
+// setting, because the template no longer sets it, turns headers off. A setting the patch leaves alone, such as headers
+// turned on outside Radius that the template never set, stays as it is. A failure after the first call is partly
+// applied.
 func (h *IdentityNotificationTopic) Update(ctx context.Context, request native.UpdateRequest) error {
 	topic, headers, err := desired(request.Desired)
 	if err != nil {
 		return err
 	}
+	changed := awsapi.Changed(request)
 	calls := []func() error{}
-	if request.Current["SnsTopic"] != topic {
+	if slices.Contains(changed, "SnsTopic") {
 		calls = append(calls, func() error { return h.setTopic(ctx, request.Region, request.Identifier, topic) })
 	}
-	if current, _ := request.Current[headersProperty].(bool); current != headers {
+	if slices.Contains(changed, headersProperty) {
 		calls = append(calls, func() error { return h.lastHeaders(ctx, request.Region, request.Identifier, headers) })
 	}
 	return awsapi.Rejected(awsapi.Calls(later(calls...)...))

@@ -50,9 +50,8 @@ const (
 	missingPrefix      = "missing"
 	noForwardingPrefix = "noforward"
 
-	badRequestCode    = "BadRequestException"
-	alreadyExistsCode = "AlreadyExistsException"
-	limitCode         = "LimitExceededException"
+	badRequestCode = "BadRequestException"
+	limitCode      = "LimitExceededException"
 
 	// invalidParameterCode and validationErrorCode are the SES v1 API's errors for a value it doesn't take. The SDK
 	// doesn't model them, so their fault is unknown.
@@ -99,7 +98,7 @@ type stale struct {
 // for identities whose name starts with noForwardingPrefix. Every SNS topic in the fake's account and region exists,
 // except those whose name starts with missingPrefix. The account leases the dedicated IP addresses in leased.
 //
-// As SES may, a read right after a change returns the earlier value, for staleReads reads.
+// As SES may, a read right after a change returns the earlier value, for staleReads reads by default.
 type fakeAPI struct {
 	store *awsfake.CloudControl
 
@@ -107,6 +106,9 @@ type fakeAPI struct {
 	calls  []string
 	stale  map[string]*stale
 	failer nativetest.Failer
+
+	// staleReads is how many reads after a change still return the earlier value.
+	staleReads int
 
 	// headers are the identities and notification types whose headers setting is on while they have no topic.
 	headers map[string]bool
@@ -121,7 +123,7 @@ var (
 )
 
 func newFakeAPI(store *awsfake.CloudControl) *fakeAPI {
-	return &fakeAPI{store: store, stale: map[string]*stale{}, headers: map[string]bool{}, errs: map[string]error{}}
+	return &fakeAPI{store: store, stale: map[string]*stale{}, staleReads: staleReads, headers: map[string]bool{}, errs: map[string]error{}}
 }
 
 // noWait is a pause that doesn't wait.
@@ -215,7 +217,7 @@ func (f *fakeAPI) write(typeName string, id string, props map[string]any) {
 		f.store.Put(typeName, id, props)
 	}
 	after, _ := f.store.Read(typeName, id)
-	f.stale[typeName+"|"+id] = &stale{before: before, after: after, reads: staleReads}
+	f.stale[typeName+"|"+id] = &stale{before: before, after: after, reads: f.staleReads}
 }
 
 // identityExists reports whether SES has the identity.

@@ -18,6 +18,7 @@ package ses
 
 import (
 	"context"
+	"errors"
 	"net"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -86,7 +87,8 @@ func (h *DedicatedIPAssignment) Read(ctx context.Context, region string, identif
 	return properties, nil
 }
 
-// put moves the address to the pool properties name, and waits until a read shows it there.
+// put moves the address to the pool properties name, and waits until a read shows it there. A move no read shows
+// fails with an unknown outcome.
 func (h *DedicatedIPAssignment) put(ctx context.Context, region string, ip string, properties map[string]any) error {
 	pool := awsapi.String(properties, poolProperty)
 	if pool == "" {
@@ -96,10 +98,9 @@ func (h *DedicatedIPAssignment) put(ctx context.Context, region string, ip strin
 	if err != nil {
 		return awsapi.Rejected(err)
 	}
-	confirm(ctx, h.wait, h.Read, region, ip, func(got map[string]any, err error) bool {
-		return err == nil && got[poolProperty] == pool
+	return confirm(ctx, h.wait, h.Read, region, ip, "the pool of the dedicated IP address", func(got map[string]any) bool {
+		return got[poolProperty] == pool
 	})
-	return nil
 }
 
 // Create moves the address to the template's pool and returns the address. UCP calls it only when a read found no
@@ -107,6 +108,10 @@ func (h *DedicatedIPAssignment) put(ctx context.Context, region string, ip strin
 func (h *DedicatedIPAssignment) Create(ctx context.Context, request native.CreateRequest) (string, error) {
 	ip := awsapi.String(request.Properties, "Ip")
 	if err := h.put(ctx, request.Region, ip, request.Properties); err != nil {
+		var failure *native.Failure
+		if errors.As(err, &failure) && failure.Outcome == native.OutcomeUnknown {
+			return ip, err
+		}
 		return "", err
 	}
 	return ip, nil
